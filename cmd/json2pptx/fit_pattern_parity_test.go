@@ -38,6 +38,12 @@ func TestPatternAndShapeGridFormsAgree(t *testing.T) {
 
 	patternCodes := fitCodeSet(t, patternDeck)
 	gridCodes := fitCodeSet(t, gridDeck)
+	// sparse_layout is the one deliberate difference: it measures authored grid
+	// bounds against estimated text height, and a pattern's bounds are the
+	// PATTERN's choice, not the author's — on a clean three-card KPI slide it
+	// reported "6% filled" and blocked a good deck (go-slide-creator-q7ar).
+	delete(patternCodes, patterns.ErrCodeSparseLayout)
+	delete(gridCodes, patterns.ErrCodeSparseLayout)
 	if len(patternCodes) == 0 {
 		t.Fatal("pattern slide produced no findings at all — the detectors are still skipping it")
 	}

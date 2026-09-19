@@ -1,0 +1,486 @@
+{
+ "design_mode": "free",
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Operating Priorities"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "FY27"
+    }
+   ]
+  },
+  {
+   "slide_type": "blank",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Priorities for Q1"
+    }
+   ],
+   "shape_grid": {
+    "columns": 3,
+    "gap": 8,
+    "rows": [
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#F2F2F2",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 1",
+            "size": 16,
+            "bold": true,
+            "color": "#FFFFFF"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#FFFFFF"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#FFE680",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 2",
+            "size": 16,
+            "bold": true,
+            "color": "#FFFFFF"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#FFFFFF"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#DDDDDD",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 3",
+            "size": 16,
+            "bold": true,
+            "color": "#CCCCCC"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#CCCCCC"
+           }
+          ]
+         }
+        }
+       }
+      ]
+     },
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#1F3A5F",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 4",
+            "size": 16,
+            "bold": true,
+            "color": "#2B4A73"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#2B4A73"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#333333",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 5",
+            "size": 16,
+            "bold": true,
+            "color": "#444444"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#444444"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#8FBC8F",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 6",
+            "size": 16,
+            "bold": true,
+            "color": "#9ACD9A"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#9ACD9A"
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "blank",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Priorities for Q2"
+    }
+   ],
+   "shape_grid": {
+    "columns": 3,
+    "gap": 8,
+    "rows": [
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#F2F2F2",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 1",
+            "size": 16,
+            "bold": true,
+            "color": "#FFFFFF"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#FFFFFF"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#FFE680",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 2",
+            "size": 16,
+            "bold": true,
+            "color": "#FFFFFF"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#FFFFFF"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#DDDDDD",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 3",
+            "size": 16,
+            "bold": true,
+            "color": "#CCCCCC"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#CCCCCC"
+           }
+          ]
+         }
+        }
+       }
+      ]
+     },
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#1F3A5F",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 4",
+            "size": 16,
+            "bold": true,
+            "color": "#2B4A73"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#2B4A73"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#333333",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 5",
+            "size": 16,
+            "bold": true,
+            "color": "#444444"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#444444"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#8FBC8F",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 6",
+            "size": 16,
+            "bold": true,
+            "color": "#9ACD9A"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#9ACD9A"
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "blank",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Priorities for Q3"
+    }
+   ],
+   "shape_grid": {
+    "columns": 3,
+    "gap": 8,
+    "rows": [
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#F2F2F2",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 1",
+            "size": 16,
+            "bold": true,
+            "color": "#FFFFFF"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#FFFFFF"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#FFE680",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 2",
+            "size": 16,
+            "bold": true,
+            "color": "#FFFFFF"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#FFFFFF"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#DDDDDD",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 3",
+            "size": 16,
+            "bold": true,
+            "color": "#CCCCCC"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#CCCCCC"
+           }
+          ]
+         }
+        }
+       }
+      ]
+     },
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#1F3A5F",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 4",
+            "size": 16,
+            "bold": true,
+            "color": "#2B4A73"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#2B4A73"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#333333",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 5",
+            "size": 16,
+            "bold": true,
+            "color": "#444444"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#444444"
+           }
+          ]
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "roundRect",
+         "fill": "#8FBC8F",
+         "text": {
+          "paragraphs": [
+           {
+            "content": "Priority 6",
+            "size": 16,
+            "bold": true,
+            "color": "#9ACD9A"
+           },
+           {
+            "content": "Supporting detail text that the audience must read",
+            "size": 11,
+            "color": "#9ACD9A"
+           }
+          ]
+         }
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank You"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Questions"
+    }
+   ]
+  }
+ ]
+}

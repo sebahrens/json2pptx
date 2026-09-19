@@ -1,0 +1,140 @@
+{
+ "_kind": "spec",
+ "meta": {
+  "title": "FY26 Growth Plan",
+  "archetype": "board_update"
+ },
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "kind": "title",
+   "title": "FY26 Growth Plan",
+   "subtitle": "Board update, September 2026"
+  },
+  {
+   "kind": "executive_summary",
+   "title": "Growth is on plan; SMB retention needs a fix",
+   "points": [
+    "Revenue grew 41% year over year to $48M, two points ahead of plan.",
+    "Enterprise now drives 55% of new bookings, up from 38% a year ago.",
+    "SMB churn rose to 3.1% monthly and is the main risk to FY27."
+   ],
+   "takeaway": "Approve the $2.4M retention programme to protect the growth plan."
+  },
+  {
+   "kind": "kpi_snapshot",
+   "title": "Q3 at a glance: growth and efficiency both improved",
+   "kpis": [
+    {
+     "label": "Annual revenue",
+     "value": "$48M",
+     "delta": "+41%"
+    },
+    {
+     "label": "Net retention",
+     "value": "118%",
+     "delta": "+6 pts"
+    },
+    {
+     "label": "Sales cycle",
+     "value": "41d",
+     "delta": "-6d"
+    }
+   ],
+   "takeaway": "Efficiency gains funded the enterprise push."
+  },
+  {
+   "kind": "chart_insight",
+   "title": "Revenue accelerated every quarter this year",
+   "chart": {
+    "type": "bar_chart",
+    "title": "Quarterly revenue ($M)",
+    "data": {
+     "categories": [
+      "Q4 FY25",
+      "Q1",
+      "Q2",
+      "Q3"
+     ],
+     "series": [
+      {
+       "name": "Revenue",
+       "values": [
+        9.6,
+        10.8,
+        12.4,
+        15.2
+       ]
+      }
+     ]
+    }
+   },
+   "insights": [
+    "Q3 grew 23% on the prior quarter.",
+    "The EMEA launch added $1.9M in Q3.",
+    "Pipeline coverage for Q4 is 3.4x."
+   ],
+   "takeaway": "Momentum supports the $60M FY27 target."
+  },
+  {
+   "kind": "comparison",
+   "title": "SMB churn: two ways to respond",
+   "columns": [
+    {
+     "header": "Hold current coverage",
+     "items": [
+      "No new cost",
+      "Churn likely reaches 3.5%",
+      "$3.1M ARR at risk"
+     ]
+    },
+    {
+     "header": "Fund a success pod",
+     "items": [
+      "$2.4M annual cost",
+      "Churn back to 2.2% in 3 quarters",
+      "Net $1.8M ARR protected"
+     ]
+    }
+   ],
+   "takeaway": "The pod pays back inside FY27."
+  },
+  {
+   "kind": "roadmap",
+   "title": "Retention programme lands by Q2 FY27",
+   "phases": [
+    {
+     "name": "Staff",
+     "date_label": "Q4 FY26",
+     "description": "Hire 6 success managers"
+    },
+    {
+     "name": "Pilot",
+     "date_label": "Q1 FY27",
+     "description": "Top 200 SMB accounts"
+    },
+    {
+     "name": "Scale",
+     "date_label": "Q2 FY27",
+     "description": "All SMB accounts"
+    }
+   ],
+   "takeaway": "First churn read-out in February."
+  },
+  {
+   "kind": "decision",
+   "title": "Decision: fund the SMB success pod",
+   "options": [
+    "Hold current coverage and accept rising churn.",
+    "Fund a dedicated SMB success pod ($2.4M)."
+   ],
+   "recommendation": "Fund the pod in Q4 so the pilot starts in January.",
+   "takeaway": "Approve $2.4M today."
+  },
+  {
+   "kind": "closing",
+   "title": "Thank you",
+   "subtitle": "Questions and discussion"
+  }
+ ]
+}

@@ -1,0 +1,4 @@
+{"_note":"Human-style 0-100 grades written from the rendered montages BEFORE reading tool scores (exception: B04 input score=100 was seen by accident while debugging a render failure). G2 graded 58 as first rendered (map-form line chart got alphabetically re-sorted into a zigzag); G2 was then fixed to the ordered categories/series form and regraded.",
+"G1_spec_board_update":72,"G2_legacy_strategy_review":58,"G3_spec_sales_proposal":68,
+"M1_all_bullets":45,"M2_weak_titles_sparse":22,"M3_spec_generic":20,
+"B01_text_overflow":12,"B02_tiny_text_overstuffed":15,"B03_near_empty":15,"B04_chart_14_categories":25,"B05_low_contrast_grid":20,"B06_table_9_columns":30,"B07_wrong_pattern":30,"B08_lorem_placeholder":5,"B09_same_layout_x8":35,"B10_titleless":25}

@@ -1,0 +1,573 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Procurement Initiatives"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "All 36 initiatives on three slides"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Initiatives 1-12"
+    }
+   ],
+   "pattern": {
+    "name": "card-grid",
+    "values": {
+     "columns": 4,
+     "rows": 3,
+     "cells": [
+      {
+       "header": "Initiative 1: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 2: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 3: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 4: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 5: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 6: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 7: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 8: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 9: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 10: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 11: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 12: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Initiatives 13-24"
+    }
+   ],
+   "pattern": {
+    "name": "card-grid",
+    "values": {
+     "columns": 4,
+     "rows": 3,
+     "cells": [
+      {
+       "header": "Initiative 13: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 14: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 15: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 16: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 17: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 18: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 19: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 20: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 21: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 22: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 23: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 24: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Initiatives 25-36"
+    }
+   ],
+   "pattern": {
+    "name": "card-grid",
+    "values": {
+     "columns": 4,
+     "rows": 3,
+     "cells": [
+      {
+       "header": "Initiative 25: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 26: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 27: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 28: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 29: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 30: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 31: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 32: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 33: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 34: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 35: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      },
+      {
+       "header": "Initiative 36: Strategic Sourcing Excellence",
+       "body": "Consolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "slide_type": "blank",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Everything on one page"
+    }
+   ],
+   "shape_grid": {
+    "columns": 6,
+    "gap": 4,
+    "rows": [
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 1\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 2\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 3\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 4\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 5\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 6\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       }
+      ]
+     },
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 7\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 8\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 9\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 10\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 11\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 12\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       }
+      ]
+     },
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 13\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 14\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 15\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 16\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 17\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 18\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       }
+      ]
+     },
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 19\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 20\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 21\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 22\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 23\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 24\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       }
+      ]
+     },
+     {
+      "cells": [
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 25\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 26\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 27\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 28\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 29\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       },
+       {
+        "shape": {
+         "geometry": "rect",
+         "fill": "lt2",
+         "text": {
+          "content": "Item 30\nConsolidate vendor contracts across regions, renegotiate tier pricing, introduce quarterly business reviews, and move all tail spend onto the procurement platform by year end to reduce leakage.",
+          "size": 6
+         }
+        }
+       }
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank You"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Questions"
+    }
+   ]
+  }
+ ],
+ "design_mode": "free"
+}

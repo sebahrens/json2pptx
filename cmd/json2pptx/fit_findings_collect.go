@@ -139,6 +139,11 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// path/url/svg_data. Bundled icon names are exempt (implicit captions).
 	findings = append(findings, collectAltTextFindings(input)...)
 
+	// 9b. Content substance: exemplar copy, titleless slides, near-empty slides
+	// and deck monotony — the defect classes the score could not see
+	// (go-slide-creator-q7ar).
+	findings = append(findings, collectSubstanceFindings(input)...)
+
 	// 10. Deck-level duplicate-title lint: flags content slides that share a
 	// title (case-insensitive, whitespace-normalized) so authors don't ship
 	// decks where multiple content slides announce the same point. Title and
@@ -742,6 +747,16 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 // detectSparseLayoutForGrid estimates the content height of a shape grid and
 // compares it against the bounds height to detect mostly-empty slides.
 func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, patternName string) *patterns.FitFinding {
+	// Named patterns size their own cells: a KPI card is 2.6in tall because the
+	// pattern says so, not because its two short paragraphs need the room. This
+	// estimator measures TEXT height against bounds height, so it called a clean
+	// three-card KPI slide "6% filled" and, once breadth started counting, that
+	// false positive blocked a good deck. The real emptiness signals on pattern
+	// slides are SPARSE_FILL and SLIDE_UNDERUSED, which measure resolved ink
+	// against resolved geometry (go-slide-creator-q7ar).
+	if patternName != "" {
+		return nil
+	}
 	boundsH := estimateGridBoundsHeightEMU(grid, slideHeight)
 	if boundsH <= 0 {
 		return nil

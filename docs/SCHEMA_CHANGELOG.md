@@ -10,6 +10,40 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **score_deck measures the deck, not just the codes (go-slide-creator-q7ar).**
+  Across 16 calibration decks graded blind from their renders, `overall_score`
+  correlated with the human grade at +0.39 and 10 of 13 defective decks passed
+  the quality gate — including one whose every slide reads "Lorem ipsum" /
+  "Click to add title" / "XX%" (score 99), eight identical KPI slides (100),
+  four slides with no title (100) and five slides carrying a single one-word
+  bullet (100). The score was `100 - sum(severity weights)`, so it only ever
+  measured the codes that happened to exist.
+  - New finding codes: **`PLACEHOLDER_CONTENT`** (`refuse`),
+    **`MISSING_TITLE`**, **`SLIDE_NEARLY_EMPTY`**, **`DECK_MONOTONY`**
+    (`refuse` at 6+ consecutive same-shape slides) and **`CHART_OVERLOADED`**.
+    All five are describable via `describe_finding`.
+  - `overall_score` is now pulled down by the SHARE of slides carrying a
+    finding. Slides whose only findings are about airiness (`sparse_layout`,
+    `SPARSE_FILL`, `SLIDE_UNDERUSED`, `cell_underfilled`,
+    `pattern_underfilled`) or a wrapping title (`title_wraps`) are exempt from
+    that count — a KPI slide is supposed to look sparse — and the penalty needs
+    at least 3 affected slides.
+  - `quality_gate.criteria` gains **`max_problem_slides_pct`** (default 40).
+  - `sparse_layout` is no longer emitted for grids expanded from a named
+    pattern: it compares authored bounds with estimated TEXT height, and a
+    pattern's bounds are the pattern's choice — it called a clean three-card KPI
+    slide "6% filled".
+  - New regression fixture `cmd/json2pptx/testdata/calibration/`: the 16 graded
+    decks plus their blind grades, with `TestCalibrationRanking` asserting the
+    rank correlation and the gate verdicts, and
+    `TestCalibrationDefectClassesAreDetected` pinning each deck's defect code.
+
+  Result on the corpus: correlation **+0.77**, all 3 good decks pass the gate,
+  11 of 13 defect decks fail it. The two that still pass are documented in the
+  test: `B05_low_contrast_grid` (its defect survives only in the render, where
+  vision sees it) and `B06_table_9_columns` (the static pass sees `review`; the
+  full `score_deck` render pass raises a P0 and fails it).
+
 - **auto_repair now repairs, and says what it tried (go-slide-creator-wmfo).**
   The tool `get_started(task="revise")` advertises as the fast path returned
   `repairs_applied: []` on all 16 calibration decks and all 34 examples — an

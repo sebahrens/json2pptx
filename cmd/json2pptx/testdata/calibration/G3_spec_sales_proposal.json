@@ -1,0 +1,120 @@
+{
+ "_kind": "spec",
+ "meta": {
+  "title": "Claims Automation Proposal",
+  "archetype": "sales_pitch"
+ },
+ "template": "warm-coral",
+ "slides": [
+  {
+   "kind": "title",
+   "title": "Claims Automation for Harbor Mutual",
+   "subtitle": "Proposal, September 2026"
+  },
+  {
+   "kind": "executive_summary",
+   "title": "Automation can halve claim cycle time in 9 months",
+   "points": [
+    "Simple motor claims take 11 days today; 60% of that is queue time.",
+    "Straight-through processing handles 45% of claims at peer insurers.",
+    "A phased rollout reaches break-even in month 14."
+   ],
+   "takeaway": "Start with motor glass claims, the lowest-risk line."
+  },
+  {
+   "kind": "kpi_snapshot",
+   "title": "What peers achieved in year one",
+   "kpis": [
+    {
+     "label": "Cycle time",
+     "value": "5.2d",
+     "delta": "-53%"
+    },
+    {
+     "label": "Cost per claim",
+     "value": "$38",
+     "delta": "-31%"
+    },
+    {
+     "label": "Customer NPS",
+     "value": "61",
+     "delta": "+14"
+    }
+   ],
+   "takeaway": "Speed, cost and satisfaction move together."
+  },
+  {
+   "kind": "process",
+   "title": "How a claim flows after automation",
+   "steps": [
+    "Notify",
+    "Triage",
+    "Validate",
+    "Settle"
+   ],
+   "takeaway": "Only exceptions reach an adjuster."
+  },
+  {
+   "kind": "chart_insight",
+   "title": "Queue time, not handling time, drives the 11 days",
+   "chart": {
+    "type": "bar_chart",
+    "title": "Hours per stage, simple motor claim",
+    "data": {
+     "categories": [
+      "Intake",
+      "Queue",
+      "Assess",
+      "Approve",
+      "Pay"
+     ],
+     "series": [
+      {
+       "name": "Hours",
+       "values": [
+        12,
+        158,
+        43,
+        34,
+        17
+       ]
+      }
+     ]
+    }
+   },
+   "insights": [
+    "Queue time is 60% of the cycle.",
+    "Assessment is under two days.",
+    "Payment is already fast."
+   ],
+   "takeaway": "Automated triage removes most of the queue."
+  },
+  {
+   "kind": "roadmap",
+   "title": "Three phases to full rollout",
+   "phases": [
+    {
+     "name": "Pilot",
+     "date_label": "Months 1-3",
+     "description": "Motor glass claims"
+    },
+    {
+     "name": "Extend",
+     "date_label": "Months 4-6",
+     "description": "All simple motor"
+    },
+    {
+     "name": "Scale",
+     "date_label": "Months 7-9",
+     "description": "Property under $5k"
+    }
+   ],
+   "takeaway": "Break-even in month 14."
+  },
+  {
+   "kind": "closing",
+   "title": "Next step: a two-week data review",
+   "subtitle": "We can start on 5 October"
+  }
+ ]
+}

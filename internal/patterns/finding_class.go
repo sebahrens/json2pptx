@@ -38,6 +38,8 @@ var patternChoiceCodes = map[string]bool{
 	ErrCodePatternUnderfilled:   true,
 	ErrCodeSparseLayout:         true,
 	ErrCodeCellUnderfilled:      true,
+	// Monotony is a composition choice, not a render bug.
+	ErrCodeDeckMonotony: true,
 }
 
 // contentCodes are authoring-text findings that are neither a pattern-choice
@@ -49,6 +51,11 @@ var contentCodes = map[string]bool{
 	ErrCodeMissingAltText:    true,
 	ErrCodeDuplicateTitle:    true,
 	ErrCodeTakeawayMissing:   true,
+	// Content-substance codes: what the slide says (go-slide-creator-q7ar).
+	ErrCodePlaceholderContent: true,
+	ErrCodeMissingTitle:       true,
+	ErrCodeSlideNearlyEmpty:   true,
+	ErrCodeChartOverloaded:    true,
 }
 
 // FindingClass returns the QA class for a finding code: one of

@@ -1,0 +1,313 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Business Unit Scorecard"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "FY26"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Scorecard: all units, all metrics"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "table",
+     "table_value": {
+      "headers": [
+       "Business Unit",
+       "Revenue FY24",
+       "Revenue FY25",
+       "Revenue FY26",
+       "Gross Margin",
+       "Operating Margin",
+       "Headcount",
+       "Attrition Rate",
+       "Customer Satisfaction"
+      ],
+      "rows": [
+       [
+        "Unit A International",
+        "$100.4M",
+        "$110.1M",
+        "$123.8M",
+        "40.5%",
+        "12.3%",
+        "1200",
+        "8.0%",
+        "4.10 / 5.00"
+       ],
+       [
+        "Unit B International",
+        "$107.4M",
+        "$118.1M",
+        "$132.8M",
+        "41.5%",
+        "13.3%",
+        "1330",
+        "8.5%",
+        "4.15 / 5.00"
+       ],
+       [
+        "Unit C International",
+        "$114.4M",
+        "$126.1M",
+        "$141.8M",
+        "42.5%",
+        "14.3%",
+        "1460",
+        "9.0%",
+        "4.20 / 5.00"
+       ],
+       [
+        "Unit D International",
+        "$121.4M",
+        "$134.1M",
+        "$150.8M",
+        "43.5%",
+        "15.3%",
+        "1590",
+        "9.5%",
+        "4.25 / 5.00"
+       ],
+       [
+        "Unit E International",
+        "$128.4M",
+        "$142.1M",
+        "$159.8M",
+        "44.5%",
+        "16.3%",
+        "1720",
+        "10.0%",
+        "4.30 / 5.00"
+       ],
+       [
+        "Unit F International",
+        "$135.4M",
+        "$150.1M",
+        "$168.8M",
+        "45.5%",
+        "17.3%",
+        "1850",
+        "10.5%",
+        "4.35 / 5.00"
+       ],
+       [
+        "Unit G International",
+        "$142.4M",
+        "$158.1M",
+        "$177.8M",
+        "46.5%",
+        "18.3%",
+        "1980",
+        "11.0%",
+        "4.40 / 5.00"
+       ],
+       [
+        "Unit H International",
+        "$149.4M",
+        "$166.1M",
+        "$186.8M",
+        "47.5%",
+        "19.3%",
+        "2110",
+        "11.5%",
+        "4.45 / 5.00"
+       ],
+       [
+        "Unit I International",
+        "$156.4M",
+        "$174.1M",
+        "$195.8M",
+        "48.5%",
+        "20.3%",
+        "2240",
+        "12.0%",
+        "4.50 / 5.00"
+       ],
+       [
+        "Unit J International",
+        "$163.4M",
+        "$182.1M",
+        "$204.8M",
+        "49.5%",
+        "21.3%",
+        "2370",
+        "12.5%",
+        "4.55 / 5.00"
+       ],
+       [
+        "Unit K International",
+        "$170.4M",
+        "$190.1M",
+        "$213.8M",
+        "50.5%",
+        "22.3%",
+        "2500",
+        "13.0%",
+        "4.60 / 5.00"
+       ],
+       [
+        "Unit L International",
+        "$177.4M",
+        "$198.1M",
+        "$222.8M",
+        "51.5%",
+        "23.3%",
+        "2630",
+        "13.5%",
+        "4.65 / 5.00"
+       ]
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Scorecard (continued)"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "table",
+     "table_value": {
+      "headers": [
+       "Business Unit",
+       "Revenue FY24",
+       "Revenue FY25",
+       "Revenue FY26",
+       "Gross Margin",
+       "Operating Margin",
+       "Headcount",
+       "Attrition Rate",
+       "Customer Satisfaction"
+      ],
+      "rows": [
+       [
+        "Unit A International",
+        "$100.4M",
+        "$110.1M",
+        "$123.8M",
+        "40.5%",
+        "12.3%",
+        "1200",
+        "8.0%",
+        "4.10 / 5.00"
+       ],
+       [
+        "Unit B International",
+        "$107.4M",
+        "$118.1M",
+        "$132.8M",
+        "41.5%",
+        "13.3%",
+        "1330",
+        "8.5%",
+        "4.15 / 5.00"
+       ],
+       [
+        "Unit C International",
+        "$114.4M",
+        "$126.1M",
+        "$141.8M",
+        "42.5%",
+        "14.3%",
+        "1460",
+        "9.0%",
+        "4.20 / 5.00"
+       ],
+       [
+        "Unit D International",
+        "$121.4M",
+        "$134.1M",
+        "$150.8M",
+        "43.5%",
+        "15.3%",
+        "1590",
+        "9.5%",
+        "4.25 / 5.00"
+       ],
+       [
+        "Unit E International",
+        "$128.4M",
+        "$142.1M",
+        "$159.8M",
+        "44.5%",
+        "16.3%",
+        "1720",
+        "10.0%",
+        "4.30 / 5.00"
+       ],
+       [
+        "Unit F International",
+        "$135.4M",
+        "$150.1M",
+        "$168.8M",
+        "45.5%",
+        "17.3%",
+        "1850",
+        "10.5%",
+        "4.35 / 5.00"
+       ],
+       [
+        "Unit G International",
+        "$142.4M",
+        "$158.1M",
+        "$177.8M",
+        "46.5%",
+        "18.3%",
+        "1980",
+        "11.0%",
+        "4.40 / 5.00"
+       ],
+       [
+        "Unit H International",
+        "$149.4M",
+        "$166.1M",
+        "$186.8M",
+        "47.5%",
+        "19.3%",
+        "2110",
+        "11.5%",
+        "4.45 / 5.00"
+       ]
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank You"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Questions"
+    }
+   ]
+  }
+ ]
+}

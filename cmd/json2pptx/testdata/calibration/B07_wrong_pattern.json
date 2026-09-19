@@ -1,0 +1,145 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Vendor Selection"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Recommendation"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Vendor A vs Vendor B: pros and cons"
+    }
+   ],
+   "pattern": {
+    "name": "pyramid",
+    "values": {
+     "tiers": [
+      "Vendor A is cheaper",
+      "Vendor B is faster",
+      "Vendor A has better support",
+      "Vendor B integrates with SAP"
+     ]
+    }
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Q3 financial KPIs"
+    }
+   ],
+   "pattern": {
+    "name": "timeline-horizontal",
+    "values": [
+     {
+      "label": "$48M",
+      "date": "Revenue",
+      "body": "Up 41%"
+     },
+     {
+      "label": "118%",
+      "date": "NRR",
+      "body": "Up 6 pts"
+     },
+     {
+      "label": "41d",
+      "date": "Sales cycle",
+      "body": "Down 6d"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Implementation timeline Jan to Dec"
+    }
+   ],
+   "pattern": {
+    "name": "matrix-2x2",
+    "values": {
+     "x_axis_label": "Time",
+     "y_axis_label": "Phase",
+     "top_left": {
+      "header": "January",
+      "body": "Kick-off"
+     },
+     "top_right": {
+      "header": "April",
+      "body": "Build"
+     },
+     "bottom_left": {
+      "header": "August",
+      "body": "Test"
+     },
+     "bottom_right": {
+      "header": "December",
+      "body": "Go-live"
+     }
+    }
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Revenue by region"
+    }
+   ],
+   "pattern": {
+    "name": "process-flow",
+    "values": {
+     "steps": [
+      {
+       "label": "EMEA $12M"
+      },
+      {
+       "label": "APAC $9M"
+      },
+      {
+       "label": "Americas $27M"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank You"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Questions"
+    }
+   ]
+  }
+ ]
+}

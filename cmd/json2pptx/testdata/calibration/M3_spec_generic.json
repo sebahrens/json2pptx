@@ -1,0 +1,60 @@
+{
+ "_kind": "spec",
+ "meta": {
+  "title": "Project Status",
+  "archetype": "board_update"
+ },
+ "template": "modern-template",
+ "slides": [
+  {
+   "kind": "title",
+   "title": "Project Status",
+   "subtitle": "Update"
+  },
+  {
+   "kind": "executive_summary",
+   "title": "Summary",
+   "points": [
+    "The project is progressing.",
+    "There are some issues.",
+    "We will continue to monitor."
+   ],
+   "takeaway": "Things are generally fine."
+  },
+  {
+   "kind": "executive_summary",
+   "title": "More summary",
+   "points": [
+    "Team is working hard.",
+    "Stakeholders are engaged.",
+    "Budget is being tracked."
+   ],
+   "takeaway": "No major changes."
+  },
+  {
+   "kind": "executive_summary",
+   "title": "Additional points",
+   "points": [
+    "Various workstreams ongoing.",
+    "Some dependencies exist.",
+    "Risks are being managed."
+   ],
+   "takeaway": "Continue as planned."
+  },
+  {
+   "kind": "executive_summary",
+   "title": "Final points",
+   "points": [
+    "Next phase starts soon.",
+    "Resources are allocated.",
+    "Reporting continues."
+   ],
+   "takeaway": "Stay the course."
+  },
+  {
+   "kind": "closing",
+   "title": "Thanks",
+   "subtitle": "Any questions"
+  }
+ ]
+}

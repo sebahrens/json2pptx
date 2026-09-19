@@ -85,6 +85,16 @@ const (
 	ErrCodeMissingAltText    = "MISSING_ALT_TEXT"
 	ErrCodeDuplicateTitle    = "DUPLICATE_TITLE"
 
+	// Content-substance codes — what a slide SAYS rather than how it fits.
+	// score_deck was a fit-findings aggregator, so a deck whose every slide
+	// read "Lorem ipsum" / "Click to add title" / "XX%" scored 99 and passed
+	// the gate (go-slide-creator-q7ar).
+	ErrCodePlaceholderContent = "PLACEHOLDER_CONTENT"
+	ErrCodeMissingTitle       = "MISSING_TITLE"
+	ErrCodeSlideNearlyEmpty   = "SLIDE_NEARLY_EMPTY"
+	ErrCodeDeckMonotony       = "DECK_MONOTONY"
+	ErrCodeChartOverloaded    = "CHART_OVERLOADED"
+
 	// Shared content-drop diagnostic — emitted from any path that fails to place
 	// author-provided content (a dropped slide, an unplaced content block, a
 	// truncated column, etc.). Turns silent content loss into one consistent,
@@ -165,23 +175,23 @@ var (
 	ErrWrongPattern        = errors.New("content shape matches a different pattern")
 	ErrInvalidShape        = errors.New("value has wrong structure")
 
-	ErrFitOverflow         = errors.New("text exceeds cell dimensions")
-	ErrDensityExceeded     = errors.New("table density exceeds TDR ceiling")
-	ErrStackedTables       = errors.New("stacked tables with insufficient gap")
-	ErrDividerTooThin      = errors.New("divider shape too thin")
-	ErrMixedFillScheme     = errors.New("slide mixes hex and semantic fill colors")
-	ErrPlaceholderOverflow = errors.New("placeholder text overflows frame")
-	ErrSlideBoundsOverflow = errors.New("shape center falls outside slide bounds")
-	ErrFooterCollision     = errors.New("shape intrudes into footer reserved area")
-	ErrTitleWraps          = errors.New("title text wraps to multiple lines")
-	ErrSparseLayout        = errors.New("content occupies less than 40% of bounds height")
-	ErrPatternUnderfilled  = errors.New("pattern grid less than 50% filled")
-	ErrPatternOvercrowded  = errors.New("pattern grid exceeds recommended cell count")
-	ErrCellUnderfilled     = errors.New("cell content is well below capacity")
-	ErrTakeawayMissing     = errors.New("slide is missing a takeaway / so-what headline")
-	ErrChromeBandNoFit     = errors.New("takeaway/source band does not fit the layout")
-	ErrAccentOverload      = errors.New("slide uses more than two distinct accent hues")
-	ErrSparseSingleRowFlow = errors.New("single-row flow pattern stretched to fill slide with sparse per-cell text")
+	ErrFitOverflow          = errors.New("text exceeds cell dimensions")
+	ErrDensityExceeded      = errors.New("table density exceeds TDR ceiling")
+	ErrStackedTables        = errors.New("stacked tables with insufficient gap")
+	ErrDividerTooThin       = errors.New("divider shape too thin")
+	ErrMixedFillScheme      = errors.New("slide mixes hex and semantic fill colors")
+	ErrPlaceholderOverflow  = errors.New("placeholder text overflows frame")
+	ErrSlideBoundsOverflow  = errors.New("shape center falls outside slide bounds")
+	ErrFooterCollision      = errors.New("shape intrudes into footer reserved area")
+	ErrTitleWraps           = errors.New("title text wraps to multiple lines")
+	ErrSparseLayout         = errors.New("content occupies less than 40% of bounds height")
+	ErrPatternUnderfilled   = errors.New("pattern grid less than 50% filled")
+	ErrPatternOvercrowded   = errors.New("pattern grid exceeds recommended cell count")
+	ErrCellUnderfilled      = errors.New("cell content is well below capacity")
+	ErrTakeawayMissing      = errors.New("slide is missing a takeaway / so-what headline")
+	ErrChromeBandNoFit      = errors.New("takeaway/source band does not fit the layout")
+	ErrAccentOverload       = errors.New("slide uses more than two distinct accent hues")
+	ErrSparseSingleRowFlow  = errors.New("single-row flow pattern stretched to fill slide with sparse per-cell text")
 	ErrOvertallFlowLane     = errors.New("single-row flow lane occupies more than half the content height with short labels")
 	ErrFlowDiamondNoContent = errors.New("process-flow decision diamond has no supporting content zone")
 	ErrTocFlowchartVocab    = errors.New("agenda / table-of-contents slide uses sequential flowchart vocabulary")

@@ -1,0 +1,91 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Market Entry Options"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "September 2026"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Germany is the largest market at \u20ac4.2B",
+      "France is growing fastest at 14%",
+      "The Netherlands has the lowest entry cost"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Option 1: direct sales team in Berlin",
+      "Option 2: distributor partnership",
+      "Option 3: acquire a local player"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Direct sales costs \u20ac3M in year one",
+      "Distributor takes 25% margin",
+      "Acquisition targets are priced at 6x revenue"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "We recommend the distributor route",
+      "Sign by November",
+      "Review after 12 months"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank You"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Questions"
+    }
+   ]
+  }
+ ]
+}

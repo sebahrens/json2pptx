@@ -82,8 +82,11 @@ func TestScoreFromFindings_WithFindings(t *testing.T) {
 	if ds.OverallScore != 91 {
 		t.Errorf("overall = %d, want 91", ds.OverallScore)
 	}
-	if ds.Summary.ProblemSlidesCount != 2 {
-		t.Errorf("problem slides = %d, want 2", ds.Summary.ProblemSlidesCount)
+	// Slide 1's only finding is title_wraps, which is exempt from the
+	// problem-slide count: a 44pt headline running to two lines is ordinary
+	// design, not a defect (go-slide-creator-q7ar). Slide 0 still counts.
+	if ds.Summary.ProblemSlidesCount != 1 {
+		t.Errorf("problem slides = %d, want 1", ds.Summary.ProblemSlidesCount)
 	}
 
 	// Check top_codes.

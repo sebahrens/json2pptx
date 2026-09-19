@@ -1,0 +1,133 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Presentation Title"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Subtitle goes here"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Lorem ipsum dolor sit amet"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Lorem ipsum dolor sit amet, consectetur adipiscing elit",
+      "Sed do eiusmod tempor incididunt ut labore",
+      "Ut enim ad minim veniam, quis nostrud",
+      "Duis aute irure dolor in reprehenderit"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Click to add title"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "XX%",
+      "small": "Metric 1"
+     },
+     {
+      "big": "$X.XM",
+      "small": "Metric 2"
+     },
+     {
+      "big": "TBD",
+      "small": "Metric 3"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Card grid"
+    }
+   ],
+   "pattern": {
+    "name": "card-grid",
+    "values": {
+     "columns": 3,
+     "rows": 1,
+     "cells": [
+      {
+       "header": "Card 1",
+       "body": "Description 1"
+      },
+      {
+       "header": "Card 2",
+       "body": "Description 2"
+      },
+      {
+       "header": "Card 3",
+       "body": "Description 3"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "[Insert heading]"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "[Insert point here]",
+      "TODO: add content",
+      "Placeholder text",
+      "Your text here"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank You"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Contact: name@example.com"
+    }
+   ]
+  }
+ ]
+}

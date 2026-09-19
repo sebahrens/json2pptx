@@ -1,0 +1,251 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Monthly Metrics"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "September 2026"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "January metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$20M",
+      "small": "Revenue"
+     },
+     {
+      "big": "60%",
+      "small": "Margin"
+     },
+     {
+      "big": "1200",
+      "small": "Customers"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "February metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$21M",
+      "small": "Revenue"
+     },
+     {
+      "big": "61%",
+      "small": "Margin"
+     },
+     {
+      "big": "1230",
+      "small": "Customers"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "March metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$22M",
+      "small": "Revenue"
+     },
+     {
+      "big": "62%",
+      "small": "Margin"
+     },
+     {
+      "big": "1260",
+      "small": "Customers"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "April metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$23M",
+      "small": "Revenue"
+     },
+     {
+      "big": "63%",
+      "small": "Margin"
+     },
+     {
+      "big": "1290",
+      "small": "Customers"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "May metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$24M",
+      "small": "Revenue"
+     },
+     {
+      "big": "64%",
+      "small": "Margin"
+     },
+     {
+      "big": "1320",
+      "small": "Customers"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "June metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$25M",
+      "small": "Revenue"
+     },
+     {
+      "big": "65%",
+      "small": "Margin"
+     },
+     {
+      "big": "1350",
+      "small": "Customers"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "July metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$26M",
+      "small": "Revenue"
+     },
+     {
+      "big": "66%",
+      "small": "Margin"
+     },
+     {
+      "big": "1380",
+      "small": "Customers"
+     }
+    ]
+   }
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "August metrics"
+    }
+   ],
+   "pattern": {
+    "name": "kpi-3up",
+    "values": [
+     {
+      "big": "$27M",
+      "small": "Revenue"
+     },
+     {
+      "big": "67%",
+      "small": "Margin"
+     },
+     {
+      "big": "1410",
+      "small": "Customers"
+     }
+    ]
+   }
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank You"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Questions"
+    }
+   ]
+  }
+ ]
+}

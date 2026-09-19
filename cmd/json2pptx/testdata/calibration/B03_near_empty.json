@@ -1,0 +1,110 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Plan"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Goal"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Grow"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Market"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Big"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Team"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Good"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Ask"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "$5M"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Timeline"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Soon"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thanks"
+    }
+   ]
+  }
+ ]
+}

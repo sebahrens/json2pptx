@@ -515,6 +515,63 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeTitleWraps, ErrCodeBodyTooLong},
 	},
+	ErrCodePlaceholderContent: {
+		Code:        ErrCodePlaceholderContent,
+		Summary:     "A slide still carries exemplar copy instead of the deck's content.",
+		Severity:    "refuse",
+		WhenEmitted: "A slide's text matches known placeholder copy — lorem ipsum, \"Click to add title\", \"Presentation Title\", a masked number like \"XX%\" or \"$X.XM\", or a whole value of \"TBD\" / \"Metric 1\". Structural strings (placeholder IDs, geometry names) are exempt.",
+		RemediationSteps: []string{
+			"Replace the named strings with the deck's real message — the finding lists up to three samples per slide.",
+			"A make_deck skeleton is exemplar by design: fill it in with repair_slide before shipping (it reports content_status: exemplar_skeleton for the same reason).",
+		},
+		ExampleBefore: `{"placeholder_id":"title","type":"text","text_value":"Click to add title"}`,
+		ExampleAfter:  `{"placeholder_id":"title","type":"text","text_value":"Margin recovered to 68% in Q3"}`,
+		RelatedCodes:  []string{ErrCodeSlideNearlyEmpty, ErrCodeMissingTitle},
+	},
+	ErrCodeMissingTitle: {
+		Code:        ErrCodeMissingTitle,
+		Summary:     "A content slide has no title.",
+		Severity:    "review",
+		WhenEmitted: "A slide expected to make a point (not a title, section or blank slide) carries no non-empty title placeholder and no pattern title value.",
+		RemediationSteps: []string{
+			"Give the slide the one-line point it makes — a title is what the audience reads first and what makes the deck navigable.",
+			"If the slide is deliberately chrome (a divider, a full-bleed image), set slide_type to \"section\" or \"blank\" so it is not judged as an argument slide.",
+		},
+		RelatedCodes: []string{ErrCodeDuplicateTitle, ErrCodeHeadlineTooLong},
+	},
+	ErrCodeSlideNearlyEmpty: {
+		Code:        ErrCodeSlideNearlyEmpty,
+		Summary:     "A content slide carries almost no content.",
+		Severity:    "review",
+		WhenEmitted: "A text-only content slide carries fewer than 8 words of body content, or a deck's slides carry nothing the engine recognises at all (usually a DeckSpec handed to a PresentationInput tool).",
+		RemediationSteps: []string{
+			"Add the substance the slide promises, or merge it into a neighbouring slide.",
+			"If the JSON is a DeckSpec (kind / points / takeaway), compile it with validate_deck_spec + render_deck_spec — those tools report on the spec itself.",
+		},
+		RelatedCodes: []string{ErrCodeSlideUnderused, ErrCodePlaceholderContent},
+	},
+	ErrCodeDeckMonotony: {
+		Code:        ErrCodeDeckMonotony,
+		Summary:     "Several consecutive slides are built the same way.",
+		Severity:    "review",
+		WhenEmitted: "Four or more consecutive argument slides share one shape (the same pattern, or the same content types); six or more raises it to refuse. Title, section and blank slides never join a run.",
+		RemediationSteps: []string{
+			"Vary the visual family: call recommend_visual for the middle slides of the run and take a different pattern for some of them.",
+			"Or merge the run — eight monthly KPI slides are usually one table or one trend chart.",
+		},
+		RelatedCodes: []string{ErrCodeDuplicateTitle},
+	},
+	ErrCodeChartOverloaded: {
+		Code:        ErrCodeChartOverloaded,
+		Summary:     "A chart has more categories than a reader can follow.",
+		Severity:    "review",
+		WhenEmitted: "A pie/donut carries more than 7 slices, or any other chart more than 12 categories — 8 when the labels average 24+ characters, because the renderer then rotates and truncates them into an unreadable band.",
+		RemediationSteps: []string{
+			"Keep the top N categories and group the rest into \"Other\".",
+			"Or split the chart across two slides, or switch to a table when every row matters.",
+		},
+		RelatedCodes: []string{ErrCodeDensityExceeded},
+	},
 	ErrCodeBodyTooLong: {
 		Code:        ErrCodeBodyTooLong,
 		Summary:     "A body text block exceeds 80 whitespace-separated words.",

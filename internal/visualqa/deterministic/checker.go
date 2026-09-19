@@ -6,6 +6,7 @@ package deterministic
 
 import (
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -19,10 +20,10 @@ import (
 //
 // clamped to [0, 100].
 var SeverityWeight = map[string]int{
-	"refuse":         25,
+	"refuse":          25,
 	"shrink_or_split": 15,
-	"review":         5,
-	"info":           0,
+	"review":          5,
+	"info":            0,
 }
 
 // ScoreFinding is a single deterministic finding in the score_deck output.
@@ -130,6 +131,11 @@ type QualityGateCriteria struct {
 	MaxP1Findings           int  `json:"max_p1_findings"`
 	RequireTakeawayOnCharts bool `json:"require_takeaway_on_charts"`
 	AllowAccentOverload     bool `json:"allow_accent_overload"`
+	// MaxProblemSlidesPct caps the share of slides carrying at least one
+	// finding. Without it a deck reached 95-100 with an unresolved review
+	// finding on every slide — five slides each holding a single one-word
+	// bullet scored 100 and passed (go-slide-creator-q7ar). 0 disables it.
+	MaxProblemSlidesPct int `json:"max_problem_slides_pct"`
 }
 
 // Default thresholds for the score_deck quality gate — the numeric definition
@@ -140,6 +146,13 @@ const (
 	DefaultQualityGateMinScore      = 80
 	DefaultQualityGateMaxP0Findings = 0
 	DefaultQualityGateMaxP1Findings = 0
+	// DefaultQualityGateMaxProblemSlidesPct allows a minority of slides to
+	// carry an open advisory finding — real decks always have a few — but not
+	// a deck where most slides do.
+	DefaultQualityGateMaxProblemSlidesPct = 40
+	// minProblemSlidesForShare is the fewest blemished slides that can trip the
+	// share criterion.
+	minProblemSlidesForShare = 3
 )
 
 // DefaultQualityGateCriteria returns the fixed ship-quality thresholds used by
@@ -152,6 +165,7 @@ func DefaultQualityGateCriteria() QualityGateCriteria {
 		MaxP1Findings:           DefaultQualityGateMaxP1Findings,
 		RequireTakeawayOnCharts: true,
 		AllowAccentOverload:     false,
+		MaxProblemSlidesPct:     DefaultQualityGateMaxProblemSlidesPct,
 	}
 }
 
@@ -205,6 +219,16 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 	if !criteria.AllowAccentOverload && accentOverload > 0 {
 		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d slide(s) emit accent_overload (too many distinct accents)", accentOverload))
 	}
+	// The share criterion needs a minimum absolute count: on a four-slide deck
+	// two blemished slides are 50%, which is not the "most of this deck is
+	// wrong" signal the criterion exists to catch.
+	if criteria.MaxProblemSlidesPct > 0 && len(ds.PerSlide) > 0 && ds.Summary.ProblemSlidesCount >= minProblemSlidesForShare {
+		pct := ds.Summary.ProblemSlidesCount * 100 / len(ds.PerSlide)
+		if pct > criteria.MaxProblemSlidesPct {
+			gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d of %d slides carry findings (%d%%) — exceeds max_problem_slides_pct %d",
+				ds.Summary.ProblemSlidesCount, len(ds.PerSlide), pct, criteria.MaxProblemSlidesPct))
+		}
+	}
 
 	gate.Passed = len(gate.Reasons) == 0
 	return gate
@@ -212,9 +236,9 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 
 // DeckSummary provides aggregate stats.
 type DeckSummary struct {
-	TopCodes          []CodeCount `json:"top_codes"`
-	SlideCount        int         `json:"slide_count"`
-	ProblemSlidesCount int        `json:"problem_slides_count"`
+	TopCodes           []CodeCount `json:"top_codes"`
+	SlideCount         int         `json:"slide_count"`
+	ProblemSlidesCount int         `json:"problem_slides_count"`
 }
 
 // CodeCount pairs a finding code with its occurrence count.
@@ -237,6 +261,83 @@ func actionToSeverity(action string) string {
 	default:
 		return "info"
 	}
+}
+
+// breadthExemptCodes are advisory codes about AIRINESS rather than defect: a
+// KPI slide with three big numbers is supposed to be visually sparse, and the
+// underfill family fires on exactly those slides. They still cost their per-slide
+// points, but they do not make a slide "a problem slide" for the breadth penalty
+// or the gate's problem-slide criterion — otherwise breadth turns the project's
+// own showcase decks into gate failures, which is the noise this work removes
+// rather than adds (go-slide-creator-q7ar).
+var breadthExemptCodes = map[string]bool{
+	patterns.ErrCodeSparseLayout:       true,
+	patterns.ErrCodeSparseFill:         true,
+	patterns.ErrCodeSlideUnderused:     true,
+	patterns.ErrCodeCellUnderfilled:    true,
+	patterns.ErrCodePatternUnderfilled: true,
+	// A 44pt title running to two lines in an 11.5in placeholder is ordinary
+	// design. The finding is useful advice ("this headline is long"); it is not
+	// evidence that the slide is broken.
+	patterns.ErrCodeTitleWraps: true,
+}
+
+// isBreadthProblem reports whether a finding makes its slide count as a problem
+// slide.
+func isBreadthProblem(f patterns.FitFinding) bool {
+	if SeverityWeight[f.Action] <= 0 {
+		return false
+	}
+	return !breadthExemptCodes[f.Code]
+}
+
+// slideHasBreadthProblem reports whether any of a slide's findings counts
+// toward the problem-slide share.
+func slideHasBreadthProblem(findings []patterns.FitFinding) bool {
+	for _, f := range findings {
+		if isBreadthProblem(f) {
+			return true
+		}
+	}
+	return false
+}
+
+// breadthPenaltyWeight scales how much the SHARE of affected slides pulls the
+// deck score down. The mean of per-slide scores saturates: five slides each
+// carrying one advisory finding averaged 95, so a deck where every slide is
+// nearly empty, titleless or full of exemplar copy scored the same as a good
+// deck with one blemish. Breadth is the signal a human reads first — "most of
+// this deck has something wrong" — and folding it in moved the correlation with
+// blind human grades from +0.33 to +0.76 across the 16-deck calibration set
+// (go-slide-creator-q7ar).
+const breadthPenaltyWeight = 1.0
+
+// breadthPenaltyTolerance is the share of blemished slides a deck is allowed
+// before breadth counts against it. Every real deck has one slide with an open
+// advisory on it; a quarter of them having one is a different deck. Calibrated
+// against the blind-graded set: at 0 tolerance the correlation is +0.86 but the
+// good decks fall below the ship threshold on two advisory findings, at 0.15
+// it is +0.82 and all three good decks pass.
+const breadthPenaltyTolerance = 0.15
+
+// breadthAdjustedScore applies the breadth penalty to a mean per-slide score.
+func breadthAdjustedScore(mean, problemSlides, slides int) int {
+	// Same floor as the gate's share criterion: on a four-slide deck two
+	// blemished slides are 50% but not a pattern, and penalising that turned
+	// short showcase decks into failures.
+	if slides <= 0 || problemSlides < minProblemSlidesForShare {
+		return mean
+	}
+	share := float64(problemSlides) / float64(slides)
+	excess := share - breadthPenaltyTolerance
+	if excess <= 0 {
+		return mean
+	}
+	adjusted := float64(mean) * (1 - breadthPenaltyWeight*excess/(1-breadthPenaltyTolerance))
+	if adjusted < 0 {
+		adjusted = 0
+	}
+	return int(math.Round(adjusted))
 }
 
 // ScoreFromFindingsForIndices computes a DeckScore where PerSlide only contains
@@ -298,7 +399,7 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 		if slideScore < 0 {
 			slideScore = 0
 		}
-		if slideScore < 100 {
+		if slideHasBreadthProblem(ffs) {
 			problemSlides++
 		}
 		total += slideScore
@@ -312,7 +413,7 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 
 	overall := 100
 	if len(perSlide) > 0 {
-		overall = total / len(perSlide)
+		overall = breadthAdjustedScore(total/len(perSlide), problemSlides, len(perSlide))
 	}
 
 	topCodes := make([]CodeCount, 0, len(codeCounts))
@@ -376,7 +477,7 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 		if slideScore < 0 {
 			slideScore = 0
 		}
-		if slideScore < 100 {
+		if slideHasBreadthProblem(ffs) {
 			problemSlides++
 		}
 
@@ -387,14 +488,15 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 		}
 	}
 
-	// Compute overall score as average of per-slide scores.
+	// Compute overall score as the average of per-slide scores, pulled down by
+	// the share of slides carrying findings (see breadthAdjustedScore).
 	overall := 100
 	if slideCount > 0 {
 		total := 0
 		for _, ss := range perSlide {
 			total += ss.Score
 		}
-		overall = total / slideCount
+		overall = breadthAdjustedScore(total/slideCount, problemSlides, slideCount)
 	}
 
 	// Build top_codes sorted by count descending.

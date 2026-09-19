@@ -186,7 +186,9 @@ func TestBuildOverlayWireframeRequest_ShapeGridCells(t *testing.T) {
 // the slide has no shape_grid and no findings — callers skip the
 // overlay step rather than rendering an empty PNG.
 func TestBuildOverlayWireframeRequest_NoCellsNoFindings(t *testing.T) {
-	slideJSON := `{"layout_id": "blank", "content": []}`
+	// slide_type blank is empty BY DESIGN, so the substance detectors stay quiet
+	// (go-slide-creator-q7ar).
+	slideJSON := `{"layout_id": "blank", "slide_type": "blank", "content": []}`
 	tplPath, cleanup, err := resolveTemplatePath("midnight-blue", "../../templates")
 	if err != nil {
 		t.Skipf("template not available: %v", err)

@@ -1,0 +1,161 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Quarterly Business Review"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Q3 2026"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Financial Performance"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Revenue was $21M in the quarter",
+      "Gross margin was 68%",
+      "Operating expenses grew 12%",
+      "Net income was $4.2M",
+      "Cash position is $32M"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Customer Metrics"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Customers grew to 1,250",
+      "NPS score is 72",
+      "Churn rate is 2.1%",
+      "Support CSAT is 4.6 out of 5",
+      "Average contract value is $67k"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Product Update"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Shipped SSO and audit logging",
+      "Released mobile app version 3",
+      "Started work on the partner API",
+      "Reduced page load time by 20%",
+      "Closed 340 bugs"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "People"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Headcount is 145",
+      "Hired 12 engineers",
+      "Attrition was 4%",
+      "Launched manager training",
+      "Opened Lisbon office"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Priorities"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Launch the enterprise tier",
+      "Expand partner programme",
+      "Enter EMEA",
+      "Invest in reliability",
+      "Grow engineering"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Risks"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Competitor pricing pressure",
+      "Hiring market remains tight",
+      "Dependency on one cloud provider",
+      "Regulatory changes in EU",
+      "Long enterprise sales cycles"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Thank You"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Questions"
+    }
+   ]
+  }
+ ]
+}

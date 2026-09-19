@@ -43,7 +43,13 @@ func TestPreflightCore_CleanDeckExits0(t *testing.T) {
       "slides": [{
         "layout_id": "slideLayout2",
         "slide_type": "content",
-        "content": [{"placeholder_id": "title", "type": "text", "text_value": "Hello"}]
+        "content": [
+          {"placeholder_id": "title", "type": "text", "text_value": "Hello"},
+          {"placeholder_id": "body", "type": "bullets", "bullets_value": [
+            "Revenue grew 12% on the back of enterprise renewals",
+            "Churn held below 2% for the third consecutive quarter"
+          ]}
+        ]
       }]
     }`
 	env := preflightOnJSON(t, deck, false)

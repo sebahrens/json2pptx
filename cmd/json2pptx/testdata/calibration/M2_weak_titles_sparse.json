@@ -1,0 +1,119 @@
+{
+ "template": "midnight-blue",
+ "slides": [
+  {
+   "slide_type": "title",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Update"
+    },
+    {
+     "placeholder_id": "subtitle",
+     "type": "text",
+     "text_value": "Team meeting"
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Overview"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Things are going well",
+      "Some challenges"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Details"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "See spreadsheet",
+      "More info to follow"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Numbers"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Revenue up",
+      "Costs up"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Next Steps"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Continue work",
+      "Follow up"
+     ]
+    }
+   ]
+  },
+  {
+   "slide_type": "content",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "Other"
+    },
+    {
+     "placeholder_id": "body",
+     "type": "bullets",
+     "bullets_value": [
+      "Misc items"
+     ]
+    }
+   ]
+  },
+  {
+   "layout_id": "slideLayout5",
+   "content": [
+    {
+     "placeholder_id": "title",
+     "type": "text",
+     "text_value": "End"
+    }
+   ]
+  }
+ ]
+}

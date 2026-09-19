@@ -65,15 +65,29 @@ func TestConvertTextFitFinding(t *testing.T) {
 func TestCollectFitFindingsSorting(t *testing.T) {
 	// Create a presentation with two slides that will produce findings
 	// at different severities. We test that the sorting works correctly.
+	// Slides with a title and body but nothing to measure: no fit findings, and
+	// enough content that the substance detectors stay quiet
+	// (go-slide-creator-q7ar — a deck of literally empty slides now draws one
+	// deck-level "no slide carries content" finding).
+	body := []string{"Revenue grew 12% on enterprise renewals", "Churn held below 2% for a third quarter"}
+	slide := func(title string) SlideInput {
+		t := title
+		return SlideInput{
+			SlideType: "content",
+			Content: []ContentInput{
+				{PlaceholderID: "title", Type: "text", TextValue: &t},
+				{PlaceholderID: "body", Type: "bullets", BulletsValue: &body},
+			},
+		}
+	}
 	input := &PresentationInput{
 		Template: "midnight-blue",
-		Slides:   []SlideInput{{}, {}}, // Empty slides — no findings from here
+		Slides:   []SlideInput{slide("Quarter in review"), slide("What we do next")},
 	}
 
 	findings := collectFitFindings(input, nil, 9144000, 6858000, nil)
-	// With empty slides, expect no findings.
 	if len(findings) != 0 {
-		t.Errorf("expected 0 findings for empty slides, got %d", len(findings))
+		t.Errorf("expected 0 findings for these slides, got %d: %+v", len(findings), findings)
 	}
 }
 
