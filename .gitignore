@@ -64,6 +64,9 @@ Thumbs.db
 /cache/
 /output/
 
+# examine-template's default output directory
+/examination/
+
 # Templates (track embed.go + bundled .pptx; ignore user-added files)
 /templates/*
 !/templates/embed.go
