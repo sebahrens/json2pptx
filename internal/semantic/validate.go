@@ -536,8 +536,15 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if len(cols) != 2 {
+		// 3–5 columns are a visual now, not a degradation (go-slide-creator-3bgf):
+		// stylish-panels gives each column its own titled panel and bullet list,
+		// card-grid a titled card. Only a count or a shape neither can hold still
+		// falls back to bullets, and only that case is worth a warning.
+		if pattern := slides.ComparisonPattern(slide.Body); pattern != "" {
+			return
+		}
 		s.advisory(path+".columns", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("a comparison renders exactly two columns as a comparison-2col visual; found %d (otherwise it degrades to a bullet list)", len(cols)))
+			fmt.Sprintf("a comparison renders as a visual with 2 columns (comparison-2col) or 3–5 (stylish-panels / card-grid); found %d, so this slide degrades to a bullet list — split it, or use kind raw_json2pptx with a table-highlight pattern for a wider matrix", len(cols)))
 		return
 	}
 	counts := make([]int, 0, len(cols))
@@ -554,8 +561,14 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 	}
 	for _, n := range counts {
 		if n != counts[0] {
-			s.advisory(path+".columns", diagnostics.CodeSemanticDensity,
-				"comparison columns are unbalanced; give each column the same number of items")
+			// An unbalanced pair still gets a visual (card-grid) rather than
+			// bullets, so say what it costs — the side-by-side row alignment —
+			// instead of implying the content is lost.
+			msg := "comparison columns are unbalanced; give each column the same number of items to get the side-by-side comparison-2col visual"
+			if slides.ComparisonPattern(slide.Body) == "" {
+				msg = "comparison columns are unbalanced; give each column the same number of items (otherwise this slide degrades to a bullet list)"
+			}
+			s.advisory(path+".columns", diagnostics.CodeSemanticDensity, msg)
 			return
 		}
 	}
@@ -564,8 +577,12 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 	// so flag the over-cap count here (blocking under strict) to keep validate in
 	// step with what compile emits.
 	if counts[0] > slides.ComparisonMaxRows {
+		tail := "otherwise it degrades to a bullet list"
+		if pattern := slides.ComparisonPattern(slide.Body); pattern != "" {
+			tail = "otherwise it renders as " + pattern
+		}
 		s.advisory(path+".columns", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("comparison-2col renders 1–%d rows per column; found %d — split or shorten the comparison (otherwise it degrades to a bullet list)", slides.ComparisonMaxRows, counts[0]))
+			fmt.Sprintf("comparison-2col renders 1–%d rows per column; found %d — split or shorten the comparison (%s)", slides.ComparisonMaxRows, counts[0], tail))
 	}
 }
 

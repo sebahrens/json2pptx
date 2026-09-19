@@ -65,8 +65,11 @@ func TestCompileComparison_DegradesWhenUnbalanced(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompileComparison: %v", err)
 	}
-	if slide.Pattern != nil {
-		t.Fatalf("expected content fallback (no pattern), got %+v", slide.Pattern)
+	// go-slide-creator-3bgf: an unbalanced pair loses the side-by-side row
+	// alignment comparison-2col gives, but it is still two titled columns of
+	// content — card-grid, not a bullet list.
+	if slide.Pattern == nil || slide.Pattern.Name != "card-grid" {
+		t.Fatalf("pattern = %+v, want card-grid", slide.Pattern)
 	}
 	assertNoGoMapLeak(t, slide)
 }
@@ -130,36 +133,94 @@ func TestCompileComparison_ProsConsFallbackKeepsContent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompileComparison: %v", err)
 	}
-	if slide.Pattern != nil {
-		t.Fatalf("expected content fallback for 3 columns, got %+v", slide.Pattern)
+	// go-slide-creator-3bgf: three pro/con columns are a three-panel visual, not
+	// three bullets. The pros/cons content still has to survive the routing.
+	if slide.Pattern == nil || slide.Pattern.Name != "stylish-panels" {
+		t.Fatalf("pattern = %+v, want stylish-panels", slide.Pattern)
 	}
 	assertNoGoMapLeak(t, slide)
-	joined := strings.Join(*slide.Content[len(slide.Content)-1].BulletsValue, " || ")
+	values := string(slide.Pattern.Values)
 	for _, want := range []string{"cheap", "robust", "costly", "slow"} {
-		if !strings.Contains(joined, want) {
-			t.Errorf("fallback dropped %q; bullets = %q", want, joined)
+		if !strings.Contains(values, want) {
+			t.Errorf("routing dropped %q; values = %q", want, values)
 		}
 	}
 }
 
-func TestCompileComparison_DegradesWhenNotTwoColumns(t *testing.T) {
-	in := Input{
-		Title: "Three Ways",
-		Body: map[string]any{
-			"columns": []any{
+// go-slide-creator-3bgf: three columns are a three-panel visual. A comparison
+// degrades to bullets only past what any of the patterns can hold — six or more
+// columns, or a column with no header.
+func TestCompileComparison_DegradesPastEveryVisual(t *testing.T) {
+	tests := []struct {
+		name string
+		cols []any
+	}{
+		{
+			name: "six columns exceed card-grid's five",
+			cols: []any{
 				map[string]any{"title": "A", "items": []any{"1"}},
 				map[string]any{"title": "B", "items": []any{"2"}},
+				map[string]any{"title": "C", "items": []any{"3"}},
+				map[string]any{"title": "D", "items": []any{"4"}},
+				map[string]any{"title": "E", "items": []any{"5"}},
+				map[string]any{"title": "F", "items": []any{"6"}},
+			},
+		},
+		{
+			name: "a headerless column has nothing to title a panel with",
+			cols: []any{
+				map[string]any{"title": "A", "items": []any{"1"}},
+				map[string]any{"items": []any{"2"}},
 				map[string]any{"title": "C", "items": []any{"3"}},
 			},
 		},
 	}
-	slide, _, err := CompileComparison(in)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			slide, _, err := CompileComparison(Input{Title: "Options", Body: map[string]any{"columns": tt.cols}})
+			if err != nil {
+				t.Fatalf("CompileComparison: %v", err)
+			}
+			if slide.Pattern != nil {
+				t.Fatalf("expected the bullet fallback, got %+v", slide.Pattern)
+			}
+			assertNoGoMapLeak(t, slide)
+		})
+	}
+}
+
+// Three balanced columns are the standard consulting option slide, and the one
+// the dogfood run found collapsing into three run-on bullets on a 60%-empty page.
+func TestCompileComparison_ThreeColumnsEmitPanels(t *testing.T) {
+	in := Input{
+		Title: "Three Ways",
+		Body: map[string]any{
+			"columns": []any{
+				map[string]any{"title": "Parcel automation", "items": []any{"EUR 60M capex", "Payback 3.5 yrs", "Low risk"}},
+				map[string]any{"title": "Hub consolidation", "items": []any{"EUR 35M capex", "Payback 2.1 yrs", "Medium risk"}},
+				map[string]any{"title": "Partner network", "items": []any{"EUR 8M capex", "Payback 1.2 yrs", "High risk"}},
+			},
+		},
+	}
+	slide, links, err := CompileComparison(in)
 	if err != nil {
 		t.Fatalf("CompileComparison: %v", err)
 	}
-	if slide.Pattern != nil {
-		t.Fatalf("expected content fallback for 3 columns, got %+v", slide.Pattern)
+	if slide.Pattern == nil || slide.Pattern.Name != "stylish-panels" {
+		t.Fatalf("pattern = %+v, want stylish-panels", slide.Pattern)
 	}
+	var panels []stylishPanelsItem
+	if jerr := json.Unmarshal(slide.Pattern.Values, &panels); jerr != nil {
+		t.Fatalf("unmarshal panels: %v", jerr)
+	}
+	if len(panels) != 3 {
+		t.Fatalf("panels = %d, want 3", len(panels))
+	}
+	// Each column keeps its own bullets rather than being joined into one line.
+	if panels[0].Title != "Parcel automation" || len(panels[0].Body) != 3 {
+		t.Errorf("panel 0 = %+v, want the column header and its three items", panels[0])
+	}
+	assertHasLink(t, links, in.semSlide()+".columns")
 	assertNoGoMapLeak(t, slide)
 }
 

@@ -217,16 +217,13 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 // passthroughPlan is the fallback for unknown or raw escape-hatch slides.
 var passthroughPlan = kindPlan{role: RolePassthrough, family: FamilyRaw, density: DensityMedium, layout: ""}
 
-// comparisonPattern advertises comparison-2col only when the payload will
-// actually compile to it (two balanced columns within the row cap); otherwise it
-// returns "" so the explain projection matches compile's content fallback rather
-// than over-promising a visual the renderer will not emit (explain/compile
-// parity for degraded/over-cap inputs).
+// comparisonPattern advertises the visual the payload will actually compile to
+// — comparison-2col for a balanced pair, stylish-panels or card-grid for 3–5
+// columns — and "" when it degrades to a content slide, so the explain
+// projection never over-promises a visual the renderer will not emit
+// (explain/compile parity for degraded/over-cap inputs).
 func comparisonPattern(body map[string]any) string {
-	if slides.ComparisonPatternFeasible(body) {
-		return "comparison-2col"
-	}
-	return ""
+	return slides.ComparisonPattern(body)
 }
 
 // execSummaryPattern advertises exec-summary only when the payload will actually
@@ -366,7 +363,12 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 	case KindChartInsight:
 		return []CompositionCandidate{visual("chart-insights-split", "chart with up to 6 insights"), {Layout: "two-column", Reason: "native chart and full insight list when density exceeds the pattern"}}
 	case KindComparison:
-		return []CompositionCandidate{visual("comparison-2col", "balanced two-column comparison"), {Layout: "content", Reason: "native bullets preserve unbalanced columns"}}
+		return []CompositionCandidate{
+			visual("comparison-2col", "balanced two-column comparison"),
+			visual("stylish-panels", "3-5 columns, each a titled panel with its own bullets"),
+			visual("card-grid", "2-5 columns as titled cards when panels do not fit"),
+			{Layout: "content", Reason: "native bullets preserve six or more columns"},
+		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}
 	case KindRoadmap:

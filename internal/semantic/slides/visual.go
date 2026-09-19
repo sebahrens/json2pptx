@@ -33,33 +33,180 @@ type comparison2colValues struct {
 	Rows    []comparison2colRow `json:"rows"`
 }
 
-// CompileComparison compiles a comparison slide. With exactly two balanced
-// columns (equal, non-empty item counts, within the comparison-2col 1–10 row
-// range) it emits the comparison-2col pattern the planner advertises; otherwise
-// it degrades to a content slide listing each column's items, so the deck still
-// compiles.
+// stylishPanelsItem mirrors patterns.StylishPanelsItem for emission: a panel
+// title over its own bullet list.
+type stylishPanelsItem struct {
+	Title string   `json:"title"`
+	Body  []string `json:"body"`
+}
+
+// cardGridCell mirrors patterns.CardGridCell for emission.
+type cardGridCell struct {
+	Header string `json:"header"`
+	Body   string `json:"body"`
+}
+
+// cardGridValues mirrors patterns.CardGridValues for emission.
+type cardGridValues struct {
+	Columns int            `json:"columns"`
+	Rows    int            `json:"rows"`
+	Cells   []cardGridCell `json:"cells"`
+}
+
+// CompileComparison compiles a comparison slide to the best visual its columns
+// support:
+//
+//   - exactly two balanced columns (equal, non-empty item counts, within the
+//     comparison-2col 1–10 row range) → comparison-2col;
+//   - 3–5 columns → stylish-panels, a titled panel with its own bullet list per
+//     column;
+//   - 2–5 columns stylish-panels cannot hold (an unbalanced pair, an over-long
+//     bullet) → card-grid, one titled card per column;
+//   - anything else → a content slide listing each column's items.
+//
+// Before go-slide-creator-3bgf only the first case had a visual: "compare us to
+// three competitors", the most common QBR slide there is, collapsed into one
+// run-on bullet per column — 'A | Parcel automation: EUR 60M capex; Payback 3.5
+// yrs; Low risk' — on a page that was 60% empty, while the engine had the right
+// patterns all along and only a hand-written raw pattern block could reach them.
 func CompileComparison(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	headers, rows, ok := comparisonRows(in.Body)
-	if !ok {
-		return compileComparisonFallback(in)
+	if headers, rows, ok := comparisonRows(in.Body); ok {
+		encoded, err := json.Marshal(comparison2colValues{Headers: headers, Rows: rows})
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshal comparison-2col values: %w", err)
+		}
+		return comparisonPatternSlide(in, "comparison-2col", encoded, ".pattern.values.rows")
 	}
+	if panels, ok := comparisonPanels(in.Body); ok {
+		encoded, err := json.Marshal(panels)
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshal stylish-panels values: %w", err)
+		}
+		return comparisonPatternSlide(in, "stylish-panels", encoded, ".pattern.values")
+	}
+	if cards, ok := comparisonCards(in.Body); ok {
+		encoded, err := json.Marshal(cards)
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshal card-grid values: %w", err)
+		}
+		return comparisonPatternSlide(in, "card-grid", encoded, ".pattern.values.cells")
+	}
+	return compileComparisonFallback(in)
+}
 
+// comparisonPatternSlide assembles the slide around a resolved comparison
+// pattern: the title placeholder, the pattern, one source link from the
+// pattern's values back to the authored columns, and the takeaway.
+func comparisonPatternSlide(in Input, pattern string, values []byte, valuesPath string) (*deckinput.SlideInput, []SourceLink, error) {
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
-	var links []SourceLink
-	links = append(links, titleLink(slide, in)...)
-
-	encoded, err := json.Marshal(comparison2colValues{Headers: headers, Rows: rows})
-	if err != nil {
-		return nil, nil, fmt.Errorf("marshal comparison-2col values: %w", err)
-	}
-	slide.Pattern = &deckinput.PatternInput{Name: "comparison-2col", Values: encoded}
+	links := titleLink(slide, in)
+	slide.Pattern = &deckinput.PatternInput{Name: pattern, Values: values}
 	links = append(links, SourceLink{
-		RawPath:      in.rawSlide() + ".pattern.values.rows",
+		RawPath:      in.rawSlide() + valuesPath,
 		SemanticPath: in.semSlide() + ".columns",
 	})
-
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
+}
+
+// ComparisonPattern names the pattern a comparison payload will compile to, or
+// "" when it degrades to a content slide. Validation and the explain planner
+// consult it so neither advertises a treatment that disagrees with compile.
+func ComparisonPattern(body map[string]any) string {
+	switch {
+	case ComparisonPatternFeasible(body):
+		return "comparison-2col"
+	case comparisonPanelsFeasible(body):
+		return "stylish-panels"
+	case comparisonCardsFeasible(body):
+		return "card-grid"
+	}
+	return ""
+}
+
+// Pattern bounds the multi-column comparison compilers work within. They mirror
+// the patterns' own Validate rules, so a payload that passes here renders.
+const (
+	// comparisonMaxPanels is stylish-panels' panel cap; comparisonMinPanels its
+	// floor (below it the pattern tells the caller to use card-grid).
+	comparisonMinPanels = 3
+	comparisonMaxPanels = 5
+	// comparisonMaxCards is card-grid's column cap for a single row.
+	comparisonMaxCards = 5
+	// comparisonPanelMaxBullets / comparisonPanelBulletMax are stylish-panels'
+	// per-panel bullet count and per-bullet length budgets.
+	comparisonPanelMaxBullets = 8
+	comparisonPanelBulletMax  = 200
+	// comparisonHeaderMax is the shared title/header budget of both patterns.
+	comparisonHeaderMax = 80
+	// comparisonCardBodyMax is card-grid's per-card body budget.
+	comparisonCardBodyMax = 300
+	// comparisonCardItemJoin separates a column's items inside one card body.
+	// card-grid renders the body as a single wrapped paragraph, so the items
+	// need a visible separator rather than a newline the run builder would drop.
+	comparisonCardItemJoin = " · "
+)
+
+// comparisonPanels builds stylish-panels values from 3–5 columns that each
+// carry a header and at least one item. It reports ok=false when the shape or
+// any budget does not fit, so the caller can try the next visual.
+func comparisonPanels(body map[string]any) ([]stylishPanelsItem, bool) {
+	cols := mapList(body, "columns")
+	if len(cols) < comparisonMinPanels || len(cols) > comparisonMaxPanels {
+		return nil, false
+	}
+	panels := make([]stylishPanelsItem, 0, len(cols))
+	for _, col := range cols {
+		header := columnHeader(col)
+		items := columnItems(col)
+		if header == "" || len(header) > comparisonHeaderMax || len(items) == 0 || len(items) > comparisonPanelMaxBullets {
+			return nil, false
+		}
+		for _, item := range items {
+			if item == "" || len(item) > comparisonPanelBulletMax {
+				return nil, false
+			}
+		}
+		panels = append(panels, stylishPanelsItem{Title: header, Body: items})
+	}
+	return panels, true
+}
+
+// comparisonPanelsFeasible reports whether comparisonPanels would succeed.
+func comparisonPanelsFeasible(body map[string]any) bool {
+	_, ok := comparisonPanels(body)
+	return ok
+}
+
+// comparisonCards builds a one-row card-grid from 2–5 columns that each carry a
+// header and at least one item, joining the items into the card body. It is the
+// fallback visual for a comparison stylish-panels cannot hold — an unbalanced
+// pair, or a column whose bullets are too many or too long for panels.
+func comparisonCards(body map[string]any) (*cardGridValues, bool) {
+	cols := mapList(body, "columns")
+	if len(cols) < 2 || len(cols) > comparisonMaxCards {
+		return nil, false
+	}
+	cells := make([]cardGridCell, 0, len(cols))
+	for _, col := range cols {
+		header := columnHeader(col)
+		items := columnItems(col)
+		if header == "" || len(header) > comparisonHeaderMax || len(items) == 0 {
+			return nil, false
+		}
+		cardBody := strings.Join(items, comparisonCardItemJoin)
+		if cardBody == "" || len(cardBody) > comparisonCardBodyMax {
+			return nil, false
+		}
+		cells = append(cells, cardGridCell{Header: header, Body: cardBody})
+	}
+	return &cardGridValues{Columns: len(cells), Rows: 1, Cells: cells}, true
+}
+
+// comparisonCardsFeasible reports whether comparisonCards would succeed.
+func comparisonCardsFeasible(body map[string]any) bool {
+	_, ok := comparisonCards(body)
+	return ok
 }
 
 // ComparisonMaxRows is the per-column row cap of the comparison-2col pattern.

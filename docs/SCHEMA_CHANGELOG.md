@@ -8,6 +8,28 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **A comparison of more than two columns is a visual (go-slide-creator-3bgf).**
+  `kind: comparison` only had a pattern for exactly two balanced columns.
+  Everything else — the standard consulting three-option slide, a four-way
+  competitor comparison, an unbalanced pair — collapsed to one run-on bullet per
+  column (`"Parcel automation: EUR 60M capex; Payback 3.5 yrs; Low risk"`) on a
+  60%-empty page, while `validate_deck_spec` only warned, so an agent following
+  `ok: true` shipped it. The engine had the right patterns; only a hand-written
+  `raw_json2pptx` block could reach them.
+  - **3–5 columns → `stylish-panels`**: each column becomes a titled panel with
+    its own bullet list, one bullet per item, rather than a joined line.
+  - **2–5 columns `stylish-panels` cannot hold** (an unbalanced pair, a column
+    with more than 8 items or an over-long one) **→ `card-grid`**: one titled
+    card per column, items joined into the card body.
+  - 2 balanced columns within the 10-row cap still compile to `comparison-2col`;
+    6+ columns, or any column without a header, still degrade to bullets.
+  - `SEMANTIC_DENSITY` no longer warns about a degradation that no longer
+    happens: for 3–5 columns it is silent, and where it does fire it names the
+    counts that have a visual and points at `raw_json2pptx` +
+    `table-highlight` for a wider matrix. `explain_deck_spec` and
+    `render_deck_spec`'s `explanation_summary` report the pattern actually
+    emitted, and `compositionCandidates` lists all three.
+
 - **`executive_summary` renders the exec-summary pattern (go-slide-creator-ku6t).**
   The kind ALWAYS compiled to a bullet list, so the exec-summary pattern shipped
   in round 1 (go-slide-creator-ycbn) was unreachable from the recommended

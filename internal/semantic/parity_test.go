@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
 // TestRawNonObjectValidateCompileParity is the validate↔compile parity gate for
@@ -187,17 +188,23 @@ func TestExplainCompileParity_ComparisonOverCap(t *testing.T) {
 		}}},
 	}
 
+	// go-slide-creator-3bgf: an over-cap pair no longer has to be bullets — it is
+	// two titled cards. What parity requires is that explain names whatever
+	// compile emits, degraded or not.
 	exp := ExplainSpec(spec)
-	if got := exp.Slides[0].Pattern; got != "" {
-		t.Errorf("explain advertises pattern %q for an over-cap comparison; want none", got)
-	}
-
 	input, _, err := Compile(spec, CompileOptions{})
 	if err != nil {
 		t.Fatalf("compile over-cap comparison: %v", err)
 	}
+	compiled := ""
 	if p := input.Slides[0].Pattern; p != nil {
-		t.Errorf("compile emitted pattern %q for an over-cap comparison; want none (content fallback)", p.Name)
+		compiled = p.Name
+	}
+	if compiled == "comparison-2col" {
+		t.Errorf("an 11-row-per-column comparison must not claim comparison-2col (its cap is %d)", slides.ComparisonMaxRows)
+	}
+	if got := exp.Slides[0].Pattern; got != compiled {
+		t.Errorf("explain advertises pattern %q for an over-cap comparison; compile emitted %q", got, compiled)
 	}
 }
 
