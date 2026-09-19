@@ -48,6 +48,16 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"name": "Priya Raman", "role": "Data lead", "bio": "Owns the reconciliation model and the migration waves."},
 		},
 	},
+	KindStat: {
+		"kind":     "stat",
+		"title":    "The prize",
+		"value":    "$2.4B",
+		"unit":     "TAM",
+		"label":    "Addressable clearing-services market by FY27",
+		"context":  "Up from $1.6B in FY24, driven by the T+1 settlement mandate.",
+		"source":   "Oliver Wyman market model, 2026",
+		"takeaway": "The market is large enough to fund the build twice over.",
+	},
 	KindAgenda: {
 		"kind":    "agenda",
 		"title":   "What we will cover",

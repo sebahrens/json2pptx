@@ -110,6 +110,34 @@ func TestValidateUnknownKindAndArchetype(t *testing.T) {
 	}
 }
 
+// A near-miss spelling names the kind it means. "metric_hero" is the second
+// name the stat slide goes by; before, an author who wrote it got the full
+// seventeen-kind list and had to pick (go-slide-creator-2hkc).
+func TestValidateUnknownKindNamesTheNearMiss(t *testing.T) {
+	for _, spelling := range []string{"metric_hero", "big_number"} {
+		spec := &DeckSpec{
+			Meta:   DeckMeta{Title: "Deck"},
+			Slides: []SlideSpec{{Kind: SlideKind(spelling), Body: map[string]any{"value": "$2.4B"}}},
+		}
+		d, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticUnknownKind, "slides[0].kind")
+		if !ok {
+			t.Fatalf("%s: expected SEMANTIC_UNKNOWN_KIND", spelling)
+		}
+		if !strings.Contains(d.Message, `use "stat"`) {
+			t.Errorf("%s: message = %q, want it to name the stat kind", spelling, d.Message)
+		}
+	}
+	// A spelling with no registered near miss still gets the plain message.
+	spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: SlideKind("bogus"), Body: map[string]any{"title": "x"}}}}
+	d, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticUnknownKind, "slides[0].kind")
+	if !ok {
+		t.Fatal("expected SEMANTIC_UNKNOWN_KIND")
+	}
+	if strings.Contains(d.Message, "use \"") {
+		t.Errorf("message invented a near miss: %q", d.Message)
+	}
+}
+
 // TestCheckBlankKindEmitsSingleMissingFinding guards against the regression
 // where a present-but-blank kind ("" or whitespace) was reported twice: the
 // parse pass emitted "unknown slide kind \"\"" while validateSlide separately

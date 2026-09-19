@@ -222,6 +222,14 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleTransition, family: FamilyStructural, density: DensityLight, layout: "blank-title",
 		pattern: agendaPattern,
 	},
+	KindStat: {
+		// One number is the lightest slide in the deck and it is there to make a
+		// point, not to lay out evidence in parts. It shares the big-number
+		// family with kpi_snapshot, so monotony detection sees a stat beside a
+		// KPI grid for what it is: the same treatment twice.
+		role: RoleEvidence, family: FamilyKPI, density: DensityLight, layout: "blank-title",
+		pattern: statPattern,
+	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
@@ -301,6 +309,12 @@ func chartInsightPattern(body map[string]any) string {
 // (go-slide-creator-13lj).
 func teamPattern(body map[string]any) string {
 	return slides.TeamPattern(body)
+}
+
+// statPattern advertises stat-hero only when the number and its words fit the
+// pattern's budgets (go-slide-creator-2hkc).
+func statPattern(body map[string]any) string {
+	return slides.StatPattern(body)
 }
 
 // agendaPattern advertises the agenda pattern the payload will actually
@@ -464,6 +478,12 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			visual("agenda", "2-10 sections as a numbered list"),
 			visual("agenda-with-images", "3-6 sections, each with a subtitle, as rows"),
 			{Layout: "content", Reason: "native numbered bullets preserve an agenda outside those counts"},
+		}
+	case KindStat:
+		return []CompositionCandidate{
+			visual("stat-hero", "one oversized number with a label, context and source"),
+			visual("kpi-3up", "switch to kind kpi_snapshot to show several numbers at equal weight"),
+			{Layout: "content", Reason: "a content slide preserves a number or label past the hero's text budgets"},
 		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}

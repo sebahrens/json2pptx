@@ -31,6 +31,8 @@ const (
 	KindAgenda SlideKind = "agenda"
 	// KindTeam is the people grid: who is on the engagement.
 	KindTeam SlideKind = "team"
+	// KindStat is one oversized number carrying the slide.
+	KindStat SlideKind = "stat"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -139,6 +141,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredAliases: map[string][]string{"members": {"people", "team"}},
 		TypicalFields:   []string{"title", "takeaway"},
 	},
+	KindStat: {
+		Kind:            KindStat,
+		Summary:         "One number, made the whole slide: the value, the words beneath it, and optionally a line of context and a source. Renders as the stat-hero visual; past its text budgets it degrades to a content slide.",
+		RequiredFields:  []string{"value"},
+		RequiredAliases: map[string][]string{"value": {"stat", "number", "metric"}},
+		TypicalFields:   []string{"title", "label", "unit", "context", "source", "takeaway"},
+	},
 	KindProcess: {
 		Kind:           KindProcess,
 		Summary:        "Sequential process or flow with ordered steps.",
@@ -168,6 +177,22 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		Summary:        "Escape hatch carrying a raw json2pptx slide payload verbatim.",
 		RequiredFields: []string{"slide"},
 	},
+}
+
+// kindSpelling maps a spelling an author is likely to reach for onto the kind
+// that carries it. Nothing resolves through this map — an unregistered kind is
+// still a hard error — but the error names the one kind meant rather than
+// leaving the author to pick it out of the full list.
+var kindSpelling = map[SlideKind]SlideKind{
+	"metric_hero": KindStat,
+	"big_number":  KindStat,
+}
+
+// SpellingFor returns the registered kind a near-miss spelling means, and
+// whether there is one.
+func SpellingFor(k SlideKind) (SlideKind, bool) {
+	canonical, ok := kindSpelling[k]
+	return canonical, ok
 }
 
 // LookupKind returns the KindInfo for a slide kind and whether it is registered.

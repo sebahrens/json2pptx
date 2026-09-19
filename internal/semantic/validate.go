@@ -120,6 +120,12 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"title": shapeString, "members": shapeArray, "people": shapeArray,
 		"team": shapeArray, "takeaway": shapeString,
 	},
+	KindStat: {
+		"title": shapeString, "value": shapeString, "stat": shapeString, "number": shapeString,
+		"metric": shapeString, "label": shapeString, "caption": shapeString, "subtitle": shapeString,
+		"unit": shapeString, "suffix": shapeString, "context": shapeString, "detail": shapeString,
+		"description": shapeString, "source": shapeString, "takeaway": shapeString,
+	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
 	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
@@ -344,8 +350,11 @@ func validateSlide(i int, slide SlideSpec, s *semDiags) {
 	}
 	info, ok := LookupKind(slide.Kind)
 	if !ok {
-		s.hard(path+".kind", diagnostics.CodeSemanticUnknownKind,
-			fmt.Sprintf("unknown slide kind %q; expected one of %s", slide.Kind, joinKinds()))
+		msg := fmt.Sprintf("unknown slide kind %q; expected one of %s", slide.Kind, joinKinds())
+		if canonical, hinted := SpellingFor(slide.Kind); hinted {
+			msg = fmt.Sprintf("unknown slide kind %q; use %q — expected one of %s", slide.Kind, canonical, joinKinds())
+		}
+		s.hard(path+".kind", diagnostics.CodeSemanticUnknownKind, msg)
 		scanWeakBody(path, slide.Body, s)
 		return
 	}
@@ -439,54 +448,96 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 	case KindTable:
 		validateTable(path, slide, s)
 	case KindAgenda:
-		// An agenda with one section is a heading, not a contents page; with
-		// eleven it is a wall. Both still render — as a numbered bullet list —
-		// so the rule says which visual is lost rather than blocking
-		// (go-slide-creator-3rvk).
-		if n := slides.UsableAgendaSectionCount(slide.Body); s.requireUsableContent(path, "sections", slide.Body, n) {
-			if slides.AgendaPattern(slide.Body) == "" {
-				s.advisory(path+".sections", diagnostics.CodeSemanticDensity,
-					fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n))
-			}
-		}
+		validateAgenda(path, slide, s)
 	case KindTeam:
-		// The team-bios budgets are the pattern's own: outside them the roster
-		// still renders, as a bullet list, so the advisory names what broke
-		// rather than blocking (go-slide-creator-13lj).
-		if n := slides.UsableTeamMemberCount(slide.Body); s.requireUsableContent(path, "members", slide.Body, n, "people") {
-			if over := slides.TeamOverBudget(slide.Body); over != "" {
-				s.advisory(path+".members", diagnostics.CodeSemanticDensity,
-					fmt.Sprintf("team %s (otherwise it degrades to a bullet list)", over))
-			}
-		}
+		validateTeam(path, slide, s)
+	case KindStat:
+		validateStat(path, slide, s)
 	case KindArchitecture:
-		// The arch-stack budgets are the pattern's own: outside them the slide
-		// still renders, as a bullet list, so the advisory says which budget it
-		// broke rather than blocking (go-slide-creator-162os).
-		if n := slides.UsableTierCount(slide.Body); s.requireUsableContent(path, "tiers", slide.Body, n) {
-			if over := slides.ArchitectureOverBudget(slide.Body); over != "" {
-				s.advisory(path+".tiers", diagnostics.CodeSemanticDensity,
-					fmt.Sprintf("architecture %s (otherwise it degrades to a bullet list)", over))
-			}
-		}
+		validateArchitecture(path, slide, s)
 	case KindProcess:
-		// Count steps the compiler can render (blank entries are dropped), so a
-		// process of all-blank steps fails fast instead of compiling to a
-		// title-only slide, and the 3–8 process-flow range reflects real content.
-		if n := slides.UsableStepCount(slide.Body); s.requireUsableContent(path, "steps", slide.Body, n) && (n < 3 || n > 8) {
-			s.advisory(path+".steps", diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("process has %d usable steps; 3–8 render as a process-flow visual (otherwise it degrades to a bullet list)", n))
-		}
+		validateProcess(path, slide, s)
 	case KindRoadmap:
-		if n := slides.UsablePhaseCount(slide.Body); s.requireUsableContent(path, "phases", slide.Body, n) && (n < 3 || n > 6) {
-			s.advisory(path+".phases", diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("roadmap has %d usable phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n))
-		}
+		validateRoadmap(path, slide, s)
 	case KindRawJSON2pptx:
 		// The escape hatch carries a verbatim raw slide; validate it structurally
 		// so an invalid payload fails fast here instead of compiling to an empty
 		// slide. See validateRawEscapeHatch.
 		validateRawEscapeHatch(path, slide.Body, s)
+	}
+}
+
+// validateAgenda reports which agenda visual a section list is losing. An
+// agenda with one section is a heading, not a contents page; with eleven it is
+// a wall. Both still render — as a numbered bullet list — so the rule says what
+// is lost rather than blocking (go-slide-creator-3rvk).
+func validateAgenda(path string, slide SlideSpec, s *semDiags) {
+	n := slides.UsableAgendaSectionCount(slide.Body)
+	if !s.requireUsableContent(path, "sections", slide.Body, n) {
+		return
+	}
+	if slides.AgendaPattern(slide.Body) == "" {
+		s.advisory(path+".sections", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n))
+	}
+}
+
+// validateTeam reports a roster outside the team-bios budgets. They are the
+// pattern's own: outside them the roster still renders, as a bullet list, so
+// the advisory names what broke rather than blocking (go-slide-creator-13lj).
+func validateTeam(path string, slide SlideSpec, s *semDiags) {
+	n := slides.UsableTeamMemberCount(slide.Body)
+	if !s.requireUsableContent(path, "members", slide.Body, n, "people") {
+		return
+	}
+	if over := slides.TeamOverBudget(slide.Body); over != "" {
+		s.advisory(path+".members", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("team %s (otherwise it degrades to a bullet list)", over))
+	}
+}
+
+// validateStat reports a number or its words outside the stat-hero budgets.
+// Past them the slide still renders, as a content slide, so the advisory names
+// the budget that broke rather than blocking. A missing value is the
+// required-field gate's business (value, with its stat / number / metric
+// aliases), so this rule speaks only to budgets (go-slide-creator-2hkc).
+func validateStat(path string, slide SlideSpec, s *semDiags) {
+	if over := slides.StatOverBudget(slide.Body); over != "" {
+		s.advisory(path+".value", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("stat %s (otherwise it degrades to a content slide)", over))
+	}
+}
+
+// validateArchitecture reports a stack outside the arch-stack budgets. They are
+// the pattern's own: outside them the slide still renders, as a bullet list, so
+// the advisory says which budget it broke rather than blocking
+// (go-slide-creator-162os).
+func validateArchitecture(path string, slide SlideSpec, s *semDiags) {
+	n := slides.UsableTierCount(slide.Body)
+	if !s.requireUsableContent(path, "tiers", slide.Body, n) {
+		return
+	}
+	if over := slides.ArchitectureOverBudget(slide.Body); over != "" {
+		s.advisory(path+".tiers", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("architecture %s (otherwise it degrades to a bullet list)", over))
+	}
+}
+
+// validateProcess counts steps the compiler can render (blank entries are
+// dropped), so a process of all-blank steps fails fast instead of compiling to
+// a title-only slide, and the 3–8 process-flow range reflects real content.
+func validateProcess(path string, slide SlideSpec, s *semDiags) {
+	if n := slides.UsableStepCount(slide.Body); s.requireUsableContent(path, "steps", slide.Body, n) && (n < 3 || n > 8) {
+		s.advisory(path+".steps", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("process has %d usable steps; 3–8 render as a process-flow visual (otherwise it degrades to a bullet list)", n))
+	}
+}
+
+// validateRoadmap applies the same usable-count rule to a roadmap's phases.
+func validateRoadmap(path string, slide SlideSpec, s *semDiags) {
+	if n := slides.UsablePhaseCount(slide.Body); s.requireUsableContent(path, "phases", slide.Body, n) && (n < 3 || n > 6) {
+		s.advisory(path+".phases", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("roadmap has %d usable phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n))
 	}
 }
 

@@ -354,6 +354,29 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `stat` (go-slide-creator-2hkc).** One number made the whole
+  slide — the oldest move in a pitch deck — and the spec had no kind for it, so
+  an agent dropped to `raw_json2pptx` or wrote the number into a title.
+  - `{value, label}` compiles onto **stat-hero**, with `unit`, `context` and
+    `source` around it. `stat` / `number` / `metric` alias `value`,
+    `caption` / `subtitle` alias `label`, `suffix` aliases `unit`, and
+    `detail` / `description` alias `context`.
+  - `label` defaults to the slide `title`: an author who wrote only a title
+    meant it as the words beneath the number, and a bare number with no words
+    is not a slide.
+  - `source` is left to the slide's attribution band rather than repeated as a
+    bullet on the degrade path — the double-print go-slide-creator-xg48 fixed
+    for `chart_insight`.
+  - Past the hero's text budgets (value ≤20 chars, unit ≤10, label ≤80,
+    context ≤120, source ≤80) it degrades to a content slide carrying every
+    word, and `SEMANTIC_DENSITY` names which budget broke and by how much.
+  - A `stat` slide plans as the big-number family, so three of them in a row —
+    or one beside a `kpi_snapshot` — reads as monotony to
+    `analyze_deck_rhythm`, which is what it is.
+  - `metric_hero` and `big_number` are not accepted spellings, but
+    `SEMANTIC_UNKNOWN_KIND` now names `stat` for them instead of handing back
+    the full kind list.
+
 - **DeckSpec kind `team` (go-slide-creator-13lj).** "Our people" is a fixture
   of every proposal and engagement deck, and the spec had no kind for it.
   - `{members: [...]}` compiles onto **team-bios**: 1–8 cards with a name, a

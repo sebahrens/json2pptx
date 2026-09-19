@@ -250,6 +250,20 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 			return map[string]any{"members": covMembers("Amara Okafor"), "takeaway": s}
 		}, rendered: true},
 	},
+	// go-slide-creator-2hkc: the number, the words beneath it, and the context
+	// and source around them all have to reach the rendered slide. The gate's
+	// sentinels are longer than the hero's own text budgets, so these probes
+	// travel the degrade path — which is exactly where a field is most likely to
+	// be dropped on the floor.
+	KindStat: {
+		"value":    {inject: func(s string) map[string]any { return covStat(map[string]any{"value": s}) }, rendered: true},
+		"label":    {inject: func(s string) map[string]any { return covStat(map[string]any{"label": s}) }, rendered: true},
+		"unit":     {inject: func(s string) map[string]any { return covStat(map[string]any{"unit": s}) }, rendered: true},
+		"context":  {inject: func(s string) map[string]any { return covStat(map[string]any{"context": s}) }, rendered: true},
+		"source":   {inject: func(s string) map[string]any { return covStat(map[string]any{"source": s}) }, rendered: true},
+		"title":    {inject: func(s string) map[string]any { return covStat(map[string]any{"title": s}) }, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any { return covStat(map[string]any{"takeaway": s}) }, rendered: true},
+	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps("Discover"), "title": s} }, rendered: true},
@@ -374,6 +388,18 @@ func covOptionMatrix(overlay map[string]any) map[string]any {
 			map[string]any{"name": "Automate", "scores": []any{1, 2}},
 			map[string]any{"name": "Hub", "scores": []any{3, 4}},
 		},
+	}
+	for k, v := range overlay {
+		body[k] = v
+	}
+	return body
+}
+
+// covStat returns a minimal valid stat payload with the given fields overlaid.
+func covStat(overlay map[string]any) map[string]any {
+	body := map[string]any{
+		"value": "$2.4B",
+		"label": "Addressable market by FY27",
 	}
 	for k, v := range overlay {
 		body[k] = v
