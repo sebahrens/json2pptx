@@ -437,6 +437,13 @@ func reduceContentItem(ci *ContentInput, b reduceTextBudget) (bool, *appliedFix)
 
 	if bg := ci.BulletGroupsValue; bg != nil {
 		if b.maxItems > 0 && len(bg.Groups) > b.maxItems {
+			// Dropping a whole group loses its header AND every bullet under it,
+			// so it needs the same guard the bullet list has: max_items:3 on four
+			// groups silently deleted the only one carrying a number
+			// (go-slide-creator-sx53).
+			if refusal := guardDroppedGroups(bg.Groups, b); refusal != nil {
+				return false, refusal
+			}
 			bg.Groups = bg.Groups[:b.maxItems]
 			modified = true
 		}
@@ -482,6 +489,39 @@ func perGroupBudget(total, groups int) int {
 		per = 1
 	}
 	return per
+}
+
+// guardDroppedGroups refuses a bullet_groups truncation that would remove a
+// heading or bullet carrying a fact the kept groups do not already state.
+func guardDroppedGroups(groups []BulletGroupInput, b reduceTextBudget) *appliedFix {
+	if b.confirm || b.maxItems <= 0 || len(groups) <= b.maxItems {
+		return nil
+	}
+	kept := bulletGroupsText(groups[:b.maxItems])
+	dropped := bulletGroupsText(groups[b.maxItems:])
+	if !losesProtectedFacts(kept+" "+dropped, kept) {
+		return nil
+	}
+	return &appliedFix{
+		Kind:    "reduce_text",
+		Applied: false,
+		Code:    "semantic_review_required",
+		Message: fmt.Sprintf("dropping bullet groups %d-%d would remove a number, unit, negation, or qualifier — rewrite them shorter, move them to a second slide, or pass confirm_semantic_change", b.maxItems+1, len(groups)),
+	}
+}
+
+// bulletGroupsText joins every heading and bullet in the given groups.
+func bulletGroupsText(groups []BulletGroupInput) string {
+	var parts []string
+	for _, g := range groups {
+		for _, text := range []string{g.GroupLabel, g.Header, g.Body} {
+			if text != "" {
+				parts = append(parts, text)
+			}
+		}
+		parts = append(parts, g.Bullets...)
+	}
+	return strings.Join(parts, " ")
 }
 
 // reduceBulletList trims a bullet list to the budget. max_items cuts the list;

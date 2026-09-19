@@ -37,6 +37,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`reduce_text{max_items}` stopped silently deleting a fact-bearing bullet
+  group (go-slide-creator-sx53).** The protected-fact guard covered pattern
+  arrays and bullet lists, but the `bullet_groups` group truncation had none:
+  `max_items: 3` on four groups returned `applied: true` and removed the only
+  group carrying a number — the exact failure the guard exists to prevent, one
+  content shape over. Dropping a group removes its `group_label`, `header`,
+  `body` AND every bullet under it, so the guard now reads all of them, refuses
+  with `code: "semantic_review_required"`, and still applies under
+  `confirm_semantic_change: true`. Fact-free truncations are unaffected.
+
 - **Titles are measured without an explicit `layout_id`
   (go-slide-creator-t64e).** The measured title check bailed out whenever a
   slide carried no `layout_id`, so the same 112-character title produced
