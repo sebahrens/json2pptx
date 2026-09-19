@@ -560,15 +560,25 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 			if !ok {
 				return true
 			}
-			sel, ok := call.Fun.(*ast.SelectorExpr)
-			if !ok || sel.Sel.Name != "AddTool" {
+			// Registration is either s.AddTool(ctor(), handler) or the local
+			// addTool(s, ctor(), handler) wrapper that also applies the
+			// classification-derived annotations (go-slide-creator-ccqn).
+			toolArg := -1
+			switch fn := call.Fun.(type) {
+			case *ast.SelectorExpr:
+				if fn.Sel.Name == "AddTool" {
+					toolArg = 0
+				}
+			case *ast.Ident:
+				if fn.Name == "addTool" {
+					toolArg = 1
+				}
+			}
+			if toolArg < 0 || len(call.Args) <= toolArg {
 				return true
 			}
-			if len(call.Args) < 1 {
-				return true
-			}
-			// First arg is a function call — get its name.
-			argCall, ok := call.Args[0].(*ast.CallExpr)
+			// The tool arg is a constructor call — get its name.
+			argCall, ok := call.Args[toolArg].(*ast.CallExpr)
 			if !ok {
 				return true
 			}

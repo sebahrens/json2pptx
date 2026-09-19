@@ -37,6 +37,21 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Tools carry real MCP annotations (go-slide-creator-ccqn).** Every tool
+  shipped mcp-go's `NewTool()` defaults — `readOnlyHint:false`,
+  `destructiveHint:true`, `idempotentHint:false`, `openWorldHint:true`, no
+  title — so `get_started`, `get_capabilities`, `list_templates`,
+  `describe_finding` and every `validate_*` were advertised as destructive,
+  non-idempotent and open-world. Hosts that gate destructive tools prompted on
+  every discovery call. Annotations are now derived from the existing
+  classification metadata: `readOnlyHint = !mutates_state && (!writes_files ||
+  cache_writes_only)`, `destructiveHint = mutates_state` (only the two
+  template-settings writers), `idempotentHint = !mutates_state`,
+  `openWorldHint = api_key_dependency` (only `inspect_slide_images`), plus a
+  human `title`. 42 of 52 tools are now read-only. New classification field
+  `cache_writes_only` marks `list_templates`, whose only writes are a
+  regenerable layout-preview cache.
+
 - **design_mode_violation's next_tool_call is executable (go-slide-creator-g0er).**
   The refusal suggested `{tool: "generate_presentation", args_template:
   {design_mode: "free"}}`; following it verbatim failed with

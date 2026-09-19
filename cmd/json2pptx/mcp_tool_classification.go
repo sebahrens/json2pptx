@@ -64,6 +64,12 @@ type toolClassification struct {
 	// PNG) in the normal default mode. Opt-in modes that add file output (e.g.
 	// make_deck/auto_repair visual_qa) do not flip this.
 	WritesFiles bool
+	// CacheWritesOnly narrows WritesFiles: the files are a regenerable CACHE
+	// (list_templates' layout previews), not an artifact the caller keeps. Such
+	// a tool is still advertised as read-only in its MCP annotations — a host
+	// that prompts before "destructive" tools must not prompt for discovery
+	// (go-slide-creator-ccqn).
+	CacheWritesOnly bool
 	// RenderDependency is true when the tool requires the render toolchain
 	// (LibreOffice + ImageMagick/pdftoppm) in its default mode.
 	RenderDependency bool
@@ -134,7 +140,7 @@ func toolClassifications() map[string]toolClassification {
 		// mode (when LibreOffice + ImageMagick are present), so WritesFiles is
 		// true. Pass read_only=true to suppress those cache writes; the response
 		// side_effects block reports what happened.
-		"list_templates": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, WritesFiles: true, CLICounterpart: "skill-info"},
+		"list_templates": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, WritesFiles: true, CacheWritesOnly: true, CLICounterpart: "skill-info"},
 		// The detailed chart/diagram capability arrays these tools return are
 		// inlined in `json2pptx skill-info` (supported_types.chart_capabilities /
 		// diagram_capabilities), not in `json2pptx capabilities` (which carries
