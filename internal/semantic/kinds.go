@@ -71,9 +71,9 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindExecutiveSummary: {
 		Kind:           KindExecutiveSummary,
-		Summary:        "High-level summary of the deck's key messages.",
+		Summary:        "High-level summary of the deck's key messages. 3–5 points render as the exec-summary pattern — numbered bold conclusions, each with its supporting sentence, over an optional bottom-line bar; any other count degrades to a bullet list.",
 		RequiredFields: []string{"title"},
-		TypicalFields:  []string{"points", "takeaways", "takeaway"},
+		TypicalFields:  []string{"points", "takeaways", "bottom_line", "takeaway"},
 	},
 	KindKPISnapshot: {
 		Kind:            KindKPISnapshot,

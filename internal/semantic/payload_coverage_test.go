@@ -105,6 +105,11 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"points":    {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "points": []any{s}} }, rendered: true},
 		"takeaways": {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "takeaways": []any{s}} }, rendered: true},
 		"takeaway":  {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "takeaway": s} }, rendered: true},
+		// go-slide-creator-ku6t: the ask rides the pattern's bottom-line bar, and
+		// the bullet fallback appends it rather than dropping it.
+		"bottom_line": {inject: func(s string) map[string]any {
+			return map[string]any{"title": "Filler", "points": []any{"a", "b", "c"}, "bottom_line": s}
+		}, rendered: true},
 	},
 	KindKPISnapshot: {
 		"kpis":     {inject: func(s string) map[string]any { return map[string]any{"kpis": covKPIs(s)} }, rendered: true},
@@ -112,11 +117,19 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"takeaway": {inject: func(s string) map[string]any { return map[string]any{"kpis": covKPIs("$48M"), "takeaway": s} }, rendered: true},
 	},
 	KindChartInsight: {
-		"chart":    {inject: func(s string) map[string]any { return map[string]any{"chart": covChart(s), "insights": []any{"Grew 41%"}} }, rendered: true},
-		"title":    {inject: func(s string) map[string]any { return map[string]any{"chart": covChart(""), "insights": []any{"Grew 41%"}, "title": s} }, rendered: true},
+		"chart": {inject: func(s string) map[string]any {
+			return map[string]any{"chart": covChart(s), "insights": []any{"Grew 41%"}}
+		}, rendered: true},
+		"title": {inject: func(s string) map[string]any {
+			return map[string]any{"chart": covChart(""), "insights": []any{"Grew 41%"}, "title": s}
+		}, rendered: true},
 		"insights": {inject: func(s string) map[string]any { return map[string]any{"chart": covChart(""), "insights": []any{s}} }, rendered: true},
-		"source":   {inject: func(s string) map[string]any { return map[string]any{"chart": covChart(""), "insights": []any{"Grew 41%"}, "source": s} }, rendered: true},
-		"takeaway": {inject: func(s string) map[string]any { return map[string]any{"chart": covChart(""), "insights": []any{"Grew 41%"}, "takeaway": s} }, rendered: true},
+		"source": {inject: func(s string) map[string]any {
+			return map[string]any{"chart": covChart(""), "insights": []any{"Grew 41%"}, "source": s}
+		}, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any {
+			return map[string]any{"chart": covChart(""), "insights": []any{"Grew 41%"}, "takeaway": s}
+		}, rendered: true},
 	},
 	KindComparison: {
 		"columns":  {inject: func(s string) map[string]any { return map[string]any{"columns": covColumns(s)} }, rendered: true},

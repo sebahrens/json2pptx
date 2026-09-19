@@ -44,6 +44,14 @@ var objectTextKeys = []string{
 	"description", "detail", "summary", "caption", "body",
 }
 
+// execSummaryPointKeys are the keys execSummaryPoints reads from a point entry:
+// the bold conclusion and its supporting sentence, plus the aliases the field
+// actually accepts (go-slide-creator-ku6t).
+var execSummaryPointKeys = []string{
+	"lead", "point", "statement", "title", "headline", "text",
+	"support", "detail", "description", "evidence", "body",
+}
+
 // kpiItemKeys are the keys kpiCells reads from a KPI entry.
 var kpiItemKeys = []string{"value", "big", "label", "small", "caption", "delta", "sub", "trend", "change"}
 
@@ -107,10 +115,17 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"subtitle": strField("Optional subtitle (not rendered on shipped section layouts)."),
 	}, universalFields()),
 	KindExecutiveSummary: withFields(map[string]payloadField{
-		"title":     strField("Slide title."),
-		"points":    textList("Body bullets (3–5 recommended)."),
-		"takeaways": textList("Alias for points (body bullets)."),
-		"takeaway":  strField("One-line takeaway footer."),
+		"title": strField("Slide title."),
+		"points": {
+			typ: "array", itemStrings: true, itemKeys: execSummaryPointKeys,
+			desc: "3–5 key messages, most important first. A string is the conclusion alone; {lead, support} adds the evidence sentence under it. Outside 3–5 the slide degrades to bullets.",
+		},
+		"takeaways": {
+			typ: "array", itemStrings: true, itemKeys: execSummaryPointKeys,
+			desc: "Alias for points.",
+		},
+		"bottom_line": strField("Optional recommendation / ask rendered as a tinted bar under the points."),
+		"takeaway":    strField("One-line takeaway footer."),
 	}, universalFields()),
 	KindKPISnapshot: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

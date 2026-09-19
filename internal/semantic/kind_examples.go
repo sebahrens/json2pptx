@@ -15,11 +15,12 @@ var kindExamples = map[SlideKind]map[string]any{
 		"kind":  "executive_summary",
 		"title": "Growth is on plan; retention needs a fix",
 		"points": []any{
-			"Revenue grew 41% year over year to $48M.",
-			"Enterprise now drives 55% of new bookings.",
-			"SMB churn rose to 3.1% monthly and is the main risk.",
+			map[string]any{"lead": "Growth is ahead of plan.", "support": "Revenue grew 41% year over year to $48M, against a 30% plan."},
+			map[string]any{"lead": "Enterprise is carrying the mix.", "support": "It now drives 55% of new bookings, up from 38% last year."},
+			map[string]any{"lead": "SMB retention is the one real risk.", "support": "Monthly churn rose to 3.1%, concentrated in the sub-50-seat tier."},
 		},
-		"takeaway": "Protect SMB retention to keep the growth plan on track.",
+		"bottom_line": "Fund an SMB retention pod in Q3 and hold the enterprise motion as is.",
+		"takeaway":    "Protect SMB retention to keep the growth plan on track.",
 	},
 	KindKPISnapshot: {
 		"kind":  "kpi_snapshot",

@@ -18,24 +18,34 @@
       ]
     },
     {
+      "layout_id": "blank-title",
       "slide_type": "content",
       "content": [
         {
           "placeholder_id": "title",
           "type": "text",
           "text_value": "The Opportunity"
-        },
-        {
-          "placeholder_id": "body",
-          "type": "bullets",
-          "bullets_value": [
-            "Operations teams export the same reports by hand every week.",
-            "Decisions wait days for analysts who are already over capacity.",
-            "Competitors using real-time signals are reacting twice as fast.",
-            "The raw data already exists; nothing turns it into a decision."
-          ]
         }
       ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {
+              "lead": "Operations teams export the same reports by hand every week."
+            },
+            {
+              "lead": "Decisions wait days for analysts who are already over capacity."
+            },
+            {
+              "lead": "Competitors using real-time signals are reacting twice as fast."
+            },
+            {
+              "lead": "The raw data already exists; nothing turns it into a decision."
+            }
+          ]
+        }
+      },
       "takeaway": "Your teams are data-rich but decision-poor — and the gap is widening."
     },
     {

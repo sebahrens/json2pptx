@@ -181,10 +181,8 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 	KindTitle:   {role: RoleOpening, family: FamilyStructural, density: DensityLight, layout: "title"},
 	KindSection: {role: RoleTransition, family: FamilyStructural, density: DensityLight, layout: "section"},
 	KindExecutiveSummary: {
-		// The MVP compiles an executive summary to a content slide (title + bullet
-		// points), not a named pattern, so the plan advertises a layout only — the
-		// explain projection must match what compile emits (explain/compile parity).
-		role: RoleSummary, family: FamilyText, density: DensityMedium, layout: "content",
+		role: RoleSummary, family: FamilyText, density: DensityMedium, layout: "blank-title",
+		pattern: execSummaryPattern,
 	},
 	KindKPISnapshot: {
 		role: RoleEvidence, family: FamilyKPI, density: DensityMedium, layout: "blank-title",
@@ -227,6 +225,17 @@ var passthroughPlan = kindPlan{role: RolePassthrough, family: FamilyRaw, density
 func comparisonPattern(body map[string]any) string {
 	if slides.ComparisonPatternFeasible(body) {
 		return "comparison-2col"
+	}
+	return ""
+}
+
+// execSummaryPattern advertises exec-summary only when the payload will actually
+// compile to it (3–5 points within the pattern's char budgets); otherwise it
+// returns "" so the explain projection matches compile's bullet fallback rather
+// than promising a visual the renderer will not emit (go-slide-creator-ku6t).
+func execSummaryPattern(body map[string]any) string {
+	if slides.ExecSummaryPatternFeasible(body) {
+		return "exec-summary"
 	}
 	return ""
 }

@@ -91,7 +91,7 @@ func (k shapeKind) label() string {
 var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	KindTitle:            {"title": shapeString, "subtitle": shapeString, "eyebrow": shapeString},
 	KindSection:          {"title": shapeString, "subtitle": shapeString},
-	KindExecutiveSummary: {"title": shapeString, "points": shapeArray, "takeaways": shapeArray, "takeaway": shapeString},
+	KindExecutiveSummary: {"title": shapeString, "points": shapeArray, "takeaways": shapeArray, "takeaway": shapeString, "bottom_line": shapeString},
 	KindKPISnapshot:      {"title": shapeString, "kpis": shapeArray, "metrics": shapeArray, "takeaway": shapeString},
 	KindChartInsight:     {"title": shapeString, "chart": shapeObject, "insights": shapeArray, "insight": shapeString, "source": shapeString, "takeaway": shapeString},
 	KindComparison:       {"title": shapeString, "columns": shapeArray, "takeaway": shapeString},
@@ -396,9 +396,16 @@ func validateFieldShapes(path string, slide SlideSpec, s *semDiags) {
 func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 	switch slide.Kind {
 	case KindExecutiveSummary:
-		if n, ok := listLen(slide.Body, "points"); ok && (n < 3 || n > 5) {
-			s.advisory(path+".points", diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("executive summary has %d points; 3–5 is recommended", n))
+		// The count rule and the visual are the same rule: 3–5 points render as
+		// the exec-summary pattern (numbered conclusions with supporting lines),
+		// anything else degrades to a bullet list. Say which one the author is
+		// getting rather than only that the count is off (go-slide-creator-ku6t).
+		if n, ok := execSummaryPointCount(slide.Body); ok && (n < 3 || n > 5) {
+			s.advisory(path+"."+execSummaryPointsPath(slide.Body), diagnostics.CodeSemanticDensity,
+				fmt.Sprintf("executive summary has %d points; exec-summary renders 3–5 as numbered conclusions (otherwise it degrades to a bullet list)", n))
+		} else if ok && !slides.ExecSummaryPatternFeasible(slide.Body) {
+			s.advisory(path+"."+execSummaryPointsPath(slide.Body), diagnostics.CodeSemanticDensity,
+				"executive summary points exceed the exec-summary text budgets (lead ≤90 chars, support ≤200); shorten them or the slide degrades to a bullet list")
 		}
 	case KindKPISnapshot:
 		// Count KPIs the compiler can actually render, not raw list entries: a
@@ -732,4 +739,22 @@ func mapParseCode(code string) string {
 	default:
 		return diagnostics.CodeInvalidParameter
 	}
+}
+
+// execSummaryPointCount counts the executive-summary points in whichever field
+// carries them, so the density rule reads the same list the compiler does.
+func execSummaryPointCount(body map[string]any) (int, bool) {
+	if n, ok := listLen(body, "points"); ok {
+		return n, true
+	}
+	return listLen(body, "takeaways")
+}
+
+// execSummaryPointsPath names the field the points came from, so the finding
+// addresses what the author actually wrote.
+func execSummaryPointsPath(body map[string]any) string {
+	if _, ok := listLen(body, "points"); ok {
+		return "points"
+	}
+	return "takeaways"
 }

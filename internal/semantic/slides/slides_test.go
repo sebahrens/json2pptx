@@ -138,8 +138,10 @@ func TestCompileExecutiveSummary(t *testing.T) {
 }
 
 func TestCompileExecutiveSummaryTakeaways(t *testing.T) {
-	// Regression: the plural "takeaways" array is the body content and must be
-	// compiled into a bullets block, not silently dropped (go-slide-creator-weyf).
+	// Regression: the plural "takeaways" array is the body content and must not
+	// be silently dropped (go-slide-creator-weyf). Since go-slide-creator-ku6t a
+	// 3–5 entry array compiles to the exec-summary pattern rather than bullets,
+	// so the assertion is that its content reaches the pattern's points.
 	in := Input{
 		Title:    "Summary",
 		Takeaway: "We should ship",
@@ -151,13 +153,22 @@ func TestCompileExecutiveSummaryTakeaways(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CompileExecutiveSummary: %v", err)
 	}
-	if len(slide.Content) != 2 {
-		t.Fatalf("Content len = %d, want 2 (title + takeaways bullets)", len(slide.Content))
+	if slide.Pattern == nil || slide.Pattern.Name != "exec-summary" {
+		t.Fatalf("pattern = %+v, want exec-summary", slide.Pattern)
 	}
-	if slide.Content[1].BulletsValue == nil || len(*slide.Content[1].BulletsValue) != 4 {
-		t.Errorf("takeaways not rendered as bullets: %+v", slide.Content[1])
+	var values execSummaryValues
+	if jerr := json.Unmarshal(slide.Pattern.Values, &values); jerr != nil {
+		t.Fatalf("unmarshal pattern values: %v", jerr)
 	}
-	assertHasLink(t, links, in.semSlide()+".takeaways")
+	if len(values.Points) != 4 {
+		t.Fatalf("points = %d, want 4", len(values.Points))
+	}
+	for i, want := range []string{"finding a", "finding b", "finding c", "finding d"} {
+		if values.Points[i].Lead != want {
+			t.Errorf("points[%d].lead = %q, want %q", i, values.Points[i].Lead, want)
+		}
+	}
+	assertHasLink(t, links, in.semSlide()+".takeaways[0]")
 }
 
 func TestCompileDecision_RecommendationAndOptions(t *testing.T) {

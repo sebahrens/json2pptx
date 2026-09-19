@@ -138,7 +138,9 @@ func TestCompileQBR_SourceMapCoverage(t *testing.T) {
 		want string
 	}{
 		{"slides[0].content[0].text_value", "slides[0].title"},
-		{"slides[1].content[1].bullets_value", "slides[1].points"},
+		// go-slide-creator-ku6t: an executive summary of 3–5 points compiles to
+		// the exec-summary pattern, so its content is mapped per point.
+		{"slides[1].pattern.values.points[0]", "slides[1].points[0]"},
 		{"slides[2].pattern.values[0]", "slides[2].kpis[0]"},
 		{"slides[3].pattern.values.chart", "slides[3].chart"},
 		{"slides[3].pattern.values.insights", "slides[3].insights"},

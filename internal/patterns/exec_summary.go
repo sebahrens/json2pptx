@@ -37,6 +37,10 @@ func init() {
 
 type execSummary struct{}
 
+// execSummaryBottomLineLabel is the flag's caption. Set in caps because it is a
+// label, not a sentence — the statement next to it carries the words.
+const execSummaryBottomLineLabel = "BOTTOM LINE"
+
 // Pattern budgets.
 const (
 	execSummaryMinPoints     = 3
@@ -50,6 +54,12 @@ const (
 	execSummaryColGapPt   = 12.0
 	execSummaryRowGapPt   = 7.0
 	execSummaryRulePt     = 0.75
+	// execSummaryFlagColPct is the width of the "BOTTOM LINE" flag, wide enough
+	// for the label at the support size without crowding the statement.
+	execSummaryFlagColPct = 20.0
+	// execSummaryFlagGapPt is the gap between the flag's point and the statement
+	// box — small, so the two read as one callout.
+	execSummaryFlagGapPt  = 4.0
 	execSummaryMinFillPct = 62.0 // pad rows until the grid covers this share of the content height
 	execSummaryMaxPad     = 1.6  // … but never beyond this multiple of a row's natural height
 )
@@ -294,26 +304,28 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	if bottomPt > 0 {
-		tone := inactiveTintTone(baseAccent)
-		text := chartInsightsText{
-			Paragraphs: []chartInsightsParagraph{{
-				Content: "<b>Bottom line:</b> " + pptx.ConvertMarkdownEmphasis(vals.BottomLine),
-				Size:    supportSize + 1,
-				Color:   readableTextOn(ctx, tone, "dk1"),
-				Align:   "l",
-			}},
-			Align:         "l",
-			VerticalAlign: "ctr",
-		}
-		textJSON, _ := json.Marshal(text)
-		rows = append(rows, jsonschema.GridRowInput{
-			MinHeight: bottomPt, MaxHeight: bottomPt,
-			Cells: []*jsonschema.GridCellInput{{
-				ColSpan:   len(cols),
-				Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: tone.fillJSON(), Text: textJSON},
-				AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: baseAccent, Width: 4},
-			}},
-		})
+		// The ask is a labelled callout, not a fourth pale band. A full-width
+		// tinted rectangle with a left stripe read as a near-twin of the
+		// generator's takeaway band sitting right below it — two similar pale
+		// rectangles stacked, neither one reading as the conclusion. It is now a
+		// rule that closes the list, a saturated accent flag whose point aims
+		// into the statement, and the statement in its own tinted box.
+		rows = append(rows,
+			jsonschema.GridRowInput{
+				MinHeight: execSummaryRulePt, MaxHeight: execSummaryRulePt,
+				Cells: []*jsonschema.GridCellInput{{
+					ColSpan: len(cols),
+					Shape:   &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: ruleFill},
+				}},
+			},
+			jsonschema.GridRowInput{
+				MinHeight: bottomPt, MaxHeight: bottomPt,
+				Cells: []*jsonschema.GridCellInput{{
+					ColSpan: len(cols),
+					Grid:    execSummaryBottomLine(ctx, vals.BottomLine, baseAccent, supportSize+1),
+				}},
+			},
+		)
 	}
 
 	colsJSON, _ := json.Marshal(cols)
@@ -324,6 +336,56 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		Rows:    rows,
 	}
 	return grid, nil
+}
+
+// execSummaryBottomLine renders the ask as a pointing accent flag followed by
+// the statement in a tinted box. The flag is a homePlate — a pentagon whose
+// point aims right, into the text it introduces — so the callout reads as one
+// object with a direction, rather than as another horizontal band.
+func execSummaryBottomLine(ctx ExpandContext, bottomLine, accent string, sizePt float64) *jsonschema.ShapeGridInput {
+	flagText, _ := json.Marshal(chartInsightsText{
+		Paragraphs: []chartInsightsParagraph{{
+			Content: execSummaryBottomLineLabel,
+			Size:    sizePt - 2,
+			Bold:    true,
+			Color:   readableTextOn(ctx, fillTone{Color: accent}, "lt1"),
+			Align:   "ctr",
+		}},
+		Align:         "ctr",
+		VerticalAlign: "ctr",
+	})
+
+	tone := inactiveTintTone(accent)
+	statementText, _ := json.Marshal(chartInsightsText{
+		Paragraphs: []chartInsightsParagraph{{
+			Content: pptx.ConvertMarkdownEmphasis(bottomLine),
+			Size:    sizePt,
+			Color:   readableTextOn(ctx, tone, "dk1"),
+			Align:   "l",
+		}},
+		Align:         "l",
+		VerticalAlign: "ctr",
+	})
+
+	colsJSON, _ := json.Marshal([]float64{execSummaryFlagColPct, 100 - execSummaryFlagColPct})
+	return &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(colsJSON),
+		ColGap:  execSummaryFlagGapPt,
+		Rows: []jsonschema.GridRowInput{{
+			Cells: []*jsonschema.GridCellInput{
+				{Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "homePlate",
+					Fill:     json.RawMessage(strconv.Quote(accent)),
+					Text:     flagText,
+				}},
+				{Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     tone.fillJSON(),
+					Text:     statementText,
+				}},
+			},
+		}},
+	}
 }
 
 // execSummaryTextCell builds an unfilled text cell.

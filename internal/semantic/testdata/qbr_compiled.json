@@ -18,24 +18,34 @@
       ]
     },
     {
+      "layout_id": "blank-title",
       "slide_type": "content",
       "content": [
         {
           "placeholder_id": "title",
           "type": "text",
           "text_value": "Where We Stand"
-        },
-        {
-          "placeholder_id": "body",
-          "type": "bullets",
-          "bullets_value": [
-            "Revenue grew 18% quarter-over-quarter, ahead of the 12% plan.",
-            "Net revenue retention held at 118%, driven by enterprise expansion.",
-            "Logo churn ticked up to 2.4%, concentrated in the SMB segment.",
-            "Sales cycle shortened to 41 days after the onboarding redesign."
-          ]
         }
       ],
+      "pattern": {
+        "name": "exec-summary",
+        "values": {
+          "points": [
+            {
+              "lead": "Revenue grew 18% quarter-over-quarter, ahead of the 12% plan."
+            },
+            {
+              "lead": "Net revenue retention held at 118%, driven by enterprise expansion."
+            },
+            {
+              "lead": "Logo churn ticked up to 2.4%, concentrated in the SMB segment."
+            },
+            {
+              "lead": "Sales cycle shortened to 41 days after the onboarding redesign."
+            }
+          ]
+        }
+      },
       "takeaway": "Strong top-line growth, but retention needs deliberate investment in H2."
     },
     {

@@ -8,6 +8,31 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`executive_summary` renders the exec-summary pattern (go-slide-creator-ku6t).**
+  The kind ALWAYS compiled to a bullet list, so the exec-summary pattern shipped
+  in round 1 (go-slide-creator-ycbn) was unreachable from the recommended
+  authoring path — the deck's most important slide was the flattest one on it.
+  - `points` now accepts `{lead, support}` objects as well as strings (aliases
+    `point`/`statement`/`title`/`headline`/`text` for the lead,
+    `detail`/`description`/`evidence`/`body` for the support). 3–5 points
+    compile to the `exec-summary` pattern: numbered bold conclusions, each with
+    its supporting sentence, separated by rules.
+  - **`bottom_line`** is a new payload field — the recommendation / ask. In the
+    bullet fallback it rides as the last bullet rather than being dropped.
+  - The `exec-summary` pattern's bottom line was **redesigned**: it was a
+    full-width tinted rectangle with a left stripe, which read as a near-twin of
+    the generator's takeaway band sitting right below it — two similar pale
+    rectangles stacked, neither reading as the conclusion. It is now a rule that
+    closes the point list, a saturated accent flag (a `homePlate` labelled
+    BOTTOM LINE, its point aimed into the text) and the statement in its own
+    tinted box.
+  - Any other point count, or a point past the pattern's budgets (`lead` ≤90
+    chars, `support` ≤200), degrades to the bullet list as before —
+    never silently: `validate_deck_spec` reports `SEMANTIC_DENSITY` at
+    `slides[i].points` naming the degradation, and the explain projection
+    advertises `pattern: "exec-summary"` only when the visual is what the
+    render will actually produce.
+
 - **Bring-your-own template: `template_path` on every tool that takes a
   template (go-slide-creator-ydbk).** A template reached the engine only by
   NAME, looked up in the server's templates dir and the embedded set, so an

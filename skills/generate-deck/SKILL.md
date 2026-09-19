@@ -77,7 +77,9 @@ meta:
   chrome: {confidentiality: "Strictly confidential", client_name: "Acme Corp",
            page_numbers: {format: "{current} / {total}", skip: [title]}}
 slides:
-  - {kind: executive_summary, title: "Where we stand", points: [...], takeaway: "...",
+  - {kind: executive_summary, title: "Where we stand",
+     points: [{lead: "Growth is ahead of plan.", support: "Revenue grew 41% to $48M."}, ...],
+     bottom_line: "Fund an SMB retention pod in Q3.", takeaway: "...",
      notes: "Pause for questions on churn.", source: "Finance close pack, 30 Sep 2026"}
 ```
 
@@ -106,7 +108,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 |---|---|---|---|
 | `title` | `title` | `subtitle`, `eyebrow` | — |
 | `section` | `title` | `subtitle` | — |
-| `executive_summary` | `title` | `points` (body bullets), `takeaway` (footer one-liner) | — |
+| `executive_summary` | `title` | `points` (3–5 → `exec-summary` visual; any other count → bullet list), `bottom_line` (the ask, as a labelled callout), `takeaway` (footer one-liner) | each point: string (the conclusion alone) or `{lead, support?}` (`lead` ≤90 chars, `support` ≤200) |
 | `kpi_snapshot` | `kpis` (2–6 → cards) | `title`, `takeaway` | each KPI: `{value, label, delta?}` (`delta` ≤12 chars, e.g. `"+5%"`, renders a small annotation; aliases `sub`/`trend`/`change`) |
 | `chart_insight` | `chart` | `insights[]` (1–6 → chart+insights visual; >6 → native `two-column` chart + full insight list), `title`, `source`, `takeaway` | chart: `{type, data, title?}`; `data` = `{categories:[…], series:[{name, values:[…]}]}` (bar/line/area) or `{categories:[…], values:[…]}` (pie/donut) — a missing/malformed `data` yields `SEMANTIC_DENSITY` at `slides[i].chart.data` with `fix.params.{expected_shape, example}` |
 | `comparison` | `columns` (exactly 2, balanced, ≤10 rows each → visual) | `title`, `takeaway` | each column: `{header, items[]}` *(or `{header, pros[], cons[]}`)* |
@@ -116,9 +118,18 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `closing` | `title` | `subtitle`, `bullets[]`/`points[]` (renders a content slide) | — |
 | `raw_json2pptx` | `slide` | — | a raw `PresentationInput` slide, structurally validated then passed through (see note) |
 
-> **`executive_summary` body vs footer:** body bullets come from `points` (preferred) **or**
+> **`executive_summary` body vs footer:** body points come from `points` (preferred) **or**
 > `takeaways` (plural array); `takeaway` (singular string) is the one-line footer insight — distinct
 > from the `takeaways` body array.
+>
+> **`executive_summary` renders the `exec-summary` pattern** at 3–5 points: numbered bold
+> conclusions, each with its supporting sentence, separated by rules, over an optional
+> `bottom_line` callout. Write each point as `{lead, support}` — `lead` is the conclusion
+> (answer-first), `support` the one sentence of evidence. A bare string is the conclusion with no
+> support line. Outside 3–5 points, or past the char budgets (`lead` ≤90, `support` ≤200), the
+> slide degrades to a bullet list and `validate_deck_spec` says so with `SEMANTIC_DENSITY` at
+> `slides[i].points`; `explain_deck_spec` / `render_deck_spec`'s `explanation_summary` reports
+> `pattern: "exec-summary"` only when the visual is what you will actually get.
 >
 > **Compiler-accepted aliases** (resilience only — prefer the canonical names above): `kpi_snapshot`
 > `kpis`↔`metrics` with `{value↔big, label↔small/caption, delta/trend/change↔sub}` (a **blessed required-one-of alias**: a
@@ -827,7 +838,7 @@ For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, two-column c
 
 **Chart so-what.** `chart-insights-split` also takes `headline` `{value, label}` (big accent number above the insights), `so_what` (tinted callout under them), `unit` / `chart_label` (caption above the chart — defaults to the single series name + unit, e.g. `Revenue ($M)`, because single-series charts show no legend) and adds value labels to bar charts (≤16 points) and single-series line/area charts (≤12 points) by default (`overrides.data_labels` true/false forces it). Lead with the number, end with the implication.
 
-**Content-sized narrative / evaluation patterns.** `exec-summary` states 3–5 bold lead-in conclusions (`points[].lead` ≤90 chars) each with one supporting sentence (`support` ≤200 chars), separated by thin rules, plus an optional tinted `bottom_line` bar — use it for answer-first key-message slides; keep `scqa-summary` for an explicit Situation / Complication / Questions / Answer arc. Rows are sized from the measured text (the type scale steps down 17/14 → 14/12pt before anything would shrink below 12pt), so short summaries stay compact instead of stretching to the full slide. `table-highlight` is the options × criteria evaluation matrix: `criteria` (2–6, strings or `{label, scale}`), `options` (2–6 × `{name, detail?, scores[]}` with one score per criterion), `scale` `harvey` (0–4 or `none`/`quarter`/`half`/`three-quarter`/`full`) | `rag` (`red`/`amber`/`green`, `r`/`a`/`g`) | `text` (≤24 chars), `"-"` for n/a. Set `highlight_row` (+ optional `highlight_label`, e.g. `"Recommended"`) on the recommended option and `highlight_col` on the decisive criterion; a legend row explains the symbols (`legend_labels` [high, mid, low], `show_legend:false` to drop it). `image-text-split` puts one picture beside a text column: `image` `{path | url, alt}` (relative paths resolve against the deck JSON directory, URLs are fetched and cached — same as shape_grid image cells), optional `caption`, `eyebrow` (e.g. `"Case study"`), `heading`, `body` (≤300 chars) and/or ≤5 `bullets`, plus 0–3 `metrics` `{value, label}` under the text; `overrides.image_side` (`left`/`right`), `image_width_pct` (30–60). The picture is cover-cropped to its panel (no distortion); without an `image` the pattern draws a dashed placeholder labelled with `image_label` — replace it before shipping.
+**Content-sized narrative / evaluation patterns.** `exec-summary` states 3–5 bold lead-in conclusions (`points[].lead` ≤90 chars) each with one supporting sentence (`support` ≤200 chars), separated by thin rules, plus an optional `bottom_line` ask below a closing rule — a pointing accent flag labelled BOTTOM LINE followed by the statement in a tinted box, so the conclusion does not read as another pale band — use it for answer-first key-message slides; keep `scqa-summary` for an explicit Situation / Complication / Questions / Answer arc. Rows are sized from the measured text (the type scale steps down 17/14 → 14/12pt before anything would shrink below 12pt), so short summaries stay compact instead of stretching to the full slide. `table-highlight` is the options × criteria evaluation matrix: `criteria` (2–6, strings or `{label, scale}`), `options` (2–6 × `{name, detail?, scores[]}` with one score per criterion), `scale` `harvey` (0–4 or `none`/`quarter`/`half`/`three-quarter`/`full`) | `rag` (`red`/`amber`/`green`, `r`/`a`/`g`) | `text` (≤24 chars), `"-"` for n/a. Set `highlight_row` (+ optional `highlight_label`, e.g. `"Recommended"`) on the recommended option and `highlight_col` on the decisive criterion; a legend row explains the symbols (`legend_labels` [high, mid, low], `show_legend:false` to drop it). `image-text-split` puts one picture beside a text column: `image` `{path | url, alt}` (relative paths resolve against the deck JSON directory, URLs are fetched and cached — same as shape_grid image cells), optional `caption`, `eyebrow` (e.g. `"Case study"`), `heading`, `body` (≤300 chars) and/or ≤5 `bullets`, plus 0–3 `metrics` `{value, label}` under the text; `overrides.image_side` (`left`/`right`), `image_width_pct` (30–60). The picture is cover-cropped to its panel (no distortion); without an `image` the pattern draws a dashed placeholder labelled with `image_label` — replace it before shipping.
 
 **Tip — chart + narrative on the same slide.** `chart-insights-split` is the canonical "data on the left, interpretation on the right" consulting layout: pass a `chart` (any `types.DiagramSpec` shape, or the `{label: value}` shorthand `chart_value` accepts — e.g. `{"type": "bar", "data": {"Q1": 12, "Q2": 14}}`, normalized to `categories`/`series` in key order) plus 1–6 `insights` bullets. `validate_input` expands the pattern and runs the same svggen check `generate_presentation` does: a chart generate would reject is an error diagnostic plus a `diagram_render_failed` fit finding with `action: refuse`. If you ship the pattern without a `chart`, the engine renders insights full-width and emits `CHART_PLACEHOLDER_EMPTY` (`action: review`) so you know the panel collapsed — supply a chart or swap to an insights-only pattern.
 
