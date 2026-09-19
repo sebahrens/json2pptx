@@ -10,10 +10,10 @@ package slides
 // that would otherwise be silently dropped, and so density-range advisories
 // reflect the count compile will actually render.
 
-// UsableStepCount returns the number of process-flow steps that survive
-// extraction (CompileProcess via processSteps); blank or labelless entries are
+// UsableStepCount returns the number of process steps that survive extraction
+// (CompileProcess via ProcessStepDetails); blank or labelless entries are
 // dropped.
-func UsableStepCount(body map[string]any) int { return len(processSteps(body)) }
+func UsableStepCount(body map[string]any) int { return len(ProcessStepDetails(body)) }
 
 // UsablePhaseCount returns the number of roadmap phases that survive extraction
 // (CompileRoadmap via roadmapPhases); blank or nameless entries are dropped.

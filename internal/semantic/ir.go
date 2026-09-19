@@ -256,7 +256,7 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
-		pattern: func(map[string]any) string { return "process-flow" },
+		pattern: processPattern,
 	},
 	KindRoadmap: {
 		role: RolePlan, family: FamilyTimeline, density: DensityMedium, layout: "blank-title",
@@ -372,6 +372,13 @@ func imageCasePattern(body map[string]any) string {
 // compile to, or "" for the content slide (go-slide-creator-4ndv).
 func decisionPattern(body map[string]any) string {
 	return slides.DecisionPattern(body)
+}
+
+// processPattern advertises the visual the steps will actually compile to: the
+// numbered strip when they carry descriptions, the flow diagram when they
+// branch or are bare labels (go-slide-creator-61up).
+func processPattern(body map[string]any) string {
+	return slides.ProcessPattern(body)
 }
 
 // agendaPattern advertises the agenda pattern the payload will actually
@@ -584,7 +591,11 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			{Layout: "content", Reason: "a content slide preserves a longer story than the column holds"},
 		}
 	case KindProcess:
-		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}
+		return []CompositionCandidate{
+			visual("numbered-step-strip", "3-6 steps that each carry a description, as numbered rows"),
+			visual("process-flow", "3-8 bare or branching steps as a flow diagram"),
+			{Layout: "content", Reason: "native bullets preserve shorter or longer processes"},
+		}
 	case KindRoadmap:
 		return []CompositionCandidate{visual("phase-roadmap", "3-6 phases"), {Layout: "content", Reason: "native bullets preserve dense roadmaps"}}
 	default:

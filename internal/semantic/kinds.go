@@ -191,7 +191,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindProcess: {
 		Kind:           KindProcess,
-		Summary:        "Sequential process or flow with ordered steps.",
+		Summary:        "Sequential process or flow with ordered steps. Steps that carry a description render as numbered rows (3–6), each a bold label over its own detail line; bare labels and branching steps (type: decision) render as the flow diagram (3–8).",
 		RequiredFields: []string{"steps"},
 		TypicalFields:  []string{"title", "takeaway"},
 	},

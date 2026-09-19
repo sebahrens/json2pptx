@@ -638,9 +638,13 @@ func validateDecision(path string, slide SlideSpec, s *semDiags) {
 // dropped), so a process of all-blank steps fails fast instead of compiling to
 // a title-only slide, and the 3–8 process-flow range reflects real content.
 func validateProcess(path string, slide SlideSpec, s *semDiags) {
-	if n := slides.UsableStepCount(slide.Body); s.requireUsableContent(path, "steps", slide.Body, n) && (n < 3 || n > 8) {
+	n := slides.UsableStepCount(slide.Body)
+	if !s.requireUsableContent(path, "steps", slide.Body, n) {
+		return
+	}
+	if over := slides.ProcessOverBudget(slide.Body); over != "" {
 		s.advisory(path+".steps", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("process has %d usable steps; 3–8 render as a process-flow visual (otherwise it degrades to a bullet list)", n))
+			fmt.Sprintf("process %s (otherwise it degrades to a bullet list)", over))
 	}
 }
 

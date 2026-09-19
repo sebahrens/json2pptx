@@ -373,6 +373,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`process` stops flattening a step's description into its label
+  (go-slide-creator-61up).** `{label, description}` was concatenated into
+  `"Approve — Board approves tranche 1"` and fed to `process-flow`, whose boxes
+  centre that one string at ~9pt reversed out of solid accent: four identical
+  blocks in a thin band, no step numbers, and the label and the detail
+  indistinguishable.
+  - Steps that carry a **description** now compile to **numbered-step-strip** —
+    numbered rows, a bold label over its own detail line — in `stacked-box`
+    style for 3–4 steps and `chevron` for 5–6.
+  - **Bare labels and branching steps** (`type: "decision"`) keep
+    `process-flow`: the diamonds are the reason that pattern exists. A
+    description on a branching step is still appended to the label, because a
+    flow box has nowhere else to put one, and losing it would be worse.
+  - Outside both (fewer than 3 steps, more than 8, or a label past its budget)
+    it degrades to bullets and `SEMANTIC_DENSITY` names the bound.
+
 - **`decision` compiles to a visual (go-slide-creator-4ndv).** The ask is the
   slide a board deck exists for, and `kind: decision` compiled to a bold
   paragraph over a column of dashes — the plainest page in the deck.

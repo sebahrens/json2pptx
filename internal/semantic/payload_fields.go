@@ -370,7 +370,13 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
-		"steps":    {typ: "array", desc: "3–8 steps: strings or {label, description?, type?}.", itemStrings: true, itemKeys: processStepKeys},
+		"steps": {
+			typ: "array",
+			desc: "Steps: strings or {label, description?, type?}. A step with a description renders as a numbered row (3–6 steps; label ≤60 chars, description ≤180); " +
+				"bare labels and branching steps (type: decision) render as the flow diagram (3–8 steps, ≤80 chars per box — a description there is appended to the label).",
+			itemStrings: true,
+			itemKeys:    processStepKeys,
+		},
 	}, compositionFields()), universalFields()),
 	KindRoadmap: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

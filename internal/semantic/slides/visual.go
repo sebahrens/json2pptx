@@ -313,47 +313,126 @@ type processFlowValues struct {
 	Steps []processFlowStep `json:"steps"`
 }
 
-// CompileProcess compiles a process slide. With 3–8 labelled steps it emits the
-// process-flow pattern the planner advertises; otherwise it degrades to a
-// content slide listing the steps, so the deck still compiles.
+// CompileProcess compiles a process slide. Steps that carry a description take
+// the numbered step strip, which has a place to put one; bare labels and
+// branching processes take process-flow. Outside both it degrades to a content
+// slide listing the steps, so the deck still compiles.
 func CompileProcess(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	steps := processSteps(in.Body)
-	if len(steps) < 3 || len(steps) > 8 {
+	steps := ProcessStepDetails(in.Body)
+	switch ProcessPattern(in.Body) {
+	case "numbered-step-strip":
+		return compileProcessStrip(in, steps)
+	case "process-flow":
+		return compileProcessFlow(in, steps)
+	default:
 		return compileStepBulletsFallback(in)
 	}
+}
 
-	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
-	var links []SourceLink
-	links = append(links, titleLink(slide, in)...)
+// compileProcessStrip emits the numbered rows, each a bold label over its own
+// detail line. The label and the description used to be concatenated into one
+// string and centred in a process-flow box at ~9pt reversed out of solid accent
+// (go-slide-creator-61up).
+func compileProcessStrip(in Input, steps []processStepDetail) (*deckinput.SlideInput, []SourceLink, error) {
+	strip := make([]numberedStep, 0, len(steps))
+	for _, st := range steps {
+		strip = append(strip, numberedStep{Label: st.Label, Body: st.Description})
+	}
+	// Four stacked boxes read as a list; five or six as a run, which is what the
+	// chevron style is for.
+	style := "stacked-box"
+	if len(strip) >= 5 {
+		style = "chevron"
+	}
+	encoded, err := json.Marshal(numberedStepStripValues{Style: style, Steps: strip})
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal numbered-step-strip values: %w", err)
+	}
+	return processPatternSlide(in, "numbered-step-strip", encoded)
+}
 
-	encoded, err := json.Marshal(processFlowValues{Steps: steps})
+// compileProcessFlow emits the flow boxes. process-flow has no detail zone, so
+// a step that carries a description keeps it appended to the label rather than
+// losing it — that only happens on the branching path, where the diamonds are
+// the reason to be here at all.
+func compileProcessFlow(in Input, steps []processStepDetail) (*deckinput.SlideInput, []SourceLink, error) {
+	flow := make([]processFlowStep, 0, len(steps))
+	for _, st := range steps {
+		flow = append(flow, processFlowStep{Label: st.flowLabel(), Type: st.Type})
+	}
+	encoded, err := json.Marshal(processFlowValues{Steps: flow})
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal process-flow values: %w", err)
 	}
-	slide.Pattern = &deckinput.PatternInput{Name: "process-flow", Values: encoded}
+	return processPatternSlide(in, "process-flow", encoded)
+}
+
+// processPatternSlide assembles a process pattern slide.
+func processPatternSlide(in Input, pattern string, values json.RawMessage) (*deckinput.SlideInput, []SourceLink, error) {
+	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
+	links := titleLink(slide, in)
+	slide.Pattern = &deckinput.PatternInput{Name: pattern, Values: values}
 	links = append(links, SourceLink{
 		RawPath:      in.rawSlide() + ".pattern.values.steps",
 		SemanticPath: in.semSlide() + ".steps",
 	})
-
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
 }
 
-// processSteps extracts process-flow steps from a process payload's "steps"
-// list, accepting string entries or {title|label|name, description, type}
-// objects. Entries with no usable label are dropped.
-func processSteps(body map[string]any) []processFlowStep {
+// numberedStep is one numbered-step-strip step.
+type numberedStep struct {
+	Label string `json:"label"`
+	Body  string `json:"body,omitempty"`
+}
+
+// numberedStepStripValues is the numbered-step-strip pattern's values object.
+type numberedStepStripValues struct {
+	Style string         `json:"style,omitempty"`
+	Steps []numberedStep `json:"steps"`
+}
+
+// processStepDetail is one resolved step: what it is, what it means, and
+// whether it branches.
+type processStepDetail struct {
+	Label       string
+	Description string
+	Type        string
+}
+
+// flowLabel renders the step for a pattern with nowhere to put a description.
+func (s processStepDetail) flowLabel() string {
+	if s.Description == "" || s.Description == s.Label {
+		return s.Label
+	}
+	return s.Label + " — " + s.Description
+}
+
+const (
+	// processStripMin / processStripMax mirror numbered-step-strip's bounds,
+	// and processStripLabelMax / processStripBodyMax its text budgets.
+	processStripMin      = 3
+	processStripMax      = 6
+	processStripLabelMax = 60
+	processStripBodyMax  = 180
+	processFlowMin       = 3
+	processFlowMax       = 8
+	processFlowLabelMax  = 80
+)
+
+// ProcessStepDetails resolves a process payload's steps WITHOUT flattening a
+// step's description into its label.
+func ProcessStepDetails(body map[string]any) []processStepDetail {
 	raw, ok := body["steps"].([]any)
 	if !ok {
 		return nil
 	}
-	var steps []processFlowStep
+	var steps []processStepDetail
 	for _, e := range raw {
 		switch t := e.(type) {
 		case string:
 			if s := strings.TrimSpace(t); s != "" {
-				steps = append(steps, processFlowStep{Label: s})
+				steps = append(steps, processStepDetail{Label: s})
 			}
 		case map[string]any:
 			label := firstNonEmpty(strField(t, "label"), strField(t, "title"), strField(t, "name"), strField(t, "step"), strField(t, "text"), strField(t, "description"))
@@ -361,26 +440,117 @@ func processSteps(body map[string]any) []processFlowStep {
 				continue
 			}
 			description := firstNonEmpty(strField(t, "description"), strField(t, "detail"), strField(t, "summary"))
-			if description != "" && description != label {
-				label += " — " + description
+			if description == label {
+				description = ""
 			}
-			step := processFlowStep{Label: label}
-			if typ := strField(t, "type"); typ != "" {
-				step.Type = typ
-			}
-			steps = append(steps, step)
+			steps = append(steps, processStepDetail{Label: label, Description: description, Type: strField(t, "type")})
 		}
 	}
 	return steps
 }
 
+// processBranches reports whether any step is a decision or another shape only
+// the flow diagram draws.
+func processBranches(steps []processStepDetail) bool {
+	for _, st := range steps {
+		if st.Type != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// processDescribed reports whether any step says more than its own name.
+func processDescribed(steps []processStepDetail) bool {
+	for _, st := range steps {
+		if st.Description != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// processStripFits reports whether the steps fit the numbered strip.
+func processStripFits(steps []processStepDetail) bool {
+	if len(steps) < processStripMin || len(steps) > processStripMax {
+		return false
+	}
+	for _, st := range steps {
+		if runeLen(st.Label) > processStripLabelMax || runeLen(st.Description) > processStripBodyMax {
+			return false
+		}
+	}
+	return true
+}
+
+// processFlowFits reports whether the steps fit the flow diagram.
+func processFlowFits(steps []processStepDetail) bool {
+	if len(steps) < processFlowMin || len(steps) > processFlowMax {
+		return false
+	}
+	for _, st := range steps {
+		if runeLen(st.flowLabel()) > processFlowLabelMax {
+			return false
+		}
+	}
+	return true
+}
+
+// ProcessPattern returns the pattern a process payload compiles to, or "" when
+// it degrades to bullets. A branching process belongs to the flow diagram
+// whatever else it carries — the diamonds are why it is there. Otherwise a step
+// that says more than its own name wants the strip, which has a place to put
+// it (go-slide-creator-61up).
+func ProcessPattern(body map[string]any) string {
+	steps := ProcessStepDetails(body)
+	switch {
+	case processBranches(steps) && processFlowFits(steps):
+		return "process-flow"
+	case processBranches(steps):
+		return ""
+	case processDescribed(steps) && processStripFits(steps):
+		return "numbered-step-strip"
+	case !processDescribed(steps) && processFlowFits(steps):
+		return "process-flow"
+	case processFlowFits(steps):
+		// Described, but too many steps for the strip: the flow diagram still
+		// carries every word, appended to the label.
+		return "process-flow"
+	default:
+		return ""
+	}
+}
+
+// ProcessOverBudget explains why the steps cannot take a visual, or "" when
+// they can (or when there are none).
+func ProcessOverBudget(body map[string]any) string {
+	steps := ProcessStepDetails(body)
+	if len(steps) == 0 || ProcessPattern(body) != "" {
+		return ""
+	}
+	// The count is of steps the compiler can render — blank entries are already
+	// dropped — so it says "usable" rather than echoing the raw list length.
+	if len(steps) < processFlowMin {
+		return fmt.Sprintf("has %d usable steps; a process needs at least %d", len(steps), processFlowMin)
+	}
+	if len(steps) > processFlowMax {
+		return fmt.Sprintf("has %d usable steps; the flow holds %d", len(steps), processFlowMax)
+	}
+	for i, st := range steps {
+		if runeLen(st.flowLabel()) > processFlowLabelMax {
+			return fmt.Sprintf("step %d reads %d characters with its description; a flow box holds %d", i+1, runeLen(st.flowLabel()), processFlowLabelMax)
+		}
+	}
+	return ""
+}
+
 // compileStepBulletsFallback renders process steps as "Label — description"
 // bullets on a content slide.
 func compileStepBulletsFallback(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	steps := processSteps(in.Body)
+	steps := ProcessStepDetails(in.Body)
 	bullets := make([]string, len(steps))
 	for i := range steps {
-		bullets[i] = steps[i].Label
+		bullets[i] = steps[i].flowLabel()
 	}
 	return contentFallback(in, "steps", bullets)
 }

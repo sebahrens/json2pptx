@@ -108,6 +108,22 @@ func everyKindSpec() *DeckSpec {
 					map[string]any{"title": "Review", "description": "Check fit"},
 				},
 			}},
+			// go-slide-creator-61up: bare labels keep the flow diagram, and a
+			// branching process keeps it whatever else it carries.
+			{Kind: KindProcess, Body: map[string]any{
+				"title":    "The Same, Unlabelled",
+				"takeaway": "Four clean steps.",
+				"steps":    []any{"Discover", "Build", "Review"},
+			}},
+			{Kind: KindProcess, Body: map[string]any{
+				"title":    "With A Decision",
+				"takeaway": "One branch.",
+				"steps": []any{
+					map[string]any{"title": "Draft", "description": "Write it"},
+					map[string]any{"title": "Approved?", "type": "decision"},
+					map[string]any{"title": "Ship", "description": "Send it"},
+				},
+			}},
 			{Kind: KindRoadmap, Body: map[string]any{
 				"title":    "The Plan",
 				"takeaway": "Three phases to GA.",
@@ -262,6 +278,7 @@ func TestExplainCompileParity_PatternsValidate(t *testing.T) {
 	wantPatterns := map[string]bool{
 		"kpi-4up": false, "chart-insights-split": false,
 		"comparison-2col": false, "process-flow": false, "phase-roadmap": false,
+		"numbered-step-strip": false,
 	}
 	for i := range input.Slides {
 		p := input.Slides[i].Pattern
