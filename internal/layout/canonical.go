@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -57,6 +58,26 @@ var canonicalNames = map[string]canonicalRule{
 	"image-right":            {requireTags: []string{"image-right"}},
 	"quote":                  {requireTags: []string{"quote", "statement"}},
 	"agenda":                 {requireTags: []string{"agenda"}},
+}
+
+// IsCanonicalName reports whether a name is one of the canonical LAYOUT names
+// (case-insensitive) — the template-independent ids layout_id accepts, resolved
+// per template by tag. It exists so a field that is not layout_id can tell an
+// author "that value belongs in layout_id" instead of only listing its own
+// vocabulary (go-slide-creator-ejh5u).
+func IsCanonicalName(name string) bool {
+	_, ok := canonicalNames[strings.ToLower(strings.TrimSpace(name))]
+	return ok
+}
+
+// CanonicalNames returns every canonical layout name, sorted.
+func CanonicalNames() []string {
+	out := make([]string, 0, len(canonicalNames))
+	for name := range canonicalNames {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // ResolveCanonicalLayoutID resolves a layout name to a concrete layout ID using

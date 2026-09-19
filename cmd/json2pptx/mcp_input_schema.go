@@ -208,6 +208,17 @@ var enumMap = map[string]map[string][]string{
 // reflection-derived property schema wholesale. Use for fields that need
 // discriminator-style oneOf branches or other shapes reflection cannot infer.
 var propertyOverrides = map[string]map[string]map[string]any{
+	"SlideInput": {
+		// slide_type is a HINT for layout auto-selection; layout_id PINS a
+		// layout. "closing" (and "quote", "agenda", "image-left", …) are
+		// canonical LAYOUT names, so they belong in layout_id — which the
+		// schema had no way of saying, and the UNKNOWN_ENUM only listed the
+		// nine slide types (go-slide-creator-ejh5u).
+		"slide_type": {
+			"type":        "string",
+			"description": "Hint for layout auto-selection. NOT the same vocabulary as layout_id: a canonical layout name such as \"closing\", \"quote\", \"agenda\" or \"image-left\" pins a layout and belongs in layout_id (call list_templates for the template's canonical_layout_ids). Passing one here is reported as UNKNOWN_ENUM with a rename_field fix pointing at layout_id.",
+		},
+	},
 	"PresentationInput": {
 		"slides": {
 			"type":        "array",

@@ -125,6 +125,8 @@ The `full` mode output shows normalized placeholder IDs, character limits, and E
 
 > **Important:** `layout_id` must use canonical IDs (e.g., `"title"`, `"content"`, `"section"`), not display names (e.g., `"Title Slide"`, `"One Content"`). Display names will fail to resolve.
 
+> **`layout_id` and `slide_type` are different vocabularies.** `slide_type` is a HINT for auto-selection and accepts only `title`, `content`, `section`, `two-column`, `blank`, `chart`, `diagram`, `image`, `comparison`. Canonical layout names outside that list — `closing`, `quote`, `agenda`, `image-left`, `image-right`, `blank-title`, `blank-canvas`, the two-column variants — PIN a layout and go in `layout_id`. Writing one in `slide_type` is reported as `UNKNOWN_ENUM` with a `rename_field` fix pointing at `layout_id`, which `repair_slide` can apply.
+
 ```json
 {
   "template": "midnight-blue",

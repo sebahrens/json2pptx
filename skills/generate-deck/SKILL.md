@@ -971,7 +971,7 @@ Each template entry from `list_templates` carries its real canvas: `aspect_ratio
 
 **Canonical layout taxonomy.** Discovery output (compact and full) carries the same canonical taxonomy that `examine_template` reports, so you can plan against stable roles instead of raw layout names:
 
-- `canonical_layout_ids` — canonical layout name → concrete layout ID (address layouts by intent).
+- `canonical_layout_ids` — canonical layout name → concrete layout ID (address layouts by intent). These names go in `layout_id`, NOT `slide_type`: a closing slide is `layout_id: "closing"`, and `slide_type` accepts only its own nine values (`title`, `content`, `section`, `two-column`, `blank`, `chart`, `diagram`, `image`, `comparison`). Passing a layout name as a slide_type is reported as `UNKNOWN_ENUM` with a `rename_field` fix onto `layout_id`.
 - Each `layout_summaries[]` entry carries `canonical_type` (e.g. `"Title Slide"`, `"One Content"`, `"Section Divider"`) and per-placeholder `role` (`title`, `eyebrow`, `section_number`, `body`, `image`, `chart`, …) alongside `max_chars`.
 - `canonical_coverage` — per content-bearing family (`title-slide`, `section-divider`, `one-content`, `qa-closing`): `{present, layouts[]}`. A family with `present: false` means decks needing that slide kind cannot resolve a native layout.
 - `derivable_layouts` — `[{name, ready, missing[]}]` for higher-level layouts the engine can synthesise (e.g. `two-content`, `full-image`, grid patterns). When `ready: false`, `missing` names the absent prerequisite.

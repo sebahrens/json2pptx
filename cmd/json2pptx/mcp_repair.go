@@ -2509,9 +2509,17 @@ func applyRenameField(input *PresentationInput, slideIdx int, params map[string]
 		return appliedFix{Kind: "rename_field", Applied: false, Message: fmt.Sprintf("failed to marshal slide: %v", err)}
 	}
 	if renamed, ok := renameJSONKey(slideJSON, from, to); ok {
-		if err := json.Unmarshal(renamed, slide); err != nil {
+		// Decode into a fresh slide and replace: unmarshalling onto the existing
+		// one leaves the OLD field set, because the renamed JSON no longer
+		// mentions it and encoding/json only writes what it finds. That left
+		// slide_type:"closing" sitting next to the layout_id the rename had just
+		// created, so the finding the fix was meant to clear came straight back
+		// (go-slide-creator-ejh5u).
+		var updated SlideInput
+		if err := json.Unmarshal(renamed, &updated); err != nil {
 			return appliedFix{Kind: "rename_field", Applied: false, Message: fmt.Sprintf("failed to unmarshal renamed slide: %v", err)}
 		}
+		*slide = updated
 		return appliedFix{Kind: "rename_field", Applied: true, Message: fmt.Sprintf("renamed %q to %q", from, to)}
 	}
 

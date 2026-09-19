@@ -303,6 +303,28 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`slide_type: "closing"` now says where the value belongs
+  (go-slide-creator-ejh5u).** `closing` appears in `canonical_layout_ids`, in
+  `chrome.page_numbers.skip`, as a DeckSpec kind and in `get_started`'s notes,
+  so authors write it as a `slide_type` — and got back `UNKNOWN_ENUM` listing
+  nine values that do not contain the word, with no hint that the working
+  spelling is `layout_id: "closing"` one field over. (One reviewer hard-coded
+  per-template layout ids instead.)
+  - The finding for a slide_type that is a canonical LAYOUT name now reads
+    `"closing" is a canonical LAYOUT name, not a slide_type: move it to
+    layout_id` and carries a **`rename_field`** fix (`from: slide_type`,
+    `to: layout_id`) that `repair_slide` applies mechanically. The rule is
+    general, not a `closing` special case: every canonical layout name gets it
+    (`quote`, `agenda`, `image-left`, `blank-canvas`, …), while a genuine typo
+    keeps the plain `use_one_of` error.
+  - `get_input_schema` now describes `slide_type` as the auto-selection hint it
+    is and says layout names belong in `layout_id`.
+  - `repair_slide`'s `rename_field` left the OLD field set when renaming a
+    slide-level key, because the renamed JSON was decoded onto the existing
+    slide. A renamed `slide_type` therefore sat next to the `layout_id` it had
+    just created and the finding came straight back; the slide is now replaced
+    wholesale.
+
 - **`expand_pattern` / `validate_pattern` declared `values` as an object, but
   nine patterns need an array (go-slide-creator-ldu3d).** `kpi-2up`…`kpi-6up`,
   `icon-row`, `stylish-panels` and `timeline-horizontal` take an ARRAY of cells
