@@ -116,8 +116,8 @@ func (p *processFlowCompact) Validate(values, overrides any, cellOverrides map[i
 		path := fmt.Sprintf("steps[%d].label", i)
 		if step.Label == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(step.Label) > 80 {
-			errs = append(errs, errMaxLength(name, path, 80, len(step.Label)))
+		} else if runeLen(step.Label) > 80 {
+			errs = append(errs, errMaxLength(name, path, 80, runeLen(step.Label)))
 		}
 		if step.Type != "" && step.Type != "step" && step.Type != "decision" && step.Type != "chevron" && step.Type != "arrow" {
 			errs = append(errs, newValidationError(name, fmt.Sprintf("steps[%d].type", i), ErrCodeUnknownEnum,

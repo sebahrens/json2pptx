@@ -39,7 +39,7 @@ Every pattern PR must include all of these:
   - `init()` registering via `Default().Register(&myPattern{})`
   - Typed `Values`, `Overrides`, `CellOverride` structs
   - `Schema()` returning a hand-authored JSON Schema (see below)
-  - `Validate()` using `errors.Join` aggregation
+  - `Validate()` using `errors.Join` aggregation. **Length budgets count characters, not bytes** — use `runeLen(s)` (never `len(s)`) both in the guard and in the `errMaxLength` count, because the budget is a proxy for what fits in a box and a box does not care how a character is encoded. `len("€186.4M")` is 9; the value is 7 characters and fits an 8-character budget (go-slide-creator-5ok4).
   - `Expand()` returning `*jsonschema.ShapeGridInput`
   - `CellsHint()` (part of the core `Pattern` interface)
   - `Taxonomy()` returning `PatternTaxonomy` (see below)
@@ -47,7 +47,7 @@ Every pattern PR must include all of these:
   - Metadata: `Name()`, `UseWhen()`, `NotWhen()` non-empty (D6), `Version()`
   - Taxonomy: all fields populated with valid values
   - Schema validity: marshals to valid JSON Schema draft 2020-12
-  - Validate: happy path, wrong count with sibling hint (D4), missing required fields, max length exceeded, invalid cell override keys
+  - Validate: happy path, wrong count with sibling hint (D4), missing required fields, max length exceeded (include one multi-byte value — a euro sign or an umlaut — inside the budget, so a byte count cannot creep back in), invalid cell override keys
   - Expand: default accent, accent override, cell override application
 - [ ] **Golden file** (`internal/patterns/testdata/<name>/default.golden.json`)
   - Created by running tests with `UPDATE_GOLDEN=1 go test ./internal/patterns/ -run TestMyPattern/golden`

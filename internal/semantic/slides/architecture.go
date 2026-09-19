@@ -213,12 +213,12 @@ func archStackFits(tiers []archTier, rails []string) bool {
 		return false
 	}
 	for _, t := range tiers {
-		if len([]rune(t.Label)) > archStackLabelMax || len([]rune(t.Description)) > archStackDescMax {
+		if runeLen(t.Label) > archStackLabelMax || runeLen(t.Description) > archStackDescMax {
 			return false
 		}
 	}
 	for _, r := range rails {
-		if len([]rune(r)) > archStackRailMax {
+		if runeLen(r) > archStackRailMax {
 			return false
 		}
 	}
@@ -240,15 +240,15 @@ func ArchitectureOverBudget(body map[string]any) string {
 		return fmt.Sprintf("has %d rails; arch-stack draws at most %d", len(rails), archStackMaxRails)
 	}
 	for i, t := range tiers {
-		if n := len([]rune(t.Label)); n > archStackLabelMax {
+		if n := runeLen(t.Label); n > archStackLabelMax {
 			return fmt.Sprintf("tier %d's label is %d characters; arch-stack allows %d", i+1, n, archStackLabelMax)
 		}
-		if n := len([]rune(t.Description)); n > archStackDescMax {
+		if n := runeLen(t.Description); n > archStackDescMax {
 			return fmt.Sprintf("tier %d's detail is %d characters; arch-stack allows %d", i+1, n, archStackDescMax)
 		}
 	}
 	for i, r := range rails {
-		if n := len([]rune(r)); n > archStackRailMax {
+		if n := runeLen(r); n > archStackRailMax {
 			return fmt.Sprintf("rail %d is %d characters; arch-stack allows %d", i+1, n, archStackRailMax)
 		}
 	}

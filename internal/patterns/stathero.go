@@ -121,26 +121,26 @@ func (sh *statHero) Validate(values, overrides any, cellOverrides map[int]any) e
 
 	if v.Value == "" {
 		errs = append(errs, errRequired(name, "values.value"))
-	} else if len(v.Value) > 20 {
-		errs = append(errs, errMaxLength(name, "values.value", 20, len(v.Value)))
+	} else if runeLen(v.Value) > 20 {
+		errs = append(errs, errMaxLength(name, "values.value", 20, runeLen(v.Value)))
 	}
 
-	if v.Unit != "" && len(v.Unit) > 10 {
-		errs = append(errs, errMaxLength(name, "values.unit", 10, len(v.Unit)))
+	if v.Unit != "" && runeLen(v.Unit) > 10 {
+		errs = append(errs, errMaxLength(name, "values.unit", 10, runeLen(v.Unit)))
 	}
 
 	if v.Label == "" {
 		errs = append(errs, errRequired(name, "values.label"))
-	} else if len(v.Label) > 80 {
-		errs = append(errs, errMaxLength(name, "values.label", 80, len(v.Label)))
+	} else if runeLen(v.Label) > 80 {
+		errs = append(errs, errMaxLength(name, "values.label", 80, runeLen(v.Label)))
 	}
 
-	if v.Context != "" && len(v.Context) > 120 {
-		errs = append(errs, errMaxLength(name, "values.context", 120, len(v.Context)))
+	if v.Context != "" && runeLen(v.Context) > 120 {
+		errs = append(errs, errMaxLength(name, "values.context", 120, runeLen(v.Context)))
 	}
 
-	if v.Source != "" && len(v.Source) > 80 {
-		errs = append(errs, errMaxLength(name, "values.source", 80, len(v.Source)))
+	if v.Source != "" && runeLen(v.Source) > 80 {
+		errs = append(errs, errMaxLength(name, "values.source", 80, runeLen(v.Source)))
 	}
 
 	return errors.Join(errs...)

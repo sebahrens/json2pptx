@@ -415,14 +415,7 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 	case KindExecutiveSummary:
 		validateExecutiveSummary(path, slide, s)
 	case KindKPISnapshot:
-		// Count KPIs the compiler can actually render, not raw list entries: a
-		// list of blank/labelless cells passes the required-field gate but
-		// compiles to a title-only slide. Below 1 usable cell is a blocking error;
-		// otherwise the 2–6 density range is advisory.
-		if n := slides.UsableKPICount(slide.Body); s.requireUsableContent(path, "kpis", slide.Body, n, "metrics") && (n < 2 || n > 6) {
-			s.advisory(path+".kpis", diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 is recommended", n))
-		}
+		validateKPISnapshot(path, slide, s)
 	case KindChartInsight:
 		validateChartInsight(path, slide, s)
 	case KindComparison:
@@ -933,6 +926,34 @@ func validateExecutiveSummary(path string, slide SlideSpec, s *semDiags) {
 	if !slides.ExecSummaryPatternFeasible(slide.Body) {
 		s.advisory(pointsPath, diagnostics.CodeSemanticDensity,
 			"executive summary points exceed the exec-summary text budgets (lead ≤90 chars, support ≤200); shorten them or the slide degrades to a bullet list")
+	}
+}
+
+// validateKPISnapshot applies the kpi-Nup count range and the compact cards'
+// text budgets. Both decide the same thing — whether the slide renders as KPI
+// cards or degrades to a bullet list — so both are reported here, and the
+// budget rule asks the compiler rather than re-deriving the limits
+// (go-slide-creator-5ok4).
+func validateKPISnapshot(path string, slide SlideSpec, s *semDiags) {
+	// Count KPIs the compiler can actually render, not raw list entries: a list
+	// of blank/labelless cells passes the required-field gate but compiles to a
+	// title-only slide. Below 1 usable cell is a blocking error; otherwise the
+	// 2–6 density range is advisory.
+	n := slides.UsableKPICount(slide.Body)
+	if !s.requireUsableContent(path, "kpis", slide.Body, n, "metrics") {
+		return
+	}
+	if n < 2 || n > 6 {
+		s.advisory(path+".kpis", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 render as KPI cards (otherwise it degrades to a bullet list)", n))
+		return
+	}
+	// A metric can be valid semantically and still too long for the compact
+	// cards, and the compiler silently swaps the whole slide for bullets. Say
+	// which value broke which budget here, where the author can shorten it.
+	if reason := slides.KPIDegradeReason(slide.Body); reason != "" {
+		s.advisory(path+".kpis", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("kpi snapshot degrades to a bullet list — %s; shorten the value or drop a metric to keep the KPI cards", reason))
 	}
 }
 

@@ -151,14 +151,14 @@ func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]a
 
 	if strings.TrimSpace(vals.Objective) == "" {
 		errs = append(errs, errRequired(name, "objective"))
-	} else if len(vals.Objective) > 140 {
-		errs = append(errs, errMaxLength(name, "objective", 140, len(vals.Objective)))
+	} else if runeLen(vals.Objective) > 140 {
+		errs = append(errs, errMaxLength(name, "objective", 140, runeLen(vals.Objective)))
 	}
 
 	if strings.TrimSpace(vals.Foundation) == "" {
 		errs = append(errs, errRequired(name, "foundation"))
-	} else if len(vals.Foundation) > 140 {
-		errs = append(errs, errMaxLength(name, "foundation", 140, len(vals.Foundation)))
+	} else if runeLen(vals.Foundation) > 140 {
+		errs = append(errs, errMaxLength(name, "foundation", 140, runeLen(vals.Foundation)))
 	}
 
 	if len(vals.Pillars) < 3 {
@@ -172,8 +172,8 @@ func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]a
 		titlePath := fmt.Sprintf("pillars[%d].title", i)
 		if strings.TrimSpace(p.Title) == "" {
 			errs = append(errs, errRequired(name, titlePath))
-		} else if len(p.Title) > 60 {
-			errs = append(errs, errMaxLength(name, titlePath, 60, len(p.Title)))
+		} else if runeLen(p.Title) > 60 {
+			errs = append(errs, errMaxLength(name, titlePath, 60, runeLen(p.Title)))
 		}
 		if len(p.Body) > 5 {
 			errs = append(errs, errMaxItems(name, fmt.Sprintf("pillars[%d].body", i), 5, len(p.Body), ""))
@@ -182,8 +182,8 @@ func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]a
 			bulletPath := fmt.Sprintf("pillars[%d].body[%d]", i, j)
 			if b == "" {
 				errs = append(errs, errRequired(name, bulletPath))
-			} else if len(b) > 120 {
-				errs = append(errs, errMaxLength(name, bulletPath, 120, len(b)))
+			} else if runeLen(b) > 120 {
+				errs = append(errs, errMaxLength(name, bulletPath, 120, runeLen(b)))
 			}
 		}
 	}
@@ -195,8 +195,8 @@ func (sh *strategyHouse) Validate(values, overrides any, cellOverrides map[int]a
 		path := fmt.Sprintf("roof_badges[%d]", i)
 		if badge == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(badge) > 24 {
-			errs = append(errs, errMaxLength(name, path, 24, len(badge)))
+		} else if runeLen(badge) > 24 {
+			errs = append(errs, errMaxLength(name, path, 24, runeLen(badge)))
 		}
 	}
 

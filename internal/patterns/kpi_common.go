@@ -241,14 +241,14 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 		bigPath := fmt.Sprintf("values[%d].big", i)
 		if cell.Big == "" {
 			errs = append(errs, errRequired(patternName, bigPath))
-		} else if len(cell.Big) > 8 {
-			errs = append(errs, errMaxLength(patternName, bigPath, 8, len(cell.Big)))
+		} else if runeLen(cell.Big) > 8 {
+			errs = append(errs, errMaxLength(patternName, bigPath, 8, runeLen(cell.Big)))
 		}
 		smallPath := fmt.Sprintf("values[%d].small", i)
 		if cell.Small == "" {
 			errs = append(errs, errRequired(patternName, smallPath))
-		} else if len(cell.Small) > 40 {
-			errs = append(errs, errMaxLength(patternName, smallPath, 40, len(cell.Small)))
+		} else if runeLen(cell.Small) > 40 {
+			errs = append(errs, errMaxLength(patternName, smallPath, 40, runeLen(cell.Small)))
 		}
 		if cell.Icon != nil {
 			iconPath := fmt.Sprintf("values[%d].icon", i)

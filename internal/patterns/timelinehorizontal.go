@@ -152,22 +152,22 @@ func (th *timelineHorizontal) Validate(values, overrides any, cellOverrides map[
 		labelPath := fmt.Sprintf("values[%d].label", i)
 		if stop.Label == "" {
 			errs = append(errs, errRequired(name, labelPath))
-		} else if len(stop.Label) > 60 {
-			errs = append(errs, errMaxLength(name, labelPath, 60, len(stop.Label)))
+		} else if runeLen(stop.Label) > 60 {
+			errs = append(errs, errMaxLength(name, labelPath, 60, runeLen(stop.Label)))
 		}
-		if len(stop.Date) > 30 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].date", i), 30, len(stop.Date)))
+		if runeLen(stop.Date) > 30 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].date", i), 30, runeLen(stop.Date)))
 		}
-		if len(stop.EndDate) > 30 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].end_date", i), 30, len(stop.EndDate)))
+		if runeLen(stop.EndDate) > 30 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].end_date", i), 30, runeLen(stop.EndDate)))
 		}
 		if stop.EndDate != "" && style != "gantt" {
 			errs = append(errs, newValidationError(name, fmt.Sprintf("values[%d].end_date", i), ErrCodeUnknownEnum,
 				"end_date is only valid with style \"gantt\"",
 				RemoveFieldFix(fmt.Sprintf("values[%d].end_date", i))))
 		}
-		if len(stop.Body) > 200 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].body", i), 200, len(stop.Body)))
+		if runeLen(stop.Body) > 200 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].body", i), 200, runeLen(stop.Body)))
 		}
 	}
 

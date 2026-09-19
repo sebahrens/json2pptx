@@ -143,11 +143,11 @@ func (a *archStack) Validate(values, overrides any, cellOverrides map[int]any) e
 		path := fmt.Sprintf("tiers[%d].label", i)
 		if tier.Label == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(tier.Label) > 60 {
-			errs = append(errs, errMaxLength(name, path, 60, len(tier.Label)))
+		} else if runeLen(tier.Label) > 60 {
+			errs = append(errs, errMaxLength(name, path, 60, runeLen(tier.Label)))
 		}
-		if tier.Description != "" && len(tier.Description) > 120 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("tiers[%d].description", i), 120, len(tier.Description)))
+		if tier.Description != "" && runeLen(tier.Description) > 120 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("tiers[%d].description", i), 120, runeLen(tier.Description)))
 		}
 	}
 
@@ -157,8 +157,8 @@ func (a *archStack) Validate(values, overrides any, cellOverrides map[int]any) e
 	for i, rail := range vals.SideRails {
 		if rail == "" {
 			errs = append(errs, errRequired(name, fmt.Sprintf("side_rails[%d]", i)))
-		} else if len(rail) > 30 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("side_rails[%d]", i), 30, len(rail)))
+		} else if runeLen(rail) > 30 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("side_rails[%d]", i), 30, runeLen(rail)))
 		}
 	}
 

@@ -330,6 +330,27 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Pattern length budgets count characters, not bytes
+  (go-slide-creator-5ok4).** Every `maxLength` in `internal/patterns` is written
+  in characters and its error says "chars", but the checks measured `len(s)`.
+  `"€186.4M"` is 7 characters and 9 bytes, so it failed kpi-2up's 8-character
+  big-number budget as "9 chars" — an arithmetic contradiction an author could
+  only escape by trial and error. Every euro sign, umlaut or en-dash cost 2–3
+  units of the budget, which fired constantly on European content.
+  - All 125 budget checks (guard and reported count alike) now use a rune
+    count, in `internal/patterns` and in the semantic layer's own fit
+    predicates (`option_matrix`, `comparison` panels/cards, `architecture`).
+  - **A KPI snapshot no longer degrades silently.** A value past the budget
+    still compiles to a bullet list — but validate, compile and render all
+    report it (`SEMANTIC_DENSITY` at `slides[i].kpis`, naming the lost pattern,
+    the field and the budget: `kpi-3up: values[0].big exceeds maxLength 8 (20
+    chars)`), and the explain plan stops advertising `kpi-Nup` for a payload
+    the compiler will not render as cards. `explain_deck_spec` and
+    `compile_deck_spec` now agree on this kind, as they already did for
+    `architecture`, `chart_insight`, `comparison` and `option_matrix`.
+  - A count outside 2–6 likewise plans no pattern instead of clamping to
+    `kpi-2up` / `kpi-6up`.
+
 - **Contrast on an author-set background snaps to the palette instead of
   lerping to the WCAG floor (go-slide-creator-s7wmh).** A slide that darkens
   its own background (`background.color: dk1`, or an opaque scrim over a

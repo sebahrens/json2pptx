@@ -140,6 +140,8 @@ A pattern failure is reported **one finding per problem**, each addressed at `/s
 | `invalid_shape` | The JSON type at a path is one the pattern cannot read: a string where an object belongs, an object wrapping the array `values` IS. `fix.params: {path, expected, got}` plus `example` (a copy-ready value built from your own content, e.g. `{"label": "A"}` for a bare `"A"`) or `unwrap_key` when the payload wraps the array the pattern wants. Agent action: apply the example, or unwrap the named key | `error` | `reshape_value` |
 | `UNKNOWN_PATTERN` | `pattern.name` is not registered. `did_you_mean` folds number words to digits before matching, so `kpi-four-up` → `kpi-4up` and `matrix2x2` → `matrix-2x2` resolve. `fix.params: {from, to, did_you_mean}`; `next_tool_call` is `show_pattern{name: <suggestion>}`, or `list_patterns` when nothing is close | `error` | `swap_pattern` |
 
+Every `maxLength` budget counts **characters, not bytes**: `"€980.2M"` is 7 characters and fits an 8-character budget, and `"Vollständig erfüllt"` is 18 against a 20-character label. A `max_length` finding's `(N chars)` is that character count (go-slide-creator-5ok4).
+
 Pattern rule violations (`required`, `max_length`, `min_items`, `max_items`, `count_mismatch`, `out_of_range`, `unknown_enum`, `wrong_pattern`, `ICON_BUNDLED_NAME_UNKNOWN`) are reported the same way — one finding per failing field, at the field's own path — rather than newline-joined into a single `PATTERN_ERROR` message.
 
 ### Slide-background codes — emitted by `validate_input` / `generate_presentation`

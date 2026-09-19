@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 // Error codes for structured validation errors.
@@ -430,6 +431,15 @@ func errRequired(pattern, path string) *ValidationError {
 		Fix:     ProvideValueFix(path),
 	}
 }
+
+// runeLen counts the CHARACTERS in a string, which is what every maxLength
+// budget in this package means and what errMaxLength's message claims.
+// len() counts bytes, so "€186.4M" — 7 characters — measured 9 against the
+// 8-character KPI budget and the whole slide silently degraded to a bullet
+// list; every euro sign, umlaut or en-dash cost 2–3 units of a budget written
+// in characters (go-slide-creator-5ok4). A pattern's budget is a proxy for how
+// much fits in a box, and a box does not care how a character is encoded.
+func runeLen(s string) int { return utf8.RuneCountInString(s) }
 
 // errMaxLength creates a "max_length" validation error.
 func errMaxLength(pattern, path string, maxLen, actualLen int) *ValidationError {

@@ -188,14 +188,14 @@ func (n *numberedStepStrip) Validate(values, overrides any, cellOverrides map[in
 		labelPath := fmt.Sprintf("steps[%d].label", i)
 		if strings.TrimSpace(step.Label) == "" {
 			errs = append(errs, errRequired(name, labelPath))
-		} else if len(step.Label) > 60 {
-			errs = append(errs, errMaxLength(name, labelPath, 60, len(step.Label)))
+		} else if runeLen(step.Label) > 60 {
+			errs = append(errs, errMaxLength(name, labelPath, 60, runeLen(step.Label)))
 		}
-		if len(step.Body) > 180 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].body", i), 180, len(step.Body)))
+		if runeLen(step.Body) > 180 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].body", i), 180, runeLen(step.Body)))
 		}
-		if len(step.Number) > 6 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].number", i), 6, len(step.Number)))
+		if runeLen(step.Number) > 6 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].number", i), 6, runeLen(step.Number)))
 		}
 	}
 

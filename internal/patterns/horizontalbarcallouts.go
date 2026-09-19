@@ -199,8 +199,8 @@ func (h *horizontalBarCallouts) Validate(values, overrides any, cellOverrides ma
 		labelPath := fmt.Sprintf("bars[%d].label", i)
 		if strings.TrimSpace(bar.Label) == "" {
 			errs = append(errs, errRequired(name, labelPath))
-		} else if len(bar.Label) > hbcLabelMax {
-			errs = append(errs, errMaxLength(name, labelPath, hbcLabelMax, len(bar.Label)))
+		} else if runeLen(bar.Label) > hbcLabelMax {
+			errs = append(errs, errMaxLength(name, labelPath, hbcLabelMax, runeLen(bar.Label)))
 		}
 		if bar.Value < 0 {
 			errs = append(errs, &ValidationError{
@@ -211,8 +211,8 @@ func (h *horizontalBarCallouts) Validate(values, overrides any, cellOverrides ma
 				Fix:     ProvideValueFix(fmt.Sprintf("bars[%d].value", i)),
 			})
 		}
-		if len(bar.Callout) > hbcCalloutMax {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("bars[%d].callout", i), hbcCalloutMax, len(bar.Callout)))
+		if runeLen(bar.Callout) > hbcCalloutMax {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("bars[%d].callout", i), hbcCalloutMax, runeLen(bar.Callout)))
 		}
 	}
 
@@ -226,8 +226,8 @@ func (h *horizontalBarCallouts) Validate(values, overrides any, cellOverrides ma
 		})
 	}
 
-	if len(vals.Unit) > hbcUnitMax {
-		errs = append(errs, errMaxLength(name, "unit", hbcUnitMax, len(vals.Unit)))
+	if runeLen(vals.Unit) > hbcUnitMax {
+		errs = append(errs, errMaxLength(name, "unit", hbcUnitMax, runeLen(vals.Unit)))
 	}
 
 	if coErr := validateCellOverrideKeys(name, cellOverrides, len(vals.Bars), ""); coErr != nil {

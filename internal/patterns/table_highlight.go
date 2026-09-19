@@ -391,8 +391,8 @@ func thValidateCriteria(v *TableHighlightValues) []error {
 		path := fmt.Sprintf("criteria[%d]", i)
 		if strings.TrimSpace(c.Label) == "" {
 			errs = append(errs, errRequired(thName, path+".label"))
-		} else if len(c.Label) > thCriterionMax {
-			errs = append(errs, errMaxLength(thName, path+".label", thCriterionMax, len(c.Label)))
+		} else if runeLen(c.Label) > thCriterionMax {
+			errs = append(errs, errMaxLength(thName, path+".label", thCriterionMax, runeLen(c.Label)))
 		}
 		if !validScale(c.Scale) {
 			errs = append(errs, thScaleError(path+".scale", c.Scale))
@@ -413,11 +413,11 @@ func thValidateOptions(v *TableHighlightValues) []error {
 		path := fmt.Sprintf("options[%d]", i)
 		if strings.TrimSpace(o.Name) == "" {
 			errs = append(errs, errRequired(thName, path+".name"))
-		} else if len(o.Name) > thNameMax {
-			errs = append(errs, errMaxLength(thName, path+".name", thNameMax, len(o.Name)))
+		} else if runeLen(o.Name) > thNameMax {
+			errs = append(errs, errMaxLength(thName, path+".name", thNameMax, runeLen(o.Name)))
 		}
-		if len(o.Detail) > thDetailMax {
-			errs = append(errs, errMaxLength(thName, path+".detail", thDetailMax, len(o.Detail)))
+		if runeLen(o.Detail) > thDetailMax {
+			errs = append(errs, errMaxLength(thName, path+".detail", thDetailMax, runeLen(o.Detail)))
 		}
 		if len(o.Scores) != len(v.Criteria) {
 			errs = append(errs, errCountMismatch(thName, path+".scores", len(v.Criteria), len(o.Scores), "(one score per criterion)"))
@@ -452,26 +452,26 @@ func thValidateExtras(v *TableHighlightValues) []error {
 	if v.HighlightCol != nil && (*v.HighlightCol < 0 || *v.HighlightCol >= len(v.Criteria)) {
 		errs = append(errs, errOutOfRange(thName, "highlight_col", 0, len(v.Criteria)-1, *v.HighlightCol))
 	}
-	if len(v.HighlightLabel) > thLabelMax {
-		errs = append(errs, errMaxLength(thName, "highlight_label", thLabelMax, len(v.HighlightLabel)))
+	if runeLen(v.HighlightLabel) > thLabelMax {
+		errs = append(errs, errMaxLength(thName, "highlight_label", thLabelMax, runeLen(v.HighlightLabel)))
 	}
-	if len(v.CornerLabel) > thLabelMax {
-		errs = append(errs, errMaxLength(thName, "corner_label", thLabelMax, len(v.CornerLabel)))
+	if runeLen(v.CornerLabel) > thLabelMax {
+		errs = append(errs, errMaxLength(thName, "corner_label", thLabelMax, runeLen(v.CornerLabel)))
 	}
 	if len(v.LegendLabels) != 0 && len(v.LegendLabels) != 3 {
 		errs = append(errs, errCountMismatch(thName, "legend_labels", 3, len(v.LegendLabels), "([high, mid, low])"))
 	}
 	for i, l := range v.LegendLabels {
-		if len(l) > thLegendMax {
-			errs = append(errs, errMaxLength(thName, fmt.Sprintf("legend_labels[%d]", i), thLegendMax, len(l)))
+		if runeLen(l) > thLegendMax {
+			errs = append(errs, errMaxLength(thName, fmt.Sprintf("legend_labels[%d]", i), thLegendMax, runeLen(l)))
 		}
 	}
 	if len(v.LegendLabelsRAG) != 0 && len(v.LegendLabelsRAG) != 3 {
 		errs = append(errs, errCountMismatch(thName, "legend_labels_rag", 3, len(v.LegendLabelsRAG), "([green, amber, red])"))
 	}
 	for i, l := range v.LegendLabelsRAG {
-		if len(l) > thLegendMax {
-			errs = append(errs, errMaxLength(thName, fmt.Sprintf("legend_labels_rag[%d]", i), thLegendMax, len(l)))
+		if runeLen(l) > thLegendMax {
+			errs = append(errs, errMaxLength(thName, fmt.Sprintf("legend_labels_rag[%d]", i), thLegendMax, runeLen(l)))
 		}
 	}
 	return errs

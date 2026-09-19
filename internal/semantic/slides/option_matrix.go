@@ -153,7 +153,7 @@ const optionMatrixLabelMax = 24
 
 // optionMatrixLabel keeps a badge only when it fits the pattern's budget.
 func optionMatrixLabel(label string) string {
-	if len(label) > optionMatrixLabelMax {
+	if runeLen(label) > optionMatrixLabelMax {
 		return ""
 	}
 	return label
@@ -161,7 +161,7 @@ func optionMatrixLabel(label string) string {
 
 // OptionMatrixLabelFits reports whether a badge fits table-highlight's budget,
 // so validation can warn about one that will be dropped.
-func OptionMatrixLabelFits(label string) bool { return len(label) <= optionMatrixLabelMax }
+func OptionMatrixLabelFits(label string) bool { return runeLen(label) <= optionMatrixLabelMax }
 
 // optionMatrixCriteria extracts the criteria columns. An entry is either a bare
 // label or an object carrying the label and an optional per-column scale.

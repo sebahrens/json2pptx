@@ -110,8 +110,8 @@ func (p *pyramid) Validate(values, overrides any, cellOverrides map[int]any) err
 		path := fmt.Sprintf("tiers[%d]", i)
 		if tier == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(tier) > 120 {
-			errs = append(errs, errMaxLength(name, path, 120, len(tier)))
+		} else if runeLen(tier) > 120 {
+			errs = append(errs, errMaxLength(name, path, 120, runeLen(tier)))
 		}
 	}
 

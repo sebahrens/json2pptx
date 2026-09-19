@@ -118,18 +118,18 @@ func (pq *pullQuote) Validate(values, overrides any, cellOverrides map[int]any) 
 
 	if v.Quote == "" {
 		errs = append(errs, errRequired(name, "values.quote"))
-	} else if len(v.Quote) > 500 {
-		errs = append(errs, errMaxLength(name, "values.quote", 500, len(v.Quote)))
+	} else if runeLen(v.Quote) > 500 {
+		errs = append(errs, errMaxLength(name, "values.quote", 500, runeLen(v.Quote)))
 	}
 
 	if v.Attribution == "" {
 		errs = append(errs, errRequired(name, "values.attribution"))
-	} else if len(v.Attribution) > 60 {
-		errs = append(errs, errMaxLength(name, "values.attribution", 60, len(v.Attribution)))
+	} else if runeLen(v.Attribution) > 60 {
+		errs = append(errs, errMaxLength(name, "values.attribution", 60, runeLen(v.Attribution)))
 	}
 
-	if v.Role != "" && len(v.Role) > 60 {
-		errs = append(errs, errMaxLength(name, "values.role", 60, len(v.Role)))
+	if v.Role != "" && runeLen(v.Role) > 60 {
+		errs = append(errs, errMaxLength(name, "values.role", 60, runeLen(v.Role)))
 	}
 
 	if v.AccentSide != "" && v.AccentSide != "left" && v.AccentSide != "right" && v.AccentSide != "none" {

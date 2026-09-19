@@ -154,14 +154,14 @@ func (a *agendaWithImages) Validate(values, overrides any, cellOverrides map[int
 		titlePath := fmt.Sprintf("items[%d].title", i)
 		if strings.TrimSpace(item.Title) == "" {
 			errs = append(errs, errRequired(name, titlePath))
-		} else if len(item.Title) > 80 {
-			errs = append(errs, errMaxLength(name, titlePath, 80, len(item.Title)))
+		} else if runeLen(item.Title) > 80 {
+			errs = append(errs, errMaxLength(name, titlePath, 80, runeLen(item.Title)))
 		}
-		if len(item.Subtitle) > 160 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("items[%d].subtitle", i), 160, len(item.Subtitle)))
+		if runeLen(item.Subtitle) > 160 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("items[%d].subtitle", i), 160, runeLen(item.Subtitle)))
 		}
-		if len(item.ImageLabel) > 60 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("items[%d].image_label", i), 60, len(item.ImageLabel)))
+		if runeLen(item.ImageLabel) > 60 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("items[%d].image_label", i), 60, runeLen(item.ImageLabel)))
 		}
 		if item.Number < 0 {
 			errs = append(errs, &ValidationError{

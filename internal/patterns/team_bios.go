@@ -168,20 +168,20 @@ func (t *teamBios) Validate(values, overrides any, cellOverrides map[int]any) er
 		namePath := fmt.Sprintf("members[%d].name", i)
 		if strings.TrimSpace(m.Name) == "" {
 			errs = append(errs, errRequired(name, namePath))
-		} else if len(m.Name) > teamBiosNameMaxChars {
-			errs = append(errs, errMaxLength(name, namePath, teamBiosNameMaxChars, len(m.Name)))
+		} else if runeLen(m.Name) > teamBiosNameMaxChars {
+			errs = append(errs, errMaxLength(name, namePath, teamBiosNameMaxChars, runeLen(m.Name)))
 		}
 		rolePath := fmt.Sprintf("members[%d].role", i)
 		if strings.TrimSpace(m.Role) == "" {
 			errs = append(errs, errRequired(name, rolePath))
-		} else if len(m.Role) > teamBiosRoleMaxChars {
-			errs = append(errs, errMaxLength(name, rolePath, teamBiosRoleMaxChars, len(m.Role)))
+		} else if runeLen(m.Role) > teamBiosRoleMaxChars {
+			errs = append(errs, errMaxLength(name, rolePath, teamBiosRoleMaxChars, runeLen(m.Role)))
 		}
-		if len(m.Bio) > teamBiosBioMaxChars {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("members[%d].bio", i), teamBiosBioMaxChars, len(m.Bio)))
+		if runeLen(m.Bio) > teamBiosBioMaxChars {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("members[%d].bio", i), teamBiosBioMaxChars, runeLen(m.Bio)))
 		}
-		if len(m.PhotoLabel) > teamBiosPhotoMaxChars {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("members[%d].photo_label", i), teamBiosPhotoMaxChars, len(m.PhotoLabel)))
+		if runeLen(m.PhotoLabel) > teamBiosPhotoMaxChars {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("members[%d].photo_label", i), teamBiosPhotoMaxChars, runeLen(m.PhotoLabel)))
 		}
 	}
 

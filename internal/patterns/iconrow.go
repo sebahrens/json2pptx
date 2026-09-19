@@ -185,8 +185,8 @@ func (ir *iconRow) Validate(values, overrides any, cellOverrides map[int]any) er
 		captionPath := fmt.Sprintf("values[%d].caption", i)
 		if item.Caption == "" {
 			errs = append(errs, errRequired(name, captionPath))
-		} else if len(item.Caption) > 60 {
-			errs = append(errs, errMaxLength(name, captionPath, 60, len(item.Caption)))
+		} else if runeLen(item.Caption) > 60 {
+			errs = append(errs, errMaxLength(name, captionPath, 60, runeLen(item.Caption)))
 		}
 		if item.Secondary != nil {
 			errs = append(errs, validateSecondaryChart(name, fmt.Sprintf("values[%d].secondary", i), item.Secondary)...)

@@ -3,6 +3,7 @@ package slides
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -24,25 +25,18 @@ type kpiCell struct {
 func CompileKPISnapshot(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	cells, srcField := kpiCells(in.Body)
 
-	// kpi-Nup is registered only for N in 2..6. Outside that range there is no
-	// matching pattern, so degrade to a safe content slide.
-	if len(cells) < 2 || len(cells) > 6 {
+	// One decision, shared with the explain planner and validation: a payload
+	// that will not fit the compact cards degrades here, and both of those say
+	// so up front rather than promising a visual this function will not emit
+	// (go-slide-creator-5ok4).
+	patternName, _ := kpiPatternPlan(in.Body)
+	if patternName == "" {
 		return compileKPIFallback(in, cells, srcField)
 	}
 
 	values, err := json.Marshal(cells)
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal kpi values: %w", err)
-	}
-	patternName := fmt.Sprintf("kpi-%dup", len(cells))
-
-	// A KPI value can be valid semantically yet too long for the compact kpi-Nup
-	// cards (e.g. "CHF 142.3M" exceeds the big-number budget). Rather than emit
-	// raw JSON the renderer will reject, degrade to the bullet fallback, which
-	// always validates. This pre-empts the post-compile raw preflight for the one
-	// kind that has a natural fallback (see internal/semantic/preflight.go).
-	if deckinput.ValidatePattern(&deckinput.PatternInput{Name: patternName, Values: values}, patterns.Default()) != nil {
-		return compileKPIFallback(in, cells, srcField)
 	}
 
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
@@ -71,8 +65,66 @@ func CompileKPISnapshot(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	return slide, links, nil
 }
 
+// KPIPattern returns the kpi-Nup pattern a payload will actually compile to, or
+// "" when it degrades to the bullet fallback. The explain planner advertises
+// this rather than the count alone, so plan and result agree.
+func KPIPattern(body map[string]any) string {
+	name, _ := kpiPatternPlan(body)
+	return name
+}
+
+// KPIDegradeReason explains why a kpi_snapshot payload will compile to bullets
+// instead of kpi-Nup cards, or "" when it compiles to the pattern. Validation
+// quotes it so the author learns which value broke which budget before the
+// render, rather than from the pixels (go-slide-creator-5ok4).
+func KPIDegradeReason(body map[string]any) string {
+	_, reason := kpiPatternPlan(body)
+	return reason
+}
+
+// kpiPatternPlan is the single decision behind compile, explain and validate:
+// the pattern a payload compiles to, or the reason it cannot.
+func kpiPatternPlan(body map[string]any) (pattern, reason string) {
+	cells, _ := kpiCells(body)
+
+	// kpi-Nup is registered only for N in 2..6. Outside that range there is no
+	// matching pattern, so the slide degrades to a safe content slide. The count
+	// rule reports this case itself, so it needs no reason of its own here.
+	if len(cells) < 2 || len(cells) > 6 {
+		return "", ""
+	}
+
+	values, err := json.Marshal(cells)
+	if err != nil {
+		return "", "the metrics cannot be encoded as pattern values"
+	}
+	name := fmt.Sprintf("kpi-%dup", len(cells))
+
+	// A KPI value can be valid semantically yet too long for the compact cards
+	// (e.g. "EUR 1,186.42 million" exceeds the big-number budget). Rather than
+	// emit raw JSON the renderer will reject, the compiler degrades to the
+	// bullet fallback, which always validates. This pre-empts the post-compile
+	// raw preflight for the one kind that has a natural fallback (see
+	// internal/semantic/preflight.go).
+	if err := deckinput.ValidatePattern(&deckinput.PatternInput{Name: name, Values: values}, patterns.Default()); err != nil {
+		return "", kpiBudgetReason(name, err)
+	}
+	return name, ""
+}
+
+// kpiBudgetReason turns a pattern validation failure into one readable clause,
+// naming the pattern that was lost and the first budget that broke.
+func kpiBudgetReason(pattern string, err error) string {
+	first := strings.TrimSpace(strings.SplitN(err.Error(), "\n", 2)[0])
+	if strings.TrimSpace(strings.TrimPrefix(first, pattern+":")) == "" {
+		return fmt.Sprintf("the metrics do not fit %s", pattern)
+	}
+	return first
+}
+
 // compileKPIFallback renders the metrics as "Big — Small" bullets on a content
-// slide when the count is unsupported by the kpi-Nup family.
+// slide when the count is unsupported by the kpi-Nup family, or when a metric
+// does not fit the compact cards.
 func compileKPIFallback(in Input, cells []kpiCell, srcField string) (*deckinput.SlideInput, []SourceLink, error) {
 	slide := &deckinput.SlideInput{SlideType: "content"}
 	var links []SourceLink

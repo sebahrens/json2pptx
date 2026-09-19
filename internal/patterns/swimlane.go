@@ -129,8 +129,8 @@ func (s *swimlane) Validate(values, overrides any, cellOverrides map[int]any) er
 	for i, lane := range vals.Lanes {
 		if lane.Actor == "" {
 			errs = append(errs, errRequired(name, fmt.Sprintf("lanes[%d].actor", i)))
-		} else if len(lane.Actor) > 40 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("lanes[%d].actor", i), 40, len(lane.Actor)))
+		} else if runeLen(lane.Actor) > 40 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("lanes[%d].actor", i), 40, runeLen(lane.Actor)))
 		}
 
 		if len(lane.Steps) < 2 {
@@ -149,8 +149,8 @@ func (s *swimlane) Validate(values, overrides any, cellOverrides map[int]any) er
 		}
 
 		for j, step := range lane.Steps {
-			if step != "" && len(step) > 80 {
-				errs = append(errs, errMaxLength(name, fmt.Sprintf("lanes[%d].steps[%d]", i, j), 80, len(step)))
+			if step != "" && runeLen(step) > 80 {
+				errs = append(errs, errMaxLength(name, fmt.Sprintf("lanes[%d].steps[%d]", i, j), 80, runeLen(step)))
 			}
 		}
 	}

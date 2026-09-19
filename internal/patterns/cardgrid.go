@@ -279,14 +279,14 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 		path := fmt.Sprintf("cells[%d].header", i)
 		if cell.Header == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(cell.Header) > 80 {
-			errs = append(errs, errMaxLength(name, path, 80, len(cell.Header)))
+		} else if runeLen(cell.Header) > 80 {
+			errs = append(errs, errMaxLength(name, path, 80, runeLen(cell.Header)))
 		}
 		bodyPath := fmt.Sprintf("cells[%d].body", i)
 		if cell.Body == "" {
 			errs = append(errs, errRequired(name, bodyPath))
-		} else if len(cell.Body) > 300 {
-			errs = append(errs, errMaxLength(name, bodyPath, 300, len(cell.Body)))
+		} else if runeLen(cell.Body) > 300 {
+			errs = append(errs, errMaxLength(name, bodyPath, 300, runeLen(cell.Body)))
 		}
 		if cell.Secondary != nil {
 			errs = append(errs, validateSecondaryChart(name, fmt.Sprintf("cells[%d].secondary", i), cell.Secondary)...)

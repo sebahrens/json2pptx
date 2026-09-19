@@ -132,8 +132,8 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 		path := fmt.Sprintf("phases[%d]", i)
 		if phase == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(phase) > 20 {
-			errs = append(errs, errMaxLength(name, path, 20, len(phase)))
+		} else if runeLen(phase) > 20 {
+			errs = append(errs, errMaxLength(name, path, 20, runeLen(phase)))
 		}
 	}
 
@@ -148,8 +148,8 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 	for i, ws := range vals.Workstreams {
 		if ws.Name == "" {
 			errs = append(errs, errRequired(name, fmt.Sprintf("workstreams[%d].name", i)))
-		} else if len(ws.Name) > 40 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("workstreams[%d].name", i), 40, len(ws.Name)))
+		} else if runeLen(ws.Name) > 40 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("workstreams[%d].name", i), 40, runeLen(ws.Name)))
 		}
 
 		if len(ws.Items) != phaseCount {
@@ -159,8 +159,8 @@ func (r *roadmapPhased) Validate(values, overrides any, cellOverrides map[int]an
 		}
 
 		for j, item := range ws.Items {
-			if item != "" && len(item) > 80 {
-				errs = append(errs, errMaxLength(name, fmt.Sprintf("workstreams[%d].items[%d]", i, j), 80, len(item)))
+			if item != "" && runeLen(item) > 80 {
+				errs = append(errs, errMaxLength(name, fmt.Sprintf("workstreams[%d].items[%d]", i, j), 80, runeLen(item)))
 			}
 		}
 	}

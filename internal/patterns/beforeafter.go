@@ -135,8 +135,8 @@ func (b *beforeAfter) Validate(values, overrides any, cellOverrides map[int]any)
 	// Validate before column
 	if vals.Before.Header == "" {
 		errs = append(errs, errRequired(name, "before.header"))
-	} else if len(vals.Before.Header) > 60 {
-		errs = append(errs, errMaxLength(name, "before.header", 60, len(vals.Before.Header)))
+	} else if runeLen(vals.Before.Header) > 60 {
+		errs = append(errs, errMaxLength(name, "before.header", 60, runeLen(vals.Before.Header)))
 	}
 	if len(vals.Before.Items) == 0 {
 		errs = append(errs, errMinItems(name, "before.items", 1, 0, ""))
@@ -148,16 +148,16 @@ func (b *beforeAfter) Validate(values, overrides any, cellOverrides map[int]any)
 		path := fmt.Sprintf("before.items[%d]", i)
 		if item == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(item) > 200 {
-			errs = append(errs, errMaxLength(name, path, 200, len(item)))
+		} else if runeLen(item) > 200 {
+			errs = append(errs, errMaxLength(name, path, 200, runeLen(item)))
 		}
 	}
 
 	// Validate after column
 	if vals.After.Header == "" {
 		errs = append(errs, errRequired(name, "after.header"))
-	} else if len(vals.After.Header) > 60 {
-		errs = append(errs, errMaxLength(name, "after.header", 60, len(vals.After.Header)))
+	} else if runeLen(vals.After.Header) > 60 {
+		errs = append(errs, errMaxLength(name, "after.header", 60, runeLen(vals.After.Header)))
 	}
 	if len(vals.After.Items) == 0 {
 		errs = append(errs, errMinItems(name, "after.items", 1, 0, ""))
@@ -169,8 +169,8 @@ func (b *beforeAfter) Validate(values, overrides any, cellOverrides map[int]any)
 		path := fmt.Sprintf("after.items[%d]", i)
 		if item == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(item) > 200 {
-			errs = append(errs, errMaxLength(name, path, 200, len(item)))
+		} else if runeLen(item) > 200 {
+			errs = append(errs, errMaxLength(name, path, 200, runeLen(item)))
 		}
 	}
 

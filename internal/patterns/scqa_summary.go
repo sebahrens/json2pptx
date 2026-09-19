@@ -188,8 +188,8 @@ func (s *scqaSummary) Validate(values, overrides any, cellOverrides map[int]any)
 			itemPath := fmt.Sprintf("%s[%d]", label, i)
 			if strings.TrimSpace(it) == "" {
 				errs = append(errs, errRequired(name, itemPath))
-			} else if len(it) > 240 {
-				errs = append(errs, errMaxLength(name, itemPath, 240, len(it)))
+			} else if runeLen(it) > 240 {
+				errs = append(errs, errMaxLength(name, itemPath, 240, runeLen(it)))
 			}
 		}
 	}

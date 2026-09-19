@@ -184,18 +184,18 @@ func (hd *heroDetail) Validate(values, overrides any, cellOverrides map[int]any)
 	// Hero validation
 	if v.Hero.Value == "" {
 		errs = append(errs, errRequired(name, "hero.value"))
-	} else if len(v.Hero.Value) > 20 {
-		errs = append(errs, errMaxLength(name, "hero.value", 20, len(v.Hero.Value)))
+	} else if runeLen(v.Hero.Value) > 20 {
+		errs = append(errs, errMaxLength(name, "hero.value", 20, runeLen(v.Hero.Value)))
 	}
 
 	if v.Hero.Label == "" {
 		errs = append(errs, errRequired(name, "hero.label"))
-	} else if len(v.Hero.Label) > 80 {
-		errs = append(errs, errMaxLength(name, "hero.label", 80, len(v.Hero.Label)))
+	} else if runeLen(v.Hero.Label) > 80 {
+		errs = append(errs, errMaxLength(name, "hero.label", 80, runeLen(v.Hero.Label)))
 	}
 
-	if v.Hero.Context != "" && len(v.Hero.Context) > 120 {
-		errs = append(errs, errMaxLength(name, "hero.context", 120, len(v.Hero.Context)))
+	if v.Hero.Context != "" && runeLen(v.Hero.Context) > 120 {
+		errs = append(errs, errMaxLength(name, "hero.context", 120, runeLen(v.Hero.Context)))
 	}
 
 	// Details validation
@@ -207,12 +207,12 @@ func (hd *heroDetail) Validate(values, overrides any, cellOverrides map[int]any)
 		titlePath := fmt.Sprintf("details[%d].title", i)
 		if d.Title == "" {
 			errs = append(errs, errRequired(name, titlePath))
-		} else if len(d.Title) > 60 {
-			errs = append(errs, errMaxLength(name, titlePath, 60, len(d.Title)))
+		} else if runeLen(d.Title) > 60 {
+			errs = append(errs, errMaxLength(name, titlePath, 60, runeLen(d.Title)))
 		}
-		if d.Body != "" && len(d.Body) > 200 {
+		if d.Body != "" && runeLen(d.Body) > 200 {
 			bodyPath := fmt.Sprintf("details[%d].body", i)
-			errs = append(errs, errMaxLength(name, bodyPath, 200, len(d.Body)))
+			errs = append(errs, errMaxLength(name, bodyPath, 200, runeLen(d.Body)))
 		}
 		if d.Icon != nil {
 			iconPath := fmt.Sprintf("details[%d].icon", i)

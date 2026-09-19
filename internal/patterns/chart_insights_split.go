@@ -256,16 +256,16 @@ func (cis *chartInsightsSplit) Validate(values, overrides any, cellOverrides map
 			errs = append(errs, errRequired(name, path))
 			continue
 		}
-		if len(b) > 160 {
-			errs = append(errs, errMaxLength(name, path, 160, len(b)))
+		if runeLen(b) > 160 {
+			errs = append(errs, errMaxLength(name, path, 160, runeLen(b)))
 		}
 	}
 
-	if v.InsightsTitle != "" && len(v.InsightsTitle) > 40 {
-		errs = append(errs, errMaxLength(name, "values.insights_title", 40, len(v.InsightsTitle)))
+	if v.InsightsTitle != "" && runeLen(v.InsightsTitle) > 40 {
+		errs = append(errs, errMaxLength(name, "values.insights_title", 40, runeLen(v.InsightsTitle)))
 	}
-	if v.Source != "" && len(v.Source) > 120 {
-		errs = append(errs, errMaxLength(name, "values.source", 120, len(v.Source)))
+	if v.Source != "" && runeLen(v.Source) > 120 {
+		errs = append(errs, errMaxLength(name, "values.source", 120, runeLen(v.Source)))
 	}
 
 	errs = append(errs, validateChartInsightsExtras(v)...)
@@ -521,11 +521,11 @@ func validateChartInsightsExtras(v *ChartInsightsSplitValues) []error {
 		switch {
 		case strings.TrimSpace(h.Value) == "":
 			errs = append(errs, errRequired(name, "values.headline.value"))
-		case len(h.Value) > cisHeadlineValueMax:
-			errs = append(errs, errMaxLength(name, "values.headline.value", cisHeadlineValueMax, len(h.Value)))
+		case runeLen(h.Value) > cisHeadlineValueMax:
+			errs = append(errs, errMaxLength(name, "values.headline.value", cisHeadlineValueMax, runeLen(h.Value)))
 		}
-		if len(h.Label) > cisHeadlineLabelMax {
-			errs = append(errs, errMaxLength(name, "values.headline.label", cisHeadlineLabelMax, len(h.Label)))
+		if runeLen(h.Label) > cisHeadlineLabelMax {
+			errs = append(errs, errMaxLength(name, "values.headline.label", cisHeadlineLabelMax, runeLen(h.Label)))
 		}
 	}
 	for _, f := range []struct {
@@ -537,8 +537,8 @@ func validateChartInsightsExtras(v *ChartInsightsSplitValues) []error {
 		{"values.chart_label", v.ChartLabel, cisChartLabelMax},
 		{"values.unit", v.Unit, cisUnitMax},
 	} {
-		if len(f.val) > f.max {
-			errs = append(errs, errMaxLength(name, f.path, f.max, len(f.val)))
+		if runeLen(f.val) > f.max {
+			errs = append(errs, errMaxLength(name, f.path, f.max, runeLen(f.val)))
 		}
 	}
 	return errs

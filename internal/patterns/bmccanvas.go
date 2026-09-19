@@ -170,8 +170,8 @@ func (b *bmcCanvas) Validate(values, overrides any, cellOverrides map[int]any) e
 		headerPath := c.cellName + ".header"
 		if c.cell.Header == "" {
 			errs = append(errs, errRequired(name, headerPath))
-		} else if len(c.cell.Header) > 60 {
-			errs = append(errs, errMaxLength(name, headerPath, 60, len(c.cell.Header)))
+		} else if runeLen(c.cell.Header) > 60 {
+			errs = append(errs, errMaxLength(name, headerPath, 60, runeLen(c.cell.Header)))
 		}
 
 		bulletsPath := c.cellName + ".bullets"
@@ -188,8 +188,8 @@ func (b *bmcCanvas) Validate(values, overrides any, cellOverrides map[int]any) e
 			bulletPath := fmt.Sprintf("%s.bullets[%d]", c.cellName, i)
 			if bullet == "" {
 				errs = append(errs, errEmptyValue(name, bulletPath))
-			} else if len(bullet) > 200 {
-				errs = append(errs, errMaxLength(name, bulletPath, 200, len(bullet)))
+			} else if runeLen(bullet) > 200 {
+				errs = append(errs, errMaxLength(name, bulletPath, 200, runeLen(bullet)))
 			}
 		}
 	}

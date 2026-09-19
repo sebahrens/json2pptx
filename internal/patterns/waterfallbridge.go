@@ -207,8 +207,8 @@ func (w *waterfallBridge) Validate(values, overrides any, cellOverrides map[int]
 		labelPath := fmt.Sprintf("columns[%d].label", i)
 		if strings.TrimSpace(col.Label) == "" {
 			errs = append(errs, errRequired(name, labelPath))
-		} else if len(col.Label) > wbLabelMax {
-			errs = append(errs, errMaxLength(name, labelPath, wbLabelMax, len(col.Label)))
+		} else if runeLen(col.Label) > wbLabelMax {
+			errs = append(errs, errMaxLength(name, labelPath, wbLabelMax, runeLen(col.Label)))
 		}
 
 		typePath := fmt.Sprintf("columns[%d].type", i)
@@ -228,8 +228,8 @@ func (w *waterfallBridge) Validate(values, overrides any, cellOverrides map[int]
 		}
 	}
 
-	if len(vals.Unit) > wbUnitMax {
-		errs = append(errs, errMaxLength(name, "unit", wbUnitMax, len(vals.Unit)))
+	if runeLen(vals.Unit) > wbUnitMax {
+		errs = append(errs, errMaxLength(name, "unit", wbUnitMax, runeLen(vals.Unit)))
 	}
 
 	if coErr := validateCellOverrideKeys(name, cellOverrides, len(vals.Columns), ""); coErr != nil {

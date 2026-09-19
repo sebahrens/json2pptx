@@ -165,8 +165,8 @@ func (sp *stylishPanels) Validate(values, overrides any, cellOverrides map[int]a
 		titlePath := fmt.Sprintf("values[%d].title", i)
 		if item.Title == "" {
 			errs = append(errs, errRequired(name, titlePath))
-		} else if len(item.Title) > 80 {
-			errs = append(errs, errMaxLength(name, titlePath, 80, len(item.Title)))
+		} else if runeLen(item.Title) > 80 {
+			errs = append(errs, errMaxLength(name, titlePath, 80, runeLen(item.Title)))
 		}
 		bodyPath := fmt.Sprintf("values[%d].body", i)
 		if len(item.Body) == 0 {
@@ -179,8 +179,8 @@ func (sp *stylishPanels) Validate(values, overrides any, cellOverrides map[int]a
 			bulletPath := fmt.Sprintf("values[%d].body[%d]", i, j)
 			if bullet == "" {
 				errs = append(errs, errRequired(name, bulletPath))
-			} else if len(bullet) > 200 {
-				errs = append(errs, errMaxLength(name, bulletPath, 200, len(bullet)))
+			} else if runeLen(bullet) > 200 {
+				errs = append(errs, errMaxLength(name, bulletPath, 200, runeLen(bullet)))
 			}
 		}
 	}

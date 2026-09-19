@@ -142,13 +142,13 @@ func (p *processGrid2Row) Validate(values, overrides any, cellOverrides map[int]
 
 	if strings.TrimSpace(vals.Row1Label) == "" {
 		errs = append(errs, errRequired(name, "row1_label"))
-	} else if len(vals.Row1Label) > 40 {
-		errs = append(errs, errMaxLength(name, "row1_label", 40, len(vals.Row1Label)))
+	} else if runeLen(vals.Row1Label) > 40 {
+		errs = append(errs, errMaxLength(name, "row1_label", 40, runeLen(vals.Row1Label)))
 	}
 	if strings.TrimSpace(vals.Row2Label) == "" {
 		errs = append(errs, errRequired(name, "row2_label"))
-	} else if len(vals.Row2Label) > 40 {
-		errs = append(errs, errMaxLength(name, "row2_label", 40, len(vals.Row2Label)))
+	} else if runeLen(vals.Row2Label) > 40 {
+		errs = append(errs, errMaxLength(name, "row2_label", 40, runeLen(vals.Row2Label)))
 	}
 
 	if len(vals.Row1Phases) < 3 {
@@ -174,16 +174,16 @@ func (p *processGrid2Row) Validate(values, overrides any, cellOverrides map[int]
 		path := fmt.Sprintf("row1_phases[%d]", i)
 		if strings.TrimSpace(phase) == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(phase) > 40 {
-			errs = append(errs, errMaxLength(name, path, 40, len(phase)))
+		} else if runeLen(phase) > 40 {
+			errs = append(errs, errMaxLength(name, path, 40, runeLen(phase)))
 		}
 	}
 	for i, phase := range vals.Row2Phases {
 		path := fmt.Sprintf("row2_phases[%d]", i)
 		if strings.TrimSpace(phase) == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(phase) > 40 {
-			errs = append(errs, errMaxLength(name, path, 40, len(phase)))
+		} else if runeLen(phase) > 40 {
+			errs = append(errs, errMaxLength(name, path, 40, runeLen(phase)))
 		}
 	}
 

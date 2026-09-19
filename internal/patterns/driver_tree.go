@@ -172,11 +172,11 @@ func (dt *driverTree) Validate(values, overrides any, cellOverrides map[int]any)
 
 	if strings.TrimSpace(vals.Root.Label) == "" {
 		errs = append(errs, errRequired(name, "root.label"))
-	} else if len(vals.Root.Label) > 60 {
-		errs = append(errs, errMaxLength(name, "root.label", 60, len(vals.Root.Label)))
+	} else if runeLen(vals.Root.Label) > 60 {
+		errs = append(errs, errMaxLength(name, "root.label", 60, runeLen(vals.Root.Label)))
 	}
-	if len(vals.Root.Unit) > 24 {
-		errs = append(errs, errMaxLength(name, "root.unit", 24, len(vals.Root.Unit)))
+	if runeLen(vals.Root.Unit) > 24 {
+		errs = append(errs, errMaxLength(name, "root.unit", 24, runeLen(vals.Root.Unit)))
 	}
 
 	if len(vals.Branches) < 2 {
@@ -190,11 +190,11 @@ func (dt *driverTree) Validate(values, overrides any, cellOverrides map[int]any)
 		labelPath := fmt.Sprintf("branches[%d].label", i)
 		if strings.TrimSpace(b.Label) == "" {
 			errs = append(errs, errRequired(name, labelPath))
-		} else if len(b.Label) > 60 {
-			errs = append(errs, errMaxLength(name, labelPath, 60, len(b.Label)))
+		} else if runeLen(b.Label) > 60 {
+			errs = append(errs, errMaxLength(name, labelPath, 60, runeLen(b.Label)))
 		}
-		if len(b.Unit) > 24 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("branches[%d].unit", i), 24, len(b.Unit)))
+		if runeLen(b.Unit) > 24 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("branches[%d].unit", i), 24, runeLen(b.Unit)))
 		}
 
 		leavesPath := fmt.Sprintf("branches[%d].leaves", i)
@@ -208,13 +208,13 @@ func (dt *driverTree) Validate(values, overrides any, cellOverrides map[int]any)
 			leafPath := fmt.Sprintf("branches[%d].leaves[%d]", i, j)
 			if strings.TrimSpace(leaf) == "" {
 				errs = append(errs, errRequired(name, leafPath))
-			} else if len(leaf) > 120 {
-				errs = append(errs, errMaxLength(name, leafPath, 120, len(leaf)))
+			} else if runeLen(leaf) > 120 {
+				errs = append(errs, errMaxLength(name, leafPath, 120, runeLen(leaf)))
 			}
 		}
 
-		if len(b.Annotation) > 140 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("branches[%d].annotation", i), 140, len(b.Annotation)))
+		if runeLen(b.Annotation) > 140 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("branches[%d].annotation", i), 140, runeLen(b.Annotation)))
 		}
 	}
 

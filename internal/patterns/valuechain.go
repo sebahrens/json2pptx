@@ -148,11 +148,11 @@ func (vc *valueChain) Validate(values, overrides any, cellOverrides map[int]any)
 		labelPath := fmt.Sprintf("steps[%d].label", i)
 		if strings.TrimSpace(step.Label) == "" {
 			errs = append(errs, errRequired(name, labelPath))
-		} else if len(step.Label) > 40 {
-			errs = append(errs, errMaxLength(name, labelPath, 40, len(step.Label)))
+		} else if runeLen(step.Label) > 40 {
+			errs = append(errs, errMaxLength(name, labelPath, 40, runeLen(step.Label)))
 		}
-		if len(step.Description) > 180 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].description", i), 180, len(step.Description)))
+		if runeLen(step.Description) > 180 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].description", i), 180, runeLen(step.Description)))
 		}
 	}
 

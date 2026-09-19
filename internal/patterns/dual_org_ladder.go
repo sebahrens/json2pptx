@@ -174,13 +174,13 @@ func (d *dualOrgLadder) Validate(values, overrides any, cellOverrides map[int]an
 
 	if strings.TrimSpace(v.OrgA) == "" {
 		errs = append(errs, errRequired(name, "org_a"))
-	} else if len(v.OrgA) > dualOrgLadderOrgMaxChars {
-		errs = append(errs, errMaxLength(name, "org_a", dualOrgLadderOrgMaxChars, len(v.OrgA)))
+	} else if runeLen(v.OrgA) > dualOrgLadderOrgMaxChars {
+		errs = append(errs, errMaxLength(name, "org_a", dualOrgLadderOrgMaxChars, runeLen(v.OrgA)))
 	}
 	if strings.TrimSpace(v.OrgB) == "" {
 		errs = append(errs, errRequired(name, "org_b"))
-	} else if len(v.OrgB) > dualOrgLadderOrgMaxChars {
-		errs = append(errs, errMaxLength(name, "org_b", dualOrgLadderOrgMaxChars, len(v.OrgB)))
+	} else if runeLen(v.OrgB) > dualOrgLadderOrgMaxChars {
+		errs = append(errs, errMaxLength(name, "org_b", dualOrgLadderOrgMaxChars, runeLen(v.OrgB)))
 	}
 
 	if len(v.Rows) < dualOrgLadderMinRows {
@@ -193,23 +193,23 @@ func (d *dualOrgLadder) Validate(values, overrides any, cellOverrides map[int]an
 	for i, row := range v.Rows {
 		if strings.TrimSpace(row.ANameField) == "" {
 			errs = append(errs, errRequired(name, fmt.Sprintf("rows[%d].a_name", i)))
-		} else if len(row.ANameField) > dualOrgLadderNameMaxChars {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("rows[%d].a_name", i), dualOrgLadderNameMaxChars, len(row.ANameField)))
+		} else if runeLen(row.ANameField) > dualOrgLadderNameMaxChars {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("rows[%d].a_name", i), dualOrgLadderNameMaxChars, runeLen(row.ANameField)))
 		}
 		if strings.TrimSpace(row.ATitle) == "" {
 			errs = append(errs, errRequired(name, fmt.Sprintf("rows[%d].a_title", i)))
-		} else if len(row.ATitle) > dualOrgLadderTitleMaxChars {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("rows[%d].a_title", i), dualOrgLadderTitleMaxChars, len(row.ATitle)))
+		} else if runeLen(row.ATitle) > dualOrgLadderTitleMaxChars {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("rows[%d].a_title", i), dualOrgLadderTitleMaxChars, runeLen(row.ATitle)))
 		}
 		if strings.TrimSpace(row.BNameField) == "" {
 			errs = append(errs, errRequired(name, fmt.Sprintf("rows[%d].b_name", i)))
-		} else if len(row.BNameField) > dualOrgLadderNameMaxChars {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("rows[%d].b_name", i), dualOrgLadderNameMaxChars, len(row.BNameField)))
+		} else if runeLen(row.BNameField) > dualOrgLadderNameMaxChars {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("rows[%d].b_name", i), dualOrgLadderNameMaxChars, runeLen(row.BNameField)))
 		}
 		if strings.TrimSpace(row.BTitle) == "" {
 			errs = append(errs, errRequired(name, fmt.Sprintf("rows[%d].b_title", i)))
-		} else if len(row.BTitle) > dualOrgLadderTitleMaxChars {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("rows[%d].b_title", i), dualOrgLadderTitleMaxChars, len(row.BTitle)))
+		} else if runeLen(row.BTitle) > dualOrgLadderTitleMaxChars {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("rows[%d].b_title", i), dualOrgLadderTitleMaxChars, runeLen(row.BTitle)))
 		}
 	}
 

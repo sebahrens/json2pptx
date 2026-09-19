@@ -124,8 +124,8 @@ func (a *agenda) Validate(values, overrides any, cellOverrides map[int]any) erro
 		path := fmt.Sprintf("items[%d]", i)
 		if item == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(item) > 100 {
-			errs = append(errs, errMaxLength(name, path, 100, len(item)))
+		} else if runeLen(item) > 100 {
+			errs = append(errs, errMaxLength(name, path, 100, runeLen(item)))
 		}
 	}
 

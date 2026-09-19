@@ -148,11 +148,11 @@ func (jm *journeyMaturity) Validate(values, overrides any, cellOverrides map[int
 		labelPath := fmt.Sprintf("stages[%d].label", i)
 		if strings.TrimSpace(stage.Label) == "" {
 			errs = append(errs, errRequired(name, labelPath))
-		} else if len(stage.Label) > 40 {
-			errs = append(errs, errMaxLength(name, labelPath, 40, len(stage.Label)))
+		} else if runeLen(stage.Label) > 40 {
+			errs = append(errs, errMaxLength(name, labelPath, 40, runeLen(stage.Label)))
 		}
-		if len(stage.Description) > 180 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("stages[%d].description", i), 180, len(stage.Description)))
+		if runeLen(stage.Description) > 180 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("stages[%d].description", i), 180, runeLen(stage.Description)))
 		}
 	}
 

@@ -285,22 +285,13 @@ func chartInsightPattern(body map[string]any) string {
 	return ""
 }
 
-// kpiPattern selects the kpi-Nup pattern matching the declared KPI count,
-// clamped to the registered 2up–6up range.
+// kpiPattern advertises the kpi-Nup pattern the payload will actually compile
+// to. It used to report kpi-Nup from the declared count alone, so a metric that
+// overflowed the compact cards left the plan promising a KPI visual while the
+// compiler emitted bullets — and nothing but the pixels said which was true
+// (go-slide-creator-5ok4).
 func kpiPattern(body map[string]any) string {
-	n, _ := listLen(body, "kpis")
-	switch {
-	case n <= 2:
-		return "kpi-2up"
-	case n == 3:
-		return "kpi-3up"
-	case n == 4:
-		return "kpi-4up"
-	case n == 5:
-		return "kpi-5up"
-	default:
-		return "kpi-6up"
-	}
+	return slides.KPIPattern(body)
 }
 
 // Normalize converts a DeckSpec into a planned DeckIR, applying the per-kind

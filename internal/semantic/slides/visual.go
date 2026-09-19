@@ -159,11 +159,11 @@ func comparisonPanels(body map[string]any) ([]stylishPanelsItem, bool) {
 	for _, col := range cols {
 		header := columnHeader(col)
 		items := columnItems(col)
-		if header == "" || len(header) > comparisonHeaderMax || len(items) == 0 || len(items) > comparisonPanelMaxBullets {
+		if header == "" || runeLen(header) > comparisonHeaderMax || len(items) == 0 || len(items) > comparisonPanelMaxBullets {
 			return nil, false
 		}
 		for _, item := range items {
-			if item == "" || len(item) > comparisonPanelBulletMax {
+			if item == "" || runeLen(item) > comparisonPanelBulletMax {
 				return nil, false
 			}
 		}
@@ -191,11 +191,11 @@ func comparisonCards(body map[string]any) (*cardGridValues, bool) {
 	for _, col := range cols {
 		header := columnHeader(col)
 		items := columnItems(col)
-		if header == "" || len(header) > comparisonHeaderMax || len(items) == 0 {
+		if header == "" || runeLen(header) > comparisonHeaderMax || len(items) == 0 {
 			return nil, false
 		}
 		cardBody := strings.Join(items, comparisonCardItemJoin)
-		if cardBody == "" || len(cardBody) > comparisonCardBodyMax {
+		if cardBody == "" || runeLen(cardBody) > comparisonCardBodyMax {
 			return nil, false
 		}
 		cells = append(cells, cardGridCell{Header: header, Body: cardBody})

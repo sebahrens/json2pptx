@@ -240,20 +240,20 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 	// Axis labels required
 	if vals.XAxisLabel == "" {
 		errs = append(errs, errRequired(name, "x_axis_label"))
-	} else if len(vals.XAxisLabel) > 60 {
-		errs = append(errs, errMaxLength(name, "x_axis_label", 60, len(vals.XAxisLabel)))
+	} else if runeLen(vals.XAxisLabel) > 60 {
+		errs = append(errs, errMaxLength(name, "x_axis_label", 60, runeLen(vals.XAxisLabel)))
 	}
 	if vals.YAxisLabel == "" {
 		errs = append(errs, errRequired(name, "y_axis_label"))
-	} else if len(vals.YAxisLabel) > 60 {
-		errs = append(errs, errMaxLength(name, "y_axis_label", 60, len(vals.YAxisLabel)))
+	} else if runeLen(vals.YAxisLabel) > 60 {
+		errs = append(errs, errMaxLength(name, "y_axis_label", 60, runeLen(vals.YAxisLabel)))
 	}
 
 	for _, end := range []struct{ path, v string }{
 		{"x_low", vals.XLow}, {"x_high", vals.XHigh}, {"y_low", vals.YLow}, {"y_high", vals.YHigh},
 	} {
-		if len(end.v) > matrix2x2AxisEndMax {
-			errs = append(errs, errMaxLength(name, end.path, matrix2x2AxisEndMax, len(end.v)))
+		if runeLen(end.v) > matrix2x2AxisEndMax {
+			errs = append(errs, errMaxLength(name, end.path, matrix2x2AxisEndMax, runeLen(end.v)))
 		}
 	}
 
@@ -271,11 +271,11 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		headerPath := qd.name + ".header"
 		if qd.q.Header == "" {
 			errs = append(errs, errRequired(name, headerPath))
-		} else if len(qd.q.Header) > 80 {
-			errs = append(errs, errMaxLength(name, headerPath, 80, len(qd.q.Header)))
+		} else if runeLen(qd.q.Header) > 80 {
+			errs = append(errs, errMaxLength(name, headerPath, 80, runeLen(qd.q.Header)))
 		}
-		if len(qd.q.Body) > 200 {
-			errs = append(errs, errMaxLength(name, qd.name+".body", 200, len(qd.q.Body)))
+		if runeLen(qd.q.Body) > 200 {
+			errs = append(errs, errMaxLength(name, qd.name+".body", 200, runeLen(qd.q.Body)))
 		}
 		if qd.q.Icon != nil {
 			errs = append(errs, validateIconRef(name, qd.name+".icon", *qd.q.Icon)...)

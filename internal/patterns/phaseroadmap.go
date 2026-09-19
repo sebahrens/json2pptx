@@ -166,17 +166,17 @@ func (pr *phaseRoadmap) Validate(values, overrides any, cellOverrides map[int]an
 		namePath := fmt.Sprintf("phases[%d].name", i)
 		if p.Name == "" {
 			errs = append(errs, errRequired(name, namePath))
-		} else if len(p.Name) > 40 {
-			errs = append(errs, errMaxLength(name, namePath, 40, len(p.Name)))
+		} else if runeLen(p.Name) > 40 {
+			errs = append(errs, errMaxLength(name, namePath, 40, runeLen(p.Name)))
 		}
-		if len(p.DateLabel) > 30 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].date_label", i), 30, len(p.DateLabel)))
+		if runeLen(p.DateLabel) > 30 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].date_label", i), 30, runeLen(p.DateLabel)))
 		}
-		if len(p.Description) > 160 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].description", i), 160, len(p.Description)))
+		if runeLen(p.Description) > 160 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].description", i), 160, runeLen(p.Description)))
 		}
-		if len(p.Milestone) > 60 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].milestone", i), 60, len(p.Milestone)))
+		if runeLen(p.Milestone) > 60 {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("phases[%d].milestone", i), 60, runeLen(p.Milestone)))
 		}
 		if p.Active {
 			activeCount++

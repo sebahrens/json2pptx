@@ -198,15 +198,15 @@ func (e *execSummary) Validate(values, overrides any, cellOverrides map[int]any)
 		leadPath := fmt.Sprintf("points[%d].lead", i)
 		if strings.TrimSpace(p.Lead) == "" {
 			errs = append(errs, errRequired(name, leadPath))
-		} else if len(p.Lead) > execSummaryLeadMax {
-			errs = append(errs, errMaxLength(name, leadPath, execSummaryLeadMax, len(p.Lead)))
+		} else if runeLen(p.Lead) > execSummaryLeadMax {
+			errs = append(errs, errMaxLength(name, leadPath, execSummaryLeadMax, runeLen(p.Lead)))
 		}
-		if len(p.Support) > execSummarySupportMax {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("points[%d].support", i), execSummarySupportMax, len(p.Support)))
+		if runeLen(p.Support) > execSummarySupportMax {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("points[%d].support", i), execSummarySupportMax, runeLen(p.Support)))
 		}
 	}
-	if len(vals.BottomLine) > execSummaryBottomLineMax {
-		errs = append(errs, errMaxLength(name, "bottom_line", execSummaryBottomLineMax, len(vals.BottomLine)))
+	if runeLen(vals.BottomLine) > execSummaryBottomLineMax {
+		errs = append(errs, errMaxLength(name, "bottom_line", execSummaryBottomLineMax, runeLen(vals.BottomLine)))
 	}
 	if coErr := validateCellOverrideKeys(name, cellOverrides, len(vals.Points), "(index = point)"); coErr != nil {
 		errs = append(errs, coErr)

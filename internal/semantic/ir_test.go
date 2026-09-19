@@ -78,18 +78,22 @@ func TestNormalizeSlidePlans(t *testing.T) {
 	}
 }
 
+// A count outside 2–6 has no kpi-Nup pattern, and the compiler emits bullets
+// for it. The plan used to clamp — advertising kpi-2up for a single metric and
+// kpi-6up for nine — so explain promised a visual compile would not produce
+// (go-slide-creator-5ok4).
 func TestKPIPatternScalesWithCount(t *testing.T) {
 	cases := []struct {
 		count int
 		want  string
 	}{
-		{1, "kpi-2up"},
+		{1, ""},
 		{2, "kpi-2up"},
 		{3, "kpi-3up"},
 		{4, "kpi-4up"},
 		{5, "kpi-5up"},
 		{6, "kpi-6up"},
-		{9, "kpi-6up"},
+		{9, ""},
 	}
 	for _, tc := range cases {
 		kpis := make([]any, tc.count)

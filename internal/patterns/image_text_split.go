@@ -240,8 +240,8 @@ func (p *imageTextSplit) Validate(values, overrides any, cellOverrides map[int]a
 		{"image_label", v.ImageLabel, itsLabelMax}, {"caption", v.Caption, itsCaptionMax},
 		{"eyebrow", v.Eyebrow, itsEyebrowMax}, {"heading", v.Heading, itsHeadingMax}, {"body", v.Body, itsBodyMax},
 	} {
-		if len(f.val) > f.max {
-			errs = append(errs, errMaxLength(name, f.path, f.max, len(f.val)))
+		if runeLen(f.val) > f.max {
+			errs = append(errs, errMaxLength(name, f.path, f.max, runeLen(f.val)))
 		}
 	}
 	if len(v.Bullets) > itsMaxBullets {
@@ -251,8 +251,8 @@ func (p *imageTextSplit) Validate(values, overrides any, cellOverrides map[int]a
 		path := fmt.Sprintf("bullets[%d]", i)
 		if strings.TrimSpace(b) == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if len(b) > itsBulletMax {
-			errs = append(errs, errMaxLength(name, path, itsBulletMax, len(b)))
+		} else if runeLen(b) > itsBulletMax {
+			errs = append(errs, errMaxLength(name, path, itsBulletMax, runeLen(b)))
 		}
 	}
 	errs = append(errs, itsValidateMetrics(v.Metrics)...)
@@ -286,13 +286,13 @@ func itsValidateMetrics(metrics []ImageTextSplitMetric) []error {
 		vp, lp := fmt.Sprintf("metrics[%d].value", i), fmt.Sprintf("metrics[%d].label", i)
 		if strings.TrimSpace(m.Value) == "" {
 			errs = append(errs, errRequired(name, vp))
-		} else if len(m.Value) > itsMetricValue {
-			errs = append(errs, errMaxLength(name, vp, itsMetricValue, len(m.Value)))
+		} else if runeLen(m.Value) > itsMetricValue {
+			errs = append(errs, errMaxLength(name, vp, itsMetricValue, runeLen(m.Value)))
 		}
 		if strings.TrimSpace(m.Label) == "" {
 			errs = append(errs, errRequired(name, lp))
-		} else if len(m.Label) > itsMetricLabel {
-			errs = append(errs, errMaxLength(name, lp, itsMetricLabel, len(m.Label)))
+		} else if runeLen(m.Label) > itsMetricLabel {
+			errs = append(errs, errMaxLength(name, lp, itsMetricLabel, runeLen(m.Label)))
 		}
 	}
 	return errs

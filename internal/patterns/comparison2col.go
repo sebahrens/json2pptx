@@ -256,23 +256,23 @@ func (c *comparison2col) Validate(values, overrides any, cellOverrides map[int]a
 		leftPath := fmt.Sprintf("rows[%d].left", i)
 		if row.Left == "" {
 			errs = append(errs, errRequired(name, leftPath))
-		} else if len(row.Left) > 200 {
-			errs = append(errs, errMaxLength(name, leftPath, 200, len(row.Left)))
+		} else if runeLen(row.Left) > 200 {
+			errs = append(errs, errMaxLength(name, leftPath, 200, runeLen(row.Left)))
 		}
 		rightPath := fmt.Sprintf("rows[%d].right", i)
 		if row.Right == "" {
 			errs = append(errs, errRequired(name, rightPath))
-		} else if len(row.Right) > 200 {
-			errs = append(errs, errMaxLength(name, rightPath, 200, len(row.Right)))
+		} else if runeLen(row.Right) > 200 {
+			errs = append(errs, errMaxLength(name, rightPath, 200, runeLen(row.Right)))
 		}
 	}
 
 	// Header length checks
-	if len(vals.HeaderLeft) > 60 {
-		errs = append(errs, errMaxLength(name, "header_left", 60, len(vals.HeaderLeft)))
+	if runeLen(vals.HeaderLeft) > 60 {
+		errs = append(errs, errMaxLength(name, "header_left", 60, runeLen(vals.HeaderLeft)))
 	}
-	if len(vals.HeaderRight) > 60 {
-		errs = append(errs, errMaxLength(name, "header_right", 60, len(vals.HeaderRight)))
+	if runeLen(vals.HeaderRight) > 60 {
+		errs = append(errs, errMaxLength(name, "header_right", 60, runeLen(vals.HeaderRight)))
 	}
 
 	// Compute total cell count for cell_overrides validation

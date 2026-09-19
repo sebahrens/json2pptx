@@ -165,17 +165,17 @@ func (q *quoteCluster) Validate(values, overrides any, cellOverrides map[int]any
 		textPath := fmt.Sprintf("quotes[%d].text", i)
 		if strings.TrimSpace(qt.Text) == "" {
 			errs = append(errs, errRequired(name, textPath))
-		} else if len(qt.Text) > quoteClusterTextMax {
-			errs = append(errs, errMaxLength(name, textPath, quoteClusterTextMax, len(qt.Text)))
+		} else if runeLen(qt.Text) > quoteClusterTextMax {
+			errs = append(errs, errMaxLength(name, textPath, quoteClusterTextMax, runeLen(qt.Text)))
 		}
 		namePath := fmt.Sprintf("quotes[%d].name", i)
 		if strings.TrimSpace(qt.Name) == "" {
 			errs = append(errs, errRequired(name, namePath))
-		} else if len(qt.Name) > quoteClusterNameMax {
-			errs = append(errs, errMaxLength(name, namePath, quoteClusterNameMax, len(qt.Name)))
+		} else if runeLen(qt.Name) > quoteClusterNameMax {
+			errs = append(errs, errMaxLength(name, namePath, quoteClusterNameMax, runeLen(qt.Name)))
 		}
-		if len(qt.Title) > quoteClusterTitleMax {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("quotes[%d].title", i), quoteClusterTitleMax, len(qt.Title)))
+		if runeLen(qt.Title) > quoteClusterTitleMax {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("quotes[%d].title", i), quoteClusterTitleMax, runeLen(qt.Title)))
 		}
 	}
 
