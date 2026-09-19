@@ -528,7 +528,9 @@ func TestCountFishboneCauses_EdgeCases(t *testing.T) {
 	}
 }
 
-// TestDiagramAltText verifies alt-text generation for diagram content items.
+// TestDiagramAltText verifies alt-text generation for diagram content items:
+// the type and title name the visual, the payload supplies what is in it, and
+// an authored alt replaces the derivation entirely (go-slide-creator-6e8h).
 func TestDiagramAltText(t *testing.T) {
 	tests := []struct {
 		name string
@@ -538,12 +540,51 @@ func TestDiagramAltText(t *testing.T) {
 		{
 			name: "diagram with title",
 			item: ContentItem{Value: &types.DiagramSpec{Type: "bar_chart", Title: "Revenue Growth"}},
-			want: "Revenue Growth (bar_chart)",
+			want: "Bar chart, Revenue Growth.",
 		},
 		{
 			name: "diagram without title",
 			item: ContentItem{Value: &types.DiagramSpec{Type: "process_flow"}},
-			want: "process flow diagram",
+			want: "Process flow.",
+		},
+		{
+			name: "chart data supplies categories, series and range",
+			item: ContentItem{Value: &types.DiagramSpec{
+				Type:  "bar_chart",
+				Title: "Quarterly revenue ($M)",
+				Data: map[string]any{
+					"categories": []any{"Q1", "Q2", "Q3", "Q4"},
+					"series": []any{
+						map[string]any{"name": "Revenue", "values": []any{34.0, 40.0, 44.0, 48.0}},
+					},
+				},
+			}},
+			want: "Bar chart, Quarterly revenue ($M). 4 categories, 1 series (Revenue), values from 34 to 48.",
+		},
+		{
+			name: "structural payload supplies its step count",
+			item: ContentItem{Value: &types.DiagramSpec{
+				Type: "process_flow",
+				Data: map[string]any{"steps": []any{
+					map[string]any{"label": "Assess"},
+					map[string]any{"label": "Migrate"},
+					map[string]any{"label": "Verify"},
+				}},
+			}},
+			want: "Process flow. 3 steps.",
+		},
+		{
+			name: "authored alt wins over the derivation",
+			item: ContentItem{Value: &types.DiagramSpec{
+				Type:  "bar_chart",
+				Title: "Quarterly revenue ($M)",
+				Alt:   "Revenue climbs every quarter, ending 41% above Q1.",
+				Data: map[string]any{
+					"categories": []any{"Q1", "Q2"},
+					"series":     []any{map[string]any{"name": "Revenue", "values": []any{34.0, 48.0}}},
+				},
+			}},
+			want: "Revenue climbs every quarter, ending 41% above Q1.",
 		},
 		{
 			name: "non-diagram content",

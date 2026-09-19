@@ -70,7 +70,7 @@ A slide's `content` array is a list of typed items, each targeting a placeholder
 - `type: "diagram"`          → requires `diagram_value`
 - `type: "image"`            → requires `image_value`
 
-Other `*_value` fields are forbidden for the chosen type. The legacy raw `value` field is still accepted (unconstrained) for backward compatibility.
+Other `*_value` fields are forbidden for the chosen type. The legacy raw `value` field is still accepted (unconstrained) for backward compatibility. `table_value`, `chart_value`, `diagram_value` and a `shape_grid` cell's `diagram` / `table` each take an optional `alt` — one sentence a screen reader announces, written into the shape's `cNvPr/@descr`; without it the engine derives one from the payload and reports `MISSING_ALT_TEXT` (advisory, see [FIT_FINDINGS.md](FIT_FINDINGS.md#missing_alt_text)).
 
 ## Section slides and the title-at-bottom convention
 

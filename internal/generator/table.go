@@ -271,10 +271,17 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 
 	var xml strings.Builder
 
-	// Graphic frame wrapper
+	// Graphic frame wrapper. The cNvPr carries the table's alt text: a table
+	// frame with no descr announces nothing at all to a screen reader, and the
+	// derived description at least says the table's shape and column names
+	// (go-slide-creator-6e8h). insertTableFrames renumbers this cNvPr id and
+	// preserves the descr it finds.
+	// The alt text is an argument, never part of the format string: a "%" in an
+	// authored description ("64% of FY26 revenue") would otherwise be read as a
+	// verb and shift every geometry value after it.
 	fmt.Fprintf(&xml, `<p:graphicFrame>`+
 		`<p:nvGraphicFramePr>`+
-		`<p:cNvPr id="4" name="Table 1"/>`+
+		`<p:cNvPr id="4" name="Table 1" descr="%s"/>`+
 		`<p:cNvGraphicFramePr><a:graphicFrameLocks noGrp="1"/></p:cNvGraphicFramePr>`+
 		`<p:nvPr/>`+
 		`</p:nvGraphicFramePr>`+
@@ -285,6 +292,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		`<a:graphic>`+
 		`<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">`+
 		`<a:tbl>`,
+		escapeXMLText(TableAltText(table)),
 		config.Bounds.X, offsetY,
 		config.Bounds.Width, totalHeight,
 	)

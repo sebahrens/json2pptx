@@ -20,7 +20,10 @@ import (
 
 // regexSldLayoutID extracts the id attribute from <p:sldLayoutId id="NNN" .../> entries.
 var regexSldLayoutID = regexp.MustCompile(`<p:sldLayoutId\b[^>]*\bid="(\d+)"`)
-var tableFrameIDRegex = regexp.MustCompile(`<p:cNvPr id="\d+" name="Table 1"/>`)
+// tableFrameIDRegex matches the table frame's cNvPr so insertTableFrames can
+// renumber its id. The optional trailing group is the alt text GenerateTableXML
+// wrote; the replacement carries it through rather than dropping it.
+var tableFrameIDRegex = regexp.MustCompile(`<p:cNvPr id="\d+" name="Table 1"( descr="[^"]*")?/>`)
 
 // writeOutput performs the single-pass write operation.
 // This orchestrates the writing of all components in the correct order.
@@ -907,7 +910,7 @@ func insertTableFrames(slideData []byte, tables []tableInsert) ([]byte, error) {
 	var frames []string
 	nextShapeID := findMaxShapeID(slideData) + 1
 	for _, t := range tables {
-		frame := tableFrameIDRegex.ReplaceAllString(t.graphicFrameXML, fmt.Sprintf(`<p:cNvPr id="%d" name="Table 1"/>`, nextShapeID))
+		frame := tableFrameIDRegex.ReplaceAllString(t.graphicFrameXML, fmt.Sprintf(`<p:cNvPr id="%d" name="Table 1"${1}/>`, nextShapeID))
 		frames = append(frames, frame)
 		nextShapeID++
 	}

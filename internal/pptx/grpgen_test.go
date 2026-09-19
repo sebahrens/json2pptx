@@ -369,3 +369,39 @@ func formatChOff(x, y int64) string {
 func formatChExt(cx, cy int64) string {
 	return fmt.Sprintf(`<a:chExt cx="%d" cy="%d"/>`, cx, cy)
 }
+
+// TestSetGroupDescription covers the alt-text write the native diagram groups
+// depend on: the description lands on the group's own cNvPr, an existing descr
+// is left alone, and an empty description is a no-op (go-slide-creator-6e8h).
+func TestSetGroupDescription(t *testing.T) {
+	group, err := GenerateGroup(GroupOptions{
+		ID:       10,
+		Name:     "SWOT Analysis",
+		Bounds:   RectEmu{X: 0, Y: 0, CX: 100, CY: 100},
+		Children: [][]byte{[]byte(`<p:sp/>`)},
+	})
+	if err != nil {
+		t.Fatalf("GenerateGroup: %v", err)
+	}
+
+	got := SetGroupDescription(string(group), `SWOT diagram, "Where we stand" & why. 4 sections.`)
+	want := ` descr="SWOT diagram, &quot;Where we stand&quot; &amp; why. 4 sections."`
+	if !strings.Contains(got, want) {
+		t.Errorf("group XML missing escaped descr %q:\n%s", want, got)
+	}
+	if strings.Count(got, "descr=") != 1 {
+		t.Errorf("expected exactly one descr attribute, got %d:\n%s", strings.Count(got, "descr="), got)
+	}
+	// The descr belongs to the group, not to a child: it must appear before the
+	// first child element.
+	if strings.Index(got, "descr=") > strings.Index(got, "<p:sp/>") {
+		t.Errorf("descr landed after the group's children:\n%s", got)
+	}
+
+	if again := SetGroupDescription(got, "a different description"); again != got {
+		t.Errorf("SetGroupDescription overwrote an existing descr:\n%s", again)
+	}
+	if none := SetGroupDescription(string(group), ""); none != string(group) {
+		t.Errorf("empty description should be a no-op")
+	}
+}

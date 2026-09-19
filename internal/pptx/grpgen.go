@@ -3,6 +3,7 @@ package pptx
 import (
 	"bytes"
 	"fmt"
+	"strings"
 )
 
 // GroupOptions configures the generation of a p:grpSp (group shape) element.
@@ -105,4 +106,33 @@ func GenerateGroupWithChildSpace(opts GroupOptions, childBounds RectEmu) ([]byte
 	buf.WriteString(`</p:grpSp>`)
 
 	return buf.Bytes(), nil
+}
+
+// SetGroupDescription writes description into a generated group's own cNvPr as
+// the descr attribute (alt text), returning the group XML unchanged when the
+// description is empty or a descr is already present.
+//
+// The alt text is applied here rather than passed through GroupOptions because
+// the thirteen native diagram group builders in internal/generator assemble
+// their children long before the DiagramSpec's description is resolved, and a
+// group whose cNvPr has no descr announces nothing at all to a screen reader
+// (go-slide-creator-6e8h).
+func SetGroupDescription(groupXML string, description string) string {
+	if description == "" || groupXML == "" {
+		return groupXML
+	}
+	const open = `<p:cNvPr `
+	start := strings.Index(groupXML, open)
+	if start < 0 {
+		return groupXML
+	}
+	end := strings.Index(groupXML[start:], `/>`)
+	if end < 0 {
+		return groupXML
+	}
+	end += start
+	if strings.Contains(groupXML[start:end], ` descr="`) {
+		return groupXML
+	}
+	return groupXML[:end] + fmt.Sprintf(` descr="%s"`, escapeXMLAttr(description)) + groupXML[end:]
 }

@@ -41,6 +41,13 @@ type ChartSpec struct {
 	// field is a *bool so the absence of an override is distinguishable from
 	// an explicit false. See ChartStyleOverrides for the field catalog.
 	ChartStyle *ChartStyleOverrides `json:"chart_style,omitempty"`
+
+	// Alt is the description a screen reader announces for this chart. Write one
+	// sentence saying what it shows; the engine derives a fallback from the
+	// data (type, title, counts and range) when it is absent, which is better
+	// than the type name it used to announce but cannot say what the chart is FOR
+	// (go-slide-creator-6e8h).
+	Alt string `json:"alt,omitempty"`
 }
 
 // ChartStyleOverrides carries per-slide overrides for the executive chart-style
@@ -90,6 +97,7 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 		TimeData     map[string]any       `json:"time_data,omitempty"`
 		TimeOrder    []string             `json:"time_order,omitempty"`
 		ChartStyle   *ChartStyleOverrides `json:"chart_style,omitempty"`
+		Alt          string               `json:"alt,omitempty"`
 	}
 
 	var raw chartSpecRawData
@@ -109,6 +117,7 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 	cs.TimeData = raw.TimeData
 	cs.TimeOrder = raw.TimeOrder
 	cs.ChartStyle = raw.ChartStyle
+	cs.Alt = raw.Alt
 
 	if len(raw.Data) == 0 {
 		return nil
@@ -407,6 +416,7 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 	return &DiagramSpec{
 		Type:             svggenType,
 		Title:            cs.Title,
+		Alt:              cs.Alt,
 		Data:             data,
 		Width:            cs.Width,
 		Height:           cs.Height,

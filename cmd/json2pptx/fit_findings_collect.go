@@ -138,8 +138,10 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	findings = append(findings, collectBackgroundFindings(input)...)
 
 	// 9. Accessibility lint: alt text on images / icons sourced from
-	// path/url/svg_data. Bundled icon names are exempt (implicit captions).
-	findings = append(findings, collectAltTextFindings(input)...)
+	// path/url/svg_data, and on charts, diagrams and tables. Bundled icon names
+	// are exempt (implicit captions); so are the chart/diagram/table cells of a
+	// pattern-expanded grid, which the author cannot annotate.
+	findings = append(findings, collectAltTextFindings(input, patternSlides)...)
 
 	// 9b. Content substance: exemplar copy, titleless slides, near-empty slides
 	// and deck monotony — the defect classes the score could not see

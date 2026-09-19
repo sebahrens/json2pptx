@@ -141,6 +141,7 @@ func (ctx *singlePassContext) processValueChainNativeShapes(slideNum int, item C
 		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
 
 	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
+		altText:        diagramAltText(item),
 		placeholderIdx: shapeIdx,
 		bounds:         placeholderBounds,
 		panels:         panels,

@@ -19,6 +19,7 @@
             "placeholder_id": "body",
             "type": "table",
             "table_value": {
+              "alt": "Twenty-four vendors with their product, category, price, rating and status — the rows the split pages across slides.",
               "headers": ["Vendor", "Product", "Category", "Price", "Rating", "Status"],
               "rows": [
                 ["Acme Corp", "Widget Pro", "Hardware", "$1,200", "4.5/5", "Active"],

@@ -404,6 +404,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "US hyperscalers grow from $198B to a projected $396B of cloud infrastructure revenue; European sovereign infrastructure grows tenfold from $4B to $41B but stays under 8% of the market.",
             "type": "stacked_bar",
             "title": "Cloud Infrastructure Market Share by Provider Origin (USD Billions)",
             "data": {
@@ -731,6 +732,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "China leads announced sovereign AI investment with €47B government and €31B private; the EU/EEA follows with €28B and €19B, well ahead of India, the Middle East, ASEAN and Latin America.",
             "type": "bar",
             "title": "Announced Sovereign AI Infrastructure Investment by Region (EUR Billions, 2023-2027)",
             "data": {
@@ -1937,6 +1939,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "€14.0B of investment — GPU clusters and data centres the largest items — is offset by €8.5B of avoided costs and €12.2B of new revenue.",
             "type": "waterfall",
             "title": "Investment Breakdown and Value Creation (EUR Billions)",
             "data": {
@@ -2135,6 +2138,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Projected revenue reaches €37.2B by 2029 across three segments, led by regulated industries (€17.5B), then government and defence (€12.1B) and critical infrastructure (€7.6B).",
             "type": "line",
             "title": "Sovereign AI Infrastructure Revenue Projection (EUR Billions)",
             "data": {
@@ -2873,6 +2877,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Revenue grows from €0.3B to €8.1B over five years while operating costs and capex fall as a share, with the entity crossing into positive contribution in year 4.",
             "type": "bar",
             "title": "Sovereign AI Infrastructure Entity — Revenue vs Cost (EUR Billions)",
             "data": {

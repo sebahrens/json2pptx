@@ -75,6 +75,7 @@ type panelShapeInsert struct {
 	bounds            types.BoundingBox // Placeholder EMU bounds
 	panels            []nativePanelData // Parsed panel data
 	groupXML          string            // Populated during finalizePanelGroupXML()
+	altText           string            // Alt text for the group's cNvPr descr (from the DiagramSpec)
 	swotMode          bool              // True for SWOT 2x2 grid layout (vs column panels)
 	pestelMode        bool              // True for PESTEL 3x2 grid layout
 	nineBoxMode       bool              // True for Nine Box Talent 3x3 grid layout

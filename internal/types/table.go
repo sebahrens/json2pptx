@@ -10,6 +10,12 @@ type TableSpec struct {
 	Style            TableStyle    // Table styling options
 	Merges           []CellMerge   // List of merge regions
 	ColumnAlignments []string      // Per-column alignment: "left", "center", "right" (from separator row)
+
+	// Alt is the description a screen reader announces for this table. Write
+	// one sentence saying what it shows; the engine derives a fallback from
+	// the table's own shape (columns by rows, and the column names) when it is
+	// absent (go-slide-creator-6e8h).
+	Alt string
 }
 
 // TableCell represents a single cell in a table.

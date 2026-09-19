@@ -1131,14 +1131,11 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 		}
 	}
 
-	// Build alt-text from diagram type and title
-	alt := strings.ReplaceAll(diagramSpec.Type, "_", " ") + " diagram"
-	if diagramSpec.Title != "" {
-		alt = diagramSpec.Title + " (" + diagramSpec.Type + ")"
-	}
 	return []generator.IconInsert{{
-		SVGData:  result.SVG,
-		Alt:      alt,
+		SVGData: result.SVG,
+		// An authored alt wins; the derived fallback describes the diagram's
+		// contents rather than naming its type (go-slide-creator-6e8h).
+		Alt:      generator.DiagramAltTextFor(diagramSpec),
 		OffsetX:  cell.Bounds.X,
 		OffsetY:  cell.Bounds.Y,
 		ExtentCX: cell.Bounds.CX,

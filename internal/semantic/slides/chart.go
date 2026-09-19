@@ -188,6 +188,9 @@ func compileChartFallback(in Input, insights []string, insightsField string) (*d
 	// chart-backed claim into unsupported prose. Preserve the complete diagram
 	// payload as native content and keep the insights alongside it.
 	if chart := chartSpec(in.Body); chart != nil {
+		if chart.Alt == "" {
+			chart.Alt = visualAltText(in)
+		}
 		idx := appendContent(slide, diagramContent("body", chart))
 		links = append(links, SourceLink{
 			RawPath:      fmt.Sprintf("%s.content[%d].diagram_value", in.rawSlide(), idx),

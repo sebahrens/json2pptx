@@ -48,6 +48,20 @@ func diagramContent(placeholderID string, diagram *types.DiagramSpec) deckinput.
 	return deckinput.ContentInput{PlaceholderID: placeholderID, Type: "diagram", DiagramValue: diagram}
 }
 
+// visualAltText is the alt text a compiled chart, diagram or table carries: the
+// slide's takeaway, else its title. A semantic slide states its point in one
+// sentence, and that sentence is exactly what a screen reader should hear about
+// the visual making it — better than any description the engine can derive from
+// the data, and free for every semantic deck (go-slide-creator-6e8h). An alt the
+// author wrote on the payload itself always wins; callers only apply this when
+// the field is empty.
+func visualAltText(in Input) string {
+	if in.Takeaway != "" {
+		return in.Takeaway
+	}
+	return in.Title
+}
+
 // SourceLink records one raw->semantic correspondence a compiler emitted. The
 // parent package feeds these into its SourceMap so a raw fit-report path can be
 // traced back to the semantic field the author wrote.

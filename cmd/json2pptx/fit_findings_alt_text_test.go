@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestAltText_ImageValuePath_NoAlt(t *testing.T) {
@@ -17,7 +18,7 @@ func TestAltText_ImageValuePath_NoAlt(t *testing.T) {
 			}},
 		}},
 	}
-	findings := collectAltTextFindings(input)
+	findings := collectAltTextFindings(input, nil)
 	f := findFinding(findings, patterns.ErrCodeMissingAltText)
 	if f == nil {
 		t.Fatalf("expected MISSING_ALT_TEXT finding, got %+v", findings)
@@ -49,7 +50,7 @@ func TestAltText_ImageValueURL_NoAlt(t *testing.T) {
 			}},
 		}},
 	}
-	findings := collectAltTextFindings(input)
+	findings := collectAltTextFindings(input, nil)
 	f := findFinding(findings, patterns.ErrCodeMissingAltText)
 	if f == nil {
 		t.Fatalf("expected MISSING_ALT_TEXT finding for url-sourced image_value, got %+v", findings)
@@ -69,7 +70,7 @@ func TestAltText_ImageValueWithAlt_NoFinding(t *testing.T) {
 			}},
 		}},
 	}
-	if findings := collectAltTextFindings(input); findFinding(findings, patterns.ErrCodeMissingAltText) != nil {
+	if findings := collectAltTextFindings(input, nil); findFinding(findings, patterns.ErrCodeMissingAltText) != nil {
 		t.Errorf("did not expect MISSING_ALT_TEXT when alt is set, got %+v", findings)
 	}
 }
@@ -84,7 +85,7 @@ func TestAltText_BlankAltCountsAsMissing(t *testing.T) {
 			}},
 		}},
 	}
-	if findFinding(collectAltTextFindings(input), patterns.ErrCodeMissingAltText) == nil {
+	if findFinding(collectAltTextFindings(input, nil), patterns.ErrCodeMissingAltText) == nil {
 		t.Errorf("expected MISSING_ALT_TEXT for whitespace-only alt")
 	}
 }
@@ -101,7 +102,7 @@ func TestAltText_GridImage_NoAlt(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectAltTextFindings(input)
+	findings := collectAltTextFindings(input, nil)
 	f := findFinding(findings, patterns.ErrCodeMissingAltText)
 	if f == nil {
 		t.Fatalf("expected MISSING_ALT_TEXT for grid image without alt, got %+v", findings)
@@ -123,7 +124,7 @@ func TestAltText_CellIcon_PathNoAlt(t *testing.T) {
 			},
 		}},
 	}
-	f := findFinding(collectAltTextFindings(input), patterns.ErrCodeMissingAltText)
+	f := findFinding(collectAltTextFindings(input, nil), patterns.ErrCodeMissingAltText)
 	if f == nil {
 		t.Fatalf("expected MISSING_ALT_TEXT for cell icon sourced from path")
 	}
@@ -144,7 +145,7 @@ func TestAltText_CellIcon_BundledNameExempt(t *testing.T) {
 			},
 		}},
 	}
-	if findings := collectAltTextFindings(input); findFinding(findings, patterns.ErrCodeMissingAltText) != nil {
+	if findings := collectAltTextFindings(input, nil); findFinding(findings, patterns.ErrCodeMissingAltText) != nil {
 		t.Errorf("did not expect MISSING_ALT_TEXT for bundled icon by name (implicit caption), got %+v", findings)
 	}
 }
@@ -161,7 +162,7 @@ func TestAltText_CellIcon_SVGDataNoAlt(t *testing.T) {
 			},
 		}},
 	}
-	f := findFinding(collectAltTextFindings(input), patterns.ErrCodeMissingAltText)
+	f := findFinding(collectAltTextFindings(input, nil), patterns.ErrCodeMissingAltText)
 	if f == nil {
 		t.Fatalf("expected MISSING_ALT_TEXT for inline svg_data icon")
 	}
@@ -185,7 +186,7 @@ func TestAltText_ShapeIcon_URLNoAlt(t *testing.T) {
 			},
 		}},
 	}
-	f := findFinding(collectAltTextFindings(input), patterns.ErrCodeMissingAltText)
+	f := findFinding(collectAltTextFindings(input, nil), patterns.ErrCodeMissingAltText)
 	if f == nil {
 		t.Fatalf("expected MISSING_ALT_TEXT for shape-overlay icon")
 	}
@@ -208,7 +209,7 @@ func TestAltText_IconWithAlt_NoFinding(t *testing.T) {
 			},
 		}},
 	}
-	if findings := collectAltTextFindings(input); findFinding(findings, patterns.ErrCodeMissingAltText) != nil {
+	if findings := collectAltTextFindings(input, nil); findFinding(findings, patterns.ErrCodeMissingAltText) != nil {
 		t.Errorf("did not expect MISSING_ALT_TEXT when alt is set on both icon and image, got %+v", findings)
 	}
 }
@@ -225,13 +226,124 @@ func TestAltText_NoSourceNoFinding(t *testing.T) {
 			},
 		}},
 	}
-	if findings := collectAltTextFindings(input); findFinding(findings, patterns.ErrCodeMissingAltText) != nil {
+	if findings := collectAltTextFindings(input, nil); findFinding(findings, patterns.ErrCodeMissingAltText) != nil {
 		t.Errorf("did not expect MISSING_ALT_TEXT for empty icon, got %+v", findings)
 	}
 }
 
 func TestAltText_NilInput(t *testing.T) {
-	if findings := collectAltTextFindings(nil); findings != nil {
+	if findings := collectAltTextFindings(nil, nil); findings != nil {
 		t.Errorf("expected nil for nil input, got %+v", findings)
+	}
+}
+
+// TestAltText_ChartAndTableSurfaces covers the two surfaces the lint gained in
+// go-slide-creator-6e8h: a content-level chart/diagram and a content-level
+// table with nothing authored to announce.
+func TestAltText_ChartAndTableSurfaces(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  ContentInput
+		wantPath string
+		wantKind string
+	}{
+		{
+			name: "diagram without alt",
+			content: ContentInput{
+				PlaceholderID: "body",
+				Type:          "diagram",
+				DiagramValue:  &types.DiagramSpec{Type: "bar_chart", Title: "Revenue"},
+			},
+			wantPath: "diagram_value",
+			wantKind: "diagram",
+		},
+		{
+			name: "chart without alt",
+			content: ContentInput{
+				PlaceholderID: "body",
+				Type:          "chart",
+				ChartValue:    &types.ChartSpec{Type: "bar", Title: "Revenue"}, //nolint:staticcheck // ChartSpec is still part of the input contract
+			},
+			wantPath: "chart_value",
+			wantKind: "chart",
+		},
+		{
+			name: "table without alt",
+			content: ContentInput{
+				PlaceholderID: "body",
+				Type:          "table",
+				TableValue:    &TableInput{Headers: []string{"Segment"}},
+			},
+			wantPath: "table_value",
+			wantKind: "table",
+		},
+		{
+			name: "legacy untyped value without alt",
+			content: ContentInput{
+				PlaceholderID: "body",
+				Type:          "diagram",
+				Value:         []byte(`{"type":"bar_chart","data":{}}`),
+			},
+			wantPath: "diagram_value",
+			wantKind: "diagram",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := &PresentationInput{Slides: []SlideInput{{Content: []ContentInput{tt.content}}}}
+			f := findFinding(collectAltTextFindings(input, nil), patterns.ErrCodeMissingAltText)
+			if f == nil {
+				t.Fatalf("expected MISSING_ALT_TEXT for %s", tt.name)
+			}
+			if f.Action != "review" {
+				t.Errorf("action = %q, want review", f.Action)
+			}
+			if !strings.Contains(f.Path, tt.wantPath) {
+				t.Errorf("path %q should mention %s", f.Path, tt.wantPath)
+			}
+			if f.Fix == nil || f.Fix.Params["kind"] != tt.wantKind {
+				t.Errorf("fix.params.kind = %v, want %s", f.Fix, tt.wantKind)
+			}
+		})
+	}
+}
+
+// TestAltText_AuthoredVisualAltIsExempt checks the other half: an alt on the
+// chart, diagram or table silences the finding, including one written into the
+// legacy untyped payload.
+func TestAltText_AuthoredVisualAltIsExempt(t *testing.T) {
+	inputs := map[string]ContentInput{
+		"diagram": {PlaceholderID: "body", Type: "diagram", DiagramValue: &types.DiagramSpec{Type: "bar_chart", Alt: "Revenue rises every quarter."}},
+		"chart":   {PlaceholderID: "body", Type: "chart", ChartValue: &types.ChartSpec{Type: "bar", Alt: "Revenue rises every quarter."}}, //nolint:staticcheck // see above
+		"table":   {PlaceholderID: "body", Type: "table", TableValue: &TableInput{Headers: []string{"Segment"}, Alt: "Enterprise is 64% of revenue."}},
+		"legacy":  {PlaceholderID: "body", Type: "diagram", Value: []byte(`{"type":"bar_chart","alt":"Revenue rises every quarter."}`)},
+	}
+	for name, content := range inputs {
+		t.Run(name, func(t *testing.T) {
+			input := &PresentationInput{Slides: []SlideInput{{Content: []ContentInput{content}}}}
+			if f := findFinding(collectAltTextFindings(input, nil), patterns.ErrCodeMissingAltText); f != nil {
+				t.Errorf("did not expect MISSING_ALT_TEXT with alt set, got %+v", f)
+			}
+		})
+	}
+}
+
+// TestAltText_PatternExpandedGridCellsAreExempt pins the exemption that keeps
+// the lint actionable: a pattern's own grid cells are not the author's, so a
+// diagram or table cell the expansion synthesized must not be reported —
+// there is no field in the authored payload to put an alt in.
+func TestAltText_PatternExpandedGridCellsAreExempt(t *testing.T) {
+	grid := &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{
+		{Diagram: &types.DiagramSpec{Type: "bar_chart"}},
+		{Table: &TableInput{Headers: []string{"Segment"}}},
+	}}}}
+	input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: grid}}}
+
+	if f := findFinding(collectAltTextFindings(input, map[int]bool{0: true}), patterns.ErrCodeMissingAltText); f != nil {
+		t.Errorf("pattern-expanded cells should be exempt, got %+v", f)
+	}
+	findings := collectAltTextFindings(input, nil)
+	if len(findings) != 2 {
+		t.Fatalf("authored grid cells: got %d findings, want 2: %+v", len(findings), findings)
 	}
 }

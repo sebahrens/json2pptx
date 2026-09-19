@@ -23,6 +23,10 @@ type TableInput struct {
 	Rows             [][]TableCellInput `json:"rows"`
 	Style            *TableStyleInput   `json:"style,omitempty"`
 	ColumnAlignments []string           `json:"column_alignments,omitempty"`
+	// Alt is the description a screen reader announces for the table. One
+	// sentence saying what it shows; without it the engine derives one from
+	// the table's shape and column names (go-slide-creator-6e8h).
+	Alt string `json:"alt,omitempty"`
 }
 
 // ToTableSpec converts TableInput to types.TableSpec.
@@ -33,6 +37,7 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 	spec := &types.TableSpec{
 		Headers:          t.Headers,
 		ColumnAlignments: t.ColumnAlignments,
+		Alt:              t.Alt,
 	}
 	for _, row := range t.Rows {
 		cells := make([]types.TableCell, len(row))

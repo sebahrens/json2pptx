@@ -60,6 +60,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Enterprise is the largest segment at $8.5B, ahead of mid-market ($5.2B), SMB ($3.1B) and startup ($1.4B).",
             "type": "bar",
             "title": "TAM by Segment ($B)",
             "data": {
@@ -84,6 +85,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Two incumbents hold 52% of the market between them; our position is 8%, with emerging players at 15% and a fragmented 25%.",
             "type": "pie",
             "title": "Current Market Share",
             "data": {
@@ -149,6 +151,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Projected ARR grows from $1.2M in Q2 2026 to $15.0M in Q2 2027, more than doubling in each of the first three quarters.",
             "type": "line",
             "title": "Projected ARR Growth ($M)",
             "data": {
@@ -174,6 +177,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "The $4.2M launch investment is mostly engineering ($2.0M) and marketing ($1.2M), with sales hiring, infrastructure and training making up the rest.",
             "type": "waterfall",
             "title": "Launch Investment ($M)",
             "data": {
@@ -227,6 +231,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Launch readiness is highest for security (95) and core features (92) and lowest for integrations (65) and support tooling (70).",
             "type": "radar",
             "title": "Launch Readiness Score",
             "data": {

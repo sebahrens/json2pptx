@@ -992,18 +992,24 @@ Contrast between two scheme slots is template-dependent, which is what made this
 **Pattern:** *(none — accessibility lint)*
 **Fix kind:** `provide_value`
 
-Emitted when an image or icon asset is sourced from `path`, `url`, or `svg_data` but its `alt` field is empty (or whitespace-only). Bundled built-in icons referenced by `IconInput.name` are exempt — the qualified bundled name itself supplies an implicit caption (`preview_icon` returns it via the `alt` field).
+Emitted when a visual has no `alt` text (empty or whitespace-only): an image or icon asset sourced from `path`, `url`, or `svg_data`, or a chart, diagram or table. Bundled built-in icons referenced by `IconInput.name` are exempt — the qualified bundled name itself supplies an implicit caption (`preview_icon` returns it via the `alt` field).
 
-The lint walks four surfaces:
+The lint walks six surfaces:
 
 - `slide.content[].image_value` (`ImageInput.Path` / `ImageInput.URL`)
 - `slide.shape_grid.rows[].cells[].image` (`GridImageInput.Path` / `GridImageInput.URL`)
 - `slide.shape_grid.rows[].cells[].icon` (cell-level `IconInput`)
 - `slide.shape_grid.rows[].cells[].shape.icon` (shape-overlay `IconInput`)
+- `slide.content[].chart_value` / `slide.content[].diagram_value`, and the `diagram` key of an author-written `shape_grid` cell
+- `slide.content[].table_value`, and the `table` key of an author-written `shape_grid` cell
+
+A chart, diagram or table always renders, with a description derived from its own payload when the author wrote none (`"Bar chart, Quarterly revenue ($M). 4 categories, 1 series (Revenue), values from 34 to 48."`, `"Process flow. 5 steps."`, `"Table, 4 columns by 5 rows. Columns: Segment, FY25 revenue, FY26 revenue, Change."`). The finding says the derivation is in use, not that the visual is broken — only the author knows what the visual is FOR.
+
+**Pattern-expanded cells are exempt.** The fit-report walker expands named patterns into a `shape_grid` before the lint runs, so a `table-highlight` or `chart-insights-split` slide carries cells the author never wrote and cannot annotate. Grid-level `diagram` and `table` cells are therefore only checked on slides whose `shape_grid` is the author's own. Grid `image` and `icon` cells need no such gate — a pattern's placeholder assets carry no `path` / `url` / `svg_data`, so the source test already exempts them.
 
 The finding never blocks render — it appears as a `review` action so agents that optimize only for `passes validation` cannot ship visually-fine but accessibility-incomplete decks. Because the action is `review`, `score_deck` deducts 5 points per occurrence from the affected slide's score (and from the overall correctness axis), creating scoring pressure to set alt text.
 
-`fix.params` carry the asset `kind` (`image_value`, `image`, or `icon`) and the `source` field (`path`, `url`, or `svg_data`) so an agent can route the fix to the right authoring surface.
+`fix.params` carry the asset `kind` (`image_value`, `image`, or `icon`) and the `source` field (`path`, `url`, or `svg_data`) so an agent can route the fix to the right authoring surface. For a chart, diagram or table the `kind` is `chart` / `diagram` / `table` and `on` names the payload field to set `alt` on (`chart_value`, `diagram_value`, `table_value`, `diagram`, `table`) — there is no `source`, because the visual is generated rather than loaded.
 
 ```json
 {
@@ -1013,6 +1019,19 @@ The finding never blocks render — it appears as a `review` action so agents th
   "fix": {
     "kind": "provide_value",
     "params": { "field": "alt", "kind": "image_value", "source": "path" }
+  },
+  "action": "review"
+}
+```
+
+```json
+{
+  "path": "/slides/0/content/1/diagram_value",
+  "code": "MISSING_ALT_TEXT",
+  "message": "slide 1: diagram has no alt text — a screen reader gets the description derived from its data; set alt to one sentence saying what it shows",
+  "fix": {
+    "kind": "provide_value",
+    "params": { "field": "alt", "kind": "diagram", "on": "diagram_value" }
   },
   "action": "review"
 }

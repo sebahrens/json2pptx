@@ -233,6 +233,13 @@ type DiagramSpec struct {
 	ChartStyle       *ChartStyleOverrides `json:"chart_style,omitempty" yaml:"chart_style,omitempty"`
 	Warnings         []string             `json:"warnings,omitempty" yaml:"-"`                  // Non-fatal warnings (e.g., flat-map auto-conversion)
 	ChartDiagnostics []ChartDiagnostic    `json:"-" yaml:"-"`                                   // Structured chart data diagnostics (internal use)
+
+	// Alt is the description a screen reader announces for this diagram. Write one
+	// sentence saying what it shows; the engine derives a fallback from the
+	// data (type, title, counts and range) when it is absent, which is better
+	// than the type name it used to announce but cannot say what the diagram is FOR
+	// (go-slide-creator-6e8h).
+	Alt string `json:"alt,omitempty" yaml:"alt,omitempty"`
 }
 
 // ChartDiagnostic is a structured diagnostic emitted during chart data

@@ -29,6 +29,7 @@
           "placeholder_id": "body",
           "type": "table",
           "table_value": {
+            "alt": "Revenue and growth by region: North America $12.4M (+8%), Europe $8.7M (+5%), Asia-Pacific $6.2M (+14%).",
             "headers": ["Region", "Revenue", "Growth"],
             "rows": [
               ["North America", "$12.4M", "+8%"],

@@ -160,7 +160,9 @@ func compileFrameworkDiagram(in Input, name string, sections map[string][]string
 	// none, and the content would be dropped on the floor with a warning.
 	slide := &deckinput.SlideInput{SlideType: "diagram"}
 	links := titleLink(slide, in)
-	idx := appendContent(slide, diagramContent("body", &types.DiagramSpec{Type: name, Data: data}))
+	idx := appendContent(slide, diagramContent("body", &types.DiagramSpec{
+		Type: name, Data: data, Alt: visualAltText(in),
+	}))
 	links = append(links, SourceLink{
 		RawPath:      fmt.Sprintf("%s.content[%d].diagram_value", in.rawSlide(), idx),
 		SemanticPath: in.semSlide() + ".sections",

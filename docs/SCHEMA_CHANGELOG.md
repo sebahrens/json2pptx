@@ -27,6 +27,29 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`alt` on charts, diagrams and tables (go-slide-creator-6e8h).** Every chart
+  was embedded with `descr="Revenue ($M) (bar_chart)"` — the title and the type
+  name — and native diagram groups and table frames carried no `descr` at all,
+  so a screen reader announced the shape of the picture and nothing in it, or
+  nothing whatsoever.
+  - New optional `alt` field on `chart_value`, `diagram_value`, `table_value`,
+    and the `diagram` / `table` keys of a `shape_grid` cell. One sentence
+    saying what the visual shows; it is written verbatim into the shape's
+    `cNvPr/@descr`.
+  - Without an `alt`, the engine now derives one from the payload instead of
+    naming the type: `"Bar chart, Quarterly revenue ($M). 4 categories,
+    1 series (Revenue), values from 34 to 48."` for a chart,
+    `"Process flow. 5 steps."` for a structural diagram, `"Table, 4 columns by
+    5 rows. Columns: Segment, FY25 revenue, FY26 revenue, Change."` for a table.
+  - `MISSING_ALT_TEXT` covers two more surfaces (six in total): a content-level
+    chart/diagram and a content-level table with no `alt`, plus the `diagram`
+    and `table` cells of an author-written `shape_grid`. Still advisory
+    (`review`) — the visual always renders. Pattern-expanded grid cells are
+    exempt; the author has no field to annotate there.
+  - DeckSpec visuals get an `alt` for free: `chart_insight`, `framework` and
+    `table` compile the slide's `takeaway` (else its `title`) into the visual's
+    `alt`, which an `alt` on the author's own `chart` payload overrides.
+
 - **`get_started` says what the server can actually do
   (go-slide-creator-a7fh).** Started without LibreOffice or ImageMagick, the
   whole surface looked identical: `initialize`'s instructions were

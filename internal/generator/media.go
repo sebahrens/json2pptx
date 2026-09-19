@@ -584,7 +584,6 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			pngFallback = transparentPNG1x1
 		}
 
-		// Build alt-text for diagrams from type and title
 		diagramAlt := diagramAltText(item)
 
 		ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
@@ -605,7 +604,6 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 		// identically. PNG is rendered at 2x from placeholder-sized SVG.
 		mediaFileName := ctx.allocPNG(fmt.Sprintf("diagram-s%d-x%d", slideNum, removeIdx))
 
-		// Build alt-text for diagrams from type and title
 		diagramAlt := diagramAltText(item)
 
 		ctx.slideRelUpdates[slideNum] = append(ctx.slideRelUpdates[slideNum], mediaRel{
@@ -621,17 +619,15 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 	}
 }
 
-// diagramAltText builds a human-readable alt-text string for a diagram
-// content item, using the diagram type and optional title.
+// diagramAltText builds the alt-text string for a diagram content item. The
+// description comes from DiagramAltTextFor, so an authored alt wins and the
+// derived fallback says what is in the diagram rather than naming its type.
 func diagramAltText(item ContentItem) string {
 	ds, ok := item.Value.(*types.DiagramSpec)
 	if !ok {
 		return "Diagram"
 	}
-	if ds.Title != "" {
-		return ds.Title + " (" + ds.Type + ")"
-	}
-	return strings.ReplaceAll(ds.Type, "_", " ") + " diagram"
+	return DiagramAltTextFor(ds)
 }
 
 // hasTextCollisionForShape checks if any text content item resolves to the

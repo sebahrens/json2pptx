@@ -29,6 +29,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Revenue of $21.3M less COGS of $6.7M leaves $14.6M gross profit; operating expenses of $10.1M bring net income to $4.5M.",
             "type": "waterfall",
             "title": "Q1 Profit Bridge ($M)",
             "data": {
@@ -54,6 +55,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Team skills are strongest in backend (92) and testing (88) and weakest in security (70), with frontend, architecture and DevOps between.",
             "type": "radar",
             "title": "Engineering Team Skills",
             "data": {
@@ -80,6 +82,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "The net promoter score reads 72 on a 0–100 dial.",
             "type": "gauge",
             "title": "NPS Score",
             "data": {
@@ -103,6 +106,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "The enterprise platform is 45% of revenue, the SMB suite 25%, API services 15%, professional services 10% and training 5%.",
             "type": "treemap",
             "title": "Revenue Breakdown by Product Line",
             "data": {
@@ -128,6 +132,7 @@
           "placeholder_id": "body",
           "type": "chart",
           "chart_value": {
+            "alt": "Quarterly revenue climbs from $12M in Q1 to $18M in Q4, rising in every quarter.",
             "type": "stacked_bar",
             "title": "Revenue Mix by Quarter",
             "data": {

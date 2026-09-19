@@ -40,7 +40,7 @@ func CompileTable(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 	slide := &deckinput.SlideInput{SlideType: "content"}
 	links := titleLink(slide, in)
 
-	table := &jsonschema.TableInput{Headers: headers, Rows: rows}
+	table := &jsonschema.TableInput{Headers: headers, Rows: rows, Alt: visualAltText(in)}
 	if alignments := tableColumnAlignments(in.Body, len(headers)); len(alignments) > 0 {
 		table.ColumnAlignments = alignments
 	}

@@ -986,6 +986,11 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 					inserts[i].panels, inserts[i].bounds, nextShapeID,
 				)
 			}
+			// A native diagram group carries its alt text on its own cNvPr. The
+			// group builders above assemble children from parsed panel data and
+			// never see the DiagramSpec, so the description is applied here to
+			// the group each of them returned (go-slide-creator-6e8h).
+			inserts[i].groupXML = pptx.SetGroupDescription(inserts[i].groupXML, inserts[i].altText)
 			// Advance shape ID: 1 (group) + N*shapes_per_panel.
 			// Nine box mode uses more shapes (9 cells × 2 + up to 8 axis labels).
 			// Stat cards mode: 1 shape per card (single rect with text body).
@@ -1111,6 +1116,7 @@ func (ctx *singlePassContext) processPanelNativeShapes(slideNum int, item Conten
 		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
 
 	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
+		altText:           diagramAltText(item),
 		placeholderIdx:    shapeIdx,
 		bounds:            placeholderBounds,
 		panels:            panels,
