@@ -264,6 +264,17 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"title":    {inject: func(s string) map[string]any { return covStat(map[string]any{"title": s}) }, rendered: true},
 		"takeaway": {inject: func(s string) map[string]any { return covStat(map[string]any{"takeaway": s}) }, rendered: true},
 	},
+	// go-slide-creator-wrsb: a milestone's label, its date and its body all have
+	// to reach the rendered line.
+	KindTimeline: {
+		"milestones": {inject: func(s string) map[string]any { return map[string]any{"milestones": covMilestones(s)} }, rendered: true},
+		"title": {inject: func(s string) map[string]any {
+			return map[string]any{"milestones": covMilestones("Mandate published"), "title": s}
+		}, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any {
+			return map[string]any{"milestones": covMilestones("Mandate published"), "takeaway": s}
+		}, rendered: true},
+	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps("Discover"), "title": s} }, rendered: true},
@@ -393,6 +404,16 @@ func covOptionMatrix(overlay map[string]any) map[string]any {
 		body[k] = v
 	}
 	return body
+}
+
+// covMilestones builds three timeline milestones (the count timeline-horizontal
+// requires), the first carrying the probed text.
+func covMilestones(firstLabel string) []any {
+	return []any{
+		map[string]any{"label": firstLabel, "date": "Mar 2024", "body": "The regulator sets the date."},
+		map[string]any{"label": "Programme approved", "date": "Sep 2024"},
+		map[string]any{"label": "Wave 1 live", "date": "Jun 2025"},
+	}
 }
 
 // covStat returns a minimal valid stat payload with the given fields overlaid.

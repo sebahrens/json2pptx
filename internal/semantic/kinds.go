@@ -33,6 +33,8 @@ const (
 	KindTeam SlideKind = "team"
 	// KindStat is one oversized number carrying the slide.
 	KindStat SlideKind = "stat"
+	// KindTimeline is dated milestones on a line.
+	KindTimeline SlideKind = "timeline"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -147,6 +149,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredFields:  []string{"value"},
 		RequiredAliases: map[string][]string{"value": {"stat", "number", "metric"}},
 		TypicalFields:   []string{"title", "label", "unit", "context", "source", "takeaway"},
+	},
+	KindTimeline: {
+		Kind:            KindTimeline,
+		Summary:         "Dated milestones on a line: 3–7 stops, each a label with an optional date and a line of detail. A stop that spans a period (an end date) turns the line into range bars. Outside those counts, or past a stop's text budgets, it degrades to a dated bullet list. For parallel workstreams across phases use roadmap.",
+		RequiredFields:  []string{"milestones"},
+		RequiredAliases: map[string][]string{"milestones": {"stops", "events", "timeline"}},
+		TypicalFields:   []string{"title", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

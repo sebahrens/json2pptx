@@ -126,6 +126,10 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"unit": shapeString, "suffix": shapeString, "context": shapeString, "detail": shapeString,
 		"description": shapeString, "source": shapeString, "takeaway": shapeString,
 	},
+	KindTimeline: {
+		"title": shapeString, "milestones": shapeArray, "stops": shapeArray,
+		"events": shapeArray, "timeline": shapeArray, "takeaway": shapeString,
+	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
 	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
@@ -455,6 +459,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateStat(path, slide, s)
 	case KindArchitecture:
 		validateArchitecture(path, slide, s)
+	case KindTimeline:
+		validateTimeline(path, slide, s)
 	case KindProcess:
 		validateProcess(path, slide, s)
 	case KindRoadmap:
@@ -520,6 +526,21 @@ func validateArchitecture(path string, slide SlideSpec, s *semDiags) {
 	if over := slides.ArchitectureOverBudget(slide.Body); over != "" {
 		s.advisory(path+".tiers", diagnostics.CodeSemanticDensity,
 			fmt.Sprintf("architecture %s (otherwise it degrades to a bullet list)", over))
+	}
+}
+
+// validateTimeline reports milestones outside the timeline-horizontal bounds.
+// They are the pattern's own: outside them the dates still render, as a dated
+// bullet list, so the advisory names what broke rather than blocking
+// (go-slide-creator-wrsb).
+func validateTimeline(path string, slide SlideSpec, s *semDiags) {
+	n := slides.UsableTimelineStopCount(slide.Body)
+	if !s.requireUsableContent(path, "milestones", slide.Body, n, "stops", "events", "timeline") {
+		return
+	}
+	if over := slides.TimelineOverBudget(slide.Body); over != "" {
+		s.advisory(path+".milestones", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("timeline %s (otherwise it degrades to a dated bullet list)", over))
 	}
 }
 

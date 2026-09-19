@@ -68,6 +68,14 @@ var comparisonColumnKeys = []string{"header", "title", "label", "name", "items",
 // processStepKeys are the keys processSteps reads from a step object.
 var processStepKeys = []string{"label", "title", "name", "step", "text", "description", "detail", "summary", "type"}
 
+// timelineStopKeys are the keys a timeline milestone object may carry.
+var timelineStopKeys = []string{
+	"label", "title", "name", "milestone", "event",
+	"date", "date_label", "when", "start", "start_date",
+	"end_date", "end", "until",
+	"body", "description", "detail", "summary",
+}
+
 // archTierKeys are the keys ArchitectureTiers reads from a tier object.
 // teamMemberKeys are the keys a team member object may carry.
 var teamMemberKeys = []string{
@@ -272,6 +280,19 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"detail":      strField("Alias for context."),
 		"description": strField("Alias for context."),
 		"source":      strField("Source footnote. ≤80 chars."),
+	}, compositionFields()), universalFields()),
+	KindTimeline: withFields(withFields(map[string]payloadField{
+		"title":    strField("Slide title."),
+		"takeaway": strField("One-line takeaway footer."),
+		"milestones": {
+			typ:         "array",
+			desc:        "3–7 milestones: strings (a bare label) or {label, date?, end_date?, body?}. Label ≤60 chars, date ≤30, body ≤200. A milestone with an end_date spans a period, which draws the whole line as range bars.",
+			itemStrings: true,
+			itemKeys:    timelineStopKeys,
+		},
+		"stops":    {typ: "array", desc: "Alias for milestones.", itemStrings: true, itemKeys: timelineStopKeys},
+		"events":   {typ: "array", desc: "Alias for milestones.", itemStrings: true, itemKeys: timelineStopKeys},
+		"timeline": {typ: "array", desc: "Alias for milestones.", itemStrings: true, itemKeys: timelineStopKeys},
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

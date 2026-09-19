@@ -230,6 +230,12 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleEvidence, family: FamilyKPI, density: DensityLight, layout: "blank-title",
 		pattern: statPattern,
 	},
+	KindTimeline: {
+		// Dated milestones are the timeline family, the same as a roadmap — so a
+		// timeline next to a roadmap reads as two of the same slide, which it is.
+		role: RolePlan, family: FamilyTimeline, density: DensityMedium, layout: "blank-title",
+		pattern: timelinePattern,
+	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
@@ -315,6 +321,12 @@ func teamPattern(body map[string]any) string {
 // pattern's budgets (go-slide-creator-2hkc).
 func statPattern(body map[string]any) string {
 	return slides.StatPattern(body)
+}
+
+// timelinePattern advertises timeline-horizontal only when the milestones will
+// actually compile to it (go-slide-creator-wrsb).
+func timelinePattern(body map[string]any) string {
+	return slides.TimelinePattern(body)
 }
 
 // agendaPattern advertises the agenda pattern the payload will actually
@@ -484,6 +496,12 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			visual("stat-hero", "one oversized number with a label, context and source"),
 			visual("kpi-3up", "switch to kind kpi_snapshot to show several numbers at equal weight"),
 			{Layout: "content", Reason: "a content slide preserves a number or label past the hero's text budgets"},
+		}
+	case KindTimeline:
+		return []CompositionCandidate{
+			visual("timeline-horizontal", "3-7 dated milestones on one line"),
+			visual("phase-roadmap", "switch to kind roadmap when the phases carry workstreams rather than dates"),
+			{Layout: "content", Reason: "a dated bullet list preserves more or fewer milestones"},
 		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}

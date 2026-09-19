@@ -174,6 +174,8 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 		return slides.CompileTeam(in)
 	case KindStat:
 		return slides.CompileStat(in)
+	case KindTimeline:
+		return slides.CompileTimeline(in)
 	case KindProcess:
 		return slides.CompileProcess(in)
 	case KindRoadmap:

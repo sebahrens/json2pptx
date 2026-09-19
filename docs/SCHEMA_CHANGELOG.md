@@ -354,6 +354,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `timeline` (go-slide-creator-wrsb).** Dated milestones on a
+  line are not a phased roadmap, and the spec only had the latter: an author
+  with five dates and no workstreams had to bend them into phases or drop to
+  `raw_json2pptx`.
+  - `{milestones: [...]}` compiles onto **timeline-horizontal**: 3–7 stops,
+    each a label with an optional date and a line of detail. `stops` /
+    `events` / `timeline` alias `milestones`, and a milestone is a string (a
+    bare label) or `{label, date?, end_date?, body?}` with the usual spellings
+    accepted (`when` / `start` for the date, `until` / `end` for its end).
+  - A milestone carrying an `end_date` spans a period rather than marking a
+    point, so the slide compiles with `style: gantt` — the pattern rejects an
+    end date in any other style, and range bars are what the author asked for.
+  - Outside 3–7 stops, or past a stop's text budgets (label ≤60 chars, date
+    ≤30, body ≤200), it degrades to a dated bullet list (`Mar 2024 — Label:
+    body`, a range rendered `Jan 2025–Mar 2025`) and `SEMANTIC_DENSITY` names
+    what broke.
+  - `roadmap` is unchanged and still compiles to `phase-roadmap`.
+
 - **DeckSpec kind `stat` (go-slide-creator-2hkc).** One number made the whole
   slide — the oldest move in a pitch deck — and the spec had no kind for it, so
   an agent dropped to `raw_json2pptx` or wrote the number into a title.

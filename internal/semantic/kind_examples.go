@@ -58,6 +58,17 @@ var kindExamples = map[SlideKind]map[string]any{
 		"source":   "Oliver Wyman market model, 2026",
 		"takeaway": "The market is large enough to fund the build twice over.",
 	},
+	KindTimeline: {
+		"kind":  "timeline",
+		"title": "How we got here",
+		"milestones": []any{
+			map[string]any{"label": "Mandate published", "date": "Mar 2024", "body": "The regulator sets the T+1 date."},
+			map[string]any{"label": "Programme approved", "date": "Sep 2024", "body": "Board funds the first two waves."},
+			map[string]any{"label": "Wave 1 live", "date": "Jun 2025", "body": "Two of the three clearers migrated."},
+			map[string]any{"label": "Deadline", "date": "May 2027", "body": "All settlement on the new platform."},
+		},
+		"takeaway": "Three years of runway, two of them already spent.",
+	},
 	KindAgenda: {
 		"kind":    "agenda",
 		"title":   "What we will cover",
