@@ -626,22 +626,61 @@ func TestGetStarted_CoreProfileRecommendsOnlyAdvertisedTools(t *testing.T) {
 	}
 }
 
-// The full profile keeps recommending the facade — the core behaviour is a
-// substitution, not a removal.
-func TestGetStarted_AllProfileKeepsTheFacade(t *testing.T) {
+// go-slide-creator-voxp: revise's recommended path is the DeckSpec the agent
+// just authored — the same in both profiles. It used to be the raw-deck repair
+// chain (auto_repair in the full profile, repair_slide in core), which named no
+// DeckSpec at all, so a deck authored the recommended way had no documented way
+// to be changed and the agent re-sent the whole spec by hand. The raw chain is
+// still there as the second branch, in `sequence`.
+func TestGetStarted_ReviseIsDeckSpecFirstInBothProfiles(t *testing.T) {
+	for _, profile := range []string{toolProfileCore, toolProfileAll} {
+		t.Run(profile, func(t *testing.T) {
+			withToolProfile(t, profile)
+			resp := buildGetStartedResponse("revise")
+			if resp.FastPath == nil {
+				t.Fatal("revise has no fast_path")
+			}
+			if resp.FastPath.Tool != "render_deck_spec" {
+				t.Errorf("revise fast_path.tool = %q, want render_deck_spec", resp.FastPath.Tool)
+			}
+			for _, want := range []string{"deck_id", "patch", "changed_slides"} {
+				if !strings.Contains(resp.FastPath.WhenToCall, want) {
+					t.Errorf("revise fast_path does not mention %q — the point of the path is not resending the spec", want)
+				}
+			}
+			// The raw-deck chain remains the second branch.
+			var sawGenerate bool
+			for _, s := range resp.Sequence {
+				if s.Tool == "generate_presentation" {
+					sawGenerate = true
+				}
+			}
+			if !sawGenerate {
+				t.Error("revise sequence should still carry the raw-deck chain")
+			}
+			if profile == toolProfileAll {
+				var sawReadPresentation bool
+				for _, s := range resp.Sequence {
+					if s.Tool == "read_presentation" {
+						sawReadPresentation = true
+					}
+				}
+				if !sawReadPresentation {
+					t.Error("full profile revise sequence should still include read_presentation")
+				}
+			}
+		})
+	}
+}
+
+// A note that tells the agent what the OTHER profile has must not be emitted in
+// that other profile, where it reads as a lie about the tools on the table.
+func TestGetStartedNotesDoNotMisreportTheProfile(t *testing.T) {
 	withToolProfile(t, toolProfileAll)
-	resp := buildGetStartedResponse("revise")
-	if resp.FastPath == nil || resp.FastPath.Tool != "auto_repair" {
-		t.Errorf("full profile revise fast_path = %+v, want auto_repair", resp.FastPath)
-	}
-	var sawReadPresentation bool
-	for _, s := range resp.Sequence {
-		if s.Tool == "read_presentation" {
-			sawReadPresentation = true
+	for _, n := range buildGetStartedResponse("revise").Notes {
+		if strings.Contains(n, "this profile hides") {
+			t.Errorf("full profile note claims tools are hidden: %q", n)
 		}
-	}
-	if !sawReadPresentation {
-		t.Error("full profile revise sequence should still include read_presentation")
 	}
 }
 

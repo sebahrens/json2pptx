@@ -40,6 +40,12 @@ type mcpConfig struct {
 	// a nil receiver (resume is simply not offered).
 	loopSessions *loopSessionStore
 
+	// deckHandles stores DeckSpecs server-side so a revision does not have to
+	// re-upload the whole spec (go-slide-creator-voxp). Per-process and TTL'd,
+	// like the two above. Nil in tests that don't exercise handles — Save/Load
+	// tolerate a nil receiver, so deck_id is simply never offered.
+	deckHandles *deckHandleStore
+
 	// resolverOpts customizes the URL resource resolver used by
 	// handleGenerate / handleValidate. Production leaves this zero-valued
 	// (SSRF-safe defaults). Tests inject a custom HTTPClient so they can
@@ -84,6 +90,7 @@ func newServerMCPConfig(cfg config.Config) *mcpConfig {
 		cache:        template.NewMemoryCache(24 * time.Hour),
 		idempotency:  newIdempotencyCache(idempotencyCacheTTL),
 		loopSessions: newLoopSessionStore(loopSessionTTL),
+		deckHandles:  newDeckHandleStore(deckHandleTTL),
 	}
 }
 

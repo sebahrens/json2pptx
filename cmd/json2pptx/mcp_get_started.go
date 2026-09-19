@@ -46,8 +46,9 @@ type getStartedFastPath struct {
 // getStartedResponse is the JSON envelope for get_started.
 type getStartedResponse struct {
 	Task string `json:"task"`
-	// FastPath is the recommended fast path for this task (the DeckSpec path
-	// ending in render_deck_spec for brief, auto_repair for revise). Present only for tasks that have a facade;
+	// FastPath is the recommended fast path for this task — the DeckSpec path
+	// ending in render_deck_spec for both brief (author it) and revise (patch the
+	// deck_id the server already holds). Present only for tasks that have a facade;
 	// omitted for validate-only (pure diagnostics, no facade). Sequence remains
 	// the controllable manual path agents drop to when they need per-step control.
 	FastPath       *getStartedFastPath `json:"fast_path,omitempty"`
@@ -89,28 +90,20 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 			FallsBackTo: tools,
 		}
 	case "revise":
-		// auto_repair is not advertised in the core profile, and a client model
-		// cannot emit a call to a tool absent from tools/list — so recommending
-		// it as the fast path made the RECOMMENDED path for the whole "revise"
-		// task uncallable as shipped. In core mode the fast path is the
-		// in-profile sequence instead (go-slide-creator-mvny).
-		if !toolIsAdvertised("auto_repair") {
-			return &getStartedFastPath{
-				Tool:       "repair_slide",
-				WhenToCall: "RECOMMENDED PATH in this tool profile — drive the repair loop yourself with the primitives below: validate_input (fit_report: true) → preview_presentation_plan to collect per-slide Fix.Kind directives → repair_slide per slide → generate_presentation → render_deck_thumbnails and look at every slide. The one-call auto_repair facade exists but is not advertised in this profile; see notes[] if you want it.",
-				Steps: []getStartedStep{
-					{Tool: "validate_input", WhenToCall: "Schema + fit checks on the deck JSON you intend to revise (pass fit_report: true)."},
-					{Tool: "preview_presentation_plan", WhenToCall: "Dry-run to surface the per-slide fit findings whose Fix.Kind directives feed repair_slide."},
-					{Tool: "repair_slide", WhenToCall: "Apply the directives per slide that has findings."},
-					{Tool: "generate_presentation", WhenToCall: "Regenerate the PPTX from the repaired deck JSON."},
-					{Tool: "render_deck_thumbnails", WhenToCall: "Render every slide of the new revision and inspect each image."},
-				},
-				FallsBackTo: tools,
-			}
-		}
+		// The revise fast path used to be the raw-deck repair chain (auto_repair,
+		// or repair_slide when the profile hid it), which named no DeckSpec at all
+		// — so an agent that had just authored a deck the recommended way had no
+		// documented way to change it and re-sent the whole spec by hand
+		// (go-slide-creator-voxp). The first branch is now the spec it already
+		// holds, and the cheapest form of that: a deck_id and a patch.
 		return &getStartedFastPath{
-			Tool:        "auto_repair",
-			WhenToCall:  "FASTEST PATH — server-side convergence loop (generate → inspect → repair) that drives an existing deck JSON to a configurable quality gate in one call. Reach for it to converge a deck automatically. Drop to the manual primitives in `sequence` (validate_input → preview_presentation_plan → repair_slide → generate_presentation) when you want targeted, per-slide repairs you control.",
+			Tool:       "render_deck_spec",
+			WhenToCall: "RECOMMENDED PATH when the deck was authored as a DeckSpec (task=brief) — you do not resend it. Every validate_deck_spec / render_deck_spec response carries a deck_id: the spec this server is holding. Send deck_id INSTEAD of spec, with patch:[{op:\"replace\", path:\"/slides/3/title\", value:\"…\"}] — op is replace | add | remove, path is a JSON Pointer into the spec (/meta/template to restyle the deck, /slides/6 with add to insert a slide, /slides/2 with remove to drop one). A four-edit revision is one call of a few hundred bytes instead of a full spec re-upload. The response's changed_slides names the 0-based slides that differ, so render_deck_thumbnails only those. Handles live 1 hour per server process; if one expires, send the spec again. Still holding the spec and no handle? Edit it and call render_deck_spec — findings come back at semantic_path, so you fix the field the finding names. The raw chain in `sequence` is for a deck authored as raw json2pptx JSON, not as a DeckSpec.",
+			Steps: []getStartedStep{
+				{Tool: "validate_deck_spec", WhenToCall: "Send deck_id + patch to check an edit before rendering it; the patch is applied to the stored deck, so the next call sees it."},
+				{Tool: "render_deck_spec", WhenToCall: "Render the revision (deck_id + patch, or the edited spec). Omit template and the handle keeps the one the last render used."},
+				{Tool: "render_deck_thumbnails", WhenToCall: "Pull the slides named by changed_slides (pass slides:[…]) and look at each one; re-patch and re-render until they read right."},
+			},
 			FallsBackTo: tools,
 		}
 	default:
@@ -184,12 +177,16 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "inspect_slide_images", WhenToCall: "Inspect all current-revision pixels and record unresolved findings or explicit approval."},
 		}...)
 		notes = []string{
-			"auto_repair and read_presentation are advertised only in the full tool profile. In this profile the sequence above is complete and callable as listed; to use the one-call auto_repair facade instead, ask the operator to start the server with `json2pptx mcp --tools all` (or JSON2PPTX_MCP_TOOLS=all).",
-			"COMPLETION: " + mcpCompletionRule + " auto_repair's default loop scores static + render-fit findings only and never looks at a rendered pixel; check publishable / manual_review_required / blocking_reasons, then render and inspect.",
+			"TWO REVISE PATHS, and the one you want depends on how the deck was authored. (1) DeckSpec deck — fast_path: deck_id + patch on validate_deck_spec / render_deck_spec. The server holds the spec, you send the edit, changed_slides tells you which thumbnails to re-pull. (2) Raw json2pptx deck — the numbered `sequence` below: validate_input → preview_presentation_plan → repair_slide → generate_presentation, with the deck JSON in every call. Do not use path 2 on a DeckSpec deck: repair_slide edits compiled slide JSON, so its fixes do not travel back into the spec and are lost on the next render_deck_spec.",
+			"A deck_id is per server process and lives 1 hour, refreshed each time you use it. It is not storage: if the server restarts, or the handle expires, send the spec again and you get a new one. Keep your own copy of the spec — the handle saves bytes, it is not the deck's home.",
+			"COMPLETION: " + mcpCompletionRule + " A patch is not a review: a one-field edit still needs the changed slides rendered and looked at before the deck is complete.",
 			"NO VISION PROVIDER? Render every slide with render_deck_thumbnails (image content blocks), inspect each image yourself, then record the verdict with submit_visual_review {pptx_path, pptx_revision, slides:[{index, verdict, image_path|image_sha256, findings?}], reviewer: host|manual}. Submit the paths/content_hashes render_deck_thumbnails returned for THIS pptx: each image is checked against the server's own render of that slide, and a recycled or foreign image is rejected. Only a complete, current-revision review with verified images and no P0/P1 findings marks the deck visually_reviewed_current_revision; an unverifiable review is recorded as reviewed_unverified_images.",
 			"Use this when modifying or repairing an existing PPTX deck.",
 			"You MUST supply the authoritative deck JSON for validate_input, preview_presentation_plan, repair_slide, and generate_presentation. read_presentation is a verification aid only — it does not reconstruct a PresentationInput.",
 			"If the original deck JSON is unavailable, re-author it from the brief (see task=brief) rather than trying to round-trip read_presentation through the editing tools.",
+		}
+		if !toolIsAdvertised("auto_repair") {
+			notes = append(notes, "The full tool profile (`json2pptx mcp --tools all`, or JSON2PPTX_MCP_TOOLS=all) adds two raw-path conveniences this profile hides: auto_repair, a one-call server-side convergence loop over a raw deck, and apply_deck_patch, a pure slide-level transform of raw deck JSON. Neither is needed for either path above.")
 		}
 	case "onboard-template":
 		// Bring-your-own template (go-slide-creator-ydbk). Every step here is

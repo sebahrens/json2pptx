@@ -132,10 +132,25 @@ func semanticStrictArg(tool string, request mcp.CallToolRequest) (semantic.Stric
 func deckSpecArg(desc string) mcp.ToolOption {
 	return mcp.WithObject("spec",
 		mcp.Required(),
-		mcp.Description(desc+" Schema: the DeckSpec JSON Schema (same as `json2pptx semantic schema`); each slides[] entry matches exactly one per-kind variant selected by `kind`. Unknown payload fields are schema-invalid and reported as SEMANTIC_UNKNOWN_FIELD. Field prose is omitted here; call list_slide_kinds for per-kind item_schema and a copy-ready example."),
+		mcp.Description(desc+deckSpecSchemaNote),
 		withDeckSpecSchema(),
 	)
 }
+
+// deckSpecOrHandleArg is deckSpecArg for the tools that also accept a deck_id:
+// spec is no longer strictly required, because naming a stored deck is the
+// other way to say which deck the call is about (go-slide-creator-voxp). The
+// handler requires exactly one of the two and says so when neither or both
+// arrive.
+func deckSpecOrHandleArg(desc string) mcp.ToolOption {
+	return mcp.WithObject("spec",
+		mcp.Description(desc+" Send this OR deck_id, not both."+deckSpecSchemaNote),
+		withDeckSpecSchema(),
+	)
+}
+
+// deckSpecSchemaNote is the shared tail of both spec descriptions.
+const deckSpecSchemaNote = " Schema: the DeckSpec JSON Schema (same as `json2pptx semantic schema`); each slides[] entry matches exactly one per-kind variant selected by `kind`. Unknown payload fields are schema-invalid and reported as SEMANTIC_UNKNOWN_FIELD. Field prose is omitted here; call list_slide_kinds for per-kind item_schema and a copy-ready example."
 
 // withDeckSpecSchema merges the inlined DeckSpec schema into the property
 // schema, keeping the property's own type/description.
@@ -157,7 +172,9 @@ func mcpValidateDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("validate_deck_spec",
 		mcp.WithDescription(`Validate a compact semantic deck spec (DeckSpec) and return the shared finding envelope {schema_version, tool, subcommand, ok, summary, findings[]}. The recommended first check when authoring a NEW deck with the semantic surface: it catches unknown slide kinds/archetypes, missing required payload fields, and advisory rhythm/density issues before you compile or render. ok=false means at least one error-severity finding; warnings/info leave ok=true. Mirrors the `+"`json2pptx semantic validate`"+` CLI. The raw-model equivalent is validate_input over a compiled PresentationInput.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidateDeckSpec)),
-		deckSpecArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
+		deckSpecOrHandleArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
+		deckHandleToolParams()[0],
+		deckHandleToolParams()[1],
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict. Controls whether rhythm/density advisories are info, warnings, or errors."),
 		),
@@ -165,10 +182,11 @@ func mcpValidateDeckSpecTool() mcp.Tool {
 }
 
 func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	data, filename, errRes := semanticSpecBytes("validate_deck_spec", request)
+	src, errRes := mc.resolveSpecSource("validate_deck_spec", request)
 	if errRes != nil {
 		return errRes, nil
 	}
+	data, filename, deckID, changed := src.Data, src.Filename, src.DeckID, src.ChangedSlides
 	strictness, errRes := semanticStrictArg("validate_deck_spec", request)
 	if errRes != nil {
 		return errRes, nil
@@ -185,11 +203,27 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
 	}, ds)
 
-	mcpResult, err := api.MCPSuccessResult(ctx, envelope)
+	// Hand back a handle so the next call in the loop — a render, or a patched
+	// re-validate — does not have to re-upload the spec (go-slide-creator-voxp).
+	resp := deckSpecEnvelopeResponse{
+		FindingEnvelope: envelope,
+		DeckID:          mc.rememberDeck(deckID, data, filename, ""),
+		ChangedSlides:   changed,
+	}
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal validate_deck_spec response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// deckSpecEnvelopeResponse is the validate_deck_spec envelope plus the deck
+// handle fields. The envelope is inlined, so every field agents already branch
+// on keeps its place at the top level.
+type deckSpecEnvelopeResponse struct {
+	diagnostics.FindingEnvelope
+	DeckID        string `json:"deck_id,omitempty"`
+	ChangedSlides []int  `json:"changed_slides,omitempty"`
 }
 
 // --- compile_deck_spec ------------------------------------------------------
@@ -305,6 +339,13 @@ type renderDeckSpecResponse struct {
 	Diagnostics     []semanticDiagnostic      `json:"diagnostics,omitempty"`
 	Explanation     *semantic.DeckExplanation `json:"explanation_summary,omitempty"`
 	Error           string                    `json:"error,omitempty"`
+
+	// DeckID is the handle for the spec this render used. Send it as deck_id on
+	// the next call instead of re-uploading the spec (go-slide-creator-voxp).
+	DeckID string `json:"deck_id,omitempty"`
+	// ChangedSlides names the 0-based slides a patch on this call changed, so
+	// only those thumbnails need re-pulling. Absent when nothing was patched.
+	ChangedSlides []int `json:"changed_slides,omitempty"`
 }
 
 // semanticRenderToMCP adapts the CLI-shaped semanticRenderResult into the MCP
@@ -336,7 +377,9 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("render_deck_spec",
 		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, publishable, blocking_reasons[], quality_summary, diagnostics[], explanation_summary}: success/ok report whether the artifact was WRITTEN and publishable whether it is fit to SHIP — a deck can be written and still carry an action:refuse diagnostic or fail the deterministic quality gate, so gate your "done" on publishable, not success. blocking_reasons say why not. pptx_path locates it, quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a structural or visual verdict — use score_deck / render tools for those), diagnostics carry compile findings plus render-time fit findings mapped back to the semantic source paths you wrote (raw paths retained as fallback), and explanation_summary reports the compiler's planned archetype/template and per-slide kind/role/family/density/pattern. Strict output validation is the default. A blocking failure returns success=false with the reason in error/diagnostics. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
-		deckSpecArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
+		deckSpecOrHandleArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
+		deckHandleToolParams()[0],
+		deckHandleToolParams()[1],
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict."),
 		),
@@ -359,10 +402,11 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 }
 
 func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	data, filename, errRes := semanticSpecBytes("render_deck_spec", request)
+	src, errRes := mc.resolveSpecSource("render_deck_spec", request)
 	if errRes != nil {
 		return errRes, nil
 	}
+	data, filename, deckID, changed := src.Data, src.Filename, src.DeckID, src.ChangedSlides
 	strictness, errRes := semanticStrictArg("render_deck_spec", request)
 	if errRes != nil {
 		return errRes, nil
@@ -370,6 +414,12 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	templateName, _, errRes := semanticOptionalString("render_deck_spec", "template", request)
 	if errRes != nil {
 		return errRes, nil
+	}
+	// A handle remembers the template its last render resolved to. Without this,
+	// re-rendering a stored deck without repeating the template argument would
+	// silently restyle it (go-slide-creator-voxp).
+	if templateName == "" {
+		templateName = src.Template
 	}
 	rawTemplatePath, _, errRes := semanticOptionalString("render_deck_spec", "template_path", request)
 	if errRes != nil {
@@ -469,10 +519,17 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	defer cleanup()
 	if renderErr != nil {
 		res := semanticRenderToMCP(buildSemanticRenderFailure(compileResult, renderErr), &explanation)
+		res.DeckID = mc.rememberDeck(deckID, data, filename, res.Template)
+		res.ChangedSlides = changed
 		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
 	}
 
 	res := semanticRenderToMCP(buildSemanticRenderSuccess(input, compileResult, runRes, startTime), &explanation)
+	// Hand back a handle for the rendered spec, and say which slides the patch
+	// that produced this render changed, so the agent re-pulls only those
+	// thumbnails (go-slide-creator-voxp).
+	res.DeckID = mc.rememberDeck(deckID, data, filename, res.Template)
+	res.ChangedSlides = changed
 	result, err := semanticSuccessOrInternal(ctx, "render_deck_spec", res)
 	// The deck itself, as a resource a host can read without touching the
 	// server's filesystem (go-slide-creator-fx52).
@@ -485,26 +542,41 @@ func mcpExplainDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("explain_deck_spec",
 		mcp.WithDescription(`Explain the compiler's planned decisions for a semantic deck spec (DeckSpec) WITHOUT compiling or rendering. Returns {title, archetype, template, rhythm, rhythm_warnings[], slides[{index, kind, role, visual_family, density, title, takeaway, pattern, layout}]}: the resolved archetype/template, the deck-rhythm summary and the advisories to address before rendering, and the concrete pattern/layout each slide will compile into. Use during planning to preview how the spec reads and which visuals it will pick. A spec that cannot be parsed returns a structured error envelope. Mirrors the `+"`json2pptx semantic explain`"+` CLI.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExplainDeckSpec)),
-		deckSpecArg("The semantic DeckSpec to explain, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
+		deckSpecOrHandleArg("The semantic DeckSpec to explain, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
+		deckHandleToolParams()[0],
+		deckHandleToolParams()[1],
 	)
 }
 
-func handleExplainDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	data, filename, errRes := semanticSpecBytes("explain_deck_spec", request)
+func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	src, errRes := mc.resolveSpecSource("explain_deck_spec", request)
 	if errRes != nil {
 		return errRes, nil
 	}
+	data, filename, deckID, changed := src.Data, src.Filename, src.DeckID, src.ChangedSlides
 
 	spec, parseDiags := semantic.Parse(filename, data)
 	if parseDiags.HasErrors() {
 		return api.MCPDiagnosticsError(parseDiags.ToDiagnostics()), nil
 	}
 
-	mcpResult, err := api.MCPSuccessResult(ctx, semantic.ExplainSpec(spec))
+	resp := explainDeckSpecResponse{
+		DeckExplanation: semantic.ExplainSpec(spec),
+		DeckID:          mc.rememberDeck(deckID, data, filename, ""),
+		ChangedSlides:   changed,
+	}
+	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal explain_deck_spec response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// explainDeckSpecResponse is the explanation plus the deck handle fields.
+type explainDeckSpecResponse struct {
+	semantic.DeckExplanation
+	DeckID        string `json:"deck_id,omitempty"`
+	ChangedSlides []int  `json:"changed_slides,omitempty"`
 }
 
 // --- list_deck_archetypes ---------------------------------------------------

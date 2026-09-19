@@ -145,7 +145,7 @@ func TestMCPArgErrors_EnvelopeShape(t *testing.T) {
 		{name: "validate_deck_spec/missing", handler: testValidateDeckSpec, args: map[string]any{}, wantPath: "spec"},
 		{name: "compile_deck_spec/missing", handler: handleCompileDeckSpec, args: map[string]any{}, wantPath: "spec"},
 		{name: "render_deck_spec/missing", handler: wrap(mc.handleRenderDeckSpec), args: map[string]any{}, wantPath: "spec"},
-		{name: "explain_deck_spec/missing", handler: handleExplainDeckSpec, args: map[string]any{}, wantPath: "spec"},
+		{name: "explain_deck_spec/missing", handler: testExplainDeckSpec, args: map[string]any{}, wantPath: "spec"},
 	}
 
 	for _, tc := range cases {

@@ -8,6 +8,46 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Deck handles: a revision is a patch, not a re-upload
+  (go-slide-creator-voxp).** Every spec tool was stateless, so the agent was the
+  only place the deck lived and paid for that on every call: a measured 15-slide
+  DeckSpec loop resent the whole 3,695-byte spec on 5 of 8 calls, and a one-line
+  title fix cost a full spec re-upload plus a full-deck re-render plus 15
+  re-inspected thumbnails.
+  - `validate_deck_spec`, `render_deck_spec` and `explain_deck_spec` now return
+    **`deck_id`** — a handle on the spec the server holds. `spec` is no longer
+    required on any of them: send `deck_id` instead. Setting both is
+    `AMBIGUOUS_INPUT`; an unknown or expired handle is `INVALID_PARAMETER`
+    naming `spec` as the way back. Handles are per server process, live 1 hour,
+    and refresh on each use.
+  - **`patch`**: `[{op, path, value}]` applied to the stored spec before the
+    call acts on it. `op` is `replace` | `add` | `remove`; `path` is a JSON
+    Pointer into the DeckSpec (`/slides/3/title`, `/meta/template`, `add` at
+    `/slides/6` to insert and at `/slides/-` to append, `remove` at `/slides/2`
+    to drop). Ops apply in order; a malformed one is refused naming its index
+    and leaves the stored deck untouched. Requires `deck_id` — a `patch`
+    alongside a literal `spec` is refused rather than silently ignored.
+  - **`changed_slides: [int]`** on all three responses: the 0-based slides the
+    patch changed, compared by per-slide content digest, which is the `slides`
+    list to pass to `render_deck_thumbnails`. Inserting or removing a slide
+    reports the shifted tail, because it moved.
+  - A handle remembers the template its last render resolved to, so a
+    `render_deck_spec` driven by `deck_id` with no `template` cannot silently
+    restyle the deck. A YAML spec is stored as canonical JSON (and its
+    remembered filename follows), so YAML decks patch like JSON ones.
+  - The stateless form is unchanged: every one of these arguments is optional,
+    and a server without a handle store simply omits `deck_id`.
+
+- **`get_started(task="revise")` leads with the DeckSpec
+  (go-slide-creator-voxp).** Its `fast_path` was the raw-deck repair chain
+  (`auto_repair`, or `repair_slide` where the core profile hid it) and named no
+  DeckSpec at all, so a deck authored the recommended way had no documented
+  revise path. `fast_path.tool` is now `render_deck_spec` in both profiles, with
+  `deck_id` + `patch` → re-render → thumbnails of `changed_slides` as its
+  `steps`; the raw-deck chain remains the second branch in `sequence`, and the
+  notes now say which path belongs to which kind of deck (`repair_slide`'s fixes
+  edit compiled slide JSON and do not travel back into a spec).
+
 - **MCP resources: the deck is deliverable without a filesystem path
   (go-slide-creator-fx52).** `resources/list`, `resources/read` and
   `resource_link` all returned `-32601`, and `initialize` advertised

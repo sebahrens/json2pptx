@@ -163,7 +163,7 @@ func TestSemanticMCP_RenderDeckSpec(t *testing.T) {
 func TestSemanticMCP_ExplainDeckSpec(t *testing.T) {
 	ctx := context.Background()
 
-	res, err := handleExplainDeckSpec(ctx, makeRequest(map[string]any{"spec": validSemanticSpec}))
+	res, err := testExplainDeckSpec(ctx, makeRequest(map[string]any{"spec": validSemanticSpec}))
 	if err != nil {
 		t.Fatalf("explain_deck_spec returned go error: %v", err)
 	}
@@ -186,7 +186,7 @@ func TestSemanticMCP_ExplainDeckSpec(t *testing.T) {
 	}
 
 	// Unparseable spec → structured tool error.
-	res2, err := handleExplainDeckSpec(ctx, makeRequest(map[string]any{"spec": "meta: [this: is: not: valid"}))
+	res2, err := testExplainDeckSpec(ctx, makeRequest(map[string]any{"spec": "meta: [this: is: not: valid"}))
 	if err != nil {
 		t.Fatalf("explain_deck_spec(bad) returned go error: %v", err)
 	}
@@ -375,4 +375,12 @@ func TestSemanticMCP_WrongTypedEnumArgs(t *testing.T) {
 func testValidateDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	mc := &mcpConfig{templatesDir: "../../templates"}
 	return mc.handleValidateDeckSpec(ctx, request)
+}
+
+// testExplainDeckSpec calls explain_deck_spec on a throwaway config, mirroring
+// testValidateDeckSpec. The handler took a config receiver when deck handles
+// landed (go-slide-creator-voxp).
+func testExplainDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	mc := &mcpConfig{templatesDir: "../../templates"}
+	return mc.handleExplainDeckSpec(ctx, request)
 }

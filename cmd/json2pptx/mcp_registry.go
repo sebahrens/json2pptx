@@ -67,7 +67,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	addTool(s, mcpValidateDeckSpecTool(), mc.handleValidateDeckSpec)
 	addTool(s, mcpCompileDeckSpecTool(), handleCompileDeckSpec)
 	addTool(s, mcpRenderDeckSpecTool(), mc.handleRenderDeckSpec)
-	addTool(s, mcpExplainDeckSpecTool(), handleExplainDeckSpec)
+	addTool(s, mcpExplainDeckSpecTool(), mc.handleExplainDeckSpec)
 	addTool(s, mcpListDeckArchetypesTool(), handleListDeckArchetypes)
 	addTool(s, mcpListSlideKindsTool(), handleListSlideKinds)
 }
