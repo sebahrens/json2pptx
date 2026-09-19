@@ -230,6 +230,17 @@ finding severity (it is `false` when any error-severity finding, including a
 `refuse`-action fit finding, is present), which can legitimately differ from the
 structural `valid` flag.
 
+**When `IsError` is set.** A tool asked to PRODUCE something (`render_deck_spec`,
+`compile_deck_spec`) sets `IsError` whenever its payload reports `ok: false` /
+`success: false`, including domain failures like a template that does not
+resolve or a spec that does not parse — `isError` is the only protocol-level
+failure signal, and leaving it absent let a harness treat an unwritten deck as
+done (go-slide-creator-swak). A tool asked to ASSESS (`validate_deck_spec`,
+`validate_input`, `validate_pattern`) reports an invalid deck as a *successful*
+call with `ok: false`: the verdict is the product, not a failure of the call.
+A render that succeeded but produced an unshippable deck is neither — it returns
+`success: true` with `publishable: false` and `blocking_reasons[]`.
+
 The MCP **error** envelope has migrated: every tool error result
 (`IsError=true`) — arg-validation, template/asset resolution, strict-fit
 refusal, slide-level validation, and a failing `validate_input` — now carries a

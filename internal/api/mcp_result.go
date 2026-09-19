@@ -35,6 +35,70 @@ func MCPSuccessResult(ctx context.Context, data any) (*mcp.CallToolResult, error
 	}, nil
 }
 
+// MCPResultFor is MCPSuccessResult for a tool that was asked to PRODUCE
+// something — a rendered deck, a compiled deck. When the payload reports its own
+// failure (a top-level "ok": false or "success": false) the result is marked
+// IsError, because nothing was produced.
+//
+// isError is the only protocol-level failure signal, and it used to be absent
+// on every DOMAIN failure of the semantic tools (template not found, an
+// unparseable spec, an unknown diagram type) while argument-level failures on
+// the same tools set it. An agent or harness branching on isError read "a deck
+// that was never written" as done, then called render_deck_thumbnails on a path
+// that did not exist (go-slide-creator-swak).
+//
+// Tools that ASSESS rather than produce — validate_input, validate_pattern,
+// validate_deck_spec — keep reporting an invalid deck as a successful call with
+// ok:false. Their verdict IS the product, and the repo's contract tests pin
+// that: "validation failures should not be IsError".
+//
+// The structured payload is unchanged either way: diagnostics and the
+// explanation are exactly as valuable on a failure, and only the flag moves.
+func MCPResultFor(ctx context.Context, data any) (*mcp.CallToolResult, error) {
+	res, err := MCPSuccessResult(ctx, data)
+	if err != nil {
+		return nil, err
+	}
+	if text, ok := firstTextContent(res); ok {
+		res.IsError = payloadReportsFailure([]byte(text))
+	}
+	return res, nil
+}
+
+// firstTextContent returns the result's JSON text fallback.
+func firstTextContent(res *mcp.CallToolResult) (string, bool) {
+	if res == nil {
+		return "", false
+	}
+	for _, c := range res.Content {
+		if tc, ok := c.(mcp.TextContent); ok {
+			return tc.Text, true
+		}
+	}
+	return "", false
+}
+
+// payloadReportsFailure reports whether a marshalled tool response declares its
+// own failure via a top-level "ok" or "success" boolean set to false. Payloads
+// with neither field (the many tools that just return data) are never errors.
+func payloadReportsFailure(marshalled []byte) bool {
+	var top map[string]json.RawMessage
+	if err := json.Unmarshal(marshalled, &top); err != nil {
+		return false // not an object: nothing to read a status from
+	}
+	for _, key := range []string{"ok", "success"} {
+		raw, present := top[key]
+		if !present {
+			continue
+		}
+		var b bool
+		if err := json.Unmarshal(raw, &b); err == nil && !b {
+			return true
+		}
+	}
+	return false
+}
+
 // MCPDiagnosticsError builds an error CallToolResult from a slice of
 // Diagnostics. The result has IsError=true, StructuredContent carrying the
 // shared diagnostics.FindingEnvelope wire shape, and a human-readable text

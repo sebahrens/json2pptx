@@ -2376,6 +2376,8 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
     "success":         {"type": "boolean", "description": "True when the .pptx artifact was written (mirrors ok)."},
     "pptx_path":       {"type": "string", "description": "Path to the rendered .pptx artifact. Defaults to a slug of meta.title plus a short digest of the spec; set output_filename to choose it."},
     "overwrote":       {"type": "boolean", "description": "True when a file already existed at pptx_path and this render replaced it."},
+    "publishable":     {"type": "boolean", "description": "Whether the written deck is fit to ship: no error-severity or action:refuse diagnostic, and the deterministic quality gate passed. success answers 'was it written', publishable answers 'is it usable' — gate on this one."},
+    "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Why publishable is false, one entry per blocking finding code or failed gate criterion. Empty when publishable."},
     "template":        {"type": "string"},
     "slide_count":     {"type": "integer"},
     "content_hash":    {"type": "string", "description": "SHA-256 of the written file. Writes to one path are serialized, so this always matches the bytes on disk."},

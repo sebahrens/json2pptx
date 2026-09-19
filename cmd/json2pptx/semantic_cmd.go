@@ -323,19 +323,24 @@ func runSemanticCompile() error {
 // at the semantic source path the author wrote (raw paths only as a fallback
 // when no mapping exists).
 type semanticRenderResult struct {
-	OK           bool                 `json:"ok"`
-	OutputPath   string               `json:"output_path,omitempty"`
-	Overwrote    bool                 `json:"overwrote,omitempty"`
-	Template     string               `json:"template,omitempty"`
-	SlideCount   int                  `json:"slide_count,omitempty"`
-	ContentHash  string               `json:"content_hash,omitempty"`
-	Revision     string               `json:"revision,omitempty"`
-	ManifestPath string               `json:"manifest_path,omitempty"`
-	DurationMs   int64                `json:"duration_ms,omitempty"`
-	Quality      *QualityScore        `json:"quality,omitempty"`
-	Warnings     []string             `json:"warnings,omitempty"`
-	Diagnostics  []semanticDiagnostic `json:"diagnostics,omitempty"`
-	Error        string               `json:"error,omitempty"`
+	OK         bool   `json:"ok"`
+	OutputPath string `json:"output_path,omitempty"`
+	Overwrote  bool   `json:"overwrote,omitempty"`
+	// Publishable is the second verdict: ok says the .pptx was written,
+	// publishable says it is fit to ship. BlockingReasons say why not
+	// (go-slide-creator-swak).
+	Publishable     *bool                `json:"publishable,omitempty"`
+	BlockingReasons []string             `json:"blocking_reasons,omitempty"`
+	Template        string               `json:"template,omitempty"`
+	SlideCount      int                  `json:"slide_count,omitempty"`
+	ContentHash     string               `json:"content_hash,omitempty"`
+	Revision        string               `json:"revision,omitempty"`
+	ManifestPath    string               `json:"manifest_path,omitempty"`
+	DurationMs      int64                `json:"duration_ms,omitempty"`
+	Quality         *QualityScore        `json:"quality,omitempty"`
+	Warnings        []string             `json:"warnings,omitempty"`
+	Diagnostics     []semanticDiagnostic `json:"diagnostics,omitempty"`
+	Error           string               `json:"error,omitempty"`
 }
 
 // semanticDiagnostic is one compact finding in a render result. SemanticPath
@@ -534,7 +539,26 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	}
 	res.Revision = manifest.Revision
 	res.ManifestPath = manifestPath
-	return printJSONIndent(res)
+	return emitSemanticRenderResult(res, *outputValidation)
+}
+
+// emitSemanticRenderResult prints a completed render result and decides the
+// process exit.
+//
+// Under the default --output-validation=strict, a deck that is not fit to ship
+// must not exit 0. The artifact is still on disk and the full result has already
+// been printed, so a caller can inspect it — but `semantic render …; echo $?`
+// used to print 0 for a deck carrying an action:refuse diagnostic
+// (go-slide-creator-swak).
+func emitSemanticRenderResult(res semanticRenderResult, outputValidation string) error {
+	if err := printJSONIndent(res); err != nil {
+		return err
+	}
+	if outputValidation != "strict" || res.Publishable == nil || *res.Publishable {
+		return nil
+	}
+	return fmt.Errorf("semantic render: deck written to %s but not publishable: %s",
+		res.OutputPath, strings.Join(res.BlockingReasons, "; "))
 }
 
 // buildSemanticRenderSuccess assembles the compact success result: compile-time
@@ -597,6 +621,14 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	evidence := &pipeline.QualityEvidence{ArtifactSHA256: res.ContentHash, SchemaValid: true, Generated: true, FitChecked: true, StructuralValid: !hasBlockingOutputFinding(rr.OutputValidationFindings), TotalSlides: res.SlideCount}
 	evidence.Finalize()
 	res.Quality.Evidence = evidence
+
+	// The deck was written; say separately whether it is fit to ship. A render
+	// used to report ok:true with an action:refuse diagnostic buried in the
+	// payload, and an agent keying on ok shipped the broken slide
+	// (go-slide-creator-swak).
+	publishable, reasons := publishabilityOf(diags, res.Quality)
+	res.Publishable = &publishable
+	res.BlockingReasons = reasons
 	return res
 }
 

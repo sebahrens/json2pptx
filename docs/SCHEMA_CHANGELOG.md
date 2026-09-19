@@ -37,6 +37,34 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Failed DeckSpec renders set `isError`, and a written deck now says whether
+  it is shippable (go-slide-creator-swak).** Two halves of one problem: the
+  agent could not tell, from any field it was told to branch on, that something
+  had gone wrong.
+  `isError` is the only protocol-level failure signal, and it was absent on
+  every DOMAIN failure of the semantic tools — template not found, an
+  unparseable spec, an unknown diagram type — while argument-level failures on
+  the *same* tools set it, and `generate_presentation` / `validate_input` /
+  `score_deck` / `render_*` set it for the equivalent `TEMPLATE_NOT_FOUND`. A
+  harness branching on `isError` treated a deck that was never written as done
+  and went on to render thumbnails of a path that did not exist.
+  `render_deck_spec` and `compile_deck_spec` now set `isError` whenever their
+  payload reports `ok: false` / `success: false`. The structured payload is
+  untouched — diagnostics and `explanation_summary` are exactly as valuable on a
+  failure. Tools that ASSESS rather than produce (`validate_deck_spec`,
+  `validate_input`, `validate_pattern`) deliberately keep reporting an invalid
+  deck as a successful call with `ok: false`: their verdict is the product, and
+  the repo's contract tests pin it.
+  Separately, a render could return `ok: true` with an `action: refuse`
+  diagnostic buried in `diagnostics[]` and a quality gate that had already
+  failed — `quality_summary.score: 85`, `pptx_path` set, exit 0. `success` means
+  "the file was written" and other tools' parity depends on that, so the answer
+  is a second verdict rather than an overloaded first one: the response gained
+  **`publishable`** and **`blocking_reasons[]`**. A deck is publishable when
+  nothing in its diagnostics is error-severity or `action: refuse` AND the
+  deterministic quality gate passed. `json2pptx semantic render` exits non-zero
+  on an unpublishable deck under the default `--output-validation strict`.
+
 - **`render_deck_spec` renders no longer destroy each other
   (go-slide-creator-tngh).** `generate_presentation` takes `output_filename`;
   the recommended new-deck tool did not, so every DeckSpec render wrote

@@ -289,19 +289,22 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 // the semantic source paths the author wrote, and an explanation summary of the
 // compiler's planned decisions.
 type renderDeckSpecResponse struct {
-	OK          bool                      `json:"ok"`
-	Success     bool                      `json:"success"`
-	PptxPath    string                    `json:"pptx_path,omitempty"`
-	Overwrote   bool                      `json:"overwrote,omitempty"`
-	Template    string                    `json:"template,omitempty"`
-	SlideCount  int                       `json:"slide_count,omitempty"`
-	ContentHash string                    `json:"content_hash,omitempty"`
-	DurationMs  int64                     `json:"duration_ms,omitempty"`
-	Quality     *QualityScore             `json:"quality_summary,omitempty"`
-	Warnings    []string                  `json:"warnings,omitempty"`
-	Diagnostics []semanticDiagnostic      `json:"diagnostics,omitempty"`
-	Explanation *semantic.DeckExplanation `json:"explanation_summary,omitempty"`
-	Error       string                    `json:"error,omitempty"`
+	OK          bool   `json:"ok"`
+	Success     bool   `json:"success"`
+	PptxPath    string `json:"pptx_path,omitempty"`
+	Overwrote   bool   `json:"overwrote,omitempty"`
+	Publishable *bool  `json:"publishable,omitempty"`
+
+	BlockingReasons []string                  `json:"blocking_reasons,omitempty"`
+	Template        string                    `json:"template,omitempty"`
+	SlideCount      int                       `json:"slide_count,omitempty"`
+	ContentHash     string                    `json:"content_hash,omitempty"`
+	DurationMs      int64                     `json:"duration_ms,omitempty"`
+	Quality         *QualityScore             `json:"quality_summary,omitempty"`
+	Warnings        []string                  `json:"warnings,omitempty"`
+	Diagnostics     []semanticDiagnostic      `json:"diagnostics,omitempty"`
+	Explanation     *semantic.DeckExplanation `json:"explanation_summary,omitempty"`
+	Error           string                    `json:"error,omitempty"`
 }
 
 // semanticRenderToMCP adapts the CLI-shaped semanticRenderResult into the MCP
@@ -314,21 +317,24 @@ func semanticRenderToMCP(r semanticRenderResult, explanation *semantic.DeckExpla
 		Success:     r.OK,
 		PptxPath:    r.OutputPath,
 		Overwrote:   r.Overwrote,
-		Template:    r.Template,
-		SlideCount:  r.SlideCount,
-		ContentHash: r.ContentHash,
-		DurationMs:  r.DurationMs,
-		Quality:     r.Quality,
-		Warnings:    r.Warnings,
-		Diagnostics: r.Diagnostics,
-		Explanation: explanation,
-		Error:       r.Error,
+		Publishable: r.Publishable,
+
+		BlockingReasons: r.BlockingReasons,
+		Template:        r.Template,
+		SlideCount:      r.SlideCount,
+		ContentHash:     r.ContentHash,
+		DurationMs:      r.DurationMs,
+		Quality:         r.Quality,
+		Warnings:        r.Warnings,
+		Diagnostics:     r.Diagnostics,
+		Explanation:     explanation,
+		Error:           r.Error,
 	}
 }
 
 func mcpRenderDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("render_deck_spec",
-		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, quality_summary, diagnostics[], explanation_summary}: success/ok report whether the artifact was written, pptx_path locates it, quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a structural or visual verdict — use score_deck / render tools for those), diagnostics carry compile findings plus render-time fit findings mapped back to the semantic source paths you wrote (raw paths retained as fallback), and explanation_summary reports the compiler's planned archetype/template and per-slide kind/role/family/density/pattern. Strict output validation is the default. A blocking failure returns success=false with the reason in error/diagnostics. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
+		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, publishable, blocking_reasons[], quality_summary, diagnostics[], explanation_summary}: success/ok report whether the artifact was WRITTEN and publishable whether it is fit to SHIP — a deck can be written and still carry an action:refuse diagnostic or fail the deterministic quality gate, so gate your "done" on publishable, not success. blocking_reasons say why not. pptx_path locates it, quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a structural or visual verdict — use score_deck / render tools for those), diagnostics carry compile findings plus render-time fit findings mapped back to the semantic source paths you wrote (raw paths retained as fallback), and explanation_summary reports the compiler's planned archetype/template and per-slide kind/role/family/density/pattern. Strict output validation is the default. A blocking failure returns success=false with the reason in error/diagnostics. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
 		deckSpecArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		mcp.WithString("strict",
@@ -561,8 +567,12 @@ func handleListSlideKinds(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Call
 // ok=false for a parse/compile/render failure) as an MCP success result, since
 // the failure detail lives inside the structured payload rather than the MCP
 // error channel. Only a marshal failure surfaces as an INTERNAL error.
+// semanticSuccessOrInternal returns a producing tool's result. render_deck_spec
+// and compile_deck_spec are the only callers, and both are asked to produce an
+// artifact, so MCPResultFor marks a payload that reports ok:false as an error
+// (go-slide-creator-swak).
 func semanticSuccessOrInternal(ctx context.Context, tool string, v any) (*mcp.CallToolResult, error) {
-	mcpResult, err := api.MCPSuccessResult(ctx, v)
+	mcpResult, err := api.MCPResultFor(ctx, v)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal %s response: %v", tool, err)), nil
 	}
