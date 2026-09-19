@@ -30,6 +30,15 @@ type ShapeGridInput struct {
 	// default to "center" so capped cards/steps sit mid-slide instead of
 	// stretching or leaving the bottom of the slide empty.
 	VerticalAlign string `json:"vertical_align,omitempty"`
+	// Source records that this grid came out of the engine's own pattern
+	// expander, as "pattern:<name>". expand_pattern stamps it so its output can
+	// be fed straight back into generate: the expanders emit explicit font
+	// sizes, which constrained design mode refuses from an author, and without
+	// the stamp the documented expand -> inspect -> tweak -> generate loop was
+	// blocked on twenty design_mode_violations the agent could not remove
+	// (go-slide-creator-c3po). It waives the absolute-size rule ONLY — raw hex
+	// colours are still refused, and the expanders do not emit any.
+	Source string `json:"source,omitempty"`
 }
 
 // GridBoundsInput defines the bounding rectangle as percentages of slide dimensions.

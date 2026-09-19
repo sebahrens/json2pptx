@@ -121,7 +121,7 @@ For common business slide shapes — KPI cards, process flows, BMC canvas, matri
 - MCP: `list_patterns`, `show_pattern`, `expand_pattern`, `recommend_visual`
 - CLI: `json2pptx patterns list`
 
-Pattern field shapes and overrides are documented in `docs/PATTERNS.md`.
+Pattern field shapes and overrides are documented in `docs/PATTERNS.md`. An expansion can be edited and resubmitted as a `shape_grid`: it carries `source: "pattern:<name>"`, which exempts the engine's own font sizes from constrained mode's absolute-size rule — keep the stamp, or those sizes are refused as if you had written them (raw hex is refused either way).
 
 ## Charts and diagrams
 

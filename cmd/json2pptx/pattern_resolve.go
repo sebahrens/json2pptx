@@ -132,6 +132,16 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		warnings = warner.PostExpandWarnings(ctx, values, overrides)
 	}
 
+	// Stamp the grid with its provenance. It is what lets an agent feed an
+	// expansion straight back into generate_presentation: the expanders emit
+	// explicit font sizes, which constrained design mode refuses from an
+	// author, so without the stamp expand_pattern output was preview-only and
+	// the documented expand -> inspect -> tweak -> generate loop dead-ended on
+	// violations the agent had no way to remove (go-slide-creator-c3po).
+	if grid != nil {
+		grid.Source = patternSourcePrefix + pat.Name()
+	}
+
 	slog.Info("pattern expanded",
 		slog.String("pattern", p.Name),
 		slog.Int("version", pat.Version()),

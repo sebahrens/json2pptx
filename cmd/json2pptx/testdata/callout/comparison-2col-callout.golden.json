@@ -149,5 +149,6 @@
       ]
     }
   ],
-  "vertical_align": "center"
+  "vertical_align": "center",
+  "source": "pattern:comparison-2col"
 }

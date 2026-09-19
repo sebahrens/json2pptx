@@ -373,6 +373,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`shape_grid.source` — an expanded pattern can be fed back into generate
+  (go-slide-creator-c3po).** The documented workflow is
+  `expand_pattern -> inspect -> tweak -> generate`, and the last step was
+  impossible: the expanders emit explicit font sizes, constrained design mode
+  refuses those from an author, and one `scqa-summary` expansion produced
+  twenty `design_mode_violation` errors the agent had no way to remove without
+  switching the whole deck to `design_mode: free` (which also unlocks raw hex
+  and disables the other guards).
+  - `shape_grid` gains **`source`**, which the engine stamps as
+    `"pattern:<name>"` on every expansion. A grid carrying it is exempt from the
+    absolute-font-size rule, because those sizes are the engine's own.
+  - The waiver is narrow on purpose: raw hex colours are still refused on a
+    stamped grid (the expanders emit none), and a `source` naming a pattern that
+    is not registered waives nothing.
+  - Verified end to end: the reported `scqa-summary` expansion embedded in a
+    constrained deck validates clean, generates, and renders; the same grid with
+    `source` removed reports the original twenty violations.
+
 - **`auto_repair` / `make_deck` report `deterministic_ready` beside
   `publishable` (go-slide-creator-z0cx).** `publishable` was documented as "the
   single authoritative ship-as-is flag" and was false for every deck ever run:

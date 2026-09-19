@@ -80,6 +80,11 @@ func validateSlideDesignMode(slide *SlideInput, slideNum int) []patterns.FitFind
 func checkShapeGrid(grid *ShapeGridInput, slideNum int) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
+	// A grid the engine's own expander produced carries explicit sizes by
+	// design; refusing them made expand_pattern output preview-only
+	// (go-slide-creator-c3po).
+	sizesAreEngineOwned := gridFromPatternExpander(grid.Source)
+
 	for ri, row := range grid.Rows {
 		if row.Connector != nil && row.Connector.Color != "" {
 			if f := checkColorField(row.Connector.Color, slideNum,
@@ -93,11 +98,38 @@ func checkShapeGrid(grid *ShapeGridInput, slideNum int) []patterns.FitFinding {
 				continue
 			}
 			cellPath := fmt.Sprintf("shape_grid.rows[%d].cells[%d]", ri, ci)
-			findings = append(findings, checkGridCell(cell, slideNum, cellPath)...)
+			for _, f := range checkGridCell(cell, slideNum, cellPath) {
+				if sizesAreEngineOwned && isAbsoluteSizeFinding(f) {
+					continue
+				}
+				findings = append(findings, f)
+			}
 		}
 	}
 
 	return findings
+}
+
+// patternSourcePrefix marks a shape_grid the engine expanded from a named
+// pattern.
+const patternSourcePrefix = "pattern:"
+
+// gridFromPatternExpander reports whether a grid's source names a registered
+// pattern. An unrecognised source waives nothing: the stamp is the engine's,
+// and a value it would not have written is treated as absent.
+func gridFromPatternExpander(source string) bool {
+	name := strings.TrimPrefix(source, patternSourcePrefix)
+	if name == source || name == "" {
+		return false
+	}
+	_, ok := patterns.Default().Get(name)
+	return ok
+}
+
+// isAbsoluteSizeFinding reports whether a design-mode finding is the
+// absolute-font-size rule rather than a colour one.
+func isAbsoluteSizeFinding(f patterns.FitFinding) bool {
+	return f.Code == "design_mode_violation" && strings.Contains(f.Message, "absolute font size")
 }
 
 // checkGridCell validates a single grid cell for design mode violations.
