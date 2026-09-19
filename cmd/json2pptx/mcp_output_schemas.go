@@ -1993,7 +1993,7 @@ var outputSchemaSubmitVisualReview = json.RawMessage(`{
   "type": "object",
   "properties": {
     "ok":               {"type": "boolean"},
-    "status":           {"type": "string", "enum": ["visually_reviewed_current_revision", "draft_needs_visual_review"], "description": "visually_reviewed_current_revision only when evidence.approved (every slide approved, no P0/P1 finding, structurally valid artifact)."},
+    "status":           {"type": "string", "enum": ["visually_reviewed_current_revision", "reviewed_unverified_images", "draft_needs_visual_review"], "description": "visually_reviewed_current_revision only when evidence.approved (every slide approved, no P0/P1 finding, structurally valid artifact) AND image_verification.status is verified. reviewed_unverified_images: the review approves the deck but its images could not be matched against this artifact's own render — not a completion status."},
     "verdict":          {"type": "string", "enum": ["approved", "changes_requested", "inconclusive"]},
     "reviewer":         {"type": "string", "enum": ["host", "manual"]},
     "pptx_path":        {"type": "string"},
@@ -2004,9 +2004,22 @@ var outputSchemaSubmitVisualReview = json.RawMessage(`{
     "review":           {"type": "object", "description": "The validated ReviewRecord (artifact_sha256, revision, backend, slides[{index, role, image_path, image_sha256}], findings[], verdict)."},
     "manifest_path":    {"type": "string"},
     "manifest_updated": {"type": "boolean", "description": "True when <pptx_path>.authoring.json existed for this artifact and its visual_evidence was updated."},
-    "notes":            {"type": "array", "items": {"type": "string"}}
+    "notes":            {"type": "array", "items": {"type": "string"}},
+    "image_verification": {
+      "type": "object",
+      "description": "Whether the submitted images are this artifact's own rendered pixels. Each slide's pixel hash is compared against the renders this server produced for this exact PPTX (every cached density counts).",
+      "properties": {
+        "status":          {"type": "string", "enum": ["verified", "unverifiable"], "description": "verified: every slide matched this artifact's render for that index. unverifiable: this server has no render of the artifact to compare against — render it with render_deck_thumbnails and resubmit."},
+        "method":          {"type": "string"},
+        "verified_slides": {"type": "integer"},
+        "total_slides":    {"type": "integer"},
+        "reasons":         {"type": "array", "items": {"type": "string"}},
+        "how_to_verify":   {"type": "string"}
+      },
+      "required": ["status", "method", "verified_slides", "total_slides"]
+    }
   },
-  "required": ["ok", "status", "verdict", "reviewer", "artifact_sha256", "revision", "total_slides", "evidence", "review", "manifest_updated"]
+  "required": ["ok", "status", "verdict", "reviewer", "artifact_sha256", "revision", "total_slides", "evidence", "review", "manifest_updated", "image_verification"]
 }`)
 
 // --- validate_presentation_output ---

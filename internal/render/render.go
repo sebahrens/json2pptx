@@ -526,3 +526,73 @@ func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckR
 func InvalidateCache() error {
 	return os.RemoveAll(cacheDir())
 }
+
+// CachedSlideHashes returns the content hashes of every rendered slide this
+// process has cached for one PPTX, keyed by 0-based slide index. A slide can map
+// to several hashes — one per density the deck was rendered at — because the
+// cache stores one directory per (source hash, density) pair.
+//
+// sourceHash is the PPTX file's sha256, the same identity RenderDeck/RenderSlide
+// cache under. An unknown deck, a hash that is not 64 hex digits, or an empty
+// cache all return an empty map: callers must treat "no cached render" as "not
+// verifiable", never as "does not match".
+//
+// It exists so submit_visual_review can bind a reviewer's submitted image to the
+// artifact's own pixels without invoking LibreOffice (go-slide-creator-jltp).
+func CachedSlideHashes(sourceHash string) map[int][]string {
+	out := map[int][]string{}
+	if !isHexHash(sourceHash) {
+		return out
+	}
+	dirs, err := filepath.Glob(filepath.Join(cacheDir(), sourceHash+"-d*"))
+	if err != nil {
+		return out
+	}
+	sort.Strings(dirs)
+	for _, dir := range dirs {
+		pngs, gerr := filepath.Glob(filepath.Join(dir, "slide-*.png"))
+		if gerr != nil {
+			continue
+		}
+		sortPNGsByIndex(pngs)
+		for _, png := range pngs {
+			idx := pngIndexFromName(png)
+			if idx < 0 {
+				continue
+			}
+			data, rerr := os.ReadFile(png) //nolint:gosec // path comes from our own cache directory
+			if rerr != nil {
+				continue
+			}
+			sum := sha256.Sum256(data)
+			hash := hex.EncodeToString(sum[:])
+			if !containsString(out[idx], hash) {
+				out[idx] = append(out[idx], hash)
+			}
+		}
+	}
+	return out
+}
+
+// isHexHash reports whether s is a 64-character lowercase hex digest. It keeps a
+// caller-supplied identity out of the glob pattern used to walk the cache.
+func isHexHash(s string) bool {
+	if len(s) != 64 {
+		return false
+	}
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+func containsString(haystack []string, needle string) bool {
+	for _, s := range haystack {
+		if s == needle {
+			return true
+		}
+	}
+	return false
+}

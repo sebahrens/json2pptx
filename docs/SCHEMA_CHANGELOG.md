@@ -10,6 +10,28 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **submit_visual_review binds the review to the artifact's own pixels
+  (go-slide-creator-jltp).** `submit_visual_review` is the documented completion
+  path when no vision provider is configured, and only the PPTX sha256 was
+  checked — so a review whose six slides all pointed at `slide-01.png`, and one
+  built from a different deck's images, both returned
+  `status: "visually_reviewed_current_revision"`. The completion contract was an
+  honour system. Each slide's pixel hash is now compared against this server's
+  own render of that slide of that exact artifact (the render cache keys by file
+  hash + density, so every density the deck was rendered at counts):
+  - A recycled or foreign image is rejected with `INVALID_PARAMETER`, naming
+    which slide the image actually is. Slides that genuinely render to identical
+    pixels still verify — the rule is per-index identity, not hash uniqueness.
+  - New response field `image_verification`
+    `{status: verified|unverifiable, method, verified_slides, total_slides,
+    reasons[], how_to_verify}` (required).
+  - New `status` value **`reviewed_unverified_images`**: the review approves the
+    deck but this server has no render of the artifact to compare against.
+    `evidence.pixels_rendered` stays `false`, the completion status is withheld,
+    and no `visual_evidence` is written to the authoring manifest.
+  - `evidence.pixels_rendered` is now a claim about the reviewed artifact rather
+    than an unconditional `true`.
+
 - **Recommendations stay inside the active tool profile
   (go-slide-creator-mvny).** In the default `core` profile
   `get_started{task:"revise"}` returned `fast_path.tool: "auto_repair"` with

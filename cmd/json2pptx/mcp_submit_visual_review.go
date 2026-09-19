@@ -31,6 +31,11 @@ import (
 const (
 	visualReviewCompleteStatus = "visually_reviewed_current_revision"
 	visualReviewDraftStatus    = "draft_needs_visual_review"
+	// visualReviewUnverifiedStatus is recorded when the review itself is well
+	// formed and positive but its images could not be matched against this
+	// artifact's own rendered pixels. It is deliberately NOT the completion
+	// status (go-slide-creator-jltp).
+	visualReviewUnverifiedStatus = "reviewed_unverified_images"
 )
 
 func mcpSubmitVisualReviewTool() mcp.Tool {
@@ -39,11 +44,15 @@ func mcpSubmitVisualReviewTool() mcp.Tool {
 
 Inputs: pptx_path, pptx_revision (the sha256 content_hash of the exact PPTX you reviewed, as returned by generate_presentation / render_deck_spec), and one entry per slide in slides[]: {index (0-based), verdict: approved|changes_requested|inconclusive, image_path or image_sha256 (the rendered PNG you inspected, e.g. from render_deck_thumbnails), role?, findings?: [{severity, category, description, location?, bbox?}]}. Optional reviewer: "host" (default) or "manual"; optional revision (semantic manifest revision, checked when given).
 
-The review is validated by ReviewRecord.ValidateCompletion: EVERY slide must be covered exactly once with a pixel hash, and pptx_revision must equal the current file's sha256 — partial coverage or a stale revision is rejected (INVALID_PARAMETER) and nothing is recorded. On success the response carries quality evidence with inspection_backend=host|manual; status is "visually_reviewed_current_revision" only when every slide is approved with no P0/P1 finding and the artifact passes structural output validation, otherwise "draft_needs_visual_review". When <pptx_path>.authoring.json exists for this artifact, its visual_evidence is updated.`),
+The review is validated by ReviewRecord.ValidateCompletion: EVERY slide must be covered exactly once with a pixel hash, and pptx_revision must equal the current file's sha256 — partial coverage or a stale revision is rejected (INVALID_PARAMETER) and nothing is recorded.
+
+The images are evidence, so they are checked against the artifact's own pixels: each slide's pixel hash must equal this server's render of that slide of this exact PPTX (any density it was rendered at counts). Submitting another slide's image, or another deck's, is rejected with INVALID_PARAMETER naming which slide the image really is. Render with render_deck_thumbnails (or render_slide_image per slide) and submit the returned path / content_hash. When this server has no render of the artifact to compare against, the review is still recorded but image_verification.status is "unverifiable", evidence.pixels_rendered stays false, and the status is "reviewed_unverified_images" — never the completion status, and no manifest evidence is written.
+
+On success the response carries quality evidence with inspection_backend=host|manual; status is "visually_reviewed_current_revision" only when every slide is approved with no P0/P1 finding, the artifact passes structural output validation, AND image_verification.status is "verified". When <pptx_path>.authoring.json exists for this artifact and the images verified, its visual_evidence is updated.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaSubmitVisualReview)),
 		mcp.WithString("pptx_path", mcp.Required(), mcp.Description("Path to the reviewed PPTX file.")),
 		mcp.WithString("pptx_revision", mcp.Required(), mcp.Description("sha256 (content_hash) of the PPTX that was reviewed; must match the current file.")),
-		mcp.WithArray("slides", mcp.Required(), mcp.Description(`One entry per slide: [{"index":0,"verdict":"approved","image_path":"/tmp/thumbs/slide-1.png","findings":[]}, ...]. Every slide must be covered.`)),
+		mcp.WithArray("slides", mcp.Required(), mcp.Description(`One entry per slide: [{"index":0,"verdict":"approved","image_path":"/tmp/thumbs/slide-1.png","findings":[]}, ...]. Every slide must be covered, and each image must be this server's render of that slide of this PPTX (from render_deck_thumbnails / render_slide_image) — a recycled or foreign image is rejected.`)),
 		mcp.WithString("reviewer", mcp.Description(`Who reviewed: "host" (default, the calling agent) or "manual" (a human).`)),
 		mcp.WithString("revision", mcp.Description("Optional semantic revision (render_deck_spec revision); when given it must match the deck's authoring manifest.")),
 	)
@@ -68,19 +77,20 @@ type submitVisualReviewInput struct {
 }
 
 type submitVisualReviewOutput struct {
-	OK              bool                      `json:"ok"`
-	Status          string                    `json:"status"`
-	Verdict         string                    `json:"verdict"`
-	Reviewer        string                    `json:"reviewer"`
-	PPTXPath        string                    `json:"pptx_path"`
-	ArtifactSHA256  string                    `json:"artifact_sha256"`
-	Revision        string                    `json:"revision"`
-	TotalSlides     int                       `json:"total_slides"`
-	Evidence        *pipeline.QualityEvidence `json:"evidence"`
-	Review          *visualqa.ReviewRecord    `json:"review"`
-	ManifestPath    string                    `json:"manifest_path,omitempty"`
-	ManifestUpdated bool                      `json:"manifest_updated"`
-	Notes           []string                  `json:"notes,omitempty"`
+	OK                bool                      `json:"ok"`
+	Status            string                    `json:"status"`
+	Verdict           string                    `json:"verdict"`
+	Reviewer          string                    `json:"reviewer"`
+	PPTXPath          string                    `json:"pptx_path"`
+	ArtifactSHA256    string                    `json:"artifact_sha256"`
+	Revision          string                    `json:"revision"`
+	TotalSlides       int                       `json:"total_slides"`
+	Evidence          *pipeline.QualityEvidence `json:"evidence"`
+	Review            *visualqa.ReviewRecord    `json:"review"`
+	ImageVerification *imageVerification        `json:"image_verification"`
+	ManifestPath      string                    `json:"manifest_path,omitempty"`
+	ManifestUpdated   bool                      `json:"manifest_updated"`
+	Notes             []string                  `json:"notes,omitempty"`
 }
 
 // errVisualReviewRejected marks a review that failed completion validation
@@ -173,6 +183,14 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 		return nil, fmt.Errorf("%w: %v (current artifact sha256 %s, revision %s, %d slides)", errVisualReviewRejected, verr, artifact.SHA256, currentRevision, total)
 	}
 
+	// Bind the review to the artifact's own pixels: a well-formed review of
+	// somebody else's images is exactly how the completion status was forged
+	// (go-slide-creator-jltp).
+	verification, verr := verifyReviewImages(record.Slides, artifact.SHA256, total)
+	if verr != nil {
+		return nil, verr
+	}
+
 	reviewed := make([]string, 0, total)
 	for i := 0; i < total; i++ {
 		reviewed = append(reviewed, fmt.Sprintf("slide-%d", i+1))
@@ -184,13 +202,15 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 	// The artifact is a json2pptx output identified by its hash; generation
 	// always runs schema and fit checks before writing it.
 	evidence := &pipeline.QualityEvidence{
-		ArtifactSHA256:    artifact.SHA256,
-		Revision:          currentRevision,
-		SchemaValid:       true,
-		Generated:         true,
-		FitChecked:        true,
-		StructuralValid:   structuralValid,
-		PixelsRendered:    true,
+		ArtifactSHA256:  artifact.SHA256,
+		Revision:        currentRevision,
+		SchemaValid:     true,
+		Generated:       true,
+		FitChecked:      true,
+		StructuralValid: structuralValid,
+		// PixelsRendered is a claim about THIS artifact: only a render this
+		// server produced for it proves the reviewer saw its pixels.
+		PixelsRendered:    verification.verified(),
 		InspectionBackend: reviewer,
 		ReviewedSlideIDs:  reviewed,
 		TotalSlides:       total,
@@ -199,24 +219,39 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 	if !structuralValid {
 		evidence.Reasons = append(evidence.Reasons, "artifact failed structural output validation")
 	}
+	if !verification.verified() {
+		evidence.Reasons = append(evidence.Reasons, verification.Reasons...)
+	}
 	evidence.Finalize()
 
 	out := &submitVisualReviewOutput{
-		OK:             true,
-		Status:         visualReviewDraftStatus,
-		Verdict:        record.Verdict,
-		Reviewer:       reviewer,
-		PPTXPath:       in.PPTXPath,
-		ArtifactSHA256: artifact.SHA256,
-		Revision:       currentRevision,
-		TotalSlides:    total,
-		Evidence:       evidence,
-		Review:         record,
+		OK:                true,
+		Status:            visualReviewDraftStatus,
+		Verdict:           record.Verdict,
+		Reviewer:          reviewer,
+		PPTXPath:          in.PPTXPath,
+		ArtifactSHA256:    artifact.SHA256,
+		Revision:          currentRevision,
+		TotalSlides:       total,
+		Evidence:          evidence,
+		Review:            record,
+		ImageVerification: verification,
 	}
-	if evidence.Approved {
+	switch {
+	case evidence.Approved:
 		out.Status = visualReviewCompleteStatus
+	case !verification.verified() && record.Verdict == "approved":
+		// The review approves the deck but carries no verified evidence: record
+		// it, and say so in the status rather than calling the deck done.
+		out.Status = visualReviewUnverifiedStatus
+		out.Notes = append(out.Notes, howToVerify)
 	}
 
+	// An unverified review never becomes durable evidence in the manifest.
+	if manifest != nil && !verification.verified() {
+		out.Notes = append(out.Notes, "authoring manifest not updated: the submitted images were not verified against this artifact's render")
+		manifest = nil
+	}
 	if manifest != nil {
 		manifest.VisualEvidence = &pipeline.VisualEvidence{
 			ArtifactSHA256: artifact.SHA256,
