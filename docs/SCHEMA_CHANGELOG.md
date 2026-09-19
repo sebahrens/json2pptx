@@ -303,6 +303,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Text that stated no colour was never contrast-checked
+  (go-slide-creator-ucmgr).** The contrast pass rewrote scheme colours it found
+  in the slide's own XML, so text carrying no colour at all was invisible to it:
+  `examples/basic-deck.json` on `modern-template` put five white bullets on a
+  white section divider and the deck reported nothing. The colour came from the
+  master's `bodyStyle` (`schemeClr tx1`) through the layout's `clrMapOvr`
+  (`tx1` -> `lt1`), two files the pass never opened.
+  - The inherited colour is now resolved the way the renderer resolves it —
+    the layout's matching placeholder `lstStyle`, then the master's `txStyles`,
+    each mapped through the layout's colour-map override — and checked against
+    the background the slide actually shows (a slide's own background included).
+  - When it fails WCAG for that text's size, an explicit colour is written onto
+    the slide's runs and a `contrast_autofixed` finding is reported at
+    `/slides/{i}` with **`fix.params.source: "layout-lstStyle"` or
+    `"master-txStyles"`** — two new values in that field's vocabulary.
+  - A shape that states a colour anywhere is left to the existing pass, so one
+    change is never reported as two swaps. Measured: `basic-deck` on
+    `midnight-blue`, `warm-coral` and `forest-green` renders byte-identical;
+    only `modern-template`, the template with the inverted layout, changes.
+
 - **A log-scale bar chart labelled its bars with the logarithm
   (go-slide-creator-e2ck9).** The label site read the plotted Y coordinate,
   which on a log scale is log10(value), so a bar worth 490,000 was labelled

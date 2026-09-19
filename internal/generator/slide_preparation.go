@@ -151,6 +151,15 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 			override := parseLayoutColorMapOverride(layoutData)
 			swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex, override)
 			ctx.contrastSwaps = append(ctx.contrastSwaps, swaps...)
+
+			// Text that names no color at all was invisible to the pass above:
+			// there was nothing to rewrite, so five white bullets on a white
+			// section divider drew no fix and no finding. Resolve what the
+			// placeholder INHERITS and fix that too (go-slide-creator-ucmgr).
+			ctx.contrastSwaps = append(ctx.contrastSwaps, enforceInheritedTextContrast(
+				slide, layoutData, ctx.masterXMLForLayout(input.slideSpec.LayoutID),
+				bgHex, ctx.themeColors, input.slideIndex, override,
+			)...)
 		}
 	}
 

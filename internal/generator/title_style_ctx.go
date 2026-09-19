@@ -16,6 +16,9 @@ type TitleFitContext struct {
 	titleFontName   string                                 // theme major (heading) font
 	titleStyleCache map[string]template.InheritedTextStyle // masterPath -> inherited title style (lazy)
 	viewingMode     tokens.ViewingMode                     // readability policy mode (go-slide-creator-vbic)
+	// masterXMLCache holds raw master XML per path, for the inherited-color
+	// resolution the contrast pass needs (go-slide-creator-ucmgr).
+	masterXMLCache map[string][]byte
 }
 
 // masterPathForLayout returns the ZIP path of the slide master a layout
