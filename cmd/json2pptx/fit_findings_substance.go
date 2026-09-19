@@ -78,14 +78,14 @@ var placeholderWholeValues = map[string]bool{
 	"$xxm":       true,
 	"###":        true,
 	"???":        true,
-	"metric 1":   true,
-	"metric 2":   true,
-	"metric 3":   true,
-	"item 1":     true,
-	"item 2":     true,
-	"item 3":     true,
 	"your title": true,
 }
+
+// exemplarLabelRE matches a pattern's own exemplar labels — "Card 1",
+// "Description 2", "Metric 3" — as a WHOLE value. A real slide's "Option 1:
+// direct sales team in Berlin" carries more than the label, so it does not
+// match (go-slide-creator-7ucp asked for the exemplar values to be covered).
+var exemplarLabelRE = regexp.MustCompile(`^(card|description|item|metric|feature|benefit|point|bullet|column|row|label|heading|title|kpi|value)\s+\d+$`)
 
 // placeholderNumberRE matches masked numbers like "XX%", "$X.XM", "X,XXX" —
 // the shape a value takes before anyone has filled it in.
@@ -158,7 +158,7 @@ func collectPlaceholderContentFindings(input *PresentationInput) []patterns.FitF
 		out = append(out, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path: slidepath.Slide(idx),
-				Code: patterns.ErrCodePlaceholderContent,
+				Code: patterns.ErrCodeWeakContent,
 				Message: fmt.Sprintf("slide %d still carries exemplar copy (%s) — replace it with the deck's real content before shipping",
 					idx+1, strings.Join(quoted, ", ")),
 				Fix: &patterns.FixSuggestion{
@@ -186,6 +186,9 @@ func isPlaceholderCopy(value string) bool {
 		}
 	}
 	if placeholderWholeValues[lower] {
+		return true
+	}
+	if exemplarLabelRE.MatchString(lower) {
 		return true
 	}
 	// A masked number is only a placeholder as a whole value; "X" inside prose

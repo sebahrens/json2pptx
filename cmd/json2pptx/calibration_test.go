@@ -103,7 +103,7 @@ func TestCalibrationDefectClassesAreDetected(t *testing.T) {
 	want := map[string]string{
 		"B03_near_empty":          patterns.ErrCodeSlideNearlyEmpty,
 		"B04_chart_14_categories": patterns.ErrCodeChartOverloaded,
-		"B08_lorem_placeholder":   patterns.ErrCodePlaceholderContent,
+		"B08_lorem_placeholder":   patterns.ErrCodeWeakContent,
 		"B09_same_layout_x8":      patterns.ErrCodeDeckMonotony,
 		"B10_titleless":           patterns.ErrCodeMissingTitle,
 	}

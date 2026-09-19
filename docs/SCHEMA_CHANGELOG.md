@@ -70,7 +70,9 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   four slides with no title (100) and five slides carrying a single one-word
   bullet (100). The score was `100 - sum(severity weights)`, so it only ever
   measured the codes that happened to exist.
-  - New finding codes: **`PLACEHOLDER_CONTENT`** (`refuse`),
+  - New finding codes: **`WEAK_CONTENT`** (`refuse`; the raw-path twin of the
+    compiler's `SEMANTIC_WEAK_CONTENT`, which only ever saw DeckSpec input —
+    go-slide-creator-7ucp),
     **`MISSING_TITLE`**, **`SLIDE_NEARLY_EMPTY`**, **`DECK_MONOTONY`**
     (`refuse` at 6+ consecutive same-shape slides) and **`CHART_OVERLOADED`**.
     All five are describable via `describe_finding`.

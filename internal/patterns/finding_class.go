@@ -52,7 +52,7 @@ var contentCodes = map[string]bool{
 	ErrCodeDuplicateTitle:    true,
 	ErrCodeTakeawayMissing:   true,
 	// Content-substance codes: what the slide says (go-slide-creator-q7ar).
-	ErrCodePlaceholderContent: true,
+	ErrCodeWeakContent: true,
 	ErrCodeMissingTitle:       true,
 	ErrCodeSlideNearlyEmpty:   true,
 	ErrCodeChartOverloaded:    true,

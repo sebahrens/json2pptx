@@ -89,7 +89,10 @@ const (
 	// score_deck was a fit-findings aggregator, so a deck whose every slide
 	// read "Lorem ipsum" / "Click to add title" / "XX%" scored 99 and passed
 	// the gate (go-slide-creator-q7ar).
-	ErrCodePlaceholderContent = "PLACEHOLDER_CONTENT"
+	// ErrCodeWeakContent is the raw-path twin of the semantic compiler's
+	// SEMANTIC_WEAK_CONTENT: exemplar copy that reached a deck
+	// (go-slide-creator-q7ar, go-slide-creator-7ucp).
+	ErrCodeWeakContent = "WEAK_CONTENT"
 	ErrCodeMissingTitle       = "MISSING_TITLE"
 	ErrCodeSlideNearlyEmpty   = "SLIDE_NEARLY_EMPTY"
 	ErrCodeDeckMonotony       = "DECK_MONOTONY"

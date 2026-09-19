@@ -515,11 +515,11 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeTitleWraps, ErrCodeBodyTooLong},
 	},
-	ErrCodePlaceholderContent: {
-		Code:        ErrCodePlaceholderContent,
+	ErrCodeWeakContent: {
+		Code:        ErrCodeWeakContent,
 		Summary:     "A slide still carries exemplar copy instead of the deck's content.",
 		Severity:    "refuse",
-		WhenEmitted: "A slide's text matches known placeholder copy — lorem ipsum, \"Click to add title\", \"Presentation Title\", a masked number like \"XX%\" or \"$X.XM\", or a whole value of \"TBD\" / \"Metric 1\". Structural strings (placeholder IDs, geometry names) are exempt.",
+		WhenEmitted: "A slide's text matches known placeholder copy — lorem ipsum, \"Click to add title\", \"Presentation Title\", a masked number like \"XX%\" or \"$X.XM\", a whole value of \"TBD\" / \"N/A\", or a pattern's own exemplar label (\"Card 1\", \"Description 2\"). Structural strings (placeholder IDs, geometry names) are exempt. It is the raw-deck twin of the semantic compiler's SEMANTIC_WEAK_CONTENT, which only ever saw DeckSpec input.",
 		RemediationSteps: []string{
 			"Replace the named strings with the deck's real message — the finding lists up to three samples per slide.",
 			"A make_deck skeleton is exemplar by design: fill it in with repair_slide before shipping (it reports content_status: exemplar_skeleton for the same reason).",
@@ -548,7 +548,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Add the substance the slide promises, or merge it into a neighbouring slide.",
 			"If the JSON is a DeckSpec (kind / points / takeaway), compile it with validate_deck_spec + render_deck_spec — those tools report on the spec itself.",
 		},
-		RelatedCodes: []string{ErrCodeSlideUnderused, ErrCodePlaceholderContent},
+		RelatedCodes: []string{ErrCodeSlideUnderused, ErrCodeWeakContent},
 	},
 	ErrCodeDeckMonotony: {
 		Code:        ErrCodeDeckMonotony,
