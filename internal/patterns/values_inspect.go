@@ -284,6 +284,46 @@ func kindAllowed(sch *Schema, node any) bool {
 	return true
 }
 
+// branchFor resolves a oneOf/anyOf schema to the branch that describes a node of
+// this JSON kind, so the caller sees the properties that actually apply.
+//
+// Every pattern whose values are a list of cells declares the element as
+// oneOf{string shorthand, object}, and the object branch is where the property
+// names live. Asking the oneOf itself for PropertyNames returns nothing, which
+// read as "free-form content, nothing can be unknown here" — so a typo inside a
+// kpi-3up cell or a card-grid card was dropped in silence, which is exactly the
+// case an agent hits when it misspells a field (go-slide-creator-4cqh).
+func branchFor(sch *Schema, node any, root *Schema) *Schema {
+	if sch == nil {
+		return nil
+	}
+	branches := sch.OneOfBranches()
+	if len(branches) == 0 {
+		return sch
+	}
+	kind := jsonKind(node)
+	for _, b := range branches {
+		b = b.Deref(root)
+		if b == nil {
+			continue
+		}
+		switch {
+		case b.TypeName() == TypeObject && kind == "object":
+			return b
+		case b.TypeName() == TypeArray && kind == "array":
+			return b
+		case b.TypeName() == TypeString && kind == "string":
+			return b
+		case b.TypeName() == TypeNumber && kind == "number",
+			b.TypeName() == TypeInteger && kind == "number":
+			return b
+		case b.TypeName() == TypeBoolean && kind == "boolean":
+			return b
+		}
+	}
+	return sch
+}
+
 // jsonKind names a decoded value's JSON kind in schema vocabulary.
 func jsonKind(v any) string {
 	switch v.(type) {
@@ -517,6 +557,7 @@ type dropCandidate struct {
 // it has already reported: the outermost dropped key is the one to fix.
 func candidateDrops(path string, rawNode, canonNode any, sch, root *Schema) []dropCandidate {
 	var out []dropCandidate
+	sch = branchFor(sch, rawNode, root)
 	switch raw := rawNode.(type) {
 	case map[string]any:
 		canon, _ := canonNode.(map[string]any)

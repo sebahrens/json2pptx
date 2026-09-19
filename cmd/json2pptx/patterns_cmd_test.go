@@ -173,6 +173,33 @@ func TestPatternsValidate(t *testing.T) {
 		}
 	})
 
+	// A key the pattern's decoder drops never reaches the slide, so "valid" was
+	// a lie: an agent misspelling a field got template defaults and a green
+	// light (go-slide-creator-4cqh).
+	t.Run("unknown_field_inside_a_cell_exits_nonzero", func(t *testing.T) {
+		bogusFile := writeTestFile(t, dir, "bogus.json",
+			`{"values":[{"big":"$4.2M","small":"ARR","bogus":"z"},{"big":"127%","small":"NRR"},{"big":"12d","small":"Cycle"}]}`)
+		out, err := runBin(bin, "patterns", "validate", "kpi-3up", bogusFile)
+		if err == nil {
+			t.Fatalf("expected non-zero exit for a dropped key, got:\n%s", out)
+		}
+		if !strings.Contains(string(out), "values[0].bogus") {
+			t.Errorf("output does not name the dropped key:\n%s", out)
+		}
+	})
+
+	t.Run("unknown_override_exits_nonzero", func(t *testing.T) {
+		bogusFile := writeTestFile(t, dir, "bogus_override.json",
+			`{"values":[{"big":"$4.2M","small":"ARR"},{"big":"127%","small":"NRR"},{"big":"12d","small":"Cycle"}],"overrides":{"bodySize":9}}`)
+		out, err := runBin(bin, "patterns", "validate", "kpi-3up", bogusFile)
+		if err == nil {
+			t.Fatalf("expected non-zero exit for a dropped override, got:\n%s", out)
+		}
+		if !strings.Contains(string(out), "bodySize") {
+			t.Errorf("output does not name the dropped override:\n%s", out)
+		}
+	})
+
 	t.Run("invalid_exits_nonzero", func(t *testing.T) {
 		_, err := runBin(bin, "patterns", "validate", "kpi-3up", invalidFile)
 		if err == nil {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -285,6 +286,19 @@ func runPatternsValidate() error {
 	cellOverrides, err := unmarshalCellOverrides(pat, pi.CellOverrides)
 	if err != nil {
 		return emitValidationResult(name, *jsonOut, err)
+	}
+
+	// Keys the pattern's own decoder drops never reach the slide, so a deck
+	// that misspells an override ("bodySize" for "body_size") renders with
+	// template defaults and used to be told it was valid
+	// (go-slide-creator-4cqh). The same inspector the deck path runs is the
+	// authority here.
+	if dropped := patterns.InspectPatternInput(pat, pi.Values, pi.Overrides, pi.CellOverrides); len(dropped) > 0 {
+		errs := make([]error, len(dropped))
+		for i, e := range dropped {
+			errs[i] = e
+		}
+		return emitValidationResult(name, *jsonOut, errors.Join(errs...))
 	}
 
 	// Validate

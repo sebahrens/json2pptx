@@ -350,6 +350,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Unknown keys inside a pattern cell are reported (go-slide-creator-4cqh).**
+  `PATTERN_UNKNOWN_FIELD` caught a bad key at the top of `values` /
+  `overrides`, but not one inside a cell: `{"big": "$4.2M", "small": "ARR",
+  "bogus": "z"}` on kpi-3up validated clean. Every pattern whose values are a
+  list of cells declares the element as `oneOf{shorthand string, object}`, and
+  the inspector asked the `oneOf` — which names no properties — instead of its
+  object branch, so it concluded nothing there could be unknown.
+  - The inspector now resolves a `oneOf` to the branch matching the node's JSON
+    kind, so `values[0].bogus` and `values.cells[2].bodySize` are reported with
+    the same `did_you_mean` / `allowed` remediation as any other dropped key.
+  - **`json2pptx patterns validate` (MCP `validate_pattern`) runs the inspector
+    too** and exits non-zero on a dropped key. It previously printed "valid"
+    for a payload whose field was being discarded — the exact case an agent
+    hits when it misspells an override and silently gets template defaults.
+  - Tolerated aliases and shorthands are unaffected; no example deck gains a
+    finding.
+
 - **value-chain picks its highlight by measured contrast
   (go-slide-creator-ah5s).** The pattern painted its steps `dk2` and the
   highlighted step `accent2`. Those two slots are 3.21:1 apart on
