@@ -75,8 +75,8 @@ type autoRepairOutput struct {
 	FinalScore int    `json:"final_score"`
 	// ScoreBasis states what final_score / trace[].score measured (always
 	// "structural": score_deck rules over the generated deck, no pixels).
-	ScoreBasis  string                 `json:"score_basis"`
-	GatePassed bool `json:"gate_passed"`
+	ScoreBasis string `json:"score_basis"`
+	GatePassed bool   `json:"gate_passed"`
 	// Gate echoes the criteria gate_passed was judged against. score_deck has
 	// always returned its criteria block; without the same echo here an agent
 	// could not tell a default verdict (the ship gate) from one a caller
@@ -156,10 +156,22 @@ type autoRepairOutput struct {
 	// evidence_complete=false — converged on degraded/static-only evidence), or
 	// "failed" (gate not met).
 	ValidationStatus string `json:"validation_status"`
-	// Publishable is the single authoritative ship-as-is flag: gate passed AND
-	// evidence complete AND structurally valid AND content author-supplied.
-	// Exemplar skeletons, degraded passes, and gate-failed results are never
-	// publishable. Equivalent to len(BlockingReasons)==0.
+	// DeterministicReady is everything the engine can decide on its own: the
+	// gate passed on complete evidence, the artifact is structurally valid, and
+	// the content is author-supplied. It is Publishable minus the visual
+	// verdict, and it is the flag the DEFAULT path can actually reach.
+	//
+	// publishable alone was unusable: the default mode never renders pixels, so
+	// the vision reason is always present and publishable was false for every
+	// deck ever run through it — including decks that pass every deterministic
+	// check. A flag that is constant false decides nothing
+	// (go-slide-creator-z0cx).
+	DeterministicReady bool `json:"deterministic_ready"`
+	// Publishable is the full ship-as-is flag: DeterministicReady AND an
+	// explicit all-slide visual approval. UNREACHABLE on the default path,
+	// which renders no pixels — call render_deck_thumbnails, look at every
+	// slide, and submit_visual_review to supply the verdict. Equivalent to
+	// len(BlockingReasons)==0.
 	Publishable bool `json:"publishable"`
 	// ManualReviewRequired is the affirmative inverse of Publishable: true
 	// whenever a human or agent must review before the deck ships (gate failed,
@@ -169,9 +181,14 @@ type autoRepairOutput struct {
 	ManualReviewRequired bool `json:"manual_review_required"`
 	// BlockingReasons enumerates every reason the deck is not publishable — the
 	// unmet gate criteria (including final output validation), incomplete
-	// evidence, and exemplar provenance. Empty iff Publishable is true. Superset
-	// of GateReasons (which stays gate-only for backwards compatibility).
+	// evidence, exemplar provenance, and the missing visual verdict. Empty iff
+	// Publishable is true. Superset of GateReasons (which stays gate-only for
+	// backwards compatibility).
 	BlockingReasons []string `json:"blocking_reasons,omitempty"`
+	// DeterministicBlockingReasons is BlockingReasons minus the visual-review
+	// entry: everything an agent can still fix by editing the deck. Empty iff
+	// DeterministicReady is true.
+	DeterministicBlockingReasons []string `json:"deterministic_blocking_reasons,omitempty"`
 
 	// NextState is the resumable per-pass state snapshot (go-slide-creator-yope):
 	// completion status, a resume_token, the pass accounting, the remaining
@@ -275,11 +292,11 @@ Gate fields (all optional, all defaulted) — these govern the DETERMINISTIC loo
 - max_p1_findings (default 0): max count of shrink_or_split-action findings tolerated.
 - require_takeaway_on_charts (default true): no takeaway_missing finding may remain.
 
-Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, publishable, manual_review_required, blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, directives_proposed, directives_advisory, directives_applied, directives_failed[{kind, slide_index, code?, reason}], repairs_applied[]} records the full repair funnel per pass, so "nothing was wrong" is distinguishable from "every directive was rejected": directives_advisory counts findings whose remedy is an authoring decision (see get_capabilities.vocabularies.advisory_fix_kinds), and directives_failed names each refused directive with the reason it gave. A pass applies at most one repair per TARGET (cell_path / path), so a slide with many overfull cells converges in one pass; a structural repair that changes the slide count ends the pass so the next one re-derives findings. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
+Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, deterministic_ready, publishable, manual_review_required, blocking_reasons[], deterministic_blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, directives_proposed, directives_advisory, directives_applied, directives_failed[{kind, slide_index, code?, reason}], repairs_applied[]} records the full repair funnel per pass, so "nothing was wrong" is distinguishable from "every directive was rejected": directives_advisory counts findings whose remedy is an authoring decision (see get_capabilities.vocabularies.advisory_fix_kinds), and directives_failed names each refused directive with the reason it gave. A pass applies at most one repair per TARGET (cell_path / path), so a slide with many overfull cells converges in one pass; a structural repair that changes the slide count ends the pass so the next one re-derives findings. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
 
 Resumable per-pass state (next_state, always present): {completion, resumable, resume_token, next_action, passes_run, next_pass?, max_passes, artifact_path, remaining_findings[]}. completion classifies how the loop stopped — "converged" (gate met on complete evidence; not resumable), "converged_degraded", "max_passes_exhausted", "no_progress", or "render_incomplete" — so a partial or degraded result is never mistaken for a converged one. When resumable is true, call auto_repair again with resume_token to continue from the saved post-repair deck WITHOUT repeating completed passes; gate and max_passes may be overridden on that call (e.g. relaxed bounds or a larger budget) while presentation is ignored. next_action is the suggested move; remaining_findings echoes the still-open findings (capped).
 
-Publishability is reported explicitly so a successful transport response is never mistaken for a publishable deck: publishable is true ONLY when the gate passed on complete evidence AND the content is caller-authored (auto_repair always reports content_status="author_supplied"). When publishable is false, blocking_reasons enumerates every cause; manual_review_required is its affirmative inverse. artifact_status distinguishes a structurally valid PPTX ("generated") from one written but failed validation ("generated_invalid"); validation_status is "passed" / "passed_degraded" / "failed".
+Publishability is reported as TWO flags so a successful transport response is never mistaken for a publishable deck and the default path still has a signal it can reach. deterministic_ready is everything the engine decides on its own: the gate passed on complete evidence, the artifact is structurally valid, and the content is caller-authored (auto_repair always reports content_status="author_supplied"). publishable is deterministic_ready AND a current all-slide visual approval — UNREACHABLE on the default path, which renders no pixels; render_deck_thumbnails + submit_visual_review supply the verdict. Gate on deterministic_ready when deciding whether the deck still needs editing, and on publishable when deciding whether it can ship unseen. deterministic_blocking_reasons lists what is still fixable by editing; blocking_reasons is that plus the visual verdict; manual_review_required is the affirmative inverse of publishable. artifact_status distinguishes a structurally valid PPTX ("generated") from one written but failed validation ("generated_invalid"); validation_status is "passed" / "passed_degraded" / "failed".
 
 When gate_passed is false (max_passes exhausted), gate_reasons (and the superset blocking_reasons) list every unmet criterion so the agent can decide whether to call the tool again with relaxed bounds, switch templates, or escalate to human review.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaAutoRepair)),
@@ -735,9 +752,12 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		ContentStatus:        status.ContentStatus,
 		UsesExemplarContent:  status.UsesExemplarContent,
 		ValidationStatus:     status.ValidationStatus,
+		DeterministicReady:   status.DeterministicReady,
 		Publishable:          status.Publishable,
 		ManualReviewRequired: status.ManualReviewRequired,
 		BlockingReasons:      status.BlockingReasons,
+
+		DeterministicBlockingReasons: status.DeterministicBlockingReasons,
 	}
 	if !lastRenderEvidence.Complete {
 		re := lastRenderEvidence
@@ -799,13 +819,15 @@ func (mc *mcpConfig) runAutoRepairLoop(
 // runAutoRepairLoop stays within complexity limits and the logic lives in one
 // place.
 type facadeStatus struct {
-	ArtifactStatus       string
-	ContentStatus        string
-	UsesExemplarContent  bool
-	ValidationStatus     string
-	Publishable          bool
-	ManualReviewRequired bool
-	BlockingReasons      []string
+	ArtifactStatus               string
+	ContentStatus                string
+	UsesExemplarContent          bool
+	ValidationStatus             string
+	DeterministicReady           bool
+	Publishable                  bool
+	ManualReviewRequired         bool
+	BlockingReasons              []string
+	DeterministicBlockingReasons []string
 }
 
 // deriveFacadeStatus computes the publishability status block from the loop's
@@ -826,8 +848,13 @@ func deriveFacadeStatus(gatePassed, evidenceComplete, outputValid, visuallyAppro
 		blocking = append(blocking,
 			"content is an exemplar skeleton (pattern placeholder values), not author-supplied; replace per-slide content via repair_slide before publishing")
 	}
+	// Everything above this point is a reason the agent can act on by editing
+	// the deck; the visual verdict is not one of them, which is why the two are
+	// reported separately (go-slide-creator-z0cx).
+	deterministicBlocking := append([]string(nil), blocking...)
+	deterministicReady := len(deterministicBlocking) == 0
 	if !visuallyApproved {
-		blocking = append(blocking, "current artifact lacks complete all-slide vision inspection and an explicit approved verdict")
+		blocking = append(blocking, "current artifact lacks complete all-slide vision inspection and an explicit approved verdict; render_deck_thumbnails + submit_visual_review supply it")
 	}
 	publishable := len(blocking) == 0
 
@@ -843,13 +870,15 @@ func deriveFacadeStatus(gatePassed, evidenceComplete, outputValid, visuallyAppro
 		}
 	}
 	return facadeStatus{
-		ArtifactStatus:       artifactStatus,
-		ContentStatus:        string(provenance),
-		UsesExemplarContent:  usesExemplar,
-		ValidationStatus:     validationStatus,
-		Publishable:          publishable,
-		ManualReviewRequired: !publishable,
-		BlockingReasons:      blocking,
+		ArtifactStatus:               artifactStatus,
+		ContentStatus:                string(provenance),
+		UsesExemplarContent:          usesExemplar,
+		ValidationStatus:             validationStatus,
+		DeterministicReady:           deterministicReady,
+		Publishable:                  publishable,
+		ManualReviewRequired:         !publishable,
+		BlockingReasons:              blocking,
+		DeterministicBlockingReasons: deterministicBlocking,
 	}
 }
 

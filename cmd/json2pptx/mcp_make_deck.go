@@ -96,13 +96,19 @@ type makeDeckOutput struct {
 	// content_status is always "exemplar_skeleton", uses_exemplar_content is
 	// always true, and the deck is therefore NEVER publishable as-is — even when
 	// the gate passes — until the agent replaces the exemplar content.
-	ArtifactStatus       string   `json:"artifact_status"`
-	ContentStatus        string   `json:"content_status"`
-	UsesExemplarContent  bool     `json:"uses_exemplar_content"`
-	ValidationStatus     string   `json:"validation_status"`
-	Publishable          bool     `json:"publishable"`
-	ManualReviewRequired bool     `json:"manual_review_required"`
-	BlockingReasons      []string `json:"blocking_reasons,omitempty"`
+	ArtifactStatus      string `json:"artifact_status"`
+	ContentStatus       string `json:"content_status"`
+	UsesExemplarContent bool   `json:"uses_exemplar_content"`
+	ValidationStatus    string `json:"validation_status"`
+	// DeterministicReady mirrors auto_repair's: everything the engine decides on
+	// its own. For make_deck it is always false — exemplar content is a blocking
+	// reason of its own — but it is reported so the two facades answer the same
+	// question the same way (go-slide-creator-z0cx).
+	DeterministicReady           bool     `json:"deterministic_ready"`
+	Publishable                  bool     `json:"publishable"`
+	ManualReviewRequired         bool     `json:"manual_review_required"`
+	BlockingReasons              []string `json:"blocking_reasons,omitempty"`
+	DeterministicBlockingReasons []string `json:"deterministic_blocking_reasons,omitempty"`
 	// NextState mirrors auto_repair.next_state: the resumable per-pass snapshot
 	// (completion, resume_token, remaining findings, next action). Always
 	// present. Pass next_state.resume_token back as resume_token to continue the
@@ -363,9 +369,12 @@ func makeDeckOutputFromLoop(loopOut *autoRepairOutput, plan *makeDeckPlanSummary
 		ContentStatus:        loopOut.ContentStatus,
 		UsesExemplarContent:  loopOut.UsesExemplarContent,
 		ValidationStatus:     loopOut.ValidationStatus,
+		DeterministicReady:   loopOut.DeterministicReady,
 		Publishable:          loopOut.Publishable,
 		ManualReviewRequired: loopOut.ManualReviewRequired,
 		BlockingReasons:      append([]string(nil), loopOut.BlockingReasons...),
+
+		DeterministicBlockingReasons: append([]string(nil), loopOut.DeterministicBlockingReasons...),
 	}
 	if out.UsesExemplarContent {
 		applyExemplarContentGate(out)
@@ -389,6 +398,7 @@ func applyExemplarContentGate(out *makeDeckOutput) {
 	out.FinalScore = 0
 	zero := 0
 	out.ContentScore = &zero
+	out.DeterministicReady = false
 	out.Publishable = false
 	out.ManualReviewRequired = true
 	if !containsString(out.GateReasons, exemplarContentReason) {
@@ -396,6 +406,11 @@ func applyExemplarContentGate(out *makeDeckOutput) {
 	}
 	if !containsString(out.BlockingReasons, exemplarContentReason) {
 		out.BlockingReasons = append([]string{exemplarContentReason}, out.BlockingReasons...)
+	}
+	// Exemplar content is a deterministic problem — the agent fixes it by
+	// replacing the copy — so it blocks deterministic_ready too.
+	if !containsString(out.DeterministicBlockingReasons, exemplarContentReason) {
+		out.DeterministicBlockingReasons = append([]string{exemplarContentReason}, out.DeterministicBlockingReasons...)
 	}
 }
 

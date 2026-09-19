@@ -373,6 +373,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`auto_repair` / `make_deck` report `deterministic_ready` beside
+  `publishable` (go-slide-creator-z0cx).** `publishable` was documented as "the
+  single authoritative ship-as-is flag" and was false for every deck ever run:
+  the default mode renders no pixels, so "lacks complete all-slide vision
+  inspection" was always in `blocking_reasons` — including for decks that pass
+  every deterministic check. A flag that is constant false decides nothing.
+  - **`deterministic_ready`** (new) is everything the engine decides on its own:
+    the gate passed on complete evidence, the artifact is structurally valid,
+    and the content is author-supplied. It is the flag the default path can
+    reach.
+  - **`deterministic_blocking_reasons`** (new) is `blocking_reasons` minus the
+    visual-review entry: what is still fixable by editing the deck.
+  - `publishable` is unchanged in meaning (`deterministic_ready` AND a visual
+    verdict) but now says so, and its blocking reason names the two calls that
+    supply the verdict — `render_deck_thumbnails` then `submit_visual_review`.
+  - Gate "does this deck still need editing?" on `deterministic_ready`, and
+    "can it ship unseen?" on `publishable`.
+
 - **A chart whose x-axis labels were ellipsized drew every bar in the same slot
   (go-slide-creator-4xsi).** `AdaptXLabels` ellipsized long category labels **in
   place**, and the caller built its categorical scale from the result — while
