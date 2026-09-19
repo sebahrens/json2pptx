@@ -43,7 +43,7 @@ func TestLateInjectionShapeIDsUnique(t *testing.T) {
 			Extent: extentXML{CX: 3200400, CY: 365125},
 		},
 	}
-	slide, err = insertFooters(slide, &FooterConfig{Enabled: true, LeftText: "Confidential"}, positions, "")
+	slide, err = insertFooters(slide, &FooterConfig{Enabled: true, LeftText: "Confidential"}, positions, "", "")
 	if err != nil {
 		t.Fatalf("insertFooters: %v", err)
 	}

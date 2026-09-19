@@ -799,10 +799,17 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 	// Insert footer shapes if enabled and not skipped for this slide
 	if ctx.footerConfig != nil && ctx.footerConfig.Enabled && !skipFooterThisSlide {
 		var footerPositions map[string]*transformXML
+		layoutID := ""
 		if spec, ok := ctx.slideContentMap[slideNum]; ok {
 			footerPositions = ctx.getFooterPositionsForLayout(spec.LayoutID)
+			layoutID = spec.LayoutID
 		}
-		slideData, err = insertFooters(slideData, ctx.footerConfig, footerPositions, ctx.themeFontName)
+		// Chrome is injected as schemeClr tx1, which a layout that inverts its
+		// color map renders in its own background color — an invisible footer and
+		// no finding anywhere (go-slide-creator-hln7). Pick the color against the
+		// background the slide will actually show.
+		colorHex := ctx.chromeTextColorForLayout(layoutID, slideNum-ctx.calculateStartingSlideNum())
+		slideData, err = insertFooters(slideData, ctx.footerConfig, footerPositions, ctx.themeFontName, colorHex)
 		if err != nil {
 			ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to insert footer for slide %d: %v", slideNum, err))
 		}

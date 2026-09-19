@@ -961,6 +961,7 @@ Two opt-in top-level fields raise the deck from a flat slide list to a structure
 
 - `chrome.page_numbers.format` supports `{current}` and `{total}` placeholders. Default skip set is `["title", "closing"]`. `"title"` and `"closing"` match the canonical layout types (so section dividers are *not* skipped by default — they stay in the numbered body flow); any other value matches a structural layout tag, so e.g. adding `"section-header"` suppresses page numbers on section dividers too.
 - `chrome.section_crumb: true` surfaces the current section title in the footer — it only resolves when the deck also sets `structure.sections[].title`.
+- Chrome text contrast is enforced against the layout background the slide actually renders, color-map overrides included, so a footer is never drawn in the slide's own background color. When the inherited color fails WCAG AA the engine pins an explicit palette color and reports it as `contrast_autofixed` at `/slides/{i}/chrome` with `fix.params.source: "chrome"` (go-slide-creator-hln7). You do not request this and cannot turn it off per slide; `contrast_check: false` on a slide only governs its placeholder text.
 
 **`structure` — deck-level section grammar (since `2.7.0`).** Replaces a flat `slides[]` list with named sections plus an optional cover, closing, and auto-generated agenda. The engine expands `structure` into a flat slide sequence with auto section dividers.
 

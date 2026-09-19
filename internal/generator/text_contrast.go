@@ -20,11 +20,11 @@ import (
 // enforcement pass. The generator converts these into FitFindings for the
 // response.
 type ContrastSwap struct {
-	OriginalColor  string  // e.g. "#FFE8D4"
-	ReplacedColor  string  // e.g. "#1A1A1A"
-	BackgroundColor string // e.g. "#FFFFFF"
-	RatioBefore    float64 // contrast ratio before fix
-	RatioAfter     float64 // contrast ratio after fix
+	OriginalColor   string  // e.g. "#FFE8D4"
+	ReplacedColor   string  // e.g. "#1A1A1A"
+	BackgroundColor string  // e.g. "#FFFFFF"
+	RatioBefore     float64 // contrast ratio before fix
+	RatioAfter      float64 // contrast ratio after fix
 
 	// Location provenance. The low-level fix functions record only the
 	// color/ratio evidence above; the enforcement caller that knows the owning
@@ -83,9 +83,12 @@ func extractLayoutBackgroundColor(layoutXML []byte, themeColors []types.ThemeCol
 		return "#" + strings.ToUpper(m[1])
 	}
 
-	// Try scheme color reference
+	// Try scheme color reference, resolved through the layout's own color map
+	// override. modern-template's section divider fills with schemeClr tx1 under
+	// <a:overrideClrMapping tx1="lt1">: read literally that is dk1 (near-black),
+	// but the slide renders white (go-slide-creator-hln7).
 	if m := layoutBgSchemeClrRegexp.FindStringSubmatch(xmlStr); len(m) >= 2 {
-		if rgb := resolveSchemeColorToHex(m[1], themeColors); rgb != "" {
+		if rgb := resolveSchemeColorMapped(m[1], parseLayoutColorMapOverride(layoutXML), themeColors); rgb != "" {
 			return rgb
 		}
 	}
@@ -159,7 +162,7 @@ var schemeClrInFillRegexp = regexp.MustCompile(
 // Returns a slice of ContrastSwap records for each color replacement made.
 // This function mutates the slide's shapes in place. slideIndex is the 0-based
 // index into the input slides array, recorded on each swap for finding paths.
-func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int) []ContrastSwap {
+func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string) []ContrastSwap {
 	if bgHex == "" || slide == nil {
 		return nil
 	}
@@ -173,7 +176,7 @@ func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []typ
 	var swaps []ContrastSwap
 	for i := range slide.CommonSlideData.ShapeTree.Shapes {
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
-		swaps = append(swaps, enforceTextContrastInShape(shape, bgColor, bgHex, themeColors, slideIndex)...)
+		swaps = append(swaps, enforceTextContrastInShape(shape, bgColor, bgHex, themeColors, slideIndex, override)...)
 	}
 	return swaps
 }
@@ -182,7 +185,7 @@ func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []typ
 // It processes both the lstStyle (inherited styling) and individual run properties.
 // Recorded swaps are stamped with slideIndex and the slide-level JSON path; the
 // source label distinguishes lstStyle-inherited from run-level replacements.
-func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, slideIndex int) []ContrastSwap {
+func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string) []ContrastSwap {
 	if shape.TextBody == nil {
 		return nil
 	}
@@ -197,7 +200,7 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 		shape.TextBody.ListStyle.Inner = fixSchemeColorsForContrast(
 			shape.TextBody.ListStyle.Inner, bgColor, bgHex, themeColors, &swaps,
 			shape.NonVisualProperties.ConnectionNonVisual.Name, "lstStyle", false,
-			contrastThresholdFor(lstPt, lstBold),
+			contrastThresholdFor(lstPt, lstBold), override,
 		)
 		annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "lstStyle")
 	}
@@ -213,7 +216,7 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 				run.RunProperties.Inner = fixSchemeColorsForContrast(
 					run.RunProperties.Inner, bgColor, bgHex, themeColors, &swaps,
 					shape.NonVisualProperties.ConnectionNonVisual.Name, "run", false,
-					contrastThresholdFor(runPt, runBold),
+					contrastThresholdFor(runPt, runBold), override,
 				)
 				annotateContrastSwaps(swaps[start:], slideIndex, slidePath, "run")
 			}
@@ -675,7 +678,9 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	bodyPt, bodyBold := smallestTextPt(txBody)
 	threshold := contrastThresholdFor(bodyPt, bodyBold)
 	// Fix scheme colors in text (with white-text-safe awareness)
-	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold)
+	// Shape-grid colors are author-specified on the shape's own fill, not
+	// inherited through a layout, so no color map override applies.
+	fixed := fixSchemeColorsForContrast(txBody, bgColor, fillHex, themeColors, &swaps, "shape_grid", "shape_grid", fillSafe, threshold, nil)
 	// Fix sRGB colors in text (with white-text-safe awareness)
 	fixed = fixSrgbColorsForContrast(fixed, bgColor, fillHex, themeColors, &swaps, fillSafe, threshold)
 
@@ -690,7 +695,6 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	result = append(result, shapeXML[txEnd:]...)
 	return result, swaps
 }
-
 
 // srgbClrInFillRegexp matches <a:solidFill><a:srgbClr val="RRGGBB"/></a:solidFill>
 // in text run properties. Captures the full element and the hex color.
@@ -771,7 +775,7 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 // When fillSafe is true and the foreground scheme color is lt1/bg1 (white),
 // the fix is skipped — the template metadata certifies that white text on
 // this fill is safe.
-func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, shapeName, source string, fillSafe bool, threshold float64) string {
+func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, swaps *[]ContrastSwap, shapeName, source string, fillSafe bool, threshold float64, override map[string]string) string {
 	return schemeClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		// Extract the scheme color name from the match
 		submatches := schemeClrInFillRegexp.FindStringSubmatch(match)
@@ -785,8 +789,11 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 			return match
 		}
 
-		// Resolve scheme color to hex
-		hexColor := resolveSchemeColorToHex(schemeName, themeColors)
+		// Resolve scheme color to hex the way the renderer will: through the
+		// layout's color map override. On an inverted layout tx1 means lt1, and
+		// reading it literally makes the pass reason about a color the slide will
+		// never show (go-slide-creator-hln7).
+		hexColor := resolveSchemeColorMapped(schemeName, override, themeColors)
 		if hexColor == "" {
 			return match // Cannot resolve, leave as-is
 		}
@@ -838,7 +845,6 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 		return fmt.Sprintf(`<a:solidFill><a:srgbClr val="%s"/></a:solidFill>`, hexVal)
 	})
 }
-
 
 // runTextSize returns a run's declared size in points and whether it is bold,
 // falling back to the inherited body default when the run declares no size.

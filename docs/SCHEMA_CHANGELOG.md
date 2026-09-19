@@ -37,6 +37,29 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Deck chrome is no longer drawn in the slide's own background color
+  (go-slide-creator-hln7).** On modern-template's section divider, the footer
+  "Confidential — Project ATLAS | Northwind Corp" rendered white on white — the
+  first half invisible — and the page number "3 / 10" did not appear at all. The
+  layout fills its background with `schemeClr tx1` under
+  `<a:overrideClrMapping tx1="lt1">`, and chrome is injected as literal
+  `schemeClr tx1`, so text and background resolved to the same color. No finding
+  was emitted anywhere, because contrast enforcement only ever looked at
+  placeholders and shape grids.
+  Two things are fixed. The layout's color map override is now applied wherever
+  the engine resolves a scheme color — the background, the slide's own text, and
+  chrome — so it reasons about the colors the slide will actually show; read
+  literally, that background was dk1 (near-black). And chrome goes through
+  contrast enforcement: when the inherited color falls below WCAG AA against
+  that background, it is pinned to an explicit color from the template's text
+  palette and reported as `contrast_autofixed` at `/slides/{i}/chrome` with
+  `fix.params.source: "chrome"` (here `#FFFFFF → #2C3932`, ratio 1.0 → 12.1).
+  When nothing in the palette reads better, no swap is claimed — the response
+  carries a warning naming the layout and the ratio.
+  Blast radius is the layouts that actually invert their map: across all 34
+  `examples/` decks on all four bundled templates, every deterministic deck
+  generates byte-identically except where chrome was previously unreadable.
+
 - **Concurrent renders no longer fail at random
   (go-slide-creator-0ixs).** `internal/render` was the one LibreOffice call site
   in the repo that did not pass `-env:UserInstallation`

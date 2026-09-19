@@ -139,7 +139,10 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	if input.slideSpec.ContrastCheck == nil || *input.slideSpec.ContrastCheck {
 		bgHex := extractLayoutBackgroundColor(layoutData, ctx.themeColors)
 		if bgHex != "" {
-			swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex)
+			// The layout's color map override applies to the slide's own scheme
+			// colors too, not just its background (go-slide-creator-hln7).
+			override := parseLayoutColorMapOverride(layoutData)
+			swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex, override)
 			ctx.contrastSwaps = append(ctx.contrastSwaps, swaps...)
 		}
 	}

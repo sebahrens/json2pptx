@@ -142,12 +142,25 @@ func fitFooterText(text string, widthEMU int64, fontName string) (string, int) {
 
 // generateFooterShape creates a single p:sp element for a footer zone.
 func generateFooterShape(shapeID uint32, name string, xfrm *transformXML, text string, alignment string) string {
-	return generateFooterShapeSized(shapeID, name, xfrm, text, alignment, footerFontSize)
+	return generateFooterShapeSized(shapeID, name, xfrm, text, alignment, footerFontSize, "")
+}
+
+// chromeFill returns the fill every chrome run is drawn with. An empty
+// colorHex keeps the inherited scheme color, which is what almost every layout
+// wants; a non-empty one pins an explicit color because the scheme color would
+// be invisible on this layout's background (go-slide-creator-hln7).
+func chromeFill(colorHex string) pptx.Fill {
+	if colorHex == "" {
+		return pptx.SchemeFill(chromeDefaultScheme)
+	}
+	// SolidFill writes the value straight into val="", and ECMA-376 wants six
+	// bare hex digits — a leading "#" produces XML PowerPoint rejects.
+	return pptx.SolidFill(strings.TrimPrefix(colorHex, "#"))
 }
 
 // generateFooterShapeSized creates a footer p:sp element with an explicit
 // font size (hundredths of a point).
-func generateFooterShapeSized(shapeID uint32, name string, xfrm *transformXML, text string, alignment string, fontSize int) string {
+func generateFooterShapeSized(shapeID uint32, name string, xfrm *transformXML, text string, alignment string, fontSize int, colorHex string) string {
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     name,
@@ -166,7 +179,7 @@ func generateFooterShapeSized(shapeID uint32, name string, xfrm *transformXML, t
 					Lang:     "en-US",
 					FontSize: fontSize,
 					Dirty:    true,
-					Color:    pptx.SchemeFill("tx1"),
+					Color:    chromeFill(colorHex),
 				}},
 			}},
 		},
@@ -186,13 +199,13 @@ func generateFooterShapeSized(shapeID uint32, name string, xfrm *transformXML, t
 // its box spans the dt + ftr placeholder width (see leftFooterBox) and the
 // text shrinks, then ellipsizes, to fit that width. fontName is the theme
 // body font used for measurement.
-func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName string) string {
+func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName, colorHex string) string {
 	var shapes []string
 
 	// Left footer (dt position, widened across ftr): configurable text
 	if box := leftFooterBox(positions); box != nil && config.LeftText != "" {
 		text, size := fitFooterText(config.LeftText, box.Extent.CX, fontName)
-		shapes = append(shapes, generateFooterShapeSized(nextID, "Footer Left", box, text, "l", size))
+		shapes = append(shapes, generateFooterShapeSized(nextID, "Footer Left", box, text, "l", size, colorHex))
 		nextID++
 	}
 
@@ -200,9 +213,9 @@ func generateFooterShapes(positions map[string]*transformXML, config *FooterConf
 	// This is the last footer zone, so nextID is consumed but not advanced.
 	if pos, ok := positions["type:sldNum"]; ok {
 		if config.PageNumberFormat != "" {
-			shapes = append(shapes, generateFormattedSlideNumShape(nextID, "Footer Right", pos, config.PageNumberFormat, config.TotalSlides))
+			shapes = append(shapes, generateFormattedSlideNumShape(nextID, "Footer Right", pos, config.PageNumberFormat, config.TotalSlides, colorHex))
 		} else {
-			shapes = append(shapes, generateSlideNumShape(nextID, "Footer Right", pos))
+			shapes = append(shapes, generateSlideNumShape(nextID, "Footer Right", pos, colorHex))
 		}
 	}
 
@@ -210,7 +223,7 @@ func generateFooterShapes(positions map[string]*transformXML, config *FooterConf
 }
 
 // generateSlideNumShape creates a footer shape with an auto-updating slide number field.
-func generateSlideNumShape(shapeID uint32, name string, xfrm *transformXML) string {
+func generateSlideNumShape(shapeID uint32, name string, xfrm *transformXML, colorHex string) string {
 	fieldID := "{" + uuid.New().String() + "}"
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
@@ -230,7 +243,7 @@ func generateSlideNumShape(shapeID uint32, name string, xfrm *transformXML) stri
 					Lang:      "en-US",
 					FontSize:  footerFontSize,
 					Dirty:     true,
-					Color:     pptx.SchemeFill("tx1"),
+					Color:     chromeFill(colorHex),
 					FieldType: "slidenum",
 					FieldID:   fieldID,
 				}},
@@ -247,8 +260,8 @@ func generateSlideNumShape(shapeID uint32, name string, xfrm *transformXML) stri
 // The format string may contain {current} (replaced by an auto-updating slidenum field)
 // and {total} (replaced by a static total count). Text segments between fields are
 // emitted as plain-text runs so PowerPoint renders "Slide 3 / 30" correctly.
-func generateFormattedSlideNumShape(shapeID uint32, name string, xfrm *transformXML, format string, totalSlides int) string {
-	runs := buildPageNumberRuns(format, totalSlides)
+func generateFormattedSlideNumShape(shapeID uint32, name string, xfrm *transformXML, format string, totalSlides int, colorHex string) string {
+	runs := buildPageNumberRuns(format, totalSlides, colorHex)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     name,
@@ -272,7 +285,7 @@ func generateFormattedSlideNumShape(shapeID uint32, name string, xfrm *transform
 // buildPageNumberRuns splits a format string like "{current} / {total}" into
 // pptx.Run slices: {current} becomes a slidenum field, {total} becomes a static
 // text run with the total count, and everything else becomes plain text runs.
-func buildPageNumberRuns(format string, totalSlides int) []pptx.Run {
+func buildPageNumberRuns(format string, totalSlides int, colorHex string) []pptx.Run {
 	var runs []pptx.Run
 	remaining := format
 	for len(remaining) > 0 {
@@ -302,7 +315,7 @@ func buildPageNumberRuns(format string, totalSlides int) []pptx.Run {
 					Lang:     "en-US",
 					FontSize: footerFontSize,
 					Dirty:    true,
-					Color:    pptx.SchemeFill("tx1"),
+					Color:    chromeFill(colorHex),
 				})
 			}
 			break
@@ -315,7 +328,7 @@ func buildPageNumberRuns(format string, totalSlides int) []pptx.Run {
 				Lang:     "en-US",
 				FontSize: footerFontSize,
 				Dirty:    true,
-				Color:    pptx.SchemeFill("tx1"),
+				Color:    chromeFill(colorHex),
 			})
 		}
 
@@ -327,7 +340,7 @@ func buildPageNumberRuns(format string, totalSlides int) []pptx.Run {
 				Lang:      "en-US",
 				FontSize:  footerFontSize,
 				Dirty:     true,
-				Color:     pptx.SchemeFill("tx1"),
+				Color:     chromeFill(colorHex),
 				FieldType: "slidenum",
 				FieldID:   fieldID,
 			})
@@ -337,7 +350,7 @@ func buildPageNumberRuns(format string, totalSlides int) []pptx.Run {
 				Lang:     "en-US",
 				FontSize: footerFontSize,
 				Dirty:    true,
-				Color:    pptx.SchemeFill("tx1"),
+				Color:    chromeFill(colorHex),
 			})
 		}
 
@@ -349,7 +362,7 @@ func buildPageNumberRuns(format string, totalSlides int) []pptx.Run {
 
 // insertFooters inserts footer shapes into slide XML before </p:spTree>.
 // fontName is the theme body font used to fit the left footer text on one line.
-func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName string) ([]byte, error) {
+func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName, colorHex string) ([]byte, error) {
 	if footerConfig == nil || !footerConfig.Enabled {
 		return slideData, nil
 	}
@@ -360,7 +373,7 @@ func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[s
 
 	// Allocate slide-unique IDs above any existing shape (including the
 	// takeaway/source-note shapes injected earlier on this slide).
-	footerXML := generateFooterShapes(positions, footerConfig, findMaxShapeID(slideData)+1, fontName)
+	footerXML := generateFooterShapes(positions, footerConfig, findMaxShapeID(slideData)+1, fontName, colorHex)
 	if footerXML == "" {
 		return slideData, nil
 	}

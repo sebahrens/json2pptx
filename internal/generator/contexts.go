@@ -184,6 +184,10 @@ type OutputContext struct {
 	// Contrast swaps recorded during WCAG text contrast enforcement
 	contrastSwaps []ContrastSwap
 
+	// chromeColorCache memoizes the chrome-contrast verdict per layout, since
+	// one layout backs many slides (go-slide-creator-hln7).
+	chromeColorCache map[string]chromeVerdict
+
 	// Render-time fit findings emitted during generation
 	fitFindings []patterns.FitFinding
 }
