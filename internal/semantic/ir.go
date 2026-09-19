@@ -146,6 +146,7 @@ type DeckIR struct {
 	// raw model (go-slide-creator-zmjs).
 	Chrome         *ChromeSpec `json:"chrome,omitempty"`
 	ViewingMode    string      `json:"viewing_mode,omitempty"`
+	DesignMode     string      `json:"design_mode,omitempty"`
 	AccentStrategy string      `json:"accent_strategy,omitempty"`
 	// ArchetypeTemplate is the template the deck's archetype prefers (empty when
 	// no archetype is set or it has no preference). It is the lowest-priority
@@ -313,6 +314,7 @@ func Normalize(spec *DeckSpec) *DeckIR {
 	ir.Date = spec.Meta.Date
 	ir.Chrome = spec.Meta.Chrome
 	ir.ViewingMode = spec.Meta.ViewingMode
+	ir.DesignMode = spec.Meta.DesignMode
 	ir.AccentStrategy = spec.Meta.AccentStrategy
 
 	defaults := DefaultsFor(spec.Meta.Archetype)

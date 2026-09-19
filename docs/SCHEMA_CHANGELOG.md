@@ -354,6 +354,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Constrained design mode is enforced on the DeckSpec path too
+  (go-slide-creator-rs4h).** The same raw slide — a `shape_grid` with
+  `shape.text.size` and hex fills — was refused by `generate_presentation`
+  with blocking `design_mode_violation` findings and accepted in silence by
+  `render_deck_spec` when wrapped in `kind: raw_json2pptx`. A compiled deck is
+  stamped `design_mode: "constrained"`, but the check that enforces it ran only
+  on the raw path, so the guarantee was not a guarantee on the recommended one
+  — and an agent learned opposite rules depending on which door it came
+  through.
+  - `validate_deck_spec`, `compile_deck_spec`, `render_deck_spec` and the three
+    `semantic` CLI subcommands now run the same validation over the compiled
+    deck. Measured on the reported slide: 4 violations from the raw path, 0
+    from the spec path; now 4 from both.
+  - **`meta.design_mode`** accepts `"constrained"` (default) or `"free"`.
+    There was no opt-out on this path at all, so a spec using the escape hatch
+    deliberately had no way to say so. Only the escape hatch needs it: the
+    compiler's own output never hand-sets what the template owns, and a test
+    pins that.
+
 - **Capability metadata and data-format hints agree, and say true things
   (go-slide-creator-umji).** Two agent-facing surfaces describe the same
   payload — `get_capabilities`' diagram entries and `get_data_format_hints` —

@@ -160,7 +160,7 @@ var topLevelMigrations = map[string]string{
 // DeckMeta's json tags and the schema's DeckMeta.additionalProperties:false, so
 // unknown meta keys are reported rather than silently dropped by the struct
 // decode of rawDeck.Meta.
-var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date", "chrome", "viewing_mode", "accent_strategy"}
+var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date", "chrome", "viewing_mode", "accent_strategy", "design_mode"}
 
 // metaMigrations maps a common stale/alias meta key onto the field it should be,
 // checked before the generic fuzzy suggestion (mirrors topLevelMigrations).

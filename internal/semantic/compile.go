@@ -86,6 +86,12 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 	if ir.ViewingMode != "" {
 		input.ViewingMode = ir.ViewingMode
 	}
+	// A compiled deck is constrained; a spec that reaches for the
+	// raw_json2pptx escape hatch can say "free" and mean it
+	// (go-slide-creator-rs4h).
+	if ir.DesignMode != "" {
+		input.DesignMode = ir.DesignMode
+	}
 	input.Chrome = compileChrome(ir)
 
 	for i := range ir.Slides {

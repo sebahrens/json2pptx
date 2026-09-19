@@ -153,6 +153,11 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > at `slides[i].slide`): it must be a JSON object, carry **no unknown fields** (typo'd keys are reported, not
 > silently dropped), set a `slide_type` or `layout_id`, and carry renderable content (`content`, `shape_grid`,
 > `pattern`, or `compose`). The `blank` slide_type is the one content-free exception (a deliberate empty canvas).
+>
+> **It is bound by constrained design mode**, like every other deck: a raw slide that hand-sets a font size or
+> a hex fill is refused with `design_mode_violation`, the same verdict `generate_presentation` gives the same
+> payload. Set `meta.design_mode: "free"` when those values are deliberate — that is the only reason to set it,
+> since the compiler's own output never hand-sets what the template owns (go-slide-creator-rs4h).
 
 **A written deck is not automatically a good deck.** `render_deck_spec` returns `publishable: false` with `blocking_reasons[]` when the render carries an error-severity or `action: refuse` diagnostic, or fails the deterministic quality gate — while still returning `success: true` and the `pptx_path`, so you can open it and see the problem. Treat `publishable: false` as "fix and re-render", never as done; `success` alone only tells you a file exists. The CLI mirrors this: `json2pptx semantic render` exits non-zero on an unpublishable deck under the default `--output-validation strict`.
 

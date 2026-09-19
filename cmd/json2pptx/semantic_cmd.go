@@ -166,6 +166,11 @@ func runSemanticValidate() error {
 	}
 
 	ds := semantic.Check(*specPath, data, strictness)
+	// Design-mode violations live in the COMPILED deck (the raw_json2pptx
+	// escape hatch carries an author's payload through), so validate compiles
+	// to see them — otherwise it passes a spec render then refuses
+	// (go-slide-creator-rs4h).
+	ds = append(ds, specDesignModeDiagnostics(*specPath, data, strictness)...)
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "semantic validate",
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
@@ -279,6 +284,10 @@ func runSemanticCompile() error {
 		_ = fprintJSONIndent(os.Stderr, envelope)
 		return fmt.Errorf("semantic compile: %w", err)
 	}
+
+	// The compiled deck answers for its own design mode, so `semantic compile`
+	// reports what `semantic render` would refuse (go-slide-creator-rs4h).
+	appendCompiledDesignModeDiags(result, input)
 
 	if *envelopeMode {
 		var ds []diagnostics.Diagnostic
@@ -445,11 +454,22 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		outputDir = filepath.Dir(outputDir)
 	}
 
+	// Constrained mode is enforced here as it is on generate: the raw_json2pptx
+	// escape hatch passes author-authored slide payloads straight through, so
+	// the same shape_grid must get the same verdict whichever path compiled it
+	// (go-slide-creator-rs4h). meta.design_mode: "free" opts out.
+	if designViolations := compiledDesignModeDiagnostics(input); len(designViolations) > 0 {
+		appendCompiledDesignModeDiags(compileResult, input)
+		err := blockingDesignModeError(designViolations)
+		res := buildSemanticRenderFailure(compileResult, err)
+		_ = fprintJSONIndent(os.Stderr, res)
+		return fmt.Errorf("semantic render: %w", err)
+	}
+
 	// Apply the shared pre-render prep that a compiled deck still needs: deck
-	// defaults (table/cell styles) and named style references. Most compiled
-	// slides carry constrained design mode and no URL/asset refs, so structure
-	// expansion and design-mode revalidation do not apply — but the raw_json2pptx
-	// escape hatch passes author-authored slide payloads straight through, so the
+	// defaults (table/cell styles) and named style references. Structure
+	// expansion does not apply to a compiled deck — but the raw_json2pptx escape
+	// hatch passes author-authored slide payloads straight through, so the
 	// URL/asset resolution PreConvert hook below still does (see preConvert).
 	applyDefaults(input)
 	resolveInputNamedSettingsForDir(*templatesDir, input)

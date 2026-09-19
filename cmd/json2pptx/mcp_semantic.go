@@ -335,11 +335,24 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 		return semanticSuccessOrInternal(ctx, "compile_deck_spec", res)
 	}
 
-	res := compileDeckSpecResponse{OK: true, SlideCount: len(input.Slides), Template: input.Template}
+	// Constrained mode is enforced here too: the raw_json2pptx escape hatch
+	// carries an author's slide payload straight through, so the same
+	// shape_grid must get the same verdict whichever path compiled it
+	// (go-slide-creator-rs4h).
+	designViolations := compiledDesignModeDiagnostics(input)
+
+	res := compileDeckSpecResponse{OK: len(designViolations) == 0, SlideCount: len(input.Slides), Template: input.Template}
 	if result != nil {
 		for _, d := range result.Diagnostics {
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 		}
+	}
+	for _, d := range designViolations {
+		res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
+	}
+	if err := blockingDesignModeError(designViolations); err != nil {
+		res.Error = err.Error()
+		return semanticSuccessOrInternal(ctx, "compile_deck_spec", res)
 	}
 	if includeJSON {
 		raw, err := json.Marshal(input)
@@ -513,6 +526,15 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	if err != nil {
 		res := semanticRenderToMCP(buildSemanticRenderFailure(compileResult, err), &explanation)
 		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+	}
+
+	// Constrained mode is enforced before rendering: the raw_json2pptx escape
+	// hatch passes an author's slide payload through unchanged, and the same
+	// payload is refused by generate_presentation (go-slide-creator-rs4h).
+	if designViolations := compiledDesignModeDiagnostics(input); len(designViolations) > 0 {
+		appendCompiledDesignModeDiags(compileResult, input)
+		failure := buildSemanticRenderFailure(compileResult, blockingDesignModeError(designViolations))
+		return semanticSuccessOrInternal(ctx, "render_deck_spec", semanticRenderToMCP(failure, &explanation))
 	}
 
 	// Apply the shared pre-render prep a compiled deck still needs (deck defaults
@@ -731,6 +753,9 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 	applyDefaults(input)
 	resolveInputNamedSettingsForDir(mc.templatesDir, input)
 
+	// validate must say what render will say (go-slide-creator-rs4h).
+	designViolations := compiledDesignModeDiagnostics(input)
+
 	var layouts []types.LayoutMetadata
 	var slideWidth, slideHeight int64
 	var theme *types.ThemeInfo
@@ -753,7 +778,8 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 		sm = compileResult.SourceMap
 	}
 	findings := collectFitFindings(input, layouts, slideWidth, slideHeight, theme)
-	out := make([]diagnostics.Diagnostic, 0, len(findings))
+	out := make([]diagnostics.Diagnostic, 0, len(findings)+len(designViolations))
+	out = append(out, designViolations...)
 	for _, f := range findings {
 		d := diagnostics.FromFitFinding(f)
 		// Geometry-airiness advisories belong to the render/score path: a

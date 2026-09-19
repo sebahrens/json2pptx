@@ -83,6 +83,14 @@ func deckMetaSchema() map[string]any {
 				"description": "Accent colour rotation across the deck.",
 				"enum":        []any{"primary", "rotate", "section-keyed"},
 			},
+			"design_mode": map[string]any{
+				"type": "string",
+				"description": "\"constrained\" (default: the template owns sizes and colours) or \"free\". " +
+					"Only a deck using the raw_json2pptx escape hatch needs \"free\": the compiler's own output " +
+					"never hand-sets what the template owns, and a raw slide that does is refused as " +
+					"design_mode_violation — the same verdict generate_presentation gives it.",
+				"enum": []any{"constrained", "free"},
+			},
 			"chrome": chromeSchema(),
 		},
 		"additionalProperties": false,

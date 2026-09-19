@@ -36,6 +36,13 @@ type DeckMeta struct {
 	// AccentStrategy controls accent rotation ("primary", "rotate",
 	// "section-keyed"). It overrides the compile-option default.
 	AccentStrategy string `json:"accent_strategy,omitempty" yaml:"accent_strategy,omitempty"`
+	// DesignMode is "constrained" (default) or "free". A compiled deck is
+	// constrained: the template owns sizes and colours. The raw_json2pptx
+	// escape hatch carries author-authored slide payloads through unchanged,
+	// and those can hand-set both — so a spec that uses it needs the same
+	// opt-out the raw path has, or its slides are refused with no way to say
+	// they are deliberate (go-slide-creator-rs4h).
+	DesignMode string `json:"design_mode,omitempty" yaml:"design_mode,omitempty"`
 }
 
 // ChromeSpec mirrors deckinput.ChromeInput: the deck furniture rendered into
