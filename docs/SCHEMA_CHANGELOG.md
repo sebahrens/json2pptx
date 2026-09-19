@@ -328,6 +328,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   and the footer "Strictly confidential — Acme Corp | September 2026" with
   `{current} / {total}` page numbers.
 
+### Added
+
+- **Ordered lists render as ordered lists (go-slide-creator-6or2).**
+  `bullets_value: ["1. First do this", "2. Then do that"]` rendered as
+  `• 1. First do this` — the layout's bullet glyph AND the author's typed
+  number. OOXML auto-numbering was already implemented but only the
+  `shape_grid` text path ever asked for it, so the routine ordered list
+  (steps, rankings, priorities) had no clean form in a placeholder at all.
+  - A `bullets` / `body_and_bullets` list whose entries are numbered **from 1
+    with no gaps** is now rendered with `<a:buAutoNum type="arabicPeriod"/>`
+    and the typed prefixes removed from the text. One marker, drawn by
+    PowerPoint.
+  - Anything else keeps the author's text verbatim and reports
+    **`NUMBERED_LIST_NOT_APPLIED`** (`review`) naming how many bullets carry a
+    prefix, with a **`renumber_bullets`** fix. A single line that merely opens
+    with a number ("2024. A big year") is prose and is exempt.
+  - New executable repair kind **`renumber_bullets`**
+    (`params: {path, strip?}`): renumbers the list from 1, or removes the
+    prefixes when the list was never ordered.
+
 ### Changed
 
 - **Table conditional formatting accepts a text threshold, and the rule is

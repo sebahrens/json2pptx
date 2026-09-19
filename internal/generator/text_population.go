@@ -354,10 +354,22 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 		bulletLevel = 0
 	}
 
-	paragraphs := make([]paragraphXML, len(bullets))
-	for i, bullet := range bullets {
+	// An ordered list the author typed as "1. …", "2. …" is rendered with OOXML
+	// auto-numbering and the typed prefixes removed, so it shows one marker
+	// rather than the layout's glyph beside the author's number
+	// (go-slide-creator-6or2).
+	texts, numbered := NumberedList(bullets)
+	if !numbered {
+		texts = bullets
+	}
+
+	paragraphs := make([]paragraphXML, len(texts))
+	for i, bullet := range texts {
 		// Use the first bullet-enabled level for all bullets (single-level list)
 		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletLevel)
+		if numbered {
+			applyAutoNumbering(pProps)
+		}
 
 		// Parse inline tag formatting and create runs
 		runs := createFormattedRuns(bullet, rProps)

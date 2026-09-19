@@ -93,6 +93,10 @@ const (
 	ErrCodeBulletNestingDeep = "BULLET_NESTING_DEEP"
 	ErrCodeMissingAltText    = "MISSING_ALT_TEXT"
 	ErrCodeDuplicateTitle    = "DUPLICATE_TITLE"
+	// ErrCodeNumberedListNotApplied reports typed "N. " prefixes the renderer
+	// could not turn into auto-numbering, which print beside the layout's own
+	// bullet glyph as a double marker (go-slide-creator-6or2).
+	ErrCodeNumberedListNotApplied = "NUMBERED_LIST_NOT_APPLIED"
 
 	// Content-substance codes — what a slide SAYS rather than how it fits.
 	// score_deck was a fit-findings aggregator, so a deck whose every slide

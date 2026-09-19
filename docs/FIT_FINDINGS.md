@@ -937,6 +937,32 @@ Emitted when a bullet list nests more than two levels deep. Depth is measured pe
 }
 ```
 
+### `NUMBERED_LIST_NOT_APPLIED`
+
+**Action:** `review`
+**Pattern:** *(none — content lint)*
+**Fix kind:** `renumber_bullets`
+
+Emitted when a bullets list carries typed `"N. "` prefixes the renderer will NOT turn into OOXML auto-numbering, so the author's numbers print beside the layout's own bullet glyph: `• 1. First do this` (go-slide-creator-6or2).
+
+A list is auto-numbered — `<a:buAutoNum type="arabicPeriod"/>` on every paragraph, with the typed prefixes removed from the text — only when EVERY entry carries a prefix and the numbers run 1, 2, 3 … with no gaps. That is the shape an author writing an ordered list produces, and it cannot be reached by accident. Anything else keeps the text verbatim and draws this finding:
+
+- a partially numbered list (`["1. …", "…", "3. …"]`)
+- a list that starts at another number, repeats one, or skips one
+- a list of one item (a single line opening with a number is prose — `"2024. A big year"` — and is exempt entirely)
+
+`repair_slide(kind: "renumber_bullets", params: {path})` renumbers the list from 1; `params: {path, strip: true}` removes the prefixes instead.
+
+```json
+{
+  "path": "/slides/2/content/body",
+  "code": "NUMBERED_LIST_NOT_APPLIED",
+  "message": "slide 3: 2 of 3 bullets start with a typed \"N. \" but the list is not numbered 1..3, so the numbers print beside the layout's bullet glyph as a double marker — number every bullet from 1 (the engine then supplies the numbers) or drop the prefixes",
+  "fix": { "kind": "renumber_bullets", "params": { "path": "/slides/2/content/body", "prefixed": 2, "total": 3, "expected_format": "1. , 2. , 3. …" } },
+  "action": "review"
+}
+```
+
 ### `MISSING_ALT_TEXT`
 
 **Action:** `review`

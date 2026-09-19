@@ -624,6 +624,20 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeBodyTooLong},
 	},
+	ErrCodeNumberedListNotApplied: {
+		Code:        ErrCodeNumberedListNotApplied,
+		Summary:     "Bullets carry typed \"N. \" prefixes the renderer cannot turn into auto-numbering, so they print beside the layout's bullet glyph.",
+		Severity:    "review",
+		WhenEmitted: "A bullets list has at least one entry starting \"1. \" / \"2. \" but is not a complete ordered list numbered from 1 with no gaps — a partially numbered list, a list starting at another number, or one with a repeated or skipped number. A complete list is auto-numbered by OOXML and the typed prefixes are removed; anything else keeps the author's text verbatim, which reads as a double marker.",
+		RemediationSteps: []string{
+			"Number every bullet from 1 with no gaps, and the renderer supplies the numbers (the typed prefixes are stripped).",
+			"Or remove the \"N. \" prefixes entirely and let the list render as unordered bullets.",
+			"A single line that merely starts with a number (\"2024. A big year\") is prose and is left alone — this finding does not apply to it.",
+		},
+		ExampleBefore: `{"bullets_value":["1. Freeze the schema","Replay the log","3. Cut traffic over"]}`,
+		ExampleAfter:  `{"bullets_value":["1. Freeze the schema","2. Replay the log","3. Cut traffic over"]}`,
+		RelatedCodes:  []string{ErrCodeBulletNestingDeep},
+	},
 	ErrCodeMissingAltText: {
 		Code:        ErrCodeMissingAltText,
 		Summary:     "An image or icon asset sourced from path/url/svg_data is missing alt text.",

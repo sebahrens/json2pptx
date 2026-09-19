@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
@@ -36,75 +37,146 @@ func collectContentLintFindings(input *PresentationInput) []patterns.FitFinding 
 	return findings
 }
 
-// lintContentItem applies the three content lint checks to a single content
-// item. The contentIdx is unused in path construction (paths target the
+// lintContentItem dispatches the content lint checks for one content item by
+// its type. The contentIdx is unused in path construction (paths target the
 // placeholder ID, which is more stable across slide rearrangements) but is
 // accepted so future authors can switch to indexed paths if needed.
 func lintContentItem(slideIdx, _ int, content *ContentInput) []patterns.FitFinding {
-	var findings []patterns.FitFinding
-	isTitle := isHeadlinePlaceholderID(content.PlaceholderID)
-
 	switch content.Type {
 	case "text":
-		if content.TextValue == nil {
-			return nil
-		}
-		wc := countWords(*content.TextValue)
-		if isTitle {
-			if wc > maxHeadlineWords {
-				findings = append(findings, makeHeadlineFinding(slideIdx, content.PlaceholderID, wc))
-			}
-		} else if wc > maxBodyWords {
-			findings = append(findings, makeBodyFinding(slideIdx, content.PlaceholderID, wc))
-		}
+		return lintText(slideIdx, content)
 	case "bullets":
-		if content.BulletsValue == nil {
-			return nil
-		}
-		bullets := *content.BulletsValue
-		if d := maxBulletDepth(bullets, 1); d > maxBulletNestingDepth {
-			findings = append(findings, makeBulletDepthFinding(slideIdx, content.PlaceholderID, d))
-		}
-		if wc := countBulletWords(bullets); wc > maxBodyWords {
-			findings = append(findings, makeBodyFinding(slideIdx, content.PlaceholderID, wc))
-		}
+		return lintBullets(slideIdx, content)
 	case "body_and_bullets":
-		v := content.BodyAndBulletsValue
-		if v == nil {
-			return nil
-		}
-		wc := countWords(v.Body) + countBulletWords(v.Bullets) + countWords(v.TrailingBody)
-		if wc > maxBodyWords {
-			findings = append(findings, makeBodyFinding(slideIdx, content.PlaceholderID, wc))
-		}
-		if d := maxBulletDepth(v.Bullets, 1); d > maxBulletNestingDepth {
-			findings = append(findings, makeBulletDepthFinding(slideIdx, content.PlaceholderID, d))
-		}
+		return lintBodyAndBullets(slideIdx, content)
 	case "bullet_groups":
-		v := content.BulletGroupsValue
-		if v == nil {
-			return nil
+		return lintBulletGroups(slideIdx, content)
+	}
+	return nil
+}
+
+// lintText applies the word budget, which differs for a headline placeholder.
+func lintText(slideIdx int, content *ContentInput) []patterns.FitFinding {
+	if content.TextValue == nil {
+		return nil
+	}
+	wc := countWords(*content.TextValue)
+	if isHeadlinePlaceholderID(content.PlaceholderID) {
+		if wc > maxHeadlineWords {
+			return []patterns.FitFinding{makeHeadlineFinding(slideIdx, content.PlaceholderID, wc)}
 		}
-		wc := countWords(v.Body) + countWords(v.TrailingBody)
-		maxDepth := 0
-		for _, g := range v.Groups {
-			wc += countWords(g.GroupLabel) + countWords(g.Header) + countWords(g.Body)
-			wc += countBulletWords(g.Bullets)
-			// In bullet_groups the header occupies level 1 and bullets render
-			// at level 2 by default. Indent inside a bullet string pushes it
-			// deeper.
-			if d := maxBulletDepth(g.Bullets, 2); d > maxDepth {
-				maxDepth = d
-			}
-		}
-		if wc > maxBodyWords {
-			findings = append(findings, makeBodyFinding(slideIdx, content.PlaceholderID, wc))
-		}
-		if maxDepth > maxBulletNestingDepth {
-			findings = append(findings, makeBulletDepthFinding(slideIdx, content.PlaceholderID, maxDepth))
-		}
+		return nil
+	}
+	if wc > maxBodyWords {
+		return []patterns.FitFinding{makeBodyFinding(slideIdx, content.PlaceholderID, wc)}
+	}
+	return nil
+}
+
+// lintBullets applies the nesting, word and ordered-list checks to a plain
+// bullets list.
+func lintBullets(slideIdx int, content *ContentInput) []patterns.FitFinding {
+	if content.BulletsValue == nil {
+		return nil
+	}
+	return lintBulletList(slideIdx, content.PlaceholderID, *content.BulletsValue, countBulletWords(*content.BulletsValue), 1)
+}
+
+// lintBodyAndBullets budgets the body, lead-out and bullets together.
+func lintBodyAndBullets(slideIdx int, content *ContentInput) []patterns.FitFinding {
+	v := content.BodyAndBulletsValue
+	if v == nil {
+		return nil
+	}
+	words := countWords(v.Body) + countBulletWords(v.Bullets) + countWords(v.TrailingBody)
+	return lintBulletList(slideIdx, content.PlaceholderID, v.Bullets, words, 1)
+}
+
+// lintBulletList is the shared body of the bullet-bearing content types: the
+// word budget counts everything on the placeholder, while nesting and ordered
+// numbering are judged on the bullets themselves.
+func lintBulletList(slideIdx int, phID string, bullets []string, words, baseDepth int) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+	if d := maxBulletDepth(bullets, baseDepth); d > maxBulletNestingDepth {
+		findings = append(findings, makeBulletDepthFinding(slideIdx, phID, d))
+	}
+	if words > maxBodyWords {
+		findings = append(findings, makeBodyFinding(slideIdx, phID, words))
+	}
+	if f := numberedListFinding(slideIdx, phID, bullets); f != nil {
+		findings = append(findings, *f)
 	}
 	return findings
+}
+
+// lintBulletGroups budgets every group's label, header, body and bullets
+// together. In bullet_groups the header occupies level 1 and bullets render at
+// level 2 by default, so indent inside a bullet string pushes it deeper.
+func lintBulletGroups(slideIdx int, content *ContentInput) []patterns.FitFinding {
+	v := content.BulletGroupsValue
+	if v == nil {
+		return nil
+	}
+	words := countWords(v.Body) + countWords(v.TrailingBody)
+	maxDepth := 0
+	for _, g := range v.Groups {
+		words += countWords(g.GroupLabel) + countWords(g.Header) + countWords(g.Body)
+		words += countBulletWords(g.Bullets)
+		if d := maxBulletDepth(g.Bullets, 2); d > maxDepth {
+			maxDepth = d
+		}
+	}
+
+	var findings []patterns.FitFinding
+	if words > maxBodyWords {
+		findings = append(findings, makeBodyFinding(slideIdx, content.PlaceholderID, words))
+	}
+	if maxDepth > maxBulletNestingDepth {
+		findings = append(findings, makeBulletDepthFinding(slideIdx, content.PlaceholderID, maxDepth))
+	}
+	return findings
+}
+
+// numberedListFinding reports typed "N. " prefixes the renderer will NOT turn
+// into auto-numbering, because they print beside the layout's own bullet glyph
+// as a double marker — the symptom that made ordered lists unusable in a
+// placeholder at all (go-slide-creator-6or2).
+//
+// A complete list numbered from 1 is auto-numbered and its prefixes removed, so
+// it draws nothing here. A single line that merely opens with a number is
+// prose, not a list, and is left alone.
+func numberedListFinding(slideIdx int, phID string, bullets []string) *patterns.FitFinding {
+	if _, numbered := generator.NumberedList(bullets); numbered {
+		return nil
+	}
+	prefixed := 0
+	for _, bullet := range bullets {
+		if generator.HasNumberedPrefix(bullet) {
+			prefixed++
+		}
+	}
+	if prefixed == 0 || len(bullets) < 2 {
+		return nil
+	}
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: slidepath.Content(slideIdx, phID),
+			Code: patterns.ErrCodeNumberedListNotApplied,
+			Message: fmt.Sprintf(
+				"slide %d: %d of %d bullets start with a typed \"N. \" but the list is not numbered 1..%d, so the numbers print beside the layout's bullet glyph as a double marker — number every bullet from 1 (the engine then supplies the numbers) or drop the prefixes",
+				slideIdx+1, prefixed, len(bullets), len(bullets)),
+			Fix: &patterns.FixSuggestion{
+				Kind: "renumber_bullets",
+				Params: map[string]any{
+					"path":            slidepath.Content(slideIdx, phID),
+					"prefixed":        prefixed,
+					"total":           len(bullets),
+					"expected_format": "1. , 2. , 3. …",
+				},
+			},
+		},
+		Action: "review",
+	}
 }
 
 // isHeadlinePlaceholderID reports whether the placeholder ID names a

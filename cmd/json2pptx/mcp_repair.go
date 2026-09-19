@@ -19,6 +19,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/visualqa"
@@ -296,6 +297,8 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyRemoveField(input, slideIdx, fix.Params)
 	case "autofix_visual":
 		return applyAutofixVisual(input, slideIdx, fix.Params)
+	case "renumber_bullets":
+		return applyRenumberBullets(input, slideIdx, fix.Params)
 	default:
 		return unappliedFix(fix.Kind)
 	}
@@ -2648,6 +2651,72 @@ func applyReplaceValue(input *PresentationInput, slideIdx int, params map[string
 	}
 
 	return appliedFix{Kind: "replace_value", Applied: false, Message: "slide has no pattern values to update"}
+}
+
+// applyRenumberBullets rewrites a bullets list so every entry carries a
+// sequential "N. " prefix — the shape the renderer turns into OOXML
+// auto-numbering, which strips the prefixes and draws one marker. A list that
+// is partly numbered otherwise prints the author's numbers beside the layout's
+// bullet glyph (go-slide-creator-6or2).
+//
+// Passing strip: true removes the prefixes instead, for an author who decides
+// the list is not ordered after all.
+func applyRenumberBullets(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	targetPath := stringParam(params, "path", "")
+	strip, _ := params["strip"].(bool)
+
+	slide := &input.Slides[slideIdx]
+	modified := false
+	for i := range slide.Content {
+		ci := &slide.Content[i]
+		if targetPath != "" && !contentMatchesPath(slideIdx, i, ci.PlaceholderID, targetPath) {
+			continue
+		}
+		switch {
+		case ci.BulletsValue != nil:
+			if renumberBulletList(*ci.BulletsValue, strip) {
+				modified = true
+			}
+		case ci.BodyAndBulletsValue != nil:
+			if renumberBulletList(ci.BodyAndBulletsValue.Bullets, strip) {
+				modified = true
+			}
+		}
+	}
+	if !modified {
+		return appliedFix{Kind: "renumber_bullets", Applied: false, Message: "no bullets list at that path"}
+	}
+	if strip {
+		return appliedFix{Kind: "renumber_bullets", Applied: true, Message: "removed the typed number prefixes"}
+	}
+	return appliedFix{Kind: "renumber_bullets", Applied: true, Message: "numbered the bullets from 1; the engine now draws the numbers"}
+}
+
+// renumberBulletList rewrites a bullet slice in place and reports whether it
+// changed anything.
+func renumberBulletList(bullets []string, strip bool) bool {
+	if len(bullets) == 0 {
+		return false
+	}
+	changed := false
+	for i, bullet := range bullets {
+		text := strings.TrimSpace(bullet)
+		if _, rest, ok := pptx.ParseNumberedPrefix(text); ok {
+			text = strings.TrimSpace(rest)
+		}
+		if text == "" {
+			continue
+		}
+		next := text
+		if !strip {
+			next = fmt.Sprintf("%d. %s", i+1, text)
+		}
+		if next != bullets[i] {
+			bullets[i] = next
+			changed = true
+		}
+	}
+	return changed
 }
 
 // applyReduceItems truncates an array field in pattern values to max_items.

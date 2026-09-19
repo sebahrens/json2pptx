@@ -62,6 +62,7 @@ var fixKindRegistry = map[string]FixKindInfo{
 	"reduce_items":       {Kind: "reduce_items", Class: FixClassExecutable},
 	"reduce_text":        {Kind: "reduce_text", Class: FixClassExecutable},
 	"remove_field":       {Kind: "remove_field", Class: FixClassExecutable},
+	"renumber_bullets":   {Kind: "renumber_bullets", Class: FixClassExecutable},
 	"remove_key":         {Kind: "remove_key", Class: FixClassExecutable},
 	"rename_field":       {Kind: "rename_field", Class: FixClassExecutable},
 	"replace_color":      {Kind: "replace_color", Class: FixClassExecutable},
