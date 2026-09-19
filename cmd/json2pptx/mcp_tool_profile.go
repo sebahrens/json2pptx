@@ -34,31 +34,22 @@ const (
 	// together with coreToolListByteBudget.
 	coreToolLimit = 24
 	// coreToolListByteBudget is the max marshalled tools/list size (bytes) for
-	// the core profile. validate_deck_spec and render_deck_spec each embed the
-	// closed per-kind DeckSpec schema in compact form (no annotations; see
-	// semantic.CompactInlineSchema), so a field added to every slide kind costs
-	// roughly 1KB across the two tools. Raised from 72KB when DeckSpec gained
-	// deck chrome and the universal notes/source fields (go-slide-creator-zmjs):
-	// the alternative was leaving the recommended authoring path unable to
-	// express a confidentiality line or speaker notes. Raised again from 80KB
-	// when examine_template (2.9KB) entered core with the template_path
-	// arguments (go-slide-creator-ydbk): it is the only tool that can vet a
-	// bring-your-own .pptx, and without it in core that workflow needed an
-	// operator. Raised again from 88KB when DeckSpec gained the option_matrix
-	// and table kinds (go-slide-creator-6o1r, go-slide-creator-e4h1): each kind
-	// adds a closed variant to the schema both spec tools embed, ~1.5KB apiece,
-	// and the alternative is agents dropping to raw_json2pptx for an evaluation
-	// matrix or a table — which costs far more tokens per deck than the
-	// handshake saves. Raised again from 96KB for the architecture kind
-	// (go-slide-creator-162os), ~2.4KB per spec tool, for the same reason: the
-	// deck that prompted it dropped to raw_json2pptx for its platform stack.
-	// The full profile is ~215KB.
+	// the core profile.
 	//
-	// This trend does not scale — every kind is paid twice, and the universal
-	// and composition fields are repeated in all 14 variants. Shrinking the
-	// embedded schema (hoisting the shared fields behind a $ref) is filed
-	// separately; until then each raise states what it bought.
-	coreToolListByteBudget = 104 * 1024
+	// The full closed DeckSpec schema — per-kind oneOf variants, each closed with
+	// additionalProperties:false — is ~17KB and used to be embedded in every spec
+	// tool: twice in this listing and four times in the full one, saying the same
+	// thing each time. It now lives on validate_deck_spec alone, the tool the
+	// workflow says to call before rendering; the others carry the outline (meta
+	// + slides[].kind) and point at list_slide_kinds (go-slide-creator-uhaq).
+	// That took the listing from 99KB to 85KB and removed the reason it kept
+	// growing by ~2.4KB per new slide kind.
+	//
+	// The budget has been raised four times before that (72 -> 80 -> 88 -> 96 ->
+	// 104KB) as deck chrome, examine_template and the option_matrix / table /
+	// architecture kinds arrived; it comes back down here. The full profile is
+	// ~313KB.
+	coreToolListByteBudget = 92 * 1024
 )
 
 // coreToolNames is the tool set advertised by the default "core" profile.

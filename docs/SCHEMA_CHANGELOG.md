@@ -330,6 +330,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **The full DeckSpec schema is embedded once, not four times
+  (go-slide-creator-uhaq).** The ~17KB closed per-kind `oneOf` was the input
+  schema of `spec` on all four spec tools: twice in the core `tools/list` and
+  four times in the full one, saying the same thing each time. Every new slide
+  kind was paid for twice on connect.
+  - It now lives on **`validate_deck_spec`** alone — the tool the workflow
+    already says to call before rendering, and the one where a
+    schema-validating client can check a deck before anything is produced.
+  - `render_deck_spec`, `compile_deck_spec` and `explain_deck_spec` declare the
+    **outline**: `meta`, and `slides[]` objects whose `kind` is the registered
+    enum. Their `spec` description points at `list_slide_kinds` (per-kind
+    `item_schema` + copy-ready example) and at `validate_deck_spec`.
+  - **What they accept is unchanged.** The per-kind contract is enforced by the
+    compiler, not the input schema, so an unknown payload field is still
+    reported as `SEMANTIC_UNKNOWN_FIELD` by every tool that validates.
+  - Core `tools/list`: 99,172 → 85,131 bytes (-14%), budget lowered from 104KB
+    to 92KB. `render_deck_spec`'s definition drops from 21,592 to 6,085 bytes;
+    the full profile drops ~45KB.
+
 - **One definition of done: `auto_repair`'s default gate IS the ship gate
   (go-slide-creator-ie9v).** `score_deck`'s gate is 80 / 0 P0 / 0 P1;
   `auto_repair`'s default was 75 / 0 / 2, and both tools return a field called

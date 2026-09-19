@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mark3labs/mcp-go/mcp"
+
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
@@ -12,48 +14,91 @@ import (
 // go-slide-creator-h8o7: the MCP input schema for spec must carry the real
 // DeckSpec schema — slides[].items.oneOf with one closed variant per kind —
 // instead of an empty object.
+//
+// go-slide-creator-uhaq: it carries it ONCE. The same 17KB was embedded in all
+// four spec tools, twice in the core listing; it now lives on
+// validate_deck_spec, the tool the workflow says to call before rendering,
+// while the others declare the outline and point at list_slide_kinds. The
+// payload contract is unchanged — an unknown field is still rejected by the
+// compiler, whichever tool receives it (asserted by
+// TestSpecOutlineToolsStillRejectUnknownFields).
 func TestSemanticMCP_SpecInputSchemaHasPerKindOneOf(t *testing.T) {
+	kinds := semantic.AllSlideKinds()
+	spec := toolSpecProperty(t, mcpValidateDeckSpecTool().InputSchema.Properties)
+	const tool = "validate_deck_spec"
+
+	if spec["type"] != "object" {
+		t.Errorf("%s: spec.type = %v, want object", tool, spec["type"])
+	}
+	if spec["additionalProperties"] != false {
+		t.Errorf("%s: spec must be closed (additionalProperties:false)", tool)
+	}
+	props, _ := spec["properties"].(map[string]any)
+	slides, _ := props["slides"].(map[string]any)
+	items, _ := slides["items"].(map[string]any)
+	oneOf, _ := items["oneOf"].([]any)
+	if len(oneOf) != len(kinds) {
+		t.Fatalf("%s: slides.items.oneOf has %d variants, want %d (one per kind)", tool, len(oneOf), len(kinds))
+	}
+	seen := map[string]bool{}
+	for _, v := range oneOf {
+		variant, _ := v.(map[string]any)
+		if _, isRef := variant["$ref"]; isRef {
+			t.Fatalf("%s: variant is an unresolved $ref: %v", tool, variant)
+		}
+		if variant["additionalProperties"] != false {
+			t.Errorf("%s: variant %v must set additionalProperties:false", tool, variant["title"])
+		}
+		vp, _ := variant["properties"].(map[string]any)
+		kind, _ := vp["kind"].(map[string]any)
+		if c, ok := kind["const"].(string); ok {
+			seen[c] = true
+		}
+	}
+	for _, k := range kinds {
+		if !seen[string(k)] {
+			t.Errorf("%s: no oneOf variant pins kind %q", tool, k)
+		}
+	}
+}
+
+// TestSpecOutlineIsCarriedByTheOtherSpecTools pins the other half: the three
+// tools that no longer embed the full schema still declare the SHAPE — meta,
+// slides, and a kind from the registered enum — and still point at where the
+// per-kind contract lives.
+func TestSpecOutlineIsCarriedByTheOtherSpecTools(t *testing.T) {
 	kinds := semantic.AllSlideKinds()
 	for _, tool := range []struct {
 		name string
-		spec map[string]any
+		def  mcp.Tool
 	}{
-		{"render_deck_spec", toolSpecProperty(t, mcpRenderDeckSpecTool().InputSchema.Properties)},
-		{"validate_deck_spec", toolSpecProperty(t, mcpValidateDeckSpecTool().InputSchema.Properties)},
-		{"compile_deck_spec", toolSpecProperty(t, mcpCompileDeckSpecTool().InputSchema.Properties)},
-		{"explain_deck_spec", toolSpecProperty(t, mcpExplainDeckSpecTool().InputSchema.Properties)},
+		{"render_deck_spec", mcpRenderDeckSpecTool()},
+		{"compile_deck_spec", mcpCompileDeckSpecTool()},
+		{"explain_deck_spec", mcpExplainDeckSpecTool()},
 	} {
-		if tool.spec["type"] != "object" {
-			t.Errorf("%s: spec.type = %v, want object", tool.name, tool.spec["type"])
+		spec := toolSpecProperty(t, tool.def.InputSchema.Properties)
+		if spec["type"] != "object" {
+			t.Errorf("%s: spec.type = %v, want object", tool.name, spec["type"])
 		}
-		if tool.spec["additionalProperties"] != false {
-			t.Errorf("%s: spec must be closed (additionalProperties:false)", tool.name)
-		}
-		props, _ := tool.spec["properties"].(map[string]any)
+		props, _ := spec["properties"].(map[string]any)
 		slides, _ := props["slides"].(map[string]any)
+		if slides == nil {
+			t.Fatalf("%s: outline does not declare slides", tool.name)
+		}
 		items, _ := slides["items"].(map[string]any)
-		oneOf, _ := items["oneOf"].([]any)
-		if len(oneOf) != len(kinds) {
-			t.Fatalf("%s: slides.items.oneOf has %d variants, want %d (one per kind)", tool.name, len(oneOf), len(kinds))
+		itemProps, _ := items["properties"].(map[string]any)
+		kind, _ := itemProps["kind"].(map[string]any)
+		enum, _ := kind["enum"].([]any)
+		if len(enum) != len(kinds) {
+			t.Errorf("%s: kind enum has %d values, want %d", tool.name, len(enum), len(kinds))
 		}
-		seen := map[string]bool{}
-		for _, v := range oneOf {
-			variant, _ := v.(map[string]any)
-			if _, isRef := variant["$ref"]; isRef {
-				t.Fatalf("%s: variant is an unresolved $ref: %v", tool.name, variant)
-			}
-			if variant["additionalProperties"] != false {
-				t.Errorf("%s: variant %v must set additionalProperties:false", tool.name, variant["title"])
-			}
-			vp, _ := variant["properties"].(map[string]any)
-			kind, _ := vp["kind"].(map[string]any)
-			if c, ok := kind["const"].(string); ok {
-				seen[c] = true
-			}
+		if _, hasOneOf := items["oneOf"]; hasOneOf {
+			t.Errorf("%s: still embeds the per-kind oneOf; it belongs on validate_deck_spec only", tool.name)
 		}
-		for _, k := range kinds {
-			if !seen[string(k)] {
-				t.Errorf("%s: no oneOf variant pins kind %q", tool.name, k)
+		desc, _ := spec["description"].(string)
+		for _, want := range []string{"list_slide_kinds", "validate_deck_spec", "SEMANTIC_UNKNOWN_FIELD"} {
+			if !strings.Contains(desc, want) {
+				t.Errorf("%s: spec description does not mention %q: %q", tool.name, want, desc)
 			}
 		}
 	}
@@ -133,5 +178,70 @@ func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 		if !env.OK || len(env.Findings) != 0 {
 			t.Errorf("%s: example does not validate clean: %+v", k.Kind, env.Findings)
 		}
+	}
+}
+
+// TestSpecOutlineToolsStillRejectUnknownFields is the guarantee the outline had
+// to preserve (go-slide-creator-uhaq): dropping the per-kind schema from a
+// tool's inputSchema does NOT loosen what it accepts. The check was never the
+// input schema's — it is the compiler's — so every spec tool still reports an
+// unknown payload field.
+func TestSpecOutlineToolsStillRejectUnknownFields(t *testing.T) {
+	mc := &mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir()}
+	spec := map[string]any{
+		"meta": map[string]any{"title": "T", "template": "midnight-blue"},
+		"slides": []any{
+			map[string]any{"kind": "title", "title": "T"},
+			map[string]any{"kind": "kpi_snapshot", "title": "N",
+				"kpis":           []any{map[string]any{"value": "1", "label": "a"}, map[string]any{"value": "2", "label": "b"}},
+				"nonsense_field": "x"},
+		},
+	}
+	// explain_deck_spec is not here on purpose: it is a projection of the plan,
+	// not a validator, and never reported payload findings. render_deck_spec is
+	// covered by TestSpecOutlineRenderRejectsUnknownFields, which needs a
+	// template and so does not run in -short.
+	for _, tc := range []struct {
+		name    string
+		handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+	}{
+		{"validate_deck_spec", mc.handleValidateDeckSpec},
+		{"compile_deck_spec", handleCompileDeckSpec},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			res, err := tc.handler(context.Background(), makeRequest(map[string]any{"spec": spec}))
+			if err != nil {
+				t.Fatalf("%s: %v", tc.name, err)
+			}
+			if !strings.Contains(resultText(res), "SEMANTIC_UNKNOWN_FIELD") {
+				t.Errorf("%s did not report the unknown field:\n%s", tc.name, resultText(res))
+			}
+		})
+	}
+}
+
+// TestSpecOutlineRenderRejectsUnknownFields covers the tool the outline change
+// actually moved: render_deck_spec no longer embeds the per-kind schema, and
+// still refuses to render a deck with an unknown payload field.
+func TestSpecOutlineRenderRejectsUnknownFields(t *testing.T) {
+	if testing.Short() {
+		t.Skip("renders a deck")
+	}
+	mc := &mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir()}
+	spec := map[string]any{
+		"meta": map[string]any{"title": "T", "template": "midnight-blue"},
+		"slides": []any{
+			map[string]any{"kind": "title", "title": "T"},
+			map[string]any{"kind": "kpi_snapshot", "title": "N",
+				"kpis":           []any{map[string]any{"value": "1", "label": "a"}, map[string]any{"value": "2", "label": "b"}},
+				"nonsense_field": "x"},
+		},
+	}
+	res, err := mc.handleRenderDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec}))
+	if err != nil {
+		t.Fatalf("render_deck_spec: %v", err)
+	}
+	if !strings.Contains(resultText(res), "SEMANTIC_UNKNOWN_FIELD") {
+		t.Errorf("render_deck_spec did not report the unknown field:\n%s", resultText(res))
 	}
 }

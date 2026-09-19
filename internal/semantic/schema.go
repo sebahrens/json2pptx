@@ -341,6 +341,49 @@ func CompactInlineSchema() map[string]any {
 	return out
 }
 
+// OutlineInlineSchema returns the DeckSpec's SHAPE without the per-kind payload
+// contracts: meta as it is, and slides as an array of objects whose `kind` is
+// the registered enum, open to whatever fields that kind takes.
+//
+// It exists because the full closed schema is 17KB and was embedded in FOUR
+// tools — twice in the core listing alone — while saying the same thing each
+// time (go-slide-creator-uhaq). The full contract stays on validate_deck_spec,
+// the tool the workflow already says to call before rendering, and the other
+// three carry this outline plus the pointer to list_slide_kinds. An unknown
+// payload field is still rejected: that check is the compiler's
+// (SEMANTIC_UNKNOWN_FIELD), not the input schema's.
+func OutlineInlineSchema() map[string]any {
+	kinds := AllSlideKinds()
+	enum := make([]any, 0, len(kinds))
+	for _, k := range kinds {
+		enum = append(enum, string(k))
+	}
+	full := CompactInlineSchema()
+	meta := map[string]any{"type": "object"}
+	if props, ok := full["properties"].(map[string]any); ok {
+		if m, ok := props["meta"].(map[string]any); ok {
+			meta = m
+		}
+	}
+	return map[string]any{
+		"type":     "object",
+		"required": []any{"slides"},
+		"properties": map[string]any{
+			"meta": meta,
+			"slides": map[string]any{
+				"type": "array",
+				"items": map[string]any{
+					"type":     "object",
+					"required": []any{"kind"},
+					"properties": map[string]any{
+						"kind": map[string]any{"type": "string", "enum": enum},
+					},
+				},
+			},
+		},
+	}
+}
+
 // stripAnnotations drops annotation keywords from schema objects. inProps
 // marks a "properties" map, whose keys are field names (a field may itself be
 // called "title" or "description") and must be kept.

@@ -125,15 +125,23 @@ func semanticStrictArg(tool string, request mcp.CallToolRequest) (semantic.Stric
 	return strictness, nil
 }
 
-// deckSpecArg declares the required `spec` argument with the full DeckSpec JSON
-// Schema embedded (semantic.CompactInlineSchema: per-kind oneOf variants, each closed
-// with additionalProperties:false), so tools/list tells an agent the exact
-// payload shape per slide kind instead of an open object.
+// deckSpecArg declares the required `spec` argument carrying the DeckSpec
+// OUTLINE: meta, and slides as objects with a `kind` from the registered enum.
+//
+// The full closed schema — per-kind oneOf variants, each with
+// additionalProperties:false — is 17KB, and embedding it in all four spec tools
+// put it twice in the core listing and four times in the full one, saying the
+// same thing each time (go-slide-creator-uhaq). It lives on validate_deck_spec,
+// the tool the workflow already says to call before rendering; everywhere else
+// the outline plus the pointer to list_slide_kinds carries the same information
+// an agent can act on. The payload contract itself is unchanged: an unknown
+// field is rejected by the compiler as SEMANTIC_UNKNOWN_FIELD whichever tool
+// receives it.
 func deckSpecArg(desc string) mcp.ToolOption {
 	return mcp.WithObject("spec",
 		mcp.Required(),
-		mcp.Description(desc+deckSpecSchemaNote),
-		withDeckSpecSchema(),
+		mcp.Description(desc+deckSpecOutlineNote),
+		withDeckSpecOutline(),
 	)
 }
 
@@ -144,13 +152,41 @@ func deckSpecArg(desc string) mcp.ToolOption {
 // arrive.
 func deckSpecOrHandleArg(desc string) mcp.ToolOption {
 	return mcp.WithObject("spec",
+		mcp.Description(desc+" Send this OR deck_id, not both."+deckSpecOutlineNote),
+		withDeckSpecOutline(),
+	)
+}
+
+// deckSpecFullSchemaArg is deckSpecOrHandleArg carrying the FULL closed schema.
+// Exactly one tool uses it: validate_deck_spec, where a client that validates
+// arguments can check a deck before anything is rendered.
+func deckSpecFullSchemaArg(desc string) mcp.ToolOption {
+	return mcp.WithObject("spec",
 		mcp.Description(desc+" Send this OR deck_id, not both."+deckSpecSchemaNote),
 		withDeckSpecSchema(),
 	)
 }
 
-// deckSpecSchemaNote is the shared tail of both spec descriptions.
+// deckSpecSchemaNote is the tail of the description on the tool that carries the
+// full schema.
 const deckSpecSchemaNote = " Schema: the DeckSpec JSON Schema (same as `json2pptx semantic schema`); each slides[] entry matches exactly one per-kind variant selected by `kind`. Unknown payload fields are schema-invalid and reported as SEMANTIC_UNKNOWN_FIELD. Field prose is omitted here; call list_slide_kinds for per-kind item_schema and a copy-ready example."
+
+// deckSpecOutlineNote is the tail everywhere else: the shape is declared, the
+// per-kind contract is one call away, and the contract still binds.
+const deckSpecOutlineNote = " Schema: the DeckSpec outline (meta + slides[].kind from the registered enum). The per-kind payload contract is NOT repeated here — call list_slide_kinds for each kind's item_schema and a copy-ready example, or validate_deck_spec, whose `spec` carries the full closed schema. The contract binds either way: an unknown payload field is reported as SEMANTIC_UNKNOWN_FIELD."
+
+// withDeckSpecOutline merges the DeckSpec outline into the property schema.
+func withDeckSpecOutline() mcp.PropertyOption {
+	return func(schema map[string]any) {
+		for k, v := range semantic.OutlineInlineSchema() {
+			switch k {
+			case "type", "description", "title":
+				continue
+			}
+			schema[k] = v
+		}
+	}
+}
 
 // withDeckSpecSchema merges the inlined DeckSpec schema into the property
 // schema, keeping the property's own type/description.
@@ -172,7 +208,7 @@ func mcpValidateDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("validate_deck_spec",
 		mcp.WithDescription(`Validate a compact semantic deck spec (DeckSpec) and return the shared finding envelope {schema_version, tool, subcommand, ok, summary, findings[]}. The recommended first check when authoring a NEW deck with the semantic surface: it catches unknown slide kinds/archetypes, missing required payload fields, and advisory rhythm/density issues before you compile or render. ok=false means at least one error-severity finding; warnings/info leave ok=true. Mirrors the `+"`json2pptx semantic validate`"+` CLI. The raw-model equivalent is validate_input over a compiled PresentationInput.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidateDeckSpec)),
-		deckSpecOrHandleArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
+		deckSpecFullSchemaArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		deckHandleToolParams()[0],
 		deckHandleToolParams()[1],
 		mcp.WithString("strict",
