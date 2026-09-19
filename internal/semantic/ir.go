@@ -211,6 +211,13 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: architecturePattern,
 	},
+	KindAgenda: {
+		// An agenda is navigation, not argument — the same structural family as
+		// a section divider, and it transitions the deck rather than carrying
+		// evidence.
+		role: RoleTransition, family: FamilyStructural, density: DensityLight, layout: "blank-title",
+		pattern: agendaPattern,
+	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
@@ -284,6 +291,13 @@ func chartInsightPattern(body map[string]any) string {
 		return "chart-insights-split"
 	}
 	return ""
+}
+
+// agendaPattern advertises the agenda pattern the payload will actually
+// compile to — the numbered list, the subtitled rows, or none when it degrades
+// to bullets (go-slide-creator-3rvk).
+func agendaPattern(body map[string]any) string {
+	return slides.AgendaPattern(body)
 }
 
 // kpiPattern advertises the kpi-Nup pattern the payload will actually compile
@@ -429,6 +443,12 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		return []CompositionCandidate{
 			visual("arch-stack", "3-6 tiers with up to 3 cross-cutting rails"),
 			{Layout: "content", Reason: "native bullets preserve a stack outside the pattern's tier count or text budgets"},
+		}
+	case KindAgenda:
+		return []CompositionCandidate{
+			visual("agenda", "2-10 sections as a numbered list"),
+			visual("agenda-with-images", "3-6 sections, each with a subtitle, as rows"),
+			{Layout: "content", Reason: "native numbered bullets preserve an agenda outside those counts"},
 		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}

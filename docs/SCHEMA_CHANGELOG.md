@@ -352,6 +352,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+### Added
+
+- **DeckSpec kind `agenda` (go-slide-creator-3rvk).** Every deck opens with a
+  contents page and the spec had no kind for it, so an agent on the recommended
+  path dropped to `raw_json2pptx` or shipped a bullet list.
+  - `{sections: [...], current?}` compiles onto the existing agenda patterns.
+    Sections carrying a `subtitle` become **agenda-with-images** rows (3–6);
+    plain sections become the numbered **agenda** list (2–10). The choice
+    follows the content, because whether subtitles were written is the only
+    thing that distinguishes the two visuals.
+  - `current` marks the section the deck is at — a 1-based position or the
+    section's own title. It highlights the row in the numbered list, and is
+    marked in the row's subtitle in agenda-with-images (which has no highlight
+    override), so the signal is never silently dropped.
+  - `items` / `agenda` alias `sections`; `current_section` / `highlight` /
+    `active` alias `current`. A section is a string or `{title, subtitle?}`,
+    with the usual spellings of the title accepted.
+  - Outside those counts it degrades to a numbered bullet list — with the
+    current section still marked — and says so as `SEMANTIC_DENSITY`.
+
 ### Changed
 
 - **A chart_insight's takeaway is dropped when it repeats the slide's only

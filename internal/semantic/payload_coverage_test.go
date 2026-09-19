@@ -73,6 +73,17 @@ func covSteps(first string) []any {
 
 // covTiers builds three architecture tiers (the count arch-stack requires),
 // placing firstLabel on the first tier and exercising the items->detail join.
+// covSections builds four agenda sections (inside both agenda patterns'
+// counts), the first carrying the probed text.
+func covSections(firstTitle string) []any {
+	return []any{
+		map[string]any{"title": firstTitle, "subtitle": "Q3 against the plan"},
+		map[string]any{"title": "What we found", "subtitle": "Three findings"},
+		map[string]any{"title": "What we recommend", "subtitle": "The decision"},
+		map[string]any{"title": "What happens next", "subtitle": "First ninety days"},
+	}
+}
+
 func covTiers(firstLabel string) []any {
 	return []any{
 		map[string]any{"label": firstLabel, "items": []any{"Web console", "Mobile"}},
@@ -195,10 +206,28 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 	// go-slide-creator-162os: a tier's label, its items (joined into the detail
 	// line) and the cross-cutting rails all have to reach the rendered stack.
 	KindArchitecture: {
-		"tiers":    {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers(s)} }, rendered: true},
-		"title":    {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers("Experience"), "title": s} }, rendered: true},
-		"rails":    {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers("Experience"), "rails": []any{s}} }, rendered: true},
+		"tiers": {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers(s)} }, rendered: true},
+		"title": {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers("Experience"), "title": s} }, rendered: true},
+		"rails": {inject: func(s string) map[string]any {
+			return map[string]any{"tiers": covTiers("Experience"), "rails": []any{s}}
+		}, rendered: true},
 		"takeaway": {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers("Experience"), "takeaway": s} }, rendered: true},
+	},
+	// go-slide-creator-3rvk: a section's title and its subtitle both have to
+	// reach the rendered agenda, and the current-section marker with them.
+	KindAgenda: {
+		"sections": {inject: func(s string) map[string]any { return map[string]any{"sections": covSections(s)} }, rendered: true},
+		"title": {inject: func(s string) map[string]any {
+			return map[string]any{"sections": covSections("Where we are"), "title": s}
+		}, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any {
+			return map[string]any{"sections": covSections("Where we are"), "takeaway": s}
+		}, rendered: true},
+		// current selects a row rather than contributing text of its own, so it
+		// is checked for reaching the slide, not for its literal value.
+		"current": {inject: func(string) map[string]any {
+			return map[string]any{"sections": covSections("Where we are"), "current": 2.0}
+		}, rendered: false},
 	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},

@@ -27,6 +27,8 @@ const (
 	KindTable SlideKind = "table"
 	// KindArchitecture is a tiered architecture / platform stack.
 	KindArchitecture SlideKind = "architecture"
+	// KindAgenda is the deck's contents page.
+	KindAgenda SlideKind = "agenda"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -120,6 +122,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredFields:  []string{"tiers"},
 		RequiredAliases: map[string][]string{"tiers": {"layers"}},
 		TypicalFields:   []string{"title", "rails", "takeaway"},
+	},
+	KindAgenda: {
+		Kind:            KindAgenda,
+		Summary:         "The deck's contents page: the sections it covers, in order, optionally marking the one the deck is at. Sections carrying a subtitle render as agenda-with-images rows (3–6); plain sections as the numbered agenda list (2–10). Outside those bounds it degrades to a numbered bullet list.",
+		RequiredFields:  []string{"sections"},
+		RequiredAliases: map[string][]string{"sections": {"items", "agenda"}},
+		TypicalFields:   []string{"title", "current", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

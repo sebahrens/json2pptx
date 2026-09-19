@@ -39,6 +39,17 @@ var kindExamples = map[SlideKind]map[string]any{
 		"highlight_label":    "Recommended",
 		"takeaway":           "Hub consolidation pays back in two years at acceptable risk.",
 	},
+	KindAgenda: {
+		"kind":    "agenda",
+		"title":   "What we will cover",
+		"current": 2,
+		"sections": []any{
+			map[string]any{"title": "Where we are", "subtitle": "Q3 against the plan, and what moved"},
+			map[string]any{"title": "What we found", "subtitle": "Three findings from the operating review"},
+			map[string]any{"title": "What we recommend", "subtitle": "The decision we are asking for today"},
+			map[string]any{"title": "What happens next", "subtitle": "The first ninety days"},
+		},
+	},
 	KindArchitecture: {
 		"kind":  "architecture",
 		"title": "Four tiers, two concerns that cut across them",

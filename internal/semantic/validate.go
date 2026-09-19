@@ -112,6 +112,10 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"title": shapeString, "tiers": shapeArray, "layers": shapeArray,
 		"rails": shapeArray, "side_rails": shapeArray, "takeaway": shapeString,
 	},
+	KindAgenda: {
+		"title": shapeString, "sections": shapeArray, "items": shapeArray,
+		"agenda": shapeArray, "takeaway": shapeString,
+	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
 	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
@@ -430,6 +434,17 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateOptionMatrix(path, slide, s)
 	case KindTable:
 		validateTable(path, slide, s)
+	case KindAgenda:
+		// An agenda with one section is a heading, not a contents page; with
+		// eleven it is a wall. Both still render — as a numbered bullet list —
+		// so the rule says which visual is lost rather than blocking
+		// (go-slide-creator-3rvk).
+		if n := slides.UsableAgendaSectionCount(slide.Body); s.requireUsableContent(path, "sections", slide.Body, n) {
+			if slides.AgendaPattern(slide.Body) == "" {
+				s.advisory(path+".sections", diagnostics.CodeSemanticDensity,
+					fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n))
+			}
+		}
 	case KindArchitecture:
 		// The arch-stack budgets are the pattern's own: outside them the slide
 		// still renders, as a bullet list, so the advisory says which budget it

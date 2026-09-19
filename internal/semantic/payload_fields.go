@@ -69,6 +69,12 @@ var comparisonColumnKeys = []string{"header", "title", "label", "name", "items",
 var processStepKeys = []string{"label", "title", "name", "step", "text", "description", "detail", "summary", "type"}
 
 // archTierKeys are the keys ArchitectureTiers reads from a tier object.
+// agendaSectionKeys are the keys an agenda section object may carry.
+var agendaSectionKeys = []string{
+	"title", "label", "name", "section",
+	"subtitle", "description", "detail",
+}
+
 var archTierKeys = []string{
 	"label", "name", "title", "tier", "layer",
 	"description", "detail", "summary", "text",
@@ -213,6 +219,22 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"layers":     {typ: "array", desc: "Alias for tiers.", itemStrings: true, itemKeys: archTierKeys},
 		"rails":      textList("Up to 3 cross-cutting concerns drawn as rails beside the stack, ≤30 chars each."),
 		"side_rails": textList("Alias for rails."),
+	}, compositionFields()), universalFields()),
+	KindAgenda: withFields(withFields(map[string]payloadField{
+		"title":    strField("Slide title (defaults to the template's own)."),
+		"takeaway": strField("One-line takeaway footer."),
+		"sections": {
+			typ:         "array",
+			desc:        "The deck's sections in order: strings, or {title, subtitle?}. A subtitle on any section switches the slide to the agenda-with-images rows (3–6 sections); plain sections render as the numbered list (2–10). Title ≤80 chars, subtitle ≤160.",
+			itemStrings: true,
+			itemKeys:    agendaSectionKeys,
+		},
+		"items":           {typ: "array", desc: "Alias for sections.", itemStrings: true, itemKeys: agendaSectionKeys},
+		"agenda":          {typ: "array", desc: "Alias for sections.", itemStrings: true, itemKeys: agendaSectionKeys},
+		"current":         {typ: "string", desc: "The section the deck is at: its 1-based position or its title. Highlights that row."},
+		"current_section": {typ: "string", desc: "Alias for current."},
+		"highlight":       {typ: "string", desc: "Alias for current."},
+		"active":          {typ: "string", desc: "Alias for current."},
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
