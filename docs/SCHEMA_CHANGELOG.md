@@ -373,6 +373,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`plan_deck` caps how often one pattern family repeats, and reports what it
+  cannot fix (go-slide-creator-8fq4).** A 20-slide plan came back with
+  `comparison-2col` four times and `arch-stack` three times — spread out, so
+  the run-breaker (which only looks at neighbours) never saw them — and a
+  10-slide plan for a metrics brief used four different `kpi-*` patterns, which
+  the same blindness allowed because the names differ.
+  - The rhythm pass now caps a pattern FAMILY at two slides per deck. Families
+    group what an audience reads as the same slide: `kpi-2up`…`kpi-6up` and
+    `kpi-inline` are one, and a pattern's `-compact` variant is one with its
+    full-size self.
+  - The cap is best-effort by design: a role with few candidate patterns (four
+    comparison slots in a 20-slide deck) can run out of alternatives, and
+    swapping in a pattern that does not suit the role would be worse. What it
+    cannot fix it reports, as **`rhythm_check.repeated_families`** —
+    `["comparison-2col x3"]` — so the repetition is visible in the plan instead
+    of in the render.
+  - Replacements never spend the deck's emphasis budget: the emphasis cap has
+    already run by then.
+
 - **One source convention across slides and patterns (go-slide-creator-7eib).**
   `slide.source` rendered as `Source: <text>` at 8pt in a raw `#888888`,
   right-aligned in the chrome band, while `chart-insights-split` drew its own

@@ -1999,7 +1999,8 @@ var outputSchemaPlanDeck = json.RawMessage(`{
         "longest_pattern_run": {"type": "integer"},
         "has_emphasis":        {"type": "boolean"},
         "emphasis_count":      {"type": "integer"},
-        "pattern_variety":     {"type": "integer"}
+        "pattern_variety":     {"type": "integer"},
+        "repeated_families":   {"type": "array", "items": {"type": "string"}, "description": "Pattern families the plan still uses more than twice, with their counts (\"comparison-2col x3\"). The planner caps repeats, but a role with few candidate patterns — four comparison slots in a 20-slide deck — cannot always be given something else. Present only when a family is over the cap: treat each as a slide to re-think or a slide to cut."}
       },
       "required": ["longest_pattern_run", "has_emphasis", "emphasis_count", "pattern_variety"]
     },

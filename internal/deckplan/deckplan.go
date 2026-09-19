@@ -147,6 +147,13 @@ type RhythmCheck struct {
 	HasEmphasis       bool `json:"has_emphasis"`
 	EmphasisCount     int  `json:"emphasis_count"`
 	PatternVariety    int  `json:"pattern_variety"` // unique pattern count
+	// RepeatedFamilies names any pattern family the plan still uses more than
+	// maxPatternRepeats times, with its count ("comparison-2col x3"). The
+	// planner caps repeats, but a slot whose role has few candidate patterns —
+	// four comparison slots in a 20-slide deck — cannot always be given
+	// something else, and an agent reading the plan should see that rather
+	// than discovering it in the render (go-slide-creator-8fq4).
+	RepeatedFamilies []string `json:"repeated_families,omitempty"`
 }
 
 // MaxAlternatives caps the alternatives list emitted per slide.
@@ -728,7 +735,121 @@ func enforceRhythm(reg *patterns.Registry, slides []Slide, brief string) []Slide
 	// differ from both neighbours, so this pass cannot create a new run.
 	slides = capEmphasis(reg, slides, brief)
 
+	// Pass 5: Cap how often one pattern FAMILY can appear at all. Breaking
+	// runs only looks at neighbours, so a 20-slide plan came back with
+	// comparison-2col four times and arch-stack three times, spread out — a
+	// deck that reads as one idea repeated (go-slide-creator-8fq4).
+	slides = capPatternRepeats(reg, slides)
+
+	// Pass 6: A repeat replacement could have created a new run.
+	slides = breakLongRuns(reg, slides)
+
 	return slides
+}
+
+// maxPatternRepeats is how many slides in one deck may use the same pattern
+// family. Two is a callback; three is a rut.
+const maxPatternRepeats = 2
+
+// patternFamily groups patterns that read as the same slide to an audience,
+// so the cap counts what the room sees rather than what the registry calls it.
+// kpi-2up through kpi-6up are one visual idea at different counts, and a
+// pattern's "-compact" variant is the same picture in less height.
+func patternFamily(name string) string {
+	switch {
+	case name == "":
+		return ""
+	case strings.HasPrefix(name, "kpi-"):
+		return "kpi"
+	case strings.HasSuffix(name, "-compact"):
+		return strings.TrimSuffix(name, "-compact")
+	default:
+		return name
+	}
+}
+
+// capPatternRepeats replaces the excess slides of any over-used pattern family
+// with something else the slot can host. must_include placements are kept, and
+// the earliest uses win: a repeat later in the deck is the one that reads as a
+// rut.
+func capPatternRepeats(reg *patterns.Registry, slides []Slide) []Slide {
+	// The emphasis cap has already run; a replacement must not spend the deck's
+	// emphasis budget to fix a repeat.
+	emphasisBudget := MaxEmphasisSlides(len(slides))
+	emphasisUsed := 0
+	for _, s := range slides {
+		if emphasisPatterns[s.RecommendedPattern] {
+			emphasisUsed++
+		}
+	}
+
+	seen := map[string]int{}
+	for i := range slides {
+		family := patternFamily(slides[i].RecommendedPattern)
+		if family == "" {
+			continue
+		}
+		if slides[i].Rationale == mustIncludeRationale {
+			seen[family]++
+			continue
+		}
+		seen[family]++
+		if seen[family] <= maxPatternRepeats {
+			continue
+		}
+
+		emphasisRoom := emphasisUsed < emphasisBudget || emphasisPatterns[slides[i].RecommendedPattern]
+		replacement := findRepeatReplacement(reg, slides, i, seen, emphasisRoom)
+		if replacement == "" || patternFamily(replacement) == family {
+			continue
+		}
+		if emphasisPatterns[replacement] != emphasisPatterns[slides[i].RecommendedPattern] {
+			if emphasisPatterns[replacement] {
+				emphasisUsed++
+			} else {
+				emphasisUsed--
+			}
+		}
+		seen[family]--
+		seen[patternFamily(replacement)]++
+		slides[i].RecommendedPattern = replacement
+		slides[i].Rationale = fmt.Sprintf("variety: %s already appears %d times in this deck", family, maxPatternRepeats)
+	}
+	return slides
+}
+
+// findRepeatReplacement picks a pattern for a slot whose family is already at
+// its cap, preferring one this deck has not used at all.
+func findRepeatReplacement(reg *patterns.Registry, slides []Slide, idx int, seen map[string]int, emphasisRoom bool) string {
+	recent := make([]string, 0, len(slides))
+	for _, s := range slides {
+		recent = append(recent, s.RecommendedPattern)
+	}
+	opts := &patterns.RecommendOptions{
+		RecentPatterns: recent,
+		PreferVariety:  true,
+		SlideIndex:     idx,
+	}
+	// Ask for a deep candidate list: the first few are often the families this
+	// deck has already spent, and the point here is to find one it has not.
+	rec := patterns.Recommend(reg, buildIntent(slides[idx].NarrativeRole, "", ""), nil, 12, opts)
+
+	usable := func(name string) bool {
+		return emphasisRoom || !emphasisPatterns[name]
+	}
+	// First choice: a family this deck has not used.
+	for _, c := range rec.Candidates {
+		if seen[patternFamily(c.PatternName)] == 0 && usable(c.PatternName) {
+			return c.PatternName
+		}
+	}
+	// Second: any family still under the cap.
+	for _, c := range rec.Candidates {
+		if seen[patternFamily(c.PatternName)] < maxPatternRepeats && usable(c.PatternName) {
+			return c.PatternName
+		}
+	}
+	return ""
 }
 
 // capEmphasis demotes emphasis-pattern slides beyond MaxEmphasisSlides(n).
@@ -976,17 +1097,28 @@ func computeRhythmCheck(slides []Slide) RhythmCheck {
 	}
 
 	unique := make(map[string]bool)
+	families := map[string]int{}
 	for _, s := range slides {
 		if s.RecommendedPattern != "" {
 			unique[s.RecommendedPattern] = true
+			families[patternFamily(s.RecommendedPattern)]++
 		}
 	}
+
+	var repeated []string
+	for family, n := range families {
+		if n > maxPatternRepeats {
+			repeated = append(repeated, fmt.Sprintf("%s x%d", family, n))
+		}
+	}
+	sort.Strings(repeated)
 
 	return RhythmCheck{
 		LongestPatternRun: longestRun,
 		HasEmphasis:       emphasisCount > 0,
 		EmphasisCount:     emphasisCount,
 		PatternVariety:    len(unique),
+		RepeatedFamilies:  repeated,
 	}
 }
 
