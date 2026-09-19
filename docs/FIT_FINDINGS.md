@@ -963,6 +963,25 @@ A list is auto-numbered — `<a:buAutoNum type="arabicPeriod"/>` on every paragr
 }
 ```
 
+### `LOW_CONTRAST_HIGHLIGHT`
+
+**Action:** `review`
+**Pattern:** `value-chain`
+**Fix kind:** *(none — an authoring choice)*
+
+Emitted when a pattern's AUTHORED highlight colour does not read as a highlight against the structure it sits in: under 3:1 fill-vs-fill, the WCAG non-text bar, below which the two fills are one block of colour at any viewing distance.
+
+Contrast between two scheme slots is template-dependent, which is what made this invisible: value-chain's old fixed default of `accent2` on `dk2` measures 3.21:1 on midnight-blue and 1.48:1 on warm-coral, where the highlighted step was indistinguishable from its neighbours (go-slide-creator-ah5s). The DEFAULT is now chosen by that measurement — the first of `accent1`, `accent2` … `accent6`, `lt2` that clears the bar — so it cannot fail; only an authored `highlight_color` can, and it is honoured rather than overridden.
+
+```json
+{
+  "path": "/slides/1/pattern",
+  "code": "LOW_CONTRAST_HIGHLIGHT",
+  "message": "slide 2: value-chain: value-chain highlight_color \"accent2\" reads at 1.48:1 against the step fill (dk2) — below 3.0:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
+  "action": "review"
+}
+```
+
 ### `MISSING_ALT_TEXT`
 
 **Action:** `review`

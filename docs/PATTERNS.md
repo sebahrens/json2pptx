@@ -311,6 +311,15 @@ Density % is `required text height / available text height`, so >100% means "nee
 
 These thresholds are defined in `internal/textcapacity/textcapacity.go` and are stable — do not hardcode different values in patterns.
 
+## Highlight fills must be chosen by measurement (authoring contract)
+
+A pattern whose one semantic signal is a highlighted cell must not paint it from a fixed scheme slot. Contrast between two slots is template-dependent: value-chain painted steps `dk2` and the highlighted step `accent2`, which is 3.21:1 on midnight-blue and **1.48:1 on warm-coral** — the highlight simply disappeared, and no test could see it because the pattern was tuned on one template (go-slide-creator-ah5s).
+
+- Pick the default with `pickDistinctFill(ctx, base, fillDistinctnessMin, candidates...)` (`internal/patterns/fill_contrast.go`): it returns the first candidate whose EFFECTIVE colour (tints and alpha composited) clears 3:1 against the base fill. List candidates in preference order — the brand accent first — and you lose your preference only to a measurement.
+- Without a theme there is nothing to measure: fall back to the historical default so an expansion with no template is unchanged.
+- An AUTHORED highlight is always honoured, and reported through `PostExpandWarnings` as `LOW_CONTRAST_HIGHLIGHT` when it measures below the bar.
+- Measured bars for the bundled templates live in `internal/patterns/valuechain_highlight_test.go`; `cmd/json2pptx/value_chain_highlight_test.go` runs the same rule against the real `templates/*.pptx`, so a palette change is caught rather than shipped.
+
 ## Composition
 
 Pattern composition is implemented via the slide-level `compose` envelope (see `cmd/json2pptx/compose.go`). A `ComposeInput` is XOR with `pattern` / `shape_grid` and arranges 2..N segments either vertically or horizontally; each `SegmentInput` carries exactly one of:

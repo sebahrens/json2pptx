@@ -93,6 +93,10 @@ const (
 	ErrCodeBulletNestingDeep = "BULLET_NESTING_DEEP"
 	ErrCodeMissingAltText    = "MISSING_ALT_TEXT"
 	ErrCodeDuplicateTitle    = "DUPLICATE_TITLE"
+	// ErrCodeLowContrastHighlight reports a pattern highlight the author chose
+	// that does not read as a highlight against the structure it sits in
+	// (go-slide-creator-ah5s).
+	ErrCodeLowContrastHighlight = "LOW_CONTRAST_HIGHLIGHT"
 	// ErrCodeNumberedListNotApplied reports typed "N. " prefixes the renderer
 	// could not turn into auto-numbering, which print beside the layout's own
 	// bullet glyph as a double marker (go-slide-creator-6or2).

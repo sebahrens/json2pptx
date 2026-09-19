@@ -103,7 +103,7 @@ func (vc *valueChain) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"steps":           ArraySchema(stepSchema, 4, 10).WithDescription("Value-chain steps left-to-right (4-10)"),
-			"highlight_color": StringSchema(0).WithDescription("Scheme color used to fill highlighted label rows (default accent2)").WithDefault("accent2"),
+			"highlight_color": StringSchema(0).WithDescription("Scheme color used to fill highlighted label rows. Omit it: the default is chosen by measured contrast against the step fill for this template (the first accent clearing 3:1), because a fixed slot is invisible on some palettes. An authored colour is honoured, and reported as LOW_CONTRAST_HIGHLIGHT when it does not read as a highlight"),
 		},
 		[]string{"steps"},
 	).WithAdditionalProperties(false)
@@ -182,10 +182,7 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	descSize := ResolveSize(ovr.BodySize, 9.0)
 	cellAccentMode := ovr.CellAccentMode
 
-	highlightColor := vals.HighlightColor
-	if highlightColor == "" {
-		highlightColor = "accent2"
-	}
+	highlightColor := resolveValueChainHighlight(ctx, vals.HighlightColor)
 
 	n := len(vals.Steps)
 
@@ -277,6 +274,63 @@ type valueChainTextObj struct {
 	Paragraphs    []valueChainParagraph `json:"paragraphs"`
 	Align         string                `json:"align"`
 	VerticalAlign string                `json:"vertical_align"`
+}
+
+// valueChainHighlightCandidates is the order the default highlight is chosen
+// in: the brand accent first, so the highlighted step reads as "this one" in
+// the template's own primary colour, and the rest only as the measurement
+// forces it. lt2 is the last resort — an inverted (light) step is always
+// distinct from a dk2 chain and is still in palette.
+var valueChainHighlightCandidates = []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "lt2"}
+
+// valueChainDefaultHighlight is the historical default, kept for a context with
+// no theme to measure against (unit tests, a pattern expanded without a
+// template) so behaviour there is unchanged.
+const valueChainDefaultHighlight = "accent2"
+
+// resolveValueChainHighlight picks the fill for a highlighted step. An authored
+// highlight_color is always honoured — the author may know something the
+// measurement does not — but the DEFAULT is chosen by measured contrast against
+// the chain's own fill, because a fixed slot is only as visible as the gap
+// between two slots in whatever template the deck lands on: accent2 on dk2 is
+// 3.21 on midnight-blue and 1.48 on warm-coral, where the highlight vanished
+// (go-slide-creator-ah5s).
+func resolveValueChainHighlight(ctx ExpandContext, authored string) string {
+	if authored != "" {
+		return authored
+	}
+	if pick, ok := pickDistinctFill(ctx, fillTone{Color: valueChainLabelFill}, fillDistinctnessMin, valueChainHighlightCandidates...); ok {
+		return pick
+	}
+	return valueChainDefaultHighlight
+}
+
+// PostExpandWarnings reports an authored highlight_color that does not read as
+// a highlight against the chain's own fill. The step still renders — the author
+// asked for that colour — but nothing else would say that the slide's one
+// semantic signal is invisible.
+func (vc *valueChain) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
+	v, ok := values.(*ValueChainValues)
+	if !ok || v == nil || v.HighlightColor == "" {
+		return nil
+	}
+	highlighted := false
+	for _, step := range v.Steps {
+		if step.Highlight {
+			highlighted = true
+			break
+		}
+	}
+	if !highlighted {
+		return nil
+	}
+	ratio, ok := fillContrast(ctx, fillTone{Color: valueChainLabelFill}, fillTone{Color: v.HighlightColor})
+	if !ok || ratio >= fillDistinctnessMin {
+		return nil
+	}
+	return []string{fmt.Sprintf(
+		"%s: value-chain highlight_color %q reads at %.2f:1 against the step fill (%s) — below %.1f:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
+		ErrCodeLowContrastHighlight, v.HighlightColor, ratio, valueChainLabelFill, fillDistinctnessMin)}
 }
 
 // valueChainLabelFill is the default (non-highlighted) label fill: the

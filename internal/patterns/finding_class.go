@@ -52,8 +52,11 @@ var contentCodes = map[string]bool{
 	// A typed "N. " the renderer could not turn into auto-numbering is a
 	// property of the authored text, not of the render (go-slide-creator-6or2).
 	ErrCodeNumberedListNotApplied: true,
-	ErrCodeDuplicateTitle:         true,
-	ErrCodeTakeawayMissing:        true,
+	// An authored highlight that does not read as one is a colour choice, not
+	// a render defect (go-slide-creator-ah5s).
+	ErrCodeLowContrastHighlight: true,
+	ErrCodeDuplicateTitle:       true,
+	ErrCodeTakeawayMissing:      true,
 	// Content-substance codes: what the slide says (go-slide-creator-q7ar).
 	ErrCodeWeakContent:      true,
 	ErrCodeMissingTitle:     true,

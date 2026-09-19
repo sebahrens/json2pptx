@@ -350,6 +350,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **value-chain picks its highlight by measured contrast
+  (go-slide-creator-ah5s).** The pattern painted its steps `dk2` and the
+  highlighted step `accent2`. Those two slots are 3.21:1 apart on
+  midnight-blue and **1.48:1** on warm-coral, where the highlighted step was
+  indistinguishable from its neighbours — the slide's one semantic signal,
+  gone, on a template the pattern was never tuned on.
+  - The default highlight is now the first of `accent1` … `accent6`, `lt2`
+    whose effective colour clears **3:1** against the step fill for this
+    template. Measured: warm-coral `accent1` 3.53 (was `accent2` 1.48),
+    modern-template `accent5` 3.12 (was `accent2` 2.73), midnight-blue
+    `accent2` 3.21 and forest-green `accent2` 5.28 (both unchanged).
+  - An authored `highlight_color` is still honoured, and reported as
+    **`LOW_CONTRAST_HIGHLIGHT`** (`review`) when it measures below the bar.
+  - Without a theme to measure against, the historical `accent2` default
+    stands, so an expansion with no template is unchanged.
+
 - **pull-quote separates the quote from its attribution
   (go-slide-creator-36ny).** The two were consecutive paragraphs in ONE cell
   with no spacing, which cost three things at once: the attribution's baseline

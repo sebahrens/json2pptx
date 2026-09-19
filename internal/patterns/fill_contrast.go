@@ -250,3 +250,53 @@ func fromHSL(h, s, l float64) svggen.Color {
 	}
 	return svggen.Color{R: conv(h + 1.0/3), G: conv(h), B: conv(h - 1.0/3), A: 1}
 }
+
+// ---------------------------------------------------------------------------
+// Fill-vs-fill distinctness (go-slide-creator-ah5s).
+//
+// A pattern that paints its structure in one scheme slot and its ONE semantic
+// signal in another is only as legible as the gap between those two slots in
+// whatever template it lands on. value-chain painted steps dk2 and the
+// highlighted step accent2: on midnight-blue that is red on navy and reads at
+// a glance, on warm-coral it is #5D4037 on #3E2723 — a contrast of 1.48, so
+// the highlight simply disappeared. The pattern was tuned on one template and
+// the tests could not see the difference.
+// ---------------------------------------------------------------------------
+
+// fillDistinctnessMin is the fill-vs-fill contrast a highlight needs to read as
+// a highlight. It is the WCAG non-text bar (3:1): below it two fills are the
+// same block of colour to anyone past the first row.
+const fillDistinctnessMin = 3.0
+
+// fillContrast returns the contrast ratio between two pattern fills as a
+// viewer sees them (tints and alpha composited). ok is false when either side
+// cannot be resolved against the template — without a theme there is nothing to
+// measure and callers keep their defaults.
+func fillContrast(ctx ExpandContext, a, b fillTone) (float64, bool) {
+	ca, aok := effectiveFillColor(ctx, a)
+	cb, bok := effectiveFillColor(ctx, b)
+	if !aok || !bok {
+		return 0, false
+	}
+	return ca.ContrastWith(cb), true
+}
+
+// pickDistinctFill returns the first candidate whose effective colour clears
+// minRatio against base, and ok=false when the theme cannot be resolved or no
+// candidate does. Candidates are tried in order, so a caller states its
+// preference (the brand accent first, say) and only loses it to a measurement.
+func pickDistinctFill(ctx ExpandContext, base fillTone, minRatio float64, candidates ...string) (string, bool) {
+	if _, ok := effectiveFillColor(ctx, base); !ok {
+		return "", false
+	}
+	for _, name := range candidates {
+		if name == base.Color {
+			continue
+		}
+		ratio, ok := fillContrast(ctx, base, fillTone{Color: name})
+		if ok && ratio >= minRatio {
+			return name, true
+		}
+	}
+	return "", false
+}

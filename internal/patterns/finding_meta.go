@@ -774,6 +774,19 @@ var findingMetaRegistry = map[string]FindingMeta{
 		RelatedCodes: []string{ErrCodeChartDataEmpty},
 	},
 
+	ErrCodeLowContrastHighlight: {
+		Code:        ErrCodeLowContrastHighlight,
+		Summary:     "An authored pattern highlight does not read as a highlight against the structure it sits in.",
+		Severity:    "review",
+		WhenEmitted: "A pattern whose one semantic signal is a highlighted cell (value-chain) measures the authored highlight_color against the resolved fill of the other cells and finds under 3:1 — the WCAG non-text bar, below which the two fills are one block of colour. Only an AUTHORED highlight draws this: the default is chosen by the same measurement, so it cannot fail.",
+		RemediationSteps: []string{
+			"Omit highlight_color and let the engine pick the first accent that clears 3:1 against the step fill for this template.",
+			"Or choose a different accent: contrast is template-dependent, so the slot that works on one template can vanish on another.",
+		},
+		ExampleBefore: `{"highlight_color": "accent2", "steps": [{"label": "Manufacturing", "highlight": true}]}`,
+		ExampleAfter:  `{"steps": [{"label": "Manufacturing", "highlight": true}]}`,
+	},
+
 	// ---- Grid visual cell codes ----
 
 	ErrCodeGridDiagramNarrow: {
