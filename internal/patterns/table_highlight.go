@@ -56,7 +56,19 @@ const (
 	thRowGapPt    = 3.0
 	thMinRowPt    = 38.0
 	thMinHeaderPt = 34.0
-	thLegendPt    = 32.0
+	// thLegendPt is the height reserved per legend row. It must be generous:
+	// the table's rows are scaled down proportionally when they over-fill, and
+	// at 32pt the legend cell resolved to ~18pt, leaving a 10pt nested row that
+	// shrank its labels to ~2pt (go-slide-creator-z0up).
+	thLegendPt = 64.0
+	// thLegendSwatchPct / thLegendLabelPct are the swatch and label column
+	// widths of a legend row, as a percentage of the table. Three entries per
+	// row (one scale) leaves room for readable words; six squeezed them to ~3pt.
+	thLegendSwatchPct = 2.5
+	thLegendLabelPct  = 30.0
+	// thLegendRowPt is the height of the nested legend row inside the legend
+	// cell, which otherwise collapses and shrinks its labels to illegibility.
+	thLegendRowPt = 24.0
 	thSymbolPt    = 22.0 // rendered Harvey ball / RAG dot diameter
 	thMinFillPct  = 55.0 // pad body rows until the table covers this share of the content height
 	thMaxPad      = 1.5
@@ -181,6 +193,12 @@ type TableHighlightValues struct {
 	CornerLabel    string                    `json:"corner_label,omitempty"`
 	ShowLegend     *bool                     `json:"show_legend,omitempty"`
 	LegendLabels   []string                  `json:"legend_labels,omitempty"` // [high, mid, low]
+	// LegendLabelsRAG is the wording for the RAG swatches, also [high, mid, low]
+	// — i.e. [green, amber, red]. A deck mixing harvey and RAG columns used to
+	// reuse LegendLabels for BOTH sets, so a green dot carried the harvey
+	// "does not meet" label: a legend that says the opposite of the chart
+	// (go-slide-creator-z0up).
+	LegendLabelsRAG []string `json:"legend_labels_rag,omitempty"` // [green, amber, red]
 }
 
 // TableHighlightOverrides are the pattern-level overrides.
@@ -220,15 +238,16 @@ func (p *tableHighlight) Schema() *Schema {
 	}, []string{"name", "scores"}).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
-		"criteria":        ArraySchema(criterion, thMinCriteria, thMaxCriteria).WithDescription("2-6 criteria (columns)"),
-		"options":         ArraySchema(option, thMinOptions, thMaxOptions).WithDescription("2-6 options (rows)"),
-		"scale":           scaleEnum().WithDescription("Default cell scale (default harvey)").WithDefault(thScaleHarvey),
-		"highlight_row":   IntegerSchema(0, thMaxOptions-1).WithDescription("0-based option row to highlight (recommended option)"),
-		"highlight_col":   IntegerSchema(0, thMaxCriteria-1).WithDescription("0-based criterion column to highlight (decisive criterion)"),
-		"highlight_label": StringSchema(thLabelMax).WithDescription("Tag shown under the highlighted option name, e.g. \"Recommended\""),
-		"corner_label":    StringSchema(thLabelMax).WithDescription("Header of the option column (default \"Option\")"),
-		"show_legend":     BooleanSchema().WithDescription("Legend row under the table for harvey / rag columns (default true)"),
-		"legend_labels":   ArraySchema(StringSchema(thLegendMax), 3, 3).WithDescription("Legend wording [high, mid, low]"),
+		"criteria":          ArraySchema(criterion, thMinCriteria, thMaxCriteria).WithDescription("2-6 criteria (columns)"),
+		"options":           ArraySchema(option, thMinOptions, thMaxOptions).WithDescription("2-6 options (rows)"),
+		"scale":             scaleEnum().WithDescription("Default cell scale (default harvey)").WithDefault(thScaleHarvey),
+		"highlight_row":     IntegerSchema(0, thMaxOptions-1).WithDescription("0-based option row to highlight (recommended option)"),
+		"highlight_col":     IntegerSchema(0, thMaxCriteria-1).WithDescription("0-based criterion column to highlight (decisive criterion)"),
+		"highlight_label":   StringSchema(thLabelMax).WithDescription("Tag shown under the highlighted option name, e.g. \"Recommended\""),
+		"corner_label":      StringSchema(thLabelMax).WithDescription("Header of the option column (default \"Option\")"),
+		"show_legend":       BooleanSchema().WithDescription("Legend row under the table for harvey / rag columns (default true)"),
+		"legend_labels":     ArraySchema(StringSchema(thLegendMax), 3, 3).WithDescription("Legend wording for the Harvey-ball scale, in the order [HIGH, MID, LOW] — the full ball first, the empty ball last. Default: [\"Fully meets\", \"Partially meets\", \"Does not meet\"]."),
+		"legend_labels_rag": ArraySchema(StringSchema(thLegendMax), 3, 3).WithDescription("Legend wording for the RAG scale, in the same [HIGH, MID, LOW] order — i.e. [green, amber, red]. Default: [\"Green\", \"Amber\", \"Red\"]. Set this when the deck mixes harvey and rag columns: the two scales get their own legend row and their own words."),
 	}, []string{"criteria", "options"}).WithAdditionalProperties(false)
 
 	overridesSchema := ObjectSchema(map[string]*Schema{
@@ -447,6 +466,14 @@ func thValidateExtras(v *TableHighlightValues) []error {
 			errs = append(errs, errMaxLength(thName, fmt.Sprintf("legend_labels[%d]", i), thLegendMax, len(l)))
 		}
 	}
+	if len(v.LegendLabelsRAG) != 0 && len(v.LegendLabelsRAG) != 3 {
+		errs = append(errs, errCountMismatch(thName, "legend_labels_rag", 3, len(v.LegendLabelsRAG), "([green, amber, red])"))
+	}
+	for i, l := range v.LegendLabelsRAG {
+		if len(l) > thLegendMax {
+			errs = append(errs, errMaxLength(thName, fmt.Sprintf("legend_labels_rag[%d]", i), thLegendMax, len(l)))
+		}
+	}
 	return errs
 }
 
@@ -530,10 +557,8 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 	if kinds := thLegendKinds(v); len(kinds) > 0 && (v.ShowLegend == nil || *v.ShowLegend) {
 		l.legend = kinds
 	}
-	rowCount := 1 + len(v.Options)
-	if len(l.legend) > 0 {
-		rowCount++
-	}
+	// One row per legend scale (go-slide-creator-z0up).
+	rowCount := 1 + len(v.Options) + len(l.legend)
 	l.gapsPt = thRowGapPt * float64(rowCount-1)
 	return l
 }
@@ -566,9 +591,7 @@ func (l *thLayout) measure(headerSize, bodySize, detailSize float64) {
 		}
 	}
 	l.fixedPt = l.headerPt + l.gapsPt
-	if len(l.legend) > 0 {
-		l.fixedPt += thLegendPt
-	}
+	l.fixedPt += float64(len(l.legend)) * thLegendPt
 }
 
 // optionHeight is the natural height of one option row's name / detail /
@@ -629,10 +652,13 @@ func (p *tableHighlight) Expand(ctx ExpandContext, values, overrides any, cellOv
 	for i := range v.Options {
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: l.rowPt[i], MaxHeight: l.rowPt[i], Cells: l.optionCells(i, cellOverrides)})
 	}
-	if len(l.legend) > 0 {
+	// One row per scale. Both scales on one row gave each label a twelfth of the
+	// table and squeezed the text to ~3pt; a row of its own gives each label a
+	// third (go-slide-creator-z0up).
+	for _, kind := range l.legend {
 		rows = append(rows, jsonschema.GridRowInput{
 			MinHeight: thLegendPt, MaxHeight: thLegendPt,
-			Cells: []*jsonschema.GridCellInput{thLegendCell(ctx, v, l.legend, l.symbolInk, ovr.RAGColors, len(l.cols))},
+			Cells: []*jsonschema.GridCellInput{thLegendCell(ctx, v, kind, l.symbolInk, ovr.RAGColors, len(l.cols))},
 		})
 	}
 
@@ -837,29 +863,25 @@ func thLegendKinds(v *TableHighlightValues) []string {
 
 // thLegendCell builds the legend row: a nested grid of [symbol, label] pairs
 // for high / mid / low, spanning the whole table width.
-func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kinds []string, symbolInk string, ragColors map[string]string, span int) *jsonschema.GridCellInput {
-	labels := []string{"Fully meets", "Partially meets", "Does not meet"}
-	if len(v.LegendLabels) == 3 {
-		labels = v.LegendLabels
+func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbolInk string, ragColors map[string]string, span int) *jsonschema.GridCellInput {
+	labels := thLegendLabelsFor(v, kind)
+	samples := []thNormalizedScore{{kind: thScaleHarvey, level: 4}, {kind: thScaleHarvey, level: 2}, {kind: thScaleHarvey, level: 0}}
+	if kind == thScaleRAG {
+		samples = []thNormalizedScore{{kind: thScaleRAG, rag: "green"}, {kind: thScaleRAG, rag: "amber"}, {kind: thScaleRAG, rag: "red"}}
 	}
+
 	var cells []*jsonschema.GridCellInput
 	var cols []float64
-	for _, kind := range kinds {
-		samples := []thNormalizedScore{{kind: thScaleHarvey, level: 4}, {kind: thScaleHarvey, level: 2}, {kind: thScaleHarvey, level: 0}}
-		if kind == thScaleRAG {
-			samples = []thNormalizedScore{{kind: thScaleRAG, rag: "green"}, {kind: thScaleRAG, rag: "amber"}, {kind: thScaleRAG, rag: "red"}}
-		}
-		for i, s := range samples {
-			svg, alt := thSymbolSVG(ctx, s, symbolInk, ragColors)
-			cells = append(cells, &jsonschema.GridCellInput{Fit: "contain", Icon: &jsonschema.IconInput{SVGData: svg, Alt: alt}})
-			textJSON, _ := json.Marshal(chartInsightsText{
-				Paragraphs:    []chartInsightsParagraph{{Content: labels[i], Size: 12, Color: "dk1", Align: "l"}},
-				Align:         "l",
-				VerticalAlign: "ctr",
-			})
-			cells = append(cells, &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: textJSON}})
-			cols = append(cols, 2.2, 14)
-		}
+	for i, sc := range samples {
+		svg, alt := thSymbolSVG(ctx, sc, symbolInk, ragColors)
+		cells = append(cells, &jsonschema.GridCellInput{Fit: "contain", Icon: &jsonschema.IconInput{SVGData: svg, Alt: alt}})
+		textJSON, _ := json.Marshal(chartInsightsText{
+			Paragraphs:    []chartInsightsParagraph{{Content: labels[i], Size: 12, Color: "dk1", Align: "l"}},
+			Align:         "l",
+			VerticalAlign: "ctr",
+		})
+		cells = append(cells, &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: textJSON}})
+		cols = append(cols, thLegendSwatchPct, thLegendLabelPct)
 	}
 	used := 0.0
 	for _, c := range cols {
@@ -875,7 +897,26 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kinds []string, sy
 		Grid: &jsonschema.ShapeGridInput{
 			Columns: json.RawMessage(colsJSON),
 			ColGap:  2,
-			Rows:    []jsonschema.GridRowInput{{Cells: cells}},
+			// Without an explicit height the nested row collapsed to ~10pt
+			// inside its 32pt cell and the labels autofit down to ~2pt
+			// (go-slide-creator-z0up).
+			Rows: []jsonschema.GridRowInput{{MinHeight: thLegendRowPt, MaxHeight: thLegendRowPt, Cells: cells}},
 		},
 	}
+}
+
+// thLegendLabelsFor returns the three legend words for one scale, in
+// [high, mid, low] order. The RAG scale has its own set: reusing the Harvey
+// words put "does not meet" beside a green dot (go-slide-creator-z0up).
+func thLegendLabelsFor(v *TableHighlightValues, kind string) []string {
+	if kind == thScaleRAG {
+		if len(v.LegendLabelsRAG) == 3 {
+			return v.LegendLabelsRAG
+		}
+		return []string{"Green", "Amber", "Red"}
+	}
+	if len(v.LegendLabels) == 3 {
+		return v.LegendLabels
+	}
+	return []string{"Fully meets", "Partially meets", "Does not meet"}
 }

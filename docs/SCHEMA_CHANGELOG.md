@@ -37,6 +37,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`table-highlight`'s legend stopped labelling green dots "does not meet"
+  (go-slide-creator-z0up).** `thLegendCell` emitted three swatches per scale but
+  indexed the caller's `legend_labels` with the same `i` for both, so a deck
+  mixing harvey and RAG columns showed six swatches carrying duplicated words —
+  the green RAG dot wearing the Harvey "low" label. The RAG scale now has its
+  own **`legend_labels_rag`** (same `[HIGH, MID, LOW]` order, i.e.
+  `[green, amber, red]`, default `["Green", "Amber", "Red"]`).
+- **Each scale gets its own legend row.** Six entries on one row gave each label
+  a twelfth of the table and the text autofit down to ~2pt. One scale per row
+  gives each label a third, and the reserved row height went from 32pt to 64pt
+  — at 32pt the legend cell resolved to ~18pt after the table's proportional
+  squeeze, leaving a 10pt nested row. The reported 6×6 deck now renders both
+  legend rows at the authored 12pt.
+- **The `[high, mid, low]` order is documented.** It lived only in a Go comment,
+  so the gallery deck supplied `["Nicht erfüllt", "Teilweise erfüllt", "Voll
+  erfüllt"]` — exactly backwards — and got a legend that said the opposite of
+  its own chart. The schema descriptions for `legend_labels` and
+  `legend_labels_rag`, `docs/PATTERNS.md` and `skills/generate-deck/PATTERNS.md`
+  now spell it out.
+
 - **Native diagrams store the autofit shrink, so the file renders the same in
   PowerPoint as in LibreOffice (go-slide-creator-wvr0).** Every native diagram
   (swot, business_model_canvas, value_chain, pestel, house, porters, nine_box,

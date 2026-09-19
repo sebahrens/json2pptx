@@ -175,12 +175,13 @@
   },
   {
     "pattern_name": "table-highlight",
-    "row_count": 5,
+    "row_count": 6,
     "cell_counts": [
       5,
       5,
       5,
       5,
+      1,
       1
     ]
   },
