@@ -289,11 +289,16 @@ func TestRepairSlide_UnsupportedKind(t *testing.T) {
 	if output.AppliedFixes[0].Applied {
 		t.Fatal("expected reposition_shape to not be applied")
 	}
-	if output.AppliedFixes[0].Message != "kind_not_supported" {
-		t.Errorf("expected message 'kind_not_supported', got %q", output.AppliedFixes[0].Message)
+	// reposition_shape is a REGISTERED advisory kind: findings emit it, so the
+	// answer is its guidance, not "you made that up" (go-slide-creator-ui4c).
+	if output.AppliedFixes[0].Code != "advisory_fix_kind" {
+		t.Errorf("expected code 'advisory_fix_kind', got %q", output.AppliedFixes[0].Code)
 	}
-	if output.AppliedFixes[0].Code != "kind_not_supported" {
-		t.Errorf("expected code 'kind_not_supported', got %q", output.AppliedFixes[0].Code)
+	if output.AppliedFixes[0].Message == "" || output.AppliedFixes[0].Message == "kind_not_supported" {
+		t.Errorf("advisory answer must carry guidance, got %q", output.AppliedFixes[0].Message)
+	}
+	if len(output.AppliedFixes[0].Alternatives) == 0 {
+		t.Error("advisory answer must name executable alternatives")
 	}
 	// supported_kinds must be the full advertised vocabulary so agents can
 	// recover without a separate get_capabilities round-trip.

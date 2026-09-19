@@ -29,8 +29,28 @@ import (
 // proposeRepairsOutput is the top-level response for propose_repairs.
 type proposeRepairsOutput struct {
 	Slides   []proposedSlideRepairs `json:"slides"`
+	Advisory []advisoryFinding      `json:"advisory,omitempty"`
 	Unmapped []unmappedFinding      `json:"unmapped,omitempty"`
 	Summary  proposeSummary         `json:"summary"`
+}
+
+// advisoryFinding is a finding whose fix kind is a registered advisory: real,
+// documented guidance that repair_slide cannot execute. Before
+// go-slide-creator-ui4c these landed in unmapped[] as
+// "fix_kind_not_repairable:<kind>", which read as a dead end even though the
+// findings that fire on good decks are almost all of this class.
+type advisoryFinding struct {
+	Reason string `json:"reason"`
+	Kind   string `json:"kind"`
+	// Guidance is what the agent or author has to decide.
+	Guidance string `json:"guidance"`
+	// Alternatives are executable fix kinds that address the same defect.
+	Alternatives []string       `json:"alternatives,omitempty"`
+	Code         string         `json:"code,omitempty"`
+	SlideIndex   *int           `json:"slide_index,omitempty"`
+	Path         string         `json:"path,omitempty"`
+	Message      string         `json:"message,omitempty"`
+	Params       map[string]any `json:"params,omitempty"`
 }
 
 // proposedSlideRepairs groups ranked fix directives for one slide.
@@ -116,6 +136,7 @@ type unmappedFinding struct {
 type proposeSummary struct {
 	TotalFindings    int `json:"total_findings"`
 	MappedFindings   int `json:"mapped_findings"`
+	AdvisoryFindings int `json:"advisory_findings"`
 	UnmappedFindings int `json:"unmapped_findings"`
 	TotalDirectives  int `json:"total_directives"`
 	SlidesAffected   int `json:"slides_affected"`
@@ -162,13 +183,14 @@ Accepts two finding shapes (polymorphic, mixed input is fine):
 
 For each finding the tool:
 1. Resolves the target slide (from finding.slide_index, finding.path /slides/N, or fix.params.path).
-2. Selects candidate fix kinds: finding.fix (fit) > finding.suggested_fixes (visual) > visualqa category mapping > unmapped.
+2. Selects candidate fix kinds: finding.fix (fit) > finding.suggested_fixes (visual) > visualqa category mapping > advisory (a registered non-executable kind) > unmapped.
 3. Augments each candidate with a tool_call pointing at repair_slide.
 
 Output:
 - slides[]: per-slide directives sorted by severity (error|P0 > warning|P1 > info|P2 > P3), then by action rank (refuse > shrink_or_split > review > info).
-- unmapped[]: findings with no mapping (review-only visual QA categories like image_quality, aspect_ratio, border_style; or findings without fix info).
-- summary: counts (total_findings, mapped_findings, unmapped_findings, total_directives, slides_affected).
+- advisory[]: findings whose fix kind is a registered ADVISORY (add_detail_or_resize, grow_pattern, review, truncation_summary, … — see get_capabilities.vocabularies.advisory_fix_kinds). repair_slide cannot execute these, but they are not dead ends: each carries {kind, guidance (what you have to decide), alternatives[] (executable kinds addressing the same defect), code, slide_index, path, message, params}. On a clean deck most findings land here — act on the guidance or apply an alternative; do not feed the kind back to repair_slide.
+- unmapped[]: findings with no mapping at all (review-only visual QA categories like image_quality, aspect_ratio, border_style; findings without fix info; unknown fix kinds).
+- summary: counts (total_findings, mapped_findings, advisory_findings, unmapped_findings, total_directives, slides_affected).
 
 Each directive carries {kind, params, rank, source:{type,code|category,severity,action,path,message}, tool_call}. Agents can submit the directive's tool_call directly, or batch directives for one slide using the per-slide batch_tool_call.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaProposeRepairs)),
@@ -263,13 +285,10 @@ func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepa
 	presentationObj := presentationAsMap(input)
 
 	// Bucket directives by slide index; track unmapped findings separately.
-	type bucketEntry struct {
-		directive proposedDirective
-		score     int // higher = more urgent
-	}
 	buckets := make(map[int][]bucketEntry)
 	findingCounts := make(map[int]int)
 	var unmapped []unmappedFinding
+	var advisory []advisoryFinding
 	mappedFindings := 0
 
 	for _, f := range findings {
@@ -279,44 +298,14 @@ func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepa
 		// Visual QA finding path: prefer caller-supplied suggested_fixes, else
 		// fall back to the canonical category→fix mapping.
 		if isVisual {
-			if !ok {
-				unmapped = append(unmapped, unmappedFinding{
-					Reason:   "missing_slide_index",
-					Category: f.Category,
-					Message:  f.Description,
-				})
+			entries, unm := visualFindingDirectives(f, slideIdx, ok, elements, presentationObj, revision)
+			if unm != nil {
+				unmapped = append(unmapped, *unm)
 				continue
 			}
-			candidates := f.SuggestedFixes
-			if len(candidates) == 0 {
-				candidates = visualqa.SuggestedFixesForCategory(f.Category)
-			}
-			if len(candidates) == 0 {
-				idx := slideIdx
-				unmapped = append(unmapped, unmappedFinding{
-					Reason:     reasonForVisualCategory(f.Category),
-					Category:   f.Category,
-					SlideIndex: &idx,
-					Message:    f.Description,
-				})
-				continue
-			}
-
 			findingCounts[slideIdx]++
 			mappedFindings++
-			score := scoreFinding(f, "")
-			visualPath := elements.visualPath(f.BBox, slideIdx)
-			source := directiveSource{
-				Type:     "visual",
-				Category: f.Category,
-				Severity: normalizeSeverity(f.Severity),
-				Path:     visualPath,
-				Message:  f.Description,
-			}
-			for ci, cand := range candidates {
-				dir := buildDirective(cand.Kind, elementTargetParams(cand.Kind, cand.Params, visualPath), slideIdx, source, presentationObj, revision, score-ci /* preserve candidate order within a finding */)
-				buckets[slideIdx] = append(buckets[slideIdx], bucketEntry{directive: dir, score: score - ci})
-			}
+			buckets[slideIdx] = append(buckets[slideIdx], entries...)
 			continue
 		}
 
@@ -344,18 +333,17 @@ func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepa
 			continue
 		}
 
-		// Reject fix kinds that don't map to repair_slide (e.g. "adopt_pattern",
-		// "text" placeholder). Those need recommend_pattern, not repair_slide.
+		// A kind repair_slide cannot execute is either a registered advisory
+		// (guidance an agent acts on) or an unknown kind (a bug). Keep them
+		// apart: filing guidance under unmapped[] made the documented loop look
+		// like it had nothing to offer (go-slide-creator-ui4c).
 		kind := fix.Kind
 		if !isRepairFixKind(kind) {
-			idx := slideIdx
-			unmapped = append(unmapped, unmappedFinding{
-				Reason:     fmt.Sprintf("fix_kind_not_repairable:%s", kind),
-				Code:       f.Code,
-				SlideIndex: &idx,
-				Path:       f.Path,
-				Message:    f.Message,
-			})
+			if adv, unm := classifyNonExecutableFix(f, fix, slideIdx); adv != nil {
+				advisory = append(advisory, *adv)
+			} else {
+				unmapped = append(unmapped, *unm)
+			}
 			continue
 		}
 
@@ -438,10 +426,12 @@ func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepa
 
 	return proposeRepairsOutput{
 		Slides:   slides,
+		Advisory: advisory,
 		Unmapped: unmapped,
 		Summary: proposeSummary{
 			TotalFindings:    len(findings),
 			MappedFindings:   mappedFindings,
+			AdvisoryFindings: len(advisory),
 			UnmappedFindings: len(unmapped),
 			TotalDirectives:  totalDirectives,
 			SlidesAffected:   len(slides),
@@ -648,6 +638,84 @@ func elementTargetParams(kind string, params map[string]any, path string) map[st
 	}
 	out["cell_path"] = path
 	return out
+}
+
+// bucketEntry is one ranked directive awaiting grouping by slide.
+type bucketEntry struct {
+	directive proposedDirective
+	score     int // higher = more urgent
+}
+
+// visualFindingDirectives translates one visual-QA finding into ranked bucket
+// entries. It returns an unmappedFinding instead when the finding has no
+// resolvable slide (hasSlide false) or its category maps to no fix kind; exactly
+// one of the two results is meaningful.
+func visualFindingDirectives(f proposeRepairsFinding, slideIdx int, hasSlide bool, elements *elementBoxCache, presentationObj map[string]any, revision string) ([]bucketEntry, *unmappedFinding) {
+	if !hasSlide {
+		return nil, &unmappedFinding{
+			Reason:   "missing_slide_index",
+			Category: f.Category,
+			Message:  f.Description,
+		}
+	}
+	candidates := f.SuggestedFixes
+	if len(candidates) == 0 {
+		candidates = visualqa.SuggestedFixesForCategory(f.Category)
+	}
+	if len(candidates) == 0 {
+		idx := slideIdx
+		return nil, &unmappedFinding{
+			Reason:     reasonForVisualCategory(f.Category),
+			Category:   f.Category,
+			SlideIndex: &idx,
+			Message:    f.Description,
+		}
+	}
+
+	score := scoreFinding(f, "")
+	visualPath := elements.visualPath(f.BBox, slideIdx)
+	source := directiveSource{
+		Type:     "visual",
+		Category: f.Category,
+		Severity: normalizeSeverity(f.Severity),
+		Path:     visualPath,
+		Message:  f.Description,
+	}
+	entries := make([]bucketEntry, 0, len(candidates))
+	for ci, cand := range candidates {
+		dir := buildDirective(cand.Kind, elementTargetParams(cand.Kind, cand.Params, visualPath), slideIdx, source, presentationObj, revision, score-ci /* preserve candidate order within a finding */)
+		entries = append(entries, bucketEntry{directive: dir, score: score - ci})
+	}
+	return entries, nil
+}
+
+// classifyNonExecutableFix routes a finding whose fix kind repair_slide cannot
+// apply. A REGISTERED advisory kind is guidance the agent acts on, so it returns
+// an advisoryFinding carrying the decision to make and the executable kinds that
+// address the same defect; anything else is an unknown kind and stays unmapped
+// (go-slide-creator-ui4c). Exactly one of the two results is non-nil.
+func classifyNonExecutableFix(f proposeRepairsFinding, fix *patterns.FixSuggestion, slideIdx int) (*advisoryFinding, *unmappedFinding) {
+	idx := slideIdx
+	if info, ok := patterns.FixKind(fix.Kind); ok && info.Class == patterns.FixClassAdvisory {
+		return &advisoryFinding{
+			Reason:       fmt.Sprintf("advisory_fix_kind:%s", fix.Kind),
+			Kind:         fix.Kind,
+			Guidance:     info.Guidance,
+			Alternatives: info.Alternatives,
+			Code:         f.Code,
+			SlideIndex:   &idx,
+			Path:         f.Path,
+			Message:      f.Message,
+			Params:       fix.Params,
+		}, nil
+	}
+	return nil, &unmappedFinding{
+		Reason:     fmt.Sprintf("fix_kind_not_repairable:%s", fix.Kind),
+		Code:       f.Code,
+		SlideIndex: &idx,
+		Path:       f.Path,
+		Message:    f.Message,
+	}
 }
 
 // isRepairFixKind reports whether kind is in the set of fix kinds that

@@ -317,8 +317,10 @@ func TestProposeRepairs_RankingPrioritizesRefuseAction(t *testing.T) {
 	}
 }
 
-// TestProposeRepairs_NonRepairKindUnmapped verifies that fix.kind values not
-// in the repair_slide vocabulary land in unmapped[] (e.g. "adopt_pattern").
+// TestProposeRepairs_NonRepairKindUnmapped verifies that fix.kind values not in
+// the executable vocabulary leave the directive path. A REGISTERED advisory kind
+// ("adopt_pattern") lands in advisory[] with guidance; only an unregistered kind
+// is unmapped (go-slide-creator-ui4c).
 func TestProposeRepairs_NonRepairKindUnmapped(t *testing.T) {
 	mc := proposeMC(t)
 	deck := minimalDeck(
@@ -353,13 +355,22 @@ func TestProposeRepairs_NonRepairKindUnmapped(t *testing.T) {
 		t.Fatalf("unmarshal: %v", err)
 	}
 	if len(out.Slides) != 0 {
-		t.Errorf("expected 0 slide entries (kind not repairable), got %d", len(out.Slides))
+		t.Errorf("expected 0 slide entries (kind not executable), got %d", len(out.Slides))
 	}
-	if len(out.Unmapped) != 1 {
-		t.Fatalf("expected 1 unmapped, got %d", len(out.Unmapped))
+	if len(out.Unmapped) != 0 {
+		t.Errorf("a registered advisory kind must not be reported as unmapped: %+v", out.Unmapped)
 	}
-	if !strings.HasPrefix(out.Unmapped[0].Reason, "fix_kind_not_repairable:") {
-		t.Errorf("expected fix_kind_not_repairable prefix, got %q", out.Unmapped[0].Reason)
+	if len(out.Advisory) != 1 {
+		t.Fatalf("expected 1 advisory finding, got %+v", out.Advisory)
+	}
+	if !strings.HasPrefix(out.Advisory[0].Reason, "advisory_fix_kind:") {
+		t.Errorf("expected advisory_fix_kind prefix, got %q", out.Advisory[0].Reason)
+	}
+	if out.Advisory[0].Guidance == "" {
+		t.Error("advisory finding carries no guidance — the agent is left with nothing")
+	}
+	if out.Summary.AdvisoryFindings != 1 {
+		t.Errorf("summary.advisory_findings = %d, want 1", out.Summary.AdvisoryFindings)
 	}
 }
 

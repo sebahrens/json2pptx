@@ -183,6 +183,7 @@ The apply-only superset accepted by `repair_slide` is broader than the fit-repor
 | `swap_pattern` | Replace the slide's pattern with a different one; optionally replace `values`, `overrides`, `cell_overrides`. Clears any expanded `shape_grid` for re-expansion. | `to: string` (target pattern name) | `values: object`, `overrides: object`, `cell_overrides: object` |
 | `reshape_grid` | Change grid dimensions. For pattern slides, updates `rows`/`columns` in pattern values; for raw `shape_grid` slides, redistributes cells into a new row/column layout. | One of `rows: int` or `columns: int \| [int]` | both |
 | `set_pattern_style` | Set the `style` key in the pattern's `overrides` (e.g., `timeline-horizontal` from `"dots"` to `"chevron"`) and clear expanded grid for re-expansion. | `style: string` | — |
+| `set_max_height_pct` | Cap a pattern slide's height budget (`slides[i].pattern.max_height_pct`) so its boxes shrink to their content instead of stretching to fill the slide, and clear the expanded grid for re-expansion. The mechanical remedy the underfill / overtall-lane findings point at (~35 for a single sparse row). Refused on a slide with no `pattern` — cap a raw `shape_grid` with explicit bounds or row heights instead. | `max_height_pct: number` (0 < pct ≤ 100) | — |
 | `reduce_cell_text` | Truncate one `shape_grid` cell's text to a character budget, appending U+2026 and stripping orphaned markdown emphasis markers. Use only when the agent should not rephrase the text. | `cell_path: string` (JSON Pointer e.g. `"/slides/0/shape_grid/rows/1/cells/2"`), `max_chars: int` (> 1) | — |
 | `rename_field` | Rename a top-level key. Searches pattern values first, then slide-level fields via JSON round-trip. | `from: string`, `to: string` | — |
 | `reshape_value` | Replace a pattern-values field with a restructured replacement (array→object, etc.). | `path: string` (field name), `value: any` | — |
@@ -195,7 +196,25 @@ The apply-only superset accepted by `repair_slide` is broader than the fit-repor
 | `remove_field` | Delete a top-level field from pattern values or from the slide (via JSON round-trip) | `path: string` | — |
 | `autofix_visual` | Map a visual-QA finding category to one or more candidate fix kinds and try them in order. Caller-supplied params are forwarded (caller wins). | `category: string` (visual QA finding category) | any params forwarded to the underlying kind |
 
-Unsupported kinds return:
+### Executable vs advisory fix kinds
+
+The table above is the **executable** vocabulary: what `repair_slide` applies, and exactly what `get_capabilities().vocabularies.repair_fix_kinds` advertises. Findings also emit **advisory** kinds — real, documented remedies that need an authoring decision rather than a mechanical edit (`add_detail_or_resize`, `adopt_pattern`, `consolidate_accents`, `fix_structure`, `grow_pattern`, `increase_gap`, `increase_row_height`, `provide_data`, `provide_native_format`, `provide_numeric_value`, `reduce_columns`, `remap_placeholder`, `remove_emoji`, `remove_field_or_switch_pattern`, `replace_placeholder`, `reposition_shape`, `review`, `review_layout`, `rewrite_field`, `set_design_mode_free`, `shrink_text`, `text`, `truncation_summary`). They are advertised as `get_capabilities().vocabularies.advisory_fix_kinds`. On a clean deck most fix-carrying findings are advisory — that is the normal end state of the repair loop, not a failure.
+
+An **advisory** kind sent to `repair_slide` returns the decision to make, not a rejection:
+
+```json
+{
+  "applied": false,
+  "code": "advisory_fix_kind",
+  "message": "The shape is much larger than its text. Add the supporting detail the box was sized for, cap the grid height (pattern.max_height_pct or explicit bounds) so it shrinks to its content, or use a compact pattern variant. …",
+  "alternatives": ["set_max_height_pct", "reshape_grid", "swap_pattern"],
+  "supported_kinds": ["add_items", "autofix_visual", "provide_value", ...]
+}
+```
+
+Act on `message`, or apply one of `alternatives` (all executable). Do **not** retry the same kind. `propose_repairs` does the same split for you: advisory findings land in `advisory[]` with `{kind, guidance, alternatives, code, slide_index, path, message, params}` and are counted in `summary.advisory_findings`.
+
+An **unknown** kind — one in neither vocabulary — is a caller mistake and keeps the original answer:
 
 ```json
 {
@@ -207,7 +226,7 @@ Unsupported kinds return:
 }
 ```
 
-`supported_kinds` is the full authoritative vocabulary inline — recover by retrying with one of those kinds instead of issuing a separate `get_capabilities` call. The `next_tool_call` is still surfaced as a fallback for agents that want to consume the canonical capabilities snapshot. The list is identical to `get_capabilities().vocabularies.repair_fix_kinds` and a compile-time test (`TestBuildCapabilitiesContract/repair_fix_kinds matches applyRepairFix switch cases`) keeps the two in lock-step.
+`supported_kinds` is the full authoritative executable vocabulary inline — recover by retrying with one of those kinds instead of issuing a separate `get_capabilities` call. The `next_tool_call` is still surfaced as a fallback for agents that want to consume the canonical capabilities snapshot. Both vocabularies live in `internal/patterns/fix_kinds.go`; `TestEveryEmittedFixKindIsRegistered` fails if a finding invents a kind, and `TestRepairFixKindsMatchApplySwitch` keeps the executable list, the `applyRepairFix` switch, and `get_capabilities` in lock-step.
 
 ---
 

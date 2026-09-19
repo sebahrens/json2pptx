@@ -10,8 +10,8 @@ import (
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
-	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -131,7 +131,12 @@ type mcpToolEntry struct {
 // capabilitiesVocabularies exposes categorical enums and vocabularies so agents
 // can discover valid values programmatically instead of parsing tool descriptions.
 type capabilitiesVocabularies struct {
+	// RepairFixKinds is the EXECUTABLE vocabulary: the kinds repair_slide
+	// applies. AdvisoryFixKinds is the rest — kinds a finding can name whose
+	// remedy is an authoring decision, which repair_slide reports as
+	// advisory_fix_kind rather than executing (go-slide-creator-ui4c).
 	RepairFixKinds     []string            `json:"repair_fix_kinds"`
+	AdvisoryFixKinds   []string            `json:"advisory_fix_kinds"`
 	FitFindingCodes    []string            `json:"fit_finding_codes"`
 	ContentTypes       []string            `json:"content_types"`
 	SlideTransitions   []string            `json:"slide_transitions"`
@@ -555,33 +560,19 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 	return mcpResult, nil
 }
 
-// repairFixKinds returns the sorted list of fix kinds supported by applyRepairFix.
-// This is derived from the switch statement in mcp_repair.go to stay in sync.
+// repairFixKinds returns the sorted executable fix kinds — the ones
+// applyRepairFix can actually apply. The vocabulary lives in
+// internal/patterns/fix_kinds.go so findings, repair_slide, propose_repairs and
+// get_capabilities cannot drift apart (go-slide-creator-ui4c);
+// TestRepairFixKindsMatchApplySwitch pins it against the switch.
 func repairFixKinds() []string {
-	return []string{
-		"add_items",
-		"autofix_visual",
-		"provide_value",
-		"reduce_cell_text",
-		"reduce_items",
-		"reduce_text",
-		"remove_field",
-		"remove_key",
-		"rename_field",
-		"replace_color",
-		"replace_value",
-		"reshape_grid",
-		"reshape_value",
-		"resize_list",
-		"set_pattern_style",
-		"shorten_title",
-		"split_at_row",
-		"split_pattern",
-		"swap_layout",
-		"swap_pattern",
-		"use_one_of",
-		"use_semantic_color",
-	}
+	return patterns.ExecutableFixKinds()
+}
+
+// advisoryFixKinds returns the sorted advisory fix kinds: kinds a finding may
+// name whose remedy needs an authoring decision.
+func advisoryFixKinds() []string {
+	return patterns.AdvisoryFixKinds()
 }
 
 // deprecationWarnings scans a parsed PresentationInput for usage of deprecated
@@ -635,6 +626,7 @@ func buildVocabularies() capabilitiesVocabularies {
 
 	return capabilitiesVocabularies{
 		RepairFixKinds:     repairFixKinds(),
+		AdvisoryFixKinds:   advisoryFixKinds(),
 		FitFindingCodes:    patterns.AllFitFindingCodes(),
 		ContentTypes:       generator.AllContentTypes(),
 		SlideTransitions:   canonicalTransitions(),
@@ -789,7 +781,6 @@ func buildRegistry() capabilitiesRegistry {
 		Patterns: voc.PatternNames,
 	}
 }
-
 
 // nonNilStrings returns an empty slice for a nil one. A nil slice marshals to
 // JSON null, but the wire schema declares this field as an array — a validating

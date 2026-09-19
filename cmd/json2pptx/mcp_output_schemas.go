@@ -1774,7 +1774,8 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
     "vocabularies": {
       "type": "object",
       "properties": {
-        "repair_fix_kinds":     {"type": "array", "items": {"type": "string"}},
+        "repair_fix_kinds":     {"type": "array", "items": {"type": "string"}, "description": "Fix kinds repair_slide executes."},
+        "advisory_fix_kinds":   {"type": "array", "items": {"type": "string"}, "description": "Fix kinds a finding may name whose remedy is an authoring decision; repair_slide answers code advisory_fix_kind with guidance and executable alternatives."},
         "fit_finding_codes":    {"type": "array", "items": {"type": "string"}},
         "content_types":        {"type": "array", "items": {"type": "string"}},
         "slide_transitions":    {"type": "array", "items": {"type": "string"}},
@@ -2176,6 +2177,25 @@ var outputSchemaProposeRepairs = json.RawMessage(`{
         "required": ["slide_index", "finding_count", "directives"]
       }
     },
+    "advisory": {
+      "type": "array",
+      "description": "Findings whose fix kind is a registered advisory: repair_slide cannot execute it, but guidance and executable alternatives are supplied. On a clean deck most findings land here.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reason":       {"type": "string", "description": "advisory_fix_kind:<kind>"},
+          "kind":         {"type": "string"},
+          "guidance":     {"type": "string", "description": "What the agent or author has to decide."},
+          "alternatives": {"type": "array", "items": {"type": "string"}, "description": "Executable fix kinds that address the same defect."},
+          "code":         {"type": "string"},
+          "slide_index":  {"type": "integer"},
+          "path":         {"type": "string"},
+          "message":      {"type": "string"},
+          "params":       {"type": "object", "additionalProperties": true}
+        },
+        "required": ["reason", "kind", "guidance"]
+      }
+    },
     "unmapped": {
       "type": "array",
       "items": {
@@ -2196,11 +2216,12 @@ var outputSchemaProposeRepairs = json.RawMessage(`{
       "properties": {
         "total_findings":    {"type": "integer"},
         "mapped_findings":   {"type": "integer"},
+        "advisory_findings": {"type": "integer"},
         "unmapped_findings": {"type": "integer"},
         "total_directives": {"type": "integer"},
         "slides_affected":   {"type": "integer"}
       },
-      "required": ["total_findings", "mapped_findings", "unmapped_findings", "total_directives", "slides_affected"]
+      "required": ["total_findings", "mapped_findings", "advisory_findings", "unmapped_findings", "total_directives", "slides_affected"]
     }
   },
   "required": ["slides", "summary"]

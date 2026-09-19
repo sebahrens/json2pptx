@@ -47,13 +47,26 @@ Every finding is a `FitFinding` (defined in `internal/patterns/fit_finding.go`) 
 | `path` | string | JSON Pointer (RFC 6901) to the offending element, e.g. `/slides/2/content/body`. See [PATH_GRAMMAR.md](PATH_GRAMMAR.md). |
 | `code` | string | Machine-readable code (see catalog below) |
 | `message` | string | Human-readable description |
-| `fix` | object | Structured remediation: `{kind, params?}` |
+| `fix` | object | Structured remediation: `{kind, params?}`. The kind is either **executable** (`repair_slide` applies it — `get_capabilities().vocabularies.repair_fix_kinds`) or **advisory** (the remedy is an authoring decision — `advisory_fix_kinds`). See [Fix-kind classes](#fix-kind-classes). |
 | `action` | string | Recommended severity/remediation action |
 | `measured` | object | Actual content extent in EMU (omitted when N/A) |
 | `allowed` | object | Available frame extent in EMU (omitted when N/A) |
 | `overflow_ratio` | float | `measured / allowed` as a fraction (omitted when 0) |
 | `next_tool_call` | object | Machine-readable MCP tool suggestion: `{tool, args_template}` (omitted for `info` findings) |
 | `segment_index` | integer | 0-based child segment index inside a compose envelope when the finding is attributable to one (omitted otherwise). Populated for compose-emitted findings (`COMPOSE_HORIZONTAL_TRUNCATION`, `COMPOSE_SEGMENT_BOUNDS_IGNORED`, `COMPOSE_SEGMENT_EXPAND_FAILED`) and for per-cell findings whose merged-grid row/col falls inside a segment's `row_range`/`col_range` (see `preview_presentation_plan` → `resolved_slides[].expanded_compose`). |
+
+### Fix-kind classes
+
+Every `fix.kind` belongs to one of two vocabularies, both registered in `internal/patterns/fix_kinds.go` and advertised by `get_capabilities().vocabularies`:
+
+- **executable** (`repair_fix_kinds`) — `repair_slide` applies it mechanically from `fix.params`: `reduce_text`, `shorten_title`, `reduce_cell_text`, `split_at_row`, `split_pattern`, `swap_layout`, `swap_pattern`, `reshape_grid`, `set_pattern_style`, `set_max_height_pct`, `use_one_of`, `replace_color`, `use_semantic_color`, `rename_field`, `reshape_value`, `provide_value`, `replace_value`, `reduce_items`, `add_items`, `resize_list`, `remove_key`, `remove_field`, `autofix_visual`.
+- **advisory** (`advisory_fix_kinds`) — the remedy needs an authoring decision or a human eye, so no mechanical edit exists: `add_detail_or_resize`, `adopt_pattern`, `consolidate_accents`, `fix_structure`, `grow_pattern`, `increase_gap`, `increase_row_height`, `provide_data`, `provide_native_format`, `provide_numeric_value`, `reduce_columns`, `remap_placeholder`, `remove_emoji`, `remove_field_or_switch_pattern`, `replace_placeholder`, `reposition_shape`, `review`, `review_layout`, `rewrite_field`, `set_design_mode_free`, `shrink_text`, `text`, `truncation_summary`.
+
+The distinction is load-bearing for the repair loop. Sent to `repair_slide`, an advisory kind returns `{applied: false, code: "advisory_fix_kind", message: "<the decision to make>", alternatives: [executable kinds addressing the same defect]}` — not `kind_not_supported`, which reads as a caller mistake. `propose_repairs` routes them into `advisory[]` (with `guidance` and `alternatives`) and counts them in `summary.advisory_findings`, instead of burying them in `unmapped[]` as `fix_kind_not_repairable:<kind>`.
+
+On a well-formed deck most remaining fix-carrying findings are advisory — `cell_underfilled`, `SPARSE_FILL` and `SLIDE_UNDERUSED` are all "this slide has room for more argument", which no edit can supply. A repair loop that ends with advisory findings only has finished, not failed.
+
+Adding a kind means registering it: `TestEveryEmittedFixKindIsRegistered` fails on an unregistered kind, `TestRepairFixKindsMatchApplySwitch` pins the executable list against `applyRepairFix`, and `TestAdvisoryFixKindsCarryGuidance` requires every advisory kind to carry actionable guidance.
 
 ### `next_tool_call` Envelope
 

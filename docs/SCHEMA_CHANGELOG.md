@@ -10,6 +10,35 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Fix kinds are explicitly executable or advisory
+  (go-slide-creator-ui4c).** 506 of 814 fix-carrying findings across a 50-deck
+  corpus named a `fix.kind` that `repair_slide` cannot apply — and they were the
+  findings that fire on the *good* decks (`cell_underfilled` →
+  `add_detail_or_resize`, `sparse_layout` → `grow_pattern`, `SPARSE_FILL` /
+  `SLIDE_UNDERUSED` → `add_detail_or_resize`, `table_font_scaled` → `review`,
+  `density_exceeded` → `reduce_columns`). `repair_slide` answered
+  `kind_not_supported` and `propose_repairs` filed them under `unmapped[]` as
+  `fix_kind_not_repairable:<kind>`, so the documented loop terminated with zero
+  directives and the only remaining signal was prose in `fix.params.hint`.
+  - New registry `internal/patterns/fix_kinds.go` is the single vocabulary:
+    every kind is `executable` (repair_slide applies it) or `advisory` (the
+    remedy is an authoring decision), and each advisory kind carries guidance
+    plus the executable `alternatives` that address the same defect.
+  - `get_capabilities().vocabularies` gains **`advisory_fix_kinds`**;
+    `repair_fix_kinds` is now derived from the registry (same values).
+  - `repair_slide` returns `code: "advisory_fix_kind"` with the guidance as
+    `message` and a new `alternatives[]` field for a registered advisory kind.
+    An unregistered kind still returns `kind_not_supported`.
+  - `propose_repairs` gains **`advisory[]`**
+    `{reason, kind, guidance, alternatives[], code, slide_index, path, message,
+    params}` and `summary.advisory_findings`; only unknown kinds and
+    fix-less findings remain in `unmapped[]`.
+  - New executable fix kind **`set_max_height_pct`**
+    (`params: {max_height_pct}`) caps `slides[i].pattern.max_height_pct` so an
+    underfilled pattern stops stretching — the mechanical remedy that the
+    underfill / overtall-lane findings already recommended in prose but that no
+    directive could express.
+
 - **submit_visual_review binds the review to the artifact's own pixels
   (go-slide-creator-jltp).** `submit_visual_review` is the documented completion
   path when no vision provider is configured, and only the PPTX sha256 was

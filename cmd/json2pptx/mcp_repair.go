@@ -50,9 +50,14 @@ type appliedFix struct {
 	Code string `json:"code,omitempty"`
 
 	// SupportedKinds is the full list of fix kinds the engine accepts. Populated
-	// only when Code == "kind_not_supported" so agents can recover without a
-	// separate get_capabilities round-trip.
+	// when Code is "kind_not_supported" or "advisory_fix_kind" so agents can
+	// recover without a separate get_capabilities round-trip.
 	SupportedKinds []string `json:"supported_kinds,omitempty"`
+
+	// Alternatives are executable fix kinds that address the same defect as a
+	// registered advisory kind. Populated only when Code ==
+	// "advisory_fix_kind" (go-slide-creator-ui4c).
+	Alternatives []string `json:"alternatives,omitempty"`
 
 	// NextToolCall is a machine-readable suggestion for the agent to recover
 	// from a non-applied result (e.g. call get_capabilities to discover the
@@ -97,6 +102,7 @@ Pattern shape:
 - swap_pattern: Replace the slide's pattern with a different one. Params: to (string, required, target pattern name), values (object, optional, new values for the target pattern), overrides (object, optional), cell_overrides (object, optional).
 - reshape_grid: Change the grid shape by adjusting rows/columns. For pattern slides, updates the pattern values; for raw grids, redistributes cells. Params: rows (int, optional), columns (int or []int, optional). At least one is required.
 - set_pattern_style: Change the style variant in a pattern's overrides (e.g. timeline-horizontal "dots" to "chevron"). Params: style (string, required).
+- set_max_height_pct: Cap a pattern slide's height budget (slides[i].pattern.max_height_pct) so its boxes shrink to their content instead of stretching. Params: max_height_pct (number, required, 0 < pct <= 100; ~35 for a single sparse row). The mechanical remedy for underfilled / overtall-lane findings.
 
 Pattern values (field-level edits to slide.pattern.values):
 - rename_field: Rename a top-level key in pattern values (or slide-level fields). Params: from (string, required, current key name), to (string, required, new key name).
@@ -112,7 +118,9 @@ Pattern values (field-level edits to slide.pattern.values):
 Heuristic:
 - autofix_visual: Apply a heuristic fix based on a visual QA finding category. Params: category (string, required, the visual QA finding category e.g. "text_overflow", "contrast"). Tries each candidate fix kind for the category in order until one succeeds. Additional params are forwarded to the underlying fix handler.
 
-Unsupported kinds return {applied: false, code: "kind_not_supported", message: "kind_not_supported", supported_kinds: [...full vocabulary...], next_tool_call: {tool: "get_capabilities", args_template: {}}}. Agents can retry with a kind from supported_kinds or call get_capabilities for the authoritative list.`),
+Two non-applied outcomes, distinguished by code:
+- Unknown kinds return {applied: false, code: "kind_not_supported", message: "kind_not_supported", supported_kinds: [...executable vocabulary...], next_tool_call: {tool: "get_capabilities", args_template: {}}}.
+- ADVISORY kinds — the ones findings legitimately emit whose remedy is an authoring decision (add_detail_or_resize, grow_pattern, review, truncation_summary, …; enumerated by get_capabilities.vocabularies.advisory_fix_kinds) — return {applied: false, code: "advisory_fix_kind", message: "<what you have to decide>", alternatives: [...executable kinds that address the same defect...], supported_kinds: [...]}. That is not a caller mistake: act on the guidance or apply one of the alternatives; do not retry the same kind.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRepairSlide)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
@@ -257,6 +265,8 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyReshapeGrid(input, slideIdx, fix.Params)
 	case "set_pattern_style":
 		return applySetPatternStyle(input, slideIdx, fix.Params)
+	case "set_max_height_pct":
+		return applySetMaxHeightPct(input, slideIdx, fix.Params)
 	case "reduce_cell_text":
 		return applyReduceCellText(input, slideIdx, fix.Params)
 	case "rename_field":
@@ -280,18 +290,33 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 	case "autofix_visual":
 		return applyAutofixVisual(input, slideIdx, fix.Params)
 	default:
-		return appliedFix{
-			Kind:           fix.Kind,
-			Applied:        false,
-			Code:           "kind_not_supported",
-			Message:        "kind_not_supported",
-			SupportedKinds: repairFixKinds(),
-			NextToolCall: &patterns.ToolCallSuggestion{
-				Tool:         "get_capabilities",
-				ArgsTemplate: map[string]any{},
-			},
-		}
+		return unappliedFix(fix.Kind)
 	}
+}
+
+// unappliedFix explains a kind applyRepairFix did not handle. A registered
+// advisory kind is not a caller mistake — findings legitimately emit it — so it
+// answers with the kind's guidance and the executable kinds that address the
+// same defect, instead of the bare "kind_not_supported" that stalled the
+// documented repair loop (go-slide-creator-ui4c).
+func unappliedFix(kind string) appliedFix {
+	out := appliedFix{
+		Kind:           kind,
+		Applied:        false,
+		Code:           "kind_not_supported",
+		Message:        "kind_not_supported",
+		SupportedKinds: repairFixKinds(),
+		NextToolCall: &patterns.ToolCallSuggestion{
+			Tool:         "get_capabilities",
+			ArgsTemplate: map[string]any{},
+		},
+	}
+	if info, ok := patterns.FixKind(kind); ok && info.Class == patterns.FixClassAdvisory {
+		out.Code = "advisory_fix_kind"
+		out.Message = info.Guidance
+		out.Alternatives = info.Alternatives
+	}
+	return out
 }
 
 // applyReduceText truncates bullets or body text on a slide.
@@ -970,6 +995,33 @@ func intParam(params map[string]any, key string, defaultVal int) int {
 	return defaultVal
 }
 
+// floatParam extracts a numeric parameter, reporting whether it was present and
+// numeric. Unlike intParam it does not fold a missing key into a default, since
+// "no value" and "0" mean different things for a percentage.
+func floatParam(params map[string]any, key string) (float64, bool) {
+	if params == nil {
+		return 0, false
+	}
+	raw, ok := params[key]
+	if !ok {
+		return 0, false
+	}
+	switch v := raw.(type) {
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case json.Number:
+		f, err := v.Float64()
+		return f, err == nil
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	}
+	return 0, false
+}
+
 // stringParam extracts a string parameter with a default.
 func stringParam(params map[string]any, key string, defaultVal string) string {
 	if params == nil {
@@ -1395,6 +1447,34 @@ func applySetPatternStyle(input *PresentationInput, slideIdx int, params map[str
 	slide.ShapeGrid = nil
 
 	return appliedFix{Kind: "set_pattern_style", Applied: true, Message: fmt.Sprintf("set style to %q", style)}
+}
+
+// applySetMaxHeightPct caps a pattern slide's height budget so its boxes shrink
+// to their content instead of stretching to fill the slide. It is the mechanical
+// half of the underfill / overtall-lane findings, whose own remediation steps
+// already say "set max_height_pct to ~35" — before this, that advice named no
+// executable directive (go-slide-creator-ui4c).
+func applySetMaxHeightPct(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
+	const kind = "set_max_height_pct"
+	pct, ok := floatParam(params, "max_height_pct")
+	if !ok {
+		return appliedFix{Kind: kind, Applied: false, Message: "max_height_pct parameter is required (number, 10-100)"}
+	}
+	if pct <= 0 || pct > 100 {
+		return appliedFix{Kind: kind, Applied: false, Message: fmt.Sprintf("max_height_pct must be in (0, 100], got %g", pct)}
+	}
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern == nil {
+		return appliedFix{Kind: kind, Applied: false, Message: "slide has no pattern; cap a raw shape_grid with explicit bounds or row heights instead"}
+	}
+	prev := slide.Pattern.MaxHeightPct
+	slide.Pattern.MaxHeightPct = pct
+	// Drop the pre-expanded grid so the pipeline re-expands inside the new cap.
+	slide.ShapeGrid = nil
+	if prev > 0 {
+		return appliedFix{Kind: kind, Applied: true, Message: fmt.Sprintf("max_height_pct %g -> %g", prev, pct)}
+	}
+	return appliedFix{Kind: kind, Applied: true, Message: fmt.Sprintf("capped pattern height at %g%% of the content area", pct)}
 }
 
 // applyReduceCellText truncates a shape_grid cell's text to max_chars,
