@@ -478,3 +478,42 @@ func TestIntegrationRenderDeck(t *testing.T) {
 		t.Error("expected truncated=true with max_slides=3 on a 7-slide deck")
 	}
 }
+
+// ImageMagick v7 installs the CLI as "magick", v6 as "convert", and Ubuntu
+// still ships v6. The resolver accepts either, and — the part that matters —
+// the rasteriser and DependencyStatus use the SAME resolution, so a box cannot
+// be told rendering is available and then fail on the binary name
+// (go-slide-creator-rdql).
+func TestImageMagickCommandAcceptsConvert(t *testing.T) {
+	binDir := t.TempDir()
+	writeFakeExecutable(t, filepath.Join(binDir, "convert"))
+	t.Setenv("PATH", binDir)
+
+	bin, err := ImageMagickCommand()
+	if err != nil {
+		t.Fatalf("ImageMagickCommand() with only convert on PATH: %v", err)
+	}
+	if filepath.Base(bin) != "convert" {
+		t.Errorf("resolved %q, want convert", bin)
+	}
+
+	writeFakeExecutable(t, filepath.Join(binDir, "soffice"))
+	if available, missing := DependencyStatus(); !available {
+		t.Errorf("DependencyStatus() reports missing %v with soffice + convert on PATH", missing)
+	}
+}
+
+// With neither name present, the report says so and names both.
+func TestImageMagickCommandMissing(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	if _, err := ImageMagickCommand(); err == nil {
+		t.Fatal("expected an error with no ImageMagick on PATH")
+	}
+	available, missing := DependencyStatus()
+	if available {
+		t.Fatal("DependencyStatus() says rendering is available with an empty PATH")
+	}
+	if len(missing) != 2 {
+		t.Errorf("missing = %v, want both LibreOffice and ImageMagick", missing)
+	}
+}

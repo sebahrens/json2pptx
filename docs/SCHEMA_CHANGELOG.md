@@ -401,6 +401,11 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
     libreoffice/soffice and magick/convert are the same tool under two names.
   - A test walks the repo and fails on any non-render package that shells out
     to one of those binaries by name.
+  - **Note the swapped dependency:** the audit rasterises with ImageMagick now,
+    not poppler's `pdftoppm`, because that is what the rest of the engine uses.
+    ImageMagick is resolved as `magick` (v7) **or** `convert` (v6) — by the
+    rasteriser and by `DependencyStatus` alike, so a box cannot be told
+    rendering is available and then fail on the binary name.
 
 - **A content-sized table is centred in its placeholder
   (go-slide-creator-6jv7).** Table rows are sized for their text rather than

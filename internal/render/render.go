@@ -240,7 +240,8 @@ func CheckDependencies() error {
 	if _, err := officeCommand(); err != nil {
 		return err
 	}
-	return checkDep("magick")
+	_, err := ImageMagickCommand()
+	return err
 }
 
 // DependencyStatus checks each render dependency and returns whether rendering
@@ -249,8 +250,8 @@ func DependencyStatus() (available bool, missing []string) {
 	if _, err := officeCommand(); err != nil {
 		missing = append(missing, "libreoffice/soffice")
 	}
-	if checkDep("magick") != nil {
-		missing = append(missing, "magick")
+	if _, err := ImageMagickCommand(); err != nil {
+		missing = append(missing, "magick/convert")
 	}
 	return len(missing) == 0, missing
 }
@@ -371,9 +372,17 @@ func profileDescription(profile string, err error) string {
 // Returns sorted list of generated PNG paths. The conversion is bounded by
 // imageMagickTimeout; a timeout returns a *TimeoutError.
 func pdfToPNGs(ctx context.Context, pdfPath, outDir string, density int) ([]string, error) {
+	// v7 installs the CLI as "magick", v6 as "convert"; Ubuntu still ships v6.
+	// Resolving here rather than naming one keeps the rasteriser working on
+	// both, and keeps it honest with DependencyStatus, which reports the same
+	// resolution (go-slide-creator-rdql).
+	bin, err := ImageMagickCommand()
+	if err != nil {
+		return nil, err
+	}
 	pattern := filepath.Join(outDir, "slide-%d.png")
 	_, stderr, err := runBounded(ctx, toolImageMagick, pdfPath, imageMagickTimeout,
-		toolImageMagick,
+		bin,
 		"-density", fmt.Sprintf("%d", density),
 		pdfPath,
 		"-quality", "95",

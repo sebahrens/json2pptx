@@ -89,7 +89,7 @@ Cross-engine palette parity is expensive and tool-heavy, so it is opt-in:
 - `tests/palette_parity/...` and `TestRunAuditPalette_EndToEnd` skip unless
   `PALETTE_PARITY_TEST` is set.
 
-**CI:** the `palette-parity` job installs LibreOffice + poppler and runs with
+**CI:** the `palette-parity` job installs LibreOffice, poppler and ImageMagick (the audit rasterises through `internal/render`, like every other render path) and runs with
 `PALETTE_PARITY_TEST=1`.
 
 ## 6. Headless conformance (script-driven, not `go test` skips)
