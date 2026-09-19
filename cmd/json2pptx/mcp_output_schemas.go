@@ -2374,10 +2374,11 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
   "properties": {
     "ok":              {"type": "boolean"},
     "success":         {"type": "boolean", "description": "True when the .pptx artifact was written (mirrors ok)."},
-    "pptx_path":       {"type": "string", "description": "Path to the rendered .pptx artifact."},
+    "pptx_path":       {"type": "string", "description": "Path to the rendered .pptx artifact. Defaults to a slug of meta.title plus a short digest of the spec; set output_filename to choose it."},
+    "overwrote":       {"type": "boolean", "description": "True when a file already existed at pptx_path and this render replaced it."},
     "template":        {"type": "string"},
     "slide_count":     {"type": "integer"},
-    "content_hash":    {"type": "string"},
+    "content_hash":    {"type": "string", "description": "SHA-256 of the written file. Writes to one path are serialized, so this always matches the bytes on disk."},
     "duration_ms":     {"type": "integer"},
     "quality_summary": ` + qualityScoreSchema + `,
     "warnings":        {"type": "array", "items": {"type": "string"}},

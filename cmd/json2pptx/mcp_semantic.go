@@ -292,6 +292,7 @@ type renderDeckSpecResponse struct {
 	OK          bool                      `json:"ok"`
 	Success     bool                      `json:"success"`
 	PptxPath    string                    `json:"pptx_path,omitempty"`
+	Overwrote   bool                      `json:"overwrote,omitempty"`
 	Template    string                    `json:"template,omitempty"`
 	SlideCount  int                       `json:"slide_count,omitempty"`
 	ContentHash string                    `json:"content_hash,omitempty"`
@@ -312,6 +313,7 @@ func semanticRenderToMCP(r semanticRenderResult, explanation *semantic.DeckExpla
 		OK:          r.OK,
 		Success:     r.OK,
 		PptxPath:    r.OutputPath,
+		Overwrote:   r.Overwrote,
 		Template:    r.Template,
 		SlideCount:  r.SlideCount,
 		ContentHash: r.ContentHash,
@@ -338,6 +340,9 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 		mcp.WithString("output_validation",
 			mcp.Description("Post-generation output validation: off, warn, or strict (default). strict refuses to emit a deck with text overflow."),
 		),
+		mcp.WithString("output_filename",
+			mcp.Description("Filename for the rendered .pptx inside the server's output directory. Path components are stripped and a .pptx suffix is added if missing. Omit it and the name is derived from meta.title plus a short digest of the spec, so two different specs never collide and re-rendering the same spec is idempotent. The response reports overwrote:true when the render replaced an existing file."),
+		),
 	)
 }
 
@@ -351,6 +356,11 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		return errRes, nil
 	}
 	templateName, _, errRes := semanticOptionalString("render_deck_spec", "template", request)
+	if errRes != nil {
+		return errRes, nil
+	}
+
+	outputFilename, _, errRes := semanticOptionalString("render_deck_spec", "output_filename", request)
 	if errRes != nil {
 		return errRes, nil
 	}
@@ -378,6 +388,14 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 		}
 		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+	}
+
+	// Every render used to land on <output_dir>/output.pptx, so two calls in one
+	// session silently destroyed each other and the reported content_hash stopped
+	// matching the file (go-slide-creator-tngh). Default to a name derived from
+	// the deck title and a digest of the spec.
+	if outputFilename == "" {
+		outputFilename = deckSpecOutputFilename(spec.Meta.Title, data)
 	}
 
 	// The explanation is a pure projection of the plan and works even when the
@@ -408,6 +426,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 
 	runRes, cleanup, renderErr := RunPresentation(ctx, input, RenderOptions{
 		OutputDir:        mc.outputDir,
+		OutputFilename:   outputFilename,
 		TemplatesDir:     cfg.Templates.Dir,
 		OutputValidation: outputValidation,
 		AccentStrategy:   patterns.AccentStrategy(input.AccentStrategy),

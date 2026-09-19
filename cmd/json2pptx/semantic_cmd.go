@@ -325,6 +325,7 @@ func runSemanticCompile() error {
 type semanticRenderResult struct {
 	OK           bool                 `json:"ok"`
 	OutputPath   string               `json:"output_path,omitempty"`
+	Overwrote    bool                 `json:"overwrote,omitempty"`
 	Template     string               `json:"template,omitempty"`
 	SlideCount   int                  `json:"slide_count,omitempty"`
 	ContentHash  string               `json:"content_hash,omitempty"`
@@ -582,6 +583,7 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	res := semanticRenderResult{
 		OK:          true,
 		OutputPath:  rr.OutputPath,
+		Overwrote:   rr.Overwrote,
 		Template:    input.Template,
 		DurationMs:  time.Since(start).Milliseconds(),
 		Warnings:    warnings,

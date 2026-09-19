@@ -37,6 +37,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`render_deck_spec` renders no longer destroy each other
+  (go-slide-creator-tngh).** `generate_presentation` takes `output_filename`;
+  the recommended new-deck tool did not, so every DeckSpec render wrote
+  `<output_dir>/output.pptx`. Two renders in one session returned success with
+  different `content_hash` values and the *same* `pptx_path`, and the file held
+  only one of the decks — so one caller's `content_hash` matched nothing on
+  disk. That is worse than a lost file: `submit_visual_review` requires
+  `pptx_revision` to equal the artifact's sha256 and `render_deck_thumbnails`
+  keys its cache on file content, so an MCP-only agent could not complete, could
+  not see why, and had no shell to copy files between calls.
+  `render_deck_spec` now accepts `output_filename` with the same sanitisation as
+  `generate_presentation` (path components stripped, `.pptx` appended), and
+  defaults to `slug(meta.title)-<8 hex of the spec digest>.pptx` — two different
+  specs never collide, and re-rendering an unedited spec is idempotent. The
+  response gained `overwrote`, true when a file already existed at `pptx_path`.
+  Writes to one output path are now serialized across the whole server (the
+  content hash is read back off the file, so an interleaved write produced a
+  hash that was never on disk), which covers every render tool, not just this
+  one.
+
 - **`chrome.section_crumb` does something now (go-slide-creator-ynfv).**
   `get_capabilities().features.section_crumb` reported
   `{supported: true, version: "2.8.0"}` and SKILL.md repeated the claim, but

@@ -84,7 +84,10 @@ type RenderOptions struct {
 // RenderResult bundles everything the callers need to build their responses.
 type RenderResult struct {
 	// OutputPath is the absolute/relative path the .pptx was written to.
-	OutputPath   string
+	OutputPath string
+	// Overwrote reports that a file already existed at OutputPath and this
+	// render replaced it (go-slide-creator-tngh).
+	Overwrote    bool
 	TemplatePath string
 	TemplateHash string
 	// GenResult is the raw generator output (slide count, hash, warnings,
@@ -274,10 +277,19 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
 	}
 
+	// Hold the target path for the whole write, because the content hash is read
+	// back OFF THE FILE after generation. Without this, two renders aimed at one
+	// path interleave and a caller gets a content_hash that matches nothing on
+	// disk — which makes submit_visual_review and the thumbnail cache
+	// unsatisfiable (go-slide-creator-tngh).
+	res.Overwrote = fileExists(outputPath)
+	unlock := lockOutputPath(outputPath)
 	genResult, genErr := generator.Generate(ctx, genReq)
 	if genErr != nil {
+		unlock()
 		return res, cleanup, fmt.Errorf("failed to generate PPTX: %w", genErr)
 	}
+	unlock()
 	res.GenResult = genResult
 
 	// Post-generation output validation (default: strict).
