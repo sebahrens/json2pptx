@@ -188,16 +188,85 @@ func checkEdgeOverflow(img image.Image, bg color8, info visualqa.SlideInfo) []vi
 	var findings []visualqa.Finding
 	for _, e := range edges {
 		ratio := nonBackgroundRatio(img, bg, e.x0, e.y0, e.x1, e.y1)
-		if ratio >= edgeContentRatioThreshold {
-			findings = append(findings, newHeuristic(
-				info,
-				"text_overflow",
-				fmt.Sprintf("%.1f%% of pixels in the %s contain non-background content; possible overflow or content touching the slide edge.", ratio*100, e.name),
-				e.name,
-			))
+		if ratio < edgeContentRatioThreshold {
+			continue
 		}
+		// Ink in an edge band is usually the TEMPLATE's own decoration — a
+		// left accent rail, a takeaway band, a full-bleed header — not text
+		// running off the slide. Reporting it flagged 14 "text_overflow"
+		// findings on the best deck in the calibration set and 10 on the
+		// worst, an inverted signal an agent rightly learns to ignore
+		// (go-slide-creator-3pyf). Only text-like ink counts: a solid fill
+		// crosses the band edge once or twice per scan line, while text
+		// alternates many times.
+		if !edgeBandIsTextLike(img, bg, e.x0, e.y0, e.x1, e.y1) {
+			continue
+		}
+		findings = append(findings, newHeuristic(
+			info,
+			"text_overflow",
+			fmt.Sprintf("%.1f%% of pixels in the %s contain text-like content; possible overflow or content touching the slide edge.", ratio*100, e.name),
+			e.name,
+		))
 	}
 	return findings
+}
+
+// edgeBandTransitionsPerLine is the average number of background↔ink
+// transitions per scan line above which an edge band is treated as text rather
+// than a solid decorative fill. A rail or band crosses at most twice.
+const edgeBandTransitionsPerLine = 4.0
+
+// edgeBandIsTextLike reports whether the ink inside an edge band alternates
+// with the background often enough to be text. It scans the band along its long
+// axis and counts background↔ink transitions per line.
+func edgeBandIsTextLike(img image.Image, bg color8, x0, y0, x1, y1 int) bool {
+	if x1 <= x0 || y1 <= y0 {
+		return false
+	}
+	w, h := x1-x0, y1-y0
+	horizontal := w >= h // a top/bottom band scans left-to-right
+
+	lines, transitions := 0, 0
+	scan := func(fixed int) {
+		lines++
+		prevInk := false
+		length := w
+		if !horizontal {
+			length = h
+		}
+		// Sample up to ~2k points per line: enough to resolve glyph gaps.
+		step := 1
+		if length > 2000 {
+			step = length / 2000
+		}
+		for i := 0; i < length; i += step {
+			var x, y int
+			if horizontal {
+				x, y = x0+i, fixed
+			} else {
+				x, y = fixed, y0+i
+			}
+			ink := !nearBackground(img, x, y, bg)
+			if i > 0 && ink != prevInk {
+				transitions++
+			}
+			prevInk = ink
+		}
+	}
+	if horizontal {
+		for y := y0; y < y1; y++ {
+			scan(y)
+		}
+	} else {
+		for x := x0; x < x1; x++ {
+			scan(x)
+		}
+	}
+	if lines == 0 {
+		return false
+	}
+	return float64(transitions)/float64(lines) >= edgeBandTransitionsPerLine
 }
 
 // checkAspectRatio flags images whose width/height ratio differs noticeably

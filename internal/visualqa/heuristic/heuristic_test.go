@@ -100,11 +100,16 @@ func TestInspect_BlankSlideFlagged(t *testing.T) {
 	}
 }
 
-// TestInspect_EdgeOverflowFlagged: a fully-white image with a black band along
+// TestInspect_EdgeOverflowFlagged: a fully-white image with TEXT-LIKE ink along
 // the bottom should trigger an overflow finding on the bottom edge.
+//
+// The fixture used to be a solid black band, which is what a template's own
+// footer or accent bar looks like — reporting those inverted the signal across
+// the calibration decks (go-slide-creator-3pyf), so the check now requires ink
+// that alternates with the background the way glyphs do.
 func TestInspect_EdgeOverflowFlagged(t *testing.T) {
 	// Band must exceed the 1% edge-band fraction (10% chosen for clarity).
-	data := edgeFilledPNG(t, 1920, 1080, 100, "bottom")
+	data := edgeTextPNG(t, 1920, 1080, 100, "bottom")
 	res := Inspect(data, visualqa.SlideInfo{Index: 1, Type: "content"})
 	if res.Error != "" {
 		t.Fatalf("Inspect error: %s", res.Error)
@@ -158,5 +163,68 @@ func TestInspectAll_ReportMode(t *testing.T) {
 	}
 	if rep.SlideCount != 1 {
 		t.Errorf("SlideCount = %d, want 1", rep.SlideCount)
+	}
+}
+
+// edgeTextPNG paints glyph-like strokes into an edge band: ink that alternates
+// with the background many times per scan line, unlike a solid decoration.
+func edgeTextPNG(t *testing.T, w, h, band int, edge string) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, w, h))
+	white := color.RGBA{R: 255, G: 255, B: 255, A: 255}
+	black := color.RGBA{R: 0, G: 0, B: 0, A: 255}
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.SetRGBA(x, y, white)
+		}
+	}
+	stroke := func(x0, y0, x1, y1 int) {
+		for y := y0; y < y1 && y < h; y++ {
+			for x := x0; x < x1 && x < w; x++ {
+				img.SetRGBA(x, y, black)
+			}
+		}
+	}
+	switch edge {
+	case "bottom":
+		for y := h - band; y < h; y++ {
+			for x := 0; x < w; x += 8 {
+				stroke(x, y, x+4, y+1)
+			}
+		}
+	case "top":
+		for y := 0; y < band; y++ {
+			for x := 0; x < w; x += 8 {
+				stroke(x, y, x+4, y+1)
+			}
+		}
+	case "left":
+		for x := 0; x < band; x++ {
+			for y := 0; y < h; y += 8 {
+				stroke(x, y, x+1, y+4)
+			}
+		}
+	case "right":
+		for x := w - band; x < w; x++ {
+			for y := 0; y < h; y += 8 {
+				stroke(x, y, x+1, y+4)
+			}
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatalf("encode png: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// A solid band is template decoration, not overflow.
+func TestInspect_SolidEdgeBandIsNotOverflow(t *testing.T) {
+	data := edgeFilledPNG(t, 1920, 1080, 100, "left")
+	res := Inspect(data, visualqa.SlideInfo{Index: 0, Type: "content"})
+	for _, f := range res.Findings {
+		if f.Category == "text_overflow" {
+			t.Errorf("solid edge band reported as overflow: %s", f.Description)
+		}
 	}
 }

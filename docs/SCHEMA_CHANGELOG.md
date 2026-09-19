@@ -37,6 +37,21 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **The heuristic visual pass stopped inverting the signal
+  (go-slide-creator-3pyf).** With no `ANTHROPIC_API_KEY`,
+  `inspect_slide_images` falls back to pure-Go checks — and its edge-band check
+  reported 14 `text_overflow` findings on the BEST deck of the calibration set
+  and 10 on the worst. Every one was the template's own decoration ("100.0% of
+  pixels in the left edge" is midnight-blue's accent rail; "16.7% in the right
+  edge" is its takeaway band), and it fired on blank "Thank you" slides. Since
+  `get_started`'s NO VISION PROVIDER path routes agents here, an agent without a
+  key learned to ignore the visual channel. The check now requires ink that
+  alternates with the background like glyphs do (≥4 transitions per scan line);
+  a solid fill crossing the band is decoration and is not reported. On the
+  evidence renders: G1 14 findings → **0**, B08 10 → **0**, B05 8 → **0**, and
+  B03's blank-slide finding is unchanged. `inspect_slide_images`' description
+  now states plainly that heuristic mode cannot approve a deck.
+
 - **Tools carry real MCP annotations (go-slide-creator-ccqn).** Every tool
   shipped mcp-go's `NewTool()` defaults — `readOnlyHint:false`,
   `destructiveHint:true`, `idempotentHint:false`, `openWorldHint:true`, no

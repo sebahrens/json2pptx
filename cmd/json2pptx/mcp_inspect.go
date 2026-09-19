@@ -58,7 +58,9 @@ This is the canonical entry point for the visual refinement loop:
 
 Each slide_images[] entry must include "index" (0-based) and one of "path" (absolute filesystem path to a .png/.jpg) or "png_base64" (raw base64-encoded image bytes, no data: URL prefix). Optional per-slide "slide_type" (title/content/section/chart/diagram/...) and "title" tune the prompt for that slide.
 
-When ANTHROPIC_API_KEY is set, vision-backed checks run via Claude (Report.mode="vision"). When unset, the tool falls back to a deterministic heuristic pass — pure-Go image checks for blank slides, edge-band overflow, and aspect ratio (Report.mode="heuristic", findings tagged source="heuristic", severity P3). Heuristic findings are advisory and may have higher false-positive rates than vision-backed checks.
+When ANTHROPIC_API_KEY is set, vision-backed checks run via Claude (Report.mode="vision"). When unset, the tool falls back to a deterministic heuristic pass — pure-Go image checks for blank slides, text-like edge-band overflow, and aspect ratio (Report.mode="heuristic", findings tagged source="heuristic", severity P3).
+
+HEURISTIC MODE CANNOT APPROVE A DECK. It reads pixels, not meaning: an empty findings list there means "no blank slide, no text against an edge, standard aspect ratio", not "this deck looks right". Completion still requires looking at every rendered slide yourself (or a vision provider) and recording the verdict with submit_visual_review — see the completion protocol. Its findings are advisory and may have higher false-positive rates than vision-backed checks.
 
 Image source policy: paths must be absolute and end in .png/.jpg/.jpeg. Path traversal (..) is rejected. For images already in memory (e.g. just-rendered thumbnails), prefer png_base64 to avoid disk round-trips.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaInspectSlideImages)),
