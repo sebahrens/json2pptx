@@ -133,6 +133,14 @@ func ChartInsightFallbackSlideType(body map[string]any) string {
 // would resolve body_2 onto body and the chart would bury every insight).
 func compileChartFallback(in Input, insights []string, insightsField string) (*deckinput.SlideInput, []SourceLink, error) {
 	slide := &deckinput.SlideInput{SlideType: ChartInsightFallbackSlideType(in.Body)}
+	// Pin the canonical two-column layout rather than leaving the heuristic to
+	// infer it. It is resolved per template by ResolveCanonicalLayoutID, and on
+	// a template whose scoring quirks pick a divider the insights land in a
+	// "Section Number" placeholder and run off the slide
+	// (go-slide-creator-ujya). Slides without a chart stay single-column.
+	if slide.SlideType == "two-column" {
+		slide.LayoutID = "two-column"
+	}
 	var links []SourceLink
 
 	if in.Title != "" {

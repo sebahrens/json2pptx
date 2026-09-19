@@ -273,6 +273,14 @@ func scoreLayout(layout *types.LayoutMetadata, req SelectionRequest) scoredLayou
 	narrowPenalty := penalizeNarrowDiagramSlot(*layout, req.Slide)
 	total -= narrowPenalty
 
+	// A divider or title layout is chrome: it has no place to put content, and
+	// on modern-template a two-column slide landed on "Section Divider" whose
+	// "Section Number" placeholder then held eight insights at 54pt, running
+	// off the slide (go-slide-creator-ujya). Capacity metadata cannot express
+	// that — the divider's looser bullet ceiling actually scored BETTER than the
+	// correct two-column layout — so it is a direct structural penalty.
+	total -= penalizeChromeLayoutForContent(*layout, req.Slide)
+
 	// Clamp total to [0, 1]
 	if total < 0.0 {
 		total = 0.0
@@ -790,24 +798,31 @@ func scoreSectionSlide(layout types.LayoutMetadata) float64 {
 func scoreCapacity(layout types.LayoutMetadata, slide types.SlideDefinition) float64 {
 	score := 1.0
 
-	// Slot-aware scoring: when a slide uses ::slot1::/::slot2:: markers,
-	// it needs at least as many content placeholders as slots.
-	// Without this, single-placeholder layouts can win and silently drop content.
-	if slide.HasSlots() {
-		slotCount := len(slide.Slots)
-		phCount := countContentPlaceholders(layout)
-		if phCount < slotCount {
-			// Heavy penalty: each missing placeholder reduces score significantly.
-			// A 2-slot slide on a 1-placeholder layout gets 0.3 (barely viable).
-			// A 3-slot slide on a 1-placeholder layout gets 0.0.
-			missing := float64(slotCount - phCount)
+	// Structural sufficiency comes first: a layout with fewer content
+	// placeholders than the slide needs cannot host it at all, and no amount of
+	// bullet-capacity credit should let it outrank one that can. On
+	// modern-template a two-column slide (diagram + 8 bullets) scored Two
+	// Content at 0.15 — LAST, because 8 bullets overflow its 3-per-column
+	// capacity — while Section Divider (one body) scored 0.68 and Title Slide
+	// (no body at all) 0.82, so the insights landed in a "Section Number"
+	// placeholder and ran off the slide (go-slide-creator-ujya).
+	if required := requiredContentPlaceholders(slide); required > 0 {
+		if have := countContentPlaceholders(layout); have < required {
+			missing := float64(required - have)
 			score -= missing * 0.7
 			if score < 0.0 {
 				score = 0.0
 			}
 			return score
 		}
-		// Slot check passed: enough placeholders exist. Skip bullet overflow
+	}
+
+	// Slot-aware scoring: when a slide uses ::slot1::/::slot2:: markers,
+	// it needs at least as many content placeholders as slots.
+	// Without this, single-placeholder layouts can win and silently drop content.
+	if slide.HasSlots() {
+		// Sufficiency was checked above; reaching here means enough
+		// placeholders exist. Skip bullet overflow
 		// scoring below because slide.Content.Bullets is populated from slot
 		// content (AST lower leaks bullets from slots into the main Content
 		// struct for backward compatibility). Counting these bullets against
@@ -838,12 +853,42 @@ func scoreCapacity(layout types.LayoutMetadata, slide types.SlideDefinition) flo
 		return score
 	}
 
-	// Penalize overflow
+	// Penalize overflow, but never below capacityOverflowFloor: the layout has
+	// the placeholders this slide needs, and too much text in the right
+	// structure beats the right amount of text in the wrong one (the text-fit
+	// findings report the overflow separately).
 	overflow := float64(bulletCount - maxBullets)
 	penalty := overflow / float64(maxBullets)
-	score = math.Max(0.0, score-penalty)
+	score = math.Max(capacityOverflowFloor, score-penalty)
 
 	return score
+}
+
+// capacityOverflowFloor is the lowest capacity score a structurally sufficient
+// layout can receive from bullet overflow alone.
+const capacityOverflowFloor = 0.35
+
+// requiredContentPlaceholders returns how many content placeholders a slide
+// needs to be laid out without dropping content: two for a side-by-side slide,
+// one for any other slide that carries content, zero when there is nothing to
+// place (the layout's own chrome decides).
+func requiredContentPlaceholders(slide types.SlideDefinition) int {
+	if slide.HasSlots() {
+		return len(slide.Slots)
+	}
+	switch slide.Type {
+	case types.SlideTypeTwoColumn, types.SlideTypeComparison:
+		return 2
+	}
+	if len(slide.Content.Left) > 0 && len(slide.Content.Right) > 0 {
+		return 2
+	}
+	c := slide.Content
+	if len(c.Bullets) > 0 || len(c.BulletGroups) > 0 || c.Body != "" ||
+		c.DiagramSpec != nil || c.Table != nil || c.TableRaw != "" || c.ImagePath != "" {
+		return 1
+	}
+	return 0
 }
 
 // countContentPlaceholders counts placeholders that can serve as slot targets.
@@ -1593,6 +1638,60 @@ var needsFullWidthDiagramTypes = map[string]bool{
 	"stat_cards":   true,
 }
 
+// chromeLayoutPenalty is subtracted from a divider/title layout's score when the
+// slide actually carries content. It is large enough to outrank any capacity or
+// variety credit such a layout can earn.
+const chromeLayoutPenalty = 0.45
+
+// penalizeChromeLayoutForContent returns chromeLayoutPenalty when a
+// content-bearing slide is scored against a layout whose job is chrome: a
+// section divider, a title slide, or any layout with no content placeholder at
+// all. Section and title SLIDES are exempt — those belong on chrome layouts.
+func penalizeChromeLayoutForContent(layout types.LayoutMetadata, slide types.SlideDefinition) float64 {
+	if requiredContentPlaceholders(slide) == 0 {
+		return 0
+	}
+	switch slide.Type {
+	case types.SlideTypeTitle, types.SlideTypeSection:
+		return 0
+	}
+	if countContentPlaceholders(layout) == 0 {
+		return chromeLayoutPenalty
+	}
+	if hasTag(layout.Tags, "section-header") || hasTag(layout.Tags, "title-slide") || hasTag(layout.Tags, "blank") {
+		return chromeLayoutPenalty
+	}
+	switch layout.CanonicalType {
+	case types.CanonicalLayoutSectionDivider, types.CanonicalLayoutTitleSlide,
+		types.CanonicalLayoutBlank, types.CanonicalLayoutClosing:
+		return chromeLayoutPenalty
+	}
+	return 0
+}
+
+// sideBySideByDesign reports a slide whose author asked for two columns.
+func sideBySideByDesign(slide types.SlideDefinition) bool {
+	switch slide.Type {
+	case types.SlideTypeTwoColumn, types.SlideTypeComparison:
+		return true
+	}
+	return false
+}
+
+// slideNeedsFullWidthDiagram reports whether any diagram on the slide is one of
+// the types that cannot be read at half width.
+func slideNeedsFullWidthDiagram(slide types.SlideDefinition) bool {
+	if spec := slide.Content.DiagramSpec; spec != nil && needsFullWidthDiagramTypes[spec.Type] {
+		return true
+	}
+	for _, slot := range slide.Slots {
+		if slot != nil && slot.DiagramSpec != nil && needsFullWidthDiagramTypes[slot.DiagramSpec.Type] {
+			return true
+		}
+	}
+	return false
+}
+
 // penalizeNarrowDiagramSlot returns a penalty (0.0–0.5) when a chart/diagram
 // would be placed in a placeholder narrower than narrowDiagramThreshold.
 // This prevents layout selection from choosing layouts that compress charts and
@@ -1603,6 +1702,17 @@ var needsFullWidthDiagramTypes = map[string]bool{
 //   - 0.3: Any chart/diagram type in narrow area (bar_chart, pie_chart, etc.)
 //   - 0.0: Content area is wide enough, or slide has no diagram
 func penalizeNarrowDiagramSlot(layout types.LayoutMetadata, slide types.SlideDefinition) float64 {
+	// An explicit side-by-side slide asked for a narrow diagram: the author (or
+	// the chart-insights fallback) put a diagram beside text on purpose, and
+	// penalising the narrow column pushed the correct two-column layout below
+	// single-column ones, which then drop the second column's content entirely
+	// (go-slide-creator-ujya). Diagram types that genuinely need full width —
+	// a business model canvas, an org chart — keep their penalty: no author
+	// intent makes those readable at half width.
+	if sideBySideByDesign(slide) && !slideNeedsFullWidthDiagram(slide) {
+		return 0
+	}
+
 	// Case 1: Slotted slides — check each slot for diagram content
 	if slide.HasSlots() {
 		contentPHs := contentPlaceholdersFromLayout(layout)

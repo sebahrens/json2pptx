@@ -10,6 +10,31 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Layout selection no longer puts content on a divider (go-slide-creator-ujya).**
+  On `modern-template`, a two-column slide (a chart beside eight insights — the
+  shape the `chart_insight` density fallback compiles to) scored "Section
+  Divider" 0.83 and "Title Slide" 0.82 over "Two Content" 0.15. The insights
+  landed in the divider's "Section Number" placeholder, rendered at ~54pt in
+  four overlapping lines, and ran off the slide. Three scoring defects:
+  - `scoreCapacity` gave layouts credit without checking they had enough content
+    placeholders. The rule the slot path already applied (heavy penalty per
+    missing placeholder) is now general: a side-by-side slide needs two content
+    placeholders, any content slide needs one.
+  - Bullet overflow could drive a structurally correct layout to 0. It is now
+    floored at 0.35 once the layout has the placeholders the slide needs — too
+    much text in the right structure beats the right amount in the wrong one,
+    and the text-fit findings report the overflow separately.
+  - The narrow-diagram penalty no longer fires on an explicit `two-column` /
+    `comparison` slide, whose author asked for the split. Diagram types that
+    need full width (business model canvas, org chart) keep it.
+  - A new direct penalty keeps divider / title / blank layouts out of
+    content-bearing slides, and the chart-insights fallback now pins the
+    canonical `two-column` layout instead of relying on the heuristic.
+
+  All four bundled templates now select "Two Content" for that slide; verified
+  in the render (chart left, all eight insights right, takeaway inside the body
+  column).
+
 - **score_deck measures the deck, not just the codes (go-slide-creator-q7ar).**
   Across 16 calibration decks graded blind from their renders, `overall_score`
   correlated with the human grade at +0.39 and 10 of 13 defective decks passed
