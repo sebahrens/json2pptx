@@ -47,6 +47,7 @@ func profileTestConfig(t *testing.T) *mcpConfig {
 // default core profile advertises <= coreToolLimit tools and a marshalled
 // tools/list under coreToolListByteBudget.
 func TestCoreToolProfileBudget(t *testing.T) {
+	withToolProfile(t, activeToolProfile())
 	s := newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileCore)
 	raw, tools := listToolsOverWire(t, s)
 	if len(tools) > coreToolLimit {
@@ -85,6 +86,7 @@ func TestCoreToolProfile_RequiredTools(t *testing.T) {
 // TestAllToolProfile_FullSurface verifies --tools=all advertises every
 // registered tool with its outputSchema intact.
 func TestAllToolProfile_FullSurface(t *testing.T) {
+	withToolProfile(t, activeToolProfile())
 	s := newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileAll)
 	_, tools := listToolsOverWire(t, s)
 	got := make([]string, 0, len(tools))
@@ -109,6 +111,7 @@ func TestAllToolProfile_FullSurface(t *testing.T) {
 // TestCoreToolProfile_HiddenToolsStillCallable: the profile only filters
 // tools/list; a non-core tool invoked by name still dispatches.
 func TestCoreToolProfile_HiddenToolsStillCallable(t *testing.T) {
+	withToolProfile(t, activeToolProfile())
 	s := newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileCore)
 	if coreToolSet()["list_deck_archetypes"] {
 		t.Skip("list_deck_archetypes promoted to core; pick another hidden tool")

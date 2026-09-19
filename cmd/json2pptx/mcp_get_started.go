@@ -89,6 +89,25 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 			FallsBackTo: tools,
 		}
 	case "revise":
+		// auto_repair is not advertised in the core profile, and a client model
+		// cannot emit a call to a tool absent from tools/list — so recommending
+		// it as the fast path made the RECOMMENDED path for the whole "revise"
+		// task uncallable as shipped. In core mode the fast path is the
+		// in-profile sequence instead (go-slide-creator-mvny).
+		if !toolIsAdvertised("auto_repair") {
+			return &getStartedFastPath{
+				Tool:       "repair_slide",
+				WhenToCall: "RECOMMENDED PATH in this tool profile — drive the repair loop yourself with the primitives below: validate_input (fit_report: true) → preview_presentation_plan to collect per-slide Fix.Kind directives → repair_slide per slide → generate_presentation → render_deck_thumbnails and look at every slide. The one-call auto_repair facade exists but is not advertised in this profile; see notes[] if you want it.",
+				Steps: []getStartedStep{
+					{Tool: "validate_input", WhenToCall: "Schema + fit checks on the deck JSON you intend to revise (pass fit_report: true)."},
+					{Tool: "preview_presentation_plan", WhenToCall: "Dry-run to surface the per-slide fit findings whose Fix.Kind directives feed repair_slide."},
+					{Tool: "repair_slide", WhenToCall: "Apply the directives per slide that has findings."},
+					{Tool: "generate_presentation", WhenToCall: "Regenerate the PPTX from the repaired deck JSON."},
+					{Tool: "render_deck_thumbnails", WhenToCall: "Render every slide of the new revision and inspect each image."},
+				},
+				FallsBackTo: tools,
+			}
+		}
 		return &getStartedFastPath{
 			Tool:        "auto_repair",
 			WhenToCall:  "FASTEST PATH — server-side convergence loop (generate → inspect → repair) that drives an existing deck JSON to a configurable quality gate in one call. Reach for it to converge a deck automatically. Drop to the manual primitives in `sequence` (validate_input → preview_presentation_plan → repair_slide → generate_presentation) when you want targeted, per-slide repairs you control.",
@@ -151,7 +170,11 @@ func buildGetStartedResponse(task string) getStartedResponse {
 	case "revise":
 		seq = []getStartedStep{
 			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift since the deck was authored."},
-			{Tool: "read_presentation", WhenToCall: "Inspection-only: extract placeholders/shapes/tables from the existing PPTX to see what was rendered. Output is NOT a PresentationInput and cannot be fed into preview_presentation_plan, repair_slide, or generate_presentation — use it to diff against your authoritative deck JSON, not as a substitute for it."},
+		}
+		if toolIsAdvertised("read_presentation") {
+			seq = append(seq, getStartedStep{Tool: "read_presentation", WhenToCall: "Inspection-only: extract placeholders/shapes/tables from the existing PPTX to see what was rendered. Output is NOT a PresentationInput and cannot be fed into preview_presentation_plan, repair_slide, or generate_presentation — use it to diff against your authoritative deck JSON, not as a substitute for it."})
+		}
+		seq = append(seq, []getStartedStep{
 			{Tool: "validate_input", WhenToCall: "Run schema + fit checks (fit_report: true) on the deck JSON you intend to revise. Catches drift between the authored deck and the current engine."},
 			{Tool: "preview_presentation_plan", WhenToCall: "Dry-run the deck JSON to surface per-slide fit findings whose Fix.Kind directives feed repair_slide."},
 			{Tool: "repair_slide", WhenToCall: "Apply targeted fixes (the Fix.Kind vocabulary fit-report emits) to the deck JSON, per slide that has findings."},
@@ -159,10 +182,9 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			{Tool: "score_deck", WhenToCall: "Confirm structural metrics improved; this is input-only evidence."},
 			{Tool: "render_deck_thumbnails", WhenToCall: "Render every slide from the repaired current revision."},
 			{Tool: "inspect_slide_images", WhenToCall: "Inspect all current-revision pixels and record unresolved findings or explicit approval."},
-		}
+		}...)
 		notes = []string{
-			"auto_repair and read_presentation are advertised only in the full tool profile: if they are missing from your tool list, ask the operator to start the server with `json2pptx mcp --tools all` (or JSON2PPTX_MCP_TOOLS=all), or use the core sequence generate_presentation → render_deck_thumbnails → repair_slide.",
-			"fast_path (auto_repair) is the recommended one-call path for converging an existing deck JSON to a quality gate. The numbered `sequence` is the controllable path you drop to for targeted, per-slide repairs you drive yourself — auto_repair is the workflow facade, the sequence is the manual primitives it composes.",
+			"auto_repair and read_presentation are advertised only in the full tool profile. In this profile the sequence above is complete and callable as listed; to use the one-call auto_repair facade instead, ask the operator to start the server with `json2pptx mcp --tools all` (or JSON2PPTX_MCP_TOOLS=all).",
 			"COMPLETION: " + mcpCompletionRule + " auto_repair's default loop scores static + render-fit findings only and never looks at a rendered pixel; check publishable / manual_review_required / blocking_reasons, then render and inspect.",
 			"NO VISION PROVIDER? Render every slide with render_deck_thumbnails (image content blocks), inspect each image yourself, then record the verdict with submit_visual_review {pptx_path, pptx_revision, slides:[{index, verdict, image_path|image_sha256, findings?}], reviewer: host|manual}; only a complete, current-revision review with no P0/P1 findings marks the deck visually_reviewed_current_revision.",
 			"Use this when modifying or repairing an existing PPTX deck.",
@@ -199,23 +221,45 @@ func buildGetStartedResponse(task string) getStartedResponse {
 
 func mcpGetStartedTool() mcp.Tool {
 	return mcp.NewTool("get_started",
-		mcp.WithDescription(`Returns the recommended workflow for a stated task: a single-call fast path (a workflow facade) plus the ordered manual primitive sequence it composes. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
-
-The response carries two complementary paths:
-- fast_path: the recommended path — for "brief" the DeckSpec path ending in render_deck_spec (steps: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails), for "revise" auto_repair. make_deck is a skeleton/wireframe only (exemplar placeholder copy; gate always fails). A passing deterministic gate is never completion: render all slides and inspect every image (completion_protocol.rule). Its falls_back_to lists the manual primitives. Omitted for "validate-only" (pure diagnostics, no facade).
-- sequence: the controllable manual path — the ordered primitives to drive by hand when you need per-slide or per-step control.
-
-Pass "task" to scope both paths:
-- "brief" (default): authoring a new deck — fast_path render_deck_spec (DeckSpec); manual sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
-- "revise": modifying an existing PPTX — fast_path auto_repair; manual sequence get_capabilities → read_presentation (inspection-only; not fed downstream) → validate_input → preview_presentation_plan → repair_slide → generate_presentation → score_deck.
-- "validate-only": just checking a deck JSON is valid (no fast_path) — get_capabilities → list_templates → validate_input → preview_presentation_plan.
-
-Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`),
+		mcp.WithDescription(getStartedToolDescription()),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetStarted)),
 		mcp.WithString("task",
 			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), or \"validate-only\" (validate JSON without generating). Unknown values fall back to \"brief\"."),
 		),
 	)
+}
+
+// getStartedToolDescription renders the description for the active tool profile.
+// get_started is the tool an agent reads first, and its description names the
+// tools the response recommends — so under a profile that hides auto_repair,
+// make_deck and read_presentation it must not name them. Advertising a workflow
+// built on tools absent from tools/list is what made the whole "revise" path
+// uncallable in core mode (go-slide-creator-mvny).
+func getStartedToolDescription() string {
+	reviseFastPath := "auto_repair"
+	if !toolIsAdvertised("auto_repair") {
+		reviseFastPath = "repair_slide (per-slide repair driven by you; this profile advertises no one-call repair facade)"
+	}
+	makeDeckNote := " make_deck is a skeleton/wireframe only (exemplar placeholder copy; gate always fails)."
+	if !toolIsAdvertised("make_deck") {
+		makeDeckNote = ""
+	}
+	reviseInspect := "read_presentation (inspection-only; not fed downstream) → "
+	if !toolIsAdvertised("read_presentation") {
+		reviseInspect = ""
+	}
+	return fmt.Sprintf(`Returns the recommended workflow for a stated task: a single-call fast path (a workflow facade) plus the ordered manual primitive sequence it composes. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
+
+The response carries two complementary paths:
+- fast_path: the recommended path — for "brief" the DeckSpec path ending in render_deck_spec (steps: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails), for "revise" %[1]s.%[2]s A passing deterministic gate is never completion: render all slides and inspect every image (completion_protocol.rule). Its falls_back_to lists the manual primitives. Omitted for "validate-only" (pure diagnostics, no facade).
+- sequence: the controllable manual path — the ordered primitives to drive by hand when you need per-slide or per-step control.
+
+Pass "task" to scope both paths:
+- "brief" (default): authoring a new deck — fast_path render_deck_spec (DeckSpec); manual sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
+- "revise": modifying an existing PPTX — fast_path %[1]s; manual sequence get_capabilities → %[3]svalidate_input → preview_presentation_plan → repair_slide → generate_presentation → score_deck.
+- "validate-only": just checking a deck JSON is valid (no fast_path) — get_capabilities → list_templates → validate_input → preview_presentation_plan.
+
+Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`, reviseFastPath, makeDeckNote, reviseInspect)
 }
 
 func handleGetStarted(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

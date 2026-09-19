@@ -56,7 +56,7 @@ Content types and their value fields:
 - "image": "image_value":{"path":"/path/to/image.png","alt":"description"}
 
 Named patterns (optional per-slide, XOR with shape_grid): "pattern" expands a named pattern into a shape_grid. Use list_patterns/show_pattern to discover names and schemas.
-Example: ` + patternExampleSnippet(exampleSnippetPattern) + `
+Example: `+patternExampleSnippet(exampleSnippetPattern)+`
 
 Shape grid (optional per-slide, XOR with pattern): "shape_grid" places preset geometry shapes in a grid layout.
 Example: {"shape_grid":{"columns":3,"rows":[{"cells":[{"shape":{"geometry":"roundRect","fill":"#4472C4","text":"Step 1"}},{"shape":{"geometry":"rightArrow","fill":"#70AD47"}},{"shape":{"geometry":"roundRect","fill":"#4472C4","text":"Step 2"}}]}]}}
@@ -114,18 +114,30 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 	)
 }
 
-func mcpListTemplatesTool() mcp.Tool {
-	return mcp.NewTool("list_templates",
-		mcp.WithDescription(`List available presentation templates with their layouts, theme colors, and capabilities.
+// listTemplatesToolDescription renders the description for the active tool
+// profile. The digest pointer names get_data_format_hints, which the core
+// profile hides — a description that sends an agent to a tool absent from
+// tools/list is a dead end (go-slide-creator-mvny).
+func listTemplatesToolDescription() string {
+	hints := "data_format_hints_digest (use get_data_format_hints to fetch full hints when digest changes)."
+	if !toolIsAdvertised("get_data_format_hints") {
+		hints = "data_format_hints_digest (a stable hash of the chart/diagram data-format hints; chart_capabilities and diagram_capabilities in this same response carry the per-type field requirements)."
+	}
+	return `List available presentation templates with their layouts, theme colors, and capabilities.
 
 Response shape per template (compact/full modes): name, aspect_ratio, layout_count, sha256 (stable content hash), metadata_version, theme_colors (scheme→hex map), color_roles (primary_fill, secondary_fill, body_fill, body_text, white_text_safe), title_font, body_font, semantic_accents (positive/negative/neutral→accent), surface_tints, data_palette, accent_usage_guide (when authored), canonical_layout_ids (canonical name→layout ID), canonical_coverage (per content-bearing family: present + covering layouts), derivable_layouts ([{name, ready, missing}]), layout_names, layout_summaries ([{id, name, canonical_type, placeholders[{id, type, role, max_chars}]}]), table_styles [{id,name}]. Full mode adds layouts with per-layout canonical_type/canonical_family/canonical_confidence and placeholders carrying role, role_confidence, font_size_pt (font-aware max_chars evidence), exact bounds, and capacity.
-Response also includes: supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities), data_format_hints_digest (use get_data_format_hints to fetch full hints when digest changes).
+Response also includes: supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities), ` + hints + `
 
 Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. The response always includes total_count and page_size; next_cursor is present only when more templates remain.
 
 Projection (token-economy): pass fields="compact" to suppress per-template detail (theme_colors / color_roles / layouts) and keep only names + aspect_ratio + layout_count + table_styles. Pass fields="full" for the legacy full payload. Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
 
-Filtering: pass filter="<substring>" to limit the response to templates whose name contains the substring (case-insensitive). Composes with pagination — filter applies before cursor/page_size.`),
+Filtering: pass filter="<substring>" to limit the response to templates whose name contains the substring (case-insensitive). Composes with pagination — filter applies before cursor/page_size.`
+}
+
+func mcpListTemplatesTool() mcp.Tool {
+	return mcp.NewTool("list_templates",
+		mcp.WithDescription(listTemplatesToolDescription()),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListTemplates)),
 		mcp.WithString("template",
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
@@ -1317,6 +1329,9 @@ func attachNextToolCallsToValidationErrors(errs []patternValidationError, patter
 			}
 			e.NextToolCall = tc
 		}
+		// Keep the suggestion callable under the active tool profile
+		// (go-slide-creator-mvny).
+		e.NextToolCall = substituteUnadvertised(e.NextToolCall)
 	}
 }
 
@@ -2626,7 +2641,6 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 
 	return deckThumbnailsMCPResult(ctx, request, deckResult), nil
 }
-
 
 // iconSetName is one (set, icon) pair in a flattened list_icons page.
 type iconSetName struct {

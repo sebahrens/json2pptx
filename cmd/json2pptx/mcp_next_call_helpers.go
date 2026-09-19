@@ -55,25 +55,29 @@ func nextCallInspectSlideImages() *patterns.ToolCallSuggestion {
 // path. Used as the recovery hop when an existing PPTX could not be validated:
 // the deterministic reader surfaces what the file actually contains so the agent
 // can decide whether to regenerate or repair.
+// It passes through substituteUnadvertised because read_presentation is not in
+// the core profile (go-slide-creator-mvny).
 func nextCallReadPresentation(pptxPath string) *patterns.ToolCallSuggestion {
-	return &patterns.ToolCallSuggestion{
+	return substituteUnadvertised(&patterns.ToolCallSuggestion{
 		Tool: "read_presentation",
 		ArgsTemplate: map[string]any{
 			"pptx_path": pptxPath,
 		},
-	}
+	})
 }
 
 // nextCallValidateOutput suggests validate_presentation_output against a concrete
 // file path. Used as the recovery hop when an existing PPTX could not be read:
 // the structural validator explains why the OPC package is malformed.
+// It passes through substituteUnadvertised because validate_presentation_output
+// is not in the core profile (go-slide-creator-mvny).
 func nextCallValidateOutput(pptxPath string) *patterns.ToolCallSuggestion {
-	return &patterns.ToolCallSuggestion{
+	return substituteUnadvertised(&patterns.ToolCallSuggestion{
 		Tool: "validate_presentation_output",
 		ArgsTemplate: map[string]any{
 			"path": pptxPath,
 		},
-	}
+	})
 }
 
 // nextCallRetry suggests retrying the same tool with a corrected argument.

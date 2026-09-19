@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
-	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -150,8 +150,11 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// See patterns.SortCanonical and docs/FIT_FINDINGS.md "Sort invariant".
 	patterns.SortCanonical(findings, slidepath.SlideIndex)
 
-	// Attach next_tool_call to actionable findings.
+	// Attach next_tool_call to actionable findings, then keep every suggestion
+	// callable: under the core profile a suggestion naming a hidden tool (e.g.
+	// recommend_pattern) is a dead end (go-slide-creator-mvny).
 	patterns.AttachNextToolCalls(findings, slidepath.SlideIndex)
+	retargetUnadvertisedSuggestions(findings)
 
 	return findings
 }

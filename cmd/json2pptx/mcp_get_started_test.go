@@ -171,6 +171,7 @@ func TestGetStartedBriefRecommendsRenderDeckSpec(t *testing.T) {
 // tool classified as a workflow_facade. validate-only has no facade and must
 // omit fast_path entirely.
 func TestGetStartedFastPathIsClassifiedFacade(t *testing.T) {
+	withToolProfile(t, toolProfileAll)
 	registered := map[string]bool{}
 	for _, name := range mcpToolNames() {
 		registered[name] = true
@@ -206,6 +207,7 @@ func TestGetStartedFastPathIsClassifiedFacade(t *testing.T) {
 }
 
 func TestGetStartedReviseSequence(t *testing.T) {
+	withToolProfile(t, toolProfileAll)
 	resp := callGetStarted(t, "revise")
 	if resp.Task != "revise" {
 		t.Errorf("task = %q, want %q", resp.Task, "revise")
@@ -523,6 +525,7 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 // so read_presentation precedes any downstream tool without a separate deck
 // JSON source, this test will surface the silent contract violation.
 func TestGetStartedRevise_ReadPresentationIsInspectionOnly(t *testing.T) {
+	withToolProfile(t, toolProfileAll)
 	resp := callGetStarted(t, "revise")
 	readIdx := -1
 	for i, step := range resp.Sequence {
@@ -550,5 +553,73 @@ func TestGetStartedRevise_ReadPresentationIsInspectionOnly(t *testing.T) {
 	}
 	if !noteHit {
 		t.Error("revise notes must explicitly require the agent to supply the deck JSON")
+	}
+}
+
+// withToolProfile pins the advertised tool profile for a test and restores it
+// afterwards. get_started is profile-aware: in the core profile it must not
+// recommend a tool the agent cannot see (go-slide-creator-mvny), so a test
+// asserting the full-catalog shape has to say so.
+func withToolProfile(t *testing.T, profile string) {
+	t.Helper()
+	prev := activeToolProfile()
+	setActiveToolProfile(profile)
+	t.Cleanup(func() { setActiveToolProfile(prev) })
+}
+
+// go-slide-creator-mvny: in the core profile get_started's "revise" fast_path
+// was auto_repair and its sequence step 2 was read_presentation — both hidden.
+// A client model cannot emit a call to a tool absent from tools/list, so the
+// RECOMMENDED path for the whole task was uncallable as shipped.
+func TestGetStarted_CoreProfileRecommendsOnlyAdvertisedTools(t *testing.T) {
+	withToolProfile(t, toolProfileCore)
+	core := coreToolSet()
+
+	for _, task := range getStartedAvailableTasks() {
+		t.Run(task, func(t *testing.T) {
+			resp := buildGetStartedResponse(task)
+
+			for i, step := range resp.Sequence {
+				if !core[step.Tool] {
+					t.Errorf("sequence[%d] recommends %q, which the core profile does not advertise", i, step.Tool)
+				}
+			}
+			if resp.FastPath == nil {
+				return
+			}
+			if !core[resp.FastPath.Tool] {
+				t.Errorf("fast_path.tool = %q, which the core profile does not advertise", resp.FastPath.Tool)
+			}
+			for i, step := range resp.FastPath.Steps {
+				if !core[step.Tool] {
+					t.Errorf("fast_path.steps[%d] recommends %q, which the core profile does not advertise", i, step.Tool)
+				}
+			}
+			// falls_back_to mirrors the sequence, so it must be callable too.
+			for _, name := range resp.FastPath.FallsBackTo {
+				if !core[name] {
+					t.Errorf("fast_path.falls_back_to names %q, which the core profile does not advertise", name)
+				}
+			}
+		})
+	}
+}
+
+// The full profile keeps recommending the facade — the core behaviour is a
+// substitution, not a removal.
+func TestGetStarted_AllProfileKeepsTheFacade(t *testing.T) {
+	withToolProfile(t, toolProfileAll)
+	resp := buildGetStartedResponse("revise")
+	if resp.FastPath == nil || resp.FastPath.Tool != "auto_repair" {
+		t.Errorf("full profile revise fast_path = %+v, want auto_repair", resp.FastPath)
+	}
+	var sawReadPresentation bool
+	for _, s := range resp.Sequence {
+		if s.Tool == "read_presentation" {
+			sawReadPresentation = true
+		}
+	}
+	if !sawReadPresentation {
+		t.Error("full profile revise sequence should still include read_presentation")
 	}
 }

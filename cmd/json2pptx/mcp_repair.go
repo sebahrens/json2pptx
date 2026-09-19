@@ -126,7 +126,7 @@ Unsupported kinds return {applied: false, code: "kind_not_supported", message: "
 			mcp.Description("0-based index of the slide to repair."),
 			mcp.Required(),
 		),
-		mcp.WithString("expected_revision", mcp.Description("Optional revision precondition returned by propose_repairs. A stale revision rejects the mutation.")),
+		mcp.WithString("expected_revision", mcp.Description("Optional revision precondition: the `revision` string from the response that produced these fixes (a repair plan, or a prior repair_slide response). A stale revision rejects the mutation.")),
 		mcp.WithArray("fixes",
 			mcp.Description(`Array of fix directives: [{"kind":"reduce_text","params":{"max_items":5}}, ...]. Each directive has a "kind" (string) and optional "params" (object).`),
 			mcp.Required(),

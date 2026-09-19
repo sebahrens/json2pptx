@@ -10,6 +10,34 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Recommendations stay inside the active tool profile
+  (go-slide-creator-mvny).** In the default `core` profile
+  `get_started{task:"revise"}` returned `fast_path.tool: "auto_repair"` with
+  `read_presentation` in `falls_back_to` and as sequence step 2 — three tools
+  `tools/list` does not advertise in that profile. A client model cannot emit a
+  call to a tool it was never shown, so the RECOMMENDED path for the entire
+  revise task was uncallable; the note suggesting the operator restart with
+  `--tools all` did not make it callable. Fixed on three surfaces:
+  - `get_started` is profile-aware. In core, `revise` returns
+    `fast_path.tool: "repair_slide"` with the loop spelled out in `steps`
+    (`validate_input` → `preview_presentation_plan` → `repair_slide` →
+    `generate_presentation` → `render_deck_thumbnails`), and
+    `read_presentation` is dropped from `sequence`. Under `--tools all` the
+    `auto_repair` facade and the inspection hop are unchanged.
+  - `next_tool_call` suggestions pass through a profile filter: one naming a
+    hidden tool is rewritten to the in-profile equivalent
+    (`recommend_pattern` → `recommend_visual` with `hints.item_count`;
+    `read_presentation` / `validate_presentation_output` →
+    `render_deck_thumbnails` on the same file) or omitted when the profile has
+    no equivalent. `get_input_schema` (1.2KB) is now a core tool instead, since
+    it is the suggestion on the most common failures (`INVALID_JSON`,
+    `UNSUPPORTED_MODE`) — core is 23 tools.
+  - Core tool descriptions no longer name hidden tools: `repair_slide`'s
+    `expected_revision` cited `propose_repairs`, `list_templates` sent agents to
+    `get_data_format_hints` for full hints, and `get_started`'s own description
+    described the `auto_repair` / `make_deck` / `read_presentation` workflow. Each
+    now renders for the active profile.
+
 ### Added
 
 - **Icon search by business concept (go-slide-creator-3ojy).** `list_icons`

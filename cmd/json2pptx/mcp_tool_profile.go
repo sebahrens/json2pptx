@@ -32,7 +32,7 @@ const (
 
 	// coreToolLimit caps the core profile. TestCoreToolProfileBudget enforces it
 	// together with coreToolListByteBudget.
-	coreToolLimit = 23
+	coreToolLimit = 24
 	// coreToolListByteBudget is the max marshalled tools/list size (bytes) for
 	// the core profile. validate_deck_spec and render_deck_spec each embed the
 	// closed per-kind DeckSpec schema in compact form (no annotations; see
@@ -61,6 +61,7 @@ var coreToolNames = []string{
 	"show_pattern",
 	"expand_pattern",
 	// Raw JSON render
+	"get_input_schema",
 	"validate_input",
 	"generate_presentation",
 	// Inspect / repair
@@ -135,8 +136,42 @@ func filterCoreTools(tools []mcp.Tool, core map[string]bool) []mcp.Tool {
 // newJSON2PPTXMCPServer builds the MCP server with every tool registered and
 // the profile's tools/list filter applied.
 func newJSON2PPTXMCPServer(mc *mcpConfig, profile string, opts ...server.ServerOption) *server.MCPServer {
+	setActiveToolProfile(profile)
 	if f := toolProfileFilter(profile); f != nil {
 		opts = append(opts, server.WithToolFilter(f))
 	}
 	return newMCPServer(mc, opts...)
+}
+
+// activeProfile is the tool profile this process advertises. It is set once at
+// server construction and read by handlers that must not recommend a tool the
+// agent cannot see: a client model cannot emit a call to a tool absent from
+// tools/list, so recommending one makes the recommended path uncallable
+// (go-slide-creator-mvny).
+//
+// The default is toolProfileAll — "nothing is filtered" — because the non-MCP
+// entry points (generate, validate -fit-report) advertise no tool list at all,
+// and their findings should keep naming the canonical tool. Every MCP server
+// goes through newJSON2PPTXMCPServer, which sets the real profile.
+var activeProfile = toolProfileAll
+
+// setActiveToolProfile records the profile for profile-aware handlers.
+func setActiveToolProfile(profile string) {
+	if profile == "" {
+		profile = toolProfileCore
+	}
+	activeProfile = profile
+}
+
+// activeToolProfile returns the profile this process advertises.
+func activeToolProfile() string { return activeProfile }
+
+// toolIsAdvertised reports whether a tool appears in the active profile's
+// tools/list. Handlers use it to avoid pointing an agent at a tool it cannot
+// call.
+func toolIsAdvertised(name string) bool {
+	if activeToolProfile() == toolProfileAll {
+		return true
+	}
+	return coreToolSet()[name]
 }
