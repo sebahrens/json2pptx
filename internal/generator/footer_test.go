@@ -21,7 +21,7 @@ func TestGenerateFooterShapes(t *testing.T) {
 		},
 	}
 
-	result := generateFooterShapes(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp"}, 100, "", "")
+	result := generateFooterShapes(positions, &FooterConfig{Enabled: true, LeftText: "Acme Corp"}, 100, "", "", 0)
 
 	// Verify left and right footer shapes are present (no center)
 	if !strings.Contains(result, "Footer Left") {
@@ -87,7 +87,7 @@ func TestGenerateFooterShapes_EmptyLeftAndCenter(t *testing.T) {
 	}
 
 	// No left text — only slide number should appear
-	result := generateFooterShapes(positions, &FooterConfig{Enabled: true}, 100, "", "")
+	result := generateFooterShapes(positions, &FooterConfig{Enabled: true}, 100, "", "", 0)
 
 	if strings.Contains(result, "Footer Left") {
 		t.Error("left footer should not appear when text is empty")
@@ -122,7 +122,7 @@ func TestInsertFooters(t *testing.T) {
 		},
 	}
 
-	result, err := insertFooters(slideXML, config, positions, "", "")
+	result, err := insertFooters(slideXML, config, positions, "", "", 0)
 	if err != nil {
 		t.Fatalf("insertFooters failed: %v", err)
 	}
@@ -150,7 +150,7 @@ func TestInsertFooters_DisabledConfig(t *testing.T) {
 
 	// Disabled config
 	config := &FooterConfig{Enabled: false}
-	result, err := insertFooters(slideXML, config, computeDefaultFooterPositions(0), "", "")
+	result, err := insertFooters(slideXML, config, computeDefaultFooterPositions(0), "", "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -159,7 +159,7 @@ func TestInsertFooters_DisabledConfig(t *testing.T) {
 	}
 
 	// Nil config
-	result, err = insertFooters(slideXML, nil, computeDefaultFooterPositions(0), "", "")
+	result, err = insertFooters(slideXML, nil, computeDefaultFooterPositions(0), "", "", 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -897,7 +897,7 @@ func TestGenerateFooterShapes_FormattedPageNumbers(t *testing.T) {
 		TotalSlides:      30,
 	}
 
-	result := generateFooterShapes(positions, config, 100, "", "")
+	result := generateFooterShapes(positions, config, 100, "", "", 0)
 
 	if !strings.Contains(result, "Confidential") {
 		t.Error("expected left text")

@@ -98,7 +98,7 @@ func TestComposeChromeLine(t *testing.T) {
 
 func TestChromeToFooterConfig(t *testing.T) {
 	t.Run("defaults", func(t *testing.T) {
-		cfg := chromeToFooterConfig(&ChromeInput{ClientName: "Acme"}, 12)
+		cfg := chromeToFooterConfig(&ChromeInput{ClientName: "Acme"}, 12, nil)
 		if !cfg.Enabled {
 			t.Error("expected Enabled=true")
 		}
@@ -114,7 +114,7 @@ func TestChromeToFooterConfig(t *testing.T) {
 		cfg := chromeToFooterConfig(&ChromeInput{
 			ClientName:  "Acme",
 			PageNumbers: &PageNumbersInput{Format: "{current} / {total}"},
-		}, 5)
+		}, 5, nil)
 		if cfg.PageNumberFormat != "{current} / {total}" {
 			t.Errorf("PageNumberFormat = %q", cfg.PageNumberFormat)
 		}
@@ -124,7 +124,7 @@ func TestChromeToFooterConfig(t *testing.T) {
 		f := false
 		cfg := chromeToFooterConfig(&ChromeInput{
 			PageNumbers: &PageNumbersInput{Enabled: &f, Format: "{current}"},
-		}, 5)
+		}, 5, nil)
 		if cfg.PageNumberFormat != "" {
 			t.Errorf("expected empty format when disabled, got %q", cfg.PageNumberFormat)
 		}

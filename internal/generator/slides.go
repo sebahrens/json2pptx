@@ -27,6 +27,26 @@ type FooterConfig struct {
 	LeftText         string // Left footer text (e.g., "Acme Corp | Confidential")
 	PageNumberFormat string // Slide number format (e.g., "{current} / {total}"); empty = plain slide number field
 	TotalSlides      int    // Total slide count, used when PageNumberFormat contains {total}
+
+	// LeftTextBySlide overrides LeftText for individual slides, indexed by
+	// 0-based slide index. An empty string (or a short slice) falls back to
+	// LeftText. This is how chrome.section_crumb puts the running section title
+	// in the footer (go-slide-creator-ynfv); before it the footer was one
+	// deck-wide string with nowhere to vary.
+	LeftTextBySlide []string
+}
+
+// LeftTextFor returns the footer text for a 0-based slide index.
+func (c *FooterConfig) LeftTextFor(slideIndex int) string {
+	if c == nil {
+		return ""
+	}
+	if slideIndex >= 0 && slideIndex < len(c.LeftTextBySlide) {
+		if t := c.LeftTextBySlide[slideIndex]; t != "" {
+			return t
+		}
+	}
+	return c.LeftText
 }
 
 // GenerationRequest specifies what to generate.

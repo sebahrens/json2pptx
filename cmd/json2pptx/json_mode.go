@@ -2725,11 +2725,19 @@ func placeholderIDStr(ph types.PlaceholderInfo) string {
 // chromeToFooterConfig converts a ChromeInput into a generator.FooterConfig.
 // It composes the left footer text from the chrome fields and sets up page
 // number formatting.
-func chromeToFooterConfig(chrome *ChromeInput, totalSlides int) *generator.FooterConfig {
+//
+// slides are the expanded deck slides, needed only for chrome.section_crumb:
+// each slide carries the section it came from, and the crumb is appended to
+// that slide's own footer line (go-slide-creator-ynfv).
+func chromeToFooterConfig(chrome *ChromeInput, totalSlides int, slides []SlideInput) *generator.FooterConfig {
+	base := composeChromeLine(chrome)
 	cfg := &generator.FooterConfig{
 		Enabled:     true,
-		LeftText:    composeChromeLine(chrome),
+		LeftText:    base,
 		TotalSlides: totalSlides,
+	}
+	if chrome.SectionCrumb {
+		cfg.LeftTextBySlide = sectionCrumbFooterLines(base, slides)
 	}
 	if chrome.PageNumbers != nil {
 		if chrome.PageNumbers.Enabled != nil && !*chrome.PageNumbers.Enabled {
@@ -2767,6 +2775,35 @@ func composeChromeLine(chrome *ChromeInput) string {
 		return parts[0] + " — " + strings.Join(parts[1:], " | ")
 	}
 	return strings.Join(parts, " | ")
+}
+
+// sectionCrumbFooterLines builds the per-slide footer text for
+// chrome.section_crumb: the deck-wide chrome line with the running section
+// title appended. Slides outside a section (cover, agenda, dividers, closing)
+// get an empty entry and fall back to the deck-wide line.
+//
+// Returns nil when no slide carries a section, so a deck that sets
+// section_crumb without a structure block costs nothing — and, importantly,
+// changes nothing.
+func sectionCrumbFooterLines(base string, slides []SlideInput) []string {
+	lines := make([]string, len(slides))
+	any := false
+	for i := range slides {
+		sec := strings.TrimSpace(slides[i].SectionTitle)
+		if sec == "" {
+			continue
+		}
+		any = true
+		if base == "" {
+			lines[i] = sec
+			continue
+		}
+		lines[i] = base + " | " + sec
+	}
+	if !any {
+		return nil
+	}
+	return lines
 }
 
 // applyChromeSkip sets SkipFooter=true on slides whose layout should not carry

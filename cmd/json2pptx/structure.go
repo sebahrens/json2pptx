@@ -68,10 +68,18 @@ func expandStructure(s *StructureInput) ([]SlideInput, error) {
 	}
 
 	// 3. Sections: divider + content
+	//
+	// Each content slide records the section it belongs to, which is what
+	// chrome.section_crumb surfaces in the footer (go-slide-creator-ynfv). The
+	// divider does not: it announces the section in 60pt type, so repeating it in
+	// 10.5pt chrome is noise.
 	for _, sec := range s.Sections {
 		divider := buildSectionDivider(sec.Title)
 		slides = append(slides, divider)
-		slides = append(slides, sec.Slides...)
+		for _, sl := range sec.Slides {
+			sl.SectionTitle = sec.Title
+			slides = append(slides, sl)
+		}
 	}
 
 	// 4. Closing slide

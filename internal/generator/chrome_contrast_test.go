@@ -123,7 +123,7 @@ func TestChromeFillPinsColorOnlyWhenAsked(t *testing.T) {
 	pos := computeDefaultFooterPositions(6858000)
 	cfg := &FooterConfig{Enabled: true, LeftText: "Confidential", PageNumberFormat: "{current} / {total}", TotalSlides: 10}
 
-	inherited := generateFooterShapes(pos, cfg, 100, "", "")
+	inherited := generateFooterShapes(pos, cfg, 100, "", "", 0)
 	if !strings.Contains(inherited, `<a:schemeClr val="tx1"/>`) {
 		t.Errorf("default chrome should inherit schemeClr tx1:\n%s", inherited)
 	}
@@ -131,11 +131,56 @@ func TestChromeFillPinsColorOnlyWhenAsked(t *testing.T) {
 		t.Errorf("default chrome should not pin an explicit color:\n%s", inherited)
 	}
 
-	pinned := generateFooterShapes(pos, cfg, 100, "", "#2C3932")
+	pinned := generateFooterShapes(pos, cfg, 100, "", "#2C3932", 0)
 	if strings.Contains(pinned, `<a:schemeClr val="tx1"/>`) {
 		t.Errorf("pinned chrome still carries the scheme color that would be invisible:\n%s", pinned)
 	}
 	if n := strings.Count(strings.ToUpper(pinned), `<A:SRGBCLR VAL="2C3932"`); n < 2 {
 		t.Errorf("expected every chrome run pinned to 2C3932, found %d:\n%s", n, pinned)
+	}
+}
+
+// TestInsertFootersUsesPerSlideText covers the last hop of the section-crumb
+// wiring (go-slide-creator-ynfv): FooterConfig now carries a per-slide line, and
+// insertFooters must emit the one belonging to the slide it is writing.
+func TestInsertFootersUsesPerSlideText(t *testing.T) {
+	positions := map[string]*transformXML{
+		"type:dt": {
+			Offset: offsetXML{X: 457200, Y: 6492875},
+			Extent: extentXML{CX: 6200400, CY: 365125},
+		},
+	}
+	cfg := &FooterConfig{
+		Enabled:  true,
+		LeftText: "Confidential — Acme",
+		LeftTextBySlide: []string{
+			"", // cover falls back to the deck-wide line
+			"Confidential — Acme | Market context",
+		},
+	}
+	base := []byte(`<?xml version="1.0"?><p:sld xmlns:p="p" xmlns:a="a"><p:cSld><p:spTree></p:spTree></p:cSld></p:sld>`)
+
+	for _, tc := range []struct {
+		slideIndex int
+		want       string
+	}{
+		{0, "Confidential — Acme"},
+		{1, "Confidential — Acme | Market context"},
+		{9, "Confidential — Acme"}, // past the end: deck-wide line, not a panic
+	} {
+		out, err := insertFooters(base, cfg, positions, "", "", tc.slideIndex)
+		if err != nil {
+			t.Fatalf("slide %d: insertFooters: %v", tc.slideIndex, err)
+		}
+		if !strings.Contains(string(out), tc.want) {
+			t.Errorf("slide %d footer does not contain %q:\n%s", tc.slideIndex, tc.want, out)
+		}
+	}
+}
+
+func TestFooterConfigLeftTextForNilSafe(t *testing.T) {
+	var cfg *FooterConfig
+	if got := cfg.LeftTextFor(0); got != "" {
+		t.Errorf("nil config = %q, want empty", got)
 	}
 }

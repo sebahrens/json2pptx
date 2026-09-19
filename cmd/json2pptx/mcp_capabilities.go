@@ -517,7 +517,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 			SectionCrumb: capabilitiesFeatureFlag{
 				Supported: true,
 				Version:   "2.8.0",
-				UsageHint: "Set chrome.section_crumb:true to surface the current section.title in the footer. Requires a populated structure.sections[] to resolve a crumb.",
+				UsageHint: "Set chrome.section_crumb:true to append the current section.title to the footer line on that section's CONTENT slides (\"Confidential — Acme | Sept 2026 | Market context\"). Section dividers keep the plain line — they already announce the section in display type — and cover/agenda/closing slides are outside any section. Requires a populated structure.sections[]; on a flat slides[] deck the flag is inert.",
 			},
 			QualityModes: capabilitiesQualityModes{
 				Default:       qualityModeDeterministic,

@@ -37,6 +37,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`chrome.section_crumb` does something now (go-slide-creator-ynfv).**
+  `get_capabilities().features.section_crumb` reported
+  `{supported: true, version: "2.8.0"}` and SKILL.md repeated the claim, but
+  `ChromeInput.SectionCrumb` was parsed and then referenced nowhere outside the
+  capabilities descriptor: `composeChromeLine` ignored it and `FooterConfig`
+  held one deck-wide string with nowhere to vary. A deck with
+  `structure.sections[].title` and `chrome.section_crumb: true` rendered
+  "Confidential — Acme | Sept 2026" on all ten slides. An agent
+  capability-gating on `get_capabilities` would have believed it shipped a
+  section tracker.
+  `expandStructure` now stamps each content slide with the section it came
+  from, and `FooterConfig.LeftTextBySlide` carries a per-slide footer line, so
+  slides 4-5 read "… | Market context" and slide 7 "… | Where we win".
+  Dividers keep the plain line — they announce the section in 60pt type — and
+  cover / agenda / closing slides sit outside any section. Decks that do not
+  set the flag, and decks that set it without a `structure` block, produce
+  exactly the bytes they did before.
+
 - **Deck chrome is no longer drawn in the slide's own background color
   (go-slide-creator-hln7).** On modern-template's section divider, the footer
   "Confidential — Project ATLAS | Northwind Corp" rendered white on white — the

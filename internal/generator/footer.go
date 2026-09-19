@@ -199,12 +199,13 @@ func generateFooterShapeSized(shapeID uint32, name string, xfrm *transformXML, t
 // its box spans the dt + ftr placeholder width (see leftFooterBox) and the
 // text shrinks, then ellipsizes, to fit that width. fontName is the theme
 // body font used for measurement.
-func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName, colorHex string) string {
+func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName, colorHex string, slideIndex int) string {
 	var shapes []string
 
-	// Left footer (dt position, widened across ftr): configurable text
-	if box := leftFooterBox(positions); box != nil && config.LeftText != "" {
-		text, size := fitFooterText(config.LeftText, box.Extent.CX, fontName)
+	// Left footer (dt position, widened across ftr): configurable text, which may
+	// vary per slide when a section crumb is enabled.
+	if box := leftFooterBox(positions); box != nil && config.LeftTextFor(slideIndex) != "" {
+		text, size := fitFooterText(config.LeftTextFor(slideIndex), box.Extent.CX, fontName)
 		shapes = append(shapes, generateFooterShapeSized(nextID, "Footer Left", box, text, "l", size, colorHex))
 		nextID++
 	}
@@ -362,7 +363,7 @@ func buildPageNumberRuns(format string, totalSlides int, colorHex string) []pptx
 
 // insertFooters inserts footer shapes into slide XML before </p:spTree>.
 // fontName is the theme body font used to fit the left footer text on one line.
-func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName, colorHex string) ([]byte, error) {
+func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName, colorHex string, slideIndex int) ([]byte, error) {
 	if footerConfig == nil || !footerConfig.Enabled {
 		return slideData, nil
 	}
@@ -373,7 +374,7 @@ func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[s
 
 	// Allocate slide-unique IDs above any existing shape (including the
 	// takeaway/source-note shapes injected earlier on this slide).
-	footerXML := generateFooterShapes(positions, footerConfig, findMaxShapeID(slideData)+1, fontName, colorHex)
+	footerXML := generateFooterShapes(positions, footerConfig, findMaxShapeID(slideData)+1, fontName, colorHex, slideIndex)
 	if footerXML == "" {
 		return slideData, nil
 	}

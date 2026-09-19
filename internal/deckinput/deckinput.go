@@ -247,6 +247,12 @@ type SlideInput struct {
 	TransitionSpeed string               `json:"transition_speed,omitempty"`
 	Build           string               `json:"build,omitempty"`
 	ContrastCheck   *bool                `json:"contrast_check,omitempty"`
+
+	// SectionTitle is the title of the structure.sections[] entry this slide was
+	// expanded from. It is set by the engine, never by the author — hence
+	// json:"-", which keeps it out of the schema and out of round-trips — and is
+	// what chrome.section_crumb puts in the footer (go-slide-creator-ynfv).
+	SectionTitle string `json:"-"`
 }
 
 // BackgroundInput defines a slide background image.

@@ -808,8 +808,9 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		// color map renders in its own background color — an invisible footer and
 		// no finding anywhere (go-slide-creator-hln7). Pick the color against the
 		// background the slide will actually show.
-		colorHex := ctx.chromeTextColorForLayout(layoutID, slideNum-ctx.calculateStartingSlideNum())
-		slideData, err = insertFooters(slideData, ctx.footerConfig, footerPositions, ctx.themeFontName, colorHex)
+		slideIndex := slideNum - ctx.calculateStartingSlideNum()
+		colorHex := ctx.chromeTextColorForLayout(layoutID, slideIndex)
+		slideData, err = insertFooters(slideData, ctx.footerConfig, footerPositions, ctx.themeFontName, colorHex, slideIndex)
 		if err != nil {
 			ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to insert footer for slide %d: %v", slideNum, err))
 		}

@@ -260,7 +260,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 
 	// Wire footer/chrome configuration. Chrome supersedes footer.
 	if input.Chrome != nil {
-		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs))
+		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs), input.Slides)
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
 	} else if input.Footer != nil && input.Footer.Enabled {
 		genReq.Footer = &generator.FooterConfig{

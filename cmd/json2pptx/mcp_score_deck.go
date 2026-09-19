@@ -301,7 +301,7 @@ func (mc *mcpConfig) collectRenderFindings(
 
 	// Wire footer/chrome configuration.
 	if input.Chrome != nil {
-		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs))
+		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs), input.Slides)
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, layouts)
 	} else if input.Footer != nil && input.Footer.Enabled {
 		genReq.Footer = &generator.FooterConfig{
