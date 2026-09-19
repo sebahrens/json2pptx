@@ -2,6 +2,17 @@
 
 The `svggen` package provides built-in diagram types for creating professional business graphics. This guide helps you choose the right diagram for your data.
 
+> **These pages document the svggen request envelope, not a json2pptx slide.**
+> A deck reaches these renderers through `chart_value` / `diagram_value`, whose
+> envelope is narrower: `type`, `title`, `data`, `width`, `height`, `scale`,
+> `style`, `chart_style`. Fields listed here that the deck envelope does not
+> carry — `subtitle` above all — are rejected as unknown keys by
+> `json2pptx validate`. For the deck-side style surface (`show_values`,
+> `show_legend`, `colors`, `font_family`, `background`, and the `chart_style`
+> token overrides) call `json2pptx data-format-hints` / the
+> `get_data_format_hints` MCP tool, which documents every key both blocks
+> accept (go-slide-creator-z72f).
+
 ## Quick Reference
 
 | Type | Best For | Data Structure |

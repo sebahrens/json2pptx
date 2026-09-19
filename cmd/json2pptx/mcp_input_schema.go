@@ -365,6 +365,11 @@ func buildInputSchema() map[string]any {
 		{"BannerSpec", reflect.TypeOf(patterns.BannerSpec{})},
 		{"ChartSpec", reflect.TypeOf(types.ChartSpec{})}, //nolint:staticcheck // ChartSpec is deprecated but still part of the input contract
 		{"DiagramSpec", reflect.TypeOf(types.DiagramSpec{})},
+		// The style blocks were published as a bare {"type":"object"}, so the
+		// keys that work were invisible and the ones that do not went
+		// unreported (go-slide-creator-z72f).
+		{"ChartStyle", reflect.TypeOf(types.ChartStyle{})},
+		{"ChartStyleOverrides", reflect.TypeOf(types.ChartStyleOverrides{})},
 	}
 
 	for _, entry := range typeRegistry {
@@ -589,6 +594,8 @@ var knownTypeRefMap = map[reflect.Type]string{
 	reflect.TypeOf(patterns.BannerSpec{}):           "#/$defs/BannerSpec",
 	reflect.TypeOf(types.ChartSpec{}):               "#/$defs/ChartSpec", //nolint:staticcheck
 	reflect.TypeOf(types.DiagramSpec{}):             "#/$defs/DiagramSpec",
+	reflect.TypeOf(types.ChartStyle{}):              "#/$defs/ChartStyle",
+	reflect.TypeOf(types.ChartStyleOverrides{}):     "#/$defs/ChartStyleOverrides",
 }
 
 func knownTypeRef(t reflect.Type) string {

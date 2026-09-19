@@ -159,6 +159,33 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **The chart styling surface is documented, closed, and no longer half inert
+  (go-slide-creator-z72f).** `chart_value.style` was published in the input
+  schema as a bare `{"type":"object"}` and appeared in no agent-facing surface,
+  so the only way to find the data-labels switch was to guess — and guesses
+  that followed the repo's own `docs/diagrams/*.md` failed.
+  - **`style` and `chart_style` are now typed and closed** (`$defs/ChartStyle`,
+    `$defs/ChartStyleOverrides`, `additionalProperties: false`), and
+    `validate` walks both. `style.palette`, `style.show_grid` and
+    `chart_value.subtitle` are reported as unknown fields instead of being
+    dropped in silence — even under `--strict-unknown-keys` they were invisible
+    before.
+  - **`style.font_size` is removed.** It was never copied onto the style the
+    renderer reads, so it did nothing; chart text sizes come from the
+    template's type scale. Setting it is now an unknown-field finding rather
+    than silence.
+  - **`style.show_legend` means what it says.** It used to disable direct
+    labels and nothing else, so on a single-series chart — where the legend is
+    suppressed by default — it did nothing at all, and the working knob was the
+    differently-named `chart_style.show_single_series_legend`. An explicit
+    `show_legend` now forces the legend on every chart; the narrower
+    `chart_style` override still wins when both are set.
+  - **`get_data_format_hints` / `json2pptx data-format-hints` gained
+    `chart_style_hints`**: every key both blocks accept, one line of semantics
+    each, plus the rules that belong to neither key alone. `docs/diagrams/*.md`
+    now says up front that it documents the svggen request envelope, not a
+    deck's `chart_value`.
+
 - **`SLIDE_UNDERUSED` stops penalising content-sized patterns, and its fix is
   actionable (go-slide-creator-up04).** It compared a pattern's ink bounding box
   with the whole content zone and demanded 45%, so the deliberately-shorter

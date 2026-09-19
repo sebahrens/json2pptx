@@ -213,9 +213,11 @@ func checkContentUnknownKeys(raw json.RawMessage, path string) []*patterns.Valid
 	}
 	if v, ok := obj["chart_value"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.ChartSpec{}), path+"/chart_value")...) //nolint:staticcheck // ChartSpec is deprecated but still used for backward compat
+		warnings = append(warnings, checkChartStyleUnknownKeys(v, path+"/chart_value")...)
 	}
 	if v, ok := obj["diagram_value"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.DiagramSpec{}), path+"/diagram_value")...)
+		warnings = append(warnings, checkChartStyleUnknownKeys(v, path+"/diagram_value")...)
 	}
 	return warnings
 }
@@ -414,4 +416,24 @@ func checkRedundantValue(obj map[string]json.RawMessage, path string) []*pattern
 			Params: map[string]any{"field": "value"},
 		},
 	}}
+}
+
+// checkChartStyleUnknownKeys walks the style / chart_style sub-objects of a
+// chart or diagram value. Their keys were never checked, so a deck that set
+// style.palette (svggen's name — the engine's is colors) or style.show_grid got
+// silence even under --strict-unknown-keys, and the agent had no way to learn
+// that the knob it reached for does not exist (go-slide-creator-z72f).
+func checkChartStyleUnknownKeys(raw json.RawMessage, path string) []*patterns.ValidationError {
+	var obj map[string]json.RawMessage
+	if json.Unmarshal(raw, &obj) != nil {
+		return nil
+	}
+	var warnings []*patterns.ValidationError
+	if v, ok := obj["style"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.ChartStyle{}), path+"/style")...)
+	}
+	if v, ok := obj["chart_style"]; ok {
+		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(types.ChartStyleOverrides{}), path+"/chart_style")...)
+	}
+	return warnings
 }

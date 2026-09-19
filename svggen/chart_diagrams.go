@@ -7,13 +7,28 @@ import (
 	"fmt"
 )
 
-// applyChartStyleOverrides copies per-request token overrides from
-// req.Style.ChartStyle onto a ChartConfig. Each field is a *bool — nil means
-// "leave the renderer default in place". The renderer defaults are already
-// aligned with internal/tokens.Chart* via DefaultChartConfig and the legend
-// gates in chart Draw methods, so a nil override never changes behaviour.
-func applyChartStyleOverrides(cfg *ChartConfig, overrides *ChartStyleOverrides) {
-	if cfg == nil || overrides == nil {
+// applyChartStyleOverrides applies a request's legend intent to a ChartConfig:
+// the general style.show_legend flag first, then the narrower
+// style.chart_style.* token overrides, which win because they are the more
+// specific knob. Each chart_style field is a *bool — nil means "leave the
+// renderer default in place". The renderer defaults are already aligned with
+// internal/tokens.Chart* via DefaultChartConfig and the legend gates in chart
+// Draw methods, so a nil override never changes behaviour.
+//
+// style.show_legend: true used to disable direct labels and nothing else, so on
+// a single-series chart — where the legend is suppressed by default — it did
+// nothing at all, and the only working knob was the differently-named
+// chart_style.show_single_series_legend (go-slide-creator-z72f). An explicit
+// show_legend now means what it says on every chart.
+func applyChartStyleOverrides(cfg *ChartConfig, style StyleSpec) {
+	if cfg == nil {
+		return
+	}
+	if style.ShowLegend {
+		cfg.ForceLegendSingleSeries = true
+	}
+	overrides := style.ChartStyle
+	if overrides == nil {
 		return
 	}
 	if overrides.ShowVerticalGridlines != nil {
@@ -83,7 +98,7 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 
 		// Apply per-slide chart_style token overrides (vertical gridlines,
 		// single-series legend, etc.).
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewBarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -186,7 +201,7 @@ func (d *LineChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
 
 		// Apply per-slide chart_style token overrides.
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewLineChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -362,7 +377,7 @@ func (d *AreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
 
 		// Apply per-slide chart_style token overrides.
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewAreaChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -442,7 +457,7 @@ func (d *RadarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder
 		config.Colors = extractChartColors(req.Data)
 
 		// Apply per-slide chart_style token overrides.
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewRadarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -505,7 +520,7 @@ func (d *ScatterChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuild
 		}
 
 		// Apply per-slide chart_style token overrides.
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewScatterChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -708,7 +723,7 @@ func (d *StackedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		applyDataLabelsToConfig(&config.ChartConfig, chartData.DataLabels)
 
 		// Apply per-slide chart_style token overrides.
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewBarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -1439,7 +1454,7 @@ func (d *BubbleChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilde
 		}
 
 		// Apply per-slide chart_style token overrides.
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewScatterChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -1666,7 +1681,7 @@ func (d *StackedAreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGB
 		}
 
 		// Apply per-slide chart_style token overrides.
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewStackedAreaChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -1726,7 +1741,7 @@ func (d *GroupedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		}
 
 		// Apply per-slide chart_style token overrides.
-		applyChartStyleOverrides(&config.ChartConfig, req.Style.ChartStyle)
+		applyChartStyleOverrides(&config.ChartConfig, req.Style)
 
 		chart := NewBarChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {

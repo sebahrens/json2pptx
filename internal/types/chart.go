@@ -239,14 +239,25 @@ const (
 )
 
 // ChartStyle provides styling options for chart rendering.
+//
+// Every field here reaches the renderer. font_size used to sit alongside them
+// and went nowhere — it was never copied onto the DiagramStyle the renderer
+// reads, so an agent that set it got silence and no way to learn why
+// (go-slide-creator-z72f). Chart type sizes come from the template's type
+// scale; there is no per-chart override, so the field is gone rather than
+// left as a promise the engine does not keep.
 type ChartStyle struct {
 	Colors      []string     `json:"colors,omitempty"`      // Hex colors for data series (overrides ThemeColors)
 	ThemeColors []ThemeColor `json:"-"`                     // Theme colors from template (internal use)
 	FontFamily  string       `json:"font_family,omitempty"` // Font for labels and text
-	FontSize    int          `json:"font_size,omitempty"`   // Label font size in points
 	Background  string       `json:"background,omitempty"`  // Background color (default: transparent)
-	ShowLegend  bool         `json:"show_legend,omitempty"` // Display legend
-	ShowValues  bool         `json:"show_values,omitempty"` // Display values on chart elements
+	// ShowLegend forces the legend on, including on a single-series chart
+	// (where it is suppressed by default because the title carries the series
+	// name). chart_style.show_single_series_legend is the narrower override and
+	// wins when both are set.
+	ShowLegend bool `json:"show_legend,omitempty"`
+	// ShowValues draws the value on each data point / bar / slice.
+	ShowValues bool `json:"show_values,omitempty"`
 }
 
 // DefaultChartDimensions provides default chart dimensions.

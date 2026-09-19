@@ -827,6 +827,43 @@ type dataFormatHintsResponse struct {
 	Digest      string                     `json:"digest"`
 	NotModified bool                       `json:"not_modified,omitempty"`
 	Hints       map[string]skillDataFormat `json:"data_format_hints,omitempty"`
+	// ChartStyle documents the chart_value.style / chart_style blocks, which
+	// carried no agent-facing documentation at all: the input schema published
+	// them as a bare {"type":"object"}, so an agent could not learn that
+	// show_values turns on data labels without guessing (go-slide-creator-z72f).
+	// It is one block rather than a copy per chart type because the style
+	// surface is the same for every chart.
+	ChartStyle *chartStyleHints `json:"chart_style_hints,omitempty"`
+}
+
+// chartStyleHints is the per-key documentation of the chart style blocks.
+type chartStyleHints struct {
+	// Style documents chart_value.style, keyed by field name.
+	Style map[string]string `json:"style"`
+	// ChartStyle documents chart_value.chart_style, keyed by field name.
+	ChartStyle map[string]string `json:"chart_style"`
+	// Note carries the cross-block rules that belong to neither field alone.
+	Note string `json:"note"`
+}
+
+// buildChartStyleHints describes every key the chart style blocks honour. Keys
+// absent here are absent from the schema too (additionalProperties:false), so
+// validate reports them rather than dropping them in silence.
+func buildChartStyleHints() *chartStyleHints {
+	return &chartStyleHints{
+		Style: map[string]string{
+			"show_values": "Draw the value on each bar / point / slice (bool). This is the data-labels switch.",
+			"show_legend": "Force the legend on, including on a single-series chart where it is suppressed by default (bool).",
+			"colors":      "Hex colours for the data series, in series order (string[]). Overrides the template's data palette.",
+			"font_family": "Font for chart labels and text (string). Defaults to the template's body font.",
+			"background":  "Chart background colour (string). Defaults to transparent so the slide shows through.",
+		},
+		ChartStyle: map[string]string{
+			"show_single_series_legend": "Force (true) or suppress (false) the legend on a single-series chart. The narrower form of style.show_legend; wins when both are set.",
+			"show_vertical_gridlines":   "Force (true) or suppress (false) vertical gridlines on Cartesian charts. Suppressed by default — on a bar chart they double-encode the bars.",
+		},
+		Note: "These are the only keys either block accepts; both are closed (additionalProperties:false), so anything else is reported as an unknown field by validate rather than ignored. Chart text sizes come from the template's type scale — there is no per-chart font size. Axis titles, annotations and data labels live in chart_value.data (see the per-type hints), not here.",
+	}
 }
 
 func handleGetDataFormatHints(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -847,8 +884,9 @@ func handleGetDataFormatHints(ctx context.Context, request mcp.CallToolRequest) 
 	}
 
 	resp := dataFormatHintsResponse{
-		Digest: digest,
-		Hints:  hints,
+		Digest:     digest,
+		Hints:      hints,
+		ChartStyle: buildChartStyleHints(),
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {

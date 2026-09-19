@@ -108,14 +108,14 @@ func TestChartStyleOverrides_VerticalGridlines_ForcedOn(t *testing.T) {
 }
 
 // TestChartStyleOverrides_NilOverridesNoOp asserts that applyChartStyleOverrides
-// with a nil overrides pointer leaves the chart-style fields untouched. This
-// is the fast-path guarantee that lets every chart factory call the helper
+// with an empty style leaves the chart-style fields untouched. This is the
+// fast-path guarantee that lets every chart factory call the helper
 // unconditionally.
 func TestChartStyleOverrides_NilOverridesNoOp(t *testing.T) {
 	cfg := DefaultChartConfig(800, 600)
 	cfg.ShowVerticalGrid = true
 	cfg.ForceLegendSingleSeries = true
-	applyChartStyleOverrides(&cfg, nil)
+	applyChartStyleOverrides(&cfg, StyleSpec{})
 	if !cfg.ShowVerticalGrid {
 		t.Error("ShowVerticalGrid should remain true when overrides is nil")
 	}
@@ -137,12 +137,53 @@ func TestChartStyleOverrides_PartialOverride(t *testing.T) {
 	overrides := &ChartStyleOverrides{
 		ShowSingleSeriesLegend: boolPtr(false),
 	}
-	applyChartStyleOverrides(&cfg, overrides)
+	applyChartStyleOverrides(&cfg, StyleSpec{ChartStyle: overrides})
 
 	if !cfg.ShowVerticalGrid {
 		t.Error("ShowVerticalGrid should remain true (override was nil)")
 	}
 	if cfg.ForceLegendSingleSeries {
 		t.Error("ForceLegendSingleSeries should be false (override set to false)")
+	}
+}
+
+// go-slide-creator-z72f: style.show_legend used to disable direct labels and
+// nothing else, so on a single-series chart — where the legend is suppressed by
+// default — it did nothing, and the only working knob was the differently-named
+// chart_style.show_single_series_legend. An explicit show_legend now means what
+// it says, and the narrower chart_style override still wins when both are set.
+func TestChartStyleOverrides_ShowLegendForcesSingleSeriesLegend(t *testing.T) {
+	cfg := DefaultChartConfig(800, 600)
+	if cfg.ForceLegendSingleSeries {
+		t.Fatal("fixture: the default must suppress a single-series legend")
+	}
+	applyChartStyleOverrides(&cfg, StyleSpec{ShowLegend: true})
+	if !cfg.ForceLegendSingleSeries {
+		t.Error("style.show_legend=true must force the legend on a single-series chart")
+	}
+
+	// The narrower knob wins over the general one, in both directions.
+	cfg = DefaultChartConfig(800, 600)
+	applyChartStyleOverrides(&cfg, StyleSpec{
+		ShowLegend: true,
+		ChartStyle: &ChartStyleOverrides{ShowSingleSeriesLegend: boolPtr(false)},
+	})
+	if cfg.ForceLegendSingleSeries {
+		t.Error("chart_style.show_single_series_legend=false must win over style.show_legend=true")
+	}
+
+	cfg = DefaultChartConfig(800, 600)
+	applyChartStyleOverrides(&cfg, StyleSpec{
+		ChartStyle: &ChartStyleOverrides{ShowSingleSeriesLegend: boolPtr(true)},
+	})
+	if !cfg.ForceLegendSingleSeries {
+		t.Error("chart_style.show_single_series_legend=true must still work on its own")
+	}
+
+	// An unset show_legend leaves the default alone.
+	cfg = DefaultChartConfig(800, 600)
+	applyChartStyleOverrides(&cfg, StyleSpec{})
+	if cfg.ForceLegendSingleSeries {
+		t.Error("an unset show_legend must not force a single-series legend")
 	}
 }
