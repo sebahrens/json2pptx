@@ -13,7 +13,7 @@ package main
 // ---------------------------------------------------------------------------
 
 // mcpCompletionRule is the one completion rule every surface states.
-const mcpCompletionRule = "A deck is done only after you render ALL slides of the current revision (render_deck_thumbnails) and inspect every returned image yourself. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After any repair, re-render and re-inspect."
+const mcpCompletionRule = "A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices, or render_slide_image for a single one), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen."
 
 // mcpQualityWorkflow is the server `instructions` text and get_started's
 // quality_workflow field.

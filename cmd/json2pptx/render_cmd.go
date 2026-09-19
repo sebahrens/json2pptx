@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 )
 
 // runRenderSlide implements the "render-slide" CLI subcommand.
@@ -139,7 +141,8 @@ func runRenderThumbnails() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	pptxPath := fs.String("pptx", "", "Path to the PPTX file to render (required)")
 	density := fs.Int("density", 50, "DPI for thumbnails (25-150)")
-	maxSlides := fs.Int("max-slides", 50, "Maximum number of slides to render")
+	maxSlides := fs.Int("max-slides", 50, "Maximum number of slides to render, counting from the first")
+	slides := fs.String("slides", "", "Render only these 0-based slides, comma-separated (e.g. 1,3). Mutually exclusive with --max-slides")
 	force := fs.Bool("force", false, "Bypass render cache")
 
 	fs.Usage = func() {
@@ -148,7 +151,8 @@ func runRenderThumbnails() error {
 		fmt.Fprintf(os.Stderr, "Requires LibreOffice and ImageMagick on PATH.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx --density 100 --max-slides 10\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx --density 100 --max-slides 10\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx render-thumbnails --pptx output/deck.pptx --slides 1,3\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -165,12 +169,22 @@ func runRenderThumbnails() error {
 	mc := cliMCPConfig(*templatesDir, "")
 
 	args := map[string]any{
-		"pptx_path":  *pptxPath,
-		"density":    float64(*density),
-		"max_slides": float64(*maxSlides),
-		"force":      *force,
+		"pptx_path": *pptxPath,
+		"density":   float64(*density),
+		"force":     *force,
 		// The CLI prints JSON to stdout; keep the base64/path envelope.
 		argIncludeBase64JSON: true,
+	}
+	// --slides names slides; --max-slides caps a prefix. The MCP tool refuses
+	// both at once, so send whichever the caller asked for.
+	if *slides != "" {
+		indices, err := parseSlideList(*slides)
+		if err != nil {
+			return fmt.Errorf("render-thumbnails: --slides: %w", err)
+		}
+		args["slide_indices"] = indices
+	} else {
+		args["max_slides"] = float64(*maxSlides)
 	}
 
 	result, err := mc.handleRenderDeckThumbnails(context.Background(), mcpRequestWithArgs(args))
@@ -179,4 +193,25 @@ func runRenderThumbnails() error {
 	}
 
 	return printMCPResultJSON(result)
+}
+
+// parseSlideList parses a comma-separated list of 0-based slide numbers, the CLI
+// spelling of the render_deck_thumbnails slide_indices argument.
+func parseSlideList(v string) ([]any, error) {
+	out := make([]any, 0, 4)
+	for _, field := range strings.Split(v, ",") {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		n, err := strconv.Atoi(field)
+		if err != nil {
+			return nil, fmt.Errorf("%q is not a slide number", field)
+		}
+		out = append(out, float64(n))
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("no slide numbers given")
+	}
+	return out, nil
 }

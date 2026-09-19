@@ -98,11 +98,11 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 		// holds, and the cheapest form of that: a deck_id and a patch.
 		return &getStartedFastPath{
 			Tool:       "render_deck_spec",
-			WhenToCall: "RECOMMENDED PATH when the deck was authored as a DeckSpec (task=brief) — you do not resend it. Every validate_deck_spec / render_deck_spec response carries a deck_id: the spec this server is holding. Send deck_id INSTEAD of spec, with patch:[{op:\"replace\", path:\"/slides/3/title\", value:\"…\"}] — op is replace | add | remove, path is a JSON Pointer into the spec (/meta/template to restyle the deck, /slides/6 with add to insert a slide, /slides/2 with remove to drop one). A four-edit revision is one call of a few hundred bytes instead of a full spec re-upload. The response's changed_slides names the 0-based slides that differ, so render_deck_thumbnails only those. Handles live 1 hour per server process; if one expires, send the spec again. Still holding the spec and no handle? Edit it and call render_deck_spec — findings come back at semantic_path, so you fix the field the finding names. The raw chain in `sequence` is for a deck authored as raw json2pptx JSON, not as a DeckSpec.",
+			WhenToCall: "RECOMMENDED PATH when the deck was authored as a DeckSpec (task=brief) — you do not resend it. Every validate_deck_spec / render_deck_spec response carries a deck_id: the spec this server is holding. Send deck_id INSTEAD of spec, with patch:[{op:\"replace\", path:\"/slides/3/title\", value:\"…\"}] — op is replace | add | remove, path is a JSON Pointer into the spec (/meta/template to restyle the deck, /slides/6 with add to insert a slide, /slides/2 with remove to drop one). A four-edit revision is one call of a few hundred bytes instead of a full spec re-upload. The response's changed_slides names the 0-based slides that differ, so render_deck_thumbnails them as slide_indices instead of pulling the whole deck again. Handles live 1 hour per server process; if one expires, send the spec again. Still holding the spec and no handle? Edit it and call render_deck_spec — findings come back at semantic_path, so you fix the field the finding names. The raw chain in `sequence` is for a deck authored as raw json2pptx JSON, not as a DeckSpec.",
 			Steps: []getStartedStep{
 				{Tool: "validate_deck_spec", WhenToCall: "Send deck_id + patch to check an edit before rendering it; the patch is applied to the stored deck, so the next call sees it."},
 				{Tool: "render_deck_spec", WhenToCall: "Render the revision (deck_id + patch, or the edited spec). Omit template and the handle keeps the one the last render used."},
-				{Tool: "render_deck_thumbnails", WhenToCall: "Pull the slides named by changed_slides (pass slides:[…]) and look at each one; re-patch and re-render until they read right."},
+				{Tool: "render_deck_thumbnails", WhenToCall: "Pull only the slides named by changed_slides (pass them as slide_indices) and look at each one; re-patch and re-render until they read right, then make one full-deck pass over the revision you ship."},
 			},
 			FallsBackTo: tools,
 		}
@@ -170,7 +170,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 		seq = append(seq, []getStartedStep{
 			{Tool: "validate_input", WhenToCall: "Run schema + fit checks (fit_report: true) on the deck JSON you intend to revise. Catches drift between the authored deck and the current engine."},
 			{Tool: "preview_presentation_plan", WhenToCall: "Dry-run the deck JSON to surface per-slide fit findings whose Fix.Kind directives feed repair_slide."},
-			{Tool: "repair_slide", WhenToCall: "Apply targeted fixes (the Fix.Kind vocabulary fit-report emits) to the deck JSON, per slide that has findings."},
+			{Tool: "repair_slide", WhenToCall: "Apply targeted fixes (the Fix.Kind vocabulary fit-report emits) to the deck JSON, per slide that has findings. Re-check one repaired slide with render_slide_image, or a handful with render_deck_thumbnails slide_indices, before re-rendering the deck."},
 			{Tool: "generate_presentation", WhenToCall: "Regenerate the PPTX from the repaired deck JSON."},
 			{Tool: "score_deck", WhenToCall: "Confirm structural metrics improved; this is input-only evidence."},
 			{Tool: "render_deck_thumbnails", WhenToCall: "Render every slide from the repaired current revision."},

@@ -2580,7 +2580,7 @@ Requires LibreOffice and ImageMagick (magick) on PATH. Use this for a quick visu
 
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
-Cost note: the JSON metadata stays small (<5KB for typical decks); each thumbnail is one image block. Use max_slides to cap large decks.`),
+Cost note: the JSON metadata stays small (<5KB for typical decks); each thumbnail is one image block, and a 15-slide deck is ~370KB of base64 per pass. After a repair, pass slide_indices with just the slides that changed (render_deck_spec's changed_slides is exactly that list) instead of pulling the whole deck again; use max_slides to cap a first look at a large deck.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckThumbnails)),
 		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
@@ -2591,7 +2591,10 @@ Cost note: the JSON metadata stays small (<5KB for typical decks); each thumbnai
 			mcp.Description("DPI for thumbnails. Lower = smaller payloads. Default: 50. Range: 25-150."),
 		),
 		mcp.WithNumber("max_slides",
-			mcp.Description("Maximum number of slides to render. Default: 50."),
+			mcp.Description("Maximum number of slides to render, counting from the first. Default: 50. Mutually exclusive with slide_indices."),
+		),
+		mcp.WithArray("slide_indices",
+			mcp.Description("Render ONLY these 0-based slides, e.g. [4, 9] — the narrowing knob for a repair loop, where re-pulling all 15 thumbnails to look at one changed slide is the whole cost. Pass render_deck_spec / validate_deck_spec's changed_slides verbatim. Returns one image block per index, ascending, with slide_count telling you how big the deck is and selected echoing what came back. An index the deck does not have is an error, not a silent omission. Mutually exclusive with max_slides."),
 		),
 		mcp.WithBoolean("force",
 			mcp.Description("If true, bypass the render cache and re-convert even if a cached result exists. Default: false."),
@@ -2680,6 +2683,7 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 	}
 
 	maxSlides := 50
+	_, hasMaxSlides := request.GetArguments()["max_slides"]
 	if v, ok := request.GetArguments()["max_slides"].(float64); ok {
 		m := int(v)
 		if m > 0 {
@@ -2687,12 +2691,36 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		}
 	}
 
+	indices, hasIndices, errRes := slideIndicesArg(request)
+	if errRes != nil {
+		return errRes, nil
+	}
+	if hasIndices && hasMaxSlides {
+		return argError(argErrorEnvelope{
+			Code:         diagnostics.CodeAmbiguousInput,
+			Path:         "slide_indices",
+			Message:      "set slide_indices OR max_slides, not both: one names the slides to render and the other caps a prefix, and together they do not say which slides the caller wants",
+			ExpectedType: "array",
+			NextToolCall: nextCallRetry("render_deck_thumbnails", "slide_indices"),
+		}), nil
+	}
+
 	force := false
 	if v, ok := request.GetArguments()["force"].(bool); ok {
 		force = v
 	}
 
-	deckResult, err := render.RenderDeckOpts(pptxPath, density, maxSlides, force)
+	var deckResult *render.DeckResult
+	if hasIndices {
+		deckResult, err = render.RenderDeckIndices(pptxPath, density, indices, force)
+	} else {
+		deckResult, err = render.RenderDeckOpts(pptxPath, density, maxSlides, force)
+	}
+	var rangeErr *render.IndexRangeError
+	if errors.As(err, &rangeErr) {
+		return argInvalidValue("render_deck_thumbnails", diagnostics.CodeInvalidParameter, "slide_indices",
+			rangeErr.Error(), "array", []int{0}, nil), nil
+	}
 	if err != nil {
 		code := "RENDER_FAILED"
 		var te *render.TimeoutError

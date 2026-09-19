@@ -515,41 +515,56 @@ func compositionAxis(slides []SlideInput) *deterministic.CompositionResult {
 // when the parameter is absent or empty (full-deck scoring). Returns an error
 // when any value is non-numeric or out of range.
 func extractSlideIndices(request mcp.CallToolRequest, slideCount int) ([]int, error) {
-	args := request.GetArguments()
-	raw, ok := args["slide_indices"]
+	out, _, err := parseSlideIndices(request)
+	if err != nil {
+		return nil, err
+	}
+	for _, idx := range out {
+		if idx < 0 || idx >= slideCount {
+			return nil, fmt.Errorf("slide_indices: index %d out of range (deck has %d slides, valid range 0-%d)", idx, slideCount, slideCount-1)
+		}
+	}
+	return out, nil
+}
+
+// parseSlideIndices decodes a slide_indices argument into sorted, deduplicated
+// 0-based indices, without range-checking them: render_deck_thumbnails does not
+// know the deck's slide count until it has converted the deck, so the range
+// check belongs to its caller (go-slide-creator-2018). present distinguishes
+// "argument absent" from "argument present and empty", which the two callers
+// answer differently.
+func parseSlideIndices(request mcp.CallToolRequest) (indices []int, present bool, err error) {
+	raw, ok := request.GetArguments()["slide_indices"]
 	if !ok || raw == nil {
-		return nil, nil
+		return nil, false, nil
 	}
 
 	// Re-marshal/unmarshal so we accept either []float64, []int, or json.Number.
 	data, err := json.Marshal(raw)
 	if err != nil {
-		return nil, fmt.Errorf("slide_indices: %w", err)
+		return nil, true, fmt.Errorf("slide_indices: %w", err)
 	}
 	if string(data) == "null" {
-		return nil, nil
+		return nil, false, nil
 	}
 	var arr []json.Number
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
 	if err := dec.Decode(&arr); err != nil {
-		return nil, fmt.Errorf("slide_indices must be an array of integers: %v", err)
+		return nil, true, fmt.Errorf("slide_indices must be an array of integers: %v", err)
 	}
 	if len(arr) == 0 {
-		return nil, nil
+		return nil, true, nil
 	}
 
 	seen := make(map[int]bool, len(arr))
 	out := make([]int, 0, len(arr))
 	for _, n := range arr {
-		i64, err := n.Int64()
-		if err != nil {
-			return nil, fmt.Errorf("slide_indices must contain integers, got %s", n.String())
+		i64, nerr := n.Int64()
+		if nerr != nil {
+			return nil, true, fmt.Errorf("slide_indices must contain integers, got %s", n.String())
 		}
 		idx := int(i64)
-		if idx < 0 || idx >= slideCount {
-			return nil, fmt.Errorf("slide_indices: index %d out of range (deck has %d slides, valid range 0-%d)", idx, slideCount, slideCount-1)
-		}
 		if seen[idx] {
 			continue
 		}
@@ -557,7 +572,7 @@ func extractSlideIndices(request mcp.CallToolRequest, slideCount int) ([]int, er
 		out = append(out, idx)
 	}
 	sort.Ints(out)
-	return out, nil
+	return out, true, nil
 }
 
 // buildSlideSubset returns a shallow copy of input containing only the slides

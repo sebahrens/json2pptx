@@ -5,9 +5,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"image"
 	"image/color"
 	"image/png"
+	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -177,4 +181,185 @@ func TestRenderDeckThumbnails_ImageContentIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertImageContentDeck(t, res, 2)
+}
+
+// TestSlideIndicesArg covers the argument's own contract before any rendering:
+// what is accepted, what is refused, and that refusals name the argument.
+func TestSlideIndicesArg(t *testing.T) {
+	cases := []struct {
+		name    string
+		args    map[string]any
+		want    []int
+		present bool
+		errText string
+	}{
+		{name: "absent", args: map[string]any{}, present: false},
+		{name: "null", args: map[string]any{"slide_indices": nil}, present: false},
+		{name: "one slide", args: map[string]any{"slide_indices": []any{4}}, want: []int{4}, present: true},
+		{name: "sorted and deduped", args: map[string]any{"slide_indices": []any{9.0, 4.0, 9.0}}, want: []int{4, 9}, present: true},
+		{name: "empty", args: map[string]any{"slide_indices": []any{}}, present: true, errText: "slide_indices is empty"},
+		{name: "not an array", args: map[string]any{"slide_indices": 4}, present: true, errText: "array of integers"},
+		{name: "fractional", args: map[string]any{"slide_indices": []any{4.5}}, present: true, errText: "must contain integers"},
+		// A client that stringifies numbers is taken at its word; a string that
+		// is not a number is not. Same leniency as score_deck, which shares the
+		// parser.
+		{name: "a numeric string", args: map[string]any{"slide_indices": []any{"4"}}, want: []int{4}, present: true},
+		{name: "a non-numeric string", args: map[string]any{"slide_indices": []any{"four"}}, present: true, errText: "array of integers"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, present, errRes := slideIndicesArg(makeRequest(tc.args))
+			if present != tc.present {
+				t.Errorf("present = %v, want %v", present, tc.present)
+			}
+			if tc.errText != "" {
+				if errRes == nil {
+					t.Fatalf("want an error mentioning %q, got indices %v", tc.errText, got)
+				}
+				if text := resultText(errRes); !strings.Contains(text, tc.errText) {
+					t.Errorf("error should mention %q, got:\n%s", tc.errText, text)
+				}
+				return
+			}
+			if errRes != nil {
+				t.Fatalf("unexpected error: %s", resultText(errRes))
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("indices = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestRenderDeckThumbnails_SlideIndicesRejectsMaxSlides pins the exclusivity:
+// one argument names slides and the other caps a prefix, and together they do
+// not say what the caller wants.
+func TestRenderDeckThumbnails_SlideIndicesRejectsMaxSlides(t *testing.T) {
+	mc := &mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir()}
+	pptx := filepath.Join(t.TempDir(), "deck.pptx")
+	if err := os.WriteFile(pptx, []byte("not really a deck"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	res, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{
+		"pptx_path":     pptx,
+		"slide_indices": []any{1},
+		"max_slides":    3,
+	}))
+	if err != nil {
+		t.Fatalf("go error: %v", err)
+	}
+	if !res.IsError {
+		t.Fatal("slide_indices + max_slides must be refused")
+	}
+	if text := resultText(res); !strings.Contains(text, "not both") {
+		t.Errorf("refusal should say the two are exclusive, got:\n%s", text)
+	}
+}
+
+// TestRenderDeckThumbnails_SlideIndicesIntegration is the go-slide-creator-2018
+// acceptance test: slide_indices:[1,3] on a 5-slide deck returns exactly two
+// image blocks for slides 1 and 3, reports the deck's real size, and costs a
+// fraction of the full-deck payload. An index the deck does not have is an
+// error naming the real count.
+func TestRenderDeckThumbnails_SlideIndicesIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("render integration skipped in -short mode")
+	}
+	if ok, _ := render.DependencyStatus(); !ok {
+		t.Skip("LibreOffice/ImageMagick not installed")
+	}
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+	slides := make([]any, 0, 5)
+	for i := 0; i < 5; i++ {
+		slides = append(slides, map[string]any{
+			"slide_type": "content",
+			"content": []any{
+				map[string]any{"placeholder_id": "title", "type": "text", "text_value": fmt.Sprintf("Slide %d", i)},
+				map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": []any{"one", "two"}},
+			},
+		})
+	}
+	gen, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
+		"presentation": map[string]any{"template": "midnight-blue", "slides": slides},
+	}))
+	if err != nil || gen.IsError {
+		t.Fatalf("generate failed: %v %s", err, textContent(gen))
+	}
+	var out JSONOutput
+	if err := json.Unmarshal([]byte(textContent(gen)), &out); err != nil {
+		t.Fatal(err)
+	}
+
+	full, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{"pptx_path": out.OutputPath}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fullResp := assertImageContentDeck(t, full, 5)
+	if fullResp.SlideCount != 5 {
+		t.Errorf("full render slide_count = %d, want 5", fullResp.SlideCount)
+	}
+	if fullResp.Selected != nil {
+		t.Errorf("a full-deck render should not report selected, got %v", fullResp.Selected)
+	}
+
+	// force:true drives the cache-miss path, where the PNGs live in a temp
+	// directory that must outlive the read: deleting it too early turns every
+	// slide into "rendered image bytes unavailable".
+	sub, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{
+		"pptx_path":     out.OutputPath,
+		"slide_indices": []any{3, 1},
+		"force":         true,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	subResp := assertImageContentDeck(t, sub, 2)
+	if got := []int{subResp.Slides[0].Index, subResp.Slides[1].Index}; !slices.Equal(got, []int{1, 3}) {
+		t.Errorf("returned slides %v, want [1 3] ascending", got)
+	}
+	if !slices.Equal(subResp.Selected, []int{1, 3}) {
+		t.Errorf("selected = %v, want [1 3]", subResp.Selected)
+	}
+	if subResp.SlideCount != 5 {
+		t.Errorf("subset slide_count = %d, want the deck's 5", subResp.SlideCount)
+	}
+
+	// The point of the argument: the payload shrinks with the selection.
+	fullBytes, subBytes := contentPayloadBytes(full), contentPayloadBytes(sub)
+	if subBytes*2 > fullBytes {
+		t.Errorf("subset payload %d bytes vs full %d — narrowing to 2 of 5 slides should cost well under half", subBytes, fullBytes)
+	}
+	t.Logf("payload: full=%d bytes, slide_indices=[1,3]=%d bytes", fullBytes, subBytes)
+
+	bad, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{
+		"pptx_path":     out.OutputPath,
+		"slide_indices": []any{1, 9},
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bad.IsError {
+		t.Fatal("an index outside the deck must be an error, not a silent omission")
+	}
+	if text := resultText(bad); !strings.Contains(text, "has 5 slides") {
+		t.Errorf("out-of-range error should name the deck's real size, got:\n%s", text)
+	}
+}
+
+// contentPayloadBytes sums the text and image bytes a tool result carries.
+func contentPayloadBytes(res *mcp.CallToolResult) int {
+	total := 0
+	for _, c := range res.Content {
+		switch v := c.(type) {
+		case mcp.TextContent:
+			total += len(v.Text)
+		case mcp.ImageContent:
+			total += len(v.Data)
+		}
+	}
+	return total
 }

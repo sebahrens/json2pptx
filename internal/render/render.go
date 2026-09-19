@@ -187,6 +187,13 @@ type SlideImage struct {
 type DeckResult struct {
 	Slides    []SlideImage `json:"slides"`
 	Truncated bool         `json:"truncated"`
+	// SlideCount is how many slides the deck has, whatever was returned. A
+	// selective render makes that distinction load-bearing: "3 images back"
+	// means nothing about the deck without it.
+	SlideCount int `json:"slide_count,omitempty"`
+	// Selected lists the 0-based indices a selective render returned, ascending.
+	// Nil for a full-deck render.
+	Selected []int `json:"selected,omitempty"`
 }
 
 // checkDep verifies that a command-line tool is available on PATH.
@@ -592,44 +599,13 @@ func RenderDeck(pptxPath string, density, maxSlides int) (*DeckResult, error) {
 // RenderDeckOpts renders all slides with an option to bypass the cache.
 // When force is true, the conversion is re-executed even if a cached result exists.
 func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckResult, error) {
-	if err := CheckDependencies(); err != nil {
+	pngs, hash, cleanup, err := deckPNGs(pptxPath, density, force)
+	if err != nil {
 		return nil, err
 	}
+	defer cleanup()
 
-	hash, err := hashFile(pptxPath)
-	if err != nil {
-		return nil, fmt.Errorf("hash pptx: %w", err)
-	}
-
-	key := cacheKey(hash, density)
-	var pngs []string
-
-	if !force {
-		pngs = getCachedPNGs(key)
-	}
-
-	if pngs == nil {
-		tmpDir, err := os.MkdirTemp("", "render-deck-*")
-		if err != nil {
-			return nil, fmt.Errorf("create temp dir: %w", err)
-		}
-		defer os.RemoveAll(tmpDir)
-
-		ctx := context.Background()
-		pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
-		if err != nil {
-			return nil, err
-		}
-
-		pngs, err = pdfToPNGs(ctx, pdfPath, tmpDir, density)
-		if err != nil {
-			return nil, err
-		}
-
-		storeCachePNGs(key, pngs)
-	}
-
-	result := &DeckResult{}
+	result := &DeckResult{SlideCount: len(pngs)}
 	limit := len(pngs)
 	if maxSlides > 0 && maxSlides < limit {
 		limit = maxSlides
@@ -637,15 +613,122 @@ func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckR
 	}
 
 	for i := 0; i < limit; i++ {
-		img, err := buildSlideImage(i, pngs[i], hash)
-		if err != nil {
-			result.Slides = append(result.Slides, SlideImage{Index: i, SizeErr: err.Error()})
-			continue
-		}
-		result.Slides = append(result.Slides, *img)
+		result.Slides = append(result.Slides, slideImageOrError(i, pngs[i], hash))
 	}
 
 	return result, nil
+}
+
+// RenderDeckIndices renders only the named 0-based slides. It exists for the
+// repair loop: re-inspecting one changed slide out of fifteen used to mean
+// pulling all fifteen thumbnails back, because the only narrowing knob was a
+// prefix cap (go-slide-creator-2018). The deck is converted once either way —
+// the saving is in what crosses the wire, which is where the cost is.
+//
+// Indices are de-duplicated and returned in ascending order regardless of the
+// order asked for, so the images line up with Selected. An index outside the
+// deck is an IndexRangeError rather than a silent omission: an agent that
+// asked to look at slide 9 must not be told it looked at slide 9.
+func RenderDeckIndices(pptxPath string, density int, indices []int, force bool) (*DeckResult, error) {
+	pngs, hash, cleanup, err := deckPNGs(pptxPath, density, force)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	wanted := make([]int, 0, len(indices))
+	seen := make(map[int]bool, len(indices))
+	var bad []int
+	for _, idx := range indices {
+		if seen[idx] {
+			continue
+		}
+		seen[idx] = true
+		if idx < 0 || idx >= len(pngs) {
+			bad = append(bad, idx)
+			continue
+		}
+		wanted = append(wanted, idx)
+	}
+	if len(bad) > 0 {
+		sort.Ints(bad)
+		return nil, &IndexRangeError{Indices: bad, SlideCount: len(pngs)}
+	}
+	sort.Ints(wanted)
+
+	result := &DeckResult{SlideCount: len(pngs), Selected: wanted}
+	for _, idx := range wanted {
+		result.Slides = append(result.Slides, slideImageOrError(idx, pngs[idx], hash))
+	}
+	return result, nil
+}
+
+// IndexRangeError reports slide indices a deck does not have, together with how
+// many it does, so the caller can say both in one message.
+type IndexRangeError struct {
+	Indices    []int
+	SlideCount int
+}
+
+func (e *IndexRangeError) Error() string {
+	return fmt.Sprintf("slide indices %v are outside the deck: it has %d slides (0-%d)",
+		e.Indices, e.SlideCount, e.SlideCount-1)
+}
+
+// slideImageOrError builds one slide's image, recording a per-slide error rather
+// than failing the whole render: one unreadable thumbnail should not cost the
+// caller the other fourteen.
+func slideImageOrError(index int, png, hash string) SlideImage {
+	img, err := buildSlideImage(index, png, hash)
+	if err != nil {
+		return SlideImage{Index: index, SizeErr: err.Error()}
+	}
+	return *img
+}
+
+// deckPNGs converts a deck to one PNG per slide, through the cache, and returns
+// them with the PPTX content hash they were rendered from plus a cleanup the
+// caller must run once it has read the files: on a cache miss the PNGs live in a
+// temp directory, and deleting it before the caller reads them would turn every
+// slide into "rendered image bytes unavailable".
+func deckPNGs(pptxPath string, density int, force bool) (pngs []string, hash string, cleanup func(), err error) {
+	cleanup = func() {}
+	if err := CheckDependencies(); err != nil {
+		return nil, "", cleanup, err
+	}
+
+	hash, err = hashFile(pptxPath)
+	if err != nil {
+		return nil, "", cleanup, fmt.Errorf("hash pptx: %w", err)
+	}
+
+	key := cacheKey(hash, density)
+	if !force {
+		pngs = getCachedPNGs(key)
+	}
+	if pngs != nil {
+		return pngs, hash, cleanup, nil
+	}
+
+	tmpDir, err := os.MkdirTemp("", "render-deck-*")
+	if err != nil {
+		return nil, "", cleanup, fmt.Errorf("create temp dir: %w", err)
+	}
+	cleanup = func() { _ = os.RemoveAll(tmpDir) }
+
+	ctx := context.Background()
+	pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
+	if err != nil {
+		cleanup()
+		return nil, "", func() {}, err
+	}
+	pngs, err = pdfToPNGs(ctx, pdfPath, tmpDir, density)
+	if err != nil {
+		cleanup()
+		return nil, "", func() {}, err
+	}
+	storeCachePNGs(key, pngs)
+	return pngs, hash, cleanup, nil
 }
 
 // InvalidateCache removes all cached render results.

@@ -651,6 +651,8 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
       }
     },
     "truncated": {"type": "boolean"},
+    "slide_count": {"type": "integer", "description": "Slides in the deck, whatever this call returned. With slide_indices the two differ."},
+    "selected": {"type": "array", "items": {"type": "integer"}, "description": "0-based slide indices this call returned, ascending. Present only when slide_indices narrowed the render."},
     "delivery":  {"type": "string", "enum": ["image_content"], "description": "Set to image_content (the default) when thumbnails are delivered as MCP image content blocks (one per slide, in order) after this JSON. Absent in the legacy include_base64_json=true envelope."},
     "source_hash": {"type": "string", "description": "image_content mode: PPTX content hash shared by every slide (hoisted from slides[])."},
     "cleanup":     {"type": "string", "description": "image_content mode: lifetime/cleanup semantics shared by every slides[].path artifact."}

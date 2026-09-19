@@ -8,6 +8,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`render_deck_thumbnails` can render just the slides that changed
+  (go-slide-creator-2018).** Its only narrowing knob was `max_slides`, a prefix
+  cap, so a repair loop that fixed one slide of fifteen re-pulled all fifteen
+  thumbnails — measured at 346KB of base64 per pass, nearly all of it images the
+  agent had already seen.
+  - **`slide_indices: [int]`** renders only those 0-based slides, one image block
+    each, ascending, de-duplicated. Pass `render_deck_spec` /
+    `validate_deck_spec`'s `changed_slides` verbatim. Mutually exclusive with
+    `max_slides` (`AMBIGUOUS_INPUT`). An index the deck does not have is an
+    `INVALID_PARAMETER` naming the real slide count, never a silent omission; an
+    empty array is refused rather than read as "the whole deck".
+  - The response gains **`slide_count`** (the deck's size, whatever came back)
+    and **`selected`** (the indices that did), so a narrowed pass cannot be
+    mistaken for a full one.
+  - Measured on the 15-slide deck: full pass 346,278 response bytes / 15 images;
+    `slide_indices: [4, 9]` 39,643 bytes / 2 images.
+  - CLI parity: `json2pptx render-thumbnails --slides 1,3`.
+
 - **Deck handles: a revision is a patch, not a re-upload
   (go-slide-creator-voxp).** Every spec tool was stateless, so the agent was the
   only place the deck lived and paid for that on every call: a measured 15-slide
@@ -246,6 +264,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `notesSlide1/2.xml`, "Source: Finance close pack, 30 Sep 2026" under the body,
   and the footer "Strictly confidential — Acme Corp | September 2026" with
   `{current} / {total}` page numbers.
+
+### Changed
+
+- **The completion rule now says what to re-inspect after a repair
+  (go-slide-creator-2018).** It read "After any repair, re-render and
+  re-inspect", which alongside "render ALL slides" implied a full-deck pass per
+  repair. It now reads: re-render and re-inspect the slides that changed
+  (`render_deck_thumbnails` with `slide_indices`, or `render_slide_image` for
+  one), then make one full-deck pass over the final revision — the revision you
+  ship is the one that has to have been seen. The machine contract is unchanged:
+  `submit_visual_review` still requires a complete, current-revision review.
 
 ### Fixed
 

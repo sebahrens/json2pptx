@@ -17,7 +17,7 @@ only when the user needs a feature outside the semantic schema or a targeted raw
 raw JSON is also the compiler's own output format.
 
 **Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
-server `instructions`):** A deck is done only after you render ALL slides of the current revision (render_deck_thumbnails) and inspect every returned image yourself. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After any repair, re-render and re-inspect.
+server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices, or render_slide_image for a single one), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
 
 **MCP-only clients:** the server sends this workflow as its `initialize` `instructions` (and
 `get_started` echoes it verbatim as `quality_workflow`): call `get_started` first → author a DeckSpec
@@ -168,7 +168,7 @@ deck; `add` at `/slides/6` inserts a slide and at `/slides/-` appends one; `remo
 drops one. Ops apply in order and atomically — a malformed op is refused naming its index
 (`patch[1].path`) and the stored deck is untouched. The patched deck becomes the handle's new
 content, so the next call sees it, and the response's `changed_slides: [int]` names the 0-based
-slides that differ, which is exactly the `slides` list to pass to `render_deck_thumbnails`.
+slides that differ, which is exactly the list to pass to `render_deck_thumbnails` as `slide_indices`.
 Handles are per server process, expire after 1 hour (refreshed on each use), and an expired or
 unknown one is an error naming `spec` as the way back — they save bytes, they are not where your
 deck lives, so keep your own copy. A `render_deck_spec` driven by a handle and given no `template`
@@ -842,6 +842,19 @@ Full details for each phase live in [WORKFLOW.md](WORKFLOW.md). One-line summary
 4. **REPAIR** — `validate_input` → `generate_presentation` → `render_deck_thumbnails` (all slides) → inspect every image (`inspect_slide_images` or your own review) → `repair_slide` → re-render. Images are truth; done means every slide of the current revision was rendered and inspected.
 
 **Rendered slides arrive as images you can see.** `render_slide_image`, `render_slide_image_from_json`, and `render_deck_thumbnails` return each slide as a native MCP image content block (`image/jpeg`, max 1280px wide) after a small JSON metadata block (`delivery: "image_content"`, per-slide `index` / `path` / `image_content_index`, no base64). Look at the images directly — no `ANTHROPIC_API_KEY` or `inspect_slide_images` round-trip is needed to see the slides; hand the returned `path`s to `inspect_slide_images` only when you want its categorized findings. Clients that cannot display MCP images can pass `include_base64_json: true` to get the legacy base64-PNG-in-JSON envelope (the CLI `render-slide` / `render-thumbnails` / `render-slide-from-json` subcommands always print that legacy JSON).
+
+**Re-inspect the slides that changed, not the deck.** A 15-slide deck is ~370KB of
+base64 per thumbnail pass, and a repair loop that re-pulls all of it to look at one fixed slide
+spends nearly all of its context on images it has already seen. `render_deck_thumbnails` takes
+**`slide_indices: [int]`** — render ONLY those 0-based slides, one image block each, ascending.
+Pass `render_deck_spec` / `validate_deck_spec`'s `changed_slides` verbatim. The response carries
+`slide_count` (the deck's size, whatever came back) and `selected` (what did), so a narrowed pass
+never reads as a whole deck. An index the deck does not have is an error naming the real count, not
+a silent omission; an empty array is an error too — omit the argument to render everything.
+`slide_indices` is mutually exclusive with `max_slides`, which caps a prefix rather than naming
+slides. `render_slide_image(pptx_path, slide_index)` remains the one-slide form. None of this
+relaxes completion: the revision you ship still has to have been seen whole (see the
+[completion rule](#deck-generation-skill)).
 
 **One score scale, explicit basis.** Every deck-quality score is 0-100 and names what it measured: `generate_presentation.quality` / `render_deck_spec.quality_summary` carry `basis: "input"` (static heuristics over the input JSON); `score_deck.overall_score` carries `basis: "structural"` and `auto_repair` / `make_deck` `final_score` carry `score_basis: "structural"` (deterministic rules over the generated deck — no pixels). None of them is a visual verdict (`"rendered"` is reserved for pixel-derived scores); look at the rendered slides for that.
 

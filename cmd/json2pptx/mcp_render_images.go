@@ -18,6 +18,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/render"
 )
 
@@ -76,11 +77,17 @@ type renderedSlideImageResponse struct {
 // Deck-wide values (source_hash, cleanup) are hoisted to the top level instead
 // of being repeated per slide, keeping the metadata small for large decks.
 type renderedDeckThumbnailsResponse struct {
-	Slides     []renderedSlideMeta `json:"slides"`
-	Truncated  bool                `json:"truncated"`
-	Delivery   string              `json:"delivery"`
-	SourceHash string              `json:"source_hash,omitempty"`
-	Cleanup    string              `json:"cleanup,omitempty"`
+	Slides    []renderedSlideMeta `json:"slides"`
+	Truncated bool                `json:"truncated"`
+	Delivery  string              `json:"delivery"`
+	// SlideCount is the deck's slide count, whatever came back. With
+	// slide_indices the two differ, and "2 images" says nothing on its own.
+	SlideCount int `json:"slide_count,omitempty"`
+	// Selected echoes the 0-based indices a slide_indices render returned,
+	// ascending. Absent on a full-deck render.
+	Selected   []int  `json:"selected,omitempty"`
+	SourceHash string `json:"source_hash,omitempty"`
+	Cleanup    string `json:"cleanup,omitempty"`
 }
 
 // slideImageToMCP converts one rendered SlideImage into its metadata record and
@@ -151,9 +158,11 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		return res
 	}
 	resp := renderedDeckThumbnailsResponse{
-		Slides:    make([]renderedSlideMeta, 0, len(deck.Slides)),
-		Truncated: deck.Truncated,
-		Delivery:  deliveryImageContent,
+		Slides:     make([]renderedSlideMeta, 0, len(deck.Slides)),
+		Truncated:  deck.Truncated,
+		Delivery:   deliveryImageContent,
+		SlideCount: deck.SlideCount,
+		Selected:   deck.Selected,
 	}
 	images := make([]api.MCPImage, 0, len(deck.Slides))
 	for _, s := range deck.Slides {
@@ -179,4 +188,25 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err))
 	}
 	return res
+}
+
+// slideIndicesArg decodes render_deck_thumbnails' slide_indices, sharing
+// score_deck's parser so the two tools read the same argument the same way. An
+// empty array is refused rather than treated as "the whole deck": a caller that
+// narrowed to nothing wants to be told, not handed fifteen images
+// (go-slide-creator-2018).
+func slideIndicesArg(request mcp.CallToolRequest) (indices []int, present bool, errResult *mcp.CallToolResult) {
+	parsed, ok, err := parseSlideIndices(request)
+	if err != nil {
+		return nil, true, argInvalidValue("render_deck_thumbnails", diagnostics.CodeInvalidParameter, "slide_indices",
+			err.Error(), "array", []int{4, 9}, nil)
+	}
+	if !ok {
+		return nil, false, nil
+	}
+	if len(parsed) == 0 {
+		return nil, true, argInvalidValue("render_deck_thumbnails", diagnostics.CodeInvalidParameter, "slide_indices",
+			"slide_indices is empty: name the slides to render, or omit it to render the whole deck", "array", []int{4, 9}, nil)
+	}
+	return parsed, true, nil
 }
