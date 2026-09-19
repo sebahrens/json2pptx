@@ -28,30 +28,33 @@ type capabilitiesResponse struct {
 	SchemaVersion     string         `json:"schema_version"`
 	ToolVersion       string         `json:"tool_version"`
 	ChangelogURL      string         `json:"changelog_url"`
-	MCPToolsAvailable []mcpToolEntry `json:"mcp_tools_available"`
+	MCPToolsAvailable []mcpToolEntry `json:"mcp_tools_available,omitempty"`
 	// ToolList is the cross-server-aligned tool catalog: each entry carries
 	// {name, description}. Mirrors svggen-mcp's tool_list. Populated by
 	// calling every registered tool's constructor.
-	ToolList []capabilitiesToolListEntry `json:"tool_list"`
+	ToolList []capabilitiesToolListEntry `json:"tool_list,omitempty"`
 	// Registry groups the canonical names of every registered chart, diagram,
 	// and pattern this server can render. Mirrors svggen-mcp's registry block
 	// (which leaves patterns empty since it has no pattern engine).
-	Registry         capabilitiesRegistry          `json:"registry"`
-	DeprecatedFields []capabilitiesDeprecatedField `json:"deprecated_fields"`
+	Registry         capabilitiesRegistry          `json:"registry,omitzero"`
+	DeprecatedFields []capabilitiesDeprecatedField `json:"deprecated_fields,omitempty"`
 	// Deprecations is the cross-server-aligned deprecation list. Today it is
 	// the same content as DeprecatedFields; the alias exists so agents can
 	// read a single key name on both MCP servers.
-	Deprecations []capabilitiesDeprecatedField `json:"deprecations"`
-	Features     capabilitiesFeatures          `json:"features"`
-	Runtime      capabilitiesRuntime           `json:"runtime"`
-	Vocabularies capabilitiesVocabularies      `json:"vocabularies"`
-	ErrorCodes   []string                      `json:"error_codes"`
+	Deprecations []capabilitiesDeprecatedField `json:"deprecations,omitempty"`
+	Features     capabilitiesFeatures          `json:"features,omitzero"`
+	Runtime      capabilitiesRuntime           `json:"runtime,omitzero"`
+	Vocabularies capabilitiesVocabularies      `json:"vocabularies,omitzero"`
+	ErrorCodes   []string                      `json:"error_codes,omitempty"`
 	// CLIOnlyCommands lists dispatchable CLI commands that have no MCP tool,
 	// each with the reason it is CLI-only. This is the reverse of the per-tool
 	// mcp_only_reason carried in mcp_tools_available[]: an agent that wants a
 	// capability absent from the MCP catalog can discover here whether a CLI
 	// command covers it and why it was not exposed as a tool.
-	CLIOnlyCommands []capabilitiesCLIOnlyCommand `json:"cli_only_commands"`
+	CLIOnlyCommands []capabilitiesCLIOnlyCommand `json:"cli_only_commands,omitempty"`
+	// SectionsIncluded echoes the projection this response carries, so an agent
+	// can tell an omitted section from an empty one (go-slide-creator-5pta).
+	SectionsIncluded []string `json:"sections_included,omitempty"`
 }
 
 // capabilitiesCLIOnlyCommand describes one dispatchable CLI command that
@@ -413,18 +416,34 @@ func buildDeprecatedFields() []capabilitiesDeprecatedField {
 
 func mcpGetCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_capabilities",
-		mcp.WithDescription("Returns schema version, available MCP tools, deprecated fields, and feature flags. Use this to detect contract drift between sessions without re-reading SKILL.md. Compare schema_version across sessions — a major bump means breaking changes."),
+		mcp.WithDescription("Returns schema version, feature flags, and deprecated fields. Use this to detect contract drift between sessions without re-reading SKILL.md; compare schema_version across sessions — a major bump means breaking changes.\n\nProjection: `sections` selects what to include (runtime, features, deprecations, vocabularies, registry, tools, error_codes, cli, or all). The DEFAULT is [runtime, features, deprecations] — about 8 KB, against ~84 KB for everything. `tools` is excluded by default because tools/list already sent that catalogue verbatim, and `cli` because CLI-only commands are not callable over MCP. schema_version, tool_version, schema_fingerprint and changelog_url are in every projection, so drift detection works in the smallest one. sections_included echoes what you got."),
+		mcp.WithArray("sections",
+			mcp.Description("Which capability sections to return: runtime, features, deprecations, vocabularies, registry, tools, error_codes, cli, all. Default: [runtime, features, deprecations]. A comma-separated string is also accepted."),
+			mcp.Items(map[string]any{"type": "string", "enum": capSectionsKnown}),
+		),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetCapabilities)),
 	)
 }
 
-func (mc *mcpConfig) handleGetCapabilities(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	return buildCapabilitiesResult(ctx, mc.templatesDir, mc.outputDir)
+func (mc *mcpConfig) handleGetCapabilities(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	sections, err := parseCapabilitySections(request)
+	if err != nil {
+		return argInvalidValue("get_capabilities", "INVALID_PARAMETER", "sections", err.Error(),
+			"array", capSectionsDefault, nil), nil
+	}
+	return buildCapabilitiesResultFor(ctx, mc.templatesDir, mc.outputDir, sections)
 }
 
 // buildCapabilitiesResult constructs the full capabilities response. It is
 // shared by the MCP handler and the CLI subcommand.
 func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string) (*mcp.CallToolResult, error) {
+	return buildCapabilitiesResultFor(ctx, templatesDir, outputDir, sectionSet([]string{capSectionAll}))
+}
+
+// buildCapabilitiesResultFor is buildCapabilitiesResult projected to the
+// requested sections. The CLI subcommand asks for everything; the MCP handler
+// passes what the caller requested (go-slide-creator-5pta).
+func buildCapabilitiesResultFor(ctx context.Context, templatesDir, outputDir string, sections capabilitySections) (*mcp.CallToolResult, error) {
 	codes := diagnostics.AllCodes()
 	sort.Strings(codes)
 
@@ -564,6 +583,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 		ErrorCodes:      codes,
 		CLIOnlyCommands: buildCLIOnlyCommands(),
 	}
+	applyCapabilitySections(&resp, sections)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {

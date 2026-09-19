@@ -37,6 +37,31 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`get_capabilities` gained a `sections` projection and shed 93% of its
+  default payload (go-slide-creator-5pta).** `get_started`'s first step is
+  `get_capabilities`, and SKILL.md repeats it — so the most expensive call in
+  the server was the first one every agent made. It returned **183,242 wire
+  bytes (~46K tokens)**, of which `tool_list` alone was 55,475 B: a verbatim
+  duplicate of what `tools/list` had already sent. The field an MCP agent
+  actually needs (`runtime.render_available` / `output_dir`, 326 B) sat behind
+  all of it, and the inputSchema was `{"type":"object","properties":{}}` —
+  there was no way to ask for less.
+  New **`sections`** argument (string array or comma-separated string):
+  `runtime`, `features`, `deprecations`, `vocabularies`, `registry`, `tools`,
+  `error_codes`, `cli`, `all`. The **default is
+  `[runtime, features, deprecations]`**. `tools` is out of the default because
+  `tools/list` is the authoritative catalogue, and `cli` because CLI-only
+  commands are not callable over MCP. `schema_version`, `tool_version`,
+  `changelog_url` and `runtime.schema_fingerprint` are in **every** projection,
+  so drift detection works in the smallest one, and **`sections_included`**
+  echoes what you got so an omitted section is distinguishable from an empty
+  one.
+  Measured (structuredContent only): `get_capabilities{}` **88,697 B →
+  6,588 B**; `sections:["runtime"]` **416 B**; `sections:["tools"]` returns the
+  full 74 KB catalogue; `sections:["all"]` restores the previous payload. The
+  CLI `capabilities` subcommand is unprojected and unchanged.
+  `get_started`'s three step hints now name the cheap projection.
+
 - **Discovery tools default to the compact projection
   (go-slide-creator-dykl).** `list_templates{}` measured **153,266 B** on the
   wire and then *warned* that the caller should have asked for compact;

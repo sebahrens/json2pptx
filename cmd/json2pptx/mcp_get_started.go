@@ -146,7 +146,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 	switch normalized {
 	case "brief":
 		seq = []getStartedStep{
-			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift and feature flags before doing anything else."},
+			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift and feature flags before doing anything else. The default sections ([runtime, features, deprecations], ~6 KB) are all you need; pass sections:[\"tools\"] only if you want the catalogue tools/list already sent."},
 			{Tool: "list_templates", WhenToCall: "Pick a template; read canonical_layout_ids, color_roles, layout_summaries, table_styles."},
 			{Tool: "plan_deck", WhenToCall: "Turn the user's brief into an ordered slide outline with per-slide patterns and narrative roles. Recommended for any deck > 4 slides."},
 			{Tool: "recommend_visual", WhenToCall: "Per slide intent, rank candidate layouts/patterns/charts/diagrams before committing to one."},
@@ -169,7 +169,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 		}
 	case "revise":
 		seq = []getStartedStep{
-			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift since the deck was authored."},
+			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift since the deck was authored. sections:[\"runtime\"] is enough for that (~0.4 KB)."},
 		}
 		if toolIsAdvertised("read_presentation") {
 			seq = append(seq, getStartedStep{Tool: "read_presentation", WhenToCall: "Inspection-only: extract placeholders/shapes/tables from the existing PPTX to see what was rendered. Output is NOT a PresentationInput and cannot be fed into preview_presentation_plan, repair_slide, or generate_presentation — use it to diff against your authoritative deck JSON, not as a substitute for it."})
@@ -193,7 +193,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 		}
 	case "validate-only":
 		seq = []getStartedStep{
-			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift before validating against possibly-stale assumptions."},
+			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift before validating against possibly-stale assumptions. sections:[\"runtime\"] is enough for that (~0.4 KB)."},
 			{Tool: "list_templates", WhenToCall: "Confirm the deck's template exists and matches expected canonical_layout_ids."},
 			{Tool: "validate_input", WhenToCall: "Run schema + fit checks on the deck JSON. Pass fit_report: true for density/overflow findings."},
 			{Tool: "preview_presentation_plan", WhenToCall: "Optional — dry-run the plan to inspect layout selection without rendering."},
