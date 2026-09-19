@@ -7,12 +7,14 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/config"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
@@ -706,6 +708,14 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 							output.Valid = false
 							output.Diagnostics = append(output.Diagnostics, d)
 						}
+						// A rule outside the vocabulary, or a threshold the rule
+						// cannot use, applies no fill at all. Say which, with the
+						// allowed list, instead of leaving the cell quietly plain
+						// (go-slide-creator-6hlu).
+						for _, d := range conditionalRuleDiagnostics(table, tablePath, i) {
+							output.Valid = false
+							output.Diagnostics = append(output.Diagnostics, d)
+						}
 					}
 				}
 			}
@@ -1150,6 +1160,122 @@ func invalidConditionalFillDiagnostics(table *TableInput, tablePath string, slid
 		}
 	}
 	return out
+}
+
+// conditionalRuleDiagnostics reports table conditional-format rules the renderer
+// cannot act on: a rule outside the closed vocabulary, and a threshold whose
+// shape the rule cannot use (a string where a number is compared, a missing
+// operand, a "between" without two bounds). Each one means the cell renders
+// with no conditional fill, which is invisible in the JSON.
+func conditionalRuleDiagnostics(table *TableInput, tablePath string, slideIdx int) []diagnostics.Diagnostic {
+	if table == nil {
+		return nil
+	}
+	var out []diagnostics.Diagnostic
+	for ri, row := range table.Rows {
+		for ci, cell := range row {
+			cond := cell.Conditional
+			if cond == nil {
+				continue
+			}
+			base := fmt.Sprintf("%s.rows[%d][%d].conditional", tablePath, ri, ci)
+			if !types.ConditionalRuleKnown(cond.Rule) {
+				params := map[string]any{
+					"path":    base + ".rule",
+					"allowed": types.ConditionalRules,
+				}
+				message := fmt.Sprintf("slide %d: table conditional rule %q is not recognised, so the cell gets no fill; use one of %s",
+					slideIdx+1, cond.Rule, strings.Join(types.ConditionalRules, ", "))
+				// A typo is the common case, so name the rule the author meant
+				// rather than leaving them to scan the list.
+				if match, _ := generator.ClosestMatch(cond.Rule, types.ConditionalRules, 3); match != "" {
+					params["did_you_mean"] = match
+					message = fmt.Sprintf("slide %d: table conditional rule %q is not recognised, so the cell gets no fill; did you mean %q? (allowed: %s)",
+						slideIdx+1, cond.Rule, match, strings.Join(types.ConditionalRules, ", "))
+				}
+				out = append(out, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeInvalidParameter,
+					Path:     base + ".rule",
+					Message:  message,
+					Severity: diagnostics.SeverityError,
+					Fix:      &diagnostics.Fix{Kind: "use_one_of", Params: params},
+				})
+				continue
+			}
+			if msg := conditionalThresholdProblem(cond); msg != "" {
+				out = append(out, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeInvalidParameter,
+					Path:     base + ".threshold",
+					Message:  fmt.Sprintf("slide %d: table conditional rule %q %s, so the cell gets no fill", slideIdx+1, conditionalRuleName(cond.Rule), msg),
+					Severity: diagnostics.SeverityError,
+					Fix: &diagnostics.Fix{
+						Kind:   "provide_value",
+						Params: map[string]any{"path": base + ".threshold"},
+					},
+				})
+			}
+		}
+	}
+	return out
+}
+
+// conditionalRuleName spells the empty rule the way the message reads.
+func conditionalRuleName(rule string) string {
+	if rule == "" {
+		return types.ConditionalRuleAlways
+	}
+	return rule
+}
+
+// conditionalThresholdProblem returns a clause describing why a rule cannot use
+// its threshold, or "" when the pair is usable.
+func conditionalThresholdProblem(cond *jsonschema.ConditionalFormatInput) string {
+	value, ok := cond.ThresholdValue()
+	if !ok {
+		return "needs a number, a string or a two-number range as its threshold"
+	}
+	switch cond.Rule {
+	case types.ConditionalRuleThreshold, types.ConditionalRuleGTE, types.ConditionalRuleLTE:
+		switch v := value.(type) {
+		case float64:
+			return ""
+		case string:
+			if _, numeric := parseThresholdNumber(v); numeric {
+				return ""
+			}
+			return fmt.Sprintf("compares numbers, but its threshold %q is not one", v)
+		default:
+			return "needs a number as its threshold"
+		}
+	case types.ConditionalRuleBetween:
+		if pair, isPair := value.([]float64); isPair && len(pair) == 2 {
+			return ""
+		}
+		return "needs a two-number range as its threshold, e.g. [0, 10]"
+	case types.ConditionalRuleEquals, types.ConditionalRuleContains:
+		if value == nil {
+			return "needs a threshold to compare the cell against"
+		}
+		if cond.Rule == types.ConditionalRuleContains {
+			if text, isText := value.(string); !isText || strings.TrimSpace(text) == "" {
+				return "needs a non-empty string as its threshold"
+			}
+		}
+		return ""
+	default:
+		// always / positive / negative take no threshold; one is harmless.
+		return ""
+	}
+}
+
+// parseThresholdNumber reads a numeric threshold written as a string, the way
+// the renderer does.
+func parseThresholdNumber(s string) (float64, bool) {
+	n, err := strconv.ParseFloat(strings.TrimSpace(s), 64)
+	if err != nil {
+		return 0, false
+	}
+	return n, true
 }
 
 // writeDryRunOutput writes the dry-run result as JSON to stdout. The accumulated

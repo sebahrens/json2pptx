@@ -49,7 +49,7 @@ Content types and their value fields:
 - "bullets": "bullets_value":["item1","item2"]
 - "body_and_bullets": "body_and_bullets_value":{"body":"...","bullets":["..."],"trailing_body":"..."}
 - "bullet_groups": "bullet_groups_value":{"body":"...","groups":[{"header":"...","bullets":["..."]}],"trailing_body":"..."}
-- "table": "table_value":{"headers":["H1","H2"],"rows":[["a","b"],["c","d"]]}
+- "table": "table_value":{"headers":["H1","H2"],"rows":[["a","b"],["c","d"]]} — a cell may be {"content":"On track","conditional":{"rule":"equals","threshold":"On track","fill":"accent3"}}; rules: always|positive|negative|threshold|gte|lte|between|equals|contains, threshold is a number, a string, or [lo,hi] for between, and the rule is evaluated against the cell's own content
 - "chart": "chart_value":{"type":"bar|grouped_bar|stacked_bar|line|area|stacked_area|pie|donut|scatter|bubble|radar|waterfall|funnel|gauge|treemap","title":"...","data":{...}}
 - "diagram": "diagram_value":{"type":"timeline|process_flow|pyramid|venn|swot|org_chart|gantt|matrix_2x2|porters_five_forces|house_diagram|business_model_canvas|value_chain|nine_box_talent|kpi_dashboard|heatmap|fishbone|pestel|panel_layout|icon_columns|icon_rows|stat_cards","title":"...","data":{...}}
 - "image": "image_value":{"path":"/path/to/image.png","alt":"description"}

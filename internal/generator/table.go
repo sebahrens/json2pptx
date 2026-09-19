@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -577,7 +579,7 @@ func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config T
 			} else if cell.RowSpan == 0 {
 				overrides := &cellBorderOverrides{suppressTop: true}
 				fmt.Fprintf(&xml, `<a:tc vMerge="1"><a:txBody><a:bodyPr wrap="square" vert="horz"/><a:lstStyle/><a:p/></a:txBody>%s</a:tc>`,
-					generateCellProperties(config, true, 0, overrides, colIdx, false, nil))
+					generateCellProperties(config, true, 0, overrides, colIdx, false, nil, ""))
 			}
 			colIdx++
 			continue
@@ -598,7 +600,7 @@ func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config T
 		fmt.Fprintf(&xml, `<a:tc%s>%s%s</a:tc>`,
 			attrs,
 			generateCellContent(cell.Content, true, config, colIdx),
-			generateCellProperties(config, true, 0, overrides, colIdx, false, nil),
+			generateCellProperties(config, true, 0, overrides, colIdx, false, nil, ""),
 		)
 		colIdx++
 	}
@@ -611,7 +613,7 @@ func generateHeaderRowWithMerges(cells []types.TableCell, height int64, config T
 func generateHeaderCell(text string, colIdx int, config TableRenderConfig) string {
 	return fmt.Sprintf(`<a:tc>%s%s</a:tc>`,
 		generateCellContent(text, true, config, colIdx),
-		generateCellProperties(config, true, 0, nil, colIdx, false, nil),
+		generateCellProperties(config, true, 0, nil, colIdx, false, nil, ""),
 	)
 }
 
@@ -636,7 +638,7 @@ func generateSummaryRow(row []types.TableCell, rowIdx int, height int64, config 
 	for colIdx, cell := range row {
 		fmt.Fprintf(&xml, `<a:tc>%s%s</a:tc>`,
 			generateItalicCellContent(cell.Content, config, colIdx),
-			generateCellProperties(config, false, rowIdx, nil, colIdx, false, nil),
+			generateCellProperties(config, false, rowIdx, nil, colIdx, false, nil, ""),
 		)
 	}
 
@@ -680,7 +682,7 @@ func generateDataCell(cell types.TableCell, rowIdx int, colIdx int, config Table
 			// Vertical merge continuation — suppress top border for visual merge
 			overrides := &cellBorderOverrides{suppressTop: true}
 			return fmt.Sprintf(`<a:tc vMerge="1"><a:txBody><a:bodyPr wrap="square" vert="horz"/><a:lstStyle/><a:p/></a:txBody>%s</a:tc>`,
-				generateCellProperties(config, false, rowIdx, overrides, colIdx, isTotalsRow, nil))
+				generateCellProperties(config, false, rowIdx, overrides, colIdx, isTotalsRow, nil, ""))
 		}
 	}
 
@@ -709,7 +711,7 @@ func generateDataCell(cell types.TableCell, rowIdx int, colIdx int, config Table
 	return fmt.Sprintf(`<a:tc%s>%s%s</a:tc>`,
 		attrs,
 		generateDataCellContent(cell, isTotalsRow, config, colIdx),
-		generateCellProperties(config, false, rowIdx, overrides, colIdx, isTotalsRow, cell.Conditional),
+		generateCellProperties(config, false, rowIdx, overrides, colIdx, isTotalsRow, cell.Conditional, cell.Content),
 	)
 }
 
@@ -862,9 +864,15 @@ func deltaTextColor(content string) string {
 	return ""
 }
 
-// resolveConditionalFill returns an OOXML solidFill element for a conditional format rule.
-func resolveConditionalFill(cond *types.ConditionalFormat) string {
-	if cond == nil {
+// resolveConditionalFill returns an OOXML solidFill element for a conditional
+// format rule that the cell's content satisfies, and "" when it does not.
+//
+// The rule used to be decorative: it picked a default fill and was never
+// evaluated, so a cell tagged rule:"negative" was tinted whatever it said
+// (go-slide-creator-6hlu). Now a rule that does not match leaves the cell with
+// the table's normal fill, which is what "conditional" means.
+func resolveConditionalFill(cond *types.ConditionalFormat, content string) string {
+	if cond == nil || !conditionalMatches(cond, content) {
 		return ""
 	}
 	fill := cond.Fill
@@ -894,6 +902,121 @@ func resolveConditionalFill(cond *types.ConditionalFormat) string {
 	return ""
 }
 
+// conditionalMatches reports whether a cell's content satisfies its rule. An
+// empty rule means "always": that is how a cell asks for a plain tint, and it
+// is the only form that was ever reliable before rules were evaluated.
+func conditionalMatches(cond *types.ConditionalFormat, content string) bool {
+	text := strings.TrimSpace(content)
+	switch cond.Rule {
+	case "", types.ConditionalRuleAlways:
+		return true
+	case types.ConditionalRulePositive:
+		n, ok := parseCellNumber(text)
+		return ok && n > 0
+	case types.ConditionalRuleNegative:
+		n, ok := parseCellNumber(text)
+		return ok && n < 0
+	case types.ConditionalRuleThreshold, types.ConditionalRuleGTE:
+		return compareCellNumber(cond.Threshold, text, func(cell, want float64) bool { return cell >= want })
+	case types.ConditionalRuleLTE:
+		return compareCellNumber(cond.Threshold, text, func(cell, want float64) bool { return cell <= want })
+	case types.ConditionalRuleBetween:
+		bounds, ok := cond.Threshold.([]float64)
+		if !ok || len(bounds) != 2 {
+			return false
+		}
+		n, parsed := parseCellNumber(text)
+		lo, hi := bounds[0], bounds[1]
+		if lo > hi {
+			lo, hi = hi, lo
+		}
+		return parsed && n >= lo && n <= hi
+	case types.ConditionalRuleEquals:
+		return cellEquals(cond.Threshold, text)
+	case types.ConditionalRuleContains:
+		want, ok := cond.Threshold.(string)
+		return ok && want != "" && strings.Contains(strings.ToLower(text), strings.ToLower(strings.TrimSpace(want)))
+	default:
+		// An unrecognised rule applies nothing; validation reports it by name
+		// with the allowed list.
+		return false
+	}
+}
+
+// compareCellNumber applies a numeric comparison between the cell and a numeric
+// threshold. A non-numeric threshold or cell matches nothing.
+func compareCellNumber(threshold any, text string, cmp func(cell, want float64) bool) bool {
+	want, ok := numericThreshold(threshold)
+	if !ok {
+		return false
+	}
+	n, parsed := parseCellNumber(text)
+	return parsed && cmp(n, want)
+}
+
+// numericThreshold reads a numeric operand, accepting the string form ("0.5")
+// an author may write so a quoted number is not silently inert.
+func numericThreshold(threshold any) (float64, bool) {
+	switch v := threshold.(type) {
+	case float64:
+		return v, true
+	case string:
+		return parseCellNumber(v)
+	default:
+		return 0, false
+	}
+}
+
+// cellEquals compares the cell's text with the threshold, case- and
+// space-insensitively, and numerically when both sides are numbers (so 0.5
+// matches a cell of "50%").
+func cellEquals(threshold any, text string) bool {
+	switch v := threshold.(type) {
+	case string:
+		if strings.EqualFold(strings.TrimSpace(v), text) {
+			return true
+		}
+		want, okW := parseCellNumber(v)
+		got, okG := parseCellNumber(text)
+		return okW && okG && want == got
+	case float64:
+		got, ok := parseCellNumber(text)
+		return ok && got == v
+	default:
+		return false
+	}
+}
+
+// cellNumberRe captures the first number in a cell, with an optional sign,
+// thousands separators and a decimal part. Currency symbols, units and a
+// trailing percent sign are ignored.
+var cellNumberRe = regexp.MustCompile(`-?\d[\d,\s]*(?:\.\d+)?`)
+
+// parseCellNumber reads the number a table cell states: "+5%", "(3.2)",
+// "EUR 1,186.4M" and "-0.5" all resolve. Accounting parentheses mean negative.
+// A percent sign is a unit, not a scale: "50%" is 50, so a threshold written
+// for percentages is written in the same units the cell shows.
+func parseCellNumber(content string) (float64, bool) {
+	text := strings.TrimSpace(content)
+	if text == "" {
+		return 0, false
+	}
+	negative := strings.HasPrefix(text, "(") && strings.HasSuffix(text, ")")
+	match := cellNumberRe.FindString(text)
+	if match == "" {
+		return 0, false
+	}
+	cleaned := strings.NewReplacer(",", "", " ", "", "\u00a0", "").Replace(match)
+	n, err := strconv.ParseFloat(cleaned, 64)
+	if err != nil {
+		return 0, false
+	}
+	if negative && n > 0 {
+		n = -n
+	}
+	return n, true
+}
+
 // isValidHexColor reports whether s is exactly six hexadecimal digits
 // (case-insensitive, no leading '#'). It gates conditional-format fill
 // values before they are emitted into OOXML color attributes.
@@ -912,16 +1035,17 @@ func isValidHexColor(s string) bool {
 
 // cellBorderOverrides controls which borders to suppress for merged cells.
 type cellBorderOverrides struct {
-	suppressTop    bool
-	suppressBottom bool
+	suppressTop     bool
+	suppressBottom  bool
 	totalsTopBorder bool // When true, render a dk1 top border for totals row
 }
 
 // generateCellProperties generates the <a:tcPr> element with borders and fill.
 // The overrides parameter controls border suppression for merged cells (nil = no overrides).
-// colIdx, isTotalsRow, and conditional are used for highlight column, totals row,
-// and conditional formatting fills.
-func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int, overrides *cellBorderOverrides, colIdx int, isTotalsRow bool, conditional *types.ConditionalFormat) string {
+// colIdx, isTotalsRow, conditional and cellContent are used for highlight
+// column, totals row, and conditional formatting fills — the cell's own content
+// is what a conditional rule is evaluated against.
+func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int, overrides *cellBorderOverrides, colIdx int, isTotalsRow bool, conditional *types.ConditionalFormat, cellContent string) string {
 	var xml strings.Builder
 	// anchor="ctr" vertically centers text within the cell, which is especially
 	// important for rowspan cells where the merged height is larger than the text.
@@ -936,7 +1060,7 @@ func generateCellProperties(config TableRenderConfig, isHeader bool, rowIdx int,
 		// Determine cell fill — priority: conditional > highlight column > header/stripe
 		fillXML := ""
 		if !isHeader && conditional != nil {
-			fillXML = resolveConditionalFill(conditional)
+			fillXML = resolveConditionalFill(conditional, cellContent)
 		}
 		if fillXML == "" && !isHeader && config.Style.HighlightColumn > 0 && colIdx == config.Style.HighlightColumn-1 {
 			// Highlight column: accent3 at 20% tint

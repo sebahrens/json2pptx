@@ -2154,10 +2154,20 @@ func TestGenerateTableXML_ConditionalFormat(t *testing.T) {
 				}},
 			},
 			{
-				{Content: "Errors", ColSpan: 1, RowSpan: 1},
-				{Content: "12", ColSpan: 1, RowSpan: 1, Conditional: &types.ConditionalFormat{
+				{Content: "Variance", ColSpan: 1, RowSpan: 1},
+				{Content: "-12", ColSpan: 1, RowSpan: 1, Conditional: &types.ConditionalFormat{
 					Rule: "negative",
 					Fill: "accent2",
+				}},
+			},
+			// A cell whose content does not satisfy its rule keeps the table's
+			// normal fill: the rule used to be decorative, so this cell was
+			// tinted red while reading +8 (go-slide-creator-6hlu).
+			{
+				{Content: "Growth", ColSpan: 1, RowSpan: 1},
+				{Content: "+8", ColSpan: 1, RowSpan: 1, Conditional: &types.ConditionalFormat{
+					Rule: "negative",
+					Fill: "accent5",
 				}},
 			},
 		},
@@ -2184,6 +2194,9 @@ func TestGenerateTableXML_ConditionalFormat(t *testing.T) {
 	if !strings.Contains(result.XML, `val="accent2"`) {
 		t.Error("expected accent2 fill for negative conditional")
 	}
+	if strings.Contains(result.XML, `val="accent5"`) {
+		t.Error("a cell that does not satisfy its rule must not be tinted")
+	}
 }
 
 func TestResolveConditionalFill_Allowlist(t *testing.T) {
@@ -2205,7 +2218,7 @@ func TestResolveConditionalFill_Allowlist(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := resolveConditionalFill(&types.ConditionalFormat{Rule: "threshold", Fill: tt.fill})
+			got := resolveConditionalFill(&types.ConditionalFormat{Rule: "threshold", Threshold: 0.0, Fill: tt.fill}, "42")
 			if tt.wantEmpty {
 				if got != "" {
 					t.Errorf("resolveConditionalFill(%q) = %q, want empty (value should be dropped)", tt.fill, got)

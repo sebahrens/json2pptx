@@ -330,6 +330,28 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Table conditional formatting accepts a text threshold, and the rule is
+  actually evaluated (go-slide-creator-6hlu).** `conditional.threshold` was a
+  `float64`, so the natural RAG rule
+  `{"rule":"equals","threshold":"On track","fill":"accent3"}` aborted the WHOLE
+  deck at parse time — with a Go type error that named the wrong struct
+  (`TableCellInput`), pointed at no JSON path and offered no fix. The only
+  working form was a per-cell `positive`/`negative` with a hand-picked fill.
+  - `threshold` now takes a **number, a string, or a two-number array**
+    (`between`). An unusable shape is a finding, never a parse abort.
+  - The rule vocabulary is closed and documented:
+    `always` (the default when `rule` is omitted — the plain highlight form),
+    `positive`, `negative`, `threshold`/`gte`, `lte`, `between`, `equals`,
+    `contains`.
+  - **The rule is now evaluated against the cell's own content.** It used to
+    only pick a default fill, so a cell tagged `negative` was tinted red
+    whatever it said. A cell that does not satisfy its rule keeps the table's
+    normal fill. Numbers are read out of the cell text (`"+4%"`, `"(3.2)"`,
+    `"EUR 1,186.4"`), and a percent sign is a unit, not a scale.
+  - An unknown rule, or a threshold the rule cannot use, is an
+    `INVALID_PARAMETER` error at `…rows[r][c].conditional.rule` / `.threshold`
+    carrying the allowed list, a `did_you_mean` for a typo, and a `fix`.
+
 - **Pattern length budgets count characters, not bytes
   (go-slide-creator-5ok4).** Every `maxLength` in `internal/patterns` is written
   in characters and its error says "chars", but the checks measured `len(s)`.

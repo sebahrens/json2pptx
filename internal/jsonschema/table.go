@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -42,9 +43,10 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 				RowSpan: cell.RowSpan,
 			}
 			if cell.Conditional != nil {
+				threshold, _ := cell.Conditional.ThresholdValue()
 				cells[j].Conditional = &types.ConditionalFormat{
 					Rule:      cell.Conditional.Rule,
-					Threshold: cell.Conditional.Threshold,
+					Threshold: threshold,
 					Fill:      cell.Conditional.Fill,
 				}
 			}
@@ -120,10 +122,43 @@ type TableStyleInput struct {
 }
 
 // ConditionalFormatInput represents a conditional formatting rule for a cell.
+//
+// Threshold is deliberately untyped. It used to be a float64, so the natural
+// RAG rule {"rule":"equals","threshold":"On track"} aborted the WHOLE deck at
+// parse time with a Go type error that named the wrong struct and pointed at
+// no path (go-slide-creator-6hlu). Whatever JSON the author wrote is kept here
+// and interpreted per rule.
 type ConditionalFormatInput struct {
-	Rule      string  `json:"rule"`
-	Threshold float64 `json:"threshold,omitempty"`
-	Fill      string  `json:"fill,omitempty"`
+	Rule      string          `json:"rule"`
+	Threshold json.RawMessage `json:"threshold,omitempty"`
+	Fill      string          `json:"fill,omitempty"`
+}
+
+// ThresholdValue decodes the authored threshold into the operand the renderer
+// compares against: a float64, a string, or a []float64 for "between". It
+// returns nil when there is none, and ok=false when the JSON is a shape no rule
+// can use (an object, say), which validation reports at the threshold's path.
+func (c *ConditionalFormatInput) ThresholdValue() (value any, ok bool) {
+	if c == nil || len(c.Threshold) == 0 {
+		return nil, true
+	}
+	var num float64
+	if err := json.Unmarshal(c.Threshold, &num); err == nil {
+		return num, true
+	}
+	var text string
+	if err := json.Unmarshal(c.Threshold, &text); err == nil {
+		return text, true
+	}
+	var pair []float64
+	if err := json.Unmarshal(c.Threshold, &pair); err == nil && len(pair) == 2 {
+		return pair, true
+	}
+	var b bool
+	if err := json.Unmarshal(c.Threshold, &b); err == nil {
+		return strconv.FormatBool(b), true
+	}
+	return nil, false
 }
 
 // LogicalRowCount returns the effective row count for this table, accounting
@@ -181,7 +216,6 @@ func CellExtraLogicalRows(content string) int {
 	}
 	return effective - 1
 }
-
 
 // expandCellSpans materialises the continuation cells a merge requires.
 //

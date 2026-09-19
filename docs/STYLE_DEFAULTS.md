@@ -163,6 +163,42 @@ Example (from midnight-blue):
 
 All 5 bundled templates define both `surface_tints` and `data_palette`.
 
+## Per-Cell Conditional Formatting
+
+A table cell can carry a `conditional` block that tints it when the cell's own
+content satisfies a rule:
+
+```json
+{"content": "On track", "conditional": {"rule": "equals", "threshold": "On track", "fill": "accent3"}}
+```
+
+| `rule` | Matches when | `threshold` |
+|---|---|---|
+| *(omitted)* / `always` | always — the plain "highlight this cell" form | — |
+| `positive` | the cell reads as a number > 0 | — |
+| `negative` | the cell reads as a number < 0 (accounting parentheses count) | — |
+| `threshold` / `gte` | cell ≥ threshold | number (a numeric string is accepted) |
+| `lte` | cell ≤ threshold | number |
+| `between` | lo ≤ cell ≤ hi, in either order | two-number array, e.g. `[0, 5]` |
+| `equals` | the cell's text matches, ignoring case and padding — or the numbers match, so `50` matches `"50%"` | string or number |
+| `contains` | the threshold appears in the cell's text, ignoring case | non-empty string |
+
+`fill` is a scheme color (`accent3`) or a 6-digit hex; it renders as a 20% tint,
+so the cell's own text stays legible. A rule the cell does NOT satisfy leaves it
+with the table's normal fill.
+
+Numbers are read out of the cell's text, so `"+4%"`, `"(3.2)"` and
+`"EUR 1,186.4"` all compare; a percent sign is a unit, not a scale, so a
+threshold for `"50%"` is written `50`.
+
+**Diagnostics.** A rule outside the list above, or a threshold the rule cannot
+use (a word where a number is compared, a `between` without two bounds), is an
+`INVALID_PARAMETER` error at
+`…rows[r][c].conditional.rule` / `.threshold` with the allowed list and a
+`did_you_mean` for a typo. Before go-slide-creator-6hlu a string threshold
+aborted the entire deck at parse time with a Go type error, and the rule itself
+was never evaluated — a cell tagged `negative` was tinted whatever it said.
+
 ## What Is NOT Defaultable
 
 In V1, only `table_style` and `cell_style` are supported. The following are **not** part of the defaults system:
