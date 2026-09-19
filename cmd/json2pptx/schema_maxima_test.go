@@ -227,7 +227,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"kpi-6up":                      0.0,
 	"kpi-inline":                   5.8,
 	"matrix-2x2":                   10.1,
-	"numbered-step-strip":          5.8,
+	"numbered-step-strip":          7.0,
 	"phase-roadmap":                6.2,
 	"process-flow":                 0.0,
 	"process-flow-compact":         9.1,

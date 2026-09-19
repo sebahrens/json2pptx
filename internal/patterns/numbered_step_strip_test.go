@@ -2,8 +2,11 @@ package patterns
 
 import (
 	"encoding/json"
+	"math"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 func validNumberedStepStripValues(style string, n int) *NumberedStepStripValues {
@@ -400,5 +403,161 @@ func TestNumberedStepStrip_Recommend(t *testing.T) {
 				t.Errorf("expected numbered-step-strip in recommendations for intent %q; got %+v", tc.intent, result.Candidates)
 			}
 		})
+	}
+}
+
+// chevronLabelSizes reads the label paragraph size and the adjustment value out
+// of an expanded chevron row.
+func chevronLabelSizes(t *testing.T, grid *jsonschema.ShapeGridInput) (adj int64, sizePt float64) {
+	t.Helper()
+	cell := grid.Rows[0].Cells[0]
+	var text struct {
+		Paragraphs []struct {
+			Size float64 `json:"size"`
+		} `json:"paragraphs"`
+	}
+	if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+		t.Fatalf("label text: %v", err)
+	}
+	if len(text.Paragraphs) < 2 {
+		t.Fatalf("want number + label paragraphs, got %d", len(text.Paragraphs))
+	}
+	return cell.Shape.Adjustments["adj"], text.Paragraphs[1].Size
+}
+
+// TestNumberedStepStrip_Chevron_LongLabelsGiveUpNotchDepth pins the fix for
+// go-slide-creator-e97v: at 6 steps a 13pt "Qualification" had 51pt of usable
+// chevron and rendered as "Qualific / ation". The strip now trades notch depth
+// for label width — and only shallows the notch when it has to, so short
+// labels keep the full arrow.
+func TestNumberedStepStrip_Chevron_LongLabelsGiveUpNotchDepth(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	ctx := testThemeCtx()
+
+	short := &NumberedStepStripValues{Style: "chevron", Steps: []NumberedStepStripStep{
+		{Label: "Attract"}, {Label: "Close"}, {Label: "Renew"},
+	}}
+	shortGrid, err := p.Expand(ctx, short, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand short: %v", err)
+	}
+	if adj, size := chevronLabelSizes(t, shortGrid); adj != chevronAdj || size != 13 {
+		t.Errorf("short labels: adj=%d size=%.0f, want the full notch (%d) at 13pt", adj, size, chevronAdj)
+	}
+
+	long := &NumberedStepStripValues{Style: "chevron", Steps: []NumberedStepStripStep{
+		{Label: "Attract"}, {Label: "Qualification"}, {Label: "Proposal"},
+		{Label: "Negotiate"}, {Label: "Onboarding"}, {Label: "Expansion"},
+	}}
+	longGrid, err := p.Expand(ctx, long, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand long: %v", err)
+	}
+	adj, size := chevronLabelSizes(t, longGrid)
+	if adj >= chevronAdj {
+		t.Errorf("long labels: adj=%d, want a shallower notch than %d", adj, chevronAdj)
+	}
+	if adj < chevronMinAdj {
+		t.Errorf("long labels: adj=%d below the floor %d", adj, chevronMinAdj)
+	}
+	if size != 13 {
+		t.Errorf("long labels: size=%.1f, want 13pt — the notch should pay before the type does", size)
+	}
+
+	// Every label fits on one line at the size and inset that were chosen.
+	geo := chevronStripGeometry(ctx, len(long.Steps))
+	for _, step := range long.Steps {
+		if got := measuredLines(step.Label, ctx.Theme.BodyFont, true, size, chevronLabelWidthPt(geo, adj)); got > 1 {
+			t.Errorf("label %q still wraps to %d lines", step.Label, got)
+		}
+	}
+}
+
+// TestNumberedStepStrip_Chevron_ShrinksToTheReadableFloor checks the second
+// remedy: when the shallowest notch is still not enough the label shrinks, and
+// never below the readable floor.
+func TestNumberedStepStrip_Chevron_ShrinksToTheReadableFloor(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	ctx := testThemeCtx()
+	vals := &NumberedStepStripValues{Style: "chevron", Steps: []NumberedStepStripStep{
+		{Label: "Internationalisation"}, {Label: "Standardisation"}, {Label: "Commercialisation"},
+		{Label: "Operationalisation"}, {Label: "Professionalisation"}, {Label: "Decommissioning"},
+	}}
+	grid, err := p.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	adj, size := chevronLabelSizes(t, grid)
+	if adj != chevronMinAdj {
+		t.Errorf("adj=%d, want the shallowest notch %d before shrinking type", adj, chevronMinAdj)
+	}
+	if size < chevronMinLabelPt {
+		t.Errorf("size=%.1f is below the readable floor %.1f", size, chevronMinLabelPt)
+	}
+	if size >= 13 {
+		t.Errorf("size=%.1f, want the label shrunk once the notch had nothing left to give", size)
+	}
+}
+
+// TestNumberedStepStrip_Chevron_WarnsWhenEvenTheFloorWraps checks the signal an
+// agent gets when the labels are simply too long for the step count: the
+// pattern renders its best attempt and says so.
+func TestNumberedStepStrip_Chevron_WarnsWhenEvenTheFloorWraps(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	warner, ok := p.(PostExpandWarner)
+	if !ok {
+		t.Fatal("numbered-step-strip must implement PostExpandWarner")
+	}
+	ctx := testThemeCtx()
+
+	fine := &NumberedStepStripValues{Style: "chevron", Steps: []NumberedStepStripStep{
+		{Label: "Attract"}, {Label: "Qualification"}, {Label: "Proposal"},
+		{Label: "Negotiate"}, {Label: "Onboarding"}, {Label: "Expansion"},
+	}}
+	if w := warner.PostExpandWarnings(ctx, fine, nil); len(w) != 0 {
+		t.Errorf("labels that fit should not warn, got %v", w)
+	}
+
+	tooLong := &NumberedStepStripValues{Style: "chevron", Steps: []NumberedStepStripStep{
+		{Label: "Internationalisation"}, {Label: "Standardisation"}, {Label: "Commercialisation"},
+		{Label: "Operationalisation"}, {Label: "Professionalisation"}, {Label: "Decommissioning"},
+	}}
+	warnings := warner.PostExpandWarnings(ctx, tooLong, nil)
+	if len(warnings) != 1 {
+		t.Fatalf("want one warning, got %v", warnings)
+	}
+	if !strings.HasPrefix(warnings[0], ErrCodeBodyTooLong+": ") {
+		t.Errorf("warning must carry the parseable code prefix: %q", warnings[0])
+	}
+	for _, want := range []string{"Internationalisation", "mid-word", "fewer steps"} {
+		if !strings.Contains(warnings[0], want) {
+			t.Errorf("warning missing %q: %q", want, warnings[0])
+		}
+	}
+
+	// Only the chevron style paints into a pointed shape.
+	stacked := &NumberedStepStripValues{Style: "stacked-box", Steps: tooLong.Steps}
+	if w := warner.PostExpandWarnings(ctx, stacked, nil); len(w) != 0 {
+		t.Errorf("stacked-box has no notch to overflow, got %v", w)
+	}
+}
+
+// TestChevronStripGeometry_SubtractsTheColumnGap pins the measurement bug the
+// fit pass depends on: the pattern asks for gap 0, the grid DTO reads that as
+// "unset" and applies its 8pt default, so a chevron is narrower than its share
+// of the content area.
+func TestChevronStripGeometry_SubtractsTheColumnGap(t *testing.T) {
+	ctx := testThemeCtx()
+	const count = 6
+	geo := chevronStripGeometry(ctx, count)
+
+	w, _ := expandContentSize(ctx)
+	share := float64(w) / 12700 / count
+	if geo.stepWPt >= share {
+		t.Errorf("stepW %.2fpt should be narrower than the %.2fpt column share", geo.stepWPt, share)
+	}
+	want := (float64(w)/12700 - chevronColGapPt*(count-1)) / count
+	if math.Abs(geo.stepWPt-want) > 0.01 {
+		t.Errorf("stepW = %.2f, want %.2f", geo.stepWPt, want)
 	}
 }

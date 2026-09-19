@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -206,6 +207,34 @@ func (n *numberedStepStrip) Validate(values, overrides any, cellOverrides map[in
 	return errors.Join(errs...)
 }
 
+// PostExpandWarnings reports the chevron labels that still wrap mid-word after
+// the strip has given up all the notch depth it can and shrunk the label to the
+// readable floor. At that point the label itself is too long for the number of
+// steps, and only the author can fix it — by shortening the word or dropping a
+// step (go-slide-creator-e97v).
+func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
+	vals, ok := values.(*NumberedStepStripValues)
+	if !ok || vals == nil || vals.Style != numberedStepStripChevron {
+		return nil
+	}
+	ovr, _ := overrides.(*NumberedStepStripOverrides)
+	if ovr == nil {
+		ovr = &NumberedStepStripOverrides{}
+	}
+	fit := fitChevronLabels(ctx, vals, chevronStripGeometry(ctx, len(vals.Steps)), ResolveSize(ovr.HeaderSize, 13.0))
+	if len(fit.unfit) == 0 {
+		return nil
+	}
+	noun, verb, pronoun := "label", "does", "it"
+	if len(fit.unfit) > 1 {
+		noun, verb, pronoun = "labels", "do", "them"
+	}
+	return []string{fmt.Sprintf(
+		"%s: numbered-step-strip chevron %s %s %s not fit on one line at %d steps even at %.0fpt — the renderer breaks %s mid-word; shorten %s or use fewer steps",
+		ErrCodeBodyTooLong, noun, listFirstN(fit.unfit, 3), verb,
+		len(vals.Steps), fit.labelPt, pronoun, pronoun)}
+}
+
 func (n *numberedStepStrip) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	vals, ok := values.(*NumberedStepStripValues)
 	if !ok {
@@ -268,7 +297,9 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 	count := len(vals.Steps)
 
 	geo := chevronStripGeometry(ctx, count)
-	notchInsetPt := geo.notchPt + chevronTextPadPt
+	fit := fitChevronLabels(ctx, vals, geo, labelSize)
+	labelSize = fit.labelPt
+	notchInsetPt := fit.insetPt
 
 	chevronCells := make([]*jsonschema.GridCellInput, count)
 	descCells := make([]*jsonschema.GridCellInput, count)
@@ -285,7 +316,7 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 				Geometry:    "chevron",
 				Fill:        json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
 				Text:        text,
-				Adjustments: map[string]int64{"adj": chevronAdj},
+				Adjustments: map[string]int64{"adj": fit.adj},
 			},
 		}
 		applyNumberedStepOverride(cell, cellOverrides, i, baseAccent)
@@ -342,6 +373,29 @@ const (
 	// the shape height. The OOXML default (50000) on a near-square chevron
 	// swallows the label; 30% keeps a clear arrow with room for text.
 	chevronAdj = 30000
+	// chevronMinAdj is the shallowest notch fitChevronLabels will go to. Past
+	// this the shape reads as a rectangle with a dent rather than an arrow, so
+	// a label that still does not fit shrinks instead (go-slide-creator-e97v).
+	chevronMinAdj = 12000
+	// chevronAdjStep is the granularity of the notch search.
+	chevronAdjStep = 3000
+	// chevronMinLabelPt is the readable floor for a chevron label. It matches
+	// shapegrid.MinTextSizePt: below it the renderer's own readability policy
+	// reports the text, so there is nothing to gain by going smaller.
+	chevronMinLabelPt = 12.0
+	// chevronColGapPt is the column gap the renderer puts between chevrons.
+	// The pattern asks for 0, but a zero gap reads as "unset" in the grid DTO
+	// and resolves to shapegrid's 8pt default, so each chevron is 8pt narrower
+	// than its share of the content area. Measuring against the share instead
+	// of the shape is how a label that "fits" still wrapped.
+	chevronColGapPt = 8.0
+	// chevronFitSafetyFrac is the share of the available width a label has to
+	// fit inside. The measurement runs on whatever font this machine has
+	// (Liberation Sans substitutes for a missing template font) while the
+	// renderer uses its own, so a label measured at 99% of the width still
+	// broke mid-word. A blunter notch is a far cheaper loss than "Qualific /
+	// ation".
+	chevronFitSafetyFrac = 0.90
 	// chevronDescDefaultSize is the default detail-zone text size (pt).
 	chevronDescDefaultSize = 12.0
 	// chevronTextPadPt is extra breathing room beyond the notch depth.
@@ -378,7 +432,9 @@ func chevronStripGeometry(ctx ExpandContext, count int) chevronGeometry {
 		count = 1
 	}
 	const emuPerPt = 12700.0
-	stepW := float64(w) / emuPerPt / float64(count)
+	// Subtract the gaps the renderer puts between the chevrons: the step is
+	// what one chevron actually gets, not its share of the content area.
+	stepW := (float64(w)/emuPerPt - chevronColGapPt*float64(count-1)) / float64(count)
 	contentH := float64(h) / emuPerPt
 	chevH := math.Min(stepW*chevronMaxAspectH, contentH*chevronMaxHeightFrac)
 	if chevH < chevronMinHeightPt {
@@ -388,6 +444,116 @@ func chevronStripGeometry(ctx ExpandContext, count int) chevronGeometry {
 	// because of the aspect cap above.
 	notch := float64(chevronAdj) / 100000 * math.Min(chevH, stepW)
 	return chevronGeometry{stepWPt: stepW, chevHPt: chevH, notchPt: notch, contentHPt: contentH}
+}
+
+// chevronLabelFit is the notch depth and label size one strip renders at.
+//
+// The notch inset and the chevron width were fixed independently: at 6 steps a
+// chevron is 131pt wide and the 30% notch takes 45pt of it, so a 13pt label had
+// 86pt to live in and "Qualification" wrapped to "Qualific / ation" — with no
+// finding, because two lines still fit inside the shape (go-slide-creator-e97v).
+// Reconciling them means giving up notch depth first (the arrow reads the same
+// a little blunter) and label size only after that.
+type chevronLabelFit struct {
+	adj     int64    // chevron adjustment value, ×100000 of the shorter side
+	insetPt float64  // text inset clearing the notch on both sides
+	labelPt float64  // label size that keeps every label on one line
+	unfit   []string // labels that still wrap at the readable floor
+}
+
+// fitChevronLabels finds the deepest notch and the largest label size at which
+// every step label stays on one line, and reports the labels that cannot.
+func fitChevronLabels(ctx ExpandContext, vals *NumberedStepStripValues, geo chevronGeometry, labelPt float64) chevronLabelFit {
+	font := ctx.Theme.BodyFont
+	labels := chevronLabels(vals)
+
+	// Deepest notch first: the arrow stays as pointed as the labels allow.
+	for adj := int64(chevronAdj); adj >= chevronMinAdj; adj -= chevronAdjStep {
+		if chevronLabelsFitOneLine(labels, font, labelPt, chevronLabelWidthPt(geo, adj)) {
+			return chevronLabelFit{adj: adj, insetPt: chevronInsetPt(geo, adj), labelPt: labelPt}
+		}
+	}
+
+	// Even the shallowest notch is not enough, so the label shrinks — never
+	// below the readable floor, where the label has to get shorter instead.
+	inset := chevronInsetPt(geo, chevronMinAdj)
+	avail := chevronLabelWidthPt(geo, chevronMinAdj)
+	size := labelPt
+	for _, label := range labels {
+		if s := fitSingleLineSize(label, font, true, size, chevronMinLabelPt, avail); s < size {
+			size = s
+		}
+	}
+	fit := chevronLabelFit{adj: chevronMinAdj, insetPt: inset, labelPt: size}
+	for _, label := range labels {
+		if measuredLines(label, font, true, size, avail) > 1 {
+			fit.unfit = append(fit.unfit, label)
+		}
+	}
+	return fit
+}
+
+
+// listFirstN quotes at most n entries, noting how many were left out.
+func listFirstN(items []string, n int) string {
+	if len(items) <= n {
+		return strconv.Quote(strings.Join(items, ", "))
+	}
+	return fmt.Sprintf("%s and %d more", strconv.Quote(strings.Join(items[:n], ", ")), len(items)-n)
+}
+
+// chevronLabels returns the non-empty step labels, as rendered.
+func chevronLabels(vals *NumberedStepStripValues) []string {
+	if vals == nil {
+		return nil
+	}
+	labels := make([]string, 0, len(vals.Steps))
+	for _, step := range vals.Steps {
+		if label := strings.TrimSpace(step.Label); label != "" {
+			labels = append(labels, label)
+		}
+	}
+	return labels
+}
+
+// chevronNotchPt is the depth of the tail notch (and of the point) at a given
+// adjustment value: the OOXML chevron measures it against the shorter side.
+func chevronNotchPt(geo chevronGeometry, adj int64) float64 {
+	return float64(adj) / 100000 * math.Min(geo.chevHPt, geo.stepWPt)
+}
+
+// chevronInsetPt is the text inset for a given notch depth: the notch itself
+// plus breathing room, on each side.
+func chevronInsetPt(geo chevronGeometry, adj int64) float64 {
+	return chevronNotchPt(geo, adj) + chevronTextPadPt
+}
+
+// chevronLabelWidthPt is the width a label is measured against.
+//
+// The notch is subtracted TWICE. A renderer lays text out inside the chevron's
+// own text rectangle, which is already pulled in past the point and the notch;
+// the lIns/rIns this pattern emits (for the renderers that do not) then stack
+// on top of that. Measuring against the shape width minus our inset alone said
+// a 13pt "Qualification" fitted in 84pt, and LibreOffice broke it at "Qualific
+// / ation" — the label really had about 51pt (go-slide-creator-e97v).
+func chevronLabelWidthPt(geo chevronGeometry, adj int64) float64 {
+	notch := chevronNotchPt(geo, adj)
+	inset := notch + chevronTextPadPt
+	return (geo.stepWPt - 2*inset - 2*notch) * chevronFitSafetyFrac
+}
+
+// chevronLabelsFitOneLine reports whether every label renders on a single line
+// at sizePt within widthPt.
+func chevronLabelsFitOneLine(labels []string, font string, sizePt, widthPt float64) bool {
+	if widthPt <= 0 {
+		return false
+	}
+	for _, label := range labels {
+		if measuredLines(label, font, true, sizePt, widthPt) > 1 {
+			return false
+		}
+	}
+	return true
 }
 
 // estimateWrappedLines estimates how many lines text wraps to at sizePt in a

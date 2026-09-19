@@ -370,7 +370,7 @@ own weight:
 
 For a short ordered sequence, pick (in rough order of preference):
 
-1. `numbered-step-strip` — ordered steps with an optional **per-step detail zone** for body text.
+1. `numbered-step-strip` — ordered steps with an optional **per-step detail zone** for body text. In `chevron` style a step label has to fit on ONE line inside its arrow: the strip gives up notch depth first and then shrinks the label to the 12pt floor to keep it there, so a 6-step strip renders a blunter arrow rather than "Qualific / ation". A label so long that even the floor wraps is reported as `BODY_TOO_LONG` — shorten it or use fewer steps.
 2. `agenda` / `agenda-with-images` — when it reads as a table-of-contents / section list.
 3. `value-chain` — steps that each carry a one-line description.
 4. `phase-roadmap` — steps anchored to dates/phases.
