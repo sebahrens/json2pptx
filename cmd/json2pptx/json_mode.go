@@ -237,8 +237,13 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 	if input.Template != "" && input.TemplatePath != "" {
 		return nil, nil, fmt.Errorf("set only one of \"template\" (a registered name) or \"template_path\" (a local .pptx), not both")
 	}
-	if len(input.Slides) == 0 {
-		return nil, nil, fmt.Errorf("at least one slide is required")
+	// A structure block IS the slide list — it expands into one later in
+	// runJSONMode. Rejecting an empty slides[] here made the documented
+	// structure form unusable from the CLI, though validate accepted it and
+	// generate_presentation rendered it: the same deck, two verdicts
+	// (go-slide-creator-m1kg). The expansion checks its own result below.
+	if len(input.Slides) == 0 && input.Structure == nil {
+		return nil, nil, fmt.Errorf("at least one slide is required: provide \"slides\" or a top-level \"structure\" block")
 	}
 
 	// Check for unknown keys (additionalProperties:false). Warn by default; when
@@ -387,6 +392,9 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		expanded, err := expandStructure(input.Structure)
 		if err != nil {
 			return writeJSONError(jsonOutputPath, fmt.Errorf("invalid structure: %w", err))
+		}
+		if len(expanded) == 0 {
+			return writeJSONError(jsonOutputPath, fmt.Errorf("structure expanded to no slides: add a section with slides, or a cover / closing"))
 		}
 		input.Slides = expanded
 	}

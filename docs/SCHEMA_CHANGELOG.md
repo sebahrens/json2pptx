@@ -352,6 +352,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **The CLI accepts a structure-only deck (go-slide-creator-m1kg).** A deck
+  using the documented top-level `structure` block (mutually exclusive with
+  `slides`) validated clean and rendered over MCP, but
+  `json2pptx generate -json deck.json` failed with "at least one slide is
+  required": the slide-count guard ran at parse time while the structure
+  expansion ran later. Any agent or CI script driving the CLI — the documented
+  counterpart of `generate_presentation` — could not use sections at all.
+  - The guard now accepts a deck that carries either `slides` or `structure`,
+    and the expansion checks its own result: a structure that produces no
+    slides is its own error rather than passing silently.
+
 - **The autofit prediction runs on the layout the engine will actually pick,
   and reports readability alongside trimming (go-slide-creator-nlrg, partial).**
   `collectTextAutofitPreflightFindings` keyed on an explicit `layout_id`, so a

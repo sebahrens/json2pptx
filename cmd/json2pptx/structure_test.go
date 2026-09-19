@@ -1,6 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -193,3 +197,74 @@ func TestValidateStructure_WithClosing_NoWarning(t *testing.T) {
 }
 
 // strPtr is declared in json_mode_test.go
+
+// A structure block IS the slide list, but the CLI's slide-count guard ran at
+// parse time and the expansion ran later, so a documented structure-only deck
+// validated clean, rendered over MCP, and failed at the CLI with "at least one
+// slide is required" — the same deck, two verdicts (go-slide-creator-m1kg).
+func TestGenerateAcceptsAStructureOnlyDeck(t *testing.T) {
+	dir := t.TempDir()
+	deck := `{
+      "template": "midnight-blue",
+      "output_filename": "structure.pptx",
+      "structure": {
+        "cover": {"title": "Programme review", "subtitle": "September 2026"},
+        "auto_agenda": true,
+        "sections": [
+          {"title": "Where we are", "slides": [
+            {"slide_type": "content", "content": [
+              {"placeholder_id": "title", "type": "text", "text_value": "Two workstreams are amber"}]}]},
+          {"title": "What we do next", "slides": [
+            {"slide_type": "content", "content": [
+              {"placeholder_id": "title", "type": "text", "text_value": "Re-plan the migration wave"}]}]}
+        ],
+        "closing": {"title": "Questions"}
+      }
+    }`
+	inputPath := writeTestFile(t, dir, "structure.json", deck)
+
+	reportPath := filepath.Join(dir, "result.json")
+	if err := runJSONMode(inputPath, reportPath, filepath.Join("..", "..", "templates"), dir,
+		"", false, false, "midnight-blue", "off", false, "off", "", false); err != nil {
+		t.Fatalf("generate rejected a structure-only deck: %v", err)
+	}
+
+	report, err := os.ReadFile(reportPath)
+	if err != nil {
+		t.Fatalf("read report: %v", err)
+	}
+	var result struct {
+		Success    bool `json:"success"`
+		SlideCount int  `json:"slide_count"`
+	}
+	if err := json.Unmarshal(report, &result); err != nil {
+		t.Fatalf("decode report: %v", err)
+	}
+	if !result.Success {
+		t.Errorf("generate reported failure: %s", report)
+	}
+	// cover + agenda + 2 section dividers + 2 content + closing.
+	if result.SlideCount < 6 {
+		t.Errorf("slide_count = %d; the structure should have expanded into the full sequence", result.SlideCount)
+	}
+}
+
+// A deck with neither slides nor structure is still an error, and so is a
+// structure that expands to nothing.
+func TestGenerateStillRequiresContent(t *testing.T) {
+	dir := t.TempDir()
+	for name, deck := range map[string]string{
+		"neither":          `{"template":"midnight-blue"}`,
+		"empty structure":  `{"template":"midnight-blue","structure":{}}`,
+		"sections is null": `{"template":"midnight-blue","structure":{"sections":[]}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			inputPath := writeTestFile(t, dir, strings.ReplaceAll(name, " ", "_")+".json", deck)
+			err := runJSONMode(inputPath, filepath.Join(dir, "r.json"), filepath.Join("..", "..", "templates"), dir,
+				"", false, false, "midnight-blue", "off", false, "off", "", false)
+			if err == nil {
+				t.Error("expected an error for a deck with no content")
+			}
+		})
+	}
+}
