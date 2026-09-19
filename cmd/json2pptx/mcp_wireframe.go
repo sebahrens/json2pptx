@@ -121,7 +121,7 @@ func (mc *mcpConfig) handlePreviewSlideWireframe(ctx context.Context, request mc
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("preview_slide_wireframe", "presentation", "object", map[string]any{
+		return argRequired(request, "preview_slide_wireframe", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -130,7 +130,7 @@ func (mc *mcpConfig) handlePreviewSlideWireframe(ctx context.Context, request mc
 	// slide_index is required and 0-based.
 	slideIdxF, ok := request.GetArguments()["slide_index"].(float64)
 	if !ok {
-		return argMissing("preview_slide_wireframe", "slide_index", "integer", 0, nil), nil
+		return argRequired(request, "preview_slide_wireframe", "slide_index", "integer", 0, nil), nil
 	}
 	slideIdx := int(slideIdxF)
 	if slideIdx < 0 {

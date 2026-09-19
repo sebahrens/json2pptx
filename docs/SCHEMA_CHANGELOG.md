@@ -321,6 +321,29 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **A wrong-typed argument was reported as missing (go-slide-creator-6072).**
+  A sweep of every core tool with a wrong-typed first argument found
+  `describe_finding{code: 12345}` answering "code is required",
+  `plan_deck{brief: 12345}` answering "brief is required", and four more. The
+  typed accessors cannot tell absent from present-but-wrong-typed, and every
+  handler turned the failure into MISSING_PARAMETER — telling an agent to
+  re-add a field that is sitting in the call it just sent.
+  - The shared `argRequired` helper now looks the argument up (dotted paths
+    included) and emits **`INVALID_PARAMETER`** with
+    `"<path> must be a string, got a number"`, `evidence.expected_type` and a
+    `next_tool_call` retry when the key is present; `MISSING_PARAMETER` is left
+    to mean what it says. All 62 call sites route through it.
+  - **`get_started{task: <non-string>}`** was the one silent ignore left in the
+    surface — it answered with the brief workflow as though nothing had been
+    asked. It is now `INVALID_PARAMETER` naming the accepted tasks. An unknown
+    task STRING still falls back to `brief`: that is a documented default.
+  - **`list_patterns{fields: <non-string>}`** now carries the same
+    `expected_type` / `example_value` / `next_tool_call` its identical sibling
+    `list_templates` always did.
+  - Pinned by a sweep test over the whole catalogue: for all 50 required
+    arguments across 52 registered tools, a wrong-typed value is never reported
+    as missing.
+
 - **`chrome.page_numbers` wrapped `2 / 10` onto two lines
   (go-slide-creator-pss1z).** The slide-number box was widened to a flat 0.5in —
   "enough for three digits" — and the page-number text never went near the

@@ -1,6 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
+	"strings"
+
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
@@ -44,6 +48,87 @@ func argError(env argErrorEnvelope) *mcp.CallToolResult {
 		NextToolCall: env.NextToolCall,
 	}
 	return api.MCPDiagnosticsError([]diagnostics.Diagnostic{d})
+}
+
+// argRequired reports a required argument the caller did not supply — or, when
+// the argument IS present, the type error it actually is.
+//
+// The typed accessors cannot tell the two apart: RequireString on a number
+// returns an error, and every handler turned that into "code is required". An
+// agent told a field is missing when it is sitting right there in the call
+// re-sends it unchanged, or drops it; neither is the fix. The distinction is one
+// map lookup away, so it is made here rather than at 60 call sites
+// (go-slide-creator-6072).
+func argRequired(request mcp.CallToolRequest, tool, path, expectedType string, example any, next *patterns.ToolCallSuggestion) *mcp.CallToolResult {
+	if v, ok := lookupArgPath(request.GetArguments(), path); ok && v != nil {
+		if next == nil && tool != "" {
+			next = nextCallRetry(tool, path)
+		}
+		return argError(argErrorEnvelope{
+			Code:         diagnostics.CodeInvalidParameter,
+			Path:         path,
+			Message:      fmt.Sprintf("%s must be %s, got %s", path, articleFor(expectedType), jsonTypeName(v)),
+			ExpectedType: expectedType,
+			ExampleValue: example,
+			NextToolCall: next,
+		})
+	}
+	return argMissing(tool, path, expectedType, example, next)
+}
+
+// lookupArgPath resolves a dotted argument path ("presentation.slides") against
+// a call's arguments. A path whose parent is not an object reports not-found:
+// the parent's own type error is the one worth reporting.
+func lookupArgPath(args map[string]any, path string) (any, bool) {
+	if args == nil || path == "" {
+		return nil, false
+	}
+	var current any = args
+	for _, segment := range strings.Split(path, ".") {
+		obj, ok := current.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+		current, ok = obj[segment]
+		if !ok {
+			return nil, false
+		}
+	}
+	return current, true
+}
+
+// jsonTypeName names the JSON type of a decoded argument value, in the
+// vocabulary an agent reading the schema will recognise.
+func jsonTypeName(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return "null"
+	case bool:
+		return "a boolean"
+	case float64, int, int64, json.Number:
+		return "a number"
+	case string:
+		return "a string"
+	case []any:
+		return "an array"
+	case map[string]any:
+		return "an object"
+	default:
+		return fmt.Sprintf("%T", t)
+	}
+}
+
+// articleFor renders an expected-type name with its article, so the message
+// reads "must be a string" / "must be an object|string".
+func articleFor(expectedType string) string {
+	switch expectedType {
+	case "":
+		return "of the documented type"
+	case "object", "array", "integer":
+		return "an " + expectedType
+	default:
+		return "a " + expectedType
+	}
 }
 
 // argMissing builds an error for a missing required argument. The default

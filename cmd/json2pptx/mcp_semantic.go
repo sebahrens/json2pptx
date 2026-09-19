@@ -44,7 +44,7 @@ import (
 func semanticSpecBytes(tool string, request mcp.CallToolRequest) ([]byte, string, *mcp.CallToolResult) {
 	raw, ok := request.GetArguments()["spec"]
 	if !ok || raw == nil {
-		return nil, "", argMissing(tool, "spec", "object|string", map[string]any{
+		return nil, "", argRequired(request, tool, "spec", "object|string", map[string]any{
 			"meta":   map[string]any{"title": "My Deck", "archetype": "strategy_proposal"},
 			"slides": []any{map[string]any{"kind": "title", "title": "My Deck"}},
 		}, nil)
@@ -52,12 +52,12 @@ func semanticSpecBytes(tool string, request mcp.CallToolRequest) ([]byte, string
 	switch v := raw.(type) {
 	case string:
 		if strings.TrimSpace(v) == "" {
-			return nil, "", argMissing(tool, "spec", "object|string", nil, nil)
+			return nil, "", argRequired(request, tool, "spec", "object|string", nil, nil)
 		}
 		return []byte(v), "spec.yaml", nil
 	case map[string]any:
 		if len(v) == 0 {
-			return nil, "", argMissing(tool, "spec", "object|string", nil, nil)
+			return nil, "", argRequired(request, tool, "spec", "object|string", nil, nil)
 		}
 		b, err := json.Marshal(v)
 		if err != nil {

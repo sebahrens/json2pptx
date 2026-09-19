@@ -32,7 +32,7 @@ Response shape: {slide_count, slides: [{index, layout_id, placeholders: [{id, ty
 func handleReadPresentation(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	pptxPath, err := request.RequireString("pptx_path")
 	if err != nil {
-		return argMissing("read_presentation", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
+		return argRequired(request, "read_presentation", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if err := api.ValidatePptxPath(pptxPath); err != nil {

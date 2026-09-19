@@ -142,7 +142,7 @@ func (mc *mcpConfig) handleExpandPatterns(ctx context.Context, request mcp.CallT
 	// --- names[] (required) ---
 	namesRaw, ok := request.GetArguments()["names"]
 	if !ok || namesRaw == nil {
-		return argMissing("expand_patterns", "names", "array", []any{"kpi-3up", "stat-hero"}, nextCallListPatterns()), nil
+		return argRequired(request, "expand_patterns", "names", "array", []any{"kpi-3up", "stat-hero"}, nextCallListPatterns()), nil
 	}
 	namesJSON, err := json.Marshal(namesRaw)
 	if err != nil {
@@ -153,7 +153,7 @@ func (mc *mcpConfig) handleExpandPatterns(ctx context.Context, request mcp.CallT
 		return argInvalidJSON("names", fmt.Sprintf("names must be an array of strings: %v", err), "array", []any{"kpi-3up"}, nil), nil
 	}
 	if len(names) == 0 {
-		return argMissing("expand_patterns", "names", "array", []any{"kpi-3up", "stat-hero"}, nextCallListPatterns()), nil
+		return argRequired(request, "expand_patterns", "names", "array", []any{"kpi-3up", "stat-hero"}, nextCallListPatterns()), nil
 	}
 
 	// --- content (optional) ---

@@ -157,7 +157,7 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("repair_slide", "presentation", "object", map[string]any{
+		return argRequired(request, "repair_slide", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -191,7 +191,7 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 		return argInvalidValue("repair_slide", "INVALID_PARAMETER", "fixes", err.Error(), "array", []any{map[string]any{"kind": "reduce_text"}}, nil), nil
 	}
 	if len(fixes) == 0 {
-		return argMissing("repair_slide", "fixes", "array", []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": 5}}}, nil), nil
+		return argRequired(request, "repair_slide", "fixes", "array", []any{map[string]any{"kind": "reduce_text", "params": map[string]any{"max_items": 5}}}, nil), nil
 	}
 
 	// Apply each fix to the target slide.

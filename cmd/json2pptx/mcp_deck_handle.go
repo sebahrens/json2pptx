@@ -205,7 +205,7 @@ func (mc *mcpConfig) resolveSpecSource(tool string, request mcp.CallToolRequest)
 func (mc *mcpConfig) specSourceFromSpec(tool string, request mcp.CallToolRequest, hasSpec bool) (specSource, *mcp.CallToolResult) {
 	args := request.GetArguments()
 	if !hasSpec {
-		return specSource{}, argMissing(tool, "spec", "object|string", map[string]any{
+		return specSource{}, argRequired(request, tool, "spec", "object|string", map[string]any{
 			"meta":   map[string]any{"title": "My Deck"},
 			"slides": []any{map[string]any{"kind": "title", "title": "My Deck"}},
 		}, nil)

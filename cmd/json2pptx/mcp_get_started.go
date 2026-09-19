@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
 // ---------------------------------------------------------------------------
@@ -278,7 +280,18 @@ Each step in the response includes a one-line when_to_call hint. The response al
 
 func handleGetStarted(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	task := ""
-	if t, err := request.RequireString("task"); err == nil {
+	if raw, ok := request.GetArguments()["task"]; ok && raw != nil {
+		// A non-string task used to be ignored silently: get_started answered
+		// with the brief workflow as though nothing had been asked, which is the
+		// one wrong-typed argument in the whole surface that produced no error at
+		// all (go-slide-creator-6072). An unknown STRING still falls back to
+		// brief — that is a documented default, not a mistake.
+		t, isString := raw.(string)
+		if !isString {
+			return argInvalidValue("get_started", diagnostics.CodeInvalidParameter, "task",
+				fmt.Sprintf("task must be a string, got %s; one of %s", jsonTypeName(raw), strings.Join(getStartedAvailableTasks(), ", ")),
+				"string", "brief", nil), nil
+		}
 		task = t
 	}
 

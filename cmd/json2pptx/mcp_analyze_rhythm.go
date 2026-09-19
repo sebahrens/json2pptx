@@ -42,7 +42,7 @@ func handleAnalyzeDeckRhythm(ctx context.Context, request mcp.CallToolRequest) (
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("analyze_deck_rhythm", "presentation", "object", map[string]any{
+		return argRequired(request, "analyze_deck_rhythm", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -54,7 +54,7 @@ func handleAnalyzeDeckRhythm(ctx context.Context, request mcp.CallToolRequest) (
 	}
 
 	if len(input.Slides) == 0 {
-		return argMissing("analyze_deck_rhythm", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
+		return argRequired(request, "analyze_deck_rhythm", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 
 	result := analyzeDeckRhythm(input.Slides)

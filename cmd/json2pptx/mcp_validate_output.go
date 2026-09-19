@@ -38,7 +38,7 @@ type validateOutputResponse struct {
 func handleValidateOutput(_ context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	path, err := request.RequireString("path")
 	if err != nil || path == "" {
-		return argMissing("validate_presentation_output", "path", "string", "/tmp/out/deck.pptx", nil), nil
+		return argRequired(request, "validate_presentation_output", "path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	// Reject malformed paths (traversal, wrong extension) with the same

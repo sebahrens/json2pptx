@@ -247,7 +247,7 @@ func (mc *mcpConfig) handleMakeDeck(ctx context.Context, request mcp.CallToolReq
 
 	outline, err := request.RequireString("outline")
 	if err != nil || outline == "" {
-		return argMissing("make_deck", "outline", "string", "Pitch our Series B for an AI infra company", nil), nil
+		return argRequired(request, "make_deck", "outline", "string", "Pitch our Series B for an AI infra company", nil), nil
 	}
 
 	templateName := defaultMakeDeckTemplate

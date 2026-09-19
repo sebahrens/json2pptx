@@ -98,7 +98,7 @@ type listTemplateSettingsResponse struct {
 func (mc *mcpConfig) handleListTemplateSettings(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	templateName, err := request.RequireString("template_name")
 	if err != nil {
-		return argMissing("list_template_settings", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
+		return argRequired(request, "list_template_settings", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if err := templatesettings.ValidateTemplateName(templateName); err != nil {
 		return argInvalidValue("list_template_settings", "INVALID_PARAMETER", "template_name", err.Error(), "string", "midnight-blue", nextCallListTemplates()), nil
@@ -143,7 +143,7 @@ func (mc *mcpConfig) handleRegisterTemplateSetting(ctx context.Context, request 
 
 	templateName, err := request.RequireString("template_name")
 	if err != nil {
-		return argMissing("register_template_setting", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
+		return argRequired(request, "register_template_setting", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if err := templatesettings.ValidateTemplateName(templateName); err != nil {
 		return argInvalidValue("register_template_setting", "INVALID_PARAMETER", "template_name", err.Error(), "string", "midnight-blue", nextCallListTemplates()), nil
@@ -151,7 +151,7 @@ func (mc *mcpConfig) handleRegisterTemplateSetting(ctx context.Context, request 
 
 	kindStr, err := request.RequireString("kind")
 	if err != nil {
-		return argMissing("register_template_setting", "kind", "string", "table_style", nil), nil
+		return argRequired(request, "register_template_setting", "kind", "string", "table_style", nil), nil
 	}
 	kind, err := templatesettings.ValidateKind(kindStr)
 	if err != nil {
@@ -160,7 +160,7 @@ func (mc *mcpConfig) handleRegisterTemplateSetting(ctx context.Context, request 
 
 	name, err := request.RequireString("name")
 	if err != nil {
-		return argMissing("register_template_setting", "name", "string", "my-style", nil), nil
+		return argRequired(request, "register_template_setting", "name", "string", "my-style", nil), nil
 	}
 	if err := templatesettings.ValidateName(name); err != nil {
 		return argInvalidValue("register_template_setting", "INVALID_PARAMETER", "name", err.Error(), "string", "my-style", nil), nil
@@ -168,7 +168,7 @@ func (mc *mcpConfig) handleRegisterTemplateSetting(ctx context.Context, request 
 
 	defRaw, ok := request.GetArguments()["definition"]
 	if !ok || defRaw == nil {
-		return argMissing("register_template_setting", "definition", "object", map[string]any{}, nil), nil
+		return argRequired(request, "register_template_setting", "definition", "object", map[string]any{}, nil), nil
 	}
 
 	// Re-marshal the definition so we can unmarshal into the typed struct.
@@ -251,7 +251,7 @@ func (mc *mcpConfig) handleDeleteTemplateSetting(ctx context.Context, request mc
 
 	templateName, err := request.RequireString("template_name")
 	if err != nil {
-		return argMissing("delete_template_setting", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
+		return argRequired(request, "delete_template_setting", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if err := templatesettings.ValidateTemplateName(templateName); err != nil {
 		return argInvalidValue("delete_template_setting", "INVALID_PARAMETER", "template_name", err.Error(), "string", "midnight-blue", nextCallListTemplates()), nil
@@ -259,7 +259,7 @@ func (mc *mcpConfig) handleDeleteTemplateSetting(ctx context.Context, request mc
 
 	kindStr, err := request.RequireString("kind")
 	if err != nil {
-		return argMissing("delete_template_setting", "kind", "string", "table_style", nil), nil
+		return argRequired(request, "delete_template_setting", "kind", "string", "table_style", nil), nil
 	}
 	kind, err := templatesettings.ValidateKind(kindStr)
 	if err != nil {
@@ -268,7 +268,7 @@ func (mc *mcpConfig) handleDeleteTemplateSetting(ctx context.Context, request mc
 
 	name, err := request.RequireString("name")
 	if err != nil {
-		return argMissing("delete_template_setting", "name", "string", "my-style", nil), nil
+		return argRequired(request, "delete_template_setting", "name", "string", "my-style", nil), nil
 	}
 
 	settingsDir := mc.resolveSettingsDir()

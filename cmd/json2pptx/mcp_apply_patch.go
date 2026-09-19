@@ -114,7 +114,7 @@ func (mc *mcpConfig) handleApplyDeckPatch(ctx context.Context, request mcp.CallT
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("apply_deck_patch", "presentation", "object", map[string]any{
+		return argRequired(request, "apply_deck_patch", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -135,7 +135,7 @@ func (mc *mcpConfig) handleApplyDeckPatch(ctx context.Context, request mcp.CallT
 			[]any{map[string]any{"op": "move_slide", "from": 1, "to": 0}}, nil), nil
 	}
 	if len(ops) == 0 {
-		return argMissing("apply_deck_patch", "ops", "array",
+		return argRequired(request, "apply_deck_patch", "ops", "array",
 			[]any{map[string]any{"op": "remove_slide", "index": 0}}, nil), nil
 	}
 

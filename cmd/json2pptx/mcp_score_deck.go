@@ -70,7 +70,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("score_deck", "presentation", "object", map[string]any{
+		return argRequired(request, "score_deck", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -134,10 +134,10 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		templateName = override
 	}
 	if templateName == "" {
-		return argMissing("score_deck", "template", "string", "midnight-blue", nextCallListTemplates()), nil
+		return argRequired(request, "score_deck", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if len(input.Slides) == 0 {
-		return argMissing("score_deck", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
+		return argRequired(request, "score_deck", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 
 	// Resolve relative local-asset paths (icons, content images, grid images,

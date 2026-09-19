@@ -217,7 +217,7 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("propose_repairs", "presentation", "object", map[string]any{
+		return argRequired(request, "propose_repairs", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -237,7 +237,7 @@ func (mc *mcpConfig) handleProposeRepairs(ctx context.Context, request mcp.CallT
 		return argInvalidValue("propose_repairs", "INVALID_PARAMETER", "findings", ferr.Error(), "array", []any{map[string]any{"code": "BODY_TOO_LONG", "slide_index": 0}}, nil), nil
 	}
 	if len(findings) == 0 {
-		return argMissing("propose_repairs", "findings", "array", []any{map[string]any{"code": "BODY_TOO_LONG", "slide_index": 0, "path": "slides[0].content.body"}}, nil), nil
+		return argRequired(request, "propose_repairs", "findings", "array", []any{map[string]any{"code": "BODY_TOO_LONG", "slide_index": 0, "path": "slides[0].content.body"}}, nil), nil
 	}
 
 	var geom *deckGeometry

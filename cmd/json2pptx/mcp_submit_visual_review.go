@@ -305,7 +305,7 @@ func handleSubmitVisualReview(ctx context.Context, request mcp.CallToolRequest) 
 	const tool = "submit_visual_review"
 	path := request.GetString("pptx_path", "")
 	if path == "" {
-		return argMissing(tool, "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
+		return argRequired(request, tool, "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 	if err := api.ValidatePptxPath(path); err != nil {
 		return argInvalidValue(tool, diagnostics.CodeInvalidPath, "pptx_path", err.Error(), "string", "/tmp/out/deck.pptx", nil), nil
@@ -315,11 +315,11 @@ func handleSubmitVisualReview(ctx context.Context, request mcp.CallToolRequest) 
 	}
 	rev := request.GetString("pptx_revision", "")
 	if rev == "" {
-		return argMissing(tool, "pptx_revision", "string", "<sha256 content_hash of the reviewed pptx>", nil), nil
+		return argRequired(request, tool, "pptx_revision", "string", "<sha256 content_hash of the reviewed pptx>", nil), nil
 	}
 	rawSlides, ok := request.GetArguments()["slides"]
 	if !ok || rawSlides == nil {
-		return argMissing(tool, "slides", "array", []any{map[string]any{"index": 0, "verdict": "approved", "image_path": "/tmp/thumbs/slide-1.png"}}, nil), nil
+		return argRequired(request, tool, "slides", "array", []any{map[string]any{"index": 0, "verdict": "approved", "image_path": "/tmp/thumbs/slide-1.png"}}, nil), nil
 	}
 	encoded, err := json.Marshal(rawSlides)
 	if err != nil {

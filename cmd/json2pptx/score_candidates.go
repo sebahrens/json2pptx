@@ -82,7 +82,7 @@ func (mc *mcpConfig) handleScoreCandidates(ctx context.Context, request mcp.Call
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("score_candidates", "presentation", "object", map[string]any{
+		return argRequired(request, "score_candidates", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -97,7 +97,7 @@ func (mc *mcpConfig) handleScoreCandidates(ctx context.Context, request mcp.Call
 	mc.resolveInputNamedSettings(&input)
 
 	if len(input.Slides) == 0 {
-		return argMissing("score_candidates", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
+		return argRequired(request, "score_candidates", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 
 	// slide_index validation against the (possibly empty) deck.
@@ -112,7 +112,7 @@ func (mc *mcpConfig) handleScoreCandidates(ctx context.Context, request mcp.Call
 		return argInvalidValue("score_candidates", "INVALID_PARAMETER", "candidates", err.Error(), "array", []any{"kpi-3up"}, nil), nil
 	}
 	if len(candidatesRaw) == 0 {
-		return argMissing("score_candidates", "candidates", "array", []any{"kpi-3up", "stat-hero"}, nil), nil
+		return argRequired(request, "score_candidates", "candidates", "array", []any{"kpi-3up", "stat-hero"}, nil), nil
 	}
 
 	// Resolve template.
@@ -121,7 +121,7 @@ func (mc *mcpConfig) handleScoreCandidates(ctx context.Context, request mcp.Call
 		templateName = override
 	}
 	if templateName == "" {
-		return argMissing("score_candidates", "template", "string", "midnight-blue", nextCallListTemplates()), nil
+		return argRequired(request, "score_candidates", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 
 	templatePath, templateCleanup, err := resolveTemplatePath(templateName, mc.templatesDir)

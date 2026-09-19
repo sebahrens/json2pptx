@@ -40,10 +40,10 @@ Covers every code emitted across the pipeline: the fit/pattern codes from get_ca
 func handleDescribeFinding(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	code, err := request.RequireString("code")
 	if err != nil {
-		return argMissing("describe_finding", "code", "string", "placeholder_overflow", nil), nil
+		return argRequired(request, "describe_finding", "code", "string", "placeholder_overflow", nil), nil
 	}
 	if code == "" {
-		return argMissing("describe_finding", "code", "string", "placeholder_overflow", nil), nil
+		return argRequired(request, "describe_finding", "code", "string", "placeholder_overflow", nil), nil
 	}
 
 	meta, ok := diagnostics.Describe(code)

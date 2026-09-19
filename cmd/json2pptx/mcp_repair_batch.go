@@ -95,7 +95,7 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("repair_slides_batch", "presentation", "object", map[string]any{
+		return argRequired(request, "repair_slides_batch", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -116,7 +116,7 @@ func (mc *mcpConfig) handleRepairSlidesBatch(ctx context.Context, request mcp.Ca
 		return argInvalidValue("repair_slides_batch", "INVALID_PARAMETER", "fixes", err.Error(), "array", []any{map[string]any{"slide_index": 0, "kind": "reduce_text"}}, nil), nil
 	}
 	if len(fixes) == 0 {
-		return argMissing("repair_slides_batch", "fixes", "array", []any{map[string]any{"slide_index": 0, "kind": "reduce_text", "params": map[string]any{"max_items": 5}}}, nil), nil
+		return argRequired(request, "repair_slides_batch", "fixes", "array", []any{map[string]any{"slide_index": 0, "kind": "reduce_text", "params": map[string]any{"max_items": 5}}}, nil), nil
 	}
 
 	applied := make([]batchAppliedFix, 0, len(fixes))

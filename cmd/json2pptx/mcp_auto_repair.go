@@ -354,7 +354,7 @@ func (mc *mcpConfig) handleAutoRepair(ctx context.Context, request mcp.CallToolR
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("auto_repair", "presentation", "object", map[string]any{
+		return argRequired(request, "auto_repair", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil

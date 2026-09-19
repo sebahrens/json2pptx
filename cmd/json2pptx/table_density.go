@@ -112,7 +112,7 @@ func (mc *mcpConfig) handleTableDensityGuide(ctx context.Context, request mcp.Ca
 			}
 			resp.TableStyles = filtered
 		} else {
-			return argMissing("table_density_guide", "template", "string", "midnight-blue", nextCallListTemplates()), nil
+			return argRequired(request, "table_density_guide", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 		}
 	}
 

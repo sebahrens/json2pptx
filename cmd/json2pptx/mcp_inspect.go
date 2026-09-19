@@ -91,7 +91,7 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 		return argInvalidValue("inspect_slide_images", "INVALID_PARAMETER", "slide_images", err.Error(), "array", []any{map[string]any{"index": 0, "path": "/tmp/slide-0.jpg"}}, nil), nil
 	}
 	if len(images) == 0 {
-		return argMissing("inspect_slide_images", "slide_images", "array", []any{map[string]any{"index": 0, "path": "/tmp/slide-0.jpg"}}, nil), nil
+		return argRequired(request, "inspect_slide_images", "slide_images", "array", []any{map[string]any{"index": 0, "path": "/tmp/slide-0.jpg"}}, nil), nil
 	}
 
 	// Optional slide_info overrides.

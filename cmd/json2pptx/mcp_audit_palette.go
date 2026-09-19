@@ -65,7 +65,7 @@ type auditPaletteOutput struct {
 func handleAuditPalette(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	pptxPath, err := request.RequireString("pptx_path")
 	if err != nil || pptxPath == "" {
-		return argMissing("audit_palette", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
+		return argRequired(request, "audit_palette", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if err := api.ValidatePptxPath(pptxPath); err != nil {

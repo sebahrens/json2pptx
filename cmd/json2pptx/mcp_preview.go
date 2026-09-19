@@ -183,7 +183,7 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("preview_presentation_plan", "presentation", "object", map[string]any{
+		return argRequired(request, "preview_presentation_plan", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil

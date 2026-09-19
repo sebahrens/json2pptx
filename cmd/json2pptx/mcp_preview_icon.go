@@ -93,7 +93,7 @@ func (mc *mcpConfig) handlePreviewIcon(ctx context.Context, request mcp.CallTool
 
 	iconRaw, ok := args["icon"]
 	if !ok || iconRaw == nil {
-		return argMissing("preview_icon", "icon", "object", map[string]any{"name": "filled:chart-pie"}, nil), nil
+		return argRequired(request, "preview_icon", "icon", "object", map[string]any{"name": "filled:chart-pie"}, nil), nil
 	}
 
 	icon, parseErr := parsePreviewIconInput(iconRaw)

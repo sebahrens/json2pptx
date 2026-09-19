@@ -253,7 +253,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("generate_presentation", "presentation", "object", map[string]any{
+		return argRequired(request, "generate_presentation", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -961,7 +961,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		return paramErr, nil
 	}
 	if jsonStr == "" {
-		return argMissing("validate_input", "presentation", "object", map[string]any{
+		return argRequired(request, "validate_input", "presentation", "object", map[string]any{
 			"template": "<template-name>",
 			"slides":   []any{},
 		}, nextCallGetInputSchema()), nil
@@ -1444,7 +1444,7 @@ func attachBoundsHintToCapacityWarnings(warnings []cellDensityWarning, patternNa
 func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	intent, err := request.RequireString("intent")
 	if err != nil {
-		return argMissing("recommend_pattern", "intent", "string", "compare two options side-by-side", nil), nil
+		return argRequired(request, "recommend_pattern", "intent", "string", "compare two options side-by-side", nil), nil
 	}
 
 	// Parse optional content_hints.
@@ -1674,7 +1674,7 @@ func (mc *mcpConfig) resolveTemplateAnalysis(request mcp.CallToolRequest) (*type
 func (mc *mcpConfig) handleRecommendVisual(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	intent, err := request.RequireString("intent")
 	if err != nil {
-		return argMissing("recommend_visual", "intent", "string", "show revenue growth over four quarters", nil), nil
+		return argRequired(request, "recommend_visual", "intent", "string", "show revenue growth over four quarters", nil), nil
 	}
 
 	hints, opts := parseRecommendVisualArgs(request)
@@ -1858,7 +1858,10 @@ func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 
 	fieldsMode, fieldsExplicit, fErrField, fErrMsg := listFieldsParam(request)
 	if fErrMsg != "" {
-		return mcpParseError("INVALID_PARAMETER", fErrField, fErrMsg), nil
+		// The same builder list_templates and list_icons use: the identical
+		// mistake on the identical argument should not come back in two shapes
+		// (go-slide-creator-6072).
+		return argInvalidValue("list_patterns", "INVALID_PARAMETER", fErrField, fErrMsg, "string", "compact", nil), nil
 	}
 	// Compact is the DEFAULT: list_patterns{} measured 69,692 B against 30,651 B
 	// for the compact projection, and the server used to pay the 69 KB first and
@@ -1948,7 +1951,7 @@ func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
-		return argMissing("show_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
+		return argRequired(request, "show_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
 	}
 
 	reg := patterns.Default()
@@ -2028,14 +2031,14 @@ func patternRenderingCapabilities(name string) *renderingCapabilities {
 func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
-		return argMissing("validate_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
+		return argRequired(request, "validate_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
 	}
 	valuesStr, paramErr := objectParamAsJSON(request, "values")
 	if paramErr != nil {
 		return paramErr, nil
 	}
 	if valuesStr == "" {
-		return argMissing("validate_pattern", "values", "object", map[string]any{
+		return argRequired(request, "validate_pattern", "values", "object", map[string]any{
 			"items": []any{map[string]any{"label": "Revenue", "value": "$1.2M"}},
 		}, nil), nil
 	}
@@ -2164,14 +2167,14 @@ func validateCalloutParam(ctx context.Context, request mcp.CallToolRequest, name
 func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	name, err := request.RequireString("name")
 	if err != nil {
-		return argMissing("expand_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
+		return argRequired(request, "expand_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
 	}
 	valuesStr, paramErr := objectParamAsJSON(request, "values")
 	if paramErr != nil {
 		return paramErr, nil
 	}
 	if valuesStr == "" {
-		return argMissing("expand_pattern", "values", "object", map[string]any{
+		return argRequired(request, "expand_pattern", "values", "object", map[string]any{
 			"items": []any{map[string]any{"label": "Revenue", "value": "$1.2M"}},
 		}, nil), nil
 	}
@@ -2600,7 +2603,7 @@ Cost note: the JSON metadata stays small (<5KB for typical decks); each thumbnai
 func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	pptxPath, err := request.RequireString("pptx_path")
 	if err != nil {
-		return argMissing("render_slide_image", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
+		return argRequired(request, "render_slide_image", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if err := api.ValidatePptxPath(pptxPath); err != nil {
@@ -2655,7 +2658,7 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	pptxPath, err := request.RequireString("pptx_path")
 	if err != nil {
-		return argMissing("render_deck_thumbnails", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
+		return argRequired(request, "render_deck_thumbnails", "pptx_path", "string", "/tmp/out/deck.pptx", nil), nil
 	}
 
 	if err := api.ValidatePptxPath(pptxPath); err != nil {

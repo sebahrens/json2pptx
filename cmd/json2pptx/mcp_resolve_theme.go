@@ -47,7 +47,7 @@ type resolveThemeResponse struct {
 func (mc *mcpConfig) handleResolveTheme(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	templateName, err := request.RequireString("template_name")
 	if err != nil {
-		return argMissing("resolve_theme", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
+		return argRequired(request, "resolve_theme", "template_name", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 
 	// Resolve template path.

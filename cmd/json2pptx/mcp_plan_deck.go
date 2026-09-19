@@ -53,7 +53,7 @@ The output is directly consumable as the slides array in generate_presentation â
 func (mc *mcpConfig) handlePlanDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	brief, err := request.RequireString("brief")
 	if err != nil {
-		return argMissing("plan_deck", "brief", "string", "Pitch our Q3 product launch to the executive team", nil), nil
+		return argRequired(request, "plan_deck", "brief", "string", "Pitch our Q3 product launch to the executive team", nil), nil
 	}
 
 	slideBudget := 10
