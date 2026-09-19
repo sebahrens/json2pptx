@@ -128,6 +128,18 @@ Emitted when more than `DefaultFindingBudget` (5) findings exist on a slide and 
 | `ICON_MISSING` | No icon source field is set on an `icon` node. `severity: error`. `details: {slide_index, remediation, example}`. Message includes a 4-line copy-paste example block, one per source variant. Agent action: pick the variant that fits the use case |
 | `ICON_FILL_IGNORED_ON_INLINE` | `icon.fill` is set together with `icon.svg_data`. The inline SVG is rendered verbatim, so `fill` has no effect. `severity: warning` (non-blocking). `details: {input_value, slide_index, remediation}`. Agent action: either pre-color the inline `svg_data` markup, or remove `svg_data` and use `name`/`path` with `fill` |
 
+### Pattern input codes — emitted by `validate_input` / `generate_presentation` / `expand_pattern` before a pattern expands
+
+A pattern failure is reported **one finding per problem**, each addressed at `/slides/{i}/pattern/values/...` (a nested cell pattern keeps its coordinates: `/slides/{i}/shape_grid/rows/{r}/cells/{c}/pattern/values/...`). Messages name the field and the expected shape in schema terms — never a Go type — and every finding carries `next_tool_call: show_pattern{name}`.
+
+| Code | Meaning | Severity | `fix.kind` |
+|------|---------|----------|------------|
+| `PATTERN_UNKNOWN_FIELD` | A key in `values` / `overrides` / `cell_overrides` is never read by the pattern, so the text under it never reaches the slide. Detected by decoding with the pattern's own decoder and checking whether the content survives — the tolerated aliases (a KPI cell's `{value, label}`, the `"$4.2M \| ARR"` shorthand) never trip it, and free-form objects (a chart's map-form `data`) are not judged. `fix.params: {path, from, to, did_you_mean}` when a property is close (`title` → `role`, `label` → `name`, `columns` → `rows`, `date` → `date_label`), else `{path, allowed: [...]}`. Agent action: rename the key, or move the content to a field the pattern reads | `error` | `rename_field` / `remove_field` |
+| `invalid_shape` | The JSON type at a path is one the pattern cannot read: a string where an object belongs, an object wrapping the array `values` IS. `fix.params: {path, expected, got}` plus `example` (a copy-ready value built from your own content, e.g. `{"label": "A"}` for a bare `"A"`) or `unwrap_key` when the payload wraps the array the pattern wants. Agent action: apply the example, or unwrap the named key | `error` | `reshape_value` |
+| `UNKNOWN_PATTERN` | `pattern.name` is not registered. `did_you_mean` folds number words to digits before matching, so `kpi-four-up` → `kpi-4up` and `matrix2x2` → `matrix-2x2` resolve. `fix.params: {from, to, did_you_mean}`; `next_tool_call` is `show_pattern{name: <suggestion>}`, or `list_patterns` when nothing is close | `error` | `swap_pattern` |
+
+Pattern rule violations (`required`, `max_length`, `min_items`, `max_items`, `count_mismatch`, `out_of_range`, `unknown_enum`, `wrong_pattern`, `ICON_BUNDLED_NAME_UNKNOWN`) are reported the same way — one finding per failing field, at the field's own path — rather than newline-joined into a single `PATTERN_ERROR` message.
+
 ### Content-policy codes — emitted by `validate_input` / `generate_presentation` over user-visible text
 
 | Code | Meaning | Severity | `fix.kind` |

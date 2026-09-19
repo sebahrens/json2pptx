@@ -8,6 +8,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -235,18 +236,32 @@ func TestSlidePatternDiagnostics_ValidateGenerateParity(t *testing.T) {
 			if d.Severity != diagnostics.SeverityError {
 				t.Errorf("severity = %q, want error", d.Severity)
 			}
-			if d.Code != diagnostics.CodePatternError {
-				t.Errorf("code = %q, want %q", d.Code, diagnostics.CodePatternError)
+			// go-slide-creator-20jm: a pattern failure is reported per field, so
+			// the code names the rule that failed (required, max_length,
+			// UNKNOWN_PATTERN) rather than the generic PATTERN_ERROR bucket, and
+			// the path addresses the field rather than the pattern object.
+			if d.Code == diagnostics.CodePatternError {
+				t.Errorf("code = %q: a pattern-input failure must name its own rule", d.Code)
 			}
-			if d.Path != "/slides/0/pattern" {
-				t.Errorf("path = %q, want /slides/0/pattern", d.Path)
+			if !slidepath.HasPrefix(d.Path, "/slides/0/pattern") {
+				t.Errorf("path = %q, want a path under /slides/0/pattern", d.Path)
 			}
-			// Parity: validate carries generate's own message verbatim.
-			if !strings.Contains(d.Message, genErr.Error()) {
-				t.Errorf("validate message %q does not carry generate's error %q", d.Message, genErr.Error())
+			// Parity: every message validate reports is one generate reports too.
+			for _, dd := range diags {
+				msg := strings.TrimSuffix(dd.Message, " (generate would refuse this deck)")
+				msg = strings.TrimPrefix(msg, "slide 1: ")
+				if !strings.Contains(genErr.Error(), msg) {
+					t.Errorf("validate message %q is not in generate's error %q", msg, genErr.Error())
+				}
 			}
-			if tt.wantSubstr != "" && !strings.Contains(d.Message, tt.wantSubstr) {
-				t.Errorf("validate message %q does not mention %q", d.Message, tt.wantSubstr)
+			if tt.wantSubstr != "" {
+				var joined string
+				for _, dd := range diags {
+					joined += dd.Message + "\n"
+				}
+				if !strings.Contains(joined, tt.wantSubstr) {
+					t.Errorf("validate messages %q do not mention %q", joined, tt.wantSubstr)
+				}
 			}
 		})
 	}
@@ -299,7 +314,10 @@ func TestSlidePatternDiagnostics_NestedCellPatternRejected(t *testing.T) {
 	if len(diags) == 0 {
 		t.Fatal("nested cell pattern with too few values must be rejected")
 	}
-	if diags[0].Path != "/slides/0/shape_grid" {
-		t.Errorf("path = %q, want /slides/0/shape_grid", diags[0].Path)
+	// go-slide-creator-20jm: a nested pattern's findings keep the cell
+	// coordinates, so the path addresses the cell that failed rather than the
+	// whole grid.
+	if diags[0].Path != "/slides/0/shape_grid/rows/0/cells/0/pattern/values" {
+		t.Errorf("path = %q, want /slides/0/shape_grid/rows/0/cells/0/pattern/values", diags[0].Path)
 	}
 }

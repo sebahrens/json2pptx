@@ -164,8 +164,24 @@ func TestExpandPattern_ValidationFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected validation error for wrong cell count")
 	}
-	if !strings.Contains(err.Error(), "validation failed") {
-		t.Errorf("error should mention validation, got: %v", err)
+	// go-slide-creator-20jm: the error is no longer a "pattern %q: validation
+	// failed: %v" wrapper around a newline-joined blob. It carries the pattern's
+	// own per-field findings, each with its own path, so a caller can report one
+	// finding per problem.
+	if !strings.Contains(err.Error(), "values must contain exactly 3 cells") {
+		t.Errorf("error should name the failing rule, got: %v", err)
+	}
+	ves := patternValidationFindings(err)
+	if len(ves) == 0 {
+		t.Fatalf("expansion error carries no per-field findings: %v", err)
+	}
+	for _, ve := range ves {
+		if ve.Path == "" {
+			t.Errorf("finding %q has no path", ve.Message)
+		}
+		if ve.Code == "" {
+			t.Errorf("finding %q has no code", ve.Message)
+		}
 	}
 }
 

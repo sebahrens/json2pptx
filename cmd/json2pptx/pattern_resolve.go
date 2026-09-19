@@ -22,11 +22,17 @@ type PatternInput = deckinput.PatternInput
 func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Registry) (*jsonschema.ShapeGridInput, []string, error) {
 	pat, ok := reg.Get(p.Name)
 	if !ok {
-		msg := fmt.Sprintf("unknown pattern %q", p.Name)
-		if suggestion, ok := reg.Suggest(p.Name); ok {
-			msg += fmt.Sprintf("; did you mean %q?", suggestion)
-		}
-		return nil, nil, fmt.Errorf("%s", msg)
+		return nil, nil, unknownPatternInputError(reg, p.Name)
+	}
+
+	// Inspect the raw payload against the pattern's own decoder BEFORE anything
+	// else reads it (go-slide-creator-20jm). Two failures are invisible further
+	// down: a shape encoding/json rejects (whose error names Go types), and a key
+	// the decoder silently discards — {"columns": …} on comparison-2col reported
+	// "rows must contain at least 1 row" and never mentioned columns. Both become
+	// per-field findings here, so refusing names the field and the edit.
+	if inputErrs := patterns.InspectPatternInput(pat, p.Values, p.Overrides, p.CellOverrides); len(inputErrs) > 0 {
+		return nil, nil, newPatternInputError(p.Name, rootPatternFindingPaths(inputErrs))
 	}
 
 	// Unmarshal values
@@ -66,8 +72,14 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		}
 	}
 
-	// Validate
+	// Validate. The pattern's own findings are already *patterns.ValidationError
+	// with a path; they are rewrapped rather than %w-formatted so the per-field
+	// structure survives into the response instead of being newline-joined into
+	// one message (go-slide-creator-20jm).
 	if err := pat.Validate(values, overrides, cellOverrides); err != nil {
+		if ves := patternValidationFindings(err); len(ves) > 0 {
+			return nil, nil, newPatternInputError(p.Name, rootPatternFindingPaths(ves))
+		}
 		return nil, nil, fmt.Errorf("pattern %q: validation failed: %w", p.Name, err)
 	}
 
@@ -226,7 +238,8 @@ func expandNestedCellPatterns(grid *jsonschema.ShapeGridInput, ctx patterns.Expa
 				}
 				expanded, _, err := expandPattern(&pi, ctx, reg)
 				if err != nil {
-					return fmt.Errorf("grid cell row %d col %d: %w", ri, ci, err)
+					return fmt.Errorf("grid cell row %d col %d: %w", ri, ci,
+						prefixPatternFindingPaths(err, fmt.Sprintf("rows[%d].cells[%d].pattern.", ri, ci)))
 				}
 				cell.Pattern = nil
 				cell.Grid = expanded

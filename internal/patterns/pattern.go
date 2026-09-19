@@ -8,6 +8,7 @@ package patterns
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -381,6 +382,12 @@ func (r *Registry) CalloutSupportedPatterns() []string {
 // Suggest returns the closest registered pattern name to the given input,
 // using Damerau-Levenshtein distance. It returns ("", false) if no pattern
 // is within maxDist edits (default 2).
+//
+// Distance is measured on the raw name and on a normalized form that spells
+// number words as digits and drops separators, so the names agents actually
+// write for the numbered families resolve: "kpi-four-up" is 4 raw edits from
+// "kpi-4up" — past any sane threshold — but 0 once "four" is 4
+// (go-slide-creator-20jm).
 func (r *Registry) Suggest(name string) (string, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -388,6 +395,7 @@ func (r *Registry) Suggest(name string) (string, bool) {
 	const maxDist = 2
 	best := ""
 	bestDist := maxDist + 1
+	normalized := normalizePatternName(name)
 
 	// Ties are broken lexicographically, NOT by map order. "kpi-9up" is
 	// distance 1 from every one of kpi-2up…kpi-6up; picking whichever the map
@@ -396,6 +404,9 @@ func (r *Registry) Suggest(name string) (string, bool) {
 	// values for one typo.
 	consider := func(candidate string) {
 		d := damerauLevenshtein(name, candidate)
+		if nd := damerauLevenshtein(normalized, normalizePatternName(candidate)); nd < d {
+			d = nd
+		}
 		if d < bestDist || (d == bestDist && candidate < best) {
 			bestDist = d
 			best = candidate
@@ -411,6 +422,47 @@ func (r *Registry) Suggest(name string) (string, bool) {
 		return best, true
 	}
 	return "", false
+}
+
+// numberWords spells the counts that appear in pattern names. Only the counts a
+// pattern family actually uses are listed; a name is not a place for prose.
+var numberWords = map[string]string{
+	"one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+	"six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10",
+}
+
+// normalizePatternName lowercases a pattern name, spells its number words as
+// digits, and drops separators, so "kpi-four-up", "KPI_4_up" and "kpi4up" all
+// collapse onto "kpi4up".
+func normalizePatternName(name string) string {
+	lower := strings.ToLower(name)
+	var b strings.Builder
+	word := make([]rune, 0, 8)
+	flush := func() {
+		if len(word) == 0 {
+			return
+		}
+		w := string(word)
+		if digits, ok := numberWords[w]; ok {
+			b.WriteString(digits)
+		} else {
+			b.WriteString(w)
+		}
+		word = word[:0]
+	}
+	for _, r := range lower {
+		switch {
+		case r >= 'a' && r <= 'z':
+			word = append(word, r)
+		case r >= '0' && r <= '9':
+			flush()
+			b.WriteRune(r)
+		default:
+			flush()
+		}
+	}
+	flush()
+	return b.String()
 }
 
 // damerauLevenshtein computes the Damerau-Levenshtein distance between two

@@ -26,6 +26,14 @@ const (
 	ErrCodeWrongPattern        = "wrong_pattern"
 	ErrCodeInvalidShape        = "invalid_shape"
 
+	// ErrCodePatternUnknownField marks a key in a pattern's values / overrides
+	// that the pattern's own decoder does not read, so the content written
+	// under it never reaches the slide (go-slide-creator-20jm). Emitted only
+	// when the content is demonstrably absent from the decoded value, so a
+	// tolerated alias ({value, label} for a KPI cell's {big, small}) never
+	// trips it.
+	ErrCodePatternUnknownField = "PATTERN_UNKNOWN_FIELD"
+
 	// Fit-report error codes.
 	ErrCodeFitOverflow         = "fit_overflow"
 	ErrCodeDensityExceeded     = "density_exceeded"
@@ -177,6 +185,7 @@ var (
 	ErrUnknownTableStyleID = errors.New("style_id not found in template table styles")
 	ErrWrongPattern        = errors.New("content shape matches a different pattern")
 	ErrInvalidShape        = errors.New("value has wrong structure")
+	ErrPatternUnknownField = errors.New("pattern does not read this field; its content is dropped")
 
 	ErrFitOverflow          = errors.New("text exceeds cell dimensions")
 	ErrDensityExceeded      = errors.New("table density exceeds TDR ceiling")
@@ -248,6 +257,7 @@ var codeSentinel = map[string]error{
 	ErrCodeUnknownTableStyleID:   ErrUnknownTableStyleID,
 	ErrCodeWrongPattern:          ErrWrongPattern,
 	ErrCodeInvalidShape:          ErrInvalidShape,
+	ErrCodePatternUnknownField:   ErrPatternUnknownField,
 	ErrCodeFitOverflow:           ErrFitOverflow,
 	ErrCodeDensityExceeded:       ErrDensityExceeded,
 	ErrCodeStackedTables:         ErrStackedTables,

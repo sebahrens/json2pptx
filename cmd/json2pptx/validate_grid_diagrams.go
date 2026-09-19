@@ -121,7 +121,18 @@ func slidePatternDiagnostics(slide *SlideInput, slideIdx int, ctx patterns.Expan
 		return nil
 	}
 
+	// A pattern-input failure carries one finding per field, each with its own
+	// JSON path, fix and next_tool_call; only a failure with no per-field
+	// structure falls back to the single PATTERN_ERROR finding
+	// (go-slide-creator-20jm).
 	patternErr := func(field string, err error) []diagnostics.Diagnostic {
+		if ds := patternInputDiagnostics(err, slidepath.SlideField(slideIdx, field),
+			fmt.Sprintf("slide %d", slideIdx+1)); len(ds) > 0 {
+			for i := range ds {
+				ds[i].Message += " (generate would refuse this deck)"
+			}
+			return ds
+		}
 		return []diagnostics.Diagnostic{{
 			Code:     diagnostics.CodePatternError,
 			Path:     slidepath.SlideField(slideIdx, field),

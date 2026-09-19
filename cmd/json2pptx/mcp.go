@@ -472,6 +472,13 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx, false)
 	if err != nil {
+		// A pattern failure knows which slide and which field it came from, so it
+		// is reported as one finding per problem at /slides/i/pattern/values/…
+		// rather than as one INVALID_SLIDE carrying every message in a string
+		// (go-slide-creator-20jm).
+		if ds := slidePatternInputDiagnostics(err); len(ds) > 0 {
+			return api.MCPDiagnosticsError(ds), nil
+		}
 		return api.MCPSimpleError("INVALID_SLIDE", fmt.Sprintf("invalid slide specification: %v", err)), nil
 	}
 

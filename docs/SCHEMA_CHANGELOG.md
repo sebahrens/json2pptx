@@ -37,6 +37,43 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Pattern input failures are path-addressed, one finding per field, with no Go
+  type names (go-slide-creator-20jm).** Every pattern failure used to collapse
+  into a single `INPUT.INVALID_SLIDE` (generate) or `GRID.PATTERN_ERROR`
+  (validate) whose message was whatever `encoding/json` or `Pattern.Validate`
+  happened to say, at the path `/slides/{i}/pattern`: *"invalid values: json:
+  cannot unmarshal string into Go struct field ProcessFlowValues.steps of type
+  patterns.ProcessFlowStep"*. Several wrong fields arrived newline-joined inside
+  one message, so an agent could fix one per round trip.
+  - Each failure is now its own finding at its own path
+    (`/slides/0/pattern/values/members/0/title`; a nested cell pattern keeps its
+    coordinates, `/slides/0/shape_grid/rows/0/cells/1/pattern/values/...`), with
+    a fix whose `params.path` is the same deck-absolute pointer and
+    `next_tool_call: show_pattern{name}`.
+  - **New finding code `PATTERN_UNKNOWN_FIELD`** (`refuse`, fix `rename_field`
+    with `did_you_mean`, else `remove_field` with `allowed[]`): a key the pattern
+    never reads, so its content never reaches the slide. Detection is empirical —
+    the payload is decoded with the pattern's own decoder and a key is reported
+    only when its content is demonstrably absent from the decoded value — so the
+    tolerated aliases (a KPI cell's `{value, label}`, the `"$4.2M | ARR"`
+    shorthand) stay silent and free-form objects (a chart's map-form `data`) are
+    never judged. `did_you_mean` prefers a property the caller has not already
+    filled: `title` → `role`, `label` → `name`, `columns` → `rows`,
+    `date` → `date_label`.
+  - **`invalid_shape`** is now also emitted by pattern input inspection and names
+    the expected shape in schema terms with a copy-ready `fix.params.example`
+    built from the caller's own value (`{"label":"A"}` for a bare `"A"`), or
+    `fix.params.unwrap_key` when the payload wraps the array `values` is
+    (`{"stops": [...]}`, `{"items": [...]}`).
+  - **`UNKNOWN_PATTERN`** carries `did_you_mean` for the names agents actually
+    write: pattern-name matching folds number words to digits and drops
+    separators, so `kpi-four-up` → `kpi-4up` and `matrix2x2` → `matrix-2x2`
+    resolve where they previously returned no suggestion at all.
+  - A shape error no longer drags a `wrong_pattern` swap suggestion along with
+    it: `{"items": [...]}` on `kpi-3up` used to decode as one empty cell and
+    advise *"content shape (1 items) matches a different pattern; consider
+    kpi-2up or stat-hero or team-bios"*. It now reports the wrapper key, once.
+
 - **`get_capabilities` gained a `sections` projection and shed 93% of its
   default payload (go-slide-creator-5pta).** `get_started`'s first step is
   `get_capabilities`, and SKILL.md repeats it — so the most expensive call in

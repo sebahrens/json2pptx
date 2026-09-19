@@ -926,7 +926,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		expanded, composeWarnings, err := expandCompose(slide.Compose, ctx, patterns.Default())
 		if err != nil {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: compose: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "compose", "compose", err)
 		}
 		for _, w := range composeWarnings {
 			slog.Warn("compose warning",
@@ -949,7 +949,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 		if err != nil {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: pattern: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "pattern", "pattern", err)
 		}
 		slide.ShapeGrid = expanded
 	}
@@ -969,7 +969,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			Theme:          patternThemeFromDiag(diagCtx),
 		}
 		if err := expandNestedCellPatterns(slide.ShapeGrid, nestedCtx, patterns.Default()); err != nil {
-			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: nested pattern: %w", i+1, err)
+			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "shape_grid", "nested pattern", err)
 		}
 	}
 

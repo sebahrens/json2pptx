@@ -222,16 +222,31 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodePatternOvercrowded, ErrCodePatternUnderfilled},
 	},
+	ErrCodePatternUnknownField: {
+		Code:        ErrCodePatternUnknownField,
+		Summary:     "A key in a pattern's values / overrides is never read, so its content is dropped.",
+		Severity:    "refuse",
+		WhenEmitted: "Pattern input inspection decodes values with the pattern's own decoder and finds text the caller wrote that is absent from the decoded value — a misnamed field (members[].title where the pattern reads role) or a wrapper key. Tolerated aliases survive the decode and are never reported.",
+		RemediationSteps: []string{
+			"Rename the key at the reported path to fix.params.did_you_mean.",
+			"When no rename is suggested, pick a key from fix.params.allowed or show_pattern <name>.",
+			"Or remove the key if the content belongs somewhere else on the slide.",
+		},
+		ExampleBefore: `{"members":[{"name":"Dana","title":"VP Finance"}]}`,
+		ExampleAfter:  `{"members":[{"name":"Dana","role":"VP Finance"}]}`,
+		RelatedCodes:  []string{ErrCodeInvalidShape, ErrCodeUnknownKey, ErrCodeRequired},
+	},
 	ErrCodeInvalidShape: {
 		Code:        ErrCodeInvalidShape,
 		Summary:     "A value has the wrong structural shape (e.g., array where object expected).",
 		Severity:    "refuse",
-		WhenEmitted: "A pattern's custom UnmarshalJSON detects a value whose JSON type does not match the schema.",
+		WhenEmitted: "Pattern input inspection finds a JSON type the pattern cannot read at the reported path (a string where an object belongs, an object wrapping the array values IS), or a pattern's custom UnmarshalJSON rejects a value's shape. The expected shape is named in schema terms — never a Go type — with a copy-ready fix.params.example built from the value you sent, or fix.params.unwrap_key when the payload wraps the array the pattern wants.",
 		RemediationSteps: []string{
-			"Reshape the value at the reported path to the expected_shape from fix.params.",
+			"Apply fix.params.example at the reported path, or unwrap fix.params.unwrap_key.",
+			"Reshape the value to the expected shape named in the message.",
 			"Compare against show_pattern.example_values for a working shape.",
 		},
-		RelatedCodes: []string{ErrCodeUnknownKey},
+		RelatedCodes: []string{ErrCodePatternUnknownField, ErrCodeUnknownKey},
 	},
 
 	// ---- Fit-finding codes (emitted by collectFitFindings / preflight checks) ----

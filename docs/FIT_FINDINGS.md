@@ -122,6 +122,52 @@ Deck-level findings whose path does not match `/slides/N/...` (slide index extra
 
 ## Finding Codes
 
+### `PATTERN_UNKNOWN_FIELD`
+
+**Action:** `refuse`
+**Pattern:** the slide's pattern
+**Fix kind:** `rename_field` (with `did_you_mean`) or `remove_field`
+**Emitted at:** pattern input inspection — `validate` / `validate_input` / `generate` / `expand_pattern`
+
+A key in a pattern's `values` / `overrides` / `cell_overrides` is never read by the pattern, so the text written under it never reaches the slide. The check is empirical, not schema-guessing: the raw payload is decoded with the pattern's **own** decoder, re-marshalled, and compared against what the caller wrote. A key is reported only when its content is demonstrably absent from the decoded value, so the tolerated aliases (a KPI cell's `{value, label}` for `{big, small}`, the `"$4.2M | ARR"` string shorthand) never trip it, and an object whose schema declares no properties — a chart's map-form `data`, keyed by series name — is never judged at all.
+
+`did_you_mean` names a property the caller has **not** already filled, preferring one in the same slide vocabulary (`title` → `role`, `label` → `name`, `columns` → `rows`), one that contains the unknown name (`date` → `date_label`), one within edit distance, and — failing all of those — the single required property still missing. When nothing is close, `fix.params.allowed` carries the property list instead.
+
+```json
+{
+  "code": "PATTERN_UNKNOWN_FIELD",
+  "path": "/slides/0/pattern/values/members/0/title",
+  "message": "team-bios: unknown field \"title\" at values.members[0].title is dropped — its content never reaches the slide; did you mean \"role\"?",
+  "fix": { "kind": "rename_field", "params": { "path": "/slides/0/pattern/values/members/0/title", "from": "title", "to": "role", "did_you_mean": "role" } },
+  "next_tool_call": { "tool": "show_pattern", "args_template": { "name": "team-bios" } },
+  "action": "refuse"
+}
+```
+
+Its shape-level sibling is `invalid_shape`, emitted when the payload's JSON type is one the pattern cannot read at all. Both name the expected shape in schema terms — never a Go type — and carry a copy-ready `example` where one can be derived from what the caller wrote:
+
+```json
+{
+  "code": "invalid_shape",
+  "path": "/slides/0/pattern/values/steps/0",
+  "message": "process-flow: values.steps[0] must be an object {label, type?}; got the string \"A\". Example: {\"label\":\"A\"}",
+  "fix": { "kind": "reshape_value", "params": { "path": "/slides/0/pattern/values/steps/0", "expected": "object", "got": "string", "example": { "label": "A" } } },
+  "action": "refuse"
+}
+```
+
+A wrapper object around the array a pattern wants is called out by name, because the edit is one unwrap:
+
+```json
+{
+  "code": "invalid_shape",
+  "path": "/slides/0/pattern/values",
+  "message": "timeline-horizontal: values must be an array of objects {label, body?, date?, end_date?}, not an object wrapping one; the key \"stops\" is never read — send its value as values directly",
+  "fix": { "kind": "reshape_value", "params": { "path": "/slides/0/pattern/values", "expected": "array", "got": "object", "unwrap_key": "stops", "items": 3 } },
+  "action": "refuse"
+}
+```
+
 ### `placeholder_overflow`
 
 **Action:** `shrink_or_split`
