@@ -200,6 +200,12 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleRecommendation, family: FamilyComparison, density: DensityHeavy, layout: "blank-title",
 		pattern: optionMatrixPattern,
 	},
+	KindTable: {
+		// A native table is a content slide, not a pattern: the renderer builds
+		// it from the template's own table style, so the plan advertises the
+		// layout only (explain/compile parity).
+		role: RoleEvidence, family: FamilyText, density: DensityHeavy, layout: "content",
+	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
@@ -388,6 +394,11 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		return []CompositionCandidate{
 			visual("table-highlight", "2-6 options scored against 2-6 criteria"),
 			{Layout: "content", Reason: "native bullets preserve a matrix outside those bounds"},
+		}
+	case KindTable:
+		return []CompositionCandidate{
+			{Layout: "content", Reason: "a native table in the template's own table style"},
+			visual("table-highlight", "switch to kind option_matrix to score options against criteria"),
 		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}

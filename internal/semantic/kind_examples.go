@@ -39,6 +39,21 @@ var kindExamples = map[SlideKind]map[string]any{
 		"highlight_label":    "Recommended",
 		"takeaway":           "Hub consolidation pays back in two years at acceptable risk.",
 	},
+	KindTable: {
+		"kind":    "table",
+		"title":   "Enterprise carried the year; SMB did not",
+		"headers": []any{"Segment", "FY25 revenue", "FY26 revenue", "Change"},
+		"rows": []any{
+			[]any{"Enterprise", "$28.4M", "$41.2M", "+45%"},
+			[]any{"Mid-market", "$12.1M", "$14.8M", "+22%"},
+			[]any{"SMB", "$9.6M", "$8.9M", "-7%"},
+			[]any{"Total", "$50.1M", "$64.9M", "+30%"},
+		},
+		"column_alignments": []any{"left", "right", "right", "right"},
+		"highlight_column":  "FY26 revenue",
+		"totals_row":        true,
+		"takeaway":          "Enterprise added $12.8M; SMB gave back $0.7M.",
+	},
 	KindKPISnapshot: {
 		"kind":  "kpi_snapshot",
 		"title": "Q4 at a glance",

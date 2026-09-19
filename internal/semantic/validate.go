@@ -53,6 +53,7 @@ var kindNeedsTakeaway = map[SlideKind]bool{
 	KindChartInsight:     true,
 	KindComparison:       true,
 	KindOptionMatrix:     true,
+	KindTable:            true,
 	KindProcess:          true,
 	KindRoadmap:          true,
 	KindDecision:         true,
@@ -101,6 +102,10 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"options": shapeArray, "rows": shapeArray, "scale": shapeString,
 		"decisive_criterion": shapeString, "highlight_label": shapeString,
 		"corner_label": shapeString, "takeaway": shapeString,
+	},
+	KindTable: {
+		"title": shapeString, "headers": shapeArray, "columns": shapeArray, "rows": shapeArray,
+		"column_alignments": shapeArray, "column_types": shapeArray, "takeaway": shapeString,
 	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
@@ -403,17 +408,7 @@ func validateFieldShapes(path string, slide SlideSpec, s *semDiags) {
 func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 	switch slide.Kind {
 	case KindExecutiveSummary:
-		// The count rule and the visual are the same rule: 3–5 points render as
-		// the exec-summary pattern (numbered conclusions with supporting lines),
-		// anything else degrades to a bullet list. Say which one the author is
-		// getting rather than only that the count is off (go-slide-creator-ku6t).
-		if n, ok := execSummaryPointCount(slide.Body); ok && (n < 3 || n > 5) {
-			s.advisory(path+"."+execSummaryPointsPath(slide.Body), diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("executive summary has %d points; exec-summary renders 3–5 as numbered conclusions (otherwise it degrades to a bullet list)", n))
-		} else if ok && !slides.ExecSummaryPatternFeasible(slide.Body) {
-			s.advisory(path+"."+execSummaryPointsPath(slide.Body), diagnostics.CodeSemanticDensity,
-				"executive summary points exceed the exec-summary text budgets (lead ≤90 chars, support ≤200); shorten them or the slide degrades to a bullet list")
-		}
+		validateExecutiveSummary(path, slide, s)
 	case KindKPISnapshot:
 		// Count KPIs the compiler can actually render, not raw list entries: a
 		// list of blank/labelless cells passes the required-field gate but
@@ -424,24 +419,13 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 				fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 is recommended", n))
 		}
 	case KindChartInsight:
-		// A chart without usable data compiles to an insights-only slide (the
-		// chart panel is dropped), so flag it at the path the author must edit —
-		// chart.data — with the expected shape for the chart type.
-		if chart, ok := slide.Body["chart"].(map[string]any); ok {
-			validateChartData(path+".chart", chart, s)
-		}
-		// chart-insights-split renders 1–6 insights alongside the chart; beyond the
-		// cap the compiler degrades to a native two-column slide (chart beside the
-		// full insight list). Flag the over-cap count here (blocking under strict)
-		// to keep validate in step with compile.
-		if n := slides.ChartInsightInsightCount(slide.Body); n > slides.ChartInsightMaxInsights {
-			s.advisory(path+".insights", diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("chart-insights-split renders 1–%d insights alongside the chart; found %d — split or shorten the insights (otherwise it degrades to a native two-column slide: chart beside the full insight list)", slides.ChartInsightMaxInsights, n))
-		}
+		validateChartInsight(path, slide, s)
 	case KindComparison:
 		validateComparison(path, slide, s)
 	case KindOptionMatrix:
 		validateOptionMatrix(path, slide, s)
+	case KindTable:
+		validateTable(path, slide, s)
 	case KindProcess:
 		// Count steps the compiler can render (blank entries are dropped), so a
 		// process of all-blank steps fails fast instead of compiling to a
@@ -869,4 +853,88 @@ func optionScoreCount(option map[string]any) (int, bool) {
 func strPayloadField(body map[string]any, key string) string {
 	v, _ := body[key].(string)
 	return strings.TrimSpace(v)
+}
+
+// validateTable checks a native table against the renderer's density rules
+// (go-slide-creator-e4h1). A table past them still renders — the fit report
+// reports density_exceeded on the compiled deck — but saying it at authoring
+// time is cheaper than a render round trip, and a table with no header row does
+// not render as a table at all.
+func validateTable(path string, slide SlideSpec, s *semDiags) {
+	columns, rows := slides.UsableTableCounts(slide.Body)
+	headersField := "headers"
+	if !hasNonEmpty(slide.Body, "headers") && hasNonEmpty(slide.Body, "columns") {
+		headersField = "columns"
+	}
+
+	if !s.requireUsableContent(path, "headers", slide.Body, columns, "columns") {
+		return
+	}
+	if !s.requireUsableContent(path, "rows", slide.Body, rows, "") {
+		return
+	}
+	if columns > slides.TableMaxColumns {
+		s.advisory(path+"."+headersField, diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("table has %d columns; the renderer lays out at most %d before the text is unreadable — drop a column or split the table across two slides", columns, slides.TableMaxColumns))
+	}
+	// The density rule counts the header row too, so a table of N data rows
+	// occupies N+1 of the budget.
+	if logical := rows + 1; logical > slides.TableMaxRows {
+		s.advisory(path+".rows", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("table has %d rows including the header; the renderer lays out at most %d — split it across two slides", logical, slides.TableMaxRows))
+	}
+
+	// A row shorter than the header row leaves blank cells; a longer one has
+	// values with no column to land in. Both are worth saying before the render.
+	rawRows, _ := slide.Body["rows"].([]any)
+	for i, raw := range rawRows {
+		list, isList := raw.([]any)
+		if !isList {
+			continue
+		}
+		if len(list) != columns {
+			s.advisory(fmt.Sprintf("%s.rows[%d]", path, i), diagnostics.CodeSemanticDensity,
+				fmt.Sprintf("row %d has %d cells for %d columns; give every row one cell per header (short rows render blank cells)", i+1, len(list), columns))
+		}
+	}
+}
+
+// validateExecutiveSummary applies the exec-summary count and budget rules. The
+// count rule and the visual are the same rule: 3–5 points render as the
+// exec-summary pattern (numbered conclusions with supporting lines), anything
+// else degrades to a bullet list. Say which one the author is getting rather
+// than only that the count is off (go-slide-creator-ku6t).
+func validateExecutiveSummary(path string, slide SlideSpec, s *semDiags) {
+	n, ok := execSummaryPointCount(slide.Body)
+	if !ok {
+		return
+	}
+	pointsPath := path + "." + execSummaryPointsPath(slide.Body)
+	if n < 3 || n > 5 {
+		s.advisory(pointsPath, diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("executive summary has %d points; exec-summary renders 3–5 as numbered conclusions (otherwise it degrades to a bullet list)", n))
+		return
+	}
+	if !slides.ExecSummaryPatternFeasible(slide.Body) {
+		s.advisory(pointsPath, diagnostics.CodeSemanticDensity,
+			"executive summary points exceed the exec-summary text budgets (lead ≤90 chars, support ≤200); shorten them or the slide degrades to a bullet list")
+	}
+}
+
+// validateChartInsight applies the chart-data and insight-count rules.
+func validateChartInsight(path string, slide SlideSpec, s *semDiags) {
+	// A chart without usable data compiles to an insights-only slide (the chart
+	// panel is dropped), so flag it at the path the author must edit —
+	// chart.data — with the expected shape for the chart type.
+	if chart, ok := slide.Body["chart"].(map[string]any); ok {
+		validateChartData(path+".chart", chart, s)
+	}
+	// chart-insights-split renders 1–6 insights alongside the chart; beyond the
+	// cap the compiler degrades to a native two-column slide (chart beside the
+	// full insight list). Flag the over-cap count here (blocking under strict)
+	// to keep validate in step with compile.
+	if n := slides.ChartInsightInsightCount(slide.Body); n > slides.ChartInsightMaxInsights {
+		s.advisory(path+".insights", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("chart-insights-split renders 1–%d insights alongside the chart; found %d — split or shorten the insights (otherwise it degrades to a native two-column slide: chart beside the full insight list)", slides.ChartInsightMaxInsights, n))
+	}
 }

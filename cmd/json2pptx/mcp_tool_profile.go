@@ -44,8 +44,13 @@ const (
 	// when examine_template (2.9KB) entered core with the template_path
 	// arguments (go-slide-creator-ydbk): it is the only tool that can vet a
 	// bring-your-own .pptx, and without it in core that workflow needed an
-	// operator. The full profile is ~215KB.
-	coreToolListByteBudget = 88 * 1024
+	// operator. Raised again from 88KB when DeckSpec gained the option_matrix
+	// and table kinds (go-slide-creator-6o1r, go-slide-creator-e4h1): each kind
+	// adds a closed variant to the schema both spec tools embed, ~1.5KB apiece,
+	// and the alternative is agents dropping to raw_json2pptx for an evaluation
+	// matrix or a table — which costs far more tokens per deck than the
+	// handshake saves. The full profile is ~215KB.
+	coreToolListByteBudget = 96 * 1024
 )
 
 // coreToolNames is the tool set advertised by the default "core" profile.

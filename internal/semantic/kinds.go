@@ -23,6 +23,8 @@ const (
 	KindComparison SlideKind = "comparison"
 	// KindOptionMatrix scores options against shared criteria.
 	KindOptionMatrix SlideKind = "option_matrix"
+	// KindTable is a native data table.
+	KindTable SlideKind = "table"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -102,6 +104,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredFields:  []string{"criteria", "options"},
 		RequiredAliases: map[string][]string{"criteria": {"columns"}, "options": {"rows"}},
 		TypicalFields:   []string{"title", "scale", "recommended", "decisive_criterion", "highlight_label", "takeaway"},
+	},
+	KindTable: {
+		Kind:            KindTable,
+		Summary:         "A native data table — the financials, the segment split, the pricing tiers. Renders with the template's own table style; up to 6 columns × 7 logical rows before the density rules ask for a split.",
+		RequiredFields:  []string{"headers", "rows"},
+		RequiredAliases: map[string][]string{"headers": {"columns"}},
+		TypicalFields:   []string{"title", "column_alignments", "highlight_column", "totals_row", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

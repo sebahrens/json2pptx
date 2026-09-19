@@ -140,6 +140,23 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		}, why: "a badge over the pattern's 24-char budget is dropped rather than costing the whole matrix; validation warns"},
 		"takeaway": {inject: func(s string) map[string]any { return covOptionMatrix(map[string]any{"takeaway": s}) }, rendered: true},
 	},
+	// go-slide-creator-e4h1: a header, a cell, an alignment and the two emphasis
+	// fields all have to reach the compiled table.
+	KindTable: {
+		"title":   {inject: func(s string) map[string]any { return covTable(map[string]any{"title": s}) }, rendered: true},
+		"headers": {inject: func(s string) map[string]any { return covTable(map[string]any{"headers": []any{s, "FY26"}}) }, rendered: true},
+		"rows": {inject: func(s string) map[string]any {
+			return covTable(map[string]any{"rows": []any{[]any{s, "1"}, []any{"SMB", "2"}}})
+		}, rendered: true},
+		"column_alignments": {inject: func(string) map[string]any {
+			return covTable(map[string]any{"column_alignments": []any{"left", "right"}})
+		}},
+		"highlight_column": {inject: func(string) map[string]any {
+			return covTable(map[string]any{"highlight_column": "FY26"})
+		}},
+		"totals_row": {inject: func(string) map[string]any { return covTable(map[string]any{"totals_row": true}) }},
+		"takeaway":   {inject: func(s string) map[string]any { return covTable(map[string]any{"takeaway": s}) }, rendered: true},
+	},
 	KindKPISnapshot: {
 		"kpis":     {inject: func(s string) map[string]any { return map[string]any{"kpis": covKPIs(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"kpis": covKPIs("$48M"), "title": s} }, rendered: true},
@@ -288,6 +305,22 @@ func covOptionMatrix(overlay map[string]any) map[string]any {
 		"options": []any{
 			map[string]any{"name": "Automate", "scores": []any{1, 2}},
 			map[string]any{"name": "Hub", "scores": []any{3, 4}},
+		},
+	}
+	for k, v := range overlay {
+		body[k] = v
+	}
+	return body
+}
+
+// covTable returns a minimal valid table payload with the given fields overlaid.
+func covTable(overlay map[string]any) map[string]any {
+	body := map[string]any{
+		"title":   "Segments",
+		"headers": []any{"Segment", "FY26"},
+		"rows": []any{
+			[]any{"Enterprise", "$41M"},
+			[]any{"SMB", "$9M"},
 		},
 	}
 	for k, v := range overlay {

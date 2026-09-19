@@ -8,6 +8,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **New slide kind `table` (go-slide-creator-e4h1).** A plain data table — the
+  financials, the segment split, the pricing tiers — had no kind, so the most
+  ordinary business slide there is needed `raw_json2pptx`; `kind: table` came
+  back "unknown slide kind".
+  - `headers` (alias `columns`) and `rows`. A row is a list of cell values or an
+    object keyed by header label; short rows render blank cells rather than
+    dropping a column, and cells keep the author's own numeric literal.
+  - `column_alignments` (`left` / `center` / `right`), `highlight_column` (a
+    header NAME or a 0-based index), `totals_row`, `column_types`. With none of
+    them set, no style block is emitted and the template's own table style
+    renders verbatim.
+  - Compiles to a native table content block, so it inherits the engine's table
+    machinery (banding, totals emphasis, font scaling, the fit report's density
+    findings). `validate_deck_spec` reports the renderer's 6-column / 7-row
+    budget and any row whose cell count does not match the headers, at
+    authoring time rather than after a render.
+  - Without a header row there is no table to build, so the rows degrade to
+    bullets labelled by whatever headers exist.
+
 - **New slide kind `option_matrix` (go-slide-creator-6o1r).** The DeckSpec path
   compiled to 5 of 43 patterns, and the options × criteria evaluation matrix —
   the slide a recommendation is actually argued on — was not one of them. Three

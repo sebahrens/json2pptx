@@ -180,6 +180,20 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"corner_label":       strField("Label for the table's empty top-left corner cell."),
 		"takeaway":           strField("One-line takeaway footer."),
 	}, compositionFields()), universalFields()),
+	KindTable: withFields(withFields(map[string]payloadField{
+		"title":   strField("Slide title."),
+		"headers": textList("Column headers (up to 6). The table's first row."),
+		"columns": textList("Alias for headers."),
+		"rows": {
+			typ:  "array",
+			desc: "Data rows (up to 6, so the table stays within the 7-row budget including the header). A row is a list of cell values, or an object keyed by header label. Short rows render blank cells.",
+		},
+		"column_alignments": textList("Per-column alignment: left / center / right (the engine's l / ctr / r are accepted too). Right-align numeric columns."),
+		"column_types":      textList("Per-column type hint for the renderer's number formatting, e.g. text / number / currency / percent."),
+		"highlight_column":  strField("The column to emphasise, named (matched against a header) or as a 0-based index."),
+		"totals_row":        strField("Set true when the last data row is a totals row, so the renderer emphasises it."),
+		"takeaway":          strField("One-line takeaway footer."),
+	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
