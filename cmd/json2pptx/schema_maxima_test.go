@@ -35,6 +35,10 @@ var schemaMaximaTemplates = []string{"midnight-blue", "warm-coral", "forest-gree
 func TestSchemaMaximaStayReadable(t *testing.T) {
 	measured := map[string]float64{}
 	for _, pat := range patterns.Default().List() {
+		// The score is the SMALLEST size any cell would render at across the
+		// bundled templates — the worst case an author can hit — so a lower
+		// number is a worse pattern, and 0 ("no cell drops below the floor")
+		// is the best of all.
 		worst := 0.0
 		for _, tpl := range schemaMaximaTemplates {
 			pt, note := measureSchemaMaximumPt(t, pat, tpl)
@@ -42,7 +46,7 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 				t.Logf("%s on %s: %s", pat.Name(), tpl, note)
 				continue
 			}
-			if pt > worst {
+			if pt > 0 && (worst == 0 || pt < worst) {
 				worst = pt
 			}
 		}
@@ -53,13 +57,20 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 	for name := range measured {
 		names = append(names, name)
 	}
-	sort.Slice(names, func(i, j int) bool { return measured[names[i]] > measured[names[j]] })
+	// Worst first: the smallest surviving size is the most broken pattern.
+	sort.Slice(names, func(i, j int) bool {
+		a, b := measured[names[i]], measured[names[j]]
+		if a == 0 || b == 0 {
+			return b == 0 && a != 0 // 0 (nothing below the floor) sorts last
+		}
+		return a < b
+	})
 
 	var report strings.Builder
 	for _, name := range names {
 		fmt.Fprintf(&report, "%-30s %.1fpt\n", name, measured[name])
 	}
-	t.Logf("worst predicted shrink at schema maxima (0 = no cell shrinks below the floor):\n%s", report.String())
+	t.Logf("smallest size a schema-maximum payload renders at, worst first (0 = no cell drops below the floor):\n%s", report.String())
 
 	for name, shrink := range measured {
 		pinned, ok := schemaMaximaShrinkPt[name]
@@ -67,11 +78,13 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 			t.Errorf("pattern %q has no entry in schemaMaximaShrinkPt (measured %.1fpt) — add one, or bring its schema maxima down to what its cells hold", name, shrink)
 			continue
 		}
-		if shrink > pinned+0.05 {
-			t.Errorf("%s: schema maxima now render at %.1fpt, worse than the pinned %.1fpt — a field's maxLength grew past what its cell holds", name, shrink, pinned)
-		}
-		if pinned > 0 && shrink < pinned-1 {
-			t.Errorf("%s: schema maxima now render at %.1fpt, better than the pinned %.1fpt — lower the pin to hold the ground", name, shrink, pinned)
+		switch {
+		case pinned == 0 && shrink != 0:
+			t.Errorf("%s: schema maxima now render text at %.1fpt; the pin says nothing should drop below the floor", name, shrink)
+		case pinned != 0 && shrink != 0 && shrink < pinned-0.05:
+			t.Errorf("%s: schema maxima now render at %.1fpt, SMALLER than the pinned %.1fpt — a field's maxLength grew past what its cell holds", name, shrink, pinned)
+		case pinned != 0 && (shrink == 0 || shrink > pinned+1):
+			t.Errorf("%s: schema maxima now render at %.1fpt, better than the pinned %.1fpt — raise the pin to hold the ground", name, shrink, pinned)
 		}
 	}
 }
@@ -184,53 +197,54 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 }
 
 // schemaMaximaShrinkPt pins, per pattern, the smallest size its schema-maximum
-// payload renders at — 0 meaning every cell stays above the readable floor.
-// The pins are measured, not chosen: TestSchemaMaximaStayReadable fails both
-// when a number gets worse and when it improves without the pin following, so
-// the ground a fix wins cannot be given back (go-slide-creator-0g6p).
+// payload renders at, across ALL four bundled templates — 0 meaning every cell
+// stays above the readable floor. The pins are measured, not chosen:
+// TestSchemaMaximaStayReadable fails both when a number gets worse and when it
+// improves without the pin following, so the ground a fix wins cannot be given
+// back (go-slide-creator-0g6p).
 var schemaMaximaShrinkPt = map[string]float64{
-	"agenda":                       8.4,
-	"agenda-with-images":           6.5,
-	"arch-stack":                   8.9,
+	"agenda":                       7.8,
+	"agenda-with-images":           6.0,
+	"arch-stack":                   8.6,
 	"before-after":                 0.0,
-	"before-after-compact":         6.5,
+	"before-after-compact":         6.0,
 	"bmc-canvas":                   3.8,
-	"card-grid":                    2.6,
-	"chart-insights-split":         9.1,
-	"comparison-2col":              4.8,
-	"driver-tree":                  4.3,
-	"dual-org-ladder":              7.2,
+	"card-grid":                    2.4,
+	"chart-insights-split":         9.4,
+	"comparison-2col":              4.2,
+	"driver-tree":                  4.1,
+	"dual-org-ladder":              7.0,
 	"exec-summary":                 7.2,
-	"hero-detail":                  7.2,
-	"horizontal-bar-with-callouts": 6.5,
+	"hero-detail":                  6.7,
+	"horizontal-bar-with-callouts": 6.0,
 	"icon-row":                     0.0,
 	"image-text-split":             0.0,
-	"journey-maturity-model":       9.6,
+	"journey-maturity-model":       9.1,
 	"kpi-2up":                      0.0,
 	"kpi-3up":                      0.0,
 	"kpi-4up":                      0.0,
 	"kpi-5up":                      0.0,
 	"kpi-6up":                      0.0,
-	"kpi-inline":                   6.0,
+	"kpi-inline":                   5.8,
 	"matrix-2x2":                   10.1,
-	"numbered-step-strip":          6.0,
+	"numbered-step-strip":          5.8,
 	"phase-roadmap":                6.2,
 	"process-flow":                 0.0,
-	"process-flow-compact":         9.4,
+	"process-flow-compact":         9.1,
 	"process-grid-2row":            0.0,
 	"pull-quote":                   17.3,
-	"pyramid":                      9.8,
-	"quote-cluster":                7.0,
+	"pyramid":                      9.2,
+	"quote-cluster":                6.7,
 	"roadmap-phased":               5.0,
-	"scqa-summary":                 7.7,
-	"stat-hero":                    7.7,
-	"strategy-house":               8.4,
-	"stylish-panels":               7.0,
-	"swimlane":                     5.8,
+	"scqa-summary":                 7.4,
+	"stat-hero":                    7.4,
+	"strategy-house":               8.2,
+	"stylish-panels":               6.4,
+	"swimlane":                     5.5,
 	"table-highlight":              6.7,
 	"team-bios":                    5.5,
 	"timeline-horizontal":          6.2,
-	"value-chain":                  8.6,
+	"value-chain":                  8.2,
 	"waterfall-bridge":             7.2,
 }
 

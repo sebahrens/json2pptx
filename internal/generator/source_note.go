@@ -1,14 +1,19 @@
 package generator
 
 import (
-	"strings"
-
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
-// sourceNoteFontSize is the source attribution size in hundredths of a point.
-// The note's geometry comes from the chrome frame's source band.
-const sourceNoteFontSize = 800 // 8pt
+// sourceNoteFontSize is the source attribution size in hundredths of a point,
+// shared with every pattern that draws a source line. The note's geometry
+// comes from the chrome frame's source band.
+//
+// It was 800 (8pt) in a raw #888888, right-aligned, while the patterns drew
+// their own sources at 9-10pt dk1 on the left: one deck showed sources in
+// three sizes and two corners depending on which pattern owned the slide
+// (go-slide-creator-7eib).
+const sourceNoteFontSize = int(patterns.SourceNoteSizePt * 100)
 
 // generateSourceNoteShapeInBounds creates a p:sp element for source
 // attribution text in small gray italics, placed at bounds (the chrome frame's
@@ -27,14 +32,14 @@ func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds p
 			Anchor: "t",
 			Insets: [4]int64{91440, 0, 0, 0},
 			Paragraphs: []pptx.Paragraph{{
-				Align: "r",
+				Align: patterns.SourceNoteAlign,
 				Runs: []pptx.Run{{
 					Text:     sourceNoteText(sourceText),
 					Lang:     "en-US",
 					FontSize: sourceNoteFontSize,
 					Italic:   true,
 					Dirty:    true,
-					Color:    pptx.SolidFill("888888"),
+					Color:    pptx.SchemeFill(patterns.SourceNoteScheme),
 				}},
 			}},
 		},
@@ -46,15 +51,11 @@ func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds p
 }
 
 // sourceNoteText labels a source line, without stuttering when the author
-// already wrote the label. "Source: Company filings FY2022-FY2026" used to
-// render as "Source: Source: Company filings FY2022-FY2026"
-// (go-slide-creator-xg48).
+// already wrote the label. The rule lives in internal/patterns so the slide
+// band and the patterns cannot disagree about it (go-slide-creator-xg48 found
+// the stutter; go-slide-creator-7eib unified the surfaces).
 func sourceNoteText(sourceText string) string {
-	trimmed := strings.TrimSpace(sourceText)
-	if strings.HasPrefix(strings.ToLower(trimmed), "source:") {
-		return trimmed
-	}
-	return "Source: " + trimmed
+	return patterns.SourceNoteText(sourceText)
 }
 
 // insertSourceNote inserts a source attribution text shape at bounds (the

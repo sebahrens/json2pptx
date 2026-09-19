@@ -373,6 +373,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **One source convention across slides and patterns (go-slide-creator-7eib).**
+  `slide.source` rendered as `Source: <text>` at 8pt in a raw `#888888`,
+  right-aligned in the chrome band, while `chart-insights-split` drew its own
+  `values.source` verbatim at 9pt `dk1` on the left and `stat-hero` at 10pt
+  centred. One deck showed its sources in three sizes, two alignments and two
+  colours depending on which pattern owned the slide — and an author who wrote
+  `"Source: …"` into the slide field got `Source: Source: …` on a pattern
+  slide.
+  - `internal/patterns.SourceNoteText` is now the single rule for the prefix,
+    and `SourceNoteSizePt` / `SourceNoteScheme` / `SourceNoteAlign` the single
+    look: italic, left, `dk2`, 12pt.
+  - 12pt is decided by the tighter surface: shape_grid text is floored at 12pt
+    by the renderer, so a pattern asking for 9 drew 12 anyway. The old 8pt band
+    was also reported as barely legible at 100%.
+  - The raw `#888888` is gone: the band now uses the template's own `dk2`, so
+    the source line stays in the palette like everything else.
+
 - **Funnel stages stay readable, and stop implying a valence
   (go-slide-creator-6i6j).** A real SaaS funnel (12,400 / 3,100 / 890 / 212)
   drew each stage proportionally, so the bottom two were 2-4px slivers with

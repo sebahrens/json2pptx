@@ -184,8 +184,11 @@ func (sh *statHero) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	}
 
 	if v.Source != "" {
+		// One source convention: the same prefix, size and colour the slide
+		// band and every other pattern use. The alignment follows the hero's
+		// own centred stack rather than breaking it (go-slide-creator-7eib).
 		paragraphs = append(paragraphs, statHeroParagraph{
-			Content: v.Source, Size: 10, Color: "dk1", Align: "ctr", Italic: true,
+			Content: SourceNoteText(v.Source), Size: SourceNoteSizePt, Color: SourceNoteScheme, Align: "ctr", Italic: true,
 		})
 	}
 

@@ -319,7 +319,7 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	titleSize := ResolveSize(ovr.TitleSize, 12.0)
 	bulletSize := ResolveSize(ovr.BulletSize, 12.0)
-	sourceSize := ResolveSize(ovr.SourceSize, 9.0)
+	sourceSize := ResolveSize(ovr.SourceSize, SourceNoteSizePt)
 
 	insightsTitle := v.InsightsTitle
 	if insightsTitle == "" {
@@ -460,9 +460,9 @@ func buildInsightsPanel(title string, insights []string, accent string, titleSiz
 func buildSourceCell(source string, sourceSize float64) *jsonschema.GridCellInput {
 	textObj := chartInsightsText{
 		Paragraphs: []chartInsightsParagraph{
-			{Content: source, Size: sourceSize, Italic: true, Color: "dk1", Align: "l"},
+			{Content: SourceNoteText(source), Size: sourceSize, Italic: true, Color: SourceNoteScheme, Align: SourceNoteAlign},
 		},
-		Align:         "l",
+		Align:         SourceNoteAlign,
 		VerticalAlign: "ctr",
 	}
 	textJSON, _ := json.Marshal(textObj)
