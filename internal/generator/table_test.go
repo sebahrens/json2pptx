@@ -25,8 +25,8 @@ func TestGenerateTableXML_Basic3x3(t *testing.T) {
 
 	config := TableRenderConfig{
 		Bounds: types.BoundingBox{
-			X:      914400, // 1 inch
-			Y:      914400, // 1 inch
+			X:      914400,  // 1 inch
+			Y:      914400,  // 1 inch
 			Width:  8229600, // 9 inches
 			Height: 4572000, // 5 inches
 		},
@@ -887,11 +887,11 @@ func TestGenerateTableXML_NumericHeaderRightAligned(t *testing.T) {
 
 func TestGenerateBorderXML(t *testing.T) {
 	tests := []struct {
-		style      string
-		solidLnL   bool
-		solidLnR   bool
-		solidLnT   bool
-		solidLnB   bool
+		style    string
+		solidLnL bool
+		solidLnR bool
+		solidLnT bool
+		solidLnB bool
 	}{
 		{"none", false, false, false, false},
 		{"horizontal", false, false, true, true},
@@ -1205,13 +1205,13 @@ func TestGenerateTableXML_WideTable_FontScaling(t *testing.T) {
 		defaultSize  int
 		expectHeader int // expected header font size (default * scale * 1.1)
 	}{
-		{"3 columns - no scaling", 3, 1800, 1980},       // 1800 * 1.1
-		{"4 columns - no scaling", 4, 1800, 1980},       // 1800 * 1.1
-		{"5 columns - scaled", 5, 1800, 1584},           // 1800 * 4/5 = 1440 * 1.1 = 1584
-		{"6 columns - scaled", 6, 1800, 1320},           // 1800 * 4/6 = 1200 * 1.1 = 1320
-		{"7 columns - scaled", 7, 1800, 1130},           // 1800 * 4/7 = int(1028.57) = 1028, * 1.1 = int(1130.8) = 1130
-		{"10 columns - floor", 10, 1800, 1100},          // 1800 * 4/10 = 720, but floor 1000 * 1.1 = 1100
-		{"15 columns - floor", 15, 1800, 1100},          // floor at 1000, * 1.1 = 1100
+		{"3 columns - no scaling", 3, 1800, 1980}, // 1800 * 1.1
+		{"4 columns - no scaling", 4, 1800, 1980}, // 1800 * 1.1
+		{"5 columns - scaled", 5, 1800, 1584},     // 1800 * 4/5 = 1440 * 1.1 = 1584
+		{"6 columns - scaled", 6, 1800, 1320},     // 1800 * 4/6 = 1200 * 1.1 = 1320
+		{"7 columns - scaled", 7, 1800, 1130},     // 1800 * 4/7 = int(1028.57) = 1028, * 1.1 = int(1130.8) = 1130
+		{"10 columns - floor", 10, 1800, 1100},    // 1800 * 4/10 = 720, but floor 1000 * 1.1 = 1100
+		{"15 columns - floor", 15, 1800, 1100},    // floor at 1000, * 1.1 = 1100
 	}
 
 	for _, tc := range tests {
@@ -1251,11 +1251,11 @@ func TestCalculateColumnWidths_WideTable(t *testing.T) {
 	// Verify that column widths always sum to availableWidth and are all positive,
 	// even for wide tables with varying content lengths.
 	tests := []struct {
-		name     string
-		headers  []string
-		rows     [][]types.TableCell
-		numCols  int
-		width    int64
+		name    string
+		headers []string
+		rows    [][]types.TableCell
+		numCols int
+		width   int64
 	}{
 		{
 			"7 cols, P&L headers",
@@ -1639,11 +1639,11 @@ func TestGenerateTableLevelBorders(t *testing.T) {
 	noFillMarker := `w="0"><a:noFill/>`
 
 	tests := []struct {
-		style        string
-		expectEmpty  bool
-		insideVSolid bool
-		insideHSolid bool
-		outerTopSolid bool
+		style          string
+		expectEmpty    bool
+		insideVSolid   bool
+		insideHSolid   bool
+		outerTopSolid  bool
 		outerLeftSolid bool
 	}{
 		{"none", true, false, false, false, false},
@@ -1809,7 +1809,7 @@ func TestLongestToken(t *testing.T) {
 		want  int
 	}{
 		{"$42M", 4},
-		{"North America", 7},    // "America"
+		{"North America", 7}, // "America"
 		{"hello", 5},
 		{"", 0},
 		{"a b c", 1},

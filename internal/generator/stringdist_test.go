@@ -17,8 +17,8 @@ func TestLevenshteinDistance(t *testing.T) {
 		{"kitten", "sitting", 3},
 		{"saturday", "sunday", 3},
 		{"slideLayout1", "slideLayout2", 1},
-		{"slideLayout1", "slideLayou1", 1},    // deletion
-		{"slideLayout1", "slidelayout1", 1},   // case change
+		{"slideLayout1", "slideLayou1", 1},  // deletion
+		{"slideLayout1", "slidelayout1", 1}, // case change
 		{"Title 1", "Title 2", 1},
 		{"Content Placeholder 2", "Content Placeholder 3", 1},
 		{"abc", "xyz", 3},
@@ -58,10 +58,10 @@ func TestClosestMatch(t *testing.T) {
 		wantDist    int
 		wantNoMatch bool
 	}{
-		{"slideLayout1", 3, "slideLayout1", 0, false},  // exact match
-		{"slideLayout4", 3, "slideLayout1", 1, false},   // 1 char diff
-		{"slideLayou1", 3, "slideLayout1", 1, false},    // typo
-		{"slideLayout12", 3, "slideLayout1", 1, false},  // extra char
+		{"slideLayout1", 3, "slideLayout1", 0, false},     // exact match
+		{"slideLayout4", 3, "slideLayout1", 1, false},     // 1 char diff
+		{"slideLayou1", 3, "slideLayout1", 1, false},      // typo
+		{"slideLayout12", 3, "slideLayout1", 1, false},    // extra char
 		{"somethingCompletelyDifferent", 3, "", -1, true}, // no close match
 	}
 
@@ -119,8 +119,8 @@ func TestLayoutNotFoundError(t *testing.T) {
 		wantContain []string
 	}{
 		{
-			name:     "with close match",
-			layoutID: "slideLayout4",
+			name:      "with close match",
+			layoutID:  "slideLayout4",
 			available: []string{"slideLayout1", "slideLayout2", "slideLayout3"},
 			wantContain: []string{
 				`layout_id "slideLayout4" not found in template`,
@@ -130,8 +130,8 @@ func TestLayoutNotFoundError(t *testing.T) {
 			},
 		},
 		{
-			name:     "no close match",
-			layoutID: "somethingCompletelyDifferent",
+			name:      "no close match",
+			layoutID:  "somethingCompletelyDifferent",
 			available: []string{"slideLayout1", "slideLayout2"},
 			wantContain: []string{
 				`layout_id "somethingCompletelyDifferent" not found in template`,

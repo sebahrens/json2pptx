@@ -49,10 +49,10 @@ func TestParseBMCSections_FlatFormat(t *testing.T) {
 		"key_resources":          []any{"Engineering team"},
 		"value_propositions":     []any{"No-code pipelines"},
 		"customer_relationships": []any{"Self-service"},
-		"channels":              []any{"Website"},
-		"customer_segments":     []any{"Mid-market"},
-		"cost_structure":        []any{"Infrastructure 40%"},
-		"revenue_streams":       []any{"Subscriptions"},
+		"channels":               []any{"Website"},
+		"customer_segments":      []any{"Mid-market"},
+		"cost_structure":         []any{"Infrastructure 40%"},
+		"revenue_streams":        []any{"Subscriptions"},
 	}
 
 	sections := parseBMCSections(data)
@@ -105,11 +105,11 @@ func TestParseBMCSections_NestedBoxesFormat(t *testing.T) {
 
 func TestParseBMCSections_CamelCaseAliases(t *testing.T) {
 	data := map[string]any{
-		"keyPartners":       []any{"Partner A"},
-		"valueProposition":  []any{"VP"},
-		"customerSegments":  []any{"Segment A"},
-		"costStructure":     []any{"Cost A"},
-		"revenueStreams":    []any{"Revenue A"},
+		"keyPartners":      []any{"Partner A"},
+		"valueProposition": []any{"VP"},
+		"customerSegments": []any{"Segment A"},
+		"costStructure":    []any{"Cost A"},
+		"revenueStreams":   []any{"Revenue A"},
 	}
 
 	sections := parseBMCSections(data)

@@ -190,7 +190,7 @@ func TestBuildContentItems(t *testing.T) {
 			slide: types.SlideDefinition{
 				Title: "", // Empty title - still creates item with empty string value
 				Content: types.SlideContent{
-					Body:    "", // Empty body - still creates item with empty string value
+					Body:    "",         // Empty body - still creates item with empty string value
 					Bullets: []string{}, // Empty bullets - skipped due to len check
 				},
 			},
@@ -297,7 +297,7 @@ func TestBuildContentItems(t *testing.T) {
 					if gotChart.Type != expected.Type {
 						t.Errorf("item[%d].Value.Type = %v, want %v", i, gotChart.Type, expected.Type)
 					}
-				// DiagramSpec comparison already handled above
+					// DiagramSpec comparison already handled above
 				}
 			}
 		})

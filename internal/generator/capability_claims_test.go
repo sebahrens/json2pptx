@@ -32,10 +32,10 @@ func TestPorterIntensityIsClampedToItsDocumentedRange(t *testing.T) {
 
 	// End to end through the force parser, which is where the value enters.
 	force := porterForceFromMap(porterForceType("rivalry"), map[string]any{"intensity": 1.5})
-	if force.intensity != 1.0 {
+	if force.intensity == nil || *force.intensity != 1.0 {
 		t.Errorf("parsed intensity = %v, want 1.0", force.intensity)
 	}
-	if label := porterIntensityLabel(force.intensity); label != "High" {
+	if label := porterIntensityLabel(*force.intensity); label != "High" {
 		t.Errorf("label = %q, want High", label)
 	}
 }

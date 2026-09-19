@@ -1540,9 +1540,9 @@ func TestMinSectionTitleFontForHeight(t *testing.T) {
 		wantMax   int
 	}{
 		{"small placeholder", 1270000, 3200, 5400},  // 100pt height
-		{"medium placeholder", 3417887, 3200, 5400},  // 269pt height
-		{"large placeholder", 6350000, 3200, 5400},   // 500pt height → capped at 5400
-		{"zero height", 0, 3200, 3200},                // default floor
+		{"medium placeholder", 3417887, 3200, 5400}, // 269pt height
+		{"large placeholder", 6350000, 3200, 5400},  // 500pt height → capped at 5400
+		{"zero height", 0, 3200, 3200},              // default floor
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

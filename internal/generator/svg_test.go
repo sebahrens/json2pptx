@@ -1674,8 +1674,8 @@ func TestNewSVGConverterWithConfig_PreferredPNGConverter(t *testing.T) {
 		wantConverter string
 	}{
 		{
-			name: "empty config uses auto",
-			cfg:  SVGConfig{},
+			name:          "empty config uses auto",
+			cfg:           SVGConfig{},
 			wantConverter: PNGConverterAuto,
 		},
 		{

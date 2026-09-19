@@ -386,10 +386,10 @@ func TestCompatibilityModes(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name         string
-		version      string // PowerPoint version
-		appName      string
-		compatMode   SVGNativeCompatibility
+		name           string
+		version        string // PowerPoint version
+		appName        string
+		compatMode     SVGNativeCompatibility
 		expectFallback bool // Whether fallback should trigger
 		expectError    bool // Whether strict mode should error
 	}{

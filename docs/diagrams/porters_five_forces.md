@@ -42,7 +42,7 @@ Two input shapes are accepted: the **array form** (`forces`) and the **object-ke
 |-------|------|-------------|
 | `forces` | `object[]` | The five forces data |
 | `forces[].type` | `string` | Force type — **must be one of the canonical values** `rivalry`, `new_entrants`, `substitutes`, `suppliers`, `buyers` (the array form does **not** accept synonyms; an unrecognized `type` is dropped and that box falls back to defaults) |
-| `forces[].intensity` | `number` | Force strength, `0.0` to `1.0` (default `0.5` if omitted) |
+| `forces[].intensity` | `number` | Force strength, `0.0` to `1.0`. **Omit it and the force is drawn unscored**: the neutral surface, and no intensity line. It used to default to `0.5`, so an unscored chart printed "Medium (50%)" under all five forces and tinted them all alike — an assessment nobody made (go-slide-creator-ceodq). |
 
 ### Object-keyed form
 

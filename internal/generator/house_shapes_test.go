@@ -154,9 +154,9 @@ func TestParseHouseDiagramNativeData_RoofMapFormat(t *testing.T) {
 
 func TestParseHouseDiagramNativeData_OuterElements(t *testing.T) {
 	data := map[string]any{
-		"center_element":  map[string]any{"label": "Center"},
-		"outer_elements":  []any{"Elem1", "Elem2", "Elem3"},
-		"foundation":      "Base",
+		"center_element": map[string]any{"label": "Center"},
+		"outer_elements": []any{"Elem1", "Elem2", "Elem3"},
+		"foundation":     "Base",
 	}
 
 	panels, meta, err := parseHouseDiagramNativeData(data)
@@ -191,11 +191,11 @@ func TestGenerateHouseDiagramGroupXML(t *testing.T) {
 	}
 
 	panels := []nativePanelData{
-		{title: "Vision: Global Leader"},                      // roof
+		{title: "Vision: Global Leader"},                       // roof
 		{title: "Technology", body: "- Cloud\n- API Platform"}, // pillar
 		{title: "Product", body: "- Mobile Payments"},          // pillar
-		{title: "People"},                                      // pillar
-		{title: "Core Values: Integrity"},                      // foundation
+		{title: "People"},                 // pillar
+		{title: "Core Values: Integrity"}, // foundation
 	}
 
 	meta := houseDiagramMeta{

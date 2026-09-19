@@ -20,8 +20,8 @@ func TestIsValidTransition(t *testing.T) {
 		{"none", false},
 		{"slide", false},
 		{"", false},
-		{"FADE", true},  // case insensitive
-		{"Push", true},  // case insensitive
+		{"FADE", true}, // case insensitive
+		{"Push", true}, // case insensitive
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

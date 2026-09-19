@@ -512,16 +512,16 @@ func TestAspectRatio_RectangularChartsCanStretch(t *testing.T) {
 
 // ValidationAssertion defines what to check in rendered output.
 type ValidationAssertion struct {
-	SlideIndex         int
-	PlaceholderIndex   int
-	ContentType        string
-	AspectRatioCheck   bool    // True = check aspect ratio
-	ExpectedRatio      float64 // 1.0 for circular, 0 for any
-	RatioTolerance     float64 // Acceptable deviation from expected
-	TextContains       string  // Text that should be present
-	MinElementCount    int     // Minimum number of elements (bullets, cells, etc.)
-	TableColumnsCheck  int     // Expected number of table columns (0 = no check)
-	TableRowsCheck     int     // Expected number of table rows (0 = no check)
+	SlideIndex        int
+	PlaceholderIndex  int
+	ContentType       string
+	AspectRatioCheck  bool    // True = check aspect ratio
+	ExpectedRatio     float64 // 1.0 for circular, 0 for any
+	RatioTolerance    float64 // Acceptable deviation from expected
+	TextContains      string  // Text that should be present
+	MinElementCount   int     // Minimum number of elements (bullets, cells, etc.)
+	TableColumnsCheck int     // Expected number of table columns (0 = no check)
+	TableRowsCheck    int     // Expected number of table rows (0 = no check)
 }
 
 // GetCIValidationAssertions returns assertions for CI validation.
@@ -556,4 +556,3 @@ func GetCIValidationAssertions() []ValidationAssertion {
 		},
 	}
 }
-

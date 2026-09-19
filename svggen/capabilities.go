@@ -391,7 +391,7 @@ func DiagramCapabilities() []DiagramCapability {
 			Type:             "porters_five_forces",
 			MaxNodes:         intPtr(5),
 			MaxDepth:         intPtr(1),
-			OverflowBehavior: strPtr("fixed 5-force layout; text wrapping within force regions"),
+			OverflowBehavior: strPtr("fixed 5-force layout; text wrapping within force regions. A force with no intensity is drawn unscored — neutral surface, no intensity line — rather than defaulting to Medium (50%)"),
 			RequiredFields:   nil,
 			OptionalFields:   []string{"industry_name", "forces", "rivalry", "new_entrants", "substitutes", "suppliers", "buyers"},
 			Status:           "ready",

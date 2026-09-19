@@ -90,8 +90,8 @@ func TestParsePorterForces_Basic(t *testing.T) {
 	if forces[0].label != "Competitive Rivalry" {
 		t.Errorf("expected label 'Competitive Rivalry', got %q", forces[0].label)
 	}
-	if forces[0].intensity != 0.85 {
-		t.Errorf("expected intensity 0.85, got %f", forces[0].intensity)
+	if forces[0].intensity == nil || *forces[0].intensity != 0.85 {
+		t.Errorf("expected intensity 0.85, got %v", forces[0].intensity)
 	}
 	if len(forces[0].factors) != 2 {
 		t.Errorf("expected 2 factors, got %d", len(forces[0].factors))
@@ -130,8 +130,8 @@ func TestParsePorterForces_ObjectKeyed(t *testing.T) {
 	if forces[4].forceType != porterBuyer {
 		t.Errorf("expected buyer_power to map to porterBuyer, got %q", forces[4].forceType)
 	}
-	if forces[0].intensity != 0.85 {
-		t.Errorf("expected rivalry intensity 0.85, got %f", forces[0].intensity)
+	if forces[0].intensity == nil || *forces[0].intensity != 0.85 {
+		t.Errorf("expected rivalry intensity 0.85, got %v", forces[0].intensity)
 	}
 	// description should become a single factor line.
 	if len(forces[0].factors) != 1 || forces[0].factors[0] != "Price wars" {
@@ -210,7 +210,7 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 9000000, Height: 6000000}
 
-	result := generatePortersFiveGroupXML(panels, bounds, 100)
+	result := generatePortersFiveGroupXML(panels, bounds, 100, nil)
 
 	if result == "" {
 		t.Fatal("generatePortersFiveGroupXML returned empty string")
@@ -289,7 +289,7 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 }
 
 func TestGeneratePortersFiveGroupXML_EmptyPanels(t *testing.T) {
-	result := generatePortersFiveGroupXML(nil, types.BoundingBox{Width: 8000000, Height: 5000000}, 100)
+	result := generatePortersFiveGroupXML(nil, types.BoundingBox{Width: 8000000, Height: 5000000}, 100, nil)
 	if result != "" {
 		t.Error("should return empty for nil panels")
 	}
@@ -304,7 +304,7 @@ func TestGeneratePortersFiveGroupXML_PartialForces(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9000000, Height: 6000000}
 
-	result := generatePortersFiveGroupXML(panels, bounds, 100)
+	result := generatePortersFiveGroupXML(panels, bounds, 100, nil)
 
 	if result == "" {
 		t.Fatal("should generate XML for partial forces")
@@ -326,7 +326,7 @@ func TestGeneratePortersFiveGroupXML_NoFactors(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9000000, Height: 6000000}
 
-	result := generatePortersFiveGroupXML(panels, bounds, 100)
+	result := generatePortersFiveGroupXML(panels, bounds, 100, nil)
 
 	if result == "" {
 		t.Fatal("should generate XML even without factors")
@@ -340,21 +340,21 @@ func TestGeneratePortersFiveGroupXML_NoFactors(t *testing.T) {
 
 func TestPorterIntensityColor(t *testing.T) {
 	tests := []struct {
-		intensity    float64
-		wantScheme   string
+		intensity  float64
+		wantScheme string
 	}{
-		{0.0, "accent5"},   // Low
-		{0.33, "accent5"},  // Low boundary
-		{0.34, "accent3"},  // Medium
-		{0.50, "accent3"},  // Medium
-		{0.66, "accent3"},  // Medium boundary
-		{0.67, "accent1"},  // High
-		{1.0, "accent1"},   // High
+		{0.0, "accent5"},  // Low
+		{0.33, "accent5"}, // Low boundary
+		{0.34, "accent3"}, // Medium
+		{0.50, "accent3"}, // Medium
+		{0.66, "accent3"}, // Medium boundary
+		{0.67, "accent1"}, // High
+		{1.0, "accent1"},  // High
 	}
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("intensity_%.2f", tt.intensity), func(t *testing.T) {
-			scheme, _, _ := porterIntensityColor(tt.intensity)
+			scheme, _, _ := porterIntensityColor(&tt.intensity)
 			if scheme != tt.wantScheme {
 				t.Errorf("porterIntensityColor(%f) scheme = %q, want %q", tt.intensity, scheme, tt.wantScheme)
 			}
@@ -576,7 +576,7 @@ func generatePorterFiveForcesXMLForTest(t *testing.T) string {
 		{title: "Threat of Substitutes", value: string(porterSubstitute) + ":0.5", body: "- In-house build"},
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9144000, Height: 5143500}
-	xml := generatePortersFiveGroupXML(panels, bounds, 100)
+	xml := generatePortersFiveGroupXML(panels, bounds, 100, nil)
 	if xml == "" {
 		t.Fatal("generatePortersFiveGroupXML returned empty XML")
 	}

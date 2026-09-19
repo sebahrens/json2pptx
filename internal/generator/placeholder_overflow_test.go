@@ -72,8 +72,8 @@ func TestDetectPlaceholderOverflow_AutofitNoneButFitsAtMin(t *testing.T) {
 	// when shrunk to 60% (12pt). Shrinking font from 20pt to 12pt reduces
 	// wrapped lines by ~40%, so we need text that's about 1.4× the frame at 20pt.
 	input := PlaceholderOverflowInput{
-		SlideIndex:  0,
-		Path:        "slides[0].body",
+		SlideIndex: 0,
+		Path:       "slides[0].body",
 		// 6 paragraphs (calibrated for point-sized glyph measurement): ~1.4x
 		// the frame at 20pt, fits at the 60% floor.
 		Paragraphs:  makeOverflowParagraphs(6),

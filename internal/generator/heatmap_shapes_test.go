@@ -44,13 +44,13 @@ func TestIsHeatmapDiagram(t *testing.T) {
 
 func TestParseHeatmapData(t *testing.T) {
 	tests := []struct {
-		name       string
-		data       map[string]any
-		wantErr    bool
-		wantRows   int
-		wantCols   int
-		wantMin    float64
-		wantMax    float64
+		name     string
+		data     map[string]any
+		wantErr  bool
+		wantRows int
+		wantCols int
+		wantMin  float64
+		wantMax  float64
 	}{
 		{
 			name: "basic values",

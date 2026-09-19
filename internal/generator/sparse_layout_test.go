@@ -9,9 +9,9 @@ import (
 func TestDetectSparseLayout_Sparse(t *testing.T) {
 	// Content is 30% of bounds — should fire.
 	f := DetectSparseLayout(SparseLayoutInput{
-		SlideIndex:      0,
-		Path:            "slides[0].shape_grid",
-		BoundsHeightEMU: 1000000,
+		SlideIndex:       0,
+		Path:             "slides[0].shape_grid",
+		BoundsHeightEMU:  1000000,
 		ContentHeightEMU: 300000,
 	})
 	if f == nil {
@@ -31,9 +31,9 @@ func TestDetectSparseLayout_Sparse(t *testing.T) {
 func TestDetectSparseLayout_NotSparse(t *testing.T) {
 	// Content is 60% of bounds — should not fire.
 	f := DetectSparseLayout(SparseLayoutInput{
-		SlideIndex:      0,
-		Path:            "slides[0].shape_grid",
-		BoundsHeightEMU: 1000000,
+		SlideIndex:       0,
+		Path:             "slides[0].shape_grid",
+		BoundsHeightEMU:  1000000,
 		ContentHeightEMU: 600000,
 	})
 	if f != nil {
@@ -44,9 +44,9 @@ func TestDetectSparseLayout_NotSparse(t *testing.T) {
 func TestDetectSparseLayout_ExactThreshold(t *testing.T) {
 	// Content is exactly 40% of bounds — should not fire (>= threshold).
 	f := DetectSparseLayout(SparseLayoutInput{
-		SlideIndex:      0,
-		Path:            "slides[0].shape_grid",
-		BoundsHeightEMU: 1000000,
+		SlideIndex:       0,
+		Path:             "slides[0].shape_grid",
+		BoundsHeightEMU:  1000000,
 		ContentHeightEMU: 400000,
 	})
 	if f != nil {

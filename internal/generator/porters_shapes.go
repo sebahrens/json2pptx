@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // =============================================================================
@@ -93,7 +95,11 @@ const (
 type porterForceData struct {
 	forceType porterForceType
 	label     string
-	intensity float64
+	// intensity is nil when the payload did not state one. It used to default
+	// to 0.5, so every unscored force printed "Medium (50%)" and took the same
+	// accent3 tint: a chart that looked like an assessment and was a default
+	// (go-slide-creator-ceodq).
+	intensity *float64
 	factors   []string
 }
 
@@ -113,13 +119,22 @@ func clampPorterIntensity(v float64) float64 {
 	}
 }
 
+// porterNeutralScheme is the surface an unscored force takes: the template's
+// own light neutral, which asserts nothing.
+const porterNeutralScheme = "lt2"
+
 // porterIntensityColor maps intensity to scheme color + tint.
-// High = accent1, Medium = accent3, Low = accent5.
-func porterIntensityColor(intensity float64) (scheme string, lumMod, lumOff int) {
+// High = accent1, Medium = accent3, Low = accent5. An unstated intensity takes
+// the neutral surface: colour-coding a force nobody scored asserts a reading
+// the author never made.
+func porterIntensityColor(intensity *float64) (scheme string, lumMod, lumOff int) {
+	if intensity == nil {
+		return porterNeutralScheme, 0, 0
+	}
 	switch {
-	case intensity >= 0.67:
+	case *intensity >= 0.67:
 		return "accent1", 40000, 60000 // accent1 tint
-	case intensity >= 0.34:
+	case *intensity >= 0.34:
 		return "accent3", 40000, 60000 // accent3 tint
 	default:
 		return "accent5", 40000, 60000 // accent5 tint
@@ -196,7 +211,7 @@ func (ctx *singlePassContext) processPortersFiveForceNativeShapes(slideNum int, 
 		panels = append(panels, nativePanelData{
 			title: f.label,
 			body:  body,
-			value: fmt.Sprintf("%s:%.2f", string(f.forceType), f.intensity),
+			value: porterPanelValue(f),
 		})
 	}
 
@@ -324,9 +339,10 @@ func porterForceFromMap(ft porterForceType, m map[string]any) porterForceData {
 		label = l
 	}
 
-	intensity := 0.5
+	var intensity *float64
 	if v, ok := m["intensity"].(float64); ok {
-		intensity = clampPorterIntensity(v)
+		clamped := clampPorterIntensity(v)
+		intensity = &clamped
 	}
 
 	// Prefer an explicit "factors" list; otherwise fall back to a "description"
@@ -349,10 +365,20 @@ func porterForceFromMap(ft porterForceType, m map[string]any) porterForceData {
 	}
 }
 
+// porterPanelValue encodes a force for the panel round trip. An unstated
+// intensity encodes as an empty field rather than a number, so "nobody scored
+// this" survives the trip instead of becoming 0.5 on the other side.
+func porterPanelValue(f porterForceData) string {
+	if f.intensity == nil {
+		return string(f.forceType) + ":"
+	}
+	return fmt.Sprintf("%s:%.2f", string(f.forceType), *f.intensity)
+}
+
 // generatePortersFiveGroupXML produces the complete <p:grpSp> XML for a Porter's
 // Five Forces diagram. The panels slice encodes force data via the value field
 // (format: "forceType:intensity").
-func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, themeColors []types.ThemeColor) string {
 	if len(panels) == 0 {
 		slog.Warn("generatePortersFiveGroupXML: no panels provided")
 		return ""
@@ -364,10 +390,16 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 		forces[i] = porterForceData{
 			label: p.title,
 		}
-		// Parse "forceType:intensity" from value field
+		// Parse "forceType:intensity" from value field. An empty intensity is
+		// a force the payload did not score, and stays nil.
 		if parts := strings.SplitN(p.value, ":", 2); len(parts) == 2 {
 			forces[i].forceType = porterForceType(parts[0])
-			_, _ = fmt.Sscanf(parts[1], "%f", &forces[i].intensity)
+			if parts[1] != "" {
+				var v float64
+				if _, err := fmt.Sscanf(parts[1], "%f", &v); err == nil {
+					forces[i].intensity = &v
+				}
+			}
 		}
 		// Parse factors from body
 		if p.body != "" {
@@ -437,11 +469,12 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 	for _, layout := range layouts {
 		f, ok := forceMap[layout.ft]
 		if !ok {
-			// Use defaults if force not provided.
+			// A force the payload never mentioned is drawn with its own name
+			// and nothing else: no factors, and no intensity, because there is
+			// no assessment to show.
 			f = porterForceData{
 				forceType: layout.ft,
 				label:     porterDefaultLabel(layout.ft),
-				intensity: 0.5,
 			}
 		}
 
@@ -449,7 +482,7 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 		shapeIDs[layout.ft] = shapeID
 		nextID++
 
-		xml := generatePorterForceBoxXML(f, layout.x, layout.y, layout.w, layout.h, shapeID, layout.isCenter)
+		xml := generatePorterForceBoxXML(f, layout.x, layout.y, layout.w, layout.h, shapeID, layout.isCenter, themeColors)
 		children = append(children, []byte(xml))
 	}
 
@@ -514,9 +547,56 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 	return string(b)
 }
 
+// porterIntensityTextColor names the scheme colour the intensity line is
+// printed in: whichever of the light / dark text roles reads on the box's own
+// tinted fill. Without theme colours there is nothing to measure and the
+// historical scheme-on-scheme stands.
+func porterIntensityTextColor(scheme string, lumMod, lumOff int, themeColors []types.ThemeColor) string {
+	base, err := svggen.ParseColor(resolveSchemeColorToHex(scheme, themeColors))
+	if err != nil {
+		return scheme
+	}
+	light, lErr := svggen.ParseColor(resolveSchemeColorToHex("lt1", themeColors))
+	if lErr != nil {
+		light = svggen.Color{R: 255, G: 255, B: 255, A: 1}
+	}
+	dark, dErr := svggen.ParseColor(resolveSchemeColorToHex("dk2", themeColors))
+	if dErr != nil {
+		dark = svggen.Color{A: 1}
+	}
+	fill := patterns.EffectiveColor(base, lumMod, lumOff, 1, light)
+	if light.ContrastWith(fill) > dark.ContrastWith(fill) {
+		return "lt1"
+	}
+	return "dk2"
+}
+
+// porterBoxFill builds the box fill, omitting the luminance modifiers when
+// there are none: pptx.LumMod(0) writes a 0% luminance, which renders black.
+func porterBoxFill(scheme string, lumMod, lumOff int) pptx.Fill {
+	if lumMod == 0 && lumOff == 0 {
+		return pptx.SchemeFill(scheme)
+	}
+	return pptx.SchemeFill(scheme, pptx.LumMod(lumMod), pptx.LumOff(lumOff))
+}
+
+// porterOutlineScheme keeps an unscored box's outline visible: lt2 on white is
+// not an edge, so the neutral box is drawn with the structural dark instead.
+func porterOutlineScheme(fillScheme string) string {
+	if fillScheme == porterNeutralScheme {
+		return "dk2"
+	}
+	return fillScheme
+}
+
 // generatePorterForceBoxXML produces a single roundRect shape for a force box.
-func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint32, isCenter bool) string {
+func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint32, isCenter bool, themeColors []types.ThemeColor) string {
 	scheme, lumMod, lumOff := porterIntensityColor(f.intensity)
+	// The intensity line used to be painted in the box's own scheme colour on
+	// the box's own tint of it: "Medium (50%)" measured 1.55:1 on the accent3
+	// tile. Pick it against the fill the reader actually sees, the same way the
+	// heatmap picks its value colour (go-slide-creator-ceodq).
+	intensityColor := porterIntensityTextColor(scheme, lumMod, lumOff, themeColors)
 
 	// Build text paragraphs: header + intensity label + factors
 	var paras []pptx.Paragraph
@@ -539,21 +619,25 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 		}},
 	})
 
-	// Intensity label paragraph
-	intensityText := fmt.Sprintf("%s (%.0f%%)", porterIntensityLabel(f.intensity), f.intensity*100)
-	paras = append(paras, pptx.Paragraph{
-		Align:    "ctr",
-		NoBullet: true,
-		Runs: []pptx.Run{{
-			Text:     intensityText,
-			Lang:     "en-US",
-			FontSize: porterIntensityFontSize,
-			Bold:     false,
-			Italic:   true,
-			Dirty:    true,
-			Color:    pptx.SchemeFill(scheme),
-		}},
-	})
+	// Intensity label paragraph — only when the author stated one. Printing
+	// "Medium (50%)" for a force nobody scored put a number on the slide that
+	// came from a default (go-slide-creator-ceodq).
+	if f.intensity != nil {
+		intensityText := fmt.Sprintf("%s (%.0f%%)", porterIntensityLabel(*f.intensity), *f.intensity*100)
+		paras = append(paras, pptx.Paragraph{
+			Align:    "ctr",
+			NoBullet: true,
+			Runs: []pptx.Run{{
+				Text:     intensityText,
+				Lang:     "en-US",
+				FontSize: porterIntensityFontSize,
+				Bold:     false,
+				Italic:   true,
+				Dirty:    true,
+				Color:    pptx.SchemeFill(intensityColor),
+			}},
+		})
+	}
 
 	// Factor bullets (if any)
 	if len(f.factors) > 0 {
@@ -576,7 +660,7 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 					// in the bullet colour (go-slide-creator-2zej). Arial is
 					// the same buFont pptx.BulletOptions defaults to.
 					Font:  pptx.DefaultBulletFont,
-					Color: pptx.SchemeFill(scheme),
+					Color: pptx.SchemeFill(porterOutlineScheme(scheme)),
 				},
 				Runs: []pptx.Run{{
 					Text:     factor,
@@ -597,8 +681,10 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: porterCornerRadius},
 		},
-		Fill: pptx.SchemeFill(scheme, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill(scheme)},
+		// LumMod(0) is 0% luminance — black — not "no modifier", so an unscored
+		// force's neutral fill has to be emitted without the modifiers at all.
+		Fill: porterBoxFill(scheme, lumMod, lumOff),
+		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill(porterOutlineScheme(scheme))},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",

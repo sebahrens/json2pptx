@@ -27,9 +27,9 @@ func consultingThemeColors() []types.ThemeColor {
 
 func TestExtractLayoutBackgroundColor(t *testing.T) {
 	tests := []struct {
-		name     string
-		xml      string
-		want     string
+		name string
+		xml  string
+		want string
 	}{
 		{
 			name: "sRGB solid fill background",
@@ -115,32 +115,32 @@ func TestFixSchemeColorsForContrast(t *testing.T) {
 	bgColor := svggen.MustParseColor("#FFE8D4")
 
 	tests := []struct {
-		name       string
-		xmlIn      string
-		wantChange bool    // true if we expect the XML to be modified
-		wantNoScheme bool  // true if scheme color should be replaced with sRGB
+		name         string
+		xmlIn        string
+		wantChange   bool // true if we expect the XML to be modified
+		wantNoScheme bool // true if scheme color should be replaced with sRGB
 	}{
 		{
-			name: "accent1 on cream background - low contrast, should fix",
-			xmlIn: `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
+			name:         "accent1 on cream background - low contrast, should fix",
+			xmlIn:        `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
 			wantChange:   true,
 			wantNoScheme: true,
 		},
 		{
-			name: "tx1 (black) on cream background - good contrast, no change",
-			xmlIn: `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
+			name:         "tx1 (black) on cream background - good contrast, no change",
+			xmlIn:        `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
 			wantChange:   false,
 			wantNoScheme: false,
 		},
 		{
-			name: "no solidFill - no change",
-			xmlIn: `<a:lvl1pPr><a:defRPr sz="2400"/></a:lvl1pPr>`,
+			name:         "no solidFill - no change",
+			xmlIn:        `<a:lvl1pPr><a:defRPr sz="2400"/></a:lvl1pPr>`,
 			wantChange:   false,
 			wantNoScheme: false,
 		},
 		{
-			name: "sRGB color already - not touched",
-			xmlIn: `<a:lvl1pPr><a:defRPr><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
+			name:         "sRGB color already - not touched",
+			xmlIn:        `<a:lvl1pPr><a:defRPr><a:solidFill><a:srgbClr val="FF0000"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
 			wantChange:   false,
 			wantNoScheme: false,
 		},

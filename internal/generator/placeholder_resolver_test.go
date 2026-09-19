@@ -9,7 +9,7 @@ func makeShape(name string, phType string, phIdx *int, x, y, cx, cy int64) shape
 	shape := shapeXML{
 		NonVisualProperties: nonVisualPropertiesXML{
 			ConnectionNonVisual: connectionNonVisualXML{Name: name},
-			NvPr: nvPrXML{},
+			NvPr:                nvPrXML{},
 		},
 	}
 	if phType != "" || phIdx != nil {
@@ -100,7 +100,7 @@ func TestResolveWithFallback_Tier2_SemanticRole(t *testing.T) {
 func TestResolveWithFallback_Tier2_SemanticBodySecondary(t *testing.T) {
 	shapes := []shapeXML{
 		makeShape("title", "title", nil, 0, 0, 9144000, 914400),
-		makeShape("big_body", "body", nil, 0, 914400, 8000000, 4000000),   // largest
+		makeShape("big_body", "body", nil, 0, 914400, 8000000, 4000000),    // largest
 		makeShape("small_body", "body", nil, 0, 5000000, 4000000, 1000000), // second
 	}
 	r := newPlaceholderResolver(shapes)
@@ -216,9 +216,9 @@ func TestResolveWithFallback_Tier5_TitleToTopmostBody(t *testing.T) {
 	// Layout without any title-type placeholder.
 	// Has only body placeholders at different Y positions.
 	shapes := []shapeXML{
-		makeShape("ftr", "ftr", nil, 0, 6500000, 9144000, 300000),              // footer at bottom
-		makeShape("body", "body", nil, 300000, 1200000, 9000000, 5000000),       // body at y=1200000
-		makeShape("body_2", "body", nil, 300000, 300000, 4000000, 800000),       // body_2 at y=300000 (topmost)
+		makeShape("ftr", "ftr", nil, 0, 6500000, 9144000, 300000),         // footer at bottom
+		makeShape("body", "body", nil, 300000, 1200000, 9000000, 5000000), // body at y=1200000
+		makeShape("body_2", "body", nil, 300000, 300000, 4000000, 800000), // body_2 at y=300000 (topmost)
 	}
 	r := newPlaceholderResolver(shapes)
 
@@ -358,9 +358,9 @@ func TestBuildSemanticRoleMap(t *testing.T) {
 	shapes := []shapeXML{
 		makeShape("title", "title", nil, 0, 0, 9144000, 914400),
 		makeShape("subtitle", "subTitle", nil, 0, 914400, 9144000, 914400),
-		makeShape("large_body", "body", nil, 0, 1828800, 8000000, 4000000), // area = 32e12
+		makeShape("large_body", "body", nil, 0, 1828800, 8000000, 4000000),  // area = 32e12
 		makeShape("medium_body", "body", nil, 0, 5828800, 6000000, 2000000), // area = 12e12
-		makeShape("small_body", "body", nil, 0, 7828800, 3000000, 1000000), // area = 3e12
+		makeShape("small_body", "body", nil, 0, 7828800, 3000000, 1000000),  // area = 3e12
 	}
 
 	roles := buildSemanticRoleMap(shapes)
@@ -428,10 +428,10 @@ func TestParseSlotIndex(t *testing.T) {
 		{"body_right", 1},
 		{"left", 0},
 		{"right", 1},
-		{"body", -1},         // not a slot reference
-		{"unknown", -1},      // not a slot reference
-		{"slot0", -1},        // invalid (1-indexed)
-		{"slot10", -1},       // only single digit supported
+		{"body", -1},    // not a slot reference
+		{"unknown", -1}, // not a slot reference
+		{"slot0", -1},   // invalid (1-indexed)
+		{"slot10", -1},  // only single digit supported
 	}
 
 	for _, tt := range tests {

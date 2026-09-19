@@ -947,7 +947,7 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 				)
 			case inserts[i].portersFiveMode:
 				inserts[i].groupXML = generatePortersFiveGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeColors,
 				)
 			case inserts[i].bmcMode:
 				inserts[i].groupXML = generateBMCGroupXML(

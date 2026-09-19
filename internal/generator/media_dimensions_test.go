@@ -209,4 +209,3 @@ func TestGetOptimalRenderDimensions(t *testing.T) {
 		})
 	}
 }
-

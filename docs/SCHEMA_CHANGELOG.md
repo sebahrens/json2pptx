@@ -6,6 +6,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ## Unreleased
 
+### Changed
+
+- **Porter's five forces no longer invents an intensity
+  (go-slide-creator-ceodq).** A force with no `intensity` defaulted to `0.5`,
+  so the renderer printed "Medium (50%)" under it and gave it the accent3
+  tint. A chart nobody scored looked exactly like one scored medium across the
+  board, and the colour coding — the whole point of the intensity — said
+  nothing.
+  - An unstated intensity is now distinct from `0.5`: the force is drawn on the
+    template's neutral surface with **no intensity line at all**. A partially
+    scored chart therefore shows which forces were assessed and which were not,
+    on the slide itself.
+  - A second contrast defect on the same slide: the intensity line was painted
+    in the box's own scheme colour on the box's own tint of it, measuring
+    1.55:1 on the accent3 tile. It is now picked against the fill a reader sees
+    (5.63 / 7.08 / 10.11 after the fix).
+  - The DeckSpec `framework` kind passes a stated intensity through, including
+    the words `"high"` / `"medium"` / `"low"`, and does not invent one either.
+
 ### Added
 
 - **`get_started` says what the server can actually do

@@ -15,14 +15,14 @@ import (
 // TestEstimateDiagramComplexity verifies complexity estimation for each diagram type.
 func TestEstimateDiagramComplexity(t *testing.T) {
 	tests := []struct {
-		name       string
-		spec       *types.DiagramSpec
+		name        string
+		spec        *types.DiagramSpec
 		wantAtLeast int
 		wantAtMost  int
 	}{
 		{
-			name: "nil spec",
-			spec: nil,
+			name:        "nil spec",
+			spec:        nil,
 			wantAtLeast: 0,
 			wantAtMost:  0,
 		},
@@ -598,9 +598,9 @@ func TestProcessImageContent_MissingAltTextWarning(t *testing.T) {
 					allowedImagePaths: []string{tmpDir},
 				},
 				MediaContext: MediaContext{
-					media:          pptx.NewMediaAllocator(),
-					mediaFiles:     make(map[string]string),
-					usedExtensions: make(map[string]bool),
+					media:           pptx.NewMediaAllocator(),
+					mediaFiles:      make(map[string]string),
+					usedExtensions:  make(map[string]bool),
 					slideRelUpdates: make(map[int][]mediaRel),
 				},
 			}

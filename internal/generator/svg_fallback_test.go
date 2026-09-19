@@ -222,10 +222,10 @@ func TestInsertSVGFallbackImage(t *testing.T) {
 	// Set up bounds similar to a real placeholder (in EMUs)
 	// 4 inches wide x 3 inches tall at 914400 EMU/inch
 	bounds := types.BoundingBox{
-		X:      914400,           // 1 inch from left
-		Y:      914400,           // 1 inch from top
-		Width:  914400 * 4,       // 4 inches wide
-		Height: 914400 * 3,       // 3 inches tall
+		X:      914400,     // 1 inch from left
+		Y:      914400,     // 1 inch from top
+		Width:  914400 * 4, // 4 inches wide
+		Height: 914400 * 3, // 3 inches tall
 	}
 
 	slideNum := 1
