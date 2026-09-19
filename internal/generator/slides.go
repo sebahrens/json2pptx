@@ -90,8 +90,15 @@ type SlideSpec struct {
 	ContrastCheck   *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
 	SkipFooter      bool             // When true, footer/chrome is suppressed on this slide
 	RawShapeXML     [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
-	IconInserts     []IconInsert     // SVG icon images from shape_grid (require media registration)
-	ImageInserts    []ImageInsert    // Image files from shape_grid (require media registration)
+	// OverlayShapeXML holds free-floating shapes (badges, arrows, lines) that
+	// must paint ON TOP of everything else on the slide. They are kept separate
+	// from RawShapeXML because raw grid shapes go in at the START of the spTree
+	// while media pics and icons go in later — folding overlays into RawShapeXML
+	// put a numbered badge UNDER the screenshot it annotates
+	// (go-slide-creator-yomm).
+	OverlayShapeXML [][]byte
+	IconInserts     []IconInsert // SVG icon images from shape_grid (require media registration)
+	ImageInserts    []ImageInsert // Image files from shape_grid (require media registration)
 }
 
 // IconInsert describes an SVG icon to embed in a slide as a p:pic element.

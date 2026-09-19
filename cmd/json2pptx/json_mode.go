@@ -1049,7 +1049,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			if err != nil {
 				return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
 			}
-			spec.RawShapeXML = append(spec.RawShapeXML, overlayShapes...)
+			spec.OverlayShapeXML = append(spec.OverlayShapeXML, overlayShapes...)
 		}
 	} else if len(slide.Overlays) > 0 {
 		// Allow overlays on slides without a shape_grid (purely floating shapes).
@@ -1059,7 +1059,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		if err != nil {
 			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
 		}
-		spec.RawShapeXML = append(spec.RawShapeXML, overlayShapes...)
+		spec.OverlayShapeXML = append(spec.OverlayShapeXML, overlayShapes...)
 	}
 
 	return spec, warnings, slideFitFindings, nil

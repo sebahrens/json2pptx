@@ -768,6 +768,18 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		}
 	}
 
+	// Overlays go in LAST of the shape layers, so a numbered badge or an arrow
+	// paints on top of the screenshot, chart or grid cell it annotates. They used
+	// to ride along in RawShapeXML, which is inserted at the START of the spTree,
+	// and a badge placed squarely on a picture was simply invisible
+	// (go-slide-creator-yomm).
+	if spec, ok := ctx.slideContentMap[slideNum]; ok && len(spec.OverlayShapeXML) > 0 {
+		slideData, err = insertOverlayShapes(slideData, spec.OverlayShapeXML)
+		if err != nil {
+			return fmt.Errorf("failed to insert overlay shapes for slide %d: %w", slideNum, err)
+		}
+	}
+
 	// Insert the takeaway headline and source note into the band stack the
 	// template profile derives from this layout (body column x-range, above
 	// the footer chrome). Takeaway goes BEFORE the source note so attribution
@@ -1443,6 +1455,17 @@ func insertRawShapes(slideData []byte, shapes [][]byte) ([]byte, error) {
 	}
 	insertion := strings.Join(parts, "\n")
 	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtStart)
+}
+
+// insertOverlayShapes appends free-floating overlay shapes at the END of the
+// spTree, so they paint above every other shape, picture and icon on the slide.
+func insertOverlayShapes(slideData []byte, shapes [][]byte) ([]byte, error) {
+	var parts []string
+	for _, s := range shapes {
+		parts = append(parts, string(s))
+	}
+	insertion := strings.Join(parts, "\n")
+	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
 }
 
 // insertBackgroundImage injects a <p:bg> element into slide XML before <p:spTree>.

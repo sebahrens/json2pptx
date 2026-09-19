@@ -37,6 +37,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Slide overlays paint on top of images and charts
+  (go-slide-creator-yomm).** Numbered callouts on a screenshot — one of the most
+  requested product/demo slides — could not be built. Overlay shapes were folded
+  into `SlideSpec.RawShapeXML`, which is inserted at the **start** of the
+  spTree, while media pics and native-SVG icons are inserted later. In the
+  generated XML the order was badge, badge, arrow, …, `<p:pic>`, so the
+  screenshot painted over everything annotating it: badge 2 (dead centre on the
+  image) was invisible, badge 1 showed only the sliver hanging past the image's
+  left edge, and the arrow's head — which lands on the image by design —
+  disappeared with them.
+  Overlays now travel in their own `SlideSpec.OverlayShapeXML` and are inserted
+  at the END, after media pics and icons. Grid cell shapes still go in first, so
+  overlays stay above those too.
+  The overlay arrowhead needed no change: `<a:tailEnd type="triangle"/>` was
+  already emitted and renders correctly — it was simply hidden under the
+  picture, like everything else.
+
 - **A slide's `source` renders exactly once, and without stuttering
   (go-slide-creator-xg48).** The original report — a `chart_insight` slide with
   8 insights losing its `source` when it fell back to two-column — was fixed by
