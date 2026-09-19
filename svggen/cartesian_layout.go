@@ -515,6 +515,7 @@ func wrapXLabelsTwoLines(b *SVGBuilder, cats []string, limit, fontSize float64) 
 //   - plotWidth: the available horizontal space for all categories
 //   - baseFontSize: the starting font size (typically style.Typography.SizeSmall)
 //   - isNarrow: true when the chart is narrow (width < 500pt)
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize float64, isNarrow bool) XLabelLayout {
 	numCats := len(categories)
@@ -525,6 +526,14 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 	// Work on a copy so we don't mutate the caller's slice.
 	cats := make([]string, numCats)
 	copy(cats, categories)
+
+	// display carries what the axis PRINTS; cats stays what the caller passed.
+	// The two used to be the same slice, so ellipsizing a label also changed the
+	// key its categorical scale was built from — while the series still looked
+	// its position up by the original label. Every lookup missed, Scale returned
+	// its range minimum, and every bar in the chart stacked in the first slot
+	// (go-slide-creator-4xsi).
+	var display []string
 
 	bandwidth := plotWidth / float64(numCats)
 	fontSize := baseFontSize
@@ -541,11 +550,17 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 	// factor forced unnecessary rotation on moderate-density charts (e.g.,
 	// 6-label waterfall at half-width where "Downgrades" measured 56pt in
 	// a 68pt bandwidth).
+	// It measures what the axis will PRINT: once labels are ellipsized, the
+	// band they need is the ellipsized width, not the original one.
 	measureMaxLabel := func(fs float64) float64 {
+		labels := cats
+		if display != nil {
+			labels = display
+		}
 		b.Push()
 		b.SetFontSize(fs)
 		var maxW float64
-		for _, cat := range cats {
+		for _, cat := range labels {
 			w, _ := b.MeasureText(cat)
 			if w > maxW {
 				maxW = w
@@ -633,10 +648,12 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 				maxChars = 3
 			}
 			truncated := 0
+			display = make([]string, numCats)
+			copy(display, cats)
 			for i, cat := range cats {
 				runes := []rune(cat)
 				if len(runes) > maxChars {
-					cats[i] = string(runes[:maxChars-1]) + "\u2026"
+					display[i] = string(runes[:maxChars-1]) + "\u2026"
 					truncated++
 				}
 			}
@@ -671,10 +688,10 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 		Rotation:          rotation,
 		LabelStep:         labelStep,
 		Categories:        cats,
+		DisplayLabels:     display,
 		ExtraBottomMargin: extraBottom,
 	}
 }
-
 
 // minPlotHeightFrac is the share of its preliminary height the plot area must
 // retain after the x-axis label band is subtracted. Below this the labels have

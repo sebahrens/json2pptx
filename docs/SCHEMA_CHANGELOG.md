@@ -373,6 +373,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **A chart whose x-axis labels were ellipsized drew every bar in the same slot
+  (go-slide-creator-4xsi).** `AdaptXLabels` ellipsized long category labels **in
+  place**, and the caller built its categorical scale from the result — while
+  the series still looked each position up by the ORIGINAL label. Every lookup
+  missed, `CategoricalScale.Scale` returned its range minimum, and all 14 bars
+  of a P&L bridge stacked in the first 45 points of a 900-point canvas, with
+  their value labels piled on the y-axis and the footnote pushed off the
+  canvas.
+  - `XLabelLayout.Categories` is now the identity a scale is keyed by and stays
+    untouched; the ellipsized text goes to `DisplayLabels`, which the axis was
+    already using to print. The label band is measured from the display text,
+    so an ellipsized chart still gets the smaller bottom margin it earned.
+  - A non-zero waterfall step now draws at least 2pt tall: a -0.8 on a
+    3,000-unit axis was a fraction of a pixel, so a real step was invisible.
+  - Both are pinned by tests that fail against the old code.
+
 - **Pattern schema maxima are measured and pinned; card-grid says what its
   shape actually holds (go-slide-creator-0g6p).** A per-field `maxLength` can
   state only one number, so for a pattern whose cell count varies it is

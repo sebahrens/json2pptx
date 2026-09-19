@@ -107,13 +107,24 @@ func TestAdaptXLabels_TruncationEmitsEllipsizedFinding(t *testing.T) {
 	b := NewSVGBuilder(300, 240)
 	layout := AdaptXLabels(b, cats, 200, b.StyleGuide().Typography.SizeSmall, true)
 	truncated := false
-	for _, c := range layout.Categories {
+	for _, c := range layout.DisplayLabels {
 		if strings.HasSuffix(c, "…") {
 			truncated = true
 		}
 	}
 	if !truncated {
-		t.Fatalf("expected last-resort truncation for 12 unwrappable labels in 200pt")
+		t.Fatalf("expected last-resort truncation for 12 unwrappable labels in 200pt: %v", layout.DisplayLabels)
+	}
+	// Categories are the IDENTITY a caller's categorical scale is keyed by, so
+	// they must survive truncation untouched. They used to be the same slice as
+	// the display text, so ellipsizing a label changed the key the scale was
+	// built from while the series still looked its position up by the original
+	// — every lookup missed and every bar stacked in the first slot
+	// (go-slide-creator-4xsi).
+	for i, c := range layout.Categories {
+		if c != cats[i] {
+			t.Errorf("Categories[%d] = %q, want the original %q — the scale key must not be ellipsized", i, c, cats[i])
+		}
 	}
 	found := false
 	for _, f := range b.Findings() {

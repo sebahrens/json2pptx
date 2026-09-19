@@ -86,9 +86,9 @@ func DefaultWaterfallChartConfig(width, height float64) WaterfallChartConfig {
 
 	return WaterfallChartConfig{
 		ChartConfig:     cfg,
-		IncreaseColor:   MustParseColor(DefaultThemeAccent5Hex), // Green
-		DecreaseColor:   MustParseColor(DefaultThemeAccent3Hex), // Red
-		TotalColor:      MustParseColor(DefaultThemeAccent1Hex), // Blue
+		IncreaseColor:   MustParseColor(DefaultThemeAccent5Hex),   // Green
+		DecreaseColor:   MustParseColor(DefaultThemeAccent3Hex),   // Red
+		TotalColor:      MustParseColor(DefaultThemeAccent1Hex),   // Blue
 		ConnectorColor:  MustParseColor(DefaultThemeTextMutedHex), // Gray
 		ConnectorWidth:  1.5,
 		ConnectorDash:   false,
@@ -385,6 +385,12 @@ func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, ySca
 }
 
 // drawBarsAndConnectors draws the waterfall bars and connecting lines.
+//
+// waterfallMinBarHeight is the smallest a non-zero step may draw, in points.
+// Below about two points the bar reads as the connector line rather than as a
+// step of its own.
+const waterfallMinBarHeight = 2.0
+
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, isNarrow bool) {
 	b := wc.builder
@@ -451,8 +457,8 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 	}
 	baseY := plotArea.Y + yScale.Scale(yDomainMin)
 	var running float64
-	var prevBarEnd float64    // x of previous bar's right edge (connector start)
-	var prevRunningY float64  // screen-y of running total AFTER previous bar
+	var prevBarEnd float64   // x of previous bar's right edge (connector start)
+	var prevRunningY float64 // screen-y of running total AFTER previous bar
 
 	for i, p := range points {
 		x := plotArea.X + xScale.Scale(p.Label)
@@ -510,9 +516,13 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 			barTop, barBottom = barBottom, barTop
 		}
 
+		// A delta that is real but small next to the walk's range — a -0.8 on a
+		// 3,000-unit axis — is a fraction of a pixel tall. Give every non-zero
+		// step a visible minimum so the reader can see it happened; the value
+		// label beside it carries the number (go-slide-creator-4xsi).
 		barHeight := barBottom - barTop
-		if barHeight < 1 && p.Value != 0 {
-			barHeight = 1
+		if p.Value != 0 && barHeight < waterfallMinBarHeight {
+			barHeight = waterfallMinBarHeight
 		}
 
 		// Draw connector from previous bar.
@@ -927,7 +937,6 @@ func CreateWaterfallPoints(labels []string, values []float64, markLastAsTotal bo
 
 	return points
 }
-
 
 // Utility to calculate absolute values from deltas
 func calculateRunningTotals(points []WaterfallDataPoint) []float64 {
