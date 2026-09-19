@@ -12,6 +12,8 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
+
+	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
 func callGetStarted(t *testing.T, task string) getStartedResponse {
@@ -621,5 +623,50 @@ func TestGetStarted_AllProfileKeepsTheFacade(t *testing.T) {
 	}
 	if !sawReadPresentation {
 		t.Error("full profile revise sequence should still include read_presentation")
+	}
+}
+
+// go-slide-creator-c66z: get_started(brief)'s notes advertised top-level
+// `chrome` and `structure` while its fast_path is the DeckSpec path, which
+// rejected both — a direct contradiction inside one response, and an agent that
+// followed the note got a blocked render. The note must now name the field that
+// works on the path it is describing.
+func TestGetStartedChromeNoteMatchesTheRecommendedPath(t *testing.T) {
+	withToolProfile(t, toolProfileAll)
+	resp := buildGetStartedResponse("brief")
+
+	var note string
+	for _, n := range resp.Notes {
+		if strings.HasPrefix(n, "DECK CHROME") {
+			note = n
+			break
+		}
+	}
+	if note == "" {
+		t.Fatalf("no deck-chrome note in brief notes: %v", resp.Notes)
+	}
+	if !strings.Contains(note, "meta.chrome") {
+		t.Error("the note must name meta.chrome — the spelling the DeckSpec fast path accepts")
+	}
+	if !strings.Contains(note, "structure") || !strings.Contains(note, "no DeckSpec equivalent") {
+		t.Error("the note must say that structure is raw-path only, and how to get to it")
+	}
+
+	// And the claim must be true: meta.chrome compiles.
+	spec := &semantic.DeckSpec{
+		Meta: semantic.DeckMeta{
+			Title:    "Board update",
+			Template: "midnight-blue",
+			Date:     "September 2026",
+			Chrome:   &semantic.ChromeSpec{Confidentiality: "Strictly confidential", ClientName: "Acme Corp"},
+		},
+		Slides: []semantic.SlideSpec{{Kind: semantic.KindTitle, Body: map[string]any{"title": "Board update"}}},
+	}
+	input, result, err := semantic.Compile(spec, semantic.CompileOptions{Strict: semantic.StrictnessWarn})
+	if err != nil {
+		t.Fatalf("meta.chrome does not compile, so the note is still a lie: %v (%+v)", err, result.Diagnostics)
+	}
+	if input.Chrome == nil || input.Chrome.Confidentiality == "" {
+		t.Errorf("compiled chrome = %+v", input.Chrome)
 	}
 }
