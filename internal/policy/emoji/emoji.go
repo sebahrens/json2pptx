@@ -13,21 +13,71 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/sebahrens/json2pptx/internal/policy/textwalk"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/policy/textwalk"
 )
 
 // PolicyMessage is the canonical guidance appended to no-emoji diagnostics so
 // agents understand both the policy and the remediation path: switch the
 // offending text to a bundled SVG icon name or supply a user-provided icon
 // (URL, data URI, inline SVG, or file path).
-const PolicyMessage = "decks must not contain emoji codepoints — use a bundled SVG icon (e.g. \"chart-pie\", \"filled:check\") or a user-provided icon (URL / data URI / inline SVG / file path). Run list_patterns or browse svggen/icons/{outline,filled}/ for the bundled icon set."
+const PolicyMessage = "decks must not contain emoji codepoints — use a bundled SVG icon (e.g. \"chart-pie\", \"filled:check\") or a user-provided icon (URL / data URI / inline SVG / file path). Run list_patterns or browse svggen/icons/{outline,filled}/ for the bundled icon set. Inside a table cell, which takes only strings, use the permitted monochrome symbols instead: ✓ ✔ ✗ ✘ ★ ☆ ☐ ☑ ☒ © ® ™ (no variation selector — ✓\uFE0F asks for the colour glyph)."
+
+// TypographicSymbols are the monochrome symbols a deck is allowed to use. They
+// live inside blocks the emoji ranges otherwise cover, but they render in an
+// ordinary text font, in the run's own colour, and they carry meaning a slide
+// legitimately needs (go-slide-creator-l38d).
+//
+// Blocking them wholesale meant a feature-comparison table written with ✓ and ✗
+// — the single most common encoding for a competitor matrix — was refused with
+// one blocking error per cell, and the remediation the message offered (a
+// bundled SVG icon) is impossible inside a table cell, which takes only
+// strings. The workaround left was √ and ×, which reads as a typo in a
+// consulting deck. The same block also refused "Acme®" and "Windows™".
+//
+// The pictographic ranges stay blocked, and so do the variation selectors: a
+// check mark followed by U+FE0F asks for emoji presentation and is a colour
+// glyph again.
+var TypographicSymbols = map[rune]bool{
+	0x00A9: true, // © copyright
+	0x00AE: true, // ® registered
+	0x2122: true, // ™ trade mark
+	0x2605: true, // ★ black star
+	0x2606: true, // ☆ white star
+	0x2610: true, // ☐ ballot box
+	0x2611: true, // ☑ ballot box with check
+	0x2612: true, // ☒ ballot box with X
+	0x2713: true, // ✓ check mark
+	0x2714: true, // ✔ heavy check mark
+	0x2717: true, // ✗ ballot X
+	0x2718: true, // ✘ heavy ballot X
+}
+
+// AllowedSymbols returns the permitted symbols in codepoint order, for the
+// diagnostics and docs that tell an author what they CAN write.
+func AllowedSymbols() []string {
+	runes := make([]rune, 0, len(TypographicSymbols))
+	for r := range TypographicSymbols {
+		runes = append(runes, r)
+	}
+	sort.Slice(runes, func(i, j int) bool { return runes[i] < runes[j] })
+	out := make([]string, 0, len(runes))
+	for _, r := range runes {
+		out = append(out, string(r))
+	}
+	return out
+}
 
 // IsEmoji reports whether r is a Unicode emoji or symbol codepoint that
 // requires an emoji-capable font to render. The ranges cover the most common
 // emoji blocks plus variation selectors and ZWJ so composed emoji sequences
 // are caught even when individual codepoints look benign.
+//
+// TypographicSymbols are exempt: they are monochrome text glyphs, not emoji.
 func IsEmoji(r rune) bool {
+	if TypographicSymbols[r] {
+		return false
+	}
 	// Miscellaneous Symbols
 	if r >= 0x2600 && r <= 0x26FF {
 		return true
@@ -58,10 +108,6 @@ func IsEmoji(r rune) bool {
 	}
 	// Miscellaneous Symbols and Arrows
 	if r >= 0x2B05 && r <= 0x2B55 {
-		return true
-	}
-	// Copyright, Registered, Trade Mark
-	if r == 0x00A9 || r == 0x00AE || r == 0x2122 {
 		return true
 	}
 	return false
@@ -197,5 +243,3 @@ func ValidateNoEmojiInText(input any) []patterns.FitFinding {
 	}
 	return findings
 }
-
-

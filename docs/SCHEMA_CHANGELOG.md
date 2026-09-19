@@ -352,6 +352,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **The no-emoji policy permits the monochrome symbols a deck needs
+  (go-slide-creator-l38d).** `IsEmoji` treated U+2600–27BF wholesale as emoji,
+  so a feature-comparison table written with `✓` and `✗` — the most common
+  encoding for a competitor matrix — was refused with one blocking error per
+  cell. The remediation the message offered (a bundled SVG icon) cannot go in
+  a table cell, which takes only strings, so the only way through was `√` /
+  `×`, which reads as a typo. `Acme®` and `Windows™` were refused too.
+  - Permitted now: `✓ ✔ ✗ ✘ ★ ☆ ☐ ☑ ☒ © ® ™`
+    (`emoji.TypographicSymbols` / `emoji.AllowedSymbols()`). They are
+    monochrome glyphs in ordinary text fonts, drawn in the run's own colour.
+  - Everything pictographic stays blocked, including the emoji-presentation
+    lookalikes `✅ ❌ ⭐`, and a variation selector after a permitted symbol
+    (`✓` + U+FE0F) is still a violation because it asks for the colour glyph.
+  - The policy message now names the permitted set, so an agent inside a table
+    cell is told what it CAN write.
+
 - **heatmap cell values are readable on the dark tiles
   (go-slide-creator-vdvs).** Every value was printed in `dk1`, so "92" on the
   saturated end of a sequential scale was near-black on dark blue or dark

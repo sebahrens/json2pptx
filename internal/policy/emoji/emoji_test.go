@@ -144,3 +144,97 @@ func TestValidateNoEmojiInTextCleanReturnsNil(t *testing.T) {
 		t.Errorf("expected nil findings for clean input, got %+v", got)
 	}
 }
+
+// A feature-comparison table written with ✓ and ✗ — the single most common
+// encoding for a competitor matrix — was refused with one blocking error per
+// cell, because U+2600-27BF was blocked wholesale. The remediation the message
+// offered (a bundled SVG icon) cannot go in a table cell, which takes only
+// strings, so the only way through was √ and ×, which reads as a typo
+// (go-slide-creator-l38d).
+func TestTypographicSymbolsAreNotEmoji(t *testing.T) {
+	allowed := []struct {
+		r    rune
+		name string
+	}{
+		{'✓', "check mark"},
+		{'✔', "heavy check mark"},
+		{'✗', "ballot X"},
+		{'✘', "heavy ballot X"},
+		{'★', "black star"},
+		{'☆', "white star"},
+		{'☐', "ballot box"},
+		{'☑', "ballot box with check"},
+		{'☒', "ballot box with X"},
+		{'©', "copyright"},
+		{'®', "registered"},
+		{'™', "trade mark"},
+	}
+	for _, tc := range allowed {
+		if IsEmoji(tc.r) {
+			t.Errorf("IsEmoji(U+%04X %s) = true; it is a monochrome text glyph and a deck needs it", tc.r, tc.name)
+		}
+		if Contains(string(tc.r)) {
+			t.Errorf("Contains(%q) = true for %s", string(tc.r), tc.name)
+		}
+	}
+
+	// The pictographic neighbours in the same blocks stay blocked.
+	blocked := []struct {
+		r    rune
+		name string
+	}{
+		{'✅', "white heavy check mark (emoji presentation)"},
+		{'❌', "cross mark (emoji presentation)"},
+		{'⭐', "star (U+2B50, emoji presentation)"},
+		{'☀', "black sun with rays"},
+		{'☺', "white smiling face"},
+		{'🚀', "rocket"},
+		{'😀', "grinning face"},
+		{0xFE0F, "variation selector-16"},
+		{0x200D, "zero width joiner"},
+	}
+	for _, tc := range blocked {
+		if !IsEmoji(tc.r) {
+			t.Errorf("IsEmoji(U+%04X %s) = false; it needs an emoji font", tc.r, tc.name)
+		}
+	}
+}
+
+// A permitted symbol followed by U+FE0F asks for the colour glyph, so the
+// sequence is still a violation — and Sanitize keeps the symbol while dropping
+// the selector.
+func TestVariationSelectorStillBlockedAfterAllowedSymbol(t *testing.T) {
+	const withVS = "SSO ✓️"
+	if !Contains(withVS) {
+		t.Error("✓ followed by VS16 should still be a violation")
+	}
+	if got := Sanitize(withVS); got != "SSO ✓" {
+		t.Errorf("Sanitize(%q) = %q, want the symbol without the selector", withVS, got)
+	}
+}
+
+// A competitor matrix survives the scan intact.
+func TestScanAllowsACompetitorMatrix(t *testing.T) {
+	deck := map[string]any{
+		"rows": []any{
+			[]any{"SSO / SCIM", "✓", "✓", "✗"},
+			[]any{"On-prem deploy", "✓", "✗", "✓"},
+			[]any{"Vendor", "Acme®", "Globex™", "Initech©"},
+		},
+	}
+	if v := Scan(deck); len(v) != 0 {
+		t.Errorf("a check/cross matrix was flagged: %+v", v)
+	}
+}
+
+func TestAllowedSymbolsIsSortedAndComplete(t *testing.T) {
+	got := AllowedSymbols()
+	if len(got) != len(TypographicSymbols) {
+		t.Fatalf("AllowedSymbols returned %d of %d symbols", len(got), len(TypographicSymbols))
+	}
+	for i := 1; i < len(got); i++ {
+		if got[i-1] >= got[i] {
+			t.Errorf("AllowedSymbols is not in codepoint order at %d: %q then %q", i, got[i-1], got[i])
+		}
+	}
+}
