@@ -50,11 +50,11 @@ func listFilterParam(request mcp.CallToolRequest) string {
 	return strings.ToLower(strings.TrimSpace(s))
 }
 
-// defaultFieldsDeprecation is the message appended to discovery responses
-// when the caller did not pass an explicit "fields" parameter. It nudges
-// agents toward explicit projection so a future release can flip the
-// default to compact without silently changing observed payload size.
-const defaultFieldsDeprecation = "fields parameter omitted — defaulting to full output for backward compatibility. Pass fields=\"compact\" for the token-economy default or fields=\"full\" to silence this hint."
+// The "fields parameter omitted" deprecation hint is gone: the default IS
+// compact now, so there is nothing to warn about. The server used to pay for
+// the full payload and advise afterwards — list_templates{} was 153,266 B on
+// the wire, and get_started told the agent to call it with no arguments
+// (go-slide-creator-dykl).
 
 // Pagination defaults for MCP list-style tools. The opaque cursor is an
 // integer-offset string; callers should treat it as opaque and pass it

@@ -37,6 +37,30 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Discovery tools default to the compact projection
+  (go-slide-creator-dykl).** `list_templates{}` measured **153,266 B** on the
+  wire and then *warned* that the caller should have asked for compact;
+  `list_patterns{}` measured 69,692 B and did the same. `get_started` tells the
+  agent to call `list_templates` with no arguments, and the error-path
+  `next_tool_call` suggestions use `args_template: {}` — so the expensive
+  default was exactly the one agents hit. The server paid first and advised
+  afterwards.
+  `fields` now defaults to `"compact"` on **`list_templates`, `list_patterns`
+  and `list_icons`**, and the "fields parameter omitted" deprecation hint is
+  gone — there is nothing left to deprecate. `fields="full"` restores the
+  previous payload unchanged.
+  **`supported_types` is omitted from the compact projection.** It is static
+  per-server data (`diagram_capabilities` 5,561 B + `chart_capabilities`
+  5,340 B + `shape_geometries` 2,694 B = 14,388 B) that was attached to every
+  `list_templates` response regardless of projection, dwarfing the 1,930 B of
+  actual per-template payload. `fields="full"` still carries it, and
+  `get_chart_capabilities` / `get_diagram_capabilities` / `get_shape_catalog`
+  serve it on demand.
+  Measured on the wire (structuredContent only, after
+  go-slide-creator-vxre): `list_templates{}` **53,987 B → 2,713 B**,
+  `list_patterns{}` **28,137 B → 13,169 B**, both with no warning;
+  `list_templates{fields:"full"}` unchanged at 107,752 B.
+
 - **MCP responses stopped shipping every payload twice
   (go-slide-creator-vxre).** `MCPSuccessResult` put the whole object in
   `content[0].text` AND in `structuredContent`. One pass over the 18 callable

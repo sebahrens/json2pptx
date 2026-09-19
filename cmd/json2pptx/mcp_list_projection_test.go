@@ -110,21 +110,25 @@ func TestListPatterns_FieldsUnsetDeprecation(t *testing.T) {
 	if err := json.Unmarshal([]byte(text), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
-	if len(resp.Warnings) == 0 {
-		t.Fatal("expected deprecation warning when fields is omitted")
+	// Compact is the default now, so there is nothing to deprecate: the server
+	// used to pay for the 69 KB full payload and advise afterwards
+	// (go-slide-creator-dykl).
+	if len(resp.Warnings) != 0 {
+		t.Errorf("the compact default should not warn: %v", resp.Warnings)
 	}
-	// Full payload is still produced (omitempty kept the optional fields off
-	// the wire only when empty — kpi-3up's taxonomy is non-empty).
-	var saw bool
+	var sawTaxonomy bool
 	for _, g := range resp.Groups {
+		if g.Category == "" {
+			t.Error("a pattern group carries no category — grouping conveys nothing")
+		}
 		for _, p := range g.Patterns {
 			if p.Name == "kpi-3up" && len(p.NarrativeRole) > 0 {
-				saw = true
+				sawTaxonomy = true
 			}
 		}
 	}
-	if !saw {
-		t.Error("expected full taxonomy when fields is omitted (legacy default)")
+	if sawTaxonomy {
+		t.Error("the default carried the full taxonomy payload; compact should omit it")
 	}
 }
 
@@ -260,12 +264,19 @@ func TestListTemplates_FieldsUnsetDeprecation(t *testing.T) {
 	if err := json.Unmarshal([]byte(text), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
-	if len(resp.Warnings) == 0 {
-		t.Fatal("expected deprecation warning when fields is omitted (and mode untouched)")
+	// Compact is the default now (go-slide-creator-dykl): no warning, no
+	// per-template theme detail, and no supported_types.
+	if len(resp.Warnings) != 0 {
+		t.Errorf("the compact default should not warn: %v", resp.Warnings)
 	}
-	// Default mode=compact still populates theme detail.
-	if len(resp.Templates) == 0 || resp.Templates[0].ThemeColors == nil {
-		t.Error("expected legacy compact mode to populate theme_colors")
+	if len(resp.Templates) == 0 {
+		t.Fatal("expected templates")
+	}
+	if resp.Templates[0].ThemeColors != nil {
+		t.Error("the compact default carried theme_colors")
+	}
+	if resp.SupportedTypes != nil {
+		t.Error("the compact default carried supported_types — 14 KB of static per-server data")
 	}
 }
 
@@ -553,11 +564,12 @@ func TestListIcons_FieldsUnsetDeprecation(t *testing.T) {
 	if err := json.Unmarshal([]byte(text), &resp); err != nil {
 		t.Fatalf("failed to parse response: %v", err)
 	}
-	if len(resp.Warnings) == 0 {
-		t.Fatal("expected deprecation warning when fields is omitted")
+	// Compact is the default now (go-slide-creator-dykl).
+	if len(resp.Warnings) != 0 {
+		t.Errorf("the compact default should not warn: %v", resp.Warnings)
 	}
-	if len(resp.Sets) == 0 || len(resp.Sets[0].Icons) == 0 {
-		t.Error("expected legacy default to populate icons[] dual array")
+	if len(resp.Sets) != 0 && len(resp.Sets[0].Icons) != 0 {
+		t.Error("the compact default carried the redundant sets[].icons[] dual array")
 	}
 }
 

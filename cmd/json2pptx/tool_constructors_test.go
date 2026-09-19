@@ -721,8 +721,11 @@ func TestHandleListIcons_BadSet(t *testing.T) {
 // parallel icons[] array whose qualified_name field is in canonical
 // "<set>:<name>" form — the authoring token agents drop into icon.name.
 func TestHandleListIcons_QualifiedName(t *testing.T) {
+	// The sets[].icons[] dual array only rides on fields="full" now: compact is
+	// the default and drops it as redundant (go-slide-creator-dykl).
 	res, err := handleListIcons(context.Background(), makeRequest(map[string]any{
 		"page_size": float64(200),
+		"fields":    "full",
 	}))
 	if err != nil || res.IsError {
 		t.Fatalf("unexpected failure: err=%v result=%+v", err, res)

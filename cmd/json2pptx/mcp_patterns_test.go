@@ -29,8 +29,11 @@ func mustParseJSON(s string) any {
 }
 
 func TestMCPListPatterns(t *testing.T) {
+	// fields="full" is now explicit: compact is the default, and this test pins
+	// the taxonomy payload that only full carries (go-slide-creator-dykl).
 	result, err := handleListPatterns(context.Background(), makeRequest(map[string]any{
 		"page_size": float64(500), // request large enough page to get everything
+		"fields":    "full",
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

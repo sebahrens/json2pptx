@@ -131,11 +131,11 @@ func listTemplatesToolDescription() string {
 	return `List available presentation templates with their layouts, theme colors, and capabilities.
 
 Response shape per template (compact/full modes): name, aspect_ratio, layout_count, sha256 (stable content hash), metadata_version, theme_colors (scheme→hex map), color_roles (primary_fill, secondary_fill, body_fill, body_text, white_text_safe), title_font, body_font, semantic_accents (positive/negative/neutral→accent), surface_tints, data_palette, accent_usage_guide (when authored), canonical_layout_ids (canonical name→layout ID), canonical_coverage (per content-bearing family: present + covering layouts), derivable_layouts ([{name, ready, missing}]), layout_names, layout_summaries ([{id, name, canonical_type, placeholders[{id, type, role, max_chars}]}]), table_styles [{id,name}]. Full mode adds layouts with per-layout canonical_type/canonical_family/canonical_confidence and placeholders carrying role, role_confidence, font_size_pt (font-aware max_chars evidence), exact bounds, and capacity.
-Response also includes: supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities), ` + hints + `
+Response also includes supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities) ONLY with fields="full" — it is static per-server data that dwarfed the per-template payload, so the default compact projection omits it. ` + hints + `
 
 Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. The response always includes total_count and page_size; next_cursor is present only when more templates remain.
 
-Projection (token-economy): pass fields="compact" to suppress per-template detail (theme_colors / color_roles / layouts) and keep only names + aspect_ratio + layout_count + table_styles. Pass fields="full" for the legacy full payload. Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
+Projection (token-economy): compact is the DEFAULT — names + aspect_ratio + layout_count + table_styles, with no per-template theme_colors / color_roles / layouts and no supported_types. That is ~2.7 KB against ~108 KB for fields="full", which restores the whole payload. Calling with no fields argument used to return the full payload and then advise you to ask for compact (go-slide-creator-dykl).
 
 Filtering: pass filter="<substring>" to limit the response to templates whose name contains the substring (case-insensitive). Composes with pagination — filter applies before cursor/page_size.`
 }
@@ -660,7 +660,15 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	if fErrMsg != "" {
 		return argInvalidValue("list_templates", "INVALID_PARAMETER", fErrField, fErrMsg, "string", "compact", nil), nil
 	}
-	if fieldsExplicit {
+	// Compact is the DEFAULT. list_templates{} measured 153,266 B on the wire
+	// while list_templates{fields:"compact"} measured 44,705 B, and get_started
+	// tells the agent to call it with no arguments — so the expensive default
+	// was exactly the one agents hit (go-slide-creator-dykl). The deprecation
+	// hint that preceded this flip has shipped; it is now removed.
+	if !fieldsExplicit {
+		fieldsMode = listFieldsCompact
+	}
+	if !modeExplicit {
 		switch fieldsMode {
 		case listFieldsCompact:
 			mode = "list"
@@ -751,12 +759,22 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		templates = append(templates, info)
 	}
 
-	st := buildSupportedTypes()
-
-	// Replace full data_format_hints with a digest to reduce payload size.
-	// Agents fetch the full hints on demand via get_data_format_hints.
-	st.DataFormatHintsDigest = computeDataFormatHintsDigest(st.DataFormatHints)
-	st.DataFormatHints = nil
+	// supported_types is static per-server data — diagram_capabilities,
+	// chart_capabilities and shape_geometries alone were 14,388 B — and it was
+	// attached to every list_templates response regardless of the projection,
+	// dwarfing the 1,930 B of actual per-template payload
+	// (go-slide-creator-dykl). The compact projection omits it; fields="full"
+	// still carries it, and get_chart_capabilities /
+	// get_diagram_capabilities / get_shape_catalog serve it on demand.
+	var st *skillSupportedTypes
+	if fieldsMode == listFieldsFull {
+		full := buildSupportedTypes()
+		// Replace full data_format_hints with a digest to reduce payload size.
+		// Agents fetch the full hints on demand via get_data_format_hints.
+		full.DataFormatHintsDigest = computeDataFormatHintsDigest(full.DataFormatHints)
+		full.DataFormatHints = nil
+		st = &full
+	}
 
 	output := skillInfo{
 		Tool: skillToolInfo{
@@ -771,14 +789,6 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		PageSize:       pageSize,
 		NextCursor:     nextCursor,
 		SideEffects:    buildSkillSideEffects(readOnly, "read_only=true"),
-	}
-
-	// Deprecation hint: nudge callers that did not pick a projection so a
-	// future release can flip the default to compact without surprising them.
-	// `mode` is the historical surface — callers who pinned it already made an
-	// explicit choice and don't need the hint.
-	if !fieldsExplicit && !modeExplicit {
-		output.Warnings = append(output.Warnings, defaultFieldsDeprecation)
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)
@@ -826,14 +836,14 @@ func handleGetDataFormatHints(ctx context.Context, request mcp.CallToolRequest) 
 
 func mcpGetChartCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_chart_capabilities",
-		mcp.WithDescription("Fetch capability metadata for all chart types: limits, density behavior, label strategy, and supported options per chart type. Note: list_templates already includes chart_capabilities in its supported_types response — prefer that single call for initial discovery."),
+		mcp.WithDescription("Fetch capability metadata for all chart types: limits, density behavior, label strategy, and supported options per chart type. Note: list_templates carries chart_capabilities in supported_types only with fields=\"full\"; its default compact projection omits it, so call this tool when you need it."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetChartCapabilities)),
 	)
 }
 
 func mcpGetDiagramCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_diagram_capabilities",
-		mcp.WithDescription("Fetch capability metadata for all diagram types: node limits, overflow behavior, required/optional fields per diagram type. Note: list_templates already includes diagram_capabilities in its supported_types response — prefer that single call for initial discovery."),
+		mcp.WithDescription("Fetch capability metadata for all diagram types: node limits, overflow behavior, required/optional fields per diagram type. Note: list_templates carries diagram_capabilities in supported_types only with fields=\"full\"; its default compact projection omits it, so call this tool when you need it."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetDiagramCapabilities)),
 		mcp.WithBoolean("include_experimental",
 			mcp.Description("Include experimental/stub diagram types that are not yet fully functional. Default false."),
@@ -1113,7 +1123,7 @@ func mcpListPatternsTool() mcp.Tool {
 
 Pagination: response is an object {groups, total_count, page_size, next_cursor?}. Patterns are flattened across categories for paging; categories are rebuilt for each page in the canonical order. Use cursor + page_size to iterate.
 
-Projection (token-economy): pass fields="compact" to receive only {name, category, cells, use_when, supports_callout} per pattern. Pass fields="full" for the legacy taxonomy payload (narrative_role, pairs_with, composes_with, role_on_slide, density_class, accent_weight, estimated_prompt_size_bytes). Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
+Projection (token-economy): compact is the DEFAULT — {name, category, cells, use_when, supports_callout} per pattern, ~13 KB against ~28 KB for fields="full", which adds the taxonomy payload (narrative_role, pairs_with, composes_with, role_on_slide, density_class, accent_weight, estimated_prompt_size_bytes). Calling with no fields argument used to return the full payload and then advise you to ask for compact (go-slide-creator-dykl).
 
 Filtering: pass filter="<substring>" to limit the response to patterns whose name contains the substring (case-insensitive). Applied before pagination.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListPatterns)),
@@ -1795,9 +1805,11 @@ func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 	if fErrMsg != "" {
 		return mcpParseError("INVALID_PARAMETER", fErrField, fErrMsg), nil
 	}
+	// Compact is the DEFAULT: list_patterns{} measured 69,692 B against 30,651 B
+	// for the compact projection, and the server used to pay the 69 KB first and
+	// advise afterwards (go-slide-creator-dykl).
 	if !fieldsExplicit {
-		// Legacy behavior — full payload. A deprecation hint is emitted below.
-		fieldsMode = listFieldsFull
+		fieldsMode = listFieldsCompact
 	}
 
 	filterStr := listFilterParam(request)
@@ -1871,10 +1883,6 @@ func handleListPatterns(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 		PageSize:   pageSize,
 		NextCursor: nextCursor,
 	}
-	if !fieldsExplicit {
-		resp.Warnings = append(resp.Warnings, defaultFieldsDeprecation)
-	}
-
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
@@ -2294,7 +2302,7 @@ Canonical identifier: each set entry returns both a legacy bare-name array (sets
 
 Pagination: response is an object {sets, total_count, page_size, next_cursor?}. Names are flattened across the requested set(s) and paged; for each page, sets are rebuilt containing only the icons that fall within the slice. count on each set entry reflects icons in that slice, not the full set size; use total_count for the corpus total.
 
-Projection (token-economy): pass fields="compact" to drop the redundant sets[].icons[] dual array (qualified_name is always "<set>:<name>", easy to synthesize). Pass fields="full" for the legacy payload. Omitting fields emits a deprecation hint in warnings[] — future releases will switch the default to compact.
+Projection (token-economy): compact is the DEFAULT — it drops the redundant sets[].icons[] dual array (qualified_name is always "<set>:<name>", easy to synthesize). Pass fields="full" for the legacy payload (go-slide-creator-dykl).
 
 Filtering: filter (preferred) and search (legacy alias) both apply a case-insensitive substring filter on the icon name. Applied before pagination.
 
@@ -2390,8 +2398,9 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 	if fErrMsg != "" {
 		return argInvalidValue("list_icons", "INVALID_PARAMETER", fErrField, fErrMsg, "string", "compact", nil), nil
 	}
+	// Compact is the default here too (go-slide-creator-dykl).
 	if !fieldsExplicit {
-		fieldsMode = listFieldsFull
+		fieldsMode = listFieldsCompact
 	}
 
 	sets := []string{"outline", "filled"}
@@ -2467,10 +2476,6 @@ func handleListIcons(ctx context.Context, request mcp.CallToolRequest) (*mcp.Cal
 		ConceptMatches: conceptMatches,
 		Concepts:       conceptVocabulary,
 	}
-	if !fieldsExplicit {
-		resp.Warnings = append(resp.Warnings, defaultFieldsDeprecation)
-	}
-
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil

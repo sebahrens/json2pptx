@@ -660,7 +660,11 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 	})
 
 	t.Run("list_templates returns digest not full hints", func(t *testing.T) {
-		result, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{}))
+		// supported_types now rides only on fields="full": it is static
+		// per-server data that dwarfed the per-template payload, so the compact
+		// DEFAULT omits it entirely (go-slide-creator-dykl). The digest
+		// behaviour this test pins lives inside that block.
+		result, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{"fields": "full"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -673,11 +677,27 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		if err := json.Unmarshal([]byte(text), &resp); err != nil {
 			t.Fatalf("failed to parse response: %v", err)
 		}
+		if resp.SupportedTypes == nil {
+			t.Fatal("fields=full must carry supported_types")
+		}
 		if resp.SupportedTypes.DataFormatHintsDigest == "" {
 			t.Error("expected data_format_hints_digest to be populated")
 		}
 		if resp.SupportedTypes.DataFormatHints != nil {
 			t.Error("expected data_format_hints to be omitted from list_templates response")
+		}
+
+		// And the compact default carries no supported_types at all.
+		compact, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{}))
+		if err != nil || compact.IsError {
+			t.Fatalf("compact call failed: err=%v result=%+v", err, compact)
+		}
+		var compactResp skillInfo
+		if err := json.Unmarshal([]byte(compact.Content[0].(mcp.TextContent).Text), &compactResp); err != nil {
+			t.Fatalf("failed to parse compact response: %v", err)
+		}
+		if compactResp.SupportedTypes != nil {
+			t.Error("the compact default carried supported_types")
 		}
 	})
 
@@ -911,7 +931,8 @@ func TestMCPGetDataFormatHints(t *testing.T) {
 
 	t.Run("list_templates digest matches get_data_format_hints digest", func(t *testing.T) {
 		mc := testMCPConfig(t)
-		ltResult, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{}))
+		// supported_types rides only on fields="full" now (go-slide-creator-dykl).
+		ltResult, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{"fields": "full"}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -928,6 +949,9 @@ func TestMCPGetDataFormatHints(t *testing.T) {
 			t.Fatalf("failed to parse get_data_format_hints response: %v", err)
 		}
 
+		if ltResp.SupportedTypes == nil {
+			t.Fatal("fields=full must carry supported_types")
+		}
 		if ltResp.SupportedTypes.DataFormatHintsDigest != hResp.Digest {
 			t.Errorf("digest mismatch between list_templates (%q) and get_data_format_hints (%q)",
 				ltResp.SupportedTypes.DataFormatHintsDigest, hResp.Digest)

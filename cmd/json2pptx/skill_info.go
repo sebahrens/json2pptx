@@ -31,9 +31,16 @@ import (
 // list_templates MCP handler when iterating across template entries. The CLI
 // emits all templates at once, so those fields stay zero/empty there.
 type skillInfo struct {
-	Tool            skillToolInfo         `json:"tool"`
-	Templates       []skillTemplateInfo   `json:"templates"`
-	SupportedTypes  skillSupportedTypes   `json:"supported_types"`
+	Tool      skillToolInfo       `json:"tool"`
+	Templates []skillTemplateInfo `json:"templates"`
+	// SupportedTypes is omitted from the compact projection: it is static
+	// per-server data (diagram_capabilities + chart_capabilities +
+	// shape_geometries alone were 14,388 B) that was attached to every
+	// list_templates response and dwarfed the 1,930 B of per-template payload
+	// (go-slide-creator-dykl). fields="full" still carries it, and
+	// get_chart_capabilities / get_diagram_capabilities / get_shape_catalog
+	// serve it on demand.
+	SupportedTypes  *skillSupportedTypes  `json:"supported_types,omitempty"`
 	PatternsCompact []skillPatternCompact `json:"patterns_compact,omitempty"`
 	PatternsFull    []skillPatternFull    `json:"patterns_full,omitempty"`
 	Compose         *skillComposeEntry    `json:"compose,omitempty"`
@@ -485,7 +492,7 @@ func runSkillInfo() error {
 			Built:   BuildTime,
 		},
 		Templates:       templates,
-		SupportedTypes:  buildSupportedTypes(),
+		SupportedTypes:  ptrTo(buildSupportedTypes()),
 		PatternsCompact: patternsCompact,
 		PatternsFull:    patternsFull,
 		Compose:         buildComposeEntry(),
@@ -1277,3 +1284,7 @@ func emuToInches(emu int64) float64 {
 	}
 	return math.Round(float64(emu)/914400*1000) / 1000
 }
+
+// ptrTo returns a pointer to v. SupportedTypes is a pointer so the compact
+// list_templates projection can omit it (go-slide-creator-dykl).
+func ptrTo[T any](v T) *T { return &v }
