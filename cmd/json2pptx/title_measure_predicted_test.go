@@ -125,31 +125,63 @@ func TestPredictSlideLayouts(t *testing.T) {
 }
 
 // TestValidateDeckSpecReportsMeasuredTitle covers the path the bead cares about
-// most: DeckSpec compilers emit slide_type and no layout_id.
+// most: DeckSpec compilers emit slide_type and no layout_id. Both measured
+// verdicts are pinned, because they are what distinguishes a measurement from
+// the old 60-character heuristic: a title that fits only when shrunk is
+// TITLE_WRAPS, and one that does not fit even at the minimum autofit size is
+// TITLE_OVERFLOW. The two are mutually exclusive — the stronger one replaces
+// the weaker (go-slide-creator-r87g) — so a test asserting both codes on one
+// title asserts a report that contradicts itself.
 func TestValidateDeckSpecReportsMeasuredTitle(t *testing.T) {
 	if testing.Short() {
 		t.Skip("analyzes a template")
 	}
-	spec := map[string]any{
-		"meta": map[string]any{"title": "T", "template": "modern-template"},
-		"slides": []any{
-			map[string]any{"kind": "title", "title": "T"},
-			map[string]any{
-				"kind":   "executive_summary",
-				"title":  longTitle + " during the current fiscal year and the next",
-				"points": []any{map[string]any{"lead": "Grow", "support": "Revenue is up."}},
-			},
+	cases := []struct {
+		name  string
+		title string
+		code  string
+		says  string
+	}{
+		{
+			name:  "shrinks to fit",
+			title: longTitle,
+			code:  "title_wraps",
+			says:  "only fits its title placeholder",
+		},
+		{
+			name:  "does not fit at all",
+			title: longTitle + " during the current fiscal year and the next",
+			code:  "TITLE_OVERFLOW",
+			says:  "does not fit its",
 		},
 	}
-	res, err := testValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec}))
-	if err != nil {
-		t.Fatalf("validate_deck_spec: %v", err)
-	}
-	b, _ := json.Marshal(res.StructuredContent)
-	if !strings.Contains(string(b), "title_wraps") {
-		t.Errorf("validate_deck_spec did not report the measured title finding:\n%s", string(b))
-	}
-	if !strings.Contains(string(b), "only fits its title placeholder") {
-		t.Errorf("the finding is not the measured one:\n%s", string(b))
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := map[string]any{
+				"meta": map[string]any{"title": "T", "template": "modern-template"},
+				"slides": []any{
+					map[string]any{"kind": "title", "title": "T"},
+					map[string]any{
+						"kind":   "executive_summary",
+						"title":  tc.title,
+						"points": []any{map[string]any{"lead": "Grow", "support": "Revenue is up."}},
+					},
+				},
+			}
+			res, err := testValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec}))
+			if err != nil {
+				t.Fatalf("validate_deck_spec: %v", err)
+			}
+			b, _ := json.Marshal(res.StructuredContent)
+			if !strings.Contains(string(b), tc.code) {
+				t.Errorf("validate_deck_spec did not report %s:\n%s", tc.code, string(b))
+			}
+			if !strings.Contains(string(b), tc.says) {
+				t.Errorf("the finding is not the measured one (no %q):\n%s", tc.says, string(b))
+			}
+			if strings.Contains(string(b), "max 60") {
+				t.Errorf("the DeckSpec path still uses the 60-character heuristic:\n%s", string(b))
+			}
+		})
 	}
 }
