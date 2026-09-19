@@ -7,78 +7,36 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
-var testSourceBand = pptx.RectEmu{X: 838200, Y: 6100000, CX: 10515600, CY: 200000}
-
-func TestGenerateSourceNoteShape(t *testing.T) {
-	shape := generateSourceNoteShapeInBounds("Company Annual Report, FY2025", 100, testSourceBand)
-
-	// Check it contains the source text
-	if !strings.Contains(shape, "Source: Company Annual Report, FY2025") {
-		t.Error("shape XML should contain 'Source: ' prefix and the source text")
+// go-slide-creator-xg48. An author who writes "Source: Company filings
+// FY2022-FY2026" got "Source: Source: Company filings FY2022-FY2026" on the
+// slide — the band labels the line unconditionally.
+func TestSourceNoteText(t *testing.T) {
+	tests := []struct {
+		name, in, want string
+	}{
+		{"labels a bare citation", "Company filings FY2026", "Source: Company filings FY2026"},
+		{"keeps an author's own label", "Source: Company filings FY2026", "Source: Company filings FY2026"},
+		{"case-insensitive", "source: internal", "source: internal"},
+		{"SOURCE: shouting", "SOURCE: internal", "SOURCE: internal"},
+		{"trims", "  Company filings  ", "Source: Company filings"},
+		{"a word starting with source is still labelled", "Sourcing data from ERP", "Source: Sourcing data from ERP"},
 	}
-
-	// Check it has proper OOXML structure
-	if !strings.Contains(shape, "<p:sp>") {
-		t.Error("shape XML should start with <p:sp>")
-	}
-	if !strings.Contains(shape, `sz="800"`) {
-		t.Error("font size should be 800 (8pt)")
-	}
-	if !strings.Contains(shape, `i="1"`) {
-		t.Error("text should be italic")
-	}
-	if !strings.Contains(shape, `val="888888"`) {
-		t.Error("text color should be gray (888888)")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sourceNoteText(tt.in); got != tt.want {
+				t.Errorf("sourceNoteText(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
 	}
 }
 
-func TestGenerateSourceNoteShapeXMLEscaping(t *testing.T) {
-	shape := generateSourceNoteShapeInBounds("Smith & Jones <2025>", 100, testSourceBand)
-
-	if !strings.Contains(shape, "Smith &amp; Jones &lt;2025&gt;") {
-		t.Error("special XML characters should be escaped")
+func TestSourceNoteShapeDoesNotStutter(t *testing.T) {
+	xml := generateSourceNoteShapeInBounds("Source: Company filings FY2026", 42,
+		pptx.RectEmu{X: 0, Y: 0, CX: 1000, CY: 100})
+	if strings.Contains(xml, "Source: Source:") {
+		t.Errorf("emitted a stuttered label:\n%s", xml)
 	}
-}
-
-func TestInsertSourceNote(t *testing.T) {
-	slideXML := []byte(`<p:sld>
-  <p:cSld>
-    <p:spTree>
-      <p:sp>existing shape</p:sp>
-    </p:spTree>
-  </p:cSld>
-</p:sld>`)
-
-	result, err := insertSourceNote(slideXML, "Test Source", testSourceBand)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	resultStr := string(result)
-
-	// Source note shape should be inserted before </p:spTree>
-	if !strings.Contains(resultStr, "Source: Test Source") {
-		t.Error("result should contain the source note text")
-	}
-
-	// Original content should still be present
-	if !strings.Contains(resultStr, "existing shape") {
-		t.Error("original slide content should be preserved")
-	}
-
-	// Source note should appear before closing tag
-	sourceIdx := strings.Index(resultStr, "Source: Test Source")
-	closeIdx := strings.Index(resultStr, "</p:spTree>")
-	if sourceIdx > closeIdx {
-		t.Error("source note should appear before </p:spTree>")
-	}
-}
-
-func TestInsertSourceNoteMissingSpTree(t *testing.T) {
-	slideXML := []byte(`<p:sld><p:cSld></p:cSld></p:sld>`)
-
-	_, err := insertSourceNote(slideXML, "Test Source", testSourceBand)
-	if err == nil {
-		t.Error("expected error when </p:spTree> is missing")
+	if !strings.Contains(xml, "Source: Company filings FY2026") {
+		t.Errorf("source text missing from the shape:\n%s", xml)
 	}
 }

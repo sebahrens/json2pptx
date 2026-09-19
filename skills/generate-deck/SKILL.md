@@ -64,7 +64,11 @@ page_numbers:{enabled, format, skip[]}}` — and `footer_date` defaults to `meta
 to the compiled deck, the spec's choice winning over the tool argument. **Every** slide kind also
 accepts `notes` (speaker notes, rendered into the PPTX notes slide) and `source` (the footnote line
 under the content) — before this only `chart_insight` could cite anything, so an option matrix or a
-financial case had nowhere to put its source (go-slide-creator-zmjs).
+financial case had nowhere to put its source (go-slide-creator-zmjs). The source renders **exactly
+once** per slide: when the chosen pattern draws its own attribution (as `chart-insights-split` does,
+under the chart) the chrome source band stands down rather than printing it a second time. Write the
+citation however you like — `"Company filings FY2026"` and `"Source: Company filings FY2026"` both
+render as `Source: Company filings FY2026`, never `Source: Source: …` (go-slide-creator-xg48).
 
 ```yaml
 meta:

@@ -37,6 +37,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **A slide's `source` renders exactly once, and without stuttering
+  (go-slide-creator-xg48).** The original report — a `chart_insight` slide with
+  8 insights losing its `source` when it fell back to two-column — was fixed by
+  the universal-field work in go-slide-creator-zmjs, which sets a slide-level
+  source for every kind. That fix exposed two adjacent defects on the same
+  slides, both visible in the render:
+  `chart_insight`'s pattern path puts the source in the
+  `chart-insights-split` values and draws it under the chart, so also setting
+  the slide-level source printed the attribution **twice** — once under the
+  chart and once in the chrome source band. `applyUniversalSlideFields` now
+  stands down when the compiled slide's pattern already carries a non-empty
+  `source`.
+  And the source band labelled its line unconditionally, so an author who wrote
+  `"Source: Company filings FY2022-FY2026"` — the natural way to write it —
+  shipped `Source: Source: Company filings FY2022-FY2026`. The label is now
+  added only when the citation does not already start with one
+  (case-insensitively).
+
 - **Failed DeckSpec renders set `isError`, and a written deck now says whether
   it is shippable (go-slide-creator-swak).** Two halves of one problem: the
   agent could not tell, from any field it was told to branch on, that something

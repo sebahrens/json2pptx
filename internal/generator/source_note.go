@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"strings"
+
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
@@ -27,7 +29,7 @@ func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds p
 			Paragraphs: []pptx.Paragraph{{
 				Align: "r",
 				Runs: []pptx.Run{{
-					Text:     "Source: " + sourceText,
+					Text:     sourceNoteText(sourceText),
 					Lang:     "en-US",
 					FontSize: sourceNoteFontSize,
 					Italic:   true,
@@ -41,6 +43,18 @@ func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds p
 		return ""
 	}
 	return string(b)
+}
+
+// sourceNoteText labels a source line, without stuttering when the author
+// already wrote the label. "Source: Company filings FY2022-FY2026" used to
+// render as "Source: Source: Company filings FY2022-FY2026"
+// (go-slide-creator-xg48).
+func sourceNoteText(sourceText string) string {
+	trimmed := strings.TrimSpace(sourceText)
+	if strings.HasPrefix(strings.ToLower(trimmed), "source:") {
+		return trimmed
+	}
+	return "Source: " + trimmed
 }
 
 // insertSourceNote inserts a source attribution text shape at bounds (the

@@ -9,6 +9,7 @@ package semantic
 // raw findings trace back to the semantic fields the author wrote.
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -232,9 +233,11 @@ func applyUniversalSlideFields(compiled *deckinput.SlideInput, si *SlideIR, sm *
 			sm.Add(rawSlide+"/speaker_notes", semSlide+".notes", si.SourceIndex)
 		}
 	}
-	// chart_insight compiles its own source into the slide's source line; do not
-	// overwrite it.
-	if compiled.Source == "" {
+	// Some kinds render the source themselves — chart_insight puts it in the
+	// chart-insights-split pattern's own values, under the chart. Setting the
+	// slide-level source as well printed it twice: once under the chart and once
+	// in the chrome source band (go-slide-creator-xg48).
+	if compiled.Source == "" && !patternRendersSource(compiled) {
 		if src := bodyString(si.Body, "source"); src != "" {
 			compiled.Source = src
 			if sm != nil {
@@ -242,6 +245,24 @@ func applyUniversalSlideFields(compiled *deckinput.SlideInput, si *SlideIR, sm *
 			}
 		}
 	}
+}
+
+// patternRendersSource reports whether a compiled slide's pattern already
+// carries a non-empty "source" value, and so will draw the attribution itself.
+func patternRendersSource(compiled *deckinput.SlideInput) bool {
+	if compiled == nil || compiled.Pattern == nil || len(compiled.Pattern.Values) == 0 {
+		return false
+	}
+	var vals map[string]json.RawMessage
+	if err := json.Unmarshal(compiled.Pattern.Values, &vals); err != nil {
+		return false
+	}
+	raw, ok := vals["source"]
+	if !ok {
+		return false
+	}
+	var src string
+	return json.Unmarshal(raw, &src) == nil && strings.TrimSpace(src) != ""
 }
 
 // bodyString returns the first non-empty string value among keys.
