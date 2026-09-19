@@ -102,6 +102,13 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		), nil
 	}
 
+	// A semantic DeckSpec unmarshals into a PresentationInput whose slides are
+	// all empty, and the tool would go on to grade that emptiness — answering
+	// "99, PASS" for a deck it never read (go-slide-creator-xx9i).
+	if looksLikeDeckSpec([]byte(jsonStr)) {
+		return deckSpecInputError("score_deck"), nil
+	}
+
 	// Parse JSON input.
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {

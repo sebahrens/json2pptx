@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -161,7 +163,14 @@ func fingerprint(idx int, s Slide) SlideInfo {
 	case s.PatternName != "":
 		info.Pattern = s.PatternName
 	case s.HasShapeGrid:
-		info.Pattern = "shape_grid"
+		// A hand-authored grid has no pattern name, and calling every one of
+		// them "shape_grid" made six structurally different layouts read as a
+		// six-slide run — the flaw that would have turned the composition gate
+		// into a false block on decks that are genuinely varied
+		// (go-slide-creator-xx9i). Fingerprint by the grid's shape instead:
+		// two 3x1 grids in a row still look alike and still count as a run, a
+		// 3x1 followed by a 2x2 does not.
+		info.Pattern = shapeGridFingerprint(s)
 	default:
 		// Use slide_type if available, else infer from content.
 		if s.SlideType != "" {
@@ -178,6 +187,22 @@ func fingerprint(idx int, s Slide) SlideInfo {
 	info.cellCount = s.CellCount
 
 	return info
+}
+
+// shapeGridFingerprint names a raw shape_grid by its shape, so two grids count
+// as the same "pattern" only when they lay out the same way.
+func shapeGridFingerprint(s Slide) string {
+	if s.Grid == nil || len(s.Grid.Rows) == 0 {
+		if s.CellCount > 0 {
+			return fmt.Sprintf("shape_grid:%dcell", s.CellCount)
+		}
+		return "shape_grid"
+	}
+	cols := make([]string, 0, len(s.Grid.Rows))
+	for _, row := range s.Grid.Rows {
+		cols = append(cols, strconv.Itoa(len(row.Cells)))
+	}
+	return "shape_grid:" + strings.Join(cols, "-")
 }
 
 // dominantVisual returns the primary visual type on a slide.

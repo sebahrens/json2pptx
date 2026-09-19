@@ -37,6 +37,37 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Deck monotony now has a consequence (go-slide-creator-xx9i).**
+  `score_deck` computed the `composition` (rhythm) axis and then evaluated the
+  quality gate purely on fit findings. Eight consecutive identical `kpi-3up`
+  slides scored **100 and PASSED** with composition 55 and diagnostics
+  `[pattern_run, missing_emphasis]`; seven identical bullet slides, composition
+  50, same verdict. The information needed to catch the single most common LLM
+  deck failure — everything looks the same — was already in the response and
+  changed nothing.
+  `QualityGateCriteria` gains **`min_composition_score`** (default **65**,
+  between the graded monotony decks at 50-60 and every well-built deck at 100).
+  The reason names the diagnostics that dropped it —
+  `composition 55 < min_composition_score 65 (missing_emphasis, pattern_run)` —
+  and sits after `accent_overload` in the documented reason order. `0` disables
+  it, and it is skipped when composition was not measured (the `slide_indices`
+  subset path).
+- **Rhythm analysis stopped calling every hand-built grid the same layout.**
+  A slide with a raw `shape_grid` and no named pattern was fingerprinted as the
+  literal string `"shape_grid"`, so six structurally different grids in a row
+  read as a six-slide `pattern_run`. Harmless while composition was advisory;
+  with the gate above it would have blocked genuinely varied decks —
+  `examples/sovereign-ai-strategy.json`, 25 slides of hand-built grids, scored
+  composition 15 on three such phantom runs. Raw grids are now fingerprinted by
+  their shape (`shape_grid:2-2` vs `shape_grid:3`), so identical layouts still
+  count as a run and different ones do not. That deck now scores 100.
+- **`score_deck` refuses a semantic DeckSpec instead of grading an empty deck.**
+  A DeckSpec (slides carrying `kind`) unmarshals into a `PresentationInput`
+  whose slides are all empty, and the tool graded that: `overall_score 99`,
+  `quality_gate: passed` — for a deck it had never read, with a composition
+  score describing its own misreading. It now returns `INVALID_PARAMETER`
+  naming `validate_deck_spec` / `compile_deck_spec`.
+
 - **`matrix_2x2`'s coordinate-free `quadrants` form renders as four lists, not a
   scatter plot (go-slide-creator-s27x).** data-format-hints promotes
   `quadrants: [{position, title, items}]` as what an agent without numbers

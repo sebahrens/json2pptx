@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -136,6 +137,15 @@ type QualityGateCriteria struct {
 	// finding on every slide — five slides each holding a single one-word
 	// bullet scored 100 and passed (go-slide-creator-q7ar). 0 disables it.
 	MaxProblemSlidesPct int `json:"max_problem_slides_pct"`
+	// MinCompositionScore is the floor for the deck's composition (rhythm)
+	// score. The composition axis was computed and then discarded: eight
+	// consecutive identical kpi-3up slides scored 100 and PASSED the gate with
+	// composition 55 and diagnostics [pattern_run, missing_emphasis]. The single
+	// most common LLM deck failure — everything looks the same — was already
+	// measured in the response and had no consequence (go-slide-creator-xx9i).
+	// 0 disables it, which is what the subset (slide_indices) path uses: a
+	// composition score over a few slides is not a deck's rhythm.
+	MinCompositionScore int `json:"min_composition_score"`
 }
 
 // Default thresholds for the score_deck quality gate — the numeric definition
@@ -150,6 +160,13 @@ const (
 	// carry an open advisory finding — real decks always have a few — but not
 	// a deck where most slides do.
 	DefaultQualityGateMaxProblemSlidesPct = 40
+
+	// DefaultQualityGateMinCompositionScore is the composition floor. 65 sits
+	// above the graded monotony decks (55 for eight identical kpi-3up slides,
+	// 50 for seven identical bullet slides, 60 for four title-less ones) and
+	// below every deck built to be good, which score 100
+	// (go-slide-creator-xx9i).
+	DefaultQualityGateMinCompositionScore = 65
 	// minProblemSlidesForShare is the fewest blemished slides that can trip the
 	// share criterion.
 	minProblemSlidesForShare = 3
@@ -166,13 +183,14 @@ func DefaultQualityGateCriteria() QualityGateCriteria {
 		RequireTakeawayOnCharts: true,
 		AllowAccentOverload:     false,
 		MaxProblemSlidesPct:     DefaultQualityGateMaxProblemSlidesPct,
+		MinCompositionScore:     DefaultQualityGateMinCompositionScore,
 	}
 }
 
 // EvaluateQualityGate computes a QualityGate verdict against the given score
 // and findings using the supplied criteria. Reason order is deterministic:
-// score → P0 → P1 → takeaway → accent_overload, so agents can pattern-match
-// on the leading reason.
+// score → P0 → P1 → takeaway → accent_overload → composition → problem-slide
+// share, so agents can pattern-match on the leading reason.
 //
 // findings should be the same slice that produced the score (i.e. already
 // scoped to the slides being evaluated when slide_indices is set); the gate
@@ -219,6 +237,17 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 	if !criteria.AllowAccentOverload && accentOverload > 0 {
 		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d slide(s) emit accent_overload (too many distinct accents)", accentOverload))
 	}
+	// Composition (deck rhythm). Only when the score was computed over the whole
+	// deck — ds.Composition is nil on the slide_indices path, where a rhythm
+	// verdict would be meaningless.
+	if criteria.MinCompositionScore > 0 && ds.Composition != nil && ds.Composition.Score < criteria.MinCompositionScore {
+		reason := fmt.Sprintf("composition %d < min_composition_score %d", ds.Composition.Score, criteria.MinCompositionScore)
+		if codes := compositionCodes(ds.Composition); codes != "" {
+			reason += " (" + codes + ")"
+		}
+		gate.Reasons = append(gate.Reasons, reason)
+	}
+
 	// The share criterion needs a minimum absolute count: on a four-slide deck
 	// two blemished slides are 50%, which is not the "most of this deck is
 	// wrong" signal the criterion exists to catch.
@@ -232,6 +261,26 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 
 	gate.Passed = len(gate.Reasons) == 0
 	return gate
+}
+
+// compositionCodes joins a composition result's diagnostic codes, so the gate
+// reason names WHICH rhythm problem dropped the score rather than only the
+// number.
+func compositionCodes(c *CompositionResult) string {
+	if c == nil || len(c.Diagnostics) == 0 {
+		return ""
+	}
+	seen := map[string]bool{}
+	codes := make([]string, 0, len(c.Diagnostics))
+	for _, d := range c.Diagnostics {
+		if d.Code == "" || seen[d.Code] {
+			continue
+		}
+		seen[d.Code] = true
+		codes = append(codes, d.Code)
+	}
+	sort.Strings(codes)
+	return strings.Join(codes, ", ")
 }
 
 // DeckSummary provides aggregate stats.
