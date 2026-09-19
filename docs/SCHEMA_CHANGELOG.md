@@ -341,6 +341,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Sibling grid cells flipped between three text colours
+  (go-slide-creator-tnx3e).** An arch-stack whose tiers are progressive tints of
+  one accent came out with white on the darkest tier, pure `#000000` on the
+  next and `#373545` on the last two: the contrast pass decided one cell at a
+  time, and each decision was defensible alone.
+  - Cells that start from the same text colour AND whose fills are one visual
+    family (pairwise contrast ≤ 3:1) are now decided **once**, against the worst
+    fill in the group, and the colour is applied to every member — including the
+    ones that would have passed, since a tier keeping white while its
+    neighbours go dark is the inconsistency itself.
+  - The candidate order prefers a tonal shade of the fill's own hue over the
+    palette's near-black, so the reported stack lands on `#35283D` rather than
+    `#000000`.
+  - One finding per group instead of one per cell: `source:
+    "shape_grid_group"`, `fix.params.cells`, a message reading
+    `across N sibling cells`, and a path of `/slides/{i}/shape_grid`.
+  - Cells whose fills are NOT alike (a dark card beside a pale one) keep their
+    per-cell decisions: no single colour suits both, and forcing one would make
+    the dark card worse to help the pale one.
+
 - **One finding code arrived at two severities (go-slide-creator-7xyy).**
   `density_exceeded` came back from a single `validate_input` response as four
   warnings AND four infos — the same four table facts, emitted once by the

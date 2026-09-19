@@ -33,6 +33,10 @@ type ContrastSwap struct {
 	SlideIndex int    // 0-based slide index; -1 when unknown
 	Path       string // JSON pointer to the surface, e.g. "/slides/3/shape_grid/shapes/2"
 	Source     string // surface label: "shape_grid", "lstStyle", "run"
+	// Cells counts the sibling shape-grid cells one decision covered. Zero for
+	// a single-shape swap; >1 when the colour was chosen once for a group of
+	// cells that share a text role (go-slide-creator-tnx3e).
+	Cells int
 }
 
 // annotateContrastSwaps stamps slide/path/source provenance onto a batch of
@@ -628,7 +632,12 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 // the original grid row/cell coordinates are not retained on the raw shape XML
 // at render time.
 func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideIndex int) ([][]byte, []ContrastSwap) {
-	var allSwaps []ContrastSwap
+	// Sibling cells first: a text colour shared by several cells is decided once,
+	// against the worst fill in the group, so a tinted stack does not come out in
+	// three colours (go-slide-creator-tnx3e). Whatever the group settled is
+	// already readable, so the per-shape pass below finds nothing left to do on
+	// those cells.
+	shapes, allSwaps := enforceGridGroupContrast(shapes, themeColors, whiteTextSafeHex, slideIndex)
 	gridPath := slidepath.ShapeGrid(slideIndex)
 	for i, shape := range shapes {
 		var swaps []ContrastSwap

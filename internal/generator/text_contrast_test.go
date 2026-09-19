@@ -712,11 +712,25 @@ func TestEnforceShapeGridContrast_ReturnsSwaps(t *testing.T) {
 		[]byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>Bad2</a:t></a:r></a:p></p:txBody></p:sp>`),
 	}
 
-	_, swaps := enforceShapeGridContrast(shapes, lightTheme, nil, 0)
+	fixed, swaps := enforceShapeGridContrast(shapes, lightTheme, nil, 0)
 
-	// Expect swaps from shape 2 (scheme lt1→fixed) and shape 3 (sRGB FFFFFF→fixed)
-	if len(swaps) < 2 {
-		t.Fatalf("expected at least 2 contrast swaps, got %d", len(swaps))
+	// Shapes 2 and 3 are the same white label on the same fill, written two ways
+	// (schemeClr lt1 and srgbClr FFFFFF). They are siblings, so ONE decision
+	// covers both and one finding records it (go-slide-creator-tnx3e).
+	if len(swaps) != 1 {
+		t.Fatalf("expected 1 group swap, got %d: %+v", len(swaps), swaps)
+	}
+	if swaps[0].Cells != 2 {
+		t.Errorf("swap covers %d cells, want 2", swaps[0].Cells)
+	}
+	for _, i := range []int{1, 2} {
+		if strings.Contains(string(fixed[i]), `val="FFFFFF"`) || strings.Contains(string(fixed[i]), `val="lt1"`) {
+			t.Errorf("shape %d kept its white text: %s", i, fixed[i])
+		}
+	}
+	// The cell that already read well is untouched.
+	if !strings.Contains(string(fixed[0]), `val="dk1"`) {
+		t.Errorf("the readable cell should be left alone: %s", fixed[0])
 	}
 }
 

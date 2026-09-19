@@ -1118,13 +1118,22 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFindi
 		if s.Source != "" {
 			params["source"] = s.Source
 		}
+		// One decision can cover several sibling cells: the colour is chosen
+		// once for the group, against its worst fill, so the finding says how
+		// many cells it moved rather than repeating itself per shape
+		// (go-slide-creator-tnx3e).
+		scope := ""
+		if s.Cells > 1 {
+			params["cells"] = s.Cells
+			scope = fmt.Sprintf(" across %d sibling cells", s.Cells)
+		}
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path: s.Path,
 				Code: "contrast_autofixed",
 				Message: fmt.Sprintf(
-					"auto-fixed low-contrast text: %s → %s (on %s, ratio %.1f → %.1f)",
-					s.OriginalColor, s.ReplacedColor, s.BackgroundColor,
+					"auto-fixed low-contrast text%s: %s → %s (on %s, ratio %.1f → %.1f)",
+					scope, s.OriginalColor, s.ReplacedColor, s.BackgroundColor,
 					s.RatioBefore, s.RatioAfter,
 				),
 				Fix: &patterns.FixSuggestion{
