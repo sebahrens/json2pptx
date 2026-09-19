@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -133,6 +134,25 @@ func (p *processFlowCompact) Validate(values, overrides any, cellOverrides map[i
 	return errors.Join(errs...)
 }
 
+// processFlowCompactHeightPct is the share of the content area the compact
+// band occupies. The notch calculation reads it, so the two cannot drift.
+const processFlowCompactHeightPct = 35.0
+
+// processFlowCompactNotchPt is the depth of a pointed step's point in the
+// compact band.
+func processFlowCompactNotchPt(ctx ExpandContext, steps int) float64 {
+	if steps < 1 {
+		steps = 1
+	}
+	contentW, contentH := contentAreaPt(ctx)
+	cellW := (contentW - processFlowGapPt*float64(steps-1)) / float64(steps)
+	cellH := contentH * processFlowCompactHeightPct / 100
+	if cellW <= 0 || cellH <= 0 {
+		return 0
+	}
+	return float64(chevronAdj) / 100000 * math.Min(cellW, cellH)
+}
+
 func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	vals, ok := values.(*ProcessFlowValues)
 	if !ok {
@@ -151,20 +171,31 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	bodySize := ResolveSize(ovr.BodySize, processFlowDefaultFontPt(len(vals.Steps)))
 	cellAccentMode := ovr.CellAccentMode
 
+	// The compact variant draws the same shapes in a shorter band, so it takes
+	// the same notch treatment: text inset past the point, a shallower point,
+	// and no connector when every step already points (go-slide-creator-czk4).
+	notchPt := processFlowCompactNotchPt(ctx, len(vals.Steps))
+
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
 	for i, step := range vals.Steps {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 		geometry := "roundRect"
+		pointed := false
 		switch step.Type {
 		case "decision":
 			geometry = "diamond"
 		case "chevron":
 			geometry = "chevron"
+			pointed = true
 		case "arrow":
 			geometry = "rightArrow"
+			pointed = true
 		}
 
 		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
+		if pointed {
+			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize, notchPt+chevronTextPadPt)
+		}
 
 		cell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
@@ -172,6 +203,9 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
 				Text:     text,
 			},
+		}
+		if pointed {
+			cell.Shape.Adjustments = map[string]int64{"adj": chevronAdj}
 		}
 
 		if co, coOk := cellOverrides[i]; coOk {
@@ -189,18 +223,21 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 
 	colsJSON, _ := json.Marshal(len(vals.Steps))
 
+	row := jsonschema.GridRowInput{
+		Cells:     cells,
+		Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: "dk1", Width: 1.5},
+	}
+	if allStepsPointed(vals.Steps) {
+		row.Connector = nil
+	}
+
 	grid := &jsonschema.ShapeGridInput{
 		Bounds: &jsonschema.GridBoundsInput{
-			X: 0, Y: 0, Width: 100, Height: 35,
+			X: 0, Y: 0, Width: 100, Height: processFlowCompactHeightPct,
 		},
 		Columns: json.RawMessage(colsJSON),
-		Gap:     12,
-		Rows: []jsonschema.GridRowInput{
-			{
-				Cells:     cells,
-				Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: "dk1", Width: 1.5},
-			},
-		},
+		Gap:     processFlowGapPt,
+		Rows:    []jsonschema.GridRowInput{row},
 	}
 
 	return grid, nil

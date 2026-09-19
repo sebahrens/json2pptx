@@ -320,6 +320,14 @@ A pattern whose one semantic signal is a highlighted cell must not paint it from
 - An AUTHORED highlight is always honoured, and reported through `PostExpandWarnings` as `LOW_CONTRAST_HIGHLIGHT` when it measures below the bar.
 - Measured bars for the bundled templates live in `internal/patterns/valuechain_highlight_test.go`; `cmd/json2pptx/value_chain_highlight_test.go` runs the same rule against the real `templates/*.pptx`, so a palette change is caught rather than shipped.
 
+## A pointed shape's text has to be inset past its own point
+
+A chevron, a right arrow and a home plate all draw their point INSIDE the bounding box, so text laid out to that box is drawn into the notch and the tip. `process-flow`'s chevron step type did this — the first and last characters of a label disappeared into the geometry — and its row connector was drawn straight through the shape (go-slide-creator-czk4; `numbered-step-strip` had the same fix in round 1).
+
+- Set `adjustments: {"adj": chevronAdj}` (30% rather than the OOXML default 50%) and inset the text by the notch depth plus a few points on BOTH sides.
+- The notch is `adj x the SHORTER side`, so compute it from the pattern's own cell geometry — borrowing another pattern's number is how an inset ends up 16pt short. A row of pointed shapes should also cap its height at half its step width, or the shape's own height sets the notch and the label is left a column.
+- Drop the connector between pointed steps: they already say which way the flow runs, and the arrow was drawn through the notch.
+
 ## A field's maxLength is the budget of the pattern's SMALLEST shape
 
 A pattern's JSON schema is the contract an agent sizes its copy against, and a per-field `maxLength` can only state one number. For a pattern whose cell count varies, that number is necessarily the budget of the *smallest* grid: card-grid's 300-character body is readable in a 1x1 and renders at **2.6pt in a 5x5**. Content that respects the schema in every particular is still a wall of unreadable text, and the schema cannot say so (go-slide-creator-0g6p).

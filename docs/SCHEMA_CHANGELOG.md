@@ -373,6 +373,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`process-flow` chevron and arrow steps keep their label out of the point
+  (go-slide-creator-czk4).** A step of `type: "chevron"` laid its text out to
+  the bounding box, so the first and last characters were drawn into the notch
+  and the tip, and the row's connector arrow ran straight through the shape.
+  - Pointed steps (`chevron`, `arrow`) now draw at a 30% point rather than the
+    OOXML default 50%, inset their text past the notch on both sides, and — when
+    EVERY step is pointed — drop the connector, which was saying the same thing
+    the shapes already said, through the shape.
+  - A row of pointed steps is also capped at half its step width: the notch is a
+    fraction of the shorter side, so a tall chevron eats its own label. At four
+    steps that took the label from 110pt of a 198pt shape to 132pt, which is
+    the difference between "Board sign-off" on two lines and "Boar / d / sign- /
+    off" on four.
+  - A flow of plain steps is untouched: same heights, same connectors, no
+    insets.
+
 - **`shape_grid.source` — an expanded pattern can be fed back into generate
   (go-slide-creator-c3po).** The documented workflow is
   `expand_pattern -> inspect -> tweak -> generate`, and the last step was

@@ -206,20 +206,35 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	bodySize := ResolveSize(ovr.BodySize, processFlowDefaultFontPt(len(vals.Steps)))
 	cellAccentMode := ovr.CellAccentMode
 
+	// A chevron's point and notch eat the width its label has to live in, and
+	// text that starts at the bounding box is drawn into them. At the OOXML
+	// default (50000 of the shorter side) the notch took half the width;
+	// numbered-step-strip already draws its chevrons at 30% for exactly this
+	// reason (go-slide-creator-czk4).
+	notchPt := processFlowNotchPt(ctx, len(vals.Steps))
+
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
 	for i, step := range vals.Steps {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 		geometry := "roundRect"
+		pointed := false
 		switch step.Type {
 		case "decision":
 			geometry = "diamond"
 		case "chevron":
 			geometry = "chevron"
+			pointed = true
 		case "arrow":
 			geometry = "rightArrow"
+			pointed = true
 		}
 
 		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
+		if pointed {
+			// Inset the text past the notch on both sides so the first and last
+			// characters are not drawn into the point.
+			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize, notchPt+chevronTextPadPt)
+		}
 
 		cell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
@@ -227,6 +242,9 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
 				Text:     text,
 			},
+		}
+		if pointed {
+			cell.Shape.Adjustments = map[string]int64{"adj": chevronAdj}
 		}
 
 		if co, coOk := cellOverrides[i]; coOk {
@@ -247,17 +265,24 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// Steps are capped at processFlowMaxHeightFrac of the content height
 	// (go-slide-creator-7km8) instead of stretching into full-height pillars
 	// with needle-thin diamonds; the grid centres the row vertically.
-	_, contentH := contentAreaPt(ctx)
+	pointedRow := allStepsPointed(vals.Steps)
+	_, rowHeight := processFlowCellSize(ctx, len(vals.Steps), pointedRow)
+	row := jsonschema.GridRowInput{
+		Cells:     cells,
+		Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: "dk1", Width: 1.5},
+		MaxHeight: rowHeight,
+	}
+	// Chevrons point at the next step; an arrow drawn between them is a second
+	// statement of the same thing, and it was being drawn straight through the
+	// notch (go-slide-creator-czk4).
+	if pointedRow {
+		row.Connector = nil
+	}
+
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(colsJSON),
-		Gap:     12,
-		Rows: []jsonschema.GridRowInput{
-			{
-				Cells:     cells,
-				Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: "dk1", Width: 1.5},
-				MaxHeight: math.Round(contentH * processFlowMaxHeightFrac),
-			},
-		},
+		Columns:       json.RawMessage(colsJSON),
+		Gap:           processFlowGapPt,
+		Rows:          []jsonschema.GridRowInput{row},
 		VerticalAlign: GridVerticalAlignDefault,
 	}
 
@@ -267,6 +292,86 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 // processFlowMaxHeightFrac caps process-flow steps at this share of the
 // content height.
 const processFlowMaxHeightFrac = 0.35
+
+// processFlowGapPt is the gap between steps, in points. The notch calculation
+// reads it, so the two cannot drift.
+const processFlowGapPt = 12.0
+
+// processFlowNotchPt is the depth of a chevron's point at this pattern's own
+// geometry. It has to be computed here rather than borrowed from
+// numbered-step-strip: that pattern sizes its chevrons from its own aspect cap,
+// and at four steps the two differ by 55pt — enough that an inset taken from
+// the wrong one leaves the label inside the notch.
+//
+// OOXML puts the point's depth at adj x the SHORTER side of the shape.
+func processFlowNotchPt(ctx ExpandContext, steps int) float64 {
+	cellW, cellH := processFlowCellSize(ctx, steps, true)
+	if cellW <= 0 || cellH <= 0 {
+		return 0
+	}
+	return float64(chevronAdj) / 100000 * math.Min(cellW, cellH)
+}
+
+// processFlowCellSize is one step's width and the row's height in points.
+// A row of pointed steps is additionally capped to half its step width: the
+// notch is a fraction of the SHORTER side, so a tall chevron eats its own
+// label — at four steps an uncapped row left 110pt of text width in a 198pt
+// shape, and even "Board sign-off" broke mid-word (go-slide-creator-czk4).
+func processFlowCellSize(ctx ExpandContext, steps int, pointed bool) (width, height float64) {
+	if steps < 1 {
+		steps = 1
+	}
+	contentW, contentH := contentAreaPt(ctx)
+	width = (contentW - processFlowGapPt*float64(steps-1)) / float64(steps)
+	height = math.Round(contentH * processFlowMaxHeightFrac)
+	if pointed {
+		height = math.Min(height, math.Round(width*chevronMaxAspectH))
+	}
+	return width, height
+}
+
+// allStepsPointed reports whether every step draws its own direction — a
+// chevron or a right arrow — so a connector between them says nothing new.
+func allStepsPointed(steps []ProcessFlowStep) bool {
+	for _, s := range steps {
+		if s.Type != "chevron" && s.Type != "arrow" {
+			return false
+		}
+	}
+	return len(steps) > 0
+}
+
+// buildProcessFlowPointedText is buildProcessFlowTextContent with the side
+// insets a pointed shape needs: the label sits inside the chevron body rather
+// than starting at the bounding box and running into the notch.
+func buildProcessFlowPointedText(content string, size, insetPt float64) json.RawMessage {
+	type paragraph struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+		Bold    bool    `json:"bold,omitempty"`
+		Color   string  `json:"color,omitempty"`
+		Align   string  `json:"align,omitempty"`
+	}
+
+	textObj := struct {
+		Paragraphs    []paragraph `json:"paragraphs"`
+		Align         string      `json:"align"`
+		VerticalAlign string      `json:"vertical_align"`
+		InsetLeft     float64     `json:"inset_left"`
+		InsetRight    float64     `json:"inset_right"`
+	}{
+		Paragraphs: []paragraph{
+			{Content: content, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
+		},
+		Align:         "ctr",
+		VerticalAlign: "ctr",
+		InsetLeft:     insetPt,
+		InsetRight:    insetPt,
+	}
+
+	data, _ := json.Marshal(textObj)
+	return data
+}
 
 func buildProcessFlowTextContent(content string, size float64) json.RawMessage {
 	type paragraph struct {
