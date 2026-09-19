@@ -37,6 +37,30 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`org_chart` node labels no longer overprint each other
+  (go-slide-creator-s5ur).** Every node drew its name and its job title at
+  almost the same baseline: in the reported chart the name sat at y=103.23 in
+  12.08px and the title at y=113.53 in 10.44px — 10.31px of separation for glyph
+  boxes whose half-heights sum to 11.26 — so "Anna Becker" and "CEO" touched, on
+  all four templates. The cause was `titleY = nameY + nameFontSize*0.9`: a
+  fraction of ONE font size, which says nothing about how tall the other line
+  is. The two- (or three-) line block is now laid out from its own centre with a
+  real baseline-to-baseline leading of `max(upper, lower) * 1.15`, which always
+  clears the touching threshold of `(upper + lower) / 2`.
+- **Depth pruning stopped destroying job titles.** When an org chart is too deep
+  for legible boxes the deepest level is removed and the surviving parent is
+  marked `+N reports` — and that marker was written OVER the parent's real
+  title, so a 25-node tree rendered as "Director 1 / +3 reports" and "VP Area 1"
+  was gone from the deck. The count is now its own line under the title, which
+  is preserved.
+- **The `org_chart` capability described only half its overflow behaviour.** It
+  said "siblings >9 collapsed to +N more indicator" beside `max_nodes: 50` /
+  `max_depth: 20`, with nothing about depth pruning — so an agent budgeting
+  against `max_nodes` had no idea that a 25-node, three-level tree renders as 7
+  boxes (3 siblings per parent, nowhere near the 9 limit). `OverflowBehavior`
+  and `docs/diagrams/org_chart.md` now describe both mechanisms and say plainly
+  that `max_nodes` is a ceiling, not a guarantee.
+
 - **Slide overlays paint on top of images and charts
   (go-slide-creator-yomm).** Numbered callouts on a screenshot — one of the most
   requested product/demo slides — could not be built. Overlay shapes were folded

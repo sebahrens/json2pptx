@@ -121,10 +121,16 @@ type layoutNode struct {
 	children []*layoutNode
 
 	// Computed layout values
-	x, y          float64 // center position of the node
-	subtreeWidth  float64 // total width of this node's subtree
-	depth         int     // depth in the hierarchy (0 = root)
-	isOverflow    bool    // true if this is a "+N more" placeholder node
+	x, y         float64 // center position of the node
+	subtreeWidth float64 // total width of this node's subtree
+	depth        int     // depth in the hierarchy (0 = root)
+	isOverflow   bool    // true if this is a "+N more" placeholder node
+	// prunedReports counts the descendants removed from under this node by
+	// depth pruning. It is drawn as its own line under the node's real title,
+	// which pruning used to OVERWRITE — a director's job title was replaced by
+	// "+3 reports", so the chart lost data it was not asked to lose
+	// (go-slide-creator-s5ur).
+	prunedReports int
 }
 
 // Draw renders the org chart diagram.
@@ -496,7 +502,7 @@ func (oc *OrgChartRenderer) pruneDeepestLevel(node *layoutNode, maxDepth int) in
 			if len(child.children) > 0 {
 				count := oc.countDescendants(child) - 1 // exclude the child itself
 				if count > 0 {
-					child.title = fmt.Sprintf("+%d reports", count)
+					child.prunedReports += count
 					removed += count
 				}
 				child.children = nil
@@ -858,43 +864,71 @@ func (oc *OrgChartRenderer) drawNode(node *layoutNode) {
 	b.SetFontWeight(style.Typography.WeightBold)
 	b.SetTextColor(style.Palette.TextPrimary)
 
-	if wrapName {
-		lineSpacing := nameFontSize * 1.15
-		baseY := node.y
-		if titleText != "" {
-			baseY = node.y - titleFontSize*0.4 - nameFontSize*0.25
-		}
-		b.DrawText(nameLines[0], node.x, baseY, TextAlignCenter, TextBaselineMiddle)
-		b.DrawText(nameLines[1], node.x, baseY+lineSpacing, TextAlignCenter, TextBaselineMiddle)
-		b.Pop()
-
-		if titleText != "" {
-			b.Push()
-			b.SetFontSize(titleFontSize)
-			b.SetFontWeight(style.Typography.WeightNormal)
-			b.SetTextColor(style.Palette.TextSecondary)
-			titleY := baseY + lineSpacing + nameFontSize*0.7
-			b.DrawText(titleText, node.x, titleY, TextAlignCenter, TextBaselineMiddle)
-			b.Pop()
-		}
-	} else {
-		nameY := node.y
-		if titleText != "" {
-			nameY = node.y - titleFontSize*0.4
-		}
-		b.DrawText(nameText, node.x, nameY, TextAlignCenter, TextBaselineMiddle)
-		b.Pop()
-
-		if titleText != "" {
-			b.Push()
-			b.SetFontSize(titleFontSize)
-			b.SetFontWeight(style.Typography.WeightNormal)
-			b.SetTextColor(style.Palette.TextSecondary)
-			titleY := nameY + nameFontSize*0.9
-			b.DrawText(titleText, node.x, titleY, TextAlignCenter, TextBaselineMiddle)
-			b.Pop()
-		}
+	// Both labels are drawn on a middle baseline, so the whole two- or
+	// three-line block is laid out from its own centre: every gap is a real
+	// baseline-to-baseline leading rather than a fraction of one font size.
+	// The old arithmetic (titleY = nameY + nameFontSize*0.9) left 10.3px between
+	// a 12.1px name and a 10.4px title, whose half-heights sum to 11.3 — so the
+	// glyphs touched in every node (go-slide-creator-s5ur).
+	leading := orgLabelLeading(nameFontSize, titleFontSize)
+	hasTitle := titleText != ""
+	// Pruned reports get their own line rather than displacing the real title.
+	reportsText := ""
+	if node.prunedReports > 0 {
+		reportsText = fmt.Sprintf("+%d reports", node.prunedReports)
 	}
+
+	// Build the block bottom-up so every line is spaced by a real leading and
+	// the whole stack stays centred in the node box.
+	secondary := make([]string, 0, 2)
+	if hasTitle {
+		secondary = append(secondary, titleText)
+	}
+	if reportsText != "" {
+		secondary = append(secondary, reportsText)
+	}
+
+	blockH := float64(len(secondary)) * leading
+	nameLineSpacing := 0.0
+	if wrapName {
+		nameLineSpacing = orgLabelLeading(nameFontSize, nameFontSize)
+		blockH += nameLineSpacing
+	}
+	baseY := node.y - blockH/2
+
+	if wrapName {
+		b.DrawText(nameLines[0], node.x, baseY, TextAlignCenter, TextBaselineMiddle)
+		b.DrawText(nameLines[1], node.x, baseY+nameLineSpacing, TextAlignCenter, TextBaselineMiddle)
+	} else {
+		b.DrawText(nameText, node.x, baseY, TextAlignCenter, TextBaselineMiddle)
+	}
+	b.Pop()
+
+	if len(secondary) == 0 {
+		return
+	}
+	b.Push()
+	b.SetFontSize(titleFontSize)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	b.SetTextColor(style.Palette.TextSecondary)
+	y := baseY + nameLineSpacing
+	for _, line := range secondary {
+		y += leading
+		b.DrawText(line, node.x, y, TextAlignCenter, TextBaselineMiddle)
+	}
+	b.Pop()
+}
+
+// orgLabelLeadingFactor is the baseline-to-baseline distance between two label
+// lines in a node, as a multiple of the larger of the two font sizes. 1.15 keeps
+// the glyph boxes apart with room to spare: two lines of sizes a and b touch
+// when the gap falls below (a+b)/2, and max(a,b)*1.15 always exceeds that.
+const orgLabelLeadingFactor = 1.15
+
+// orgLabelLeading returns the baseline-to-baseline distance to use between two
+// node label lines drawn at the given font sizes.
+func orgLabelLeading(upperFontSize, lowerFontSize float64) float64 {
+	return math.Max(upperFontSize, lowerFontSize) * orgLabelLeadingFactor
 }
 
 // orgFitText tries to fit text within maxWidth at the given fontSize using
@@ -1237,4 +1271,3 @@ func normalizeOrgChartNodes(data map[string]any) {
 	}
 	delete(data, "nodes")
 }
-

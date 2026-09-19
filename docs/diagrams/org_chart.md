@@ -70,7 +70,23 @@ Alternatively, provide `name` or `title` at the top level of data (treated as ro
 | `horizontal_gap` | `number` | - | Spacing between sibling nodes |
 | `vertical_gap` | `number` | - | Spacing between levels |
 | `corner_radius` | `number` | - | Rounded corners on nodes |
-| `max_visible_siblings` | `number` | - | Max siblings before "..." collapse |
+| `max_visible_siblings` | `number` | `9` | Max siblings before "+N more" collapse |
+
+## Overflow
+
+Two independent mechanisms shrink a tree that does not fit, and both report what
+they hid:
+
+- **Sibling collapse.** More than `max_visible_siblings` children under one
+  parent: the excess becomes a single "+N more" box (`chart.overflow_suppressed`).
+- **Depth pruning.** When the boxes would fall below the legible minimum, the
+  deepest level is removed entirely and its parent gains a `+N reports` line
+  **under its own title**, which is preserved (`diagram.org_chart_depth_pruned`
+  names how many nodes went). A 25-node, three-level tree renders as 7 boxes —
+  so `max_nodes: 50` is a ceiling, not a guarantee: a deep tree hits the depth
+  prune long before it (go-slide-creator-s5ur).
+
+Split a large org across slides rather than relying on either.
 
 ## Examples
 

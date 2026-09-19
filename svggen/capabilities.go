@@ -351,7 +351,13 @@ func DiagramCapabilities() []DiagramCapability {
 			Type:             "org_chart",
 			MaxNodes:         intPtr(50),
 			MaxDepth:         intPtr(20),
-			OverflowBehavior: strPtr("siblings >9 collapsed to +N more indicator"),
+			// The sibling limit is only half the story: when the tree is too deep
+			// for the boxes to stay legible, the DEEPEST LEVEL is pruned entirely
+			// — a 25-node, 3-level tree renders as 7 boxes. That is reported as
+			// diagram.org_chart_depth_pruned, but the capability text said
+			// nothing about it, so an agent budgeting against max_nodes:50 had no
+			// idea the shape of the tree mattered (go-slide-creator-s5ur).
+			OverflowBehavior: strPtr("siblings >9 collapsed to +N more indicator; deepest level pruned when boxes would fall below the legible minimum (reported as diagram.org_chart_depth_pruned, with the remaining parent showing '+N reports' under its own title) — max_nodes is a ceiling, not a guarantee, and a deep tree hits the depth prune well below it"),
 			RequiredFields:   []string{"root"},
 			OptionalFields:   []string{"title", "children", "node_width", "node_height", "max_visible_siblings"},
 			Status:           "ready",
