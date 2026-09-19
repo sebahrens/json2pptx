@@ -51,7 +51,7 @@ Alternatively, use point objects:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `series[].points` | `object[]` | Points with `x`, `y`, and optional `label` |
+| `series[].points` | `object[]` | Points with `x`, `y`, and optional `label`. **Labels are drawn only up to 15 labelled points**; past that they would cover the plot, so they are dropped and `chart.scatter_label_skipped` reports how many. Label the points that matter, or set `style.show_values` to force all of them. |
 
 ## Optional Fields
 

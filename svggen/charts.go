@@ -2219,7 +2219,8 @@ func (sc *ScatterChart) drawAxes(plotArea Rect, xScale, yScale *LinearScale) {
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (sc *ScatterChart) drawPoints(data ChartData, xScale, yScale *LinearScale, colors []Color) {
 	b := sc.builder
-	style := b.StyleGuide()
+
+	var pending []scatterLabel
 
 	for seriesIdx, series := range data.Series {
 		pointConfig := DefaultPointSeriesConfig()
@@ -2287,130 +2288,177 @@ func (sc *ScatterChart) drawPoints(data ChartData, xScale, yScale *LinearScale, 
 
 		ps.DrawLinear(points, xScale, yScale)
 
-		// Render data point labels for each point that has one.
-		// Labels are placed slightly above-right of the point for readability.
-		hasLabels := false
+		// Collect the labels; they are placed once, after every series is
+		// drawn. Placing them per series meant the collision set was reset for
+		// each one, so labels from different series were laid straight over
+		// each other — six series of nine points produced a wall of overlapping
+		// text with no finding to say so (go-slide-creator-daqp).
 		for _, pt := range points {
-			if pt.Label != "" {
-				hasLabels = true
+			if pt.Label == "" {
+				continue
+			}
+			pending = append(pending, scatterLabel{
+				x:    xScale.Scale(pt.X),
+				y:    yScale.Scale(pt.Y),
+				text: pt.Label,
+			})
+		}
+	}
+
+	sc.drawPointLabels(pending)
+}
+
+// scatterLabel is one point's label and the position it belongs to.
+type scatterLabel struct {
+	x, y float64
+	text string
+}
+
+const (
+	// scatterMaxLabels is the point count past which labelling every point is
+	// noise rather than information: the chart becomes a field of text with the
+	// data underneath it. Above this the labels are dropped and reported.
+	scatterMaxLabels = 15
+	// scatterDenseLabels / scatterCrowdedLabels are the counts at which the
+	// label font and length start shrinking.
+	scatterDenseLabels   = 10
+	scatterCrowdedLabels = 15
+)
+
+// drawPointLabels places every collected point label with one shared collision
+// set, or reports why it placed none.
+func (sc *ScatterChart) drawPointLabels(labels []scatterLabel) {
+	if len(labels) == 0 {
+		return
+	}
+	b := sc.builder
+	style := b.StyleGuide()
+
+	// Past the readable count, labelling every point buries the chart. The
+	// caller can still ask for them explicitly.
+	if len(labels) > scatterMaxLabels && !sc.config.ShowLabels {
+		b.AddFinding(Finding{
+			Field:    "series[].labels",
+			Code:     FindingScatterLabelSkipped,
+			Message:  fmt.Sprintf("%d point labels dropped — above %d the labels cover the plot they describe; label the points that matter, or set show_values to force all of them", len(labels), scatterMaxLabels),
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReduceItems,
+				Params: map[string]any{"labelled_points": len(labels), "max_readable": scatterMaxLabels},
+			},
+		})
+		return
+	}
+
+	minFont := b.MinFontSize()
+	labelFontSize := math.Max(minFont, style.Typography.SizeSmall)
+	maxLabelChars := 20
+	switch {
+	case len(labels) >= scatterCrowdedLabels:
+		labelFontSize = minFont
+		maxLabelChars = 15
+	case len(labels) >= scatterDenseLabels:
+		labelFontSize = math.Max(minFont, labelFontSize-0.5)
+		maxLabelChars = 18
+	}
+
+	b.Push()
+	defer b.Pop()
+	b.SetFontSize(labelFontSize)
+	b.SetFontWeight(style.Typography.WeightNormal)
+	b.SetTextColor(style.Palette.TextPrimary)
+
+	type labelRect struct {
+		x1, y1, x2, y2 float64
+	}
+	var placedLabels []labelRect
+
+	pad := 2.0
+	labelH := labelFontSize * 1.3
+	pointOffset := sc.config.PointSize/2 + 3
+
+	overlaps := func(r labelRect) bool {
+		for _, placed := range placedLabels {
+			if r.x1-pad < placed.x2+pad && r.x2+pad > placed.x1-pad &&
+				r.y1-pad < placed.y2+pad && r.y2+pad > placed.y1-pad {
+				return true
+			}
+		}
+		return false
+	}
+
+	skipped := 0
+	for _, lab := range labels {
+		px, py := lab.x, lab.y
+		lbl := lab.text
+		if len([]rune(lbl)) > maxLabelChars {
+			lbl = string([]rune(lbl)[:maxLabelChars-1]) + "\u2026"
+		}
+
+		labelW, _ := b.MeasureText(lbl)
+		labelW *= 1.1 // safety margin
+
+		// Try 4 positions: right, above, left, below
+		type candidate struct {
+			x, y  float64
+			align TextAlign
+			base  TextBaseline
+			rect  labelRect
+		}
+
+		candidates := []candidate{
+			{ // Right
+				x: px + pointOffset, y: py - labelH/4,
+				align: TextAlignLeft, base: TextBaselineBottom,
+				rect: labelRect{px + pointOffset, py - labelH, px + pointOffset + labelW, py},
+			},
+			{ // Above
+				x: px, y: py - pointOffset - 2,
+				align: TextAlignCenter, base: TextBaselineBottom,
+				rect: labelRect{px - labelW/2, py - pointOffset - labelH - 2, px + labelW/2, py - pointOffset - 2},
+			},
+			{ // Left
+				x: px - pointOffset, y: py - labelH/4,
+				align: TextAlignRight, base: TextBaselineBottom,
+				rect: labelRect{px - pointOffset - labelW, py - labelH, px - pointOffset, py},
+			},
+			{ // Below
+				x: px, y: py + pointOffset + labelH,
+				align: TextAlignCenter, base: TextBaselineBottom,
+				rect: labelRect{px - labelW/2, py + pointOffset, px + labelW/2, py + pointOffset + labelH},
+			},
+		}
+
+		placed := false
+		for _, c := range candidates {
+			if !overlaps(c.rect) {
+				b.DrawText(lbl, c.x, c.y, c.align, c.base)
+				placedLabels = append(placedLabels, c.rect)
+				placed = true
 				break
 			}
 		}
-		if hasLabels {
-			numLabeled := 0
-			for _, pt := range points {
-				if pt.Label != "" {
-					numLabeled++
-				}
-			}
-
-			// Adaptive font and truncation based on label density.
-			// Floor at builder's minimum font size to ensure legibility.
-			minFont := b.MinFontSize()
-			labelFontSize := math.Max(minFont, math.Min(style.Typography.SizeSmall, style.Typography.SizeSmall))
-			maxLabelChars := 20
-			if numLabeled >= 15 {
-				labelFontSize = minFont
-				maxLabelChars = 15
-			} else if numLabeled >= 10 {
-				labelFontSize = math.Max(minFont, labelFontSize-0.5)
-				maxLabelChars = 18
-			}
-
-			b.Push()
-			b.SetFontSize(labelFontSize)
-			b.SetFontWeight(style.Typography.WeightNormal)
-			b.SetTextColor(style.Palette.TextPrimary)
-
-			// Track placed label bounding boxes for collision detection
-			type labelRect struct {
-				x1, y1, x2, y2 float64
-			}
-			var placedLabels []labelRect
-
-			pad := 2.0
-			labelH := labelFontSize * 1.3
-			pointOffset := sc.config.PointSize/2 + 3
-
-			overlaps := func(r labelRect) bool {
-				for _, placed := range placedLabels {
-					if r.x1-pad < placed.x2+pad && r.x2+pad > placed.x1-pad &&
-						r.y1-pad < placed.y2+pad && r.y2+pad > placed.y1-pad {
-						return true
-					}
-				}
-				return false
-			}
-
-			for _, pt := range points {
-				if pt.Label == "" {
-					continue
-				}
-				px := xScale.Scale(pt.X)
-				py := yScale.Scale(pt.Y)
-
-				lbl := pt.Label
-				if len(lbl) > maxLabelChars {
-					lbl = lbl[:maxLabelChars-1] + "\u2026"
-				}
-
-				labelW, _ := b.MeasureText(lbl)
-				labelW *= 1.1 // safety margin
-
-				// Try 4 positions: right, above, left, below
-				type candidate struct {
-					x, y  float64
-					align TextAlign
-					base  TextBaseline
-					rect  labelRect
-				}
-
-				candidates := []candidate{
-					{ // Right
-						x: px + pointOffset, y: py - labelH/4,
-						align: TextAlignLeft, base: TextBaselineBottom,
-						rect: labelRect{px + pointOffset, py - labelH, px + pointOffset + labelW, py},
-					},
-					{ // Above
-						x: px, y: py - pointOffset - 2,
-						align: TextAlignCenter, base: TextBaselineBottom,
-						rect: labelRect{px - labelW/2, py - pointOffset - labelH - 2, px + labelW/2, py - pointOffset - 2},
-					},
-					{ // Left
-						x: px - pointOffset, y: py - labelH/4,
-						align: TextAlignRight, base: TextBaselineBottom,
-						rect: labelRect{px - pointOffset - labelW, py - labelH, px - pointOffset, py},
-					},
-					{ // Below
-						x: px, y: py + pointOffset + labelH,
-						align: TextAlignCenter, base: TextBaselineBottom,
-						rect: labelRect{px - labelW/2, py + pointOffset, px + labelW/2, py + pointOffset + labelH},
-					},
-				}
-
-				placed := false
-				for _, c := range candidates {
-					if !overlaps(c.rect) {
-						b.DrawText(lbl, c.x, c.y, c.align, c.base)
-						placedLabels = append(placedLabels, c.rect)
-						placed = true
-						break
-					}
-				}
-				if !placed {
-					b.AddFinding(Finding{
-						Code:     FindingScatterLabelSkipped,
-						Message:  fmt.Sprintf("scatter label %q skipped — all positions overlap existing labels", lbl),
-						Severity: "info",
-						Fix: &FixSuggestion{
-							Kind:   FixKindIncreaseCanvas,
-							Params: map[string]any{"label": lbl},
-						},
-					})
-				}
-			}
-			b.Pop()
+		if !placed {
+			skipped++
 		}
+	}
+
+	// One finding for the whole chart: a finding per skipped label flooded the
+	// report and was then truncated, which told the agent nothing.
+	if skipped > 0 {
+		b.AddFinding(Finding{
+			Field:    "series[].labels",
+			Code:     FindingScatterLabelSkipped,
+			Message:  fmt.Sprintf("%d of %d point labels skipped — every position around the point overlapped a label already placed", skipped, len(labels)),
+			Severity: "info",
+			Fix: &FixSuggestion{
+				// A collision is a room problem: a wider canvas fits the same
+				// labels. Dropping them for density is the other finding above,
+				// and that one says to reduce.
+				Kind:   FixKindIncreaseCanvas,
+				Params: map[string]any{"skipped": skipped, "labelled_points": len(labels)},
+			},
+		})
 	}
 }
 

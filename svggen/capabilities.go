@@ -163,8 +163,8 @@ func ChartCapabilities() []ChartCapability {
 			MaxCategories:     intPtr(200),
 			SupportsNegatives: boolPtr(true),
 			SupportsLogScale:  boolPtr(false),
-			LabelStrategy:     strPtr("point labels with smart alignment; font reduced for overlaps"),
-			DensityBehavior:   strPtr("labels clamped to viewBox; no truncation"),
+			LabelStrategy:     strPtr("point labels placed around the point (right, above, left, below) against a chart-wide collision set; font and length reduced from 10 labelled points. ABOVE 15 LABELLED POINTS NO LABELS ARE DRAWN — the labels would cover the plot — and chart.scatter_label_skipped says how many were dropped; set style.show_values to force them"),
+			DensityBehavior:   strPtr("labels clamped to viewBox; no truncation. Past 15 labelled points the labels are dropped rather than overlaid — label the points that matter"),
 			Status:            "ready",
 		},
 		{
@@ -174,8 +174,8 @@ func ChartCapabilities() []ChartCapability {
 			MaxCategories:     intPtr(200),
 			SupportsNegatives: boolPtr(true),
 			SupportsLogScale:  boolPtr(false),
-			LabelStrategy:     strPtr("point labels with smart alignment; font reduced for overlaps"),
-			DensityBehavior:   strPtr("bubble size range 4-20pt; labels clamped to viewBox"),
+			LabelStrategy:     strPtr("point labels placed around the bubble against a chart-wide collision set; font and length reduced from 10 labelled points. ABOVE 15 LABELLED POINTS NO LABELS ARE DRAWN and chart.scatter_label_skipped says how many were dropped; set style.show_values to force them"),
+			DensityBehavior:   strPtr("bubble size range 4-20pt; labels clamped to viewBox. Past 15 labelled bubbles the labels are dropped rather than overlaid"),
 			Status:            "ready",
 		},
 		{

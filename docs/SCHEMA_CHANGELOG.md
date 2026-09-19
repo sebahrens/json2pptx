@@ -373,6 +373,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Scatter and bubble stop labelling every point (go-slide-creator-daqp).**
+  Six series of nine points drew all 54 labels, and the collision pass could not
+  see across series because it ran INSIDE the per-series loop — the placed-label
+  set was reset for each one, so labels from different series were laid straight
+  over each other.
+  - The label pass now runs once for the whole chart, with one shared collision
+    set, after every series is drawn.
+  - Above **15 labelled points** no labels are drawn at all: past that they
+    cover the plot they describe. `chart.scatter_label_skipped` says how many
+    were dropped (severity `warning`, fix `reduce_items`), and
+    `style.show_values` forces them for a caller who wants them anyway.
+  - A collision that remains under the threshold is still reported, but now as
+    ONE finding for the chart with a count, rather than one per label — the
+    per-label flood was being truncated by the finding cap, which told an agent
+    nothing.
+  - bubble_chart is a scatter with variable point sizes, so it reports the same
+    way; it used to emit nothing at all.
+
 - **`process-flow` chevron and arrow steps keep their label out of the point
   (go-slide-creator-czk4).** A step of `type: "chevron"` laid its text out to
   the bounding box, so the first and last characters were drawn into the notch
