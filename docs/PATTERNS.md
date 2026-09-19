@@ -219,7 +219,7 @@ Grid-shaped patterns — those that emit multiple peer cells through the shape g
 
 These patterns have structurally determined accent logic and do not expose `cell_accent_mode`:
 
-- **Single-cell patterns** (stat-hero, pull-quote): one cell, no variation needed.
+- **Single-cell patterns** (stat-hero, pull-quote): one text block, no variation needed. (pull-quote's grid holds the quote and its attribution in separate rows plus an accent-rule column — see go-slide-creator-36ny — but there is still only one accent in play.)
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
 - **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column) rather than peer ordering.

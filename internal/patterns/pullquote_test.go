@@ -116,36 +116,48 @@ func TestPullQuote(t *testing.T) {
 		if grid == nil {
 			t.Fatal("Expand returned nil grid")
 		}
-		if len(grid.Rows) != 1 {
-			t.Fatalf("expected 1 row, got %d", len(grid.Rows))
+		// Quote and attribution are separate rows, so the quote's autofit
+		// cannot shrink the attribution and their ink cannot collide
+		// (go-slide-creator-36ny).
+		if len(grid.Rows) != 2 {
+			t.Fatalf("expected 2 rows, got %d", len(grid.Rows))
 		}
-		if len(grid.Rows[0].Cells) != 1 {
-			t.Fatalf("expected 1 cell, got %d", len(grid.Rows[0].Cells))
+		// Both rows are content-sized, so the rule stops where the text does.
+		if grid.Rows[0].MaxHeight <= 0 || grid.Rows[1].MaxHeight <= 0 {
+			t.Errorf("rows are not content-sized: %v / %v", grid.Rows[0].MaxHeight, grid.Rows[1].MaxHeight)
 		}
-		cell := grid.Rows[0].Cells[0]
-		if cell.Shape == nil {
-			t.Fatal("cell.Shape is nil")
+
+		// The accent rule is a column spanning both rows, so it cannot be
+		// broken in half by the row gap.
+		rule := grid.Rows[0].Cells[0]
+		if rule.RowSpan != 2 {
+			t.Errorf("accent rule row_span = %d, want 2", rule.RowSpan)
 		}
-		// Default accent side is left
-		if cell.AccentBar == nil {
-			t.Fatal("expected accent bar with default left position")
+		if rule.Shape == nil || !strings.Contains(string(rule.Shape.Fill), "accent1") {
+			t.Errorf("accent rule fill = %v, want accent1", rule.Shape)
 		}
-		if cell.AccentBar.Position != "left" {
-			t.Errorf("accent bar position = %q, want %q", cell.AccentBar.Position, "left")
+		if len(grid.Rows[1].Cells) != 1 {
+			t.Errorf("the attribution row lists %d cells; the rule's row-span already occupies its column", len(grid.Rows[1].Cells))
 		}
-		if cell.AccentBar.Color != "accent1" {
-			t.Errorf("accent bar color = %q, want %q", cell.AccentBar.Color, "accent1")
+
+		quoteText := string(grid.Rows[0].Cells[1].Shape.Text)
+		attrText := string(grid.Rows[1].Cells[0].Shape.Text)
+		if !strings.Contains(quoteText, "predict the future") {
+			t.Errorf("quote row does not contain the quote: %s", quoteText)
 		}
-		// Check text has quote content
-		textStr := string(cell.Shape.Text)
-		if !strings.Contains(textStr, "predict the future") {
-			t.Errorf("text does not contain quote: %s", textStr)
+		if !strings.Contains(attrText, "Alan Kay") {
+			t.Errorf("attribution row does not contain the attribution: %s", attrText)
 		}
-		if !strings.Contains(textStr, "Alan Kay") {
-			t.Errorf("text does not contain attribution: %s", textStr)
+		if !strings.Contains(attrText, "Computer Scientist") {
+			t.Errorf("attribution row does not contain the role: %s", attrText)
 		}
-		if !strings.Contains(textStr, "Computer Scientist") {
-			t.Errorf("text does not contain role: %s", textStr)
+		if strings.Contains(quoteText, "Alan Kay") {
+			t.Error("the attribution is still inside the quote's text body")
+		}
+		// The gap under the quote is the quote cell's own bottom inset, which
+		// is what keeps the attribution off its descenders.
+		if !strings.Contains(quoteText, "inset_bottom") {
+			t.Errorf("quote cell has no bottom inset: %s", quoteText)
 		}
 	})
 
@@ -159,8 +171,10 @@ func TestPullQuote(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		cell := grid.Rows[0].Cells[0]
-		if cell.AccentBar != nil {
+		if len(grid.Rows[0].Cells) != 1 {
+			t.Fatalf("accent_side=none must draw no rule column, got %d cells", len(grid.Rows[0].Cells))
+		}
+		if grid.Rows[0].Cells[0].AccentBar != nil {
 			t.Error("expected no accent bar when accent_side=none")
 		}
 	})
@@ -172,12 +186,12 @@ func TestPullQuote(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		cell := grid.Rows[0].Cells[0]
-		if cell.AccentBar == nil {
-			t.Fatal("expected accent bar")
+		rule := grid.Rows[0].Cells[0]
+		if rule.Shape == nil {
+			t.Fatal("expected an accent rule column")
 		}
-		if cell.AccentBar.Color != "accent4" {
-			t.Errorf("accent bar color = %q, want %q", cell.AccentBar.Color, "accent4")
+		if !strings.Contains(string(rule.Shape.Fill), "accent4") {
+			t.Errorf("accent rule fill = %s, want accent4", rule.Shape.Fill)
 		}
 	})
 

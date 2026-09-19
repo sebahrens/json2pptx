@@ -1,8 +1,21 @@
 {
-  "columns": 1,
+  "col_gap": 14,
+  "row_gap": 1,
+  "columns": [
+    0.700,
+    99.300
+  ],
   "rows": [
     {
+      "max_height": 126.39999999999999,
       "cells": [
+        {
+          "row_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1"
+          }
+        },
         {
           "shape": {
             "geometry": "rect",
@@ -14,7 +27,25 @@
                   "italic": true,
                   "color": "dk1",
                   "align": "ctr"
-                },
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "b",
+              "inset_bottom": 21.599999999999998
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 35.2,
+      "max_height": 35.2,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "text": {
+              "paragraphs": [
                 {
                   "content": "— Alan Kay, Computer Scientist",
                   "size": 14,
@@ -23,13 +54,8 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr"
+              "vertical_align": "t"
             }
-          },
-          "accent_bar": {
-            "position": "left",
-            "color": "accent1",
-            "width": 6
           }
         }
       ]

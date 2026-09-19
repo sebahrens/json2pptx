@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -141,6 +143,44 @@ func (pq *pullQuote) Validate(values, overrides any, cellOverrides map[int]any) 
 	return errors.Join(errs...)
 }
 
+// Pull-quote geometry (go-slide-creator-36ny).
+//
+// The quote and its attribution used to be consecutive paragraphs in ONE cell
+// with no spacing, which cost three things at once: the attribution's baseline
+// sat directly under the quote's descenders (on a long quote the two lines'
+// ink actually crossed), the cell's autofit shrank the attribution along with
+// the quote — down to ~7pt on a 500-character quote — and the accent rule ran
+// the full height of a box whose bottom third was empty.
+//
+// They are now two rows of one grid: separate text bodies, so the quote's
+// autofit cannot touch the attribution, with an explicit gap between them and
+// both rows sized to their own content so the rule stops where the text does.
+const (
+	// pullQuoteGapFrac is the gap under the quote, as a fraction of the quote's
+	// own size — ~0.6em, which reads as one blank line at any type scale.
+	pullQuoteGapFrac = 0.6
+	// pullQuoteGapMinPt / MaxPt keep that gap sane at extreme type scales.
+	pullQuoteGapMinPt = 10.0
+	pullQuoteGapMaxPt = 28.0
+	// pullQuoteAttrMinPt is the floor for the attribution. Below it the
+	// speaker's name is unreadable at the back of a room, and an unreadable
+	// attribution is the same as no attribution.
+	pullQuoteAttrMinPt = 11.0
+	// pullQuoteMaxQuoteFrac caps the quote row so a very long quote still
+	// leaves the attribution its row.
+	pullQuoteMaxQuoteFrac = 0.8
+	// pullQuoteRulePt is the thickness of the accent rule, and
+	// pullQuoteRuleMinPct keeps it visible inside a small composed cell.
+	pullQuoteRulePt     = 6.0
+	pullQuoteRuleMinPct = 0.5
+	// pullQuoteRuleGapPt is the space between the rule and the text.
+	pullQuoteRuleGapPt = 14.0
+	// pullQuoteRowGapPt is the gap between the quote row and the attribution
+	// row. The gap under the quote's text is the quote cell's bottom inset, so
+	// this stays small; the rule spans both rows, so it is not broken by it.
+	pullQuoteRowGapPt = 1.0
+)
+
 func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	v, ok := values.(*PullQuoteValues)
 	if !ok {
@@ -157,55 +197,98 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	quoteSize := ResolveSize(ovr.QuoteSize, 36.0)
-	attrSize := ResolveSize(ovr.AttrSize, 14.0)
+	attrSize := math.Max(ResolveSize(ovr.AttrSize, 14.0), pullQuoteAttrMinPt)
 
 	// Build attribution line
-	attrLine := "— " + v.Attribution
+	attrLine := "\u2014 " + v.Attribution
 	if v.Role != "" {
 		attrLine += ", " + v.Role
 	}
+	quoteLine := "\u201C" + v.Quote + "\u201D"
 
-	// Build paragraphs
-	paragraphs := []pullQuoteParagraph{
-		{Content: "\u201C" + v.Quote + "\u201D", Size: quoteSize, Italic: true, Color: "dk1", Align: "ctr"},
+	accentSide := v.AccentSide
+	if accentSide == "" {
+		accentSide = "left"
+	}
+
+	areaW, areaH := sizingAreaPt(ctx)
+	textW := areaW
+	rulePct := 0.0
+	if accentSide != "none" {
+		rulePct = math.Max(pctOf(pullQuoteRulePt, areaW), pullQuoteRuleMinPct)
+		textW = areaW * (100 - rulePct) / 100
+	}
+
+	gapPt := math.Min(math.Max(quoteSize*pullQuoteGapFrac, pullQuoteGapMinPt), pullQuoteGapMaxPt)
+	attrRowPt := sizedBlockHeightPt(ctx, []sizedPara{{text: attrLine, sizePt: attrSize}}, textW)
+	quoteRowPt := sizedBlockHeightPt(ctx, []sizedPara{{text: quoteLine, sizePt: quoteSize}}, textW) + gapPt
+	// A quote longer than its share of the area is left to the renderer's
+	// autofit — but only the quote's own row shrinks, never the attribution.
+	if capPt := areaH * pullQuoteMaxQuoteFrac; quoteRowPt > capPt {
+		quoteRowPt = capPt
+	}
+
+	quoteCell := pullQuoteCell([]pullQuoteParagraph{
+		{Content: quoteLine, Size: quoteSize, Italic: true, Color: "dk1", Align: "ctr"},
+	}, "b", 0, gapPt)
+	attrCell := pullQuoteCell([]pullQuoteParagraph{
 		{Content: attrLine, Size: attrSize, Color: "dk1", Align: "ctr"},
+	}, "t", 0, 0)
+
+	// The accent rule is a column spanning both rows rather than a per-cell
+	// accent bar: two bars would be broken apart by the row gap, and the rule
+	// has to read as one mark against the whole block.
+	columns := json.RawMessage(`1`)
+	quoteCells := []*jsonschema.GridCellInput{quoteCell}
+	attrCells := []*jsonschema.GridCellInput{attrCell}
+	if accentSide != "none" {
+		rule := &jsonschema.GridCellInput{
+			RowSpan: 2,
+			Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "rect",
+				Fill:     json.RawMessage(strconv.Quote(accent)),
+			},
+		}
+		columns = json.RawMessage(fmt.Sprintf("[%.3f,%.3f]", rulePct, 100-rulePct))
+		quoteCells = []*jsonschema.GridCellInput{rule, quoteCell}
+		// The attribution row lists only its own cell: the resolver skips the
+		// column the rule's row-span already occupies.
+		attrCells = []*jsonschema.GridCellInput{attrCell}
+		if accentSide == "right" {
+			columns = json.RawMessage(fmt.Sprintf("[%.3f,%.3f]", 100-rulePct, rulePct))
+			quoteCells = []*jsonschema.GridCellInput{quoteCell, rule}
+		}
 	}
 
-	textObj := pullQuoteText{
-		Paragraphs:    paragraphs,
+	grid := &jsonschema.ShapeGridInput{
+		Columns: columns,
+		ColGap:  pullQuoteRuleGapPt,
+		RowGap:  pullQuoteRowGapPt,
+		Rows: []jsonschema.GridRowInput{
+			{MaxHeight: quoteRowPt, Cells: quoteCells},
+			{MinHeight: attrRowPt, MaxHeight: attrRowPt, Cells: attrCells},
+		},
+	}
+
+	return grid, nil
+}
+
+// pullQuoteCell wraps paragraphs in a text cell with the given vertical anchor
+// and text insets (points).
+func pullQuoteCell(paras []pullQuoteParagraph, vAlign string, insetTop, insetBottom float64) *jsonschema.GridCellInput {
+	textJSON, _ := json.Marshal(pullQuoteText{
+		Paragraphs:    paras,
 		Align:         "ctr",
-		VerticalAlign: "ctr",
-	}
-	textJSON, _ := json.Marshal(textObj)
-
-	cell := &jsonschema.GridCellInput{
+		VerticalAlign: vAlign,
+		InsetTop:      insetTop,
+		InsetBottom:   insetBottom,
+	})
+	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Text:     textJSON,
 		},
 	}
-
-	// Add accent bar if requested
-	accentSide := v.AccentSide
-	if accentSide == "" {
-		accentSide = "left"
-	}
-	if accentSide != "none" {
-		cell.AccentBar = &jsonschema.AccentBarInput{
-			Position: accentSide,
-			Color:    accent,
-			Width:    6,
-		}
-	}
-
-	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`1`),
-		Rows: []jsonschema.GridRowInput{
-			{Cells: []*jsonschema.GridCellInput{cell}},
-		},
-	}
-
-	return grid, nil
 }
 
 // pullQuoteParagraph is a text paragraph for JSON marshalling.
@@ -223,4 +306,6 @@ type pullQuoteText struct {
 	Paragraphs    []pullQuoteParagraph `json:"paragraphs"`
 	Align         string               `json:"align"`
 	VerticalAlign string               `json:"vertical_align"`
+	InsetTop      float64              `json:"inset_top,omitempty"`
+	InsetBottom   float64              `json:"inset_bottom,omitempty"`
 }

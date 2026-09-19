@@ -350,6 +350,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **pull-quote separates the quote from its attribution
+  (go-slide-creator-36ny).** The two were consecutive paragraphs in ONE cell
+  with no spacing, which cost three things at once: the attribution's baseline
+  sat directly under the quote's descenders (on a long quote the two lines' ink
+  crossed), the cell's autofit shrank the attribution along with the quote —
+  to ~7pt on a 500-character quote — and the accent rule ran the full height of
+  a box whose bottom third was empty.
+  - The quote and the attribution are now two rows of the pattern's grid:
+    separate text bodies, so the quote's autofit no longer touches the
+    attribution, with a ~0.6em gap under the quote (the quote cell's bottom
+    inset).
+  - The attribution never renders below **11pt**, whatever `attr_size` says and
+    however long the quote is.
+  - Both rows are content-sized, so the accent rule stops where the text does
+    instead of stretching past it.
+  - The rule is a column spanning both rows rather than a per-cell accent bar,
+    so the row gap cannot break it in half. `accent_side: "none"` still draws
+    no rule, and `"right"` puts the column on the right.
+
 - **`panel_layout` `layout: "stat_cards"` no longer inverts the card
   (go-slide-creator-3j88).** With `panels: [{title: "ARR", body: "EUR 184m"}]`
   — the shape `get_data_format_hints` documents — the card drew "ARR" at 32pt
