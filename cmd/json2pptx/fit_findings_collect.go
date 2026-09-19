@@ -1158,11 +1158,13 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFindi
 // unit — and every conforming timeline, down to three stops, was reported as
 // overcrowded (go-slide-creator-wrsb).
 var patternRecommendedMax = map[string]int{
-	"card-grid":           9,
-	"icon-row":            5,
-	"kpi-3up":             3,
-	"kpi-4up":             4,
-	"matrix-2x2":          4,
+	"card-grid": 9,
+	"icon-row":  5,
+	"kpi-3up":   3,
+	"kpi-4up":   4,
+	// matrix-2x2 is deliberately absent: its shape is fixed at four quadrants by
+	// its own validator, and the grid it expands to carries the axis shapes as
+	// cells too, so a cell-count limit here can only fire on a conforming 2x2.
 	"timeline-horizontal": 21, // 7 stops (the pattern's own maximum) x 3 cells
 
 	"process-flow":    8,

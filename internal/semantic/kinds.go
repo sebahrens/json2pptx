@@ -35,6 +35,8 @@ const (
 	KindStat SlideKind = "stat"
 	// KindTimeline is dated milestones on a line.
 	KindTimeline SlideKind = "timeline"
+	// KindMatrix2x2 is two axes and four quadrants.
+	KindMatrix2x2 SlideKind = "matrix_2x2"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -156,6 +158,17 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredFields:  []string{"milestones"},
 		RequiredAliases: map[string][]string{"milestones": {"stops", "events", "timeline"}},
 		TypicalFields:   []string{"title", "takeaway"},
+	},
+	KindMatrix2x2: {
+		Kind:           KindMatrix2x2,
+		Summary:        "Two axes and four quadrants — impact against effort, reach against cost. Needs both axis labels and all four quadrants, each with a header; short of that, or past a quadrant's text budgets, it degrades to a bullet list naming each quadrant's position.",
+		RequiredFields: []string{"quadrants", "x_axis", "y_axis"},
+		RequiredAliases: map[string][]string{
+			"quadrants": {"cells", "boxes", "top_left"},
+			"x_axis":    {"x_axis_label"},
+			"y_axis":    {"y_axis_label"},
+		},
+		TypicalFields: []string{"title", "x_low", "x_high", "y_low", "y_high", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

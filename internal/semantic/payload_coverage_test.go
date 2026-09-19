@@ -275,6 +275,19 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 			return map[string]any{"milestones": covMilestones("Mandate published"), "takeaway": s}
 		}, rendered: true},
 	},
+	// go-slide-creator-ykjh: both axes, both axis ends and every quadrant's
+	// header and body have to reach the rendered 2x2.
+	KindMatrix2x2: {
+		"quadrants": {inject: func(s string) map[string]any { return covMatrix(map[string]any{"quadrants": covQuadrants(s)}) }, rendered: true},
+		"x_axis":    {inject: func(s string) map[string]any { return covMatrix(map[string]any{"x_axis": s}) }, rendered: true},
+		"y_axis":    {inject: func(s string) map[string]any { return covMatrix(map[string]any{"y_axis": s}) }, rendered: true},
+		"x_low":     {inject: func(s string) map[string]any { return covMatrix(map[string]any{"x_low": s}) }, rendered: true},
+		"x_high":    {inject: func(s string) map[string]any { return covMatrix(map[string]any{"x_high": s}) }, rendered: true},
+		"y_low":     {inject: func(s string) map[string]any { return covMatrix(map[string]any{"y_low": s}) }, rendered: true},
+		"y_high":    {inject: func(s string) map[string]any { return covMatrix(map[string]any{"y_high": s}) }, rendered: true},
+		"title":     {inject: func(s string) map[string]any { return covMatrix(map[string]any{"title": s}) }, rendered: true},
+		"takeaway":  {inject: func(s string) map[string]any { return covMatrix(map[string]any{"takeaway": s}) }, rendered: true},
+	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps("Discover"), "title": s} }, rendered: true},
@@ -414,6 +427,31 @@ func covMilestones(firstLabel string) []any {
 		map[string]any{"label": "Programme approved", "date": "Sep 2024"},
 		map[string]any{"label": "Wave 1 live", "date": "Jun 2025"},
 	}
+}
+
+// covQuadrants builds the four quadrants a 2x2 needs, the first carrying the
+// probed text.
+func covQuadrants(firstHeader string) []any {
+	return []any{
+		map[string]any{"header": firstHeader, "body": "Reconciliation alerts."},
+		map[string]any{"header": "Plan properly", "body": "Platform migration."},
+		map[string]any{"header": "Defer", "body": "Reporting refresh."},
+		map[string]any{"header": "Fill the gaps", "body": "Runbook tidy-up."},
+	}
+}
+
+// covMatrix returns a minimal valid matrix_2x2 payload with the given fields
+// overlaid.
+func covMatrix(overlay map[string]any) map[string]any {
+	body := map[string]any{
+		"x_axis":    "Effort",
+		"y_axis":    "Impact",
+		"quadrants": covQuadrants("Do first"),
+	}
+	for k, v := range overlay {
+		body[k] = v
+	}
+	return body
 }
 
 // covStat returns a minimal valid stat payload with the given fields overlaid.

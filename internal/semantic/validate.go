@@ -130,6 +130,14 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"title": shapeString, "milestones": shapeArray, "stops": shapeArray,
 		"events": shapeArray, "timeline": shapeArray, "takeaway": shapeString,
 	},
+	KindMatrix2x2: {
+		"title": shapeString, "quadrants": shapeArray, "cells": shapeArray, "boxes": shapeArray,
+		"top_left": shapeObject, "top_right": shapeObject, "bottom_left": shapeObject, "bottom_right": shapeObject,
+		"x_axis": shapeString, "x_axis_label": shapeString,
+		"y_axis": shapeString, "y_axis_label": shapeString,
+		"x_low": shapeString, "x_high": shapeString, "y_low": shapeString, "y_high": shapeString,
+		"takeaway": shapeString,
+	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
 	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
@@ -461,6 +469,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateArchitecture(path, slide, s)
 	case KindTimeline:
 		validateTimeline(path, slide, s)
+	case KindMatrix2x2:
+		validateMatrix(path, slide, s)
 	case KindProcess:
 		validateProcess(path, slide, s)
 	case KindRoadmap:
@@ -541,6 +551,21 @@ func validateTimeline(path string, slide SlideSpec, s *semDiags) {
 	if over := slides.TimelineOverBudget(slide.Body); over != "" {
 		s.advisory(path+".milestones", diagnostics.CodeSemanticDensity,
 			fmt.Sprintf("timeline %s (otherwise it degrades to a dated bullet list)", over))
+	}
+}
+
+// validateMatrix reports a 2x2 that cannot take the quadrant visual. Short of
+// four headed quadrants and two named axes it still renders, as a bullet list
+// naming each quadrant's position, so the advisory says what broke rather than
+// blocking (go-slide-creator-ykjh).
+func validateMatrix(path string, slide SlideSpec, s *semDiags) {
+	n := slides.UsableMatrixQuadrantCount(slide.Body)
+	if !s.requireUsableContent(path, "quadrants", slide.Body, n, "cells", "boxes") {
+		return
+	}
+	if over := slides.MatrixOverBudget(slide.Body); over != "" {
+		s.advisory(path+".quadrants", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("matrix %s (otherwise it degrades to a bullet list)", over))
 	}
 }
 

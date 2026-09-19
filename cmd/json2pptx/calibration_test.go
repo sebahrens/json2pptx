@@ -46,6 +46,7 @@ const (
 var staticPathMisses = map[string]string{
 	"B05_low_contrast_grid": "its defect is contrast the engine auto-fixes, so the static path sees an advisory; the render is what the human graded at 20, and vision is the signal for it",
 	"B06_table_9_columns":   "static sees density_exceeded at review; the render pass truncates the table and raises a P0, so full score_deck fails it (verified: 1 P0, gate failed)",
+	"B07_wrong_pattern":     "its defect is semantic — KPIs drawn as a timeline, a timeline drawn as a 2x2 — and every slide is structurally sound, so no geometric check sees it. It used to fail the gate on pattern_overcrowded, but that finding fired on every conforming timeline and 2x2 alike (go-slide-creator-wrsb); catching one bad deck by accident is not a signal. go-slide-creator-h339i is the real check",
 }
 
 type calibrationResult struct {

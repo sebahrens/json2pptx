@@ -47,9 +47,15 @@ const (
 	//
 	// The budget has been raised four times before that (72 -> 80 -> 88 -> 96 ->
 	// 104KB) as deck chrome, examine_template and the option_matrix / table /
-	// architecture kinds arrived; it comes back down here. The full profile is
-	// ~313KB.
-	coreToolListByteBudget = 92 * 1024
+	// architecture kinds arrived; it came back down to 92KB there. The full
+	// profile is ~313KB.
+	//
+	// 92 -> 100KB: the agenda, team, stat, timeline and matrix_2x2 kinds. Each
+	// new kind still costs ~2.4KB of validate_deck_spec's closed schema — the
+	// one tool that kept it — so this buys roughly three more before the next
+	// raise. If that becomes a habit rather than an event, move the closed
+	// schema behind list_slide_kinds entirely rather than raising again.
+	coreToolListByteBudget = 100 * 1024
 )
 
 // coreToolNames is the tool set advertised by the default "core" profile.

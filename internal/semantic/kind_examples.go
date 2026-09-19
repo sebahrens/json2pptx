@@ -69,6 +69,23 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"takeaway": "Three years of runway, two of them already spent.",
 	},
+	KindMatrix2x2: {
+		"kind":   "matrix_2x2",
+		"title":  "Where to spend the next two quarters",
+		"x_axis": "Effort to deliver",
+		"y_axis": "Impact on settlement risk",
+		"x_low":  "Low effort",
+		"x_high": "High effort",
+		"y_low":  "Low impact",
+		"y_high": "High impact",
+		"quadrants": []any{
+			map[string]any{"header": "Do first", "body": "Reconciliation alerts, cut-off automation."},
+			map[string]any{"header": "Plan properly", "body": "Platform migration, wave 2 and 3."},
+			map[string]any{"header": "Defer", "body": "Reporting refresh, vendor consolidation."},
+			map[string]any{"header": "Fill the gaps", "body": "Runbook tidy-up, dashboard polish."},
+		},
+		"takeaway": "Two quarters of capacity buys the top half; the bottom half waits.",
+	},
 	KindAgenda: {
 		"kind":    "agenda",
 		"title":   "What we will cover",

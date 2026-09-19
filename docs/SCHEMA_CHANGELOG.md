@@ -354,6 +354,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `matrix_2x2` (go-slide-creator-ykjh).** Two axes and four
+  quadrants — impact against effort, reach against cost — is one of the handful
+  of shapes a strategy deck always reaches for, and the spec had no kind for it.
+  - `{x_axis, y_axis, quadrants: [...]}` compiles onto **matrix-2x2**. The
+    quadrants list is read **clockwise from the top left**, which is how a 2x2
+    is read; `cells` / `boxes` alias it, and the named positions
+    (`top_left`, `top_right`, `bottom_left`, `bottom_right`) work instead of a
+    list. A quadrant is `"Header"`, `"Header: body"`, or `{header, body?}`.
+  - Axis labels accept the pattern's own `x_axis_label` / `y_axis_label` as
+    aliases; `x_low` / `x_high` / `y_low` / `y_high` label the axis ends.
+  - Short of four headed quadrants and two named axes, or past a budget
+    (header ≤80 chars, body ≤200, axis ≤60, axis end ≤20), it degrades to a
+    bullet list that names each quadrant's position and both axes with their
+    ends — a quadrant stripped of where it sits on the axes has lost the point
+    of the slide — and `SEMANTIC_DENSITY` names what broke.
+
 - **DeckSpec kind `timeline` (go-slide-creator-wrsb).** Dated milestones on a
   line are not a phased roadmap, and the spec only had the latter: an author
   with five dates and no workstreams had to bend them into phases or drop to

@@ -236,6 +236,12 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RolePlan, family: FamilyTimeline, density: DensityMedium, layout: "blank-title",
 		pattern: timelinePattern,
 	},
+	KindMatrix2x2: {
+		// A 2x2 sorts options against two axes: the comparison family, the same
+		// as a scored option matrix.
+		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "blank-title",
+		pattern: matrixPattern,
+	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
@@ -327,6 +333,12 @@ func statPattern(body map[string]any) string {
 // actually compile to it (go-slide-creator-wrsb).
 func timelinePattern(body map[string]any) string {
 	return slides.TimelinePattern(body)
+}
+
+// matrixPattern advertises matrix-2x2 only when the payload will actually
+// compile to it (go-slide-creator-ykjh).
+func matrixPattern(body map[string]any) string {
+	return slides.MatrixPattern(body)
 }
 
 // agendaPattern advertises the agenda pattern the payload will actually
@@ -502,6 +514,12 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			visual("timeline-horizontal", "3-7 dated milestones on one line"),
 			visual("phase-roadmap", "switch to kind roadmap when the phases carry workstreams rather than dates"),
 			{Layout: "content", Reason: "a dated bullet list preserves more or fewer milestones"},
+		}
+	case KindMatrix2x2:
+		return []CompositionCandidate{
+			visual("matrix-2x2", "four quadrants against two named axes"),
+			visual("table-highlight", "switch to kind option_matrix to score options against more than two criteria"),
+			{Layout: "content", Reason: "native bullets preserve a half-filled matrix or unnamed axes"},
 		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}

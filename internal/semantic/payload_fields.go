@@ -76,6 +76,12 @@ var timelineStopKeys = []string{
 	"body", "description", "detail", "summary",
 }
 
+// matrixQuadrantKeys are the keys a 2x2 quadrant object may carry.
+var matrixQuadrantKeys = []string{
+	"header", "title", "label", "name",
+	"body", "description", "detail", "summary",
+}
+
 // archTierKeys are the keys ArchitectureTiers reads from a tier object.
 // teamMemberKeys are the keys a team member object may carry.
 var teamMemberKeys = []string{
@@ -293,6 +299,30 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"stops":    {typ: "array", desc: "Alias for milestones.", itemStrings: true, itemKeys: timelineStopKeys},
 		"events":   {typ: "array", desc: "Alias for milestones.", itemStrings: true, itemKeys: timelineStopKeys},
 		"timeline": {typ: "array", desc: "Alias for milestones.", itemStrings: true, itemKeys: timelineStopKeys},
+	}, compositionFields()), universalFields()),
+	KindMatrix2x2: withFields(withFields(map[string]payloadField{
+		"title":    strField("Slide title."),
+		"takeaway": strField("One-line takeaway footer."),
+		"quadrants": {
+			typ:         "array",
+			desc:        "Exactly 4 quadrants, clockwise from the top left: strings (\"Header\" or \"Header: body\") or {header, body?}. Header ≤80 chars, body ≤200.",
+			itemStrings: true,
+			itemKeys:    matrixQuadrantKeys,
+		},
+		"cells":        {typ: "array", desc: "Alias for quadrants.", itemStrings: true, itemKeys: matrixQuadrantKeys},
+		"boxes":        {typ: "array", desc: "Alias for quadrants.", itemStrings: true, itemKeys: matrixQuadrantKeys},
+		"top_left":     {typ: "object", desc: "One quadrant by position, instead of the quadrants list.", itemKeys: matrixQuadrantKeys},
+		"top_right":    {typ: "object", desc: "One quadrant by position.", itemKeys: matrixQuadrantKeys},
+		"bottom_left":  {typ: "object", desc: "One quadrant by position.", itemKeys: matrixQuadrantKeys},
+		"bottom_right": {typ: "object", desc: "One quadrant by position.", itemKeys: matrixQuadrantKeys},
+		"x_axis":       strField("The horizontal axis's name (e.g. \"Effort\"). ≤60 chars."),
+		"x_axis_label": strField("Alias for x_axis."),
+		"y_axis":       strField("The vertical axis's name (e.g. \"Impact\"). ≤60 chars."),
+		"y_axis_label": strField("Alias for y_axis."),
+		"x_low":        strField("Label for the left end of the horizontal axis (default \"Low\"). ≤20 chars."),
+		"x_high":       strField("Label for the right end of the horizontal axis (default \"High\"). ≤20 chars."),
+		"y_low":        strField("Label for the bottom end of the vertical axis (default \"Low\"). ≤20 chars."),
+		"y_high":       strField("Label for the top end of the vertical axis (default \"High\"). ≤20 chars."),
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
