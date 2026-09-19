@@ -7,13 +7,23 @@ import (
 
 // TextBody represents a DrawingML text body (a:txBody).
 type TextBody struct {
-	Wrap      string      // Text wrapping: "square", "none"
-	Anchor    string      // Vertical anchor: "t", "ctr", "b"
-	AnchorCtr bool        // Center text horizontally in shape
-	Vert      string      // Vertical text direction: "vert", "vert270", "wordArtVert", etc.
-	Insets    [4]int64    // Padding [left, top, right, bottom] in EMU
-	AutoFit   string      // Auto-fit mode: "noAutofit", "normAutofit", "spAutoFit"
-	Paragraphs []Paragraph
+	Wrap      string   // Text wrapping: "square", "none"
+	Anchor    string   // Vertical anchor: "t", "ctr", "b"
+	AnchorCtr bool     // Center text horizontally in shape
+	Vert      string   // Vertical text direction: "vert", "vert270", "wordArtVert", etc.
+	Insets    [4]int64 // Padding [left, top, right, bottom] in EMU
+	AutoFit   string   // Auto-fit mode: "noAutofit", "normAutofit", "spAutoFit"
+	// AutoFitFontScale and AutoFitLnSpcReduction are the shrink PowerPoint will
+	// apply, in OOXML percent-thousandths (62000 = 62%). They are written on
+	// <a:normAutofit/> and are required for the file to render the same
+	// everywhere: LibreOffice recomputes the fit, PowerPoint applies the stored
+	// scale — 100% when absent — and only recomputes on edit, so an overflowing
+	// diagram looked merely small in a soffice render and overflowed its box for
+	// the person who opened the deck (go-slide-creator-wvr0).
+	// Zero means "not computed": the bare <a:normAutofit/> is written.
+	AutoFitFontScale      int
+	AutoFitLnSpcReduction int
+	Paragraphs            []Paragraph
 }
 
 // Paragraph represents a DrawingML paragraph (a:p).
@@ -30,11 +40,11 @@ type Paragraph struct {
 // Run represents a DrawingML text run (a:r) or field (a:fld).
 type Run struct {
 	Text       string
-	FontSize   int    // Font size in hundredths of a point (e.g. 1200 = 12pt)
+	FontSize   int // Font size in hundredths of a point (e.g. 1200 = 12pt)
 	Bold       bool
 	Italic     bool
 	Underline  bool
-	Dirty      bool // Emit dirty="0" (marks text as spell-check clean)
+	Dirty      bool   // Emit dirty="0" (marks text as spell-check clean)
 	Color      Fill   // Text color fill
 	Lang       string // Language tag (e.g. "en-US")
 	FontFamily string // Font typeface (e.g. "+mn-lt" for theme minor font, "Arial")
@@ -102,7 +112,15 @@ func (tb TextBody) writeBodyPr(buf *bytes.Buffer) {
 	// Auto-fit
 	switch tb.AutoFit {
 	case "normAutofit":
-		buf.WriteString(`<a:normAutofit/>`)
+		switch {
+		case tb.AutoFitFontScale > 0 && tb.AutoFitLnSpcReduction > 0:
+			fmt.Fprintf(buf, `<a:normAutofit fontScale="%d" lnSpcReduction="%d"/>`,
+				tb.AutoFitFontScale, tb.AutoFitLnSpcReduction)
+		case tb.AutoFitFontScale > 0:
+			fmt.Fprintf(buf, `<a:normAutofit fontScale="%d"/>`, tb.AutoFitFontScale)
+		default:
+			buf.WriteString(`<a:normAutofit/>`)
+		}
 	case "spAutoFit":
 		buf.WriteString(`<a:spAutoFit/>`)
 	case "noAutofit":

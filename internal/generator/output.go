@@ -828,6 +828,10 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		}
 	}
 
+	// Every shape now stores the shrink it needs; say so when that shrink leaves
+	// the text unreadable (go-slide-creator-wvr0).
+	ctx.reportUnreadableAutofit(slideData, slideNum)
+
 	// Fix OOXML namespace prefixes for compatibility with LibreOffice/PowerPoint
 	slideData = fixOOXMLNamespaces(slideData)
 

@@ -427,35 +427,15 @@ func AutofitScaleFor(paras []ParagraphSpec, widthEMU, heightEMU int64) (float64,
 // steps, whose measured wrapped height fits the rectangle. The second result is
 // false when even AutofitFloorScale overflows.
 func AutofitScale(paras []cellParagraph, widthEMU, heightEMU int64) (float64, bool) {
-	availablePt := availableTextHeightPt(heightEMU)
-	if availablePt <= 0 || widthEMU <= 0 {
-		return 1, true
+	converted := make([]textfit.AutofitParagraph, 0, len(paras))
+	for _, p := range paras {
+		converted = append(converted, textfit.AutofitParagraph{Text: p.text, FontPt: p.fontPt})
 	}
-	fits := func(scale float64) bool {
-		total := 0.0
-		for _, p := range paras {
-			if strings.TrimSpace(p.text) == "" {
-				continue
-			}
-			pt := p.fontPt * scale
-			m, err := textfit.MeasureRun(p.text, budgetFontName, pt, widthEMU, 0)
-			if err != nil {
-				return true // cannot measure: do not invent an overflow
-			}
-			total += float64(m.Lines) * pt * lineSpacing
-		}
-		return total <= availablePt
-	}
-	for step := 0; ; step++ {
-		scale := 1.0 - 0.02*float64(step)
-		if scale < AutofitFloorScale {
-			break
-		}
-		if fits(scale) {
-			return scale, true
-		}
-	}
-	return AutofitFloorScale, false
+	return textfit.AutofitScale(converted, widthEMU, availableTextHeightPt(heightEMU), textfit.AutofitOptions{
+		FontName:    budgetFontName,
+		LineSpacing: lineSpacing,
+		FloorScale:  AutofitFloorScale,
+	})
 }
 
 // dominantFontPt returns the font size carrying the most characters, falling back

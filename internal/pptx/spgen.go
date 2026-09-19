@@ -73,6 +73,10 @@ func GenerateShape(opts ShapeOptions) ([]byte, error) {
 		name = fmt.Sprintf("Shape %d", opts.ID)
 	}
 
+	// Record the shrink PowerPoint should apply, so the stored file renders the
+	// same everywhere (go-slide-creator-wvr0).
+	applyAutofitScale(opts.Text, opts.Bounds)
+
 	var buf bytes.Buffer
 
 	// p:sp

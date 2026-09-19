@@ -37,6 +37,38 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Native diagrams store the autofit shrink, so the file renders the same in
+  PowerPoint as in LibreOffice (go-slide-creator-wvr0).** Every native diagram
+  (swot, business_model_canvas, value_chain, pestel, house, porters, nine_box,
+  kpi, heatmap, panel_layout, process_flow, pyramid, stylish-panels, and every
+  shape_grid cell) wrote `<a:normAutofit/>` with no `fontScale`. LibreOffice
+  recomputes the shrink, so our own renders showed overflowing text merely
+  small; PowerPoint applies the **stored** scale — 100% when the attribute is
+  absent — and only recomputes when a human edits the shape, so the same box
+  overflowed for the person who opened the deck. It also silently invalidated
+  every visual-QA loop that renders through `soffice`: the pixels an agent
+  inspected were not the pixels the client saw.
+  `pptx.GenerateShape` now measures the body and writes the computed
+  `fontScale` / `lnSpcReduction`. On the reported SWOT stress slide the two
+  overflowing quadrants come out at 52% and 28%; the three that fit keep the
+  bare element. Verified by pinning the text at the stored scale with
+  `noAutofit` and re-rendering: everything sits inside its box, where the same
+  test against the pre-fix prediction spilled four bullets out of two
+  quadrants.
+  The prediction lives in `internal/textfit.AutofitScale`, which
+  `internal/textcapacity` now delegates to as well — one implementation, so the
+  number the engine reports and the number it stores cannot drift. It counts
+  paragraph `spcAft`, which the glyph measurement never saw: twelve bullets at
+  6pt space-after carry 72pt of spacing, and ignoring it predicted 66% for a
+  block that needed 28%.
+- **An autofit shrink that leaves text unreadable is now reported.** When the
+  stored scale takes a shape's smallest text under the `viewing_mode`
+  readability floor, generation emits the existing `TEXT_BELOW_READABLE_MIN`
+  (advisory, `action: review`) naming the effective size and the shrink —
+  `body text renders at 3.4pt, below the 12pt minimum for viewing_mode
+  "present" (autofit 28% to fit the shape)`. Across the 34 bundled examples
+  this adds 9 advisory findings, each one true.
+
 - **`reduce_text{max_items}` stopped silently deleting a fact-bearing bullet
   group (go-slide-creator-sx53).** The protected-fact guard covered pattern
   arrays and bullet lists, but the `bullet_groups` group truncation had none:
