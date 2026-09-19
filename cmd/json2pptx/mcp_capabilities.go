@@ -230,6 +230,12 @@ type capabilitiesFeatures struct {
 	// the current section title in the footer. Requires a populated structure
 	// block to be useful.
 	SectionCrumb capabilitiesFeatureFlag `json:"section_crumb"`
+	// DesignMode advertises the presentation-level `design_mode` field. It is a
+	// FIELD, not a tool argument: the design_mode_violation refusal used to
+	// suggest it as one, and the word appeared nowhere in tools/list or
+	// get_capabilities, so an agent hitting the refusal had to guess where it
+	// belonged (go-slide-creator-g0er).
+	DesignMode capabilitiesFeatureFlag `json:"design_mode"`
 	// QualityModes truth-labels the auto_repair / make_deck quality regimes: the
 	// default deterministic loop (static + render-fit findings only) and the
 	// opt-in visual_qa phase (render → inspect_slide_images → repair, plus
@@ -493,6 +499,11 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				Version:   "2.8.0",
 				UsageHint: "Set top-level chrome:{confidentiality,client_name,project_code,footer_date,page_numbers,section_crumb}. Composites into a deck-wide footer; auto-suppressed on title/closing slides.",
 			},
+			DesignMode: capabilitiesFeatureFlag{
+				Supported: true,
+				Version:   "2.11.0",
+				UsageHint: "Set presentation.design_mode:\"free\" (a FIELD of the presentation object, not a tool argument) to honor hand-set shape_grid text sizes and non-theme fills. The default \"constrained\" refuses them with design_mode_violation.",
+			},
 			PageNumbers: capabilitiesFeatureFlag{
 				Supported: true,
 				Version:   "2.8.0",
@@ -531,6 +542,7 @@ func buildCapabilitiesResult(ctx context.Context, templatesDir, outputDir string
 				"base_dir":                 "4.25.0",
 				"asset_limits":             "4.33.0",
 				"deck_chrome":              "2.8.0",
+				"design_mode":              "2.11.0",
 				"page_numbers":             "2.8.0",
 				"section_structure":        "2.7.0",
 				"section_crumb":            "2.8.0",

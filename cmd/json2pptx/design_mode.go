@@ -587,6 +587,26 @@ func colorDistance(r1, g1, b1, r2, g2, b2 uint8) float64 {
 	return math.Sqrt(dr*dr + dg*dg + db*db)
 }
 
+// designModeFreeSuggestion is the "re-submit with design_mode: free" hop.
+//
+// design_mode is a field of the PRESENTATION, not a tool argument: the
+// suggestion used to read {tool: generate_presentation, args_template:
+// {design_mode: "free"}}, and following it verbatim was rejected with
+// UNKNOWN_PARAMETER — while the word design_mode appeared nowhere in tools/list
+// or get_capabilities, so the only way out was to guess where it belonged
+// (go-slide-creator-g0er).
+func designModeFreeSuggestion() *patterns.ToolCallSuggestion {
+	return &patterns.ToolCallSuggestion{
+		Tool: "generate_presentation",
+		ArgsTemplate: map[string]any{
+			"presentation": map[string]any{
+				"design_mode": "free",
+				"slides":      "<your existing slides, unchanged>",
+			},
+		},
+	}
+}
+
 // designModeDiagnostics converts design-mode FitFindings into Diagnostics with
 // a next_tool_call hint that tells agents to re-submit with design_mode:"free"
 // if the raw values are intentional.
@@ -594,16 +614,11 @@ func designModeDiagnostics(violations []patterns.FitFinding) []diagnostics.Diagn
 	diags := make([]diagnostics.Diagnostic, 0, len(violations))
 	for _, v := range violations {
 		d := diagnostics.Diagnostic{
-			Code:     "design_mode_violation",
-			Path:     v.Path,
-			Message:  v.Message,
-			Severity: diagnostics.SeverityError,
-			NextToolCall: &patterns.ToolCallSuggestion{
-				Tool: "generate_presentation",
-				ArgsTemplate: map[string]any{
-					"design_mode": "free",
-				},
-			},
+			Code:         "design_mode_violation",
+			Path:         v.Path,
+			Message:      v.Message,
+			Severity:     diagnostics.SeverityError,
+			NextToolCall: designModeFreeSuggestion(),
 		}
 		if v.Fix != nil {
 			d.Fix = &diagnostics.Fix{Kind: v.Fix.Kind, Params: v.Fix.Params}
@@ -622,16 +637,11 @@ func droppedDiagramColorDiagnostics(findings []patterns.FitFinding) []diagnostic
 	diags := make([]diagnostics.Diagnostic, 0, len(findings))
 	for _, f := range findings {
 		d := diagnostics.Diagnostic{
-			Code:     f.Code,
-			Path:     f.Path,
-			Message:  f.Message,
-			Severity: diagnostics.SeverityWarning,
-			NextToolCall: &patterns.ToolCallSuggestion{
-				Tool: "generate_presentation",
-				ArgsTemplate: map[string]any{
-					"design_mode": "free",
-				},
-			},
+			Code:         f.Code,
+			Path:         f.Path,
+			Message:      f.Message,
+			Severity:     diagnostics.SeverityWarning,
+			NextToolCall: designModeFreeSuggestion(),
 		}
 		if f.Fix != nil {
 			d.Fix = &diagnostics.Fix{Kind: f.Fix.Kind, Params: f.Fix.Params}

@@ -108,8 +108,9 @@ func TestDroppedDiagramColorDiagnostics_WarningSeverity(t *testing.T) {
 	if d.Severity != "warning" {
 		t.Errorf("expected warning severity (non-blocking), got %q", d.Severity)
 	}
-	if d.NextToolCall == nil || d.NextToolCall.ArgsTemplate["design_mode"] != "free" {
-		t.Errorf("expected next_tool_call suggesting design_mode free, got %+v", d.NextToolCall)
+	pres, _ := d.NextToolCall.ArgsTemplate["presentation"].(map[string]any)
+	if d.NextToolCall == nil || pres == nil || pres["design_mode"] != "free" {
+		t.Errorf("expected next_tool_call suggesting presentation.design_mode free, got %+v", d.NextToolCall)
 	}
 }
 
@@ -321,8 +322,18 @@ func TestDesignModeDiagnostics_IncludesNextToolCall(t *testing.T) {
 	if d.NextToolCall.Tool != "generate_presentation" {
 		t.Errorf("NextToolCall.Tool = %q, want generate_presentation", d.NextToolCall.Tool)
 	}
-	if dm, ok := d.NextToolCall.ArgsTemplate["design_mode"].(string); !ok || dm != "free" {
-		t.Errorf("NextToolCall.ArgsTemplate[design_mode] = %v, want \"free\"", d.NextToolCall.ArgsTemplate["design_mode"])
+	// design_mode is a FIELD of the presentation, not a tool argument: the old
+	// suggestion was rejected with UNKNOWN_PARAMETER when followed verbatim
+	// (go-slide-creator-g0er).
+	pres, ok := d.NextToolCall.ArgsTemplate["presentation"].(map[string]any)
+	if !ok {
+		t.Fatalf("NextToolCall.ArgsTemplate has no presentation object: %+v", d.NextToolCall.ArgsTemplate)
+	}
+	if dm, ok := pres["design_mode"].(string); !ok || dm != "free" {
+		t.Errorf("presentation.design_mode = %v, want \"free\"", pres["design_mode"])
+	}
+	if _, ok := d.NextToolCall.ArgsTemplate["design_mode"]; ok {
+		t.Error("design_mode must not be suggested as a tool argument — generate_presentation rejects it")
 	}
 	if d.Fix == nil {
 		t.Fatal("Fix is nil, want non-nil")

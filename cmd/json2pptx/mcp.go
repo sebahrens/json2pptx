@@ -65,7 +65,7 @@ Common geometries: rect, roundRect, ellipse, diamond, chevron, rightArrow, hexag
 Grid options: "columns" (number or width array), "gap"/"col_gap"/"row_gap" (points), "bounds" (percentage {x,y,width,height}), "vertical_align" ("stretch" default|"top"|"center"|"bottom"; places a block of max_height-capped rows inside the bounds).
 Cell options: "col_span", "row_span" for merged cells. Shape options: "geometry", "fill" (color string or {color,alpha}), "line" ({color,width,dash}), "text" (string or {content,size,bold,italic,align,vertical_align,color,font,inset_left,inset_right,inset_top,inset_bottom}), "rotation", "adjustments".
 
-Optional top-level fields: "output_filename", "accent_strategy" ("primary"|"rotate"|"section-keyed" — controls default accent color rotation across slides), "viewing_mode" ("present" default|"read" — readability floors for TEXT_BELOW_READABLE_MIN), "defaults":{"table_style":{...},"cell_style":{...}} (swap-only deck-level defaults applied before validation), "footer":{"enabled":true,"left_text":"..."}, "theme_override":{"colors":{},"title_font":"...","body_font":"..."}.
+Optional top-level fields: "output_filename", "accent_strategy" ("primary"|"rotate"|"section-keyed" — controls default accent color rotation across slides), "viewing_mode" ("present" default|"read" — readability floors for TEXT_BELOW_READABLE_MIN), "design_mode" ("constrained" default|"free" — constrained refuses hand-set text sizes and non-theme fills in shape_grid cells with design_mode_violation; set "free" INSIDE this presentation object, not as a tool argument, when the raw values are deliberate), "defaults":{"table_style":{...},"cell_style":{...}} (swap-only deck-level defaults applied before validation), "footer":{"enabled":true,"left_text":"..."}, "theme_override":{"colors":{},"title_font":"...","body_font":"..."}.
 
 Advanced deck-level fields (all opt-in; see get_capabilities.features for support + usage hints):
 - "chrome":{"confidentiality":"...","client_name":"...","project_code":"...","footer_date":"...","page_numbers":{"enabled":true,"format":"{current} / {total}","skip":["title","closing"]},"section_crumb":true} — deck-wide footer chrome with page numbers and an optional section title crumb; auto-suppressed on title/closing slides.
@@ -77,6 +77,11 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 			mcp.Properties(map[string]any{
 				"template": map[string]any{"type": "string", "description": "Template name (use list_templates to discover available names)"},
 				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+				"design_mode": map[string]any{
+					"type":        "string",
+					"enum":        []any{"constrained", "free"},
+					"description": "constrained (default) refuses hand-set text sizes and non-theme fills in shape_grid cells (design_mode_violation); free honors them. A presentation FIELD, not a tool argument.",
+				},
 			}),
 		),
 		mcp.WithString("output_filename",

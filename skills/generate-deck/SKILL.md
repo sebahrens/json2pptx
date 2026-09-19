@@ -456,7 +456,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 ```
 
 **Key scope rules:**
-- `design_mode` is **deck-level** (top of the JSON, not inside a slide). The CLI flag `--design-mode=constrained|free` overrides this field for ad-hoc runs (`json2pptx generate --design-mode=free --json deck.json`).
+- `design_mode` is **deck-level** (top of the JSON, not inside a slide) and it is a **presentation FIELD, never a tool argument** — `generate_presentation(design_mode: "free")` is rejected with `UNKNOWN_PARAMETER`; put it inside the `presentation` object (`design_mode_violation`'s `next_tool_call` now shows exactly that shape, and `get_capabilities().features.design_mode` advertises it). The CLI flag `--design-mode=constrained|free` overrides this field for ad-hoc runs (`json2pptx generate --design-mode=free --json deck.json`).
 - `contrast_check` is **slide-level** (inside each slide object, not on a content item)
 - In **constrained** mode, raw hex colors on the documented override surface (`diagram_value.style.colors`, shape fills, etc.) are **refused** (`design_mode_violation`, blocks generation). Raw hex colors embedded in a diagram's **data payload** (e.g. `pyramid` `levels[].color`) are instead **dropped silently** and rendered with the template scheme, with an advisory `CUSTOM_COLOR_DROPPED` finding (MCP: `warning` severity). To honor custom diagram colors, rerun with `design_mode: "free"`.
 

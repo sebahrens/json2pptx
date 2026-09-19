@@ -37,6 +37,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **design_mode_violation's next_tool_call is executable (go-slide-creator-g0er).**
+  The refusal suggested `{tool: "generate_presentation", args_template:
+  {design_mode: "free"}}`; following it verbatim failed with
+  `UNKNOWN_PARAMETER` because `design_mode` is a field of the PRESENTATION, not
+  a tool argument — and the word appeared nowhere in `tools/list` or
+  `get_capabilities`, so the only escape was guessing where it belonged. The
+  suggestion now nests it (`{presentation: {design_mode: "free", slides: …}}`),
+  `generate_presentation`'s `presentation` schema declares `design_mode` with
+  its enum, and `get_capabilities().features.design_mode` advertises the field
+  with a usage hint that says it is not a tool argument.
+
 - **The recommended new-deck path can see (go-slide-creator-05wn).**
   `render_deck_spec` reported only what generation happened to emit: one
   `executive_summary` slide with a 100-word body came back with
