@@ -39,6 +39,15 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// carries ShapeGrid == nil, so checkShapeGridStructural is skipped.
 	input = expandComposeForPreflight(input, slideWidth, slideHeight)
 
+	// Expand slide-level patterns the same way, so every detector below — text
+	// capacity, readability, structural geometry, table and chart preflight —
+	// measures the cells generation renders. A pattern slide carries no
+	// ShapeGrid until generation, so the whole text-density family silently
+	// skipped the surface the skill tells agents to author through
+	// (go-slide-creator-adur). Paths are rerooted at /slides/N/pattern before
+	// the findings are returned.
+	input, patternSlides := expandPatternsForFit(input, slideWidth, slideHeight, theme)
+
 	// 1. Text-fit findings from existing generateFitReport (tables + shape-grid
 	// text). Pass the resolved layout geometry so shape_grid cells are measured
 	// against the SAME bounds generation renders, matching the structural pass
@@ -150,6 +159,18 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// See patterns.SortCanonical and docs/FIT_FINDINGS.md "Sort invariant".
 	patterns.SortCanonical(findings, slidepath.SlideIndex)
 
+	// Reroot findings emitted against a pattern's expanded grid: the deck has no
+	// shape_grid at that index, so the synthetic path would point at nothing.
+	if len(patternSlides) > 0 {
+		for i := range findings {
+			findings[i].Path = rerootPatternPath(findings[i].Path, patternSlides)
+			if findings[i].Pattern == "" {
+				findings[i].Pattern = patternNameForSlide(input, findings[i].Path)
+			}
+			findings[i].Fix = patternCellFix(findings[i].Fix, findings[i].Pattern)
+		}
+	}
+
 	// Attach next_tool_call to actionable findings, then keep every suggestion
 	// callable: under the core profile a suggestion naming a hidden tool (e.g.
 	// recommend_pattern) is a dead end (go-slide-creator-mvny).
@@ -179,7 +200,7 @@ func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool)
 		slideIdx int
 		items    []patterns.FitFinding
 	}
-	order := []int{}           // insertion-order slide indices
+	order := []int{} // insertion-order slide indices
 	bySlide := map[int]*group{}
 
 	for _, f := range findings {
@@ -1262,8 +1283,8 @@ func detectSparseRawGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHe
 			Fix: &patterns.FixSuggestion{
 				Kind: "adopt_pattern",
 				Params: map[string]any{
-					"filled_pct":        ratio,
-					"content_height":    contentH,
+					"filled_pct":         ratio,
+					"content_height":     contentH,
 					"layout_area_height": layoutAreaH,
 				},
 			},

@@ -44,7 +44,10 @@ func readabilityCodes(fs []patterns.FitFinding) []patterns.FitFinding {
 // go-slide-creator-vbic: a KPI card whose label is far too long for its cell
 // is shrunk by the renderer below the present-mode caption/body floor.
 func TestReadability_KPILongLabelPresentMode(t *testing.T) {
-	long := strings.Repeat("up from $41M last year, driven by enterprise expansion and new logos in EMEA ", 2)
+	// Long enough that the predicted shrink is well outside the prediction's
+	// error bar (go-slide-creator-adur added autofitShrinkReportThreshold: a
+	// predicted 0.90 shrink is not evidence of an unreadable slide).
+	long := strings.Repeat("up from $41M last year, driven by enterprise expansion and new logos in EMEA ", 4)
 	in := &PresentationInput{ViewingMode: "present", Slides: []SlideInput{kpiSlide(t, "Annual recurring revenue (all segments)", long)}}
 	got := readabilityCodes(collectReadabilityFindings(in, nil, 12192000, 6858000))
 	if len(got) == 0 {

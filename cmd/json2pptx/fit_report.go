@@ -88,6 +88,12 @@ func evaluateStrictFit(input *PresentationInput, mode string, layouts []types.La
 func generateFitReport(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []fitFinding {
 	var findings []fitFinding
 
+	// Pattern slides carry no ShapeGrid until generation, so every text-capacity
+	// check below used to skip the surface agents are told to author through
+	// (go-slide-creator-adur). Expand once, measure the same cells generation
+	// renders, and report them under /slides/N/pattern.
+	input, fromPattern := expandPatternsForFit(input, slideWidth, slideHeight, nil)
+
 	for si, slide := range input.Slides {
 		// Walk content-level tables.
 		for ci, content := range slide.Content {
@@ -105,8 +111,18 @@ func generateFitReport(input *PresentationInput, layouts []types.LayoutMetadata,
 		// Walk shape_grid cells using the same layout-aware geometry as
 		// generation so strict_fit / fit-report bounds match render.
 		if slide.ShapeGrid != nil {
-			findings = append(findings,
-				walkShapeGrid(slide, si, layouts, slideWidth, slideHeight)...)
+			cells := walkShapeGrid(slide, si, layouts, slideWidth, slideHeight)
+			if fromPattern[si] {
+				patternName := ""
+				if slide.Pattern != nil {
+					patternName = slide.Pattern.Name
+				}
+				for i := range cells {
+					cells[i].Path = rerootPatternPath(cells[i].Path, fromPattern)
+					cells[i].Fix = patternCellFix(cells[i].Fix, patternName)
+				}
+			}
+			findings = append(findings, cells...)
 		}
 	}
 
@@ -317,7 +333,14 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 			BindingDimension: "height",
 			RequiredPt:       ro.ContentPt,
 			AllocatedPt:      ro.MaxHeightPt,
-			Action:           "refuse",
+			// Advisory, not blocking: this is a row-level estimate, and the
+			// authoritative per-cell checks below already refuse text that is
+			// clipped after autofit. Every row overflow across the bundled and
+			// gallery decks is a 4-8% overshoot — blocking a deck because a row
+			// wants 27pt in a 25pt slot is the kind of refusal
+			// go-slide-creator-lmpu was about (surfaced once pattern slides
+			// started being measured at all, go-slide-creator-adur).
+			Action: "review",
 		})
 	}
 

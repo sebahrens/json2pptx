@@ -35,6 +35,13 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 	if slideHeight <= 0 {
 		slideHeight = shapegrid.DefaultSlideHeightEMU
 	}
+	// Expand pattern slides so the check sees the cells generation renders: a
+	// slide-level pattern carries slide.Pattern, not ShapeGrid, so no pattern
+	// slide was ever evaluated — and "6pt KPI deltas and 9pt chevron
+	// descriptions", the motivating examples for this check, are pattern output
+	// (go-slide-creator-adur).
+	input, fromPattern := expandPatternsForFit(input, slideWidth, slideHeight, nil)
+
 	var findings []patterns.FitFinding
 	for si, slide := range input.Slides {
 		if slide.ShapeGrid == nil {
@@ -66,6 +73,14 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 				// grid cell. Point it at the cell with its measured budget
 				// (go-slide-creator-9zof).
 				retargetCellReadabilityFix(f, cellPath, d.MaxChars)
+				if fromPattern[si] {
+					patternName := ""
+					if slide.Pattern != nil {
+						patternName = slide.Pattern.Name
+					}
+					f.Path = rerootPatternPath(f.Path, fromPattern)
+					f.Fix = patternCellFix(f.Fix, patternName)
+				}
 				findings = append(findings, *f)
 			}
 		}
@@ -152,10 +167,25 @@ func predictedAutofitScale(paras []cellParagraph, widthEMU, heightEMU int64) flo
 	return scale
 }
 
+// autofitShrinkReportThreshold is the predicted scale at or below which a
+// shrink-driven readability finding is trustworthy.
+//
+// The shrink is a PREDICTION from an estimated cell box, and the estimate runs a
+// little tight: on examples/phase-roadmap.json it predicts 12pt shrinking to
+// ~10.6pt on cells that render at about 12pt. Reporting inside that error bar
+// turned clean pattern decks into gate failures the moment pattern slides
+// started being measured (go-slide-creator-adur). A prediction of 0.85 or
+// harsher is well outside the error bar; text AUTHORED below the floor is exact
+// and always reported.
+const autofitShrinkReportThreshold = 0.85
+
 // worstReadability returns the TEXT_BELOW_READABLE_MIN finding for the
 // paragraph furthest below its role's floor after the predicted autofit
 // scale, or nil when every paragraph stays readable.
 func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingMode, path string) *patterns.FitFinding {
+	if scale < 1 && scale > autofitShrinkReportThreshold {
+		return nil
+	}
 	var worst *patterns.FitFinding
 	worstRatio := 1.0
 	for _, p := range paras {

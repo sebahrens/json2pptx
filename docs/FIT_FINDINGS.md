@@ -1293,6 +1293,8 @@ Fit findings are scoped to **JSON-authored content only**. Content inherited fro
 
 - **Placeholder text** — body, content, and title placeholders populated from `slides[].content[]`
 - **Shape grid cells** — shapes and tables authored in `slides[].shape_grid`
+- **Pattern slides** — `slides[].pattern` is expanded once before the detectors run, so a named pattern is measured exactly like the equivalent hand-authored grid. Its findings are rooted at `/slides/N/pattern/rows/R/cells/C/...` (the deck has no `shape_grid` at that index) and any `reduce_cell_text` fix is replaced by the advisory `rewrite_field`, carrying the measured `max_chars` and the pattern name — there is no cell in the deck JSON to edit, so the remedy is to shorten the pattern's own values. Before go-slide-creator-adur the whole text-density and readability family skipped pattern slides, so the surface the skill recommends reported "no issues" on decks whose body text renders at 4-8pt.
+- **Compose envelopes** — `slides[].compose` is expanded the same way
 - **Content-level tables** — tables in `slides[].content[]` with `type: "table"`
 
 ### What is excluded

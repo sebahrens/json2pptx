@@ -10,6 +10,34 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Pattern slides are measured by the text detectors (go-slide-creator-adur).**
+  `generateFitReport`, `collectReadabilityFindings` and the structural pass all
+  walked `slide.ShapeGrid`, which a slide-level named pattern only gets at
+  generation time — so the entire text-density / autofit / readability family
+  silently skipped the surface SKILL.md tells agents to author through. The same
+  content authored as a pattern reported one finding; authored as the pattern's
+  own expanded `shape_grid` it reported ten. Across the 45-pattern MAX decks:
+  125 findings → **399**.
+  - `collectFitFindings` now expands `slides[].pattern` once (alongside the
+    existing `compose` expansion) and every detector runs over that grid.
+  - Findings on an expanded pattern are rooted at
+    `/slides/N/pattern/rows/R/cells/C/...`, matching what the geometry detectors
+    already emitted.
+  - A `reduce_cell_text` fix on a pattern slide is replaced by the advisory
+    `rewrite_field`, keeping the measured `max_chars` and naming the `pattern`:
+    there is no cell in the deck JSON to edit, so the remedy is shortening the
+    pattern's values.
+  - The row-level `fit_overflow` ("row content ~27pt exceeds max_height 25pt")
+    is now `review` rather than `refuse`. Every occurrence across the bundled and
+    gallery decks is a 4–8% overshoot, and the per-cell checks already refuse
+    text that is clipped after autofit.
+  - `TEXT_BELOW_READABLE_MIN` is only reported when the predicted autofit shrink
+    is 0.85 or harsher. The shrink is a prediction from an estimated cell box:
+    on `examples/phase-roadmap.json` it predicts 12pt → ~10.6pt on cells that
+    render at about 12pt, and reporting inside that error bar turned clean
+    pattern decks into gate failures. Text *authored* below the floor is exact
+    and always reported.
+
 - **Shape-grid text density is measured, not counted
   (go-slide-creator-lmpu, go-slide-creator-yj77).** `fit_overflow` is the
   dominant reason a deck fails the quality gate, and it fired on cells that

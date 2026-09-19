@@ -166,6 +166,13 @@ Chart/diagram codes (below) introduce their own `fix.kind` values: `reduce_items
 
 ---
 
+## Pattern slides are measured too
+
+`slides[].pattern` carries no `shape_grid` until generation, so every fit finding below is evaluated against the pattern **expanded once** into the grid generation renders. Two consequences for agents:
+
+- Paths on a pattern slide are rooted at `/slides/N/pattern/rows/R/cells/C/...`, not `/slides/N/shape_grid/...` — the deck has no `shape_grid` at that index.
+- A text fix that would edit a grid cell (`reduce_cell_text`) is replaced by the advisory `rewrite_field`, carrying the measured `max_chars` and the `pattern` name. The cell does not exist in your JSON: shorten the pattern's own `values`, then re-run `expand_pattern` to confirm the new density.
+
 ## Fix kinds for `repair_slide` — complete table
 
 The apply-only superset accepted by `repair_slide` is broader than the fit-report `fix.kind` enum: fit-report only emits kinds the engine can derive automatically, while `repair_slide` also accepts kinds the *agent* decides to apply (e.g., `swap_layout`, `swap_pattern`, `autofix_visual`). Every kind below is a `case` in `applyRepairFix` (`cmd/json2pptx/mcp_repair.go`); the drift test `cmd/json2pptx/skill_drift_test.go` enforces this list and the kinds advertised by `get_capabilities().vocabularies.repair_fix_kinds` stay in sync.
