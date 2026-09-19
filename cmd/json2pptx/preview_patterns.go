@@ -209,9 +209,13 @@ func generateOnePatternPreview(
 		return fmt.Errorf("generate: %w", err)
 	}
 
-	// Convert PPTX -> PDF via LibreOffice
+	// Convert PPTX -> PDF via LibreOffice, in a profile nothing else owns:
+	// sharing the default profile with another soffice makes this exit 0 and
+	// write no PDF (go-slide-creator-0ixs).
 	loBin := findLOBinary()
-	cmd := exec.Command(loBin, "--headless", "--convert-to", "pdf", "--outdir", tmpDir, pptxPath) //nolint:gosec
+	loProfile := filepath.Join(tmpDir, "lo-profile")
+	cmd := exec.Command(loBin, "-env:UserInstallation=file://"+filepath.ToSlash(loProfile), //nolint:gosec
+		"--headless", "--convert-to", "pdf", "--outdir", tmpDir, pptxPath)
 	cmd.Stdout = io.Discard
 	cmd.Stderr = io.Discard
 	if err := cmd.Run(); err != nil {

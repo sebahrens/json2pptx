@@ -824,6 +824,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		RemediationSteps: []string{
 			"Read the message for the failing render stage.",
 			"For image output, confirm LibreOffice and ImageMagick are available.",
+			"If the message says LibreOffice produced no PDF, the deck is not the problem: close any open LibreOffice window and retry the call.",
 		},
 		RelatedCodes: []string{CodeGenerationFailed, CodeLibreOfficeUnavailable},
 	},

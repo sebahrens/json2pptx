@@ -510,7 +510,11 @@ func renderPPTXToPNGs(pptxPath, workDir string, density int) ([]string, error) {
 	if err := os.MkdirAll(pdfDir, 0o755); err != nil {
 		return nil, err
 	}
-	conv := exec.Command("libreoffice", "--headless", "--convert-to", "pdf", "--outdir", pdfDir, pptxPath) //nolint:gosec // controlled args
+	// A private profile: sharing the default one with another soffice instance
+	// makes libreoffice exit 0 and write no PDF (go-slide-creator-0ixs).
+	loProfile := filepath.Join(workDir, "lo-profile")
+	conv := exec.Command("libreoffice", "-env:UserInstallation=file://"+filepath.ToSlash(loProfile), //nolint:gosec // controlled args
+		"--headless", "--convert-to", "pdf", "--outdir", pdfDir, pptxPath)
 	if out, err := conv.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("libreoffice: %v\n%s", err, out)
 	}

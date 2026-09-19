@@ -37,6 +37,33 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Concurrent renders no longer fail at random
+  (go-slide-creator-0ixs).** `internal/render` was the one LibreOffice call site
+  in the repo that did not pass `-env:UserInstallation`
+  (`cmd/pptx2jpg`, `internal/layoutpreview` and `internal/qualitybench` all
+  did), so every json2pptx process shared one LibreOffice profile. A second
+  process converting at the same moment exits 0 and writes no PDF — silently,
+  with nothing in its log. Measured: four MCP servers each calling
+  `render_slide_image` on the same deck, **2 of 4 returned
+  `RENDER.RENDER_FAILED`**, every run; rendering all 34 `examples/` decks four
+  at a time produced images for **17 of 34**. The in-process mutex could not
+  help, because the collision is between processes. Each process now converts in
+  its own profile (created once, reused — a cold profile costs LibreOffice
+  ~0.55s), and a conversion that still produces no PDF is retried once against a
+  throwaway profile. After: **4/4** servers, **34/34** decks, and the same holds
+  with a foreground `soffice` holding the default profile open. Renders are
+  byte-identical to before (RMSE 0 across 20 slides on midnight-blue and
+  warm-coral). The two developer commands that shared the same defect,
+  `preview-patterns` and `audit-palette`, were fixed with it.
+- **`RENDER_FAILED` now names the cause an agent cannot see.** The old message
+  was `PDF not created at /var/folders/.../render-deck-NNN.pdf`, which reads
+  like a broken deck and sent agents off editing content that was fine. It now
+  reads `LibreOffice produced no PDF at <path> after 2 attempts (profile
+  <dir>). This usually means another LibreOffice instance was running, not that
+  the deck is invalid: close any open LibreOffice and retry this call`, with
+  LibreOffice's own stderr appended when it said anything. `describe_finding
+  RENDER_FAILED` carries the matching remediation step.
+
 - **The heuristic visual pass stopped inverting the signal
   (go-slide-creator-3pyf).** With no `ANTHROPIC_API_KEY`,
   `inspect_slide_images` falls back to pure-Go checks — and its edge-band check

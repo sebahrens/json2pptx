@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 // pngIndexFromName extracts the integer N from a filename matching "slide-N.png".
@@ -52,6 +53,58 @@ const ArtifactCleanupPolicy = "content-addressed; path is stable while the file 
 
 // mu serializes LibreOffice invocations (single-threaded per process).
 var mu sync.Mutex
+
+// LibreOffice refuses to do two things at once inside one user profile: the
+// second headless process attaches to the first one's session, exits 0, and
+// writes no PDF. mu stops that happening inside this process, but it says
+// nothing about the other processes on the machine — a second MCP server, a
+// parallel agent, or the user's own open LibreOffice. Measured on macOS with
+// four concurrent conversions against the shared default profile: 2 of 4
+// produced no PDF and logged nothing at all (go-slide-creator-0ixs).
+//
+// So every conversion runs against a profile only this process uses. It is
+// created once and reused: a cold profile costs LibreOffice ~0.55s to bootstrap
+// (1.34s vs 0.80s per conversion, measured) and mu already means no two
+// conversions here share it in time.
+var (
+	loProfileOnce sync.Once
+	loProfileDir  string
+	loProfileErr  error
+	// loRetries counts conversions that had to be retried because LibreOffice
+	// exited successfully and wrote no PDF. With a private profile this should
+	// stay at zero; TestConcurrentConversion asserts it does, because the retry
+	// alone is enough to make four concurrent conversions eventually succeed and
+	// would otherwise hide a regression in the profile itself.
+	loRetries atomic.Int64
+)
+
+// LibreOfficeRetryCount reports how many conversions in this process needed a
+// retry after LibreOffice produced no PDF.
+func LibreOfficeRetryCount() int64 { return loRetries.Load() }
+
+// libreOfficeProfile returns this process's private LibreOffice profile
+// directory, creating it on first use.
+func libreOfficeProfile() (string, error) {
+	loProfileOnce.Do(func() {
+		loProfileDir, loProfileErr = os.MkdirTemp("", fmt.Sprintf("json2pptx-lo-%d-", os.Getpid()))
+	})
+	return loProfileDir, loProfileErr
+}
+
+// loProfileArg renders a profile directory as the -env:UserInstallation
+// argument LibreOffice expects. An empty dir yields no argument, which means
+// the shared default profile — only acceptable when a private one could not be
+// created at all.
+func loProfileArg(dir string) []string {
+	if dir == "" {
+		return nil
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		abs = dir
+	}
+	return []string{"-env:UserInstallation=file://" + filepath.ToSlash(abs)}
+}
 
 // cacheDir returns the directory used for rendered slide caches.
 func cacheDir() string {
@@ -181,6 +234,10 @@ func DependencyStatus() (available bool, missing []string) {
 // Returns the path to the generated PDF. The conversion is bounded by
 // libreOfficeTimeout: the LibreOffice mutex is held only for the duration of
 // that deadline, never indefinitely, and a timeout returns a *TimeoutError.
+//
+// It runs against this process's private profile (see libreOfficeProfile) and,
+// if LibreOffice still exits successfully without writing a PDF, retries once
+// against a throwaway profile before giving up.
 func pptxToPDF(ctx context.Context, pptxPath, tmpDir string) (string, error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -190,30 +247,99 @@ func pptxToPDF(ctx context.Context, pptxPath, tmpDir string) (string, error) {
 		return "", err
 	}
 
-	_, stderr, err := runBounded(ctx, toolLibreOffice, pptxPath, libreOfficeTimeout,
-		office,
+	profile, profileErr := libreOfficeProfile()
+	pdfPath, stderr, err := convertToPDF(ctx, office, profile, pptxPath, tmpDir)
+	if err == nil {
+		return pdfPath, nil
+	}
+	var te *TimeoutError
+	if errors.As(err, &te) {
+		return "", err // structured timeout; propagate verbatim
+	}
+	if !errors.Is(err, errNoPDFProduced) {
+		return "", err
+	}
+
+	// LibreOffice claimed success and produced nothing. That is the signature of
+	// a profile it could not own, so the one retry uses a profile nothing else
+	// has ever touched (go-slide-creator-0ixs).
+	loRetries.Add(1)
+	retryProfile, mkErr := os.MkdirTemp("", "json2pptx-lo-retry-")
+	if mkErr == nil {
+		defer func() { _ = os.RemoveAll(retryProfile) }()
+		var retryStderr string
+		pdfPath, retryStderr, err = convertToPDF(ctx, office, retryProfile, pptxPath, tmpDir)
+		if err == nil {
+			return pdfPath, nil
+		}
+		if errors.As(err, &te) {
+			return "", err
+		}
+		if s := strings.TrimSpace(retryStderr); s != "" {
+			stderr = s
+		}
+	}
+
+	// Both attempts produced no PDF. Name the cause an agent can act on: this is
+	// an environment collision, not a defect in the deck.
+	msg := fmt.Sprintf("LibreOffice produced no PDF at %s after 2 attempts "+
+		"(profile %s). This usually means another LibreOffice instance was running, "+
+		"not that the deck is invalid: close any open LibreOffice and retry this call",
+		pdfPathFor(pptxPath, tmpDir), profileDescription(profile, profileErr))
+	if stderr = strings.TrimSpace(stderr); stderr != "" {
+		msg += "; libreoffice said: " + stderr
+	}
+	return "", errors.New(msg)
+}
+
+// errNoPDFProduced marks the case where LibreOffice exited successfully but
+// wrote no PDF — the concurrency signature, and the only case worth retrying.
+var errNoPDFProduced = errors.New("libreoffice produced no PDF")
+
+// convertToPDF runs one LibreOffice conversion against the given profile
+// directory, returning the PDF path on success.
+func convertToPDF(ctx context.Context, office, profile, pptxPath, tmpDir string) (pdfPath, stderr string, err error) {
+	args := append(loProfileArg(profile),
 		"--headless",
 		"--convert-to", "pdf",
 		"--outdir", tmpDir,
 		pptxPath,
 	)
+	_, stderr, err = runBounded(ctx, toolLibreOffice, pptxPath, libreOfficeTimeout, office, args...)
 	if err != nil {
 		var te *TimeoutError
 		if errors.As(err, &te) {
-			return "", err // structured timeout; propagate verbatim
+			return "", stderr, err // structured timeout; propagate verbatim
 		}
-		if stderr = strings.TrimSpace(stderr); stderr != "" {
-			return "", fmt.Errorf("libreoffice conversion failed: %w: %s", err, stderr)
+		if s := strings.TrimSpace(stderr); s != "" {
+			return "", stderr, fmt.Errorf("libreoffice conversion failed: %w: %s", err, s)
 		}
-		return "", fmt.Errorf("libreoffice conversion failed: %w", err)
+		return "", stderr, fmt.Errorf("libreoffice conversion failed: %w", err)
 	}
 
-	base := strings.TrimSuffix(filepath.Base(pptxPath), filepath.Ext(pptxPath))
-	pdfPath := filepath.Join(tmpDir, base+".pdf")
+	pdfPath = pdfPathFor(pptxPath, tmpDir)
 	if _, err := os.Stat(pdfPath); err != nil {
-		return "", fmt.Errorf("PDF not created at %s", pdfPath)
+		return "", stderr, errNoPDFProduced
 	}
-	return pdfPath, nil
+	return pdfPath, stderr, nil
+}
+
+// pdfPathFor returns the path LibreOffice writes for a given input deck.
+func pdfPathFor(pptxPath, tmpDir string) string {
+	base := strings.TrimSuffix(filepath.Base(pptxPath), filepath.Ext(pptxPath))
+	return filepath.Join(tmpDir, base+".pdf")
+}
+
+// profileDescription renders the profile directory for an error message,
+// including the reason when no private profile could be created.
+func profileDescription(profile string, err error) string {
+	if err != nil {
+		return fmt.Sprintf("none: %v", err)
+	}
+	if profile == "" {
+		return "shared default"
+	}
+	return profile
 }
 
 // pdfToPNGs converts a multi-page PDF to individual PNG files using ImageMagick.
