@@ -99,6 +99,13 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 	var s *server.MCPServer
 	opts := []server.ServerOption{
 		server.WithToolCapabilities(false),
+		// Resources are how the deck itself leaves the server
+		// (go-slide-creator-fx52): a generated .pptx is readable as a blob at
+		// json2pptx://deck/<name>, so a host that cannot see the server's
+		// filesystem can still hand the user the file. No subscriptions — the
+		// resources are immutable once written — and no list-changed
+		// notifications, since the static set is fixed at startup.
+		server.WithResourceCapabilities(false, false),
 		server.WithInstructions(mcpQualityWorkflow),
 		server.WithToolHandlerMiddleware(strictArgsMiddleware(func(name string) *server.ServerTool {
 			return s.GetTool(name)
@@ -106,6 +113,7 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 	}
 	s = server.NewMCPServer("json2pptx", Version, append(opts, extra...)...)
 	registerMCPTools(s, mc)
+	registerMCPResources(s, mc)
 	return s
 }
 

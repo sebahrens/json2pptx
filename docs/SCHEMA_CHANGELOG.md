@@ -8,6 +8,30 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **MCP resources: the deck is deliverable without a filesystem path
+  (go-slide-creator-fx52).** `resources/list`, `resources/read` and
+  `resource_link` all returned `-32601`, and `initialize` advertised
+  `tools` only. The whole workflow's one deliverable came back as
+  `pptx_path: /abs/path/on/the/server`, so on a containerised server, a remote
+  deployment, or any sandbox whose file tools cannot see the server's output
+  directory, the agent could not hand the user the deck it had just made.
+  - The server now advertises the **resources capability** (no subscriptions —
+    a generated deck is immutable once written; no list-changed — the static
+    set is fixed at startup).
+  - **`json2pptx://deck/{filename}`** serves a generated `.pptx` as a base64
+    blob with the OOXML presentation media type. The blob's sha256 equals the
+    response's `content_hash`. The URI names a file inside the output directory
+    and nothing else: the name is reduced to a base name, so a traversal, an
+    absolute path or a non-`.pptx` is refused.
+  - **`generate_presentation` and `render_deck_spec` append a `resource_link`
+    content block** pointing at that URI, so a host can offer a download
+    without reading the blob. It is additive — the JSON payload is unchanged —
+    and a failed call carries none.
+  - **Four read-only resources** serve what agents otherwise pay a tool call
+    for every session, cacheable by the host: `json2pptx://templates`,
+    `json2pptx://patterns`, `json2pptx://schema/deckspec` and
+    `json2pptx://skill` (SKILL.md, now embedded in the binary).
+
 - **Slide backgrounds: `background.color` and `background.overlay`
   (go-slide-creator-uy5s).** `background` was `{image, url, fit}` only, so the
   standard "one dark slide in a light deck" — a statement, a section break, a

@@ -642,7 +642,9 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 
-	return mcpResult, nil
+	// The deck itself, as a resource a host can read without touching the
+	// server's filesystem (go-slide-creator-fx52).
+	return withDeckResourceLink(mcpResult, output.OutputPath), nil
 }
 
 func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

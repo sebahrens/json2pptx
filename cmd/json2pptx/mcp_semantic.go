@@ -473,7 +473,10 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	}
 
 	res := semanticRenderToMCP(buildSemanticRenderSuccess(input, compileResult, runRes, startTime), &explanation)
-	return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+	result, err := semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+	// The deck itself, as a resource a host can read without touching the
+	// server's filesystem (go-slide-creator-fx52).
+	return withDeckResourceLink(result, res.PptxPath), err
 }
 
 // --- explain_deck_spec ------------------------------------------------------
