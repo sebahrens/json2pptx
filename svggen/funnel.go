@@ -30,8 +30,24 @@ type FunnelChartConfig struct {
 	// LabelPosition determines where labels are placed.
 	LabelPosition FunnelLabelPosition
 
-	// ShowPercentage displays conversion percentages.
+	// ShowPercentage displays each stage as a percentage of the FIRST stage.
 	ShowPercentage bool
+
+	// ShowConversion adds the stage-to-stage conversion under each stage's
+	// label — the number a funnel exists to show. Default true.
+	ShowConversion bool
+
+	// WidthMode decides how a stage's width follows its value:
+	//
+	//	"clamped"      — proportional, but floored so the last stage is still a
+	//	                 shape (default)
+	//	"proportional" — width exactly proportional to value
+	//	"equal"        — every stage the same width
+	//
+	// A real SaaS funnel spans two orders of magnitude (12,400 -> 212), and
+	// under "proportional" the bottom half is a 2px stick with external leader
+	// lines (go-slide-creator-6i6j).
+	WidthMode string
 }
 
 // FunnelLabelPosition determines label placement for funnel charts.
@@ -64,6 +80,77 @@ func DefaultFunnelChartConfig(width, height float64) FunnelChartConfig {
 		CornerRadius:   0,
 		LabelPosition:  FunnelLabelInside,
 		ShowPercentage: false,
+		ShowConversion: true,
+		WidthMode:      FunnelWidthClamped,
+	}
+}
+
+// Funnel width modes.
+const (
+	FunnelWidthClamped      = "clamped"
+	FunnelWidthProportional = "proportional"
+	FunnelWidthEqual        = "equal"
+)
+
+// funnelClampedNeck is the bottom width the LAST stage keeps in clamped mode,
+// as a fraction of its own top width, when the caller set no neck. Tapering
+// the final stage to a point leaves nowhere to put its label, which is how
+// "Won: 212" ended up on a leader line outside the chart.
+const funnelClampedNeck = 0.55
+
+// funnelMinWidthFrac is the share of the plot width the SMALLEST stage keeps in
+// clamped mode. Width is interpolated between this floor and the full width by
+// the stage's share of the maximum, so the ordering is preserved and the last
+// stage is still a shape you can put a label in.
+const funnelMinWidthFrac = 0.25
+
+// funnelSegmentWidth is the drawn width of a stage. Both the draw loop and the
+// external-label pre-pass read it, so the geometry they reason about cannot
+// drift apart.
+func funnelSegmentWidth(value, maxValue, plotW float64, mode string) float64 {
+	if maxValue <= 0 {
+		return 0
+	}
+	share := value / maxValue
+	switch mode {
+	case FunnelWidthEqual:
+		return plotW
+	case FunnelWidthProportional:
+		return plotW * share
+	default:
+		return plotW * (funnelMinWidthFrac + (1-funnelMinWidthFrac)*share)
+	}
+}
+
+// effectiveNeckWidth is the last stage's bottom width as a fraction of its top.
+// In clamped mode an unset neck becomes a real one: the point a funnel
+// traditionally tapers to is exactly where the smallest stage's label has to go.
+func (fc *FunnelChart) effectiveNeckWidth() float64 {
+	if fc.config.NeckWidth > 0 {
+		return fc.config.NeckWidth
+	}
+	if fc.config.WidthMode == "" || fc.config.WidthMode == FunnelWidthClamped {
+		return funnelClampedNeck
+	}
+	return fc.config.NeckWidth
+}
+
+// funnelConversionLabel is the stage-to-stage conversion, as "25% of Visitors".
+// The first stage has nothing to convert from and returns "".
+func funnelConversionLabel(points []FunnelDataPoint, i int) string {
+	if i <= 0 || i >= len(points) {
+		return ""
+	}
+	prev := points[i-1]
+	if prev.Value <= 0 {
+		return ""
+	}
+	pct := points[i].Value / prev.Value * 100
+	switch {
+	case pct >= 10:
+		return fmt.Sprintf("%.0f%% of %s", pct, prev.Label)
+	default:
+		return fmt.Sprintf("%.1f%% of %s", pct, prev.Label)
 	}
 }
 
@@ -224,16 +311,16 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 	// value, creating a stepped funnel where each stage is visually proportional
 	// to its value and tapers into the next stage.
 	for i, point := range data.Points {
-		// Top width = this segment's proportional width
-		topWidth := plotArea.W * (point.Value / maxValue)
+		// Top width = this segment's width under the configured mode
+		topWidth := funnelSegmentWidth(point.Value, maxValue, plotArea.W, fc.config.WidthMode)
 
-		// Bottom width = next segment's proportional width (taper toward next stage)
+		// Bottom width = next segment's width (taper toward the next stage)
 		var bottomWidth float64
 		if i == numSegments-1 {
 			// Last segment: taper to neck width or point
-			bottomWidth = topWidth * fc.config.NeckWidth
+			bottomWidth = topWidth * fc.effectiveNeckWidth()
 		} else {
-			bottomWidth = plotArea.W * (data.Points[i+1].Value / maxValue)
+			bottomWidth = funnelSegmentWidth(data.Points[i+1].Value, maxValue, plotArea.W, fc.config.WidthMode)
 		}
 
 		// Calculate Y positions
@@ -249,7 +336,11 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 		fc.drawTrapezoid(centerX, y, topWidth, bottomWidth, segmentHeight, color)
 
 		// Draw label
-		fc.drawLabel(point, i, centerX, y, topWidth, bottomWidth, segmentHeight, maxValue, plotArea, labelPadding, color)
+		conversion := ""
+		if fc.config.ShowConversion {
+			conversion = funnelConversionLabel(data.Points, i)
+		}
+		fc.drawLabel(point, i, centerX, y, topWidth, bottomWidth, segmentHeight, maxValue, plotArea, labelPadding, color, conversion)
 	}
 
 	// Draw title
@@ -311,13 +402,14 @@ func (fc *FunnelChart) reserveExternalLabelSpace(data FunnelData, plotArea Rect,
 			}
 		}
 
-		// Compute segment widths (must match Draw loop logic).
-		topWidth := plotArea.W * (point.Value / maxValue)
+		// Compute segment widths through the shared helper, so this pre-pass
+		// and the draw loop cannot disagree about the geometry.
+		topWidth := funnelSegmentWidth(point.Value, maxValue, plotArea.W, fc.config.WidthMode)
 		var bottomWidth float64
 		if i == numSegments-1 {
-			bottomWidth = topWidth * fc.config.NeckWidth
+			bottomWidth = topWidth * fc.effectiveNeckWidth()
 		} else {
-			bottomWidth = plotArea.W * (data.Points[i+1].Value / maxValue)
+			bottomWidth = funnelSegmentWidth(data.Points[i+1].Value, maxValue, plotArea.W, fc.config.WidthMode)
 		}
 		// Must match drawLabel logic: min(midWidth, bottomWidth) with 30% margin.
 		midWidth := (topWidth + bottomWidth) / 2
@@ -391,7 +483,7 @@ func (fc *FunnelChart) drawTrapezoid(centerX, y, topWidth, bottomWidth, height f
 }
 
 // drawLabel draws the label for a funnel segment.
-func (fc *FunnelChart) drawLabel(point FunnelDataPoint, index int, centerX, y, topWidth, bottomWidth, height, maxValue float64, plotArea Rect, labelPadding float64, bgColor Color) {
+func (fc *FunnelChart) drawLabel(point FunnelDataPoint, index int, centerX, y, topWidth, bottomWidth, height, maxValue float64, plotArea Rect, labelPadding float64, bgColor Color, conversion string) {
 	b := fc.builder
 	style := b.StyleGuide()
 
@@ -464,7 +556,19 @@ func (fc *FunnelChart) drawLabel(point FunnelDataPoint, index int, centerX, y, t
 			// Label fits comfortably inside — draw with contrast-aware color.
 			b.SetFontSize(insideFit.FontSize)
 			b.SetTextColor(bgColor.TextColorFor())
-			b.DrawText(insideFit.DisplayText, centerX, labelY, TextAlignCenter, TextBaselineMiddle)
+			// The conversion line is what a funnel is FOR: without it the chart
+			// shows four numbers and leaves the division to the reader
+			// (go-slide-creator-6i6j).
+			convFont := math.Max(minFont, insideFit.FontSize*0.75)
+			if conversion != "" && height > insideFit.FontSize+convFont*1.6 {
+				b.DrawText(insideFit.DisplayText, centerX, labelY-convFont*0.6, TextAlignCenter, TextBaselineMiddle)
+				b.Push()
+				b.SetFontSize(convFont)
+				b.DrawText(conversion, centerX, labelY+insideFit.FontSize*0.7, TextAlignCenter, TextBaselineMiddle)
+				b.Pop()
+			} else {
+				b.DrawText(insideFit.DisplayText, centerX, labelY, TextAlignCenter, TextBaselineMiddle)
+			}
 		} else {
 			// Label overflows — draw external with connector.
 			// Use adaptive font for external labels too, and truncate if needed.
@@ -518,8 +622,38 @@ func (fc *FunnelChart) drawLabel(point FunnelDataPoint, index int, centerX, y, t
 }
 
 // getColors returns colors for the funnel segments.
+// getColors returns one colour per stage. A funnel is ONE metric falling
+// through its stages, not four categories: the accent rotation painted MQL in
+// the template's alert red and Won in its positive green, implying a valence
+// the data does not carry. Unless the caller supplied colours, the stages take
+// a ramp of the first accent — darkest at the top, lightest at the neck
+// (go-slide-creator-6i6j).
 func (fc *FunnelChart) getColors(style *StyleGuide, count int) []Color {
-	return resolveColors(fc.config.Colors, style, count)
+	if len(fc.config.Colors) >= count {
+		return fc.config.Colors[:count]
+	}
+	if len(fc.config.Colors) > 0 {
+		return resolveColors(fc.config.Colors, style, count)
+	}
+	return sequentialRamp(style.Palette.AccentColors()[0], count)
+}
+
+// sequentialRamp returns count shades of base, from the base itself to a light
+// tint of it. One hue, ordered by lightness: the reader sees a single quantity
+// getting smaller rather than four unrelated categories.
+func sequentialRamp(base Color, count int) []Color {
+	if count <= 0 {
+		return nil
+	}
+	if count == 1 {
+		return []Color{base}
+	}
+	const maxLighten = 0.55
+	out := make([]Color, count)
+	for i := range out {
+		out[i] = base.Lighten(maxLighten * float64(i) / float64(count-1))
+	}
+	return out
 }
 
 // =============================================================================
@@ -585,6 +719,12 @@ func (d *FunnelDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *S
 		}
 		if labelPos, ok := req.Data["label_position"].(string); ok {
 			config.LabelPosition = FunnelLabelPosition(labelPos)
+		}
+		if mode, ok := req.Data["width_mode"].(string); ok {
+			config.WidthMode = mode
+		}
+		if showConv, ok := req.Data["show_conversion"].(bool); ok {
+			config.ShowConversion = showConv
 		}
 
 		chart := NewFunnelChart(builder, config)

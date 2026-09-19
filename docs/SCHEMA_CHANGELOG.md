@@ -373,6 +373,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Funnel stages stay readable, and stop implying a valence
+  (go-slide-creator-6i6j).** A real SaaS funnel (12,400 / 3,100 / 890 / 212)
+  drew each stage proportionally, so the bottom two were 2-4px slivers with
+  external leader lines, and the stage colours came from the categorical accent
+  rotation — "MQL" in the template's alert red, "Won" in its positive green,
+  a reading the data does not carry.
+  - **`width_mode`** (`clamped` default, `proportional`, `equal`). Clamped
+    interpolates between a 25%-of-plot floor and the full width, so ordering is
+    preserved and every stage is still a shape with room for its label. In
+    clamped mode an unset `neck_width` becomes 0.55 rather than a point, which
+    is what pushed the smallest stage's label out onto a leader line.
+  - **`show_conversion`** (default **true**) writes the stage-to-stage
+    conversion under each stage's label — "25% of Visitors" — which is the
+    number a funnel exists to show. `show_percentage` is unchanged and remains
+    percentage-of-first-stage.
+  - Stages now take a **single-hue ramp of accent1** (darkest at the top)
+    instead of the categorical rotation. Caller-supplied `colors` are still
+    honoured exactly.
+
 - **Scatter and bubble stop labelling every point (go-slide-creator-daqp).**
   Six series of nine points drew all 54 labels, and the collision pass could not
   see across series because it ran INSIDE the per-series loop — the placed-label

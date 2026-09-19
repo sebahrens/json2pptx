@@ -207,8 +207,8 @@ func ChartCapabilities() []ChartCapability {
 			MaxCategories:     intPtr(200),
 			SupportsNegatives: boolPtr(false),
 			SupportsLogScale:  boolPtr(false),
-			LabelStrategy:     strPtr("inside labels; overflow to external right-side labels with connectors"),
-			DensityBehavior:   strPtr("adaptive font+gap at 6+ segments (floor 7pt); plot area shrunk for external labels"),
+			LabelStrategy:     strPtr("inside labels, each with its stage-to-stage conversion (\"25% of Visitors\") beneath it; overflow to external right-side labels with connectors. show_conversion:false drops the conversion line"),
+			DensityBehavior:   strPtr("adaptive font+gap at 6+ segments (floor 7pt); plot area shrunk for external labels. Stage width is CLAMPED by default — interpolated between a 25%-of-plot floor and the full width — so a funnel spanning orders of magnitude does not end in a 2px stick; width_mode: proportional|equal|clamped. Stages take a single-hue ramp of accent1, not the categorical rotation, so no stage is painted in the template's alert red"),
 			Status:            "ready",
 		},
 		{
