@@ -27,6 +27,8 @@ type fillTone struct {
 	Alpha  float64 // 0-100 percent opacity; 0 = fully opaque
 	LumMod int     // OOXML thousandths of a percent (e.g. 20000 = 20%)
 	LumOff int     // OOXML thousandths of a percent
+	Tint   int     // OOXML thousandths of a percent; mixes toward white
+	Shade  int     // OOXML thousandths of a percent; mixes toward black
 }
 
 // Light-tint modifiers (PowerPoint's "Lighter 80%" swatch): L' = 0.2·L + 0.8.
@@ -49,7 +51,7 @@ func inactiveTintTone(color string) fillTone {
 // fillJSON renders the tone as a shape-grid fill value: a bare colour string
 // when unmodified, otherwise the object form with the modifiers.
 func (t fillTone) fillJSON() json.RawMessage {
-	if t.Alpha == 0 && t.LumMod == 0 && t.LumOff == 0 {
+	if t.Alpha == 0 && t.LumMod == 0 && t.LumOff == 0 && t.Tint == 0 && t.Shade == 0 {
 		data, _ := json.Marshal(t.Color)
 		return data
 	}
@@ -58,7 +60,9 @@ func (t fillTone) fillJSON() json.RawMessage {
 		Alpha  float64 `json:"alpha,omitempty"`
 		LumMod int     `json:"lumMod,omitempty"`
 		LumOff int     `json:"lumOff,omitempty"`
-	}{t.Color, t.Alpha, t.LumMod, t.LumOff}
+		Tint   int     `json:"tint,omitempty"`
+		Shade  int     `json:"shade,omitempty"`
+	}{t.Color, t.Alpha, t.LumMod, t.LumOff, t.Tint, t.Shade}
 	data, _ := json.Marshal(obj)
 	return data
 }
@@ -129,7 +133,10 @@ func effectiveFillColor(ctx ExpandContext, tone fillTone) (svggen.Color, bool) {
 	if tone.Alpha > 0 && tone.Alpha < 100 {
 		alpha = tone.Alpha / 100
 	}
-	return EffectiveColor(c, tone.LumMod, tone.LumOff, alpha, bg), true
+	return EffectiveColorMods(c, ColorMods{
+		LumMod: tone.LumMod, LumOff: tone.LumOff,
+		Tint: tone.Tint, Shade: tone.Shade, Alpha: alpha,
+	}, bg), true
 }
 
 // EffectiveColor returns the opaque colour produced by applying the OOXML
@@ -139,20 +146,92 @@ func effectiveFillColor(ctx ExpandContext, tone fillTone) (svggen.Color, bool) {
 // pass uses it so tinted / translucent fills are judged by what the viewer
 // actually sees rather than by their untinted base colour.
 func EffectiveColor(base svggen.Color, lumMod, lumOff int, alpha float64, bg svggen.Color) svggen.Color {
+	return EffectiveColorMods(base, ColorMods{LumMod: lumMod, LumOff: lumOff, Alpha: alpha}, bg)
+}
+
+// ColorMods are the OOXML colour modifiers a fill may carry. LumMod, LumOff,
+// Tint and Shade are thousandths of a percent; Alpha is 0-1 (values <= 0 or
+// >= 1 mean opaque).
+type ColorMods struct {
+	LumMod int
+	LumOff int
+	Tint   int
+	Shade  int
+	Alpha  float64
+}
+
+// EffectiveColorMods returns the opaque colour a viewer sees for base under
+// mods, composited over bg.
+//
+// lumMod / lumOff act on HSL lightness, as PowerPoint does. tint and shade do
+// NOT: they are linear-light mixes toward white and black respectively
+// (verified against rendered pixels — accent1 #2E5090 under shade 70000
+// renders rgb(38,67,122) and under tint 40000 renders rgb(205,208,219), which
+// the HSL and sRGB models both miss by 30-50 per channel). Modelling them as
+// lumMod was not an option: they were simply ignored, so a pattern that tinted
+// its fills was judged on its untinted base colour and shipped white text on a
+// near-white bar (go-slide-creator-5qotm).
+func EffectiveColorMods(base svggen.Color, mods ColorMods, bg svggen.Color) svggen.Color {
 	c := base
 	c.A = 1
-	if lumMod > 0 || lumOff > 0 {
-		c = applyLumModOff(c, lumMod, lumOff)
+	if mods.LumMod > 0 || mods.LumOff > 0 {
+		c = applyLumModOff(c, mods.LumMod, mods.LumOff)
 	}
-	if alpha > 0 && alpha < 1 {
+	if mods.Shade > 0 {
+		c = applyLinearMix(c, float64(mods.Shade)/100000, svggen.Color{R: 0, G: 0, B: 0, A: 1})
+	}
+	if mods.Tint > 0 {
+		c = applyLinearMix(c, float64(mods.Tint)/100000, svggen.Color{R: 255, G: 255, B: 255, A: 1})
+	}
+	if mods.Alpha > 0 && mods.Alpha < 1 {
 		c = svggen.Color{
-			R: uint8(math.Round(float64(c.R)*alpha + float64(bg.R)*(1-alpha))),
-			G: uint8(math.Round(float64(c.G)*alpha + float64(bg.G)*(1-alpha))),
-			B: uint8(math.Round(float64(c.B)*alpha + float64(bg.B)*(1-alpha))),
+			R: uint8(math.Round(float64(c.R)*mods.Alpha + float64(bg.R)*(1-mods.Alpha))),
+			G: uint8(math.Round(float64(c.G)*mods.Alpha + float64(bg.G)*(1-mods.Alpha))),
+			B: uint8(math.Round(float64(c.B)*mods.Alpha + float64(bg.B)*(1-mods.Alpha))),
 			A: 1,
 		}
 	}
 	return c
+}
+
+// applyLinearMix blends c toward target in linear-light space, keeping the
+// given fraction of c. This is what OOXML a:tint / a:shade do.
+func applyLinearMix(c svggen.Color, keep float64, target svggen.Color) svggen.Color {
+	if keep <= 0 {
+		return target
+	}
+	if keep >= 1 {
+		return c
+	}
+	mix := func(a, b uint8) uint8 {
+		return linearToSRGB(srgbToLinear(a)*keep + srgbToLinear(b)*(1-keep))
+	}
+	return svggen.Color{R: mix(c.R, target.R), G: mix(c.G, target.G), B: mix(c.B, target.B), A: 1}
+}
+
+// srgbToLinear / linearToSRGB convert one channel between sRGB and linear light.
+func srgbToLinear(v uint8) float64 {
+	f := float64(v) / 255
+	if f <= 0.04045 {
+		return f / 12.92
+	}
+	return math.Pow((f+0.055)/1.055, 2.4)
+}
+
+func linearToSRGB(v float64) uint8 {
+	switch {
+	case v <= 0:
+		return 0
+	case v >= 1:
+		return 255
+	}
+	var f float64
+	if v <= 0.0031308 {
+		f = v * 12.92
+	} else {
+		f = 1.055*math.Pow(v, 1/2.4) - 0.055
+	}
+	return uint8(math.Round(math.Max(0, math.Min(1, f)) * 255))
 }
 
 // readableTextOn returns "lt1" or "dk1" — whichever has the higher contrast

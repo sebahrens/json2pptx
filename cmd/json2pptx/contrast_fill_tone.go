@@ -21,12 +21,18 @@ func effectiveShapeFillColor(raw json.RawMessage, themeColors []types.ThemeColor
 	if base == "" {
 		return ""
 	}
+	// tint / shade count as much as lumMod / lumOff: timeline-horizontal's
+	// gradient chains are built from them, and ignoring them judged a
+	// near-white bar by its untinted accent (go-slide-creator-5qotm).
 	var obj struct {
 		Alpha  float64 `json:"alpha"`
 		LumMod int     `json:"lumMod"`
 		LumOff int     `json:"lumOff"`
+		Tint   int     `json:"tint"`
+		Shade  int     `json:"shade"`
 	}
-	if json.Unmarshal(raw, &obj) != nil || (obj.Alpha == 0 && obj.LumMod == 0 && obj.LumOff == 0) {
+	if json.Unmarshal(raw, &obj) != nil ||
+		(obj.Alpha == 0 && obj.LumMod == 0 && obj.LumOff == 0 && obj.Tint == 0 && obj.Shade == 0) {
 		return base
 	}
 	c, ok := themeHex(base, themeColors)
@@ -41,7 +47,10 @@ func effectiveShapeFillColor(raw json.RawMessage, themeColors []types.ThemeColor
 	if alpha > 1 {
 		alpha /= 100 // shape-grid alpha is a 0-100 percentage
 	}
-	return patterns.EffectiveColor(c, obj.LumMod, obj.LumOff, alpha, bg).Hex()
+	return patterns.EffectiveColorMods(c, patterns.ColorMods{
+		LumMod: obj.LumMod, LumOff: obj.LumOff,
+		Tint: obj.Tint, Shade: obj.Shade, Alpha: alpha,
+	}, bg).Hex()
 }
 
 var themeHexAliases = map[string]string{"bg1": "lt1", "tx1": "dk1", "bg2": "lt2", "tx2": "dk2"}

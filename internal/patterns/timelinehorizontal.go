@@ -349,14 +349,15 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 	chevronCells := make([]*jsonschema.GridCellInput, n)
 	for i, stop := range *stops {
 		// Compute tint for gradient: first stop is darkest (shade), last is lightest (tint)
-		fill := buildChevronGradientFill(accent, i, n)
+		tone := chevronGradientTone(accent, i, n)
 
-		// Label (and optionally body) inside the chevron
-		textContent := buildChevronTextContent(stop, labelSize)
+		// Label (and optionally body) inside the chevron, in whichever text
+		// colour reads on this link's own tint.
+		textContent := buildChevronTextContent(stop, labelSize, readableTextOn(ctx, tone, "lt1"))
 
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "homePlate",
-			Fill:     fill,
+			Fill:     tone.fillJSON(),
 			Text:     textContent,
 		}
 
@@ -449,17 +450,17 @@ func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHori
 		if stop.EndDate != "" {
 			dateLabel = stop.Date + " → " + stop.EndDate
 		}
+		// Tint gradient per row, and the text colour that reads on this row's
+		// own tint rather than a hardcoded lt1.
+		tone := chevronGradientTone(accent, i, n)
 		barText := json.RawMessage(fmt.Sprintf(
-			`{"paragraphs":[{"content":%q,"size":%g,"color":"lt1","align":"left"}],"align":"left","vertical_align":"ctr"}`,
-			dateLabel, dateSize,
+			`{"paragraphs":[{"content":%q,"size":%g,"color":%q,"align":"left"}],"align":"left","vertical_align":"ctr"}`,
+			dateLabel, dateSize, readableTextOn(ctx, tone, "lt1"),
 		))
-
-		// Tint gradient per row
-		fill := buildChevronGradientFill(accent, i, n)
 
 		barShape := &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
-			Fill:     fill,
+			Fill:     tone.fillJSON(),
 			Text:     barText,
 		}
 
@@ -496,33 +497,35 @@ func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHori
 	return grid, nil
 }
 
-// buildChevronGradientFill produces a fill with gradient tint/shade across a chain.
-// First item is darkest (shade 70000), last is lightest (tint 40000), middle interpolates.
-func buildChevronGradientFill(accent string, index, total int) json.RawMessage {
+// chevronGradientTone produces the fill tone for one link of a gradient chain.
+// First item is darkest (shade 70000), last is lightest (tint 40000), middle
+// interpolates. It returns the tone rather than the JSON so the caller can ask
+// which text colour reads on it: the text used to be hardcoded lt1, which on
+// the lightest bar measured 1.5:1 (go-slide-creator-5qotm).
+func chevronGradientTone(accent string, index, total int) fillTone {
+	tone := fillTone{Color: accent}
 	if total <= 1 {
-		return json.RawMessage(fmt.Sprintf(`"%s"`, accent))
+		return tone
 	}
-	// Interpolate from shade=70000 (dark) at index 0 to tint=40000 (light) at index n-1.
-	// Midpoint (ratio=0.5) is no modifier (plain accent).
+	// Interpolate from shade=70000 (dark) at index 0 to tint=40000 (light) at
+	// index n-1. Midpoint (ratio=0.5) is no modifier (plain accent).
 	ratio := float64(index) / float64(total-1)
-	if ratio < 0.5 {
-		// Shade: 70000 at ratio=0, no shade at ratio=0.5
-		shadeVal := int(70000 * (1.0 - 2.0*ratio))
-		if shadeVal > 0 {
-			return json.RawMessage(fmt.Sprintf(`{"color":%q,"shade":%d}`, accent, shadeVal))
+	switch {
+	case ratio < 0.5:
+		if shadeVal := int(70000 * (1.0 - 2.0*ratio)); shadeVal > 0 {
+			tone.Shade = shadeVal
 		}
-	} else if ratio > 0.5 {
-		// Tint: no tint at ratio=0.5, 40000 at ratio=1.0
-		tintVal := int(40000 * (2.0*ratio - 1.0))
-		if tintVal > 0 {
-			return json.RawMessage(fmt.Sprintf(`{"color":%q,"tint":%d}`, accent, tintVal))
+	case ratio > 0.5:
+		if tintVal := int(40000 * (2.0*ratio - 1.0)); tintVal > 0 {
+			tone.Tint = tintVal
 		}
 	}
-	return json.RawMessage(fmt.Sprintf(`"%s"`, accent))
+	return tone
 }
 
-// buildChevronTextContent creates text for inside a chevron shape (label + optional body, no date).
-func buildChevronTextContent(stop TimelineStop, labelSize float64) json.RawMessage {
+// buildChevronTextContent creates text for inside a chevron shape (label +
+// optional body, no date), in the given text colour.
+func buildChevronTextContent(stop TimelineStop, labelSize float64, textColor string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -532,10 +535,10 @@ func buildChevronTextContent(stop TimelineStop, labelSize float64) json.RawMessa
 	}
 
 	paras := []paragraph{
-		{Content: stop.Label, Size: labelSize, Bold: true, Color: "lt1", Align: "ctr"},
+		{Content: stop.Label, Size: labelSize, Bold: true, Color: textColor, Align: "ctr"},
 	}
 	if stop.Body != "" {
-		paras = append(paras, paragraph{Content: stop.Body, Size: labelSize - 2, Color: "lt1", Align: "ctr"})
+		paras = append(paras, paragraph{Content: stop.Body, Size: labelSize - 2, Color: textColor, Align: "ctr"})
 	}
 
 	textObj := struct {

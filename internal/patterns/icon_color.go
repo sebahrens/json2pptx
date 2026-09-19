@@ -73,6 +73,8 @@ func parseFillTone(raw json.RawMessage) (fillTone, bool) {
 		Alpha  float64 `json:"alpha"`
 		LumMod int     `json:"lumMod"`
 		LumOff int     `json:"lumOff"`
+		Tint   int     `json:"tint"`
+		Shade  int     `json:"shade"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return fillTone{}, false
@@ -81,5 +83,5 @@ func parseFillTone(raw json.RawMessage) (fillTone, bool) {
 	if c == "" || strings.EqualFold(c, "none") {
 		return fillTone{}, false
 	}
-	return fillTone{Color: c, Alpha: obj.Alpha, LumMod: obj.LumMod, LumOff: obj.LumOff}, true
+	return fillTone{Color: c, Alpha: obj.Alpha, LumMod: obj.LumMod, LumOff: obj.LumOff, Tint: obj.Tint, Shade: obj.Shade}, true
 }
