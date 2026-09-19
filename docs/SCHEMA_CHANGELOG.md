@@ -352,6 +352,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **The autofit prediction runs on the layout the engine will actually pick,
+  and reports readability alongside trimming (go-slide-creator-nlrg, partial).**
+  `collectTextAutofitPreflightFindings` keyed on an explicit `layout_id`, so a
+  deck that lets the engine choose its layout — most decks, and every deck the
+  semantic compiler emits — got no `text_trimmed`, no `readability_trimmed` and
+  no readability verdict at all from `validate`. It now uses the same predicted
+  layout the measured-title check uses.
+  - `TEXT_BELOW_READABLE_MIN` can now come from `validate`: the prediction
+    carries the deck's `viewing_mode` and the text's role, and is judged by the
+    same `NewReadabilityFinding` the renderer calls.
+  - A trim prediction no longer masks the readability verdict. The renderer
+    trims and THEN judges the size it ended up with, so both can be true of one
+    placeholder, and `generate` reported both where `validate` reported at most
+    one.
+  - **Still not at parity**, and the bead stays open for it: the preflight
+    measures plain paragraphs, while the renderer also applies the layout's
+    inherited line spacing, space-before and bullet left margins. On the
+    reported fixture that is one autofit step (60% predicted against 50%
+    rendered), which is the difference between "at the floor" and "under it".
+
 - **exec-summary rows share a first baseline (go-slide-creator-kol0).** The
   lead and its support were both centre-anchored, so whenever a lead wrapped to
   two lines the support floated between them; across five rows the right column

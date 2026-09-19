@@ -13,6 +13,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -1428,8 +1429,17 @@ func collectGridTablePreflight(grid *ShapeGridInput, slideIdx int) []patterns.Fi
 func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
+	// A slide without an explicit layout_id still lands on a layout — the one
+	// the selector picks — and its placeholder text is autofitted against THAT
+	// geometry. Keying on layout_id alone meant the whole autofit prediction
+	// (text_trimmed, readability_trimmed, TEXT_BELOW_READABLE_MIN) was silent
+	// for every deck that lets the engine choose, which is most of them
+	// (go-slide-creator-nlrg; go-slide-creator-t64e fixed the same gap for
+	// measured titles).
+	predicted := predictSlideLayouts(input, layouts)
+
 	for si, slide := range input.Slides {
-		layout := findLayoutForSlide(&slide, layouts)
+		layout := predicted[si]
 		if layout == nil {
 			continue
 		}
@@ -1453,6 +1463,11 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 				HeightEMU:   ph.Bounds.Height,
 				FontSizeHPt: ph.FontSize,
 				FontName:    ph.FontFamily,
+				// The readability policy the render-time autofit tags this text
+				// with, so validate reports TEXT_BELOW_READABLE_MIN wherever
+				// generate would (go-slide-creator-nlrg).
+				ViewingMode: tokens.ParseViewingMode(input.ViewingMode),
+				TextRole:    tokens.TextRoleBody,
 			})...)
 		}
 	}

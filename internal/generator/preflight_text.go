@@ -4,7 +4,9 @@
 // These detectors mirror the trimming logic in applySmartAutofitWithOptions
 // without rendering. Given a placeholder's geometry, font, and the paragraphs
 // to be populated, they predict whether the engine would trim trailing
-// paragraphs to meet the readability floor (62.5%) or to fit the placeholder.
+// paragraphs to meet the readability floor (62.5%) or to fit the placeholder —
+// and, when the text fits but only by shrinking under the readable minimum for
+// its role, that too (TEXT_BELOW_READABLE_MIN).
 package generator
 
 import (
@@ -12,6 +14,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 // readabilityMinScale matches text_autofit.go: 62.5% (62500/1000) — below
@@ -41,6 +44,12 @@ type TextAutofitPreflightInput struct {
 	FontSizeHPt int
 	// FontName is the font family name.
 	FontName string
+	// ViewingMode and TextRole select the readability policy the predicted
+	// size is judged against — the same pair the render-time autofit tags its
+	// text with. Without them the prediction still reports trimming, but not
+	// that the text lands under the readable floor (go-slide-creator-nlrg).
+	ViewingMode tokens.ViewingMode
+	TextRole    tokens.TextRole
 }
 
 // DetectTextAutofitPreflight predicts whether applySmartAutofitWithOptions
@@ -76,10 +85,20 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 
 	paraCount := len(input.Paragraphs)
 
+	var findings []patterns.FitFinding
+
+	// The readability verdict is independent of trimming: the renderer trims
+	// AND then judges the size it ended up with, so both can be true of one
+	// placeholder. Reporting only the trim is what left validate saying less
+	// than generate about the same deck (go-slide-creator-nlrg).
+	if f := readabilityPreflightFinding(input, params, result, paraCount); f != nil {
+		findings = append(findings, *f)
+	}
+
 	// Overflow path takes precedence — when content overflows even at maximum
 	// scaling, the engine trims first.
 	if result.Overflow && paraCount > overflowTrimMinParas {
-		return []patterns.FitFinding{{
+		return append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path: input.Path,
 				Code: patterns.ErrCodeTextTrimmed,
@@ -93,13 +112,13 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 				},
 			},
 			Action: "review",
-		}}
+		})
 	}
 
 	// Readability path — content fits but at a scale below 62.5%, and there
 	// are enough paragraphs (>6) that the engine will proactively trim.
 	if result.FontScale > 0 && result.FontScale < readabilityMinScale && paraCount > readabilityTrimMinParas {
-		return []patterns.FitFinding{{
+		return append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path: input.Path,
 				Code: patterns.ErrCodeReadabilityTrimmed,
@@ -113,8 +132,29 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 				},
 			},
 			Action: "info",
-		}}
+		})
 	}
 
-	return nil
+	return findings
+}
+
+// readabilityPreflightFinding judges the predicted size against the policy, the
+// same call emitReadabilityFinding makes at render time.
+func readabilityPreflightFinding(input TextAutofitPreflightInput, params textfit.Params, result textfit.FitResult, paraCount int) *patterns.FitFinding {
+	if input.TextRole == "" || result.FontScale <= 0 {
+		return nil
+	}
+	baseHPt := params.FontSizeHPt
+	if baseHPt <= 0 {
+		baseHPt = tokens.BodyDefaultHPt // the size Calculate assumed
+	}
+	check := textfit.CheckReadability(baseHPt, result.FontScale, input.ViewingMode, input.TextRole)
+	return NewReadabilityFinding(ReadabilityFindingInput{
+		Path:         input.Path,
+		Mode:         input.ViewingMode,
+		Role:         input.TextRole,
+		EffectiveHPt: check.EffectiveHPt,
+		Paragraphs:   paraCount,
+		Context:      fmt.Sprintf("predicted autofit %d%% of %.0fpt", result.FontScale/1000, float64(baseHPt)/100.0),
+	})
 }

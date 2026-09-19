@@ -72,7 +72,7 @@ func TestPatternBlockStaysAboveChrome(t *testing.T) {
 
 					layouts := loadLayoutsForChromeTest(t, filepath.Join(templatesDir, tpl+".pptx"))
 					frame := template.ResolveChromeFrame(
-						findLayoutForChromeTest(layouts, "content"),
+						layoutWithBody(layouts),
 						template.ChromeReferenceLayout(layouts),
 						chromeTestSlideW, chromeTestSlideH,
 						strings.Contains(bands, "takeaway"),
@@ -196,12 +196,15 @@ func loadLayoutsForChromeTest(t *testing.T, path string) []types.LayoutMetadata 
 	return layouts
 }
 
-// findLayoutForChromeTest returns the layout the deck's canonical id resolves
-// to, or nil to let ResolveChromeFrame fall back to the reference layout.
-func findLayoutForChromeTest(layouts []types.LayoutMetadata, canonical string) *types.LayoutMetadata {
+// layoutWithBody returns the layout the deck's "content" id resolves to: the
+// first with a usable body placeholder. nil lets ResolveChromeFrame fall back
+// to the reference layout, which is what generation does too.
+func layoutWithBody(layouts []types.LayoutMetadata) *types.LayoutMetadata {
 	for i := range layouts {
-		if string(layouts[i].CanonicalType) == canonical {
-			return &layouts[i]
+		for _, ph := range layouts[i].Placeholders {
+			if ph.Type == types.PlaceholderBody && ph.Bounds.Width > 0 && ph.Bounds.Height > 0 {
+				return &layouts[i]
+			}
 		}
 	}
 	return nil
