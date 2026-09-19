@@ -18,16 +18,16 @@ type stubPattern struct {
 	version int
 }
 
-func (s *stubPattern) Name() string        { return s.name }
-func (s *stubPattern) Description() string { return s.desc }
-func (s *stubPattern) UseWhen() string     { return s.useWhen }
-func (s *stubPattern) NotWhen() string     { return "not applicable in tests" }
-func (s *stubPattern) Version() int        { return s.version }
-func (s *stubPattern) NewValues() any      { return nil }
-func (s *stubPattern) NewOverrides() any   { return nil }
-func (s *stubPattern) NewCellOverride() any { return nil }
-func (s *stubPattern) Schema() *Schema     { return nil }
-func (s *stubPattern) CellsHint() string   { return "" }
+func (s *stubPattern) Name() string              { return s.name }
+func (s *stubPattern) Description() string       { return s.desc }
+func (s *stubPattern) UseWhen() string           { return s.useWhen }
+func (s *stubPattern) NotWhen() string           { return "not applicable in tests" }
+func (s *stubPattern) Version() int              { return s.version }
+func (s *stubPattern) NewValues() any            { return nil }
+func (s *stubPattern) NewOverrides() any         { return nil }
+func (s *stubPattern) NewCellOverride() any      { return nil }
+func (s *stubPattern) Schema() *Schema           { return nil }
+func (s *stubPattern) CellsHint() string         { return "" }
 func (s *stubPattern) Taxonomy() PatternTaxonomy { return PatternTaxonomy{Category: "structural"} }
 
 func (s *stubPattern) Validate(_, _ any, _ map[int]any) error { return nil }
@@ -163,26 +163,26 @@ func TestMatrix2x2DoesNotSupportCallout(t *testing.T) {
 
 func TestOnlyExpectedPatternsOptIntoCallout(t *testing.T) {
 	allowed := map[string]bool{
-		"card-grid":       true,
-		"comparison-2col": true,
-		"pyramid":         true,
-		"before-after":    true,
-		"process-flow":         true,
-		"process-flow-compact": true,
-		"process-grid-2row":    true,
-		"before-after-compact": true,
-		"swimlane":             true,
-		"roadmap-phased":  true,
-		"phase-roadmap":   true,
-		"arch-stack":      true,
-		"hero-detail":          true,
-		"stylish-panels":       true,
-		"chart-insights-split": true,
-		"scqa-summary":         true,
-		"value-chain":          true,
+		"card-grid":                    true,
+		"comparison-2col":              true,
+		"pyramid":                      true,
+		"before-after":                 true,
+		"process-flow":                 true,
+		"process-flow-compact":         true,
+		"process-grid-2row":            true,
+		"before-after-compact":         true,
+		"swimlane":                     true,
+		"roadmap-phased":               true,
+		"phase-roadmap":                true,
+		"arch-stack":                   true,
+		"hero-detail":                  true,
+		"stylish-panels":               true,
+		"chart-insights-split":         true,
+		"scqa-summary":                 true,
+		"value-chain":                  true,
 		"horizontal-bar-with-callouts": true,
-		"driver-tree":          true,
-		"numbered-step-strip":  true,
+		"driver-tree":                  true,
+		"numbered-step-strip":          true,
 	}
 	for _, p := range Default().List() {
 		cs, ok := p.(CalloutSupport)
@@ -205,13 +205,13 @@ func TestDamerauLevenshtein(t *testing.T) {
 		{"", "abc", 3},
 		{"abc", "", 3},
 		{"abc", "abc", 0},
-		{"abc", "abd", 1},   // substitution
-		{"abc", "abcd", 1},  // insertion
-		{"abcd", "abc", 1},  // deletion
-		{"abc", "bac", 1},   // transposition
-		{"card-grid", "card_grid", 1},  // underscore vs hyphen
-		{"card-grids", "card-grid", 1}, // trailing s
-		{"kpi-3up", "kpi-3pu", 1},      // transposition
+		{"abc", "abd", 1},               // substitution
+		{"abc", "abcd", 1},              // insertion
+		{"abcd", "abc", 1},              // deletion
+		{"abc", "bac", 1},               // transposition
+		{"card-grid", "card_grid", 1},   // underscore vs hyphen
+		{"card-grids", "card-grid", 1},  // trailing s
+		{"kpi-3up", "kpi-3pu", 1},       // transposition
 		{"card-grid", "bmc-canvas", 10}, // very different
 	}
 	for _, tt := range tests {
@@ -229,15 +229,15 @@ func TestSuggestFindsClose(t *testing.T) {
 	r.Register(&stubPattern{name: "kpi-3up"})
 
 	tests := []struct {
-		input      string
-		wantName   string
-		wantFound  bool
+		input     string
+		wantName  string
+		wantFound bool
 	}{
-		{"card_grid", "card-grid", true},   // underscore → hyphen (dist 1)
-		{"card-grids", "card-grid", true},  // trailing s (dist 1)
-		{"kpi-3pu", "kpi-3up", true},       // transposition (dist 1)
-		{"bmc-canva", "bmc-canvas", true},  // missing char (dist 1)
-		{"totally-different", "", false},    // too far away
+		{"card_grid", "card-grid", true},  // underscore → hyphen (dist 1)
+		{"card-grids", "card-grid", true}, // trailing s (dist 1)
+		{"kpi-3pu", "kpi-3up", true},      // transposition (dist 1)
+		{"bmc-canva", "bmc-canvas", true}, // missing char (dist 1)
+		{"totally-different", "", false},  // too far away
 	}
 	for _, tt := range tests {
 		name, ok := r.Suggest(tt.input)
@@ -493,9 +493,9 @@ func containsWord(s, word string) bool {
 // compose envelopes from this metadata.
 func TestComposesWithTaxonomy(t *testing.T) {
 	cases := []struct {
-		name           string
+		name            string
 		mustHaveCompose string // sibling that must appear in ComposesWith
-		validRoles     map[string]bool
+		validRoles      map[string]bool
 	}{
 		{name: "pull-quote", mustHaveCompose: "stylish-panels", validRoles: map[string]bool{"banner": true, "pillars": true, "foundation": true, "roof": true, "callout": true}},
 		{name: "stylish-panels", mustHaveCompose: "pull-quote", validRoles: map[string]bool{"banner": true, "pillars": true, "foundation": true, "roof": true, "callout": true}},

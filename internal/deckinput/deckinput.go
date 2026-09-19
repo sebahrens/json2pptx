@@ -265,6 +265,23 @@ type BackgroundInput struct {
 	Image string `json:"image,omitempty"` // File path to background image
 	URL   string `json:"url,omitempty"`   // HTTP/HTTPS URL to download background image from
 	Fit   string `json:"fit,omitempty"`   // "cover" (default), "stretch", "tile"
+	// Color fills the whole slide with a solid colour — a scheme name
+	// (accent1, dk1, lt2, …) or a hex value. It is how a light deck gets its
+	// one dark statement slide; before go-slide-creator-uy5s the only way was
+	// a full-bleed shape_grid cell, which then fought the layout's own title
+	// placeholder. Text contrast is enforced against this colour, so a title
+	// the template renders in near-black flips to light automatically.
+	Color string `json:"color,omitempty"`
+	// Overlay is a semi-transparent scrim painted over the background image
+	// and under everything else, so text stays legible over a photo. The same
+	// {color, alpha} shape a shape_grid image cell already accepts.
+	Overlay *BackgroundOverlayInput `json:"overlay,omitempty"`
+}
+
+// BackgroundOverlayInput is the scrim over a background image.
+type BackgroundOverlayInput struct {
+	Color string  `json:"color,omitempty"` // Hex or scheme colour (default: dk1)
+	Alpha float64 `json:"alpha,omitempty"` // Opacity 0.0-1.0 (default: 0.45)
 }
 
 // ContentInput is a discriminated union for content items.

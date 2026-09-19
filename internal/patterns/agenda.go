@@ -18,15 +18,17 @@ func init() {
 
 type agenda struct{}
 
-func (a *agenda) Name() string        { return "agenda" }
-func (a *agenda) Description() string { return "Numbered section list for agenda / table-of-contents slides" }
+func (a *agenda) Name() string { return "agenda" }
+func (a *agenda) Description() string {
+	return "Numbered section list for agenda / table-of-contents slides"
+}
 func (a *agenda) UseWhen() string {
 	return "Numbered agenda or table of contents listing deck sections; prefer icon-row when items are visual categories, card-grid when items need body text"
 }
 func (a *agenda) NotWhen() string {
 	return "Items are visual categories with icons (use icon-row), items need multi-line descriptions (use card-grid), or content is a sequential process (use process-flow)"
 }
-func (a *agenda) Version() int { return 1 }
+func (a *agenda) Version() int      { return 1 }
 func (a *agenda) CellsHint() string { return "2-10" }
 func (a *agenda) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -56,11 +58,11 @@ type AgendaValues struct {
 
 // AgendaOverrides contains pattern-level overrides for the agenda.
 type AgendaOverrides struct {
-	Accent         string `json:"accent,omitempty"`          // Accent scheme color for number badges
-	SemanticAccent string `json:"semantic_accent,omitempty"` // Semantic accent role
-	Highlight      int    `json:"highlight,omitempty"`       // 1-based index of item to highlight (0 = none)
-	NumberSize     float64 `json:"number_size,omitempty"`    // Font size for number in points
-	TitleSize      float64 `json:"title_size,omitempty"`     // Font size for title in points
+	Accent         string  `json:"accent,omitempty"`          // Accent scheme color for number badges
+	SemanticAccent string  `json:"semantic_accent,omitempty"` // Semantic accent role
+	Highlight      int     `json:"highlight,omitempty"`       // 1-based index of item to highlight (0 = none)
+	NumberSize     float64 `json:"number_size,omitempty"`     // Font size for number in points
+	TitleSize      float64 `json:"title_size,omitempty"`      // Font size for title in points
 }
 
 // AgendaCellOverride is an alias for the shared CellOverride struct.
@@ -70,8 +72,8 @@ type AgendaCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (a *agenda) NewValues() any      { return &AgendaValues{} }
-func (a *agenda) NewOverrides() any   { return &AgendaOverrides{} }
+func (a *agenda) NewValues() any       { return &AgendaValues{} }
+func (a *agenda) NewOverrides() any    { return &AgendaOverrides{} }
 func (a *agenda) NewCellOverride() any { return &AgendaCellOverride{} }
 
 func (a *agenda) Schema() *Schema {

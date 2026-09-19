@@ -18,15 +18,17 @@ func init() {
 
 type beforeAfterCompact struct{}
 
-func (b *beforeAfterCompact) Name() string        { return "before-after-compact" }
-func (b *beforeAfterCompact) Description() string { return "Compact two-column before/after with transition chevron, height-capped" }
+func (b *beforeAfterCompact) Name() string { return "before-after-compact" }
+func (b *beforeAfterCompact) Description() string {
+	return "Compact two-column before/after with transition chevron, height-capped"
+}
 func (b *beforeAfterCompact) UseWhen() string {
 	return "Brief before→after with short bullet lists (1-4 items each) where the transformation is context, not the slide hero; prefer full before-after when items need more vertical space"
 }
 func (b *beforeAfterCompact) NotWhen() string {
 	return "Each column has 5+ items needing full height (use before-after), comparing options without temporal change (use comparison-2col)"
 }
-func (b *beforeAfterCompact) Version() int     { return 1 }
+func (b *beforeAfterCompact) Version() int      { return 1 }
 func (b *beforeAfterCompact) CellsHint() string { return "2 + header" }
 func (b *beforeAfterCompact) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

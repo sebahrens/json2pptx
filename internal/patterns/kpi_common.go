@@ -285,7 +285,6 @@ func kpiCellSchema() *Schema {
 	).WithDescription("KPI cell: string \"Big | Small\" or {big, small, sub?, icon?}")
 }
 
-
 // kpiOverridesSchema returns the JSON Schema for KPI pattern-level overrides.
 func kpiOverridesSchema() *Schema {
 	return ObjectSchema(

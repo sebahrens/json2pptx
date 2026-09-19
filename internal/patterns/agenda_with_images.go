@@ -75,9 +75,9 @@ type AgendaWithImagesValues struct {
 type AgendaWithImagesOverrides struct {
 	Accent         string  `json:"accent,omitempty"`
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
-	NumberSize     float64 `json:"number_size,omitempty"`   // Font size for number badge (default 18)
-	TitleSize      float64 `json:"title_size,omitempty"`    // Font size for row title (default 14)
-	SubtitleSize   float64 `json:"subtitle_size,omitempty"` // Font size for subtitle (default 10)
+	NumberSize     float64 `json:"number_size,omitempty"`      // Font size for number badge (default 18)
+	TitleSize      float64 `json:"title_size,omitempty"`       // Font size for row title (default 14)
+	SubtitleSize   float64 `json:"subtitle_size,omitempty"`    // Font size for subtitle (default 10)
 	ImageLabelSize float64 `json:"image_label_size,omitempty"` // Font size for image placeholder caption (default 10)
 }
 

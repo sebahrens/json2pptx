@@ -50,7 +50,7 @@ func (b *bmcCanvas) ExemplarValues() any {
 		Channels:          BMCCell{Header: "Channels", Bullets: []string{"Direct sales", "Web"}},
 		CustomerSegments:  BMCCell{Header: "Customer Segments", Bullets: []string{"Mass market", "Niche market"}},
 		CostStructure:     BMCCell{Header: "Cost Structure", Bullets: []string{"Fixed costs", "Variable costs"}},
-		RevenueStreams:     BMCCell{Header: "Revenue Streams", Bullets: []string{"Asset sale", "Subscription"}},
+		RevenueStreams:    BMCCell{Header: "Revenue Streams", Bullets: []string{"Asset sale", "Subscription"}},
 	}
 }
 
@@ -92,11 +92,9 @@ type BMCCanvasCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (b *bmcCanvas) NewValues() any      { return &BMCCanvasValues{} }
-func (b *bmcCanvas) NewOverrides() any   { return &BMCCanvasOverrides{} }
+func (b *bmcCanvas) NewValues() any       { return &BMCCanvasValues{} }
+func (b *bmcCanvas) NewOverrides() any    { return &BMCCanvasOverrides{} }
 func (b *bmcCanvas) NewCellOverride() any { return &BMCCanvasCellOverride{} }
-
-
 
 func (b *bmcCanvas) Schema() *Schema {
 	cellSchema := ObjectSchema(
@@ -106,7 +104,6 @@ func (b *bmcCanvas) Schema() *Schema {
 		},
 		[]string{"header", "bullets"},
 	).WithAdditionalProperties(false)
-
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
@@ -243,7 +240,7 @@ func (b *bmcCanvas) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		vals.Channels,          // 5
 		vals.CustomerSegments,  // 6
 		vals.CostStructure,     // 7
-		vals.RevenueStreams,     // 8
+		vals.RevenueStreams,    // 8
 	}
 
 	// Default cell border: subtle dk1-tinted stroke so the 9-cell canvas

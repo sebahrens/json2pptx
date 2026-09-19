@@ -18,7 +18,7 @@ func defaultBMCValues() BMCCanvasValues {
 		Channels:          BMCCell{Header: "Channels", Bullets: []string{"Direct sales", "Web"}},
 		CustomerSegments:  BMCCell{Header: "Customer Segments", Bullets: []string{"Mass market", "Niche market"}},
 		CostStructure:     BMCCell{Header: "Cost Structure", Bullets: []string{"Fixed costs", "Variable costs"}},
-		RevenueStreams:     BMCCell{Header: "Revenue Streams", Bullets: []string{"Asset sale", "Subscription"}},
+		RevenueStreams:    BMCCell{Header: "Revenue Streams", Bullets: []string{"Asset sale", "Subscription"}},
 	}
 }
 

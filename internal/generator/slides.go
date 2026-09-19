@@ -73,6 +73,20 @@ type GenerationRequest struct {
 type BackgroundImage struct {
 	Path string // File path to background image
 	Fit  string // "cover" (default), "stretch", "tile"
+	// Color is a solid slide fill (hex, already resolved from any scheme
+	// name). Rendered as <p:bg><p:bgPr><a:solidFill>; set on its own it is a
+	// coloured slide, set with Path it is the fill behind a transparent image
+	// (go-slide-creator-uy5s).
+	Color string
+	// Overlay is a full-bleed scrim painted over the background image and
+	// under every shape, so text on a photo stays legible.
+	Overlay *BackgroundOverlay
+}
+
+// BackgroundOverlay is the scrim over a slide's background image.
+type BackgroundOverlay struct {
+	Color string  // Hex or scheme colour name
+	Alpha float64 // 0.0-1.0
 }
 
 // SlideSpec defines a single slide to create.

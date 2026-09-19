@@ -236,6 +236,20 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleAfter:  `{"members":[{"name":"Dana","role":"VP Finance"}]}`,
 		RelatedCodes:  []string{ErrCodeInvalidShape, ErrCodeUnknownKey, ErrCodeRequired},
 	},
+	ErrCodeTextOverImageUnverified: {
+		Code:        ErrCodeTextOverImageUnverified,
+		Summary:     "A slide's text sits on a background photo with no scrim, so its contrast cannot be checked.",
+		Severity:    "review",
+		WhenEmitted: "A slide sets background.image (or background.url) without background.overlay. The contrast pass reads a solid background fill; a photo has no single colour, so the template's dark title can land on the dark half of the picture and nothing reports it.",
+		RemediationSteps: []string{
+			"Add background.overlay {color, alpha} — a scrim over the photo. alpha 0.45 of dk1 darkens most photos enough for light text to clear WCAG AA, and the contrast pass then judges the text against the scrim.",
+			"Or move the text off the picture (a pattern beside the image rather than over it, e.g. image-text-split).",
+			"Or set contrast_check: false on the slide when the photo is known to be uniform under the text.",
+		},
+		ExampleBefore: `{"background":{"image":"hero.jpg"}}`,
+		ExampleAfter:  `{"background":{"image":"hero.jpg","overlay":{"color":"dk1","alpha":0.45}}}`,
+		RelatedCodes:  []string{ErrCodeContrastPredicted},
+	},
 	ErrCodeInvalidShape: {
 		Code:        ErrCodeInvalidShape,
 		Summary:     "A value has the wrong structural shape (e.g., array where object expected).",

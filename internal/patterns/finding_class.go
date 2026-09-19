@@ -52,10 +52,10 @@ var contentCodes = map[string]bool{
 	ErrCodeDuplicateTitle:    true,
 	ErrCodeTakeawayMissing:   true,
 	// Content-substance codes: what the slide says (go-slide-creator-q7ar).
-	ErrCodeWeakContent: true,
-	ErrCodeMissingTitle:       true,
-	ErrCodeSlideNearlyEmpty:   true,
-	ErrCodeChartOverloaded:    true,
+	ErrCodeWeakContent:      true,
+	ErrCodeMissingTitle:     true,
+	ErrCodeSlideNearlyEmpty: true,
+	ErrCodeChartOverloaded:  true,
 }
 
 // FindingClass returns the QA class for a finding code: one of

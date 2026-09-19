@@ -27,13 +27,13 @@ func (th *timelineHorizontal) UseWhen() string {
 func (th *timelineHorizontal) NotWhen() string {
 	return "Multiple parallel workstreams across time (use roadmap-phased), steps are actions/decisions not milestones (use process-flow), or events belong to different actors (use swimlane)"
 }
-func (th *timelineHorizontal) Version() int { return 1 }
+func (th *timelineHorizontal) Version() int      { return 1 }
 func (th *timelineHorizontal) CellsHint() string { return "3-7" }
 func (th *timelineHorizontal) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
-		Category:      "structural",
-		NarrativeRole: []string{"frame", "evidence"},
-		PairsWith:     []string{"kpi-3up", "roadmap-phased", "card-grid"},
+		Category:           "structural",
+		NarrativeRole:      []string{"frame", "evidence"},
+		PairsWith:          []string{"kpi-3up", "roadmap-phased", "card-grid"},
 		DensityClass:       "medium",
 		AccentWeight:       "normal",
 		SparseThresholdPct: 15,
@@ -81,10 +81,9 @@ type TimelineHorizontalCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (th *timelineHorizontal) NewValues() any      { return &TimelineHorizontalValues{} }
-func (th *timelineHorizontal) NewOverrides() any   { return &TimelineHorizontalOverrides{} }
+func (th *timelineHorizontal) NewValues() any       { return &TimelineHorizontalValues{} }
+func (th *timelineHorizontal) NewOverrides() any    { return &TimelineHorizontalOverrides{} }
 func (th *timelineHorizontal) NewCellOverride() any { return &TimelineHorizontalCellOverride{} }
-
 
 func (th *timelineHorizontal) Schema() *Schema {
 	stopSchema := ObjectSchema(
@@ -96,7 +95,6 @@ func (th *timelineHorizontal) Schema() *Schema {
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
-
 
 	return ObjectSchema(
 		map[string]*Schema{

@@ -20,21 +20,23 @@ func init() {
 
 type processFlow struct{}
 
-func (p *processFlow) Name() string        { return "process-flow" }
-func (p *processFlow) Description() string { return "Left-to-right process flow with steps and decision points" }
+func (p *processFlow) Name() string { return "process-flow" }
+func (p *processFlow) Description() string {
+	return "Left-to-right process flow with steps and decision points"
+}
 func (p *processFlow) UseWhen() string {
 	return "Sequential steps in a single-lane workflow (3-8 steps); prefer swimlane when multiple actors own different steps, timeline-horizontal when stops are date-based"
 }
 func (p *processFlow) NotWhen() string {
 	return "Steps belong to different actors/roles (use swimlane), stops are calendar-based milestones (use timeline-horizontal), or items are unordered (use icon-row or card-grid)"
 }
-func (p *processFlow) Version() int { return 1 }
+func (p *processFlow) Version() int      { return 1 }
 func (p *processFlow) CellsHint() string { return "3-8" }
 func (p *processFlow) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
-		Category:      "structural",
-		NarrativeRole: []string{"frame", "evidence"},
-		PairsWith:     []string{"kpi-3up", "card-grid", "before-after"},
+		Category:           "structural",
+		NarrativeRole:      []string{"frame", "evidence"},
+		PairsWith:          []string{"kpi-3up", "card-grid", "before-after"},
 		DensityClass:       "medium",
 		AccentWeight:       "normal",
 		SparseThresholdPct: 15,
@@ -108,8 +110,8 @@ type ProcessFlowCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (p *processFlow) NewValues() any      { return &ProcessFlowValues{} }
-func (p *processFlow) NewOverrides() any   { return &ProcessFlowOverrides{} }
+func (p *processFlow) NewValues() any       { return &ProcessFlowValues{} }
+func (p *processFlow) NewOverrides() any    { return &ProcessFlowOverrides{} }
 func (p *processFlow) NewCellOverride() any { return &ProcessFlowCellOverride{} }
 
 func (p *processFlow) Schema() *Schema {

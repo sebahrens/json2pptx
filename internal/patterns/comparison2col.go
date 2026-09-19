@@ -28,7 +28,7 @@ func (c *comparison2col) UseWhen() string {
 func (c *comparison2col) NotWhen() string {
 	return "Comparing a temporal before→after state (use before-after), more than 2 items (use card-grid), or positioned on two axes (use matrix-2x2)"
 }
-func (c *comparison2col) Version() int { return 1 }
+func (c *comparison2col) Version() int      { return 1 }
 func (c *comparison2col) CellsHint() string { return "2 + header" }
 func (c *comparison2col) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -168,10 +168,9 @@ type Comparison2colCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (c *comparison2col) NewValues() any      { return &Comparison2colValues{} }
-func (c *comparison2col) NewOverrides() any   { return &Comparison2colOverrides{} }
+func (c *comparison2col) NewValues() any       { return &Comparison2colValues{} }
+func (c *comparison2col) NewOverrides() any    { return &Comparison2colOverrides{} }
 func (c *comparison2col) NewCellOverride() any { return &Comparison2colCellOverride{} }
-
 
 func (c *comparison2col) Schema() *Schema {
 	rowSchema := OneOfSchema(
@@ -184,7 +183,6 @@ func (c *comparison2col) Schema() *Schema {
 			[]string{"left", "right"},
 		).WithAdditionalProperties(false),
 	).WithDescription("Row: string \"Left | Right\" or {left, right}")
-
 
 	headersSchema := ArraySchema(StringSchema(60), 2, 2).
 		WithDescription("Column headers [left, right] (preferred over header_left/header_right)")

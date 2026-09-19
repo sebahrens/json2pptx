@@ -28,21 +28,21 @@ const (
 // We use a private struct so the public API is constructor-based, not
 // field-assignment-based.
 type schemaJSON struct {
-	Schema      string                `json:"$schema,omitempty"`
-	Type        SchemaType            `json:"type,omitempty"`
-	Description string                `json:"description,omitempty"`
-	Properties  map[string]*Schema    `json:"properties,omitempty"`
-	Required    []string              `json:"required,omitempty"`
-	Items       *Schema               `json:"items,omitempty"`
-	MinItems    *int                  `json:"minItems,omitempty"`
-	MaxItems    *int                  `json:"maxItems,omitempty"`
-	MaxLength   *int                  `json:"maxLength,omitempty"`
-	MinLength   *int                  `json:"minLength,omitempty"`
-	Minimum     *float64              `json:"minimum,omitempty"`
-	Maximum     *float64              `json:"maximum,omitempty"`
-	Enum        []string              `json:"enum,omitempty"`
-	Const       *json.RawMessage      `json:"const,omitempty"`
-	Ref         string                `json:"$ref,omitempty"`
+	Schema               string             `json:"$schema,omitempty"`
+	Type                 SchemaType         `json:"type,omitempty"`
+	Description          string             `json:"description,omitempty"`
+	Properties           map[string]*Schema `json:"properties,omitempty"`
+	Required             []string           `json:"required,omitempty"`
+	Items                *Schema            `json:"items,omitempty"`
+	MinItems             *int               `json:"minItems,omitempty"`
+	MaxItems             *int               `json:"maxItems,omitempty"`
+	MaxLength            *int               `json:"maxLength,omitempty"`
+	MinLength            *int               `json:"minLength,omitempty"`
+	Minimum              *float64           `json:"minimum,omitempty"`
+	Maximum              *float64           `json:"maximum,omitempty"`
+	Enum                 []string           `json:"enum,omitempty"`
+	Const                *json.RawMessage   `json:"const,omitempty"`
+	Ref                  string             `json:"$ref,omitempty"`
 	Defs                 map[string]*Schema `json:"$defs,omitempty"`
 	Default              *json.RawMessage   `json:"default,omitempty"`
 	AdditionalProperties *bool              `json:"additionalProperties,omitempty"`
@@ -246,6 +246,6 @@ func SchemaJSONIndent(p Pattern) []byte {
 	return data
 }
 
-func intPtr(v int) *int          { return &v }
+func intPtr(v int) *int             { return &v }
 func float64Ptr(v float64) *float64 { return &v }
-func boolPtr(v bool) *bool       { return &v }
+func boolPtr(v bool) *bool          { return &v }

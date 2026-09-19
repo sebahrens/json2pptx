@@ -109,6 +109,7 @@ func ApplyGridDefaults(grid *jsonschema.ShapeGridInput) {
 		grid.VerticalAlign = GridVerticalAlignDefault
 	}
 }
+
 // textParagraph is a sized paragraph used for height estimates.
 type textParagraph struct {
 	text string

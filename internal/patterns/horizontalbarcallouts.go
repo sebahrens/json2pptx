@@ -147,14 +147,14 @@ func (h *horizontalBarCallouts) Schema() *Schema {
 
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
-			"accent":          StringSchema(0).WithDescription("Accent scheme color governing bar fill and callout accent bar (default accent1)").WithDefault("accent1"),
-			"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"header_size":     NumberSchema(6, 40).WithDescription("Bar label font size (default 11)"),
-			"body_size":       NumberSchema(6, 40).WithDescription("Callout text font size (default 10)"),
+			"accent":           StringSchema(0).WithDescription("Accent scheme color governing bar fill and callout accent bar (default accent1)").WithDefault("accent1"),
+			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+			"header_size":      NumberSchema(6, 40).WithDescription("Bar label font size (default 11)"),
+			"body_size":        NumberSchema(6, 40).WithDescription("Callout text font size (default 10)"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent rotation for callout accent bars"),
-			"label_size":      NumberSchema(6, 40).WithDescription("Bar label font size (default 11) — overrides header_size for this pattern"),
-			"value_size":      NumberSchema(6, 40).WithDescription("Value label font size (default 12)"),
-			"callout_size":    NumberSchema(6, 40).WithDescription("Callout text font size (default 10) — overrides body_size for this pattern"),
+			"label_size":       NumberSchema(6, 40).WithDescription("Bar label font size (default 11) — overrides header_size for this pattern"),
+			"value_size":       NumberSchema(6, 40).WithDescription("Value label font size (default 12)"),
+			"callout_size":     NumberSchema(6, 40).WithDescription("Callout text font size (default 10) — overrides body_size for this pattern"),
 		},
 		nil,
 	).WithAdditionalProperties(false)

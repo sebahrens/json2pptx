@@ -18,15 +18,17 @@ func init() {
 
 type statHero struct{}
 
-func (sh *statHero) Name() string        { return "stat-hero" }
-func (sh *statHero) Description() string { return "Single oversized statistic with label and optional context" }
+func (sh *statHero) Name() string { return "stat-hero" }
+func (sh *statHero) Description() string {
+	return "Single oversized statistic with label and optional context"
+}
 func (sh *statHero) UseWhen() string {
 	return "One big number dominates the slide; prefer kpi-3up when showing 3+ metrics side-by-side, pull-quote when the focal content is words not a number"
 }
 func (sh *statHero) NotWhen() string {
 	return "Multiple KPIs need equal weight (use kpi-3up or kpi-4up), or the focal content is a quote (use pull-quote)"
 }
-func (sh *statHero) Version() int { return 1 }
+func (sh *statHero) Version() int      { return 1 }
 func (sh *statHero) CellsHint() string { return "1" }
 func (sh *statHero) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -55,7 +57,7 @@ func (sh *statHero) ExemplarValues() any {
 // StatHeroValues holds the data for a stat-hero pattern.
 type StatHeroValues struct {
 	Value   string `json:"value"`             // The big number (e.g. "$2.4B", "99.9%")
-	Unit    string `json:"unit,omitempty"`     // Optional unit suffix (e.g. "TAM", "MRR")
+	Unit    string `json:"unit,omitempty"`    // Optional unit suffix (e.g. "TAM", "MRR")
 	Label   string `json:"label"`             // One-line context (e.g. "addressable market")
 	Context string `json:"context,omitempty"` // Optional subtext line
 	Source  string `json:"source,omitempty"`  // Optional source/footnote
@@ -74,8 +76,8 @@ type StatHeroOverrides struct {
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (sh *statHero) NewValues() any      { return &StatHeroValues{} }
-func (sh *statHero) NewOverrides() any   { return &StatHeroOverrides{} }
+func (sh *statHero) NewValues() any       { return &StatHeroValues{} }
+func (sh *statHero) NewOverrides() any    { return &StatHeroOverrides{} }
 func (sh *statHero) NewCellOverride() any { return nil }
 
 func (sh *statHero) Schema() *Schema {

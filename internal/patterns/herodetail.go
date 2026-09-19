@@ -20,15 +20,17 @@ func init() {
 
 type heroDetail struct{}
 
-func (hd *heroDetail) Name() string        { return "hero-detail" }
-func (hd *heroDetail) Description() string { return "Big hero statistic with 2-4 supporting detail cards below" }
+func (hd *heroDetail) Name() string { return "hero-detail" }
+func (hd *heroDetail) Description() string {
+	return "Big hero statistic with 2-4 supporting detail cards below"
+}
 func (hd *heroDetail) UseWhen() string {
 	return "One dominant metric plus 2-4 supporting detail bullets; prefer stat-hero when no details are needed, kpi-3up when all metrics have equal weight"
 }
 func (hd *heroDetail) NotWhen() string {
 	return "No supporting details (use stat-hero), all items have equal weight (use kpi-3up or kpi-4up), or content is a quote (use pull-quote)"
 }
-func (hd *heroDetail) Version() int    { return 2 }
+func (hd *heroDetail) Version() int      { return 2 }
 func (hd *heroDetail) CellsHint() string { return "1 + 2-4" }
 func (hd *heroDetail) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -93,11 +95,11 @@ type HeroDetailValues struct {
 type HeroDetailOverrides struct {
 	Accent         string  `json:"accent,omitempty"`
 	SemanticAccent string  `json:"semantic_accent,omitempty"`
-	HeroSize       float64 `json:"hero_size,omitempty"`    // Font size for the big number (default 80)
-	LabelSize      float64 `json:"label_size,omitempty"`   // Font size for the label (default 16)
-	HeaderSize     float64 `json:"header_size,omitempty"`  // Font size for detail titles (default 14)
-	DetailSize     float64 `json:"detail_size,omitempty"`  // Font size for detail body text (default 11)
-	Style          string  `json:"style,omitempty"`        // "cards" (default) or "minimal"
+	HeroSize       float64 `json:"hero_size,omitempty"`   // Font size for the big number (default 80)
+	LabelSize      float64 `json:"label_size,omitempty"`  // Font size for the label (default 16)
+	HeaderSize     float64 `json:"header_size,omitempty"` // Font size for detail titles (default 14)
+	DetailSize     float64 `json:"detail_size,omitempty"` // Font size for detail body text (default 11)
+	Style          string  `json:"style,omitempty"`       // "cards" (default) or "minimal"
 }
 
 // HeroDetailCellOverride is an alias for the shared CellOverride struct.
@@ -114,8 +116,8 @@ var validHeroDetailStyles = map[string]bool{
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (hd *heroDetail) NewValues() any      { return &HeroDetailValues{} }
-func (hd *heroDetail) NewOverrides() any   { return &HeroDetailOverrides{} }
+func (hd *heroDetail) NewValues() any       { return &HeroDetailValues{} }
+func (hd *heroDetail) NewOverrides() any    { return &HeroDetailOverrides{} }
 func (hd *heroDetail) NewCellOverride() any { return &HeroDetailCellOverride{} }
 
 func (hd *heroDetail) Schema() *Schema {
@@ -448,6 +450,6 @@ type heroDetailParagraph struct {
 // heroDetailText is the text object for JSON marshalling.
 type heroDetailText struct {
 	Paragraphs    []heroDetailParagraph `json:"paragraphs"`
-	Align         string               `json:"align"`
-	VerticalAlign string               `json:"vertical_align"`
+	Align         string                `json:"align"`
+	VerticalAlign string                `json:"vertical_align"`
 }

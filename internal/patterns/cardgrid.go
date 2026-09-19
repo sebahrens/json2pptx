@@ -30,7 +30,7 @@ func (c *cardGrid) UseWhen() string {
 func (c *cardGrid) NotWhen() string {
 	return "Exactly 3 numeric KPIs (use kpi-3up), two-column pros/cons (use comparison-2col), standard BMC (use bmc-canvas), or a single hero metric (use stat-hero)"
 }
-func (c *cardGrid) Version() int { return 2 }
+func (c *cardGrid) Version() int      { return 2 }
 func (c *cardGrid) CellsHint() string { return "rows × cols" }
 func (c *cardGrid) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -175,10 +175,9 @@ type CardGridCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (c *cardGrid) NewValues() any      { return &CardGridValues{} }
-func (c *cardGrid) NewOverrides() any   { return &CardGridOverrides{} }
+func (c *cardGrid) NewValues() any       { return &CardGridValues{} }
+func (c *cardGrid) NewOverrides() any    { return &CardGridOverrides{} }
 func (c *cardGrid) NewCellOverride() any { return &CardGridCellOverride{} }
-
 
 func (c *cardGrid) Schema() *Schema {
 	cellSchema := OneOfSchema(

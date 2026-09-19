@@ -91,13 +91,13 @@ func TestExpandContext_ResolveAccent(t *testing.T) {
 		want           string
 	}{
 		{
-			name: "explicit accent wins over rotate",
-			ctx:  ExpandContext{Metadata: meta, AccentStrategy: AccentStrategyRotate, SlideIndex: 3},
+			name:   "explicit accent wins over rotate",
+			ctx:    ExpandContext{Metadata: meta, AccentStrategy: AccentStrategyRotate, SlideIndex: 3},
 			accent: "accent5", want: "accent5",
 		},
 		{
-			name: "semantic wins over rotate",
-			ctx:  ExpandContext{Metadata: meta, AccentStrategy: AccentStrategyRotate, SlideIndex: 3},
+			name:           "semantic wins over rotate",
+			ctx:            ExpandContext{Metadata: meta, AccentStrategy: AccentStrategyRotate, SlideIndex: 3},
 			semanticAccent: "positive", want: "accent3",
 		},
 		{
@@ -279,11 +279,11 @@ func TestAccentNumber(t *testing.T) {
 		{"accent1", 1},
 		{"accent2", 2},
 		{"accent6", 6},
-		{"accent0", 1},  // out of range, falls back
-		{"accent7", 1},  // out of range, falls back
-		{"dk1", 1},      // wrong format, falls back
-		{"", 1},         // empty, falls back
-		{"accent", 1},   // no digit
+		{"accent0", 1}, // out of range, falls back
+		{"accent7", 1}, // out of range, falls back
+		{"dk1", 1},     // wrong format, falls back
+		{"", 1},        // empty, falls back
+		{"accent", 1},  // no digit
 	}
 	for _, tt := range tests {
 		got := accentNumber(tt.name)

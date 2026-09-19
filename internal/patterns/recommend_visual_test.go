@@ -260,16 +260,16 @@ type densityStubPattern struct {
 	density string
 }
 
-func (d *densityStubPattern) Name() string        { return d.name }
-func (d *densityStubPattern) Description() string { return d.name }
-func (d *densityStubPattern) UseWhen() string     { return d.name }
-func (d *densityStubPattern) NotWhen() string     { return "" }
-func (d *densityStubPattern) Version() int        { return 1 }
-func (d *densityStubPattern) NewValues() any      { return nil }
-func (d *densityStubPattern) NewOverrides() any   { return nil }
+func (d *densityStubPattern) Name() string         { return d.name }
+func (d *densityStubPattern) Description() string  { return d.name }
+func (d *densityStubPattern) UseWhen() string      { return d.name }
+func (d *densityStubPattern) NotWhen() string      { return "" }
+func (d *densityStubPattern) Version() int         { return 1 }
+func (d *densityStubPattern) NewValues() any       { return nil }
+func (d *densityStubPattern) NewOverrides() any    { return nil }
 func (d *densityStubPattern) NewCellOverride() any { return nil }
-func (d *densityStubPattern) Schema() *Schema     { return nil }
-func (d *densityStubPattern) CellsHint() string   { return "" }
+func (d *densityStubPattern) Schema() *Schema      { return nil }
+func (d *densityStubPattern) CellsHint() string    { return "" }
 func (d *densityStubPattern) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{Category: "data-display", DensityClass: d.density}
 }
@@ -296,11 +296,11 @@ func TestRecommendVisual_Candidates_RanksMixedCategories(t *testing.T) {
 
 	opts := &RecommendOptions{
 		Candidates: []string{
-			"kpi-3up",            // named_pattern
-			"bar",                // chart
-			"pyramid",            // diagram
-			"title",              // placeholder_layout
-			"made-up-thing",      // unknown
+			"kpi-3up",       // named_pattern
+			"bar",           // chart
+			"pyramid",       // diagram
+			"title",         // placeholder_layout
+			"made-up-thing", // unknown
 		},
 	}
 	result := RecommendVisual(reg, "compare top KPIs", &VisualHints{

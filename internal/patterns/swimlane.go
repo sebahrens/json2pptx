@@ -27,7 +27,7 @@ func (s *swimlane) UseWhen() string {
 func (s *swimlane) NotWhen() string {
 	return "All steps belong to a single actor (use process-flow), lanes represent time-phased workstreams (use roadmap-phased), or responsibilities are a simple list (use card-grid)"
 }
-func (s *swimlane) Version() int { return 1 }
+func (s *swimlane) Version() int      { return 1 }
 func (s *swimlane) CellsHint() string { return "lanes × steps" }
 func (s *swimlane) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -76,8 +76,8 @@ type SwimlaneCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (s *swimlane) NewValues() any      { return &SwimlaneValues{} }
-func (s *swimlane) NewOverrides() any   { return &SwimlaneOverrides{} }
+func (s *swimlane) NewValues() any       { return &SwimlaneValues{} }
+func (s *swimlane) NewOverrides() any    { return &SwimlaneOverrides{} }
 func (s *swimlane) NewCellOverride() any { return &SwimlaneCellOverride{} }
 
 func (s *swimlane) Schema() *Schema {

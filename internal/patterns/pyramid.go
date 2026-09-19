@@ -27,7 +27,7 @@ func (p *pyramid) UseWhen() string {
 func (p *pyramid) NotWhen() string {
 	return "Layers are equal-width technology tiers (use arch-stack), layers are sequential steps (use process-flow), or more than 5 levels needed (use card-grid)"
 }
-func (p *pyramid) Version() int { return 1 }
+func (p *pyramid) Version() int      { return 1 }
 func (p *pyramid) CellsHint() string { return "3-5" }
 func (p *pyramid) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -66,8 +66,8 @@ type PyramidCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (p *pyramid) NewValues() any      { return &PyramidValues{} }
-func (p *pyramid) NewOverrides() any   { return &PyramidOverrides{} }
+func (p *pyramid) NewValues() any       { return &PyramidValues{} }
+func (p *pyramid) NewOverrides() any    { return &PyramidOverrides{} }
 func (p *pyramid) NewCellOverride() any { return &PyramidCellOverride{} }
 
 func (p *pyramid) Schema() *Schema {

@@ -59,9 +59,9 @@ func (t *teamBios) ExemplarValues() any {
 
 // TeamBiosMember is a single team member card.
 type TeamBiosMember struct {
-	Name       string `json:"name"`                   // Person's full name (rendered bold)
-	Role       string `json:"role"`                   // Role / title (rendered in accent color)
-	Bio        string `json:"bio,omitempty"`          // Optional short bio (~2 lines).
+	Name       string `json:"name"`                  // Person's full name (rendered bold)
+	Role       string `json:"role"`                  // Role / title (rendered in accent color)
+	Bio        string `json:"bio,omitempty"`         // Optional short bio (~2 lines).
 	PhotoLabel string `json:"photo_label,omitempty"` // Optional label shown in the photo placeholder; defaults to the person's initials.
 }
 
@@ -88,14 +88,14 @@ type TeamBiosCellOverride = CellOverride
 // ---------------------------------------------------------------------------
 
 const (
-	teamBiosMaxMembers     = 8
-	teamBiosMaxPerRow      = 4
-	teamBiosMinPerRow      = 1
-	teamBiosMaxBioWords    = 24 // ~2 short lines at ~10pt body
-	teamBiosNameMaxChars   = 60
-	teamBiosRoleMaxChars   = 80
-	teamBiosBioMaxChars    = 220
-	teamBiosPhotoMaxChars  = 8
+	teamBiosMaxMembers    = 8
+	teamBiosMaxPerRow     = 4
+	teamBiosMinPerRow     = 1
+	teamBiosMaxBioWords   = 24 // ~2 short lines at ~10pt body
+	teamBiosNameMaxChars  = 60
+	teamBiosRoleMaxChars  = 80
+	teamBiosBioMaxChars   = 220
+	teamBiosPhotoMaxChars = 8
 )
 
 // ---------------------------------------------------------------------------

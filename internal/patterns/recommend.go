@@ -38,18 +38,18 @@ type RecommendOptions struct {
 
 // Candidate is a single recommendation result.
 type Candidate struct {
-	PatternName     string  `json:"pattern_name"`
-	Score           float64 `json:"score"`
-	Rationale       string  `json:"rationale"`
-	ConfidenceBand  string  `json:"confidence_band,omitempty"`  // high, medium, low
-	DiversityBonus  bool    `json:"diversity_bonus,omitempty"`  // true if boosted for variety
+	PatternName    string  `json:"pattern_name"`
+	Score          float64 `json:"score"`
+	Rationale      string  `json:"rationale"`
+	ConfidenceBand string  `json:"confidence_band,omitempty"` // high, medium, low
+	DiversityBonus bool    `json:"diversity_bonus,omitempty"` // true if boosted for variety
 }
 
 // NearMiss describes a candidate that nearly qualified but was edged out.
 type NearMiss struct {
-	PatternName string `json:"pattern_name"`
+	PatternName string  `json:"pattern_name"`
 	Score       float64 `json:"score"`
-	WouldTipIf  string `json:"would_tip_if"`
+	WouldTipIf  string  `json:"would_tip_if"`
 }
 
 // ComposeSuggestion suggests a compose envelope pairing multiple patterns.
@@ -70,13 +70,13 @@ type RecommendResult struct {
 
 // rule maps keywords and content hints to a pattern with a base confidence.
 type rule struct {
-	pattern    string
-	keywords   []string // any keyword match activates the rule
-	baseScore  float64
-	rationale  string
-	itemMin    int // 0 = no constraint
-	itemMax    int // 0 = no constraint
-	needsCols  int // 0 = no constraint
+	pattern      string
+	keywords     []string // any keyword match activates the rule
+	baseScore    float64
+	rationale    string
+	itemMin      int // 0 = no constraint
+	itemMax      int // 0 = no constraint
+	needsCols    int // 0 = no constraint
 	needsMetrics bool
 }
 
@@ -368,7 +368,7 @@ var rules = []rule{
 		itemMax:   10,
 	},
 	{
-		pattern:   "value-chain",
+		pattern: "value-chain",
 		// Refined-consulting bias (J2P-STYLE-008): an operational sequence with
 		// per-step descriptions is a value-chain, above card-grid's 0.80 fallback.
 		keywords:  []string{"value chain", "supply chain", "operations chain"},
@@ -402,7 +402,7 @@ var rules = []rule{
 		itemMax:   4,
 	},
 	{
-		pattern:   "driver-tree",
+		pattern: "driver-tree",
 		// Refined-consulting bias (J2P-STYLE-008): value/cost decomposition is a
 		// driver-tree, not a card-grid. Lifted above card-grid's 0.80 fallback.
 		keywords:  []string{"driver", "drivers", "value driver", "value drivers", "cost driver", "cost drivers", "decompose", "decomposition", "breakdown", "contributors"},
@@ -420,7 +420,7 @@ var rules = []rule{
 		itemMax:   8,
 	},
 	{
-		pattern:   "horizontal-bar-with-callouts",
+		pattern: "horizontal-bar-with-callouts",
 		// Refined-consulting bias (J2P-STYLE-008): weighted/ranked scoring intents
 		// belong on this polished layout, not a generic card-grid. baseScore is
 		// lifted above card-grid's 0.80 fallback so generic "cards"/"ranking"
@@ -440,7 +440,7 @@ var rules = []rule{
 		itemMax:   6,
 	},
 	{
-		pattern:   "journey-maturity-model",
+		pattern: "journey-maturity-model",
 		// Refined-consulting bias (J2P-STYLE-008): staged maturity/progression
 		// belongs on the maturity ladder, above card-grid's 0.80 fallback.
 		keywords:  []string{"customer journey", "transformation journey", "maturity assessment", "maturity curve", "maturity stage", "capability progression", "stage progression", "where we are", "current state"},
@@ -488,7 +488,7 @@ var rules = []rule{
 		itemMax:   6,
 	},
 	{
-		pattern:   "phase-roadmap",
+		pattern: "phase-roadmap",
 		// Refined-consulting bias (J2P-STYLE-008): a described phase plan is a
 		// phase-roadmap, above card-grid's 0.80 fallback.
 		keywords:  []string{"phases", "milestone", "milestones", "active phase", "current phase", "phase timeline", "phase callouts"},
@@ -657,7 +657,7 @@ var rules = []rule{
 		itemMax:   5,
 	},
 	{
-		pattern:   "stylish-panels",
+		pattern: "stylish-panels",
 		// Refined-consulting bias (J2P-STYLE-008): pillar/capability bullets
 		// belong on stylish-panels, above card-grid's 0.80 fallback.
 		keywords:  []string{"pillar", "pillar bullets", "capability", "capabilities with bullets", "workstream", "panel"},
@@ -675,7 +675,7 @@ var rules = []rule{
 		itemMax:   5,
 	},
 	{
-		pattern:   "strategy-house",
+		pattern: "strategy-house",
 		// Refined-consulting bias (J2P-STYLE-008): governance/strategy pillars
 		// belong on a strategy-house, above card-grid's 0.80 fallback.
 		keywords:  []string{"strategy", "foundation", "objective", "pillar", "pillars", "house"},
@@ -1255,8 +1255,8 @@ func SuggestSwap(reg *Registry, currentPattern string, itemCount int, hasMetrics
 	}
 
 	type candidate struct {
-		pattern   string
-		rationale string
+		pattern     string
+		rationale   string
 		specificity int // smaller range → more specific
 	}
 
@@ -1457,4 +1457,3 @@ func summarizeIntent(intent string, hints *ContentHints) string {
 	}
 	return sb.String()
 }
-

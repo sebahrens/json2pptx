@@ -20,15 +20,17 @@ func init() {
 
 type stylishPanels struct{}
 
-func (sp *stylishPanels) Name() string        { return "stylish-panels" }
-func (sp *stylishPanels) Description() string { return "Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams" }
+func (sp *stylishPanels) Name() string { return "stylish-panels" }
+func (sp *stylishPanels) Description() string {
+	return "Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams"
+}
 func (sp *stylishPanels) UseWhen() string {
 	return "3-5 titled content blocks with bullet lists, each representing a pillar, capability, or workstream; prefer card-grid when items need only header+body without bullets, icon-row when items are icon+caption pairs"
 }
 func (sp *stylishPanels) NotWhen() string {
 	return "Items are icon+caption pairs (use icon-row), items need only header+body text (use card-grid), or content is a single metric (use stat-hero)"
 }
-func (sp *stylishPanels) Version() int    { return 1 }
+func (sp *stylishPanels) Version() int      { return 1 }
 func (sp *stylishPanels) CellsHint() string { return "3-5" }
 func (sp *stylishPanels) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -100,8 +102,8 @@ type StylishPanelsCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (sp *stylishPanels) NewValues() any      { return &StylishPanelsValues{} }
-func (sp *stylishPanels) NewOverrides() any   { return &StylishPanelsOverrides{} }
+func (sp *stylishPanels) NewValues() any       { return &StylishPanelsValues{} }
+func (sp *stylishPanels) NewOverrides() any    { return &StylishPanelsOverrides{} }
 func (sp *stylishPanels) NewCellOverride() any { return &StylishPanelsCellOverride{} }
 
 func (sp *stylishPanels) Schema() *Schema {
@@ -332,4 +334,3 @@ func buildStylishBodyText(bullets []string, bodySize float64, accent string) jso
 	data, _ := json.Marshal(textObj)
 	return data
 }
-

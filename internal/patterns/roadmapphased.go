@@ -19,15 +19,17 @@ func init() {
 
 type roadmapPhased struct{}
 
-func (r *roadmapPhased) Name() string        { return "roadmap-phased" }
-func (r *roadmapPhased) Description() string { return "Phased roadmap with workstreams and time periods" }
+func (r *roadmapPhased) Name() string { return "roadmap-phased" }
+func (r *roadmapPhased) Description() string {
+	return "Phased roadmap with workstreams and time periods"
+}
 func (r *roadmapPhased) UseWhen() string {
 	return "Multi-phase roadmap with workstreams across time columns (quarterly plan, release timeline); prefer timeline-horizontal for a single-track sequence of milestones, swimlane for cross-actor process"
 }
 func (r *roadmapPhased) NotWhen() string {
 	return "Single-track linear milestones without parallel workstreams (use timeline-horizontal), or steps are owned by actors not workstreams (use swimlane)"
 }
-func (r *roadmapPhased) Version() int { return 1 }
+func (r *roadmapPhased) Version() int      { return 1 }
 func (r *roadmapPhased) CellsHint() string { return "workstreams × phases" }
 func (r *roadmapPhased) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -78,8 +80,8 @@ type RoadmapPhasedCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (r *roadmapPhased) NewValues() any      { return &RoadmapPhasedValues{} }
-func (r *roadmapPhased) NewOverrides() any   { return &RoadmapPhasedOverrides{} }
+func (r *roadmapPhased) NewValues() any       { return &RoadmapPhasedValues{} }
+func (r *roadmapPhased) NewOverrides() any    { return &RoadmapPhasedOverrides{} }
 func (r *roadmapPhased) NewCellOverride() any { return &RoadmapPhasedCellOverride{} }
 
 func (r *roadmapPhased) Schema() *Schema {

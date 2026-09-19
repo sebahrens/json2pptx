@@ -140,6 +140,12 @@ A pattern failure is reported **one finding per problem**, each addressed at `/s
 
 Pattern rule violations (`required`, `max_length`, `min_items`, `max_items`, `count_mismatch`, `out_of_range`, `unknown_enum`, `wrong_pattern`, `ICON_BUNDLED_NAME_UNKNOWN`) are reported the same way — one finding per failing field, at the field's own path — rather than newline-joined into a single `PATTERN_ERROR` message.
 
+### Slide-background codes — emitted by `validate_input` / `generate_presentation`
+
+| Code | Meaning | Severity | `fix.kind` |
+|------|---------|----------|------------|
+| `TEXT_OVER_IMAGE_UNVERIFIED` | A slide sets `background.image` / `background.url` with no `background.overlay`, and puts text on it. The contrast pass reads a solid background fill, so a photo is invisible to it — the template's own title colour can land on the dark half of the picture and nothing reports it. `fix.params: {path, value:{color,alpha}, hint}`. Agent action: add `background.overlay {color:"dk1", alpha:0.45}`, move the text off the picture (`image-text-split`), or set `contrast_check: false` when the photo is known to be uniform under the text | `review` | `provide_value` |
+
 ### Content-policy codes — emitted by `validate_input` / `generate_presentation` over user-visible text
 
 | Code | Meaning | Severity | `fix.kind` |

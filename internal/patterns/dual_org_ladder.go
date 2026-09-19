@@ -88,11 +88,11 @@ type DualOrgLadderValues struct {
 // AccentA defaults to accent1 (left header fill); AccentB defaults to accent2
 // (right header fill). The shared connector line uses AccentA when drawn.
 type DualOrgLadderOverrides struct {
-	AccentA    string  `json:"accent_a,omitempty"`
-	AccentB    string  `json:"accent_b,omitempty"`
-	OrgSize    float64 `json:"org_size,omitempty"`
-	NameSize   float64 `json:"name_size,omitempty"`
-	TitleSize  float64 `json:"title_size,omitempty"`
+	AccentA   string  `json:"accent_a,omitempty"`
+	AccentB   string  `json:"accent_b,omitempty"`
+	OrgSize   float64 `json:"org_size,omitempty"`
+	NameSize  float64 `json:"name_size,omitempty"`
+	TitleSize float64 `json:"title_size,omitempty"`
 }
 
 // DualOrgLadderCellOverride is the shared per-cell override, indexed by row

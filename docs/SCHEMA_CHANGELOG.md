@@ -8,6 +8,32 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Slide backgrounds: `background.color` and `background.overlay`
+  (go-slide-creator-uy5s).** `background` was `{image, url, fit}` only, so the
+  standard "one dark slide in a light deck" — a statement, a section break, a
+  pull quote — could only be faked with a full-bleed `shape_grid` cell, which
+  then fought the layout's own title placeholder for the same space. And an
+  image background had no scrim, so a hero photo rendered the template's dark
+  title over whatever the picture happened to be.
+  - **`background.color`** takes a scheme name (`dk2`, `accent1`, …) or a hex
+    value and fills the slide via `<p:bg><p:bgPr><a:solidFill>`. A scheme name
+    stays a scheme reference, so it follows the template's theme.
+  - **`background.overlay`** `{color, alpha}` is a full-bleed scrim over the
+    background image — the same shape a `shape_grid` image cell already
+    accepted, one level up where a hero slide needs it. Defaults: `dk1` at
+    `0.45`. It is inserted first in the shape tree, so it paints above the
+    background and below every placeholder, grid cell and picture.
+  - **Text contrast is enforced against what the audience sees**: the slide's
+    own `color`, or the scrim when its alpha is at least 0.35, falling back to
+    the layout's fill as before. A deck's dark statement slide now gets its
+    title checked against the dark fill rather than against a layout background
+    nobody can see.
+  - **New finding `TEXT_OVER_IMAGE_UNVERIFIED`** (`review`, fix
+    `provide_value`): a slide puts text on a background image with no overlay.
+    A photo has no single colour, so no contrast verdict is possible — the
+    engine says so instead of guessing one. Silent on picture-only slides and
+    on slides that set `contrast_check: false`.
+
 - **New slide kind `table` (go-slide-creator-e4h1).** A plain data table — the
   financials, the segment split, the pricing tiers — had no kind, so the most
   ordinary business slide there is needed `raw_json2pptx`; `kind: table` came

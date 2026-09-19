@@ -146,12 +146,12 @@ func TestKpi3up(t *testing.T) {
 	})
 
 	tests := []struct {
-		name       string
-		values     Kpi3upValues
-		overrides  *Kpi3upOverrides
-		cellOvr    map[int]any
-		wantErr    string
-		wantNoErr  bool
+		name      string
+		values    Kpi3upValues
+		overrides *Kpi3upOverrides
+		cellOvr   map[int]any
+		wantErr   string
+		wantNoErr bool
 	}{
 		{
 			name: "happy_path",

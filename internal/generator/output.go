@@ -759,6 +759,24 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		}
 	}
 
+	// The background scrim goes in AFTER the grid shapes so it lands first in
+	// the tree: above the background image (which lives in <p:bg>, outside the
+	// tree) and below every placeholder, grid cell and picture
+	// (go-slide-creator-uy5s).
+	if spec, ok := ctx.slideContentMap[slideNum]; ok && spec.Background != nil && spec.Background.Overlay != nil {
+		scrimID := pptx.NewShapeIDAllocator(slideData).Alloc()
+		scrim, scrimErr := backgroundScrimXML(spec.Background.Overlay, ctx.slideWidth, ctx.slideHeight, scrimID)
+		if scrimErr != nil {
+			return fmt.Errorf("slide %d: %w", slideNum, scrimErr)
+		}
+		if len(scrim) > 0 {
+			slideData, err = insertRawShapes(slideData, [][]byte{scrim})
+			if err != nil {
+				return fmt.Errorf("failed to insert background scrim for slide %d: %w", slideNum, err)
+			}
+		}
+	}
+
 	// Insert native SVG icon pics AFTER raw shapes so icons render on top
 	// of the accent-colored shape_grid cells (later in spTree = higher z-order)
 	if hasNativeSVG {
@@ -842,9 +860,17 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		slideData = insertTransitionAndBuild(slideData, spec.Transition, spec.TransitionSpeed, spec.Build)
 	}
 
-	// Insert background image after namespace fix (uses already-prefixed p: and a: tags)
-	if bgMedia, hasBg := ctx.slideBgMedia[slideNum]; hasBg && bgMedia.relID != "" {
+	// Insert the background after the namespace fix (it uses already-prefixed
+	// p: and a: tags). An image wins the <p:bg> slot when both are set — it
+	// paints over the fill anyway (go-slide-creator-uy5s).
+	bgMedia, hasBg := ctx.slideBgMedia[slideNum]
+	switch {
+	case hasBg && bgMedia.relID != "":
 		slideData = insertBackgroundImage(slideData, bgMedia.relID)
+	default:
+		if spec, ok := ctx.slideContentMap[slideNum]; ok && spec.Background != nil {
+			slideData = insertBackgroundColor(slideData, spec.Background.Color)
+		}
 	}
 
 	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter, slidePath)

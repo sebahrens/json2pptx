@@ -134,6 +134,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// depth. Advisory findings that flag verbose / over-nested authoring
 	// before render.
 	findings = append(findings, collectContentLintFindings(input)...)
+	findings = append(findings, collectBackgroundFindings(input)...)
 
 	// 9. Accessibility lint: alt text on images / icons sourced from
 	// path/url/svg_data. Bundled icon names are exempt (implicit captions).

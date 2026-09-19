@@ -27,15 +27,15 @@ func (ir *iconRow) UseWhen() string {
 func (ir *iconRow) NotWhen() string {
 	return "Items are sequential steps (use process-flow), items need body text beyond a caption (use card-grid), or content is a single metric (use stat-hero)"
 }
-func (ir *iconRow) Version() int { return 2 }
+func (ir *iconRow) Version() int      { return 2 }
 func (ir *iconRow) CellsHint() string { return "3-5" }
 func (ir *iconRow) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
-		Category:      "data-display",
-		NarrativeRole: []string{"evidence"},
-		PairsWith:     []string{"kpi-3up", "card-grid", "process-flow"},
-		ComposesWith:  []string{"stylish-panels", "pull-quote", "kpi-3up"},
-		RoleOnSlide:   []string{"foundation", "banner"},
+		Category:           "data-display",
+		NarrativeRole:      []string{"evidence"},
+		PairsWith:          []string{"kpi-3up", "card-grid", "process-flow"},
+		ComposesWith:       []string{"stylish-panels", "pull-quote", "kpi-3up"},
+		RoleOnSlide:        []string{"foundation", "banner"},
 		DensityClass:       "low",
 		AccentWeight:       "strong",
 		SparseThresholdPct: 15,
@@ -112,10 +112,9 @@ type IconRowCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (ir *iconRow) NewValues() any      { return &IconRowValues{} }
-func (ir *iconRow) NewOverrides() any   { return &IconRowOverrides{} }
+func (ir *iconRow) NewValues() any       { return &IconRowValues{} }
+func (ir *iconRow) NewOverrides() any    { return &IconRowOverrides{} }
 func (ir *iconRow) NewCellOverride() any { return &IconRowCellOverride{} }
-
 
 func (ir *iconRow) Schema() *Schema {
 	itemSchema := OneOfSchema(
@@ -129,7 +128,6 @@ func (ir *iconRow) Schema() *Schema {
 			[]string{"icon", "caption"},
 		).WithAdditionalProperties(false),
 	).WithDescription("Item: string \"icon | Caption\" or {icon, caption, secondary?}")
-
 
 	return ObjectSchema(
 		map[string]*Schema{
@@ -306,4 +304,3 @@ func buildIconRowCaptionOnly(caption string, captionSize float64) json.RawMessag
 	data, _ := json.Marshal(textObj)
 	return data
 }
-

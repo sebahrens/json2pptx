@@ -28,7 +28,7 @@ func (m *matrix2x2) UseWhen() string {
 func (m *matrix2x2) NotWhen() string {
 	return "Only one comparison dimension (use comparison-2col), items are unstructured cards (use card-grid), or layout is a standard BMC (use bmc-canvas)"
 }
-func (m *matrix2x2) Version() int { return 2 }
+func (m *matrix2x2) Version() int      { return 2 }
 func (m *matrix2x2) CellsHint() string { return "4 + axes" }
 func (m *matrix2x2) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -150,7 +150,6 @@ type Matrix2x2CellOverride = CellOverride
 func (m *matrix2x2) NewValues() any       { return &Matrix2x2Values{} }
 func (m *matrix2x2) NewOverrides() any    { return &Matrix2x2Overrides{} }
 func (m *matrix2x2) NewCellOverride() any { return &Matrix2x2CellOverride{} }
-
 
 func (m *matrix2x2) Schema() *Schema {
 	// Define the quadrant schema once in $defs and reference it from each
@@ -325,7 +324,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	yLow, yHigh := axisEnds(vals.YLow, vals.YHigh)
 	xAxisCell := &jsonschema.GridCellInput{
 		ColSpan: 2,
-		Grid: buildMatrix2x2XAxis(vals.XAxisLabel, xLow, xHigh, labelSize, accent, axisText),
+		Grid:    buildMatrix2x2XAxis(vals.XAxisLabel, xLow, xHigh, labelSize, accent, axisText),
 	}
 
 	// Empty (unpainted) corner cell

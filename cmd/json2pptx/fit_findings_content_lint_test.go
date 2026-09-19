@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -248,5 +249,59 @@ func TestContentLint_NonTitleTextSkipsHeadlineCheck(t *testing.T) {
 	findings := collectContentLintFindings(input)
 	if findFinding(findings, patterns.ErrCodeHeadlineTooLong) != nil {
 		t.Errorf("HEADLINE_TOO_LONG should only fire on title placeholders, got %+v", findings)
+	}
+}
+
+// go-slide-creator-uy5s: an image background is invisible to the contrast pass
+// (it reads a solid fill), so text on a photo gets no verdict at all. Report it
+// rather than let the template's dark title land on the dark half of a picture.
+func TestBackgroundFindings_TextOverImageUnverified(t *testing.T) {
+	deck := func(bg string) *PresentationInput {
+		var in PresentationInput
+		raw := `{"template":"t","slides":[{"slide_type":"title","background":` + bg + `,
+			"content":[{"placeholder_id":"title","type":"text","text_value":"Hero"}]}]}`
+		if err := json.Unmarshal([]byte(raw), &in); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		return &in
+	}
+	codes := func(in *PresentationInput) int {
+		n := 0
+		for _, f := range collectBackgroundFindings(in) {
+			if f.Code == patterns.ErrCodeTextOverImageUnverified {
+				n++
+			}
+		}
+		return n
+	}
+
+	if got := codes(deck(`{"image":"hero.jpg"}`)); got != 1 {
+		t.Errorf("a photo with no scrim under text must be reported, got %d findings", got)
+	}
+	if got := codes(deck(`{"url":"https://example.com/hero.jpg"}`)); got != 1 {
+		t.Errorf("a URL photo is the same case, got %d findings", got)
+	}
+	// A scrim answers the question, so there is nothing to report.
+	if got := codes(deck(`{"image":"hero.jpg","overlay":{"color":"dk1","alpha":0.45}}`)); got != 0 {
+		t.Errorf("a scrimmed photo must not be reported, got %d findings", got)
+	}
+	// A solid colour is checkable, so it is not this finding's business.
+	if got := codes(deck(`{"color":"dk2"}`)); got != 0 {
+		t.Errorf("a solid background must not be reported, got %d findings", got)
+	}
+
+	// A slide that opted out of contrast checking has already said it knows.
+	optOut := deck(`{"image":"hero.jpg"}`)
+	no := false
+	optOut.Slides[0].ContrastCheck = &no
+	if got := codes(optOut); got != 0 {
+		t.Errorf("contrast_check:false must silence it, got %d findings", got)
+	}
+
+	// A picture-only slide has no text to be illegible.
+	pictureOnly := deck(`{"image":"hero.jpg"}`)
+	pictureOnly.Slides[0].Content = nil
+	if got := codes(pictureOnly); got != 0 {
+		t.Errorf("a slide with no text must not be asked to dim its photo, got %d findings", got)
 	}
 }

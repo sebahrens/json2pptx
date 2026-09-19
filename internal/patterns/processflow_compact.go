@@ -19,15 +19,17 @@ func init() {
 
 type processFlowCompact struct{}
 
-func (p *processFlowCompact) Name() string        { return "process-flow-compact" }
-func (p *processFlowCompact) Description() string { return "Compact left-to-right process flow, height-capped for short content" }
+func (p *processFlowCompact) Name() string { return "process-flow-compact" }
+func (p *processFlowCompact) Description() string {
+	return "Compact left-to-right process flow, height-capped for short content"
+}
 func (p *processFlowCompact) UseWhen() string {
 	return "3-8 short-label steps where the process is supporting context (not the hero content); prefer full process-flow when steps have long labels or fill the slide"
 }
 func (p *processFlowCompact) NotWhen() string {
 	return "Steps have long labels needing vertical space (use process-flow), or steps belong to different actors (use swimlane)"
 }
-func (p *processFlowCompact) Version() int     { return 1 }
+func (p *processFlowCompact) Version() int      { return 1 }
 func (p *processFlowCompact) CellsHint() string { return "3-8" }
 func (p *processFlowCompact) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

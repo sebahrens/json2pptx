@@ -28,7 +28,7 @@ func (b *beforeAfter) UseWhen() string {
 func (b *beforeAfter) NotWhen() string {
 	return "Comparing two options without a temporal dimension (use comparison-2col), or more than two states (use process-flow or timeline-horizontal)"
 }
-func (b *beforeAfter) Version() int { return 1 }
+func (b *beforeAfter) Version() int      { return 1 }
 func (b *beforeAfter) CellsHint() string { return "2 + header" }
 func (b *beforeAfter) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -81,8 +81,8 @@ type BeforeAfterCellOverride = CellOverride
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (b *beforeAfter) NewValues() any      { return &BeforeAfterValues{} }
-func (b *beforeAfter) NewOverrides() any   { return &BeforeAfterOverrides{} }
+func (b *beforeAfter) NewValues() any       { return &BeforeAfterValues{} }
+func (b *beforeAfter) NewOverrides() any    { return &BeforeAfterOverrides{} }
 func (b *beforeAfter) NewCellOverride() any { return &BeforeAfterCellOverride{} }
 
 func (b *beforeAfter) Schema() *Schema {

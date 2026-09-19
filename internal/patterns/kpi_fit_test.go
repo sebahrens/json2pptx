@@ -39,7 +39,9 @@ func expandKPIForTest(t *testing.T, n int, cells KPINupValues) *jsonschema.Shape
 	return grid
 }
 
-func kpiName(n int) string { return map[int]string{2: "kpi-2up", 3: "kpi-3up", 4: "kpi-4up", 5: "kpi-5up", 6: "kpi-6up"}[n] }
+func kpiName(n int) string {
+	return map[int]string{2: "kpi-2up", 3: "kpi-3up", 4: "kpi-4up", 5: "kpi-5up", 6: "kpi-6up"}[n]
+}
 
 // TestKPI3up_ValueSingleLineCentred covers go-slide-creator-5lbo: "$4.2M" with
 // an icon must render on one line (no "$4 / .2 / M" break) and centred.

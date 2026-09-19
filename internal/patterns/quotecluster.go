@@ -87,12 +87,12 @@ type QuoteClusterCellOverride = CellOverride
 // ---------------------------------------------------------------------------
 
 const (
-	quoteClusterMinQuotes   = 3
-	quoteClusterMaxQuotes   = 8
-	quoteClusterColumns     = 3
-	quoteClusterTextMax     = 240
-	quoteClusterNameMax     = 60
-	quoteClusterTitleMax    = 80
+	quoteClusterMinQuotes = 3
+	quoteClusterMaxQuotes = 8
+	quoteClusterColumns   = 3
+	quoteClusterTextMax   = 240
+	quoteClusterNameMax   = 60
+	quoteClusterTitleMax  = 80
 )
 
 // ---------------------------------------------------------------------------

@@ -30,8 +30,10 @@ func (sh *strategyHouse) UseWhen() string {
 func (sh *strategyHouse) NotWhen() string {
 	return "Layers stack without a single objective and foundation framing (use arch-stack), pillars stand alone without banner/foundation (use stylish-panels), or content is a hierarchy that narrows (use pyramid)"
 }
-func (sh *strategyHouse) Version() int        { return 1 }
-func (sh *strategyHouse) CellsHint() string   { return "objective + 3-5 pillars + foundation (+0-3 roof badges)" }
+func (sh *strategyHouse) Version() int { return 1 }
+func (sh *strategyHouse) CellsHint() string {
+	return "objective + 3-5 pillars + foundation (+0-3 roof badges)"
+}
 func (sh *strategyHouse) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:      "structural",

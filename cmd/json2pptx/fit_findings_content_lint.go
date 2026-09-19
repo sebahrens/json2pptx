@@ -270,3 +270,62 @@ func makeBulletDepthFinding(slideIdx int, phID string, depth int) patterns.FitFi
 		Action: "review",
 	}
 }
+
+// collectBackgroundFindings reports a slide whose text sits on a background
+// photo with no scrim over it (go-slide-creator-uy5s). The contrast pass reads
+// a solid background fill, so an image background is simply invisible to it:
+// the template's dark title can land on the dark half of the picture and
+// nothing says a word. Advisory — the deck renders, and only the author knows
+// whether the photo is uniform under the text.
+func collectBackgroundFindings(input *PresentationInput) []patterns.FitFinding {
+	if input == nil {
+		return nil
+	}
+	var out []patterns.FitFinding
+	for si := range input.Slides {
+		slide := input.Slides[si]
+		bg := slide.Background
+		if bg == nil || (bg.Image == "" && bg.URL == "") || bg.Overlay != nil {
+			continue
+		}
+		// A slide that opts out of contrast checking has already said it knows.
+		if slide.ContrastCheck != nil && !*slide.ContrastCheck {
+			continue
+		}
+		if !slideHasVisibleText(slide) {
+			continue
+		}
+		out = append(out, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path: slidepath.SlideField(si, "background"),
+				Code: patterns.ErrCodeTextOverImageUnverified,
+				Message: fmt.Sprintf("slide %d puts text on a background image with no overlay — a photo has no single colour, so the contrast pass cannot check the text against it and the template's own title colour may land on a dark part of the picture",
+					si+1),
+				Fix: &patterns.FixSuggestion{
+					Kind: "provide_value",
+					Params: map[string]any{
+						"path":  slidepath.SlideField(si, "background") + "/overlay",
+						"value": map[string]any{"color": "dk1", "alpha": 0.45},
+						"hint":  "add a scrim over the photo; the contrast pass then judges the text against the scrim colour",
+					},
+				},
+			},
+			Action: "review",
+		})
+	}
+	return out
+}
+
+// slideHasVisibleText reports whether a slide puts any text on the slide, so a
+// picture-only slide is not asked to dim a photo nothing sits on.
+func slideHasVisibleText(slide SlideInput) bool {
+	for _, c := range slide.Content {
+		switch c.Type {
+		case "chart", "diagram", "image":
+			continue
+		default:
+			return true
+		}
+	}
+	return slide.Pattern != nil || slide.ShapeGrid != nil || slide.Compose != nil || slide.Takeaway != ""
+}

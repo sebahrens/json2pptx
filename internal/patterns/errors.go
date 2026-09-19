@@ -100,11 +100,11 @@ const (
 	// ErrCodeWeakContent is the raw-path twin of the semantic compiler's
 	// SEMANTIC_WEAK_CONTENT: exemplar copy that reached a deck
 	// (go-slide-creator-q7ar, go-slide-creator-7ucp).
-	ErrCodeWeakContent = "WEAK_CONTENT"
-	ErrCodeMissingTitle       = "MISSING_TITLE"
-	ErrCodeSlideNearlyEmpty   = "SLIDE_NEARLY_EMPTY"
-	ErrCodeDeckMonotony       = "DECK_MONOTONY"
-	ErrCodeChartOverloaded    = "CHART_OVERLOADED"
+	ErrCodeWeakContent      = "WEAK_CONTENT"
+	ErrCodeMissingTitle     = "MISSING_TITLE"
+	ErrCodeSlideNearlyEmpty = "SLIDE_NEARLY_EMPTY"
+	ErrCodeDeckMonotony     = "DECK_MONOTONY"
+	ErrCodeChartOverloaded  = "CHART_OVERLOADED"
 
 	// Shared content-drop diagnostic — emitted from any path that fails to place
 	// author-provided content (a dropped slide, an unplaced content block, a
@@ -162,6 +162,15 @@ const (
 	// render-time codes but are emitted from collectFitFindings using only
 	// template geometry, theme colors, and JSON content — no rendering.
 	ErrCodeContrastPredicted = "contrast_predicted"
+
+	// ErrCodeTextOverImageUnverified marks a slide whose background is a photo
+	// with no scrim over it. The contrast pass reads a solid background fill;
+	// an image has no single colour, so no verdict about the text on top of it
+	// is possible — the template's dark title can land on the dark half of the
+	// picture and nothing reports it (go-slide-creator-uy5s). Advisory: the
+	// deck renders, and only the author knows whether the photo is dark enough
+	// under the text.
+	ErrCodeTextOverImageUnverified = "TEXT_OVER_IMAGE_UNVERIFIED"
 )
 
 // Sentinel errors for matching with errors.Is. Each ValidationError wraps the
@@ -235,74 +244,77 @@ var (
 
 	ErrContrastPredicted = errors.New("text color is predicted to be auto-replaced for WCAG AA contrast")
 
+	ErrTextOverImageUnverified = errors.New("text sits on a background image with no scrim, so its contrast cannot be checked")
+
 	ErrDiagramAspectMismatch = errors.New("diagram cell aspect differs from rendered SVG aspect")
 	ErrDiagramAspectConflict = errors.New("diagram cell aspect conflicts with diagram type's natural aspect")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
 var codeSentinel = map[string]error{
-	ErrCodeRequired:              ErrRequired,
-	ErrCodeMaxLength:             ErrMaxLength,
-	ErrCodeOutOfRange:            ErrOutOfRange,
-	ErrCodeCountMismatch:         ErrCountMismatch,
-	ErrCodeUnknownKey:            ErrUnknownKey,
-	ErrCodeMinItems:              ErrMinItems,
-	ErrCodeMaxItems:              ErrMaxItems,
-	ErrCodeEmptyValue:            ErrEmptyValue,
-	ErrCodeHexFillNonBrand:       ErrHexFillNonBrand,
-	ErrCodeUnknownLayoutID:       ErrUnknownLayoutID,
-	ErrCodeCalloutUnsupported:    ErrCalloutUnsupported,
-	ErrCodeUnknownEnum:           ErrUnknownEnum,
-	ErrCodePlaceholderNotFound:   ErrPlaceholderNotFound,
-	ErrCodeUnknownTableStyleID:   ErrUnknownTableStyleID,
-	ErrCodeWrongPattern:          ErrWrongPattern,
-	ErrCodeInvalidShape:          ErrInvalidShape,
-	ErrCodePatternUnknownField:   ErrPatternUnknownField,
-	ErrCodeFitOverflow:           ErrFitOverflow,
-	ErrCodeDensityExceeded:       ErrDensityExceeded,
-	ErrCodeStackedTables:         ErrStackedTables,
-	ErrCodeDividerTooThin:        ErrDividerTooThin,
-	ErrCodeMixedFillScheme:       ErrMixedFillScheme,
-	ErrCodePlaceholderOverflow:   ErrPlaceholderOverflow,
-	ErrCodeSlideBoundsOverflow:   ErrSlideBoundsOverflow,
-	ErrCodeFooterCollision:       ErrFooterCollision,
-	ErrCodeTitleWraps:            ErrTitleWraps,
-	ErrCodeSparseLayout:          ErrSparseLayout,
-	ErrCodePatternUnderfilled:    ErrPatternUnderfilled,
-	ErrCodePatternOvercrowded:    ErrPatternOvercrowded,
-	ErrCodeCellUnderfilled:       ErrCellUnderfilled,
-	ErrCodeTakeawayMissing:       ErrTakeawayMissing,
-	ErrCodeChromeBandNoFit:       ErrChromeBandNoFit,
-	ErrCodeAccentOverload:        ErrAccentOverload,
-	ErrCodeSparseSingleRowFlow:   ErrSparseSingleRowFlow,
-	ErrCodeOvertallFlowLane:      ErrOvertallFlowLane,
-	ErrCodeFlowDiamondNoContent:  ErrFlowDiamondNoContent,
-	ErrCodeTocFlowchartVocab:     ErrTocFlowchartVocab,
-	ErrCodeMatrixAxisImbalance:   ErrMatrixAxisImbalance,
-	ErrCodeHeadlineTooLong:       ErrHeadlineTooLong,
-	ErrCodeBodyTooLong:           ErrBodyTooLong,
-	ErrCodeBulletNestingDeep:     ErrBulletNestingDeep,
-	ErrCodeMissingAltText:        ErrMissingAltText,
-	ErrCodeDuplicateTitle:        ErrDuplicateTitle,
-	ErrCodeContentDropped:        ErrContentDropped,
-	ErrCodeChartValueCoerced:     ErrChartValueCoerced,
-	ErrCodeChartShapeInferred:    ErrChartShapeInferred,
-	ErrCodeChartDataEmpty:        ErrChartDataEmpty,
-	ErrCodeChartPlaceholderEmpty: ErrChartPlaceholderEmpty,
-	ErrCodePlaceholderRemapped:   ErrPlaceholderRemapped,
-	ErrCodeTextTrimmed:           ErrTextTrimmed,
-	ErrCodeTextOverflow:          ErrTextOverflow,
-	ErrCodeReadabilityTrimmed:    ErrReadabilityTrimmed,
-	ErrCodeNoAutofitOverflow:     ErrNoAutofitOverflow,
-	ErrCodeTableRowsTruncated:    ErrTableRowsTruncated,
-	ErrCodeTableFontScaled:       ErrTableFontScaled,
-	ErrCodeDiagramClamped:        ErrDiagramClamped,
-	ErrCodeDiagramRenderFailed:   ErrDiagramRenderFailed,
-	ErrCodePaginationDefault:     ErrPaginationDefault,
-	ErrCodeColumnWidthDeficit:    ErrColumnWidthDeficit,
-	ErrCodeContrastPredicted:     ErrContrastPredicted,
-	ErrCodeDiagramAspectMismatch: ErrDiagramAspectMismatch,
-	ErrCodeDiagramAspectConflict: ErrDiagramAspectConflict,
+	ErrCodeRequired:                ErrRequired,
+	ErrCodeMaxLength:               ErrMaxLength,
+	ErrCodeOutOfRange:              ErrOutOfRange,
+	ErrCodeCountMismatch:           ErrCountMismatch,
+	ErrCodeUnknownKey:              ErrUnknownKey,
+	ErrCodeMinItems:                ErrMinItems,
+	ErrCodeMaxItems:                ErrMaxItems,
+	ErrCodeEmptyValue:              ErrEmptyValue,
+	ErrCodeHexFillNonBrand:         ErrHexFillNonBrand,
+	ErrCodeUnknownLayoutID:         ErrUnknownLayoutID,
+	ErrCodeCalloutUnsupported:      ErrCalloutUnsupported,
+	ErrCodeUnknownEnum:             ErrUnknownEnum,
+	ErrCodePlaceholderNotFound:     ErrPlaceholderNotFound,
+	ErrCodeUnknownTableStyleID:     ErrUnknownTableStyleID,
+	ErrCodeWrongPattern:            ErrWrongPattern,
+	ErrCodeInvalidShape:            ErrInvalidShape,
+	ErrCodePatternUnknownField:     ErrPatternUnknownField,
+	ErrCodeFitOverflow:             ErrFitOverflow,
+	ErrCodeDensityExceeded:         ErrDensityExceeded,
+	ErrCodeStackedTables:           ErrStackedTables,
+	ErrCodeDividerTooThin:          ErrDividerTooThin,
+	ErrCodeMixedFillScheme:         ErrMixedFillScheme,
+	ErrCodePlaceholderOverflow:     ErrPlaceholderOverflow,
+	ErrCodeSlideBoundsOverflow:     ErrSlideBoundsOverflow,
+	ErrCodeFooterCollision:         ErrFooterCollision,
+	ErrCodeTitleWraps:              ErrTitleWraps,
+	ErrCodeSparseLayout:            ErrSparseLayout,
+	ErrCodePatternUnderfilled:      ErrPatternUnderfilled,
+	ErrCodePatternOvercrowded:      ErrPatternOvercrowded,
+	ErrCodeCellUnderfilled:         ErrCellUnderfilled,
+	ErrCodeTakeawayMissing:         ErrTakeawayMissing,
+	ErrCodeChromeBandNoFit:         ErrChromeBandNoFit,
+	ErrCodeAccentOverload:          ErrAccentOverload,
+	ErrCodeSparseSingleRowFlow:     ErrSparseSingleRowFlow,
+	ErrCodeOvertallFlowLane:        ErrOvertallFlowLane,
+	ErrCodeFlowDiamondNoContent:    ErrFlowDiamondNoContent,
+	ErrCodeTocFlowchartVocab:       ErrTocFlowchartVocab,
+	ErrCodeMatrixAxisImbalance:     ErrMatrixAxisImbalance,
+	ErrCodeHeadlineTooLong:         ErrHeadlineTooLong,
+	ErrCodeBodyTooLong:             ErrBodyTooLong,
+	ErrCodeBulletNestingDeep:       ErrBulletNestingDeep,
+	ErrCodeMissingAltText:          ErrMissingAltText,
+	ErrCodeDuplicateTitle:          ErrDuplicateTitle,
+	ErrCodeContentDropped:          ErrContentDropped,
+	ErrCodeChartValueCoerced:       ErrChartValueCoerced,
+	ErrCodeChartShapeInferred:      ErrChartShapeInferred,
+	ErrCodeChartDataEmpty:          ErrChartDataEmpty,
+	ErrCodeChartPlaceholderEmpty:   ErrChartPlaceholderEmpty,
+	ErrCodePlaceholderRemapped:     ErrPlaceholderRemapped,
+	ErrCodeTextTrimmed:             ErrTextTrimmed,
+	ErrCodeTextOverflow:            ErrTextOverflow,
+	ErrCodeReadabilityTrimmed:      ErrReadabilityTrimmed,
+	ErrCodeNoAutofitOverflow:       ErrNoAutofitOverflow,
+	ErrCodeTableRowsTruncated:      ErrTableRowsTruncated,
+	ErrCodeTableFontScaled:         ErrTableFontScaled,
+	ErrCodeDiagramClamped:          ErrDiagramClamped,
+	ErrCodeDiagramRenderFailed:     ErrDiagramRenderFailed,
+	ErrCodePaginationDefault:       ErrPaginationDefault,
+	ErrCodeColumnWidthDeficit:      ErrColumnWidthDeficit,
+	ErrCodeContrastPredicted:       ErrContrastPredicted,
+	ErrCodeTextOverImageUnverified: ErrTextOverImageUnverified,
+	ErrCodeDiagramAspectMismatch:   ErrDiagramAspectMismatch,
+	ErrCodeDiagramAspectConflict:   ErrDiagramAspectConflict,
 }
 
 // AllFitFindingCodes returns the sorted list of all fit-finding error codes.

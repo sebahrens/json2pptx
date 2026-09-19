@@ -899,11 +899,19 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		ContrastCheck:   slide.ContrastCheck,
 	}
 
-	// Convert background image spec
-	if slide.Background != nil && slide.Background.Image != "" {
+	// Convert the background spec: an image, a solid colour, or both
+	// (go-slide-creator-uy5s).
+	if bg := slide.Background; bg != nil && (bg.Image != "" || bg.Color != "") {
 		spec.Background = &generator.BackgroundImage{
-			Path: slide.Background.Image,
-			Fit:  slide.Background.Fit,
+			Path:  bg.Image,
+			Fit:   bg.Fit,
+			Color: bg.Color,
+		}
+		if bg.Overlay != nil {
+			spec.Background.Overlay = &generator.BackgroundOverlay{
+				Color: bg.Overlay.Color,
+				Alpha: bg.Overlay.Alpha,
+			}
 		}
 	}
 

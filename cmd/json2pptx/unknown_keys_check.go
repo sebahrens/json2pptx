@@ -102,6 +102,12 @@ func checkSlideUnknownKeys(raw json.RawMessage, path string) []*patterns.Validat
 	// background
 	if v, ok := obj["background"]; ok {
 		warnings = append(warnings, checkUnknownKeysForType(v, reflect.TypeOf(BackgroundInput{}), path+"/background")...)
+		var bgObj map[string]json.RawMessage
+		if json.Unmarshal(v, &bgObj) == nil {
+			if ov, ovOK := bgObj["overlay"]; ovOK {
+				warnings = append(warnings, checkUnknownKeysForType(ov, reflect.TypeOf(BackgroundOverlayInput{}), path+"/background/overlay")...)
+			}
+		}
 	}
 
 	// pattern

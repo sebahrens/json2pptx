@@ -181,4 +181,3 @@ func wrapCellWithSecondary(base *jsonschema.GridCellInput, sec *SecondaryChart, 
 	base.Composite = composite
 	return base
 }
-

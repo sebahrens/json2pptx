@@ -16,9 +16,9 @@ import (
 
 // KPINupConfig defines a parametric KPI variant.
 type KPINupConfig struct {
-	Count        int              // exact cell count (2..6)
-	DensityClass string           // taxonomy density: "low", "medium", "high"
-	Exemplars    []KPICell        // canonical example values
+	Count        int       // exact cell count (2..6)
+	DensityClass string    // taxonomy density: "low", "medium", "high"
+	Exemplars    []KPICell // canonical example values
 }
 
 // kpiNup is a parametric Pattern implementation for KPI grids of N cells.
@@ -57,11 +57,11 @@ func (k *kpiNup) Taxonomy() PatternTaxonomy {
 		density = "medium"
 	}
 	return PatternTaxonomy{
-		Category:      "data-display",
-		NarrativeRole: []string{"evidence"},
-		PairsWith:     []string{"process-flow", "comparison-2col", "card-grid"},
-		ComposesWith:  []string{"stylish-panels", "pull-quote", "process-flow", "icon-row"},
-		RoleOnSlide:   []string{"banner", "foundation"},
+		Category:           "data-display",
+		NarrativeRole:      []string{"evidence"},
+		PairsWith:          []string{"process-flow", "comparison-2col", "card-grid"},
+		ComposesWith:       []string{"stylish-panels", "pull-quote", "process-flow", "icon-row"},
+		RoleOnSlide:        []string{"banner", "foundation"},
 		DensityClass:       density,
 		AccentWeight:       "strong",
 		SparseThresholdPct: 15,

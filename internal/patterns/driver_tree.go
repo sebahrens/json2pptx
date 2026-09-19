@@ -39,8 +39,10 @@ func (dt *driverTree) UseWhen() string {
 func (dt *driverTree) NotWhen() string {
 	return "Hierarchy describes people or roles (use svggen org_chart), content is a sequential process (use process-flow), levels narrow visually toward a single point (use pyramid), or there is only one branch (use a labelled card-grid)"
 }
-func (dt *driverTree) Version() int      { return 1 }
-func (dt *driverTree) CellsHint() string { return "root + 2-4 branches + 1-4 leaves each (+ optional annotations)" }
+func (dt *driverTree) Version() int { return 1 }
+func (dt *driverTree) CellsHint() string {
+	return "root + 2-4 branches + 1-4 leaves each (+ optional annotations)"
+}
 func (dt *driverTree) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:      "structural",

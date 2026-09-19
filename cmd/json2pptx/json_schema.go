@@ -48,6 +48,9 @@ type GridConfig = deckinput.GridConfig
 type ThemeInput = deckinput.ThemeInput
 type SlideInput = deckinput.SlideInput
 type BackgroundInput = deckinput.BackgroundInput
+
+// BackgroundOverlayInput is the scrim over a slide's background image.
+type BackgroundOverlayInput = deckinput.BackgroundOverlayInput
 type ContentInput = deckinput.ContentInput
 type BodyAndBulletsInput = deckinput.BodyAndBulletsInput
 type BodyAndLeadInput = deckinput.BodyAndLeadInput

@@ -168,6 +168,28 @@ A wrapper object around the array a pattern wants is called out by name, because
 }
 ```
 
+### `TEXT_OVER_IMAGE_UNVERIFIED`
+
+**Action:** `review`
+**Fix kind:** `provide_value`
+**Emitted at:** preflight (validate / preview / score)
+
+A slide sets `background.image` (or `background.url`) with no `background.overlay`, and puts text on it. The contrast pass reads a **solid** background fill — `extractLayoutBackgroundColor` parses `<p:bg><p:bgPr><a:solidFill>` — so an image background is invisible to it: a photo has no single colour to compute a ratio against. The template's own title colour then lands wherever the picture happens to be dark or light, and nothing reports it.
+
+The finding is advisory because only the author knows whether the photo is uniform under the text. Silent slides: a picture-only slide (no text), and a slide that has already opted out with `contrast_check: false`.
+
+```json
+{
+  "path": "/slides/1/background",
+  "code": "TEXT_OVER_IMAGE_UNVERIFIED",
+  "message": "slide 2 puts text on a background image with no overlay — a photo has no single colour, so the contrast pass cannot check the text against it and the template's own title colour may land on a dark part of the picture",
+  "fix": { "kind": "provide_value", "params": { "path": "/slides/1/background/overlay", "value": { "color": "dk1", "alpha": 0.45 }, "hint": "add a scrim over the photo; the contrast pass then judges the text against the scrim colour" } },
+  "action": "review"
+}
+```
+
+With an overlay present, the scrim decides the text's background: at `alpha` ≥ 0.35 the contrast pass judges the text against the scrim colour rather than falling back to the layout's fill.
+
 ### `placeholder_overflow`
 
 **Action:** `shrink_or_split`

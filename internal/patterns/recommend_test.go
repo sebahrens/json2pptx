@@ -696,4 +696,3 @@ func TestRecommend_RefinedConsultingBias(t *testing.T) {
 		}
 	}
 }
-

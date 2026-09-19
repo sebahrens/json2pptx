@@ -26,7 +26,7 @@ func (pq *pullQuote) UseWhen() string {
 func (pq *pullQuote) NotWhen() string {
 	return "The focal content is a number/metric (use stat-hero), or multiple quotes need comparison (use card-grid)"
 }
-func (pq *pullQuote) Version() int { return 1 }
+func (pq *pullQuote) Version() int      { return 1 }
 func (pq *pullQuote) CellsHint() string { return "1" }
 func (pq *pullQuote) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -57,10 +57,10 @@ func (pq *pullQuote) ExemplarValues() any {
 
 // PullQuoteValues holds the data for a pull-quote pattern.
 type PullQuoteValues struct {
-	Quote       string `json:"quote"`                  // The quote text
-	Attribution string `json:"attribution"`            // Author/speaker name
-	Role        string `json:"role,omitempty"`         // Optional role/title
-	AccentSide  string `json:"accent_side,omitempty"`  // "left" (default), "right", or "none"
+	Quote       string `json:"quote"`                 // The quote text
+	Attribution string `json:"attribution"`           // Author/speaker name
+	Role        string `json:"role,omitempty"`        // Optional role/title
+	AccentSide  string `json:"accent_side,omitempty"` // "left" (default), "right", or "none"
 }
 
 // PullQuoteOverrides contains pattern-level overrides for pull-quote.
@@ -75,8 +75,8 @@ type PullQuoteOverrides struct {
 // Interface methods
 // ---------------------------------------------------------------------------
 
-func (pq *pullQuote) NewValues() any      { return &PullQuoteValues{} }
-func (pq *pullQuote) NewOverrides() any   { return &PullQuoteOverrides{} }
+func (pq *pullQuote) NewValues() any       { return &PullQuoteValues{} }
+func (pq *pullQuote) NewOverrides() any    { return &PullQuoteOverrides{} }
 func (pq *pullQuote) NewCellOverride() any { return nil }
 
 func (pq *pullQuote) Schema() *Schema {

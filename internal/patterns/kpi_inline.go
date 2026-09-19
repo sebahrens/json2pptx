@@ -19,15 +19,17 @@ func init() {
 
 type kpiInline struct{}
 
-func (k *kpiInline) Name() string        { return "kpi-inline" }
-func (k *kpiInline) Description() string { return "Horizontal inline KPI bar, height-capped for supporting context" }
+func (k *kpiInline) Name() string { return "kpi-inline" }
+func (k *kpiInline) Description() string {
+	return "Horizontal inline KPI bar, height-capped for supporting context"
+}
 func (k *kpiInline) UseWhen() string {
 	return "2-6 KPIs as a compact supporting bar (not the hero); prefer kpi-Nup when KPIs are the main slide content, stat-hero for a single dominant metric"
 }
 func (k *kpiInline) NotWhen() string {
 	return "KPIs are the primary slide content (use kpi-Nup), a single metric should dominate (use stat-hero), or items need multi-line descriptions (use card-grid)"
 }
-func (k *kpiInline) Version() int     { return 2 }
+func (k *kpiInline) Version() int      { return 2 }
 func (k *kpiInline) CellsHint() string { return "2-6" }
 func (k *kpiInline) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{

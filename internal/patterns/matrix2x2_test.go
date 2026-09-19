@@ -57,11 +57,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "happy_path",
 			values: Matrix2x2Values{
-				XAxisLabel: "Market Share",
-				YAxisLabel: "Market Growth",
-				TopLeft:    Matrix2x2Quadrant{Header: "Stars", Body: "High growth, high share"},
-				TopRight:   Matrix2x2Quadrant{Header: "Question Marks", Body: "High growth, low share"},
-				BottomLeft: Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
+				XAxisLabel:  "Market Share",
+				YAxisLabel:  "Market Growth",
+				TopLeft:     Matrix2x2Quadrant{Header: "Stars", Body: "High growth, high share"},
+				TopRight:    Matrix2x2Quadrant{Header: "Question Marks", Body: "High growth, low share"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
 				BottomRight: Matrix2x2Quadrant{Header: "Dogs", Body: "Low growth, low share"},
 			},
 			wantNoErr: true,
@@ -69,11 +69,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "happy_path_no_body",
 			values: Matrix2x2Values{
-				XAxisLabel: "Urgency",
-				YAxisLabel: "Importance",
-				TopLeft:    Matrix2x2Quadrant{Header: "Do First"},
-				TopRight:   Matrix2x2Quadrant{Header: "Schedule"},
-				BottomLeft: Matrix2x2Quadrant{Header: "Delegate"},
+				XAxisLabel:  "Urgency",
+				YAxisLabel:  "Importance",
+				TopLeft:     Matrix2x2Quadrant{Header: "Do First"},
+				TopRight:    Matrix2x2Quadrant{Header: "Schedule"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "Delegate"},
 				BottomRight: Matrix2x2Quadrant{Header: "Eliminate"},
 			},
 			wantNoErr: true,
@@ -81,10 +81,10 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "missing_x_axis_label",
 			values: Matrix2x2Values{
-				YAxisLabel: "Growth",
-				TopLeft:    Matrix2x2Quadrant{Header: "A"},
-				TopRight:   Matrix2x2Quadrant{Header: "B"},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				YAxisLabel:  "Growth",
+				TopLeft:     Matrix2x2Quadrant{Header: "A"},
+				TopRight:    Matrix2x2Quadrant{Header: "B"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			wantErr: "x_axis_label is required",
@@ -92,10 +92,10 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "missing_y_axis_label",
 			values: Matrix2x2Values{
-				XAxisLabel: "Share",
-				TopLeft:    Matrix2x2Quadrant{Header: "A"},
-				TopRight:   Matrix2x2Quadrant{Header: "B"},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				XAxisLabel:  "Share",
+				TopLeft:     Matrix2x2Quadrant{Header: "A"},
+				TopRight:    Matrix2x2Quadrant{Header: "B"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			wantErr: "y_axis_label is required",
@@ -103,11 +103,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "missing_quadrant_header",
 			values: Matrix2x2Values{
-				XAxisLabel: "X",
-				YAxisLabel: "Y",
-				TopLeft:    Matrix2x2Quadrant{Header: "A"},
-				TopRight:   Matrix2x2Quadrant{Header: ""},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				XAxisLabel:  "X",
+				YAxisLabel:  "Y",
+				TopLeft:     Matrix2x2Quadrant{Header: "A"},
+				TopRight:    Matrix2x2Quadrant{Header: ""},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			wantErr: "top_right.header is required",
@@ -115,11 +115,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "header_exceeds_maxlen",
 			values: Matrix2x2Values{
-				XAxisLabel: "X",
-				YAxisLabel: "Y",
-				TopLeft:    Matrix2x2Quadrant{Header: strings.Repeat("x", 81)},
-				TopRight:   Matrix2x2Quadrant{Header: "B"},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				XAxisLabel:  "X",
+				YAxisLabel:  "Y",
+				TopLeft:     Matrix2x2Quadrant{Header: strings.Repeat("x", 81)},
+				TopRight:    Matrix2x2Quadrant{Header: "B"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			wantErr: "top_left.header exceeds maxLength 80",
@@ -127,11 +127,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "body_exceeds_maxlen",
 			values: Matrix2x2Values{
-				XAxisLabel: "X",
-				YAxisLabel: "Y",
-				TopLeft:    Matrix2x2Quadrant{Header: "A", Body: strings.Repeat("x", 201)},
-				TopRight:   Matrix2x2Quadrant{Header: "B"},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				XAxisLabel:  "X",
+				YAxisLabel:  "Y",
+				TopLeft:     Matrix2x2Quadrant{Header: "A", Body: strings.Repeat("x", 201)},
+				TopRight:    Matrix2x2Quadrant{Header: "B"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			wantErr: "top_left.body exceeds maxLength 200",
@@ -139,11 +139,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "x_axis_label_exceeds_maxlen",
 			values: Matrix2x2Values{
-				XAxisLabel: strings.Repeat("x", 61),
-				YAxisLabel: "Y",
-				TopLeft:    Matrix2x2Quadrant{Header: "A"},
-				TopRight:   Matrix2x2Quadrant{Header: "B"},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				XAxisLabel:  strings.Repeat("x", 61),
+				YAxisLabel:  "Y",
+				TopLeft:     Matrix2x2Quadrant{Header: "A"},
+				TopRight:    Matrix2x2Quadrant{Header: "B"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			wantErr: "x_axis_label exceeds maxLength 60",
@@ -151,11 +151,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "cell_override_out_of_range",
 			values: Matrix2x2Values{
-				XAxisLabel: "X",
-				YAxisLabel: "Y",
-				TopLeft:    Matrix2x2Quadrant{Header: "A"},
-				TopRight:   Matrix2x2Quadrant{Header: "B"},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				XAxisLabel:  "X",
+				YAxisLabel:  "Y",
+				TopLeft:     Matrix2x2Quadrant{Header: "A"},
+				TopRight:    Matrix2x2Quadrant{Header: "B"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			cellOvr: map[int]any{
@@ -166,11 +166,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "invalid_cell_override_key",
 			values: Matrix2x2Values{
-				XAxisLabel: "X",
-				YAxisLabel: "Y",
-				TopLeft:    Matrix2x2Quadrant{Header: "A"},
-				TopRight:   Matrix2x2Quadrant{Header: "B"},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				XAxisLabel:  "X",
+				YAxisLabel:  "Y",
+				TopLeft:     Matrix2x2Quadrant{Header: "A"},
+				TopRight:    Matrix2x2Quadrant{Header: "B"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			cellOvr: map[int]any{
@@ -183,11 +183,11 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "accent_override",
 			values: Matrix2x2Values{
-				XAxisLabel: "X",
-				YAxisLabel: "Y",
-				TopLeft:    Matrix2x2Quadrant{Header: "A"},
-				TopRight:   Matrix2x2Quadrant{Header: "B"},
-				BottomLeft: Matrix2x2Quadrant{Header: "C"},
+				XAxisLabel:  "X",
+				YAxisLabel:  "Y",
+				TopLeft:     Matrix2x2Quadrant{Header: "A"},
+				TopRight:    Matrix2x2Quadrant{Header: "B"},
+				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
 			overrides: &Matrix2x2Overrides{TextOverrides: TextOverrides{Accent: "accent3"}},
@@ -220,11 +220,11 @@ func TestMatrix2x2(t *testing.T) {
 	// Expand tests
 	t.Run("expand_happy_path", func(t *testing.T) {
 		vals := Matrix2x2Values{
-			XAxisLabel: "Market Share",
-			YAxisLabel: "Market Growth",
-			TopLeft:    Matrix2x2Quadrant{Header: "Stars", Body: "High growth, high share"},
-			TopRight:   Matrix2x2Quadrant{Header: "Question Marks", Body: "High growth, low share"},
-			BottomLeft: Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
+			XAxisLabel:  "Market Share",
+			YAxisLabel:  "Market Growth",
+			TopLeft:     Matrix2x2Quadrant{Header: "Stars", Body: "High growth, high share"},
+			TopRight:    Matrix2x2Quadrant{Header: "Question Marks", Body: "High growth, low share"},
+			BottomLeft:  Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
 			BottomRight: Matrix2x2Quadrant{Header: "Dogs", Body: "Low growth, low share"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
@@ -323,11 +323,11 @@ func TestMatrix2x2(t *testing.T) {
 
 	t.Run("expand_accent_override", func(t *testing.T) {
 		vals := Matrix2x2Values{
-			XAxisLabel: "X",
-			YAxisLabel: "Y",
-			TopLeft:    Matrix2x2Quadrant{Header: "A"},
-			TopRight:   Matrix2x2Quadrant{Header: "B"},
-			BottomLeft: Matrix2x2Quadrant{Header: "C"},
+			XAxisLabel:  "X",
+			YAxisLabel:  "Y",
+			TopLeft:     Matrix2x2Quadrant{Header: "A"},
+			TopRight:    Matrix2x2Quadrant{Header: "B"},
+			BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 			BottomRight: Matrix2x2Quadrant{Header: "D"},
 		}
 		ovr := &Matrix2x2Overrides{TextOverrides: TextOverrides{Accent: "accent5"}}
@@ -347,11 +347,11 @@ func TestMatrix2x2(t *testing.T) {
 
 	t.Run("expand_accent_bar_override", func(t *testing.T) {
 		vals := Matrix2x2Values{
-			XAxisLabel: "X",
-			YAxisLabel: "Y",
-			TopLeft:    Matrix2x2Quadrant{Header: "A"},
-			TopRight:   Matrix2x2Quadrant{Header: "B"},
-			BottomLeft: Matrix2x2Quadrant{Header: "C"},
+			XAxisLabel:  "X",
+			YAxisLabel:  "Y",
+			TopLeft:     Matrix2x2Quadrant{Header: "A"},
+			TopRight:    Matrix2x2Quadrant{Header: "B"},
+			BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 			BottomRight: Matrix2x2Quadrant{Header: "D"},
 		}
 		cellOvr := map[int]any{
@@ -377,11 +377,11 @@ func TestMatrix2x2(t *testing.T) {
 
 	t.Run("expand_no_body", func(t *testing.T) {
 		vals := Matrix2x2Values{
-			XAxisLabel: "X",
-			YAxisLabel: "Y",
-			TopLeft:    Matrix2x2Quadrant{Header: "A"},
-			TopRight:   Matrix2x2Quadrant{Header: "B"},
-			BottomLeft: Matrix2x2Quadrant{Header: "C"},
+			XAxisLabel:  "X",
+			YAxisLabel:  "Y",
+			TopLeft:     Matrix2x2Quadrant{Header: "A"},
+			TopRight:    Matrix2x2Quadrant{Header: "B"},
+			BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 			BottomRight: Matrix2x2Quadrant{Header: "D"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
@@ -511,11 +511,11 @@ func TestMatrix2x2(t *testing.T) {
 	// Golden file test
 	t.Run("golden_default", func(t *testing.T) {
 		vals := Matrix2x2Values{
-			XAxisLabel: "Market Share",
-			YAxisLabel: "Market Growth",
-			TopLeft:    Matrix2x2Quadrant{Header: "Stars", Body: "High growth, high share"},
-			TopRight:   Matrix2x2Quadrant{Header: "Question Marks", Body: "High growth, low share"},
-			BottomLeft: Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
+			XAxisLabel:  "Market Share",
+			YAxisLabel:  "Market Growth",
+			TopLeft:     Matrix2x2Quadrant{Header: "Stars", Body: "High growth, high share"},
+			TopRight:    Matrix2x2Quadrant{Header: "Question Marks", Body: "High growth, low share"},
+			BottomLeft:  Matrix2x2Quadrant{Header: "Cash Cows", Body: "Low growth, high share"},
 			BottomRight: Matrix2x2Quadrant{Header: "Dogs", Body: "Low growth, low share"},
 		}
 		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)

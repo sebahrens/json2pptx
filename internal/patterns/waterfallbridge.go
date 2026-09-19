@@ -241,11 +241,11 @@ func (w *waterfallBridge) Validate(values, overrides any, cellOverrides map[int]
 
 // resolvedColumn carries the geometry data computed for one column.
 type resolvedColumn struct {
-	label     string
-	typ       string
-	value     float64 // the rendered value (auto-filled for subtotal)
-	yStart    float64 // chart-space y at bar start
-	yEnd      float64 // chart-space y at bar end
+	label      string
+	typ        string
+	value      float64 // the rendered value (auto-filled for subtotal)
+	yStart     float64 // chart-space y at bar start
+	yEnd       float64 // chart-space y at bar end
 	isNegDelta bool
 }
 
