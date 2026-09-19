@@ -511,6 +511,10 @@ type chartInsightsText struct {
 	Paragraphs    []chartInsightsParagraph `json:"paragraphs"`
 	Align         string                   `json:"align"`
 	VerticalAlign string                   `json:"vertical_align"`
+	// InsetTop nudges the first line down, in points. It is what lets two
+	// top-anchored cells at different type sizes share a first baseline
+	// (go-slide-creator-kol0).
+	InsetTop float64 `json:"inset_top,omitempty"`
 }
 
 // validateChartInsightsExtras checks the so-what extensions.

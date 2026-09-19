@@ -285,21 +285,32 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 		accent := ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
 		cells := make([]*jsonschema.GridCellInput, 0, len(cols))
+		// Every cell in a row is top-anchored so the lead and its support share
+		// a first baseline. Centred, the support floated between the two lines
+		// of a wrapping lead, and across five rows the right column visibly
+		// stair-stepped — a consulting exec summary aligns the first baseline of
+		// every pair (go-slide-creator-kol0). The smaller text is nudged down by
+		// the difference in ascent so "top-anchored" means "same baseline"
+		// rather than "same box edge".
+		// The row's tallest text sets the shared baseline: the number when the
+		// summary is numbered, the lead otherwise.
+		tallest := leadSize
 		if numbered {
+			tallest = numSize
 			cells = append(cells, execSummaryTextCell([]chartInsightsParagraph{
 				{Content: strconv.Itoa(i + 1), Size: numSize, Bold: true, Color: inkOnLight(ctx, accent, 3.0), Align: "l"},
-			}, "ctr"))
+			}, "t", baselineInsetPt(tallest, numSize)))
 		}
 		leadCell := execSummaryTextCell([]chartInsightsParagraph{
 			{Content: pptx.ConvertMarkdownEmphasis(p.Lead), Size: leadSize, Bold: true, Color: leadInk, Align: "l"},
-		}, "ctr")
+		}, "t", baselineInsetPt(tallest, leadSize))
 		if co, ok := cellOverrides[i].(*ExecSummaryCellOverride); ok && co.AccentBar {
 			leadCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 4}
 		}
 		cells = append(cells, leadCell)
 		cells = append(cells, execSummaryTextCell([]chartInsightsParagraph{
 			{Content: pptx.ConvertMarkdownEmphasis(p.Support), Size: supportSize, Color: "dk1", Align: "l"},
-		}, "ctr"))
+		}, "t", baselineInsetPt(tallest, supportSize)))
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: rowPt[i], MaxHeight: rowPt[i], Cells: cells})
 	}
 
@@ -389,8 +400,10 @@ func execSummaryBottomLine(ctx ExpandContext, bottomLine, accent string, sizePt 
 }
 
 // execSummaryTextCell builds an unfilled text cell.
-func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string) *jsonschema.GridCellInput {
-	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: vAlign})
+// execSummaryTextCell builds one row cell: paragraphs, a vertical anchor, and a
+// top inset in points that puts the first baseline where the row wants it.
+func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string, insetTop float64) *jsonschema.GridCellInput {
+	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: vAlign, InsetTop: insetTop})
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
@@ -398,6 +411,21 @@ func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string) *jsonsch
 			Text:     textJSON,
 		},
 	}
+}
+
+// execSummaryAscentRatio approximates a font's ascent as a fraction of its
+// point size. It only has to be consistent across the cells of one row: the
+// inset it produces is the DIFFERENCE between two ascents, so a systematic
+// error cancels.
+const execSummaryAscentRatio = 0.8
+
+// baselineInsetPt returns how far a cell of size pt must be nudged down to put
+// its first baseline on the baseline of the row's tallest text.
+func baselineInsetPt(tallest, pt float64) float64 {
+	if d := (tallest - pt) * execSummaryAscentRatio; d > 0 {
+		return d
+	}
+	return 0
 }
 
 // execSummaryLayout is the measured natural geometry at one type scale.

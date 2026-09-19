@@ -352,6 +352,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **exec-summary rows share a first baseline (go-slide-creator-kol0).** The
+  lead and its support were both centre-anchored, so whenever a lead wrapped to
+  two lines the support floated between them; across five rows the right column
+  visibly stair-stepped, where a consulting exec summary aligns the first
+  baseline of every pair.
+  - All three cells of a row are top-anchored now, and the smaller text carries
+    a top inset equal to the difference in ascent, so "top-anchored" means
+    "same baseline" rather than "same box edge".
+  - Measured on a wrapping lead at 110dpi: the support's first ink was 17px
+    below the lead's and is now 2px (the cap-height difference between 17pt
+    bold and 14pt regular); the number went from 14px below to level.
+
 - **The no-emoji policy permits the monochrome symbols a deck needs
   (go-slide-creator-l38d).** `IsEmoji` treated U+2600–27BF wholesale as emoji,
   so a feature-comparison table written with `✓` and `✗` — the most common
