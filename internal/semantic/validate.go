@@ -70,6 +70,9 @@ const (
 	shapeString shapeKind = iota
 	shapeArray
 	shapeObject
+	// shapeStringOrObject is for a field whose compiler reads either — an
+	// image_case picture is a path string or a {path, alt} object.
+	shapeStringOrObject
 )
 
 // label returns the human-readable expected-type phrase for a finding message.
@@ -79,6 +82,8 @@ func (k shapeKind) label() string {
 		return "an array"
 	case shapeObject:
 		return "an object"
+	case shapeStringOrObject:
+		return "a string or an object"
 	default:
 		return "a string"
 	}
@@ -142,6 +147,12 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"title": shapeString, "framework": shapeString, "type": shapeString,
 		"model": shapeString, "sections": shapeObject, "takeaway": shapeString,
 	},
+	KindImageCase: {
+		"title": shapeString, "image": shapeStringOrObject, "eyebrow": shapeString, "heading": shapeString,
+		"body": shapeString, "text": shapeString, "story": shapeString, "description": shapeString,
+		"bullets": shapeArray, "metrics": shapeArray, "caption": shapeString,
+		"image_side": shapeString, "image_label": shapeString, "takeaway": shapeString,
+	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
 	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
@@ -160,6 +171,12 @@ func shapeMatches(v any, k shapeKind) bool {
 	case shapeObject:
 		_, ok := v.(map[string]any)
 		return ok
+	case shapeStringOrObject:
+		switch v.(type) {
+		case string, map[string]any:
+			return true
+		}
+		return false
 	}
 	return false
 }
@@ -477,6 +494,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateMatrix(path, slide, s)
 	case KindFramework:
 		validateFramework(path, slide, s)
+	case KindImageCase:
+		validateImageCase(path, slide, s)
 	case KindProcess:
 		validateProcess(path, slide, s)
 	case KindRoadmap:
@@ -586,6 +605,16 @@ func validateFramework(path string, slide SlideSpec, s *semDiags) {
 	if over := slides.FrameworkOverBudget(slide.Body); over != "" {
 		s.advisory(path+".sections", diagnostics.CodeSemanticDensity,
 			fmt.Sprintf("framework %s (otherwise it degrades to grouped bullets)", over))
+	}
+}
+
+// validateImageCase reports a case study the split cannot take. An image with
+// nothing said about it is a plain image slide, which the pattern refuses too
+// (go-slide-creator-q31s).
+func validateImageCase(path string, slide SlideSpec, s *semDiags) {
+	if over := slides.ImageCaseOverBudget(slide.Body); over != "" {
+		s.advisory(path+".body", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("image case %s (otherwise it degrades to a content slide)", over))
 	}
 }
 

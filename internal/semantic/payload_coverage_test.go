@@ -296,6 +296,25 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"title":     {inject: func(s string) map[string]any { return covFramework(map[string]any{"title": s}) }, rendered: true},
 		"takeaway":  {inject: func(s string) map[string]any { return covFramework(map[string]any{"takeaway": s}) }, rendered: true},
 	},
+	// go-slide-creator-q31s: the story, its bullets, its result metrics and the
+	// picture's caption all have to reach the rendered slide.
+	KindImageCase: {
+		"body":    {inject: func(s string) map[string]any { return covImageCase(map[string]any{"body": s}) }, rendered: true},
+		"bullets": {inject: func(s string) map[string]any { return covImageCase(map[string]any{"bullets": []any{s}}) }, rendered: true},
+		"metrics": {inject: func(s string) map[string]any {
+			return covImageCase(map[string]any{"metrics": []any{map[string]any{"value": "2", "label": s}}})
+		}, rendered: true},
+		"eyebrow":     {inject: func(s string) map[string]any { return covImageCase(map[string]any{"eyebrow": s}) }, rendered: true},
+		"heading":     {inject: func(s string) map[string]any { return covImageCase(map[string]any{"heading": s}) }, rendered: true},
+		"caption":     {inject: func(s string) map[string]any { return covImageCase(map[string]any{"caption": s}) }, rendered: true},
+		"image_label": {inject: func(s string) map[string]any { return covImageCase(map[string]any{"image_label": s}) }, rendered: true},
+		"image": {inject: func(s string) map[string]any {
+			return covImageCase(map[string]any{"image": map[string]any{"path": "/tmp/" + s + ".png", "alt": s}})
+		}, rendered: true},
+		"image_side": {inject: func(string) map[string]any { return covImageCase(map[string]any{"image_side": "right"}) }, rendered: false, why: "image_side picks a layout rather than contributing text"},
+		"title":      {inject: func(s string) map[string]any { return covImageCase(map[string]any{"title": s}) }, rendered: true},
+		"takeaway":   {inject: func(s string) map[string]any { return covImageCase(map[string]any{"takeaway": s}) }, rendered: true},
+	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps("Discover"), "title": s} }, rendered: true},
@@ -478,6 +497,18 @@ func covFramework(overlay map[string]any) map[string]any {
 	body := map[string]any{
 		"framework": "swot",
 		"sections":  covSWOT("Two clearers already migrated"),
+	}
+	for k, v := range overlay {
+		body[k] = v
+	}
+	return body
+}
+
+// covImageCase returns a minimal valid image_case payload with the given fields
+// overlaid.
+func covImageCase(overlay map[string]any) map[string]any {
+	body := map[string]any{
+		"body": "Northbank ran the cutover on the rehearsed plan.",
 	}
 	for k, v := range overlay {
 		body[k] = v

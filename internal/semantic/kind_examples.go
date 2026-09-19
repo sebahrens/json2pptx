@@ -98,6 +98,20 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"takeaway": "The mandate is the opportunity and the threat; the constraint is the team.",
 	},
+	KindImageCase: {
+		"kind":    "image_case",
+		"title":   "How Northbank made the deadline",
+		"eyebrow": "Case study",
+		"heading": "Two clearers migrated in one weekend",
+		"body":    "Northbank ran the cutover on the rehearsed plan, with the reconciliation model checking every wave before it went live.",
+		"bullets": []any{"Nine months from mandate to first wave", "No settlement breaks in the first month"},
+		"metrics": []any{
+			map[string]any{"value": "2", "label": "clearers migrated"},
+			map[string]any{"value": "0", "label": "settlement breaks"},
+		},
+		"caption":  "The cutover room, March 2026",
+		"takeaway": "The rehearsal is what made the weekend boring.",
+	},
 	KindAgenda: {
 		"kind":    "agenda",
 		"title":   "What we will cover",

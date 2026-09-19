@@ -248,6 +248,12 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyComparison, density: DensityHeavy, layout: "blank-title",
 		pattern: frameworkPattern,
 	},
+	KindImageCase: {
+		// A case study is evidence told as a story, and the picture makes it the
+		// lightest slide in a run of analysis.
+		role: RoleEvidence, family: FamilyText, density: DensityMedium, layout: "blank-title",
+		pattern: imageCasePattern,
+	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
@@ -352,6 +358,12 @@ func matrixPattern(body map[string]any) string {
 // advertise a layout only — which is what compile emits (go-slide-creator-anzx).
 func frameworkPattern(body map[string]any) string {
 	return slides.FrameworkPattern(body)
+}
+
+// imageCasePattern advertises image-text-split only when the payload will
+// actually compile to it (go-slide-creator-q31s).
+func imageCasePattern(body map[string]any) string {
+	return slides.ImageCasePattern(body)
 }
 
 // agendaPattern advertises the agenda pattern the payload will actually
@@ -539,6 +551,12 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			visual("bmc-canvas", "the 9-cell Business Model Canvas (framework: bmc)"),
 			{Layout: "blank-title", Reason: "a native swot or five-forces diagram (framework: swot / porters_five_forces)"},
 			{Layout: "content", Reason: "grouped bullets preserve a framework missing one of its parts"},
+		}
+	case KindImageCase:
+		return []CompositionCandidate{
+			visual("image-text-split", "a picture beside the story, with up to 3 result metrics"),
+			visual("pull-quote", "switch to a quote when the focal content is what someone said"),
+			{Layout: "content", Reason: "a content slide preserves a longer story than the column holds"},
 		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}

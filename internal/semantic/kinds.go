@@ -40,6 +40,8 @@ const (
 	// KindFramework is a named framework with fixed parts (SWOT, Porter's five
 	// forces, the Business Model Canvas).
 	KindFramework SlideKind = "framework"
+	// KindImageCase is a picture beside the story about it.
+	KindImageCase SlideKind = "image_case"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -179,6 +181,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredFields:  []string{"framework", "sections"},
 		RequiredAliases: map[string][]string{"framework": {"type", "model"}},
 		TypicalFields:   []string{"title", "takeaway"},
+	},
+	KindImageCase: {
+		Kind:            KindImageCase,
+		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide. Needs a body or at least one bullet; without a picture it draws a labelled placeholder. Up to 5 bullets and 3 result metrics; past its text budgets it degrades to a content slide.",
+		RequiredFields:  []string{"body"},
+		RequiredAliases: map[string][]string{"body": {"text", "story", "description", "bullets"}},
+		TypicalFields:   []string{"title", "image", "eyebrow", "heading", "bullets", "metrics", "caption", "image_side", "image_label", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

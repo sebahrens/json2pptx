@@ -82,6 +82,12 @@ var matrixQuadrantKeys = []string{
 	"body", "description", "detail", "summary",
 }
 
+// imageCaseMetricKeys are the keys a result-metric object may carry.
+var imageCaseMetricKeys = []string{"value", "number", "stat", "label", "caption", "name"}
+
+// imageCaseImageKeys are the keys the image object may carry.
+var imageCaseImageKeys = []string{"path", "url", "alt"}
+
 // archTierKeys are the keys ArchitectureTiers reads from a tier object.
 // teamMemberKeys are the keys a team member object may carry.
 var teamMemberKeys = []string{
@@ -338,6 +344,22 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 				"bmc: key_partners, key_activities, key_resources, value_propositions, customer_relations, channels, customer_segments, cost_structure, revenue_streams. " +
 				"Every part is required; a framework missing one degrades to grouped bullets.",
 		},
+	}, compositionFields()), universalFields()),
+	KindImageCase: withFields(withFields(map[string]payloadField{
+		"title":       strField("Slide title."),
+		"takeaway":    strField("One-line takeaway footer."),
+		"image":       {typ: "object", desc: "The picture: a path or url string, or {path|url, alt}. Omit it to draw a labelled placeholder.", itemKeys: imageCaseImageKeys},
+		"eyebrow":     strField("Small kicker above the heading (e.g. \"Case study\"). ≤30 chars."),
+		"heading":     strField("The story's headline. ≤80 chars."),
+		"body":        strField("The story itself. ≤300 chars; give this or at least one bullet."),
+		"text":        strField("Alias for body."),
+		"story":       strField("Alias for body."),
+		"description": strField("Alias for body."),
+		"bullets":     {typ: "array", desc: "Up to 5 supporting points, ≤140 chars each.", itemStrings: true},
+		"metrics":     {typ: "array", desc: "Up to 3 result figures: {value (≤10 chars), label (≤40)}. Both are required — a figure with no words is half a claim.", itemKeys: imageCaseMetricKeys},
+		"caption":     strField("Italic line under the picture. ≤120 chars."),
+		"image_side":  strField("Which side the picture sits on: \"left\" (default) or \"right\"."),
+		"image_label": strField("Label for the placeholder when no picture is given. ≤40 chars."),
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

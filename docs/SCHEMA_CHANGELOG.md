@@ -354,6 +354,27 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `image_case` (go-slide-creator-q31s).** A customer story or a
+  product screenshot beside the words about it — the case study slide every
+  proposal ends with — had no kind, so an agent that wanted one dropped to
+  `raw_json2pptx`.
+  - `{body|bullets}` plus an optional `image` compiles onto
+    **image-text-split**, with `eyebrow`, `heading`, up to 5 `bullets` and up to
+    3 result `metrics`. `image` is a path or url string or `{path|url, alt}`
+    (aliases `photo`, `screenshot`); omitted, the pattern draws its dashed
+    placeholder. `image_side` (`left` / `right`) is passed as a pattern
+    override.
+  - A metric needs both its figure and its words: a `{value}` with no `label`,
+    or the reverse, is half a claim and is dropped rather than rendered blank.
+  - A picture with nothing said about it is a plain image slide, not a case
+    study; the kind refuses it, as the pattern does.
+  - Past the column's budgets (body ≤300 chars, eyebrow ≤30, heading ≤80,
+    bullets ≤5 × ≤140, metrics ≤3) it degrades to a content slide carrying the
+    eyebrow, heading and story as text and the bullets, metrics and an
+    `Image: <caption>` line as bullets — the picture cannot come with it, so the
+    caption stands in for it rather than the slide pretending there was never
+    an image.
+
 - **DeckSpec kind `framework` (go-slide-creator-anzx).** SWOT, Porter's five
   forces and the Business Model Canvas are named things with fixed parts. What
   goes in them is not a design choice, and an author writing one should not have
