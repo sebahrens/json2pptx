@@ -350,6 +350,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+### Fixed
+
+- **`audit_palette` works on a machine that installs LibreOffice as `soffice`
+  (go-slide-creator-rdql).** The tool demanded a binary literally named
+  `libreoffice` plus `pdftoppm`, so on macOS/Homebrew — where the CLI is
+  `soffice` and the render stack uses ImageMagick — it returned
+  `required binary "libreoffice" not found on PATH` while every other render
+  tool worked. The whole palette-drift capability was dead on the most common
+  dev platform.
+  - It now renders through `internal/render` (`DeckPNGs` / `DependencyStatus`),
+    which resolves `libreoffice` **or** `soffice`, rasterises with ImageMagick,
+    and brings the timeouts, private LibreOffice profile and render cache with
+    it. `--keep` / `--tmp` still hand back PNGs that outlive the render.
+  - `preview_patterns` and `internal/layoutpreview` kept their own copies of
+    the same resolution; they now call `render.OfficeCommand()` /
+    `render.ImageMagickCommand()`, so there is one place that knows
+    libreoffice/soffice and magick/convert are the same tool under two names.
+  - A test walks the repo and fails on any non-render package that shells out
+    to one of those binaries by name.
+
 - **A content-sized table is centred in its placeholder
   (go-slide-creator-6jv7).** Table rows are sized for their text rather than
   stretched to fill the placeholder, so a 5-row table on a One Content layout

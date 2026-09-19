@@ -217,6 +217,24 @@ func officeCommand() (string, error) {
 	return "", fmt.Errorf("libreoffice/soffice not found on PATH: install LibreOffice to use render tools")
 }
 
+// OfficeCommand returns the LibreOffice-compatible binary available on PATH —
+// "libreoffice" on most Linux packages, "soffice" on macOS Homebrew. Every
+// render-dependent tool resolves through this rather than naming one of them,
+// because a tool that names one is dead on the machines that install the other
+// (go-slide-creator-rdql).
+func OfficeCommand() (string, error) { return officeCommand() }
+
+// ImageMagickCommand returns the ImageMagick binary available on PATH: the v7
+// "magick", or the v6 "convert" it replaced.
+func ImageMagickCommand() (string, error) {
+	for _, name := range []string{toolImageMagick, "convert"} {
+		if path, err := exec.LookPath(name); err == nil {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("imagemagick not found on PATH (looked for %q and \"convert\"): install ImageMagick to use render tools", toolImageMagick)
+}
+
 // CheckDependencies verifies LibreOffice and ImageMagick are available.
 func CheckDependencies() error {
 	if _, err := officeCommand(); err != nil {
@@ -684,6 +702,23 @@ func slideImageOrError(index int, png, hash string) SlideImage {
 		return SlideImage{Index: index, SizeErr: err.Error()}
 	}
 	return *img
+}
+
+// DeckPNGs renders every slide of a deck to PNG files on disk and returns
+// their paths in slide order, together with a cleanup to call when the caller
+// is done reading them.
+//
+// It is the one entry point for "I need the pixels of this deck as files": it
+// resolves libreoffice OR soffice, rasterises with ImageMagick, and carries the
+// timeouts, private LibreOffice profile and cache the render path already has.
+// Tools that shelled out to their own hardcoded binaries were dead on any
+// machine that names them differently — audit_palette required a binary
+// literally called "libreoffice" plus pdftoppm, so it failed on every
+// Homebrew macOS box while every other render tool worked
+// (go-slide-creator-rdql).
+func DeckPNGs(pptxPath string, density int, force bool) (pngs []string, cleanup func(), err error) {
+	paths, _, cleanup, err := deckPNGs(pptxPath, density, force)
+	return paths, cleanup, err
 }
 
 // deckPNGs converts a deck to one PNG per slide, through the cache, and returns

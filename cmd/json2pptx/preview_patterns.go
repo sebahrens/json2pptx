@@ -14,6 +14,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -304,33 +305,28 @@ func findPatternPreviewPNGs(templatesDir, patternName string) []string {
 	return matches
 }
 
+// The render binaries are resolved by internal/render, the single place that
+// knows libreoffice/soffice and magick/convert are the same tool under
+// different names (go-slide-creator-rdql).
 func hasLOBinary() bool {
-	if _, err := exec.LookPath("libreoffice"); err == nil {
-		return true
-	}
-	_, err := exec.LookPath("soffice")
+	_, err := render.OfficeCommand()
 	return err == nil
 }
 
 func findLOBinary() string {
-	if _, err := exec.LookPath("libreoffice"); err == nil {
-		return "libreoffice"
+	bin, err := render.OfficeCommand()
+	if err != nil {
+		return "soffice"
 	}
-	return "soffice"
+	return bin
 }
 
 func hasMagickBinary() bool {
-	if _, err := exec.LookPath("magick"); err == nil {
-		return true
-	}
-	_, err := exec.LookPath("convert")
+	_, err := render.ImageMagickCommand()
 	return err == nil
 }
 
 func findMagickBinary() string {
-	if path, err := exec.LookPath("magick"); err == nil {
-		return path
-	}
-	path, _ := exec.LookPath("convert")
+	path, _ := render.ImageMagickCommand()
 	return path
 }

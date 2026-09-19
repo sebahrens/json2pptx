@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -213,34 +214,29 @@ func fileHash(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil))[:16], nil
 }
 
+// The render binaries are resolved by internal/render, the single place that
+// knows libreoffice/soffice and magick/convert are the same tool under
+// different names (go-slide-creator-rdql).
 func hasLibreOffice() bool {
-	if _, err := exec.LookPath("libreoffice"); err == nil {
-		return true
-	}
-	_, err := exec.LookPath("soffice")
+	_, err := render.OfficeCommand()
 	return err == nil
 }
 
 func libreOfficeBin() string {
-	if _, err := exec.LookPath("libreoffice"); err == nil {
-		return "libreoffice"
+	bin, err := render.OfficeCommand()
+	if err != nil {
+		return "soffice"
 	}
-	return "soffice"
+	return bin
 }
 
 func hasImageMagick() bool {
-	if _, err := exec.LookPath("magick"); err == nil {
-		return true
-	}
-	_, err := exec.LookPath("convert")
+	_, err := render.ImageMagickCommand()
 	return err == nil
 }
 
 func imageMagickBin() string {
-	if path, err := exec.LookPath("magick"); err == nil {
-		return path
-	}
-	path, _ := exec.LookPath("convert")
+	path, _ := render.ImageMagickCommand()
 	return path
 }
 
@@ -268,7 +264,7 @@ func sampleContent(layout types.LayoutMetadata) []generator.ContentItem {
 				Type:          generator.ContentBullets,
 				Value:         []string{"First bullet point", "Second bullet point", "Third bullet point"},
 			})
-		// Skip PlaceholderOther (date, footer, slide number) — not useful for previews.
+			// Skip PlaceholderOther (date, footer, slide number) — not useful for previews.
 		}
 	}
 	return items

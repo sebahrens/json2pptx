@@ -10,17 +10,17 @@ import (
 	"image/png"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/render"
 )
 
 // runAuditPalette implements `json2pptx audit-palette <pptx>`.
 //
-// The command renders a PPTX to PNG (via libreoffice + pdftoppm) and, for each
+// The command renders a PPTX to PNG (through internal/render, which resolves
+// libreoffice or soffice and rasterises with ImageMagick) and, for each
 // slide, samples the dominant non-background color inside every <p:pic> region
 // (typically svggen-rendered chart/diagram bitmaps) and every <p:sp> region
 // whose <p:spPr> declares an explicit <a:solidFill>. It then computes the
@@ -37,7 +37,7 @@ func runAuditPalette() error {
 	format := fs.String("format", "json", "Output format: json|text")
 	maxDelta := fs.Float64("max-delta-e", 5.0, "Maximum allowed CIE76 ΔE for a (pic, shape) pair before the command exits non-zero")
 	chromaMin := fs.Int("chroma-min", 25, "Minimum chroma (max-min channel) for a pixel to count toward the dominant color; filters white/black/gray chrome")
-	density := fs.Int("density", 150, "DPI for pdftoppm rasterization")
+	density := fs.Int("density", 150, "DPI for rasterization")
 	outputPath := fs.String("output", "", "Write JSON/text report to this file in addition to stdout")
 	keep := fs.Bool("keep", false, "Keep temporary render artifacts (PDF/PNG) for debugging; default is to remove them on exit")
 	tmpDirFlag := fs.String("tmp", "", "Use this directory for render artifacts (default: OS temp dir)")
@@ -46,7 +46,7 @@ func runAuditPalette() error {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx audit-palette <pptx> [options]\n\n")
 		fmt.Fprintf(os.Stderr, "Render a PPTX to PNG and report CIE76 ΔE between every embedded\n")
 		fmt.Fprintf(os.Stderr, "chart/picture region and every native solid-filled shape region per slide.\n\n")
-		fmt.Fprintf(os.Stderr, "Requires `libreoffice` and `pdftoppm` on PATH.\n\n")
+		fmt.Fprintf(os.Stderr, "Requires the render toolchain: `libreoffice` or `soffice`, plus `magick`.\n\n")
 		fmt.Fprintf(os.Stderr, "Exit code is non-zero when any pair exceeds --max-delta-e.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
@@ -152,11 +152,13 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 		return nil, fmt.Errorf("pptx not found: %w", err)
 	}
 
-	// Required external tools — fail early with a clear message.
-	for _, bin := range []string{"libreoffice", "pdftoppm"} {
-		if _, err := exec.LookPath(bin); err != nil {
-			return nil, fmt.Errorf("required binary %q not found on PATH (install libreoffice + poppler-utils)", bin)
-		}
+	// Required external tools — fail early with a clear message. The check is
+	// the render package's, so it resolves libreoffice OR soffice and names
+	// whatever is actually missing: this tool used to demand a binary literally
+	// called "libreoffice" plus pdftoppm, and so was dead on every Homebrew
+	// macOS box while every other render tool worked (go-slide-creator-rdql).
+	if available, missing := render.DependencyStatus(); !available {
+		return nil, fmt.Errorf("palette audit needs the render toolchain; missing: %s", strings.Join(missing, ", "))
 	}
 
 	// Open the PPTX and pull out slide geometry + region metadata.
@@ -211,9 +213,22 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 	}
 	defer cleanup()
 
-	pngs, err := renderPPTXToPNGs(abs, tmp, opts.Density)
+	pngs, renderCleanup, err := render.DeckPNGs(abs, opts.Density, false)
 	if err != nil {
 		return nil, fmt.Errorf("render: %w", err)
+	}
+	defer renderCleanup()
+
+	// The renderer's PNGs live in its own temp directory (or its cache), which
+	// it reclaims when we are done. --keep / --tmp-dir promise the artifacts
+	// survive for inspection, so copy them out before that happens and report
+	// the copies.
+	if opts.Keep || opts.TmpDir != "" {
+		copied, copyErr := copyRenderArtifacts(pngs, tmp)
+		if copyErr != nil {
+			return nil, fmt.Errorf("keep render artifacts: %w", copyErr)
+		}
+		pngs = copied
 	}
 	if len(pngs) == 0 {
 		return nil, fmt.Errorf("no PNGs produced from %s", abs)
@@ -503,38 +518,24 @@ type auditScheme struct {
 
 // --- Rendering --------------------------------------------------------------
 
-// renderPPTXToPNGs invokes libreoffice → pdf and pdftoppm → png. Returns the
-// sorted list of PNG paths (one per slide).
-func renderPPTXToPNGs(pptxPath, workDir string, density int) ([]string, error) {
-	pdfDir := filepath.Join(workDir, "pdf")
-	if err := os.MkdirAll(pdfDir, 0o755); err != nil {
-		return nil, err
+// copyRenderArtifacts copies rendered PNGs into dir and returns the new paths,
+// so --keep / --tmp-dir still hand back files that outlive the render.
+func copyRenderArtifacts(pngs []string, dir string) ([]string, error) {
+	out := make([]string, 0, len(pngs))
+	for i, src := range pngs {
+		data, err := os.ReadFile(src) //nolint:gosec // paths come from the renderer
+		if err != nil {
+			return nil, err
+		}
+		// The directory is the caller's own --tmp (or a temp dir we made); the
+		// file name is generated here, so nothing from the deck reaches the path.
+		dst := filepath.Join(filepath.Clean(dir), fmt.Sprintf("slide-%d.png", i))
+		if err := os.WriteFile(dst, data, 0o600); err != nil { //nolint:gosec // dir is the caller's chosen output directory
+			return nil, err
+		}
+		out = append(out, dst)
 	}
-	// A private profile: sharing the default one with another soffice instance
-	// makes libreoffice exit 0 and write no PDF (go-slide-creator-0ixs).
-	loProfile := filepath.Join(workDir, "lo-profile")
-	conv := exec.Command("libreoffice", "-env:UserInstallation=file://"+filepath.ToSlash(loProfile), //nolint:gosec // controlled args
-		"--headless", "--convert-to", "pdf", "--outdir", pdfDir, pptxPath)
-	if out, err := conv.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("libreoffice: %v\n%s", err, out)
-	}
-	pdfs, _ := filepath.Glob(filepath.Join(pdfDir, "*.pdf"))
-	if len(pdfs) == 0 {
-		return nil, fmt.Errorf("libreoffice produced no PDF in %s", pdfDir)
-	}
-	pdfPath := pdfs[0]
-
-	pngPrefix := filepath.Join(workDir, "slide")
-	rast := exec.Command("pdftoppm", "-png", "-r", fmt.Sprintf("%d", density), pdfPath, pngPrefix) //nolint:gosec // controlled args
-	if out, err := rast.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("pdftoppm: %v\n%s", err, out)
-	}
-	pngs, err := filepath.Glob(pngPrefix + "*.png")
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(pngs)
-	return pngs, nil
+	return out, nil
 }
 
 func decodePNG(path string) (image.Image, error) {
