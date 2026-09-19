@@ -373,6 +373,28 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Pattern schema maxima are measured and pinned; card-grid says what its
+  shape actually holds (go-slide-creator-0g6p).** A per-field `maxLength` can
+  state only one number, so for a pattern whose cell count varies it is
+  necessarily the budget of the smallest grid.
+  - `cmd/json2pptx.TestSchemaMaximaStayReadable` builds, for every registered
+    pattern, the largest payload its own schema permits, and measures the
+    smallest size any cell would render at — the same prediction the fit report
+    gives an agent — on all four bundled templates. The result is pinned per
+    pattern and the gate fails both when a number gets worse and when it
+    improves without the pin following.
+  - The measurement: 33 of 43 patterns permit schema-legal content that renders
+    below the 12pt floor, down to 2.6pt (card-grid) and 3.8pt (bmc-canvas). Ten
+    are clean at their maxima.
+  - **card-grid** now emits `BODY_TOO_LONG` from `PostExpandWarnings` naming the
+    budget for the grid's own shape — "a 4x3 grid holds about 60 per card" —
+    where `TEXT_BELOW_READABLE_MIN` says only that the text will shrink. The
+    measured table (1x1–2x2 → 300, 3x2 → 220, 4x2 → 160, 3x3 → 100, 4x3 → 60,
+    5x3 → 40, denser → 20) is in the `body` field's own schema description.
+  - No `maxLength` was lowered: a 300-character body is exactly right in a 2x1,
+    so shrinking the cap to fit a 5x5 would break readable decks to warn about
+    unreadable ones.
+
 - **`process` stops flattening a step's description into its label
   (go-slide-creator-61up).** `{label, description}` was concatenated into
   `"Approve — Board approves tranche 1"` and fed to `process-flow`, whose boxes

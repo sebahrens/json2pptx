@@ -41,7 +41,55 @@ func (c *cardGrid) Taxonomy() PatternTaxonomy {
 		AccentWeight:  "normal",
 	}
 }
-func (c *cardGrid) SupportsCallout() bool        { return true }
+func (c *cardGrid) SupportsCallout() bool { return true }
+
+// cardGridBodyBudget is the largest body, in characters, whose card still
+// renders above the readable floor at a given grid shape. The numbers are
+// MEASURED — a payload at each shape run through the same readability
+// prediction the fit report gives an agent, on the bundled templates — not
+// chosen: 300 characters is readable in a 1x1 and renders at 2.6pt in a 5x5,
+// and a single maxLength cannot say both (go-slide-creator-0g6p).
+func cardGridBodyBudget(columns, rows int) int {
+	cells := columns * rows
+	switch {
+	case cells <= 4:
+		return 300
+	case cells <= 6:
+		return 220
+	case cells <= 8:
+		return 160
+	case cells <= 9:
+		return 100
+	case cells <= 12:
+		return 60
+	case cells <= 15:
+		return 40
+	default:
+		return 20
+	}
+}
+
+// PostExpandWarnings reports a card body past the budget for its own grid
+// shape. The schema's 300-character maximum is the budget of a small grid, so
+// an agent sizing its copy by the schema alone fills a dense grid with text
+// that renders at a few points; this says how much the shape actually holds
+// (go-slide-creator-0g6p).
+func (c *cardGrid) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*CardGridValues)
+	if !ok || v == nil {
+		return nil
+	}
+	budget := cardGridBodyBudget(v.Columns, v.Rows)
+	var warnings []string
+	for i, cell := range v.Cells {
+		if n := runeLen(cell.Body); n > budget {
+			warnings = append(warnings, fmt.Sprintf(
+				"%s: card-grid cells[%d].body is %d characters; a %dx%d grid holds about %d per card before the text shrinks below the readable minimum — trim it, or use fewer cards",
+				ErrCodeBodyTooLong, i, n, v.Columns, v.Rows, budget))
+		}
+	}
+	return warnings
+}
 func (c *cardGrid) SupportsInlineMarkdown() bool { return true }
 
 func (c *cardGrid) BudgetConfigurations() []BudgetConfig {
@@ -185,7 +233,7 @@ func (c *cardGrid) Schema() *Schema {
 		ObjectSchema(
 			map[string]*Schema{
 				"header":    StringSchema(80).WithDescription("Card header/title"),
-				"body":      StringSchema(300).WithDescription("Card body content"),
+				"body":      StringSchema(300).WithDescription("Card body content. 300 characters is the budget of a SMALL grid (up to 2x2); a denser grid holds proportionally less — 3x2 ~220, 4x2 ~160, 3x3 ~100, 4x3 ~60, 5x3 ~40, 4x4 ~20. Past the budget for its own shape a card emits BODY_TOO_LONG with the number it has to hit."),
 				"icon":      IconRefSchema("Optional icon: bundled name string (e.g. \"rocket\") or {name|path|url|svg_data, fill?, alt?, position?} object. Used with icon-card style; also rendered as overlay when set with other styles."),
 				"secondary": SecondaryChartSchema(),
 			},

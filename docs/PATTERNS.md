@@ -320,6 +320,15 @@ A pattern whose one semantic signal is a highlighted cell must not paint it from
 - An AUTHORED highlight is always honoured, and reported through `PostExpandWarnings` as `LOW_CONTRAST_HIGHLIGHT` when it measures below the bar.
 - Measured bars for the bundled templates live in `internal/patterns/valuechain_highlight_test.go`; `cmd/json2pptx/value_chain_highlight_test.go` runs the same rule against the real `templates/*.pptx`, so a palette change is caught rather than shipped.
 
+## A field's maxLength is the budget of the pattern's SMALLEST shape
+
+A pattern's JSON schema is the contract an agent sizes its copy against, and a per-field `maxLength` can only state one number. For a pattern whose cell count varies, that number is necessarily the budget of the *smallest* grid: card-grid's 300-character body is readable in a 1x1 and renders at **2.6pt in a 5x5**. Content that respects the schema in every particular is still a wall of unreadable text, and the schema cannot say so (go-slide-creator-0g6p).
+
+- Keep the `maxLength` at the small-shape budget (it is a real bound: past it even one card overflows) and say in the field's description that denser shapes hold less, with the numbers.
+- Emit the shape-scaled budget as a `BODY_TOO_LONG` warning from `PostExpandWarnings`, naming the shape and the number the author has to hit — "a 4x3 grid holds about 60 per card". `TEXT_BELOW_READABLE_MIN` already says the text will shrink; it does not say how much is affordable.
+- Derive the budget by MEASUREMENT, not by arithmetic: run the payload at each shape through the same readability prediction the fit report gives an agent. `cmd/json2pptx.TestSchemaMaximaStayReadable` does this for every registered pattern on all four bundled templates and pins the result, so a schema maximum cannot quietly get worse and an improvement cannot be given back.
+- card-grid's measured table: 1x1–2x2 → 300, 3x2 → 220, 4x2 → 160, 3x3 → 100, 4x3 → 60, 5x3 → 40, 4x4 and denser → 20.
+
 ## Text on a tinted fill must be chosen by measurement too
 
 The same rule applies to the text a pattern paints INSIDE a fill it tints itself. `timeline-horizontal` tints each bar of its gantt and chevron chains — shade 70000 at the first stop through tint 40000 at the last — and hardcoded `lt1` inside every one of them, so the lightest bar measured **1.54:1** in a real midnight-blue render and its date label was invisible (go-slide-creator-5qotm).
