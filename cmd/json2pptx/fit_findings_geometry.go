@@ -32,8 +32,19 @@ const (
 	// covers less than this share of the filled shape.
 	sparseFillMaxTextFrac = 0.20
 	// slideUnderusedMaxFrac: SLIDE_UNDERUSED fires when the content ink
-	// bounding box covers less than this share of the safe content area.
+	// bounding box covers less than this share of the safe content area. It
+	// applies to a band the AUTHOR capped (bounds / max_height_pct): they chose
+	// the height, so "the cap is too tight" is advice they can act on.
 	slideUnderusedMaxFrac = 0.45
+	// slideUnderusedPatternMaxFrac is the same test for a band nobody capped.
+	// A content-sized pattern derives its own height from its content
+	// (go-slide-creator-7km8), so measuring it against the whole content zone
+	// and demanding 45% flagged the deliberately-shorter slides that change
+	// produced — on three hand-crafted decks every firing was a false positive,
+	// and the fix hint told the agent to remove a cap it never set
+	// (go-slide-creator-up04). Only a band that is a genuine sliver is worth
+	// reporting, and the advice for it is about content, not caps.
+	slideUnderusedPatternMaxFrac = 0.22
 	// textExceedsTolerance absorbs rounding/kerning noise before flagging.
 	textExceedsTolerance = 1.02
 
@@ -296,25 +307,67 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 	// Only the part of the ink box inside the safe area counts.
 	u = intersectRect(u, safe)
 	frac := float64(u.CX) * float64(u.CY) / (float64(safe.CX) * float64(safe.CY))
-	if frac >= slideUnderusedMaxFrac {
+
+	// Whether the band's height was the AUTHOR's decision or the pattern's
+	// decides both the threshold and the advice (go-slide-creator-up04).
+	capped := authorCappedBand(slide)
+	threshold := slideUnderusedPatternMaxFrac
+	hint := "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern"
+	if capped {
+		threshold = slideUnderusedMaxFrac
+		hint = "raise or remove the bounds / max_height_pct cap on this slide, add a supporting zone, or merge with another slide"
+	}
+	if frac >= threshold {
 		return nil
+	}
+
+	reason := "the pattern's own content-derived height leaves it a thin strip"
+	if capped {
+		reason = "the bounds / max_height_pct cap on this slide leaves it a thin strip"
 	}
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: patternName,
 			Path:    slidepath.Slide(si),
 			Code:    patterns.ErrCodeSlideUnderused,
-			Message: fmt.Sprintf("slide content covers %.0f%% of the safe content area (threshold %.0f%%) — the slide reads as mostly empty", 100*frac, 100*slideUnderusedMaxFrac),
+			Message: fmt.Sprintf("slide content covers %.0f%% of the safe content area (threshold %.0f%%) — %s", 100*frac, 100*threshold, reason),
 			Fix: &patterns.FixSuggestion{
 				Kind: "add_detail_or_resize",
 				Params: map[string]any{
 					"content_area_pct": math.Round(100 * frac),
-					"hint":             "remove bounds / max_height_pct caps, add a supporting zone, or merge with another slide",
+					"threshold_pct":    math.Round(100 * threshold),
+					"band_capped_by":   bandCappedBy(capped),
+					"hint":             hint,
 				},
 			},
 		},
 		Action: "review",
 	}
+}
+
+// authorCappedBand reports whether the slide itself constrains the grid's
+// height — an explicit bounds block or max_height_pct on the pattern, or bounds
+// on a raw shape_grid. When it does not, the height came from the pattern's own
+// content sizing and no amount of editing the slide JSON will change it.
+func authorCappedBand(slide *SlideInput) bool {
+	if slide == nil {
+		return false
+	}
+	if slide.Pattern != nil {
+		if b, _ := resolvePatternBounds(slide.Pattern); b != nil {
+			return true
+		}
+	}
+	return slide.ShapeGrid != nil && slide.ShapeGrid.Bounds != nil
+}
+
+// bandCappedBy names who chose the band's height, so an agent can branch on it
+// without parsing the hint prose.
+func bandCappedBy(capped bool) string {
+	if capped {
+		return "author"
+	}
+	return "pattern"
 }
 
 // hasBodyPlaceholderContent reports whether the slide puts content into a

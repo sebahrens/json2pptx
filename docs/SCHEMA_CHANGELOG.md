@@ -159,6 +159,27 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`SLIDE_UNDERUSED` stops penalising content-sized patterns, and its fix is
+  actionable (go-slide-creator-up04).** It compared a pattern's ink bounding box
+  with the whole content zone and demanded 45%, so the deliberately-shorter
+  bands go-slide-creator-7km8 produced were flagged for being the height that
+  change gave them: on three hand-crafted decks every firing was a false
+  positive. The fix told the agent to "remove bounds / max_height_pct caps" it
+  had never set — the height came from inside the pattern, so the advice could
+  not be acted on.
+  - The threshold now depends on who chose the band's height. **45%** when the
+    slide caps it (`bounds` / `max_height_pct`) — an authoring decision, so
+    loosening it is advice the agent can take. **22%** when the pattern derived
+    the height from its content — it is supposed to be shorter than the zone, so
+    only a genuine sliver (a four-stop `timeline-horizontal` at 10%) is
+    reported.
+  - `fix.params` gains **`band_capped_by`** (`author` / `pattern`) and
+    **`threshold_pct`**, and the hint differs per case: raise the cap, or —
+    when there is no cap — add detail, pair the block with a supporting zone
+    using `compose`, or choose a denser pattern.
+  - The near-empty placeholder slide this finding never covered is already
+    `SLIDE_NEARLY_EMPTY`'s business; the two no longer need to overlap.
+
 - **Inline SVG icons are no longer reported as unsupported text markup
   (go-slide-creator-6o1r).** `UNSUPPORTED_INLINE_MARKUP` scanned every string in
   a deck, including `icon.svg_data` — the documented way to supply an inline

@@ -1032,14 +1032,23 @@ A filled shape covering more than **10% of the slide area** holds text whose est
 **Fix kind:** `add_detail_or_resize`
 **Emitted at:** preflight, deterministic geometry
 
-The bounding box of the slide's grid "ink" covers less than **45% of the safe content area** (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). Ink is every filled shape, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area). Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to a thin band, or a `before-after` with three short bullets per side.
+The bounding box of the slide's grid "ink" covers too little of the safe content area (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). Ink is every filled shape, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area); a near-empty placeholder slide is `SLIDE_NEARLY_EMPTY`'s business, not this one.
+
+**The threshold depends on who chose the band's height** (`fix.params.band_capped_by`):
+
+| `band_capped_by` | threshold | why |
+|---|---|---|
+| `author` | 45% | the slide sets `bounds` or `max_height_pct`, so the height is an authoring decision and "the cap is too tight" is actionable |
+| `pattern` | 22% | the pattern derived its height from its content ([go-slide-creator-7km8](SCHEMA_CHANGELOG.md)), so it is SUPPOSED to be shorter than the zone — only a genuine sliver is worth reporting, and the advice is about content, never about a cap the author never set |
+
+Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to a thin band, or a four-stop `timeline-horizontal` (10% of the zone).
 
 ```json
 {
   "path": "/slides/3",
   "code": "SLIDE_UNDERUSED",
-  "message": "slide content covers 12% of the safe content area (threshold 45%) — the slide reads as mostly empty",
-  "fix": { "kind": "add_detail_or_resize", "params": { "content_area_pct": 12, "hint": "remove bounds / max_height_pct caps, add a supporting zone, or merge with another slide" } },
+  "message": "slide content covers 12% of the safe content area (threshold 45%) — the bounds / max_height_pct cap on this slide leaves it a thin strip",
+  "fix": { "kind": "add_detail_or_resize", "params": { "content_area_pct": 12, "threshold_pct": 45, "band_capped_by": "author", "hint": "raise or remove the bounds / max_height_pct cap on this slide, add a supporting zone, or merge with another slide" } },
   "action": "review"
 }
 ```

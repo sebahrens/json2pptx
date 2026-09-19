@@ -63,13 +63,14 @@ func init() {
 	}
 	findingMetaRegistry[ErrCodeSlideUnderused] = FindingMeta{
 		Code:        ErrCodeSlideUnderused,
-		Summary:     "The slide's grid content covers under 45% of the layout's safe content area.",
+		Summary:     "The slide's grid content covers too little of the layout's safe content area.",
 		Severity:    "review",
-		WhenEmitted: "Preflight unions the ink rectangles of every resolved grid cell (filled shapes, estimated text blocks, images, icons, tables, diagrams) and compares the bounding box with the content area below the title.",
+		WhenEmitted: "Preflight unions the ink rectangles of every resolved grid cell (filled shapes, estimated text blocks, images, icons, tables, diagrams) and compares the bounding box with the content area below the title. The threshold depends on who chose the band's height: 45% when the slide caps it (bounds / max_height_pct), 22% when the pattern derived it from its own content — a content-sized pattern is SUPPOSED to be shorter than the zone, so only a genuine sliver is reported. fix.params.band_capped_by says which case it is.",
 		RemediationSteps: []string{
-			"Remove an unnecessary bounds / max_height_pct cap so the grid fills the content area.",
-			"Add a supporting zone (takeaway, chart, detail row) or merge this slide's content with a neighbour.",
+			"band_capped_by \"author\": raise or remove the bounds / max_height_pct cap so the grid fills more of the content area.",
+			"band_capped_by \"pattern\": the height comes from the content, not from a cap — add detail to the block, pair it with a supporting zone using compose, or choose a denser pattern.",
+			"Or merge this slide's content with a neighbour.",
 		},
-		RelatedCodes: []string{ErrCodeSparseLayout, ErrCodeSparseFill, ErrCodePatternUnderfilled},
+		RelatedCodes: []string{ErrCodeSparseLayout, ErrCodeSparseFill, ErrCodePatternUnderfilled, ErrCodeSlideNearlyEmpty},
 	}
 }

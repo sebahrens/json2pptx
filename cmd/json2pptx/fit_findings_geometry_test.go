@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"math"
 	"strings"
 	"testing"
 
@@ -168,5 +170,105 @@ func TestShapeIsFilled(t *testing.T) {
 		if got := shapeIsFilled(json.RawMessage(raw)); got != want {
 			t.Errorf("%s: got %v want %v", raw, got, want)
 		}
+	}
+}
+
+// go-slide-creator-up04. SLIDE_UNDERUSED measured a content-sized pattern band
+// against the whole content zone and demanded 45%, so the deliberately-shorter
+// slides go-slide-creator-7km8 produced were all flagged — on three hand-crafted
+// decks every firing was a false positive. Worse, the fix told the agent to
+// "remove bounds / max_height_pct caps" it had never set: the height came from
+// inside the pattern, so the advice could not be acted on.
+
+// geomPatternSlide builds a process-flow slide, optionally capped by the author.
+// process-flow's own content-derived band covers 35% of the content zone — under
+// the old flat 45% threshold, so it was flagged for being exactly the height
+// go-slide-creator-7km8 gave it.
+func geomPatternSlide(t *testing.T, maxHeightPct float64) *PresentationInput {
+	t.Helper()
+	cap := ""
+	if maxHeightPct > 0 {
+		cap = fmt.Sprintf(`"max_height_pct":%g,`, maxHeightPct)
+	}
+	return geomSlides(t, `[{"layout_id":"content","pattern":{"name":"process-flow",`+cap+`
+		"values":{"steps":[{"label":"Discover"},{"label":"Build"},{"label":"Ship"}]}}}]`)
+}
+
+func TestGeometry_ContentSizedPatternBandIsNotUnderused(t *testing.T) {
+	for _, pattern := range []string{
+		`{"name":"process-flow","values":{"steps":[{"label":"Discover"},{"label":"Build"},{"label":"Ship"}]}}`,
+		`{"name":"stylish-panels","values":[{"title":"A","body":["one","two"]},{"title":"B","body":["one","two"]},{"title":"C","body":["one","two"]}]}`,
+		`{"name":"kpi-3up","values":[{"big":"41%","small":"Share of revenue"},{"big":"17","small":"New logos"},{"big":"3x","small":"Pipeline growth"}]}`,
+	} {
+		in := geomSlides(t, `[{"layout_id":"content","pattern":`+pattern+`}]`)
+		if fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused); len(fs) != 0 {
+			t.Errorf("a pattern at its own content-derived height was flagged: %+v", fs)
+		}
+	}
+}
+
+// The same pattern, capped by the author, still reports — and now the advice is
+// something they can act on, because the cap is theirs.
+func TestGeometry_AuthorCappedBandIsUnderused(t *testing.T) {
+	fs := findingsByCode(collectGeometryFindings(geomPatternSlide(t, 20), nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+	if len(fs) != 1 {
+		t.Fatalf("want one SLIDE_UNDERUSED for an author-capped band, got %+v", fs)
+	}
+	f := fs[0]
+	if got := f.Fix.Params["band_capped_by"]; got != "author" {
+		t.Errorf("band_capped_by = %v, want author", got)
+	}
+	hint, _ := f.Fix.Params["hint"].(string)
+	if !strings.Contains(hint, "max_height_pct") {
+		t.Errorf("an author-capped band must be told about its cap: %q", hint)
+	}
+	if got := f.Fix.Params["threshold_pct"]; got != math.Round(100*slideUnderusedMaxFrac) {
+		t.Errorf("threshold_pct = %v, want %v", got, math.Round(100*slideUnderusedMaxFrac))
+	}
+}
+
+// A band nobody capped still reports when it is a genuine sliver — a four-stop
+// timeline covers 10% of the content zone — but the advice is about content,
+// never about a cap that does not exist.
+func TestGeometry_UncappedSliverAdvisesContentNotCaps(t *testing.T) {
+	in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"timeline-horizontal",
+		"values":[{"label":"Q1"},{"label":"Q2"},{"label":"Q3"},{"label":"Q4"}]}}]`)
+	fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+	if len(fs) != 1 {
+		t.Fatalf("want one SLIDE_UNDERUSED for a sliver, got %+v", fs)
+	}
+	f := fs[0]
+	if got := f.Fix.Params["band_capped_by"]; got != "pattern" {
+		t.Errorf("band_capped_by = %v, want pattern", got)
+	}
+	hint, _ := f.Fix.Params["hint"].(string)
+	for _, forbidden := range []string{"remove bounds", "max_height_pct"} {
+		if strings.Contains(hint, forbidden) {
+			t.Errorf("hint tells the agent to edit a cap it never set: %q", hint)
+		}
+	}
+	for _, want := range []string{"add detail", "compose"} {
+		if !strings.Contains(hint, want) {
+			t.Errorf("hint %q does not name an action the agent can take (%q)", hint, want)
+		}
+	}
+}
+
+func TestAuthorCappedBand(t *testing.T) {
+	capped := geomPatternSlide(t, 20)
+	if !authorCappedBand(&capped.Slides[0]) {
+		t.Error("max_height_pct on the pattern is an author cap")
+	}
+	uncapped := geomPatternSlide(t, 0)
+	if authorCappedBand(&uncapped.Slides[0]) {
+		t.Error("a pattern with no bounds and no max_height_pct is not author-capped")
+	}
+	bounded := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"kpi-3up","bounds":{"x":0,"y":0,"width":100,"height":30},
+		"values":[{"big":"1","small":"a"},{"big":"2","small":"b"},{"big":"3","small":"c"}]}}]`)
+	if !authorCappedBand(&bounded.Slides[0]) {
+		t.Error("explicit bounds on the pattern is an author cap")
+	}
+	if authorCappedBand(nil) {
+		t.Error("a nil slide is not author-capped")
 	}
 }
