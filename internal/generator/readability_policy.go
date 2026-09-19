@@ -80,6 +80,13 @@ func NewReadabilityFinding(in ReadabilityFindingInput) *patterns.FitFinding {
 				},
 			},
 		},
+		// Deliberately advisory, even far below the floor: the size reported here
+		// comes from the autofit PREDICTION, which over-predicts shrink on thin
+		// band cells (a legible 24pt axis label on
+		// examples/sovereign-ai-strategy.json slide 9 is predicted at 7.2pt).
+		// Blocking a deck on a predictor that is wrong in the visible direction
+		// is how go-slide-creator-lmpu started; the prediction's accuracy is its
+		// own problem to fix before this can escalate.
 		Action: "review",
 	}
 }

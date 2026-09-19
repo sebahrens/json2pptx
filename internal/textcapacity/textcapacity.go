@@ -41,6 +41,15 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+// lineSpacing is the line height as a multiple of font size (matches
+// textfit.MeasureRun's default), and defaultInsetPt is the OOXML default top /
+// bottom text inset. Both mirror what the renderer emits, so a measured block
+// height can be compared with the box a viewer lays it out in.
+const (
+	lineSpacing    = 1.2
+	defaultInsetPt = 7.2
+)
+
 // budgetFontName is the font used for all budget computations.
 // Liberation Sans is embedded in the binary and metric-compatible with Arial,
 // ensuring deterministic results regardless of host platform.
@@ -62,14 +71,40 @@ type Budget struct {
 	FontPt    float64 // font size used for computation (points)
 	WidthEMU  int64   // usable width in EMU
 	HeightEMU int64   // usable height in EMU
+	// AvailableHeightPt is the text height the box actually offers (height minus
+	// the OOXML insets), in points.
+	AvailableHeightPt float64
 }
 
 // Density extends Budget with actual usage and density classification.
+//
+// For a shape_grid cell, DensityPct is a HEIGHT ratio: the wrapped block's
+// height over the height the cell offers. It used to be a character ratio
+// against a single font size — the largest of the cell's paragraphs — which made
+// every mixed-size cell nonsense in both directions: a stat-hero cell with a
+// 120pt number plus three small support lines reported 911% "overflow" while
+// rendering with room to spare, and 33 of 45 patterns reported most of their
+// cells "underfilled" (go-slide-creator-yj77, go-slide-creator-lmpu).
 type Density struct {
 	Budget
 	ActualChars int    // post-markdown character count of actual content
-	DensityPct  int    // round(actual / max * 100); 0 if no content
+	DensityPct  int    // round(required height / available height * 100); 0 if no content
 	Status      Status // underfilled, optimal, or overflow
+	// RequiredHeightPt is the measured height of the wrapped text block: every
+	// paragraph laid out at ITS OWN font size and summed. Zero when the cell has
+	// no text.
+	RequiredHeightPt float64
+	// Lines is the total wrapped line count across paragraphs.
+	Lines int
+	// AutofitScale is the uniform font scale the renderer's <a:normAutofit/>
+	// applies to make the block fit (1.0 when it already fits). Cells rely on
+	// it routinely, which is why a >100% height ratio is not by itself a
+	// rendering defect.
+	AutofitScale float64
+	// Fits reports whether the text fits at or above the autofit floor. False is
+	// the genuine overflow: even the smallest shrink the renderer will apply
+	// leaves text outside the cell.
+	Fits bool
 }
 
 // ForPlaceholder computes text density for a template placeholder with given text.
@@ -97,7 +132,7 @@ func ForResolvedGrid(result *shapegrid.ResolveResult) []Density {
 			densities[i] = Density{Status: StatusUnderfilled}
 			continue
 		}
-		fontPt, actualChars, authoredInsets := extractCellText(cell)
+		paras, authoredInsets := extractCellParagraphs(cell)
 		// The renderer lays text out inside a box smaller than the cell: both the
 		// icon-overlay insets (ResolvedCell.TextInsets) and the authored text
 		// insets are subtracted before text is placed (see
@@ -105,8 +140,7 @@ func ForResolvedGrid(result *shapegrid.ResolveResult) []Density {
 		// authored Insets from buildTextBody). Mirror that here so the budget
 		// reflects the box PowerPoint actually receives, not the full cell.
 		w, h := effectiveTextRect(cell.CellBounds, cell.TextInsets, authoredInsets)
-		budget := computeBudget(w, h, fontPt)
-		densities[i] = buildDensity(budget, actualChars)
+		densities[i] = measuredDensity(paras, w, h)
 	}
 	return densities
 }
@@ -135,14 +169,8 @@ func computeBudget(widthEMU, heightEMU int64, fontPt float64) Budget {
 		return Budget{FontPt: fontPt, WidthEMU: widthEMU, HeightEMU: heightEMU}
 	}
 
-	// Line height: 1.2× font size (matches textfit.MeasureRun default).
-	const lineSpacing = 1.2
 	lineHeightPt := fontPt * lineSpacing
-	emuPerPt := float64(types.EMUPerPoint)
-
-	// Usable height: subtract OOXML default insets (top + bottom = 7.2pt each).
-	const insetPt = 7.2
-	usableHeightPt := float64(heightEMU)/emuPerPt - 2*insetPt
+	usableHeightPt := availableTextHeightPt(heightEMU)
 	if usableHeightPt <= 0 {
 		return Budget{FontPt: fontPt, WidthEMU: widthEMU, HeightEMU: heightEMU}
 	}
@@ -218,41 +246,42 @@ func buildDensity(b Budget, actualChars int) Density {
 	return d
 }
 
-// defaultCellFontPt is the budget default font size (points) for shape_grid
-// text cells whose size is not explicitly authored. It intentionally stays at
-// the long-standing 11pt budget default and is independent of the shape_grid
-// renderer's larger visual default (shapegrid defaultTextSizeHPt); only the
-// renderer's minimum floor is mirrored here for authored sizes.
-const defaultCellFontPt = 11.0
+// defaultCellFontPt is the size an unsized shape_grid text cell is MEASURED at.
+// It mirrors the renderer's own default (shapegrid.DefaultTextSizePt, 14pt).
+//
+// It used to sit at a legacy 11pt budget default, deliberately independent of
+// the renderer. That is defensible for a character budget but wrong for a height
+// measurement: every unsized cell was measured 27% smaller than it renders
+// (go-slide-creator-lmpu).
+const defaultCellFontPt = shapegrid.DefaultTextSizePt
 
-// extractCellText parses a resolved cell's shape text to determine font size,
-// post-markdown character count, and any authored text insets. Returns
-// (fontPt, actualChars, authoredInsets) where authoredInsets is [L,T,R,B] in
-// EMU.
+// cellParagraph is one paragraph of a cell's text with the size it renders at.
+type cellParagraph struct {
+	text   string
+	fontPt float64
+}
+
+// extractCellParagraphs parses a resolved cell's shape text into paragraphs,
+// each carrying its OWN effective font size, plus any authored text insets
+// ([L,T,R,B] in EMU).
 //
-// Authored sizes below the shape_grid renderer's floor are raised via
-// shapegrid.EffectiveTextSizePt so the budget reflects the size the renderer
-// actually produces (e.g. an authored size of 10 is rendered, and budgeted, at
-// 12pt). Unspecified sizes keep defaultCellFontPt and are not floored.
-//
-// Authored inset_left/right/top/bottom values (points) are converted to EMU
-// mirroring shapegrid.buildTextBody, so the capacity path reserves the same
-// usable text rectangle the renderer produces. They are read from the same
-// top-level fields for both the plain object and paragraphs-array forms.
-func extractCellText(cell shapegrid.ResolvedCell) (float64, int, [4]int64) {
+// The previous extractCellText summed every paragraph's characters but kept only
+// the LARGEST paragraph size, so a cell mixing one big number with small support
+// lines was budgeted as if all of its text were set at the big size
+// (go-slide-creator-yj77).
+func extractCellParagraphs(cell shapegrid.ResolvedCell) ([]cellParagraph, [4]int64) {
 	if cell.ShapeSpec == nil || len(cell.ShapeSpec.Text) == 0 {
-		return defaultCellFontPt, 0, [4]int64{}
+		return nil, [4]int64{}
 	}
 
 	raw := cell.ShapeSpec.Text
 
-	// Try string shorthand (no authored size or insets → default).
-	var s string
-	if err := json.Unmarshal(raw, &s); err == nil {
-		return defaultCellFontPt, len([]rune(stripMarkdown(s))), [4]int64{}
+	// String shorthand: one paragraph at the default size.
+	var str string
+	if err := json.Unmarshal(raw, &str); err == nil {
+		return []cellParagraph{{text: stripMarkdown(str), fontPt: defaultCellFontPt}}, [4]int64{}
 	}
 
-	// Object form with possible paragraphs array.
 	var obj struct {
 		Content     string  `json:"content"`
 		Size        float64 `json:"size,omitempty"`
@@ -266,7 +295,7 @@ func extractCellText(cell shapegrid.ResolvedCell) (float64, int, [4]int64) {
 		} `json:"paragraphs,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
-		return defaultCellFontPt, 0, [4]int64{}
+		return nil, [4]int64{}
 	}
 
 	insets := [4]int64{
@@ -276,27 +305,192 @@ func extractCellText(cell shapegrid.ResolvedCell) (float64, int, [4]int64) {
 		pointsToEMU(obj.InsetBottom),
 	}
 
-	// Cell-level authored size, floored to the renderer's minimum.
-	fontPt := defaultCellFontPt
+	// Cell-level authored size, floored to the renderer's minimum, is the
+	// fallback for paragraphs that do not set their own.
+	cellPt := defaultCellFontPt
 	if obj.Size > 0 {
-		fontPt = shapegrid.EffectiveTextSizePt(obj.Size)
+		cellPt = shapegrid.EffectiveTextSizePt(obj.Size)
 	}
 
-	// If paragraphs array is present, concatenate all content.
 	if len(obj.Paragraphs) > 0 {
-		total := 0
+		paras := make([]cellParagraph, 0, len(obj.Paragraphs))
 		for _, p := range obj.Paragraphs {
-			total += len([]rune(stripMarkdown(p.Content)))
-			// Mirror the renderer's per-paragraph floor, then keep the largest
-			// effective paragraph font size for the budget.
-			if eff := shapegrid.EffectiveTextSizePt(p.Size); eff > fontPt {
-				fontPt = eff
+			pt := cellPt
+			if p.Size > 0 {
+				// Mirror the renderer's per-paragraph floor.
+				pt = shapegrid.EffectiveTextSizePt(p.Size)
 			}
+			paras = append(paras, cellParagraph{text: stripMarkdown(p.Content), fontPt: pt})
 		}
-		return fontPt, total, insets
+		return paras, insets
 	}
 
-	return fontPt, len([]rune(stripMarkdown(obj.Content))), insets
+	return []cellParagraph{{text: stripMarkdown(obj.Content), fontPt: cellPt}}, insets
+}
+
+// measuredDensity lays each paragraph out at its own size inside the cell's text
+// rectangle and reports the block height against the height available — the way
+// the renderer stacks paragraphs. This is the measurement fit_overflow and
+// cell_underfilled are derived from (go-slide-creator-lmpu, go-slide-creator-yj77).
+func measuredDensity(paras []cellParagraph, widthEMU, heightEMU int64) Density {
+	availablePt := availableTextHeightPt(heightEMU)
+	chars := 0
+	for _, p := range paras {
+		chars += len([]rune(p.text))
+	}
+
+	// The dominant size — the one carrying the most characters — is what the
+	// derived char budget and the reported FontPt describe. A 120pt number above
+	// a 14pt caption is a 14pt text box with a number in it, not a 120pt one.
+	dominantPt := dominantFontPt(paras)
+	d := Density{
+		Budget: Budget{
+			FontPt:            dominantPt,
+			WidthEMU:          widthEMU,
+			HeightEMU:         heightEMU,
+			AvailableHeightPt: availablePt,
+		},
+		ActualChars: chars,
+	}
+	if widthEMU <= 0 || availablePt <= 0 {
+		d.Status = StatusUnderfilled
+		return d
+	}
+
+	// Char budget at the dominant size, kept as the hint agents use to size text
+	// (reduce_cell_text's max_chars) — derived, never the density itself.
+	perLine := binarySearchCharsPerLine(widthEMU, dominantPt)
+	if perLine < 1 {
+		perLine = 1
+	}
+	d.MaxLines = int(math.Floor(availablePt / (dominantPt * lineSpacing)))
+	if d.MaxLines < 1 {
+		d.MaxLines = 1
+	}
+	d.MaxChars = perLine * d.MaxLines
+
+	for _, p := range paras {
+		if strings.TrimSpace(p.text) == "" {
+			continue
+		}
+		lines := 1
+		if m, err := textfit.MeasureRun(p.text, budgetFontName, p.fontPt, widthEMU, 0); err == nil && m.Lines > 0 {
+			lines = m.Lines
+		}
+		d.Lines += lines
+		d.RequiredHeightPt += float64(lines) * p.fontPt * lineSpacing
+	}
+
+	if chars == 0 {
+		d.Status = StatusUnderfilled
+		d.AutofitScale, d.Fits = 1, true
+		return d
+	}
+	d.DensityPct = int(math.Round(d.RequiredHeightPt / availablePt * 100))
+	d.Status = statusForDensity(d.DensityPct)
+	d.AutofitScale, d.Fits = AutofitScale(paras, widthEMU, heightEMU)
+	return d
+}
+
+// AutofitFloorScale is the smallest uniform font scale the renderer's
+// <a:normAutofit/> shrink is assumed to reach. Below it, text is clipped rather
+// than shrunk.
+const AutofitFloorScale = 0.2
+
+// ParagraphSpec is one paragraph of cell text at its rendered size, for callers
+// outside this package that need the autofit prediction.
+type ParagraphSpec struct {
+	Text   string
+	FontPt float64
+}
+
+// AutofitScaleFor predicts the shrink the renderer applies to fit the given
+// paragraphs into a text rectangle, and whether they fit at all. It is the single
+// implementation of the prediction: the fit report and the readability check must
+// agree on the size text actually renders at (go-slide-creator-lmpu).
+func AutofitScaleFor(paras []ParagraphSpec, widthEMU, heightEMU int64) (float64, bool) {
+	converted := make([]cellParagraph, 0, len(paras))
+	for _, p := range paras {
+		converted = append(converted, cellParagraph{text: p.Text, fontPt: p.FontPt})
+	}
+	return AutofitScale(converted, widthEMU, heightEMU)
+}
+
+// AutofitScale is the internal form of AutofitScaleFor: the largest scale, in 2%
+// steps, whose measured wrapped height fits the rectangle. The second result is
+// false when even AutofitFloorScale overflows.
+func AutofitScale(paras []cellParagraph, widthEMU, heightEMU int64) (float64, bool) {
+	availablePt := availableTextHeightPt(heightEMU)
+	if availablePt <= 0 || widthEMU <= 0 {
+		return 1, true
+	}
+	fits := func(scale float64) bool {
+		total := 0.0
+		for _, p := range paras {
+			if strings.TrimSpace(p.text) == "" {
+				continue
+			}
+			pt := p.fontPt * scale
+			m, err := textfit.MeasureRun(p.text, budgetFontName, pt, widthEMU, 0)
+			if err != nil {
+				return true // cannot measure: do not invent an overflow
+			}
+			total += float64(m.Lines) * pt * lineSpacing
+		}
+		return total <= availablePt
+	}
+	for step := 0; ; step++ {
+		scale := 1.0 - 0.02*float64(step)
+		if scale < AutofitFloorScale {
+			break
+		}
+		if fits(scale) {
+			return scale, true
+		}
+	}
+	return AutofitFloorScale, false
+}
+
+// dominantFontPt returns the font size carrying the most characters, falling back
+// to the largest size when no paragraph has text.
+func dominantFontPt(paras []cellParagraph) float64 {
+	best, bestChars, largest := 0.0, -1, 0.0
+	for _, p := range paras {
+		if p.fontPt > largest {
+			largest = p.fontPt
+		}
+		if n := len([]rune(strings.TrimSpace(p.text))); n > bestChars {
+			best, bestChars = p.fontPt, n
+		}
+	}
+	if bestChars > 0 {
+		return best
+	}
+	if largest > 0 {
+		return largest
+	}
+	return defaultCellFontPt
+}
+
+// availableTextHeightPt is the text height a box of heightEMU offers, after the
+// OOXML default top and bottom insets.
+func availableTextHeightPt(heightEMU int64) float64 {
+	if heightEMU <= 0 {
+		return 0
+	}
+	return float64(heightEMU)/float64(types.EMUPerPoint) - 2*defaultInsetPt
+}
+
+// statusForDensity applies the published density bands.
+func statusForDensity(pct int) Status {
+	switch {
+	case pct > 110:
+		return StatusOverflow
+	case pct >= 60:
+		return StatusOptimal
+	default:
+		return StatusUnderfilled
+	}
 }
 
 // pointsToEMU converts an authored point inset to EMU, mirroring the renderer's

@@ -580,12 +580,17 @@ func smallBodyLayouts() []types.LayoutMetadata {
 // through virtual layout resolution. The text fits comfortably in the generic
 // default cell but overflows the small body-placeholder cell — so the finding
 // set differs purely because the bounds differ.
+//
+// The text is sized so the small cell clips even at the renderer's smallest
+// autofit shrink, which is what fit_overflow now reports: a cell the renderer
+// merely shrinks into renders every word, and flagging that as overflow refused
+// decks that look right (go-slide-creator-lmpu).
 func TestGenerateFitReport_ShapeGridUsesLayoutBounds(t *testing.T) {
 	const (
 		slideWidth  int64 = 12192000
 		slideHeight int64 = 6858000
 	)
-	text := strings.TrimSpace(strings.Repeat("word ", 120)) // ~599 chars
+	text := strings.TrimSpace(strings.Repeat("word ", 700)) // ~3.5k chars
 	input := &PresentationInput{
 		Template: "midnight-blue",
 		Slides: []SlideInput{

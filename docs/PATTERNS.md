@@ -238,7 +238,9 @@ The engine computes a deterministic text budget for every shape grid cell. Patte
 
 1. **`Expand()` must remain pure.** A pattern's `Expand(values, overrides, ctx)` converts structured values into a `*ShapeGridInput`. It must not call `textcapacity` or perform any capacity calculations. Capacity is computed downstream by the expand command or MCP tool after `Expand()` returns.
 
-2. **Budget targets the body paragraph.** When a cell contains multiple paragraphs at different font sizes (e.g., a 16pt header + 11pt body), the budget is calculated against the body paragraph's font size. The header consumes vertical space but the `max_chars` value reflects body-text capacity.
+2. **Density is a HEIGHT ratio; `max_chars` is a derived hint.** `DensityPct` is the measured height of the wrapped text block — every paragraph laid out at **its own** font size, summed — over the height the cell offers. `max_chars` remains as a sizing hint, computed at the cell's *dominant* size (the one carrying the most characters).
+
+   It used to be a character ratio against a single size, the **largest** paragraph in the cell, which made every mixed-size cell nonsense in both directions: a `stat-hero` cell with a 120pt number above three small support lines reported 911% "overflow" while rendering with room to spare, and most cells of most patterns reported "underfilled" (go-slide-creator-yj77). An unsized cell is also now measured at the size it renders at (`shapegrid.DefaultTextSizePt`, 14pt) rather than a legacy 11pt budget default.
 
 3. **Font precedence.** The font size used for budget computation follows this resolution chain (first non-zero wins):
    - Paragraph-level `size` in the cell's text content
@@ -300,7 +302,12 @@ Parameterize over grid configurations (different cell counts, column layouts) an
 |------|-----------|---------------|--------------|
 | Underfilled | < 60% | `"underfilled"` | Add content or pick a smaller grid |
 | Optimal | 60–110% | `"optimal"` | No action needed |
-| Overflow | > 110% | `"overflow"` | Trim content or pick a larger grid |
+| Overflow | > 110% | `"overflow"` | The renderer will shrink this cell's text to fit (`<a:normAutofit/>`). Trim content or pick a larger grid if the shrink would push text below the readable floor. |
+
+Density % is `required text height / available text height`, so >100% means "needs an autofit shrink", not "clipped". Two further signals separate those cases:
+
+- **`fits: false`** (Density.Fits) — the block does not fit even at the smallest shrink the renderer applies (`textcapacity.AutofitFloorScale`, 20%). This, and only this, is what `fit_overflow` reports for a shape_grid cell: text that is actually clipped.
+- **`TEXT_BELOW_READABLE_MIN`** — the predicted post-autofit size is under the viewing mode's floor for that text role. This is the finding for "it fits, but only because it shrank too far"; it is advisory (`review`).
 
 These thresholds are defined in `internal/textcapacity/textcapacity.go` and are stable — do not hardcode different values in patterns.
 

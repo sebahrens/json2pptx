@@ -14,6 +14,12 @@ import (
 // comfortable reading at presentation distance.
 const defaultTextSizeHPt = 1400 // 14pt
 
+// DefaultTextSizePt is the point mirror of defaultTextSizeHPt: the size
+// shape_grid text with no authored size renders at. Height-measuring estimators
+// must use it, not a smaller legacy budget default, or they under-measure every
+// unsized cell (go-slide-creator-lmpu).
+const DefaultTextSizePt = float64(defaultTextSizeHPt) / 100
+
 // minTextSizeHPt is the minimum font size floor for shape_grid text cells.
 // JSON authors sometimes set conservative sizes (9-11pt) to avoid overflow;
 // with normAutofit enabled, PowerPoint can shrink from this floor as needed,
@@ -304,20 +310,20 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 
 	// Object form — try to detect paragraphs array variant
 	var obj struct {
-		Content       string          `json:"content"`
-		Paragraphs    []paragraphDef  `json:"paragraphs,omitempty"`
-		Size          float64         `json:"size,omitempty"`
-		Bold          bool            `json:"bold,omitempty"`
-		Italic        bool            `json:"italic,omitempty"`
-		Align         string          `json:"align,omitempty"`
-		VerticalAlign string          `json:"vertical_align,omitempty"`
-		Vert          string          `json:"vert,omitempty"`
-		Color         string          `json:"color,omitempty"`
-		Font          string          `json:"font,omitempty"`
-		InsetLeft     float64         `json:"inset_left,omitempty"`
-		InsetRight    float64         `json:"inset_right,omitempty"`
-		InsetTop      float64         `json:"inset_top,omitempty"`
-		InsetBottom   float64         `json:"inset_bottom,omitempty"`
+		Content       string         `json:"content"`
+		Paragraphs    []paragraphDef `json:"paragraphs,omitempty"`
+		Size          float64        `json:"size,omitempty"`
+		Bold          bool           `json:"bold,omitempty"`
+		Italic        bool           `json:"italic,omitempty"`
+		Align         string         `json:"align,omitempty"`
+		VerticalAlign string         `json:"vertical_align,omitempty"`
+		Vert          string         `json:"vert,omitempty"`
+		Color         string         `json:"color,omitempty"`
+		Font          string         `json:"font,omitempty"`
+		InsetLeft     float64        `json:"inset_left,omitempty"`
+		InsetRight    float64        `json:"inset_right,omitempty"`
+		InsetTop      float64        `json:"inset_top,omitempty"`
+		InsetBottom   float64        `json:"inset_bottom,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return nil, fmt.Errorf("text must be a string, object with \"content\", or object with \"paragraphs\" array: %w", err)
@@ -422,7 +428,6 @@ func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAl
 		Paragraphs: paragraphs,
 	}
 }
-
 
 // buildParagraphsTextBody creates a TextBody from individually styled paragraphs.
 func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultFont string,

@@ -11,7 +11,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
-	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -60,8 +59,13 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 				continue
 			}
 			scale := predictedAutofitScale(paras, d.WidthEMU, d.HeightEMU)
-			path := slidepath.Join(slidepath.GridCell(si, cell.RowIdx, cell.ColIdx), "shape/text")
+			cellPath := slidepath.GridCell(si, cell.RowIdx, cell.ColIdx)
+			path := slidepath.Join(cellPath, "shape/text")
 			if f := worstReadability(paras, scale, mode, path); f != nil {
+				// The generic finding suggests reduce_text, which cannot reach a
+				// grid cell. Point it at the cell with its measured budget
+				// (go-slide-creator-9zof).
+				retargetCellReadabilityFix(f, cellPath, d.MaxChars)
 				findings = append(findings, *f)
 			}
 		}
@@ -135,35 +139,17 @@ func splitCellParagraphs(content string, sizePt float64, bold bool) []cellParagr
 }
 
 // predictedAutofitScale estimates the uniform font scale the renderer's
-// shrink-on-overflow (<a:normAutofit/>) applies to fit all paragraphs of a
-// cell into its text rectangle: the largest scale, in 2% steps, whose
-// measured wrapped height fits. Returns 1 when the text already fits.
+// shrink-on-overflow (<a:normAutofit/>) applies to fit all paragraphs of a cell
+// into its text rectangle. It delegates to textcapacity, which owns the single
+// implementation: the fit report's overflow verdict and this readability verdict
+// must agree on the size text renders at (go-slide-creator-lmpu).
 func predictedAutofitScale(paras []cellParagraph, widthEMU, heightEMU int64) float64 {
-	const lineSpacing = 1.2
-	const insetPt = 7.2
-	usablePt := float64(heightEMU)/12700.0 - 2*insetPt
-	if usablePt <= 0 {
-		return 1
+	specs := make([]textcapacity.ParagraphSpec, 0, len(paras))
+	for _, p := range paras {
+		specs = append(specs, textcapacity.ParagraphSpec{Text: p.text, FontPt: p.sizePt})
 	}
-	fits := func(scale float64) bool {
-		total := 0.0
-		for _, p := range paras {
-			pt := p.sizePt * scale
-			m, err := textfit.MeasureRun(p.text, "Arial", pt, widthEMU, 0)
-			if err != nil {
-				return true // cannot measure: assume it fits
-			}
-			total += float64(m.Lines) * pt * lineSpacing
-		}
-		return total <= usablePt
-	}
-	for step := 0; step < 40; step++ {
-		scale := 1.0 - 0.02*float64(step)
-		if fits(scale) {
-			return scale
-		}
-	}
-	return 0.2
+	scale, _ := textcapacity.AutofitScaleFor(specs, widthEMU, heightEMU)
+	return scale
 }
 
 // worstReadability returns the TEXT_BELOW_READABLE_MIN finding for the
@@ -197,6 +183,23 @@ func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingM
 		}
 	}
 	return worst
+}
+
+// retargetCellReadabilityFix rewrites a readability finding's fix so it names a
+// directive that can edit grid-cell text, keeping the readability params that
+// explain the verdict.
+func retargetCellReadabilityFix(f *patterns.FitFinding, cellPath string, maxChars int) {
+	if f == nil || f.Fix == nil || f.Fix.Kind != "reduce_text" {
+		return
+	}
+	params := map[string]any{"cell_path": cellPath}
+	for k, v := range f.Fix.Params {
+		params[k] = v
+	}
+	if maxChars > 1 {
+		params["max_chars"] = maxChars
+	}
+	f.Fix = &patterns.FixSuggestion{Kind: "reduce_cell_text", Params: params}
 }
 
 // cellTextRole infers the text role of a shape_grid paragraph from its style:

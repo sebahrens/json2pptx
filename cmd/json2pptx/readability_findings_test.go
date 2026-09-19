@@ -54,8 +54,13 @@ func TestReadability_KPILongLabelPresentMode(t *testing.T) {
 	if !strings.Contains(f.Path, "/shape_grid/") || !strings.HasSuffix(f.Path, "shape/text") {
 		t.Errorf("path = %q, want a shape_grid cell text path", f.Path)
 	}
-	if f.Fix == nil || f.Fix.Kind != "reduce_text" {
+	// go-slide-creator-9zof: the fix must name a directive that can edit grid
+	// cell text — reduce_text walks content items and would apply nothing.
+	if f.Fix == nil || f.Fix.Kind != "reduce_cell_text" {
 		t.Fatalf("fix = %+v", f.Fix)
+	}
+	if f.Fix.Params["cell_path"] != "/slides/0/shape_grid/rows/0/cells/0" {
+		t.Errorf("fix must carry the cell path, got %v", f.Fix.Params["cell_path"])
 	}
 	if pt, _ := f.Fix.Params["actual_pt"].(float64); pt <= 0 || pt >= 12 {
 		t.Errorf("actual_pt = %v, want a positive size below 12pt", f.Fix.Params["actual_pt"])

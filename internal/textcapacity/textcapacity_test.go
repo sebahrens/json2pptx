@@ -261,8 +261,11 @@ func TestForResolvedGrid_AuthoredFontFloor(t *testing.T) {
 		{"size 11.5 floored to 12", `{"content": "x", "size": 11.5}`, 12.0},
 		{"size 12 unchanged", `{"content": "x", "size": 12}`, 12.0},
 		{"size 14 unchanged", `{"content": "x", "size": 14}`, 14.0},
-		{"unspecified keeps 11pt default", `{"content": "x"}`, 11.0},
-		{"string shorthand keeps 11pt default", `"x"`, 11.0},
+		// go-slide-creator-lmpu: an unsized cell is MEASURED at the size it
+		// renders at (shapegrid.DefaultTextSizePt, 14pt). The old 11pt budget
+		// default under-measured every unsized cell by 27%.
+		{"unspecified uses the renderer default", `{"content": "x"}`, 14.0},
+		{"string shorthand uses the renderer default", `"x"`, 14.0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -278,8 +281,11 @@ func TestForResolvedGrid_AuthoredFontFloor(t *testing.T) {
 }
 
 func TestForResolvedGrid_ParagraphFontFloor(t *testing.T) {
-	// Paragraph-array form: each authored paragraph size is floored, then the
-	// largest effective font size is used for the budget.
+	// Paragraph-array form: each authored paragraph size is floored to the
+	// renderer's minimum, and the reported FontPt is the DOMINANT size — the one
+	// carrying the most characters — not the largest. A 120pt number above a
+	// 14pt caption is a 14pt text box with a number in it; reporting 120pt made
+	// every mixed-size cell read as 900% overfull (go-slide-creator-yj77).
 	tests := []struct {
 		name       string
 		text       string
@@ -291,19 +297,24 @@ func TestForResolvedGrid_ParagraphFontFloor(t *testing.T) {
 			12.0,
 		},
 		{
-			"largest paragraph above floor wins",
+			"equal-length paragraphs keep the first",
 			`{"paragraphs": [{"content": "a", "size": 16}, {"content": "b", "size": 10}]}`,
 			16.0,
 		},
 		{
-			"sub-floor paragraph raises 11pt default",
+			"the size carrying the text dominates the hero number",
+			`{"paragraphs": [{"content": "EUR2.4B", "size": 120}, {"content": "Total contract value across the three signed frameworks", "size": 14}]}`,
+			14.0,
+		},
+		{
+			"sub-floor paragraph raises to the floor",
 			`{"paragraphs": [{"content": "a", "size": 10}]}`,
 			12.0,
 		},
 		{
-			"paragraphs without sizes keep 11pt default",
+			"paragraphs without sizes use the renderer default",
 			`{"paragraphs": [{"content": "a"}, {"content": "b"}]}`,
-			11.0,
+			14.0,
 		},
 	}
 	for _, tt := range tests {

@@ -394,7 +394,8 @@ func cellDensityFindings(d textcapacity.Density, pathPrefix string) (findings []
 			Code:     patterns.ErrCodeFitOverflow,
 			Path:     textPath,
 			Severity: severity,
-			Message:  fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d (%d%% of capacity)", d.ActualChars, d.FontPt, d.MaxChars, d.DensityPct),
+			Message: fmt.Sprintf("text needs %.0fpt of height in a cell that offers %.0fpt (%d%% at %.0fpt); even the renderer's smallest autofit shrink leaves it clipped",
+				d.RequiredHeightPt, d.AvailableHeightPt, d.DensityPct, d.FontPt),
 			// reduce_cell_text, not reduce_text: this text lives in a grid cell,
 			// and reduce_text only edits content items — so the suggested fix
 			// applied 0 of 60 times on a shape_grid deck
@@ -404,19 +405,24 @@ func cellDensityFindings(d textcapacity.Density, pathPrefix string) (findings []
 				"max_chars": d.MaxChars,
 			}},
 			BindingDimension: "height",
-			RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
-			AllocatedPt:      float64(d.HeightEMU) / 12700.0,
+			RequiredPt:       d.RequiredHeightPt,
+			AllocatedPt:      d.AvailableHeightPt,
 			Action:           action,
 		}
 	}
 
 	switch {
-	case d.DensityPct > 130:
-		// Severe overflow — error severity.
+	case !d.Fits:
+		// Genuine overflow: the wrapped block does not fit even at the smallest
+		// shrink <a:normAutofit/> applies, so text IS clipped on the rendered
+		// slide.
+		//
+		// A height ratio over 110% used to be reported as overflow on its own,
+		// which refused the project's own showcase decks: a cell PowerPoint
+		// autofits from 12pt to 8.6pt renders every word, and the real defect
+		// there is the 8.6pt — reported by TEXT_BELOW_READABLE_MIN, at review
+		// severity, where it belongs (go-slide-creator-lmpu).
 		findings = append(findings, overflow("error", "refuse"))
-	case d.DensityPct > 110:
-		// Moderate overflow — warning severity.
-		findings = append(findings, overflow("warning", "review"))
 	case d.DensityPct < 60:
 		under = &underfilledCell{
 			path:       textPath,

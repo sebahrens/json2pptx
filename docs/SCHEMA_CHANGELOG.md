@@ -10,6 +10,46 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Shape-grid text density is measured, not counted
+  (go-slide-creator-lmpu, go-slide-creator-yj77).** `fit_overflow` is the
+  dominant reason a deck fails the quality gate, and it fired on cells that
+  render correctly: the model compared a cell's character count against a
+  single-font-size capacity — the size of its **largest** paragraph. So
+  `examples/business-model-canvas.json` scored 62 and failed the gate with 4
+  `refuse` findings while every bullet of those cells is fully visible, and a
+  `stat-hero` cell (a 120pt number above three small support lines) reported
+  911% "overflow". The inverse was just as bad: most cells of most patterns
+  reported `underfilled`.
+  - `Density.DensityPct` for a shape_grid cell is now a **height ratio**: every
+    paragraph is wrapped at its own font size, the line heights are summed, and
+    the block is compared with the height the cell offers. New fields
+    `required_height_pt`, `available_height_pt`, `lines`, `autofit_scale` and
+    `fits` on `textcapacity.Density`.
+  - `Budget.FontPt` / the reported `@ Npt` is the **dominant** size (the one
+    carrying the most characters), not the largest. `max_chars` survives as a
+    derived sizing hint at that size.
+  - An unsized cell is measured at the size it renders at
+    (`shapegrid.DefaultTextSizePt`, 14pt) instead of a legacy 11pt budget
+    default.
+  - `fit_overflow` on a shape_grid cell is emitted only when the text does not
+    fit **even at the smallest autofit shrink** the renderer applies (20%) —
+    text that is actually clipped. A cell the renderer merely shrinks into is
+    reported by `TEXT_BELOW_READABLE_MIN` (`review`) if the shrink pushes it
+    below the readable floor, and not at all if it stays readable. The message
+    now reads `"text needs Npt of height in a cell that offers Mpt (D% at Ppt);
+    even the renderer's smallest autofit shrink leaves it clipped"`.
+  - `TEXT_BELOW_READABLE_MIN` on a grid cell carries
+    `reduce_cell_text{cell_path, max_chars}` instead of the unreachable
+    `reduce_text`.
+  - The autofit prediction has a single implementation
+    (`textcapacity.AutofitScaleFor`), shared by the fit report and the
+    readability check.
+
+  Effect on the bundled examples: `business-model-canvas` 62 → **90** and the
+  gate passes; `varied-pitch-deck` stays 95 / passing; `sovereign-ai-strategy`
+  90 → 91 (its remaining P0s are real table-cell overflows). No example gains a
+  failure.
+
 - **The two defect classes that block the gate now have working repairs
   (go-slide-creator-9zof).** `BODY_TOO_LONG`'s own `next_tool_call` is
   `repair_slide{reduce_text, {current_words, max_words}}`; applied verbatim it
