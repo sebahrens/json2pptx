@@ -59,6 +59,13 @@ type appliedFix struct {
 	// "advisory_fix_kind" (go-slide-creator-ui4c).
 	Alternatives []string `json:"alternatives,omitempty"`
 
+	// DidYouMean names the fix kind that can reach the target when this one
+	// cannot — e.g. reduce_text aimed at a shape_grid cell, whose text only
+	// reduce_cell_text can edit. Populated with Code == "wrong_kind_for_target",
+	// alongside a next_tool_call carrying the corrected directive
+	// (go-slide-creator-9zof).
+	DidYouMean string `json:"did_you_mean,omitempty"`
+
 	// NextToolCall is a machine-readable suggestion for the agent to recover
 	// from a non-applied result (e.g. call get_capabilities to discover the
 	// current vocabulary). Omitted when there is no actionable next step.
@@ -319,50 +326,72 @@ func unappliedFix(kind string) appliedFix {
 	return out
 }
 
-// applyReduceText truncates bullets or body text on a slide.
+// ellipsis marks truncated text, matching reduce_cell_text's single U+2026.
+const ellipsis = "\u2026"
+
+// minBulletWords / minBulletChars are the floors a proportional trim respects: a
+// bullet cut below them is a fragment, not a shorter bullet.
+const (
+	minBulletWords = 4
+	minBulletChars = 24
+)
+
+// reduceTextBudget is the budget a reduce_text directive asks for. Findings
+// express the same limit three ways — BODY_TOO_LONG in words, cell/placeholder
+// overflow in chars (max_chars), bullet-count findings in items — and before
+// go-slide-creator-9zof only max_items and max_length were honored, so
+// BODY_TOO_LONG's own next_tool_call
+// (repair_slide{reduce_text, {current_words, max_words}}) applied nothing and
+// reported "no text content found to reduce on this slide".
+type reduceTextBudget struct {
+	maxItems int
+	maxWords int
+	maxChars int
+	confirm  bool
+}
+
+func newReduceTextBudget(params map[string]any) reduceTextBudget {
+	chars := intParam(params, "max_length", 0)
+	if chars <= 0 {
+		// Cell and placeholder overflow findings carry max_chars.
+		chars = intParam(params, "max_chars", 0)
+	}
+	return reduceTextBudget{
+		maxItems: intParam(params, "max_items", 0),
+		maxWords: intParam(params, "max_words", 0),
+		maxChars: chars,
+		confirm:  boolParam(params, "confirm_semantic_change", false),
+	}
+}
+
+// active reports whether the directive asks for anything at all.
+func (b reduceTextBudget) active() bool {
+	return b.maxItems > 0 || b.maxWords > 0 || b.maxChars > 0
+}
+
+// applyReduceText trims text, bullets, body_and_bullets and bullet_groups on a
+// slide to a max_items / max_words / max_chars budget.
 // When params["path"] is set (e.g. "/slides/0/content/body"), only the matching
 // content item is targeted; otherwise all content on the slide is processed.
 func applyReduceText(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
 	slide := &input.Slides[slideIdx]
-	maxItems := intParam(params, "max_items", 0)
-	maxLength := intParam(params, "max_length", 0)
 	targetPath := stringParam(params, "path", "")
+	budget := newReduceTextBudget(params)
+	if !budget.active() {
+		return appliedFix{Kind: "reduce_text", Applied: false, Message: "no budget given: set max_words, max_chars (alias max_length), or max_items"}
+	}
 
 	modified := false
 	for i := range slide.Content {
 		ci := &slide.Content[i]
-
-		// Skip non-matching content when path is specified.
 		if targetPath != "" && !contentMatchesPath(slideIdx, i, ci.PlaceholderID, targetPath) {
 			continue
 		}
-
-		// Truncate bullets.
-		if maxItems > 0 && ci.BulletsValue != nil && len(*ci.BulletsValue) > maxItems {
-			trimmed := (*ci.BulletsValue)[:maxItems]
-			ci.BulletsValue = &trimmed
-			modified = true
+		changed, refusal := reduceContentItem(ci, budget)
+		if refusal != nil {
+			return *refusal
 		}
-
-		// Truncate body_and_bullets bullets.
-		if maxItems > 0 && ci.BodyAndBulletsValue != nil && len(ci.BodyAndBulletsValue.Bullets) > maxItems {
-			ci.BodyAndBulletsValue.Bullets = ci.BodyAndBulletsValue.Bullets[:maxItems]
-			modified = true
-		}
-
-		// Truncate bullet_groups.
-		if maxItems > 0 && ci.BulletGroupsValue != nil && len(ci.BulletGroupsValue.Groups) > maxItems {
-			ci.BulletGroupsValue.Groups = ci.BulletGroupsValue.Groups[:maxItems]
-			modified = true
-		}
-
-		// Truncate text by max_length.
-		if maxLength > 0 && ci.TextValue != nil && len(*ci.TextValue) > maxLength {
-			truncated := (*ci.TextValue)[:maxLength]
-			if !boolParam(params, "confirm_semantic_change", false) && losesProtectedFacts(*ci.TextValue, truncated) {
-				return appliedFix{Kind: "reduce_text", Applied: false, Code: "semantic_review_required", Message: "truncation would remove a number, unit, negation, or qualifier; recompose/split or explicitly confirm semantic change"}
-			}
-			ci.TextValue = &truncated
+		if changed {
 			modified = true
 		}
 	}
@@ -370,7 +399,307 @@ func applyReduceText(input *PresentationInput, slideIdx int, params map[string]a
 	if modified {
 		return appliedFix{Kind: "reduce_text", Applied: true}
 	}
-	return appliedFix{Kind: "reduce_text", Applied: false, Message: "no text content found to reduce on this slide"}
+	return reduceTextNoTarget(slide, slideIdx, targetPath, params)
+}
+
+// reduceContentItem applies the budget to one content item, returning whether it
+// changed and a refusal when trimming would drop a protected fact.
+func reduceContentItem(ci *ContentInput, b reduceTextBudget) (bool, *appliedFix) {
+	modified := false
+
+	if ci.BulletsValue != nil {
+		trimmed, changed, refusal := reduceBulletList(*ci.BulletsValue, b)
+		if refusal != nil {
+			return false, refusal
+		}
+		if changed {
+			ci.BulletsValue = &trimmed
+			modified = true
+		}
+	}
+
+	if bab := ci.BodyAndBulletsValue; bab != nil {
+		trimmed, changed, refusal := reduceBulletList(bab.Bullets, b)
+		if refusal != nil {
+			return false, refusal
+		}
+		if changed {
+			bab.Bullets = trimmed
+			modified = true
+		}
+		if body, changed, refusal := reduceParagraph(bab.Body, b); refusal != nil {
+			return false, refusal
+		} else if changed {
+			bab.Body = body
+			modified = true
+		}
+	}
+
+	if bg := ci.BulletGroupsValue; bg != nil {
+		if b.maxItems > 0 && len(bg.Groups) > b.maxItems {
+			bg.Groups = bg.Groups[:b.maxItems]
+			modified = true
+		}
+		// A word/char budget applies across the groups' bullets, not to the
+		// group count: dropping a whole group loses a heading and its points.
+		for gi := range bg.Groups {
+			trimmed, changed, refusal := reduceBulletList(bg.Groups[gi].Bullets, reduceTextBudget{
+				maxWords: perGroupBudget(b.maxWords, len(bg.Groups)),
+				maxChars: perGroupBudget(b.maxChars, len(bg.Groups)),
+				confirm:  b.confirm,
+			})
+			if refusal != nil {
+				return false, refusal
+			}
+			if changed {
+				bg.Groups[gi].Bullets = trimmed
+				modified = true
+			}
+		}
+	}
+
+	if ci.TextValue != nil {
+		trimmed, changed, refusal := reduceParagraph(*ci.TextValue, b)
+		if refusal != nil {
+			return false, refusal
+		}
+		if changed {
+			ci.TextValue = &trimmed
+			modified = true
+		}
+	}
+
+	return modified, nil
+}
+
+// perGroupBudget splits a slide-level budget across N bullet groups.
+func perGroupBudget(total, groups int) int {
+	if total <= 0 || groups <= 0 {
+		return 0
+	}
+	per := total / groups
+	if per < 1 {
+		per = 1
+	}
+	return per
+}
+
+// reduceBulletList trims a bullet list to the budget. max_items cuts the list;
+// a word or char budget is distributed across the surviving bullets in
+// proportion to their length, so nine long bullets become nine short ones
+// instead of two long ones — dropping seven bullets would lose seven points
+// (go-slide-creator-9zof).
+func reduceBulletList(items []string, b reduceTextBudget) ([]string, bool, *appliedFix) {
+	if len(items) == 0 {
+		return items, false, nil
+	}
+	out := append([]string(nil), items...)
+	changed := false
+	if b.maxItems > 0 && len(out) > b.maxItems {
+		dropped := strings.Join(out[b.maxItems:], " ")
+		kept := strings.Join(out[:b.maxItems], " ")
+		if !b.confirm && losesProtectedFacts(kept+" "+dropped, kept) {
+			return items, false, &appliedFix{
+				Kind:    "reduce_text",
+				Applied: false,
+				Code:    "semantic_review_required",
+				Message: fmt.Sprintf("dropping bullets %d-%d would remove a number, unit, negation, or qualifier — rewrite them shorter, move them to a second slide, or pass confirm_semantic_change", b.maxItems+1, len(out)),
+			}
+		}
+		out = out[:b.maxItems]
+		changed = true
+	}
+
+	total := 0
+	for _, it := range out {
+		total += len(strings.Fields(it))
+	}
+	if b.maxWords <= 0 || total <= b.maxWords {
+		if b.maxChars > 0 {
+			trimmed, charChanged, refusal := reduceBulletChars(out, b)
+			if refusal != nil {
+				return items, false, refusal
+			}
+			return trimmed, changed || charChanged, nil
+		}
+		return out, changed, nil
+	}
+
+	for i := range out {
+		words := strings.Fields(out[i])
+		if len(words) == 0 {
+			continue
+		}
+		share := b.maxWords * len(words) / total
+		if share < minBulletWords {
+			share = minBulletWords
+		}
+		if share >= len(words) {
+			continue
+		}
+		shortened := strings.Join(words[:share], " ") + ellipsis
+		if !b.confirm && losesProtectedFacts(out[i], shortened) {
+			return items, false, &appliedFix{
+				Kind:    "reduce_text",
+				Applied: false,
+				Code:    "semantic_review_required",
+				Message: fmt.Sprintf("trimming bullet %d from %d to %d words would remove a number, unit, negation, or qualifier — rewrite it shorter, split the slide, or pass confirm_semantic_change", i+1, len(words), share),
+			}
+		}
+		out[i] = shortened
+		changed = true
+	}
+	return out, changed, nil
+}
+
+// reduceBulletChars enforces a character budget across bullets the same way.
+func reduceBulletChars(items []string, b reduceTextBudget) ([]string, bool, *appliedFix) {
+	total := 0
+	for _, it := range items {
+		total += len([]rune(it))
+	}
+	if b.maxChars <= 0 || total <= b.maxChars {
+		return items, false, nil
+	}
+	out := append([]string(nil), items...)
+	changed := false
+	for i := range out {
+		runes := len([]rune(out[i]))
+		if runes == 0 {
+			continue
+		}
+		share := b.maxChars * runes / total
+		if share < minBulletChars {
+			share = minBulletChars
+		}
+		if share >= runes {
+			continue
+		}
+		shortened := truncateWordsToChars(out[i], share)
+		if !b.confirm && losesProtectedFacts(out[i], shortened) {
+			return items, false, &appliedFix{
+				Kind:    "reduce_text",
+				Applied: false,
+				Code:    "semantic_review_required",
+				Message: fmt.Sprintf("trimming bullet %d to %d characters would remove a number, unit, negation, or qualifier — rewrite it shorter or pass confirm_semantic_change", i+1, share),
+			}
+		}
+		out[i] = shortened
+		changed = true
+	}
+	return out, changed, nil
+}
+
+// reduceParagraph trims a single body string to the word / char budget at a word
+// boundary.
+func reduceParagraph(text string, b reduceTextBudget) (string, bool, *appliedFix) {
+	if strings.TrimSpace(text) == "" {
+		return text, false, nil
+	}
+	trimmed, ok := shortenTitleAtWordBoundary(text, b.maxWords, b.maxChars)
+	if !ok {
+		return text, false, nil
+	}
+	if !b.confirm && losesProtectedFacts(text, trimmed) {
+		return text, false, &appliedFix{
+			Kind:    "reduce_text",
+			Applied: false,
+			Code:    "semantic_review_required",
+			Message: "truncation would remove a number, unit, negation, or qualifier; recompose/split or explicitly confirm semantic change",
+		}
+	}
+	return trimmed, true, nil
+}
+
+// truncateWordsToChars trims text to at most maxChars runes, cutting at a word
+// boundary and appending an ellipsis.
+func truncateWordsToChars(text string, maxChars int) string {
+	if len([]rune(text)) <= maxChars {
+		return text
+	}
+	words := strings.Fields(text)
+	kept := words
+	for len(kept) > 1 && len([]rune(strings.Join(kept, " ")))+1 > maxChars {
+		kept = kept[:len(kept)-1]
+	}
+	joined := strings.Join(kept, " ")
+	if len([]rune(joined))+1 > maxChars {
+		// A single word longer than the budget: fall back to a rune cut.
+		return truncateWithEllipsis(joined, maxChars)
+	}
+	return joined + ellipsis
+}
+
+// reduceTextNoTarget explains a reduce_text directive that matched nothing.
+// On a shape_grid slide the right kind is reduce_cell_text with a cell_path, and
+// fit_overflow findings on grid cells used to suggest reduce_text — so the answer
+// names the kind and the cell instead of a bare failure (go-slide-creator-9zof).
+func reduceTextNoTarget(slide *SlideInput, slideIdx int, targetPath string, params map[string]any) appliedFix {
+	cellPath := gridCellPath(targetPath)
+	if cellPath == "" && slide.ShapeGrid != nil && len(slide.Content) == 0 {
+		cellPath = fullestGridCellPath(slide, slideIdx)
+	}
+	if cellPath == "" {
+		return appliedFix{Kind: "reduce_text", Applied: false, Message: "no text content found to reduce on this slide"}
+	}
+	maxChars := intParam(params, "max_chars", 0)
+	if maxChars <= 0 {
+		maxChars = intParam(params, "max_length", 0)
+	}
+	fixParams := map[string]any{"cell_path": cellPath}
+	if maxChars > 0 {
+		fixParams["max_chars"] = maxChars
+	}
+	return appliedFix{
+		Kind:       "reduce_text",
+		Applied:    false,
+		Code:       "wrong_kind_for_target",
+		DidYouMean: "reduce_cell_text",
+		Message:    fmt.Sprintf("this slide's text lives in a shape_grid cell, not a content item — reduce_text cannot reach it; apply reduce_cell_text with cell_path %q", cellPath),
+		NextToolCall: &patterns.ToolCallSuggestion{
+			Tool: "repair_slide",
+			ArgsTemplate: map[string]any{
+				"slide_index": slideIdx,
+				"fixes":       []any{map[string]any{"kind": "reduce_cell_text", "params": fixParams}},
+			},
+		},
+	}
+}
+
+// gridCellPath reduces a finding path that points inside a shape_grid cell to
+// the cell path reduce_cell_text expects
+// ("/slides/0/shape_grid/rows/1/cells/2"), dropping any trailing field such as
+// "/shape/text". Returns "" when the path is not a grid-cell path.
+func gridCellPath(path string) string {
+	if path == "" {
+		return ""
+	}
+	slideIdx, rowIdx, cellIdx, ok := slidepath.ParseGridCell(path)
+	if !ok {
+		return ""
+	}
+	return slidepath.GridCell(slideIdx, rowIdx, cellIdx)
+}
+
+// fullestGridCellPath returns the path of the grid cell carrying the most text,
+// the best guess at what an untargeted reduce_text on a grid-only slide meant.
+// Returns "" when the slide has no cell with text.
+func fullestGridCellPath(slide *SlideInput, slideIdx int) string {
+	if slide.ShapeGrid == nil {
+		return ""
+	}
+	best, bestLen := "", 0
+	for r, row := range slide.ShapeGrid.Rows {
+		for c, cell := range row.Cells {
+			if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 {
+				continue
+			}
+			if n := len(cell.Shape.Text); n > bestLen {
+				best, bestLen = slidepath.GridCell(slideIdx, r, c), n
+			}
+		}
+	}
+	return best
 }
 
 // applyShortenTitle truncates the title placeholder text.

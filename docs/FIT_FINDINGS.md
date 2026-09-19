@@ -638,10 +638,23 @@ The `chart-insights-split` pattern was expanded without a `chart` spec, so the l
 ### `fit_overflow`
 
 **Action:** `shrink_or_split` (mapped from internal `unfittable`)
-**Pattern:** `table`
-**Fix kind:** `reduce_text` (headers) or `split_at_row` (data cells)
+**Pattern:** `table`, `shape_grid`
+**Fix kind:** `split_at_row` (table data cells), `reduce_text` (table headers), `reduce_cell_text` (shape_grid cells), `increase_row_height` (advisory; shape_grid rows)
 
-Text in a table cell exceeds the available cell height. The `split_at_row` fix includes a `row` parameter suggesting where to split the table.
+Text exceeds the height available to it. The `split_at_row` fix includes a `row` parameter suggesting where to split the table.
+
+On a **shape_grid cell** the fix is `reduce_cell_text` with the cell's own `cell_path` and `max_chars` budget — apply it verbatim. `reduce_text` walks *content items* and cannot reach grid text, so aiming it at a cell answers `code: "wrong_kind_for_target"` with `did_you_mean: "reduce_cell_text"` and a corrected `next_tool_call` (go-slide-creator-9zof). A **grid row** whose content exceeds its `max_height` is not itself a text target: its finding carries the advisory `increase_row_height` (guidance + `reshape_grid` / `reduce_cell_text` alternatives), while each overfull cell in it carries its own executable fix.
+
+```json
+{
+  "pattern": "shape_grid",
+  "path": "/slides/0/shape_grid/rows/0/cells/0/shape/text",
+  "code": "fit_overflow",
+  "message": "text needs 174 chars @ 11pt; cell allows 90 (193% of capacity)",
+  "fix": { "kind": "reduce_cell_text", "params": { "cell_path": "/slides/0/shape_grid/rows/0/cells/0", "max_chars": 90 } },
+  "action": "refuse"
+}
+```
 
 ```json
 {

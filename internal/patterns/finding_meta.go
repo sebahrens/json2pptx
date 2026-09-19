@@ -238,12 +238,14 @@ var findingMetaRegistry = map[string]FindingMeta{
 
 	ErrCodeFitOverflow: {
 		Code:        ErrCodeFitOverflow,
-		Summary:     "Text in a table cell exceeds the cell's available height.",
+		Summary:     "Text exceeds the height available to it — in a table cell, a shape_grid cell, or a grid row.",
 		Severity:    "shrink_or_split",
-		WhenEmitted: "textfit.Calculate reports that a table cell's text would not fit at the resolved font size; emitted for headers and data cells.",
+		WhenEmitted: "textfit.Calculate reports that a table cell's text would not fit at the resolved font size (headers and data cells), or the shape_grid density pass finds a cell over its character capacity, or a grid row's content exceeds its max_height.",
 		RemediationSteps: []string{
 			"For data cells: split the table at the suggested row using repair_slide(kind=split_at_row, params.row=<row>).",
-			"For headers: shorten the header text via repair_slide(kind=reduce_text).",
+			"For headers: shorten the header text via repair_slide(kind=reduce_text, params.max_chars=<budget>).",
+			"For a shape_grid cell: apply the finding's fix verbatim — repair_slide(kind=reduce_cell_text, params={cell_path, max_chars}). reduce_text cannot reach grid text and answers with code wrong_kind_for_target and the corrected directive.",
+			"For a grid row: trim its cells (each carries its own reduce_cell_text fix) or reshape the grid; the row itself is not a text target.",
 		},
 		ExampleBefore: `{"pattern":"table","path":"/slides/0/content/0/rows/3/1","code":"fit_overflow","fix":{"kind":"split_at_row","params":{"row":4}}}`,
 		ExampleAfter:  `{"slides":[{"content":[{"type":"table","table_value":{"rows":[[..3 rows..]]}}]},{"title":"... (continued)","content":[{"type":"table","table_value":{"rows":[[..rest..]]}}]}]}`,
@@ -520,8 +522,8 @@ var findingMetaRegistry = map[string]FindingMeta{
 		WhenEmitted: "Pre-flight word-counts the body text (or aggregated bullets) and finds >80 words — audiences read at most ~5 lines per slide.",
 		RemediationSteps: []string{
 			"Trim the body to 80 or fewer words.",
-			"Apply via repair_slide(kind=reduce_text).",
-			"Or split the content across two slides.",
+			"Apply the finding's fix verbatim: repair_slide(kind=reduce_text, params={max_words}). The word budget is distributed across bullets in proportion to their length, so every bullet survives (shortened) rather than the list being cut short.",
+			"If the trim would drop a number, unit, negation, or qualifier, it refuses with semantic_review_required — rewrite those lines yourself or split the content across two slides.",
 		},
 		RelatedCodes: []string{ErrCodePlaceholderOverflow, ErrCodeBulletNestingDeep},
 	},
@@ -532,7 +534,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		WhenEmitted: "Pre-flight measures per-bullet indent depth and finds at least one bullet at depth ≥3.",
 		RemediationSteps: []string{
 			"Flatten the bullet list to two levels or fewer.",
-			"Apply via repair_slide(kind=reduce_text).",
+			"Apply via repair_slide(kind=reduce_text, params={max_items}) to drop the deepest items, or restructure them into bullet_groups.",
 		},
 		RelatedCodes: []string{ErrCodeBodyTooLong},
 	},

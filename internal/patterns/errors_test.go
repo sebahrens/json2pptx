@@ -186,10 +186,14 @@ func TestRepairFixKindsIncludesNewKinds(t *testing.T) {
 	requiredKinds := []string{
 		"provide_value", "replace_value", "reduce_items",
 		"add_items", "resize_list", "remove_key", "remove_field",
+		// reduce_cell_text was missing from the local list this test used to
+		// check, so grid-cell findings carried no repair next_tool_call
+		// (go-slide-creator-9zof). The vocabulary now lives in fix_kinds.go.
+		"reduce_cell_text",
 	}
 	for _, kind := range requiredKinds {
-		if !repairFixKinds[kind] {
-			t.Errorf("repairFixKinds missing %q", kind)
+		if !FixKindIsExecutable(kind) {
+			t.Errorf("executable vocabulary missing %q", kind)
 		}
 	}
 }

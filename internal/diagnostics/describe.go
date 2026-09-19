@@ -240,14 +240,39 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 
 	"kind_not_supported": {
 		Code:        "kind_not_supported",
-		Summary:     "repair_slide was asked for a fix kind it cannot execute.",
+		Summary:     "repair_slide was asked for a fix kind that does not exist.",
 		Severity:    describeSeverityRefuse,
-		WhenEmitted: "A repair request names a fix kind outside repair_slide's executable set. The response's supported_kinds lists what it can actually apply.",
+		WhenEmitted: "A repair request names a fix kind in neither vocabulary (get_capabilities.vocabularies.repair_fix_kinds / advisory_fix_kinds). The response's supported_kinds lists what repair_slide can apply.",
 		RemediationSteps: []string{
 			"Pick a kind from the response's supported_kinds field.",
-			"When a finding suggests a kind repair_slide cannot execute, treat it as a review item: restructure the slide yourself, or split it.",
+			"Check the spelling against get_capabilities.vocabularies.repair_fix_kinds.",
 		},
-		RelatedCodes: []string{"semantic_review_required"},
+		RelatedCodes: []string{"semantic_review_required", "advisory_fix_kind", "wrong_kind_for_target"},
+	},
+
+	"advisory_fix_kind": {
+		Code:        "advisory_fix_kind",
+		Summary:     "The fix kind is real, but its remedy is an authoring decision rather than a mechanical edit.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "repair_slide was given a registered ADVISORY kind (add_detail_or_resize, grow_pattern, review, truncation_summary, … — see get_capabilities.vocabularies.advisory_fix_kinds). These are legitimately emitted by findings; no edit can execute them, so the response carries the decision to make in message and executable alternatives in alternatives[].",
+		RemediationSteps: []string{
+			"Read the response's message: it states what you have to decide (add detail, merge slides, rewrite the line, pick another pattern).",
+			"Or apply one of the response's alternatives[], which are all executable kinds addressing the same defect.",
+			"Do not re-send the same kind; it is not a caller mistake and the answer will not change.",
+		},
+		RelatedCodes: []string{"kind_not_supported", "wrong_kind_for_target"},
+	},
+
+	"wrong_kind_for_target": {
+		Code:        "wrong_kind_for_target",
+		Summary:     "The fix kind cannot reach the text it was aimed at; another kind can.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "A repair targets content the kind does not edit — typically reduce_text on a slide whose text lives in shape_grid cells, which only reduce_cell_text can change. The response names the right kind in did_you_mean and carries a ready-to-send directive in next_tool_call.",
+		RemediationSteps: []string{
+			"Submit the response's next_tool_call verbatim: it carries the corrected kind and the cell_path.",
+			"When targeting a grid cell yourself, use reduce_cell_text with cell_path \"/slides/N/shape_grid/rows/R/cells/C\" and max_chars.",
+		},
+		RelatedCodes: []string{"kind_not_supported", "advisory_fix_kind", "fit_overflow"},
 	},
 
 	"semantic_review_required": {

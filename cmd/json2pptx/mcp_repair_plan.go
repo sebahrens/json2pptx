@@ -333,6 +333,12 @@ func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepa
 			continue
 		}
 
+		// Text that lives in a shape_grid cell can only be edited by
+		// reduce_cell_text: reduce_text walks content items, which a grid slide
+		// does not have, so 60 of 60 mapped directives applied nothing
+		// (go-slide-creator-9zof).
+		fix = retargetGridTextFix(f, fix)
+
 		// A kind repair_slide cannot execute is either a registered advisory
 		// (guidance an agent acts on) or an unknown kind (a bug). Keep them
 		// apart: filing guidance under unmapped[] made the documented loop look
@@ -687,6 +693,38 @@ func visualFindingDirectives(f proposeRepairsFinding, slideIdx int, hasSlide boo
 		entries = append(entries, bucketEntry{directive: dir, score: score - ci})
 	}
 	return entries, nil
+}
+
+// retargetGridTextFix rewrites a reduce_text fix whose finding points inside a
+// shape_grid cell into the reduce_cell_text directive that can actually reach
+// that cell, carrying the cell path and character budget. Anything else is
+// returned unchanged, and a fix with no derivable character budget is left alone
+// rather than guessed at (go-slide-creator-9zof).
+func retargetGridTextFix(f proposeRepairsFinding, fix *patterns.FixSuggestion) *patterns.FixSuggestion {
+	if fix == nil || fix.Kind != "reduce_text" {
+		return fix
+	}
+	cellPath := gridCellPath(f.Path)
+	if cellPath == "" {
+		cellPath = gridCellPath(stringParam(fix.Params, "path", ""))
+	}
+	if cellPath == "" {
+		return fix
+	}
+	maxChars := intParam(fix.Params, "max_chars", 0)
+	if maxChars <= 0 {
+		maxChars = intParam(fix.Params, "max_length", 0)
+	}
+	if maxChars <= 1 {
+		return fix
+	}
+	return &patterns.FixSuggestion{
+		Kind: "reduce_cell_text",
+		Params: map[string]any{
+			"cell_path": cellPath,
+			"max_chars": maxChars,
+		},
+	}
 }
 
 // classifyNonExecutableFix routes a finding whose fix kind repair_slide cannot

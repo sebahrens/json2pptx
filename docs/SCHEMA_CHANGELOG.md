@@ -10,6 +10,40 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **The two defect classes that block the gate now have working repairs
+  (go-slide-creator-9zof).** `BODY_TOO_LONG`'s own `next_tool_call` is
+  `repair_slide{reduce_text, {current_words, max_words}}`; applied verbatim it
+  returned `applied: false, "no text content found to reduce on this slide"` on
+  every slide, because `reduce_text` honored only `max_items` and `max_length`.
+  On a `shape_grid` deck, `propose_repairs` mapped 60 of 60 `fit_overflow`
+  findings to `reduce_text` and `repair_slides_batch` applied 0 of them, because
+  grid-cell text is only reachable by `reduce_cell_text`. Either way the loop
+  stalled with a permanent residual.
+  - `reduce_text` now accepts **`max_words`** and **`max_chars`** (alias
+    `max_length`) and applies them to `text_value`, `bullets_value`,
+    `body_and_bullets_value` and `bullet_groups_value`. A word/char budget is
+    distributed across bullets in proportion to their length — every bullet
+    survives, shortened at a word boundary with a single `…` — rather than
+    truncating the list. The protected-fact guard still refuses
+    (`semantic_review_required`) when a trim would drop a number, unit,
+    negation, or qualifier. A budget-less directive now says so instead of
+    blaming the deck.
+  - `fit_overflow` on a shape_grid cell emits
+    `reduce_cell_text{cell_path, max_chars}` instead of an unreachable
+    `reduce_text`; the row-level overflow finding emits the advisory
+    `increase_row_height` (a row is not a text target — its cells carry the
+    executable fixes).
+  - `propose_repairs` retargets any `reduce_text` fix whose finding path points
+    inside a shape_grid cell to `reduce_cell_text` with the cell path.
+  - `repair_slide` answers a directive it cannot route with the new
+    `code: "wrong_kind_for_target"`, a **`did_you_mean`** field, and a
+    `next_tool_call` carrying the corrected directive.
+  - `next_tool_call` is now emitted for every executable fix kind: the
+    suggestion builder had its own hand-maintained kind list, which omitted
+    `reduce_cell_text`, so grid-cell findings shipped `next_tool_call: null`.
+  - `describe_finding` covers the new repair-result codes
+    `advisory_fix_kind` and `wrong_kind_for_target`.
+
 - **Fix kinds are explicitly executable or advisory
   (go-slide-creator-ui4c).** 506 of 814 fix-carrying findings across a 50-deck
   corpus named a `fix.kind` that `repair_slide` cannot apply — and they were the

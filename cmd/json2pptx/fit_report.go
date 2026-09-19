@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"os"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
@@ -301,10 +302,18 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 	// Emit row overflow findings from the resolve result.
 	for _, ro := range result.RowOverflows {
 		findings = append(findings, fitFinding{
-			Code:             patterns.ErrCodeFitOverflow,
-			Path:             slidepath.GridRow(slideIdx, ro.RowIndex),
-			Message:          fmt.Sprintf("row content ~%.0fpt exceeds max_height %.0fpt", ro.ContentPt, ro.MaxHeightPt),
-			Fix:              &patterns.FixSuggestion{Kind: "reduce_text"},
+			Code:    patterns.ErrCodeFitOverflow,
+			Path:    slidepath.GridRow(slideIdx, ro.RowIndex),
+			Message: fmt.Sprintf("row content ~%.0fpt exceeds max_height %.0fpt", ro.ContentPt, ro.MaxHeightPt),
+			// A row is not a text target: the executable repairs are per-cell
+			// (the cell findings below carry reduce_cell_text with each cell's
+			// budget) or a reshape. reduce_text here named no reachable content
+			// and applied nothing (go-slide-creator-9zof).
+			Fix: &patterns.FixSuggestion{Kind: "increase_row_height", Params: map[string]any{
+				"row":           ro.RowIndex,
+				"content_pt":    math.Round(ro.ContentPt),
+				"max_height_pt": math.Round(ro.MaxHeightPt),
+			}},
 			BindingDimension: "height",
 			RequiredPt:       ro.ContentPt,
 			AllocatedPt:      ro.MaxHeightPt,
@@ -382,11 +391,18 @@ func cellDensityFindings(d textcapacity.Density, pathPrefix string) (findings []
 	textPath := slidepath.Join(pathPrefix, "shape/text")
 	overflow := func(severity, action string) fitFinding {
 		return fitFinding{
-			Code:             patterns.ErrCodeFitOverflow,
-			Path:             textPath,
-			Severity:         severity,
-			Message:          fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d (%d%% of capacity)", d.ActualChars, d.FontPt, d.MaxChars, d.DensityPct),
-			Fix:              &patterns.FixSuggestion{Kind: "reduce_text", Params: map[string]any{"max_chars": d.MaxChars}},
+			Code:     patterns.ErrCodeFitOverflow,
+			Path:     textPath,
+			Severity: severity,
+			Message:  fmt.Sprintf("text needs %d chars @ %.0fpt; cell allows %d (%d%% of capacity)", d.ActualChars, d.FontPt, d.MaxChars, d.DensityPct),
+			// reduce_cell_text, not reduce_text: this text lives in a grid cell,
+			// and reduce_text only edits content items — so the suggested fix
+			// applied 0 of 60 times on a shape_grid deck
+			// (go-slide-creator-9zof).
+			Fix: &patterns.FixSuggestion{Kind: "reduce_cell_text", Params: map[string]any{
+				"cell_path": pathPrefix,
+				"max_chars": d.MaxChars,
+			}},
 			BindingDimension: "height",
 			RequiredPt:       float64(d.HeightEMU) / 12700.0 * float64(d.DensityPct) / 100.0,
 			AllocatedPt:      float64(d.HeightEMU) / 12700.0,

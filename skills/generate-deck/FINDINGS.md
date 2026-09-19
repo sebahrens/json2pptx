@@ -172,7 +172,7 @@ The apply-only superset accepted by `repair_slide` is broader than the fit-repor
 
 | Kind | Semantics | Required params | Optional params |
 |------|-----------|-----------------|-----------------|
-| `reduce_text` | Shorten bullets / body text on a content item | — | `max_items: int` (bullets), `max_length: int` (text), `path: string` (JSON Pointer to one content item) |
+| `reduce_text` | Shorten a content item's text, bullets, `body_and_bullets` or `bullet_groups`. A **word** budget (`max_words`) or **character** budget (`max_chars`, alias `max_length`) is distributed across bullets in proportion to their length, so nine long bullets become nine short ones (each cut at a word boundary with a single `…`) rather than the list being truncated — dropping bullets would lose points. `max_items` still cuts the list itself. Floors: 4 words / 24 chars per bullet. Refuses with `code: "semantic_review_required"` when a trim would drop a number, unit, negation, or qualifier (override with `confirm_semantic_change: true`). On a slide whose text lives in a `shape_grid`, it cannot reach the text: the answer is `code: "wrong_kind_for_target"`, `did_you_mean: "reduce_cell_text"` and a `next_tool_call` carrying the corrected directive with `cell_path`. | at least one of `max_words: int`, `max_chars: int` (alias `max_length`), `max_items: int` | `path: string` (JSON Pointer to one content item), `confirm_semantic_change: bool` |
 | `shorten_title` | Truncate the title placeholder text | — | `max_length: int` (default 50), `path: string` |
 | `split_at_row` | Wrap the slide in a `split_slide` envelope, distributing table rows across pages | `row: int` (rows per page; alias `group_size`) | `title_suffix: string` (default ` ({page}/{total})`), `repeat_headers: bool` (default true), `path: string` |
 | `swap_layout` | Change the slide's `layout_id` | `layout_id: string` | — |
@@ -213,6 +213,20 @@ An **advisory** kind sent to `repair_slide` returns the decision to make, not a 
 ```
 
 Act on `message`, or apply one of `alternatives` (all executable). Do **not** retry the same kind. `propose_repairs` does the same split for you: advisory findings land in `advisory[]` with `{kind, guidance, alternatives, code, slide_index, path, message, params}` and are counted in `summary.advisory_findings`.
+
+A kind aimed at text it cannot reach returns the kind that can, plus a ready-to-send directive:
+
+```json
+{
+  "applied": false,
+  "code": "wrong_kind_for_target",
+  "did_you_mean": "reduce_cell_text",
+  "message": "this slide's text lives in a shape_grid cell, not a content item — reduce_text cannot reach it; apply reduce_cell_text with cell_path \"/slides/0/shape_grid/rows/0/cells/0\"",
+  "next_tool_call": {"tool": "repair_slide", "args_template": {"slide_index": 0, "fixes": [{"kind": "reduce_cell_text", "params": {"cell_path": "/slides/0/shape_grid/rows/0/cells/0", "max_chars": 90}}]}}
+}
+```
+
+Submit that `next_tool_call` verbatim. `propose_repairs` applies the same correction up front: a fit finding whose path points inside a `shape_grid` cell yields a `reduce_cell_text` directive with the cell path, never `reduce_text`.
 
 An **unknown** kind — one in neither vocabulary — is a caller mistake and keeps the original answer:
 

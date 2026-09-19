@@ -321,10 +321,10 @@ func MatrixAxisImbalance(path string, slideIdx int, rotationDeg float64) FitFind
 
 // actionRanks maps action strings to severity ranks. Higher rank = more severe.
 var actionRanks = map[string]int{
-	"info":           0,
-	"review":         1,
+	"info":            0,
+	"review":          1,
 	"shrink_or_split": 2,
-	"refuse":         3,
+	"refuse":          3,
 }
 
 // ActionRank returns the severity rank for the given action string.
@@ -337,31 +337,6 @@ func ActionRank(action string) int {
 	return rank
 }
 
-// repairFixKinds lists fix kinds that map to the repair_slide tool.
-var repairFixKinds = map[string]bool{
-	"reduce_text":         true,
-	"split_at_row":        true,
-	"shorten_title":       true,
-	"replace_color":       true,
-	"use_semantic_color":  true,
-	"split_pattern":       true,
-	"swap_layout":         true,
-	"swap_pattern":        true,
-	"use_one_of":          true,
-	"rename_field":        true,
-	"reshape_grid":        true,
-	"reshape_value":       true,
-	"set_pattern_style":   true,
-	"provide_value":       true,
-	"replace_value":       true,
-	"reduce_items":        true,
-	"add_items":           true,
-	"resize_list":         true,
-	"remove_key":          true,
-	"remove_field":        true,
-	"autofix_visual":      true,
-}
-
 // RepairToolCall builds a ToolCallSuggestion for the repair_slide tool from a
 // fix suggestion and slide index. Returns nil if the fix kind is not a
 // repair_slide kind.
@@ -369,7 +344,11 @@ func RepairToolCall(slideIdx int, fix *FixSuggestion) *ToolCallSuggestion {
 	if fix == nil {
 		return nil
 	}
-	if !repairFixKinds[fix.Kind] {
+	// Only an EXECUTABLE kind can be handed to repair_slide. This used to be a
+	// second hand-maintained list that had drifted: reduce_cell_text was absent,
+	// so every grid-cell overflow finding shipped next_tool_call: null and the
+	// agent had to derive the repair itself (go-slide-creator-9zof).
+	if !FixKindIsExecutable(fix.Kind) {
 		return nil
 	}
 
