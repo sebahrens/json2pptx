@@ -1,10 +1,12 @@
 package examine
 
 import (
+	"os"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -180,5 +182,35 @@ func TestComputeZone_TitleBottomAndFooterTop(t *testing.T) {
 	}
 	if z.LeftEMU != 838200 {
 		t.Errorf("zone left = %d, want body left %d", z.LeftEMU, 838200)
+	}
+}
+
+// go-slide-creator-ydbk: examine_template is the first step of the
+// onboard-template workflow, and a bring-your-own .pptx carries no json2pptx
+// metadata block — exactly the case where the hardcoded "16:9" default was
+// wrong. The ratio is measured from the slide the template declares.
+func TestExamineAspectRatioIsMeasuredNotAssumed(t *testing.T) {
+	tests := map[string]string{
+		"../../tests/quality/fixtures/portability/templates/portability-4x3.pptx":  "4:3",
+		"../../tests/quality/fixtures/portability/templates/portability-21x9.pptx": "21:9",
+		"../../templates/midnight-blue.pptx":                                       "16:9",
+	}
+	for path, want := range tests {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("fixture %s unavailable: %v", path, err)
+		}
+		reader, err := template.OpenTemplate(path)
+		if err != nil {
+			t.Fatalf("open %s: %v", path, err)
+		}
+		report, err := Examine(reader, Options{TemplatePath: path})
+		_ = reader.Close()
+		if err != nil {
+			t.Fatalf("examine %s: %v", path, err)
+		}
+		if report.AspectRatio != want {
+			t.Errorf("%s aspect_ratio = %q, want %q (slide %dx%d EMU)",
+				path, report.AspectRatio, want, report.Slide.WidthEMU, report.Slide.HeightEMU)
+		}
 	}
 }

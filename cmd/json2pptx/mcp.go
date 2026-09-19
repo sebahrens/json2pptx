@@ -9,7 +9,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -75,8 +74,9 @@ Optional slide fields: "slide_type", "speaker_notes", "source", "transition", "b
 
 Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"table.rows","layout_id":"...","content":[...]} auto-paginates overflowing table rows across multiple slides.`),
 			mcp.Properties(map[string]any{
-				"template": map[string]any{"type": "string", "description": "Template name (use list_templates to discover available names)"},
-				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+				"template":      map[string]any{"type": "string", "description": "Registered template NAME, never a path (use list_templates to discover available names). Mutually exclusive with template_path."},
+				"template_path": map[string]any{"type": "string", "description": "Local .pptx for a template the server has not registered — the bring-your-own form. Resolved against base_dir (the server CWD when absent) and required to stay inside it. Mutually exclusive with template; run examine_template(template_path=...) first to check its layouts."},
+				"slides":        map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 				"design_mode": map[string]any{
 					"type":        "string",
 					"enum":        []any{"constrained", "free"},
@@ -147,6 +147,12 @@ func mcpListTemplatesTool() mcp.Tool {
 		mcp.WithString("template",
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
 		),
+		mcp.WithString("template_path",
+			mcp.Description("Analyze a single LOCAL .pptx that is not registered on the server — the bring-your-own template path. Resolved against base_dir (the server CWD when absent) and MUST stay inside it. Mutually exclusive with template. Pass the same value to generate_presentation as presentation.template_path to render with it."),
+		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory that bounds template_path resolution (the allowed root). Relative template_path values resolve against it; the resolved file must stay inside it. Ignored when template_path is absent."),
+		),
 		mcp.WithString("mode",
 			mcp.Description("Legacy detail level: list (names only), compact (names + theme), or full (all placeholders). Prefer fields=compact|full; mode is honored when fields is unset."),
 			mcp.Enum("list", "compact", "full"),
@@ -191,8 +197,9 @@ func mcpValidateTool() mcp.Tool {
 
 Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","content":[{"placeholder_id":"title","type":"text","text_value":"Hello"}]}]}`),
 			mcp.Properties(map[string]any{
-				"template": map[string]any{"type": "string", "description": "Template name"},
-				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+				"template":      map[string]any{"type": "string", "description": "Registered template NAME (never a path). Mutually exclusive with template_path."},
+				"template_path": map[string]any{"type": "string", "description": "Local .pptx for a template the server has not registered, resolved against base_dir and required to stay inside it. Mutually exclusive with template."},
+				"slides":        map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
 		mcp.WithBoolean("fit_report",
@@ -274,10 +281,10 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// Collect all boundary diagnostics before proceeding.
 	var boundaryDiags []diagnostics.Diagnostic
 
-	// Required fields.
-	if input.Template == "" {
+	// Required fields. template_path stands in for template (go-slide-creator-ydbk).
+	if input.Template == "" && input.TemplatePath == "" {
 		boundaryDiags = append(boundaryDiags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required in presentation",
+			Code: "REQUIRED", Path: "template", Message: "template is required in presentation: a registered name, or template_path for a local .pptx inside base_dir",
 			Severity:     diagnostics.SeverityError,
 			ExpectedType: "string",
 			ExampleValue: "midnight-blue",
@@ -349,10 +356,11 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		return api.MCPSimpleError("OUTPUT_DIR", fmt.Sprintf("failed to create output directory: %v", err)), nil
 	}
 
-	// Resolve template
-	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
-	if err != nil {
-		return mcpTemplateNotFoundError(input.Template, mc.templatesDir), nil
+	// Resolve template: a registered name, or a guarded local .pptx.
+	templatePath, templateCleanup, tplDiag := mc.resolveTemplateSource(request, "generate_presentation",
+		"presentation.template", "presentation.template_path", input.Template, input.TemplatePath)
+	if tplDiag != nil {
+		return api.MCPDiagnosticsError([]diagnostics.Diagnostic{*tplDiag}), nil
 	}
 	defer templateCleanup()
 
@@ -705,12 +713,12 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 	// Discover templates using the shared resolution path (flag → env → user
 	// home → ./templates → embedded), so discovery succeeds in the same
 	// environments where generation does — including embedded-only mode.
-	var templateNames []string
-	if templateName != "" {
-		templateNames = []string{templateName}
-	} else {
-		templateNames = listAvailableTemplates(mc.templatesDir)
-		sort.Strings(templateNames)
+	// A local .pptx the server does not have registered is analyzed in place
+	// (go-slide-creator-ydbk): the agent holding a client template can inspect
+	// its layouts before rendering with it, without an operator installing it.
+	templateNames, byoPath, errResult := listTemplatesSources(request, mc.templatesDir, templateName)
+	if errResult != nil {
+		return errResult, nil
 	}
 
 	// Apply name filter before resolution so we don't pay for analyses we'll
@@ -731,6 +739,14 @@ func (mc *mcpConfig) handleListTemplates(ctx context.Context, request mcp.CallTo
 		path string
 	}
 	var resolved []resolvedTemplate
+	if byoPath != "" {
+		// The logical name is the file's base name without .pptx — what the
+		// template would be called if it were installed in the templates dir.
+		resolved = append(resolved, resolvedTemplate{
+			name: strings.TrimSuffix(filepath.Base(byoPath), filepath.Ext(byoPath)),
+			path: byoPath,
+		})
+	}
 	for _, name := range templateNames {
 		path, cleanup, err := resolveTemplatePath(name, mc.templatesDir)
 		if err != nil {
@@ -1004,11 +1020,11 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		inputSHA256: diagnostics.ComputeInputSHA256([]byte(jsonStr)),
 	}
 
-	// Validate required fields
-	if input.Template == "" {
+	// Validate required fields. template_path stands in for template (ydbk).
+	if input.Template == "" && input.TemplatePath == "" {
 		output.Valid = false
 		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required",
+			Code: "REQUIRED", Path: "template", Message: "template is required: a registered name, or template_path for a local .pptx inside base_dir",
 			Severity:     diagnostics.SeverityError,
 			Fix:          &diagnostics.Fix{Kind: "provide_value", Params: map[string]any{"field": "template"}},
 			NextToolCall: nextCallListTemplates(),
@@ -1027,15 +1043,12 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 		return marshalValidateResult(ctx, output)
 	}
 
-	// Resolve and analyze template
-	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
-	if err != nil {
+	// Resolve and analyze template: a registered name, or a guarded local .pptx.
+	templatePath, templateCleanup, tplDiag := mc.resolveTemplateSource(request, "validate_input",
+		"template", "template_path", input.Template, input.TemplatePath)
+	if tplDiag != nil {
 		output.Valid = false
-		output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
-			Code: "TEMPLATE_NOT_FOUND", Path: "template", Message: templateNotFoundError(input.Template, mc.templatesDir),
-			Severity:     diagnostics.SeverityError,
-			NextToolCall: nextCallListTemplates(),
-		})
+		output.Diagnostics = append(output.Diagnostics, *tplDiag)
 		return marshalValidateResult(ctx, output)
 	}
 	defer templateCleanup()

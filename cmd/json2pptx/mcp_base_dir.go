@@ -42,85 +42,65 @@ import (
 // absolute path. The empty string is only returned alongside a non-nil
 // errResult; callers should not treat ("", nil) as a valid state.
 func resolveBaseDir(request mcp.CallToolRequest) (string, *mcp.CallToolResult) {
+	dir, d := resolveBaseDirDiag(request)
+	if d != nil {
+		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{*d})
+	}
+	return dir, nil
+}
+
+// resolveBaseDirDiag is resolveBaseDir's diagnostic form, for callers that fold
+// the failure into an envelope of their own rather than returning it as the
+// whole response (go-slide-creator-ydbk: validate_input reports a bad base_dir
+// alongside the deck's other boundary diagnostics).
+func resolveBaseDirDiag(request mcp.CallToolRequest) (string, *diagnostics.Diagnostic) {
 	args := request.GetArguments()
 	raw, _ := args["base_dir"].(string)
+
+	bad := func(msg, remediation string, withInput bool) (string, *diagnostics.Diagnostic) {
+		details := map[string]any{"remediation": remediation}
+		if withInput {
+			details["input_value"] = raw
+		}
+		return "", &diagnostics.Diagnostic{
+			Code:         diagnostics.CodeInvalidParameter,
+			Path:         "base_dir",
+			Message:      msg,
+			Severity:     diagnostics.SeverityError,
+			ExpectedType: "string",
+			ExampleValue: "/Users/you/decks",
+			Details:      details,
+		}
+	}
+
 	if raw == "" {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-				Code:         diagnostics.CodeInvalidParameter,
-				Path:         "base_dir",
-				Message:      fmt.Sprintf("base_dir not supplied and process CWD unavailable: %v", err),
-				Severity:     diagnostics.SeverityError,
-				ExpectedType: "string",
-				ExampleValue: "/Users/you/decks",
-				Details: map[string]any{
-					"remediation": "pass an absolute directory as base_dir on this tool call",
-				},
-			}})
+			return bad(fmt.Sprintf("base_dir not supplied and process CWD unavailable: %v", err),
+				"pass an absolute directory as base_dir on this tool call", false)
 		}
 		return cwd, nil
 	}
 
 	if !filepath.IsAbs(raw) {
-		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-			Code:         diagnostics.CodeInvalidParameter,
-			Path:         "base_dir",
-			Message:      fmt.Sprintf("base_dir must be an absolute path, got %q", raw),
-			Severity:     diagnostics.SeverityError,
-			ExpectedType: "string",
-			ExampleValue: "/Users/you/decks",
-			Details: map[string]any{
-				"input_value": raw,
-				"remediation": "pass an absolute path (e.g. /Users/you/decks) so the server can resolve relative asset references portably across CWDs",
-			},
-		}})
+		return bad(fmt.Sprintf("base_dir must be an absolute path, got %q", raw),
+			"pass an absolute path (e.g. /Users/you/decks) so the server can resolve relative asset references portably across CWDs", true)
 	}
 
 	resolved, err := filepath.EvalSymlinks(raw)
 	if err != nil {
-		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-			Code:         diagnostics.CodeInvalidParameter,
-			Path:         "base_dir",
-			Message:      fmt.Sprintf("base_dir %q: %v", raw, err),
-			Severity:     diagnostics.SeverityError,
-			ExpectedType: "string",
-			ExampleValue: "/Users/you/decks",
-			Details: map[string]any{
-				"input_value": raw,
-				"remediation": "verify base_dir exists and is reachable from the server process",
-			},
-		}})
+		return bad(fmt.Sprintf("base_dir %q: %v", raw, err),
+			"verify base_dir exists and is reachable from the server process", true)
 	}
 
 	info, err := os.Stat(resolved)
 	if err != nil {
-		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-			Code:         diagnostics.CodeInvalidParameter,
-			Path:         "base_dir",
-			Message:      fmt.Sprintf("base_dir %q: %v", raw, err),
-			Severity:     diagnostics.SeverityError,
-			ExpectedType: "string",
-			ExampleValue: "/Users/you/decks",
-			Details: map[string]any{
-				"input_value": raw,
-				"remediation": "verify base_dir exists and is reachable from the server process",
-			},
-		}})
+		return bad(fmt.Sprintf("base_dir %q: %v", raw, err),
+			"verify base_dir exists and is reachable from the server process", true)
 	}
 	if !info.IsDir() {
-		return "", api.MCPDiagnosticsError([]diagnostics.Diagnostic{{
-			Code:         diagnostics.CodeInvalidParameter,
-			Path:         "base_dir",
-			Message:      fmt.Sprintf("base_dir %q is not a directory", raw),
-			Severity:     diagnostics.SeverityError,
-			ExpectedType: "string",
-			ExampleValue: "/Users/you/decks",
-			Details: map[string]any{
-				"input_value": raw,
-				"remediation": "pass the path to an existing directory, not a file",
-			},
-		}})
+		return bad(fmt.Sprintf("base_dir %q is not a directory", raw),
+			"pass the path to an existing directory, not a file", true)
 	}
 
 	return filepath.Clean(resolved), nil

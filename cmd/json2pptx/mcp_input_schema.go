@@ -90,6 +90,7 @@ func computeInputSchemaDigest(schema map[string]any) string {
 var fieldScopeMap = map[string]map[string]string{
 	"PresentationInput": {
 		"template":        "deck",
+		"template_path":   "deck",
 		"output_filename": "deck",
 		"design_mode":     "deck",
 		"accent_strategy": "deck",

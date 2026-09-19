@@ -57,7 +57,12 @@ var SplitSlideExpander func(SplitSlideInput) ([]SlideInput, error)
 // PresentationInput is the top-level typed JSON input.
 // Maps to generator.GenerationRequest.
 type PresentationInput struct {
-	Template       string          `json:"template"`
+	Template string `json:"template"`
+	// TemplatePath is a local .pptx to use instead of a registered template
+	// name (go-slide-creator-ydbk). Mutually exclusive with Template. On the
+	// MCP surface it is resolved against the call's base_dir and must stay
+	// inside it; on the CLI it resolves against the input JSON's directory.
+	TemplatePath   string          `json:"template_path,omitempty"`
 	OutputFilename string          `json:"output_filename,omitempty"`
 	DesignMode     string          `json:"design_mode,omitempty"`     // "constrained" (default) or "free"
 	AccentStrategy string          `json:"accent_strategy,omitempty"` // "primary" (default), "rotate", or "section-keyed"

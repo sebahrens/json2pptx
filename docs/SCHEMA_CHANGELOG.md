@@ -8,6 +8,41 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Bring-your-own template: `template_path` on every tool that takes a
+  template (go-slide-creator-ydbk).** A template reached the engine only by
+  NAME, looked up in the server's templates dir and the embedded set, so an
+  agent holding a client's `.pptx` had no supported way in: an absolute path in
+  `template` failed `TPL.TEMPLATE_NOT_FOUND` listing the names it is not,
+  `template_path` was an unknown key, and `examine_template` — the one tool that
+  did take a path — was not in the core profile. BYO onboarding needed an
+  operator.
+  - **`presentation.template_path`** is a new deck-level field on
+    `generate_presentation`, `validate_input` and `preview_presentation_plan`;
+    **`template_path`** is a new tool argument on `render_deck_spec` and
+    `list_templates`. Mutually exclusive with `template` (`AMBIGUOUS_INPUT`);
+    either one satisfies the template requirement.
+  - Containment matches `examine_template`: the path resolves against the call's
+    `base_dir` (the server CWD when absent) and must stay inside it after
+    `~`/`$VAR` expansion and symlink evaluation. An escape is `INVALID_PATH`
+    naming the `base_dir`, a missing file `FILE_NOT_FOUND`, a non-`.pptx`
+    `INVALID_PARAMETER`. `base_dir` is now declared on `list_templates` and
+    `render_deck_spec` for this.
+  - **CLI:** a deck's `template_path` resolves against the deck JSON's own
+    directory, the same frame relative asset paths use, so a deck and its
+    template travel together. No `base_dir` guard there — the caller is the user
+    running the binary.
+  - **`examine_template` joined the core profile.** It is the only tool that can
+    vet an unregistered `.pptx`, and a core agent never saw it.
+    `coreToolListByteBudget` moved from 80KB to 88KB to fit it (2.9KB).
+  - **`get_started(task: "onboard-template")`** is a new task:
+    `examine_template` → `describe_finding` → `list_templates` →
+    `generate_presentation` → `render_deck_thumbnails`, with notes covering the
+    containment rule and the live install-by-copy path. It has no `fast_path`
+    facade — nothing can decide for the agent that a template is fit.
+  - **`TEMPLATE_NOT_FOUND` redirects** when the value looks like a path: it now
+    says `template` takes a name, names `template_path`, and reports the server's
+    `templates_dir`, with a `rename_field` fix carrying the value to move.
+
 - **DeckSpec carries deck chrome, speaker notes and per-slide sources
   (go-slide-creator-zmjs).** `get_started("brief")` and SKILL.md send agents to
   `render_deck_spec` as the path for a new deck, but the spec could not express
@@ -36,6 +71,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `{current} / {total}` page numbers.
 
 ### Fixed
+
+- **`examine_template.aspect_ratio` is measured, not assumed
+  (go-slide-creator-ydbk).** It defaulted to the literal `"16:9"` whenever a
+  template carried no json2pptx metadata block — which is every bring-your-own
+  template, the exact case `examine_template` exists for. A 10×7.5in corporate
+  `.pptx` reported itself as widescreen to the agent about to size columns and
+  text for it. The ratio now comes from `template.AspectRatio(width, height)`
+  over the slide the template declares (the same function discovery adopted in
+  go-slide-creator-r9nn); a metadata `aspect_ratio` still overrides it.
 
 - **Pattern input failures are path-addressed, one finding per field, with no Go
   type names (go-slide-creator-20jm).** Every pattern failure used to collapse

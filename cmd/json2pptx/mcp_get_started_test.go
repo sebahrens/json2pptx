@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -183,9 +184,13 @@ func TestGetStartedFastPathIsClassifiedFacade(t *testing.T) {
 	for _, task := range getStartedAvailableTasks() {
 		resp := buildGetStartedResponse(task)
 		switch task {
-		case "validate-only":
+		// validate-only is pure diagnostics; onboard-template vets a file the
+		// server has never seen (go-slide-creator-ydbk) and every step of it
+		// needs the agent's judgement — there is no facade that can decide a
+		// template is fit for a deck.
+		case "validate-only", "onboard-template":
 			if resp.FastPath != nil {
-				t.Errorf("task %q must NOT advertise a fast_path (pure diagnostics, no facade); got %q", task, resp.FastPath.Tool)
+				t.Errorf("task %q must NOT advertise a fast_path (no facade); got %q", task, resp.FastPath.Tool)
 			}
 		default:
 			if resp.FastPath == nil {
@@ -455,6 +460,20 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 				images = append(images, entry)
 			}
 			result, err = mc.handleInspectSlideImages(ctx, makeRequest(map[string]any{"slide_images": images}))
+		case "examine_template":
+			// The bring-your-own form, which is the point of the
+			// onboard-template task: a .pptx addressed by path, bounded by
+			// base_dir (go-slide-creator-ydbk).
+			dir, aerr := filepath.Abs("../../templates")
+			if aerr != nil {
+				t.Fatalf("abs templates dir: %v", aerr)
+			}
+			result, err = mc.handleExamineTemplate(ctx, makeRequest(map[string]any{
+				"template_path": filepath.Join(dir, "midnight-blue.pptx"),
+				"base_dir":      dir,
+			}))
+		case "describe_finding":
+			result, err = handleDescribeFinding(ctx, makeRequest(map[string]any{"code": "LAYOUT_UNRESOLVABLE"}))
 		default:
 			t.Fatalf("integration test does not know how to invoke tool %q — add a case to runStep", tool)
 		}

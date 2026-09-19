@@ -40,8 +40,12 @@ const (
 	// roughly 1KB across the two tools. Raised from 72KB when DeckSpec gained
 	// deck chrome and the universal notes/source fields (go-slide-creator-zmjs):
 	// the alternative was leaving the recommended authoring path unable to
-	// express a confidentiality line or speaker notes. The full profile is ~215KB.
-	coreToolListByteBudget = 80 * 1024
+	// express a confidentiality line or speaker notes. Raised again from 80KB
+	// when examine_template (2.9KB) entered core with the template_path
+	// arguments (go-slide-creator-ydbk): it is the only tool that can vet a
+	// bring-your-own .pptx, and without it in core that workflow needed an
+	// operator. The full profile is ~215KB.
+	coreToolListByteBudget = 88 * 1024
 )
 
 // coreToolNames is the tool set advertised by the default "core" profile.
@@ -52,6 +56,11 @@ var coreToolNames = []string{
 	"get_started",
 	"get_capabilities",
 	"list_templates",
+	// examine_template is the bring-your-own-template entry point: it is the
+	// only tool that inspects a .pptx the server has not registered, so a core
+	// agent handed a client template could not vet it before rendering
+	// (go-slide-creator-ydbk).
+	"examine_template",
 	"describe_finding",
 	// Semantic DeckSpec path (recommended for new decks)
 	"validate_deck_spec",

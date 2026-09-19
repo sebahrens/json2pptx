@@ -150,8 +150,9 @@ Use this to preview what generate_presentation will do: which layout each slide 
 			mcp.Required(),
 			mcp.Description(`Presentation definition. Same schema as generate_presentation.`),
 			mcp.Properties(map[string]any{
-				"template": map[string]any{"type": "string", "description": "Template name"},
-				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
+				"template":      map[string]any{"type": "string", "description": "Registered template NAME (never a path). Mutually exclusive with template_path."},
+				"template_path": map[string]any{"type": "string", "description": "Local .pptx for a template the server has not registered, resolved against base_dir and required to stay inside it. Mutually exclusive with template."},
+				"slides":        map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
 		mcp.WithBoolean("fit_report",
@@ -234,10 +235,11 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	}
 	previewAssetWarnings := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityWarning)
 
-	// Resolve template.
-	templatePath, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
-	if err != nil {
-		return mcpErrorWithNext("TEMPLATE_NOT_FOUND", templateNotFoundError(input.Template, mc.templatesDir), nextCallListTemplates()), nil
+	// Resolve template: a registered name, or a guarded local .pptx (ydbk).
+	templatePath, templateCleanup, tplDiag := mc.resolveTemplateSource(request, "preview_presentation_plan",
+		"presentation.template", "presentation.template_path", input.Template, input.TemplatePath)
+	if tplDiag != nil {
+		return api.MCPDiagnosticsError([]diagnostics.Diagnostic{*tplDiag}), nil
 	}
 	defer templateCleanup()
 
@@ -290,9 +292,9 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 // validatePreviewBoundary checks required fields and returns an error result or nil.
 func validatePreviewBoundary(input *PresentationInput) *mcp.CallToolResult {
 	var diags []diagnostics.Diagnostic
-	if input.Template == "" {
+	if input.Template == "" && input.TemplatePath == "" {
 		diags = append(diags, diagnostics.Diagnostic{
-			Code: "REQUIRED", Path: "template", Message: "template is required",
+			Code: "REQUIRED", Path: "template", Message: "template is required: a registered name, or template_path for a local .pptx inside base_dir",
 			Severity:     diagnostics.SeverityError,
 			NextToolCall: nextCallListTemplates(),
 		})

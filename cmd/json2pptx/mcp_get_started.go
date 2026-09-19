@@ -121,7 +121,7 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 // getStartedAvailableTasks is the canonical list of accepted task keys.
 // Keep sorted; the response echoes this list verbatim.
 func getStartedAvailableTasks() []string {
-	tasks := []string{"brief", "revise", "validate-only"}
+	tasks := []string{"brief", "onboard-template", "revise", "validate-only"}
 	sort.Strings(tasks)
 	return tasks
 }
@@ -134,7 +134,7 @@ func buildGetStartedResponse(task string) getStartedResponse {
 	switch normalized {
 	case "":
 		normalized = "brief"
-	case "brief", "revise", "validate-only":
+	case "brief", "revise", "validate-only", "onboard-template":
 		// valid
 	default:
 		normalized = "brief"
@@ -191,6 +191,23 @@ func buildGetStartedResponse(task string) getStartedResponse {
 			"You MUST supply the authoritative deck JSON for validate_input, preview_presentation_plan, repair_slide, and generate_presentation. read_presentation is a verification aid only — it does not reconstruct a PresentationInput.",
 			"If the original deck JSON is unavailable, re-author it from the brief (see task=brief) rather than trying to round-trip read_presentation through the editing tools.",
 		}
+	case "onboard-template":
+		// Bring-your-own template (go-slide-creator-ydbk). Every step here is
+		// callable by an MCP agent holding only the .pptx file: nothing in this
+		// sequence needs an operator to install anything.
+		seq = []getStartedStep{
+			{Tool: "examine_template", WhenToCall: "First — pass template_path (the .pptx) and base_dir (a directory containing it). Read canonical_coverage: the four content-bearing families (title-slide, section-divider, one-content, qa-closing) must be present, and derivable_layouts[].ready tells you which of the rest the engine can synthesize."},
+			{Tool: "describe_finding", WhenToCall: "For each finding examine_template reports — TPL.LAYOUT.MISSING_ROLE above all — to learn what the missing role costs and how to fix the template. A missing family means slides of that type fall back to the blank canvas."},
+			{Tool: "list_templates", WhenToCall: "Pass the same template_path to read the file's aspect_ratio, layout_count and table_styles in the same shape as a registered template, so the rest of your authoring is unchanged."},
+			{Tool: "generate_presentation", WhenToCall: "Render one test slide per canonical layout, with presentation.template_path set to the .pptx and base_dir to its directory — the deck's own smoke test before you author real content."},
+			{Tool: "render_deck_thumbnails", WhenToCall: "Render the test deck to pixels and LOOK at it: a template can pass every structural check and still put white text on a white band. Then start the brief workflow with the same template_path."},
+		}
+		notes = []string{
+			"template_path is how a template that is NOT registered on the server reaches the engine. It is accepted by examine_template, list_templates, validate_input, preview_presentation_plan, generate_presentation (as presentation.template_path) and render_deck_spec. The `template` argument takes a registered NAME only and will reject a path.",
+			"CONTAINMENT: template_path is resolved against base_dir (the server's CWD when you omit it) and must stay inside it after ~/$ENV expansion and symlink evaluation. Pass base_dir as the directory holding the .pptx; a path outside it is refused with INVALID_PATH.",
+			"PERMANENT INSTALL: copying the .pptx into the server's templates directory (get_capabilities(sections:[\"runtime\"]).runtime.templates_dir) registers it live, with no restart — it is then addressable by file name without .pptx as a normal `template`. That needs filesystem access to that directory; template_path does not.",
+			"A template missing a canonical family still renders — those slides fall back to the template's blank canvas — but the deck loses the family's design. Fix the template rather than working around it if you will reuse it.",
+		}
 	case "validate-only":
 		seq = []getStartedStep{
 			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift before validating against possibly-stale assumptions. sections:[\"runtime\"] is enough for that (~0.4 KB)."},
@@ -224,7 +241,7 @@ func mcpGetStartedTool() mcp.Tool {
 		mcp.WithDescription(getStartedToolDescription()),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetStarted)),
 		mcp.WithString("task",
-			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), or \"validate-only\" (validate JSON without generating). Unknown values fall back to \"brief\"."),
+			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), \"validate-only\" (validate JSON without generating), or \"onboard-template\" (vet and render with a user-supplied .pptx). Unknown values fall back to \"brief\"."),
 		),
 	)
 }

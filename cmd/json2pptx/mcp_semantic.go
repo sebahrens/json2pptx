@@ -343,6 +343,12 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 		mcp.WithString("template",
 			mcp.Description("Default template used when the spec pins none (spec template > this > archetype default). Use list_templates to discover names."),
 		),
+		mcp.WithString("template_path",
+			mcp.Description("Local .pptx to render with, for a template that is not registered on the server. Resolved against base_dir (the server CWD when absent) and MUST stay inside it. Mutually exclusive with template; a template pinned by the spec's meta.template wins over both. Run examine_template(template_path=...) first to check the file has the layouts a deck needs."),
+		),
+		mcp.WithString("base_dir",
+			mcp.Description("Absolute directory that bounds template_path resolution (the allowed root). Relative template_path values resolve against it; the resolved file must stay inside it. Ignored when template_path is absent."),
+		),
 		mcp.WithString("output_validation",
 			mcp.Description("Post-generation output validation: off, warn, or strict (default). strict refuses to emit a deck with text overflow."),
 		),
@@ -362,6 +368,10 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		return errRes, nil
 	}
 	templateName, _, errRes := semanticOptionalString("render_deck_spec", "template", request)
+	if errRes != nil {
+		return errRes, nil
+	}
+	rawTemplatePath, _, errRes := semanticOptionalString("render_deck_spec", "template_path", request)
 	if errRes != nil {
 		return errRes, nil
 	}
@@ -430,16 +440,31 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		cfg.Templates.Dir = mc.templatesDir
 	}
 
+	// A caller-supplied .pptx renders the deck when the spec pins no template of
+	// its own — the bring-your-own path for a template the server does not have
+	// registered (go-slide-creator-ydbk).
+	var resolvedTemplatePath string
+	if rawTemplatePath != "" && spec.Meta.Template == "" {
+		path, d := resolveRequestTemplatePath(request, "render_deck_spec", rawTemplatePath)
+		if d != nil {
+			res := renderDeckSpecResponse{OK: false, Success: false, Error: d.Message}
+			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(*d))
+			return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+		}
+		resolvedTemplatePath = path
+	}
+
 	runRes, cleanup, renderErr := RunPresentation(ctx, input, RenderOptions{
-		OutputDir:        mc.outputDir,
-		OutputFilename:   outputFilename,
-		TemplatesDir:     cfg.Templates.Dir,
-		OutputValidation: outputValidation,
-		AccentStrategy:   patterns.AccentStrategy(input.AccentStrategy),
-		SVGStrategy:      string(cfg.SVG.Strategy),
-		SVGScale:         cfg.SVG.Scale,
-		SVGNativeCompat:  string(cfg.SVG.NativeCompatibility),
-		MaxPNGWidth:      cfg.SVG.MaxPNGWidth,
+		OutputDir:            mc.outputDir,
+		OutputFilename:       outputFilename,
+		TemplatesDir:         cfg.Templates.Dir,
+		ResolvedTemplatePath: resolvedTemplatePath,
+		OutputValidation:     outputValidation,
+		AccentStrategy:       patterns.AccentStrategy(input.AccentStrategy),
+		SVGStrategy:          string(cfg.SVG.Strategy),
+		SVGScale:             cfg.SVG.Scale,
+		SVGNativeCompat:      string(cfg.SVG.NativeCompatibility),
+		MaxPNGWidth:          cfg.SVG.MaxPNGWidth,
 	})
 	defer cleanup()
 	if renderErr != nil {

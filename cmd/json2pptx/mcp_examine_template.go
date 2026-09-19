@@ -29,9 +29,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -39,7 +36,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/examine"
 	"github.com/sebahrens/json2pptx/internal/template"
-	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 func mcpExamineTemplateTool() mcp.Tool {
@@ -111,134 +107,9 @@ func (mc *mcpConfig) handleExamineTemplate(ctx context.Context, request mcp.Call
 // result the caller must return unchanged. The cleanup function is always
 // non-nil and safe to defer even on the error path.
 func (mc *mcpConfig) resolveExamineTemplateSource(request mcp.CallToolRequest, templateName, rawTemplatePath string) (string, func(), *mcp.CallToolResult) {
-	noop := func() {}
-	hasName := strings.TrimSpace(templateName) != ""
-	hasPath := strings.TrimSpace(rawTemplatePath) != ""
-
-	switch {
-	case !hasName && !hasPath:
-		return "", noop, argError(argErrorEnvelope{
-			Code:         diagnostics.CodeMissingParameter,
-			Path:         "template_name",
-			Message:      "examine_template requires either template_name (a registered/embedded template) or template_path (a guarded local .pptx within base_dir)",
-			ExpectedType: "string",
-			ExampleValue: "midnight-blue",
-			NextToolCall: nextCallListTemplates(),
-		})
-	case hasName && hasPath:
-		return "", noop, argError(argErrorEnvelope{
-			Code:         diagnostics.CodeAmbiguousInput,
-			Path:         "template_path",
-			Message:      "examine_template accepts only one of template_name or template_path, not both",
-			ExpectedType: "string",
-			ExampleValue: "midnight-blue",
-			NextToolCall: nextCallRetry("examine_template", "template_name"),
-		})
-	case hasName:
-		path, cleanup, err := resolveTemplatePath(templateName, mc.templatesDir)
-		if err != nil {
-			return "", noop, api.MCPSimpleError(diagnostics.CodeTemplateNotFound, templateNotFoundError(templateName, mc.templatesDir))
-		}
-		return path, cleanup, nil
-	default: // hasPath
-		baseDir, errResult := resolveBaseDir(request)
-		if errResult != nil {
-			return "", noop, errResult
-		}
-		path, errResult := resolveGuardedTemplatePath(rawTemplatePath, baseDir)
-		if errResult != nil {
-			return "", noop, errResult
-		}
-		return path, noop, nil
+	path, cleanup, d := mc.resolveTemplateSource(request, "examine_template", "template_name", "template_path", templateName, rawTemplatePath)
+	if d != nil {
+		return "", func() {}, api.MCPDiagnosticsError([]diagnostics.Diagnostic{*d})
 	}
-}
-
-// exampleTemplatePath is the example value used across template_path
-// diagnostics so agents always see the same concrete shape to mimic.
-const exampleTemplatePath = "/Users/you/decks/new-template.pptx"
-
-// resolveGuardedTemplatePath validates an agent-supplied local template path for
-// the path form of examine_template. The path must, after ~/$ENV expansion and
-// symlink resolution, be a regular .pptx file contained within baseDir (the
-// allowed root). It returns the resolved absolute path, or a single structured
-// error result naming the failure mode (forbidden traversal/escape, missing
-// file, wrong type/extension). This is the guard that lets MCP-only agents
-// inspect a not-yet-registered template file without widening the server's
-// reach beyond the caller's base_dir.
-func resolveGuardedTemplatePath(rawPath, baseDir string) (string, *mcp.CallToolResult) {
-	// Extension allow-list: examine-template only handles .pptx packages.
-	if ext := strings.ToLower(filepath.Ext(rawPath)); ext != ".pptx" {
-		return "", argInvalidValue("examine_template", diagnostics.CodeInvalidParameter, "template_path",
-			fmt.Sprintf("template_path %q: unsupported extension %q (want .pptx)", rawPath, ext),
-			"string", exampleTemplatePath, nil)
-	}
-
-	// Pre-clean traversal check on the raw input so "../x.pptx" is rejected
-	// before filepath.Clean collapses the "..".
-	if err := utils.ValidatePath(filepath.FromSlash(rawPath), nil); err != nil {
-		return "", forbiddenTemplatePathResult(rawPath, baseDir, err)
-	}
-
-	// Expand "~/..." and "$VAR" before joining baseDir so an agent-supplied
-	// "~/decks/x.pptx" or "$DECKS/x.pptx" resolves against the home directory
-	// or env-pointed root instead of being silently rooted under baseDir.
-	expanded, unsetVar := expandAssetPath(rawPath)
-	if unsetVar != "" {
-		return "", argInvalidValue("examine_template", diagnostics.CodeInvalidPath, "template_path",
-			fmt.Sprintf("template_path %q references unset environment variable %q", rawPath, unsetVar),
-			"string", exampleTemplatePath, nil)
-	}
-
-	// Resolve relative paths against the allowed root (baseDir).
-	p := filepath.FromSlash(expanded)
-	if !filepath.IsAbs(p) {
-		p = filepath.Join(baseDir, p)
-	}
-	p = filepath.Clean(p)
-
-	// Evaluate symlinks (also catches a missing file) so containment is checked
-	// against the real on-disk location, not a symlink that points outside.
-	resolved, err := filepath.EvalSymlinks(p)
-	if err != nil {
-		return "", argInvalidValue("examine_template", diagnostics.CodeFileNotFound, "template_path",
-			fmt.Sprintf("template_path %q: %v", rawPath, err),
-			"string", exampleTemplatePath, nextCallListTemplates())
-	}
-
-	// Containment: the resolved path MUST live within baseDir. This is the
-	// forbidden-path guard — an absolute path outside the allowed root, or a
-	// symlink escaping it, fails here even though the earlier raw "..\" check
-	// passed.
-	if verr := utils.ValidatePath(resolved, []string{baseDir}); verr != nil {
-		return "", forbiddenTemplatePathResult(rawPath, baseDir, verr)
-	}
-
-	info, err := os.Stat(resolved)
-	if err != nil {
-		return "", argInvalidValue("examine_template", diagnostics.CodeFileNotFound, "template_path",
-			fmt.Sprintf("template_path %q: %v", rawPath, err),
-			"string", exampleTemplatePath, nextCallListTemplates())
-	}
-	if info.IsDir() {
-		return "", argInvalidValue("examine_template", diagnostics.CodeInvalidParameter, "template_path",
-			fmt.Sprintf("template_path %q is a directory, not a .pptx file", rawPath),
-			"string", exampleTemplatePath, nil)
-	}
-
-	return resolved, nil
-}
-
-// forbiddenTemplatePathResult builds the clear forbidden-path diagnostic an
-// agent receives when template_path escapes the allowed root: a ".." traversal
-// or an absolute/symlinked path resolving outside base_dir. It routes recovery
-// to list_templates so an agent can fall back to a registered template name.
-func forbiddenTemplatePathResult(rawPath, baseDir string, cause error) *mcp.CallToolResult {
-	return argError(argErrorEnvelope{
-		Code:         diagnostics.CodeInvalidPath,
-		Path:         "template_path",
-		Message:      fmt.Sprintf("template_path %q is outside the allowed base_dir %q: %v", rawPath, baseDir, cause),
-		ExpectedType: "string",
-		ExampleValue: exampleTemplatePath,
-		NextToolCall: nextCallListTemplates(),
-	})
+	return path, cleanup, nil
 }

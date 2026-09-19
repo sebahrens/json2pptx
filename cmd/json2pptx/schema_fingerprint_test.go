@@ -83,7 +83,7 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// (PresentationInput surface), so the hash advanced from 7f195236332af9cf
 	// (4.59.0).
 	// If this fails, see file header comment.
-	const wantFingerprint = "1ac5c1b7225e3cb3"
+	const wantFingerprint = "24600b8abfc814b9"
 
 	got := schemaFingerprint()
 

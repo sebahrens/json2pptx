@@ -49,6 +49,12 @@ type RenderOptions struct {
 	OutputFilename string
 	// TemplatesDir is the template search directory passed to resolveTemplatePath.
 	TemplatesDir string
+	// ResolvedTemplatePath, when non-empty, is a template FILE the caller has
+	// already resolved and vetted — the MCP template_path guard, or the CLI
+	// resolving a deck's template_path against the input JSON's directory
+	// (go-slide-creator-ydbk). It takes precedence over input.Template, whose
+	// name-only lookup cannot express a bring-your-own template.
+	ResolvedTemplatePath string
 
 	// StrictFit is the text-fit gate mode: "off", "warn", or "strict".
 	// Empty is treated as "warn" to match the historical CLI/MCP default.
@@ -131,6 +137,23 @@ type RenderResult struct {
 //
 // ctx is forwarded to generator.Generate. cleanup must be called by the caller
 // (it releases the resolved template path).
+// runnerTemplatePath returns the .pptx the render should use: the caller's
+// already-vetted path when it supplied one (a bring-your-own template reached
+// through the MCP template_path guard or the CLI's deck-relative resolution,
+// go-slide-creator-ydbk), otherwise the registered-name lookup. The cleanup is
+// a no-op except for an embedded template extracted to a temp file.
+func runnerTemplatePath(name string, opts RenderOptions) (string, func(), error) {
+	noop := func() {}
+	if opts.ResolvedTemplatePath != "" {
+		return opts.ResolvedTemplatePath, noop, nil
+	}
+	resolved, cleanup, err := resolveTemplatePath(name, opts.TemplatesDir)
+	if err != nil {
+		return "", noop, fmt.Errorf("%s", templateNotFoundError(name, opts.TemplatesDir))
+	}
+	return resolved, cleanup, nil
+}
+
 func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderOptions) (res RenderResult, cleanup func(), err error) {
 	cleanup = func() {}
 
@@ -148,10 +171,11 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		return res, cleanup, fmt.Errorf("failed to create output directory: %w", mkErr)
 	}
 
-	// Resolve template path using the shared search path (flag, env, home, cwd, embedded).
-	templatePath, templateCleanup, tplErr := resolveTemplatePath(input.Template, opts.TemplatesDir)
+	// Resolve template path using the shared search path (flag, env, home, cwd,
+	// embedded), unless the caller already vetted a file path of its own.
+	templatePath, templateCleanup, tplErr := runnerTemplatePath(input.Template, opts)
 	if tplErr != nil {
-		return res, cleanup, fmt.Errorf("%s", templateNotFoundError(input.Template, opts.TemplatesDir))
+		return res, cleanup, tplErr
 	}
 	cleanup = templateCleanup
 	res.TemplatePath = templatePath

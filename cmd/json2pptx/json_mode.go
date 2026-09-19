@@ -231,8 +231,11 @@ func parseJSONInput(jsonPath, templateOverride, designModeOverride string, stric
 		input.DesignMode = designModeOverride
 	}
 
-	if input.Template == "" {
-		return nil, nil, fmt.Errorf("template is required: use --template flag or set \"template\" in JSON input")
+	if input.Template == "" && input.TemplatePath == "" {
+		return nil, nil, fmt.Errorf("template is required: use --template flag, or set \"template\" (a registered name) or \"template_path\" (a local .pptx) in JSON input")
+	}
+	if input.Template != "" && input.TemplatePath != "" {
+		return nil, nil, fmt.Errorf("set only one of \"template\" (a registered name) or \"template_path\" (a local .pptx), not both")
 	}
 	if len(input.Slides) == 0 {
 		return nil, nil, fmt.Errorf("at least one slide is required")
@@ -462,17 +465,25 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// analysis, canonical layout resolution, strict_fit, then (via PreConvert)
 	// URL + relative-asset resolution, then rhythm-grid resolution, slide
 	// conversion, generation, and output validation.
+	// A deck that names its own .pptx resolves it against the deck file's own
+	// directory, the same frame relative asset paths use (go-slide-creator-ydbk).
+	resolvedTemplatePath, tplPathErr := resolveDeckTemplatePath(input.TemplatePath, jsonPath)
+	if tplPathErr != nil {
+		return tplPathErr
+	}
+
 	runRes, renderCleanup, renderErr := RunPresentation(context.Background(), input, RenderOptions{
-		OutputDir:        cfg.Storage.OutputDir,
-		TemplatesDir:     cfg.Templates.Dir,
-		StrictFit:        strictFit,
-		OutputValidation: outputValidation,
-		AccentStrategy:   patterns.AccentStrategy(input.AccentStrategy),
-		Partial:          partial,
-		SVGStrategy:      string(cfg.SVG.Strategy),
-		SVGScale:         cfg.SVG.Scale,
-		SVGNativeCompat:  string(cfg.SVG.NativeCompatibility),
-		MaxPNGWidth:      cfg.SVG.MaxPNGWidth,
+		OutputDir:            cfg.Storage.OutputDir,
+		TemplatesDir:         cfg.Templates.Dir,
+		ResolvedTemplatePath: resolvedTemplatePath,
+		StrictFit:            strictFit,
+		OutputValidation:     outputValidation,
+		AccentStrategy:       patterns.AccentStrategy(input.AccentStrategy),
+		Partial:              partial,
+		SVGStrategy:          string(cfg.SVG.Strategy),
+		SVGScale:             cfg.SVG.Scale,
+		SVGNativeCompat:      string(cfg.SVG.NativeCompatibility),
+		MaxPNGWidth:          cfg.SVG.MaxPNGWidth,
 		PreConvert: func() error {
 			// Resolve any URL references (icon.url, image.url, background.url) by
 			// downloading them to a session-scoped cache with SSRF protection.

@@ -231,7 +231,13 @@ func Examine(reader *template.Reader, opts Options) (*Report, error) {
 		w, h = defaultSlideWidthEMU, defaultSlideHeightEMU
 	}
 
-	aspect := "16:9"
+	// Measure the ratio from the slide the template actually declares; metadata
+	// only overrides it. The hardcoded "16:9" default survived here after
+	// go-slide-creator-r9nn fixed the same bug in discovery, and it lands in the
+	// one case examine_template exists for: a bring-your-own .pptx carries no
+	// json2pptx metadata, so a 10x7.5in corporate template reported itself as
+	// widescreen to the agent about to author for it (go-slide-creator-ydbk).
+	aspect := template.AspectRatio(w, h)
 	if vr.Metadata != nil && vr.Metadata.AspectRatio != "" {
 		aspect = vr.Metadata.AspectRatio
 	}
