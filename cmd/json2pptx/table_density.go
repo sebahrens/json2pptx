@@ -26,28 +26,28 @@ func mcpTableDensityGuideTool() mcp.Tool {
 
 // densityTier describes a single row in the table density reference.
 type densityTier struct {
-	DataRows    string `json:"data_rows"`
-	FontSize    string `json:"font_size"`
-	MaxColumns  int    `json:"max_columns"`
-	TDRCeiling  int    `json:"tdr_ceiling"`
-	Notes       string `json:"notes"`
+	DataRows   string `json:"data_rows"`
+	FontSize   string `json:"font_size"`
+	MaxColumns int    `json:"max_columns"`
+	TDRCeiling int    `json:"tdr_ceiling"`
+	Notes      string `json:"notes"`
 }
 
 // densityLimits are the hard limits from Rule 20 (TDR).
 type densityLimits struct {
-	MaxRows      int    `json:"max_rows"`
-	MaxColumns   int    `json:"max_columns"`
-	MinFontPt    int    `json:"min_font_pt"`
-	SplitAdvice  string `json:"split_advice"`
+	MaxRows     int    `json:"max_rows"`
+	MaxColumns  int    `json:"max_columns"`
+	MinFontPt   int    `json:"min_font_pt"`
+	SplitAdvice string `json:"split_advice"`
 }
 
 // densityGuideResponse is the JSON envelope for table_density_guide.
 type densityGuideResponse struct {
-	Tiers        []densityTier      `json:"tiers"`
-	Limits       densityLimits      `json:"limits"`
+	Tiers         []densityTier     `json:"tiers"`
+	Limits        densityLimits     `json:"limits"`
 	MultilineNote string            `json:"multiline_note"`
-	TableStyles  []skillTableStyle  `json:"table_styles,omitempty"`
-	Template     string             `json:"template,omitempty"`
+	TableStyles   []skillTableStyle `json:"table_styles,omitempty"`
+	Template      string            `json:"template,omitempty"`
 }
 
 // buildDensityTiers returns the standard density reference tiers.

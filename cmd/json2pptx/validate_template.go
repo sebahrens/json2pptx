@@ -47,8 +47,8 @@ type validateTemplateLayout struct {
 	Name         string                           `json:"name"`
 	ID           string                           `json:"id"`
 	Tags         []string                         `json:"tags"`
-	Placeholders []validateTemplatePlaceholder     `json:"placeholders,omitempty"`
-	Capacity     validateTemplateCapacityEstimate  `json:"capacity"`
+	Placeholders []validateTemplatePlaceholder    `json:"placeholders,omitempty"`
+	Capacity     validateTemplateCapacityEstimate `json:"capacity"`
 }
 
 // validateTemplatePlaceholder is a placeholder in the JSON output.

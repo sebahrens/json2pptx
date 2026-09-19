@@ -1039,8 +1039,8 @@ func TestExpandCompose_BannerAndCallout(t *testing.T) {
 // banner-leading (strategy-house or pull-quote), preventing duplicate banners.
 func TestValidateCompose_BannerVsBannerLikeFirstSegment(t *testing.T) {
 	cases := []struct {
-		name        string
-		firstName   string
+		name         string
+		firstName    string
 		wantRejected bool
 	}{
 		{"strategy-house first segment is rejected", "strategy-house", true},

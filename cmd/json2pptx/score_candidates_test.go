@@ -218,11 +218,11 @@ func TestScoreCandidates_EmptyCandidates(t *testing.T) {
 func TestScoreCandidates_RhythmPenaltyRunLengths(t *testing.T) {
 	// Direct unit test for the rhythm penalty calculation.
 	cases := []struct {
-		name       string
-		slides     []SlideInput
-		idx        int
-		wantPen    int
-		wantNotes  bool
+		name      string
+		slides    []SlideInput
+		idx       int
+		wantPen   int
+		wantNotes bool
 	}{
 		{
 			name:    "isolated_no_penalty",

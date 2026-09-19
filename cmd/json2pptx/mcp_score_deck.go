@@ -615,5 +615,3 @@ func remapFindingsSlideIndex(findings []patterns.FitFinding, subsetToOrig map[in
 	}
 	return out
 }
-
-

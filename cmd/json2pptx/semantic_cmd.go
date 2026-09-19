@@ -18,6 +18,9 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 )
 
 // runSemantic implements the "semantic" command group: a thin CLI surface over
@@ -557,6 +560,15 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	}
 	fit = append(fit, rr.StrictFitFindings...)
 	fit = append(fit, rr.GridVisualFindings...)
+	// The render path used to report only what generation happened to emit, so
+	// the recommended new-deck path was the blindest tool in the server: a deck
+	// whose titles all wrap and whose bullets run to 100 words came back with
+	// diagnostics=null and score 100, while validate_input on the SAME compiled
+	// deck reported eight findings. Run the shared collectors here too
+	// (go-slide-creator-05wn).
+	fit = append(fit, collectFitFindings(input, rr.TemplateLayouts, rr.SlideWidth, rr.SlideHeight, &rr.TemplateTheme)...)
+	fit = dedupFitFindings(fit)
+	patterns.SortCanonical(fit, slidepath.SlideIndex)
 	for _, f := range fit {
 		diags = append(diags, semanticDiagFromFit(sm, f))
 	}
@@ -574,7 +586,7 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 		DurationMs:  time.Since(start).Milliseconds(),
 		Warnings:    warnings,
 		Diagnostics: diags,
-		Quality:     computeQualityScoreWithLayouts(input.Slides, warnings, rr.TemplateLayouts),
+		Quality:     semanticQualityScorePtr(input, fit, warnings, rr.TemplateLayouts),
 	}
 	if rr.GenResult != nil {
 		res.SlideCount = rr.GenResult.SlideCount
@@ -779,4 +791,26 @@ func fprintJSONIndent(w *os.File, v any) error {
 	}
 	_, err = w.Write(append(out, '\n'))
 	return err
+}
+
+// semanticQualityScore reports the render's quality summary with the
+// deterministic structural score and gate folded in.
+//
+// quality_summary alone returned 100 for 15 of 16 calibration decks — including
+// one whose own diagnostics carried five SEMANTIC_WEAK_CONTENT findings — so the
+// recommended path's only numeric feedback was a heuristic that could not fail,
+// and the gate SKILL.md calls "the machine-readable definition of done" sat off
+// the path behind compile_deck_spec + score_deck (go-slide-creator-05wn).
+func semanticQualityScorePtr(input *PresentationInput, fit []patterns.FitFinding, warnings []string, layouts []types.LayoutMetadata) *QualityScore {
+	q := computeQualityScoreWithLayouts(input.Slides, warnings, layouts)
+	ds := deterministic.ScoreFromFindings(fit, len(input.Slides))
+	gate := deterministic.EvaluateQualityGate(ds, fit, deterministic.DefaultQualityGateCriteria())
+	q.StructuralScore = ds.OverallScore
+	q.QualityGate = gate
+	// The headline number must not exceed the structural verdict: an agent reads
+	// it first, and "100" on a deck the gate rejects is the failure this fixes.
+	if float64(ds.OverallScore) < q.Score {
+		q.Score = float64(ds.OverallScore)
+	}
+	return q
 }

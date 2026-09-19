@@ -37,6 +37,29 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **The recommended new-deck path can see (go-slide-creator-05wn).**
+  `render_deck_spec` reported only what generation happened to emit: one
+  `executive_summary` slide with a 100-word body came back with
+  `diagnostics: null` and `quality_summary.score: 100`, while `validate_input`
+  on the SAME compiled deck reported `FIT.BODY_TOO_LONG`. On an 11-slide deck it
+  reported 3 diagnostics against validate_input's 8 (five wrapped titles among
+  them). There was also no gate on the semantic surface — `quality_summary`
+  returned 100 for 15 of 16 calibration decks, including a lorem deck — so the
+  gate SKILL.md calls "the machine-readable definition of done" sat off the
+  recommended path behind `compile_deck_spec` + `score_deck`.
+  - `render_deck_spec` now runs `collectFitFindings` over the compiled deck and
+    reports the findings (deduped, canonically sorted) as diagnostics.
+  - `quality_summary` gains **`structural_score`** and **`quality_gate`**, and
+    its headline `score` is capped at the structural score.
+  - `validate_deck_spec` compiles the spec and runs the same collectors,
+    excluding the geometry-airiness advisories (`sparse_layout`, `SPARSE_FILL`,
+    `SLIDE_UNDERUSED`, `cell_underfilled`, `SLIDE_NEARLY_EMPTY`, …) that a
+    one-slide spec cannot control.
+  - The compiler's source map now registers the placeholder-addressed spelling
+    of each content link (`/slides/0/content/body`) alongside the indexed one,
+    so a collected finding carries the `semantic_path` an agent edits —
+    `BODY_TOO_LONG` on the repro now reports `slides[0].points`.
+
 - **repair_slide resolves a pattern slide's cell path (go-slide-creator-qnrb).**
   The visual-QA bbox hit test produces cell paths for pattern slides, and
   `propose_repairs` handed back a ready-made `repair_slide` call — which

@@ -210,11 +210,11 @@ func TestFindingsCanonicalOrder_AcrossTools(t *testing.T) {
 	// Spot-check the exact order: refuse on slide 0 before refuse on slide 1,
 	// shrink_or_split on slide 0, then review (slide 2 by code asc), then info.
 	wantOrder := []string{
-		"zeta_refuse",   // refuse, slide 0
-		"alpha_refuse",  // refuse, slide 1
-		"beta_shrink",   // shrink_or_split, slide 0
-		"alpha_review",  // review, slide 2, code "alpha_review" < "beta_review"
-		"beta_review",   // review, slide 2
+		"zeta_refuse",      // refuse, slide 0
+		"alpha_refuse",     // refuse, slide 1
+		"beta_shrink",      // shrink_or_split, slide 0
+		"alpha_review",     // review, slide 2, code "alpha_review" < "beta_review"
+		"beta_review",      // review, slide 2
 		"zzz_low_severity", // info, slide 3
 	}
 	for i, want := range wantOrder {

@@ -12,23 +12,23 @@ import (
 
 // cellBudgetEntry is a single cell's text capacity and density in the expand response.
 type cellBudgetEntry struct {
-	CellIndex  int     `json:"cell_index"`
-	Row        int     `json:"row"`
-	Col        int     `json:"col"`
-	MaxChars   int     `json:"max_chars"`
-	ActualChars int    `json:"actual_chars"`
-	DensityPct int     `json:"density_pct"`
-	Status     string  `json:"status"`
-	FontSizePt float64 `json:"font_size_pt"`
+	CellIndex   int     `json:"cell_index"`
+	Row         int     `json:"row"`
+	Col         int     `json:"col"`
+	MaxChars    int     `json:"max_chars"`
+	ActualChars int     `json:"actual_chars"`
+	DensityPct  int     `json:"density_pct"`
+	Status      string  `json:"status"`
+	FontSizePt  float64 `json:"font_size_pt"`
 }
 
 // cellDensityWarning flags a cell that is underfilled or overflowing.
 type cellDensityWarning struct {
-	CellIndex    int                         `json:"cell_index"`
-	Field        string                      `json:"field"`
-	Actual       int                         `json:"actual"`
-	Budget       int                         `json:"budget"`
-	Status       string                      `json:"status"`
+	CellIndex    int                          `json:"cell_index"`
+	Field        string                       `json:"field"`
+	Actual       int                          `json:"actual"`
+	Budget       int                          `json:"budget"`
+	Status       string                       `json:"status"`
 	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
@@ -263,11 +263,11 @@ func densityClassWarning(budgets []cellBudgetEntry, pat patterns.Pattern, patter
 		if _, ok := reg.Get(compactName); ok {
 			suggestion.ArgsTemplate["name"] = compactName
 			return &cellDensityWarning{
-				CellIndex: -1,
-				Field:     "density_class",
-				Actual:    avgDensity,
-				Budget:    threshold,
-				Status:    "density_class_divergence",
+				CellIndex:    -1,
+				Field:        "density_class",
+				Actual:       avgDensity,
+				Budget:       threshold,
+				Status:       "density_class_divergence",
 				NextToolCall: suggestion,
 			}
 		}
@@ -284,11 +284,11 @@ func densityClassWarning(budgets []cellBudgetEntry, pat patterns.Pattern, patter
 	suggestion.ArgsTemplate["max_height_pct"] = suggestedPct
 
 	return &cellDensityWarning{
-		CellIndex: -1,
-		Field:     "density_class",
-		Actual:    avgDensity,
-		Budget:    threshold,
-		Status:    "density_class_divergence",
+		CellIndex:    -1,
+		Field:        "density_class",
+		Actual:       avgDensity,
+		Budget:       threshold,
+		Status:       "density_class_divergence",
 		NextToolCall: suggestion,
 	}
 }

@@ -81,7 +81,7 @@ func TestSemanticMCP_UnknownKPIFieldDiagnostic(t *testing.T) {
 			},
 		}},
 	}
-	res, err := handleValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec}))
+	res, err := testValidateDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec}))
 	if err != nil || res.IsError {
 		t.Fatalf("validate_deck_spec failed: %v %v", err, res)
 	}
@@ -124,7 +124,7 @@ func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 			"meta":   map[string]any{"title": "Example deck"},
 			"slides": []any{k.Example},
 		}
-		vres, err := handleValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": spec, "strict": "strict"}))
+		vres, err := testValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": spec, "strict": "strict"}))
 		if err != nil || vres.IsError {
 			t.Fatalf("%s: validate_deck_spec failed: %v", k.Kind, err)
 		}

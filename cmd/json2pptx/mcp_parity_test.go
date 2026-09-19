@@ -437,7 +437,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 	t.Run("strict_fit=off skips checks", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(deckJSON),
-			"strict_fit": "off",
+			"strict_fit":   "off",
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -459,7 +459,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 	t.Run("strict_fit=warn generates with warnings", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(deckJSON),
-			"strict_fit": "warn",
+			"strict_fit":   "warn",
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -481,7 +481,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 	t.Run("strict_fit=strict succeeds with no overflow", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(deckJSON),
-			"strict_fit": "strict",
+			"strict_fit":   "strict",
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -525,7 +525,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 	t.Run("fit_report=false omits content fit_findings", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(deckJSON),
-			"fit_report": false,
+			"fit_report":   false,
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -545,8 +545,8 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 	t.Run("fit_report=true includes fit_findings key", func(t *testing.T) {
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(deckJSON),
-			"fit_report": true,
-			"strict_fit": "off",
+			"fit_report":   true,
+			"strict_fit":   "off",
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -617,8 +617,8 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(overflowJSON),
-			"fit_report": true,
-			"strict_fit": "off",
+			"fit_report":   true,
+			"strict_fit":   "off",
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -803,7 +803,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 
 		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 			"presentation": mustParseJSON(overflowDeckJSON),
-			"strict_fit": "strict",
+			"strict_fit":   "strict",
 		}))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -1285,11 +1285,11 @@ func TestMCPURLResolutionParity(t *testing.T) {
 
 		// One URL_FETCH_FAILED per surface, keyed by JSON Pointer.
 		wantSurfaces := map[string]string{
-			"/slides/0/background/url":                              "background",
-			"/slides/0/content/0/image_value/url":                   "image",
-			"/slides/0/shape_grid/rows/0/cells/0/image/url":         "image",
-			"/slides/0/shape_grid/rows/0/cells/1/icon/url":          "icon",
-			"/slides/0/shape_grid/rows/0/cells/2/shape/icon/url":    "icon",
+			"/slides/0/background/url":                           "background",
+			"/slides/0/content/0/image_value/url":                "image",
+			"/slides/0/shape_grid/rows/0/cells/0/image/url":      "image",
+			"/slides/0/shape_grid/rows/0/cells/1/icon/url":       "icon",
+			"/slides/0/shape_grid/rows/0/cells/2/shape/icon/url": "icon",
 		}
 		gotAssetKind := make(map[string]string, len(wantSurfaces))
 		for _, d := range diags {

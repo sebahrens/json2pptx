@@ -43,7 +43,7 @@ func TestSemanticMCP_ValidateDeckSpec(t *testing.T) {
 	ctx := context.Background()
 
 	// Clean spec → ok=true.
-	res, err := handleValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": validSemanticSpec}))
+	res, err := testValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": validSemanticSpec}))
 	if err != nil {
 		t.Fatalf("validate_deck_spec returned go error: %v", err)
 	}
@@ -63,7 +63,7 @@ func TestSemanticMCP_ValidateDeckSpec(t *testing.T) {
 	}
 
 	// Dirty spec → ok=false with at least one error-severity finding.
-	res2, err := handleValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": invalidSemanticSpec}))
+	res2, err := testValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": invalidSemanticSpec}))
 	if err != nil {
 		t.Fatalf("validate_deck_spec(dirty) returned go error: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestSemanticMCP_WrongTypedEnumArgs(t *testing.T) {
 	}{
 		{
 			name:     "validate/strict_bool",
-			handler:  handleValidateDeckSpec,
+			handler:  testValidateDeckSpec,
 			args:     map[string]any{"spec": validSemanticSpec, "strict": true},
 			wantPath: "strict",
 		},
@@ -366,4 +366,13 @@ func TestSemanticMCP_WrongTypedEnumArgs(t *testing.T) {
 			}
 		})
 	}
+}
+
+// testValidateDeckSpec calls the handler with a config pointed at the bundled
+// templates: validate_deck_spec now compiles the spec and runs the shared fit
+// collectors against the compiled deck, which needs the template geometry
+// (go-slide-creator-05wn).
+func testValidateDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	mc := &mcpConfig{templatesDir: "../../templates"}
+	return mc.handleValidateDeckSpec(ctx, request)
 }

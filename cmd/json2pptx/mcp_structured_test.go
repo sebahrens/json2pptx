@@ -660,7 +660,9 @@ func TestHandleValidatePattern_Values(t *testing.T) {
 	requireStructuredContent(t, result)
 
 	b, _ := json.Marshal(result.StructuredContent)
-	var resp struct{ OK bool `json:"ok"` }
+	var resp struct {
+		OK bool `json:"ok"`
+	}
 	if err := json.Unmarshal(b, &resp); err != nil {
 		t.Fatalf("parse: %v", err)
 	}

@@ -12,14 +12,14 @@ import (
 
 // shapeCatalogCategory groups preset geometries by use case.
 type shapeCatalogCategory struct {
-	Category    string               `json:"category"`
-	Description string               `json:"description"`
-	Shapes      []shapeCatalogEntry  `json:"shapes"`
+	Category    string              `json:"category"`
+	Description string              `json:"description"`
+	Shapes      []shapeCatalogEntry `json:"shapes"`
 }
 
 // shapeCatalogEntry describes a single preset geometry.
 type shapeCatalogEntry struct {
-	Name       string   `json:"name"`
+	Name          string   `json:"name"`
 	AdjustHandles []string `json:"adjust_handles,omitempty"`
 }
 

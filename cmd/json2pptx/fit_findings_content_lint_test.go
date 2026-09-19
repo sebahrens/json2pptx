@@ -7,9 +7,9 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
-func bulletsPtr(b []string) *[]string                                 { return &b }
-func bodyAndBulletsPtr(v BodyAndBulletsInput) *BodyAndBulletsInput     { return &v }
-func bulletGroupsPtr(v BulletGroupsInput) *BulletGroupsInput           { return &v }
+func bulletsPtr(b []string) *[]string                              { return &b }
+func bodyAndBulletsPtr(v BodyAndBulletsInput) *BodyAndBulletsInput { return &v }
+func bulletGroupsPtr(v BulletGroupsInput) *BulletGroupsInput       { return &v }
 
 // findFinding returns the first finding with matching code, or nil if absent.
 func findFinding(findings []patterns.FitFinding, code string) *patterns.FitFinding {

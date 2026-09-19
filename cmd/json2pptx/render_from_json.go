@@ -65,9 +65,10 @@ Results are cached by (slide JSON content + template content + density) — repe
 
 // handleRenderSlideImageFromJSON is the MCP handler for render_slide_image_from_json.
 //
-//nolint:gocognit,gocyclo // straight-line param parsing + cache short-circuit +
 // render + optional overlay; each branch returns early. Splitting further would
 // obscure the dependency order between template hashing, cache lookup, and generation.
+//
+//nolint:gocognit,gocyclo // straight-line param parsing + cache short-circuit +
 func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Required: slide object.
 	slideJSON, paramErr := objectParamAsJSON(request, "slide")

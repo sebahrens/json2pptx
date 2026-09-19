@@ -198,7 +198,6 @@ func TestTableInput_ToTableSpec_UseTableStyle(t *testing.T) {
 	}
 }
 
-
 func TestTableInput_ToTableSpec_UseTableStyleDefaultStyleID(t *testing.T) {
 	input := TableInput{
 		Headers: []string{"A"},

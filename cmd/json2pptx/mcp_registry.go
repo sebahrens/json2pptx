@@ -55,7 +55,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	s.AddTool(mcpApplyDeckPatchTool(), mc.handleApplyDeckPatch)
 	// Semantic compiler tools (compact DeckSpec authoring) — recommended default
 	// path for new decks; the raw tools above remain available.
-	s.AddTool(mcpValidateDeckSpecTool(), handleValidateDeckSpec)
+	s.AddTool(mcpValidateDeckSpecTool(), mc.handleValidateDeckSpec)
 	s.AddTool(mcpCompileDeckSpecTool(), handleCompileDeckSpec)
 	s.AddTool(mcpRenderDeckSpecTool(), mc.handleRenderDeckSpec)
 	s.AddTool(mcpExplainDeckSpecTool(), handleExplainDeckSpec)

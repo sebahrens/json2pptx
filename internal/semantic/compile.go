@@ -10,6 +10,7 @@ package semantic
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
@@ -101,8 +102,17 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		if err != nil {
 			return nil, result, fmt.Errorf("slide %d (%s): %w", si.SourceIndex, si.Kind, err)
 		}
+		outputIndex := len(input.Slides)
 		for _, l := range links {
 			ir.SourceMap.Add(l.RawPath, l.SemanticPath, si.SourceIndex)
+			// Fit findings address content by PLACEHOLDER ("/slides/0/content/body"),
+			// while the compiler's links address it by index
+			// ("slides[0].content[1].bullets_value"). Register the placeholder
+			// spelling too, or every finding the shared collectors produce comes
+			// back with no semantic_path (go-slide-creator-05wn).
+			if alias := placeholderAliasPath(compiled, l.RawPath, outputIndex); alias != "" {
+				ir.SourceMap.Add(alias, l.SemanticPath, si.SourceIndex)
+			}
 		}
 		// Universal per-slide fields every kind accepts: speaker notes and a
 		// source/footnote line. They are plain strings with no layout impact,
@@ -242,4 +252,33 @@ func bodyString(body map[string]any, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// placeholderAliasPath converts a compiler link path that addresses a content
+// item by index into the placeholder-addressed pointer form the fit collectors
+// emit. Returns "" when the link is not a content-item path or the index has no
+// placeholder ID.
+func placeholderAliasPath(compiled *deckinput.SlideInput, rawPath string, outputIndex int) string {
+	if compiled == nil {
+		return ""
+	}
+	const marker = ".content["
+	i := strings.Index(rawPath, marker)
+	if i < 0 {
+		return ""
+	}
+	rest := rawPath[i+len(marker):]
+	end := strings.IndexByte(rest, ']')
+	if end <= 0 {
+		return ""
+	}
+	idx, err := strconv.Atoi(rest[:end])
+	if err != nil || idx < 0 || idx >= len(compiled.Content) {
+		return ""
+	}
+	ph := compiled.Content[idx].PlaceholderID
+	if ph == "" {
+		return ""
+	}
+	return fmt.Sprintf("/slides/%d/content/%s", outputIndex, ph)
 }

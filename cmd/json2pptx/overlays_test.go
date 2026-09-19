@@ -17,7 +17,7 @@ import (
 // (RowIdx, ColIdx, Bounds, CellBounds) which is sufficient.
 func makeMatrix2x2Cells() []shapegrid.ResolvedCell {
 	const (
-		x0   = int64(457200)  // 0.5"
+		x0   = int64(457200) // 0.5"
 		y0   = int64(457200)
 		colW = int64(4114800) // 4.5"
 		rowH = int64(2286000) // 2.5"
@@ -340,9 +340,9 @@ func TestResolveOverlays_Badge(t *testing.T) {
 func TestResolveOverlays_AnchorOutOfRangeError(t *testing.T) {
 	overlays := []*OverlayShapeInput{
 		{
-			Kind:  "arrow",
-			From:  &OverlayPointInput{AnchorCell: &OverlayAnchorCellInput{Row: 5, Col: 5}},
-			To:    &OverlayPointInput{X: 50, Y: 50},
+			Kind: "arrow",
+			From: &OverlayPointInput{AnchorCell: &OverlayAnchorCellInput{Row: 5, Col: 5}},
+			To:   &OverlayPointInput{X: 50, Y: 50},
 		},
 	}
 	alloc := newAllocFrom(400)
@@ -389,9 +389,9 @@ func TestPointOnRect_AnchorNames(t *testing.T) {
 	r := pptx.RectEmu{X: 100, Y: 200, CX: 400, CY: 300}
 	// Center: (300, 350), TL: (100,200), TR: (500,200), BL: (100,500), BR: (500,500)
 	cases := []struct {
-		at     string
-		wantX  int64
-		wantY  int64
+		at    string
+		wantX int64
+		wantY int64
 	}{
 		{"center", 300, 350},
 		{"", 300, 350},

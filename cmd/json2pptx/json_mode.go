@@ -26,6 +26,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -126,9 +127,9 @@ type SlideResolution struct {
 	// resolved layout does not declare. Their content was NOT rendered, so they
 	// are excluded from PlaceholdersUsed (go-slide-creator-lhq6).
 	PlaceholdersDropped []string `json:"placeholders_dropped,omitempty"`
-	WasSynthesized   bool     `json:"was_synthesized_layout,omitempty"`
-	WasAutoSelected  bool     `json:"was_auto_selected,omitempty"`
-	OccupancyPct     int      `json:"occupancy_pct,omitempty"`
+	WasSynthesized      bool     `json:"was_synthesized_layout,omitempty"`
+	WasAutoSelected     bool     `json:"was_auto_selected,omitempty"`
+	OccupancyPct        int      `json:"occupancy_pct,omitempty"`
 }
 
 // JSONOutput represents the JSON output for headless mode.
@@ -171,6 +172,14 @@ type QualityScore struct {
 	Issues      []string                  `json:"issues,omitempty"`       // quality concerns
 	Scope       string                    `json:"scope"`                  // input_heuristic; never a visual verdict
 	Evidence    *pipeline.QualityEvidence `json:"evidence,omitempty"`
+	// StructuralScore and QualityGate carry the deterministic verdict on the
+	// paths that generate a deck (render_deck_spec). quality_summary alone is an
+	// input heuristic that cannot fail, so the recommended path had no gate at
+	// all (go-slide-creator-05wn). Score is capped at StructuralScore when both
+	// are present: the headline number an agent reads first must not claim more
+	// than the structural verdict.
+	StructuralScore int                        `json:"structural_score,omitempty"`
+	QualityGate     *deterministic.QualityGate `json:"quality_gate,omitempty"`
 }
 
 // SlideQuality provides quality metrics for a single slide.
@@ -2888,7 +2897,6 @@ func renderSucceeded(findings []patterns.FitFinding, outputValidation string) bo
 	return true
 }
 
-
 // refuseFindingPenalty is the score deducted per refuse-class finding. At 0.25
 // a single one takes a perfect deck out of the 90s, and three take it below the
 // usual gate — which is the point: the deck is missing content.
@@ -2908,7 +2916,6 @@ func blockingFindingCodes(findings []patterns.FitFinding) []string {
 	}
 	return codes
 }
-
 
 // resolveAutoLayout picks a layout for a slide that declared none.
 //

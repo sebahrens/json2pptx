@@ -84,8 +84,8 @@ func TestCheckSectionNumberNaming_NoWarningForNonSectionLayout(t *testing.T) {
 
 func TestCheckSectionNumberNaming_NoWarningWhenBelowThresholds(t *testing.T) {
 	tests := []struct {
-		name     string
-		ph       types.PlaceholderInfo
+		name string
+		ph   types.PlaceholderInfo
 	}{
 		{
 			name: "small font",
@@ -133,10 +133,10 @@ func TestCheckSectionNumberNaming_WarnsForLargeFontDecorativeNumber(t *testing.T
 			Tags: []string{"section-header"},
 			Placeholders: []types.PlaceholderInfo{
 				{
-					ID:       "TextBox 7",          // decorative number frame, but misnamed
+					ID:       "TextBox 7",           // decorative number frame, but misnamed
 					Type:     types.PlaceholderBody, // normalizer would stuff prose into it
 					MaxChars: 2,
-					FontSize: 10000,                            // 100pt
+					FontSize: 10000, // 100pt
 					Bounds:   types.BoundingBox{X: 100000, Y: 500000, Width: 914400, Height: 914400},
 				},
 			},

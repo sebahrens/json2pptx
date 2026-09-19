@@ -242,9 +242,9 @@ func TestEmitAuditReport_TextFormat(t *testing.T) {
 		Slides: []auditSlide{{
 			Index: 1, PicCount: 1, ShapeCount: 1, PairCount: 1, MaxDeltaE: 1.2,
 			Pairs: []auditPair{{
-				Slide: 1,
-				Pic:   auditRegion{Kind: "pic", Name: "Chart", Hex: "2e5090"},
-				Shape: auditRegion{Kind: "shape", Name: "Rect", Hex: "2e5091", DeclaredHex: "accent1"},
+				Slide:  1,
+				Pic:    auditRegion{Kind: "pic", Name: "Chart", Hex: "2e5090"},
+				Shape:  auditRegion{Kind: "shape", Name: "Rect", Hex: "2e5091", DeclaredHex: "accent1"},
 				DeltaE: 1.2, Pass: true,
 			}},
 		}},

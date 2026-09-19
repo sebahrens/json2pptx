@@ -112,4 +112,3 @@ func checkUnknownKeys(raw json.RawMessage, knownKeys []string, path string) []*p
 func checkUnknownKeysForType(raw json.RawMessage, structType reflect.Type, path string) []*patterns.ValidationError {
 	return checkUnknownKeys(raw, jsonFieldNames(structType), path)
 }
-

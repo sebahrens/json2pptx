@@ -132,9 +132,9 @@ func TestPatternSmoke_PatternCount(t *testing.T) {
 	}
 
 	expectedPatterns := map[string]bool{
-		"kpi-3up":              false,
-		"kpi-4up":              false,
-		"bmc-canvas":           false,
+		"kpi-3up":             false,
+		"kpi-4up":             false,
+		"bmc-canvas":          false,
 		"matrix-2x2":          false,
 		"timeline-horizontal": false,
 		"card-grid":           false,

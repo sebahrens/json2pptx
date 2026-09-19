@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
-	"unicode/utf8"
 	"time"
+	"unicode/utf8"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"

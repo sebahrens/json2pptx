@@ -151,7 +151,7 @@ func TestGenerateFitReport_ShapeGridText(t *testing.T) {
 			{
 				LayoutID: "blank",
 				ShapeGrid: &ShapeGridInput{
-					Bounds: &GridBoundsInput{X: 5, Y: 5, Width: 10, Height: 5},
+					Bounds:  &GridBoundsInput{X: 5, Y: 5, Width: 10, Height: 5},
 					Columns: json.RawMessage(`4`),
 					Rows: []GridRowInput{
 						{
@@ -395,14 +395,14 @@ func TestGenerateFitReport_CellUnderfilled_DensityBands(t *testing.T) {
 	// We use a single cell with known font size to control density precisely.
 
 	tests := []struct {
-		name             string
-		textRepeat       int    // number of "x" chars to place
-		fontSz           float64
-		boundsWidth      float64 // percentage of slide width
-		boundsHeight     float64 // percentage of slide height
-		wantCode         string
-		wantSeverity     string
-		wantNoFinding    bool // expect no cell_underfilled or fit_overflow finding
+		name          string
+		textRepeat    int // number of "x" chars to place
+		fontSz        float64
+		boundsWidth   float64 // percentage of slide width
+		boundsHeight  float64 // percentage of slide height
+		wantCode      string
+		wantSeverity  string
+		wantNoFinding bool // expect no cell_underfilled or fit_overflow finding
 	}{
 		{
 			// A 3-char cell is a LABEL, not an underfilled paragraph: the
@@ -632,7 +632,6 @@ func TestGenerateFitReport_ShapeGridUsesLayoutBounds(t *testing.T) {
 		}
 	}
 }
-
 
 // go-slide-creator-xpz8: cell_underfilled was emitted once per cell with no
 // aggregation, so a slide of KPI cards accumulated 20+ review-weight findings

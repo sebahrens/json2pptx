@@ -142,7 +142,7 @@ func TestMCPArgErrors_EnvelopeShape(t *testing.T) {
 		{name: "examine_template/missing", handler: wrap(mc.handleExamineTemplate), args: map[string]any{}, wantPath: "template_name"},
 
 		// Semantic compiler tools — required: spec (object|string)
-		{name: "validate_deck_spec/missing", handler: handleValidateDeckSpec, args: map[string]any{}, wantPath: "spec"},
+		{name: "validate_deck_spec/missing", handler: testValidateDeckSpec, args: map[string]any{}, wantPath: "spec"},
 		{name: "compile_deck_spec/missing", handler: handleCompileDeckSpec, args: map[string]any{}, wantPath: "spec"},
 		{name: "render_deck_spec/missing", handler: wrap(mc.handleRenderDeckSpec), args: map[string]any{}, wantPath: "spec"},
 		{name: "explain_deck_spec/missing", handler: handleExplainDeckSpec, args: map[string]any{}, wantPath: "spec"},

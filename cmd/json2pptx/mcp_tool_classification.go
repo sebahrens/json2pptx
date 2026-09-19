@@ -126,15 +126,15 @@ func validToolPhases() map[string]bool {
 func toolClassifications() map[string]toolClassification {
 	return map[string]toolClassification{
 		// --- Discovery / introspection (read-only) ---
-		"get_started":              {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "get-started"},
-		"get_capabilities":         {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "capabilities"},
-		"get_input_schema":         {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "input-schema"},
-		"get_data_format_hints":    {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "data-format-hints"},
+		"get_started":           {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "get-started"},
+		"get_capabilities":      {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "capabilities"},
+		"get_input_schema":      {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "input-schema"},
+		"get_data_format_hints": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, CLICounterpart: "data-format-hints"},
 		// list_templates writes layout-preview PNG cache files in its default
 		// mode (when LibreOffice + ImageMagick are present), so WritesFiles is
 		// true. Pass read_only=true to suppress those cache writes; the response
 		// side_effects block reports what happened.
-		"list_templates":           {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, WritesFiles: true, CLICounterpart: "skill-info"},
+		"list_templates": {Kind: toolKindDiagnostic, Phase: toolPhaseDiscovery, WritesFiles: true, CLICounterpart: "skill-info"},
 		// The detailed chart/diagram capability arrays these tools return are
 		// inlined in `json2pptx skill-info` (supported_types.chart_capabilities /
 		// diagram_capabilities), not in `json2pptx capabilities` (which carries
@@ -218,8 +218,8 @@ func toolClassifications() map[string]toolClassification {
 		"delete_template_setting":   {Kind: toolKindPrimitive, Phase: toolPhaseSettings, MutatesState: true, CLICounterpart: "template-settings delete"},
 
 		// --- Semantic compiler (compact DeckSpec authoring; recommended default for new decks) ---
-		"validate_deck_spec":   {Kind: toolKindDiagnostic, Phase: toolPhaseRender, CLICounterpart: "semantic validate"},
-		"compile_deck_spec":    {Kind: toolKindPrimitive, Phase: toolPhaseRender, CLICounterpart: "semantic compile"},
+		"validate_deck_spec": {Kind: toolKindDiagnostic, Phase: toolPhaseRender, CLICounterpart: "semantic validate"},
+		"compile_deck_spec":  {Kind: toolKindPrimitive, Phase: toolPhaseRender, CLICounterpart: "semantic compile"},
 		"render_deck_spec": {
 			// One call from a DeckSpec to a .pptx: validate + compile + generate.
 			// The recommended get_started fast path for task=brief.

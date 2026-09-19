@@ -26,7 +26,7 @@ func TestDuplicateTitle_FlagsRepeatedTitlesOnContentSlides(t *testing.T) {
 			contentSlideWithTitle("Next Steps"),
 			contentSlideWithTitle("Market Analysis"),
 			contentSlideWithTitle("  next   steps "), // duplicate with whitespace + case variance
-			contentSlideWithTitle("Next steps"),       // duplicate
+			contentSlideWithTitle("Next steps"),      // duplicate
 		},
 	}
 

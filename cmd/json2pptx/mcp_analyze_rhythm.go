@@ -145,8 +145,8 @@ func buildDensityGrid(sg *ShapeGridInput) *shapegrid.Grid {
 
 	// Use default slide dimensions for bounds resolution.
 	bounds := pptx.RectEmu{
-		X:  457200,                          // 0.5in default
-		Y:  1600200,                         // ~1.26in default
+		X:  457200,  // 0.5in default
+		Y:  1600200, // ~1.26in default
 		CX: shapegrid.DefaultSlideWidthEMU - 2*457200,
 		CY: shapegrid.DefaultSlideHeightEMU - 1600200 - 457200,
 	}

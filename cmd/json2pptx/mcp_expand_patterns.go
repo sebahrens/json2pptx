@@ -126,10 +126,10 @@ type patternBatchContent struct {
 // Either Error is populated (and the rest may be zero) or the embedded
 // patternExpansionResult is fully populated.
 type batchExpansionEntry struct {
-	Pattern      string                     `json:"pattern"`
-	UsedExemplar bool                       `json:"used_exemplar"`
-	Error        *patternValidationError    `json:"error,omitempty"`
-	Result       *patternExpansionResult    `json:"result,omitempty"`
+	Pattern      string                  `json:"pattern"`
+	UsedExemplar bool                    `json:"used_exemplar"`
+	Error        *patternValidationError `json:"error,omitempty"`
+	Result       *patternExpansionResult `json:"result,omitempty"`
 }
 
 // batchExpansionResponse is the top-level expand_patterns response shape.

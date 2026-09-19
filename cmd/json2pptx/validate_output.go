@@ -63,9 +63,9 @@ func runValidateOutput() error {
 }
 
 type validateOutputResult struct {
-	FilePath string               `json:"file_path"`
-	IsValid  bool                 `json:"is_valid"`
-	Findings []pptx.Finding       `json:"findings,omitempty"`
+	FilePath string         `json:"file_path"`
+	IsValid  bool           `json:"is_valid"`
+	Findings []pptx.Finding `json:"findings,omitempty"`
 }
 
 func printValidateOutputJSON(path string, report *pptx.Report) {

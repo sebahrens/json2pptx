@@ -348,4 +348,3 @@ func slidePatternName(s SlideInput) string {
 		return "content"
 	}
 }
-

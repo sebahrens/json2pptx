@@ -20,9 +20,9 @@ import (
 
 // previewPlanOutput is the top-level response for preview_presentation_plan.
 type previewPlanOutput struct {
-	ResolvedSlides []resolvedSlide      `json:"resolved_slides"`
-	Warnings       []string             `json:"warnings,omitempty"`
-	Errors         []string             `json:"errors,omitempty"`
+	ResolvedSlides []resolvedSlide       `json:"resolved_slides"`
+	Warnings       []string              `json:"warnings,omitempty"`
+	Errors         []string              `json:"errors,omitempty"`
 	FitFindings    []patterns.FitFinding `json:"fit_findings,omitempty"`
 
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
@@ -64,7 +64,7 @@ type resolvedPlaceholder struct {
 	ResolvedID string        `json:"resolved_id"`        // Actual placeholder ID after virtual mapping
 	Remapped   bool          `json:"remapped,omitempty"` // True if input_id != resolved_id
 	Type       string        `json:"type"`               // Content type
-	Geometry   *resolvedGeom `json:"geometry,omitempty"`  // Placeholder bounds from template
+	Geometry   *resolvedGeom `json:"geometry,omitempty"` // Placeholder bounds from template
 }
 
 // resolvedGeom holds placeholder geometry in EMUs.
@@ -113,10 +113,10 @@ type resolvedComposeSegmentRect struct {
 
 // resolvedShapeGrid describes virtual layout resolution for shape_grid slides.
 type resolvedShapeGrid struct {
-	VirtualLayoutUsed bool                     `json:"virtual_layout_used"`
-	LayoutID          string                   `json:"layout_id,omitempty"`
-	Geometry          *resolvedGeom            `json:"geometry,omitempty"`
-	Cells             []resolvedShapeGridCell  `json:"cells,omitempty"`
+	VirtualLayoutUsed bool                    `json:"virtual_layout_used"`
+	LayoutID          string                  `json:"layout_id,omitempty"`
+	Geometry          *resolvedGeom           `json:"geometry,omitempty"`
+	Cells             []resolvedShapeGridCell `json:"cells,omitempty"`
 }
 
 // resolvedShapeGridCell is one resolved grid cell rectangle, suitable for
@@ -312,13 +312,13 @@ func validatePreviewBoundary(input *PresentationInput) *mcp.CallToolResult {
 
 // previewTemplateContext holds resolved template data for the preview handler.
 type previewTemplateContext struct {
-	reader       *template.Reader
-	layouts      []types.LayoutMetadata
-	layoutByID   map[string]types.LayoutMetadata
-	metadata     *types.TemplateMetadata
-	slideWidth   int64
-	slideHeight  int64
-	theme        *types.ThemeInfo
+	reader      *template.Reader
+	layouts     []types.LayoutMetadata
+	layoutByID  map[string]types.LayoutMetadata
+	metadata    *types.TemplateMetadata
+	slideWidth  int64
+	slideHeight int64
+	theme       *types.ThemeInfo
 }
 
 // loadPreviewTemplate opens and analyzes a template for the preview tool.

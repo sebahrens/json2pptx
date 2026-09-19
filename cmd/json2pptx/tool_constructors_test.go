@@ -346,10 +346,10 @@ func TestHandleRecommendPattern_VarietyOptions(t *testing.T) {
 	mc := cliMCPConfig("./templates", "./out")
 	// Exercise the optional recent_patterns / prefer_variety / slide_index branches.
 	res, err := mc.handleRecommendPattern(context.Background(), makeRequest(map[string]any{
-		"intent":           "compare two options",
-		"recent_patterns":  []any{"kpi-3up", "kpi-4up"},
-		"prefer_variety":   true,
-		"slide_index":      float64(4),
+		"intent":          "compare two options",
+		"recent_patterns": []any{"kpi-3up", "kpi-4up"},
+		"prefer_variety":  true,
+		"slide_index":     float64(4),
 	}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

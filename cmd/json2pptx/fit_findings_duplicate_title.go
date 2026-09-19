@@ -143,16 +143,16 @@ func makeDuplicateTitleFinding(slideIdx int, phID string, firstSlide int, dupSli
 	}
 	return patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
-			Path: path,
-			Code: patterns.ErrCodeDuplicateTitle,
+			Path:    path,
+			Code:    patterns.ErrCodeDuplicateTitle,
 			Message: msg,
 			Fix: &patterns.FixSuggestion{
 				Kind: "shorten_title",
 				Params: map[string]any{
-					"duplicate_of_slide":          firstSlide + 1,
-					"duplicate_slide_numbers":     dupNumbersAny,
-					"duplicate_count":             total,
-					"placeholder_id":              phID,
+					"duplicate_of_slide":      firstSlide + 1,
+					"duplicate_slide_numbers": dupNumbersAny,
+					"duplicate_count":         total,
+					"placeholder_id":          phID,
 				},
 			},
 		},

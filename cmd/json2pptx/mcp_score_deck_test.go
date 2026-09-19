@@ -502,4 +502,3 @@ func TestExtractSlideIndices_ValidatesRangeAndDedup(t *testing.T) {
 		})
 	}
 }
-

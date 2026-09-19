@@ -229,7 +229,7 @@ type skillTemplateInfo struct {
 	SlideWidthIn  float64 `json:"slide_width_in,omitempty"`
 	SlideHeightIn float64 `json:"slide_height_in,omitempty"`
 	LayoutCount   int     `json:"layout_count,omitempty"`
-	Error       string `json:"error,omitempty"`
+	Error         string  `json:"error,omitempty"`
 	// SHA256 is the content hash of the template file (template.Reader.Hash()).
 	// Agents use it as a stable identity / cache key to detect when a template
 	// has changed under a stable name. Present in compact+full.
@@ -530,9 +530,9 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 		name = strings.TrimSuffix(filepath.Base(templatePath), ".pptx")
 	}
 	info := skillTemplateInfo{
-		Name:        name,
-		AspectRatio: analysis.AspectRatio,
-		LayoutCount: len(analysis.Layouts),
+		Name:          name,
+		AspectRatio:   analysis.AspectRatio,
+		LayoutCount:   len(analysis.Layouts),
 		SlideWidthIn:  emuToInches(analysis.SlideWidth),
 		SlideHeightIn: emuToInches(analysis.SlideHeight),
 	}
@@ -1268,7 +1268,6 @@ func printSkillInfoText(info skillInfo, mode string) {
 		fmt.Printf("  %s\n", info.IconPolicy.Description)
 	}
 }
-
 
 // emuToInches converts an EMU length to inches, rounded to three decimals.
 // 914400 EMU = 1 inch.

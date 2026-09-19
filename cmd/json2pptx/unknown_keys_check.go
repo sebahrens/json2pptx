@@ -368,14 +368,14 @@ func checkGridImageUnknownKeys(raw json.RawMessage, path string) []*patterns.Val
 
 // typedFieldForType maps content type to the corresponding typed value JSON key.
 var typedFieldForType = map[string]string{
-	"text":              "text_value",
-	"bullets":           "bullets_value",
-	"body_and_bullets":  "body_and_bullets_value",
-	"bullet_groups":     "bullet_groups_value",
-	"table":             "table_value",
-	"chart":             "chart_value",
-	"diagram":           "diagram_value",
-	"image":             "image_value",
+	"text":             "text_value",
+	"bullets":          "bullets_value",
+	"body_and_bullets": "body_and_bullets_value",
+	"bullet_groups":    "bullet_groups_value",
+	"table":            "table_value",
+	"chart":            "chart_value",
+	"diagram":          "diagram_value",
+	"image":            "image_value",
 }
 
 // checkRedundantValue warns when a content item has both a typed value field

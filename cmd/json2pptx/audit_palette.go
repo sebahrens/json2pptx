@@ -99,11 +99,11 @@ type auditOptions struct {
 }
 
 type auditRegion struct {
-	Kind       string  `json:"kind"`              // "pic" or "shape"
-	Name       string  `json:"name,omitempty"`    // shape/picture cNvPr name
-	BoundsEMU  [4]int64 `json:"bounds_emu"`       // x, y, cx, cy
-	BoundsPx   [4]int   `json:"bounds_px"`        // x0, y0, x1, y1
-	Hex        string   `json:"dominant_hex"`     // sampled dominant color
+	Kind       string   `json:"kind"`           // "pic" or "shape"
+	Name       string   `json:"name,omitempty"` // shape/picture cNvPr name
+	BoundsEMU  [4]int64 `json:"bounds_emu"`     // x, y, cx, cy
+	BoundsPx   [4]int   `json:"bounds_px"`      // x0, y0, x1, y1
+	Hex        string   `json:"dominant_hex"`   // sampled dominant color
 	R          uint8    `json:"r"`
 	G          uint8    `json:"g"`
 	B          uint8    `json:"b"`
@@ -114,7 +114,7 @@ type auditRegion struct {
 }
 
 type auditPair struct {
-	Slide  int         `json:"slide"`         // 1-based
+	Slide  int         `json:"slide"` // 1-based
 	Pic    auditRegion `json:"pic"`
 	Shape  auditRegion `json:"shape"`
 	DeltaE float64     `json:"delta_e"`
@@ -122,13 +122,13 @@ type auditPair struct {
 }
 
 type auditSlide struct {
-	Index       int          `json:"index"`            // 1-based
-	PicCount    int          `json:"pic_count"`
-	ShapeCount  int          `json:"shape_count"`
-	PairCount   int          `json:"pair_count"`
-	MaxDeltaE   float64      `json:"max_delta_e"`
-	Pairs       []auditPair  `json:"pairs"`
-	RenderImage string       `json:"render_image,omitempty"`
+	Index       int         `json:"index"` // 1-based
+	PicCount    int         `json:"pic_count"`
+	ShapeCount  int         `json:"shape_count"`
+	PairCount   int         `json:"pair_count"`
+	MaxDeltaE   float64     `json:"max_delta_e"`
+	Pairs       []auditPair `json:"pairs"`
+	RenderImage string      `json:"render_image,omitempty"`
 }
 
 type auditReport struct {
@@ -433,8 +433,8 @@ func readSlideDimensionsEMU(pkg *pptx.Package) (int64, int64, error) {
 // indirection (also intentionally omitted there because the public reader is
 // text-focused).
 type auditSlideXML struct {
-	XMLName xml.Name        `xml:"sld"`
-	CSld    auditCommonSld  `xml:"cSld"`
+	XMLName xml.Name       `xml:"sld"`
+	CSld    auditCommonSld `xml:"cSld"`
 }
 
 type auditCommonSld struct {

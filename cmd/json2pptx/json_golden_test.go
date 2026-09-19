@@ -17,14 +17,14 @@ var updateGolden = flag.Bool("update-golden", false, "update golden files")
 // for golden file comparison. We use this instead of SlideSpec directly because
 // SlideSpec.Content[].Value is any, which loses type info on JSON round-trip.
 type goldenSlideSnapshot struct {
-	LayoutID        string               `json:"layout_id"`
-	ContentCount    int                  `json:"content_count"`
-	Content         []goldenContentItem  `json:"content"`
-	SpeakerNotes    string               `json:"speaker_notes,omitempty"`
-	SourceNote      string               `json:"source_note,omitempty"`
-	Transition      string               `json:"transition,omitempty"`
-	TransitionSpeed string               `json:"transition_speed,omitempty"`
-	Build           string               `json:"build,omitempty"`
+	LayoutID        string              `json:"layout_id"`
+	ContentCount    int                 `json:"content_count"`
+	Content         []goldenContentItem `json:"content"`
+	SpeakerNotes    string              `json:"speaker_notes,omitempty"`
+	SourceNote      string              `json:"source_note,omitempty"`
+	Transition      string              `json:"transition,omitempty"`
+	TransitionSpeed string              `json:"transition_speed,omitempty"`
+	Build           string              `json:"build,omitempty"`
 }
 
 type goldenContentItem struct {

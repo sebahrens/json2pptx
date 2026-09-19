@@ -28,10 +28,10 @@ func mcpValidateOutputTool() mcp.Tool {
 
 // validateOutputResponse is the JSON output for validate_presentation_output.
 type validateOutputResponse struct {
-	IsValid  bool            `json:"is_valid"`
-	FilePath string          `json:"file_path"`
-	Summary  string          `json:"summary"`
-	Findings []pptx.Finding  `json:"findings,omitempty"`
+	IsValid  bool           `json:"is_valid"`
+	FilePath string         `json:"file_path"`
+	Summary  string         `json:"summary"`
+	Findings []pptx.Finding `json:"findings,omitempty"`
 }
 
 // handleValidateOutput validates a generated PPTX file using the unified output-validation suite.

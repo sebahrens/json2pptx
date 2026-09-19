@@ -81,5 +81,3 @@ func applyPresentationPatch(patch PresentationPatchInput) (*PresentationInput, e
 
 	return &result, nil
 }
-
-

@@ -14,6 +14,8 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // ---------------------------------------------------------------------------
@@ -162,7 +164,7 @@ func mcpValidateDeckSpecTool() mcp.Tool {
 	)
 }
 
-func handleValidateDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	data, filename, errRes := semanticSpecBytes("validate_deck_spec", request)
 	if errRes != nil {
 		return errRes, nil
@@ -173,6 +175,11 @@ func handleValidateDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*
 	}
 
 	ds := semantic.Check(filename, data, strictness)
+	// Check() sees only the spec. The defects an agent ships — wrapped titles,
+	// 100-word bullet walls, placeholder copy — live in the COMPILED deck, so
+	// compile it and run the same collectors validate_input runs
+	// (go-slide-creator-05wn).
+	ds = append(ds, mc.compiledSpecFindings(filename, data, strictness)...)
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "validate_deck_spec",
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
@@ -541,4 +548,74 @@ func semanticSuccessOrInternal(ctx context.Context, tool string, v any) (*mcp.Ca
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal %s response: %v", tool, err)), nil
 	}
 	return mcpResult, nil
+}
+
+// compiledSpecFindings compiles a spec and runs the shared fit collectors over
+// the compiled deck, returning the findings as diagnostics carrying their
+// semantic paths. A spec that does not compile returns nothing: its blocking
+// errors are already reported by Check.
+func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictness semantic.Strictness) []diagnostics.Diagnostic {
+	spec, parseDiags := semantic.Parse(filename, data)
+	if spec == nil || parseDiags.HasErrors() {
+		return nil
+	}
+	input, compileResult, err := semantic.Compile(spec, semantic.CompileOptions{Strict: strictness})
+	if err != nil || input == nil {
+		return nil
+	}
+	applyDefaults(input)
+	resolveInputNamedSettingsForDir(mc.templatesDir, input)
+
+	var layouts []types.LayoutMetadata
+	var slideWidth, slideHeight int64
+	var theme *types.ThemeInfo
+	if templatePath, cleanup, terr := resolveTemplatePath(input.Template, mc.templatesDir); terr == nil {
+		defer cleanup()
+		cache := mc.cache
+		if cache == nil {
+			cache = template.NewMemoryCache(time.Hour)
+		}
+		if analysis, aerr := getOrAnalyzeTemplate(templatePath, cache); aerr == nil {
+			layouts = analysis.Layouts
+			slideWidth, slideHeight = analysis.SlideWidth, analysis.SlideHeight
+			theme = &analysis.Theme
+			resolveCanonicalLayoutIDs(input.Slides, layouts)
+		}
+	}
+
+	var sm *semantic.SourceMap
+	if compileResult != nil {
+		sm = compileResult.SourceMap
+	}
+	findings := collectFitFindings(input, layouts, slideWidth, slideHeight, theme)
+	out := make([]diagnostics.Diagnostic, 0, len(findings))
+	for _, f := range findings {
+		d := diagnostics.FromFitFinding(f)
+		// Geometry-airiness advisories belong to the render/score path: a
+		// one-slide spec is inherently sparse, and validate is about what the
+		// author wrote. Everything else — text that will not fit, placeholder
+		// copy, a wrapped title — is exactly what this pass exists to surface.
+		if specValidateAiriness[f.Code] {
+			continue
+		}
+		if semPath, _, mapped := sm.ResolveSemantic(f.Path); mapped && semPath != "" {
+			d.Path = semPath
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
+// specValidateAiriness are the geometry advisories validate_deck_spec does not
+// report: they describe how much of the box the text fills, which a one-slide
+// spec cannot control and which the render and score paths already report.
+var specValidateAiriness = map[string]bool{
+	patterns.ErrCodeSparseLayout:        true,
+	patterns.ErrCodeSparseFill:          true,
+	patterns.ErrCodeSlideUnderused:      true,
+	patterns.ErrCodeCellUnderfilled:     true,
+	patterns.ErrCodePatternUnderfilled:  true,
+	patterns.ErrCodeSparseSingleRowFlow: true,
+	patterns.ErrCodeOvertallFlowLane:    true,
+	patterns.ErrCodeSlideNearlyEmpty:    true,
 }

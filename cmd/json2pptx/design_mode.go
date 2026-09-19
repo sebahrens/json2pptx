@@ -536,22 +536,22 @@ func suggestNearestSchemeColor(hex string) string {
 	// Standard palette for suggestion (these are the scheme names, not the actual
 	// template colors which vary). We suggest based on luminance and hue heuristics.
 	type candidate struct {
-		name string
+		name    string
 		r, g, b uint8
 	}
 
 	// Common accent palette approximations (midtones)
 	candidates := []candidate{
-		{"accent1", 68, 114, 196},   // blue
-		{"accent2", 237, 125, 49},   // orange
-		{"accent3", 165, 165, 165},  // gray
-		{"accent4", 255, 192, 0},    // gold
-		{"accent5", 91, 155, 213},   // light blue
-		{"accent6", 112, 173, 71},   // green
-		{"dk1", 0, 0, 0},            // black
-		{"dk2", 68, 84, 106},        // dark gray-blue
-		{"lt1", 255, 255, 255},      // white
-		{"lt2", 228, 230, 232},      // light gray
+		{"accent1", 68, 114, 196},  // blue
+		{"accent2", 237, 125, 49},  // orange
+		{"accent3", 165, 165, 165}, // gray
+		{"accent4", 255, 192, 0},   // gold
+		{"accent5", 91, 155, 213},  // light blue
+		{"accent6", 112, 173, 71},  // green
+		{"dk1", 0, 0, 0},           // black
+		{"dk2", 68, 84, 106},       // dark gray-blue
+		{"lt1", 255, 255, 255},     // white
+		{"lt2", 228, 230, 232},     // light gray
 	}
 
 	bestName := "accent1"
