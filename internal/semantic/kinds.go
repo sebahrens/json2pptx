@@ -202,10 +202,11 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		TypicalFields:  []string{"title", "takeaway"},
 	},
 	KindDecision: {
-		Kind:           KindDecision,
-		Summary:        "Frames a decision, options, and a recommendation.",
-		RequiredFields: []string{"title"},
-		TypicalFields:  []string{"options", "recommendation", "takeaway"},
+		Kind:            KindDecision,
+		Summary:         "The ask: the options considered and the one being recommended. 3–6 options render as numbered boxes and exactly 2 (each with a detail) as numbered cards, with the recommendation in the callout band beneath them; outside that it is the recommendation as a lead-in over option bullets.",
+		RequiredFields:  []string{"title"},
+		RequiredAliases: map[string][]string{"options": {"choices", "alternatives"}},
+		TypicalFields:   []string{"options", "recommendation", "takeaway"},
 	},
 	KindClosing: {
 		Kind:           KindClosing,

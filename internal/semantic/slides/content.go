@@ -231,56 +231,6 @@ func executiveSummaryBullets(body map[string]any) (string, []string) {
 	return "", nil
 }
 
-// CompileDecision compiles a decision slide as a safe content slide: a title,
-// the recommendation as a lead-in body paragraph, and the options as supporting
-// bullets. It deliberately avoids introducing a new pattern (per the MVP
-// contract) — a content slide always validates and renders.
-func CompileDecision(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	slide := &deckinput.SlideInput{SlideType: "content"}
-	var links []SourceLink
-
-	if in.Title != "" {
-		idx := appendContent(slide, textContent("title", in.Title))
-		links = append(links, SourceLink{
-			RawPath:      fmt.Sprintf("%s.content[%d].text_value", in.rawSlide(), idx),
-			SemanticPath: in.semSlide() + ".title",
-		})
-	}
-
-	recommendation := strField(in.Body, "recommendation")
-	options, optionsField := decisionOptions(in.Body)
-
-	switch {
-	case recommendation != "" && len(options) > 0:
-		idx := appendContent(slide, bodyAndBulletsContent("body", recommendation, options))
-		links = append(links,
-			SourceLink{
-				RawPath:      fmt.Sprintf("%s.content[%d].body_and_bullets_value.body", in.rawSlide(), idx),
-				SemanticPath: in.semSlide() + ".recommendation",
-			},
-			SourceLink{
-				RawPath:      fmt.Sprintf("%s.content[%d].body_and_bullets_value.bullets", in.rawSlide(), idx),
-				SemanticPath: in.semSlide() + "." + optionsField,
-			},
-		)
-	case len(options) > 0:
-		idx := appendContent(slide, bulletsContent("body", options))
-		links = append(links, SourceLink{
-			RawPath:      fmt.Sprintf("%s.content[%d].bullets_value", in.rawSlide(), idx),
-			SemanticPath: in.semSlide() + "." + optionsField,
-		})
-	case recommendation != "":
-		idx := appendContent(slide, textContent("body", recommendation))
-		links = append(links, SourceLink{
-			RawPath:      fmt.Sprintf("%s.content[%d].text_value", in.rawSlide(), idx),
-			SemanticPath: in.semSlide() + ".recommendation",
-		})
-	}
-
-	links = append(links, applyTakeaway(slide, in)...)
-	return slide, links, nil
-}
-
 // CompileFallback is the best-effort compiler for content-bearing kinds the MVP
 // does not yet model with a bespoke layout (comparison, process, roadmap). It
 // emits a content slide with the title, any list-shaped payload as bullets, and
@@ -326,27 +276,6 @@ func applyTakeaway(slide *deckinput.SlideInput, in Input) []SourceLink {
 		RawPath:      in.rawSlide() + ".takeaway",
 		SemanticPath: in.semSlide() + "." + field,
 	}}
-}
-
-// decisionOptions extracts the option labels from a decision payload, accepting
-// either a list of strings or a list of {label}/{title} objects. The returned
-// string is the semantic field the options came from.
-func decisionOptions(body map[string]any) ([]string, string) {
-	if opts, ok := stringList(body, "options"); ok && len(opts) > 0 {
-		return opts, "options"
-	}
-	if objs := mapList(body, "options"); len(objs) > 0 {
-		out := make([]string, 0, len(objs))
-		for _, o := range objs {
-			if label := firstNonEmpty(strField(o, "label"), strField(o, "title"), strField(o, "name")); label != "" {
-				out = append(out, label)
-			}
-		}
-		if len(out) > 0 {
-			return out, "options"
-		}
-	}
-	return nil, "options"
 }
 
 // firstListField returns the first string-list payload field (in sorted key

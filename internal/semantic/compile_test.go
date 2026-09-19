@@ -132,7 +132,8 @@ func TestCompileQBR_SourceMapCoverage(t *testing.T) {
 	}
 
 	// Spot-check representative raw paths across kinds: title text, summary
-	// bullets, a KPI cell, the chart, the insights list, and the decision body.
+	// bullets, a KPI cell, the chart, the insights list, and the decision's
+	// options and recommendation.
 	checks := []struct {
 		raw  string
 		want string
@@ -144,7 +145,10 @@ func TestCompileQBR_SourceMapCoverage(t *testing.T) {
 		{"slides[2].pattern.values[0]", "slides[2].kpis[0]"},
 		{"slides[3].pattern.values.chart", "slides[3].chart"},
 		{"slides[3].pattern.values.insights", "slides[3].insights"},
-		{"slides[4].content[1].body_and_bullets_value.body", "slides[4].recommendation"},
+		// go-slide-creator-4ndv: a decision's options compile to a numbered
+		// visual and its recommendation to the callout band beneath them.
+		{"slides[4].pattern.callout.text", "slides[4].recommendation"},
+		{"slides[4].pattern.values", "slides[4].options"},
 	}
 	for _, c := range checks {
 		e, ok := sm.Lookup(c.raw)

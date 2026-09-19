@@ -153,10 +153,13 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"bullets": shapeArray, "metrics": shapeArray, "caption": shapeString,
 		"image_side": shapeString, "image_label": shapeString, "takeaway": shapeString,
 	},
-	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
-	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
-	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
-	KindClosing:  {"title": shapeString, "subtitle": shapeString},
+	KindProcess: {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
+	KindRoadmap: {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
+	KindDecision: {
+		"title": shapeString, "options": shapeArray, "choices": shapeArray, "alternatives": shapeArray,
+		"recommendation": shapeString, "takeaway": shapeString,
+	},
+	KindClosing: {"title": shapeString, "subtitle": shapeString},
 }
 
 // shapeMatches reports whether v has the JSON type the shape expects.
@@ -492,6 +495,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateTimeline(path, slide, s)
 	case KindMatrix2x2:
 		validateMatrix(path, slide, s)
+	case KindDecision:
+		validateDecision(path, slide, s)
 	case KindFramework:
 		validateFramework(path, slide, s)
 	case KindImageCase:
@@ -615,6 +620,17 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 	if over := slides.ImageCaseOverBudget(slide.Body); over != "" {
 		s.advisory(path+".body", diagnostics.CodeSemanticDensity,
 			fmt.Sprintf("image case %s (otherwise it degrades to a content slide)", over))
+	}
+}
+
+// validateDecision reports options that cannot take a numbered visual. They
+// still render, as the content slide this kind has always produced, so the
+// advisory says which visual is lost rather than blocking
+// (go-slide-creator-4ndv).
+func validateDecision(path string, slide SlideSpec, s *semDiags) {
+	if over := slides.DecisionOverBudget(slide.Body); over != "" {
+		s.advisory(path+".options", diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("decision %s (otherwise it degrades to a content slide)", over))
 	}
 }
 

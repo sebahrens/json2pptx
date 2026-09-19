@@ -373,6 +373,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`decision` compiles to a visual (go-slide-creator-4ndv).** The ask is the
+  slide a board deck exists for, and `kind: decision` compiled to a bold
+  paragraph over a column of dashes — the plainest page in the deck.
+  - 3–6 options now render as **numbered-step-strip** (stacked-box): numbered
+    boxes, each a label with an optional detail. Exactly 2 options, each WITH a
+    detail, render as two **card-grid** cards side by side.
+  - The `recommendation` moves into the pattern's **callout band** beneath the
+    options, which is where the ask belongs; the slide's own `takeaway` is
+    untouched and still sits below it.
+  - An option is `"Label"`, `"Label | detail"` (or an em/en dash) or
+    `{label, detail?}`; `choices` and `alternatives` alias `options`.
+  - One option, seven options, a pair missing a detail, or text past the
+    budgets (label ≤60 chars, detail ≤180 in the strip; ≤80 / ≤300 in the
+    cards) keeps the content slide, and `SEMANTIC_DENSITY` says which bound
+    broke — "has one option; a decision slide needs at least two to be a
+    choice".
+  - `examples/semantic/qbr.yaml`'s decision slide is rewritten as
+    label + detail, which is what the visual wants and better authoring anyway.
+
 - **Which patterns DeckSpec can reach is now published and pinned
   (go-slide-creator-4fr1).** DeckSpec is the recommended path but compiles to a
   subset of the pattern registry, and nothing said which subset — three

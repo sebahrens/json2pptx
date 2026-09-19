@@ -124,7 +124,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `architecture` | `tiers` (3–6 → `arch-stack` visual, alias `layers`) | `title`, `rails` (≤3, alias `side_rails`), `takeaway` | each tier: string or `{label, description?}` — or `{label, items[]}`, whose items are joined into the tier's detail line. Label ≤60 chars, detail ≤120, rail ≤30; a payload outside the tier count or those budgets degrades to a bullet list with every word intact, never truncated |
 | `process` | `steps` (3–8 → visual) | `title`, `takeaway` | each step: string or `{label, type?}` |
 | `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?, items?}` (items[] sub-bullets are folded into the phase description) |
-| `decision` | `title` | `recommendation`, `options[]`, `takeaway` | each option: string or `{label}` |
+| `decision` | `title` | `recommendation`, `options[]` (aliases `choices`, `alternatives`), `takeaway` | each option: `"Label"`, `"Label | detail"`, or `{label, detail?}`. **3–6 options render as numbered boxes** (label ≤60 chars, detail ≤180); **exactly 2, each WITH a detail**, render as two cards side by side (label ≤80, detail ≤300). The `recommendation` is the callout band beneath them — the ask, where the room can see it. One option, seven options, or a two-option pair missing a detail falls back to the recommendation as a lead-in over option bullets |
 | `closing` | `title` | `subtitle`, `bullets[]`/`points[]` (renders a content slide) | — |
 | `raw_json2pptx` | `slide` | — | a raw `PresentationInput` slide, structurally validated then passed through (see note) |
 
@@ -226,7 +226,7 @@ it, replace the `__FILL_*__` tokens. Skeletons pre-encode rhythm, accent strateg
 
 ### Patterns DeckSpec cannot reach
 
-A DeckSpec kind compiles to 22 of the 43 registered patterns. The rest are authored with
+A DeckSpec kind compiles to 23 of the 43 registered patterns. The rest are authored with
 `kind: raw_json2pptx` (or a hand-written `PresentationInput`), carrying a `pattern` block
 verbatim — see the raw skeletons above. `list_slide_kinds` publishes the per-kind
 `compositions` list; everything in that list is an override the kind will honour, and anything
@@ -243,7 +243,6 @@ outside it is reported as `SEMANTIC_PATTERN_NOT_AVAILABLE` and ignored.
 | `icon-row` | A horizontal row of icon + caption pairs |
 | `journey-maturity-model` | A 3–6 stage maturity ladder with a 'where we are' marker |
 | `kpi-inline` | A horizontal inline KPI bar, height-capped for supporting context |
-| `numbered-step-strip` | Ordered numbered steps without flowchart diamonds |
 | `process-flow-compact` | A compact process flow, height-capped for short labels |
 | `process-grid-2row` | Two parallel process tracks sharing the same phase columns |
 | `pull-quote` | An italic quote block with attribution |

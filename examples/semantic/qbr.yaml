@@ -54,9 +54,12 @@ slides:
     takeaway: Fund a dedicated SMB success pod now to protect net retention.
     recommendation: Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.
     options:
-      - Hold the current generalist coverage and accept rising SMB churn.
-      - Fund a dedicated SMB success pod (recommended).
-      - Offshore SMB support to cut cost at the expense of response time.
+      - label: Hold current coverage
+        detail: No new cost, and SMB churn keeps climbing through H2.
+      - label: Fund an SMB success pod
+        detail: Four people from Q3; protects net retention in the segment.
+      - label: Offshore SMB support
+        detail: Cheapest per seat, at the expense of response time.
 
   - kind: closing
     title: Questions & Discussion

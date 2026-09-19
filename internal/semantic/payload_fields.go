@@ -88,6 +88,12 @@ var imageCaseMetricKeys = []string{"value", "number", "stat", "label", "caption"
 // imageCaseImageKeys are the keys the image object may carry.
 var imageCaseImageKeys = []string{"path", "url", "alt"}
 
+// decisionOptionKeys are the keys a decision option object may carry.
+var decisionOptionKeys = []string{
+	"label", "title", "name", "option",
+	"detail", "description", "body", "summary",
+}
+
 // archTierKeys are the keys ArchitectureTiers reads from a tier object.
 // teamMemberKeys are the keys a team member object may carry.
 var teamMemberKeys = []string{
@@ -371,12 +377,21 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"takeaway": strField("One-line takeaway footer."),
 		"phases":   {typ: "array", desc: "3–6 phases: strings or {name, date_label?, description?, items?, active?, milestone?}.", itemStrings: true, itemKeys: roadmapPhaseKeys},
 	}, compositionFields()), universalFields()),
-	KindDecision: withFields(map[string]payloadField{
+	KindDecision: withFields(withFields(map[string]payloadField{
 		"title":          strField("Slide title."),
 		"takeaway":       strField("One-line takeaway footer."),
-		"recommendation": strField("Recommendation lead-in paragraph."),
-		"options":        textList("Options: strings or {label}."),
-	}, universalFields()),
+		"recommendation": strField("The ask, rendered in the callout band beneath the options (or as the lead-in paragraph on the content fallback)."),
+		"options": {
+			typ: "array",
+			desc: "2–6 options: strings (\"Label\", or \"Label | detail\") or {label, detail?}. " +
+				"3–6 become numbered boxes (label ≤60 chars, detail ≤180); exactly 2, each WITH a detail, become numbered cards side by side (label ≤80, detail ≤300). " +
+				"Anything else renders as the recommendation plus option bullets.",
+			itemStrings: true,
+			itemKeys:    decisionOptionKeys,
+		},
+		"choices":      {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys},
+		"alternatives": {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys},
+	}, compositionFields()), universalFields()),
 	KindClosing: withFields(map[string]payloadField{
 		"title":    strField("Closing headline."),
 		"subtitle": strField("Subtitle line."),

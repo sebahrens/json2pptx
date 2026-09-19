@@ -127,26 +127,39 @@
       "takeaway": "Q4 acceleration reflects the EMEA launch landing ahead of schedule."
     },
     {
+      "layout_id": "blank-title",
       "slide_type": "content",
       "content": [
         {
           "placeholder_id": "title",
           "type": "text",
           "text_value": "The H2 Retention Bet"
-        },
-        {
-          "placeholder_id": "body",
-          "type": "body_and_bullets",
-          "body_and_bullets_value": {
-            "body": "Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.",
-            "bullets": [
-              "Hold the current generalist coverage and accept rising SMB churn.",
-              "Fund a dedicated SMB success pod (recommended).",
-              "Offshore SMB support to cut cost at the expense of response time."
-            ]
-          }
         }
       ],
+      "pattern": {
+        "name": "numbered-step-strip",
+        "values": {
+          "style": "stacked-box",
+          "steps": [
+            {
+              "label": "Hold current coverage",
+              "body": "No new cost, and SMB churn keeps climbing through H2."
+            },
+            {
+              "label": "Fund an SMB success pod",
+              "body": "Four people from Q3; protects net retention in the segment."
+            },
+            {
+              "label": "Offshore SMB support",
+              "body": "Cheapest per seat, at the expense of response time."
+            }
+          ]
+        },
+        "callout": {
+          "text": "Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.",
+          "emphasis": "bold"
+        }
+      },
       "takeaway": "Fund a dedicated SMB success pod now to protect net retention."
     },
     {

@@ -263,10 +263,12 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		pattern: func(map[string]any) string { return "phase-roadmap" },
 	},
 	KindDecision: {
-		// The MVP compiles a decision to a content slide (recommendation lead-in +
-		// option bullets), not a named pattern, so the plan advertises a layout only
-		// — keeping the explain projection in step with what compile emits.
-		role: RoleRecommendation, family: FamilyText, density: DensityMedium, layout: "content",
+		// The ask is the slide a board deck exists for, so its options take a
+		// numbered visual when they fit one; outside that the plan advertises a
+		// layout only, which is the content slide compile emits
+		// (go-slide-creator-4ndv).
+		role: RoleRecommendation, family: FamilyText, density: DensityMedium, layout: "blank-title",
+		pattern: decisionPattern,
 	},
 	KindClosing:      {role: RoleClosing, family: FamilyStructural, density: DensityLight, layout: "title"},
 	KindRawJSON2pptx: passthroughPlan,
@@ -364,6 +366,12 @@ func frameworkPattern(body map[string]any) string {
 // actually compile to it (go-slide-creator-q31s).
 func imageCasePattern(body map[string]any) string {
 	return slides.ImageCasePattern(body)
+}
+
+// decisionPattern advertises the numbered visual the options will actually
+// compile to, or "" for the content slide (go-slide-creator-4ndv).
+func decisionPattern(body map[string]any) string {
+	return slides.DecisionPattern(body)
 }
 
 // agendaPattern advertises the agenda pattern the payload will actually
@@ -505,6 +513,8 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		}
 	case KindDecision:
 		return []CompositionCandidate{
+			visual("numbered-step-strip", "3-6 options as numbered boxes, the recommendation in the callout band"),
+			visual("card-grid", "exactly 2 options, each with a detail, as two cards side by side"),
 			{Layout: "content", Reason: "the recommendation as a lead-in, then the options as bullets"},
 		}
 	case KindTitle, KindSection, KindClosing:
