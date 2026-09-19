@@ -959,7 +959,7 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 				)
 			case inserts[i].heatmapMode:
 				inserts[i].groupXML = generateHeatmapGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].heatmapMeta,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].heatmapMeta, ctx.themeColors,
 				)
 			case inserts[i].pyramidMode:
 				inserts[i].groupXML = generatePyramidGroupXML(

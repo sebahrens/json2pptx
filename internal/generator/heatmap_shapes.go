@@ -5,8 +5,10 @@ import (
 	"log/slog"
 	"math"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // =============================================================================
@@ -98,7 +100,6 @@ func (ctx *singlePassContext) processHeatmapNativeShapes(slideNum int, item Cont
 		slog.Warn("heatmap native shapes: invalid diagram spec", "slide", slideNum)
 		return
 	}
-
 
 	parsed, err := parseHeatmapData(diagramSpec.Data)
 	if err != nil {
@@ -212,7 +213,7 @@ func decodeHeatmapMeta(encoded string) (minVal, maxVal float64, colorScale strin
 }
 
 // generateHeatmapGroupXML produces the complete <p:grpSp> XML for a heatmap grid.
-func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta heatmapMeta) string {
+func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, meta heatmapMeta, themeColors []types.ThemeColor) string {
 	if len(panels) < 2 {
 		slog.Warn("generateHeatmapGroupXML: insufficient panels", "got", len(panels))
 		return ""
@@ -321,13 +322,15 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 			var val float64
 			_, _ = fmt.Sscanf(panel.title, "%g", &val)
 
-			// Compute fill based on value.
-			fill := heatmapCellFill(val, minVal, maxVal, colorScale)
+			// Compute fill based on value, then the value's own colour
+			// against the tint that fill produces.
+			tone := heatmapCellFill(val, minVal, maxVal, colorScale)
 
 			shapeIdx++
 			cellXML := generateHeatmapCellXML(
 				panel.title, cellX, cellY, cellW, cellH,
-				shapeIDBase+shapeIdx, fill, showValues, cellFontSize,
+				shapeIDBase+shapeIdx, tone.fill(), pptx.SchemeFill(heatmapValueColor(tone, themeColors)),
+				showValues, cellFontSize,
 			)
 			children = append(children, []byte(cellXML))
 		}
@@ -350,10 +353,10 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 // heatmapCellFill computes a scheme-based fill for a heatmap cell.
 // Sequential: accent1 with lumMod interpolated from 20000 (lightest) to 100000 (full saturation).
 // Diverging: accent2 for low values, lt1 for midpoint, accent1 for high values.
-func heatmapCellFill(value, minVal, maxVal float64, colorScale string) pptx.Fill {
+func heatmapCellFill(value, minVal, maxVal float64, colorScale string) heatmapTone {
 	if maxVal == minVal {
 		// All values the same — use 50% tint.
-		return pptx.SchemeFill("accent1", pptx.LumMod(50000), pptx.LumOff(50000))
+		return heatmapTone{scheme: "accent1", lumMod: 50000, lumOff: 50000}
 	}
 
 	t := (value - minVal) / (maxVal - minVal)
@@ -366,26 +369,70 @@ func heatmapCellFill(value, minVal, maxVal float64, colorScale string) pptx.Fill
 			// t=0 → full accent2, t=0.5 → very light accent2
 			satT := 1.0 - t*2 // 1.0 → 0.0
 			lumMod := 20000 + int(satT*80000)
-			lumOff := 100000 - lumMod
-			return pptx.SchemeFill("accent2", pptx.LumMod(lumMod), pptx.LumOff(lumOff))
+			return heatmapTone{scheme: "accent2", lumMod: lumMod, lumOff: 100000 - lumMod}
 		}
 		// High half: accent1 with increasing saturation from midpoint.
 		// t=0.5 → very light accent1, t=1.0 → full accent1
 		satT := (t - 0.5) * 2 // 0.0 → 1.0
 		lumMod := 20000 + int(satT*80000)
-		lumOff := 100000 - lumMod
-		return pptx.SchemeFill("accent1", pptx.LumMod(lumMod), pptx.LumOff(lumOff))
+		return heatmapTone{scheme: "accent1", lumMod: lumMod, lumOff: 100000 - lumMod}
 	}
 
 	// Sequential: accent1 from light tint (t=0) to full saturation (t=1).
 	// lumMod ranges from 20000 (very light) to 100000 (full color).
 	lumMod := 20000 + int(t*80000)
-	lumOff := 100000 - lumMod
-	return pptx.SchemeFill("accent1", pptx.LumMod(lumMod), pptx.LumOff(lumOff))
+	return heatmapTone{scheme: "accent1", lumMod: lumMod, lumOff: 100000 - lumMod}
+}
+
+// heatmapTone is a heatmap cell's fill: a scheme colour and the luminance
+// modifiers that turn it into this cell's tint. Keeping the ingredients rather
+// than only the pptx.Fill is what lets the value's colour be chosen against the
+// colour a viewer actually sees (go-slide-creator-vdvs).
+type heatmapTone struct {
+	scheme string
+	lumMod int
+	lumOff int
+}
+
+// fill renders the tone as a shape fill.
+func (t heatmapTone) fill() pptx.Fill {
+	return pptx.SchemeFill(t.scheme, pptx.LumMod(t.lumMod), pptx.LumOff(t.lumOff))
+}
+
+// heatmapValueColor names the scheme colour of the value printed ON the cell:
+// light text on a saturated tile, dark text on a pale one.
+//
+// Every cell's value used to be dk1, so "92" on the darkest tile of a
+// sequential scale was near-black on dark green (forest-green) or dark blue
+// (midnight-blue) — invisible, on an engine that advertises WCAG AA contrast
+// enforcement everywhere else. The diagram's own text never passed through the
+// contrast pass, which only sees placeholder and shape-grid text.
+//
+// Without theme colours to resolve there is nothing to measure and the
+// historical dk1 stands.
+func heatmapValueColor(tone heatmapTone, themeColors []types.ThemeColor) string {
+	base, err := svggen.ParseColor(resolveSchemeColorToHex(tone.scheme, themeColors))
+	if err != nil {
+		return "dk1"
+	}
+	white, wErr := svggen.ParseColor(resolveSchemeColorToHex("lt1", themeColors))
+	if wErr != nil {
+		white = svggen.Color{R: 255, G: 255, B: 255, A: 1}
+	}
+	dark, dErr := svggen.ParseColor(resolveSchemeColorToHex("dk1", themeColors))
+	if dErr != nil {
+		dark = svggen.Color{A: 1}
+	}
+
+	cell := patterns.EffectiveColor(base, tone.lumMod, tone.lumOff, 1, white)
+	if white.ContrastWith(cell) > dark.ContrastWith(cell) {
+		return "lt1"
+	}
+	return "dk1"
 }
 
 // generateHeatmapCellXML produces a single rect cell shape for the heatmap grid.
-func generateHeatmapCellXML(valueText string, x, y, cx, cy int64, shapeID uint32, fill pptx.Fill, showValue bool, fontSize int) string {
+func generateHeatmapCellXML(valueText string, x, y, cx, cy int64, shapeID uint32, fill, textColor pptx.Fill, showValue bool, fontSize int) string {
 	var text *pptx.TextBody
 	if showValue && valueText != "" {
 		var val float64
@@ -407,7 +454,7 @@ func generateHeatmapCellXML(valueText string, x, y, cx, cy int64, shapeID uint32
 					FontSize: fontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    pptx.SchemeFill("dk1"),
+					Color:    textColor,
 				}},
 			}},
 		}

@@ -352,6 +352,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **heatmap cell values are readable on the dark tiles
+  (go-slide-creator-vdvs).** Every value was printed in `dk1`, so "92" on the
+  saturated end of a sequential scale was near-black on dark blue or dark
+  green. Measured worst case per template, dk1 on the cell it sits on:
+  warm-coral 2.25, midnight-blue 2.67, modern-template 4.04, forest-green
+  4.10 — all under the 4.5:1 bar the engine enforces everywhere else. Diagram
+  text never passed through the contrast pass, which only sees placeholder and
+  shape-grid text.
+  - Each cell's value is now `lt1` or `dk1`, whichever reads better against
+    the colour that cell's tint actually produces (scheme colour + lumMod /
+    lumOff, resolved through the template theme). Every cell of the reported
+    fixture clears 4.5:1 on all four bundled templates.
+  - It is per cell, not a blanket flip: warm-coral's saturated orange keeps
+    dark text, because black reads better on it than white does.
+  - Without a theme to measure against, the historical `dk1` stands.
+
 - **`audit_palette` works on a machine that installs LibreOffice as `soffice`
   (go-slide-creator-rdql).** The tool demanded a binary literally named
   `libreoffice` plus `pdftoppm`, so on macOS/Homebrew — where the CLI is

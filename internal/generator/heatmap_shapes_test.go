@@ -200,7 +200,7 @@ func TestGenerateHeatmapGroupXML_Basic(t *testing.T) {
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 8000000, Height: 5000000}
 	meta := heatmapMeta{numRows: 2, numCols: 2, colorScale: "sequential"}
 
-	result := generateHeatmapGroupXML(panels, bounds, 100, meta)
+	result := generateHeatmapGroupXML(panels, bounds, 100, meta, nil)
 
 	if result == "" {
 		t.Fatal("generateHeatmapGroupXML returned empty string")
@@ -258,7 +258,7 @@ func TestGenerateHeatmapGroupXML_Basic(t *testing.T) {
 }
 
 func TestGenerateHeatmapGroupXML_Empty(t *testing.T) {
-	result := generateHeatmapGroupXML(nil, types.BoundingBox{}, 100, heatmapMeta{})
+	result := generateHeatmapGroupXML(nil, types.BoundingBox{}, 100, heatmapMeta{}, nil)
 	if result != "" {
 		t.Error("should return empty for nil panels")
 	}
@@ -282,7 +282,7 @@ func TestGenerateHeatmapGroupXML_NoLabels(t *testing.T) {
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 	meta := heatmapMeta{numRows: 2, numCols: 2, colorScale: "sequential"}
 
-	result := generateHeatmapGroupXML(panels, bounds, 100, meta)
+	result := generateHeatmapGroupXML(panels, bounds, 100, meta, nil)
 	if result == "" {
 		t.Fatal("should generate XML without labels")
 	}
@@ -312,7 +312,7 @@ func TestGenerateHeatmapGroupXML_Diverging(t *testing.T) {
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 3000000}
 	meta := heatmapMeta{numRows: 1, numCols: 3, colorScale: "diverging"}
 
-	result := generateHeatmapGroupXML(panels, bounds, 100, meta)
+	result := generateHeatmapGroupXML(panels, bounds, 100, meta, nil)
 	if result == "" {
 		t.Fatal("should generate XML for diverging scale")
 	}
