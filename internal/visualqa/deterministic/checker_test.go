@@ -128,14 +128,19 @@ func TestScoreFromFindings_ZeroSlides(t *testing.T) {
 	}
 }
 
+// go-slide-creator-7xyy: this label now comes from the one shared mapping in
+// internal/diagnostics, which reads "review" as info — every envelope already
+// did, and this copy reading it as a warning is what made the same code come
+// back at two severities depending on which tool the agent asked. The SCORE is
+// unaffected: it weights SeverityWeight[action], not this label.
 func TestScoreFinding_Severity(t *testing.T) {
 	tests := []struct {
-		action   string
-		wantSev  string
+		action  string
+		wantSev string
 	}{
 		{"refuse", "error"},
 		{"shrink_or_split", "warning"},
-		{"review", "warning"},
+		{"review", "info"},
 		{"info", "info"},
 		{"unknown", "info"},
 	}

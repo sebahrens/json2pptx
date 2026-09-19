@@ -79,6 +79,7 @@ func (o *dryRunOutput) buildFindingsEnvelope() {
 	ds := make([]diagnostics.Diagnostic, 0, len(o.Diagnostics)+len(o.FitFindings))
 	ds = append(ds, o.Diagnostics...)
 	ds = append(ds, diagnostics.FromFitFindings(o.FitFindings)...)
+	ds = dedupeDiagnostics(ds)
 	sort.SliceStable(ds, func(i, j int) bool {
 		return severityRank(ds[i].Severity) < severityRank(ds[j].Severity)
 	})
@@ -87,6 +88,47 @@ func (o *dryRunOutput) buildFindingsEnvelope() {
 		Template:    o.template,
 		InputSHA256: o.inputSHA256,
 	}, ds)
+}
+
+// dedupeDiagnostics collapses findings that say the same thing about the same
+// place. Two detectors can legitimately notice one fact — a table's row count is
+// checked by the validator AND by the fit report — and the deck then carried it
+// twice, once as a warning and once as an info, so an agent filtering by
+// severity saw the same table in two different work lists
+// (go-slide-creator-7xyy).
+//
+// Identity is (code, path, message): same words about the same field. The
+// survivor is the richer record — a remediation, then a next_tool_call, then the
+// higher severity — so nothing actionable is lost to the collapse. Order is
+// otherwise preserved.
+func dedupeDiagnostics(ds []diagnostics.Diagnostic) []diagnostics.Diagnostic {
+	type key struct{ code, path, message string }
+	seen := make(map[key]int, len(ds))
+	out := make([]diagnostics.Diagnostic, 0, len(ds))
+	for _, d := range ds {
+		k := key{d.Code, d.Path, d.Message}
+		if idx, ok := seen[k]; ok {
+			if richerDiagnostic(d, out[idx]) {
+				out[idx] = d
+			}
+			continue
+		}
+		seen[k] = len(out)
+		out = append(out, d)
+	}
+	return out
+}
+
+// richerDiagnostic reports whether candidate carries more for an agent to act on
+// than incumbent.
+func richerDiagnostic(candidate, incumbent diagnostics.Diagnostic) bool {
+	if (candidate.Fix != nil) != (incumbent.Fix != nil) {
+		return candidate.Fix != nil
+	}
+	if (candidate.NextToolCall != nil) != (incumbent.NextToolCall != nil) {
+		return candidate.NextToolCall != nil
+	}
+	return severityRank(candidate.Severity) < severityRank(incumbent.Severity)
 }
 
 // severityRank orders diagnostics for the findings envelope: error before

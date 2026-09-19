@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -1300,5 +1301,68 @@ func TestCollectFitFindings_NoTitleCollisionOnNormalLayout(t *testing.T) {
 		if f.Code == patterns.ErrCodeTitleCollision {
 			t.Errorf("unexpected %s finding on a normal (body-below-title) layout: %s", f.Code, f.Path)
 		}
+	}
+}
+
+// TestDedupeDiagnostics pins the collapse rule (go-slide-creator-7xyy): two
+// detectors noticing the same fact about the same field produce one finding, and
+// the survivor is the one an agent can act on.
+func TestDedupeDiagnostics(t *testing.T) {
+	withFix := diagnostics.Diagnostic{
+		Code: "density_exceeded", Path: "/slides/1/content/1",
+		Message: "table has 13 logical rows (max 7)", Severity: diagnostics.SeverityInfo,
+		Fix: &diagnostics.Fix{Kind: "split_at_row"},
+	}
+	bare := diagnostics.Diagnostic{
+		Code: "density_exceeded", Path: "/slides/1/content/1",
+		Message: "table has 13 logical rows (max 7)", Severity: diagnostics.SeverityWarning,
+	}
+	other := diagnostics.Diagnostic{
+		Code: "density_exceeded", Path: "/slides/2/content/1",
+		Message: "table has 9 columns (max 6)", Severity: diagnostics.SeverityWarning,
+	}
+
+	t.Run("the richer record survives", func(t *testing.T) {
+		got := dedupeDiagnostics([]diagnostics.Diagnostic{bare, withFix, other})
+		if len(got) != 2 {
+			t.Fatalf("got %d diagnostics, want 2: %+v", len(got), got)
+		}
+		if got[0].Fix == nil {
+			t.Errorf("the record with a fix should have survived: %+v", got[0])
+		}
+		if got[1].Path != other.Path {
+			t.Errorf("a different path must not be collapsed: %+v", got[1])
+		}
+	})
+
+	t.Run("order is preserved", func(t *testing.T) {
+		got := dedupeDiagnostics([]diagnostics.Diagnostic{other, bare, withFix})
+		if len(got) != 2 || got[0].Path != other.Path {
+			t.Errorf("first occurrence should keep its position: %+v", got)
+		}
+	})
+
+	t.Run("a different message is a different finding", func(t *testing.T) {
+		variant := bare
+		variant.Message = "table has 9 columns (max 6)"
+		if got := dedupeDiagnostics([]diagnostics.Diagnostic{bare, variant}); len(got) != 2 {
+			t.Errorf("got %d, want both findings kept: %+v", len(got), got)
+		}
+	})
+}
+
+// TestDeclaredFindingActionUsesTheRegistry pins that an emitter with no action
+// of its own takes the one the code declares, so a code means one severity
+// wherever it is raised.
+func TestDeclaredFindingActionUsesTheRegistry(t *testing.T) {
+	if got := declaredFindingAction(patterns.ErrCodeDensityExceeded); got != "shrink_or_split" {
+		t.Errorf("declaredFindingAction(density_exceeded) = %q, want the registry's shrink_or_split", got)
+	}
+	if got := declaredFindingAction("not-a-registered-code"); got != "review" {
+		t.Errorf("unknown code = %q, want the review default", got)
+	}
+	// And the severity that action resolves to must match what the envelope uses.
+	if got := diagnostics.SeverityForFinding(patterns.ErrCodeDensityExceeded, ""); got != diagnostics.SeverityWarning {
+		t.Errorf("SeverityForFinding(density_exceeded, no action) = %q, want warning", got)
 	}
 }

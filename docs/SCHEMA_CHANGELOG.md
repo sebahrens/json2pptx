@@ -321,6 +321,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **One finding code arrived at two severities (go-slide-creator-7xyy).**
+  `density_exceeded` came back from a single `validate_input` response as four
+  warnings AND four infos — the same four table facts, emitted once by the
+  validator and once by the fit report, at different severities — and the
+  visual-QA checker kept its own action→severity map that read `review` as a
+  warning while every envelope read it as info.
+  - Severity now comes from one place: `diagnostics.SeverityForAction`, used by
+    the envelopes and by `score_deck`'s per-slide findings. An emitter that
+    states no action takes the one the code DECLARES in the finding registry
+    (`describe_finding`'s `severity`), so a code cannot be demoted by the
+    detector that happened to raise it.
+  - Findings with the same `(code, path, message)` are collapsed to one entry,
+    keeping the record that carries a remediation. On the reported deck the
+    envelope goes from 10 findings to 6, with every fact stated once.
+  - Score and gate are unaffected: they weight the finding's `action`, not the
+    severity label.
+
 - **A wrong-typed argument was reported as missing (go-slide-creator-6072).**
   A sweep of every core tool with a wrong-typed first argument found
   `describe_finding{code: 12345}` answering "code is required",

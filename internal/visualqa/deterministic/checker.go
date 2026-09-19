@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
@@ -296,20 +297,14 @@ type CodeCount struct {
 	Count int    `json:"count"`
 }
 
-// actionToSeverity maps FitFinding action to a human-friendly severity label.
+// actionToSeverity maps a FitFinding action to its severity label, through the
+// one shared mapping. It used to keep its own copy, which read "review" as a
+// warning while every envelope read it as info: the same code came back at two
+// severities depending on which tool the agent asked (go-slide-creator-7xyy).
+// The score itself is unaffected — that reads SeverityWeight[action], not this
+// label.
 func actionToSeverity(action string) string {
-	switch action {
-	case "refuse":
-		return "error"
-	case "shrink_or_split":
-		return "warning"
-	case "review":
-		return "warning"
-	case "info":
-		return "info"
-	default:
-		return "info"
-	}
+	return string(diagnostics.SeverityForAction(action))
 }
 
 // breadthExemptCodes are advisory codes about AIRINESS rather than defect: a

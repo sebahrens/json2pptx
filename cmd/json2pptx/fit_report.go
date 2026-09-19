@@ -253,13 +253,17 @@ func measureTable(table *jsonschema.TableInput, pathPrefix string, slideIdx int)
 	}
 
 	// Schema-level density check (rows ≤ 7, cols ≤ 6 with multiline counting).
+	// The action comes from what the CODE declares, not from this call site:
+	// the same facts are also emitted by the validator, and hardcoding "review"
+	// here put one table's density in a single response as both a warning and an
+	// info (go-slide-creator-7xyy).
 	for _, ve := range pipeline.DetectTableDensity(table, pathPrefix) {
 		findings = append(findings, fitFinding{
 			Code:    ve.Code,
 			Path:    ve.Path,
 			Message: ve.Message,
 			Fix:     ve.Fix,
-			Action:  "review",
+			Action:  declaredFindingAction(ve.Code),
 		})
 	}
 
@@ -654,4 +658,15 @@ func chartDryRenderLocalFindings(input *PresentationInput) []fitFinding {
 		})
 	}
 	return out
+}
+
+// declaredFindingAction returns the action a finding code declares in the
+// finding-meta registry, or "review" when the code has no entry. An emitter that
+// has no better information should use it rather than picking an action, so one
+// code means one severity wherever it is raised (go-slide-creator-7xyy).
+func declaredFindingAction(code string) string {
+	if meta, ok := patterns.GetFindingMeta(code); ok && meta.Severity != "" {
+		return meta.Severity
+	}
+	return "review"
 }

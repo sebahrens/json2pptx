@@ -133,7 +133,7 @@ func FromValidationErrors(ves []*patterns.ValidationError) []Diagnostic {
 // warning, "review"/"info" → info.
 func FromFitFinding(f patterns.FitFinding) Diagnostic {
 	d := FromValidationError(&f.ValidationError)
-	d.Severity = fitActionToSeverity(f.Action)
+	d.Severity = SeverityForFinding(f.Code, f.Action)
 	d.NextToolCall = f.NextToolCall
 	if d.Details == nil {
 		d.Details = make(map[string]any)
@@ -207,8 +207,12 @@ func fromSingleError(err error, fallbackCode string) Diagnostic {
 	}
 }
 
-// fitActionToSeverity maps fit-finding action strings to diagnostic severities.
-func fitActionToSeverity(action string) Severity {
+// SeverityForAction maps a finding's action to its diagnostic severity. It is
+// the ONE place that mapping lives: the visual-QA checker had its own copy that
+// read "review" as a warning while this one read it as info, so the same code
+// came back at two severities depending on which tool an agent asked
+// (go-slide-creator-7xyy).
+func SeverityForAction(action string) Severity {
 	switch action {
 	case "refuse":
 		return SeverityError
@@ -218,6 +222,21 @@ func fitActionToSeverity(action string) Severity {
 		return SeverityInfo
 	}
 }
+
+// SeverityForFinding resolves a finding's severity from its action, falling back
+// to the action the code DECLARES in the finding-meta registry when the emitter
+// did not state one. Without the fallback an emitter that omits the action
+// silently demotes its own finding, which is how one density fact reached one
+// response as a warning and an info at the same time.
+func SeverityForFinding(code, action string) Severity {
+	if action == "" {
+		if meta, ok := patterns.GetFindingMeta(code); ok {
+			action = meta.Severity
+		}
+	}
+	return SeverityForAction(action)
+}
+
 
 // HasErrors returns true if any diagnostic has error severity.
 func HasErrors(ds []Diagnostic) bool {
