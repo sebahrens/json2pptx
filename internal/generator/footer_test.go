@@ -838,7 +838,7 @@ func TestBuildPageNumberRuns(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			runs := buildPageNumberRuns(tt.format, tt.total, "")
+			runs := buildPageNumberRuns(tt.format, tt.total, footerFontSize, "")
 			if len(runs) != tt.wantCount {
 				t.Errorf("got %d runs, want %d", len(runs), tt.wantCount)
 			}
@@ -868,7 +868,7 @@ func TestGenerateFormattedSlideNumShape(t *testing.T) {
 		Extent: extentXML{CX: 3200400, CY: 365125},
 	}
 
-	result := generateFormattedSlideNumShape(992, "Footer Right", pos, "{current} / {total}", 30, "")
+	result := generateFormattedSlideNumShape(992, "Footer Right", pos, "{current} / {total}", 30, footerFontSize, "")
 
 	if !strings.Contains(result, `type="slidenum"`) {
 		t.Error("expected slidenum field")

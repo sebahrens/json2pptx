@@ -321,6 +321,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`chrome.page_numbers` wrapped `2 / 10` onto two lines
+  (go-slide-creator-pss1z).** The slide-number box was widened to a flat 0.5in —
+  "enough for three digits" — and the page-number text never went near the
+  fitter that sizes the left footer, so on modern-template every numbered slide
+  showed `2 /` over `10` in the corner.
+  - The box is now measured from the widest string the format can produce (both
+    `{current}` and `{total}` at the deck's highest number, since `{current}` is
+    a field PowerPoint fills in at display time) with the same font metrics the
+    left footer is fitted with, and grows leftward from its fixed right edge.
+  - The growth is capped at 2in and stops short of the left footer's last inch;
+    when the format still does not fit, the number's type shrinks on the
+    footer's own ladder (10.5pt → 8pt) rather than wrapping. Both slide-number
+    shapes now carry `wrap="none"` as a backstop.
+  - The left footer is laid out against the widened box, so the two cannot
+    overlap. A template whose slide-number box is already wide enough is
+    untouched.
+
 - **`slide_type: "closing"` now says where the value belongs
   (go-slide-creator-ejh5u).** `closing` appears in `canonical_layout_ids`, in
   `chrome.page_numbers.skip`, as a DeckSpec kind and in `get_started`'s notes,
