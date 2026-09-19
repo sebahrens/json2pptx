@@ -84,7 +84,7 @@ func TestBuildSupportedTypes_DataFormatHints(t *testing.T) {
 		{"waterfall", []string{"points"}, "points: [{label, value, type: \"increase\"|\"decrease\"|\"total\"}]"},
 		{"gauge", []string{"value"}, "value: number; min/max: number; thresholds: [{value, color, label}]"},
 		{"fishbone", []string{"effect"}, "effect: string (problem label); categories: [{name, causes: string[]}]"},
-		{"panel_layout", []string{"panels"}, "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"|\"stylish_panels\""},
+		{"panel_layout", []string{"panels"}, "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"|\"stylish_panels\" (inside data). In stat_cards the NUMBER is the hero: an explicit value wins, otherwise a short body carrying a digit (\"EUR 184m\") is drawn large with title as its caption; a prose body stays small under the title"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

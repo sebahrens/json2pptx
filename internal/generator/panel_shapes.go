@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -762,19 +764,49 @@ func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 	return string(b)
 }
 
+// statCardHeroMaxRunes is the longest body a stat card treats as its hero
+// number. "EUR 1,186.4M" is 12; a sentence is not a statistic.
+const statCardHeroMaxRunes = 24
+
+// statCardParts decides which of a panel's fields is the 32pt hero, which is
+// the caption under it, and what is left for the small body line.
+//
+// panel_layout's documented shape is {title, body}, and an agent following the
+// data-format hints writes {title: "ARR", body: "EUR 184m"} — which rendered
+// "ARR" at 32pt and the money as the caption, the exact inverse of the sibling
+// stat_cards diagram type fed the same content (go-slide-creator-3j88). A body
+// that reads as a statistic — short, and carrying a digit — is therefore the
+// hero, with the title as its caption. An explicit `value` still wins, and a
+// body that is prose keeps its place under the title.
+func statCardParts(panel nativePanelData) (hero, caption, body string) {
+	switch {
+	case panel.value != "":
+		return panel.value, panel.title, panel.body
+	case statLikeBody(panel.body) && panel.title != "":
+		return panel.body, panel.title, ""
+	default:
+		return panel.title, "", panel.body
+	}
+}
+
+// statLikeBody reports whether a body reads as a statistic rather than prose.
+func statLikeBody(body string) bool {
+	trimmed := strings.TrimSpace(body)
+	if trimmed == "" || utf8.RuneCountInString(trimmed) > statCardHeroMaxRunes {
+		return false
+	}
+	return strings.ContainsFunc(trimmed, unicode.IsDigit)
+}
+
 // generateStatCardXML produces the shapes for a single stat card.
 // Returns a background rect with all text zones rendered as paragraphs in a single text body.
 func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32) string {
-	// Determine the display value: prefer explicit value, fall back to title.
-	displayValue := panel.value
-	if displayValue == "" {
-		displayValue = panel.title
-	}
+	displayValue, caption, body := statCardParts(panel)
 
 	// Determine if body indicates a delta (starts with + or -)
 	var deltaColor string
-	if len(panel.body) > 0 {
-		switch panel.body[0] {
+	if len(body) > 0 {
+		switch body[0] {
 		case '+':
 			deltaColor = "accent6" // green-ish in most themes
 		case '-':
@@ -801,14 +833,14 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 		})
 	}
 
-	// Title label paragraph — shown when value is separate from title
-	if panel.value != "" && panel.title != "" {
+	// Caption paragraph — the label under the hero number.
+	if caption != "" {
 		paras = append(paras, pptx.Paragraph{
 			Align:      "ctr",
 			NoBullet:   true,
 			SpaceAfter: 200,
 			Runs: []pptx.Run{{
-				Text:     panel.title,
+				Text:     caption,
 				Lang:     "en-US",
 				FontSize: statCardLabelFontSize,
 				Bold:     true,
@@ -819,9 +851,9 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 	}
 
 	// Body/delta paragraph
-	if panel.body != "" {
+	if body != "" {
 		bodyRun := pptx.Run{
-			Text:     panel.body,
+			Text:     body,
 			Lang:     "en-US",
 			FontSize: statCardBodyFontSize,
 			Dirty:    true,

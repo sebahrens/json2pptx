@@ -172,7 +172,7 @@ Add an optional `chart_style` block on a `chart_value` (or `diagram_value`) to f
 }
 ```
 
-Supported diagram types: `timeline`, `process_flow`, `pyramid`, `venn`, `swot`, `org_chart`, `gantt`, `matrix_2x2`, `porters_five_forces`, `house_diagram`, `business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`, `heatmap`, `fishbone`, `pestel`, `panel_layout` (aliases `icon_columns`, `icon_rows`, `stat_cards` expand to `panel_layout` with the matching `layout`; each `panels[]` entry accepts a native-SVG `icon`). See `ChartSpec.type` and `DiagramSpec.type` in the schema for the authoritative list.
+Supported diagram types: `timeline`, `process_flow`, `pyramid`, `venn`, `swot`, `org_chart`, `gantt`, `matrix_2x2`, `porters_five_forces`, `house_diagram`, `business_model_canvas`, `value_chain`, `nine_box_talent`, `kpi_dashboard`, `heatmap`, `fishbone`, `pestel`, `panel_layout` (aliases `icon_columns`, `icon_rows`, `stat_cards` expand to `panel_layout` with the matching `layout`, given inside `data`; each `panels[]` entry accepts a native-SVG `icon`). In `layout: "stat_cards"` the NUMBER is the hero: an explicit `value` wins, otherwise a short `body` carrying a digit (`"EUR 184m"`) is drawn at 32pt with `title` as its caption, so `{title, body}` and `{title, value}` render the same card; a prose `body` stays small under the title. See `ChartSpec.type` and `DiagramSpec.type` in the schema for the authoritative list.
 
 Charts and diagrams render to SVG and embed into the slide.
 

@@ -350,6 +350,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **`panel_layout` `layout: "stat_cards"` no longer inverts the card
+  (go-slide-creator-3j88).** With `panels: [{title: "ARR", body: "EUR 184m"}]`
+  — the shape `get_data_format_hints` documents — the card drew "ARR" at 32pt
+  and the money as the small caption, the exact inverse of the sibling
+  `stat_cards` diagram type fed `{title, value}`.
+  - The hero is now the statistic: an explicit `value` wins, otherwise a short
+    `body` carrying a digit (`"EUR 184m"`, ≤24 characters) is the 32pt number
+    with `title` as its caption. A prose body keeps its place under the title,
+    and a short body with no digit (`{title: "Phase 1", body: "Discovery"}`) is
+    a label pair, not a statistic, so it is unchanged.
+  - The two paths now render identical cards for the same content.
+  - `get_data_format_hints`' `panel_layout` description states the rule and
+    that `layout` belongs inside `data`.
+
 - **Table conditional formatting accepts a text threshold, and the rule is
   actually evaluated (go-slide-creator-6hlu).** `conditional.threshold` was a
   `float64`, so the natural RAG rule

@@ -1168,7 +1168,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		"panel_layout": {
 			RequiredKeys: []string{"panels"},
 			OptionalKeys: []string{"layout", "gap", "icon_size"},
-			Description:  "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"|\"stylish_panels\"",
+			Description:  "panels: [{title, body, icon?, color?}]; layout: \"columns\"|\"rows\"|\"stat_cards\"|\"stylish_panels\" (inside data). In stat_cards the NUMBER is the hero: an explicit value wins, otherwise a short body carrying a digit (\"EUR 184m\") is drawn large with title as its caption; a prose body stays small under the title",
 		},
 	}
 }
