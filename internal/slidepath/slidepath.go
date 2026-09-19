@@ -120,6 +120,12 @@ func HasPrefix(path, prefix string) bool {
 // ParseGridCell extracts slide, row, and cell indices from a grid cell path.
 // Returns ok=false if the path doesn't match the expected format.
 func ParseGridCell(path string) (slideIdx, rowIdx, cellIdx int, ok bool) {
-	n, _ := fmt.Sscanf(path, "/slides/%d/shape_grid/rows/%d/cells/%d", &slideIdx, &rowIdx, &cellIdx)
+	if n, _ := fmt.Sscanf(path, "/slides/%d/shape_grid/rows/%d/cells/%d", &slideIdx, &rowIdx, &cellIdx); n >= 3 {
+		return slideIdx, rowIdx, cellIdx, true
+	}
+	// Findings on a pattern slide are rooted at /slides/N/pattern/... because the
+	// deck has no shape_grid at that index (go-slide-creator-adur); the two
+	// spellings address the same cell of the expanded grid.
+	n, _ := fmt.Sscanf(path, "/slides/%d/pattern/rows/%d/cells/%d", &slideIdx, &rowIdx, &cellIdx)
 	return slideIdx, rowIdx, cellIdx, n >= 3
 }

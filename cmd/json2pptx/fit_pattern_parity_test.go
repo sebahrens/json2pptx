@@ -81,8 +81,11 @@ func TestPatternFindingPathsAndFixes(t *testing.T) {
 		if strings.HasPrefix(f.Path, "/slides/0/pattern/") {
 			sawPatternPath = true
 		}
-		if f.Fix != nil && f.Fix.Kind == "reduce_cell_text" {
-			t.Errorf("finding %s suggests reduce_cell_text on a pattern slide, which has no cell to edit", f.Code)
+		// reduce_cell_text IS executable on a pattern slide: repair_slide maps
+		// the cell path back to the pattern value that produced it
+		// (go-slide-creator-qnrb). What it must carry is the pattern name.
+		if f.Fix != nil && f.Fix.Kind == "reduce_cell_text" && f.Fix.Params["pattern"] == nil {
+			t.Errorf("finding %s suggests reduce_cell_text without naming the pattern: %+v", f.Code, f.Fix.Params)
 		}
 	}
 	if !sawPatternPath {
@@ -98,20 +101,20 @@ func TestPatternCellFixCarriesTheBudget(t *testing.T) {
 		"max_chars": 90,
 	}}
 	got := patternCellFix(fix, "scqa-summary")
-	if got.Kind != "rewrite_field" {
-		t.Errorf("kind = %q, want rewrite_field (advisory: the agent shortens its own values)", got.Kind)
+	if got.Kind != "reduce_cell_text" {
+		t.Errorf("kind = %q — repair_slide resolves a pattern cell_path back to its value, so the executable directive stays", got.Kind)
 	}
 	if got.Params["max_chars"] != 90 {
 		t.Errorf("the character budget must survive: %+v", got.Params)
 	}
-	if got.Params["cell_path"] != nil {
-		t.Error("a cell_path an agent cannot act on must not be carried over")
+	if got.Params["cell_path"] != "/slides/0/shape_grid/rows/1/cells/0" {
+		t.Errorf("the cell path must survive — it is how the value is located: %+v", got.Params)
 	}
 	if got.Params["pattern"] != "scqa-summary" {
 		t.Errorf("pattern name missing: %+v", got.Params)
 	}
-	if !patterns.FixKindIsAdvisory(got.Kind) {
-		t.Errorf("%q must be a registered advisory kind", got.Kind)
+	if !patterns.FixKindIsExecutable(got.Kind) {
+		t.Errorf("%q must be an executable kind", got.Kind)
 	}
 }
 

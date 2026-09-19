@@ -1625,6 +1625,258 @@ func validatePatternHalf(slide *SlideInput, slideIdx int) error {
 	return err
 }
 
+// reduceCellTextOnPattern applies a cell-text budget to the pattern VALUE that
+// produced the addressed cell. The expansion is deterministic, so expanding the
+// pattern, reading the cell's text, and finding that string in pattern.values is
+// a reliable provenance map for the common case; an ambiguous or missing match
+// refuses with the value path an agent can edit instead of guessing.
+func reduceCellTextOnPattern(input *PresentationInput, slideIdx int, cellPath string, maxChars int, params map[string]any) appliedFix {
+	const kind = "reduce_cell_text"
+	slide := &input.Slides[slideIdx]
+	if slide.Pattern == nil {
+		return appliedFix{Kind: kind, Applied: false, Message: "slide has no shape_grid"}
+	}
+	grid := expandSlidePatternGrid(slide, slideIdx, 0, 0, nil)
+	if grid == nil {
+		return appliedFix{Kind: kind, Applied: false, Message: fmt.Sprintf("pattern %q does not expand, so its cells cannot be edited; fix the pattern values first", slide.Pattern.Name)}
+	}
+	_, rowIdx, cellIdx, ok := slidepath.ParseGridCell(cellPath)
+	if !ok || rowIdx < 0 || rowIdx >= len(grid.Rows) {
+		return appliedFix{Kind: kind, Applied: false, Message: fmt.Sprintf("cannot resolve %q in pattern %q", cellPath, slide.Pattern.Name)}
+	}
+	row := grid.Rows[rowIdx]
+	if cellIdx < 0 || cellIdx >= len(row.Cells) {
+		return appliedFix{Kind: kind, Applied: false, Message: fmt.Sprintf("cell index %d out of range in pattern %q", cellIdx, slide.Pattern.Name)}
+	}
+	cell := row.Cells[cellIdx]
+	if cell == nil || cell.Shape == nil || len(cell.Shape.Text) == 0 {
+		return appliedFix{Kind: kind, Applied: false, Message: "cell has no text content"}
+	}
+	// A cell is usually composed of several paragraphs ("$21M" over "Revenue"),
+	// so match each paragraph against the values rather than the joined text.
+	texts := cellTextParts(cell.Shape.Text)
+	if len(texts) == 0 {
+		return appliedFix{Kind: kind, Applied: false, Message: "cell has no text content"}
+	}
+
+	var values any
+	if err := json.Unmarshal(slide.Pattern.Values, &values); err != nil {
+		return appliedFix{Kind: kind, Applied: false, Message: fmt.Sprintf("failed to parse pattern values: %v", err)}
+	}
+	return reduceCellTextInValue(input, slideIdx, values, texts, maxChars, params)
+}
+
+// cellTextParts returns a cell's paragraphs (or its single content string),
+// longest first: the longest paragraph is the one a per-cell budget is about.
+func cellTextParts(raw json.RawMessage) []string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		if t := strings.TrimSpace(s); t != "" {
+			return []string{t}
+		}
+		return nil
+	}
+	var obj struct {
+		Content    string `json:"content"`
+		Paragraphs []struct {
+			Content string `json:"content"`
+		} `json:"paragraphs"`
+	}
+	if json.Unmarshal(raw, &obj) != nil {
+		return nil
+	}
+	var out []string
+	if t := strings.TrimSpace(obj.Content); t != "" {
+		out = append(out, t)
+	}
+	for _, p := range obj.Paragraphs {
+		if t := strings.TrimSpace(p.Content); t != "" {
+			out = append(out, t)
+		}
+	}
+	// Markdown emphasis survives into the cell text but not into the authored
+	// value, so compare on the plain form too.
+	for _, t := range append([]string(nil), out...) {
+		if plain := stripInlineMarkup(t); plain != t {
+			out = append(out, plain)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return len([]rune(out[i])) > len([]rune(out[j])) })
+	return out
+}
+
+// stripInlineMarkup removes markdown emphasis markers for value matching.
+func stripInlineMarkup(s string) string {
+	r := strings.NewReplacer("**", "", "*", "", "__", "", "_", "")
+	return strings.TrimSpace(r.Replace(s))
+}
+
+// reduceCellTextInValue finds the pattern value holding cellText and truncates
+// it in place.
+func reduceCellTextInValue(input *PresentationInput, slideIdx int, values any, texts []string, maxChars int, params map[string]any) appliedFix {
+	const kind = "reduce_cell_text"
+	var m valueMatch
+	var ambiguous string
+	found := false
+	for _, text := range texts {
+		matches := findValueStrings(values, "", text)
+		switch len(matches) {
+		case 0:
+			continue
+		case 1:
+			m, found = matches[0], true
+		default:
+			if ambiguous == "" {
+				ambiguous = text
+			}
+			continue
+		}
+		break
+	}
+	if !found {
+		if ambiguous != "" {
+			return appliedFix{
+				Kind:    kind,
+				Applied: false,
+				Code:    "semantic_review_required",
+				Message: fmt.Sprintf("%q appears more than once in the pattern's values, so the cell it belongs to is ambiguous; edit the one you mean with replace_value", truncateForMessage(ambiguous, 40)),
+			}
+		}
+		return appliedFix{
+			Kind:       kind,
+			Applied:    false,
+			Code:       "wrong_kind_for_target",
+			DidYouMean: "replace_value",
+			Message:    fmt.Sprintf("this cell's text (%q) is composed at expansion and does not appear in the pattern's values; shorten the source value with replace_value", truncateForMessage(texts[0], 40)),
+		}
+	}
+	truncated := truncateWithEllipsis(m.value, maxChars)
+	if truncated == m.value {
+		return appliedFix{Kind: kind, Applied: false, Message: "text already within max_chars"}
+	}
+	if !boolParam(params, "confirm_semantic_change", false) && losesProtectedFacts(m.value, truncated) {
+		return appliedFix{Kind: kind, Applied: false, Code: "semantic_review_required", Message: "truncation would remove a number, unit, negation, or qualifier; shorten the pattern value yourself or split the slide"}
+	}
+	if !setValueAtPath(values, m.path, truncated) {
+		return appliedFix{Kind: kind, Applied: false, Message: fmt.Sprintf("could not update pattern value at %s", m.path)}
+	}
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		return appliedFix{Kind: kind, Applied: false, Message: fmt.Sprintf("failed to marshal pattern values: %v", err)}
+	}
+	input.Slides[slideIdx].Pattern.Values = encoded
+	input.Slides[slideIdx].ShapeGrid = nil
+	return appliedFix{Kind: kind, Applied: true, Message: fmt.Sprintf("shortened pattern value %s to %d chars", m.path, maxChars)}
+}
+
+// valueMatch is one pattern-values string that matches a cell's text.
+type valueMatch struct {
+	path  string // dotted/indexed path within pattern.values
+	value string
+}
+
+// findValueStrings returns every string in a pattern-values tree equal to want
+// (after trimming), with its path.
+func findValueStrings(v any, path, want string) []valueMatch {
+	var out []valueMatch
+	switch t := v.(type) {
+	case string:
+		if strings.TrimSpace(t) == want {
+			out = append(out, valueMatch{path: path, value: t})
+		}
+	case map[string]any:
+		keys := make([]string, 0, len(t))
+		for k := range t {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			next := k
+			if path != "" {
+				next = path + "." + k
+			}
+			out = append(out, findValueStrings(t[k], next, want)...)
+		}
+	case []any:
+		for i, e := range t {
+			out = append(out, findValueStrings(e, fmt.Sprintf("%s[%d]", path, i), want)...)
+		}
+	}
+	return out
+}
+
+// setValueAtPath writes a string at a path produced by findValueStrings.
+func setValueAtPath(root any, path string, value string) bool {
+	segs := splitValuePath(path)
+	cur := root
+	for i, seg := range segs {
+		last := i == len(segs)-1
+		if idx, isIdx := seg.index(); isIdx {
+			list, ok := cur.([]any)
+			if !ok || idx < 0 || idx >= len(list) {
+				return false
+			}
+			if last {
+				list[idx] = value
+				return true
+			}
+			cur = list[idx]
+			continue
+		}
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return false
+		}
+		if last {
+			m[seg.key] = value
+			return true
+		}
+		cur = m[seg.key]
+	}
+	return false
+}
+
+// valuePathSeg is one segment of a pattern-values path: a map key or a list index.
+type valuePathSeg struct {
+	key   string
+	idx   int
+	isIdx bool
+}
+
+func (s valuePathSeg) index() (int, bool) { return s.idx, s.isIdx }
+
+// splitValuePath parses "cells[2].label" into its segments.
+func splitValuePath(path string) []valuePathSeg {
+	var out []valuePathSeg
+	for _, part := range strings.Split(path, ".") {
+		for part != "" {
+			open := strings.IndexByte(part, '[')
+			if open < 0 {
+				out = append(out, valuePathSeg{key: part})
+				break
+			}
+			if open > 0 {
+				out = append(out, valuePathSeg{key: part[:open]})
+			}
+			closeIdx := strings.IndexByte(part[open:], ']')
+			if closeIdx < 0 {
+				break
+			}
+			n := 0
+			for _, c := range part[open+1 : open+closeIdx] {
+				if c < '0' || c > '9' {
+					n = -1
+					break
+				}
+				n = n*10 + int(c-'0')
+			}
+			out = append(out, valuePathSeg{idx: n, isIdx: true})
+			part = part[open+closeIdx+1:]
+		}
+	}
+	return out
+}
+
 // countFilledCells counts non-nil cells in a shape grid.
 func countFilledCells(grid *ShapeGridInput) int {
 	if grid == nil {
@@ -1968,7 +2220,12 @@ func applyReduceCellText(input *PresentationInput, slideIdx int, params map[stri
 
 	slide := &input.Slides[slideIdx]
 	if slide.ShapeGrid == nil {
-		return appliedFix{Kind: "reduce_cell_text", Applied: false, Message: "slide has no shape_grid"}
+		// A pattern slide has no shape_grid in the deck JSON, but the finding
+		// that produced this directive measured the EXPANDED grid. Map the cell
+		// back to the pattern value that produced it and edit that
+		// (go-slide-creator-qnrb: the visual-QA hit test produced cell paths
+		// whose directives then refused with "slide has no shape_grid").
+		return reduceCellTextOnPattern(input, slideIdx, cellPath, maxChars, params)
 	}
 
 	pathSlideIdx, rowIdx, cellIdx, ok := slidepath.ParseGridCell(cellPath)

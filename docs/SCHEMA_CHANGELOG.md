@@ -37,6 +37,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **repair_slide resolves a pattern slide's cell path (go-slide-creator-qnrb).**
+  The visual-QA bbox hit test produces cell paths for pattern slides, and
+  `propose_repairs` handed back a ready-made `repair_slide` call — which
+  returned `{applied: false, "slide has no shape_grid"}`, dead-ending the
+  visual-QA → repair loop on exactly the slides the paths were built for.
+  `reduce_cell_text` now expands the pattern, reads the addressed cell, finds
+  the `pattern.values` string that produced it, and shortens that value
+  (dropping the stale expanded grid). Both spellings of the path are accepted
+  (`/slides/N/shape_grid/rows/R/cells/C` and `/slides/N/pattern/...`). Text
+  composed at expansion, which matches no single value, refuses with
+  `code: "wrong_kind_for_target"` and `did_you_mean: "replace_value"` rather
+  than a blank failure — and a string that appears in several values refuses as
+  ambiguous instead of editing the wrong one.
+
 - **Layout selection no longer puts content on a divider (go-slide-creator-ujya).**
   On `modern-template`, a two-column slide (a chart beside eight insights — the
   shape the `chart_insight` density fallback compiles to) scored "Section

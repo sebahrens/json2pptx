@@ -84,14 +84,17 @@ func rerootPatternPath(path string, fromPattern map[int]bool) string {
 	return slidepath.SlideField(idx, "pattern") + strings.TrimPrefix(path, gridRoot)
 }
 
-// patternCellFix replaces a fix that only reaches a raw shape_grid cell with one
-// an agent can act on for a pattern slide: the cell does not exist in the deck
-// JSON, so reduce_cell_text has nothing to edit. rewrite_field is the registered
-// advisory for "shorten this text yourself"; the measured budget travels in
-// params so the agent knows how much to cut, and the pattern name says where.
+// patternCellFix annotates a cell-text fix on a pattern slide.
+//
+// It used to swap the fix for the advisory rewrite_field, because
+// reduce_cell_text refused with "slide has no shape_grid" on a pattern slide.
+// repair_slide now resolves such a cell_path back to the pattern value that
+// produced it (go-slide-creator-qnrb), so the executable directive stays — an
+// agent that submits it gets the edit, and the one case that cannot be resolved
+// (text composed at expansion) refuses with did_you_mean: replace_value.
 func patternCellFix(fix *patterns.FixSuggestion, patternName string) *patterns.FixSuggestion {
-	if fix == nil {
-		return nil
+	if fix == nil || patternName == "" {
+		return fix
 	}
 	switch fix.Kind {
 	case "reduce_cell_text", "reduce_text":
@@ -100,16 +103,10 @@ func patternCellFix(fix *patterns.FixSuggestion, patternName string) *patterns.F
 	}
 	params := map[string]any{}
 	for k, v := range fix.Params {
-		if k == "cell_path" {
-			continue
-		}
 		params[k] = v
 	}
-	if patternName != "" {
-		params["pattern"] = patternName
-	}
-	params["surface"] = "pattern_values"
-	return &patterns.FixSuggestion{Kind: "rewrite_field", Params: params}
+	params["pattern"] = patternName
+	return &patterns.FixSuggestion{Kind: fix.Kind, Params: params}
 }
 
 // patternNameForSlide returns the pattern name of the slide a finding path
