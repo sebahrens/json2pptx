@@ -1787,6 +1787,11 @@ func computeQualityScore(slides []SlideInput, warnings []string) *QualityScore {
 // layouts available: titles are then judged by measured fit against their
 // resolved title placeholder (go-slide-creator-vjwn) instead of the 60-char
 // heuristic, which remains the fallback when a title cannot be measured.
+//
+// The layout is the one the deck will ACTUALLY use — the author's layout_id
+// when set, otherwise the heuristic selector's choice. Measuring only explicit
+// layout_ids meant the semantic path, which never sets one, always fell back to
+// the character heuristic (go-slide-creator-t64e).
 func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layouts []types.LayoutMetadata, findings ...patterns.FitFinding) *QualityScore { //nolint:gocognit,gocyclo
 	if len(slides) == 0 {
 		return &QualityScore{
@@ -1807,6 +1812,8 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 	var slideScores []SlideQuality
 	var globalIssues []string
 	totalScore := 0.0
+
+	predictedLayouts := predictSlideLayouts(&PresentationInput{Slides: slides}, layouts)
 
 	for i, slide := range slides {
 		slideScore := 1.0
@@ -1839,7 +1846,7 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 					}
 				} else if isLikelyTitle(item.PlaceholderID) {
 					text, isText := resolved.(string)
-					if m := measureTitleInPlaceholder(text, titlePlaceholderFor(&slide, item.PlaceholderID, layouts)); isText && m.OK {
+					if m := measureTitleInPlaceholder(text, titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID)); isText && m.OK {
 						if m.Flagged() {
 							penalty := 0.15
 							if m.Overflow {

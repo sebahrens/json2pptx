@@ -37,6 +37,26 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Titles are measured without an explicit `layout_id`
+  (go-slide-creator-t64e).** The measured title check bailed out whenever a
+  slide carried no `layout_id`, so the same 112-character title produced
+  "title (112 chars) only fits its title placeholder at 60% of the template 45pt
+  size; shorten to ≤ 71 chars" with `layout_id: "content"` and the legacy
+  "title too long (112 chars, max 60)" with `slide_type: "content"` — scoring
+  85 and 70 for the same deck. Worse, the semantic compilers emit `slide_type`
+  and no `layout_id`, so on the DeckSpec path — the one `get_started`
+  recommends — a 166-character title passed `validate_deck_spec` with no title
+  finding at all, and `render_deck_spec` reported only the character heuristic
+  inside `quality_summary`.
+  `validate_input`, the fit report, the generate `quality` score,
+  `validate_deck_spec` and `render_deck_spec` now measure against the layout the
+  heuristic selector will actually choose, resolved in deck order with the same
+  running context generation uses. The two spellings of the same slide produce
+  identical findings and identical scores.
+  Placeholder-existence validation deliberately still uses the author's own
+  `layout_id`: the generator auto-maps placeholder IDs, so validating against a
+  predicted layout would invent `placeholder_not_found` errors.
+
 - **Deck monotony now has a consequence (go-slide-creator-xx9i).**
   `score_deck` computed the `composition` (rhythm) axis and then evaluated the
   quality gate purely on fit findings. Eight consecutive identical `kpi-3up`

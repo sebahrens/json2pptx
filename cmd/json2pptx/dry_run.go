@@ -410,6 +410,15 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 	output.SlideCount = len(slides)
 
+	// The layout each slide will actually land on, so a title without an
+	// explicit layout_id is still measured against a real box instead of
+	// falling through to the character estimate (go-slide-creator-t64e).
+	// Only the title measurement uses it: placeholder-existence validation
+	// stays on the author's own layout_id, because the generator auto-maps
+	// placeholder IDs and a predicted layout would produce false
+	// placeholder_not_found errors.
+	predictedLayouts := predictSlideLayouts(&PresentationInput{Slides: slides}, analysis.Layouts)
+
 	// Validate each slide
 	for i, slideInput := range slides {
 		slide := dryRunSlide{
@@ -528,7 +537,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					}
 
 					// Check character limits for text content
-					if !titleMeasured && item.Type == "text" && phInfo.MaxChars > 0 {
+					if !titleMeasured && item.Type == "text" && phInfo.MaxChars > 0 { //nolint:nestif // mirrors the measured-title branch above
 						resolved, _ := item.ResolveValue()
 						if text, ok := resolved.(string); ok && len(text) > phInfo.MaxChars {
 							ph.Truncated = true
@@ -548,6 +557,20 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 									},
 								},
 							})
+						}
+					}
+				}
+			}
+
+			// No layout_id: measure the title against the layout the generator
+			// will pick. Nothing else about the item is validated here — see the
+			// note on predictedLayouts (go-slide-creator-t64e).
+			if !layoutFound && slideInput.LayoutID == "" && item.Type == "text" && item.PlaceholderID != "" {
+				if phInfo := titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID); phInfo != nil {
+					resolved, _ := item.ResolveValue()
+					if text, ok := resolved.(string); ok {
+						if d, measured := titleFitDiagnostic(text, phInfo, i, j); measured && d != nil {
+							output.Diagnostics = append(output.Diagnostics, *d)
 						}
 					}
 				}

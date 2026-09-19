@@ -193,7 +193,12 @@ func layoutForSlideResolved(slide *SlideInput, layouts []types.LayoutMetadata) *
 // targets (canonical layout ids resolved). Returns nil when the item does not
 // target a title placeholder.
 func titlePlaceholderFor(slide *SlideInput, placeholderID string, layouts []types.LayoutMetadata) *types.PlaceholderInfo {
-	l := layoutForSlideResolved(slide, layouts)
+	return titlePlaceholderIn(layoutForSlideResolved(slide, layouts), placeholderID)
+}
+
+// titlePlaceholderIn returns the title placeholder with the given id on a
+// resolved layout, or nil when the layout is unknown or the id is not a title.
+func titlePlaceholderIn(l *types.LayoutMetadata, placeholderID string) *types.PlaceholderInfo {
 	if l == nil {
 		return nil
 	}
@@ -210,11 +215,17 @@ func titlePlaceholderFor(slide *SlideInput, placeholderID string, layouts []type
 // and the informational title_wraps otherwise.
 func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMetadata) []patterns.FitFinding {
 	var findings []patterns.FitFinding
+	// A slide without an explicit layout_id still lands on a layout — the one
+	// the heuristic selector picks. Measuring against it is the whole point of
+	// a measured check: without this the semantic path, which never sets a
+	// layout_id, fell back to a 60-character rule of thumb
+	// (go-slide-creator-t64e).
+	predicted := predictSlideLayouts(input, layouts)
 	for si := range input.Slides {
 		slide := &input.Slides[si]
 		for ci := range slide.Content {
 			content := &slide.Content[ci]
-			ph := titlePlaceholderFor(slide, content.PlaceholderID, layouts)
+			ph := titlePlaceholderIn(predicted[si], content.PlaceholderID)
 			if ph == nil || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
 				continue
 			}
@@ -233,10 +244,11 @@ func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMet
 				findings = append(findings, *f)
 				continue
 			}
-			// Informational wrap notice: kept for slides addressed by a
-			// concrete layout id (pre-existing behaviour); canonical-id slides
-			// only get the measured verdict above.
-			if findLayoutForSlide(slide, layouts) == nil {
+			// Informational wrap notice: emitted once the slide's layout is
+			// known concretely, whether the author named it or the selector
+			// predicted it. Canonical-id slides (layout_id: "content") still
+			// get only the measured verdict above, which is more specific.
+			if findLayoutForSlide(slide, layouts) == nil && slide.LayoutID != "" {
 				continue
 			}
 			if f := generator.DetectTitleWraps(generator.TitleWrapsInput{
