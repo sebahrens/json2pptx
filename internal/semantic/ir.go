@@ -211,6 +211,10 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: architecturePattern,
 	},
+	KindTeam: {
+		role: RoleEvidence, family: FamilyText, density: DensityMedium, layout: "blank-title",
+		pattern: teamPattern,
+	},
 	KindAgenda: {
 		// An agenda is navigation, not argument — the same structural family as
 		// a section divider, and it transitions the deck rather than carrying
@@ -291,6 +295,12 @@ func chartInsightPattern(body map[string]any) string {
 		return "chart-insights-split"
 	}
 	return ""
+}
+
+// teamPattern advertises team-bios only when the roster will compile to it
+// (go-slide-creator-13lj).
+func teamPattern(body map[string]any) string {
+	return slides.TeamPattern(body)
 }
 
 // agendaPattern advertises the agenda pattern the payload will actually
@@ -443,6 +453,11 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		return []CompositionCandidate{
 			visual("arch-stack", "3-6 tiers with up to 3 cross-cutting rails"),
 			{Layout: "content", Reason: "native bullets preserve a stack outside the pattern's tier count or text budgets"},
+		}
+	case KindTeam:
+		return []CompositionCandidate{
+			visual("team-bios", "1-8 people as cards with a photo badge, role and short bio"),
+			{Layout: "content", Reason: "native bullets preserve a larger roster or longer bios"},
 		}
 	case KindAgenda:
 		return []CompositionCandidate{

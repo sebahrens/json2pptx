@@ -29,6 +29,8 @@ const (
 	KindArchitecture SlideKind = "architecture"
 	// KindAgenda is the deck's contents page.
 	KindAgenda SlideKind = "agenda"
+	// KindTeam is the people grid: who is on the engagement.
+	KindTeam SlideKind = "team"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -129,6 +131,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredFields:  []string{"sections"},
 		RequiredAliases: map[string][]string{"sections": {"items", "agenda"}},
 		TypicalFields:   []string{"title", "current", "takeaway"},
+	},
+	KindTeam: {
+		Kind:            KindTeam,
+		Summary:         "The people on the engagement: 1–8 cards with a name, a role and an optional short bio. Past eight cards, or past a card's text budgets, it degrades to a bullet list.",
+		RequiredFields:  []string{"members"},
+		RequiredAliases: map[string][]string{"members": {"people", "team"}},
+		TypicalFields:   []string{"title", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

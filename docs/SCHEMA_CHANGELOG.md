@@ -354,6 +354,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `team` (go-slide-creator-13lj).** "Our people" is a fixture
+  of every proposal and engagement deck, and the spec had no kind for it.
+  - `{members: [...]}` compiles onto **team-bios**: 1–8 cards with a name, a
+    role, an optional bio and an initials badge. `people` / `team` alias
+    `members`, and a member is a string (a bare name) or
+    `{name, role, bio?, photo_label?}` with the usual spellings accepted.
+  - Every card needs a role — a card with a blank line where the title belongs
+    reads as missing data — so a roster without one degrades rather than
+    rendering half-empty cards.
+  - Past 8 people, or past a card's text budgets, it degrades to a bullet list
+    and `SEMANTIC_DENSITY` names which budget broke and by how much.
+  - A `photo_label` the badge cannot hold is dropped rather than truncated:
+    half a set of initials means nothing.
+
 - **DeckSpec kind `agenda` (go-slide-creator-3rvk).** Every deck opens with a
   contents page and the spec had no kind for it, so an agent on the recommended
   path dropped to `raw_json2pptx` or shipped a bullet list.

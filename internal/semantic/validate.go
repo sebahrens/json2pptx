@@ -116,6 +116,10 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"title": shapeString, "sections": shapeArray, "items": shapeArray,
 		"agenda": shapeArray, "takeaway": shapeString,
 	},
+	KindTeam: {
+		"title": shapeString, "members": shapeArray, "people": shapeArray,
+		"team": shapeArray, "takeaway": shapeString,
+	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
 	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
@@ -443,6 +447,16 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 			if slides.AgendaPattern(slide.Body) == "" {
 				s.advisory(path+".sections", diagnostics.CodeSemanticDensity,
 					fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n))
+			}
+		}
+	case KindTeam:
+		// The team-bios budgets are the pattern's own: outside them the roster
+		// still renders, as a bullet list, so the advisory names what broke
+		// rather than blocking (go-slide-creator-13lj).
+		if n := slides.UsableTeamMemberCount(slide.Body); s.requireUsableContent(path, "members", slide.Body, n, "people") {
+			if over := slides.TeamOverBudget(slide.Body); over != "" {
+				s.advisory(path+".members", diagnostics.CodeSemanticDensity,
+					fmt.Sprintf("team %s (otherwise it degrades to a bullet list)", over))
 			}
 		}
 	case KindArchitecture:

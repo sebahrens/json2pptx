@@ -39,6 +39,15 @@ var kindExamples = map[SlideKind]map[string]any{
 		"highlight_label":    "Recommended",
 		"takeaway":           "Hub consolidation pays back in two years at acceptable risk.",
 	},
+	KindTeam: {
+		"kind":  "team",
+		"title": "Who you will be working with",
+		"members": []any{
+			map[string]any{"name": "Amara Okafor", "role": "Engagement partner", "bio": "Led the 2024 settlement migration for two of the three largest clearers."},
+			map[string]any{"name": "Jonas Weber", "role": "Delivery lead", "bio": "Ten years in payments platform delivery; runs the cutover rehearsals."},
+			map[string]any{"name": "Priya Raman", "role": "Data lead", "bio": "Owns the reconciliation model and the migration waves."},
+		},
+	},
 	KindAgenda: {
 		"kind":    "agenda",
 		"title":   "What we will cover",

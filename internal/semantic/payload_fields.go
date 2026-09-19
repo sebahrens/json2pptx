@@ -69,6 +69,14 @@ var comparisonColumnKeys = []string{"header", "title", "label", "name", "items",
 var processStepKeys = []string{"label", "title", "name", "step", "text", "description", "detail", "summary", "type"}
 
 // archTierKeys are the keys ArchitectureTiers reads from a tier object.
+// teamMemberKeys are the keys a team member object may carry.
+var teamMemberKeys = []string{
+	"name", "title", "person",
+	"role", "position", "job_title",
+	"bio", "description", "summary",
+	"photo_label", "initials",
+}
+
 // agendaSectionKeys are the keys an agenda section object may carry.
 var agendaSectionKeys = []string{
 	"title", "label", "name", "section",
@@ -235,6 +243,18 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"current_section": {typ: "string", desc: "Alias for current."},
 		"highlight":       {typ: "string", desc: "Alias for current."},
 		"active":          {typ: "string", desc: "Alias for current."},
+	}, compositionFields()), universalFields()),
+	KindTeam: withFields(withFields(map[string]payloadField{
+		"title":    strField("Slide title."),
+		"takeaway": strField("One-line takeaway footer."),
+		"members": {
+			typ:         "array",
+			desc:        "1–8 people: strings (a bare name) or {name, role, bio?, photo_label?}. Every card needs a role. Name ≤60 chars, role ≤80, bio ≤220 (~2 lines); photo_label is the initials badge, ≤8 chars.",
+			itemStrings: true,
+			itemKeys:    teamMemberKeys,
+		},
+		"people": {typ: "array", desc: "Alias for members.", itemStrings: true, itemKeys: teamMemberKeys},
+		"team":   {typ: "array", desc: "Alias for members.", itemStrings: true, itemKeys: teamMemberKeys},
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

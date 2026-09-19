@@ -73,6 +73,16 @@ func covSteps(first string) []any {
 
 // covTiers builds three architecture tiers (the count arch-stack requires),
 // placing firstLabel on the first tier and exercising the items->detail join.
+// covMembers builds three team members (inside team-bios' card limit), the
+// first carrying the probed text.
+func covMembers(firstName string) []any {
+	return []any{
+		map[string]any{"name": firstName, "role": "Engagement partner", "bio": "Led the settlement migration."},
+		map[string]any{"name": "Jonas Weber", "role": "Delivery lead", "bio": "Runs the cutover rehearsals."},
+		map[string]any{"name": "Priya Raman", "role": "Data lead", "bio": "Owns the reconciliation model."},
+	}
+}
+
 // covSections builds four agenda sections (inside both agenda patterns'
 // counts), the first carrying the probed text.
 func covSections(firstTitle string) []any {
@@ -228,6 +238,17 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"current": {inject: func(string) map[string]any {
 			return map[string]any{"sections": covSections("Where we are"), "current": 2.0}
 		}, rendered: false},
+	},
+	// go-slide-creator-13lj: a person's name, role and bio all have to reach
+	// the rendered card.
+	KindTeam: {
+		"members": {inject: func(s string) map[string]any { return map[string]any{"members": covMembers(s)} }, rendered: true},
+		"title": {inject: func(s string) map[string]any {
+			return map[string]any{"members": covMembers("Amara Okafor"), "title": s}
+		}, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any {
+			return map[string]any{"members": covMembers("Amara Okafor"), "takeaway": s}
+		}, rendered: true},
 	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},
