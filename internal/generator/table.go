@@ -260,6 +260,15 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		totalHeight = rowHeight * int64(numRows)
 	}
 
+	// A content-sized table is centred in its placeholder rather than hung from
+	// the top: rows are sized for their text, so a 5-row table in a full-height
+	// body placeholder left the bottom ~45% of the slide blank and nothing in
+	// the fit report said so — only the pixels did (go-slide-creator-6jv7).
+	offsetY := config.Bounds.Y
+	if slack := config.Bounds.Height - totalHeight; slack > 0 {
+		offsetY += slack / 2
+	}
+
 	var xml strings.Builder
 
 	// Graphic frame wrapper
@@ -276,7 +285,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		`<a:graphic>`+
 		`<a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table">`+
 		`<a:tbl>`,
-		config.Bounds.X, config.Bounds.Y,
+		config.Bounds.X, offsetY,
 		config.Bounds.Width, totalHeight,
 	)
 

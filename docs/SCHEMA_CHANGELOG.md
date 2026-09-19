@@ -350,6 +350,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **A content-sized table is centred in its placeholder
+  (go-slide-creator-6jv7).** Table rows are sized for their text rather than
+  stretched to fill the placeholder, so a 5-row table on a One Content layout
+  rendered in the top half and left the bottom ~45% of the slide blank. Nothing
+  reported it: the placeholder itself counts as full, so `SLIDE_UNDERUSED`
+  never fired, and the deck scored 87 with the quality gate passing.
+  - The graphic frame now sits at the vertical centre of its bounds when the
+    table is shorter than them; the whitespace is shared above and below
+    instead of pooling at the bottom. A table that fills (or overflows) its
+    bounds does not move, and neither does one rendered without bounds.
+  - The same applies to a table in a `shape_grid` cell, which is its own box.
+
 - **Unknown keys inside a pattern cell are reported (go-slide-creator-4cqh).**
   `PATTERN_UNKNOWN_FIELD` caught a bad key at the top of `values` /
   `overrides`, but not one inside a cell: `{"big": "$4.2M", "small": "ARR",
