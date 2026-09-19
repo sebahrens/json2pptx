@@ -376,6 +376,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`examine_template`'s content zone reached into the footer band
+  (go-slide-creator-p41d6).** For every layout with a footer the reported
+  `content_zone.bottom_emu` was 6,515,100 while the same response's
+  `profile_geometry.frame.footer_top_emu` said 6,356,350 — 0.17in of overlap,
+  on 21 layouts across three templates. The zone was derived from the layout's
+  own placeholders; the footer is resolved from the layout ELSE the master, so a
+  layout that inherits it reported no footer at all. An agent computing bounds
+  from the zone wrote content under the footer text.
+  - `content_zone.bottom_emu` is now clamped to `footer_top_emu` minus 0.1in
+    whenever the layout has a footer, and left exactly as it was when it does
+    not.
+  - The render side uses the same line: the shape-grid content zone takes its
+    footer from the layout's resolved `footer_regions` (highest chrome rect)
+    rather than whichever utility placeholder came first in document order or a
+    fixed 0.4in bottom margin. On a 7-row agenda the lowest grid shape moves
+    from 0.024in BELOW the footer line to 0.125in above it.
+
 - **Sibling grid cells flipped between three text colours
   (go-slide-creator-tnx3e).** An arch-stack whose tiers are progressive tints of
   one accent came out with white on the darkest tier, pure `#000000` on the

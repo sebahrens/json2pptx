@@ -143,17 +143,10 @@ func fallbackContentZone(layout *types.LayoutMetadata, content pptx.RectEmu, sli
 	}
 
 	titleBottom := content.Y
-	footerTop := sh - shapegrid.MinBottomMarginEMU
-	hasFooter := false
+	footerTop, _ := gridFooterTop(layout, sh)
 	for _, ph := range layout.Placeholders {
-		switch ph.Type {
-		case types.PlaceholderTitle:
+		if ph.Type == types.PlaceholderTitle {
 			titleBottom = ph.Bounds.Y + ph.Bounds.Height
-		case types.PlaceholderOther:
-			if !hasFooter {
-				footerTop = ph.Bounds.Y
-				hasFooter = true
-			}
 		}
 	}
 
@@ -197,14 +190,14 @@ func pickBlankLayout(blank, blankTitle *types.LayoutMetadata, slideWidth, slideH
 		}
 
 		if !hasFooter {
-			// No footer — reserve minimum bottom margin for visual clearance
-			sh := slideHeight
-			if sh <= 0 {
-				sh = shapegrid.DefaultSlideHeightEMU
-			}
+			// No footer placeholder on the layout itself: take the resolved
+			// footer line (layout else master) rather than a fixed bottom
+			// margin, which sat below the chrome the renderer draws
+			// (go-slide-creator-p41d6).
+			top, _ := gridFooterTop(layout, slideHeight)
 			footerRect = pptx.RectEmu{
 				X:  titleRect.X,
-				Y:  sh - shapegrid.MinBottomMarginEMU,
+				Y:  top,
 				CX: titleRect.CX,
 				CY: 0,
 			}
@@ -297,20 +290,11 @@ func titleOnlyContentZone(layout *types.LayoutMetadata, slideWidth, slideHeight 
 	}
 
 	var title *pptx.RectEmu
-	footerTop := sh - shapegrid.MinBottomMarginEMU
-	hasFooter := false
+	footerTop, _ := gridFooterTop(layout, sh)
 	for i := range layout.Placeholders {
 		ph := &layout.Placeholders[i]
-		switch ph.Type {
-		case types.PlaceholderTitle:
-			if title == nil {
-				title = &pptx.RectEmu{X: ph.Bounds.X, Y: ph.Bounds.Y, CX: ph.Bounds.Width, CY: ph.Bounds.Height}
-			}
-		case types.PlaceholderOther:
-			if !hasFooter {
-				footerTop = ph.Bounds.Y
-				hasFooter = true
-			}
+		if ph.Type == types.PlaceholderTitle && title == nil {
+			title = &pptx.RectEmu{X: ph.Bounds.X, Y: ph.Bounds.Y, CX: ph.Bounds.Width, CY: ph.Bounds.Height}
 		}
 	}
 	if title == nil {
@@ -2162,4 +2146,32 @@ func applyIconFill(svgData []byte, fill string) []byte {
 	}
 
 	return []byte(s[:svgStart] + tag + s[tagEnd:])
+}
+
+// gridFooterTop is the Y the grid must stop above on a layout.
+//
+// It reads the layout's RESOLVED footer regions — the date / footer / slide-number
+// rects the profile resolved from the layout else the master — rather than only
+// the layout's own placeholders. A layout that inherits its footer from the
+// master used to report no footer at all, and the grid fell back to a 0.4in
+// bottom margin: 0.15in BELOW the line the renderer actually draws chrome on, so
+// a full-height pattern ended flush against the footer text
+// (go-slide-creator-p41d6). Same number as examine_template's content_zone and
+// the chrome frame.
+func gridFooterTop(layout *types.LayoutMetadata, slideHeight int64) (int64, bool) {
+	sh := slideHeight
+	if sh <= 0 {
+		sh = shapegrid.DefaultSlideHeightEMU
+	}
+	if layout != nil {
+		if ft, ok := template.FooterTop(layout, sh); ok {
+			return ft, true
+		}
+		for i := range layout.Placeholders {
+			if layout.Placeholders[i].Type == types.PlaceholderOther {
+				return layout.Placeholders[i].Bounds.Y, true
+			}
+		}
+	}
+	return sh - shapegrid.MinBottomMarginEMU, false
 }

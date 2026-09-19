@@ -274,6 +274,7 @@ func BuildReport(in Inputs) *Report {
 	for i := range in.Layouts {
 		layoutReports[i] = buildLayoutReport(&in.Layouts[i], w, h)
 		layoutReports[i].ProfileGeometry = profileGeometry(in.Profile, in.Layouts[i].ID)
+		clampZoneToFooter(&layoutReports[i])
 	}
 
 	coverage, coverageDiags := buildCanonicalCoverage(in.Layouts)
@@ -629,4 +630,33 @@ func round3(f float64) float64 {
 
 func round2(f float64) float64 {
 	return math.Round(f*100) / 100
+}
+
+// footerClearanceEMU is the gap the reported content zone keeps above the
+// footer line: 0.1in, the same inset the footer shapes carry.
+const footerClearanceEMU int64 = 91440
+
+// clampZoneToFooter keeps the reported content zone above the footer band.
+//
+// The zone was derived from the LAYOUT's own placeholders, so a layout that
+// inherits its footer from the master reported a bottom below the footer line:
+// portability-4x3 slideLayout2 said content_zone.bottom 6,515,100 while the
+// same response's profile_geometry.footer_top_emu said 6,356,350. An agent
+// computing bounds from the zone put content into the footer band — which is
+// what the reviewer's agenda slide did, ending flush against the footer text
+// (go-slide-creator-p41d6).
+//
+// The zone is advisory geometry, so it is clamped rather than the footer moved:
+// whatever the placeholders say, the safe area stops a tenth of an inch above
+// the chrome the renderer will draw.
+func clampZoneToFooter(l *LayoutReport) {
+	g := l.ProfileGeometry
+	if g == nil || !g.Frame.HasFooter || g.Frame.FooterTop <= 0 {
+		return
+	}
+	limit := g.Frame.FooterTop - footerClearanceEMU
+	if limit <= l.ContentZone.TopEMU || l.ContentZone.BottomEMU <= limit {
+		return
+	}
+	l.ContentZone.BottomEMU = limit
 }
