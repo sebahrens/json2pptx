@@ -25,6 +25,8 @@ const (
 	KindOptionMatrix SlideKind = "option_matrix"
 	// KindTable is a native data table.
 	KindTable SlideKind = "table"
+	// KindArchitecture is a tiered architecture / platform stack.
+	KindArchitecture SlideKind = "architecture"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -111,6 +113,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredFields:  []string{"headers", "rows"},
 		RequiredAliases: map[string][]string{"headers": {"columns"}},
 		TypicalFields:   []string{"title", "column_alignments", "highlight_column", "totals_row", "takeaway"},
+	},
+	KindArchitecture: {
+		Kind:            KindArchitecture,
+		Summary:         "A tiered architecture or platform stack — the layers of a system, top to bottom, with optional cross-cutting rails beside them. 3–6 tiers render as the arch-stack visual; outside that, or past its text budgets, it degrades to a bullet list.",
+		RequiredFields:  []string{"tiers"},
+		RequiredAliases: map[string][]string{"tiers": {"layers"}},
+		TypicalFields:   []string{"title", "rails", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

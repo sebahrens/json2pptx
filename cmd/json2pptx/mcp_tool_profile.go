@@ -49,8 +49,16 @@ const (
 	// adds a closed variant to the schema both spec tools embed, ~1.5KB apiece,
 	// and the alternative is agents dropping to raw_json2pptx for an evaluation
 	// matrix or a table — which costs far more tokens per deck than the
-	// handshake saves. The full profile is ~215KB.
-	coreToolListByteBudget = 96 * 1024
+	// handshake saves. Raised again from 96KB for the architecture kind
+	// (go-slide-creator-162os), ~2.4KB per spec tool, for the same reason: the
+	// deck that prompted it dropped to raw_json2pptx for its platform stack.
+	// The full profile is ~215KB.
+	//
+	// This trend does not scale — every kind is paid twice, and the universal
+	// and composition fields are repeated in all 14 variants. Shrinking the
+	// embedded schema (hoisting the shared fields behind a $ref) is filed
+	// separately; until then each raise states what it bought.
+	coreToolListByteBudget = 104 * 1024
 )
 
 // coreToolNames is the tool set advertised by the default "core" profile.

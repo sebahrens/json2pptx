@@ -71,6 +71,16 @@ func covSteps(first string) []any {
 	return []any{first, "Build", "Review"}
 }
 
+// covTiers builds three architecture tiers (the count arch-stack requires),
+// placing firstLabel on the first tier and exercising the items->detail join.
+func covTiers(firstLabel string) []any {
+	return []any{
+		map[string]any{"label": firstLabel, "items": []any{"Web console", "Mobile"}},
+		map[string]any{"label": "Services", "description": "Orders, pricing"},
+		map[string]any{"label": "Platform", "description": "Kubernetes"},
+	}
+}
+
 // covPhases builds three roadmap phases (the count phase-roadmap requires),
 // placing firstName as the first phase's name.
 func covPhases(firstName string) []any {
@@ -181,6 +191,14 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"columns":  {inject: func(s string) map[string]any { return map[string]any{"columns": covColumns(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"columns": covColumns("Left"), "title": s} }, rendered: true},
 		"takeaway": {inject: func(s string) map[string]any { return map[string]any{"columns": covColumns("Left"), "takeaway": s} }, rendered: true},
+	},
+	// go-slide-creator-162os: a tier's label, its items (joined into the detail
+	// line) and the cross-cutting rails all have to reach the rendered stack.
+	KindArchitecture: {
+		"tiers":    {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers(s)} }, rendered: true},
+		"title":    {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers("Experience"), "title": s} }, rendered: true},
+		"rails":    {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers("Experience"), "rails": []any{s}} }, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any { return map[string]any{"tiers": covTiers("Experience"), "takeaway": s} }, rendered: true},
 	},
 	KindProcess: {
 		"steps":    {inject: func(s string) map[string]any { return map[string]any{"steps": covSteps(s)} }, rendered: true},

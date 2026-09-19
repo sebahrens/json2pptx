@@ -206,6 +206,10 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		// layout only (explain/compile parity).
 		role: RoleEvidence, family: FamilyText, density: DensityHeavy, layout: "content",
 	},
+	KindArchitecture: {
+		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
+		pattern: architecturePattern,
+	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
@@ -243,6 +247,17 @@ func comparisonPattern(body map[string]any) string {
 func execSummaryPattern(body map[string]any) string {
 	if slides.ExecSummaryPatternFeasible(body) {
 		return "exec-summary"
+	}
+	return ""
+}
+
+// architecturePattern advertises arch-stack only when the payload will actually
+// compile to it (3–6 tiers inside the pattern's text budgets); otherwise it
+// returns "" so the explain projection matches compile's bullet fallback
+// (go-slide-creator-162os).
+func architecturePattern(body map[string]any) string {
+	if slides.ArchitecturePatternFeasible(body) {
+		return "arch-stack"
 	}
 	return ""
 }
@@ -399,6 +414,11 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		return []CompositionCandidate{
 			{Layout: "content", Reason: "a native table in the template's own table style"},
 			visual("table-highlight", "switch to kind option_matrix to score options against criteria"),
+		}
+	case KindArchitecture:
+		return []CompositionCandidate{
+			visual("arch-stack", "3-6 tiers with up to 3 cross-cutting rails"),
+			{Layout: "content", Reason: "native bullets preserve a stack outside the pattern's tier count or text budgets"},
 		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}

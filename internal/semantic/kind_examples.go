@@ -39,6 +39,18 @@ var kindExamples = map[SlideKind]map[string]any{
 		"highlight_label":    "Recommended",
 		"takeaway":           "Hub consolidation pays back in two years at acceptable risk.",
 	},
+	KindArchitecture: {
+		"kind":  "architecture",
+		"title": "Four tiers, two concerns that cut across them",
+		"tiers": []any{
+			map[string]any{"label": "Experience", "items": []any{"Web console", "Mobile approvals", "Partner portal"}},
+			map[string]any{"label": "Services", "items": []any{"Orders", "Pricing", "Fulfilment", "Identity"}},
+			map[string]any{"label": "Data", "description": "Event stream, warehouse, feature store"},
+			map[string]any{"label": "Platform", "description": "Kubernetes, observability, secrets"},
+		},
+		"rails":    []any{"Security & compliance", "Cost governance"},
+		"takeaway": "Every tier ships independently; the rails are owned centrally.",
+	},
 	KindTable: {
 		"kind":    "table",
 		"title":   "Enterprise carried the year; SMB did not",

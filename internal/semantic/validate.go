@@ -54,6 +54,7 @@ var kindNeedsTakeaway = map[SlideKind]bool{
 	KindComparison:       true,
 	KindOptionMatrix:     true,
 	KindTable:            true,
+	KindArchitecture:     true,
 	KindProcess:          true,
 	KindRoadmap:          true,
 	KindDecision:         true,
@@ -106,6 +107,10 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	KindTable: {
 		"title": shapeString, "headers": shapeArray, "columns": shapeArray, "rows": shapeArray,
 		"column_alignments": shapeArray, "column_types": shapeArray, "takeaway": shapeString,
+	},
+	KindArchitecture: {
+		"title": shapeString, "tiers": shapeArray, "layers": shapeArray,
+		"rails": shapeArray, "side_rails": shapeArray, "takeaway": shapeString,
 	},
 	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
 	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
@@ -426,6 +431,16 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateOptionMatrix(path, slide, s)
 	case KindTable:
 		validateTable(path, slide, s)
+	case KindArchitecture:
+		// The arch-stack budgets are the pattern's own: outside them the slide
+		// still renders, as a bullet list, so the advisory says which budget it
+		// broke rather than blocking (go-slide-creator-162os).
+		if n := slides.UsableTierCount(slide.Body); s.requireUsableContent(path, "tiers", slide.Body, n) {
+			if over := slides.ArchitectureOverBudget(slide.Body); over != "" {
+				s.advisory(path+".tiers", diagnostics.CodeSemanticDensity,
+					fmt.Sprintf("architecture %s (otherwise it degrades to a bullet list)", over))
+			}
+		}
 	case KindProcess:
 		// Count steps the compiler can render (blank entries are dropped), so a
 		// process of all-blank steps fails fast instead of compiling to a

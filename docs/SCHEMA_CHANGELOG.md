@@ -8,6 +8,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `architecture` (go-slide-creator-162os).** A 10-slide
+  product-launch deck needed `raw_json2pptx` for its platform stack, which drops
+  the author back into the raw pattern dialect (values-object vs values-array,
+  `name` vs `label`) with none of the DeckSpec `semantic_path` diagnostics.
+  - `{tiers: [{label, description?|items?}], rails?}` compiles onto the
+    **arch-stack** pattern: 3–6 tiers top-first, up to 3 cross-cutting rails
+    beside them. `layers` aliases `tiers`, `side_rails` aliases `rails`, and a
+    tier's `items` are joined into its detail line.
+  - Outside the pattern's budgets (tier count, a 60-char label, a 120-char
+    detail, a 30-char rail) the slide degrades to a bullet list carrying every
+    word, rather than being truncated into a `maxLength` or blocking the render.
+    `validate_deck_spec` says which budget it broke.
+  - `explain_deck_spec` advertises `arch-stack` only when the payload will
+    actually compile to it, so explain and compile agree.
+  - The core `tools/list` budget rises from 96KB to 104KB (99,172 bytes today):
+    every kind is embedded in both spec tools. Shrinking that schema is filed
+    separately (go-slide-creator-gvi6z).
+
 - **`chart_value.style.value_format`: one number format per chart
   (go-slide-creator-e2ck9).** Within one chart the axis and the data labels were
   formatted by different code with different rules: on `[1240, 865, 413]` the

@@ -68,6 +68,13 @@ var comparisonColumnKeys = []string{"header", "title", "label", "name", "items",
 // processStepKeys are the keys processSteps reads from a step object.
 var processStepKeys = []string{"label", "title", "name", "step", "text", "description", "detail", "summary", "type"}
 
+// archTierKeys are the keys ArchitectureTiers reads from a tier object.
+var archTierKeys = []string{
+	"label", "name", "title", "tier", "layer",
+	"description", "detail", "summary", "text",
+	"items", "components", "services", "elements",
+}
+
 // roadmapPhaseKeys are the keys roadmapPhases reads from a phase object.
 var roadmapPhaseKeys = []string{
 	"name", "title", "label", "phase", "date_label", "dates", "date", "period",
@@ -193,6 +200,19 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"highlight_column":  strField("The column to emphasise, named (matched against a header) or as a 0-based index."),
 		"totals_row":        strField("Set true when the last data row is a totals row, so the renderer emphasises it."),
 		"takeaway":          strField("One-line takeaway footer."),
+	}, compositionFields()), universalFields()),
+	KindArchitecture: withFields(withFields(map[string]payloadField{
+		"title":    strField("Slide title."),
+		"takeaway": strField("One-line takeaway footer."),
+		"tiers": {
+			typ:         "array",
+			desc:        "3–6 tiers, top layer first: strings or {label, description?|items?}; items are joined into the tier's detail line. Label ≤60 chars, detail ≤120.",
+			itemStrings: true,
+			itemKeys:    archTierKeys,
+		},
+		"layers":     {typ: "array", desc: "Alias for tiers.", itemStrings: true, itemKeys: archTierKeys},
+		"rails":      textList("Up to 3 cross-cutting concerns drawn as rails beside the stack, ≤30 chars each."),
+		"side_rails": textList("Alias for rails."),
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
