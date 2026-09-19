@@ -37,6 +37,27 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Chart data labels stopped contradicting their own data
+  (go-slide-creator-66qb).** Every value label went through a hardcoded
+  `"%.0f"`. A seven-bar series `[4.6, 4.9, 5.2, 5.5, 5.8, 6.2, 6.5]` printed
+  **three distinct labels for seven bars**, denying its own axis and its own
+  "+6% a year" headline; an ARR line `[61.2 … 86.4]` printed 61 64 65 66 71 75
+  81 86 on a slide whose bullet read "from EUR 66.0M to EUR 86.4M". Only the
+  waterfall auto-detected fractions.
+  When the caller leaves `data_labels.format` unset, the renderer now picks the
+  precision that keeps the labels **distinct** (up to two decimals) — the same
+  rule for bar, line, area, funnel and waterfall. The two reported series label
+  as 4.6/4.9/5.2/5.5/5.8/6.2/6.5 and 61.2/64.0/…/86.4. An explicit format is
+  never overridden.
+- **Thousands are grouped.** `Leads: 12400` reads `Leads: 12,400`, a bar reads
+  `1,240`. Grouping finds the first digit run, so a format carrying its own
+  units survives: `"€%.0fM"` on 12400 gives `€12,400M`.
+- The `data_labels.format` description now says it carries the units too
+  (`"€%.1fM"`, `"%.1f%%"`) and what the default does.
+  **Not covered:** axis ticks still format independently of the labels, and
+  there is no single `style.value_format` knob reaching both — split out as
+  go-slide-creator-e2ck9.
+
 - **`table-highlight`'s legend stopped labelling green dots "does not meet"
   (go-slide-creator-z0up).** `thLegendCell` emitted three swatches per scale but
   indexed the caller's `legend_labels` with the same `i` for both, so a deck

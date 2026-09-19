@@ -506,6 +506,8 @@ The five tools below cover the precondition workflow (`recommend_visual` → `sh
 }
 ```
 
+**Chart numbers say what the data says.** Data labels pick the precision that keeps them **distinct** rather than rounding to whole numbers — a series `[4.6 … 6.5]` labels every bar differently instead of printing "5, 5, 5, 6, 6, 6, 7" beside a "+6% a year" headline (go-slide-creator-66qb) — and thousands are grouped (`12,400`). Set `data.data_labels.format` to take control; it carries the units too (`"€%.1fM"`, `"%.1f%%"`). Axis ticks still format independently of the labels.
+
 **Diagram text that must shrink says so.** A native diagram shape whose text overflows its box now stores the exact shrink (`<a:normAutofit fontScale="…">`) rather than leaving it to the renderer, so a deck looks the same in PowerPoint as in the thumbnails you inspect — before this, LibreOffice recomputed the fit and PowerPoint rendered at 100% and overflowed (go-slide-creator-wvr0). When that shrink takes the text under the `viewing_mode` readability floor you get `TEXT_BELOW_READABLE_MIN` naming the effective size and the scale (`… renders at 3.4pt … (autofit 28% to fit the shape)`). It is advisory, but on a 12-bullet quadrant it is the deck telling you to split the slide.
 
 **Title length is measured, not counted.** A too-long title is reported against the actual title box of the layout the slide will land on — `title (112 chars) only fits its title placeholder at 60% of the template 45pt size; shorten to ≤ 71 chars` — and that measurement runs whether you write `layout_id`, only `slide_type`, or a DeckSpec slide kind (which carries neither). The 60-character rule of thumb survives only as the fallback when no layout can be resolved (go-slide-creator-t64e).

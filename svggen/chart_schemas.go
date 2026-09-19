@@ -92,7 +92,7 @@ func dataLabelsFieldSchema() *DataSchema {
 	return ObjectDataSchema(
 		"Per-point value labels on the series",
 		map[string]*DataSchema{
-			"format":  StringDataSchema("Number format for the label, e.g. \"%.1f%%\" or \"$%.0fM\""),
+			"format":  StringDataSchema("Go fmt number format for the label. It carries the units too: \"%.1f%%\" for a percentage, \"€%.1fM\" for a currency, \"%.0f\" to force whole numbers. Omit it and the renderer picks the precision that keeps the labels DISTINCT — a series [4.6 … 6.5] labels as 4.6/4.9/5.2/… rather than collapsing seven bars onto three values — and groups thousands (12,400)."),
 			"show_on": showOn,
 		},
 		nil,

@@ -289,7 +289,7 @@ func (bs *BarSeries) drawValueLabel(x, y, value, width, baseY float64) {
 	b := bs.builder
 	style := b.StyleGuide()
 
-	label := formatValue(value, bs.config.ValueFormat)
+	label := formatValueGrouped(value, bs.config.ValueFormat)
 
 	var labelX, labelY float64
 	var baseline TextBaseline
@@ -517,7 +517,7 @@ func (ls *LineSeries) draw(coords []Point, baseY float64, points []DataPoint) {
 	if ls.config.ShowValues {
 		b.SetFontSize(style.Typography.SizeSmall).SetFontWeight(style.Typography.WeightNormal)
 		for i, c := range coords {
-			label := formatValue(points[i].Y, ls.config.ValueFormat)
+			label := formatValueGrouped(points[i].Y, ls.config.ValueFormat)
 			labelY := c.Y - ls.config.MarkerSize - style.Spacing.SM
 			b.DrawText(label, c.X, labelY, TextAlignCenter, TextBaselineBottom)
 		}

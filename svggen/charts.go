@@ -936,12 +936,16 @@ func (bc *BarChart) drawBars(data ChartData, plotArea Rect, xScale *CategoricalS
 		baseY = plotArea.Y + yScale.Scale(0)
 	}
 
+	// Show enough decimals for the labels to be distinct. Seven bars reading
+	// "5, 5, 5, 6, 6, 6, 7" contradict their own axis (go-slide-creator-66qb).
+	valueFormat := autoValueFormat(bc.config.ValueFormat, chartDataValues(data))
+
 	for seriesIdx, series := range data.Series {
 		barConfig := DefaultBarSeriesConfig()
 		barConfig.Color = colors[seriesIdx%len(colors)]
 		barConfig.CornerRadius = bc.config.CornerRadius
 		barConfig.ShowValues = bc.config.ShowValues
-		barConfig.ValueFormat = bc.config.ValueFormat
+		barConfig.ValueFormat = valueFormat
 		barConfig.SeriesIndex = seriesIdx
 		barConfig.SeriesCount = numSeries
 
@@ -1663,6 +1667,9 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 
 	baseY := plotArea.Y + plotArea.H
 
+	// Show enough decimals for the labels to be distinct (go-slide-creator-66qb).
+	lineValueFormat := autoValueFormat(lc.config.ValueFormat, chartDataValues(data))
+
 	for seriesIdx, series := range data.Series {
 		lineConfig := DefaultLineSeriesConfig()
 		lineConfig.Color = colors[seriesIdx%len(colors)]
@@ -1675,7 +1682,7 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 		lineConfig.FillColor = colors[seriesIdx%len(colors)]
 		lineConfig.FillOpacity = lc.config.FillOpacity
 		lineConfig.ShowValues = lc.config.ShowValues
-		lineConfig.ValueFormat = lc.config.ValueFormat
+		lineConfig.ValueFormat = lineValueFormat
 
 		if series.Color != nil {
 			lineConfig.Color = *series.Color
@@ -2187,6 +2194,7 @@ func (sc *ScatterChart) drawAxes(plotArea Rect, xScale, yScale *LinearScale) {
 }
 
 // drawPoints draws the scatter points.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (sc *ScatterChart) drawPoints(data ChartData, xScale, yScale *LinearScale, colors []Color) {
 	b := sc.builder
@@ -2470,6 +2478,7 @@ func NewPieChart(builder *SVGBuilder, config PieChartConfig) *PieChart {
 }
 
 // Draw renders the pie chart.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (pc *PieChart) Draw(data ChartData) error {
 	if len(data.Series) == 0 || len(data.Series[0].Values) == 0 {
@@ -2859,6 +2868,7 @@ func NewRadarChart(builder *SVGBuilder, config RadarChartConfig) *RadarChart {
 }
 
 // Draw renders the radar chart.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (rc *RadarChart) Draw(data ChartData) error {
 	if len(data.Series) == 0 || len(data.Categories) == 0 {
@@ -2937,7 +2947,7 @@ func (rc *RadarChart) Draw(data ChartData) error {
 	if widestWord > 0 {
 		neededLabelW := widestWord + 2*style.Spacing.XS
 		maxRadius := (centerX - plotArea.X - style.Spacing.MD - neededLabelW) / 0.81 // worst-case cos ≈ -0.81
-		minRadius := maxHalfDim * 0.40 // don't shrink below 40%
+		minRadius := maxHalfDim * 0.40                                               // don't shrink below 40%
 		if maxRadius < minRadius {
 			maxRadius = minRadius
 		}
@@ -3290,7 +3300,6 @@ func (rc *RadarChart) drawLegend(data ChartData, colors []Color, plotArea Rect, 
 func (rc *RadarChart) getColors(style *StyleGuide, count int) []Color {
 	return resolveColors(rc.config.Colors, style, count)
 }
-
 
 // resolvedXAxisConfig returns the x-axis configuration drawAxes drew with,
 // falling back to the bottom-axis default when the axes were suppressed.

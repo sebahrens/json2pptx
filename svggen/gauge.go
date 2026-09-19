@@ -540,7 +540,7 @@ func (gc *GaugeChart) drawTicks(centerX, centerY, outerRadius, innerRadius, star
 			}
 
 			b.SetFontSize(style.Typography.SizeSmall)
-			label := formatValue(value, "%.0f")
+			label := formatValueGrouped(value, "%.0f")
 			b.DrawText(label, labelX, labelY, align, TextBaselineMiddle)
 		}
 	}
@@ -658,7 +658,7 @@ func (gc *GaugeChart) drawCenterLabel(centerX, centerY, innerRadius float64, dat
 	b.SetTextColor(style.Palette.TextPrimary)
 
 	// Format value with unit
-	label := formatValue(data.Value, gc.config.ValueFormat)
+	label := formatValueGrouped(data.Value, gc.config.ValueFormat)
 	if data.Unit != "" {
 		label = label + data.Unit
 	}

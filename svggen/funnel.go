@@ -150,6 +150,14 @@ func (fc *FunnelChart) Draw(data FunnelData) error {
 	}
 
 	fc.numSegments = len(data.Points)
+	// Show enough decimals for the stage values to be distinct
+	// (go-slide-creator-66qb).
+	values := make([]float64, 0, len(data.Points))
+	for _, p := range data.Points {
+		values = append(values, p.Value)
+	}
+	fc.config.ValueFormat = autoValueFormat(fc.config.ValueFormat, values)
+
 	b := fc.builder
 	style := b.StyleGuide()
 	colors := fc.getColors(style, len(data.Points))
@@ -291,7 +299,7 @@ func (fc *FunnelChart) reserveExternalLabelSpace(data FunnelData, plotArea Rect,
 	for i, point := range data.Points {
 		label := point.Label
 		if fc.config.ShowValues {
-			label = fmt.Sprintf("%s: %s", point.Label, formatValue(point.Value, fc.config.ValueFormat))
+			label = fmt.Sprintf("%s: %s", point.Label, formatValueGrouped(point.Value, fc.config.ValueFormat))
 		}
 		if fc.config.ShowPercentage && maxValue > 0 {
 			pct := (point.Value / maxValue) * 100
@@ -389,7 +397,7 @@ func (fc *FunnelChart) drawLabel(point FunnelDataPoint, index int, centerX, y, t
 	// Build label text
 	label := point.Label
 	if fc.config.ShowValues {
-		label = fmt.Sprintf("%s: %s", point.Label, formatValue(point.Value, fc.config.ValueFormat))
+		label = fmt.Sprintf("%s: %s", point.Label, formatValueGrouped(point.Value, fc.config.ValueFormat))
 	}
 	if fc.config.ShowPercentage && maxValue > 0 {
 		pct := (point.Value / maxValue) * 100
@@ -673,4 +681,3 @@ func parseFunnelData(req *RequestEnvelope) (FunnelData, error) {
 
 	return data, nil
 }
-
