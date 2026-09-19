@@ -342,6 +342,12 @@ func validateSlide(i int, slide SlideSpec, s *semDiags) {
 		return
 	}
 
+	// A pattern / layout override that names something this kind cannot compile
+	// to is a no-op: normalizeSlide keeps its own choice. Saying nothing meant
+	// an agent following analyze_deck_rhythm's "break this run" advice watched
+	// its variation vanish into a clean validate (go-slide-creator-u5az).
+	validateCompositionOverride(path, slide, s)
+
 	// Every kind-specific required payload field must be present and non-empty.
 	// A field with registered aliases is satisfied when the canonical name OR any
 	// alias carries content (required-one-of): the compiler reads the aliases
@@ -955,6 +961,65 @@ func validateKPISnapshot(path string, slide SlideSpec, s *semDiags) {
 		s.advisory(path+".kpis", diagnostics.CodeSemanticDensity,
 			fmt.Sprintf("kpi snapshot degrades to a bullet list — %s; shorten the value or drop a metric to keep the KPI cards", reason))
 	}
+}
+
+// validateCompositionOverride reports a pattern / layout override the kind has
+// no candidate for, naming the ones it does have.
+func validateCompositionOverride(path string, slide SlideSpec, s *semDiags) {
+	requestedPattern := slide.String("pattern")
+	requestedLayout := slide.String("layout")
+	if requestedPattern == "" && requestedLayout == "" {
+		return
+	}
+
+	alternatives := SlideAlternatives(slide.Kind, slide.Body)
+	var patterns, layouts []string
+	for _, c := range alternatives {
+		if c.Pattern != "" {
+			patterns = append(patterns, c.Pattern)
+		}
+		if c.Layout != "" {
+			layouts = append(layouts, c.Layout)
+		}
+	}
+
+	if requestedPattern != "" && !containsString(patterns, requestedPattern) {
+		s.advisoryFix(path+".pattern", diagnostics.CodeSemanticPatternNotAvailable,
+			fmt.Sprintf("%q is not one of the patterns a %q slide compiles to, so the override is ignored and the compiler keeps its own choice; available: %s",
+				requestedPattern, slide.Kind, joinOrNone(patterns)),
+			&diagnostics.Fix{
+				Kind:   "use_one_of",
+				Params: map[string]any{"path": path + ".pattern", "allowed": patterns},
+			})
+	}
+	if requestedLayout != "" && !containsString(layouts, requestedLayout) {
+		s.advisoryFix(path+".layout", diagnostics.CodeSemanticPatternNotAvailable,
+			fmt.Sprintf("%q is not one of the layouts a %q slide compiles to, so the override is ignored and the compiler keeps its own choice; available: %s",
+				requestedLayout, slide.Kind, joinOrNone(layouts)),
+			&diagnostics.Fix{
+				Kind:   "use_one_of",
+				Params: map[string]any{"path": path + ".layout", "allowed": layouts},
+			})
+	}
+}
+
+// containsString reports whether list holds v.
+func containsString(list []string, v string) bool {
+	for _, s := range list {
+		if s == v {
+			return true
+		}
+	}
+	return false
+}
+
+// joinOrNone renders a candidate list for a message, naming the empty case
+// rather than trailing off after "available:".
+func joinOrNone(list []string) string {
+	if len(list) == 0 {
+		return "none — this kind has no alternative composition"
+	}
+	return strings.Join(list, ", ")
 }
 
 // validateChartInsight applies the chart-data and insight-count rules.

@@ -382,6 +382,23 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 	}
 }
 
+// SlideAlternatives returns the compositions a slide of this kind can be asked
+// for: the pattern the planner would choose plus the alternatives it would
+// accept as a `pattern` / `layout` override. Validation and list_slide_kinds
+// read it so the allowed set is the same one normalizeSlide matches against
+// (go-slide-creator-u5az).
+func SlideAlternatives(kind SlideKind, body map[string]any) []CompositionCandidate {
+	plan, ok := kindPlanRegistry[kind]
+	if !ok {
+		plan = passthroughPlan
+	}
+	pattern := ""
+	if plan.pattern != nil {
+		pattern = plan.pattern(body)
+	}
+	return compositionCandidates(kind, pattern)
+}
+
 func compositionCandidates(kind SlideKind, selected string) []CompositionCandidate {
 	visual := func(pattern, reason string) CompositionCandidate {
 		return CompositionCandidate{Pattern: pattern, Layout: "blank-title", Reason: reason}

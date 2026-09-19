@@ -137,6 +137,12 @@ const (
 	// string instead of an array). The compiler silently drops wrong-typed values,
 	// so without this finding the content vanishes behind a green validate gate.
 	CodeSemanticFieldType Code = "SEMANTIC_FIELD_TYPE"
+	// CodeSemanticPatternNotAvailable flags a slide's pattern / layout override
+	// that names something the kind cannot compile to. The override is a no-op
+	// — the compiler keeps its own choice — and before this code said so the
+	// deck validated clean and an agent's variation attempt vanished
+	// (go-slide-creator-u5az).
+	CodeSemanticPatternNotAvailable Code = "SEMANTIC_PATTERN_NOT_AVAILABLE"
 	// Deck-rhythm advisories — emitted by internal/semantic rhythm analysis over
 	// the normalized DeckIR (not per-slide authoring rules). They flag monotony
 	// and missing narrative structure before a deck is rendered.
@@ -235,6 +241,7 @@ func AllCodes() []Code {
 		CodeSemanticDensity,
 		CodeSemanticWeakContent,
 		CodeSemanticFieldType,
+		CodeSemanticPatternNotAvailable,
 		CodeSemanticRhythmMonotony,
 		CodeSemanticRhythmDensity,
 		CodeSemanticRhythmSectioning,

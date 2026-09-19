@@ -2484,7 +2484,8 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
           "required_aliases": {"type": "object", "description": "Maps a required field to accepted alias keys (required-one-of: the field or any alias satisfies the requirement).", "additionalProperties": {"type": "array", "items": {"type": "string"}}},
           "typical_fields":  {"type": "array", "items": {"type": "string"}},
           "item_schema":     {"type": "object", "description": "Closed JSON Schema for one slide of this kind: every payload field the compiler reads (list-entry and chart object shapes included), additionalProperties:false."},
-          "example":         {"type": "object", "description": "Minimal copy-ready slide of this kind (includes kind); validates with zero findings."}
+          "example":         {"type": "object", "description": "Minimal copy-ready slide of this kind (includes kind); validates with zero findings."},
+          "compositions":    {"type": "array", "description": "Values this kind's optional pattern / layout override accepts, with the reason each exists. Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE.", "items": {"type": "object", "properties": {"pattern": {"type": "string"}, "layout": {"type": "string"}, "reason": {"type": "string"}}}}
         },
         "required": ["kind", "summary", "item_schema", "example"]
       }

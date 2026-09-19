@@ -352,6 +352,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+### Added
+
+- **`SEMANTIC_PATTERN_NOT_AVAILABLE` (go-slide-creator-u5az).** A slide's
+  `pattern` / `layout` override was a silent no-op for anything outside its
+  kind's (undisclosed, 1–4 entry) alternatives list:
+  `{kind: "comparison", pattern: "table-highlight"}` compiled to
+  `comparison-2col` with `ok: true` and no finding, so an agent acting on
+  `analyze_deck_rhythm`'s "break this run" advice could not tell its variation
+  had been dropped.
+  - The override is still ignored — the compiler keeps its own choice — but it
+    is now reported at `slides[i].pattern` / `.layout` with
+    `fix.params.allowed` carrying the list, as a warning under `warn` and an
+    error under `strict`.
+  - **`list_slide_kinds` publishes `compositions[]`** per kind
+    (`{pattern, layout, reason}`), so the allowed set is discoverable before
+    authoring rather than only from a rejection.
+
 ### Fixed
 
 - **Constrained design mode is enforced on the DeckSpec path too

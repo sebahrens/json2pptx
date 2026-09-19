@@ -94,8 +94,8 @@ func textList(desc string) payloadField {
 // planner reads for kinds that offer alternatives (see compositionCandidates).
 func compositionFields() map[string]payloadField {
 	return map[string]payloadField{
-		"pattern": strField("Optional composition override: one of this kind's alternative patterns (see explain_deck_spec visual.alternatives)."),
-		"layout":  strField("Optional composition override: one of this kind's alternative layouts (see explain_deck_spec visual.alternatives)."),
+		"pattern": strField("Optional composition override: one of this kind's alternative patterns (list_slide_kinds → compositions[], or explain_deck_spec visual.alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE."),
+		"layout":  strField("Optional composition override: one of this kind's alternative layouts (list_slide_kinds → compositions[], or explain_deck_spec visual.alternatives). Anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE."),
 	}
 }
 

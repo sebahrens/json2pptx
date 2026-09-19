@@ -691,13 +691,45 @@ type slideKindListEntry struct {
 	// Example is a minimal copy-ready slide of this kind (including "kind")
 	// that validates with zero findings.
 	Example map[string]any `json:"example"`
+	// Compositions are the values this kind's optional "pattern" / "layout"
+	// override accepts, with the reason each exists. The override silently did
+	// nothing for anything outside this list, and the list was not published
+	// anywhere, so an agent varying a monotonous run had no way to know what it
+	// could ask for (go-slide-creator-u5az).
+	Compositions []slideKindComposition `json:"compositions,omitempty"`
+}
+
+// slideKindComposition is one composition a kind can be asked for.
+type slideKindComposition struct {
+	Pattern string `json:"pattern,omitempty"`
+	Layout  string `json:"layout,omitempty"`
+	Reason  string `json:"reason,omitempty"`
 }
 
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
-		mcp.WithDescription(`List the slide kinds the semantic compiler recognizes for DeckSpec.slides[].kind. Returns {slide_kinds:[{kind, summary, required_fields, required_aliases, typical_fields, item_schema, example}]}: the kind selects a slide's semantic payload shape, required_fields are the payload keys the kind needs to compile, required_aliases maps a required field to interchangeable alias keys (required-one-of — e.g. kpi_snapshot accepts "metrics" in place of "kpis"), typical_fields are common optional keys, item_schema is the closed JSON Schema for one slide of the kind (every field the compiler reads, list-entry and chart shapes included; additionalProperties:false), and example is a minimal copy-ready slide that validates clean. Call this when authoring a NEW deck spec to choose each slide's kind and learn which fields it expects. The full enum is also embedded in `+"`json2pptx semantic schema`"+`.`),
+		mcp.WithDescription(`List the slide kinds the semantic compiler recognizes for DeckSpec.slides[].kind. Returns {slide_kinds:[{kind, summary, required_fields, required_aliases, typical_fields, item_schema, example, compositions}]}: the kind selects a slide's semantic payload shape, required_fields are the payload keys the kind needs to compile, required_aliases maps a required field to interchangeable alias keys (required-one-of — e.g. kpi_snapshot accepts "metrics" in place of "kpis"), typical_fields are common optional keys, item_schema is the closed JSON Schema for one slide of the kind (every field the compiler reads, list-entry and chart shapes included; additionalProperties:false), example is a minimal copy-ready slide that validates clean, and compositions lists the values this kind's optional "pattern" / "layout" override accepts (anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE). Call this when authoring a NEW deck spec to choose each slide's kind and learn which fields it expects. The full enum is also embedded in `+"`json2pptx semantic schema`"+`.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListSlideKinds)),
 	)
+}
+
+// slideKindCompositions lists the compositions a kind's pattern / layout
+// override accepts. The example payload drives the planner, so the list is the
+// one a caller authoring that kind would actually be offered.
+func slideKindCompositions(k semantic.SlideKind) []slideKindComposition {
+	body, _ := semantic.KindExample(k)["body"].(map[string]any)
+	if body == nil {
+		body = semantic.KindExample(k)
+	}
+	candidates := semantic.SlideAlternatives(k, body)
+	if len(candidates) == 0 {
+		return nil
+	}
+	out := make([]slideKindComposition, 0, len(candidates))
+	for _, c := range candidates {
+		out = append(out, slideKindComposition{Pattern: c.Pattern, Layout: c.Layout, Reason: c.Reason})
+	}
+	return out
 }
 
 func handleListSlideKinds(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -712,6 +744,7 @@ func handleListSlideKinds(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Call
 			TypicalFields:   info.TypicalFields,
 			ItemSchema:      semantic.KindItemSchema(k),
 			Example:         semantic.KindExample(k),
+			Compositions:    slideKindCompositions(k),
 		})
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, map[string]any{"slide_kinds": out})

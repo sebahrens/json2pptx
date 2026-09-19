@@ -1121,6 +1121,20 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"kind": "executive_summary", "title": "Q3", "points": ["single point"]}`,
 		RelatedCodes:  []string{CodeSemanticRequired, CodeSemanticDensity},
 	},
+	CodeSemanticPatternNotAvailable: {
+		Code:        CodeSemanticPatternNotAvailable,
+		Summary:     "A slide's pattern / layout override names a composition its kind cannot compile to, so the override is ignored.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds a \"pattern\" or \"layout\" on a slide whose value is not one of that kind's compositions. The compiler keeps its own choice and the override does nothing; before this code it did nothing SILENTLY, so an agent varying a monotonous run (analyze_deck_rhythm's \"break this run\") could not tell its attempt had been dropped. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Use one of the values in fix.params.allowed, which is the list for this kind.",
+			"Call list_slide_kinds and read the kind's compositions[] to see every pattern / layout it accepts and why each exists.",
+			"Or remove the override and let the compiler choose — that is what is happening either way.",
+		},
+		ExampleBefore: `{"kind": "comparison", "pattern": "table-highlight", "columns": [...]}`,
+		ExampleAfter:  `{"kind": "comparison", "pattern": "card-grid", "columns": [...]}`,
+		RelatedCodes:  []string{CodeSemanticRhythmMonotony},
+	},
 	CodeSemanticRhythmMonotony: {
 		Code:        CodeSemanticRhythmMonotony,
 		Summary:     "Three or more consecutive slides share the same visual family.",
