@@ -23,8 +23,46 @@ type DeckMeta struct {
 	Audience string `json:"audience,omitempty" yaml:"audience,omitempty"`
 	// Author is the deck author (advisory).
 	Author string `json:"author,omitempty" yaml:"author,omitempty"`
-	// Date is a free-form date string shown in chrome (advisory).
+	// Date is a free-form date string shown in chrome (advisory). When Chrome
+	// is set without its own footer_date, this value fills it.
 	Date string `json:"date,omitempty" yaml:"date,omitempty"`
+	// Chrome carries deck furniture: confidentiality stamp, client name,
+	// project code, footer date and page numbers. Every board deck has some of
+	// it, and before go-slide-creator-zmjs the semantic path could not express
+	// any of it — an agent on the recommended path silently shipped none.
+	Chrome *ChromeSpec `json:"chrome,omitempty" yaml:"chrome,omitempty"`
+	// ViewingMode is the readability policy for the deck ("present" or "read").
+	ViewingMode string `json:"viewing_mode,omitempty" yaml:"viewing_mode,omitempty"`
+	// AccentStrategy controls accent rotation ("primary", "rotate",
+	// "section-keyed"). It overrides the compile-option default.
+	AccentStrategy string `json:"accent_strategy,omitempty" yaml:"accent_strategy,omitempty"`
+}
+
+// ChromeSpec mirrors deckinput.ChromeInput: the deck furniture rendered into
+// every slide's footer band.
+type ChromeSpec struct {
+	// Confidentiality is a classification stamp (e.g. "Strictly confidential").
+	Confidentiality string `json:"confidentiality,omitempty" yaml:"confidentiality,omitempty"`
+	// ClientName is the client or company name.
+	ClientName string `json:"client_name,omitempty" yaml:"client_name,omitempty"`
+	// ProjectCode is the project identifier.
+	ProjectCode string `json:"project_code,omitempty" yaml:"project_code,omitempty"`
+	// FooterDate is the date string shown in the footer; defaults to meta.date.
+	FooterDate string `json:"footer_date,omitempty" yaml:"footer_date,omitempty"`
+	// PageNumbers controls slide numbering.
+	PageNumbers *PageNumbersSpec `json:"page_numbers,omitempty" yaml:"page_numbers,omitempty"`
+	// SectionCrumb shows the running section title in the footer.
+	SectionCrumb bool `json:"section_crumb,omitempty" yaml:"section_crumb,omitempty"`
+}
+
+// PageNumbersSpec mirrors deckinput.PageNumbersInput.
+type PageNumbersSpec struct {
+	// Enabled turns page numbers on or off (default: on when chrome is set).
+	Enabled *bool `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	// Format supports {current} and {total} (e.g. "{current} / {total}").
+	Format string `json:"format,omitempty" yaml:"format,omitempty"`
+	// Skip lists slide types that show no page number (default: title, closing).
+	Skip []string `json:"skip,omitempty" yaml:"skip,omitempty"`
 }
 
 // SlideSpec is a single semantic slide: a kind discriminator plus a

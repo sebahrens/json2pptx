@@ -8,6 +8,33 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec carries deck chrome, speaker notes and per-slide sources
+  (go-slide-creator-zmjs).** `get_started("brief")` and SKILL.md send agents to
+  `render_deck_spec` as the path for a new deck, but the spec could not express
+  a confidentiality line, page numbers, speaker notes, or a source on any kind
+  but `chart_insight`: `meta.chrome` failed with *unknown meta field* and the
+  deck did not compile, while a slide-level `source` was accepted and reported
+  as DROPPED. Every board deck has all three, so the recommended path produced
+  unshippable decks and agents had to abandon it for raw
+  `generate_presentation`.
+  - **`meta.chrome`** `{confidentiality, client_name, project_code, footer_date,
+    section_crumb, page_numbers:{enabled, format, skip[]}}` mirrors
+  `PresentationInput.chrome` and compiles straight through; `footer_date`
+    defaults to `meta.date`.
+  - **`meta.viewing_mode`** and **`meta.accent_strategy`** pass through, with the
+    spec's own value winning over the tool/CLI argument.
+  - **`notes`** and **`source`** are now payload fields on EVERY slide kind,
+    mapping to `speaker_notes` / `source` on the compiled slide. `chart_insight`
+    keeps its own `source` handling.
+  - The DeckSpec JSON Schema (and therefore the MCP `spec` input schema) declares
+    all of it. The core profile's tools/list grew from ~70.6KB to ~74.8KB, so
+    `coreToolListByteBudget` moved from 72KB to 80KB.
+
+  Verified end-to-end through `render_deck_spec`: the PPTX carries
+  `notesSlide1/2.xml`, "Source: Finance close pack, 30 Sep 2026" under the body,
+  and the footer "Strictly confidential — Acme Corp | September 2026" with
+  `{current} / {total}` page numbers.
+
 ### Fixed
 
 - **Layout selection no longer puts content on a divider (go-slide-creator-ujya).**

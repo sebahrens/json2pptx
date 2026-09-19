@@ -72,7 +72,46 @@ func deckMetaSchema() map[string]any {
 			"template": map[string]any{"type": "string", "description": "Optional json2pptx template name."},
 			"audience": map[string]any{"type": "string", "description": "Intended audience (advisory)."},
 			"author":   map[string]any{"type": "string", "description": "Deck author (advisory)."},
-			"date":     map[string]any{"type": "string", "description": "Free-form date string (advisory)."},
+			"date":     map[string]any{"type": "string", "description": "Free-form date string (advisory); fills chrome.footer_date when that is not set."},
+			"viewing_mode": map[string]any{
+				"type":        "string",
+				"description": "Readability policy: \"present\" (default, stricter minimum text sizes) or \"read\".",
+				"enum":        []any{"present", "read"},
+			},
+			"accent_strategy": map[string]any{
+				"type":        "string",
+				"description": "Accent colour rotation across the deck.",
+				"enum":        []any{"primary", "rotate", "section-keyed"},
+			},
+			"chrome": chromeSchema(),
+		},
+		"additionalProperties": false,
+	}
+}
+
+// chromeSchema describes the deck furniture block: confidentiality stamp,
+// client name, project code, footer date and page numbers
+// (go-slide-creator-zmjs).
+func chromeSchema() map[string]any {
+	return map[string]any{
+		"type":        "object",
+		"description": "Deck chrome rendered into every slide's footer band.",
+		"properties": map[string]any{
+			"confidentiality": map[string]any{"type": "string", "description": "Classification stamp, e.g. \"Strictly confidential\"."},
+			"client_name":     map[string]any{"type": "string", "description": "Client or company name."},
+			"project_code":    map[string]any{"type": "string", "description": "Project identifier."},
+			"footer_date":     map[string]any{"type": "string", "description": "Date shown in the footer; defaults to meta.date."},
+			"section_crumb":   map[string]any{"type": "boolean", "description": "Show the running section title in the footer."},
+			"page_numbers": map[string]any{
+				"type":        "object",
+				"description": "Slide numbering.",
+				"properties": map[string]any{
+					"enabled": map[string]any{"type": "boolean", "description": "Default: true when chrome is set."},
+					"format":  map[string]any{"type": "string", "description": "Supports {current} and {total}, e.g. \"{current} / {total}\"."},
+					"skip":    map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Slide types that show no page number. Default: [\"title\", \"closing\"]."},
+				},
+				"additionalProperties": false,
+			},
 		},
 		"additionalProperties": false,
 	}

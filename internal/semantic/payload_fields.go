@@ -77,6 +77,17 @@ func compositionFields() map[string]payloadField {
 	}
 }
 
+// universalFields are accepted on EVERY kind: a speaker-notes block and a
+// source/footnote line. They are per-slide strings with no layout impact, and
+// before go-slide-creator-zmjs only chart_insight could carry a source, so an
+// option matrix or financial case had nowhere to cite its numbers.
+func universalFields() map[string]payloadField {
+	return map[string]payloadField{
+		"notes":  strField("Speaker notes for this slide (rendered into the PPTX notes slide, never shown on the slide)."),
+		"source": strField("Source / footnote line shown under the slide content."),
+	}
+}
+
 func withFields(base map[string]payloadField, extra map[string]payloadField) map[string]payloadField {
 	for k, v := range extra {
 		base[k] = v
@@ -86,28 +97,28 @@ func withFields(base map[string]payloadField, extra map[string]payloadField) map
 
 // kindPayloadFields is the closed payload contract per kind.
 var kindPayloadFields = map[SlideKind]map[string]payloadField{
-	KindTitle: {
+	KindTitle: withFields(map[string]payloadField{
 		"title":    strField("Headline."),
 		"subtitle": strField("Subtitle line."),
 		"eyebrow":  strField("Small kicker text above the title."),
-	},
-	KindSection: {
+	}, universalFields()),
+	KindSection: withFields(map[string]payloadField{
 		"title":    strField("Section name."),
 		"subtitle": strField("Optional subtitle (not rendered on shipped section layouts)."),
-	},
-	KindExecutiveSummary: {
+	}, universalFields()),
+	KindExecutiveSummary: withFields(map[string]payloadField{
 		"title":     strField("Slide title."),
 		"points":    textList("Body bullets (3–5 recommended)."),
 		"takeaways": textList("Alias for points (body bullets)."),
 		"takeaway":  strField("One-line takeaway footer."),
-	},
-	KindKPISnapshot: withFields(map[string]payloadField{
+	}, universalFields()),
+	KindKPISnapshot: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
 		"kpis":     {typ: "array", desc: "2–6 KPI objects {value, label, delta?}.", itemKeys: kpiItemKeys},
 		"metrics":  {typ: "array", desc: "Alias for kpis.", itemKeys: kpiItemKeys},
-	}, compositionFields()),
-	KindChartInsight: withFields(map[string]payloadField{
+	}, compositionFields()), universalFields()),
+	KindChartInsight: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
 		"source":   strField("Data source note."),
@@ -115,37 +126,37 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"insights": textList("1–6 insight bullets rendered beside the chart."),
 		"chart": {typ: "object", desc: "Chart: {type, title?, data}. For bar/line/area charts data is {categories:[…], series:[{name, values:[…]}]}; for pie/donut {categories:[…], values:[…]}.",
 			objectKeys: chartObjectKeys},
-	}, compositionFields()),
-	KindComparison: withFields(map[string]payloadField{
+	}, compositionFields()), universalFields()),
+	KindComparison: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
 		"columns":  {typ: "array", desc: "Exactly 2 balanced columns {header, items[]} (or {header, pros[], cons[]}).", itemKeys: comparisonColumnKeys},
-	}, compositionFields()),
-	KindProcess: withFields(map[string]payloadField{
+	}, compositionFields()), universalFields()),
+	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
 		"steps":    {typ: "array", desc: "3–8 steps: strings or {label, description?, type?}.", itemStrings: true, itemKeys: processStepKeys},
-	}, compositionFields()),
-	KindRoadmap: withFields(map[string]payloadField{
+	}, compositionFields()), universalFields()),
+	KindRoadmap: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
 		"phases":   {typ: "array", desc: "3–6 phases: strings or {name, date_label?, description?, items?, active?, milestone?}.", itemStrings: true, itemKeys: roadmapPhaseKeys},
-	}, compositionFields()),
-	KindDecision: {
+	}, compositionFields()), universalFields()),
+	KindDecision: withFields(map[string]payloadField{
 		"title":          strField("Slide title."),
 		"takeaway":       strField("One-line takeaway footer."),
 		"recommendation": strField("Recommendation lead-in paragraph."),
 		"options":        textList("Options: strings or {label}."),
-	},
-	KindClosing: {
+	}, universalFields()),
+	KindClosing: withFields(map[string]payloadField{
 		"title":    strField("Closing headline."),
 		"subtitle": strField("Subtitle line."),
 		"bullets":  textList("Optional closing bullets (renders a content slide)."),
 		"points":   textList("Alias for bullets."),
-	},
-	KindRawJSON2pptx: {
+	}, universalFields()),
+	KindRawJSON2pptx: withFields(map[string]payloadField{
 		"slide": {typ: "object", desc: "A raw json2pptx slide object (validated strictly as PresentationInput.slides[])."},
-	},
+	}, universalFields()),
 }
 
 // PayloadFieldNames returns the sorted payload keys a kind's compiler reads

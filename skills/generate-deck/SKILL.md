@@ -57,6 +57,26 @@ the compiler choose patterns, layouts, accents, and rhythm — a spec is far sho
 | Render | `render_deck_spec` | `semantic render` | One-call spec → `.pptx`. Strict output validation by default (`output_validation off\|warn\|strict`). Returns `{success, pptx_path, quality_summary (0-100, basis "input"), diagnostics[], explanation_summary}`. |
 | Lower to raw | `compile_deck_spec` (`include_compiled_json: true`) | `semantic compile --envelope` | Escape hatch: emit the compiled `PresentationInput` to hand-edit, then drive `validate_input` / `generate_presentation`. Default output is compact (`{ok, slide_count, template, diagnostics[]}`). |
 
+**Deck chrome and per-slide extras.** `meta.chrome` carries the deck furniture every board deck
+needs — `{confidentiality, client_name, project_code, footer_date, section_crumb,
+page_numbers:{enabled, format, skip[]}}` — and `footer_date` defaults to `meta.date`. `meta.viewing_mode`
+(`present` | `read`) and `meta.accent_strategy` (`primary` | `rotate` | `section-keyed`) pass through
+to the compiled deck, the spec's choice winning over the tool argument. **Every** slide kind also
+accepts `notes` (speaker notes, rendered into the PPTX notes slide) and `source` (the footnote line
+under the content) — before this only `chart_insight` could cite anything, so an option matrix or a
+financial case had nowhere to put its source (go-slide-creator-zmjs).
+
+```yaml
+meta:
+  title: "Board update"
+  date: "September 2026"
+  chrome: {confidentiality: "Strictly confidential", client_name: "Acme Corp",
+           page_numbers: {format: "{current} / {total}", skip: [title]}}
+slides:
+  - {kind: executive_summary, title: "Where we stand", points: [...], takeaway: "...",
+     notes: "Pause for questions on churn.", source: "Finance close pack, 30 Sep 2026"}
+```
+
 **`meta.archetype`** ∈ `board_update`, `qbr`, `sales_pitch`, `strategy_proposal`,
 `project_roadmap`, `market_analysis` — biases template choice, default rhythm, and whether a
 synthesis/decision slide is expected (call `list_deck_archetypes` for each one's default template +

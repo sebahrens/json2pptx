@@ -36,8 +36,12 @@ const (
 	// coreToolListByteBudget is the max marshalled tools/list size (bytes) for
 	// the core profile. validate_deck_spec and render_deck_spec each embed the
 	// closed per-kind DeckSpec schema in compact form (no annotations; see
-	// semantic.CompactInlineSchema). The full profile is ~215KB.
-	coreToolListByteBudget = 72 * 1024
+	// semantic.CompactInlineSchema), so a field added to every slide kind costs
+	// roughly 1KB across the two tools. Raised from 72KB when DeckSpec gained
+	// deck chrome and the universal notes/source fields (go-slide-creator-zmjs):
+	// the alternative was leaving the recommended authoring path unable to
+	// express a confidentiality line or speaker notes. The full profile is ~215KB.
+	coreToolListByteBudget = 80 * 1024
 )
 
 // coreToolNames is the tool set advertised by the default "core" profile.

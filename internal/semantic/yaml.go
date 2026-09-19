@@ -160,7 +160,7 @@ var topLevelMigrations = map[string]string{
 // DeckMeta's json tags and the schema's DeckMeta.additionalProperties:false, so
 // unknown meta keys are reported rather than silently dropped by the struct
 // decode of rawDeck.Meta.
-var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date"}
+var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date", "chrome", "viewing_mode", "accent_strategy"}
 
 // metaMigrations maps a common stale/alias meta key onto the field it should be,
 // checked before the generic fuzzy suggestion (mirrors topLevelMigrations).
@@ -171,6 +171,13 @@ var metaMigrations = map[string]string{
 	"category":  "archetype",
 	"theme":     "template",
 	"presenter": "author",
+	// Deck furniture used to be rejected outright; point the old top-level
+	// spellings at the meta block that now carries them (go-slide-creator-zmjs).
+	"footer":          "chrome",
+	"confidentiality": "chrome",
+	"page_numbers":    "chrome",
+	"client":          "chrome",
+	"client_name":     "chrome",
 }
 
 // buildDeckSpec converts the lenient rawDeck into a DeckSpec, validating the

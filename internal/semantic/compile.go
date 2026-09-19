@@ -10,6 +10,7 @@ package semantic
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -76,6 +77,14 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 	if opts.AccentStrategy != "" {
 		input.AccentStrategy = opts.AccentStrategy
 	}
+	// Deck-level passthroughs: the spec's own choices win over caller defaults.
+	if ir.AccentStrategy != "" {
+		input.AccentStrategy = ir.AccentStrategy
+	}
+	if ir.ViewingMode != "" {
+		input.ViewingMode = ir.ViewingMode
+	}
+	input.Chrome = compileChrome(ir)
 
 	for i := range ir.Slides {
 		si := &ir.Slides[i]
@@ -95,6 +104,11 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		for _, l := range links {
 			ir.SourceMap.Add(l.RawPath, l.SemanticPath, si.SourceIndex)
 		}
+		// Universal per-slide fields every kind accepts: speaker notes and a
+		// source/footnote line. They are plain strings with no layout impact,
+		// and before go-slide-creator-zmjs only chart_insight could carry a
+		// source — an option matrix or financial case could not cite anything.
+		applyUniversalSlideFields(compiled, si, ir.SourceMap)
 		input.Slides = append(input.Slides, *compiled)
 	}
 
@@ -162,6 +176,69 @@ func firstNonEmptyStr(vals ...string) string {
 	for _, v := range vals {
 		if v != "" {
 			return v
+		}
+	}
+	return ""
+}
+
+// compileChrome copies the spec's chrome block into the raw model, filling the
+// footer date from meta.date when the block does not set its own. Deck furniture
+// — a confidentiality stamp, the client name, page numbers — is on every board
+// deck, and the semantic path could not express any of it
+// (go-slide-creator-zmjs).
+func compileChrome(ir *DeckIR) *deckinput.ChromeInput {
+	if ir == nil || ir.Chrome == nil {
+		return nil
+	}
+	c := ir.Chrome
+	out := &deckinput.ChromeInput{
+		Confidentiality: c.Confidentiality,
+		ClientName:      c.ClientName,
+		ProjectCode:     c.ProjectCode,
+		FooterDate:      firstNonEmptyStr(c.FooterDate, ir.Date),
+		SectionCrumb:    c.SectionCrumb,
+	}
+	if c.PageNumbers != nil {
+		out.PageNumbers = &deckinput.PageNumbersInput{
+			Enabled: c.PageNumbers.Enabled,
+			Format:  c.PageNumbers.Format,
+			Skip:    append([]string(nil), c.PageNumbers.Skip...),
+		}
+	}
+	return out
+}
+
+// applyUniversalSlideFields copies the kind-independent payload fields (speaker
+// notes, source line) onto a compiled slide and records their source links.
+func applyUniversalSlideFields(compiled *deckinput.SlideInput, si *SlideIR, sm *SourceMap) {
+	if compiled == nil || si == nil {
+		return
+	}
+	rawSlide := fmt.Sprintf("/slides/%d", si.SourceIndex)
+	semSlide := fmt.Sprintf("slides[%d]", si.SourceIndex)
+	if notes := bodyString(si.Body, "notes", "speaker_notes"); notes != "" {
+		compiled.SpeakerNotes = notes
+		if sm != nil {
+			sm.Add(rawSlide+"/speaker_notes", semSlide+".notes", si.SourceIndex)
+		}
+	}
+	// chart_insight compiles its own source into the slide's source line; do not
+	// overwrite it.
+	if compiled.Source == "" {
+		if src := bodyString(si.Body, "source"); src != "" {
+			compiled.Source = src
+			if sm != nil {
+				sm.Add(rawSlide+"/source", semSlide+".source", si.SourceIndex)
+			}
+		}
+	}
+}
+
+// bodyString returns the first non-empty string value among keys.
+func bodyString(body map[string]any, keys ...string) string {
+	for _, k := range keys {
+		if v, ok := body[k].(string); ok && strings.TrimSpace(v) != "" {
+			return strings.TrimSpace(v)
 		}
 	}
 	return ""
