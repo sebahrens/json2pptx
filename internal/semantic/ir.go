@@ -196,6 +196,10 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "blank-title",
 		pattern: comparisonPattern,
 	},
+	KindOptionMatrix: {
+		role: RoleRecommendation, family: FamilyComparison, density: DensityHeavy, layout: "blank-title",
+		pattern: optionMatrixPattern,
+	},
 	KindProcess: {
 		role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "blank-title",
 		pattern: func(map[string]any) string { return "process-flow" },
@@ -233,6 +237,17 @@ func comparisonPattern(body map[string]any) string {
 func execSummaryPattern(body map[string]any) string {
 	if slides.ExecSummaryPatternFeasible(body) {
 		return "exec-summary"
+	}
+	return ""
+}
+
+// optionMatrixPattern advertises table-highlight only when the payload will
+// actually compile to it (a 2–6 × 2–6 matrix whose scores read on the chosen
+// scale); otherwise it returns "" so the explain projection matches compile's
+// scored-bullet fallback (go-slide-creator-6o1r).
+func optionMatrixPattern(body map[string]any) string {
+	if slides.OptionMatrixPatternFeasible(body) {
+		return "table-highlight"
 	}
 	return ""
 }
@@ -368,6 +383,11 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			visual("stylish-panels", "3-5 columns, each a titled panel with its own bullets"),
 			visual("card-grid", "2-5 columns as titled cards when panels do not fit"),
 			{Layout: "content", Reason: "native bullets preserve six or more columns"},
+		}
+	case KindOptionMatrix:
+		return []CompositionCandidate{
+			visual("table-highlight", "2-6 options scored against 2-6 criteria"),
+			{Layout: "content", Reason: "native bullets preserve a matrix outside those bounds"},
 		}
 	case KindProcess:
 		return []CompositionCandidate{visual("process-flow", "3-8 staged process steps"), {Layout: "content", Reason: "native bullets preserve shorter or longer processes"}}

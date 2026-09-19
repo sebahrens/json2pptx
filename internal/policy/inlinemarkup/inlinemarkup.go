@@ -43,13 +43,35 @@ type Violation struct {
 	Tags []string
 }
 
+// markupFields carry markup by contract rather than authored prose, so a tag in
+// them is not a mistake and never reaches the run builder. icon.svg_data is the
+// documented way to supply an inline icon; scanning it reported every
+// <svg>/<path>/<circle> as text that "prints literally on the slide", which is
+// both false and unfixable — the finding fired on every deck using a harvey-ball
+// table-highlight or any inline icon (go-slide-creator-6o1r).
+var markupFields = map[string]bool{"svg_data": true}
+
+// authoredText reports whether a walked path names a field whose value the run
+// builder renders as text. The check is on the field name alone, so it holds at
+// any depth (a nested grid cell's icon is as exempt as a top-level one).
+func authoredText(path string) bool {
+	field := path
+	if i := strings.LastIndexByte(field, '.'); i >= 0 {
+		field = field[i+1:]
+	}
+	if i := strings.IndexByte(field, '['); i >= 0 {
+		field = field[:i]
+	}
+	return !markupFields[field]
+}
+
 // Scan returns one Violation per authored string containing a tag outside
 // SupportedTags, in stable path order. Strings with no angle brackets are
 // skipped, so the scan costs nothing on ordinary prose.
 func Scan(input any) []Violation {
 	var violations []Violation
 	textwalk.Strings(input, func(value, path string) {
-		if !strings.Contains(value, "<") {
+		if !strings.Contains(value, "<") || !authoredText(path) {
 			return
 		}
 		seen := map[string]bool{}
@@ -98,10 +120,10 @@ func Validate(input any) []patterns.FitFinding {
 				Fix: &patterns.FixSuggestion{
 					Kind: "remove_key",
 					Params: map[string]any{
-						"path":            v.Path,
-						"unsupported":     v.Tags,
-						"supported":       SupportedTags,
-						"hint":            "remove the tag, or express the intent with a supported one (a footnote marker is <sup>1</sup>)",
+						"path":        v.Path,
+						"unsupported": v.Tags,
+						"supported":   SupportedTags,
+						"hint":        "remove the tag, or express the intent with a supported one (a footnote marker is <sup>1</sup>)",
 					},
 				},
 			},

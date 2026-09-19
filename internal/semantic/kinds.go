@@ -21,6 +21,8 @@ const (
 	KindChartInsight SlideKind = "chart_insight"
 	// KindComparison contrasts two or more options.
 	KindComparison SlideKind = "comparison"
+	// KindOptionMatrix scores options against shared criteria.
+	KindOptionMatrix SlideKind = "option_matrix"
 	// KindProcess describes a sequential process or flow.
 	KindProcess SlideKind = "process"
 	// KindRoadmap describes a phased roadmap or timeline.
@@ -93,6 +95,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		Summary:        "Side-by-side comparison of two or more options.",
 		RequiredFields: []string{"columns"},
 		TypicalFields:  []string{"title", "takeaway"},
+	},
+	KindOptionMatrix: {
+		Kind:            KindOptionMatrix,
+		Summary:         "Options scored against shared criteria — the evaluation matrix a recommendation is argued on. 2–6 criteria × 2–6 options render as the table-highlight pattern with the recommended row and decisive column highlighted; outside that it degrades to a scored bullet list.",
+		RequiredFields:  []string{"criteria", "options"},
+		RequiredAliases: map[string][]string{"criteria": {"columns"}, "options": {"rows"}},
+		TypicalFields:   []string{"title", "scale", "recommended", "decisive_criterion", "highlight_label", "takeaway"},
 	},
 	KindProcess: {
 		Kind:           KindProcess,

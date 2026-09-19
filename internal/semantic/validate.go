@@ -52,6 +52,7 @@ var kindNeedsTakeaway = map[SlideKind]bool{
 	KindKPISnapshot:      true,
 	KindChartInsight:     true,
 	KindComparison:       true,
+	KindOptionMatrix:     true,
 	KindProcess:          true,
 	KindRoadmap:          true,
 	KindDecision:         true,
@@ -95,10 +96,16 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	KindKPISnapshot:      {"title": shapeString, "kpis": shapeArray, "metrics": shapeArray, "takeaway": shapeString},
 	KindChartInsight:     {"title": shapeString, "chart": shapeObject, "insights": shapeArray, "insight": shapeString, "source": shapeString, "takeaway": shapeString},
 	KindComparison:       {"title": shapeString, "columns": shapeArray, "takeaway": shapeString},
-	KindProcess:          {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
-	KindRoadmap:          {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
-	KindDecision:         {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
-	KindClosing:          {"title": shapeString, "subtitle": shapeString},
+	KindOptionMatrix: {
+		"title": shapeString, "criteria": shapeArray, "columns": shapeArray,
+		"options": shapeArray, "rows": shapeArray, "scale": shapeString,
+		"decisive_criterion": shapeString, "highlight_label": shapeString,
+		"corner_label": shapeString, "takeaway": shapeString,
+	},
+	KindProcess:  {"title": shapeString, "steps": shapeArray, "takeaway": shapeString},
+	KindRoadmap:  {"title": shapeString, "phases": shapeArray, "takeaway": shapeString},
+	KindDecision: {"title": shapeString, "options": shapeArray, "recommendation": shapeString, "takeaway": shapeString},
+	KindClosing:  {"title": shapeString, "subtitle": shapeString},
 }
 
 // shapeMatches reports whether v has the JSON type the shape expects.
@@ -433,6 +440,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		}
 	case KindComparison:
 		validateComparison(path, slide, s)
+	case KindOptionMatrix:
+		validateOptionMatrix(path, slide, s)
 	case KindProcess:
 		// Count steps the compiler can render (blank entries are dropped), so a
 		// process of all-blank steps fails fast instead of compiling to a
@@ -774,4 +783,90 @@ func execSummaryPointsPath(body map[string]any) string {
 		return "points"
 	}
 	return "takeaways"
+}
+
+// validateOptionMatrix checks an option matrix against table-highlight's bounds
+// (go-slide-creator-6o1r). A matrix outside them still renders — as a scored
+// bullet list — so the rules are advisory, but they name the visual the author
+// loses rather than only the number that is wrong.
+func validateOptionMatrix(path string, slide SlideSpec, s *semDiags) {
+	criteria, options := slides.UsableOptionMatrixCounts(slide.Body)
+	criteriaField, optionsField := optionMatrixFieldNames(slide.Body)
+
+	if !s.requireUsableContent(path, "criteria", slide.Body, criteria, "columns") {
+		return
+	}
+	if !s.requireUsableContent(path, "options", slide.Body, options, "rows") {
+		return
+	}
+	if criteria < 2 || criteria > 6 {
+		s.advisory(path+"."+criteriaField, diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("table-highlight scores 2–6 criteria; found %d — group them or split the matrix across two slides (otherwise this slide degrades to a scored bullet list)", criteria))
+	}
+	if options < 2 || options > 6 {
+		s.advisory(path+"."+optionsField, diagnostics.CodeSemanticDensity,
+			fmt.Sprintf("table-highlight scores 2–6 options; found %d — shortlist them or split the matrix across two slides (otherwise this slide degrades to a scored bullet list)", options))
+	}
+
+	// One score per criterion is the matrix's own contract: a row with fewer
+	// scores has columns the author never filled, and the pattern refuses it.
+	rows, _ := slide.Body[optionsField].([]any)
+	for i, raw := range rows {
+		o, isMap := raw.(map[string]any)
+		if !isMap {
+			continue
+		}
+		scores, ok := optionScoreCount(o)
+		if !ok {
+			continue
+		}
+		if scores != criteria {
+			s.advisory(fmt.Sprintf("%s.%s[%d].scores", path, optionsField, i), diagnostics.CodeSemanticDensity,
+				fmt.Sprintf("option %d has %d scores for %d criteria; give every option exactly one score per criterion (otherwise this slide degrades to a scored bullet list)", i+1, scores, criteria))
+		}
+	}
+
+	for _, field := range []string{"highlight_label", "corner_label"} {
+		if label := strPayloadField(slide.Body, field); label != "" && !slides.OptionMatrixLabelFits(label) {
+			s.advisory(path+"."+field, diagnostics.CodeSemanticDensity,
+				fmt.Sprintf("%s is %d characters; table-highlight renders at most 24, so this badge is dropped (the row it marks is still highlighted)", field, len(label)))
+		}
+	}
+
+	// A matrix inside every bound can still fail on a score the scale does not
+	// read (a harvey column given "yes", a RAG column given 7). The compiler asks
+	// the pattern; so does this, so validate and compile agree.
+	if criteria >= 2 && criteria <= 6 && options >= 2 && options <= 6 && !slides.OptionMatrixPatternFeasible(slide.Body) {
+		s.advisory(path+"."+optionsField, diagnostics.CodeSemanticDensity,
+			"a score is not readable on this matrix's scale (harvey: 0–4 or none/quarter/half/three-quarter/full; rag: red/amber/green; text: ≤24 chars; \"-\" for n/a) — this slide degrades to a scored bullet list")
+	}
+}
+
+// optionMatrixFieldNames reports which payload keys the matrix was authored
+// with, so findings address what the author wrote rather than the canonical name.
+func optionMatrixFieldNames(body map[string]any) (criteria, options string) {
+	criteria, options = "criteria", "options"
+	if !hasNonEmpty(body, "criteria") && hasNonEmpty(body, "columns") {
+		criteria = "columns"
+	}
+	if !hasNonEmpty(body, "options") && hasNonEmpty(body, "rows") {
+		options = "rows"
+	}
+	return criteria, options
+}
+
+// optionScoreCount returns the number of scores on an option row.
+func optionScoreCount(option map[string]any) (int, bool) {
+	for _, field := range []string{"scores", "values"} {
+		if raw, ok := option[field].([]any); ok {
+			return len(raw), true
+		}
+	}
+	return 0, false
+}
+
+// strPayloadField reads a trimmed string payload field.
+func strPayloadField(body map[string]any, key string) string {
+	v, _ := body[key].(string)
+	return strings.TrimSpace(v)
 }

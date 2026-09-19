@@ -55,6 +55,13 @@ var execSummaryPointKeys = []string{
 // kpiItemKeys are the keys kpiCells reads from a KPI entry.
 var kpiItemKeys = []string{"value", "big", "label", "small", "caption", "delta", "sub", "trend", "change"}
 
+// optionMatrixCriterionKeys are the keys optionMatrixCriteria reads from a
+// criterion object; optionMatrixOptionKeys the keys an option row is read by
+// (go-slide-creator-6o1r).
+var optionMatrixCriterionKeys = []string{"label", "name", "title", "criterion", "scale"}
+
+var optionMatrixOptionKeys = []string{"name", "option", "label", "title", "detail", "description", "summary", "scores", "values"}
+
 // comparisonColumnKeys are the keys a comparison column object is read by.
 var comparisonColumnKeys = []string{"header", "title", "label", "name", "items", "pros", "cons"}
 
@@ -146,6 +153,32 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
 		"columns":  {typ: "array", desc: "Exactly 2 balanced columns {header, items[]} (or {header, pros[], cons[]}).", itemKeys: comparisonColumnKeys},
+	}, compositionFields()), universalFields()),
+	KindOptionMatrix: withFields(withFields(map[string]payloadField{
+		"title": strField("Slide title."),
+		"criteria": {
+			typ: "array", itemStrings: true, itemKeys: optionMatrixCriterionKeys,
+			desc: "2–6 evaluation criteria (table columns): a string label, or {label, scale?} to override the scale for that column.",
+		},
+		"columns": {
+			typ: "array", itemStrings: true, itemKeys: optionMatrixCriterionKeys,
+			desc: "Alias for criteria.",
+		},
+		"options": {
+			typ: "array", itemKeys: optionMatrixOptionKeys,
+			desc: "2–6 options (table rows): {name, detail?, scores[]} with exactly one score per criterion.",
+		},
+		"rows": {
+			typ: "array", itemKeys: optionMatrixOptionKeys,
+			desc: "Alias for options.",
+		},
+		"scale":              strField("Score vocabulary: harvey (0–4 or none/quarter/half/three-quarter/full, the default), rag (red/amber/green), or text (≤24 chars). Use \"-\" for n/a."),
+		"recommended":        strField("The recommended option, named (matched against options[].name) or as a row index — its row is highlighted."),
+		"recommended_option": strField("Alias for recommended."),
+		"decisive_criterion": strField("The criterion that decides it, named (matched against criteria[].label) or as a column index — its column is highlighted."),
+		"highlight_label":    strField("Badge on the highlighted row (e.g. \"Recommended\")."),
+		"corner_label":       strField("Label for the table's empty top-left corner cell."),
+		"takeaway":           strField("One-line takeaway footer."),
 	}, compositionFields()), universalFields()),
 	KindProcess: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

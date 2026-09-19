@@ -90,3 +90,63 @@ func TestScan_NoTagsIsQuiet(t *testing.T) {
 		t.Errorf("expected no violations, got %+v", v)
 	}
 }
+
+// go-slide-creator-6o1r: icon.svg_data is the documented way to supply an inline
+// icon, and its markup never reaches the run builder. Scanning it reported every
+// <svg>/<path>/<circle> as text that "prints literally on the slide" — false,
+// and unfixable by the author — on every deck using an inline icon or a
+// harvey-ball table-highlight.
+func TestScanSkipsMarkupFields(t *testing.T) {
+	const icon = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg>`
+	deck := map[string]any{"slides": []any{map[string]any{
+		"shape_grid": map[string]any{"rows": []any{map[string]any{"cells": []any{
+			map[string]any{"icon": map[string]any{"svg_data": icon, "alt": "a dot"}},
+			// A nested grid's icon is as exempt as a top-level one.
+			map[string]any{"grid": map[string]any{"rows": []any{map[string]any{"cells": []any{
+				map[string]any{"icon": map[string]any{"svg_data": icon}},
+			}}}}},
+		}}}},
+	}}}
+	if got := Scan(deck); len(got) != 0 {
+		t.Errorf("inline SVG icons reported as unsupported text markup: %+v", got)
+	}
+
+	// A field that IS authored text still reports, including one sitting beside
+	// an exempt field.
+	deck2 := map[string]any{"slides": []any{map[string]any{
+		"shape_grid": map[string]any{"rows": []any{map[string]any{"cells": []any{
+			map[string]any{
+				"icon":  map[string]any{"svg_data": icon},
+				"shape": map[string]any{"text": "Revenue <color>up</color>"},
+			},
+		}}}},
+	}}}
+	got := Scan(deck2)
+	if len(got) != 1 {
+		t.Fatalf("want exactly the text violation, got %+v", got)
+	}
+	if len(got[0].Tags) != 1 || got[0].Tags[0] != "color" {
+		t.Errorf("tags = %v, want [color]", got[0].Tags)
+	}
+}
+
+func TestAuthoredText(t *testing.T) {
+	for _, path := range []string{
+		"slides[0].content[0].text_value",
+		"slides[0].shape_grid.rows[0].cells[0].shape.text",
+		"svg_data_note", // a field merely starting with the name is not exempt
+	} {
+		if !authoredText(path) {
+			t.Errorf("authoredText(%q) = false, want true", path)
+		}
+	}
+	for _, path := range []string{
+		"svg_data",
+		"slides[0].shape_grid.rows[0].cells[0].icon.svg_data",
+		"slides[0].shape_grid.rows[4].cells[0].grid.rows[0].cells[2].icon.svg_data",
+	} {
+		if authoredText(path) {
+			t.Errorf("authoredText(%q) = true, want false", path)
+		}
+	}
+}

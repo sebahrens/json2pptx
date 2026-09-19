@@ -111,6 +111,35 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 			return map[string]any{"title": "Filler", "points": []any{"a", "b", "c"}, "bottom_line": s}
 		}, rendered: true},
 	},
+	// go-slide-creator-6o1r: every documented option_matrix field must reach the
+	// rendered slide — a criterion label, an option name and detail, a score, the
+	// highlight badge, and the two fields that resolve a highlight by name.
+	KindOptionMatrix: {
+		"title": {inject: func(s string) map[string]any { return covOptionMatrix(map[string]any{"title": s}) }, rendered: true},
+		"criteria": {inject: func(s string) map[string]any {
+			return covOptionMatrix(map[string]any{"criteria": []any{s, "Payback"}})
+		}, rendered: true},
+		"options": {inject: func(s string) map[string]any {
+			return covOptionMatrix(map[string]any{"options": []any{
+				map[string]any{"name": s, "scores": []any{1, 2}},
+				map[string]any{"name": "Hub", "scores": []any{3, 4}},
+			}})
+		}, rendered: true},
+		"scale": {inject: func(string) map[string]any { return covOptionMatrix(map[string]any{"scale": "harvey"}) }},
+		"recommended": {inject: func(string) map[string]any {
+			return covOptionMatrix(map[string]any{"recommended": "Hub"})
+		}},
+		"decisive_criterion": {inject: func(string) map[string]any {
+			return covOptionMatrix(map[string]any{"decisive_criterion": "Payback"})
+		}},
+		// The harness sentinel is 39 chars, past table-highlight's 24-char badge
+		// budget, so this probe exercises the drop rule rather than the badge.
+		// TestOptionMatrixKeepsBadgeWithinBudget covers a badge that fits.
+		"highlight_label": {inject: func(s string) map[string]any {
+			return covOptionMatrix(map[string]any{"recommended": "Hub", "highlight_label": s})
+		}, why: "a badge over the pattern's 24-char budget is dropped rather than costing the whole matrix; validation warns"},
+		"takeaway": {inject: func(s string) map[string]any { return covOptionMatrix(map[string]any{"takeaway": s}) }, rendered: true},
+	},
 	KindKPISnapshot: {
 		"kpis":     {inject: func(s string) map[string]any { return map[string]any{"kpis": covKPIs(s)} }, rendered: true},
 		"title":    {inject: func(s string) map[string]any { return map[string]any{"kpis": covKPIs("$48M"), "title": s} }, rendered: true},
@@ -247,4 +276,22 @@ func TestSemanticPayloadFieldCoverage(t *testing.T) {
 			})
 		}
 	}
+}
+
+// covOptionMatrix returns a minimal valid option_matrix payload with the given
+// fields overlaid, so each probe exercises one field against a matrix that
+// otherwise reaches the table-highlight pattern.
+func covOptionMatrix(overlay map[string]any) map[string]any {
+	body := map[string]any{
+		"title":    "Options",
+		"criteria": []any{"Capex", "Payback"},
+		"options": []any{
+			map[string]any{"name": "Automate", "scores": []any{1, 2}},
+			map[string]any{"name": "Hub", "scores": []any{3, 4}},
+		},
+	}
+	for k, v := range overlay {
+		body[k] = v
+	}
+	return body
 }

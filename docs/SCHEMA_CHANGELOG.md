@@ -8,6 +8,27 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **New slide kind `option_matrix` (go-slide-creator-6o1r).** The DeckSpec path
+  compiled to 5 of 43 patterns, and the options × criteria evaluation matrix —
+  the slide a recommendation is actually argued on — was not one of them. Three
+  reviewers independently reached for it and had to drop to `raw_json2pptx` with
+  a hand-written pattern block.
+  - `criteria` (2–6, alias `columns`): a string label or `{label, scale?}` for a
+    per-column scale. `options` (2–6, alias `rows`): `{name, detail?, scores[]}`
+    with exactly one score per criterion.
+  - `scale` is `harvey` (default), `rag` or `text`; `recommended` and
+    `decisive_criterion` take a NAME (matched against `options[].name` /
+    `criteria[].label`) or an index, and highlight that row / column.
+    `highlight_label` badges the recommended row.
+  - Compiles to `table-highlight`. Outside the pattern's bounds — or with a
+    score the scale cannot read — it degrades to a bullet list that still
+    carries every score, labelled by criterion, and `validate_deck_spec` says
+    which rule was missed at the field the author wrote (`criteria` vs
+    `columns`).
+  - A `highlight_label` past the pattern's 24-char budget is dropped rather than
+    costing the whole matrix — the row it marks stays highlighted — and
+    validation names the budget.
+
 - **A comparison of more than two columns is a visual (go-slide-creator-3bgf).**
   `kind: comparison` only had a pattern for exactly two balanced columns.
   Everything else — the standard consulting three-option slide, a four-way
@@ -118,6 +139,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   `{current} / {total}` page numbers.
 
 ### Fixed
+
+- **Inline SVG icons are no longer reported as unsupported text markup
+  (go-slide-creator-6o1r).** `UNSUPPORTED_INLINE_MARKUP` scanned every string in
+  a deck, including `icon.svg_data` — the documented way to supply an inline
+  icon — and told the author its `<svg>` / `<path>` / `<circle>` tags "print
+  literally on the slide". They do not: `svg_data` never reaches the run
+  builder. The finding fired on every deck using an inline icon or a
+  Harvey-ball `table-highlight`, and there was nothing the author could do about
+  it. The scan now skips fields that carry markup by contract, at any nesting
+  depth; markup in authored text is still reported.
 
 - **`examine_template.aspect_ratio` is measured, not assumed
   (go-slide-creator-ydbk).** It defaulted to the literal `"16:9"` whenever a

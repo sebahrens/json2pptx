@@ -22,6 +22,23 @@ var kindExamples = map[SlideKind]map[string]any{
 		"bottom_line": "Fund an SMB retention pod in Q3 and hold the enterprise motion as is.",
 		"takeaway":    "Protect SMB retention to keep the growth plan on track.",
 	},
+	KindOptionMatrix: {
+		"kind":  "option_matrix",
+		"title": "Hub consolidation scores best on payback and risk",
+		"scale": "harvey",
+		"criteria": []any{
+			"Capex", "Payback", "Execution risk", "Customer impact",
+		},
+		"options": []any{
+			map[string]any{"name": "Parcel automation", "detail": "Automate the three largest hubs", "scores": []any{1, 1, 3, 2}},
+			map[string]any{"name": "Hub consolidation", "detail": "Close two hubs, expand one", "scores": []any{2, 4, 3, 3}},
+			map[string]any{"name": "Partner network", "detail": "Outsource last mile in tier-2 cities", "scores": []any{4, 4, 1, 1}},
+		},
+		"recommended":        "Hub consolidation",
+		"decisive_criterion": "Payback",
+		"highlight_label":    "Recommended",
+		"takeaway":           "Hub consolidation pays back in two years at acceptable risk.",
+	},
 	KindKPISnapshot: {
 		"kind":  "kpi_snapshot",
 		"title": "Q4 at a glance",
