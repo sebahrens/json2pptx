@@ -19,6 +19,9 @@ import (
 
 func callGetStarted(t *testing.T, task string) getStartedResponse {
 	t.Helper()
+	// Pin the toolchain: these tests assert the FULL workflow, which a machine
+	// without LibreOffice (CI's test runner) would otherwise degrade under them.
+	withRenderStatus(t, true, nil)
 	args := map[string]any{}
 	if task != "" {
 		args["task"] = task
@@ -728,4 +731,12 @@ func TestGetStartedChromeNoteMatchesTheRecommendedPath(t *testing.T) {
 	if input.Chrome == nil || input.Chrome.Confidentiality == "" {
 		t.Errorf("compiled chrome = %+v", input.Chrome)
 	}
+}
+
+// withRenderStatus pins what the render-dependency probe reports for one test.
+func withRenderStatus(t *testing.T, available bool, missing []string) {
+	t.Helper()
+	prev := renderDependencyStatus
+	renderDependencyStatus = func() (bool, []string) { return available, missing }
+	t.Cleanup(func() { renderDependencyStatus = prev })
 }

@@ -13,6 +13,9 @@ import (
 // instructions, and they name the DeckSpec render path and the thumbnail
 // inspection step.
 func TestMCPInitializeCarriesInstructions(t *testing.T) {
+	// The instructions degrade on a server that cannot render, so pin the
+	// toolchain: this test is about the workflow text, not the runner's PATH.
+	withRenderStatus(t, true, nil)
 	s := newMCPServer(&mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir()})
 	msg, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",

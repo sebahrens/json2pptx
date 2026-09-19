@@ -387,9 +387,16 @@ func (mc *mcpConfig) handleGetStarted(ctx context.Context, request mcp.CallToolR
 	return mcpResult, nil
 }
 
+// renderDependencyStatus reports whether the render toolchain is installed. It
+// is a variable so a test can pin the answer: without that, every workflow
+// assertion depends on what happens to be on the runner's PATH — CI has no
+// LibreOffice, so the degraded workflow would be the one under test there
+// (go-slide-creator-a7fh).
+var renderDependencyStatus = render.DependencyStatus
+
 // getStartedRuntime reports what this server can do, for the runtime block.
 func (mc *mcpConfig) getStartedRuntime() getStartedRuntime {
-	available, missing := render.DependencyStatus()
+	available, missing := renderDependencyStatus()
 	templatesDir, outputDir := "", ""
 	if mc != nil {
 		templatesDir, outputDir = resolveRuntimeDirs(mc.templatesDir, mc.outputDir)
