@@ -352,6 +352,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+### Changed
+
+- **A chart_insight's takeaway is dropped when it repeats the slide's only
+  insight, and a sparse insights column gives the chart room
+  (go-slide-creator-pyxn).** A lone insight promoted into the takeaway printed
+  the same sentence twice on one slide — once as the only Key Insight bullet
+  and once verbatim in the band. Meanwhile the insights column took 35% of the
+  width for one short bullet while the chart was squeezed into 55%.
+  - The bullet is the slide's own content, so the band is what gives way. A
+    takeaway that summarises SEVERAL insights is kept: it says something the
+    bullets do not.
+  - `chart-insights-split`'s default split widens from 65/35 to **75/25** when
+    the insights column is sparse — at most two bullets, ≤140 characters in
+    total, and no headline or so-what. `overrides.chart_width_pct` still pins
+    the ratio and beats both defaults.
+
 ### Added
 
 - **`SEMANTIC_PATTERN_NOT_AVAILABLE` (go-slide-creator-u5az).** A slide's

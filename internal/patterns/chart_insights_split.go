@@ -17,7 +17,7 @@ import (
 // ---------------------------------------------------------------------------
 //
 // Layout:
-//   65/35 column split.
+//   65/35 column split (75/25 when the insights column is sparse).
 //     Left  (65%): chart diagram rendered via svggen.
 //     Right (35%): 'Key Insights' label + bullet list of takeaways.
 //   When chart is omitted: insights column expands to 100% width and the
@@ -343,8 +343,11 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 		return grid, nil
 	}
 
-	// Compute the chart panel width as a fraction of the grid.
-	chartPct := clampPct(ovr.ChartWidthPct, 65.0, 40.0, 80.0)
+	// Compute the chart panel width as a fraction of the grid. The default
+	// widens when the insights column has little to hold: a 35% column carrying
+	// one short bullet leaves a large empty block under it while the chart is
+	// squeezed into 55% of the slide (go-slide-creator-pyxn).
+	chartPct := clampPct(ovr.ChartWidthPct, sparseInsightsChartPct(v), 40.0, 80.0)
 	insightsPct := 100.0 - chartPct
 
 	// Chart panel: a Diagram cell rendered via svggen, with value labels and
@@ -515,6 +518,39 @@ type chartInsightsText struct {
 	// top-anchored cells at different type sizes share a first baseline
 	// (go-slide-creator-kol0).
 	InsetTop float64 `json:"inset_top,omitempty"`
+}
+
+// chartInsightsDefaultPct is the standard chart panel width, and
+// chartInsightsWidePct the width used when the insights column is sparse.
+const (
+	chartInsightsDefaultPct = 65.0
+	chartInsightsWidePct    = 75.0
+	// chartInsightsSparseBullets / Runes bound what counts as sparse: up to two
+	// bullets of ordinary length, with none of the extras (headline, so-what)
+	// that give the column a reason to be wide.
+	chartInsightsSparseBullets = 2
+	chartInsightsSparseRunes   = 140
+)
+
+// sparseInsightsChartPct returns the default chart width for these values: the
+// standard split, or a wider chart when the insights column would be mostly
+// empty. An explicit chart_width_pct override still wins — this only chooses
+// the default.
+func sparseInsightsChartPct(v *ChartInsightsSplitValues) float64 {
+	if v == nil || v.Headline != nil || strings.TrimSpace(v.SoWhat) != "" {
+		return chartInsightsDefaultPct
+	}
+	if len(v.Insights) == 0 || len(v.Insights) > chartInsightsSparseBullets {
+		return chartInsightsDefaultPct
+	}
+	total := 0
+	for _, b := range v.Insights {
+		total += runeLen(b)
+	}
+	if total > chartInsightsSparseRunes {
+		return chartInsightsDefaultPct
+	}
+	return chartInsightsWidePct
 }
 
 // validateChartInsightsExtras checks the so-what extensions.

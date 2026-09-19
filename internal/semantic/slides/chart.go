@@ -3,6 +3,7 @@ package slides
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -66,6 +67,12 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 		insightsField = "takeaway"
 	}
 
+	// A lone insight that IS the takeaway would print the same sentence twice:
+	// once as the only Key Insight bullet and once verbatim in the takeaway
+	// bar. The bullet is the slide's own content, so the band is what gives way
+	// (go-slide-creator-pyxn).
+	in.Takeaway = dropDuplicateTakeaway(in.Takeaway, insights)
+
 	if len(insights) == 0 || len(insights) > ChartInsightMaxInsights {
 		return compileChartFallback(in, insights, insightsField)
 	}
@@ -112,6 +119,20 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
+}
+
+// dropDuplicateTakeaway returns "" when the takeaway is the slide's only
+// insight — the same sentence in two places on one slide is not emphasis, it
+// reads as a mistake. A takeaway that summarises SEVERAL insights is kept: it
+// is saying something the bullets do not.
+func dropDuplicateTakeaway(takeaway string, insights []string) string {
+	if takeaway == "" || len(insights) != 1 {
+		return takeaway
+	}
+	if strings.EqualFold(strings.TrimSpace(insights[0]), strings.TrimSpace(takeaway)) {
+		return ""
+	}
+	return takeaway
 }
 
 // ChartInsightFallbackSlideType returns the native slide_type the density
