@@ -352,6 +352,34 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+### Fixed
+
+- **Capability metadata and data-format hints agree, and say true things
+  (go-slide-creator-umji).** Two agent-facing surfaces describe the same
+  payload — `get_capabilities`' diagram entries and `get_data_format_hints` —
+  and they were written independently, so they disagreed. An agent building a
+  payload from the wrong one got a diagram with no data in it.
+  - **`timeline`** said `required_fields: ["values"]`; the renderer reads
+    `events` (alias `activities`) and has never read `values`.
+  - **`heatmap`** required `values`, `row_labels` and `col_labels`; only the
+    grid is required — an unlabelled heatmap renders.
+  - **`nine_box_talent`** required `employees`; either `employees` or `cells`
+    renders, so neither is required alone.
+  - **`stat_cards`, `icon_columns`, `icon_rows`** are advertised as diagram
+    types but had no hints entry at all, so their payload had to be guessed
+    from `optional_fields`. They have one now, naming the panel_layout mode
+    each resolves to.
+  - **`timeline`'s overflow text** promised "error if <3 or >7 stops"; it lays
+    out every stop it is given. **`kpi_dashboard`'s** now says its `max_nodes`
+    IS enforced (metrics past it are dropped with `CONTENT_DROPPED`), which is
+    what the engine does.
+  - **porters_five_forces** accepted an intensity of 1.5 or -0.2 and printed
+    "High (150%)" / "Low (-20%)" from a field its own hint documents as
+    0.0-1.0. It is clamped to that range.
+  - A test walks every ready chart and diagram type and fails when a hints
+    entry is missing or its required keys disagree with the capability's — the
+    two tables cannot drift apart again without CI saying so.
+
 - **The CLI accepts a structure-only deck (go-slide-creator-m1kg).** A deck
   using the documented top-level `structure` block (mutually exclusive with
   `slides`) validated clean and rendered over MCP, but

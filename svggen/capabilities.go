@@ -303,13 +303,20 @@ var diagramAuthoringSurface = map[string]string{
 func DiagramCapabilities() []DiagramCapability {
 	caps := []DiagramCapability{
 		{
-			Type:             "timeline",
-			MaxNodes:         intPtr(7),
-			MaxDepth:         intPtr(1),
-			OverflowBehavior: strPtr("error if <3 or >7 stops; suggest split across slides"),
-			RequiredFields:   []string{"values"},
-			OptionalFields:   []string{"date", "body", "accent", "connector"},
-			Status:           "ready",
+			Type:     "timeline",
+			MaxNodes: intPtr(7),
+			MaxDepth: intPtr(1),
+			// The renderer reads "activities" (alias "events") and has never
+			// read "values"; it lays out whatever it is given rather than
+			// refusing past the ceiling. Both halves of the old text were
+			// wrong, and an agent building a payload from this entry got a
+			// diagram with no data in it (go-slide-creator-umji).
+			OverflowBehavior: strPtr("all stops are laid out; past max_nodes the stops compress and labels shorten — split across slides to keep them legible"),
+			// "events" is the documented spelling (get_data_format_hints);
+			// "activities" is the renderer's own key and is accepted too.
+			RequiredFields: []string{"events"},
+			OptionalFields: []string{"activities", "milestones", "show_today", "time_unit", "date", "body", "accent", "connector"},
+			Status:         "ready",
 		},
 		{
 			Type:             "process_flow",
@@ -348,9 +355,9 @@ func DiagramCapabilities() []DiagramCapability {
 			Status:           "ready",
 		},
 		{
-			Type:             "org_chart",
-			MaxNodes:         intPtr(50),
-			MaxDepth:         intPtr(20),
+			Type:     "org_chart",
+			MaxNodes: intPtr(50),
+			MaxDepth: intPtr(20),
 			// The sibling limit is only half the story: when the tree is too deep
 			// for the boxes to stay legible, the DEEPEST LEVEL is pruned entirely
 			// — a 25-node, 3-level tree renders as 7 boxes. That is reported as
@@ -421,15 +428,17 @@ func DiagramCapabilities() []DiagramCapability {
 			MaxNodes:         intPtr(50),
 			MaxDepth:         intPtr(1),
 			OverflowBehavior: strPtr("dot collision; text truncation for overlapping badges"),
-			RequiredFields:   []string{"employees"},
-			OptionalFields:   []string{"title", "x_label", "y_label", "cells"},
-			Status:           "ready",
+			// Either shape renders — a list of employees, or pre-placed cells —
+			// so neither is required on its own (go-slide-creator-umji).
+			RequiredFields: nil,
+			OptionalFields: []string{"employees", "cells", "title", "x_label", "y_label", "x_axis_label", "y_axis_label", "x_axis_labels", "y_axis_labels"},
+			Status:         "ready",
 		},
 		{
 			Type:             "kpi_dashboard",
 			MaxNodes:         intPtr(12),
 			MaxDepth:         intPtr(1),
-			OverflowBehavior: strPtr("card grid layout; font reduction for many metrics"),
+			OverflowBehavior: strPtr("card grid layout; font reduction for many metrics. max_nodes IS enforced: metrics past it are dropped and reported as CONTENT_DROPPED naming how many"),
 			RequiredFields:   []string{"metrics"},
 			OptionalFields:   []string{"label", "value", "unit", "change", "trend"},
 			Status:           "ready",
@@ -439,9 +448,12 @@ func DiagramCapabilities() []DiagramCapability {
 			MaxNodes:         intPtr(200),
 			MaxDepth:         intPtr(1),
 			OverflowBehavior: strPtr("cell labels omitted when cells too small"),
-			RequiredFields:   []string{"values", "row_labels", "col_labels"},
-			OptionalFields:   nil,
-			Status:           "ready",
+			// Only the grid is required: the renderer draws an unlabelled
+			// heatmap happily, and listing the labels as required sent agents
+			// looking for data they did not have (go-slide-creator-umji).
+			RequiredFields: []string{"values"},
+			OptionalFields: []string{"row_labels", "col_labels", "color_scale"},
+			Status:         "ready",
 		},
 		{
 			Type:             "fishbone",

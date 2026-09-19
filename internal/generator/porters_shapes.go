@@ -97,6 +97,22 @@ type porterForceData struct {
 	factors   []string
 }
 
+// clampPorterIntensity holds intensity inside the 0.0-1.0 range the input
+// schema documents. Out-of-range values were carried through to the label,
+// which printed "High (150%)" and "Low (-20%)" — a number no reader can place
+// on a five-forces chart, from a field whose own hint says 0.0-1.0
+// (go-slide-creator-umji).
+func clampPorterIntensity(v float64) float64 {
+	switch {
+	case v < 0:
+		return 0
+	case v > 1:
+		return 1
+	default:
+		return v
+	}
+}
+
 // porterIntensityColor maps intensity to scheme color + tint.
 // High = accent1, Medium = accent3, Low = accent5.
 func porterIntensityColor(intensity float64) (scheme string, lumMod, lumOff int) {
@@ -194,10 +210,10 @@ func (ctx *singlePassContext) processPortersFiveForceNativeShapes(slideNum int, 
 		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
 
 	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		placeholderIdx:   shapeIdx,
-		bounds:           placeholderBounds,
-		panels:           panels,
-		portersFiveMode:  true,
+		placeholderIdx:  shapeIdx,
+		bounds:          placeholderBounds,
+		panels:          panels,
+		portersFiveMode: true,
 	})
 }
 
@@ -310,7 +326,7 @@ func porterForceFromMap(ft porterForceType, m map[string]any) porterForceData {
 
 	intensity := 0.5
 	if v, ok := m["intensity"].(float64); ok {
-		intensity = v
+		intensity = clampPorterIntensity(v)
 	}
 
 	// Prefer an explicit "factors" list; otherwise fall back to a "description"
@@ -399,9 +415,9 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 
 	// Fixed rendering order for deterministic output.
 	type forceLayout struct {
-		ft          porterForceType
+		ft         porterForceType
 		x, y, w, h int64
-		isCenter    bool
+		isCenter   bool
 	}
 	layouts := []forceLayout{
 		{porterRivalry, centerX, centerY, centerW, centerH, true},

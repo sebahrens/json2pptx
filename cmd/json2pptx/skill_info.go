@@ -1165,6 +1165,26 @@ func buildDataFormatHints() map[string]skillDataFormat {
 			OptionalKeys: []string{"segments", "political", "economic", "social", "technological", "environmental", "legal"},
 			Description:  "segments: [{name, items: string[]}] or individual keys (political, economic, etc.): string[]",
 		},
+		// The panel aliases resolve to panel_layout with a fixed layout mode
+		// (svggen.panelAliasLayoutMode). They are advertised as diagram types,
+		// so they need their own hint: an agent that only sees the type name
+		// had to guess the payload from optional_fields
+		// (go-slide-creator-umji).
+		"stat_cards": {
+			RequiredKeys: []string{"panels"},
+			OptionalKeys: []string{"gap", "icon_size"},
+			Description:  "panels: [{title, value|body, icon?, color?}] — panel_layout with layout \"stat_cards\". The NUMBER is the hero: an explicit value wins, otherwise a short body carrying a digit (\"EUR 184m\") is drawn large with title as its caption",
+		},
+		"icon_columns": {
+			RequiredKeys: []string{"panels"},
+			OptionalKeys: []string{"gap", "icon_size"},
+			Description:  "panels: [{title, body, icon?, color?}] — panel_layout with layout \"columns\"; one column per panel, icon above the title",
+		},
+		"icon_rows": {
+			RequiredKeys: []string{"panels"},
+			OptionalKeys: []string{"gap", "icon_size"},
+			Description:  "panels: [{title, body, icon?, color?}] — panel_layout with layout \"rows\"; one full-width row per panel, icon beside the title",
+		},
 		"panel_layout": {
 			RequiredKeys: []string{"panels"},
 			OptionalKeys: []string{"layout", "gap", "icon_size"},
