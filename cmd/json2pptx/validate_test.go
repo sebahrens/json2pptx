@@ -1,10 +1,14 @@
 package main
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // testTemplatesDir is the relative path to templates from cmd/json2pptx,
@@ -278,4 +282,35 @@ func codeSet(m map[string]bool) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+// go-slide-creator-r87g: the CLI fit report assembled its own subset of the
+// collectors, so every detector added since arrived as a separate "must show up
+// in validate too" bead and the two surfaces drifted. A reviewer running
+// `validate --fit-report` over a sweep of deliberately broken decks got "no
+// issues found" on defects score_deck reported. One collector, both surfaces.
+func TestFitFindingsForInput_UsesTheSharedCollector(t *testing.T) {
+	cats := make([]any, 15)
+	for i := range cats {
+		cats[i] = fmt.Sprintf("Segment %d", i+1)
+	}
+	var in PresentationInput
+	raw := `{"template":"midnight-blue","slides":[{"slide_type":"chart","content":[
+		{"placeholder_id":"title","type":"text","text_value":"Revenue by segment"},
+		{"placeholder_id":"body","type":"chart","chart_value":{"type":"pie","data":{"categories":[],"values":[]}}}]}]}`
+	if err := json.Unmarshal([]byte(raw), &in); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	in.Slides[0].Content[1].ChartValue.Data = map[string]any{"categories": cats, "values": cats}
+	in.Slides[0].Content[1].ChartValue.DataOrder = []string{"categories", "values"}
+
+	codes := map[string]bool{}
+	for _, f := range fitFindingsForInput(&in, "", "../../templates", true) {
+		codes[f.Code] = true
+	}
+	// A substance finding: reported by score_deck before this change, and by
+	// the CLI fit report only after it.
+	if !codes[patterns.ErrCodeChartOverloaded] {
+		t.Errorf("the CLI fit report is missing the substance collector; codes = %v", codes)
+	}
 }

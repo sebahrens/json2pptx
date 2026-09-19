@@ -209,6 +209,33 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **`validate --fit-report` runs the same collector as every other surface, and
+  stops refusing diagrams that render (go-slide-creator-r87g).** A reviewer
+  running the CLI fit report over a sweep of deliberately broken decks got "no
+  issues found" on defects `score_deck` reported, and refuse-class findings on
+  four of the shipped example decks for charts that render correctly.
+  - **The CLI assembled its own subset of the collectors.** Every detector added
+    since arrived as a separate "must show up in validate too" change, so the
+    two surfaces drifted: the CLI was missing the substance, geometry,
+    alt-text, content-lint and background collectors entirely. It now calls
+    `collectFitFindings`, the same function `score_deck` and `validate_input`
+    use.
+  - **Natively-rendered diagrams are no longer dry-rendered through svggen.**
+    Half the diagram catalogue (`swot`, `business_model_canvas`, `value_chain`,
+    `heatmap`, the panel family, `pyramid`, `process_flow`, …) is drawn as
+    OOXML shapes by the generator. Asking svggen about one got "unknown diagram
+    type", reported as a REFUSE claiming the deck would show a grey "Data
+    unavailable" placeholder. A type neither renderer owns still refuses.
+  - **The chart dry run now normalizes the authored data first**, through the
+    same `ToDiagramSpec` conversion the render path uses. It used to validate
+    the shorthand the author wrote rather than the payload the renderer builds
+    from it, so a waterfall authored as `{"Revenue": 100, "Costs": -40}` came
+    back "requires 'points' array".
+  - **`CHART_OVERLOADED` reads the structured data form.** It counted the data
+    map's KEYS, so a 15-slice pie authored as `{categories: [...], values:
+    [...]}` — the shape SKILL.md documents — counted as two categories and
+    sailed through the legibility ceiling.
+
 - **The chart styling surface is documented, closed, and no longer half inert
   (go-slide-creator-z72f).** `chart_value.style` was published in the input
   schema as a bare `{"type":"object"}` and appeared in no agent-facing surface,

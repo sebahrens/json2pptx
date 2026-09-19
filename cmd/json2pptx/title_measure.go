@@ -122,27 +122,6 @@ func (m titleMeasurement) fitFinding(path string) *patterns.FitFinding {
 	}
 }
 
-// flaggedTitleFitFindings returns the must-fix measured title findings
-// (TITLE_OVERFLOW and shrink_or_split title_wraps) in the local fit-report
-// shape used by the CLI `validate --fit-report` human output.
-func flaggedTitleFitFindings(input *PresentationInput, layouts []types.LayoutMetadata) []fitFinding {
-	var out []fitFinding
-	for _, f := range collectTitleFitFindings(input, layouts) {
-		if f.Action != "shrink_or_split" {
-			continue
-		}
-		out = append(out, fitFinding{
-			Code:     f.Code,
-			Path:     f.Path,
-			Severity: "warning",
-			Message:  f.Message,
-			Fix:      f.Fix,
-			Action:   f.Action,
-		})
-	}
-	return out
-}
-
 // titleFitDiagnostic is the validate-time title check. measured is false when
 // the title could not be measured (caller falls back to the max_chars
 // estimate); d is nil when the measured title fits comfortably.

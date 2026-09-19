@@ -13,7 +13,7 @@ import (
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -161,38 +161,46 @@ func fitFindingsForInput(input *PresentationInput, templateNameOverride, templat
 	if templateNameOverride != "" {
 		fitTemplate = templateNameOverride
 	}
-	layouts, slideWidth, slideHeight := fitReportGeometry(fitTemplate, templatesDir)
+	layouts, theme, slideWidth, slideHeight := fitReportGeometry(fitTemplate, templatesDir)
 	if len(layouts) > 0 {
 		resolveCanonicalLayoutIDs(input.Slides, layouts)
 	}
-	findings := generateFitReport(input, layouts, slideWidth, slideHeight)
-	// Predicted table row truncation is data loss and must show up in validate,
-	// not only at generate time (go-slide-creator-oaif).
-	findings = append(findings, tablePreflightLocalFindings(input, layouts)...)
-	findings = append(findings, chartDryRenderLocalFindings(input)...)
-	// A template missing the role a slide needs must be reported here, not only
-	// when generate fails (go-slide-creator-9svyz).
-	for _, f := range collectLayoutResolutionFindings(input, layouts) {
-		findings = append(findings, fitFinding{
-			Code: f.Code, Path: f.Path, Message: f.Message,
-			Fix: f.Fix, Action: f.Action, Severity: "warning",
-		})
-	}
-	findings = append(findings, flaggedTitleFitFindings(input, layouts)...)
-	findings = append(findings, flaggedReadabilityFitFindings(input, layouts, slideWidth, slideHeight)...)
-	// Unsupported inline markup prints literally on the slide, so the CLI fit
-	// report must name it too — not just the MCP path (go-slide-creator-510u).
-	for _, f := range inlinemarkup.Validate(input) {
-		findings = append(findings, fitFinding{
-			Code:     f.Code,
-			Path:     f.Path,
-			Message:  f.Message,
-			Fix:      f.Fix,
-			Action:   f.Action,
-			Severity: "warning",
-		})
+	// The CLI used to assemble its own subset of the collectors, and every
+	// detector added since arrived as a separate "must show up in validate too"
+	// bead — so the two surfaces drifted apart. A reviewer running
+	// `validate --fit-report` over a sweep of deliberately broken decks got
+	// "no issues found" on defects score_deck reported, because score_deck
+	// calls collectFitFindings and this did not (go-slide-creator-r87g).
+	// One collector, both surfaces.
+	var findings []fitFinding
+	for _, f := range collectFitFindings(input, layouts, slideWidth, slideHeight, theme) {
+		findings = append(findings, localFitFinding(f))
 	}
 	return budgetLocalFindings(findings, DefaultFindingBudget, verboseFit)
+}
+
+// localFitFinding converts a collector finding into the CLI's flat report row.
+// Severity mirrors the action: a refuse is an error, everything else advisory.
+func localFitFinding(f patterns.FitFinding) fitFinding {
+	severity := "warning"
+	if f.Action == "refuse" {
+		severity = "error"
+	}
+	out := fitFinding{
+		Code:     f.Code,
+		Path:     f.Path,
+		Message:  f.Message,
+		Fix:      f.Fix,
+		Action:   f.Action,
+		Severity: severity,
+	}
+	if f.Measured != nil {
+		out.RequiredPt = float64(f.Measured.HeightEMU) / 12700
+	}
+	if f.Allowed != nil {
+		out.AllocatedPt = float64(f.Allowed.HeightEMU) / 12700
+	}
+	return out
 }
 
 // fitReportGeometry resolves layout metadata and slide dimensions for the named
@@ -201,17 +209,20 @@ func fitFindingsForInput(input *PresentationInput, templateNameOverride, templat
 // resolveGridBounds). It returns nil layouts and zero dimensions when the
 // template name is empty or cannot be resolved/analyzed, so --fit-report still
 // works (with generic default bounds) for inputs without a resolvable template.
-func fitReportGeometry(templateName, templatesDir string) ([]types.LayoutMetadata, int64, int64) {
+func fitReportGeometry(templateName, templatesDir string) ([]types.LayoutMetadata, *types.ThemeInfo, int64, int64) {
 	if templateName == "" {
-		return nil, 0, 0
+		return nil, nil, 0, 0
 	}
 	templatePath, cleanup, err := resolveTemplatePath(templateName, templatesDir)
 	if err != nil {
-		return nil, 0, 0
+		return nil, nil, 0, 0
 	}
 	defer cleanup()
-	layouts, _, slideWidth, slideHeight, _, _, _ := analyzeTemplateLayouts(templatePath)
-	return layouts, slideWidth, slideHeight
+	// The theme drives the contrast preflight and the chart dry-render's font
+	// measurement, so the CLI has to carry it too or those detectors measure
+	// against a different typeface than the renderer uses.
+	layouts, _, slideWidth, slideHeight, _, theme, _ := analyzeTemplateLayouts(templatePath)
+	return layouts, &theme, slideWidth, slideHeight
 }
 
 // validateResult holds the structured validation output for a single file.

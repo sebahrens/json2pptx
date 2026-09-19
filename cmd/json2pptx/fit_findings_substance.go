@@ -603,12 +603,21 @@ func chartCategoryLabels(chart *types.ChartSpec) []string { //nolint:staticcheck
 	if chart == nil {
 		return nil
 	}
-	if len(chart.DataOrder) > 0 {
-		return chart.DataOrder
-	}
 	source := chart.Data
 	if len(chart.TimeData) > 0 {
 		source = chart.TimeData
+	}
+	// The structured form — {categories: [...], series: [...]} — is the one
+	// SKILL.md documents and every data-format hint recommends, and it has to
+	// be read BEFORE DataOrder: for that shape the decoder records the map's
+	// own key order, so DataOrder is ["categories", "values"] and a 15-slice
+	// pie counted as TWO categories. The legibility ceiling was blind to
+	// exactly the wide datasets it exists for (go-slide-creator-r87g).
+	if cats, ok := chartCategoryList(source["categories"]); ok {
+		return cats
+	}
+	if len(chart.DataOrder) > 0 {
+		return chart.DataOrder
 	}
 	labels := make([]string, 0, len(source))
 	for k := range source {
@@ -616,4 +625,23 @@ func chartCategoryLabels(chart *types.ChartSpec) []string { //nolint:staticcheck
 	}
 	sort.Strings(labels)
 	return labels
+}
+
+// chartCategoryList reads a structured categories array, reporting false when
+// the value is not one.
+func chartCategoryList(v any) ([]string, bool) {
+	raw, ok := v.([]any)
+	if !ok || len(raw) == 0 {
+		return nil, false
+	}
+	out := make([]string, 0, len(raw))
+	for _, e := range raw {
+		switch t := e.(type) {
+		case string:
+			out = append(out, t)
+		default:
+			out = append(out, fmt.Sprintf("%v", t))
+		}
+	}
+	return out, true
 }

@@ -247,20 +247,3 @@ func cellTextRole(fontPt float64, bold bool, chars int) tokens.TextRole {
 		return tokens.TextRoleCardBody
 	}
 }
-
-// flaggedReadabilityFitFindings converts readability findings to the local
-// fit-report shape for the CLI `validate --fit-report` human output.
-func flaggedReadabilityFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []fitFinding {
-	var out []fitFinding
-	for _, f := range collectReadabilityFindings(input, layouts, slideWidth, slideHeight) {
-		out = append(out, fitFinding{
-			Code:     f.Code,
-			Path:     f.Path,
-			Severity: "warning",
-			Message:  f.Message,
-			Fix:      f.Fix,
-			Action:   f.Action,
-		})
-	}
-	return out
-}

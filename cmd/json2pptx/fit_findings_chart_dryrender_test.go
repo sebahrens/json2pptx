@@ -222,3 +222,66 @@ func assertTickThinnedAt(t *testing.T, findings []patterns.FitFinding, wantPath 
 	}
 	t.Errorf("expected chart.tick_thinned at path containing %q; got %v", wantPath, codes)
 }
+
+// go-slide-creator-r87g. The preflight dry-render asked svggen about every
+// diagram type, including the half of the catalogue internal/generator draws as
+// OOXML shapes. svggen answered "unknown diagram type" and validate reported a
+// REFUSE saying the deck would render a grey "Data unavailable" placeholder —
+// for diagrams that render perfectly. validate is the precondition gate
+// SKILL.md tells agents to trust, so a false refuse there is worse than silence.
+func TestDryRender_NativeDiagramsAreNotSvggenBusiness(t *testing.T) {
+	for _, typ := range []string{"swot", "business_model_canvas", "value_chain", "heatmap", "panel_layout", "pyramid", "kpi_dashboard"} {
+		spec := &types.DiagramSpec{Type: typ, Data: map[string]any{"whatever": "the native builder reads"}}
+		if got := dryRenderSpecToFindings(spec, nil, "", "warn", "/slides/0/content/0/diagram_value"); len(got) != 0 {
+			t.Errorf("%s: native diagram reported %d finding(s): %+v", typ, len(got), got)
+		}
+	}
+	// A type NEITHER renderer owns still refuses: that one really does become a
+	// placeholder.
+	spec := &types.DiagramSpec{Type: "sankey_of_the_mind", Data: map[string]any{"a": 1}}
+	got := dryRenderSpecToFindings(spec, nil, "", "warn", "/slides/0/content/0/diagram_value")
+	if len(got) != 1 || got[0].Action != "refuse" {
+		t.Fatalf("an unknown type must still refuse, got %+v", got)
+	}
+}
+
+// A dry run has to dry-run what actually happens: the render path normalizes an
+// authored chart shorthand before svggen sees it, and the dry run used to skip
+// that step and validate the shorthand instead. Four shipped example decks
+// carried refuse-class findings for charts that render correctly.
+func TestDryRender_NormalizesAuthoredChartShorthand(t *testing.T) {
+	tests := []struct {
+		name  string
+		chart *types.ChartSpec //nolint:staticcheck // the authored chart shape
+	}{
+		{
+			name: "waterfall authored as a flat map",
+			chart: &types.ChartSpec{ //nolint:staticcheck
+				Type:      "waterfall",
+				Data:      map[string]any{"Revenue": 100.0, "Costs": -40.0, "Profit": 60.0},
+				DataOrder: []string{"Revenue", "Costs", "Profit"},
+			},
+		},
+		{
+			name: "radar authored as a flat map",
+			chart: &types.ChartSpec{ //nolint:staticcheck
+				Type:      "radar",
+				Data:      map[string]any{"Architecture": 4.0, "Security": 3.0, "Cost": 5.0},
+				DataOrder: []string{"Architecture", "Security", "Cost"},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			spec := chartValueToDiagramSpec(tt.chart)
+			if spec == nil {
+				t.Fatal("no spec")
+			}
+			for _, f := range dryRenderSpecToFindings(spec, nil, "", "warn", "/slides/0/content/0/chart_value") {
+				if f.Action == "refuse" {
+					t.Errorf("a chart the renderer draws was refused: %s", f.Message)
+				}
+			}
+		})
+	}
+}

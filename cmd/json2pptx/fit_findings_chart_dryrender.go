@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -131,29 +132,22 @@ func collectGridDryRenderFindings(
 	return findings
 }
 
-// chartValueToDiagramSpec adapts the legacy ChartSpec into the DiagramSpec
-// shape that svggen consumes. Only the fields needed for dry-render geometry
-// (type, data, dimensions, style) are forwarded.
+// chartValueToDiagramSpec adapts the authored ChartSpec into the DiagramSpec
+// svggen consumes — through ToDiagramSpec, the SAME conversion the render path
+// runs.
+//
+// It used to copy c.Data verbatim, which meant the dry run validated the
+// shorthand the author wrote rather than the payload the renderer builds from
+// it. svggen then refused shapes it never sees: a waterfall authored as
+// {"Revenue": 100, "Costs": -40} came back "requires 'points' array", a radar
+// as "does not accept field Architecture". Four of the shipped example decks
+// carried refuse-class findings for charts that render correctly
+// (go-slide-creator-r87g). A dry run has to dry-run what actually happens.
 func chartValueToDiagramSpec(c *types.ChartSpec) *types.DiagramSpec { //nolint:staticcheck // ChartSpec is deprecated but still used for backward compat
 	if c == nil {
 		return nil
 	}
-	spec := &types.DiagramSpec{
-		Type:   string(c.Type),
-		Title:  c.Title,
-		Data:   c.Data,
-		Width:  c.Width,
-		Height: c.Height,
-		Scale:  c.Scale,
-	}
-	if c.Style != nil {
-		spec.Style = &types.DiagramStyle{
-			Colors:     c.Style.Colors,
-			FontFamily: c.Style.FontFamily,
-			ShowLegend: c.Style.ShowLegend,
-		}
-	}
-	return spec
+	return c.ToDiagramSpec()
 }
 
 // dryRenderSpecToFindings calls svggen.DryRender for a single DiagramSpec
@@ -195,6 +189,17 @@ func dryRenderSpec(
 	gridSurface bool,
 ) []patterns.FitFinding {
 	if spec == nil || spec.Type == "" {
+		return nil
+	}
+	// Half the diagram catalogue is drawn as native OOXML shapes by
+	// internal/generator, not by svggen. Asking svggen about one of those gets
+	// "unknown diagram type", which used to be reported as a REFUSE claiming
+	// the deck would render a grey "Data unavailable" placeholder — for a
+	// diagram that renders perfectly. validate is the precondition gate
+	// SKILL.md tells agents to trust, so a false refuse there is worse than no
+	// finding at all (go-slide-creator-r87g). A type neither renderer owns
+	// still refuses: that one really does become a placeholder.
+	if generator.IsNativeDiagramType(spec) {
 		return nil
 	}
 	// Build a minimal RequestEnvelope. The full diagramSpecToSVGGen converter
