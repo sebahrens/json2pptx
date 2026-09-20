@@ -451,3 +451,90 @@ func TestIconRow(t *testing.T) {
 		}
 	})
 }
+
+// TestIconRow_ContentSizedRow pins the fix for go-slide-creator-tee7: the row
+// used to carry no max_height and no vertical_align, so its cards stretched to
+// the whole content zone with the icon and a five-word caption floating in a
+// box three times taller than its content.
+func TestIconRow_ContentSizedRow(t *testing.T) {
+	p, _ := Default().Get("icon-row")
+	ctx := testThemeCtx()
+
+	for _, n := range []int{3, 4, 5} {
+		items := make(IconRowValues, n)
+		for i := range items {
+			items[i] = IconRowItem{Icon: &IconRef{Name: "rocket"}, Caption: "Launch the platform"}
+		}
+		grid, err := p.Expand(ctx, &items, nil, nil)
+		if err != nil {
+			t.Fatalf("n=%d Expand: %v", n, err)
+		}
+		if grid.VerticalAlign != GridVerticalAlignDefault {
+			t.Errorf("n=%d vertical_align = %q, want %q", n, grid.VerticalAlign, GridVerticalAlignDefault)
+		}
+		max := grid.Rows[0].MaxHeight
+		if max <= 0 {
+			t.Fatalf("n=%d row has no max_height: the cards stretch to the content zone", n)
+		}
+		_, areaH := sizingAreaPt(ctx)
+		if max > areaH*iconRowMaxHeightFrac+0.5 {
+			t.Errorf("n=%d max_height %.0fpt exceeds the %.0f%% cap of a %.0fpt area", n, max, iconRowMaxHeightFrac*100, areaH)
+		}
+		if max < iconRowMinHeightPt {
+			t.Errorf("n=%d max_height %.0fpt is below the %.0fpt floor", n, max, iconRowMinHeightPt)
+		}
+	}
+}
+
+// TestIconRow_LongCaptionGrowsTheRow checks the row is sized from its content
+// rather than pinned to the floor: a caption that wraps needs more height.
+func TestIconRow_LongCaptionGrowsTheRow(t *testing.T) {
+	p, _ := Default().Get("icon-row")
+	ctx := testThemeCtx()
+
+	short := IconRowValues{
+		{Icon: &IconRef{Name: "rocket"}, Caption: "Launch"},
+		{Icon: &IconRef{Name: "trending-up"}, Caption: "Grow"},
+		{Icon: &IconRef{Name: "shield"}, Caption: "Protect"},
+		{Icon: &IconRef{Name: "users"}, Caption: "Hire"},
+		{Icon: &IconRef{Name: "target"}, Caption: "Measure"},
+	}
+	long := make(IconRowValues, len(short))
+	copy(long, short)
+	long[3].Caption = "Hire the delivery pod and run the onboarding programme"
+
+	shortGrid, err := p.Expand(ctx, &short, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand short: %v", err)
+	}
+	longGrid, err := p.Expand(ctx, &long, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand long: %v", err)
+	}
+	if longGrid.Rows[0].MaxHeight <= shortGrid.Rows[0].MaxHeight {
+		t.Errorf("a wrapping caption should grow the row: short=%.0f long=%.0f",
+			shortGrid.Rows[0].MaxHeight, longGrid.Rows[0].MaxHeight)
+	}
+}
+
+// TestIconRow_SecondaryChartKeepsTheZone checks the deliberate exemption: a
+// cell carrying a secondary chart becomes a composite stack that needs the
+// height, so capping the row would squash the chart.
+func TestIconRow_SecondaryChartKeepsTheZone(t *testing.T) {
+	p, _ := Default().Get("icon-row")
+	ctx := testThemeCtx()
+	items := IconRowValues{
+		{Icon: &IconRef{Name: "rocket"}, Caption: "Launch", Secondary: &SecondaryChart{
+			Type: "sparkline", Values: []float64{1, 2, 3},
+		}},
+		{Icon: &IconRef{Name: "trending-up"}, Caption: "Grow"},
+		{Icon: &IconRef{Name: "shield"}, Caption: "Protect"},
+	}
+	grid, err := p.Expand(ctx, &items, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if grid.Rows[0].MaxHeight != 0 {
+		t.Errorf("a secondary chart should keep the full zone, got max_height %.0f", grid.Rows[0].MaxHeight)
+	}
+}

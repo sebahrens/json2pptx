@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -271,13 +272,76 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(fmt.Sprintf(`%d`, len(*items))),
-		Gap:     12,
+		Gap:     iconRowGapPt,
 		Rows: []jsonschema.GridRowInput{
 			{Cells: gridCells},
 		},
 	}
 
+	// Size the row to the icon and its caption, and centre it. A single row
+	// with no max_height stretches to the whole content zone, so an icon and
+	// a five-word caption floated in a card three times taller than its
+	// content (go-slide-creator-tee7). A cell carrying a secondary chart is
+	// left to fill the zone: the chart needs the height, and capping the row
+	// would squash it.
+	if !iconRowHasSecondary(*items) {
+		grid.Rows[0].MaxHeight = math.Round(iconRowMaxHeightPt(ctx, gridCells))
+		grid.VerticalAlign = GridVerticalAlignDefault
+	}
+
 	return grid, nil
+}
+
+const (
+	// iconRowGapPt is the gap between icon cards.
+	iconRowGapPt = 12.0
+	// iconRowMaxHeightFrac caps the row at this share of the content area,
+	// matching the KPI cards' cap: past it the row stops reading as a strip.
+	iconRowMaxHeightFrac = 0.45
+	// iconRowMinHeightPt keeps a card tall enough for a recognisable icon over
+	// one line of caption.
+	iconRowMinHeightPt = 96.0
+)
+
+// iconRowHasSecondary reports whether any item attaches a secondary chart, in
+// which case the cell becomes a composite stack that needs the full zone.
+func iconRowHasSecondary(items IconRowValues) bool {
+	for _, item := range items {
+		if item.Secondary != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// iconRowMaxHeightPt is the height one icon card needs for its top icon and
+// its caption, capped at a share of the content area.
+//
+// contentCardHeightPt solves the circularity the icon creates — the renderer
+// sizes a "top" overlay from the card's own height — so the height comes from
+// the same helper card-grid and hero-detail use.
+func iconRowMaxHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput) float64 {
+	n := len(cells)
+	areaW, areaH := sizingAreaPt(ctx)
+	if n == 0 || areaW <= 0 || areaH <= 0 {
+		return 0
+	}
+	cardW := equalColumnWidthPt(areaW, n, iconRowGapPt)
+	textW := cardW - 2*defaultShapeInsetLRPt
+	if textW <= 0 {
+		return 0
+	}
+
+	font := ctx.Theme.BodyFont
+	need := 0.0
+	for _, c := range cells {
+		if c == nil || c.Shape == nil {
+			continue
+		}
+		textH := shapeTextHeightPt(font, c.Shape.Text, textW)
+		need = math.Max(need, contentCardHeightPt(textH, cardW, c.Shape.Icon != nil))
+	}
+	return clampPt(need, iconRowMinHeightPt, areaH*iconRowMaxHeightFrac)
 }
 
 // buildIconRowCaptionOnly creates a JSON text object with caption only (for SVG icon mode).
