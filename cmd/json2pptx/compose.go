@@ -8,6 +8,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -98,70 +99,27 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 		return nil, nil, err
 	}
 
-	var warnings []string
-
-	// Expand each segment's pattern, nested compose envelope, or diagram.
-	expandedGrids := make([]*jsonschema.ShapeGridInput, len(c.Segments))
-	for i, seg := range c.Segments {
-		if seg.Compose != nil {
-			// Recursively expand the nested compose envelope into a single
-			// grid, which then participates in the parent merge exactly like
-			// a leaf-pattern segment would. Warnings emitted by the inner
-			// expansion are surfaced verbatim so agents see every diagnostic
-			// in one pass.
-			grid, innerWarnings, err := expandCompose(seg.Compose, ctx, reg)
-			if err != nil {
-				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
-			}
-			if len(innerWarnings) > 0 {
-				warnings = append(warnings, innerWarnings...)
-			}
-			// Inner-envelope bounds are governed entirely by the inner
-			// compose's direction/size_pct and the outer segment's slot, so
-			// drop any Bounds the merge step would discard anyway.
-			grid.Bounds = nil
-			expandedGrids[i] = grid
-			continue
-		}
-
-		if seg.HasDiagram() {
-			// Diagram segments synthesize a single-cell ShapeGridInput whose
-			// only cell hosts the diagram. The cell participates in the
-			// parent merge identically to a pattern-expanded grid, so
-			// compose.direction + size_pct + gap drive placement and the
-			// gutter rhythm is unified across pattern and diagram segments.
-			expandedGrids[i] = diagramSegmentGrid(seg.Diagram)
-			continue
-		}
-
-		grid, _, err := expandPattern(&seg.Pattern, ctx, reg)
-		if err != nil {
-			return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
-		}
-
-		// Segment-level bounds (PatternInput.Bounds / MaxHeightPct) cannot be
-		// honored inside a compose envelope: the merged grid's region is
-		// governed by compose direction + size_pct, and mergeVertical /
-		// mergeHorizontal build a fresh grid that drops grid.Bounds. Surface
-		// this as a structured warning so agents are not silently misled
-		// (go-slide-creator-f1ic.7).
-		if w := segmentBoundsIgnoredWarning(i, &seg.Pattern); w != "" {
-			warnings = append(warnings, w)
-			// Clear the inherited Bounds so downstream consumers don't see a
-			// value that the merge step will discard anyway.
-			grid.Bounds = nil
-		}
-
-		expandedGrids[i] = grid
+	// Probe each segment once to learn its row/column structure. Smart compose
+	// also derives its density shares from this content-only probe. Then expand
+	// with the segment's allocated rectangle so content-sized decisions use the
+	// frame the merged grid will render into (go-slide-creator-burq4).
+	probeGrids, _, err := expandComposeSegments(c, ctx, nil, reg)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Resolve size percentages — smart compose uses content density when
 	// segments have no explicit SizePct.
 	var sizes []float64
 	if c.SmartCompose && allSizesImplicit(c.Segments) {
-		sizes = computeDensitySizes(expandedGrids)
+		sizes = computeDensitySizes(probeGrids)
 	} else {
 		sizes = resolveSegmentSizes(c.Segments)
+	}
+	segmentBounds := composeSegmentBounds(c, ctx, probeGrids, sizes)
+	expandedGrids, warnings, err := expandComposeSegments(c, ctx, segmentBounds, reg)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	// Merge based on direction
@@ -198,6 +156,87 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	}
 
 	return merged, warnings, nil
+}
+
+// expandComposeSegments runs the leaf expansion with optional per-segment
+// bounds. Passing nil is the structure probe used before size allocation.
+func expandComposeSegments(c *ComposeInput, ctx patterns.ExpandContext, bounds []patterns.LayoutBounds, reg *patterns.Registry) ([]*jsonschema.ShapeGridInput, []string, error) {
+	grids := make([]*jsonschema.ShapeGridInput, len(c.Segments))
+	var warnings []string
+	for i, seg := range c.Segments {
+		segCtx := ctx
+		if bounds != nil {
+			segCtx.LayoutBounds = bounds[i]
+		}
+		switch {
+		case seg.Compose != nil:
+			grid, innerWarnings, err := expandCompose(seg.Compose, segCtx, reg)
+			if err != nil {
+				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
+			}
+			warnings = append(warnings, innerWarnings...)
+			grid.Bounds = nil // The outer merge owns the inner envelope's slot.
+			grids[i] = grid
+		case seg.HasDiagram():
+			grids[i] = diagramSegmentGrid(seg.Diagram)
+		default:
+			grid, _, err := expandPattern(&seg.Pattern, segCtx, reg)
+			if err != nil {
+				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
+			}
+			if w := segmentBoundsIgnoredWarning(i, &seg.Pattern); w != "" {
+				warnings = append(warnings, w)
+				grid.Bounds = nil
+			}
+			grids[i] = grid
+		}
+	}
+	return grids, warnings, nil
+}
+
+// composeSegmentBounds translates size_pct shares into each segment's actual
+// axis allocation, accounting for the gaps the merged grid subtracts before
+// distributing rows or columns. Smart-compose shares are fixed by the probe's
+// content density; the final pass can then size text without circularity.
+func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*jsonschema.ShapeGridInput, sizes []float64) []patterns.LayoutBounds {
+	base := ctx.LayoutBounds
+	if base.Width <= 0 || base.Height <= 0 {
+		db := shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
+		base = patterns.LayoutBounds{X: db.X, Y: db.Y, Width: db.CX, Height: db.CY}
+	}
+	gapPt := c.Gap
+	if gapPt == 0 {
+		gapPt = 8
+	}
+	gap := int64(math.Round(gapPt * 12700))
+	units := make([]int, len(grids))
+	totalUnits := 0
+	for i, grid := range grids {
+		if c.Direction == "horizontal" {
+			units[i] = inferColumnCount(grid)
+		} else {
+			units[i] = len(grid.Rows)
+		}
+		totalUnits += units[i]
+	}
+	axisLength, axisStart := base.Height, base.Y
+	if c.Direction == "horizontal" {
+		axisLength, axisStart = base.Width, base.X
+	}
+	available := max(int64(0), axisLength-gap*int64(max(0, totalUnits-1)))
+	result := make([]patterns.LayoutBounds, len(grids))
+	for i, unitsInSegment := range units {
+		length := int64(math.Round(float64(available)*sizes[i]/100)) + gap*int64(max(0, unitsInSegment-1))
+		b := base
+		if c.Direction == "horizontal" {
+			b.X, b.Width = axisStart, length
+		} else {
+			b.Y, b.Height = axisStart, length
+		}
+		result[i] = b
+		axisStart += length + gap
+	}
+	return result
 }
 
 // prependBannerRow inserts a full-width banner row at the top of the merged
