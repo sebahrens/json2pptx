@@ -27,7 +27,11 @@ func runGetStarted() error {
 		return err
 	}
 
-	args := map[string]any{}
+	args := map[string]any{
+		// A CLI caller never received the MCP initialize instructions, so the
+		// prose workflow is not a duplicate for them (go-slide-creator-bxve).
+		"verbose": true,
+	}
 	if *task != "" {
 		args["task"] = *task
 	}

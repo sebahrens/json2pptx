@@ -2123,6 +2123,7 @@ var outputSchemaGetStarted = json.RawMessage(`{
   "type": "object",
   "properties": {
     "task":            {"type": "string"},
+    "task_warning":    {"type": "string", "description": "Present when the requested task was not recognised: the response still carries the brief workflow, and this names the task asked for and the valid ones."},
     "available_tasks": {"type": "array", "items": {"type": "string"}},
     "fast_path": {
       "type": "object",
@@ -2136,8 +2137,9 @@ var outputSchemaGetStarted = json.RawMessage(`{
           "items": {
             "type": "object",
             "properties": {
-              "tool":         {"type": "string"},
-              "when_to_call": {"type": "string"}
+              "tool":          {"type": "string"},
+              "when_to_call":  {"type": "string"},
+              "args_template": {"type": "object", "description": "Arguments worth sending with this step: token-relevant projections (fields:\"compact\"), the flags a gate is weak without (fit_report), and \"<…>\" placeholders naming where a path or hash comes from."}
             },
             "required": ["tool", "when_to_call"]
           }

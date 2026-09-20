@@ -17,6 +17,31 @@ import (
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
+// callGetStartedVerbose is callGetStarted with verbose:true, for the tests that
+// assert on the prose narrative itself.
+func callGetStartedVerbose(t *testing.T, task string) getStartedResponse {
+	t.Helper()
+	withRenderStatus(t, true, nil)
+	args := map[string]any{"verbose": true}
+	if task != "" {
+		args["task"] = task
+	}
+	mc := &mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir()}
+	result, err := mc.handleGetStarted(context.Background(), mcpRequestWithArgs(args))
+	if err != nil {
+		t.Fatalf("handleGetStarted error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %v", result.Content)
+	}
+	text := result.Content[0].(mcp.TextContent).Text
+	var resp getStartedResponse
+	if err := json.Unmarshal([]byte(text), &resp); err != nil {
+		t.Fatalf("failed to parse response: %v", err)
+	}
+	return resp
+}
+
 func callGetStarted(t *testing.T, task string) getStartedResponse {
 	t.Helper()
 	// Pin the toolchain: these tests assert the FULL workflow, which a machine
@@ -165,8 +190,12 @@ func TestGetStartedBriefRecommendsRenderDeckSpec(t *testing.T) {
 			t.Errorf("brief notes must contain %q; notes:\n%s", must, joined)
 		}
 	}
-	if resp.QualityWorkflow != mcpQualityWorkflow {
-		t.Error("quality_workflow must echo the server instructions const verbatim")
+	// quality_workflow is the MCP initialize instructions verbatim, and every
+	// MCP client already received them, so the default response omits the
+	// 1.4 KB duplicate (go-slide-creator-bxve). completion_protocol.rule below
+	// carries the same rule in structured form.
+	if resp.QualityWorkflow != "" {
+		t.Errorf("quality_workflow should be omitted by default, got %d bytes", len(resp.QualityWorkflow))
 	}
 	if resp.Completion.Rule != mcpCompletionRule {
 		t.Errorf("completion_protocol.rule = %q, want the shared completion rule", resp.Completion.Rule)

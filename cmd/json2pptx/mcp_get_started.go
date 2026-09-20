@@ -27,6 +27,23 @@ import (
 type getStartedStep struct {
 	Tool       string `json:"tool"`
 	WhenToCall string `json:"when_to_call"`
+	// ArgsTemplate shows the arguments worth sending with this step —
+	// token-relevant projections (fields:"compact"), the flags a gate is weak
+	// without (fit_report), and "<…>" placeholders naming where a path or hash
+	// comes from. Filled once in handleGetStarted from getStartedArgTemplates,
+	// so a tool reads the same way in every sequence and a step added later
+	// cannot ship without its hint (go-slide-creator-bxve).
+	ArgsTemplate map[string]any `json:"args_template,omitempty"`
+}
+
+// withArgs fills each step's ArgsTemplate from the shared table.
+func withArgs(steps []getStartedStep) []getStartedStep {
+	for i := range steps {
+		if steps[i].ArgsTemplate == nil {
+			steps[i].ArgsTemplate = argsTemplateFor(steps[i].Tool)
+		}
+	}
+	return steps
 }
 
 // getStartedFastPath names the single-call workflow facade an agent should
@@ -49,6 +66,11 @@ type getStartedFastPath struct {
 // getStartedResponse is the JSON envelope for get_started.
 type getStartedResponse struct {
 	Task string `json:"task"`
+	// TaskWarning is set when the caller asked for a task this tool does not
+	// know. The response still carries the "brief" workflow — blocking an
+	// agent's first call helps nobody — but it says so rather than letting a
+	// typo look deliberate (go-slide-creator-bxve).
+	TaskWarning string `json:"task_warning,omitempty"`
 	// FastPath is the recommended fast path for this task — the DeckSpec path
 	// ending in render_deck_spec for both brief (author it) and revise (patch the
 	// deck_id the server already holds). Present only for tasks that have a facade;
@@ -62,7 +84,7 @@ type getStartedResponse struct {
 	// QualityWorkflow is the server's MCP `instructions` text, echoed verbatim
 	// (same Go const) so MCP clients that do not surface instructions still see
 	// the quality workflow.
-	QualityWorkflow string `json:"quality_workflow"`
+	QualityWorkflow string `json:"quality_workflow,omitempty"`
 	// Runtime is what this server can actually do, in ~200 bytes: whether it can
 	// render (the completion rule depends on it), and the directories it reads
 	// and writes. It rides the FIRST call because the alternative was learning it
@@ -146,14 +168,32 @@ func getStartedAvailableTasks() []string {
 // buildGetStartedResponse returns the ordered call sequence keyed to the
 // caller's stated task. Unknown or empty task strings fall back to "brief",
 // which is the default new-deck workflow and the most common entry point.
+// buildGetStartedResponse keeps the two-argument form callers and tests use; it
+// includes the prose narrative, which is what a CLI caller wants.
 func buildGetStartedResponse(task string, rt getStartedRuntime) getStartedResponse {
+	return buildGetStartedResponseOpts(task, rt, true)
+}
+
+// buildGetStartedResponseOpts is the form the MCP handler uses, where verbose
+// is false by default: an MCP client already received the same prose as the
+// initialize instructions (go-slide-creator-bxve).
+func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool) getStartedResponse {
+	// get_started is the first call an agent makes, so an unrecognised task
+	// still answers with the brief workflow rather than blocking. What it must
+	// not do is answer SILENTLY: it used to echo task:"brief" with no hint that
+	// something else had been asked for, so a mistyped task looked like a
+	// deliberate one (go-slide-creator-bxve).
 	normalized := task
+	var taskWarning string
 	switch normalized {
 	case "":
 		normalized = "brief"
 	case "brief", "revise", "validate-only", "onboard-template":
 		// valid
 	default:
+		taskWarning = fmt.Sprintf(
+			"Unknown task %q — answering with %q. Valid tasks: %s.",
+			task, "brief", strings.Join(getStartedAvailableTasks(), ", "))
 		normalized = "brief"
 	}
 
@@ -242,10 +282,16 @@ func buildGetStartedResponse(task string, rt getStartedRuntime) getStartedRespon
 		}
 	}
 
+	fastPath := fastPathFor(normalized, seq)
+	if fastPath != nil {
+		fastPath.Steps = withArgs(fastPath.Steps)
+	}
+
 	resp := getStartedResponse{
 		Task:           normalized,
-		FastPath:       fastPathFor(normalized, seq),
-		Sequence:       seq,
+		TaskWarning:    taskWarning,
+		FastPath:       fastPath,
+		Sequence:       withArgs(seq),
 		AvailableTasks: getStartedAvailableTasks(),
 		Notes:          notes,
 		Completion: completionProtocol{
@@ -253,7 +299,13 @@ func buildGetStartedResponse(task string, rt getStartedRuntime) getStartedRespon
 			CompleteStatus: "visually_reviewed_current_revision",
 			Rule:           mcpCompletionRule,
 		},
-		QualityWorkflow: mcpInstructionsFor(rt.RenderAvailable, rt.MissingCommands),
+		// quality_workflow repeats the MCP initialize instructions verbatim, and
+		// completion_protocol repeats one of its lines in structured form. Every
+		// MCP client already received the instructions, so sending 1.4 KB of the
+		// same prose in the one response every agent reads first is pure weight
+		// (go-slide-creator-bxve). The CLI passes verbose, because a CLI caller
+		// never saw them.
+		QualityWorkflow: qualityWorkflowFor(rt, verbose),
 		Runtime:         rt,
 	}
 	if !rt.RenderAvailable {
@@ -323,7 +375,10 @@ func mcpGetStartedTool() mcp.Tool {
 		mcp.WithDescription(getStartedToolDescription()),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetStarted)),
 		mcp.WithString("task",
-			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), \"validate-only\" (validate JSON without generating), or \"onboard-template\" (vet and render with a user-supplied .pptx). Unknown values fall back to \"brief\"."),
+			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), \"validate-only\" (validate JSON without generating), or \"onboard-template\" (vet and render with a user-supplied .pptx). An unknown value answers with \"brief\" and says so in task_warning."),
+		),
+		mcp.WithBoolean("verbose",
+			mcp.Description("Include quality_workflow, the prose workflow narrative. Omitted by default because it repeats the MCP initialize instructions verbatim, which every client already received; completion_protocol carries the same rule in structured form. Pass true if you did not read the initialize instructions."),
 		),
 	)
 }
@@ -378,7 +433,8 @@ func (mc *mcpConfig) handleGetStarted(ctx context.Context, request mcp.CallToolR
 		task = t
 	}
 
-	resp := buildGetStartedResponse(task, mc.getStartedRuntime())
+	verbose := request.GetArguments()["verbose"] == true
+	resp := buildGetStartedResponseOpts(task, mc.getStartedRuntime(), verbose)
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {
@@ -408,4 +464,13 @@ func (mc *mcpConfig) getStartedRuntime() getStartedRuntime {
 		OutputDir:            outputDir,
 		SettingsWriteEnabled: settingsWriteAllowed(),
 	}
+}
+
+// qualityWorkflowFor returns the prose workflow narrative only when the caller
+// asked for it. See the comment at its use site.
+func qualityWorkflowFor(rt getStartedRuntime, verbose bool) string {
+	if !verbose {
+		return ""
+	}
+	return mcpInstructionsFor(rt.RenderAvailable, rt.MissingCommands)
 }

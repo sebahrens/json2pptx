@@ -112,6 +112,29 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`get_started` steps carry `args_template` (go-slide-creator-bxve).** Every
+  step was `{tool, when_to_call}` with no arguments, so agents called the tools
+  exactly as the prose named them — `list_templates{}` at 153KB instead of 44KB
+  with `fields:"compact"`, `get_capabilities{}` at 183KB instead of the ~6KB
+  default projection, `list_patterns{}` at 70KB instead of 31KB. The error-path
+  `next_tool_call` blocks already carried `args_template`, so the shape existed;
+  it was missing from the one response every agent reads first.
+  - Each step now carries the arguments worth sending: the cheap projections,
+    the flags a gate is weak without (`fit_report`), and `"<…>"` placeholders
+    naming where a path or content hash comes from.
+  - The hints live in one table keyed by tool, so a tool named in several
+    sequences reads the same way everywhere, and a test checks every key
+    against that tool's real input schema — a hint naming a parameter that does
+    not exist is worse than no hint.
+  - `get_started` gains `verbose` (default false). `quality_workflow` repeated
+    the MCP `initialize` instructions verbatim, which every client already
+    received, so it is now opt-in; `completion_protocol` still carries the same
+    rule in structured form. The CLI passes `verbose` because a CLI caller
+    never saw the instructions.
+  - An unrecognised `task` still answers with the `brief` workflow — blocking
+    an agent's first call helps nobody — but it now says so in `task_warning`
+    instead of echoing `task: "brief"` silently.
+
 - **`purge_render_cache`, and the render cache is now bounded
   (go-slide-creator-dpys).** Every `render_*` call wrote content-addressed PNGs
   under the temp dir, and the documented cleanup was "removed by
