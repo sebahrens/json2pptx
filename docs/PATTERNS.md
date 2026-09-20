@@ -221,6 +221,30 @@ These patterns have structurally determined accent logic and do not expose `cell
 
 - **Single-cell patterns** (stat-hero, pull-quote): one text block, no variation needed. (pull-quote's grid holds the quote and its attribution in separate rows plus an accent-rule column — see go-slide-creator-36ny — and an optional headshot column beside them; there is still only one accent in play.)
 
+### Fitting a label to its shape
+
+A pattern that paints text into a shape it sized itself must measure the fit,
+because the renderer will not rescue it: the shape_grid renderer FLOORS any
+authored text size at `shapegrid.MinTextSizePt` (12pt), so a pattern that
+"shrinks to 9pt" has its size silently raised back to 12 and the label breaks
+mid-word anyway (go-slide-creator-vo0j1).
+
+The contract, as `numbered-step-strip` and `value-chain` implement it:
+
+1. Compute the text width the shape actually leaves — `equalColumnWidthPt` for
+   an N-column strip, minus `2*defaultShapeInsetLRPt`, minus any geometry notch.
+2. Shrink ONE shared size until every label fits on one line
+   (`fitSingleLineSize`), with the floor set to the renderer's floor, never
+   lower. A shared size keeps the row even.
+3. Report what still does not fit from `PostExpandWarnings` as
+   `TEXT_EXCEEDS_SHAPE`. That code from a pattern is **blocking**
+   (`shrink_or_split`), because the pattern has measured the failure rather
+   than estimating it — see docs/FIT_FINDINGS.md.
+
+The author's fix is a shorter label or fewer steps. That is a real constraint,
+not a defect to engineer away: ten columns across a 13.3" slide leave about
+65pt of text width, which is nine or ten characters at 12pt.
+
 ### Pictures in pattern values
 
 Three patterns take a real picture in their `values`, all through the same

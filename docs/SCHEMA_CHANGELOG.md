@@ -104,6 +104,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **`value-chain` fits its step labels (go-slide-creator-vo0j1).** The label
+  size was fixed at 12pt regardless of the step count, so a ten-step chain
+  rendered "Manufactur / ing" and "Decommissi / oning end- / of-life" — the
+  bundled `examples/value-chain.json` shipped it.
+  - The pattern now measures each label against its own column width, shrinks
+    one shared size to fit, and reports what still cannot fit as a blocking
+    `TEXT_EXCEEDS_SHAPE` from `PostExpandWarnings`.
+  - The shrink floor is the RENDERER's floor (`shapegrid.MinTextSizePt`, 12pt).
+    A first cut used 9pt and changed nothing: the shape_grid renderer raises any
+    authored size below its floor back to 12, so the fit promised a size the
+    render never used.
+  - `examples/value-chain.json`'s ten-step slide is shortened accordingly and
+    now renders with no mid-word break.
+
 - **A measured mid-word break fails the quality gate (go-slide-creator-rxkt).**
   `TEXT_EXCEEDS_SHAPE` was advisory from every source, so `score_deck` returned
   `quality_gate.passed = true` on a deck whose chevrons rendered as

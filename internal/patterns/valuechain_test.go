@@ -3,6 +3,8 @@ package patterns
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 func TestValueChain_Registration(t *testing.T) {
@@ -334,5 +336,87 @@ func TestValueChain_DescriptionRowIsContentSized(t *testing.T) {
 	}
 	if longGrid.Rows[1].MaxHeight <= desc.MaxHeight {
 		t.Errorf("a longer description should grow the row: short=%.0f long=%.0f", desc.MaxHeight, longGrid.Rows[1].MaxHeight)
+	}
+}
+
+// TestValueChainFitsStepLabels is go-slide-creator-vo0j1: the label size was
+// fixed at 12pt regardless of the step count, so a ten-step chain rendered
+// "Manufactur / ing".
+func TestValueChainFitsStepLabels(t *testing.T) {
+	ctx := testThemeCtx()
+	long := []ValueChainStep{
+		{Label: "Extraction"}, {Label: "Processing"}, {Label: "Manufacturing"}, {Label: "Distribution"},
+		{Label: "Retail"}, {Label: "Service"}, {Label: "Recovery"}, {Label: "Disposal"},
+		{Label: "Renewal"}, {Label: "Closure"},
+	}
+
+	// Six short labels leave the authored size alone.
+	if size, unfit := fitValueChainLabels(ctx, long[:6], 12.0); size != 12.0 || len(unfit) != 0 {
+		t.Errorf("six short labels: size=%.1f unfit=%v, want 12 and none", size, unfit)
+	}
+
+	// The floor is the RENDERER's floor. Shrinking below it would be undone by
+	// the shape_grid renderer, which raises any authored size back to 12pt.
+	if valueChainMinLabelPt != shapegrid.MinTextSizePt {
+		t.Errorf("label floor %.1f must be the renderer's %.1f, or the fit promises a size the render will not honour",
+			valueChainMinLabelPt, shapegrid.MinTextSizePt)
+	}
+
+	// Ten steps: the two labels that cannot fit are named, and they are the two
+	// the render breaks.
+	size, unfit := fitValueChainLabels(ctx, long, 12.0)
+	if size < valueChainMinLabelPt {
+		t.Errorf("fitted size %.1f is below the renderer's floor", size)
+	}
+	got := map[string]bool{}
+	for _, u := range unfit {
+		got[u] = true
+	}
+	for _, want := range []string{"Manufacturing", "Distribution"} {
+		if !got[want] {
+			t.Errorf("%q does not fit a ten-step column but was not reported (%v)", want, unfit)
+		}
+	}
+	for _, fits := range []string{"Retail", "Service", "Closure"} {
+		if got[fits] {
+			t.Errorf("%q fits but was reported as unfit", fits)
+		}
+	}
+}
+
+// TestValueChainWarnsAboutUnfittableLabels: the warning is the blocking
+// TEXT_EXCEEDS_SHAPE code, and it stacks with the highlight-contrast warning
+// rather than replacing it.
+func TestValueChainWarnsAboutUnfittableLabels(t *testing.T) {
+	p, _ := Default().Get("value-chain")
+	warner, ok := p.(PostExpandWarner)
+	if !ok {
+		t.Fatal("value-chain must implement PostExpandWarner")
+	}
+	ctx := testThemeCtx()
+	vals := &ValueChainValues{Steps: []ValueChainStep{
+		{Label: "Extraction"}, {Label: "Processing"}, {Label: "Manufacturing"}, {Label: "Distribution"},
+		{Label: "Retail"}, {Label: "Service"}, {Label: "Recovery"}, {Label: "Disposal"},
+		{Label: "Renewal"}, {Label: "Closure"},
+	}}
+	warnings := warner.PostExpandWarnings(ctx, vals, nil)
+	if len(warnings) != 1 {
+		t.Fatalf("want one warning, got %v", warnings)
+	}
+	if !strings.HasPrefix(warnings[0], ErrCodeTextExceedsShape+": ") {
+		t.Errorf("warning must carry the blocking code prefix: %q", warnings[0])
+	}
+	for _, want := range []string{"Manufacturing", "mid-word", "fewer steps"} {
+		if !strings.Contains(warnings[0], want) {
+			t.Errorf("warning missing %q: %q", want, warnings[0])
+		}
+	}
+
+	// Short labels say nothing.
+	short := &ValueChainValues{Steps: []ValueChainStep{
+		{Label: "Make"}, {Label: "Move"}, {Label: "Sell"}, {Label: "Serve"},
+	}}
+	if w := warner.PostExpandWarnings(ctx, short, nil); len(w) != 0 {
+		t.Errorf("labels that fit should not warn, got %v", w)
 	}
 }

@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -179,7 +180,7 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize := ResolveSize(ovr.HeaderSize, 12.0)
+	labelSize, _ := fitValueChainLabels(ctx, vals.Steps, ResolveSize(ovr.HeaderSize, 12.0))
 	descSize := ResolveSize(ovr.BodySize, 9.0)
 	cellAccentMode := ovr.CellAccentMode
 
@@ -269,6 +270,47 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 // valueChainGapPt is the gap between step columns.
 const valueChainGapPt = 8.0
 
+// valueChainMinLabelPt is the floor a step label may shrink to. It is the
+// renderer's own floor, not a taste judgement: the shape_grid renderer raises
+// any authored size below shapegrid.MinTextSizePt back to 12pt, so a fit that
+// promised 9pt would be silently overridden and the label would break anyway —
+// which is exactly what a first cut at this did (go-slide-creator-vo0j1).
+const valueChainMinLabelPt = shapegrid.MinTextSizePt
+
+// fitValueChainLabels shrinks the step-label size until every label fits its
+// own column on one line, and reports the labels that still cannot.
+//
+// The size was fixed at 12pt regardless of the step count, so a ten-step chain
+// rendered "Manufactur / ing" and "Decommissi / oning end- / of-life" — the
+// bundled examples/value-chain.json shipped it. One shared size keeps the row
+// even; the floor is where the pattern stops and the author has to act
+// (go-slide-creator-vo0j1).
+func fitValueChainLabels(ctx ExpandContext, steps []ValueChainStep, labelPt float64) (float64, []string) {
+	contentW, _ := contentAreaPt(ctx)
+	textW := equalColumnWidthPt(contentW, len(steps), valueChainGapPt) - 2*defaultShapeInsetLRPt
+	if textW <= 0 || len(steps) == 0 {
+		return labelPt, nil
+	}
+	font := ctx.Theme.BodyFont
+
+	size := labelPt
+	for _, step := range steps {
+		if s := fitSingleLineSize(step.Label, font, true, size, valueChainMinLabelPt, textW); s < size {
+			size = s
+		}
+	}
+	var unfit []string
+	for _, step := range steps {
+		if strings.TrimSpace(step.Label) == "" {
+			continue
+		}
+		if measuredLines(step.Label, font, true, size, textW) > 1 {
+			unfit = append(unfit, step.Label)
+		}
+	}
+	return size, unfit
+}
+
 // valueChainDescRowHeightPt is the height the description row needs for its
 // tallest description at the step column width.
 func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int) float64 {
@@ -345,8 +387,30 @@ func resolveValueChainHighlight(ctx ExpandContext, authored string) string {
 // semantic signal is invisible.
 func (vc *valueChain) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*ValueChainValues)
-	if !ok || v == nil || v.HighlightColor == "" {
+	if !ok || v == nil {
 		return nil
+	}
+	var out []string
+
+	// A label the chain cannot fit at its readable floor WILL break mid-word.
+	// The strip measured it, so the finding blocks rather than advises
+	// (go-slide-creator-vo0j1, go-slide-creator-rxkt).
+	ovr, _ := overrides.(*ValueChainOverrides)
+	if ovr == nil {
+		ovr = &ValueChainOverrides{}
+	}
+	if size, unfit := fitValueChainLabels(ctx, v.Steps, ResolveSize(ovr.HeaderSize, 12.0)); len(unfit) > 0 {
+		noun, verb, pronoun := "label", "does", "it"
+		if len(unfit) > 1 {
+			noun, verb, pronoun = "labels", "do", "them"
+		}
+		out = append(out, fmt.Sprintf(
+			"%s: value-chain step %s %s %s not fit on one line at %d steps even at %.0fpt — the renderer breaks %s mid-word; shorten %s or use fewer steps",
+			ErrCodeTextExceedsShape, noun, listFirstN(unfit, 3), verb, len(v.Steps), size, pronoun, pronoun))
+	}
+
+	if v.HighlightColor == "" {
+		return out
 	}
 	highlighted := false
 	for _, step := range v.Steps {
@@ -356,15 +420,15 @@ func (vc *valueChain) PostExpandWarnings(ctx ExpandContext, values, overrides an
 		}
 	}
 	if !highlighted {
-		return nil
+		return out
 	}
 	ratio, ok := fillContrast(ctx, fillTone{Color: valueChainLabelFill}, fillTone{Color: v.HighlightColor})
 	if !ok || ratio >= fillDistinctnessMin {
-		return nil
+		return out
 	}
-	return []string{fmt.Sprintf(
+	return append(out, fmt.Sprintf(
 		"%s: value-chain highlight_color %q reads at %.2f:1 against the step fill (%s) — below %.1f:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
-		ErrCodeLowContrastHighlight, v.HighlightColor, ratio, valueChainLabelFill, fillDistinctnessMin)}
+		ErrCodeLowContrastHighlight, v.HighlightColor, ratio, valueChainLabelFill, fillDistinctnessMin))
 }
 
 // valueChainLabelFill is the default (non-highlighted) label fill: the
