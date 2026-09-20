@@ -267,59 +267,8 @@ func dryRenderSpec(
 	if len(dryFindings) == 0 {
 		return out
 	}
-	for _, df := range dryFindings {
-		fixSug := convertSvggenFixSuggestion(df.Fix)
-		fieldPath := path
-		if df.Field != "" {
-			fieldPath = path + "." + df.Field
-		}
-		out = append(out, patterns.FitFinding{
-			ValidationError: patterns.ValidationError{
-				Pattern: spec.Type,
-				Path:    fieldPath,
-				Code:    df.Code,
-				Message: df.Message,
-				Fix:     fixSug,
-			},
-			Action: actionForSvggenSeverity(df.Severity),
-		})
-	}
-	return out
+	// One conversion, shared with the render path, so a dry-run finding and the
+	// same finding raised while actually drawing agree on code, path and action.
+	return append(out, generator.SvggenFindingsToFit(dryFindings, spec.Type, path)...)
 }
 
-// convertSvggenFixSuggestion mirrors svggen.FixSuggestion into the
-// patterns.FixSuggestion shape FitFinding expects. Returns nil when the input
-// is nil.
-func convertSvggenFixSuggestion(fs *svggen.FixSuggestion) *patterns.FixSuggestion {
-	if fs == nil {
-		return nil
-	}
-	return &patterns.FixSuggestion{
-		Kind:   fs.Kind,
-		Params: fs.Params,
-	}
-}
-
-// actionForSvggenSeverity maps the svggen severity ladder onto the FitFinding
-// Action axis. The mapping mirrors the existing strict-fit promotion table:
-//
-//	info  / warning              → "review"
-//	shrink_or_split               → "shrink_or_split"
-//	refuse                        → "refuse"
-//
-// Anything unrecognised falls back to "info" so unknown codes still surface
-// without claiming a severity they don't have.
-func actionForSvggenSeverity(sev string) string {
-	switch sev {
-	case "refuse":
-		return "refuse"
-	case "shrink_or_split":
-		return "shrink_or_split"
-	case "warning":
-		return "review"
-	case "info":
-		return "info"
-	default:
-		return "info"
-	}
-}

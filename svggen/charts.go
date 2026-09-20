@@ -2637,9 +2637,14 @@ func (pc *PieChart) Draw(data ChartData) error {
 		legend.SetItems(pieLegendItems(values, labels, style.Palette.AccentColors()))
 		measuredLegendH := legend.Height(legendW)
 
+		// Centre the legend in the plot area, but never above it: the plot
+		// area already excludes the title band, and a legend taller than the
+		// plot area made (plotArea.H-measuredLegendH)/2 negative, lifting the
+		// first rows into the title. On a large-font template the chart title
+		// was drawn straight across them (go-slide-creator-p142).
 		legendBounds = Rect{
 			X: plotArea.X + pieW + style.Spacing.MD,
-			Y: plotArea.Y + (plotArea.H-measuredLegendH)/2, // vertically center
+			Y: plotArea.Y + math.Max(0, (plotArea.H-measuredLegendH)/2),
 			W: legendW,
 			H: math.Min(measuredLegendH, plotArea.H),
 		}
@@ -2779,13 +2784,20 @@ func (pc *PieChart) Draw(data ChartData) error {
 	}
 	arcs.Draw(slices)
 
-	// Draw title
+	// Draw title. With the legend on the right the title is centred over the
+	// PIE, not over the whole canvas: a centred full-width title runs into the
+	// legend column, and the two bands sit only a line apart, so a long title
+	// was drawn across the first legend row (go-slide-creator-p142).
 	if pc.config.ShowTitle && data.Title != "" {
 		titleConfig := DefaultTitleConfig()
 		titleConfig.Text = data.Title
 		titleConfig.Subtitle = data.Subtitle
+		titleW := pc.config.Width
+		if landscapeLegend {
+			titleW = legendBounds.X
+		}
 		title := NewTitle(b, titleConfig)
-		title.Draw(Rect{X: 0, Y: 0, W: pc.config.Width, H: headerHeight + pc.config.MarginTop})
+		title.Draw(Rect{X: 0, Y: 0, W: titleW, H: headerHeight + pc.config.MarginTop})
 	}
 
 	// Draw legend

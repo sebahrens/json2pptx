@@ -303,7 +303,7 @@ Charts and diagrams emit structured findings at render time, following the same 
 
 | Code | When emitted | Fix kind |
 |------|-------------|----------|
-| `chart.legend_overflow_dropped` | Legend entries dropped (area exceeded) | `reduce_items` |
+| `chart.legend_overflow_dropped` | Legend entries dropped (area exceeded). The chart draws a `+N more` row in the last slot rather than stopping silently, so the slide itself says entries are missing | `reduce_items` |
 | `chart.overflow_suppressed` | Overflow content suppressed or truncated | `reduce_items` |
 
 (`chart.capacity_exceeded` is also a content-loss code but is grouped with data-integrity above because strict promotes it all the way to `refuse`.)

@@ -727,9 +727,12 @@ func (l *Legend) drawVertical(bounds Rect, itemWidths []float64, fontSize float6
 	}
 
 	maxY := bounds.Y + bounds.H
+	capacity := legendRowCapacity(bounds.H, rowHeight, l.config.RowGap)
+	show := legendItemsToShow(len(l.items), capacity)
+
 	currentY := startY
 	drawn := 0
-	for _, item := range l.items {
+	for _, item := range l.items[:show] {
 		// Skip items that would overflow the bounds.
 		if currentY+rowHeight > maxY+0.5 {
 			break
@@ -740,16 +743,59 @@ func (l *Legend) drawVertical(bounds Rect, itemWidths []float64, fontSize float6
 	}
 
 	if dropped := len(l.items) - drawn; dropped > 0 {
-		l.builder.AddFinding(Finding{
-			Code:     FindingLegendOverflowDropped,
-			Message:  fmt.Sprintf("legend overflow — %d of %d items dropped (insufficient height)", dropped, len(l.items)),
-			Severity: "warning",
-			Fix: &FixSuggestion{
-				Kind:   FixKindReduceItems,
-				Params: map[string]any{"total": len(l.items), "drawn": drawn, "dropped": dropped},
-			},
-		})
+		if currentY+rowHeight <= maxY+0.5 {
+			l.drawOverflowMarker(startX, currentY, dropped, fontSize, fontColor)
+		}
+		l.reportOverflow(drawn, dropped)
 	}
+}
+
+// legendRowCapacity is how many rows of rowHeight (separated by rowGap) fit in
+// heightPt.
+func legendRowCapacity(heightPt, rowHeight, rowGap float64) int {
+	if heightPt <= 0 || rowHeight <= 0 {
+		return 0
+	}
+	n := int(math.Floor((heightPt+rowGap+0.5)/(rowHeight+rowGap))) //nolint:gomnd // 0.5 is the float tolerance used throughout this file
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+// legendItemsToShow is how many items to draw when capacity rows are available.
+// When the items do not all fit, the LAST row is given to the "+N more" marker
+// rather than to one more item: a legend that silently stops is indistinguishable
+// from a complete one, and a reader has no way to know two categories are missing
+// (go-slide-creator-p142).
+func legendItemsToShow(total, capacity int) int {
+	if capacity <= 0 || total <= capacity {
+		return total
+	}
+	return capacity - 1
+}
+
+// drawOverflowMarker draws the "+N more" row that stands in for the items the
+// legend could not show.
+func (l *Legend) drawOverflowMarker(x, y float64, dropped int, fontSize float64, fontColor Color) {
+	label := fmt.Sprintf("+%d more", dropped)
+	labelX := x + l.config.MarkerSize + l.config.MarkerLabelGap
+	labelY := y + math.Max(l.config.MarkerSize, fontSize)/2
+	l.builder.SetTextColor(fontColor.WithAlpha(0.7))
+	l.builder.DrawText(label, labelX, labelY, TextAlignLeft, TextBaselineMiddle)
+}
+
+// reportOverflow records the structured finding for dropped legend items.
+func (l *Legend) reportOverflow(drawn, dropped int) {
+	l.builder.AddFinding(Finding{
+		Code:     FindingLegendOverflowDropped,
+		Message:  fmt.Sprintf("legend overflow — %d of %d items dropped (insufficient height); the chart shows a \"+%d more\" row in their place", dropped, len(l.items), dropped),
+		Severity: "warning",
+		Fix: &FixSuggestion{
+			Kind:   FixKindReduceItems,
+			Params: map[string]any{"total": len(l.items), "drawn": drawn, "dropped": dropped},
+		},
+	})
 }
 
 // drawGrid draws items in a grid layout.
@@ -806,13 +852,15 @@ func (l *Legend) drawGrid(bounds Rect, itemWidths []float64, fontSize float64, f
 	// This prevents partial/clipped legend items when the legend height
 	// is capped (e.g. for pie/donut charts with many categories).
 	maxY := bounds.Y + bounds.H
-	drawn := 0
-	for i, item := range l.items {
-		col := i % numCols
-		row := i / numCols
+	capacity := legendRowCapacity(bounds.H, rowHeight, l.config.RowGap) * numCols
+	show := legendItemsToShow(len(l.items), capacity)
 
-		x := startX + float64(col)*colWidth
-		y := startY + float64(row)*(rowHeight+l.config.RowGap)
+	drawn := 0
+	cellAt := func(i int) (float64, float64) {
+		return startX + float64(i%numCols)*colWidth, startY + float64(i/numCols)*(rowHeight+l.config.RowGap)
+	}
+	for i, item := range l.items[:show] {
+		x, y := cellAt(i)
 
 		// Skip items whose row bottom would extend past the available height.
 		if y+rowHeight > maxY+0.5 { // 0.5 tolerance for floating point
@@ -824,15 +872,10 @@ func (l *Legend) drawGrid(bounds Rect, itemWidths []float64, fontSize float64, f
 	}
 
 	if dropped := len(l.items) - drawn; dropped > 0 {
-		l.builder.AddFinding(Finding{
-			Code:     FindingLegendOverflowDropped,
-			Message:  fmt.Sprintf("legend overflow — %d of %d items dropped (insufficient height)", dropped, len(l.items)),
-			Severity: "warning",
-			Fix: &FixSuggestion{
-				Kind:   FixKindReduceItems,
-				Params: map[string]any{"total": len(l.items), "drawn": drawn, "dropped": dropped},
-			},
-		})
+		if x, y := cellAt(drawn); y+rowHeight <= maxY+0.5 {
+			l.drawOverflowMarker(x, y, dropped, fontSize, fontColor)
+		}
+		l.reportOverflow(drawn, dropped)
 	}
 }
 

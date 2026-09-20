@@ -1116,11 +1116,11 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	"chart.legend_overflow_dropped": {
 		Code:        "chart.legend_overflow_dropped",
-		Summary:     "Legend entries were dropped because the legend overflowed available space.",
+		Summary:     "Legend entries were dropped because the legend overflowed available space; the chart shows a \"+N more\" row in their place.",
 		Severity:    "review",
-		WhenEmitted: "svggen layout pass drops trailing legend entries that would not fit.",
+		WhenEmitted: "svggen's layout pass cannot fit every legend entry. The last row is given to a \"+N more\" marker rather than to one more entry, so the chart itself says something is missing (go-slide-creator-p142). Raised at render AND by the dry-render preflight.",
 		RemediationSteps: []string{
-			"Reduce the number of series.",
+			"Reduce the number of series, or group the tail into an \"Other\" category.",
 			"Or widen the chart cell to give the legend more room.",
 		},
 	},

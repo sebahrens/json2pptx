@@ -511,6 +511,17 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 		return
 	}
 
+	// Surface what the renderer said while drawing: a thinned axis, a clipped
+	// label, a legend that could not show every entry. These were collected for
+	// tables and dropped for diagrams, so the chart's own report of what it had
+	// to give up never reached the fit report (go-slide-creator-p142).
+	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok {
+		for _, f := range SvggenFindingsToFit(renderResult.Findings, diagramSpec.Type,
+			slidepath.Content(slideNum-1, item.PlaceholderID)) {
+			ctx.emitFitFinding(f)
+		}
+	}
+
 	// Calculate embedding dimensions based on fit mode
 	// For "contain" mode (all diagrams), preserve content aspect ratio and center within placeholder
 	// For "stretch" mode (explicit override only), use full placeholder dimensions

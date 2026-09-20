@@ -2,6 +2,7 @@ package svggen
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -999,4 +1000,84 @@ func legendMarkerShapeName(s LegendMarkerShape) string {
 		return name
 	}
 	return "Unknown"
+}
+
+// TestLegendOverflowDrawsAMoreRow pins the fix for go-slide-creator-p142: a
+// legend that cannot show every entry used to stop silently, so a 15-category
+// pie rendered 13 rows on one template and 15 on another with nothing on the
+// slide to say two categories were missing.
+func TestLegendOverflowDrawsAMoreRow(t *testing.T) {
+	b := NewSVGBuilder(400, 300)
+	cfg := DefaultLegendConfig()
+	cfg.Layout = LegendLayoutVertical
+	legend := NewLegend(b, cfg)
+
+	items := make([]LegendItem, 12)
+	for i := range items {
+		items[i] = LegendItem{Label: fmt.Sprintf("Category %d", i+1), Color: MustParseColor("#336699")}
+	}
+	legend.SetItems(items)
+
+	// A box tall enough for about four rows.
+	legend.Draw(Rect{X: 0, Y: 0, W: 200, H: 4 * (cfg.MarkerSize + cfg.RowGap)})
+
+	svg, err := b.RenderToString()
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	if !strings.Contains(svg, "more") {
+		t.Errorf("a truncated legend must draw a \"+N more\" row:\n%s", svg)
+	}
+
+	var overflow *Finding
+	for i := range b.Findings() {
+		if b.Findings()[i].Code == FindingLegendOverflowDropped {
+			overflow = &b.Findings()[i]
+			break
+		}
+	}
+	if overflow == nil {
+		t.Fatal("expected a chart.legend_overflow_dropped finding")
+	}
+	if !strings.Contains(overflow.Message, "more") {
+		t.Errorf("the finding should say the chart shows a marker: %q", overflow.Message)
+	}
+}
+
+// TestLegendRowCapacity covers the arithmetic the "+N more" reservation rests
+// on: how many rows of rowHeight separated by rowGap fit in a box.
+func TestLegendRowCapacity(t *testing.T) {
+	tests := []struct {
+		h, rowH, gap float64
+		want         int
+	}{
+		{100, 10, 0, 10},
+		{100, 10, 10, 5},
+		{9, 10, 0, 0},
+		{0, 10, 0, 0},
+		{100, 0, 0, 0},
+	}
+	for _, tt := range tests {
+		if got := legendRowCapacity(tt.h, tt.rowH, tt.gap); got != tt.want {
+			t.Errorf("legendRowCapacity(%.0f, %.0f, %.0f) = %d, want %d", tt.h, tt.rowH, tt.gap, got, tt.want)
+		}
+	}
+}
+
+// TestLegendItemsToShow pins that the marker takes the LAST row, not one more
+// item: showing one extra entry and hiding the rest silently is the behaviour
+// being replaced.
+func TestLegendItemsToShow(t *testing.T) {
+	tests := []struct{ total, capacity, want int }{
+		{5, 10, 5},  // everything fits
+		{10, 10, 10}, // exactly fits
+		{15, 10, 9},  // 9 items + the marker row
+		{15, 1, 0},   // only the marker fits
+		{15, 0, 15},  // no capacity computed: leave the drawing loop to clip
+	}
+	for _, tt := range tests {
+		if got := legendItemsToShow(tt.total, tt.capacity); got != tt.want {
+			t.Errorf("legendItemsToShow(%d, %d) = %d, want %d", tt.total, tt.capacity, got, tt.want)
+		}
+	}
 }
