@@ -7,7 +7,7 @@ Thank you for your interest in contributing to Go Slide Creator! This document p
 ### Prerequisites
 
 - Go 1.25 or later
-- golangci-lint (for linting)
+- Go toolchain (`make lint` installs the pinned golangci-lint itself, into `bin/`)
 - librsvg or resvg (for SVG-to-PNG chart conversion)
 
 ### Getting Started
@@ -358,7 +358,7 @@ Before submitting a PR, ensure:
 
 1. **Build passes**: `go build ./...`
 2. **Tests pass**: `go test ./... -v`
-3. **Linter passes**: `golangci-lint run ./...`
+3. **Linter passes**: `make lint` — it installs and runs the exact golangci-lint version CI uses, read from `.golangci-version`, across both modules. Bump that one file to change both local and CI; a bare `golangci-lint` off PATH may be a different version, and versions disagree about real findings
 4. **Formatting correct**: `gofmt -l .`
 
 ### Review Process

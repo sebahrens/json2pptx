@@ -14,9 +14,8 @@ go test ./...                           # All tests
 go test ./internal/generator/...        # Specific package
 cd svggen && go test ./...              # SVG generation (separate go.work module)
 
-# Lint (MUST pass before committing)
-golangci-lint run ./...
-cd svggen && golangci-lint run ./...
+# Lint (MUST pass before committing) — use make lint: it pins the version CI runs
+make lint
 
 # Generate a deck
 json2pptx generate -json examples/basic-deck.json -template midnight-blue -templates-dir templates -output /tmp/out
@@ -33,12 +32,11 @@ json2pptx validate-template templates/midnight-blue.pptx
 
 Always run this checklist before declaring work complete:
 
-1. `golangci-lint run ./...` -- fix all lint errors in main module
-2. `cd svggen && golangci-lint run ./...` -- fix all lint errors in svggen module
-3. `go test ./...` -- all tests pass in main module
-4. `cd svggen && go test ./...` -- all tests pass in svggen module
-5. `go build ./cmd/json2pptx` -- binary builds cleanly
-6. **Skill / docs / code sync verified** -- see policy below
+1. `make lint` -- lints BOTH modules with the golangci-lint version CI runs, pinned in `.golangci-version`. Do not run a bare `golangci-lint` off PATH: versions disagree about real findings (v2.8.0's gosec raises G602 where v2.12.2 does not), so a local pass on the wrong version is not evidence CI will pass
+2. `go test ./...` -- all tests pass in main module
+3. `cd svggen && go test ./...` -- all tests pass in svggen module
+4. `go build ./cmd/json2pptx` -- binary builds cleanly
+5. **Skill / docs / code sync verified** -- see policy below
 
 ## Skill, Docs, and Code Sync (mandatory)
 

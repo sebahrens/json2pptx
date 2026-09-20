@@ -339,9 +339,24 @@ install-git-hooks:
 	@echo "✓ core.hooksPath set to scripts/git-hooks"
 	@echo "  Active hooks: $$(ls scripts/git-hooks 2>/dev/null | tr '\n' ' ')"
 
-lint:
-	golangci-lint run ./...
-	cd svggen && golangci-lint run ./...
+# golangci-lint is PINNED, from one source of truth shared with CI
+# (.golangci-version). Versions disagree about real findings — v2.8.0's gosec
+# raises G602 on a literal slice index that v2.12.2 accepts — so linting with
+# whatever happens to be on PATH both hides and invents findings, and the
+# disagreement is only discovered after a push (go-slide-creator-rc9y).
+GOLANGCI_LINT_VERSION ?= $(shell cat .golangci-version 2>/dev/null || echo v2.8.0)
+GOLANGCI_LINT         := $(CURDIR)/bin/golangci-lint-$(GOLANGCI_LINT_VERSION)
+
+$(GOLANGCI_LINT):
+	@echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION) (pinned by .golangci-version)…"
+	@mkdir -p $(CURDIR)/bin
+	@GOBIN=$(CURDIR)/bin go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+	@mv $(CURDIR)/bin/golangci-lint $@
+
+lint: $(GOLANGCI_LINT)
+	@echo "golangci-lint $(GOLANGCI_LINT_VERSION) — the version CI runs"
+	$(GOLANGCI_LINT) run ./...
+	cd svggen && $(GOLANGCI_LINT) run ./...
 
 vulncheck:
 	@command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -432,7 +447,7 @@ help:
 	@echo "  make test-cover       Tests with coverage report"
 	@echo "  make template-check   Gate every templates/*.pptx against the conformance allow-list"
 	@echo "  make install-git-hooks Install repo-managed pre-commit hook for template-check"
-	@echo "  make lint             Run golangci-lint"
+	@echo "  make lint             Run golangci-lint (pinned by .golangci-version)"
 	@echo "  make security         Run vulncheck + lint"
 	@echo "  make ci               Full CI pipeline (fmt + lint + test + vulncheck + template-check)"
 	@echo ""

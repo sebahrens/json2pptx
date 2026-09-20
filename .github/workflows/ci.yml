@@ -142,10 +142,17 @@ jobs:
         with:
           go-version-file: go.mod
 
+      # One source of truth for the linter version, shared with `make lint`.
+      # A local run on a different version both hides and invents findings
+      # (go-slide-creator-rc9y).
+      - name: Read pinned golangci-lint version
+        id: golangci
+        run: echo "version=$(cat .golangci-version)" >> "$GITHUB_OUTPUT"
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.8.0
+          version: ${{ steps.golangci.outputs.version }}
           args: --timeout=5m
 
   repo-hygiene:
@@ -200,10 +207,14 @@ jobs:
         with:
           go-version-file: svggen/go.mod
 
+      - name: Read pinned golangci-lint version
+        id: golangci
+        run: echo "version=$(cat .golangci-version)" >> "$GITHUB_OUTPUT"
+
       - name: Run golangci-lint on svggen
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.8.0
+          version: ${{ steps.golangci.outputs.version }}
           working-directory: svggen
           args: --timeout=5m
 
