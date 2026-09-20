@@ -837,6 +837,8 @@ When building a slide and unsure which visual approach to use, follow this decis
 
 1. **`recommend_visual`** — the unified entry point. Ranks candidates across *all* categories (placeholder layouts, named patterns, charts, diagrams, compose envelopes, raw shape_grid). Start here.
 
+   A Sankey request returns `candidates: []` and `unsupported_visual: "sankey"` because no Sankey renderer is registered. Do not substitute `process_flow` for quantitative flow widths. Pricing plans and subscription tiers route to parallel `card-grid` cards.
+
    **Template-aware ranking.** Pass `template` (a template name, e.g. `"midnight-blue"`) to vet each candidate against that specific template. Every candidate then carries `template_support: {status, reasons[], required_layout}`:
    - `status: "supported"` — the template natively covers the layout/capability the candidate needs.
    - `status: "risky"` — producible only via a synthesised/derived layout (e.g. a two-column built by splitting a One Content layout), or close to a body-capacity / content-zone limit. Read `reasons[]` for the caveat.

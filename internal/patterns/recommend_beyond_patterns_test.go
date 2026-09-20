@@ -63,7 +63,6 @@ func TestRecommendDoesNotRedirectToTheSameVisual(t *testing.T) {
 	reg := Default()
 	for _, intent := range []string{
 		"business model canvas",
-		"sankey of cost flows", // scores process-flow against process_flow
 	} {
 		t.Run(intent, func(t *testing.T) {
 			if got := Recommend(reg, intent, nil, 3); got.BeyondPatterns != nil {

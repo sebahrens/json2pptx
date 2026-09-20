@@ -1154,7 +1154,7 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 
 func mcpRecommendPatternTool() mcp.Tool {
 	return mcp.NewTool("recommend_pattern",
-		mcp.WithDescription("Recommend NAMED PATTERNS for a content intent — patterns only. Charts and diagrams are NOT in its universe, so an intent whose best answer is one (an org chart, a sankey, a scatter) still returns the best-scoring pattern; use recommend_visual to rank all categories together. When a chart or diagram scores competitively the response says so in beyond_patterns, caps the confidence band at medium, and points next_tool_call at recommend_visual. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected. When candidates is supplied, scores ONLY those pattern names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation, no near-misses)."),
+		mcp.WithDescription("Recommend NAMED PATTERNS for a content intent — patterns only. Charts and diagrams are outside its universe; use recommend_visual to rank all categories together. When a chart or diagram scores competitively the response says so in beyond_patterns, caps the confidence band at medium, and points next_tool_call at recommend_visual. Unsupported Sankey requests return empty candidates and unsupported_visual: sankey. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected. When candidates is supplied, scores ONLY those pattern names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation, no near-misses), except unsupported visuals."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRecommendPattern)),
 		mcp.WithString("intent",
 			mcp.Required(),
@@ -1556,6 +1556,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 
 	type resultType struct {
 		Candidates              []candidateResult `json:"candidates"`
+		UnsupportedVisual       string            `json:"unsupported_visual,omitempty"`
 		QueryUnderstood         string            `json:"query_understood_as"`
 		Suggestion              string            `json:"suggestion,omitempty"`
 		NearMisses              []nearMissResult  `json:"near_misses,omitempty"`
@@ -1569,6 +1570,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 
 	result := resultType{
 		Candidates:              candidates,
+		UnsupportedVisual:       rec.UnsupportedVisual,
 		QueryUnderstood:         rec.QueryUnderstood,
 		NearMisses:              nearMisses,
 		DisambiguatingQuestions: rec.DisambiguatingQuestions,
@@ -1577,7 +1579,9 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 	}
 
 	// When no candidates match, add a suggestion.
-	if len(candidates) == 0 {
+	if rec.UnsupportedVisual != "" {
+		result.Suggestion = "Sankey diagrams are not supported by the current renderers or pattern catalog. Choose a different visual only if it preserves the intended flow quantities."
+	} else if len(candidates) == 0 {
 		result.Suggestion = "No patterns matched this intent. Consider using shape_grid directly to build a custom layout, or try rephrasing with keywords like: kpi, compare, timeline, matrix, bmc, icon, card."
 	}
 
@@ -1590,7 +1594,7 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 
 func mcpRecommendVisualTool() mcp.Tool {
 	return mcp.NewTool("recommend_visual",
-		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Replaces guesswork — ask this tool first, then use the winning category's tool to build the slide. When candidates is supplied, scores ONLY those names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation); category is auto-resolved from the catalog and unknown names appear with score 0."),
+		mcp.WithDescription("Unified visual recommender: ranks candidates across placeholder layouts, named patterns, charts, diagrams, and raw shape_grid. Unsupported Sankey requests return empty candidates and unsupported_visual: sankey; there is no Sankey renderer. Ask this tool first, then use the winning category's tool to build the slide. When candidates is supplied, scores ONLY those names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation), except unsupported visuals; category is auto-resolved from the catalog and unknown names appear with score 0."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRecommendVisual)),
 		mcp.WithString("intent",
 			mcp.Required(),

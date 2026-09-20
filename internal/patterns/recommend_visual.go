@@ -118,6 +118,7 @@ type VisualHints struct {
 // RecommendVisualResult is the output of RecommendVisual.
 type RecommendVisualResult struct {
 	Candidates              []VisualCandidate `json:"candidates"`
+	UnsupportedVisual       string            `json:"unsupported_visual,omitempty"`
 	QueryUnderstood         string            `json:"query_understood_as"`
 	DisambiguatingQuestions []string          `json:"disambiguating_questions,omitempty"`
 
@@ -231,6 +232,13 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	}
 
 	intentLower := strings.ToLower(intent)
+	if unsupported := unsupportedVisualIntent(intentLower); unsupported != "" {
+		return RecommendVisualResult{
+			Candidates:        []VisualCandidate{},
+			QueryUnderstood:   summarizeVisualIntent(intentLower, hints),
+			UnsupportedVisual: unsupported,
+		}
+	}
 
 	// Build recency count map for variety penalty on patterns.
 	recencyCount := make(map[string]int)

@@ -396,6 +396,7 @@ var outputSchemaRecommendPattern = json.RawMessage(`{
       }
     },
     "query_understood_as": {"type": "string"},
+    "unsupported_visual":  {"type": "string", "enum": ["sankey"], "description": "Requested visual has no supported renderer; candidates is empty."},
     "suggestion":          {"type": "string"},
     "near_misses": {
       "type": "array",
@@ -458,6 +459,7 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
       }
     },
     "query_understood_as": {"type": "string"},
+    "unsupported_visual":  {"type": "string", "enum": ["sankey"], "description": "Requested visual has no supported renderer; candidates is empty."},
     "disambiguating_questions": {
       "type": "array",
       "items": {"type": "string"}

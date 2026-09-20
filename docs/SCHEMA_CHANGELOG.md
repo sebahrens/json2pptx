@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Recommendation routing for pricing and Sankey requests (go-slide-creator-0hb2j).**
+  Pricing plan/tier intents favor `card-grid`; a bare `tier` no longer implies
+  architecture. `recommend_pattern` and `recommend_visual` now return
+  `candidates: []` with `unsupported_visual: "sankey"` when asked for a Sankey
+  diagram, including in explicit shortlist mode, because no Sankey renderer is
+  registered. Schema version advances to 4.70.0; the raw input fingerprint is
+  unchanged.
+
 - **DeckSpec kind `org` (go-slide-creator-zgvs).** A flat `nodes[]` reporting
   tree compiles to the `org_chart` diagram for up to seven nodes, three levels,
   and four direct reports per node. The compiler rejects duplicate IDs,

@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"unicode"
 )
 
 // isKPIPattern identifies all parametric kpi-Nup pattern names.
@@ -62,6 +63,7 @@ type ComposeSuggestion struct {
 // RecommendResult is the output of Recommend.
 type RecommendResult struct {
 	Candidates              []Candidate         `json:"candidates"`
+	UnsupportedVisual       string              `json:"unsupported_visual,omitempty"`
 	ComposeSuggestions      []ComposeSuggestion `json:"compose_suggestions,omitempty"`
 	QueryUnderstood         string              `json:"query_understood_as"`
 	NearMisses              []NearMiss          `json:"near_misses,omitempty"`
@@ -217,6 +219,12 @@ var rules = []rule{
 	},
 
 	// Card grid — general-purpose grid of titled cards
+	{
+		pattern:   "card-grid",
+		keywords:  []string{"pricing tier", "pricing plan", "subscription tier", "subscription plan", "plans and pricing"},
+		baseScore: 0.88,
+		rationale: "Pricing plans or subscription tiers as parallel titled cards",
+	},
 	{
 		pattern:   "card-grid",
 		keywords:  []string{"card", "grid", "cards", "tiles", "tile", "panel", "category", "team", "department"},
@@ -508,7 +516,7 @@ var rules = []rule{
 	// Architecture stack
 	{
 		pattern:   "arch-stack",
-		keywords:  []string{"architecture", "stack", "layer", "tier", "infrastructure", "tech stack", "platform"},
+		keywords:  []string{"architecture", "stack", "layer", "infrastructure", "tech stack", "platform"},
 		baseScore: 0.90,
 		rationale: "Architecture stack diagram with labeled tiers and optional cross-cutting side rails",
 	},
@@ -797,6 +805,13 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 	}
 
 	intentLower := strings.ToLower(intent)
+	if unsupported := unsupportedVisualIntent(intentLower); unsupported != "" {
+		return RecommendResult{
+			Candidates:        []Candidate{},
+			QueryUnderstood:   summarizeIntent(intentLower, hints),
+			UnsupportedVisual: unsupported,
+		}
+	}
 
 	// Build recency count map.
 	recencyCount := make(map[string]int)
@@ -882,6 +897,19 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 	applyBeyondPatterns(&result, reg, intent, hints, opts...)
 
 	return result
+}
+
+// unsupportedVisualIntent identifies a requested diagram with no renderer or
+// registered pattern. A generic flow match must not stand in for a Sankey.
+func unsupportedVisualIntent(intentLower string) string {
+	for _, word := range strings.FieldsFunc(intentLower, func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+	}) {
+		if word == "sankey" {
+			return "sankey"
+		}
+	}
+	return ""
 }
 
 // recommendOnlyCandidates ranks an explicit list of pattern names against the

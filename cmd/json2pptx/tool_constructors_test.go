@@ -386,6 +386,37 @@ func TestHandleRecommendVisual_Success(t *testing.T) {
 	}
 }
 
+func TestRecommendToolsReportUnsupportedSankey(t *testing.T) {
+	mc := cliMCPConfig("./templates", "./out")
+	for _, tc := range []struct {
+		name   string
+		handle func(context.Context, mcpgo.CallToolRequest) (*mcpgo.CallToolResult, error)
+	}{
+		{"recommend_pattern", mc.handleRecommendPattern},
+		{"recommend_visual", mc.handleRecommendVisual},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := tc.handle(context.Background(), makeRequest(map[string]any{
+				"intent":     "sankey of cost flows",
+				"candidates": []any{"process-flow"},
+			}))
+			if err != nil || result == nil || result.IsError {
+				t.Fatalf("result = %+v, err = %v", result, err)
+			}
+			var payload struct {
+				Candidates        []json.RawMessage `json:"candidates"`
+				UnsupportedVisual string            `json:"unsupported_visual"`
+			}
+			if err := json.Unmarshal([]byte(textContent(result)), &payload); err != nil {
+				t.Fatal(err)
+			}
+			if payload.UnsupportedVisual != "sankey" || payload.Candidates == nil || len(payload.Candidates) != 0 {
+				t.Fatalf("payload = %+v", payload)
+			}
+		})
+	}
+}
+
 // TestHandleRecommendPattern_Candidates verifies the MCP handler plumbs the
 // candidates array through to the patterns package and returns every name
 // (no threshold cutoff applied).
