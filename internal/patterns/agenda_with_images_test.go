@@ -2,8 +2,11 @@ package patterns
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 func TestAgendaWithImages_Registration(t *testing.T) {
@@ -197,13 +200,13 @@ func TestAgendaWithImages_Expand_AutoAssignsNumbers(t *testing.T) {
 	expected := []string{"01", "02", "03"}
 	contentRows := []int{0, 2, 4} // skip divider rows
 	for i, rowIdx := range contentRows {
-		numberCell := grid.Rows[rowIdx].Cells[0]
+		numberCell := agendaBadgeShape(t, grid.Rows[rowIdx].Cells[0])
 		var textObj struct {
 			Paragraphs []struct {
 				Content string `json:"content"`
 			} `json:"paragraphs"`
 		}
-		if err := json.Unmarshal(numberCell.Shape.Text, &textObj); err != nil {
+		if err := json.Unmarshal(numberCell.Text, &textObj); err != nil {
 			t.Fatalf("unmarshal badge text: %v", err)
 		}
 		if len(textObj.Paragraphs) == 0 || textObj.Paragraphs[0].Content != expected[i] {
@@ -228,13 +231,13 @@ func TestAgendaWithImages_Expand_HonorsExplicitNumber(t *testing.T) {
 	expected := []string{"01", "05", "09"}
 	contentRows := []int{0, 2, 4}
 	for i, rowIdx := range contentRows {
-		numberCell := grid.Rows[rowIdx].Cells[0]
+		numberCell := agendaBadgeShape(t, grid.Rows[rowIdx].Cells[0])
 		var textObj struct {
 			Paragraphs []struct {
 				Content string `json:"content"`
 			} `json:"paragraphs"`
 		}
-		_ = json.Unmarshal(numberCell.Shape.Text, &textObj)
+		_ = json.Unmarshal(numberCell.Text, &textObj)
 		if textObj.Paragraphs[0].Content != expected[i] {
 			t.Errorf("row %d badge: expected %q, got %q", rowIdx, expected[i], textObj.Paragraphs[0].Content)
 		}
@@ -311,5 +314,95 @@ func TestAgendaWithImages_ExemplarValues_ExpandsCleanly(t *testing.T) {
 	}
 	if _, err := p.Expand(ExpandContext{}, vals, nil, nil); err != nil {
 		t.Fatalf("exemplar Expand: %v", err)
+	}
+}
+
+// agendaBadgeShape returns the badge shape from a number cell. The badge is
+// nested in a [gutter, badge, gutter] sub-grid when it has been narrowed to
+// render square, and sits directly on the cell when it fills it
+// (go-slide-creator-tiarr).
+func agendaBadgeShape(t *testing.T, cell *jsonschema.GridCellInput) *jsonschema.ShapeSpecInput {
+	t.Helper()
+	if cell == nil {
+		t.Fatal("number cell is nil")
+	}
+	if cell.Shape != nil {
+		return cell.Shape
+	}
+	if cell.Grid == nil || len(cell.Grid.Rows) == 0 {
+		t.Fatal("number cell has neither a shape nor a sub-grid")
+	}
+	for _, c := range cell.Grid.Rows[0].Cells {
+		if c != nil && c.Shape != nil {
+			return c.Shape
+		}
+	}
+	t.Fatal("no badge shape inside the number cell's sub-grid")
+	return nil
+}
+
+// go-slide-creator-tiarr: the badge filled its cell, which is 18% of the
+// content width by whatever height the row took — 1.5:1 on a three-item agenda
+// and 2.4:1 on a five-item one, so the "numbered square" read as an accent slab.
+func TestAgendaBadgeIsNarrowedTowardSquare(t *testing.T) {
+	ctx := ExpandContext{
+		SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: LayoutBounds{Width: 10515600, Height: 3913340},
+	}
+	w, h := contentAreaPt(ctx)
+	colWidth := w * agendaBadgeColumnFrac
+
+	for _, n := range []int{3, 4, 5, 6} {
+		t.Run(fmt.Sprintf("%d items", n), func(t *testing.T) {
+			pct := agendaBadgeWidthPct(ctx, n)
+			if pct >= 100 {
+				t.Fatalf("badge still fills its cell at %d items", n)
+			}
+			// The badge's rendered aspect should be close to square.
+			dividers := float64(n-1) * h * agendaDividerHeightPct / 100
+			gaps := float64(2*n-2) * agendaRowGapPt
+			rowHeight := (h - dividers - gaps) / float64(n)
+			badgeWidth := colWidth * pct / 100
+			if aspect := badgeWidth / rowHeight; aspect < 0.9 || aspect > 1.1 {
+				t.Errorf("%d items: badge is %.0fx%.0fpt, aspect %.2f — not square",
+					n, badgeWidth, rowHeight, aspect)
+			}
+		})
+	}
+}
+
+// More items means shorter rows means a narrower badge — the relationship has
+// to be monotonic, or some count gets a slab again.
+func TestAgendaBadgeNarrowsAsItemsGrow(t *testing.T) {
+	ctx := ExpandContext{
+		SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: LayoutBounds{Width: 10515600, Height: 3913340},
+	}
+	prev := 101.0
+	for n := 3; n <= 6; n++ {
+		pct := agendaBadgeWidthPct(ctx, n)
+		if pct >= prev {
+			t.Errorf("%d items gives %.0f%%, not narrower than the %.0f%% before it", n, pct, prev)
+		}
+		prev = pct
+	}
+}
+
+// A badge that fills its cell is emitted flat, with no pointless sub-grid.
+func TestAgendaBadgeCellIsFlatWhenItFills(t *testing.T) {
+	cell := buildAgendaBadgeCell("01", "accent1", 18, 100)
+	if cell.Shape == nil || cell.Grid != nil {
+		t.Errorf("a full-width badge should be the cell itself, got %+v", cell)
+	}
+	narrowed := buildAgendaBadgeCell("01", "accent1", 18, 60)
+	if narrowed.Grid == nil {
+		t.Fatal("a narrowed badge needs its centring sub-grid")
+	}
+	var cols []float64
+	if err := json.Unmarshal(narrowed.Grid.Columns, &cols); err != nil {
+		t.Fatalf("columns: %v", err)
+	}
+	if len(cols) != 3 || cols[1] != 60 || cols[0] != cols[2] {
+		t.Errorf("columns = %v, want equal gutters around a 60%% badge", cols)
 	}
 }

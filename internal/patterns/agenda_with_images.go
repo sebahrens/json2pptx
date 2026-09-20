@@ -204,6 +204,13 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	// every row, and no labels at all mean no column (go-slide-creator-jodu).
 	withImages := anyAgendaImageLabel(v.Items)
 
+	// The badge is meant to be a numbered SQUARE, but it filled its cell, which
+	// is 18% of the content width by whatever height the row took: 1.5:1 on a
+	// three-item agenda and 2.4:1 on a five-item one, so it read as an accent
+	// slab (go-slide-creator-tiarr). badgeWidthPct narrows it inside its cell
+	// to the row's own height, centring the remainder.
+	badgeWidthPct := agendaBadgeWidthPct(ctx, len(v.Items))
+
 	// Build content rows interleaved with thin divider rows (one divider between
 	// each pair of items, none above the first or below the last).
 	rows := make([]jsonschema.GridRowInput, 0, len(v.Items)*2-1)
@@ -215,13 +222,8 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 		}
 
 		// Number badge cell: accent-filled rounded square with white number.
-		numberCell := &jsonschema.GridCellInput{
-			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "roundRect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
-				Text:     buildAgendaWithImagesBadgeText(fmt.Sprintf("%02d", num), numberSize),
-			},
-		}
+		numberCell := buildAgendaBadgeCell(
+			fmt.Sprintf("%02d", num), accent, numberSize, badgeWidthPct)
 
 		// Title cell: title (+ optional subtitle paragraph).
 		titleCell := &jsonschema.GridCellInput{
@@ -368,4 +370,83 @@ func buildAgendaWithImagesImageLabelText(label string, size float64) json.RawMes
 	}
 	data, _ := json.Marshal(textObj)
 	return data
+}
+
+// agendaBadgeColumnFrac is the badge column's share of the grid's column units
+// (1.8 of 1.8+4.8+3.2), used to compare the badge cell's width against the
+// row's height.
+const agendaBadgeColumnFrac = 1.8 / (1.8 + 4.8 + 3.2)
+
+// agendaBadgeWidthPct returns how much of the number cell's WIDTH the badge
+// should occupy so it renders square. 100 means "fill the cell".
+//
+// Only the width is narrowed. The badge column is 18% of the content width, so
+// a row would have to be taller than that for the badge to be too TALL — at
+// this pattern's minimum of three items the rows are already shorter than the
+// column is wide, and they only get shorter as items are added. A height
+// branch would be unreachable.
+//
+// The row height is estimated the way the grid divides it — n content rows plus
+// n-1 hairline divider rows at agendaDividerHeightPct each, with RowGap between
+// every pair — so the estimate and the layout cannot drift apart silently.
+//
+// ACCURACY IS CAPPED BY go-slide-creator-byr2b: on the generate path
+// ExpandContext carries no LayoutBounds, so contentAreaPt reports the full-slide
+// default (864x389pt) rather than the template's real content zone (828x308pt
+// on midnight-blue). The badge therefore comes out about 20% wider than square
+// there — measurably better than filling the cell, and exactly square once
+// byr2b lands, with no change needed here.
+func agendaBadgeWidthPct(ctx ExpandContext, n int) float64 {
+	if n < 1 {
+		return 100
+	}
+	w, h := contentAreaPt(ctx)
+	colWidth := w * agendaBadgeColumnFrac
+	if colWidth <= 0 || h <= 0 {
+		return 100
+	}
+	dividers := float64(n-1) * h * agendaDividerHeightPct / 100
+	gaps := float64(2*n-2) * agendaRowGapPt
+	rowHeight := (h - dividers - gaps) / float64(n)
+	if rowHeight <= 0 || rowHeight >= colWidth {
+		return 100
+	}
+	// No lower floor: the badge is square or it is not, and a floor set to keep
+	// it "substantial" simply reinstates the slab on the densest agendas — a
+	// 35% floor made a six-item badge 53x42pt. The row height already shrinks
+	// with the item count, which is the same budget the number's own font size
+	// answers to.
+	return rowHeight / colWidth * 100
+}
+
+const (
+	// agendaDividerHeightPct / agendaRowGapPt mirror the grid the expansion
+	// builds.
+	agendaDividerHeightPct = 1.0
+	agendaRowGapPt         = 4.0
+)
+
+// buildAgendaBadgeCell centres the badge in its cell at the given share of the
+// cell's width, so it renders square rather than filling a cell whose
+// proportions are the row's, not the badge's. At 100 it is the cell itself,
+// with no nesting.
+func buildAgendaBadgeCell(label, accent string, size, widthPct float64) *jsonschema.GridCellInput {
+	badge := &jsonschema.ShapeSpecInput{
+		Geometry: "roundRect",
+		Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+		Text:     buildAgendaWithImagesBadgeText(label, size),
+	}
+	if widthPct >= 100 {
+		return &jsonschema.GridCellInput{Shape: badge}
+	}
+	gutter := (100 - widthPct) / 2
+	cols, _ := json.Marshal([]float64{gutter, widthPct, gutter})
+	return &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(cols),
+		Gap:     0.01,
+		RowGap:  0.01,
+		Rows: []jsonschema.GridRowInput{{
+			Cells: []*jsonschema.GridCellInput{{}, {Shape: badge}, {}},
+		}},
+	}}
 }
