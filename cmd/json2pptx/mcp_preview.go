@@ -423,6 +423,12 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 
 	// Placeholder resolution.
 	resolveSlidePlaceholders(slide, tctx, &rs)
+	// Keep the original layout_id through placeholder mapping: an auto-selected
+	// slide must still map virtual placeholder names. Subsequent grid geometry
+	// must use the concrete layout generation selected.
+	if rs.LayoutID != "" {
+		slide.LayoutID = rs.LayoutID
+	}
 
 	// Compose expansion.
 	if slide.Compose != nil && slide.ShapeGrid == nil {
@@ -451,7 +457,22 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 
 // resolveSlideLayout resolves the layout_id for a slide (inline, auto, or fallback).
 func resolveSlideLayout(i int, slide *SlideInput, input *PresentationInput, tctx *previewTemplateContext, usedLayouts map[string]int, output *previewPlanOutput, rs *resolvedSlide) {
-	if slide.LayoutID == "" {
+	explicitLayout := slide.LayoutID != ""
+	if explicitLayout {
+		if resolved, ok := layout.ResolveCanonicalLayoutID(slide.LayoutID, tctx.layouts); ok {
+			slide.LayoutID = resolved
+		}
+		if hasPatternContent(*slide) {
+			if selected := findLayoutMetadataByID(tctx.layouts, slide.LayoutID); selected != nil && !isCompositionLayoutCompatible(*selected) {
+				output.Errors = append(output.Errors, fmt.Sprintf("slide %d: layout %q is incompatible with pattern/compose/shape_grid content", i+1, slide.LayoutID))
+			}
+		}
+		rs.LayoutID = slide.LayoutID
+		rs.LayoutIDSource = "inline"
+		if usedLayouts != nil {
+			usedLayouts[slide.LayoutID]++
+		}
+	} else {
 		if len(tctx.layouts) == 0 {
 			output.Errors = append(output.Errors,
 				fmt.Sprintf("slide %d: layout_id is required (no template layouts available)", i+1))
@@ -459,43 +480,52 @@ func resolveSlideLayout(i int, slide *SlideInput, input *PresentationInput, tctx
 			return
 		}
 
-		// Auto-select layout.
-		slideDef := jsonSlideToDefinition(*slide)
-		req := layout.SelectionRequest{
-			Slide:   slideDef,
-			Layouts: tctx.layouts,
-			Context: layout.SelectionContext{
-				Position:    i,
-				TotalSlides: len(input.Slides),
-				UsedLayouts: usedLayouts,
-			},
-		}
-		if i > 0 && len(output.ResolvedSlides) > 0 {
-			req.Context.PreviousType = output.ResolvedSlides[i-1].LayoutID
+		// Generation binds visual compositions to the canonical title canvas
+		// before heuristic scoring. Preview must make that same choice.
+		if hasPatternContent(*slide) {
+			if id, ok := layout.ResolveCanonicalLayoutID("blank-title", tctx.layouts); ok {
+				rs.LayoutID = id
+				rs.LayoutIDSource = "auto"
+				usedLayouts[id]++
+			}
 		}
 
-		result, err := layout.SelectLayout(req)
-		if err != nil {
-			output.Errors = append(output.Errors,
-				fmt.Sprintf("slide %d: auto-layout selection failed: %v", i+1, err))
-			rs.LayoutIDSource = "fallback"
-			return
-		}
+		if rs.LayoutID == "" {
+			// Auto-select layout.
+			slideDef := jsonSlideToDefinition(*slide)
+			req := layout.SelectionRequest{
+				Slide:   slideDef,
+				Layouts: tctx.layouts,
+				Context: layout.SelectionContext{
+					Position:    i,
+					TotalSlides: len(input.Slides),
+					UsedLayouts: usedLayouts,
+				},
+			}
+			if i > 0 && len(output.ResolvedSlides) > 0 {
+				req.Context.PreviousType = output.ResolvedSlides[i-1].LayoutID
+			}
 
-		rs.LayoutID = result.LayoutID
-		rs.LayoutIDSource = "auto"
-		usedLayouts[result.LayoutID]++
+			resolvedID, confidence, warning, err := resolveAutoLayout(req, *slide, hasPatternContent(*slide), tctx.layouts, i)
+			if err != nil {
+				output.Errors = append(output.Errors,
+					fmt.Sprintf("slide %d: auto-layout selection failed: %v", i+1, err))
+				rs.LayoutIDSource = "fallback"
+				return
+			}
 
-		slog.Info("preview: auto-layout selected",
-			slog.Int("slide", i+1),
-			slog.String("layout_id", result.LayoutID),
-			slog.Float64("confidence", result.Confidence),
-		)
-	} else {
-		rs.LayoutID = slide.LayoutID
-		rs.LayoutIDSource = "inline"
-		if usedLayouts != nil {
-			usedLayouts[slide.LayoutID]++
+			if warning != "" {
+				output.Warnings = append(output.Warnings, warning)
+			}
+			rs.LayoutID = resolvedID
+			rs.LayoutIDSource = "auto"
+			usedLayouts[resolvedID]++
+
+			slog.Info("preview: auto-layout selected",
+				slog.Int("slide", i+1),
+				slog.String("layout_id", resolvedID),
+				slog.Float64("confidence", confidence),
+			)
 		}
 	}
 
