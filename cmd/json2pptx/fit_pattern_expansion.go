@@ -46,6 +46,7 @@ func expandPatternsForFit(input *PresentationInput, slideWidth, slideHeight int6
 	copy(expanded.Slides, input.Slides)
 
 	fromPattern := make(map[int]bool)
+	rhythm := resolvedValidRhythmGrid(input, layoutSets, slideWidth, slideHeight)
 	for i := range expanded.Slides {
 		s := &expanded.Slides[i]
 		if s.Pattern == nil || s.ShapeGrid != nil {
@@ -53,10 +54,6 @@ func expandPatternsForFit(input *PresentationInput, slideWidth, slideHeight int6
 		}
 		var bounds patterns.LayoutBounds
 		if len(layoutSets) > 0 {
-			var rhythm *resolvedGrid
-			if input.Grid != nil && validateGridConfig(input.Grid) == nil {
-				rhythm = resolveGrid(input.Grid, layoutSets, slideWidth, slideHeight)
-			}
 			_, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
 			bounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
 		}
@@ -91,6 +88,7 @@ func collectPatternPostExpandFindings(input *PresentationInput, slideWidth, slid
 		return nil
 	}
 	var out []patterns.FitFinding
+	rhythm := resolvedValidRhythmGrid(input, layoutSets, slideWidth, slideHeight)
 	for i := range input.Slides {
 		p := input.Slides[i].Pattern
 		if p == nil {
@@ -99,10 +97,6 @@ func collectPatternPostExpandFindings(input *PresentationInput, slideWidth, slid
 		probe := SlideInput{Pattern: p}
 		var bounds patterns.LayoutBounds
 		if len(layoutSets) > 0 {
-			var rhythm *resolvedGrid
-			if input.Grid != nil && validateGridConfig(input.Grid) == nil {
-				rhythm = resolveGrid(input.Grid, layoutSets, slideWidth, slideHeight)
-			}
 			_, b := patternExpansionGeometry(input.Slides[i], layoutSets, slideWidth, slideHeight, rhythm)
 			bounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
 		}

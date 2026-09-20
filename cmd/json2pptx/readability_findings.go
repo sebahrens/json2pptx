@@ -29,6 +29,7 @@ import (
 // shape_grid cells in the deck.
 func collectReadabilityFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
 	mode := tokens.ParseViewingMode(input.ViewingMode)
+	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	if slideWidth <= 0 {
 		slideWidth = shapegrid.DefaultSlideWidthEMU
 	}
@@ -40,14 +41,14 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 	// slide was ever evaluated — and "6pt KPI deltas and 9pt chevron
 	// descriptions", the motivating examples for this check, are pattern output
 	// (go-slide-creator-adur).
-	input, fromPattern := expandPatternsForFit(input, slideWidth, slideHeight, nil)
+	input, fromPattern := expandPatternsForFit(input, slideWidth, slideHeight, nil, layouts...)
 
 	var findings []patterns.FitFinding
 	for si, slide := range input.Slides {
 		if slide.ShapeGrid == nil {
 			continue
 		}
-		geom := resolveGridGeometry(slide, layouts, slideWidth, slideHeight)
+		geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
 		result := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 		if result == nil {
 			continue

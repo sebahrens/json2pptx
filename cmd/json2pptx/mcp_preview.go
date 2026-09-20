@@ -387,10 +387,7 @@ func resolvePreviewSlides(input *PresentationInput, tctx *previewTemplateContext
 		}
 	}
 	accentStrategy := patterns.AccentStrategy(input.AccentStrategy)
-	var rhythmGrid *resolvedGrid
-	if input.Grid != nil && validateGridConfig(input.Grid) == nil {
-		rhythmGrid = resolveGrid(input.Grid, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
-	}
+	rhythmGrid := resolvedValidRhythmGrid(input, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
 
 	for i := range input.Slides {
 		rs := resolveOneSlide(i, &input.Slides[i], input, tctx, usedLayouts, &output, accentStrategy, sectionIndices[i], rhythmGrid)

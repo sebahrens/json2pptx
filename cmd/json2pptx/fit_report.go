@@ -82,17 +82,18 @@ func evaluateStrictFit(input *PresentationInput, mode string, layouts []types.La
 //
 // layouts/slideWidth/slideHeight supply the resolved template geometry used to
 // place shape_grid cells. They are threaded into walkShapeGrid so the report
-// resolves grids through the SAME layout-aware helpers generation uses
-// (resolveGridGeometry → resolveGridBounds). With nil layouts the result is
-// identical to the legacy generic-default-bounds behavior.
+// resolves grids through the SAME layout and rhythm geometry generation uses.
+// With neither template layouts nor a deck grid, it falls back to the legacy
+// generic bounds.
 func generateFitReport(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []fitFinding {
 	var findings []fitFinding
+	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 
 	// Pattern slides carry no ShapeGrid until generation, so every text-capacity
 	// check below used to skip the surface agents are told to author through
 	// (go-slide-creator-adur). Expand once, measure the same cells generation
 	// renders, and report them under /slides/N/pattern.
-	input, fromPattern := expandPatternsForFit(input, slideWidth, slideHeight, nil)
+	input, fromPattern := expandPatternsForFit(input, slideWidth, slideHeight, nil, layouts...)
 
 	for si, slide := range input.Slides {
 		// Walk content-level tables.
@@ -111,7 +112,7 @@ func generateFitReport(input *PresentationInput, layouts []types.LayoutMetadata,
 		// Walk shape_grid cells using the same layout-aware geometry as
 		// generation so strict_fit / fit-report bounds match render.
 		if slide.ShapeGrid != nil {
-			cells := walkShapeGrid(slide, si, layouts, slideWidth, slideHeight)
+			cells := walkShapeGrid(slide, si, layouts, slideWidth, slideHeight, rhythm)
 			if fromPattern[si] {
 				patternName := ""
 				if slide.Pattern != nil {
@@ -287,15 +288,16 @@ func tdrCeilingForFont(fontPt float64) int {
 }
 
 // walkShapeGrid resolves a shape grid against the SAME layout-aware geometry
-// generation uses (resolveGridGeometry → resolveGridBounds, via
+// generation uses (patternExpansionGeometry → resolveGridBounds, via
 // resolveGridForStructural) and runs textcapacity.ForResolvedGrid over the
 // result, emitting fit findings for overflowing cells and row max_height
 // violations. Resolving with the template's content-zone / virtual-layout
 // bounds (rather than generic defaults) is what keeps strict_fit and
-// fit-report cell measurements in lockstep with the rendered PPTX
-// (go-slide-creator-ur3z). With nil layouts the geometry reduces to the legacy
-// "explicit bounds or DefaultBounds" behavior.
-func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []fitFinding {
+// fit-report cell measurements in lockstep with the rendered PPTX, including
+// when a deck rhythm grid overrides the template zone
+// (go-slide-creator-ur3z, go-slide-creator-vrckb). Without layouts or a deck
+// grid, geometry reduces to the legacy "explicit bounds or DefaultBounds" behavior.
+func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, rhythm *resolvedGrid) []fitFinding {
 	grid := slide.ShapeGrid
 	if grid == nil {
 		return nil
@@ -308,7 +310,7 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 	}
 
 	// Resolve the grid to authoritative cell bounds using generation's geometry.
-	geom := resolveGridGeometry(slide, layouts, slideWidth, slideHeight)
+	geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
 	result := resolveGridForStructural(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 	if result == nil {
 		return nil

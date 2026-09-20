@@ -23,6 +23,16 @@ type resolvedGrid struct {
 	SlideHeight    int64
 }
 
+// resolvedValidRhythmGrid returns the deck's configured grid for preview and
+// preflight measurements. Invalid grid settings are reported by validation;
+// geometry checks keep using template bounds until those errors are fixed.
+func resolvedValidRhythmGrid(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) *resolvedGrid {
+	if input == nil || input.Grid == nil || validateGridConfig(input.Grid) != nil {
+		return nil
+	}
+	return resolveGrid(input.Grid, layouts, slideWidth, slideHeight)
+}
+
 // defaultContentBottomPct is the default content bottom as a percentage of slide height.
 const defaultContentBottomPct = 92.0
 

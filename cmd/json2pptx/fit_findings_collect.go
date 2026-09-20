@@ -427,6 +427,7 @@ func convertTextFitFinding(tf fitFinding) patterns.FitFinding {
 // collision, and bounds overflow detectors using template layout data.
 func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) []patterns.FitFinding {
 	var findings []patterns.FitFinding
+	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 
 	footerEnabled := input.Footer != nil && input.Footer.Enabled
 
@@ -450,7 +451,7 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 		// resolved cell bounds match render — the gap that let title overlaps
 		// slip past preflight (go-slide-creator-s1rd).
 		if slide.ShapeGrid != nil {
-			geom := resolveGridGeometry(slide, layouts, slideWidth, slideHeight)
+			geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythm)
 			// Footer derivation needs the concrete layout when present, else the
 			// virtual base layout the geometry resolved.
 			footerLayout := layout
@@ -1743,6 +1744,7 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 	expanded := *input
 	expanded.Slides = make([]SlideInput, len(input.Slides))
 	copy(expanded.Slides, input.Slides)
+	rhythm := resolvedValidRhythmGrid(input, layoutSets, slideWidth, slideHeight)
 
 	for i := range expanded.Slides {
 		s := &expanded.Slides[i]
@@ -1755,10 +1757,6 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 			SlideIndex:  i,
 		}
 		if len(layoutSets) > 0 {
-			var rhythm *resolvedGrid
-			if input.Grid != nil && validateGridConfig(input.Grid) == nil {
-				rhythm = resolveGrid(input.Grid, layoutSets, slideWidth, slideHeight)
-			}
 			_, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
 			ctx.LayoutBounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
 		}

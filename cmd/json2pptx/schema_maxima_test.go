@@ -20,8 +20,8 @@ import (
 // agent has no way to know before it looks (go-slide-creator-0g6p).
 //
 // These tests build, for every registered pattern, the largest payload its own
-// schema permits, expand it at the default geometry and measure what the cells
-// would have to hold.
+// schema permits, expand it at each template's render geometry and measure
+// what the cells would have to hold.
 
 // schemaMaximaTemplates are the bundled templates the measurement runs on: a
 // pattern tuned on one palette's geometry can still overflow on another.
@@ -229,7 +229,9 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"matrix-2x2":                   10.1,
 	"numbered-step-strip":          7.0,
 	"phase-roadmap":                6.2,
-	"process-flow":                 0.0,
+	// Layout-aware standalone readability measurement exposed a schema-legal
+	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
+	"process-flow":                 9.1,
 	"process-flow-compact":         9.1,
 	"process-grid-2row":            0.0,
 	// pull-quote's maximum got tighter on purpose: values.image added a
@@ -253,7 +255,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"swimlane":            5.5,
 	"table-highlight":     6.7,
 	"team-bios":           5.5,
-	"timeline-horizontal": 6.2,
+	"timeline-horizontal": 5.5,
 	"value-chain":         8.2,
 	"waterfall-bridge":    7.2,
 }
