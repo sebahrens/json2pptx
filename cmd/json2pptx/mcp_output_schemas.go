@@ -805,17 +805,29 @@ var outputSchemaScoreCandidates = json.RawMessage(`{
         "properties": {
           "index":          {"type": "integer", "description": "0-based position of this candidate in the request candidates array."},
           "rank":           {"type": "integer", "description": "1-based rank after sorting (1 = best)."},
-          "score":          {"type": "integer", "description": "Combined deterministic score 0-100 (slide_score - rhythm_penalty)."},
-          "slide_score":    {"type": "integer", "description": "100 - sum(severity weights) of fit findings scoped to the target slide."},
+          "score":          {"type": "integer", "description": "Ranking score 0-100. slide_score - rhythm_penalty, except that a candidate with any refuse-action finding starts from 50 instead of 100: a slide the engine would refuse is not a choice."},
+          "slide_score":    {"type": "integer", "description": "100 - sum(severity weights) of fit findings scoped to the target slide. This is the number score_deck reports for the same slide; score is the ranking number."},
           "rhythm_penalty": {"type": "integer", "description": "Penalty subtracted for pattern repetition. 0, 5, or 15."},
+          "blocking_findings": {"type": "integer", "description": "Count of refuse-action findings. Any at all means the engine would refuse to render this candidate."},
+          "axes": {
+            "type": "object",
+            "description": "The score split into what it measures, so two candidates with the same total can still be told apart.",
+            "properties": {
+              "fit":     {"type": "integer", "description": "Geometry: overflow, density, occupancy, contrast, chart render."},
+              "content": {"type": "integer", "description": "What the slide says: placeholder copy, emptiness, missing/over-long titles and bodies, dropped content."},
+              "rhythm":  {"type": "integer", "description": "How the candidate sits in the deck around it."}
+            },
+            "required": ["fit", "content", "rhythm"]
+          },
           "findings":       {"type": "array", "items": {"type": "object"}, "description": "Deterministic findings (overflow, contrast, occupancy, etc.) scoped to the target slide for this candidate."},
-          "notes":          {"type": "array", "items": {"type": "string"}, "description": "Human-readable rhythm/occupancy notes that explain the rhythm_penalty."},
+          "notes":          {"type": "array", "items": {"type": "string"}, "description": "Human-readable notes explaining the rhythm penalty and any refusal ceiling."},
           "parse_error":    {"type": "string", "description": "Set when the candidate JSON failed to decode; score will be 0 and the candidate ranks last."}
         },
-        "required": ["index", "rank", "score", "slide_score", "rhythm_penalty"]
+        "required": ["index", "rank", "score", "slide_score", "rhythm_penalty", "axes", "blocking_findings"]
       }
     },
-    "mode_used": {"type": "string"}
+    "mode_used": {"type": "string"},
+    "tie": {"type": "string", "description": "Set when the top candidates score identically: rank 1 is then input order, not a verdict. Names what this tool cannot judge and what to do instead."}
   },
   "required": ["slide_index", "candidates", "mode_used"]
 }`)

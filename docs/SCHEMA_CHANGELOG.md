@@ -104,6 +104,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **`score_candidates` can tell candidates apart (go-slide-creator-sbqm).** The
+  tool for choosing between alternative slides scored a real slide 100, a
+  near-empty one 95 and an unreadable one 90 — a spread an agent reads as "all
+  three are fine, take the first".
+  - Each candidate now carries `axes: {fit, content, rhythm}`, the same
+    severity weights split by what they judge, so two candidates with the same
+    total can still be told apart and an agent can see WHICH dimension a
+    candidate lost on.
+  - `blocking_findings` counts refuse-action findings, and a candidate with any
+    is ranked from **50** rather than 100: a slide the engine would refuse to
+    render is not a choice. Measured on the reported trio: 95 / 20 / 5.
+  - `slide_score` is unchanged and stays the number `score_deck` reports for the
+    same slide; `score` is the ranking number.
+  - New top-level `tie`: when the leading candidates score identically it says
+    so, names what the tool cannot judge (which visual reads better) and points
+    at `render_slide_image` / `inspect_slide_images`. Rank 1 on a tie is input
+    order, not a verdict.
+
 - **A misshapen chart list names the key, not the block
   (go-slide-creator-xp1x).** `data: {categories: [a,b], series: {Rev: [1,2]}}`
   reported "chart.data declares no data series (found keys \"categories\",

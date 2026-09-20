@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
@@ -20,12 +21,25 @@ type CandidateScore struct {
 	Index int `json:"index"`
 	// Rank is the 1-based ranking after sorting (1 = best score).
 	Rank int `json:"rank"`
-	// Score is the combined score (slide_score - rhythm_penalty), clamped to [0, 100].
+	// Score is the ranking score, clamped to [0, 100]. It is
+	// slide_score - rhythm_penalty, except that a candidate carrying a
+	// refuse-action finding starts from the refusal ceiling instead of 100: a
+	// slide the engine would refuse is not a choice, however tidy the rest of
+	// it is (go-slide-creator-sbqm).
 	Score int `json:"score"`
-	// SlideScore is the score from fit findings alone (100 - sum of severity weights).
+	// SlideScore is the score from fit findings alone (100 - sum of severity
+	// weights). It is the number score_deck reports for the same slide, kept
+	// comparable on purpose; Score is the ranking number.
 	SlideScore int `json:"slide_score"`
 	// RhythmPenalty is the penalty subtracted for pattern repetition / occupancy issues.
 	RhythmPenalty int `json:"rhythm_penalty"`
+	// Axes break the score into the things it actually measures, so two
+	// candidates with the same total can still be told apart — and so an agent
+	// can see WHICH dimension a candidate lost on.
+	Axes CandidateAxes `json:"axes"`
+	// Blocking is the number of refuse-action findings on this candidate. Any
+	// at all means the engine would refuse to render it.
+	Blocking int `json:"blocking_findings"`
 	// Findings are the deterministic findings scoped to the target slide for this candidate.
 	Findings []deterministic.ScoreFinding `json:"findings"`
 	// Notes are human-readable rhythm explanations (empty when no penalty applied).
@@ -35,22 +49,87 @@ type CandidateScore struct {
 	ParseError string `json:"parse_error,omitempty"`
 }
 
+// CandidateAxes splits a candidate's score into its dimensions. Each is
+// 100 minus the severity weights of the findings belonging to that dimension,
+// so they are read the same way as the total.
+type CandidateAxes struct {
+	// Fit is geometry: overflow, density, occupancy, contrast, chart render.
+	Fit int `json:"fit"`
+	// Content is what the slide says: placeholder copy, emptiness, missing
+	// titles, over-long headlines and bodies, dropped content.
+	Content int `json:"content"`
+	// Rhythm is how the candidate sits in the deck around it.
+	Rhythm int `json:"rhythm"`
+}
+
+// contentAxisCodes are the finding codes that judge what a slide SAYS rather
+// than how it fits. Splitting them out is what lets an agent see that a
+// candidate lost on emptiness rather than on overflow (go-slide-creator-sbqm).
+var contentAxisCodes = map[string]bool{
+	patterns.ErrCodeWeakContent:            true,
+	patterns.ErrCodeSlideNearlyEmpty:       true,
+	patterns.ErrCodeMissingTitle:           true,
+	patterns.ErrCodeDuplicateTitle:         true,
+	patterns.ErrCodeHeadlineTooLong:        true,
+	patterns.ErrCodeBodyTooLong:            true,
+	patterns.ErrCodeContentDropped:         true,
+	patterns.ErrCodePatternContentMismatch: true,
+	patterns.ErrCodeTakeawayMissing:        true,
+}
+
+// candidateRefusalCeiling is where a candidate's ranking score starts once any
+// finding would refuse the render.
+//
+// score_candidates answers "which of these should I use", and a slide the
+// engine will not render is not an answer. Ranked from 100 like everything
+// else, a near-empty candidate scored 70 and an unreadable one 55 — a spread an
+// agent reads as "all three are fine, take the first" (go-slide-creator-sbqm).
+const candidateRefusalCeiling = 50
+
 // CandidateScoresResult is the top-level response for score_candidates.
 type CandidateScoresResult struct {
 	SlideIndex int              `json:"slide_index"`
 	Candidates []CandidateScore `json:"candidates"`
 	ModeUsed   string           `json:"mode_used"`
+	// Tie is set when the top candidates score identically. Rank 1 is then the
+	// first one you passed, not a verdict — an agent reading the ranking alone
+	// would take a chart it was never told apart from the others
+	// (go-slide-creator-sbqm).
+	Tie string `json:"tie,omitempty"`
+}
+
+// topTieNote reports whether the leading candidates are indistinguishable to
+// this tool, and says what it could not see.
+func topTieNote(scored []CandidateScore) string {
+	if len(scored) < 2 || scored[0].Score != scored[1].Score {
+		return ""
+	}
+	tied := make([]int, 0, len(scored))
+	for _, c := range scored {
+		if c.Score != scored[0].Score {
+			break
+		}
+		tied = append(tied, c.Index)
+	}
+	return fmt.Sprintf(
+		"candidates %v all score %d on static analysis, so rank 1 is input order, not a verdict. This tool measures text fit, content and deck rhythm; it does not judge which visual reads better — render them (render_slide_image) and compare, or ask inspect_slide_images",
+		tied, scored[0].Score)
 }
 
 func mcpScoreCandidatesTool() mcp.Tool {
 	return mcp.NewTool("score_candidates",
 		mcp.WithDescription(`Score multiple candidate slide_json values for a single slot in a deck without rendering.
 
-Use this to choose between alternative slides (e.g., different patterns, different shape grids, different content shapes) for one position in a presentation. Unlike score_deck, this tool runs only static analysis — no PPTX generation, no tempdir — and returns each candidate ranked by a deterministic score.
+Use this to choose between alternative slides for one position in a presentation. Unlike score_deck, this tool runs only static analysis — no PPTX generation, no tempdir — and returns each candidate ranked by a deterministic score.
 
-Each candidate's score = slide_score - rhythm_penalty, clamped to [0, 100]:
-- slide_score: 100 - sum(severity weights) of fit findings scoped to the target slide. Severity weights: refuse=25, shrink_or_split=15, review=5, info=0. Occupancy findings (pattern_underfilled, pattern_overcrowded) and overflow/contrast preflight findings are included here.
-- rhythm_penalty: 5 if substituting this candidate would extend a pattern run of length 2 at this slide position, 15 if it would extend a run of length 3+. 0 otherwise.
+WHAT IT MEASURES, reported as axes so two candidates with the same total can still be told apart:
+- fit: geometry — overflow, density, occupancy, contrast, chart render.
+- content: what the slide says — placeholder copy, emptiness, missing or over-long titles and bodies, dropped content, a pattern that does not match its content.
+- rhythm: 5 if substituting this candidate would extend a pattern run of length 2 at this position, 15 for a run of 3+.
+
+WHAT IT CANNOT MEASURE: which visual reads better. Two legible charts of the same data score the same. When the top candidates tie, the response carries a "tie" note saying so — rank 1 is then input order, not a verdict. Render them (render_slide_image) and compare, or ask inspect_slide_images.
+
+score = slide_score - rhythm_penalty, clamped to [0, 100], EXCEPT that a candidate carrying any refuse-action finding starts from 50 rather than 100: a slide the engine would refuse to render is not a choice, however tidy the rest of it is. blocking_findings counts those. slide_score itself stays the number score_deck reports for the same slide (100 - sum of severity weights: refuse=25, shrink_or_split=15, review=5, info=0), so the two tools agree about the slide even though score ranks it.
 
 Candidates are sorted best→worst by score; ties broken by input order. Findings are returned per-candidate so the caller can see why each scored as it did.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreCandidates)),
@@ -164,6 +243,7 @@ func (mc *mcpConfig) handleScoreCandidates(ctx context.Context, request mcp.Call
 		SlideIndex: slideIdx,
 		Candidates: scored,
 		ModeUsed:   "deterministic",
+		Tie:        topTieNote(scored),
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, result)
@@ -222,12 +302,23 @@ func scoreCandidate(
 	findings := collectFitFindings(substituted, layouts, slideWidth, slideHeight, theme)
 	slideFindings := filterFindingsForSlide(findings, slideIdx)
 
-	// 2. Compute slide score from fit findings alone.
+	// 2. Compute slide score from fit findings alone, and split the same
+	//    weights across the axes so a tie can be broken on the dimension that
+	//    actually differs (go-slide-creator-sbqm).
 	slideScore := 100
+	fitAxis, contentAxis, blocking := 100, 100, 0
 	scoreFindings := make([]deterministic.ScoreFinding, 0, len(slideFindings))
 	for _, f := range slideFindings {
 		w := deterministic.SeverityWeight[f.Action]
 		slideScore -= w
+		if contentAxisCodes[f.Code] {
+			contentAxis -= w
+		} else {
+			fitAxis -= w
+		}
+		if f.Action == "refuse" {
+			blocking++
+		}
 		scoreFindings = append(scoreFindings, deterministic.ScoreFinding{
 			Code:     f.Code,
 			Severity: scoreFindingSeverity(f.Action),
@@ -235,25 +326,46 @@ func scoreCandidate(
 			Fix:      f.Fix,
 		})
 	}
-	if slideScore < 0 {
-		slideScore = 0
-	}
+	slideScore = clampScore(slideScore)
 
 	// 3. Compute rhythm penalty from pattern run extension at slideIdx.
 	penalty, notes := rhythmPenaltyAt(substituted.Slides, slideIdx)
 
-	// 4. Combined score.
-	combined := slideScore - penalty
-	if combined < 0 {
-		combined = 0
+	// 4. Ranking score. A candidate the engine would refuse starts from the
+	//    refusal ceiling: it is not a choice, and ranking it a few points below
+	//    a clean slide reads as "all of these are fine".
+	base := 100
+	if blocking > 0 {
+		base = candidateRefusalCeiling
+		notes = append(notes, fmt.Sprintf(
+			"%d finding(s) would refuse this candidate, so it is ranked from %d rather than 100 — fix those before comparing it on polish",
+			blocking, candidateRefusalCeiling))
 	}
+	combined := clampScore(base - (100 - slideScore) - penalty)
 
 	out.SlideScore = slideScore
 	out.RhythmPenalty = penalty
 	out.Score = combined
+	out.Blocking = blocking
+	out.Axes = CandidateAxes{
+		Fit:     clampScore(fitAxis),
+		Content: clampScore(contentAxis),
+		Rhythm:  clampScore(100 - penalty),
+	}
 	out.Findings = scoreFindings
 	out.Notes = notes
 	return out
+}
+
+// clampScore keeps a score inside [0, 100].
+func clampScore(n int) int {
+	if n < 0 {
+		return 0
+	}
+	if n > 100 {
+		return 100
+	}
+	return n
 }
 
 // substituteSlide returns a shallow copy of input with input.Slides[slideIdx]
