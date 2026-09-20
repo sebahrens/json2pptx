@@ -1111,6 +1111,42 @@ Grids produced by named patterns are expanded first (paths rooted at `/slides/{i
 }
 ```
 
+### `PATTERN_CONTENT_MISMATCH`
+
+**Action:** `review`
+**Pattern:** the pattern that was asked for
+**Fix kind:** `swap_pattern` (`params: {from, to}`)
+**Emitted at:** preflight, from the authored `slides[].pattern.values`
+
+Every other check asks whether the content **fits**. This one asks whether it **belongs**. The calibration corpus's `B07_wrong_pattern` draws three KPIs as a timeline and a four-month implementation plan as a 2×2 quadrant matrix: the field counts are right, nothing overflows, and a human graded the deck 30/100 while every geometric detector saw a clean slide.
+
+Three rules, each requiring **every** item to match so a single odd entry cannot trip it:
+
+| Pattern | Fires when | Swap to |
+|---------|-----------|---------|
+| `timeline-horizontal` | 3+ stops where every `label` is a measurement (`$48M`, `118%`, `41d`) and no `date` is a period — the axes are inverted | `kpi-Nup` sized to the stop count |
+| `matrix-2x2` | all four quadrant headers name points in time (`January`, `Q3`, `2026`) — a 2×2 shows two dimensions crossing, and dates run along one | `phase-roadmap` |
+| `process-flow` / `process-flow-compact` / `pyramid` | 3+ items where every step label or tier is a short (≤3-word) label carrying a figure (`EMEA $12M`) — measurements side by side, not stages that follow one another | `kpi-Nup` sized to the item count |
+
+What deliberately does **not** fire, because a false mismatch on a conforming deck is worse than a miss (the previous attempt at this signal, `pattern_overcrowded`, fired on every conforming timeline and 2×2 alike — go-slide-creator-wrsb):
+
+- A **bare number** is a count, not a measure: a timeline stop reading `2026` or `3` is fine.
+- A timeline of metrics against **real periods** (`$12M` at `Q1`) is a trend, and is correct.
+- **One** named stop among measurements, or one non-date quadrant among three dates, clears the rule.
+- A process step that **mentions** a figure in prose ("Collect the first $1M in deposits") is still a step; only short label-plus-figure items count.
+- Fewer than 3 items is too few to judge.
+
+```json
+{
+  "pattern": "timeline-horizontal",
+  "path": "/slides/2/pattern",
+  "code": "PATTERN_CONTENT_MISMATCH",
+  "message": "slide 3: every stop on this timeline is a measurement (\"$48M\") against a label that is not a period (\"Revenue\") — this is a set of metrics, not a sequence in time",
+  "fix": { "kind": "swap_pattern", "params": { "from": "timeline-horizontal", "to": "kpi-3up" } },
+  "action": "review"
+}
+```
+
 ### `SPARSE_FILL`
 
 **Action:** `review`

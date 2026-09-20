@@ -8,6 +8,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`PATTERN_CONTENT_MISMATCH` (go-slide-creator-h339i).** Every check asked
+  whether content *fits*; none asked whether it *belongs*. The calibration
+  corpus's `B07_wrong_pattern` draws three KPIs as a timeline and a four-month
+  plan as a 2×2 — every slide structurally sound, every detector silent, and a
+  human grade of 30/100.
+  - New `review`-severity finding with a `swap_pattern` fix (`params: {from,
+    to}`), emitted from the authored `slides[].pattern.values` at preflight.
+  - Three rules, each requiring **every** item to match: a timeline whose stops
+    are all measurements against non-period labels; a 2×2 whose four quadrant
+    headers are all points in time; a flow or pyramid whose every item is a
+    short label carrying a figure.
+  - Deliberately narrow: a bare number is a period, not a measure; a timeline
+    of metrics against real periods is a trend; one named stop clears the rule;
+    a step that mentions a figure in prose is still a step. Verified silent on
+    all 19 bundled example decks and 15 of the 16 calibration decks.
+  - `B07_wrong_pattern` now fails the quality gate for this reason and has been
+    removed from `staticPathMisses`.
+
 - **`plan_deck` → `budget_note` (go-slide-creator-whp97).** Role allocation
   scaled every slot count with the slide budget alone, so a brief with one
   comparison ("compare build vs buy") produced three comparison slots at a

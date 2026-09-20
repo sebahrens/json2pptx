@@ -136,6 +136,11 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// depth. Advisory findings that flag verbose / over-nested authoring
 	// before render.
 	findings = append(findings, collectContentLintFindings(input, measuredTitles)...)
+	// 8b. Pattern / content mismatch: a pattern that does not match the shape
+	// of the content authored into it (go-slide-creator-h339i). Reads
+	// slide.Pattern directly, before expansion erases which pattern was asked
+	// for.
+	findings = append(findings, collectPatternMismatchFindings(input)...)
 	findings = append(findings, collectBackgroundFindings(input)...)
 
 	// 9. Accessibility lint: alt text on images / icons sourced from

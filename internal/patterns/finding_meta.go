@@ -591,6 +591,17 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeDuplicateTitle},
 	},
+	ErrCodePatternContentMismatch: {
+		Code:        ErrCodePatternContentMismatch,
+		Summary:     "The pattern is not the shape of the content in it.",
+		Severity:    "review",
+		WhenEmitted: "Every geometric check asks whether content fits; this one asks whether it belongs. Emitted when a timeline's stops are all measurements against labels that are not periods (metrics drawn as a sequence), when all four quadrants of a 2x2 are named after points in time (a plan drawn as a matrix), or when every step of a flow / tier of a pyramid is a short label carrying a figure (numbers drawn as an order of operations). Each rule needs EVERY item to match, so one date among three metrics does not trip it.",
+		RemediationSteps: []string{
+			"Take the swap_pattern fix: it names the pattern whose shape the content already has.",
+			"Or keep the pattern and give it the content it is for — a timeline needs periods, a 2x2 needs two crossing dimensions, a flow needs stages that follow one another.",
+		},
+		RelatedCodes: []string{ErrCodeDeckMonotony},
+	},
 	ErrCodeChartOverloaded: {
 		Code:        ErrCodeChartOverloaded,
 		Summary:     "A chart has more categories than a reader can follow.",

@@ -115,6 +115,11 @@ const (
 	ErrCodeDeckMonotony     = "DECK_MONOTONY"
 	ErrCodeChartOverloaded  = "CHART_OVERLOADED"
 
+	// PATTERN_CONTENT_MISMATCH: the pattern is not the shape of its content —
+	// KPIs drawn as a timeline, a four-month plan drawn as a 2x2
+	// (go-slide-creator-h339i).
+	ErrCodePatternContentMismatch = "PATTERN_CONTENT_MISMATCH"
+
 	// Shared content-drop diagnostic — emitted from any path that fails to place
 	// author-provided content (a dropped slide, an unplaced content block, a
 	// truncated column, etc.). Turns silent content loss into one consistent,
