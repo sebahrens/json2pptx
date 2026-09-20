@@ -32,6 +32,10 @@ func TestPreviewAutoCompositionMatchesGeneration(t *testing.T) {
 			{SizePct: 50, Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"99%","label":"Uptime"}`)}},
 			{SizePct: 50, Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"3x","label":"Growth"}`)}},
 		}}}},
+		{"compose_capped_row", SlideInput{Compose: &ComposeInput{Direction: "horizontal", Segments: []SegmentInput{
+			{SizePct: 50, Pattern: PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$4M | ARR","98% | NRR","1K | Users"]`)}},
+			{SizePct: 50, Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"3x","label":"Growth"}`)}},
+		}}}},
 		{"shape_grid", SlideInput{ShapeGrid: &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}}},
 	}
 

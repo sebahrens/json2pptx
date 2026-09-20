@@ -85,8 +85,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.65.0 adds the semantic DeckSpec quote kind. This changes an existing
 	// tool's accepted schema and discovery response, not the raw PresentationInput
 	// fields, MCP tool names, or Fix.Kind vocabulary, so the hash is unchanged.
+	// 4.66.0 adds shape_grid cell max_height, so the PresentationInput hash advances.
 	// If this fails, see file header comment.
-	const wantFingerprint = "1767b639a140ecbf"
+	const wantFingerprint = "203d5604a6bcb22d"
 
 	got := schemaFingerprint()
 

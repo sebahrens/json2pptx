@@ -87,8 +87,9 @@ type ConnectorSpecInput struct {
 type GridCellInput struct {
 	ColSpan    int                `json:"col_span,omitempty"`
 	RowSpan    int                `json:"row_span,omitempty"`
-	Fit        string             `json:"fit,omitempty"`   // "contain", "fit-width", "fit-height" (default: stretch)
-	Group      bool               `json:"group,omitempty"` // Wrap cell content in a p:grpSp group shape
+	MaxHeight  float64            `json:"max_height,omitempty"` // Maximum rendered cell height in points (0 = row height)
+	Fit        string             `json:"fit,omitempty"`        // "contain", "fit-width", "fit-height" (default: stretch)
+	Group      bool               `json:"group,omitempty"`      // Wrap cell content in a p:grpSp group shape
 	Shape      *ShapeSpecInput    `json:"shape,omitempty"`
 	Table      *TableInput        `json:"table,omitempty"`
 	Icon       *IconInput         `json:"icon,omitempty"`

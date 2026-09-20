@@ -127,6 +127,7 @@ type ConnectorSpec struct {
 type Cell struct {
 	ColSpan     int                // Number of columns to span (default 1)
 	RowSpan     int                // Number of rows to span (default 1)
+	MaxHeight   float64            // Maximum rendered height in points, centered in the row (0 = row height)
 	Fit         FitMode            // How the shape scales within cell bounds
 	Group       bool               // Wrap cell content in a p:grpSp group shape
 	Shape       *ShapeSpec         // Shape specification (nil = empty cell unless other content set)
@@ -209,7 +210,6 @@ type ImageText struct {
 	Font          string  // Font family. Default: theme minor font
 }
 
-
 // ShapeSpec defines a preset geometry shape with fill, line, and text.
 type ShapeSpec struct {
 	Geometry    string
@@ -224,10 +224,10 @@ type ShapeSpec struct {
 // position, size, kind, and associated specification.
 type ResolvedCell struct {
 	Kind        CellKind
-	Bounds      pptx.RectEmu       // Shape bounds (may differ from cell bounds when fit mode is applied)
-	CellBounds  pptx.RectEmu       // Original cell bounds before fit adjustment
-	IconBounds  pptx.RectEmu       // Icon overlay bounds (contained square within shape bounds); zero when no icon overlay
-	TextInsets  [4]int64           // Extra text insets [L,T,R,B] in EMU to avoid icon overlap (added to any JSON-specified insets)
+	Bounds      pptx.RectEmu // Shape bounds (may differ from cell bounds when fit mode is applied)
+	CellBounds  pptx.RectEmu // Original cell bounds before fit adjustment
+	IconBounds  pptx.RectEmu // Icon overlay bounds (contained square within shape bounds); zero when no icon overlay
+	TextInsets  [4]int64     // Extra text insets [L,T,R,B] in EMU to avoid icon overlap (added to any JSON-specified insets)
 	ID          uint32
 	RowIdx      int                // Zero-based row index in the source grid
 	ColIdx      int                // Zero-based column index in the source grid
@@ -262,8 +262,8 @@ type ResolvedAccentBar struct {
 
 // RowOverflow records a row whose content exceeds its max_height constraint.
 type RowOverflow struct {
-	RowIndex   int     // Zero-based row index
-	ContentPt  float64 // Estimated content height in points
+	RowIndex    int     // Zero-based row index
+	ContentPt   float64 // Estimated content height in points
 	MaxHeightPt float64 // Max height constraint in points
 }
 

@@ -164,6 +164,13 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 			cellRect := pptx.RectEmu{
 				X: cellX, Y: cellY, CX: cellW, CY: cellH,
 			}
+			if cell.MaxHeight > 0 {
+				maxH := PtToEMU(cell.MaxHeight)
+				if maxH < cellRect.CY {
+					cellRect.Y += (cellRect.CY - maxH) / 2
+					cellRect.CY = maxH
+				}
+			}
 
 			// Icons and images default to contain mode to preserve aspect ratio.
 			// Shapes and tables keep the default stretch behavior.

@@ -718,6 +718,7 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 				cells[j] = shapegrid.Cell{
 					ColSpan:     c.ColSpan,
 					RowSpan:     c.RowSpan,
+					MaxHeight:   c.MaxHeight,
 					Group:       c.Group,
 					Placeholder: true,
 				}
@@ -754,10 +755,11 @@ func convertGridRows(inputRows []GridRowInput) []shapegrid.Row {
 // convertGridCell converts a single GridCellInput DTO into a shapegrid.Cell.
 func convertGridCell(c *GridCellInput) shapegrid.Cell {
 	cell := shapegrid.Cell{
-		ColSpan: c.ColSpan,
-		RowSpan: c.RowSpan,
-		Fit:     shapegrid.FitMode(c.Fit),
-		Group:   c.Group,
+		ColSpan:   c.ColSpan,
+		RowSpan:   c.RowSpan,
+		MaxHeight: c.MaxHeight,
+		Fit:       shapegrid.FitMode(c.Fit),
+		Group:     c.Group,
 	}
 	if c.Shape != nil {
 		cell.Shape = &shapegrid.ShapeSpec{

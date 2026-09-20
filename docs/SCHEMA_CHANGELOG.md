@@ -8,6 +8,11 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Cell `max_height` for `shape_grid` (go-slide-creator-1j7jo).** A cell can
+  set a maximum rendered height in points; the renderer centers shorter cells
+  in their row. Horizontal compose retains each segment's row cap on its own
+  cells, so a compact KPI row no longer stretches beside a full-height hero.
+
 - **DeckSpec kind `quote` (go-slide-creator-ze1p).** A single attributed quote
   compiles to `pull-quote`; 3–8 attributed quotes compile to `quote-cluster`.
   Use `{kind:"quote", quote:"…", attribution:"…", role:"…"}` for one voice or

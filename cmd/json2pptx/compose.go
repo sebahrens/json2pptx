@@ -653,7 +653,8 @@ func segmentRowCells(g *jsonschema.ShapeGridInput, rowIdx, n, segIdx int, warnin
 		return out
 	}
 
-	src := g.Rows[rowIdx].Cells
+	row := g.Rows[rowIdx]
+	src := row.Cells
 	out := make([]*jsonschema.GridCellInput, 0, n)
 	used := 0
 	for _, c := range src {
@@ -669,6 +670,13 @@ func segmentRowCells(g *jsonschema.ShapeGridInput, rowIdx, n, segIdx int, warnin
 					segIdx, rowIdx, used, span, n))
 			}
 			break
+		}
+		if c != nil && row.MaxHeight > 0 {
+			copyCell := *c
+			if copyCell.MaxHeight == 0 || row.MaxHeight < copyCell.MaxHeight {
+				copyCell.MaxHeight = row.MaxHeight
+			}
+			c = &copyCell
 		}
 		out = append(out, c)
 		used += span
