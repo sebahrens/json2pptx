@@ -8,6 +8,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`plan_deck` → `budget_note` (go-slide-creator-whp97).** Role allocation
+  scaled every slot count with the slide budget alone, so a brief with one
+  comparison ("compare build vs buy") produced three comparison slots at a
+  20-slide budget — and the comparison role may only use `comparison-2col` /
+  `before-after`, so two of those three had to repeat whatever the variety cap
+  said. The repeats were reported in `rhythm_check.repeated_families`, which
+  described the problem rather than avoiding it.
+  - Each role is now bounded by the pattern families it can draw on AND by what
+    the brief carries for it. Surplus slots move to roles with headroom.
+  - When nothing can absorb the surplus the plan returns **fewer slides than
+    `slide_budget`** and explains it in the new top-level `budget_note` string
+    (omitted when the plan used the whole budget).
+  - The variety cap also searches the whole registry instead of a 12-candidate
+    shortlist, and never moves a `comparison` slot outside its family.
+  - Net effect on the planner's own metric briefs at budget 20:
+    `repeated_families` goes from up to three over-used families to empty.
+
 - **Real pictures in `team-bios` and `pull-quote` (go-slide-creator-hdpq).** An
   "Our team" page and a customer quote with a headshot — two of the most common
   slides in a pitch or credentials deck — could only be built as a raw

@@ -135,6 +135,13 @@ type Result struct {
 	// template context was supplied. Empty for a template-agnostic plan.
 	Template string `json:"template,omitempty"`
 
+	// BudgetNote explains a plan shorter than slide_budget. The planner bounds
+	// each narrative role by the patterns and the brief content behind it, and
+	// when the surplus fits nowhere it returns fewer slides rather than padding
+	// the deck with repeats (go-slide-creator-whp97). Empty when the plan used
+	// the whole budget.
+	BudgetNote string `json:"budget_note,omitempty"`
+
 	// ResponseFingerprint is a sha256 hex digest of the canonical JSON of this
 	// response with the field zeroed. Agents may use it as a cache key. The
 	// caller (handlePlanDeck) populates it via api.ComputeResponseFingerprint.
@@ -283,7 +290,7 @@ var narrativeRoleToTaxonomy = map[string][]string{
 // to skip them.
 func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Result {
 	// 1. Distribute slides across narrative roles.
-	roleSlots := distributeRoles(p.SlideBudget)
+	roleSlots, budgetNote := distributeRoles(reg, p.Brief, p.SlideBudget)
 
 	// 2. Assign patterns to each slot.
 	slides := assignPatterns(reg, p.Brief, p.Audience, roleSlots, p.MustInclude)
@@ -323,6 +330,7 @@ func BuildDeckPlan(reg *patterns.Registry, p Params, predictor Predictor) *Resul
 		RhythmCheck:   check,
 		UnplacedFacts: unplaced,
 		Template:      p.TemplateName,
+		BudgetNote:    budgetNote,
 	}
 }
 
@@ -377,7 +385,11 @@ func annotatePlanTemplateSupport(tc *generator.TemplateSupportContext, slides []
 }
 
 // distributeRoles allocates slide indices to narrative roles based on the arc.
-func distributeRoles(budget int) []string {
+// distributeRoles lays the budget out across the narrative arc. reg and brief
+// bound each role by what it can actually fill (see role_capacity.go); the
+// returned note is non-empty when the plan came back shorter than the budget,
+// and names why.
+func distributeRoles(reg *patterns.Registry, brief string, budget int) ([]string, string) {
 	roles := make([]string, budget)
 
 	// Always reserve first and last slots.
@@ -387,21 +399,55 @@ func distributeRoles(budget int) []string {
 	// Distribute remaining slots proportionally.
 	remaining := budget - 2
 	if remaining <= 0 {
-		return roles
+		return roles, ""
 	}
 
-	// Build pool of middle roles with their target counts.
-	type roleCount struct {
-		role  string
-		count int
+	order, counts := proportionalRoleCounts(remaining)
+
+	// Bound each role by the patterns and the brief content behind it, moving
+	// the surplus to roles with headroom (go-slide-creator-whp97).
+	counts, note := applyRoleCapacity(reg, brief, counts, order)
+
+	// Lay out roles in arc order, dropping any slot the capacity pass removed.
+	idx := 1
+	for _, role := range order {
+		for range counts[role] {
+			if idx < budget-1 {
+				roles[idx] = role
+				idx++
+			}
+		}
 	}
+	planned := idx
+
+	// Fill any gaps left inside the planned range.
+	for i := 1; i < planned; i++ {
+		if roles[i] == "" {
+			roles[i] = "evidence"
+		}
+	}
+	if planned == budget-1 {
+		return roles, note
+	}
+	// The capacity pass gave slots back: close up and end with the closing
+	// slide, so the plan is shorter than the budget rather than padded.
+	short := make([]string, 0, planned+1)
+	short = append(short, roles[:planned]...)
+	return append(short, "closing"), note
+}
+
+// proportionalRoleCounts splits the middle slots across the narrative arc by
+// each role's declared fraction, giving any rounding remainder to evidence. It
+// returns the roles in arc order plus their counts.
+func proportionalRoleCounts(remaining int) ([]string, map[string]int) {
 	middleArc := standardArc[1 : len(standardArc)-1] // skip opening/closing
 	totalFraction := 0.0
 	for _, a := range middleArc {
 		totalFraction += a.fraction
 	}
 
-	var pool []roleCount
+	order := make([]string, 0, len(middleArc))
+	counts := make(map[string]int, len(middleArc))
 	assigned := 0
 	for i, a := range middleArc {
 		count := int(math.Round(float64(remaining) * a.fraction / totalFraction))
@@ -411,49 +457,22 @@ func distributeRoles(budget int) []string {
 		if assigned+count > remaining {
 			count = remaining - assigned
 		}
-		if count > 0 {
-			pool = append(pool, roleCount{a.role, count})
-			assigned += count
+		if count <= 0 {
+			continue
 		}
+		order = append(order, a.role)
+		counts[a.role] = count
+		assigned += count
 	}
 
-	// Fill any remaining slots with evidence.
-	for assigned < remaining {
-		if len(pool) > 0 {
-			// Add to evidence slot.
-			for i := range pool {
-				if pool[i].role == "evidence" {
-					pool[i].count++
-					assigned++
-					break
-				}
-			}
-			if assigned < remaining {
-				pool = append(pool, roleCount{"evidence", 1})
-				assigned++
-			}
+	// Any rounding remainder goes to evidence, which carries detail.
+	if assigned < remaining {
+		if _, ok := counts["evidence"]; !ok {
+			order = append(order, "evidence")
 		}
+		counts["evidence"] += remaining - assigned
 	}
-
-	// Lay out roles in order.
-	idx := 1
-	for _, rc := range pool {
-		for range rc.count {
-			if idx < budget-1 {
-				roles[idx] = rc.role
-				idx++
-			}
-		}
-	}
-
-	// Fill any gaps.
-	for i := range roles {
-		if roles[i] == "" {
-			roles[i] = "evidence"
-		}
-	}
-
-	return roles
+	return order, counts
 }
 
 // assignPatterns picks a pattern for each narrative role slot.
@@ -783,14 +802,27 @@ func capPatternRepeats(reg *patterns.Registry, slides []Slide) []Slide {
 		}
 	}
 
+	// Slots whose pattern is fixed are counted FIRST and never replaced: a
+	// must_include placement, and a comparison slot, which may only hold the
+	// comparison family. Counting them last let an ordinary slide earlier in
+	// the deck spend the family the comparison slot needs, leaving the repeat
+	// nowhere to go (go-slide-creator-whp97).
+	locked := make([]bool, len(slides))
 	seen := map[string]int{}
 	for i := range slides {
 		family := patternFamily(slides[i].RecommendedPattern)
 		if family == "" {
 			continue
 		}
-		if slides[i].Rationale == mustIncludeRationale {
+		if slides[i].Rationale == mustIncludeRationale || slides[i].NarrativeRole == "comparison" {
+			locked[i] = true
 			seen[family]++
+		}
+	}
+
+	for i := range slides {
+		family := patternFamily(slides[i].RecommendedPattern)
+		if family == "" || locked[i] {
 			continue
 		}
 		seen[family]++
@@ -832,21 +864,48 @@ func findRepeatReplacement(reg *patterns.Registry, slides []Slide, idx int, seen
 	}
 	// Ask for a deep candidate list: the first few are often the families this
 	// deck has already spent, and the point here is to find one it has not.
-	rec := patterns.Recommend(reg, buildIntent(slides[idx].NarrativeRole, "", ""), nil, 12, opts)
+	// The list is as deep as the registry, because a 20-slide plan can spend a
+	// dozen families before this runs and a short list then returns nothing at
+	// all — which is how repeats reached rhythm_check instead of being fixed
+	// (go-slide-creator-whp97).
+	role := slides[idx].NarrativeRole
+	rec := patterns.Recommend(reg, buildIntent(role, "", ""), nil, len(reg.List()), opts)
 
-	usable := func(name string) bool {
-		return emphasisRoom || !emphasisPatterns[name]
+	// A comparison slot may only hold the comparison family: a wider search
+	// would "fix" a repeat by putting a ranked bar chart where the deck
+	// promised two sides (go-slide-creator-xmpb's invariant).
+	inRole := func(name string) bool {
+		if role != "comparison" {
+			return true
+		}
+		return containsStr(comparisonFamily, name)
 	}
-	// First choice: a family this deck has not used.
+	usable := func(name string) bool {
+		return inRole(name) && (emphasisRoom || !emphasisPatterns[name])
+	}
+	names := make([]string, 0, len(rec.Candidates))
 	for _, c := range rec.Candidates {
-		if seen[patternFamily(c.PatternName)] == 0 && usable(c.PatternName) {
-			return c.PatternName
+		names = append(names, c.PatternName)
+	}
+	// The recommender ranks by intent and can still leave whole families out of
+	// its answer. Every pattern whose taxonomy covers this role is a legitimate
+	// last resort — a fresh family in the right role beats a third repeat.
+	var patternList []patInfo
+	for _, p := range reg.List() {
+		patternList = append(patternList, patInfo{name: p.Name(), taxonomy: p.Taxonomy()})
+	}
+	names = append(names, taxonomyFallbackCandidates(role, patternList, nil)...)
+
+	// First choice: a family this deck has not used.
+	for _, name := range names {
+		if seen[patternFamily(name)] == 0 && usable(name) {
+			return name
 		}
 	}
 	// Second: any family still under the cap.
-	for _, c := range rec.Candidates {
-		if seen[patternFamily(c.PatternName)] < maxPatternRepeats && usable(c.PatternName) {
-			return c.PatternName
+	for _, name := range names {
+		if seen[patternFamily(name)] < maxPatternRepeats && usable(name) {
+			return name
 		}
 	}
 	return ""

@@ -35,8 +35,12 @@ func TestPlanPlacesAKPISlideForAMetricBrief(t *testing.T) {
 }
 
 // One pattern family used four times is a deck that reads as one idea
-// repeated. The cap is best-effort — a role with few candidate patterns
-// (comparison) can run out — so what it cannot fix, it reports.
+// repeated. Tightened for go-slide-creator-whp97: a 20-slide plan used to be
+// allowed to repeat as long as rhythm_check reported it, because the role
+// allocation asked for more comparison slides than the brief or the
+// comparison family could supply. Roles are now bounded by both, and the
+// repeat cap searches the whole registry, so a plan repeats nothing at all —
+// or comes back shorter than the budget and says why.
 func TestPlanCapsPatternRepeats(t *testing.T) {
 	for name, brief := range metricBriefs {
 		t.Run(name, func(t *testing.T) {
@@ -55,15 +59,20 @@ func TestPlanCapsPatternRepeats(t *testing.T) {
 					if n <= maxPatternRepeats {
 						continue
 					}
-					// Over the cap is allowed only when the plan says so.
+					// Over the cap is allowed only in a plan that came back
+					// short, which says in words what it gave up.
+					if res.BudgetNote == "" {
+						t.Errorf("budget %d: %s appears %d times in a full-length plan (rhythm_check: %v)",
+							budget, family, n, res.RhythmCheck.RepeatedFamilies)
+					}
 					if !repeatReported(res.RhythmCheck.RepeatedFamilies, family) {
 						t.Errorf("budget %d: %s appears %d times and rhythm_check does not report it (%v)",
 							budget, family, n, res.RhythmCheck.RepeatedFamilies)
 					}
 				}
-				// A 10-slide plan has room to avoid repeats entirely.
-				if budget == 10 && len(res.RhythmCheck.RepeatedFamilies) > 0 {
-					t.Errorf("a 10-slide plan still repeats %v", res.RhythmCheck.RepeatedFamilies)
+				if len(res.RhythmCheck.RepeatedFamilies) > 0 && res.BudgetNote == "" {
+					t.Errorf("budget %d: plan repeats %v with no explanation",
+						budget, res.RhythmCheck.RepeatedFamilies)
 				}
 			}
 		})

@@ -20,8 +20,15 @@ func TestDistributeRoles(t *testing.T) {
 		{20, "opening", "closing"},
 	}
 
+	// A brief with three comparisons gives the comparison role room for as many
+	// slots as the arc asks for, so this case exercises the plain proportional
+	// split; the capacity trim has its own test.
+	const brief = "Compare build vs buy. Compare hosted versus on-prem. Weigh the options for phase three."
 	for _, tt := range tests {
-		roles := distributeRoles(tt.budget)
+		roles, note := distributeRoles(patterns.Default(), brief, tt.budget)
+		if note != "" {
+			t.Errorf("budget %d: unexpected budget note %q", tt.budget, note)
+		}
 		if len(roles) != tt.budget {
 			t.Errorf("budget %d: got %d roles", tt.budget, len(roles))
 		}
