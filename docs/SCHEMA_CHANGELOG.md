@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **BMC cell copy budgets (go-slide-creator-tp23k.3).** `bmc-canvas`
+  describes approximate per-bullet readable limits for each of its four cell
+  geometries and emits `BODY_TOO_LONG` with the cell, bullet, and target when
+  copy exceeds that limit. The narrow middle and bottom cells advise at most
+  seven bullets. The schema keeps the 200-character bullet maximum for cells
+  with enough space. Budgets were measured across all four bundled templates.
+  Schema version advances to 4.78.0; the input fingerprint is unchanged.
+
 - **Pull-quote readability role (go-slide-creator-tp23k.2).** The shape-grid
   readability collector now recognizes the quote row of a `pull-quote` pattern
   or its source-stamped expanded grid. That row is assessed as prose at the

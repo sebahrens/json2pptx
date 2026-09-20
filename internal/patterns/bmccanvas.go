@@ -96,26 +96,94 @@ func (b *bmcCanvas) NewValues() any       { return &BMCCanvasValues{} }
 func (b *bmcCanvas) NewOverrides() any    { return &BMCCanvasOverrides{} }
 func (b *bmcCanvas) NewCellOverride() any { return &BMCCanvasCellOverride{} }
 
+// Calibrated with TestPatternBudgetProbe across all bundled templates. Each
+// entry is the approximate characters per bullet when every bullet in that
+// cell has the same length and the other eight cells contain short copy.
+// Index zero is unused because a BMC cell requires at least one bullet.
+var bmcBulletBudgets = [4][11]int{
+	{0, 200, 200, 127, 102, 77, 52, 52, 52, 26, 26}, // tall narrow
+	{0, 177, 77, 52, 26, 26, 26, 26, 0, 0, 0},       // short narrow
+	{0, 200, 200, 183, 92, 92, 92, 92, 0, 0, 0},     // cost structure
+	{0, 200, 181, 121, 58, 58, 58, 58, 0, 0, 0},     // revenue streams
+}
+
+type bmcNamedCell struct {
+	name  string
+	cell  BMCCell
+	group int
+}
+
+func bmcNamedCells(v *BMCCanvasValues) []bmcNamedCell {
+	return []bmcNamedCell{
+		{"key_partners", v.KeyPartners, 0},
+		{"key_activities", v.KeyActivities, 1},
+		{"key_resources", v.KeyResources, 1},
+		{"value_propositions", v.ValuePropositions, 0},
+		{"customer_relations", v.CustomerRelations, 1},
+		{"channels", v.Channels, 1},
+		{"customer_segments", v.CustomerSegments, 0},
+		{"cost_structure", v.CostStructure, 2},
+		{"revenue_streams", v.RevenueStreams, 3},
+	}
+}
+
+// PostExpandWarnings gives authors a cell-specific copy target. The schema
+// retains the 200-character item maximum because spacious cells can use it.
+func (b *bmcCanvas) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*BMCCanvasValues)
+	if !ok || v == nil {
+		return nil
+	}
+	var warnings []string
+	for _, named := range bmcNamedCells(v) {
+		count := len(named.cell.Bullets)
+		if count < 1 || count > 10 { // validation reports invalid counts
+			continue
+		}
+		budget := bmcBulletBudgets[named.group][count]
+		if budget == 0 {
+			warnings = append(warnings, fmt.Sprintf(
+				"%s: bmc-canvas %s.bullets has %d items; this cell holds at most 7 readable bullets — reduce the count",
+				ErrCodeBodyTooLong, named.name, count))
+			continue
+		}
+		for i, bullet := range named.cell.Bullets {
+			if n := runeLen(bullet); n > budget {
+				warnings = append(warnings, fmt.Sprintf(
+					"%s: bmc-canvas %s.bullets[%d] is %d characters; with %d bullets this cell holds about %d characters per bullet before text shrinks below the readable minimum — shorten the bullet or reduce the count",
+					ErrCodeBodyTooLong, named.name, i, n, count, budget))
+			}
+		}
+	}
+	return warnings
+}
+
 func (b *bmcCanvas) Schema() *Schema {
-	cellSchema := ObjectSchema(
-		map[string]*Schema{
-			"header":  StringSchema(60).WithDescription("Cell header (e.g. \"Key Partners\")"),
-			"bullets": ArraySchema(StringSchema(200), 1, 10).WithDescription("Bullet points for this BMC section"),
-		},
-		[]string{"header", "bullets"},
-	).WithAdditionalProperties(false)
+	cellSchema := func(description, budget string) *Schema {
+		return ObjectSchema(
+			map[string]*Schema{
+				"header":  StringSchema(60).WithDescription("Cell header (e.g. \"Key Partners\")"),
+				"bullets": ArraySchema(StringSchema(200), 1, 10).WithDescription("Bullet points; approximate readable characters per bullet by count: " + budget),
+			},
+			[]string{"header", "bullets"},
+		).WithAdditionalProperties(false).WithDescription(description)
+	}
+	const tall = "1-2: 200; 3: 127; 4: 102; 5: 77; 6-8: 52; 9-10: 26"
+	const short = "1: 177; 2: 77; 3: 52; 4-7: 26; use at most 7 bullets"
+	const cost = "1-2: 200; 3: 183; 4-7: 92; use at most 7 bullets"
+	const revenue = "1: 200; 2: 181; 3: 121; 4-7: 58; use at most 7 bullets"
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"key_partners":       cellSchema.WithDescription("Key Partners — who are our key partners and suppliers?"),
-			"key_activities":     cellSchema.WithDescription("Key Activities — what key activities does our value proposition require?"),
-			"key_resources":      cellSchema.WithDescription("Key Resources — what key resources does our value proposition require?"),
-			"value_propositions": cellSchema.WithDescription("Value Propositions — what value do we deliver to the customer?"),
-			"customer_relations": cellSchema.WithDescription("Customer Relationships — what type of relationship does each segment expect?"),
-			"channels":           cellSchema.WithDescription("Channels — through which channels do our segments want to be reached?"),
-			"customer_segments":  cellSchema.WithDescription("Customer Segments — for whom are we creating value?"),
-			"cost_structure":     cellSchema.WithDescription("Cost Structure — what are the most important costs inherent in our model?"),
-			"revenue_streams":    cellSchema.WithDescription("Revenue Streams — for what value are customers willing to pay?"),
+			"key_partners":       RefSchema("tallCell").WithDescription("Key Partners — who are our key partners and suppliers?"),
+			"key_activities":     RefSchema("shortCell").WithDescription("Key Activities — what key activities does our value proposition require?"),
+			"key_resources":      RefSchema("shortCell").WithDescription("Key Resources — what key resources does our value proposition require?"),
+			"value_propositions": RefSchema("tallCell").WithDescription("Value Propositions — what value do we deliver to the customer?"),
+			"customer_relations": RefSchema("shortCell").WithDescription("Customer Relationships — what type of relationship does each segment expect?"),
+			"channels":           RefSchema("shortCell").WithDescription("Channels — through which channels do our segments want to be reached?"),
+			"customer_segments":  RefSchema("tallCell").WithDescription("Customer Segments — for whom are we creating value?"),
+			"cost_structure":     RefSchema("costCell").WithDescription("Cost Structure — what are the most important costs inherent in our model?"),
+			"revenue_streams":    RefSchema("revenueCell").WithDescription("Revenue Streams — for what value are customers willing to pay?"),
 		},
 		[]string{"key_partners", "key_activities", "key_resources", "value_propositions",
 			"customer_relations", "channels", "customer_segments", "cost_structure", "revenue_streams"},
@@ -138,6 +206,10 @@ func (b *bmcCanvas) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
+		"tallCell":     cellSchema("Tall narrow BMC cell", tall),
+		"shortCell":    cellSchema("Short narrow BMC cell", short),
+		"costCell":     cellSchema("Wide cost-structure cell", cost),
+		"revenueCell":  cellSchema("Wide revenue-streams cell", revenue),
 	}).WithDescription("Formal 9-cell Business Model Canvas (Osterwalder)")
 }
 

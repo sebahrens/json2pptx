@@ -18,7 +18,7 @@ func TestPatternBudgetProbe(t *testing.T) {
 	if os.Getenv("JSON2PPTX_BUDGET_PROBE") != "1" {
 		t.Skip("manual budget calibration probe")
 	}
-	for _, count := range []int{1, 3, 4, 6, 7, 10} {
+	for count := 1; count <= 10; count++ {
 		bindingName, bindingBudget := "", 201
 		for _, name := range bmcProbeCellNames() {
 			budget := bmcReadableBudget(t, name, count)

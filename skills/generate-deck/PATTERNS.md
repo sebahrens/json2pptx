@@ -63,6 +63,8 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Non-grid patterns** (e.g., `pull-quote`, `stat-hero`, single-cell patterns) have no `text_budget_guide`. For those, use per-placeholder budgets from `list_templates` instead.
 
+**Business Model Canvas.** `bmc-canvas` has nine fixed cells of different sizes. Its `show_pattern` schema describes the per-bullet copy target for each cell and bullet count at default font sizes. The narrow middle cells (`key_activities`, `key_resources`, `customer_relations`, `channels`) hold about 177 characters with one bullet, 52 each with three, and 26 each with four to seven. Use at most seven bullets in these cells and in the bottom cost/revenue cells. `BODY_TOO_LONG` warnings name the cell and measured target. The 200-character schema maximum permits copy in spacious cells; it is not a readable target for every cell.
+
 ---
 
 ## Text Capacity Awareness
