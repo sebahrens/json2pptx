@@ -8,6 +8,19 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Embedded chart and diagram fonts are subsetted (go-slide-creator-i0ep).**
+  Every SVG the engine embeds carried the *whole* font family as base64 — 547 KB
+  of Calibri regular plus 552 KB of its bold — re-embedded per chart. A
+  six-chart deck shipped 6.6 MB of media for about 5 KB of actual drawing, and
+  a 40-slide deck of charts would have been ~45 MB.
+  - The canvas SVG renderer now subsets each embedded face to the glyphs that
+    chart draws. `examples/charts.json` goes from 3.4 MB to 380 KB (each chart
+    SVG 1.10 MB → ~20 KB), and the bundled example decks together from 14 MB to
+    2.5 MB.
+  - Renders are unchanged: every chart and diagram SVG was rasterised before and
+    after and compared, with differences confined to glyph-edge antialiasing.
+  - No JSON or response change.
+
 - **Native `panel_layout` and `stat_cards` are sized to their content
   (go-slide-creator-5smrk).** A columns panel group gave every body rectangle
   the whole remaining placeholder height and a stat-card grid gave every card

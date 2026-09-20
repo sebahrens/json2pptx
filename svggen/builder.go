@@ -1212,6 +1212,22 @@ func (b *SVGBuilder) Bounds() Rect {
 	return Rect{X: 0, Y: 0, W: b.width, H: b.height}
 }
 
+// svgRenderOptions are the canvas SVG renderer options. They differ from
+// svg.DefaultOptions in one field: SubsetFonts.
+//
+// The renderer embeds every face it draws with as a base64 @font-face block,
+// and unsubsetted that is the whole family — 547 KB for Calibri regular plus
+// 552 KB for its bold, re-embedded in every chart. A six-chart deck shipped
+// 6.6 MB of media for 5 KB of actual drawing, and a 40-slide deck of charts
+// would have been ~45 MB (go-slide-creator-i0ep). Subsetting cuts each block to
+// the glyphs the chart actually draws.
+var svgRenderOptions = svg.Options{
+	EmbedFonts:    true,
+	SubsetFonts:   true,
+	SizeUnits:     "mm",
+	ImageEncoding: canvas.Lossless,
+}
+
 // Render outputs the SVG document. Returns an error if any font-related
 // failures occurred during text operations (missing/corrupt font).
 func (b *SVGBuilder) Render() (*SVGDocument, error) {
@@ -1224,7 +1240,7 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	widthMM := b.width * ptToMM
 	heightMM := b.height * ptToMM
 
-	svgWriter := svg.New(&buf, widthMM, heightMM, nil)
+	svgWriter := svg.New(&buf, widthMM, heightMM, &svgRenderOptions)
 	b.canvas.RenderTo(svgWriter)
 	_ = svgWriter.Close()
 
