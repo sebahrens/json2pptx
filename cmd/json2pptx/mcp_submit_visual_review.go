@@ -52,10 +52,59 @@ On success the response carries quality evidence with inspection_backend=host|ma
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaSubmitVisualReview)),
 		mcp.WithString("pptx_path", mcp.Required(), mcp.Description("Path to the reviewed PPTX file.")),
 		mcp.WithString("pptx_revision", mcp.Required(), mcp.Description("sha256 (content_hash) of the PPTX that was reviewed; must match the current file.")),
-		mcp.WithArray("slides", mcp.Required(), mcp.Description(`One entry per slide: [{"index":0,"verdict":"approved","image_path":"/tmp/thumbs/slide-1.png","findings":[]}, ...]. Every slide must be covered, and each image must be this server's render of that slide of this PPTX (from render_deck_thumbnails / render_slide_image) — a recycled or foreign image is rejected.`)),
+		mcp.WithArray("slides", mcp.Required(),
+			mcp.Description(`One entry per slide: [{"index":0,"verdict":"approved","image_path":"/tmp/thumbs/slide-1.png","findings":[]}, ...]. Every slide must be covered, and each entry must carry the image you inspected — image_path OR image_sha256, from render_deck_thumbnails / render_slide_image. A submission without one is rejected: the image is the evidence. A recycled or foreign image is rejected too.`),
+			mcp.Items(visualReviewSlideItemSchema())),
 		mcp.WithString("reviewer", mcp.Description(`Who reviewed: "host" (default, the calling agent) or "manual" (a human).`)),
 		mcp.WithString("revision", mcp.Description("Optional semantic revision (render_deck_spec revision); when given it must match the deck's authoring manifest.")),
 	)
+}
+
+// visualReviewSlideItemSchema types one entry of the slides array. The
+// parameter used to be an untyped array with a prose example, so an agent that
+// read the schema and sent [{index, verdict}] for every slide was rejected with
+// "slide 0 is missing role or pixel hash" — naming a field that appears in no
+// schema, in SKILL.md or in get_started, and not naming the one it actually
+// needed. Two failed round-trips to discover a required field
+// (go-slide-creator-g2mc).
+func visualReviewSlideItemSchema() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"index": map[string]any{
+				"type":        "integer",
+				"minimum":     0,
+				"description": "0-based slide index. Every slide of the deck must appear exactly once.",
+			},
+			"verdict": map[string]any{
+				"type":        "string",
+				"enum":        []any{"approved", "changes_requested", "inconclusive"},
+				"description": "Your verdict for this slide.",
+			},
+			"image_path": map[string]any{
+				"type":        "string",
+				"description": "Path to the rendered PNG you inspected, as returned by render_deck_thumbnails / render_slide_image. Required unless image_sha256 is given.",
+			},
+			"image_sha256": map[string]any{
+				"type":        "string",
+				"description": "sha256 of the rendered PNG you inspected (the content_hash render_deck_thumbnails returns). Required unless image_path is given.",
+			},
+			"role": map[string]any{
+				"type":        "string",
+				"description": "Optional label for the slide's role in the deck. Defaults to \"slide\".",
+			},
+			"findings": map[string]any{
+				"type":        "array",
+				"description": "Optional per-slide findings: [{severity, category, description, location?, bbox?}].",
+				"items":       map[string]any{"type": "object"},
+			},
+		},
+		"required": []any{"index", "verdict"},
+		"anyOf": []any{
+			map[string]any{"required": []any{"image_path"}},
+			map[string]any{"required": []any{"image_sha256"}},
+		},
+	}
 }
 
 // visualReviewSlideInput is one slide verdict submitted by the reviewer.
@@ -278,6 +327,13 @@ func appendReviewSlides(record *visualqa.ReviewRecord, slides []visualReviewSlid
 		}
 		if s.Verdict != "approved" && s.Verdict != "changes_requested" && s.Verdict != "inconclusive" {
 			return fmt.Errorf("%w: slides[%d].verdict must be approved, changes_requested, or inconclusive; got %q", errVisualReviewRejected, i, s.Verdict)
+		}
+		if s.ImagePath == "" && s.ImageSHA256 == "" {
+			// The image is the evidence: a verdict with no pixels behind it
+			// cannot be verified against the artifact's own render, so it is
+			// rejected here rather than three checks later under a message
+			// that names a field the caller never had to supply.
+			return fmt.Errorf("%w: slides[%d]: one of image_path or image_sha256 is required — submit the rendered PNG you inspected (render_deck_thumbnails returns both for every slide)", errVisualReviewRejected, i)
 		}
 		pixelHash := strings.ToLower(s.ImageSHA256)
 		if s.ImagePath != "" {

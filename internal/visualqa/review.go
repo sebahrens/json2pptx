@@ -46,8 +46,11 @@ func (r *ReviewRecord) ValidateCompletion(artifactHash, revision string, totalSl
 	}
 	indices := make([]int, 0, len(r.Slides))
 	for _, s := range r.Slides {
-		if s.Role == "" || s.ImageSHA256 == "" {
-			return fmt.Errorf("slide %d is missing role or pixel hash", s.Index)
+		if s.ImageSHA256 == "" {
+			return fmt.Errorf("slide %d has no pixel hash: one of image_path or image_sha256 is required", s.Index)
+		}
+		if s.Role == "" {
+			return fmt.Errorf("slide %d has no role", s.Index)
 		}
 		indices = append(indices, s.Index)
 	}
