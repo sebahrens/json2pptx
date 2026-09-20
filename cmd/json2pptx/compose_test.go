@@ -476,14 +476,7 @@ func TestExpandCompose_Horizontal_PreservesAllCells(t *testing.T) {
 		t.Errorf("expected no truncation warnings, got: %v", warnings)
 	}
 
-	mergedCells := 0
-	for _, row := range merged.Rows {
-		for _, c := range row.Cells {
-			if cellHasContent(c) {
-				mergedCells++
-			}
-		}
-	}
+	mergedCells := countContentCells(merged)
 	if mergedCells != inputCells {
 		t.Errorf("merged cell count %d != sum of input cells %d (silent data loss regression)", mergedCells, inputCells)
 	}
@@ -743,14 +736,7 @@ func TestExpandCompose_NestedVerticalContainingHorizontal(t *testing.T) {
 
 	// Count cells with rendered content across the merged grid; every leaf
 	// pattern should contribute at least one content cell, so we expect >=5.
-	var contentCells int
-	for _, row := range grid.Rows {
-		for _, cell := range row.Cells {
-			if cellHasContent(cell) {
-				contentCells++
-			}
-		}
-	}
+	contentCells := countContentCells(grid)
 	if contentCells < 5 {
 		t.Errorf("nested compose should preserve all five leaf patterns' content; got %d content cells", contentCells)
 	}
@@ -1131,7 +1117,7 @@ func TestExpandCompose_DiagramSegment(t *testing.T) {
 	var found bool
 	for _, row := range grid.Rows {
 		for _, cell := range row.Cells {
-			if cell != nil && cell.Diagram == diagram {
+			if cell != nil && cell.Grid != nil && len(cell.Grid.Rows) > 0 && len(cell.Grid.Rows[0].Cells) > 0 && cell.Grid.Rows[0].Cells[0].Diagram == diagram {
 				found = true
 			}
 		}

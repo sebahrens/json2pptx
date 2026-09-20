@@ -11,6 +11,8 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -694,7 +696,10 @@ func collectResolvedGridCells(grid *ShapeGridInput, geom GridGeometry, slideWidt
 	if result == nil || len(result.Cells) == 0 {
 		return nil
 	}
-	cells := make([]resolvedShapeGridCell, 0, len(result.Cells))
+	return appendResolvedGridCells(nil, grid, result, slideWidth, slideHeight, 0)
+}
+
+func appendResolvedGridCells(cells []resolvedShapeGridCell, grid *ShapeGridInput, result *shapegrid.ResolveResult, slideWidth, slideHeight int64, depth int) []resolvedShapeGridCell {
 	for i := range result.Cells {
 		rc := &result.Cells[i]
 		cells = append(cells, resolvedShapeGridCell{
@@ -707,6 +712,26 @@ func collectResolvedGridCells(grid *ShapeGridInput, geom GridGeometry, slideWidt
 			Kind: string(rc.Kind),
 		})
 	}
+	if depth >= maxGeomNestingDepth {
+		return cells
+	}
+	for _, rc := range result.Cells {
+		if rc.Kind != shapegrid.CellKindSubGrid || rc.RowIdx < 0 || rc.RowIdx >= len(grid.Rows) {
+			continue
+		}
+		src := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
+		if src == nil || src.Grid == nil {
+			continue
+		}
+		inset := pptx.RectEmu{X: rc.Bounds.X + subGridInsetEMU, Y: rc.Bounds.Y + subGridInsetEMU, CX: rc.Bounds.CX - 2*subGridInsetEMU, CY: rc.Bounds.CY - 2*subGridInsetEMU}
+		if inset.CX <= 0 || inset.CY <= 0 {
+			inset = rc.Bounds
+		}
+		sub := resolveGridForStructural(src.Grid, &inset, nil, slideWidth, slideHeight)
+		if sub != nil {
+			cells = appendResolvedGridCells(cells, src.Grid, sub, slideWidth, slideHeight, depth+1)
+		}
+	}
 	return cells
 }
 
@@ -717,14 +742,7 @@ func computeResolvedOccupancy(grid *ShapeGridInput) *resolvedOccupancy {
 		return nil
 	}
 	totalSlots := len(grid.Rows) * numCols
-	filledSlots := 0
-	for _, row := range grid.Rows {
-		for _, cell := range row.Cells {
-			if cell != nil {
-				filledSlots++
-			}
-		}
-	}
+	filledSlots := occupiedGridSlots(grid)
 	if totalSlots <= 0 {
 		return nil
 	}

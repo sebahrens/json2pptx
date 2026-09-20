@@ -230,6 +230,15 @@ func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*
 		b := base
 		if c.Direction == "horizontal" {
 			b.X, b.Width = axisStart, length
+			// Horizontal segments render as nested grids inside parent cells.
+			// Their 4pt inset is part of the real content frame and must also
+			// constrain pattern text sizing during expansion.
+			if b.Width > 2*subGridInsetEMU && b.Height > 2*subGridInsetEMU {
+				b.X += subGridInsetEMU
+				b.Y += subGridInsetEMU
+				b.Width -= 2 * subGridInsetEMU
+				b.Height -= 2 * subGridInsetEMU
+			}
 		} else {
 			b.Y, b.Height = axisStart, length
 		}
@@ -572,16 +581,10 @@ func mergeVertical(grids []*jsonschema.ShapeGridInput, sizes []float64, gap floa
 	return merged, nil
 }
 
-// mergeHorizontal places grids side by side by concatenating each segment's
-// columns into a single wide grid. Per-segment column counts are summed to
-// form the merged grid's column count, and each segment's sizes[i] share is
-// distributed across its own columns (preserving the segment's original
-// column-width proportions when an explicit array is provided).
-//
-// For each output row, the segment's row cells (padded with empty cells when
-// the row is under-occupied or absent) are appended in segment order. This
-// preserves every input cell — patterns like kpi-3up keep all three cards
-// instead of being silently collapsed to one.
+// mergeHorizontal places each segment in a full-height sub-grid spanning its
+// allocated columns. This keeps independent row heights, gaps, and vertical
+// alignment: segments with different row counts cannot share parent rows.
+// The parent retains the sum of segment columns for compose col attribution.
 //
 // If a segment's row over-occupies its allocated column range (sum of cell
 // ColSpans exceeds the segment's column count), the excess cells are dropped
@@ -604,25 +607,20 @@ func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap fl
 	}
 	colJSON, _ := json.Marshal(colWidths)
 
-	// Find max row count across all grids
-	maxRows := 0
-	for _, g := range grids {
-		if len(g.Rows) > maxRows {
-			maxRows = len(g.Rows)
+	rowCells := make([]*jsonschema.GridCellInput, len(grids))
+	for segIdx, g := range grids {
+		child := *g
+		child.Rows = make([]jsonschema.GridRowInput, len(g.Rows))
+		for rowIdx, row := range g.Rows {
+			child.Rows[rowIdx] = row
+			cells := segmentRowCells(g, rowIdx, segCols[segIdx], segIdx, &warnings)
+			// The parent cell already reserves the segment's full width. Do
+			// not retain filler cells: a child row may have fewer authored
+			// cells because an earlier row spans into its columns.
+			child.Rows[rowIdx].Cells = cells[:min(len(cells), len(row.Cells))]
 		}
-	}
-
-	// Build rows: for each row index, concatenate each segment's row cells
-	// (padded with empty cells to fill the segment's column allocation).
-	mergedRows := make([]jsonschema.GridRowInput, maxRows)
-	for rowIdx := 0; rowIdx < maxRows; rowIdx++ {
-		rowCells := make([]*jsonschema.GridCellInput, 0, totalCols)
-		for segIdx, g := range grids {
-			n := segCols[segIdx]
-			segPart := segmentRowCells(g, rowIdx, n, segIdx, &warnings)
-			rowCells = append(rowCells, segPart...)
-		}
-		mergedRows[rowIdx] = jsonschema.GridRowInput{Cells: rowCells}
+		child.Bounds = nil // The parent cell owns this segment's rectangle.
+		rowCells[segIdx] = &jsonschema.GridCellInput{ColSpan: segCols[segIdx], Grid: &child}
 	}
 
 	resolvedGap := gap
@@ -632,7 +630,7 @@ func mergeHorizontal(grids []*jsonschema.ShapeGridInput, sizes []float64, gap fl
 
 	merged := &jsonschema.ShapeGridInput{
 		Columns: colJSON,
-		Rows:    mergedRows,
+		Rows:    []jsonschema.GridRowInput{{Cells: rowCells}},
 		ColGap:  resolvedGap,
 	}
 

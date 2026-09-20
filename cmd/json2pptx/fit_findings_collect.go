@@ -635,35 +635,7 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 	var findings []patterns.FitFinding
 
 	if result != nil {
-		// Walk resolved cells with row/col mapping.
-		cellIdx := 0
-		for ri, row := range grid.Rows {
-			for ci, cell := range row.Cells {
-				if cellIdx >= len(result.Cells) {
-					break
-				}
-				if cell == nil || (cell.Shape == nil && cell.Table == nil && cell.Icon == nil && cell.Image == nil && cell.Diagram == nil) {
-					cellIdx++
-					continue
-				}
-				rc := result.Cells[cellIdx]
-				path := slidepath.GridCell(slideIdx, ri, ci)
-				findings = append(findings, checkCellStructural(path, slideIdx, rc.CellBounds.X, rc.CellBounds.Y, rc.CellBounds.CX, rc.CellBounds.CY, ctx)...)
-
-				if cell.Diagram != nil {
-					// Use the post-fit Bounds (the frame the diagram is sized
-					// into at render) so preflight aspect/legibility findings
-					// match the render-time findings in collectDiagramCellFindings.
-					// CellBounds (pre-fit) is passed alongside so the aspect-
-					// mismatch finding can distinguish authoring intent from the
-					// fit-adjusted render frame.
-					findings = append(findings,
-						checkGridDiagramPreflight(cell.Diagram, slideIdx, ri, ci, rc.CellBounds.CX, rc.CellBounds.CY, rc.Bounds.CX, rc.Bounds.CY)...)
-				}
-
-				cellIdx++
-			}
-		}
+		findings = append(findings, checkGridCellsStructural(grid, result, slideIdx, slideWidth, slideHeight, slidepath.ShapeGrid(slideIdx), ctx, 0)...)
 	}
 
 	// Sparse layout detection: bounds are authoritative (never shrink), so
@@ -675,7 +647,37 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 	return findings
 }
 
-// checkGridDiagramPreflight runs the diagram preflight detectors (narrow cell
+func checkGridCellsStructural(grid *ShapeGridInput, result *shapegrid.ResolveResult, slideIdx int, slideWidth, slideHeight int64, base string, ctx gridContext, depth int) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+	for _, rc := range result.Cells {
+		if rc.RowIdx < 0 || rc.RowIdx >= len(grid.Rows) {
+			continue
+		}
+		cell := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
+		if cell == nil {
+			continue
+		}
+		path := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
+		if cell.Shape != nil || cell.Table != nil || cell.Icon != nil || cell.Image != nil || cell.Diagram != nil {
+			findings = append(findings, checkCellStructural(path, slideIdx, rc.CellBounds.X, rc.CellBounds.Y, rc.CellBounds.CX, rc.CellBounds.CY, ctx)...)
+		}
+		if cell.Diagram != nil {
+			findings = append(findings, checkGridDiagramPreflightPath(cell.Diagram, path+"/diagram", rc.CellBounds.CX, rc.CellBounds.CY, rc.Bounds.CX, rc.Bounds.CY)...)
+		}
+		if rc.Kind == shapegrid.CellKindSubGrid && cell.Grid != nil && depth < maxGeomNestingDepth {
+			bounds := pptx.RectEmu{X: rc.Bounds.X + subGridInsetEMU, Y: rc.Bounds.Y + subGridInsetEMU, CX: rc.Bounds.CX - 2*subGridInsetEMU, CY: rc.Bounds.CY - 2*subGridInsetEMU}
+			if bounds.CX <= 0 || bounds.CY <= 0 {
+				bounds = rc.Bounds
+			}
+			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, slideWidth, slideHeight); sub != nil {
+				findings = append(findings, checkGridCellsStructural(cell.Grid, sub, slideIdx, slideWidth, slideHeight, path+"/grid", ctx, depth+1)...)
+			}
+		}
+	}
+	return findings
+}
+
+// checkGridDiagramPreflightPath runs the diagram preflight detectors (narrow cell
 // legibility, explicit-spec aspect mismatch, and natural-aspect conflict) for
 // one resolved grid cell carrying a diagram. Extracted from
 // checkShapeGridStructural to keep that function's cognitive complexity under
@@ -685,11 +687,10 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 // the post-fit frame the diagram is sized into. Legibility and conflict checks
 // use the render frame (matching render-time findings); the aspect-mismatch check
 // receives both so its evidence can separate authoring intent from the fit frame.
-func checkGridDiagramPreflight(diagram *types.DiagramSpec, slideIdx, ri, ci int, cellCX, cellCY, renderCX, renderCY int64) []patterns.FitFinding {
+func checkGridDiagramPreflightPath(diagram *types.DiagramSpec, diagPath string, cellCX, cellCY, renderCX, renderCY int64) []patterns.FitFinding {
 	if diagram == nil {
 		return nil
 	}
-	diagPath := slidepath.GridCellField(slideIdx, ri, ci, "diagram")
 	var findings []patterns.FitFinding
 	if f := generator.CheckDiagramInNarrowBoundsFinding(diagram, renderCX, diagPath); f != nil {
 		findings = append(findings, *f)
@@ -780,14 +781,7 @@ func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, s
 	// Count filled slots and grid dimensions for reshape recommendation.
 	numCols := inferGridColumns(grid)
 	numRows := len(grid.Rows)
-	filledSlots := 0
-	for _, row := range grid.Rows {
-		for _, cell := range row.Cells {
-			if cell != nil {
-				filledSlots++
-			}
-		}
-	}
+	filledSlots := occupiedGridSlots(grid)
 
 	path := slidepath.ShapeGrid(slideIdx)
 	return generator.DetectSparseLayout(generator.SparseLayoutInput{
@@ -1196,14 +1190,7 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 
 		// Count filled slots.
 		totalSlots := len(grid.Rows) * numCols
-		filledSlots := 0
-		for _, row := range grid.Rows {
-			for _, cell := range row.Cells {
-				if cell != nil {
-					filledSlots++
-				}
-			}
-		}
+		filledSlots := occupiedGridSlots(grid)
 
 		if totalSlots <= 0 {
 			continue
@@ -1250,6 +1237,25 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 	}
 
 	return findings
+}
+
+// occupiedGridSlots counts column slots, including those covered by a cell's
+// col_span. A horizontal compose segment occupies several columns through one
+// nested-grid placeholder, so counting only slice entries makes it look sparse.
+func occupiedGridSlots(grid *ShapeGridInput) int {
+	if grid == nil {
+		return 0
+	}
+	total := 0
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			total += max(1, cell.ColSpan)
+		}
+	}
+	return total
 }
 
 // inferGridColumns determines the column count from the grid's Columns field
@@ -1406,35 +1412,37 @@ func collectGridTablePreflight(grid *ShapeGridInput, slideIdx int) []patterns.Fi
 	if result == nil {
 		return nil
 	}
+	return collectGridTablePreflightResolved(grid, result, slidepath.ShapeGrid(slideIdx), 0)
+}
 
+func collectGridTablePreflightResolved(grid *ShapeGridInput, result *shapegrid.ResolveResult, base string, depth int) []patterns.FitFinding {
 	var findings []patterns.FitFinding
-	cellIdx := 0
-	for ri, row := range grid.Rows {
-		for ci, cell := range row.Cells {
-			if cellIdx >= len(result.Cells) {
-				break
+	for _, rc := range result.Cells {
+		cell := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
+		if cell == nil {
+			continue
+		}
+		path := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
+		if cell.Table != nil {
+			spec := cell.Table.ToTableSpec()
+			findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
+				Path:    path + "/table",
+				Headers: spec.Headers,
+				Rows:    spec.Rows,
+				Bounds: types.BoundingBox{
+					X: rc.CellBounds.X, Y: rc.CellBounds.Y,
+					Width: rc.CellBounds.CX, Height: rc.CellBounds.CY,
+				},
+			})...)
+		}
+		if rc.Kind == shapegrid.CellKindSubGrid && cell.Grid != nil && depth < maxGeomNestingDepth {
+			bounds := pptx.RectEmu{X: rc.Bounds.X + subGridInsetEMU, Y: rc.Bounds.Y + subGridInsetEMU, CX: rc.Bounds.CX - 2*subGridInsetEMU, CY: rc.Bounds.CY - 2*subGridInsetEMU}
+			if bounds.CX <= 0 || bounds.CY <= 0 {
+				bounds = rc.Bounds
 			}
-			if cell == nil {
-				cellIdx++
-				continue
+			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, 0, 0); sub != nil {
+				findings = append(findings, collectGridTablePreflightResolved(cell.Grid, sub, path+"/grid", depth+1)...)
 			}
-			if cell.Table != nil {
-				spec := cell.Table.ToTableSpec()
-				rc := result.Cells[cellIdx]
-				pathPrefix := slidepath.Join(slidepath.GridCell(slideIdx, ri, ci), "table")
-				findings = append(findings, generator.DetectTablePreflight(generator.TablePreflightInput{
-					Path:    pathPrefix,
-					Headers: spec.Headers,
-					Rows:    spec.Rows,
-					Bounds: types.BoundingBox{
-						X:      rc.CellBounds.X,
-						Y:      rc.CellBounds.Y,
-						Width:  rc.CellBounds.CX,
-						Height: rc.CellBounds.CY,
-					},
-				})...)
-			}
-			cellIdx++
 		}
 	}
 	return findings

@@ -129,13 +129,21 @@ func contentImageAltFindings(slideIdx int, content []ContentInput) []patterns.Fi
 // the cells came from the author's own shape_grid, so the diagram and table
 // cells are checked too.
 func gridAltFindings(slideIdx int, grid *ShapeGridInput, authored bool) []patterns.FitFinding {
+	return gridAltFindingsAt(slideIdx, grid, authored, slidepath.ShapeGrid(slideIdx))
+}
+
+func gridAltFindingsAt(slideIdx int, grid *ShapeGridInput, authored bool, base string) []patterns.FitFinding {
 	if grid == nil {
 		return nil
 	}
 	var findings []patterns.FitFinding
 	for ri, row := range grid.Rows {
 		for ci, cell := range row.Cells {
-			findings = append(findings, cellAltFindings(slideIdx, ri, ci, cell, authored)...)
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", base, ri, ci)
+			findings = append(findings, cellAltFindingsAt(slideIdx, cell, authored, cellPath)...)
+			if cell != nil && cell.Grid != nil {
+				findings = append(findings, gridAltFindingsAt(slideIdx, cell.Grid, authored, cellPath+"/grid")...)
+			}
 		}
 	}
 	return findings
@@ -144,36 +152,36 @@ func gridAltFindings(slideIdx int, grid *ShapeGridInput, authored bool) []patter
 // cellAltFindings checks a single grid cell's image / icon / shape.icon
 // surfaces for missing alt text, plus its diagram and table surfaces when the
 // cell was authored rather than expanded from a pattern.
-func cellAltFindings(slideIdx, ri, ci int, cell *GridCellInput, authored bool) []patterns.FitFinding {
+func cellAltFindingsAt(slideIdx int, cell *GridCellInput, authored bool, cellPath string) []patterns.FitFinding {
 	if cell == nil {
 		return nil
 	}
 	var findings []patterns.FitFinding
 	if authored {
 		if cell.Diagram != nil && strings.TrimSpace(cell.Diagram.Alt) == "" {
-			path := slidepath.GridCellField(slideIdx, ri, ci, "diagram")
+			path := cellPath + "/diagram"
 			findings = append(findings, makeVisualAltTextFinding(path, slideIdx, "diagram", "diagram"))
 		}
 		if cell.Table != nil && strings.TrimSpace(cell.Table.Alt) == "" {
-			path := slidepath.GridCellField(slideIdx, ri, ci, "table")
+			path := cellPath + "/table"
 			findings = append(findings, makeVisualAltTextFinding(path, slideIdx, "table", "table"))
 		}
 	}
 	if cell.Image != nil {
 		if src := imageSourceKind(cell.Image.Path, cell.Image.URL, ""); src != "" && strings.TrimSpace(cell.Image.Alt) == "" {
-			path := slidepath.GridCellField(slideIdx, ri, ci, "image")
+			path := cellPath + "/image"
 			findings = append(findings, makeAltTextFinding(path, slideIdx, "image", src))
 		}
 	}
 	if cell.Icon != nil {
 		if src := iconSourceKind(cell.Icon); src != "" && strings.TrimSpace(cell.Icon.Alt) == "" {
-			path := slidepath.GridCellField(slideIdx, ri, ci, "icon")
+			path := cellPath + "/icon"
 			findings = append(findings, makeAltTextFinding(path, slideIdx, "icon", src))
 		}
 	}
 	if cell.Shape != nil && cell.Shape.Icon != nil {
 		if src := iconSourceKind(cell.Shape.Icon); src != "" && strings.TrimSpace(cell.Shape.Icon.Alt) == "" {
-			path := slidepath.GridCellField(slideIdx, ri, ci, "shape/icon")
+			path := cellPath + "/shape/icon"
 			findings = append(findings, makeAltTextFinding(path, slideIdx, "icon", src))
 		}
 	}

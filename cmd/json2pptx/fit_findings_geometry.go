@@ -185,8 +185,8 @@ func (a *geomAccumulator) walk(input *ShapeGridInput, result *shapegrid.ResolveR
 // placeholder rectangle counts as ink so SLIDE_UNDERUSED stays conservative.
 func (a *geomAccumulator) subGrid(input *ShapeGridInput, cell shapegrid.ResolvedCell, cellPath string, depth int) {
 	var src *GridCellInput
-	if input != nil && cell.RowIdx >= 0 && cell.RowIdx < len(input.Rows) && cell.ColIdx >= 0 && cell.ColIdx < len(input.Rows[cell.RowIdx].Cells) {
-		src = input.Rows[cell.RowIdx].Cells[cell.ColIdx]
+	if input != nil && cell.RowIdx >= 0 && cell.RowIdx < len(input.Rows) {
+		src = gridCellAtResolved(input, cell.RowIdx, cell.ColIdx)
 	}
 	if src == nil || src.Grid == nil || depth >= maxGeomNestingDepth {
 		a.ink = append(a.ink, cell.Bounds)

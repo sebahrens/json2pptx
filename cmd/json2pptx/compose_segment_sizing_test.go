@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 func TestComposeContentSizedLeavesUseAllocatedSegments(t *testing.T) {
@@ -72,25 +74,145 @@ func TestComposeHorizontalKeepsCompactCardBesideFullHeightHero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if merged.Rows[0].Cells[0].MaxHeight <= 0 {
+	if merged.Rows[0].Cells[0].Grid.Rows[0].MaxHeight <= 0 {
 		t.Fatal("horizontal merge lost the KPI row height cap")
 	}
-	if merged.Rows[0].Cells[3].MaxHeight != 0 {
+	if merged.Rows[0].Cells[1].Grid.Rows[0].MaxHeight != 0 {
 		t.Fatal("KPI height cap leaked into the hero segment")
+	}
+	if occ := computeResolvedOccupancy(merged); occ == nil || occ.FilledSlots != occ.TotalSlots {
+		t.Fatalf("horizontal segment spans should occupy all parent columns, got %+v", occ)
 	}
 	result, err := resolveShapeGrid(merged, pptx.NewShapeIDAllocator(nil), &pptx.RectEmu{X: ctx.LayoutBounds.X, Y: ctx.LayoutBounds.Y, CX: ctx.LayoutBounds.Width, CY: ctx.LayoutBounds.Height}, nil, ctx.SlideWidth, ctx.SlideHeight, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Cells) < 4 {
-		t.Fatalf("expected three KPI cards and hero, got %d cells", len(result.Cells))
+	var shapes []pptx.RectEmu
+	for _, cell := range result.Cells {
+		if cell.Kind == shapegrid.CellKindShape {
+			shapes = append(shapes, cell.Bounds)
+		}
 	}
-	card, full := result.Cells[0].Bounds, result.Cells[3].Bounds
+	if len(shapes) < 4 {
+		t.Fatalf("expected three KPI cards and hero, got %d shapes", len(shapes))
+	}
+	card, full := shapes[0], shapes[3]
 	if card.CY >= full.CY/2 {
 		t.Errorf("KPI card height %.1fpt is not compact beside %.1fpt hero", float64(card.CY)/12700, float64(full.CY)/12700)
 	}
 	if card.Y <= full.Y || card.Y+card.CY >= full.Y+full.CY {
 		t.Errorf("KPI card is not centered within its segment: card=%+v hero=%+v", card, full)
+	}
+}
+
+func TestComposeHorizontalSegmentsHaveIndependentRows(t *testing.T) {
+	cell := func() *GridCellInput { return &GridCellInput{Shape: &ShapeSpecInput{Geometry: "rect"}} }
+	left := &ShapeGridInput{Columns: json.RawMessage(`1`), VerticalAlign: "center", Rows: []GridRowInput{
+		{MinHeight: 40, MaxHeight: 40, Cells: []*GridCellInput{cell()}},
+		{MinHeight: 60, MaxHeight: 60, Cells: []*GridCellInput{cell()}},
+	}}
+	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{cell()}}}}
+	merged, warnings, err := mergeHorizontal([]*ShapeGridInput{left, right}, []float64{50, 50}, 8)
+	if err != nil || len(warnings) > 0 {
+		t.Fatalf("mergeHorizontal: %v, warnings: %v", err, warnings)
+	}
+	if len(merged.Rows) != 1 || len(merged.Rows[0].Cells) != 2 {
+		t.Fatalf("horizontal compose should allocate one independent sub-grid per segment, got %+v", merged.Rows)
+	}
+	bounds := &pptx.RectEmu{X: 838200, Y: 1500000, CX: 10515600, CY: 3913340}
+	resolved, err := resolveShapeGrid(merged, pptx.NewShapeIDAllocator(nil), bounds, nil, 12192000, 6858000, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var shapes []pptx.RectEmu
+	for _, c := range resolved.Cells {
+		if c.Kind == shapegrid.CellKindShape {
+			shapes = append(shapes, c.Bounds)
+		}
+	}
+	if len(shapes) != 3 {
+		t.Fatalf("expected two left rows and one right hero, got %d shapes", len(shapes))
+	}
+	if got := float64(shapes[0].CY) / 12700; got < 39 || got > 41 {
+		t.Errorf("left first row height = %.1fpt, want 40pt", got)
+	}
+	if got := float64(shapes[1].CY) / 12700; got < 59 || got > 61 {
+		t.Errorf("left second row height = %.1fpt, want 60pt", got)
+	}
+	if shapes[0].Y <= shapes[2].Y || shapes[1].Y+shapes[1].CY >= shapes[2].Y+shapes[2].CY {
+		t.Errorf("left rows should be centered within the right segment's full height: %+v", shapes)
+	}
+	if shapes[0].Y+shapes[0].CY >= shapes[1].Y {
+		t.Errorf("left rows overlap: %+v", shapes)
+	}
+}
+
+func TestComposeHorizontalNestedTextIsCheckedByPreflight(t *testing.T) {
+	longText, _ := json.Marshal(map[string]any{"content": strings.Repeat("word ", 900), "size": 14})
+	left := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{MaxHeight: 35, Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect", Text: longText}}}}}}
+	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}
+	merged, _, err := mergeHorizontal([]*ShapeGridInput{left, right}, []float64{50, 50}, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := walkShapeGrid(SlideInput{ShapeGrid: merged}, 0, nil, 12192000, 6858000, nil)
+	for _, f := range findings {
+		if f.Code == patterns.ErrCodeFitOverflow && strings.Contains(f.Path, "/grid/rows/0/cells/0") {
+			return
+		}
+	}
+	t.Fatalf("nested segment text overflow missing from preflight: %+v", findings)
+}
+
+func TestGridCellAtResolvedSkipsEarlierRowSpans(t *testing.T) {
+	want := &GridCellInput{Grid: &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}}
+	grid := &ShapeGridInput{Columns: json.RawMessage(`2`), Rows: []GridRowInput{
+		{Cells: []*GridCellInput{{RowSpan: 2, Shape: &ShapeSpecInput{Geometry: "rect"}}, {Shape: &ShapeSpecInput{Geometry: "rect"}}}},
+		{Cells: []*GridCellInput{want}},
+	}}
+	if got := gridCellAtResolved(grid, 1, 1); got != want {
+		t.Fatalf("resolved row 1 column 1 maps to %p, want nested cell %p", got, want)
+	}
+	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}
+	merged, _, err := mergeHorizontal([]*ShapeGridInput{grid, right}, []float64{60, 40}, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolveShapeGrid(merged, pptx.NewShapeIDAllocator(nil), nil, nil, 12192000, 6858000, nil); err != nil {
+		t.Fatalf("nested horizontal segment with a row span failed to resolve: %v", err)
+	}
+}
+
+func TestComposeHorizontalNestedTableGetsPreflight(t *testing.T) {
+	rows := make([][]TableCellInput, 30)
+	for i := range rows {
+		rows[i] = []TableCellInput{{Content: "Revenue"}}
+	}
+	left := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Table: &TableInput{Headers: []string{"Metric"}, Rows: rows}}}}}}
+	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}
+	merged, _, err := mergeHorizontal([]*ShapeGridInput{left, right}, []float64{50, 50}, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := collectGridTablePreflight(merged, 0)
+	for _, f := range findings {
+		if strings.Contains(f.Path, "/grid/rows/0/cells/0/table") {
+			return
+		}
+	}
+	t.Fatalf("nested table preflight missing: %+v", findings)
+}
+
+func TestComposeHorizontalNestedImageGetsAltFinding(t *testing.T) {
+	left := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Image: &GridImageInput{Path: "/missing.png"}}}}}}
+	right := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{Geometry: "rect"}}}}}}
+	merged, _, err := mergeHorizontal([]*ShapeGridInput{left, right}, []float64{50, 50}, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := gridAltFindings(0, merged, false)
+	if len(findings) != 1 || !strings.Contains(findings[0].Path, "/grid/rows/0/cells/0/image") {
+		t.Fatalf("nested image alt finding missing or misattributed: %+v", findings)
 	}
 }
 
@@ -115,6 +237,9 @@ func TestNestedComposeInheritsOuterSegmentBounds(t *testing.T) {
 
 func firstCellParagraphSize(t *testing.T, grid *ShapeGridInput) float64 {
 	t.Helper()
+	for grid.Rows[0].Cells[0].Grid != nil {
+		grid = grid.Rows[0].Cells[0].Grid
+	}
 	var text struct {
 		Paragraphs []struct {
 			Size float64 `json:"size"`

@@ -188,6 +188,10 @@ func countContentCells(g *jsonschema.ShapeGridInput) int {
 			if cell == nil {
 				continue
 			}
+			if cell.Grid != nil {
+				n += countContentCells(cell.Grid)
+				continue
+			}
 			if cell.Shape != nil || cell.Table != nil || cell.Icon != nil ||
 				cell.Image != nil || cell.Diagram != nil {
 				n++

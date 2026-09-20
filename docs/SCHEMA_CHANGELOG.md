@@ -191,6 +191,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Horizontal compose segments keep independent rows (go-slide-creator-rbjas).**
+  The expanded shape grid now hosts each segment in a nested grid spanning its
+  allocated columns. A multirow segment can retain its own row heights, gaps,
+  and vertical alignment beside a single-row segment. Preview cells and text
+  and geometry preflight traverse those grids; segment `col_range` still
+  describes the same parent columns.
+
 - **`contrast_predicted` covers placeholders whose colour is inherited
   (go-slide-creator-j4364).** A layout that leaves its placeholder colour to
   the slide master's `txStyles` reported an empty `FontColor`, and the contrast

@@ -11,6 +11,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
@@ -316,16 +317,28 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 		return nil
 	}
 
-	// Compute densities using the single source of truth.
-	densities := textcapacity.ForResolvedGrid(result)
+	acc := &gridFitAccum{slideIdx: slideIdx, slideWidth: slideWidth, slideHeight: slideHeight}
+	acc.walk(grid, result, slidepath.ShapeGrid(slideIdx), 0)
+	if f := aggregateUnderfilledFinding(slideIdx, acc.underfilled, acc.measuredTextCells, acc.filledChars, acc.totalCapacity); f != nil {
+		acc.findings = append(acc.findings, *f)
+	}
+	return acc.findings
+}
 
-	var findings []fitFinding
+type gridFitAccum struct {
+	slideIdx                   int
+	slideWidth, slideHeight    int64
+	findings                   []fitFinding
+	underfilled                []underfilledCell
+	measuredTextCells          int
+	filledChars, totalCapacity int
+}
 
-	// Emit row overflow findings from the resolve result.
+func (a *gridFitAccum) walk(grid *ShapeGridInput, result *shapegrid.ResolveResult, base string, depth int) {
 	for _, ro := range result.RowOverflows {
-		findings = append(findings, fitFinding{
+		a.findings = append(a.findings, fitFinding{
 			Code:    patterns.ErrCodeFitOverflow,
-			Path:    slidepath.GridRow(slideIdx, ro.RowIndex),
+			Path:    fmt.Sprintf("%s/rows/%d", base, ro.RowIndex),
 			Message: fmt.Sprintf("row content ~%.0fpt exceeds max_height %.0fpt", ro.ContentPt, ro.MaxHeightPt),
 			// A row is not a text target: the executable repairs are per-cell
 			// (the cell findings below carry reduce_cell_text with each cell's
@@ -349,56 +362,38 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 			Action: "review",
 		})
 	}
-
-	// Underfilled cells are accumulated and reported ONCE per slide. Emitting
-	// one per cell made cell_underfilled by far the most common finding in the
-	// system (395 occurrences over 50 decks) and let a slide of KPI cards
-	// accumulate 20+ review-weight findings, bottoming its score out at 0 while
-	// a genuinely broken layout cost 5 — a 53:1 severity inversion
-	// (go-slide-creator-xpz8).
-	var underfilled []underfilledCell
-	measuredTextCells := 0
-	filledChars, totalCapacity := 0, 0
-
-	// Walk cells: emit overflow findings from density and handle embedded tables.
-	cellIdx := 0
-	for ri, row := range grid.Rows {
-		for ci, cell := range row.Cells {
-			if cellIdx >= len(densities) {
-				break
+	densities := textcapacity.ForResolvedGrid(result)
+	for i, rc := range result.Cells {
+		if rc.RowIdx < 0 || rc.RowIdx >= len(grid.Rows) {
+			continue
+		}
+		cell := gridCellAtResolved(grid, rc.RowIdx, rc.ColIdx)
+		pathPrefix := fmt.Sprintf("%s/rows/%d/cells/%d", base, rc.RowIdx, rc.ColIdx)
+		if cell != nil && cell.Table != nil {
+			a.findings = append(a.findings, measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), a.slideIdx)...)
+		}
+		if i < len(densities) && densities[i].MaxChars > 0 {
+			cellFindings, counted, under := cellDensityFindings(densities[i], pathPrefix)
+			a.findings = append(a.findings, cellFindings...)
+			if counted {
+				a.measuredTextCells++
+				a.filledChars += densities[i].ActualChars
+				a.totalCapacity += densities[i].MaxChars
 			}
-			pathPrefix := slidepath.GridCell(slideIdx, ri, ci)
-
-			// Embedded table in shape_grid cell.
-			if cell != nil && cell.Table != nil {
-				findings = append(findings,
-					measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), slideIdx)...)
+			if under != nil {
+				a.underfilled = append(a.underfilled, *under)
 			}
-
-			// Shape text density via textcapacity.
-			d := densities[cellIdx]
-			if d.MaxChars > 0 {
-				cellFindings, counted, under := cellDensityFindings(d, pathPrefix)
-				findings = append(findings, cellFindings...)
-				if counted {
-					measuredTextCells++
-					filledChars += d.ActualChars
-					totalCapacity += d.MaxChars
-				}
-				if under != nil {
-					underfilled = append(underfilled, *under)
-				}
+		}
+		if rc.Kind == shapegrid.CellKindSubGrid && cell != nil && cell.Grid != nil && depth < maxGeomNestingDepth {
+			bounds := pptx.RectEmu{X: rc.Bounds.X + subGridInsetEMU, Y: rc.Bounds.Y + subGridInsetEMU, CX: rc.Bounds.CX - 2*subGridInsetEMU, CY: rc.Bounds.CY - 2*subGridInsetEMU}
+			if bounds.CX <= 0 || bounds.CY <= 0 {
+				bounds = rc.Bounds
 			}
-
-			cellIdx++
+			if sub := resolveGridForStructural(cell.Grid, &bounds, nil, a.slideWidth, a.slideHeight); sub != nil {
+				a.walk(cell.Grid, sub, slidepath.Join(pathPrefix, "grid"), depth+1)
+			}
 		}
 	}
-
-	if f := aggregateUnderfilledFinding(slideIdx, underfilled, measuredTextCells, filledChars, totalCapacity); f != nil {
-		findings = append(findings, *f)
-	}
-
-	return findings
 }
 
 // cellDensityFindings classifies one cell's text density. It returns any

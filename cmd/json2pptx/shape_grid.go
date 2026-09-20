@@ -660,11 +660,7 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 		if rc.RowIdx < 0 || rc.RowIdx >= len(input.Rows) {
 			continue
 		}
-		row := input.Rows[rc.RowIdx]
-		if rc.ColIdx < 0 || rc.ColIdx >= len(row.Cells) {
-			continue
-		}
-		src := row.Cells[rc.ColIdx]
+		src := gridCellAtResolved(input, rc.RowIdx, rc.ColIdx)
 		if src == nil || src.Grid == nil {
 			continue
 		}
@@ -699,6 +695,54 @@ func renderNestedSubGrids(input *ShapeGridInput, out *ShapeGridResult, alloc *pp
 		out.Cells = append(out.Cells, sub.Cells...)
 	}
 	return nil
+}
+
+// gridCellAtResolved maps a resolved row/column to the authored cell. Resolved
+// coordinates differ from slice indexes when earlier cells span columns or
+// rows, so it follows the same occupancy walk as shapegrid.Resolve.
+func gridCellAtResolved(grid *ShapeGridInput, rowIdx, colIdx int) *GridCellInput {
+	if grid == nil || rowIdx < 0 || rowIdx >= len(grid.Rows) || colIdx < 0 {
+		return nil
+	}
+	cols := inferColumnCount(grid)
+	occupied := make([][]bool, rowIdx+1)
+	for r := range occupied {
+		occupied[r] = make([]bool, cols)
+	}
+	for r := 0; r <= rowIdx; r++ {
+		col := 0
+		for _, cell := range grid.Rows[r].Cells {
+			for col < cols && occupied[r][col] {
+				col++
+			}
+			if col >= cols {
+				break
+			}
+			if r == rowIdx && col == colIdx {
+				return cell
+			}
+			if !gridCellHasContent(cell) {
+				col++
+				continue
+			}
+			colSpan, rowSpan := 1, 1
+			if cell != nil {
+				colSpan = max(1, cell.ColSpan)
+				rowSpan = max(1, cell.RowSpan)
+			}
+			for dr := 0; dr < rowSpan && r+dr <= rowIdx; dr++ {
+				for dc := 0; dc < colSpan && col+dc < cols; dc++ {
+					occupied[r+dr][col+dc] = true
+				}
+			}
+			col += colSpan
+		}
+	}
+	return nil
+}
+
+func gridCellHasContent(cell *GridCellInput) bool {
+	return cell != nil && (cell.Grid != nil || cell.Shape != nil || cell.Table != nil || cell.Icon != nil || cell.Image != nil || cell.Diagram != nil || cell.Composite != nil)
 }
 
 // convertGridRows converts DTO GridRowInput slices into shapegrid.Row domain objects.
