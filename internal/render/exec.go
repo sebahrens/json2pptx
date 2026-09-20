@@ -146,5 +146,8 @@ func runBounded(ctx context.Context, tool, path string, timeout time.Duration, n
 			Stderr:  errBuf.String(),
 		}
 	}
+	if err := ctx.Err(); err != nil {
+		return outBuf.String(), errBuf.String(), err
+	}
 	return outBuf.String(), errBuf.String(), runErr
 }

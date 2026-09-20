@@ -8,6 +8,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Cancellable image renders and thumbnail progress (go-slide-creator-o7ii.1,
+  go-slide-creator-o7ii.2).** The render image
+  handlers pass the MCP call context through LibreOffice, ImageMagick, cache
+  lookup, and thumbnail assembly. A queued call can leave the LibreOffice
+  serialization slot when cancelled; an interrupted call returns `CANCELLED`
+  and no image payload. `render_deck_thumbnails` emits
+  `notifications/progress` only when `_meta.progressToken` is supplied: an
+  initial conversion/loading update followed by one update per returned slide,
+  with `total` equal to the number selected for delivery. Existing Go render entry points retain background
+  context wrappers; new `*Context` variants accept cancellation. Schema version
+  advances to 4.71.0; the raw input fingerprint is unchanged.
+
 - **Recommendation routing for pricing and Sankey requests (go-slide-creator-0hb2j).**
   Pricing plan/tier intents favor `card-grid`; a bare `tier` no longer implies
   architecture. `recommend_pattern` and `recommend_visual` now return

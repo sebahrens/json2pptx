@@ -2588,6 +2588,8 @@ func mcpRenderDeckThumbnailsTool() mcp.Tool {
 
 Requires LibreOffice and ImageMagick (magick) on PATH. Use this for a quick visual overview of the entire deck.
 
+When the request carries _meta.progressToken, emits notifications/progress during preparation and after each selected slide is ready. Cancelling the request stops conversion and returns CANCELLED without image blocks.
+
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
 Cost note: the JSON metadata stays small (<5KB for typical decks); each thumbnail is one image block, and a 15-slide deck is ~370KB of base64 per pass. After a repair, pass slide_indices with just the slides that changed (render_deck_spec's changed_slides is exactly that list) instead of pulling the whole deck again; use max_slides to cap a first look at a large deck.`),
@@ -2647,8 +2649,11 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 		force = v
 	}
 
-	img, err := render.RenderSlideOpts(pptxPath, slideIndex, density, force)
+	img, err := render.RenderSlideOptsContext(ctx, pptxPath, slideIndex, density, force)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
+		}
 		code := "RENDER_FAILED"
 		var te *render.TimeoutError
 		switch {
@@ -2664,6 +2669,9 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 		return api.MCPSimpleError(code, err.Error()), nil
 	}
 
+	if err := ctx.Err(); err != nil {
+		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
+	}
 	return slideImageMCPResult(ctx, request, img), nil
 }
 
@@ -2721,10 +2729,11 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 	}
 
 	var deckResult *render.DeckResult
+	progress := mc.renderProgressReporter(ctx, request)
 	if hasIndices {
-		deckResult, err = render.RenderDeckIndices(pptxPath, density, indices, force)
+		deckResult, err = render.RenderDeckIndicesContext(ctx, pptxPath, density, indices, force, progress)
 	} else {
-		deckResult, err = render.RenderDeckOpts(pptxPath, density, maxSlides, force)
+		deckResult, err = render.RenderDeckOptsContext(ctx, pptxPath, density, maxSlides, force, progress)
 	}
 	var rangeErr *render.IndexRangeError
 	if errors.As(err, &rangeErr) {
@@ -2732,6 +2741,9 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 			rangeErr.Error(), "array", []int{0}, nil), nil
 	}
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
+		}
 		code := "RENDER_FAILED"
 		var te *render.TimeoutError
 		switch {
@@ -2747,6 +2759,9 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		return api.MCPSimpleError(code, err.Error()), nil
 	}
 
+	if err := ctx.Err(); err != nil {
+		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
+	}
 	return deckThumbnailsMCPResult(ctx, request, deckResult), nil
 }
 

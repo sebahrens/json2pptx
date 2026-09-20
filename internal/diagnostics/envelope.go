@@ -506,7 +506,7 @@ var classifyMap = func() map[string]Namespace {
 	// codes placeholder_overflow / placeholder_not_found / placeholder_remapped.
 	add(NamespacePolicy, "unresolved_placeholder")
 	add(NamespaceRender,
-		CodeGenerationFailed, CodeReadFailed, CodeRenderFailed, CodeLibreOfficeUnavailable,
+		CodeGenerationFailed, CodeReadFailed, CodeRenderFailed, CodeCancelled, CodeLibreOfficeUnavailable,
 		CodeImageMagickUnavailable, CodeOutputDir, CodeValidationFailed,
 		CodeOutputValidationError, CodeOverlayFailed, CodeAssetTooLarge, CodeURLFetchFailed,
 		CodeURLResolverInit, CodeSVGInvalidRoot, CodeSVGUnsafeXML, CodeSVGParseError,

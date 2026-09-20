@@ -52,6 +52,10 @@ type mcpConfig struct {
 	// point at httptest.NewServer instances on loopback addresses without
 	// tripping SSRF blocks.
 	resolverOpts resource.ResolverOptions
+
+	// progressSender forwards notifications/progress through the active MCP
+	// server. Nil in direct-handler tests and CLI calls.
+	progressSender func(context.Context, map[string]any) error
 }
 
 // resolvePresentationURLs downloads every URL reference in slides via a
@@ -125,6 +129,9 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 		})),
 	}
 	s = server.NewMCPServer("json2pptx", Version, append(opts, extra...)...)
+	mc.progressSender = func(ctx context.Context, params map[string]any) error {
+		return s.SendNotificationToClient(ctx, "notifications/progress", params)
+	}
 	registerMCPTools(s, mc)
 	registerMCPResources(s, mc)
 	return s

@@ -60,12 +60,12 @@ var ArtifactCleanupPolicy = fmt.Sprintf(
 		"get_capabilities().runtime.render_cache_bytes reports current usage",
 	int(CacheMaxAge/time.Hour), CacheMaxBytes>>20)
 
-// mu serializes LibreOffice invocations (single-threaded per process).
-var mu sync.Mutex
+// loSlots serializes LibreOffice while allowing queued callers to cancel.
+var loSlots = make(chan struct{}, 1)
 
 // LibreOffice refuses to do two things at once inside one user profile: the
 // second headless process attaches to the first one's session, exits 0, and
-// writes no PDF. mu stops that happening inside this process, but it says
+// writes no PDF. loSlots stops that happening inside this process, but it says
 // nothing about the other processes on the machine — a second MCP server, a
 // parallel agent, or the user's own open LibreOffice. Measured on macOS with
 // four concurrent conversions against the shared default profile: 2 of 4
@@ -73,7 +73,7 @@ var mu sync.Mutex
 //
 // So every conversion runs against a profile only this process uses. It is
 // created once and reused: a cold profile costs LibreOffice ~0.55s to bootstrap
-// (1.34s vs 0.80s per conversion, measured) and mu already means no two
+// (1.34s vs 0.80s per conversion, measured) and loSlots already means no two
 // conversions here share it in time.
 var (
 	loProfileOnce sync.Once
@@ -274,8 +274,18 @@ func DependencyStatus() (available bool, missing []string) {
 // if LibreOffice still exits successfully without writing a PDF, retries once
 // against a throwaway profile before giving up.
 func pptxToPDF(ctx context.Context, pptxPath, tmpDir string) (string, error) {
-	mu.Lock()
-	defer mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	select {
+	case loSlots <- struct{}{}:
+		defer func() { <-loSlots }()
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
 
 	office, err := officeCommand()
 	if err != nil {
@@ -505,6 +515,15 @@ func RenderSlide(pptxPath string, slideIndex, density int) (*SlideImage, error) 
 
 // RenderSlideOpts renders a single slide with an option to bypass the cache.
 func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*SlideImage, error) {
+	return RenderSlideOptsContext(context.Background(), pptxPath, slideIndex, density, force)
+}
+
+// RenderSlideOptsContext renders one slide and aborts conversion or decoding
+// when the caller cancels the context.
+func RenderSlideOptsContext(ctx context.Context, pptxPath string, slideIndex, density int, force bool) (*SlideImage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if err := CheckDependencies(); err != nil {
 		return nil, err
 	}
@@ -528,7 +547,6 @@ func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*Sli
 		}
 		defer os.RemoveAll(tmpDir)
 
-		ctx := context.Background()
 		pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
 		if err != nil {
 			return nil, err
@@ -538,12 +556,21 @@ func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*Sli
 		if err != nil {
 			return nil, err
 		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 
 		storeCachePNGs(key, pngs)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	if slideIndex < 0 || slideIndex >= len(pngs) {
 		return nil, fmt.Errorf("slide_index %d out of range (deck has %d slides)", slideIndex, len(pngs))
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	img, err := buildSlideImage(slideIndex, pngs[slideIndex], hash)
@@ -562,6 +589,14 @@ func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*Sli
 // The cache directory layout matches RenderSlideOpts (one subdirectory per
 // key+density), so invalidation via InvalidateCache also clears these entries.
 func RenderSlideWithCacheKey(pptxPath string, slideIndex, density int, force bool, key string) (*SlideImage, error) {
+	return RenderSlideWithCacheKeyContext(context.Background(), pptxPath, slideIndex, density, force, key)
+}
+
+// RenderSlideWithCacheKeyContext is the cancellable keyed-cache variant.
+func RenderSlideWithCacheKeyContext(ctx context.Context, pptxPath string, slideIndex, density int, force bool, key string) (*SlideImage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	// Keep the cache inside its age/size bound (go-slide-creator-dpys).
 	maybeSweepCache()
 	if key == "" {
@@ -585,7 +620,6 @@ func RenderSlideWithCacheKey(pptxPath string, slideIndex, density int, force boo
 		}
 		defer os.RemoveAll(tmpDir)
 
-		ctx := context.Background()
 		pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
 		if err != nil {
 			return nil, err
@@ -595,12 +629,21 @@ func RenderSlideWithCacheKey(pptxPath string, slideIndex, density int, force boo
 		if err != nil {
 			return nil, err
 		}
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 
 		storeCachePNGs(fullKey, pngs)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	if slideIndex < 0 || slideIndex >= len(pngs) {
 		return nil, fmt.Errorf("slide_index %d out of range (deck has %d slides)", slideIndex, len(pngs))
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	img, err := buildSlideImage(slideIndex, pngs[slideIndex], key)
@@ -637,7 +680,12 @@ func RenderDeck(pptxPath string, density, maxSlides int) (*DeckResult, error) {
 // RenderDeckOpts renders all slides with an option to bypass the cache.
 // When force is true, the conversion is re-executed even if a cached result exists.
 func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckResult, error) {
-	pngs, hash, cleanup, err := deckPNGs(pptxPath, density, force)
+	return RenderDeckOptsContext(context.Background(), pptxPath, density, maxSlides, force)
+}
+
+// RenderDeckOptsContext cancels conversion and per-slide image assembly.
+func RenderDeckOptsContext(ctx context.Context, pptxPath string, density, maxSlides int, force bool, progress ...func(done, total int)) (*DeckResult, error) {
+	pngs, hash, cleanup, err := deckPNGsContext(ctx, pptxPath, density, force)
 	if err != nil {
 		return nil, err
 	}
@@ -651,7 +699,16 @@ func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckR
 	}
 
 	for i := 0; i < limit; i++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		result.Slides = append(result.Slides, slideImageOrError(i, pngs[i], hash))
+		if len(progress) > 0 && progress[0] != nil {
+			progress[0](i+1, limit)
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
 	return result, nil
@@ -668,9 +725,14 @@ func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckR
 // deck is an IndexRangeError rather than a silent omission: an agent that
 // asked to look at slide 9 must not be told it looked at slide 9.
 func RenderDeckIndices(pptxPath string, density int, indices []int, force bool) (*DeckResult, error) {
+	return RenderDeckIndicesContext(context.Background(), pptxPath, density, indices, force)
+}
+
+// RenderDeckIndicesContext cancels conversion and selected image assembly.
+func RenderDeckIndicesContext(ctx context.Context, pptxPath string, density int, indices []int, force bool, progress ...func(done, total int)) (*DeckResult, error) {
 	// Keep the cache inside its age/size bound (go-slide-creator-dpys).
 	maybeSweepCache()
-	pngs, hash, cleanup, err := deckPNGs(pptxPath, density, force)
+	pngs, hash, cleanup, err := deckPNGsContext(ctx, pptxPath, density, force)
 	if err != nil {
 		return nil, err
 	}
@@ -698,7 +760,16 @@ func RenderDeckIndices(pptxPath string, density int, indices []int, force bool) 
 
 	result := &DeckResult{SlideCount: len(pngs), Selected: wanted}
 	for _, idx := range wanted {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		result.Slides = append(result.Slides, slideImageOrError(idx, pngs[idx], hash))
+		if len(progress) > 0 && progress[0] != nil {
+			progress[0](len(result.Slides), len(wanted))
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
@@ -749,7 +820,14 @@ func DeckPNGs(pptxPath string, density int, force bool) (pngs []string, cleanup 
 // temp directory, and deleting it before the caller reads them would turn every
 // slide into "rendered image bytes unavailable".
 func deckPNGs(pptxPath string, density int, force bool) (pngs []string, hash string, cleanup func(), err error) {
+	return deckPNGsContext(context.Background(), pptxPath, density, force)
+}
+
+func deckPNGsContext(ctx context.Context, pptxPath string, density int, force bool) (pngs []string, hash string, cleanup func(), err error) {
 	cleanup = func() {}
+	if err := ctx.Err(); err != nil {
+		return nil, "", cleanup, err
+	}
 	if err := CheckDependencies(); err != nil {
 		return nil, "", cleanup, err
 	}
@@ -764,6 +842,9 @@ func deckPNGs(pptxPath string, density int, force bool) (pngs []string, hash str
 		pngs = getCachedPNGs(key)
 	}
 	if pngs != nil {
+		if err := ctx.Err(); err != nil {
+			return nil, "", cleanup, err
+		}
 		return pngs, hash, cleanup, nil
 	}
 
@@ -773,7 +854,6 @@ func deckPNGs(pptxPath string, density int, force bool) (pngs []string, hash str
 	}
 	cleanup = func() { _ = os.RemoveAll(tmpDir) }
 
-	ctx := context.Background()
 	pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
 	if err != nil {
 		cleanup()
@@ -784,7 +864,15 @@ func deckPNGs(pptxPath string, density int, force bool) (pngs []string, hash str
 		cleanup()
 		return nil, "", func() {}, err
 	}
+	if err := ctx.Err(); err != nil {
+		cleanup()
+		return nil, "", func() {}, err
+	}
 	storeCachePNGs(key, pngs)
+	if err := ctx.Err(); err != nil {
+		cleanup()
+		return nil, "", func() {}, err
+	}
 	return pngs, hash, cleanup, nil
 }
 

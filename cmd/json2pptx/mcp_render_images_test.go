@@ -39,6 +39,38 @@ func syntheticSlidePNG(t *testing.T, w, h int, seed uint8) []byte {
 	return buf.Bytes()
 }
 
+func TestRenderImageHandlersRespectCancelledContext(t *testing.T) {
+	pptxPath := filepath.Join(t.TempDir(), "deck.pptx")
+	if err := os.WriteFile(pptxPath, []byte("dummy"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	mc := cliMCPConfig("./templates", "./out")
+	for _, tc := range []struct {
+		name   string
+		handle func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+	}{
+		{"slide", mc.handleRenderSlideImage},
+		{"deck", mc.handleRenderDeckThumbnails},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := tc.handle(ctx, makeRequest(map[string]any{"pptx_path": pptxPath}))
+			if err != nil || result == nil || !result.IsError {
+				t.Fatalf("result = %+v, err = %v", result, err)
+			}
+			if !strings.Contains(textContent(result), "CANCELLED") {
+				t.Fatalf("missing cancellation code: %s", textContent(result))
+			}
+			for _, item := range result.Content {
+				if _, ok := item.(mcp.ImageContent); ok {
+					t.Fatal("cancelled call returned image content")
+				}
+			}
+		})
+	}
+}
+
 // assertImageContentDeck checks the go-slide-creator-cn3h contract: N native
 // image/jpeg ImageContent blocks and a JSON metadata text payload < 5KB that
 // carries no base64 pixels.
@@ -165,6 +197,11 @@ func TestRenderDeckThumbnails_ImageContentIntegration(t *testing.T) {
 		outputDir:    t.TempDir(),
 		cache:        template.NewMemoryCache(24 * time.Hour),
 	}
+	var progress []map[string]any
+	mc.progressSender = func(_ context.Context, params map[string]any) error {
+		progress = append(progress, params)
+		return nil
+	}
 	deckJSON := `{"template":"midnight-blue","slides":[
 	  {"slide_type":"title","content":[{"placeholder_id":"title","type":"text","text_value":"Image content"}]},
 	  {"slide_type":"content","content":[{"placeholder_id":"title","type":"text","text_value":"Second"},{"placeholder_id":"body","type":"bullets","bullets_value":["one","two"]}]}]}`
@@ -176,11 +213,32 @@ func TestRenderDeckThumbnails_ImageContentIntegration(t *testing.T) {
 	if err := json.Unmarshal([]byte(textContent(gen)), &out); err != nil {
 		t.Fatal(err)
 	}
-	res, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{"pptx_path": out.OutputPath}))
+	res, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{"pptx_path": out.OutputPath, "force": true}))
 	if err != nil {
 		t.Fatal(err)
 	}
 	assertImageContentDeck(t, res, 2)
+	if len(progress) != 0 {
+		t.Fatalf("call without progress token emitted %d notifications", len(progress))
+	}
+	req := makeRequest(map[string]any{"pptx_path": out.OutputPath})
+	req.Params.Meta = &mcp.Meta{ProgressToken: "render-1"}
+	res, err = mc.handleRenderDeckThumbnails(context.Background(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertImageContentDeck(t, res, 2)
+	if len(progress) != 3 {
+		t.Fatalf("progress notifications = %+v, want conversion + 2 slides", progress)
+	}
+	for i, got := range progress {
+		if got["progressToken"] != "render-1" || got["progress"] != i {
+			t.Errorf("progress[%d] = %+v", i, got)
+		}
+		if i > 0 && got["total"] != 2 {
+			t.Errorf("progress[%d] total = %v, want 2", i, got["total"])
+		}
+	}
 }
 
 // TestSlideIndicesArg covers the argument's own contract before any rendering:

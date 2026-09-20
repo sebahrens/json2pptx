@@ -129,10 +129,16 @@ func slideImageToMCP(img render.SlideImage, contentIndex int) (renderedSlideMeta
 // slideImageMCPResult builds the result for a single rendered slide, honoring
 // the include_base64_json legacy opt-in.
 func slideImageMCPResult(ctx context.Context, request mcp.CallToolRequest, img *render.SlideImage) *mcp.CallToolResult {
+	if err := ctx.Err(); err != nil {
+		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
+	}
 	if wantsBase64JSON(request) {
 		res, err := api.MCPSuccessResult(ctx, img)
 		if err != nil {
 			return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err))
+		}
+		if err := ctx.Err(); err != nil {
+			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
 		}
 		return res
 	}
@@ -144,16 +150,25 @@ func slideImageMCPResult(ctx context.Context, request mcp.CallToolRequest, img *
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err))
 	}
+	if err := ctx.Err(); err != nil {
+		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
+	}
 	return res
 }
 
 // deckThumbnailsMCPResult builds the result for a rendered deck, honoring the
 // include_base64_json legacy opt-in.
 func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, deck *render.DeckResult) *mcp.CallToolResult {
+	if err := ctx.Err(); err != nil {
+		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
+	}
 	if wantsBase64JSON(request) {
 		res, err := api.MCPSuccessResult(ctx, deck)
 		if err != nil {
 			return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err))
+		}
+		if err := ctx.Err(); err != nil {
+			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
 		}
 		return res
 	}
@@ -166,6 +181,9 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 	}
 	images := make([]api.MCPImage, 0, len(deck.Slides))
 	for _, s := range deck.Slides {
+		if err := ctx.Err(); err != nil {
+			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
+		}
 		meta, enc, err := slideImageToMCP(s, len(images)+1)
 		if err != nil {
 			return api.MCPSimpleError("RENDER_FAILED", err.Error())
@@ -187,7 +205,33 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err))
 	}
+	if err := ctx.Err(); err != nil {
+		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error())
+	}
 	return res
+}
+
+// renderProgressReporter sends only when the client supplied an MCP progress
+// token. The initial update covers conversion, then the render loop reports
+// each assembled thumbnail against the actual number selected for delivery.
+func (mc *mcpConfig) renderProgressReporter(ctx context.Context, request mcp.CallToolRequest) func(done, total int) {
+	if request.Params.Meta == nil || request.Params.Meta.ProgressToken == nil || mc.progressSender == nil {
+		return nil
+	}
+	token := request.Params.Meta.ProgressToken
+	_ = mc.progressSender(ctx, map[string]any{
+		"progressToken": token,
+		"progress":      0,
+		"message":       "Converting or loading slide images",
+	})
+	return func(done, total int) {
+		_ = mc.progressSender(ctx, map[string]any{
+			"progressToken": token,
+			"progress":      done,
+			"total":         total,
+			"message":       fmt.Sprintf("Prepared thumbnail %d of %d", done, total),
+		})
+	}
 }
 
 // slideIndicesArg decodes render_deck_thumbnails' slide_indices, sharing

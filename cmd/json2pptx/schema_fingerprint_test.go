@@ -90,6 +90,8 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.68.0 adds the DeckSpec pillars kind; the raw PresentationInput hash is unchanged.
 	// 4.69.0 adds the DeckSpec org kind; the raw PresentationInput hash is unchanged.
 	// 4.70.0 adds unsupported_visual to recommendation outputs; the raw input hash is unchanged.
+	// 4.71.0 makes image-render MCP calls cancellable and adds progress notifications;
+	// the raw input hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "203d5604a6bcb22d"
 

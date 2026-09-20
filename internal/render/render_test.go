@@ -2,12 +2,16 @@ package render
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCheckDependencies(t *testing.T) {
@@ -56,6 +60,66 @@ func TestRenderDeck_FileNotFound(t *testing.T) {
 	_, err := RenderDeck("/tmp/nonexistent-deck.pptx", 50, 10)
 	if err == nil {
 		t.Fatal("expected error for nonexistent file")
+	}
+}
+
+func TestRenderContextCancellationBeforeWork(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	for _, run := range []func() error{
+		func() error { _, err := RenderSlideOptsContext(ctx, "unused.pptx", 0, 50, false); return err },
+		func() error {
+			_, err := RenderSlideWithCacheKeyContext(ctx, "unused.pptx", 0, 50, false, "key")
+			return err
+		},
+		func() error { _, err := RenderDeckOptsContext(ctx, "unused.pptx", 50, 10, false); return err },
+		func() error { _, err := RenderDeckIndicesContext(ctx, "unused.pptx", 50, []int{0}, false); return err },
+	} {
+		if err := run(); !errors.Is(err, context.Canceled) {
+			t.Errorf("err = %v, want context.Canceled", err)
+		}
+	}
+}
+
+func TestLibreOfficeQueueCancellation(t *testing.T) {
+	loSlots <- struct{}{}
+	defer func() { <-loSlots }()
+	ctx, cancel := context.WithCancel(context.Background())
+	time.AfterFunc(50*time.Millisecond, cancel)
+	start := time.Now()
+	_, err := pptxToPDF(ctx, "unused.pptx", t.TempDir())
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("queued cancellation took %s", elapsed)
+	}
+}
+
+func TestRenderDeckCancelsInFlightConversion(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("relies on POSIX shell and process-group cancellation")
+	}
+	binDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(binDir, "soffice"), []byte("#!/bin/sh\n/bin/sleep 5\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeFakeExecutable(t, filepath.Join(binDir, "magick"))
+	t.Setenv("PATH", binDir)
+	pptxPath := filepath.Join(t.TempDir(), "deck.pptx")
+	if err := os.WriteFile(pptxPath, []byte("dummy deck"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	time.AfterFunc(75*time.Millisecond, cancel)
+	start := time.Now()
+	result, err := RenderDeckOptsContext(ctx, pptxPath, 50, 120, true)
+	if !errors.Is(err, context.Canceled) || result != nil {
+		t.Fatalf("result = %+v, err = %v, want cancellation without slides", result, err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("in-flight cancellation took %s", elapsed)
 	}
 }
 

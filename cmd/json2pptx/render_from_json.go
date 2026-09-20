@@ -23,6 +23,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -216,8 +217,11 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 	}
 
 	// Render the single slide (index 0), caching under the JSON-derived key.
-	img, err := render.RenderSlideWithCacheKey(genOut.OutputPath, 0, density, force, jsonCacheKey)
+	img, err := render.RenderSlideWithCacheKeyContext(ctx, genOut.OutputPath, 0, density, force, jsonCacheKey)
 	if err != nil {
+		if errors.Is(err, context.Canceled) {
+			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
+		}
 		code := "RENDER_FAILED"
 		var te *render.TimeoutError
 		switch {
@@ -231,6 +235,9 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 			}
 		}
 		return api.MCPSimpleError(code, err.Error()), nil
+	}
+	if err := ctx.Err(); err != nil {
+		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
 	}
 
 	if overlay {

@@ -24,6 +24,23 @@ func TestRunBounded_Success(t *testing.T) {
 	}
 }
 
+func TestRunBounded_ParentCancellation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("relies on POSIX sleep semantics")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	time.AfterFunc(75*time.Millisecond, cancel)
+	start := time.Now()
+	_, _, err := runBounded(ctx, toolLibreOffice, "/tmp/deck.pptx", 5*time.Second, "sleep", "5")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("err = %v, want context.Canceled", err)
+	}
+	if elapsed := time.Since(start); elapsed > time.Second {
+		t.Fatalf("cancellation took %s", elapsed)
+	}
+}
+
 // TestRunBounded_TimeoutReturnsStructuredError simulates a hung subprocess (a
 // long sleep) and asserts runBounded kills it well before it would finish and
 // returns a *TimeoutError carrying tool, path, code, and elapsed time.

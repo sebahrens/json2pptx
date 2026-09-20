@@ -828,6 +828,16 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		},
 		RelatedCodes: []string{CodeGenerationFailed, CodeLibreOfficeUnavailable},
 	},
+	CodeCancelled: {
+		Code:        CodeCancelled,
+		Summary:     "The caller cancelled an in-progress render.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "The MCP request context is cancelled while preparing or returning slide images.",
+		RemediationSteps: []string{
+			"Retry the render if slide images are still needed.",
+		},
+		RelatedCodes: []string{CodeRenderFailed},
+	},
 	CodeLibreOfficeUnavailable: {
 		Code:        CodeLibreOfficeUnavailable,
 		Summary:     "LibreOffice is required for this operation but is not available.",

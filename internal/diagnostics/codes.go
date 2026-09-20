@@ -81,6 +81,7 @@ const (
 	CodeGenerationFailed       Code = "GENERATION_FAILED"
 	CodeReadFailed             Code = "READ_FAILED"
 	CodeRenderFailed           Code = "RENDER_FAILED"
+	CodeCancelled              Code = "CANCELLED"
 	CodeLibreOfficeUnavailable Code = "LIBREOFFICE_UNAVAILABLE"
 	CodeImageMagickUnavailable Code = "IMAGEMAGICK_UNAVAILABLE"
 	CodeLibreOfficeTimeout     Code = "LIBREOFFICE_TIMEOUT"
@@ -229,6 +230,7 @@ func AllCodes() []Code {
 		CodeGenerationFailed,
 		CodeReadFailed,
 		CodeRenderFailed,
+		CodeCancelled,
 		CodeLibreOfficeUnavailable,
 		CodeImageMagickUnavailable,
 		CodeLibreOfficeTimeout,
