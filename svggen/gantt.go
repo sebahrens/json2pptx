@@ -538,12 +538,18 @@ func (gc *GanttChart) collectSwimlanes(rows []ganttRow) []string {
 
 // drawAllRows draws task bars, milestones, and labels for all rows.
 func (gc *GanttChart) drawAllRows(rows []ganttRow, dateRange timelineRange, chartArea Rect, categoryColors map[string]Color, labelX, labelWidth float64) {
+	// The row-label column already names every task. Repeating the name on the
+	// bar printed each task twice — once on the left axis, once inside the bar
+	// — which is noise, and on a short bar the repeat was truncated into a
+	// fragment of a name the reader had just read in full
+	// (go-slide-creator-kosq).
+	labelledRows := labelWidth > 0
 	for _, row := range rows {
 		if row.task != nil {
 			if row.task.IsMilestone {
 				gc.drawMilestoneMarker(*row.task, row.y, dateRange, chartArea, categoryColors)
 			} else {
-				gc.drawTaskBar(*row.task, row.y, dateRange, chartArea, categoryColors)
+				gc.drawTaskBar(*row.task, row.y, dateRange, chartArea, categoryColors, labelledRows && row.rowLabel() == row.task.Label)
 			}
 		}
 		if row.milestone != nil {
@@ -590,7 +596,9 @@ func (gc *GanttChart) drawGrid(dateRange timelineRange, timeUnit string, chartAr
 }
 
 // drawTaskBar draws a single task bar.
-func (gc *GanttChart) drawTaskBar(task GanttTask, rowY float64, dateRange timelineRange, chartArea Rect, categoryColors map[string]Color) {
+// namedByRowLabel says the left label column already carries this task's name,
+// so the bar must not repeat it.
+func (gc *GanttChart) drawTaskBar(task GanttTask, rowY float64, dateRange timelineRange, chartArea Rect, categoryColors map[string]Color, namedByRowLabel bool) {
 	b := gc.builder
 	style := b.StyleGuide()
 
@@ -636,11 +644,14 @@ func (gc *GanttChart) drawTaskBar(task GanttTask, rowY float64, dateRange timeli
 		b.Pop()
 	}
 
-	// Draw bar label inside the bar when it fits comfortably.
+	// Draw bar label inside the bar when it fits comfortably, and only when the
+	// row-label column is not already showing the same name.
 	// Use contrast-aware text color so text remains readable on both
 	// light and dark bar backgrounds. When the label does not fit
 	// inside, it is placed to the right of the bar as a fallback.
-	gc.drawBarLabel(task.Label, startX, barY, barWidth, gc.config.BarHeight, fillColor, chartArea.X+chartArea.W)
+	if !namedByRowLabel {
+		gc.drawBarLabel(task.Label, startX, barY, barWidth, gc.config.BarHeight, fillColor, chartArea.X+chartArea.W)
+	}
 }
 
 // drawMilestoneMarker draws a milestone diamond for a task.

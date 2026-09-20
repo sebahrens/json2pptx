@@ -415,16 +415,28 @@ func (tc *TreemapChart) drawNodes(nodes []*TreemapNode, colors []Color, depth in
 		// label (first 2 characters) so no cell is completely unlabeled.
 		const minLabelFontSize = 6.0
 		const abbreviatedMinSize = 8.0
+
+		// A parent's children are drawn on top of it, so a parent labelled in
+		// the middle of its own rect was simply painted over — the grouping had
+		// a name nobody could read (go-slide-creator-kosq). Reserve a header
+		// band at the top for the parent's label and lay the children out
+		// below it.
+		header := treemapHeaderHeight(node, bounds, style)
+		labelBounds := bounds
+		if header > 0 {
+			labelBounds.H = header
+		}
+
 		if tc.config.ShowLabels {
 			if bounds.W >= tc.config.LabelMinSize && bounds.H >= tc.config.LabelMinSize {
 				candidateFontSize := math.Min(style.Typography.SizeSmall, math.Min(bounds.W/5, bounds.H/3))
 				if candidateFontSize >= minLabelFontSize {
-					tc.drawNodeLabel(node, bounds, style)
+					tc.drawNodeLabel(node, labelBounds, style)
 				} else {
-					tc.drawAbbreviatedLabel(node, bounds, style)
+					tc.drawAbbreviatedLabel(node, labelBounds, style)
 				}
 			} else if bounds.W >= abbreviatedMinSize && bounds.H >= abbreviatedMinSize {
-				tc.drawAbbreviatedLabel(node, bounds, style)
+				tc.drawAbbreviatedLabel(node, labelBounds, style)
 			}
 		}
 
@@ -433,9 +445,9 @@ func (tc *TreemapChart) drawNodes(nodes []*TreemapNode, colors []Color, depth in
 			// Calculate inner bounds for children
 			innerBounds := Rect{
 				X: bounds.X + tc.config.Padding,
-				Y: bounds.Y + tc.config.Padding,
+				Y: bounds.Y + tc.config.Padding + header,
 				W: bounds.W - 2*tc.config.Padding,
-				H: bounds.H - 2*tc.config.Padding,
+				H: bounds.H - 2*tc.config.Padding - header,
 			}
 
 			// Calculate child total value
@@ -452,6 +464,31 @@ func (tc *TreemapChart) drawNodes(nodes []*TreemapNode, colors []Color, depth in
 		}
 	}
 }
+
+// treemapHeaderHeight is the band reserved at the top of a parent cell for its
+// own label, so the children it contains do not paint over it. Returns 0 for a
+// leaf, and for a parent too short to give the band without squeezing its
+// children — there the old behaviour (children over the label) is still better
+// than a band with no room left under it.
+func treemapHeaderHeight(node *TreemapNode, bounds Rect, style *StyleGuide) float64 {
+	if len(node.Children) == 0 {
+		return 0
+	}
+	header := style.Typography.SizeSmall * treemapHeaderLineFactor
+	if header > bounds.H*treemapHeaderMaxFrac {
+		return 0
+	}
+	return header
+}
+
+const (
+	// treemapHeaderLineFactor sizes the parent band from the label's own line
+	// height plus breathing room.
+	treemapHeaderLineFactor = 1.9
+	// treemapHeaderMaxFrac caps the band at this share of the parent's height:
+	// past it the children lose more than the label is worth.
+	treemapHeaderMaxFrac = 0.3
+)
 
 // drawNodeLabel draws the label for a treemap node.
 func (tc *TreemapChart) drawNodeLabel(node *TreemapNode, bounds Rect, style *StyleGuide) {

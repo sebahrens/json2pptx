@@ -46,6 +46,11 @@ type fishboneBranchLayout struct {
 }
 
 // DefaultFishboneConfig returns default fishbone configuration.
+// causeLabelMinWidthPt is the narrowest strip beside a bone worth hanging a
+// cause label in. Below it the label falls back to the old centred placement,
+// which at least shows the words.
+const causeLabelMinWidthPt = 40.0
+
 func DefaultFishboneConfig(width, height float64) FishboneConfig {
 	return FishboneConfig{
 		ChartConfig:          DefaultChartConfig(width, height),
@@ -675,26 +680,40 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 				b.Pop()
 			}
 
-			// Use the full inter-branch width for text fitting. The label
-			// is positioned centered at the sub-tick midpoint, then clamped
-			// so it stays within the plot area. This avoids truncation when
-			// neither left nor right space alone is enough but the combined
-			// space exceeds maxCauseLabelW.
+			// The label hangs off the OUTER end of the sub-tick, which points
+			// left, so it sits entirely on the far side of the category bone.
+			// Centring it on the tick midpoint put the text box across both the
+			// tick and the diagonal bone it hangs from, and the bone was drawn
+			// straight through the words (go-slide-creator-kosq).
 			causeMinFont := math.Min(DefaultMinFontSize, 7.0)
 			causeMaxH := minVerticalGap * 0.95
+			labelRightX := subEndX - style.Spacing.XS
 			availableW := maxCauseLabelW
+			outside := false
 
 			causeFit := LabelFitStrategy{PreferredSize: subFontSize, MinSize: causeMinFont, MinCharWidth: 5.5, AllowWrap: true, MaxLines: 3}
 
 			origMin := b.MinFontSize()
 			b.SetMinFontSize(causeMinFont)
 			causeResult := causeFit.Fit(b, entry.text, availableW, causeMaxH)
+
+			// Prefer hanging the label off the tick end when the strip beside
+			// the bone holds the same text at the same size. Never at the cost
+			// of shrinking or truncating: a label crossed by a bone is bad, a
+			// label cut short is worse.
+			if strip := labelRightX - plotArea.X; strip >= causeLabelMinWidthPt {
+				if r := causeFit.Fit(b, entry.text, strip, causeMaxH); r.DisplayText == causeResult.DisplayText && r.FontSize >= causeResult.FontSize {
+					causeResult, availableW, outside = r, strip, true
+				}
+			}
 			b.SetMinFontSize(origMin)
 
-			// Position the label box centered at the sub-tick midpoint,
-			// then clamp to plot bounds.
-			tickMidX := (subX + subEndX) / 2
-			labelBoxX := tickMidX - availableW/2
+			// Position the label box: right-aligned against the tick end when
+			// there is room beside the bone, else centred on the tick midpoint.
+			labelBoxX := labelRightX - availableW
+			if !outside {
+				labelBoxX = (subX+subEndX)/2 - availableW/2
+			}
 			if labelBoxX < plotArea.X {
 				labelBoxX = plotArea.X
 			}
@@ -709,6 +728,11 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 			} else {
 				b.SetFillColor(style.Palette.TextPrimary)
 			}
+			align, textX, textAlign := AlignCenter, labelBoxX+availableW/2, TextAlignCenter
+			if outside {
+				// Hug the tick: the words run away from the bone, not across it.
+				align, textX, textAlign = AlignMiddleRight, labelBoxX+availableW, TextAlignRight
+			}
 			if causeResult.Wrapped {
 				wrapRect := Rect{
 					X: labelBoxX,
@@ -716,10 +740,9 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 					W: availableW,
 					H: causeMaxH,
 				}
-				b.DrawWrappedText(causeResult.DisplayText, wrapRect, AlignCenter)
+				b.DrawWrappedText(causeResult.DisplayText, wrapRect, align)
 			} else {
-				// Center-align at the midpoint of the label box
-				b.DrawText(causeResult.DisplayText, labelBoxX+availableW/2, subEndY, TextAlignCenter, TextBaselineMiddle)
+				b.DrawText(causeResult.DisplayText, textX, subEndY, textAlign, TextBaselineMiddle)
 			}
 			b.Pop()
 		}

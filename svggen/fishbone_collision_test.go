@@ -362,3 +362,48 @@ func verifyNoLabelCollisions(t *testing.T, svg string, names []string) {
 			len(names), len(names), pathCount)
 	}
 }
+
+// TestFishboneCauseLabelsClearTheBone pins the fix for go-slide-creator-kosq:
+// a cause label centred on its sub-tick's midpoint straddled the tick AND the
+// diagonal category bone it hangs from, so the bone was drawn straight through
+// the words. The label hangs off the tick's outer end now — but only when the
+// strip beside the bone holds the same text at the same size, because a label
+// cut short is worse than one a line crosses.
+func TestFishboneCauseLabelsClearTheBone(t *testing.T) {
+	diagram := &FishboneDiagram{NewBaseDiagram("fishbone")}
+	req := &RequestEnvelope{
+		Type:   "fishbone",
+		Output: OutputSpec{Width: 1000, Height: 500},
+		Data: map[string]any{
+			"effect": "Reconciliation breaks",
+			"categories": []any{
+				map[string]any{"name": "People", "causes": []any{"Single trained operator", "No handover runbook"}},
+				map[string]any{"name": "Process", "causes": []any{"Manual cut-off", "No second check"}},
+				map[string]any{"name": "Systems", "causes": []any{"Batch timing drift", "Legacy adapter"}},
+			},
+		},
+	}
+	doc, err := diagram.Render(req)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	svg := string(doc.Content)
+
+	// Every cause survives in full — the outside placement must not have cost
+	// any text.
+	for _, cause := range []string{
+		"Single trained operator", "No handover runbook",
+		"Manual cut-off", "No second check",
+		"Batch timing drift", "Legacy adapter",
+	} {
+		if !strings.Contains(svg, cause) {
+			t.Errorf("cause %q is missing or truncated in the rendered fishbone", cause)
+		}
+	}
+
+	// The labels are right-anchored against their ticks rather than centred on
+	// them, which is what keeps them off the bone.
+	if !strings.Contains(svg, `text-anchor="end"`) {
+		t.Error("expected end-anchored cause labels hanging off the tick")
+	}
+}

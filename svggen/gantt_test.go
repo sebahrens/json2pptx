@@ -539,12 +539,11 @@ func TestGanttChart_BarTextContrast(t *testing.T) {
 	}
 
 	svg := string(doc.Content)
-	// Wide bars should have their labels drawn inside
+	// Each task is named ONCE, in the row label column. The bar used to repeat
+	// the name, which printed every task twice (go-slide-creator-kosq).
 	for _, label := range []string{"Light Task", "Dark Task"} {
-		// The label appears twice: once in the row label column, once inside the bar
-		count := strings.Count(svg, label)
-		if count < 2 {
-			t.Errorf("Expected label %q to appear at least twice (row + bar), found %d occurrences", label, count)
+		if count := strings.Count(svg, label); count != 1 {
+			t.Errorf("label %q appears %d times, want exactly one (the row label column)", label, count)
 		}
 	}
 }
@@ -788,12 +787,12 @@ func TestGanttChart_NarrowBarExternalLabel(t *testing.T) {
 
 	svg := string(doc.Content)
 
-	// 'Requirements' should appear at least twice: once in the row label
-	// column and once as the external bar label (or internal if it happens
-	// to fit). Before the fix it appeared only once (row label only).
-	count := strings.Count(svg, "Requirements")
-	if count < 2 {
-		t.Errorf("Expected 'Requirements' to appear at least twice (row label + bar label), found %d occurrences", count)
+	// A narrow bar is still named — by the row label column, which every Gantt
+	// has. Repeating the name beside the bar printed it twice, and on a narrow
+	// bar the repeat was a truncated fragment of a name the reader had just
+	// read in full (go-slide-creator-kosq).
+	if count := strings.Count(svg, "Requirements"); count != 1 {
+		t.Errorf("'Requirements' appears %d times, want exactly one (the row label column)", count)
 	}
 }
 
