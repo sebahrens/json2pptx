@@ -172,17 +172,54 @@ func (c *comparison2col) NewValues() any       { return &Comparison2colValues{} 
 func (c *comparison2col) NewOverrides() any    { return &Comparison2colOverrides{} }
 func (c *comparison2col) NewCellOverride() any { return &Comparison2colCellOverride{} }
 
+// Measured by TestComparisonBudgetProbe across the four bundled templates at
+// default text sizes. A header row consumes the same height as one body row.
+func comparisonBodyBudget(bodyRows int, headers bool) int {
+	effectiveRows := bodyRows
+	if headers {
+		effectiveRows++
+	}
+	switch {
+	case effectiveRows <= 4:
+		return 200
+	case effectiveRows == 5:
+		return 196
+	case effectiveRows <= 7:
+		return 131
+	default:
+		return 66
+	}
+}
+
+func (c *comparison2col) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*Comparison2colValues)
+	if !ok || v == nil {
+		return nil
+	}
+	headers := v.Headers != [2]string{} || v.HeaderLeft != "" || v.HeaderRight != ""
+	budget := comparisonBodyBudget(len(v.Rows), headers)
+	var warnings []string
+	for i, row := range v.Rows {
+		for _, field := range []struct{ name, text string }{{"left", row.Left}, {"right", row.Right}} {
+			if n := runeLen(field.text); n > budget {
+				warnings = append(warnings, fmt.Sprintf("%s: comparison-2col rows[%d].%s is %d characters; %d body rows with headers=%t hold about %d characters per cell before text shrinks below the readable minimum — shorten the cell or use fewer rows", ErrCodeBodyTooLong, i, field.name, n, len(v.Rows), headers, budget))
+			}
+		}
+	}
+	return warnings
+}
+
 func (c *comparison2col) Schema() *Schema {
 	rowSchema := OneOfSchema(
 		StringSchema(0).WithDescription("Shorthand: \"Left | Right\""),
 		ObjectSchema(
 			map[string]*Schema{
-				"left":  StringSchema(200).WithDescription("Left column content"),
-				"right": StringSchema(200).WithDescription("Right column content"),
+				"left":  StringSchema(200).WithDescription("Left cell; readable copy depends on row count and optional header row"),
+				"right": StringSchema(200).WithDescription("Right cell; readable copy depends on row count and optional header row"),
 			},
 			[]string{"left", "right"},
 		).WithAdditionalProperties(false),
-	).WithDescription("Row: string \"Left | Right\" or {left, right}")
+	).WithDescription("Row: string \"Left | Right\" or {left, right}. Approximate chars per cell by body rows plus one if headers: 1-4: 200, 5: 196, 6-7: 131, 8-11: 66")
 
 	headersSchema := ArraySchema(StringSchema(60), 2, 2).
 		WithDescription("Column headers [left, right] (preferred over header_left/header_right)")

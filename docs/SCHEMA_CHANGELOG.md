@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Comparison row budgets (go-slide-creator-tp23k.5).** `comparison-2col`
+  now emits `BODY_TOO_LONG` with the row, side and measured copy target.
+  The budget counts body rows plus one when headers are present: up to four
+  effective rows hold about 200 characters per cell, five hold 196, six or
+  seven hold 131, and eight or more hold 66. The schema description carries
+  the table; the 200-character cap remains for sparse comparisons. Headers
+  retain their 60-character limit. Measurements used all four templates.
+  Schema version advances to 4.80.0; the input fingerprint is unchanged.
+
 - **Driver-tree copy budgets (go-slide-creator-tp23k.4).** `driver-tree`
   now warns with measured leaf, branch-label and annotation targets based on
   total leaf rows, annotation-column presence and per-branch row span. Trees

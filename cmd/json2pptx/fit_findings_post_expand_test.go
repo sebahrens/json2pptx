@@ -73,6 +73,38 @@ func TestDriverTreeBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	}
 }
 
+func TestComparisonBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.Comparison2colValues{Headers: [2]string{"Left", "Right"}}
+	for i := 0; i < 7; i++ {
+		values.Rows = append(values.Rows, patterns.Comparison2colRow{Left: "Item", Right: "Other"})
+	}
+	values.Rows[6].Right = strings.Repeat("word ", 20)
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range schemaMaximaTemplates {
+		t.Run(name, func(t *testing.T) {
+			layouts, width, height := schemaMaximaLayouts(t, name)
+			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title",
+				Pattern: &PatternInput{Name: "comparison-2col", Values: encoded},
+			}}}
+			found := false
+			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
+				if finding.Code == patterns.ErrCodeBodyTooLong &&
+					strings.Contains(finding.Message, "rows[6].right") &&
+					strings.Contains(finding.Message, "about 66 characters") {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatal("comparison budget missing from fit report")
+			}
+		})
+	}
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two bios over the budget.
 func postExpandDeck() *PresentationInput {

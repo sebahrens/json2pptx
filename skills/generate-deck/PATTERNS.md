@@ -67,6 +67,8 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Driver tree.** At default sizes and without units, `driver-tree` supports up to 14 total leaf rows. Leaf copy holds about 120 characters through seven rows; at 8–9 rows it holds 120 without annotations or 101 with them; at 10–14 rows it holds 75 without annotations or 51 with them. A branch spanning one row in a 10–14-row tree holds about 38 label characters without annotations or 32 with them. Annotation limits also vary by branch span; the `show_pattern` schema gives the table. Use the `BODY_TOO_LONG` finding for the exact field and target, and check the fit report when units or font overrides are present.
 
+**Two-column comparisons.** For `comparison-2col`, count body rows plus one when the optional headers are present. At default font sizes, each body cell holds about 200 characters through four effective rows, 196 at five, 131 at six or seven, and 66 at eight or more. The 60-character header limit remains readable at all supported row counts. `BODY_TOO_LONG` identifies the row and left/right cell to shorten.
+
 ---
 
 ## Text Capacity Awareness

@@ -132,6 +132,79 @@ func TestDriverTreeSpanProbe(t *testing.T) {
 	}
 }
 
+func TestComparisonBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_COMPARISON_BUDGET_PROBE") != "1" {
+		t.Skip("manual comparison budget calibration probe")
+	}
+	for rows := 1; rows <= 10; rows++ {
+		for _, headers := range []bool{false, true} {
+			for _, field := range []string{"body", "header"} {
+				if field == "header" && !headers {
+					continue
+				}
+				budget := comparisonReadableBudget(t, rows, headers, field)
+				t.Logf("comparison-2col rows=%d headers=%t field=%s budget=%d", rows, headers, field, budget)
+			}
+		}
+	}
+}
+
+func comparisonReadableBudget(t *testing.T, rowCount int, headers bool, field string) int {
+	t.Helper()
+	type geometry struct {
+		name          string
+		layouts       []types.LayoutMetadata
+		width, height int64
+	}
+	var geometries []geometry
+	for _, name := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, name)
+		geometries = append(geometries, geometry{name, layouts, width, height})
+	}
+	limit := 200
+	if field == "header" {
+		limit = 60
+	}
+	clean := func(length int) bool {
+		v := &patterns.Comparison2colValues{}
+		if headers {
+			v.Headers = [2]string{"Left", "Right"}
+		}
+		for i := 0; i < rowCount; i++ {
+			v.Rows = append(v.Rows, patterns.Comparison2colRow{Left: "Item", Right: "Other"})
+		}
+		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+		if field == "header" {
+			v.Headers[0] = copy
+		} else {
+			v.Rows[0].Left = copy
+		}
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, geom := range geometries {
+			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "comparison-2col", Values: encoded},
+			}}}
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+				return false
+			}
+		}
+		return true
+	}
+	lo, hi := 0, limit
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if clean(mid) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
 func driverTreeReadableBudget(t *testing.T, counts []int, annotated bool, field string) int {
 	t.Helper()
 	type geometry struct {
