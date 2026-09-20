@@ -154,3 +154,45 @@ func codesOf(ds []diagnostics.Diagnostic) []string {
 	}
 	return out
 }
+
+// TestMisshapenChartListNamesTheKey is go-slide-creator-xp1x: a series given as
+// a map produced "declares no data series (found keys "categories", "series")",
+// which contradicted itself and pointed the fix at the whole data block.
+func TestMisshapenChartListNamesTheKey(t *testing.T) {
+	ds := chartFindings(t, `        categories: [a, b]
+        series:
+          Rev: [1, 2]
+`)
+	d := findCode(ds, diagnostics.CodeSemanticFieldType)
+	if d == nil {
+		t.Fatalf("expected SEMANTIC_FIELD_TYPE, got %v", codesOf(ds))
+	}
+	if d.Path != "slides[1].chart.data.series" {
+		t.Errorf("path = %q, want the series key itself", d.Path)
+	}
+	for _, want := range []string{"is an object", `"Rev"`, "array of objects", `"values"`} {
+		if !strings.Contains(d.Message, want) {
+			t.Errorf("message %q does not mention %q", d.Message, want)
+		}
+	}
+	// The self-contradicting message must be gone.
+	if other := findCode(ds, diagnostics.CodeSemanticDensity); other != nil &&
+		strings.Contains(other.Message, "declares no data series") {
+		t.Errorf("the generic message still fires alongside: %s", other.Message)
+	}
+}
+
+// TestMissingChartSeriesKeepsTheGenericMessage: when the key is absent there is
+// nothing to retype, and the original guidance is right.
+func TestMissingChartSeriesKeepsTheGenericMessage(t *testing.T) {
+	ds := chartFindings(t, `        categories: [a, b]
+        totals: [1, 2]
+`)
+	d := findCode(ds, diagnostics.CodeSemanticDensity)
+	if d == nil {
+		t.Fatalf("expected SEMANTIC_DENSITY, got %v", codesOf(ds))
+	}
+	if !strings.Contains(d.Message, "declares no data series") {
+		t.Errorf("message = %q, want the missing-series guidance", d.Message)
+	}
+}

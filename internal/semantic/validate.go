@@ -705,8 +705,70 @@ func validateChartData(chartPath string, chart map[string]any, s *semDiags) {
 		validateChartSeriesAlignment(dataPath, data, s)
 		return
 	}
+
+	// A key that is PRESENT but the wrong JSON type is a different mistake from
+	// a missing one, and the generic message contradicted itself on it:
+	// "declares no data series (found keys \"categories\", \"series\")" for a
+	// series given as a map. Name the key and the shape it has to take, so the
+	// fix is to retype one field rather than replace the whole data block
+	// (go-slide-creator-xp1x).
+	if key, got, wrong := misshapedChartList(data, chartType); wrong {
+		s.hard(dataPath+"."+key, diagnostics.CodeSemanticFieldType,
+			fmt.Sprintf("chart_insight chart.data.%s is %s; it must be %s", key, got, chartListShape(key)))
+		return
+	}
+
 	s.advisoryFix(dataPath, diagnostics.CodeSemanticDensity,
 		fmt.Sprintf("chart_insight chart.data declares no data series (found keys %s); expected chart.data as %s", joinQuoted(sortedKeys(data)), shape), fix)
+}
+
+// misshapedChartList reports the data list that is present but is not a JSON
+// array, with a readable description of what it is instead.
+func misshapedChartList(data map[string]any, chartType string) (key, got string, wrong bool) {
+	keys := []string{"series"}
+	if valuesChartTypes[chartType] {
+		keys = []string{"values", "series"}
+	}
+	for _, k := range keys {
+		v, present := data[k]
+		if !present {
+			continue
+		}
+		if _, isList := v.([]any); isList {
+			continue
+		}
+		return k, describeJSONKind(v), true
+	}
+	return "", "", false
+}
+
+// chartListShape names the shape a chart data list must take.
+func chartListShape(key string) string {
+	if key == "values" {
+		return "an array of numbers, e.g. [10, 20, 30]"
+	}
+	return "an array of objects, e.g. [{\"name\": \"Revenue\", \"values\": [10, 20, 30]}]"
+}
+
+// describeJSONKind names a decoded JSON value's kind for a message.
+func describeJSONKind(v any) string {
+	switch val := v.(type) {
+	case nil:
+		return "null"
+	case map[string]any:
+		if len(val) > 0 {
+			return fmt.Sprintf("an object (keys %s)", joinQuoted(sortedKeys(val)))
+		}
+		return "an empty object"
+	case string:
+		return "a string"
+	case bool:
+		return "a boolean"
+	case float64, int, int64, json.Number:
+		return "a number"
+	default:
+		return fmt.Sprintf("a %T", v)
+	}
 }
 
 // validateChartSeriesAlignment checks each series against the category count

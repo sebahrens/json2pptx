@@ -104,6 +104,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **A misshapen chart list names the key, not the block
+  (go-slide-creator-xp1x).** `data: {categories: [a,b], series: {Rev: [1,2]}}`
+  reported "chart.data declares no data series (found keys \"categories\",
+  \"series\")" — a message that contradicted itself and told the agent to
+  replace the whole data block rather than retype one field.
+  - A `series` (or, for pie/donut, `values`) that is present but is not a JSON
+    array now reports `SEMANTIC_FIELD_TYPE` at
+    `slides[i].chart.data.series`, naming what it is ("an object (keys
+    \"Rev\")") and the shape it must take.
+  - The original message is kept for the case it was written for: no such key
+    at all.
+
 - **The fact-loss guard proposes only a split the pattern accepts
   (go-slide-creator-qtjl).** `reduce_items` / `resize_list` refuse to drop an
   item carrying a figure and propose `split_pattern` instead. The proposal was
