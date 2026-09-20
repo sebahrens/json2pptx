@@ -1694,7 +1694,7 @@ func TestSectionNumberRoutedThroughConversion(t *testing.T) {
 
 	slides := []SlideInput{
 		{
-			SlideType: "section",
+			LayoutID: "section",
 			Content: []ContentInput{
 				{PlaceholderID: "title", Type: "text", TextValue: strPtr("Discovery")},
 			},

@@ -724,7 +724,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	sectionNumbers := make([]string, len(slides))
 	sectionNum := 0
 	for i := range slides {
-		if inferSlideType(slides[i]) == types.SlideTypeSection {
+		if isSectionSlideInput(slides[i], layouts) {
 			sectionNum++
 			sectionNumbers[i] = fmt.Sprintf("%02d", sectionNum)
 		}
@@ -737,7 +737,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	{
 		secIdx := 0
 		for i := range slides {
-			if i > 0 && inferSlideType(slides[i]) == types.SlideTypeSection {
+			if i > 0 && isSectionSlideInput(slides[i], layouts) {
 				secIdx++
 			}
 			sectionIndices[i] = secIdx
@@ -2212,6 +2212,9 @@ func inferSlideType(slide SlideInput) types.SlideType {
 	if slide.SlideType != "" {
 		return types.SlideType(slide.SlideType)
 	}
+	if strings.EqualFold(slide.LayoutID, "section") {
+		return types.SlideTypeSection
+	}
 
 	hasChart := false
 	hasDiagram := false
@@ -2263,6 +2266,29 @@ func inferSlideType(slide SlideInput) types.SlideType {
 		return types.SlideTypeTitle
 	}
 	return types.SlideTypeContent
+}
+
+func isSectionSlideInput(slide SlideInput, layouts []types.LayoutMetadata) bool {
+	if types.SlideType(slide.SlideType) == types.SlideTypeSection {
+		return true
+	}
+	if strings.EqualFold(slide.LayoutID, "section") {
+		return true
+	}
+	for _, l := range layouts {
+		if l.ID != slide.LayoutID {
+			continue
+		}
+		if l.CanonicalType == types.CanonicalLayoutSectionDivider {
+			return true
+		}
+		for _, tag := range l.Tags {
+			if tag == "section-header" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isTitlePlaceholderID returns true if the placeholder ID targets the title area

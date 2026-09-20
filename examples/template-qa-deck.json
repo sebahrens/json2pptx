@@ -1,5 +1,6 @@
 {
   "template": "midnight-blue",
+  "design_mode": "free",
   "output_filename": "template-qa-deck.pptx",
   "accent_strategy": "primary",
   "slides": [
@@ -44,7 +45,7 @@
     {
       "layout_id": "section",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Section Divider"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Core Layouts"}
       ]
     },
     {
@@ -65,60 +66,310 @@
       ]
     },
     {
+      "layout_id": "section",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Native Grid + SVG"}
+      ]
+    },
+    {
       "layout_id": "blank-title",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "shape_grid — hand-built three-card row"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Integrated Operating Model"}
       ],
       "shape_grid": {
-        "columns": 3,
-        "gap": 6,
+        "bounds": {"x": 7, "y": 21, "width": 86, "height": 68},
+        "columns": [24, 24, 24, 28],
+        "gap": 4,
+        "row_gap": 5,
         "rows": [
           {
-            "auto_height": true,
+            "height": 13,
             "cells": [
-              {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Discover\nUnderstand the current state", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Design\nFrame the target state", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Deliver\nMove the organisation", "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+              {"col_span": 4, "shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Native grid cells orchestrate the operating cadence; svggen diagrams carry the analytical layer", "size": 13, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+            ]
+          },
+          {
+            "height": 18,
+            "connector": {"style": "arrow", "color": "666666", "width": 1.25},
+            "cells": [
+              {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "1  Sense\nSignals + demand", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6}}},
+              {"shape": {"geometry": "chevron", "fill": "accent2", "text": {"content": "2  Decide\nPortfolio choices", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6}}},
+              {"shape": {"geometry": "chevron", "fill": "accent3", "text": {"content": "3  Mobilise\nSquads + funding", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6}}},
+              {"shape": {"geometry": "chevron", "fill": "accent4", "text": {"content": "4  Learn\nEvidence loop", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6}}}
+            ]
+          },
+          {
+            "height": 44,
+            "cells": [
+              {"col_span": 2, "diagram": {"type": "bar", "title": "svggen operating cadence", "width": 1000, "height": 370, "data": {"categories": ["Intake", "Decide", "Mobilise", "Learn"], "series": [
+                {"name": "Current", "values": [2.1, 2.4, 2.8, 1.9]},
+                {"name": "Target", "values": [4.2, 4.5, 4.0, 4.3]}
+              ]}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent2", "line": {"color": "accent2", "width": 1.5}, "icon": {"name": "shield", "fill": "#FFFFFF", "position": "top", "scale": 0.24}, "text": {"content": "<b>Control tower</b>\nOne intake, one forum, one benefit ledger.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 10, "inset_right": 10, "inset_bottom": 8}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "line": {"color": "accent3", "width": 1.5}, "icon": {"name": "activity", "fill": "#FFFFFF", "position": "top", "scale": 0.24}, "text": {"content": "<b>Measurement spine</b>\nOutcome metrics and exception triggers stay visible.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 10, "inset_right": 10, "inset_bottom": 8}}}
+            ]
+          },
+          {
+            "height": 25,
+            "cells": [
+              {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Weekly\nportfolio triage", "size": 11, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Monthly\nbenefit review", "size": 11, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Quarterly\ncapacity reset", "size": 11, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent4", "text": {"content": "Always-on\nrisk sensing", "size": 11, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
             ]
           }
         ]
       }
     },
     {
-      "layout_id": "two-column",
+      "layout_id": "blank",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Comparison — comparison-2col pattern"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Transformation Comparison"}
+      ],
+      "shape_grid": {
+        "bounds": {"x": 7, "y": 21, "width": 86, "height": 68},
+        "columns": [18, 18, 30, 34],
+        "gap": 4,
+        "row_gap": 5,
+        "rows": [
+          {
+            "height": 12,
+            "cells": [
+              {"col_span": 4, "shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Native comparison cards frame the case for change; svggen matrix shows where to sequence work", "size": 13, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+            ]
+          },
+          {
+            "height": 13,
+            "cells": [
+              {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "TODAY", "size": 12, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "TARGET STATE", "size": 12, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+            ]
+          },
+          {
+            "height": 27,
+            "cells": [
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Work intake</b>\nManual requests, duplicate triage, unclear ownership.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Release rhythm</b>\nQuarterly batches with late risk discovery.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9}}},
+              {"col_span": 2, "row_span": 2, "diagram": {"type": "matrix_2x2", "title": "svggen sequencing matrix", "width": 900, "height": 300, "fit_mode": "contain", "data": {"x_label": "Implementation effort", "y_label": "Business value", "quadrant_labels": ["Quick wins", "Strategic bets", "Fill-ins", "Defer"], "quadrant_opacity": 0.16, "quadrants": [
+                {"label": "Quick wins", "items": ["Workflow status", "SLO alerts"]},
+                {"label": "Strategic bets", "items": ["Platform API", "Data product spine"]},
+                {"label": "Fill-ins", "items": ["Template cleanup"]},
+                {"label": "Defer", "items": ["Legacy import edge cases"]}
+              ]}}}
+            ]
+          },
+          {
+            "height": 27,
+            "cells": [
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "line": {"color": "accent3", "width": 1.25}, "icon": {"name": "layout-dashboard", "fill": "#FFFFFF", "position": "top", "scale": 0.20}, "text": {"content": "<b>Single workflow</b>\nAutomated routing, visible status, clear decision rights.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 9, "inset_right": 9, "inset_bottom": 8}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent3", "width": 1.25}, "text": {"content": "<b>Continuous delivery</b>\nWeekly increments, guardrails, and benefit checkpoints.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9}}}
+            ]
+          },
+          {
+            "height": 21,
+            "cells": [
+              {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Codify hand-offs", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Instrument flow", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Automate controls", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent4", "text": {"content": "Scale governance", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "blank",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Maturity Roadmap"}
+      ],
+      "shape_grid": {
+        "bounds": {"x": 7, "y": 21, "width": 86, "height": 68},
+        "columns": [16, 16, 16, 16, 36],
+        "gap": 4,
+        "row_gap": 5,
+        "rows": [
+          {
+            "height": 13,
+            "cells": [
+              {"col_span": 5, "shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Roadmap replaces the top-down triangle with explicit work packages, evidence, and a rendered trend line", "size": 13, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+            ]
+          },
+          {
+            "height": 18,
+            "connector": {"style": "arrow", "color": "666666", "width": 1.25},
+            "cells": [
+              {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Initial\n0-30 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Defined\n30-60 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Managed\n60-90 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent4", "text": {"content": "Optimised\n90+ days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"row_span": 2, "diagram": {"type": "line_chart", "title": "svggen maturity trajectory", "data": {"categories": ["Baseline", "30d", "60d", "90d", "Run"], "series": [
+                {"name": "Control maturity", "values": [1.0, 1.8, 2.7, 3.5, 4.2]},
+                {"name": "Delivery confidence", "values": [1.2, 2.0, 2.9, 3.8, 4.5]}
+              ]}, "style": {"show_legend": true}}}
+            ]
+          },
+          {
+            "height": 36,
+            "cells": [
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent1", "width": 1.25}, "text": {"content": "<b>Stabilise</b>\nMap demand\nClean ownership\nCreate backlog", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Standardise</b>\nDecision forums\nPortfolio rules\nMetric baseline", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent3", "width": 1.25}, "text": {"content": "<b>Instrument</b>\nFlow telemetry\nBenefit ledger\nRisk triggers", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent4", "width": 1.25}, "text": {"content": "<b>Optimise</b>\nCapacity model\nScenario review\nContinuous reset", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8}}}
+            ]
+          },
+          {
+            "height": 33,
+            "cells": [
+              {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Governance proof points\nDecision latency, blocked work, exception aging", "size": 10.5, "bold": true, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 12, "inset_right": 10}}},
+              {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Delivery proof points\nThroughput, predictability, benefit realisation", "size": 10.5, "bold": true, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 12, "inset_right": 10}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent1", "line": {"color": "accent1", "width": 1.5}, "icon": {"name": "clock", "fill": "#FFFFFF", "position": "left"}, "text": {"content": "<b>Next checkpoint</b>\nRefresh evidence pack and retire one manual control.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 8, "inset_right": 8}}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "section",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Bar Callouts"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Vendor Scores"}
       ],
       "pattern": {
-        "name": "comparison-2col",
+        "name": "horizontal-bar-with-callouts",
         "values": {
-          "header_left": "Today",
-          "header_right": "Target State",
-          "rows": [
-            {"left": "Manual hand-offs between teams", "right": "Automated workflow with status visibility"},
-            {"left": "Quarterly release cadence", "right": "Continuous delivery, weekly increments"},
-            {"left": "Siloed reporting in spreadsheets", "right": "Single source of truth in the platform"},
-            {"left": "Reactive incident response", "right": "Proactive monitoring and SLOs"}
+          "max_value": 100,
+          "unit": "%",
+          "bars": [
+            {"label": "Vendor A", "value": 87, "callout": "Strongest on price; weakest on support SLA."},
+            {"label": "Vendor B", "value": 72, "callout": "Preferred for enterprise; long implementation cycles."},
+            {"label": "Vendor C", "value": 64, "callout": "Best APIs and ecosystem fit, mid-market focus."},
+            {"label": "Vendor D", "value": 51, "callout": "Solid baseline product; underinvesting in security certifications."},
+            {"label": "Vendor E", "value": 33, "callout": "New entrant; track quarterly for capability maturation."}
+          ]
+        },
+        "callout": {"text": "Vendor A and B advance to the BAFO round.", "emphasis": "bold"}
+      }
+    },
+    {
+      "layout_id": "section",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Consulting Grids"}
+      ]
+    },
+    {
+      "slide_type": "blank",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Workstream Overview"}
+      ],
+      "shape_grid": {
+        "bounds": {"x": 7, "y": 21, "width": 86, "height": 68},
+        "gap": 8,
+        "columns": 3,
+        "rows": [
+          {
+            "height": 15,
+            "cells": [
+              {"shape": {"geometry": "rect", "fill": "accent1", "text": {"content": "Technology", "size": 12, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "rect", "fill": "accent2", "text": {"content": "People", "size": 12, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
+              {"shape": {"geometry": "rect", "fill": "accent3", "text": {"content": "Process", "size": 12, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}}
+            ]
+          },
+          {
+            "height": 42,
+            "cells": [
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Cloud Migration\n\nMigrate core services\nTarget: Q2\nBudget: $2.1M", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Org Restructure\n\nAlign teams to products\nTarget: Q1\nBudget: $400K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Agile Adoption\n\nTransition to SAFe\nTarget: Q2\nBudget: $300K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}}
+            ]
+          },
+          {
+            "height": 43,
+            "cells": [
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Data Platform\n\nBuild unified lake\nTarget: Q3\nBudget: $1.5M", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Talent Acquisition\n\nHire engineers + PMs\nTarget: Q3\nBudget: $800K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Automation\n\nCI/CD and monitoring\nTarget: Q2\nBudget: $250K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}}
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "layout_id": "section",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Quote Cluster"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Stakeholder Quotes"}
+      ],
+      "pattern": {
+        "name": "quote-cluster",
+        "values": {
+          "quotes": [
+            {"text": "The new platform cut our cycle time in half.", "name": "J. Lin", "title": "Head of Operations"},
+            {"text": "Our analysts finally trust the numbers they see.", "name": "P. Reyes", "title": "Director of Finance"},
+            {"text": "Adoption was easier than any tool we have rolled out.", "name": "K. Muller", "title": "CTO"},
+            {"text": "We are catching issues weeks earlier than before.", "name": "S. Patel", "title": "VP Customer Success"},
+            {"text": "Reporting that used to take days is now a click.", "name": "M. Tanaka", "title": "Regional Controller"},
+            {"text": "The team's data fluency has stepped up across the board.", "name": "A. Okafor", "title": "Chief Data Officer"}
           ]
         }
       }
     },
     {
+      "layout_id": "section",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Team Bios"}
+      ]
+    },
+    {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Journey — journey-maturity-model pattern (current: Defined)"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Core Team"}
       ],
       "pattern": {
-        "name": "journey-maturity-model",
+        "name": "team-bios",
         "values": {
-          "stages": [
-            {"label": "Initial", "description": "Ad hoc processes; no formal practices in place."},
-            {"label": "Developing", "description": "Repeatable practices; informal governance."},
-            {"label": "Defined", "description": "Standardised practices; documented playbooks.", "current": true},
-            {"label": "Managed", "description": "Quantitatively measured outcomes; continuous review."},
-            {"label": "Optimising", "description": "Continuous improvement embedded across the organisation."}
+          "members": [
+            {"name": "Jane Smith", "role": "Project Lead", "bio": "10 years in supply-chain strategy. Previously at McKinsey."},
+            {"name": "Arun Patel", "role": "Lead Engineer", "bio": "Built data platforms at two scale-ups. MIT alumnus."},
+            {"name": "Lila Romero", "role": "Design Lead", "bio": "Service-design specialist. Ex-IDEO, ex-Frog."},
+            {"name": "Tom Becker", "role": "Client Partner", "bio": "Account director for top-10 retailers. Frankfurt office."}
           ]
         }
+      }
+    },
+    {
+      "layout_id": "section",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Value Chain"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Value Chain"}
+      ],
+      "pattern": {
+        "name": "value-chain",
+        "values": {
+          "steps": [
+            {"label": "Extraction", "description": "Mining raw materials and managing EPC contracts."},
+            {"label": "Processing", "description": "Refining ore into intermediate inputs."},
+            {"label": "Manufacturing", "description": "Converting inputs into finished goods.", "highlight": true},
+            {"label": "Distribution", "description": "Moving product through wholesale channels."},
+            {"label": "Retail", "description": "Reaching end customers via partner stores."},
+            {"label": "Service", "description": "Supporting customers through the product lifecycle."}
+          ]
+        },
+        "callout": {"text": "Manufacturing is the focus of this year's transformation programme.", "emphasis": "bold"}
       }
     }
   ]
