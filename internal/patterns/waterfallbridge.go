@@ -48,6 +48,7 @@ const (
 	wbMaxColumns = 10
 	wbLabelMax   = 40
 	wbUnitMax    = 8
+	wbCaptionMax = 60
 )
 
 // Column type tokens.
@@ -112,6 +113,10 @@ type WaterfallBridgeColumn struct {
 type WaterfallBridgeValues struct {
 	Columns []WaterfallBridgeColumn `json:"columns"`
 	Unit    string                  `json:"unit,omitempty"`
+	// Caption states the scale once, above the bars ("EUR millions",
+	// "$m, constant FX"). A bridge has no value axis, so without it the reader
+	// has to infer the scale from the bar labels (go-slide-creator-2fq1).
+	Caption string `json:"caption,omitempty"`
 }
 
 // WaterfallBridgeOverrides reuses the standard text overrides plus a negative
@@ -149,6 +154,7 @@ func (w *waterfallBridge) Schema() *Schema {
 		map[string]*Schema{
 			"columns": ArraySchema(columnSchema, wbMinColumns, wbMaxColumns).WithDescription("Bridge columns left-to-right (3-10)"),
 			"unit":    StringSchema(wbUnitMax).WithDescription("Optional unit for value labels (e.g. \"$m\", \"%\"); a leading currency symbol renders as a prefix (\"$m\" → $210m, −$41m)"),
+			"caption": StringSchema(wbCaptionMax).WithDescription("Optional scale note rendered once above the bars (e.g. \"EUR millions\", \"$m, constant FX\"); a bridge draws no value axis, so this is where the scale is stated"),
 		},
 		[]string{"columns"},
 	).WithAdditionalProperties(false)
@@ -229,6 +235,9 @@ func (w *waterfallBridge) Validate(values, overrides any, cellOverrides map[int]
 		}
 	}
 
+	if runeLen(vals.Caption) > wbCaptionMax {
+		errs = append(errs, errMaxLength(name, "caption", wbCaptionMax, runeLen(vals.Caption)))
+	}
 	if runeLen(vals.Unit) > wbUnitMax {
 		errs = append(errs, errMaxLength(name, "unit", wbUnitMax, runeLen(vals.Unit)))
 	}
@@ -435,14 +444,32 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 
 	colsJSON, _ := json.Marshal(n)
 
+	rows := []jsonschema.GridRowInput{
+		{Height: wbBarRowPct, Cells: barCells},
+		{Height: wbLabelRowPct, Cells: labelCells},
+	}
+	// The caption takes its band off the bars, so a deck without one expands
+	// exactly as before.
+	if caption := strings.TrimSpace(vals.Caption); caption != "" {
+		rows = []jsonschema.GridRowInput{
+			{Height: wbCaptionRowPct, Cells: []*jsonschema.GridCellInput{{
+				ColSpan: n,
+				Shape: &jsonschema.ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     json.RawMessage(`{"color": "lt1", "alpha": 0}`),
+					Text:     buildWaterfallBridgeCaptionText(pptx.ConvertMarkdownEmphasis(caption), labelSize),
+				},
+			}}},
+			{Height: wbBarRowPct - wbCaptionRowPct, Cells: barCells},
+			{Height: wbLabelRowPct, Cells: labelCells},
+		}
+	}
+
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
 		ColGap:  0.01, // columns carry their own inner gutter so bridge lines can cross it
 		RowGap:  4,
-		Rows: []jsonschema.GridRowInput{
-			{Height: 85, Cells: barCells},
-			{Height: 15, Cells: labelCells},
-		},
+		Rows:    rows,
 	}
 	return grid, nil
 }
@@ -463,6 +490,10 @@ type waterfallBridgeTextObj struct {
 	Paragraphs    []waterfallBridgeParagraph `json:"paragraphs"`
 	Align         string                     `json:"align"`
 	VerticalAlign string                     `json:"vertical_align"`
+	InsetLeft     float64                    `json:"inset_left,omitempty"`
+	InsetTop      float64                    `json:"inset_top,omitempty"`
+	InsetRight    float64                    `json:"inset_right,omitempty"`
+	InsetBottom   float64                    `json:"inset_bottom,omitempty"`
 }
 
 func buildWaterfallBridgeValueTextAnchored(value string, size float64, color, anchor string) json.RawMessage {
@@ -472,6 +503,58 @@ func buildWaterfallBridgeValueTextAnchored(value string, size float64, color, an
 		},
 		Align:         "ctr",
 		VerticalAlign: anchor,
+	}
+	// A label pushed out of a thin bar is anchored to the spacer edge the bar
+	// sits on, but the text box's own inset then holds it a further ~3.6pt
+	// clear, which on a 6pt bar reads as a number floating level with nothing
+	// (go-slide-creator-2fq1). Collapse the inset on that side so the label
+	// sits against its bar. Inset values are points, and the resolver only
+	// emits the block when one of them is non-zero, so the near-side value is
+	// nominal rather than a true 0.
+	switch anchor {
+	case "t": // label below the bar: close the gap above the text
+		textObj.InsetTop = wbLabelHugPt
+		textObj.InsetBottom = wbLabelGapPt
+		textObj.InsetLeft, textObj.InsetRight = wbLabelSideInsetPt, wbLabelSideInsetPt
+	case "b": // label above the bar: close the gap below the text
+		textObj.InsetBottom = wbLabelHugPt
+		textObj.InsetTop = wbLabelGapPt
+		textObj.InsetLeft, textObj.InsetRight = wbLabelSideInsetPt, wbLabelSideInsetPt
+	}
+	data, _ := json.Marshal(textObj)
+	return data
+}
+
+const (
+	// wbLabelHugPt is the near-side inset of an outside value label: nominally
+	// zero, but non-zero so the inset block is emitted at all instead of
+	// falling back to PowerPoint's 0.05in default.
+	wbLabelHugPt = 0.01
+	// wbLabelGapPt is the far-side inset, kept small so a label anchored to one
+	// edge does not collide with the next column's chrome.
+	wbLabelGapPt = 1.0
+	// wbLabelSideInsetPt keeps a long value label off the column gutter.
+	wbLabelSideInsetPt = 1.0
+)
+
+const (
+	// wbBarRowPct / wbLabelRowPct are the pattern's two bands: bars over
+	// column labels. wbCaptionRowPct is taken off the bar band when a caption
+	// is supplied.
+	wbBarRowPct     = 85.0
+	wbLabelRowPct   = 15.0
+	wbCaptionRowPct = 7.0
+)
+
+// buildWaterfallBridgeCaptionText renders the scale note: small, dk2, and
+// right-aligned so it reads as a chart annotation rather than a second title.
+func buildWaterfallBridgeCaptionText(caption string, size float64) json.RawMessage {
+	textObj := waterfallBridgeTextObj{
+		Paragraphs: []waterfallBridgeParagraph{
+			{Content: caption, Size: size, Color: "dk2", Align: "r"},
+		},
+		Align:         "r",
+		VerticalAlign: "ctr",
 	}
 	data, _ := json.Marshal(textObj)
 	return data

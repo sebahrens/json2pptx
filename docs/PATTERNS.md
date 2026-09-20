@@ -132,7 +132,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Two parallel process tracks | `process-grid-2row` | Two rows × 3–6 phase columns sharing the same N columns; dk2 row-label column on the left, per-row accent fill |
 | Porter / supply value chain | `value-chain` | 4–10 step columns with bold label + 1–3 line description |
 | Maturity ladder / current-state journey | `journey-maturity-model` | 3–6 stage columns with numbered headers, description, and optional 'where we are' marker |
-| P&L walk / cost-driver bridge | `waterfall-bridge` | 3–10 columns of total + delta + subtotal bars; floating deltas with auto-computed subtotals, grey bridge lines between bar levels; `unit` currency symbols render as a prefix (`"$m"` → `$210m`), value labels move outside bars too thin to hold them |
+| P&L walk / cost-driver bridge | `waterfall-bridge` | 3–10 columns of total + delta + subtotal bars; floating deltas with auto-computed subtotals, grey bridge lines between bar levels; `unit` currency symbols render as a prefix (`"$m"` → `$210m`), value labels move outside bars too thin to hold them and sit against the bar rather than clear of it; optional `caption` states the scale once, since a bridge draws no value axis |
 | Value / cost driver tree | `driver-tree` | Root metric → 2–4 branches → 1–4 leaves each, with optional per-branch annotations (for **people/role** hierarchies use svggen `org_chart` instead) |
 | Temporal sequence | `timeline-horizontal` | Date-labeled stops |
 | Layer/stack diagram | `arch-stack` | Vertical tier ordering |

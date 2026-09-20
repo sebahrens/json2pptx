@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -690,4 +691,177 @@ func waterfallBarFillForLabel(t *testing.T, grid *jsonschema.ShapeGridInput, lab
 		t.Fatalf("no bar shape found whose value text contains %q", labelFragment)
 	}
 	return found
+}
+
+// wbColumnRows returns the rows of a column's sub-grid from the bar band.
+func wbColumnRows(t *testing.T, grid *jsonschema.ShapeGridInput, barRowIdx, col int) []jsonschema.GridRowInput {
+	t.Helper()
+	cell := grid.Rows[barRowIdx].Cells[col]
+	if cell == nil || cell.Grid == nil {
+		t.Fatalf("column %d has no sub-grid", col)
+	}
+	return cell.Grid.Rows
+}
+
+// wbTextObj decodes a shape's text payload.
+func wbTextObj(t *testing.T, raw json.RawMessage) waterfallBridgeTextObj {
+	t.Helper()
+	var obj waterfallBridgeTextObj
+	if err := json.Unmarshal(raw, &obj); err != nil {
+		t.Fatalf("decode text %s: %v", raw, err)
+	}
+	return obj
+}
+
+// go-slide-creator-2fq1: a bar too thin to hold its value label puts the label
+// in the adjacent spacer. The spacer anchors it to the bar's edge, but the text
+// box's own ~3.6pt inset then held it further clear, so on a 6pt bar the number
+// floated level with nothing while every other label sat inside its bar.
+func TestWaterfallBridge_ThinBarLabelHugsItsBar(t *testing.T) {
+	p, _ := Default().Get("waterfall-bridge")
+	v := &WaterfallBridgeValues{
+		Unit: "€m",
+		Columns: []WaterfallBridgeColumn{
+			{Label: "FY24", Type: wbTypeTotal, Value: 186},
+			{Label: "Volume", Type: wbTypeDelta, Value: 42},
+			{Label: "FX", Type: wbTypeDelta, Value: -4},
+			{Label: "FY25", Type: wbTypeTotal, Value: 224},
+		},
+	}
+	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+
+	// The −4 column's label cannot fit its bar, so it lands in a spacer.
+	var outside *waterfallBridgeTextObj
+	for _, row := range wbColumnRows(t, grid, 0, 2) {
+		for _, c := range row.Cells {
+			if c == nil || c.Shape == nil || len(c.Shape.Text) == 0 {
+				continue
+			}
+			obj := wbTextObj(t, c.Shape.Text)
+			if obj.VerticalAlign == "t" || obj.VerticalAlign == "b" {
+				outside = &obj
+			}
+		}
+	}
+	if outside == nil {
+		t.Fatal("the thin bar's value label was not placed in a spacer")
+	}
+	// The inset on the side facing the bar must be collapsed, and the block
+	// must actually be emitted — the resolver skips it when every inset is 0,
+	// which falls back to PowerPoint's 0.05in default and reopens the gap.
+	near, far := outside.InsetTop, outside.InsetBottom
+	if outside.VerticalAlign == "b" {
+		near, far = outside.InsetBottom, outside.InsetTop
+	}
+	if near <= 0 {
+		t.Errorf("near-side inset = %v; must be >0 so the inset block is emitted at all", near)
+	}
+	if near > 0.1 {
+		t.Errorf("near-side inset = %vpt; the label should sit against its bar", near)
+	}
+	if far <= 0 {
+		t.Errorf("far-side inset = %v; every inset zero means the block is dropped", far)
+	}
+
+	// A bar that CAN hold its label is untouched: label inside, no insets.
+	for _, row := range wbColumnRows(t, grid, 0, 0) {
+		for _, c := range row.Cells {
+			if c == nil || c.Shape == nil || len(c.Shape.Text) == 0 {
+				continue
+			}
+			if obj := wbTextObj(t, c.Shape.Text); obj.VerticalAlign == "ctr" && obj.InsetTop != 0 {
+				t.Errorf("an in-bar label gained an inset: %+v", obj)
+			}
+		}
+	}
+}
+
+// A bridge draws no value axis, so the caption is where the scale is stated.
+func TestWaterfallBridge_CaptionStatesTheScale(t *testing.T) {
+	p, _ := Default().Get("waterfall-bridge")
+	base := func() *WaterfallBridgeValues {
+		return &WaterfallBridgeValues{
+			Unit: "€m",
+			Columns: []WaterfallBridgeColumn{
+				{Label: "FY24", Type: wbTypeTotal, Value: 186},
+				{Label: "Volume", Type: wbTypeDelta, Value: 42},
+				{Label: "FY25", Type: wbTypeTotal, Value: 228},
+			},
+		}
+	}
+	ctx := ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}
+
+	// No caption: two bands, exactly as before.
+	plain, err := p.Expand(ctx, base(), nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if len(plain.Rows) != 2 {
+		t.Fatalf("without a caption the grid should keep its two bands, got %d rows", len(plain.Rows))
+	}
+	if plain.Rows[0].Height != wbBarRowPct {
+		t.Errorf("bar band = %v, want the unchanged %v", plain.Rows[0].Height, wbBarRowPct)
+	}
+
+	// With a caption: a band is taken off the bars, never off the labels.
+	v := base()
+	v.Caption = "EUR millions, constant FX"
+	grid, err := p.Expand(ctx, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if len(grid.Rows) != 3 {
+		t.Fatalf("expected caption + bars + labels, got %d rows", len(grid.Rows))
+	}
+	if grid.Rows[0].Height+grid.Rows[1].Height != wbBarRowPct {
+		t.Errorf("caption %v + bars %v should still total the %v bar band",
+			grid.Rows[0].Height, grid.Rows[1].Height, wbBarRowPct)
+	}
+	if grid.Rows[2].Height != wbLabelRowPct {
+		t.Errorf("label band = %v, want the unchanged %v", grid.Rows[2].Height, wbLabelRowPct)
+	}
+	capCell := grid.Rows[0].Cells[0]
+	if capCell == nil || capCell.Shape == nil || len(capCell.Shape.Text) == 0 {
+		t.Fatal("caption row carries no text")
+	}
+	if capCell.ColSpan != len(v.Columns) {
+		t.Errorf("caption col_span = %d, want %d so it spans the chart", capCell.ColSpan, len(v.Columns))
+	}
+	obj := wbTextObj(t, capCell.Shape.Text)
+	if obj.Paragraphs[0].Content != v.Caption {
+		t.Errorf("caption = %q, want %q", obj.Paragraphs[0].Content, v.Caption)
+	}
+	if obj.Align != "r" {
+		t.Errorf("caption align = %q, want right so it reads as an annotation", obj.Align)
+	}
+	// Whitespace-only is not a caption.
+	blank := base()
+	blank.Caption = "   "
+	blankGrid, err := p.Expand(ctx, blank, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if len(blankGrid.Rows) != 2 {
+		t.Errorf("a blank caption should not take a band, got %d rows", len(blankGrid.Rows))
+	}
+}
+
+// The caption has a budget like every other text field.
+func TestWaterfallBridge_CaptionTooLong(t *testing.T) {
+	p, _ := Default().Get("waterfall-bridge")
+	v := &WaterfallBridgeValues{
+		Caption: strings.Repeat("x", wbCaptionMax+1),
+		Columns: []WaterfallBridgeColumn{
+			{Label: "A", Type: wbTypeTotal, Value: 1},
+			{Label: "B", Type: wbTypeDelta, Value: 1},
+			{Label: "C", Type: wbTypeTotal, Value: 2},
+		},
+	}
+	err := p.Validate(v, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "caption") {
+		t.Errorf("an over-budget caption should be reported, got %v", err)
+	}
 }

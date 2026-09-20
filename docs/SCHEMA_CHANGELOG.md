@@ -102,7 +102,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
     beside a headshot renders smaller than one without; the schema description
     says so and `TEXT_BELOW_READABLE_MIN` reports it.
 
+### Added
+
+- **`waterfall-bridge` gains `values.caption` (go-slide-creator-2fq1).** A
+  bridge draws no value axis, so the scale was only ever implied by the bar
+  labels. `caption` (optional, <=60 chars) renders once above the bars, right-
+  aligned in `dk2` — "EUR millions", "$m, constant FX". It takes its band off
+  the bar row, so a deck without one expands and renders byte-identically.
+
 ### Changed
+
+- **A thin delta's value label now sits against its bar
+  (go-slide-creator-2fq1).** A bar too small to hold one line of value text
+  already moved its label into the adjacent spacer, anchored to the bar's
+  edge — but the text box's own ~3.6pt inset then held it further clear. On a
+  6pt bar that read as a number floating level with nothing while every other
+  label sat inside its bar. The near-side inset is now collapsed, so the label
+  reads as belonging to the bar it labels. In-bar labels are unchanged.
 
 - **`SEMANTIC_PATTERN_DEGRADED` splits the fallback advisories off
   `SEMANTIC_DENSITY` (go-slide-creator-kjc8l).** Eight slide kinds reported the

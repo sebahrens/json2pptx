@@ -187,7 +187,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `team-bios` | Team / 'Our People' grid of 1–8 members with a headshot (`members[].photo`) or initials placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
 | `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
-| `waterfall-bridge` | Waterfall / bridge bar chart of 3–10 columns showing P&L walks or cost-driver decomposition; floating delta bars with auto-computed subtotals |
+| `waterfall-bridge` | Waterfall / bridge bar chart of 3–10 columns showing P&L walks or cost-driver decomposition; floating delta bars with auto-computed subtotals, optional `caption` for the scale |
 
 ### Key Top-Level Fields
 
