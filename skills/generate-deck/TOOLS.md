@@ -33,6 +33,8 @@ The 4-phase workflow is **PLAN → VARY → RENDER → REPAIR**. The markers bel
 - **CONDITIONAL** — `plan_deck` (decks > 4 slides — returns the ordered slide outline with `suggested_pattern` and `skeleton` per slide).
 - **SKIPPABLE** — `recommend_pattern` (legacy pattern-only subset of `recommend_visual`), `list_patterns`, `validate_pattern`, `expand_patterns` (head-to-head candidate comparison), `get_chart_capabilities`, `get_diagram_capabilities`, `get_shape_catalog`, `list_icons`, `preview_icon`, `table_density_guide`.
 
+`export_deck` is available in the full MCP tool profile for an existing PPTX, with `json2pptx export` as its CLI counterpart: choose `format: "pdf"` for a retained PDF or `format: "notes"` for a Markdown speaker handout. The response returns `output_path`; notes export does not need LibreOffice.
+
 ### VARY
 
 - **MANDATORY** — `analyze_deck_rhythm` (act on `longest_run`, `accent_balance`, `density_cv`, `composition_score`).

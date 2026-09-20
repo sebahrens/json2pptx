@@ -92,8 +92,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.70.0 adds unsupported_visual to recommendation outputs; the raw input hash is unchanged.
 	// 4.71.0 makes image-render MCP calls cancellable and adds progress notifications;
 	// the raw input hash is unchanged.
+	// 4.72.0 adds the export_deck MCP tool and advances the tool-name fingerprint.
 	// If this fails, see file header comment.
-	const wantFingerprint = "203d5604a6bcb22d"
+	const wantFingerprint = "3a06926a5037593a"
 
 	got := schemaFingerprint()
 

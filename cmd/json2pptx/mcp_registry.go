@@ -58,6 +58,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	addTool(s, mcpGetStartedTool(), mc.handleGetStarted)
 	addTool(s, mcpGetInputSchemaTool(), handleGetInputSchema)
 	addTool(s, mcpReadPresentationTool(), handleReadPresentation)
+	addTool(s, mcpExportDeckTool(), mc.handleExportDeck)
 	addTool(s, mcpValidateOutputTool(), handleValidateOutput)
 	addTool(s, mcpDescribeFindingTool(), handleDescribeFinding)
 	addTool(s, mcpAuditPaletteTool(), handleAuditPalette)

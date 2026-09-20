@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -335,6 +336,50 @@ func pptxToPDF(ctx context.Context, pptxPath, tmpDir string) (string, error) {
 		msg += "; libreoffice said: " + stderr
 	}
 	return "", errors.New(msg)
+}
+
+// ExportPDFContext converts a PPTX and atomically retains the PDF at dst.
+// It uses LibreOffice only; ImageMagick is unnecessary for PDF export.
+func ExportPDFContext(ctx context.Context, pptxPath, dst string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	tmpDir, err := os.MkdirTemp("", "export-pdf-*")
+	if err != nil {
+		return fmt.Errorf("create PDF conversion directory: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	pdfPath, err := pptxToPDF(ctx, pptxPath, tmpDir)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return fmt.Errorf("create PDF export directory: %w", err)
+	}
+	src, err := os.Open(pdfPath)
+	if err != nil {
+		return fmt.Errorf("open converted PDF: %w", err)
+	}
+	defer src.Close()
+	out, err := os.CreateTemp(filepath.Dir(dst), ".export-pdf-*")
+	if err != nil {
+		return fmt.Errorf("create PDF export file: %w", err)
+	}
+	defer os.Remove(out.Name())
+	if _, err := io.Copy(out, src); err != nil {
+		out.Close()
+		return fmt.Errorf("copy converted PDF: %w", err)
+	}
+	if err := out.Close(); err != nil {
+		return fmt.Errorf("close PDF export: %w", err)
+	}
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := os.Rename(out.Name(), dst); err != nil {
+		return fmt.Errorf("retain PDF export: %w", err)
+	}
+	return nil
 }
 
 // errNoPDFProduced marks the case where LibreOffice exited successfully but

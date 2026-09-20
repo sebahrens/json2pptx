@@ -640,6 +640,7 @@ func TestMCPToolCatalog_MatchesRegisteredTools(t *testing.T) {
 		"mcpGetStartedTool":               mcpGetStartedTool,
 		"mcpGetInputSchemaTool":           mcpGetInputSchemaTool,
 		"mcpReadPresentationTool":         mcpReadPresentationTool,
+		"mcpExportDeckTool":               mcpExportDeckTool,
 		"mcpValidateOutputTool":           mcpValidateOutputTool,
 		"mcpDescribeFindingTool":          mcpDescribeFindingTool,
 		"mcpPreviewIconTool":              mcpPreviewIconTool,

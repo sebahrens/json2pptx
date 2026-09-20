@@ -1938,6 +1938,18 @@ var outputSchemaAnalyzeDeckRhythm = json.RawMessage(`{
   "required": ["per_slide", "aggregates", "recommendations", "composition_score"]
 }`)
 
+// --- export_deck ---
+var outputSchemaExportDeck = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "format": {"type": "string", "enum": ["pdf", "notes"]},
+    "output_path": {"type": "string"},
+    "bytes": {"type": "integer", "minimum": 0},
+    "slide_count": {"type": "integer", "minimum": 0}
+  },
+  "required": ["format", "output_path", "bytes"]
+}`)
+
 // --- read_presentation ---
 var outputSchemaReadPresentation = json.RawMessage(`{
   "type": "object",

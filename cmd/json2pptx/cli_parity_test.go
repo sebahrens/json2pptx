@@ -17,6 +17,7 @@ var mcpToCLI = map[string]string{
 	// Tools with direct CLI subcommands
 	"generate_presentation":        "generate",
 	"read_presentation":            "read",
+	"export_deck":                  "export",
 	"validate_input":               "validate",
 	"list_templates":               "skill-info",
 	"list_patterns":                "patterns list",

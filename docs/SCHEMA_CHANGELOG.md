@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`export_deck` PDF and notes handouts (go-slide-creator-c7gm.1,
+  go-slide-creator-c7gm.2).** Given an existing PPTX, `format: "pdf"` retains
+  LibreOffice's PDF conversion without rasterizing it; `format: "notes"`
+  writes a Markdown handout with one titled section and speaker notes per
+  slide, without LibreOffice. The response includes an absolute `output_path`
+  and file size. Content-hashed filenames keep deck revisions separate.
+  `json2pptx export` exposes the same formats on the CLI. Schema version
+  advances to 4.72.0 and the MCP tool-name fingerprint changes.
+
 - **Cancellable image renders and thumbnail progress (go-slide-creator-o7ii.1,
   go-slide-creator-o7ii.2).** The render image
   handlers pass the MCP call context through LibreOffice, ImageMagick, cache

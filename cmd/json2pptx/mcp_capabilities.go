@@ -311,6 +311,7 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "get_shape_catalog", AddedIn: "2.4.0"},
 		// Tools from 2.8.0
 		{Name: "read_presentation", AddedIn: "2.8.0"},
+		{Name: "export_deck", AddedIn: "4.72.0"},
 		// Tools from 3.1.0
 		{Name: "analyze_deck_rhythm", AddedIn: "3.1.0"},
 		{Name: "plan_deck", AddedIn: "3.1.0"},
@@ -708,6 +709,7 @@ func toolConstructors() map[string]func() mcp.Tool {
 		mcpGetStartedTool,
 		mcpGetInputSchemaTool,
 		mcpReadPresentationTool,
+		mcpExportDeckTool,
 		mcpValidateOutputTool,
 		mcpDescribeFindingTool,
 		mcpPreviewIconTool,

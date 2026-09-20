@@ -479,6 +479,7 @@ collapse a whole chain into one call:
 | `render_deck_thumbnails` | Render all slides to low-res thumbnails (requires LibreOffice + ImageMagick) | `render-thumbnails` |
 | `purge_render_cache` | Reclaim the on-disk render cache (renders bound it automatically; this is the deliberate reclaim) | `purge-render-cache` |
 | `read_presentation` | Extract placeholders/shapes/tables/notes from an existing PPTX (no LibreOffice) | `read` |
+| `export_deck` | Retain a PDF or Markdown speaker-notes handout from an existing PPTX | `export` |
 | `audit_palette` | Render to PNG and report ΔE between chart pics and adjacent solid-filled shapes | `audit-palette` |
 | `score_deck` | Deterministic 0-100 score with composition axis and a quality gate | `score` |
 

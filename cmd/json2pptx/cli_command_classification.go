@@ -55,6 +55,7 @@ func cliCommandClassifications() map[string]cliCommandClass {
 		// --- Agent-facing commands with an MCP counterpart (parity via mcpToCLI) ---
 		"generate":               {AgentFacing: true},
 		"read":                   {AgentFacing: true},
+		"export":                 {AgentFacing: true},
 		"validate":               {AgentFacing: true},
 		"examine-template":       {AgentFacing: true},
 		"validate-output":        {AgentFacing: true},

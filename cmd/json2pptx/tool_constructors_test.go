@@ -44,6 +44,7 @@ func TestMCPToolConstructors(t *testing.T) {
 		{"render_deck_thumbnails", mcpRenderDeckThumbnailsTool},
 		{"plan_deck", mcpPlanDeckTool},
 		{"read_presentation", mcpReadPresentationTool},
+		{"export_deck", mcpExportDeckTool},
 		{"analyze_deck_rhythm", mcpAnalyzeDeckRhythmTool},
 		{"get_shape_catalog", mcpGetShapeCatalogTool},
 		{"table_density_guide", mcpTableDensityGuideTool},

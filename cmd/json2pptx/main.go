@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.71.0"
+const SchemaVersion = "4.72.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -44,6 +44,8 @@ func dispatch() error { //nolint:gocyclo
 		return runGenerate()
 	case "read":
 		return runRead()
+	case "export":
+		return runExportDeck()
 	case "serve":
 		return runServe()
 	case "mcp":
@@ -141,6 +143,7 @@ func printUsage() {
 Commands:
   generate            Convert JSON to PPTX (default if omitted)
   read                Read PPTX and output extracted content as JSON
+  export              Export an existing PPTX to PDF or a speaker-notes handout
   validate            Validate input without generating
   preflight           Run every static check on a deck (stage-based, emits the finding envelope)
   validate-output     Check generated PPTX for OOXML correctness
