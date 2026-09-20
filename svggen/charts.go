@@ -3,6 +3,7 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/svggen/core"
@@ -1377,8 +1378,22 @@ func (lc *LineChart) drawLegendOrDirectLabels(directLabels bool, style *StyleGui
 	b := lc.builder
 
 	if directLabels {
-		drawLineDirectSeriesLabels(b, style, data, plotArea, xScale, yScale, colors, marginRight)
-		return
+		if drawLineDirectSeriesLabels(b, style, data, plotArea, xScale, yScale, colors, marginRight) {
+			return
+		}
+		// The end labels could not be stacked inside the plot without
+		// overlapping, so the series are named in a legend instead — an
+		// illegible blob at the right edge is worse than a legend
+		// (go-slide-creator-lntx).
+		b.AddFinding(Finding{
+			Code:     FindingOverflowSuppressed,
+			Message:  fmt.Sprintf("direct series labels suppressed — %d series end too close together to label inline; a legend is drawn instead", len(data.Series)),
+			Severity: "info",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReduceItems,
+				Params: map[string]any{"series": len(data.Series)},
+			},
+		})
 	}
 	if !lc.config.ShowLegend {
 		return
@@ -1437,70 +1452,152 @@ func measureDirectLabelMargin(b *SVGBuilder, style *StyleGuide, series []ChartSe
 // drawLineDirectSeriesLabels draws inline series labels at the rightmost
 // data point of each line, in the series color. Used in place of a legend
 // when the series count is in the direct-label window.
-func drawLineDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData, plotArea Rect, xScale Scale, yScale *LinearScale, colors []Color, marginRight float64) {
+func drawLineDirectSeriesLabels(b *SVGBuilder, style *StyleGuide, data ChartData, plotArea Rect, xScale Scale, yScale *LinearScale, colors []Color, marginRight float64) bool {
 	if len(data.Series) == 0 {
-		return
+		return true
+	}
+
+	labels := lineEndLabels(data, plotArea, xScale, yScale, colors)
+	if len(labels) == 0 {
+		return true
+	}
+
+	// Minimum vertical distance between two label baselines. Anything closer
+	// and the glyphs touch.
+	lineH := style.Typography.SizeSmall * lineLabelLineHeight
+	if !stackLineEndLabels(labels, plotArea, lineH) {
+		return false
 	}
 
 	b.Push()
 	b.SetFontSize(style.Typography.SizeSmall)
 	b.SetFontWeight(style.Typography.WeightMedium)
 
+	maxLabelX := plotArea.X + plotArea.W + marginRight
+	for _, l := range labels {
+		labelX := math.Min(l.x+style.Spacing.XS, maxLabelX)
+
+		// A label that had to move needs a leader back to its own line, or the
+		// reader cannot tell which series it names.
+		if math.Abs(l.labelY-l.y) > lineLabelLeaderMinShift {
+			b.SetStrokeColor(l.color.WithAlpha(lineLabelLeaderAlpha))
+			b.SetStrokeWidth(style.Strokes.WidthThin)
+			b.DrawLine(l.x, l.y, labelX-style.Spacing.XS/2, l.labelY)
+		}
+
+		b.SetTextColor(l.color)
+		b.DrawText(l.name, labelX, l.labelY, TextAlignLeft, TextBaselineMiddle)
+	}
+
+	b.Pop()
+	return true
+}
+
+const (
+	// lineLabelLineHeight is the minimum baseline-to-baseline distance between
+	// two direct series labels, as a multiple of the label font size.
+	lineLabelLineHeight = 1.45
+	// lineLabelLeaderMinShift is how far a label must move from its line's
+	// endpoint before a leader line is drawn back to it (points).
+	lineLabelLeaderMinShift = 1.5
+	// lineLabelLeaderAlpha keeps the leader quieter than the line it points at.
+	lineLabelLeaderAlpha = 0.45
+)
+
+// lineEndLabel is one series' direct label: where its line ends, and where the
+// label ends up after de-collision.
+type lineEndLabel struct {
+	name   string
+	color  Color
+	x, y   float64
+	labelY float64
+}
+
+// lineEndLabels collects the rightmost drawable point of each series.
+func lineEndLabels(data ChartData, plotArea Rect, xScale Scale, yScale *LinearScale, colors []Color) []*lineEndLabel {
+	out := make([]*lineEndLabel, 0, len(data.Series))
 	for i, series := range data.Series {
 		if len(series.Values) == 0 {
 			continue
 		}
-		// Find the rightmost data point that has both a usable x and y.
 		var lastX, lastY float64
 		found := false
 		for idx, v := range series.Values {
-			var x float64
-			switch xs := xScale.(type) {
-			case *CategoricalScale:
-				if idx >= len(data.Categories) {
-					continue
-				}
-				cat := data.Categories[idx]
-				x = plotArea.X + xs.Scale(cat)
-			case *LinearScale:
-				if idx < len(series.XValues) {
-					x = xs.Scale(series.XValues[idx])
-				} else {
-					x = xs.Scale(float64(idx))
-				}
-			case *TimeScale:
-				timeValues, err := series.GetTimeValues()
-				if err != nil || idx >= len(timeValues) {
-					continue
-				}
-				x = xs.Scale(timeValues[idx])
-			default:
+			x, ok := lineLabelPointX(series, data, idx, plotArea, xScale)
+			if !ok {
 				continue
 			}
-			y := plotArea.Y + yScale.Scale(v)
-			lastX, lastY = x, y
+			lastX, lastY = x, plotArea.Y+yScale.Scale(v)
 			found = true
 		}
 		if !found {
 			continue
 		}
-
 		color := colors[i%len(colors)]
 		if series.Color != nil {
 			color = *series.Color
 		}
-		b.SetTextColor(color)
-		// Place the label just to the right of the line's endpoint within the
-		// reserved right margin, vertically centered on the endpoint.
-		labelX := lastX + style.Spacing.XS
-		maxLabelX := plotArea.X + plotArea.W + marginRight
-		if labelX > maxLabelX {
-			labelX = maxLabelX
+		out = append(out, &lineEndLabel{name: series.Name, color: color, x: lastX, y: lastY, labelY: lastY})
+	}
+	return out
+}
+
+// lineLabelPointX resolves the x coordinate of one data point under whichever
+// scale the chart uses.
+func lineLabelPointX(series ChartSeries, data ChartData, idx int, plotArea Rect, xScale Scale) (float64, bool) {
+	switch xs := xScale.(type) {
+	case *CategoricalScale:
+		if idx >= len(data.Categories) {
+			return 0, false
 		}
-		b.DrawText(series.Name, labelX, lastY, TextAlignLeft, TextBaselineMiddle)
+		return plotArea.X + xs.Scale(data.Categories[idx]), true
+	case *LinearScale:
+		if idx < len(series.XValues) {
+			return xs.Scale(series.XValues[idx]), true
+		}
+		return xs.Scale(float64(idx)), true
+	case *TimeScale:
+		timeValues, err := series.GetTimeValues()
+		if err != nil || idx >= len(timeValues) {
+			return 0, false
+		}
+		return xs.Scale(timeValues[idx]), true
+	}
+	return 0, false
+}
+
+// stackLineEndLabels pushes labels apart so consecutive baselines are at least
+// lineH apart, keeping the stack inside the plot area. It reports false when
+// the labels cannot fit at all, in which case the caller draws a legend.
+//
+// Three series ending at 43, 44 and 44 drew all three names on top of each
+// other — one illegible blob at the right edge, with nothing to say so
+// (go-slide-creator-lntx).
+func stackLineEndLabels(labels []*lineEndLabel, plotArea Rect, lineH float64) bool {
+	if len(labels) == 0 {
+		return true
+	}
+	if float64(len(labels))*lineH > plotArea.H {
+		return false
 	}
 
-	b.Pop()
+	sort.Slice(labels, func(i, j int) bool { return labels[i].y < labels[j].y })
+
+	// Downward pass: no label may sit closer than lineH to the one above it.
+	labels[0].labelY = math.Max(labels[0].y, plotArea.Y+lineH/2)
+	for i := 1; i < len(labels); i++ {
+		labels[i].labelY = math.Max(labels[i].y, labels[i-1].labelY+lineH)
+	}
+
+	// Upward pass: if the stack overran the bottom, push it back up. The
+	// capacity check above guarantees it now fits.
+	if bottom := plotArea.Y + plotArea.H - lineH/2; labels[len(labels)-1].labelY > bottom {
+		labels[len(labels)-1].labelY = bottom
+		for i := len(labels) - 2; i >= 0; i-- {
+			labels[i].labelY = math.Min(labels[i].labelY, labels[i+1].labelY-lineH)
+		}
+	}
+	return true
 }
 
 // calculateXDomain calculates the x-axis domain for linear scales.

@@ -144,13 +144,7 @@ Supported chart types: `bar_chart`, `line_chart`, `pie_chart`, `donut_chart`, `a
 
 ### Legend defaults: direct labels for 2–4 series
 
-Bar / line / grouped-bar / area charts with 2–4 series default to **inline
-series labels** (at the line endpoint, or above the last bar of each series)
-in place of a legend — per `tokens.ChartDirectLabelMaxSeries`. Above 4 series
-the legend reappears because in-plot labels collide. Force the legend back on
-with `chart_value.style.show_legend: true`. Stacked variants and non-Cartesian
-chart types (pie, donut, scatter, radar, waterfall, funnel, gauge, treemap)
-are unaffected.
+Bar / line / grouped-bar / area charts with 2–4 series default to **inline series labels** (at the line endpoint, or above the last bar of each series) in place of a legend — per `tokens.ChartDirectLabelMaxSeries`. Above 4 series the legend reappears because in-plot labels collide. Force the legend back on with `chart_value.style.show_legend: true`. Line labels whose series end close together are stacked apart with a leader back to each line; when even stacked they will not fit, the chart draws a legend and reports `chart.overflow_suppressed`. Stacked variants and non-Cartesian chart types (pie, donut, scatter, radar, waterfall, funnel, gauge, treemap) are unaffected.
 
 ### Per-slide chart-style overrides
 
