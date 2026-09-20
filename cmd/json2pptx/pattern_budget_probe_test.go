@@ -163,6 +163,71 @@ func TestRoadmapPhasedBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestTeamBiosBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_TEAM_BIOS_BUDGET_PROBE") != "1" {
+		t.Skip("manual team-bios budget calibration probe")
+	}
+	for members := 1; members <= 8; members++ {
+		for _, field := range []string{"name", "role", "bio"} {
+			budget := teamBiosReadableBudget(t, members, field)
+			t.Logf("team-bios members=%d field=%s budget=%d", members, field, budget)
+		}
+	}
+}
+
+func teamBiosReadableBudget(t *testing.T, members int, field string) int {
+	t.Helper()
+	type geometry struct {
+		name          string
+		layouts       []types.LayoutMetadata
+		width, height int64
+	}
+	var geometries []geometry
+	for _, name := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, name)
+		geometries = append(geometries, geometry{name, layouts, width, height})
+	}
+	limit := map[string]int{"name": 60, "role": 80, "bio": 220}[field]
+	clean := func(length int) bool {
+		v := &patterns.TeamBiosValues{}
+		for i := 0; i < members; i++ {
+			v.Members = append(v.Members, patterns.TeamBiosMember{Name: "Jane Doe", Role: "Lead", Bio: "Short biography"})
+		}
+		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+		switch field {
+		case "name":
+			v.Members[0].Name = copy
+		case "role":
+			v.Members[0].Role = copy
+		case "bio":
+			v.Members[0].Bio = copy
+		}
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, geom := range geometries {
+			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "team-bios", Values: encoded},
+			}}}
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+				return false
+			}
+		}
+		return true
+	}
+	lo, hi := 0, limit
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if clean(mid) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
 func roadmapPhasedReadableBudget(t *testing.T, phases, workstreams int, field string) int {
 	t.Helper()
 	type geometry struct {

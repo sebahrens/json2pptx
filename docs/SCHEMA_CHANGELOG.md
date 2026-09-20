@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Team-bio card-count budget (go-slide-creator-tp23k.7).**
+  `team-bios` replaces its fixed 24-word bio warning with measured
+  member-count guidance: about 220 bio characters with 1–4 members and 141
+  with 5–8. The second card row reduces text height; headshots do not change
+  the text zone. The schema retains 220 as the sparse-card maximum and fit
+  reports name the member and target. Measurements used all four templates.
+  Schema version advances to 4.82.0; the input fingerprint is unchanged.
+
 - **Phased-roadmap activity budgets (go-slide-creator-tp23k.6).**
   `roadmap-phased` now emits `BODY_TOO_LONG` with the workstream, phase and
   measured activity-pill target for each supported phase/workstream count.

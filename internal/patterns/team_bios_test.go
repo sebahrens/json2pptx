@@ -274,7 +274,7 @@ func TestTeamBios_PostExpandWarnings_LongBio(t *testing.T) {
 	v := &TeamBiosValues{
 		Members: []TeamBiosMember{
 			{Name: "Jane", Role: "PM", Bio: "Short bio."},
-			{Name: "Arun", Role: "Eng", Bio: strings.Repeat("one ", teamBiosMaxBioWords+5)},
+			{Name: "Arun", Role: "Eng", Bio: strings.Repeat("one ", 56)},
 		},
 	}
 	warner, ok := p.(PostExpandWarner)
@@ -290,6 +290,9 @@ func TestTeamBios_PostExpandWarnings_LongBio(t *testing.T) {
 	}
 	if !strings.Contains(ws[0], "members[1]") {
 		t.Errorf("expected warning to cite members[1], got: %s", ws[0])
+	}
+	if !strings.Contains(ws[0], "about 220") {
+		t.Errorf("expected sparse-card copy target, got: %s", ws[0])
 	}
 }
 

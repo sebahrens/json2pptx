@@ -92,7 +92,6 @@ const (
 	teamBiosMaxMembers    = 8
 	teamBiosMaxPerRow     = 4
 	teamBiosMinPerRow     = 1
-	teamBiosMaxBioWords   = 24 // ~2 short lines at ~10pt body
 	teamBiosNameMaxChars  = 60
 	teamBiosRoleMaxChars  = 80
 	teamBiosBioMaxChars   = 220
@@ -128,12 +127,21 @@ func (t *teamBios) NewValues() any       { return &TeamBiosValues{} }
 func (t *teamBios) NewOverrides() any    { return &TeamBiosOverrides{} }
 func (t *teamBios) NewCellOverride() any { return &TeamBiosCellOverride{} }
 
+// Measured with TestTeamBiosBudgetProbe across all four bundled templates at
+// default sizes. A fifth member adds a second card row and halves text height.
+func teamBiosReadableBioBudget(members int) int {
+	if members > 4 {
+		return 141
+	}
+	return teamBiosBioMaxChars
+}
+
 func (t *teamBios) Schema() *Schema {
 	memberSchema := ObjectSchema(
 		map[string]*Schema{
 			"name":        StringSchema(teamBiosNameMaxChars).WithDescription("Person's full name (rendered bold)"),
 			"role":        StringSchema(teamBiosRoleMaxChars).WithDescription("Role or title (rendered in accent color)"),
-			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio (~2 lines). Long bios emit BODY_TOO_LONG so agents can trim or split."),
+			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio. Approximate readable limit: 220 characters with 1-4 members, 141 with 5-8; longer bios emit BODY_TOO_LONG."),
 			"photo":       PhotoSchema("Headshot, cover-cropped to the photo frame; omit it to draw the initials placeholder (alt defaults to the member's name and role)", teamBiosPhotoAltMaxChars),
 			"photo_label": StringSchema(teamBiosPhotoMaxChars).WithDescription("Label centred in the initials placeholder when no photo is given; defaults to initials derived from name"),
 		},
@@ -216,20 +224,19 @@ func (t *teamBios) Validate(values, overrides any, cellOverrides map[int]any) er
 	return errors.Join(errs...)
 }
 
-// PostExpandWarnings emits a BODY_TOO_LONG warning when any member's bio
-// exceeds the ~2-line budget (24 whitespace-separated words). The warning is
-// surfaced as a FitFinding so the agent can trim or split.
+// PostExpandWarnings reports bios past the measured budget for the card count.
 func (t *teamBios) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*TeamBiosValues)
 	if !ok || v == nil {
 		return nil
 	}
 	var warnings []string
+	budget := teamBiosReadableBioBudget(len(v.Members))
 	for i, m := range v.Members {
-		if wordCount(m.Bio) > teamBiosMaxBioWords {
+		if n := runeLen(m.Bio); n > budget {
 			warnings = append(warnings, fmt.Sprintf(
-				"%s: team-bios members[%d].bio exceeds the ~2-line budget (%d words > %d); trim to a one-line summary or move the detail off-slide",
-				ErrCodeBodyTooLong, i, wordCount(m.Bio), teamBiosMaxBioWords))
+				"%s: team-bios members[%d].bio is %d characters; %d members hold about %d bio characters per card before text shrinks below the readable minimum — shorten the bio or split the team across slides",
+				ErrCodeBodyTooLong, i, n, len(v.Members), budget))
 		}
 	}
 	return warnings
@@ -464,11 +471,4 @@ func deriveInitials(name string) string {
 		return "?"
 	}
 	return string(initials)
-}
-
-// wordCount returns the number of whitespace-separated tokens in s. Used to
-// decide when a bio overruns the ~2-line budget.
-func wordCount(s string) int {
-	fields := strings.Fields(s)
-	return len(fields)
 }

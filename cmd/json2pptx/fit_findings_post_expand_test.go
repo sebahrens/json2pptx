@@ -144,8 +144,40 @@ func TestRoadmapPhasedBudgetWarningReachesFitReportAcrossTemplates(t *testing.T)
 	}
 }
 
+func TestTeamBiosBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.TeamBiosValues{}
+	for i := 0; i < 5; i++ {
+		values.Members = append(values.Members, patterns.TeamBiosMember{Name: "Jane Doe", Role: "Lead", Bio: "Short"})
+	}
+	values.Members[4].Bio = strings.Repeat("word ", 30)
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range schemaMaximaTemplates {
+		t.Run(name, func(t *testing.T) {
+			layouts, width, height := schemaMaximaLayouts(t, name)
+			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title",
+				Pattern: &PatternInput{Name: "team-bios", Values: encoded},
+			}}}
+			found := false
+			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
+				if finding.Code == patterns.ErrCodeBodyTooLong &&
+					strings.Contains(finding.Message, "members[4].bio") &&
+					strings.Contains(finding.Message, "about 141 bio characters") {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatal("team-bios budget missing from fit report")
+			}
+		})
+	}
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
-// own content: a chart panel with no chart, and two bios over the budget.
+// own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {
 	const longBio = "Jane has spent more than ten years designing and running supply-chain strategy programmes for retailers and industrial groups across Europe and Asia, most recently at McKinsey."
 	return &PresentationInput{
@@ -163,7 +195,10 @@ func postExpandDeck() *PresentationInput {
 					Name: "team-bios",
 					Values: json.RawMessage(`{"members":[
 						{"name":"Jane Smith","role":"Project Lead","bio":"` + longBio + `"},
-						{"name":"Arun Patel","role":"Lead Engineer","bio":"` + longBio + `"}
+						{"name":"Arun Patel","role":"Lead Engineer","bio":"` + longBio + `"},
+						{"name":"Lila Romero","role":"Design Lead","bio":"Short bio."},
+						{"name":"Tom Becker","role":"Client Partner","bio":"Short bio."},
+						{"name":"Maya Chen","role":"Analyst","bio":"Short bio."}
 					]}`),
 				},
 			},

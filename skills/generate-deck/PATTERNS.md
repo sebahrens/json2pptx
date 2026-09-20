@@ -71,6 +71,8 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Phased roadmaps.** `roadmap-phased` activity pills shrink as phase columns and workstream rows increase. At default font sizes, an 8-phase, 6-workstream grid holds about 32 characters per activity; a 2-phase, 2-workstream grid holds the full 80. `show_pattern` lists the measured target for each 2–8 phase by 2–6 workstream combination. `BODY_TOO_LONG` identifies the exact workstream and phase item to shorten.
 
+**Team bios.** `team-bios` has about 220 readable bio characters per card with 1–4 members and 141 with 5–8, at default font sizes. The fifth member adds a second card row. A headshot changes the photo zone but not this bio target. `BODY_TOO_LONG` names the member and target; move longer biographies to a separate slide.
+
 ---
 
 ## Text Capacity Awareness
