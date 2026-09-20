@@ -232,20 +232,30 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"process-flow":                 0.0,
 	"process-flow-compact":         9.1,
 	"process-grid-2row":            0.0,
-	"pull-quote":                   17.3,
-	"pyramid":                      9.2,
-	"quote-cluster":                6.7,
-	"roadmap-phased":               5.0,
-	"scqa-summary":                 7.4,
-	"stat-hero":                    7.4,
-	"strategy-house":               8.2,
-	"stylish-panels":               6.4,
-	"swimlane":                     5.5,
-	"table-highlight":              6.7,
-	"team-bios":                    5.5,
-	"timeline-horizontal":          6.2,
-	"value-chain":                  8.2,
-	"waterfall-bridge":             7.2,
+	// pull-quote's maximum got tighter on purpose: values.image added a
+	// headshot column, so the schema now permits a 500-character quote NEXT TO
+	// a photo, and the quote column loses a quarter of its width. Measured
+	// 17.3pt before the column existed, 15.1pt with it at the default 25%
+	// width. The capability is worth the 2.2pt: the alternative was cutting the
+	// quote's maxLength, which would reject decks that validate today. The
+	// schema's image description tells agents a photographed quote must be
+	// shorter, and TEXT_BELOW_READABLE_MIN still fires on the quote cell — the
+	// column is a sibling of the quote, not a wrapper around it, precisely so
+	// the readability preflight keeps seeing it (go-slide-creator-hdpq).
+	"pull-quote":          15.1,
+	"pyramid":             9.2,
+	"quote-cluster":       6.7,
+	"roadmap-phased":      5.0,
+	"scqa-summary":        7.4,
+	"stat-hero":           7.4,
+	"strategy-house":      8.2,
+	"stylish-panels":      6.4,
+	"swimlane":            5.5,
+	"table-highlight":     6.7,
+	"team-bios":           5.5,
+	"timeline-horizontal": 6.2,
+	"value-chain":         8.2,
+	"waterfall-bridge":    7.2,
 }
 
 // coherentMaximum applies the cross-field rules a pattern enforces but its

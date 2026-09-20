@@ -6,6 +6,31 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ## Unreleased
 
+### Added
+
+- **Real pictures in `team-bios` and `pull-quote` (go-slide-creator-hdpq).** An
+  "Our team" page and a customer quote with a headshot — two of the most common
+  slides in a pitch or credentials deck — could only be built as a raw
+  `shape_grid`, abandoning the pattern's own sizing, because neither pattern had
+  anywhere to put an image.
+  - `team-bios` gains `values.members[].photo` and `pull-quote` gains
+    `values.image`, both the `{path | url, alt}` reference `image-text-split`
+    already uses: relative paths resolve against the deck JSON directory, URLs
+    are fetched and cached, and the picture is cover-cropped to its frame.
+  - A `team-bios` member without a photo keeps the initials tile, so
+    photographed and un-photographed people mix on one slide; `photo_label` now
+    applies only to that fallback. `pull-quote` without an image is unchanged.
+  - `pull-quote` also gains `overrides.image_side` (`left` default / `right`)
+    and `overrides.image_width_pct` (15–40, default 25). The headshot is a
+    sibling column of the quote, not a wrapper around it, so the readability
+    preflight still measures the quote text.
+  - Alt text defaults to the person: the member's name and role, or the
+    quote's attribution and role.
+  - Both patterns' `version` goes to 2.
+  - A photographed quote has a quarter less width, so a 500-character quote
+    beside a headshot renders smaller than one without; the schema description
+    says so and `TEXT_BELOW_READABLE_MIN` reports it.
+
 ### Changed
 
 - **Embedded chart and diagram fonts are subsetted (go-slide-creator-i0ep).**

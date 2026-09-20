@@ -148,11 +148,11 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Executive summary (key messages) | `exec-summary` | 3–5 bold lead-in conclusions (≤90 chars) each with one supporting sentence (≤200 chars), rules between rows, optional `bottom_line` ask (a pointing accent flag labelled BOTTOM LINE, then the statement in a tinted box); answer-first rather than an SCQA arc |
 | Deck section list | `agenda` | Numbered section outline |
 | Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items) |
-| Team / 'Our People' page | `team-bios` | 1–8 named people with photo placeholder + role + short bio, up to 4 per row |
+| Team / 'Our People' page | `team-bios` | 1–8 named people with a headshot (or initials placeholder) + role + short bio, up to 4 per row |
 | Joint-venture / engagement-team paired roles | `dual-org-ladder` | Two parallel columns of 2–6 paired role cards with an org-name header above each column (optional connector line per row) |
 | Icon + caption row | `icon-row` | Visual categories, 3–5 items |
 | Photo / case study beside text | `image-text-split` | One `image` (`path` resolved against the deck dir, or `url`) beside eyebrow + heading + body + ≤5 bullets and 0–3 result `metrics`; `image_side` left/right, `image_width_pct` 30–60. Without an image it draws a dashed placeholder (`image_label`). Implements `ImageAssetPattern` so hosts resolve its image like a shape_grid image cell |
-| Callout / testimonial | `pull-quote` | Attributed quotation |
+| Callout / testimonial | `pull-quote` | Attributed quotation, optionally beside a headshot |
 | Stakeholder quote cluster | `quote-cluster` | 3–8 attributed quote bubbles in a 3-column grid (voice-of-customer slides) |
 
 ### Refined-consulting bias in the recommender (J2P-STYLE-008)
@@ -219,7 +219,39 @@ Grid-shaped patterns — those that emit multiple peer cells through the shape g
 
 These patterns have structurally determined accent logic and do not expose `cell_accent_mode`:
 
-- **Single-cell patterns** (stat-hero, pull-quote): one text block, no variation needed. (pull-quote's grid holds the quote and its attribution in separate rows plus an accent-rule column — see go-slide-creator-36ny — but there is still only one accent in play.)
+- **Single-cell patterns** (stat-hero, pull-quote): one text block, no variation needed. (pull-quote's grid holds the quote and its attribution in separate rows plus an accent-rule column — see go-slide-creator-36ny — and an optional headshot column beside them; there is still only one accent in play.)
+
+### Pictures in pattern values
+
+Three patterns take a real picture in their `values`, all through the same
+`{path | url, alt}` reference (`PhotoSchema` / `validatePatternPhoto` in
+`internal/patterns/pattern_photo.go`):
+
+| Pattern | Field | Without it |
+|---------|-------|------------|
+| `image-text-split` | `values.image` | Dashed wireframe placeholder labelled with `image_label` |
+| `team-bios` | `values.members[].photo` | Initials tile (`photo_label`, else initials derived from `name`) |
+| `pull-quote` | `values.image` (+ `overrides.image_side`, `overrides.image_width_pct`) | No picture column at all — the quote keeps the full width |
+
+Rules a new picture-taking pattern must follow:
+
+- Implement `ImageAssetPattern`. Its `ImageAssets` must return refs that point
+  **into** the decoded values (not copies), because the host rewrites
+  `Path` in place when it resolves a relative path or downloads a URL. A ref
+  returning a copy silently discards the resolved path.
+- The `Field` of each ref is the JSON pointer under `values`
+  (`"image"`, `"members/0/photo"`), which the host prefixes with
+  `/slides/N/pattern/values/` when it reports a finding against it.
+- Validate the reference with `validatePatternPhoto`: a reference with neither
+  `path` nor `url` renders nothing at all, and `overlay` / `text` belong to
+  shape_grid image cells, not to pattern values.
+- Give the picture its own **sibling** column or row, never a nested grid
+  wrapping the pattern's text. The readability preflight walks a slide's
+  top-level cells, so text moved inside a nested grid stops being fit-checked
+  (go-slide-creator-hdpq).
+- Measure the text against the width that is **left** after the picture's
+  column. Measuring against the full width sets a type scale the narrower
+  column cannot hold.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
 - **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column) rather than peer ordering.

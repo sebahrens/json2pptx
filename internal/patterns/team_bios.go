@@ -22,15 +22,15 @@ type teamBios struct{}
 
 func (t *teamBios) Name() string { return "team-bios" }
 func (t *teamBios) Description() string {
-	return "Team / 'Our People' grid — photo placeholder above name + role + 2-line bio per member (1–8 members, up to 4 per row)"
+	return "Team / 'Our People' grid — headshot (or initials placeholder) above name + role + 2-line bio per member (1–8 members, up to 4 per row)"
 }
 func (t *teamBios) UseWhen() string {
-	return "Team or 'Our People' slide with 1–8 members, each needing a photo placeholder above name + role + short bio; prefer card-grid when items are generic features rather than people, agenda-with-images for narrative agenda rows"
+	return "Team or 'Our People' slide with 1–8 members, each with a headshot (members[].photo) or an initials placeholder above name + role + short bio; prefer card-grid when items are generic features rather than people, agenda-with-images for narrative agenda rows"
 }
 func (t *teamBios) NotWhen() string {
 	return "Items are generic feature cards without a person photo (use card-grid), more than 8 members (split across slides), or items are numbered agenda sections (use agenda-with-images)"
 }
-func (t *teamBios) Version() int      { return 1 }
+func (t *teamBios) Version() int      { return 2 }
 func (t *teamBios) CellsHint() string { return "1-8" }
 func (t *teamBios) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
@@ -59,10 +59,11 @@ func (t *teamBios) ExemplarValues() any {
 
 // TeamBiosMember is a single team member card.
 type TeamBiosMember struct {
-	Name       string `json:"name"`                  // Person's full name (rendered bold)
-	Role       string `json:"role"`                  // Role / title (rendered in accent color)
-	Bio        string `json:"bio,omitempty"`         // Optional short bio (~2 lines).
-	PhotoLabel string `json:"photo_label,omitempty"` // Optional label shown in the photo placeholder; defaults to the person's initials.
+	Name       string                     `json:"name"`                  // Person's full name (rendered bold)
+	Role       string                     `json:"role"`                  // Role / title (rendered in accent color)
+	Bio        string                     `json:"bio,omitempty"`         // Optional short bio (~2 lines).
+	Photo      *jsonschema.GridImageInput `json:"photo,omitempty"`       // Optional headshot {path | url, alt}; cover-cropped to the frame. Without it the initials placeholder is drawn.
+	PhotoLabel string                     `json:"photo_label,omitempty"` // Optional label shown in the photo placeholder; defaults to the person's initials. Ignored when photo is set.
 }
 
 // TeamBiosValues holds the team member cards (1–8 members).
@@ -96,11 +97,32 @@ const (
 	teamBiosRoleMaxChars  = 80
 	teamBiosBioMaxChars   = 220
 	teamBiosPhotoMaxChars = 8
+	// teamBiosPhotoAltMaxChars matches image-text-split's alt budget.
+	teamBiosPhotoAltMaxChars = 200
 )
 
 // ---------------------------------------------------------------------------
 // Interface methods
 // ---------------------------------------------------------------------------
+
+// ImageAssets exposes each member's photo so hosts resolve its path / url the
+// way they do for shape_grid image cells (go-slide-creator-hdpq).
+func (t *teamBios) ImageAssets(values any) []ImageAssetRef {
+	v, ok := values.(*TeamBiosValues)
+	if !ok || v == nil {
+		return nil
+	}
+	var refs []ImageAssetRef
+	for i := range v.Members {
+		if v.Members[i].Photo != nil {
+			refs = append(refs, ImageAssetRef{
+				Field: fmt.Sprintf("members/%d/photo", i),
+				Image: v.Members[i].Photo,
+			})
+		}
+	}
+	return refs
+}
 
 func (t *teamBios) NewValues() any       { return &TeamBiosValues{} }
 func (t *teamBios) NewOverrides() any    { return &TeamBiosOverrides{} }
@@ -112,7 +134,8 @@ func (t *teamBios) Schema() *Schema {
 			"name":        StringSchema(teamBiosNameMaxChars).WithDescription("Person's full name (rendered bold)"),
 			"role":        StringSchema(teamBiosRoleMaxChars).WithDescription("Role or title (rendered in accent color)"),
 			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio (~2 lines). Long bios emit BODY_TOO_LONG so agents can trim or split."),
-			"photo_label": StringSchema(teamBiosPhotoMaxChars).WithDescription("Optional label centred in the photo placeholder; defaults to initials derived from name"),
+			"photo":       PhotoSchema("Headshot, cover-cropped to the photo frame; omit it to draw the initials placeholder (alt defaults to the member's name and role)", teamBiosPhotoAltMaxChars),
+			"photo_label": StringSchema(teamBiosPhotoMaxChars).WithDescription("Label centred in the initials placeholder when no photo is given; defaults to initials derived from name"),
 		},
 		[]string{"name", "role"},
 	).WithAdditionalProperties(false)
@@ -145,7 +168,7 @@ func (t *teamBios) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Team / 'Our People' card grid with photo placeholder + name + role + short bio. 1–4 members render in a single row; 5–8 members render as two rows of up to four.")
+	}).WithDescription("Team / 'Our People' card grid: a headshot (members[].photo) or an initials placeholder above name + role + short bio. 1–4 members render in a single row; 5–8 members render as two rows of up to four.")
 }
 
 func (t *teamBios) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -183,6 +206,7 @@ func (t *teamBios) Validate(values, overrides any, cellOverrides map[int]any) er
 		if runeLen(m.PhotoLabel) > teamBiosPhotoMaxChars {
 			errs = append(errs, errMaxLength(name, fmt.Sprintf("members[%d].photo_label", i), teamBiosPhotoMaxChars, runeLen(m.PhotoLabel)))
 		}
+		errs = append(errs, validatePatternPhoto(name, fmt.Sprintf("members[%d].photo", i), m.Photo, teamBiosPhotoAltMaxChars)...)
 	}
 
 	if coErr := validateCellOverrideKeys(name, cellOverrides, len(v.Members), ""); coErr != nil {
@@ -308,6 +332,12 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 // ---------------------------------------------------------------------------
 
 func buildTeamBiosPhotoCell(m TeamBiosMember, accent string, photoLabelSize float64) *jsonschema.GridCellInput {
+	// A real headshot renders as a shape_grid image cell, which the generator
+	// cover-crops to the frame; the initials tile is the fallback, not the only
+	// option it used to be (go-slide-creator-hdpq).
+	if cell := patternPhotoCell(m.Photo, teamBiosPhotoAlt(m)); cell != nil {
+		return cell
+	}
 	label := strings.TrimSpace(m.PhotoLabel)
 	if label == "" {
 		label = deriveInitials(m.Name)
@@ -318,6 +348,24 @@ func buildTeamBiosPhotoCell(m TeamBiosMember, accent string, photoLabelSize floa
 			Fill:     json.RawMessage(`"lt2"`),
 			Text:     buildTeamBiosCenteredText(label, photoLabelSize, true, accent),
 		},
+	}
+}
+
+// teamBiosPhotoAlt describes a headshot for a reader who cannot see it: the
+// person and what they do, which is the whole informational content of the
+// picture on this slide.
+func teamBiosPhotoAlt(m TeamBiosMember) string {
+	name := strings.TrimSpace(m.Name)
+	role := strings.TrimSpace(m.Role)
+	switch {
+	case name != "" && role != "":
+		return name + ", " + role
+	case name != "":
+		return name
+	case role != "":
+		return role
+	default:
+		return "Team member photo"
 	}
 }
 

@@ -14,8 +14,8 @@ func TestTeamBios_Registration(t *testing.T) {
 	if p.Name() != "team-bios" {
 		t.Errorf("Name() = %q, want %q", p.Name(), "team-bios")
 	}
-	if p.Version() != 1 {
-		t.Errorf("Version() = %d, want 1", p.Version())
+	if p.Version() != 2 {
+		t.Errorf("Version() = %d, want 2", p.Version())
 	}
 	if p.UseWhen() == "" || p.NotWhen() == "" {
 		t.Errorf("UseWhen()/NotWhen() must be non-empty (D6)")

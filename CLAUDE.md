@@ -175,7 +175,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `process-flow` | Left-to-right process flow with steps and decision points |
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
 | `process-grid-2row` | Two parallel process tracks: dk2 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution) |
-| `pull-quote` | Italic quote block with attribution |
+| `pull-quote` | Italic quote block with attribution and an optional headshot column (`values.image`) |
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
 | `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quote bubbles (voice-of-customer slides), with alternating tinted fills |
@@ -186,7 +186,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
 | `table-highlight` | Options × criteria evaluation matrix (2–6 × 2–6) scored with Harvey balls (0–4), RAG dots or short text, with a highlighted recommended row / decisive column and a legend (content-sized rows) |
-| `team-bios` | Team / 'Our People' grid of 1–8 members with photo placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
+| `team-bios` | Team / 'Our People' grid of 1–8 members with a headshot (`members[].photo`) or initials placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
 | `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
 | `waterfall-bridge` | Waterfall / bridge bar chart of 3–10 columns showing P&L walks or cost-driver decomposition; floating delta bars with auto-computed subtotals |

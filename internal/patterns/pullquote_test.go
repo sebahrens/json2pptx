@@ -15,8 +15,8 @@ func TestPullQuote(t *testing.T) {
 		if p.Name() != "pull-quote" {
 			t.Errorf("Name() = %q, want %q", p.Name(), "pull-quote")
 		}
-		if p.Version() != 1 {
-			t.Errorf("Version() = %d, want 1", p.Version())
+		if p.Version() != 2 {
+			t.Errorf("Version() = %d, want 2", p.Version())
 		}
 		if p.CellsHint() != "1" {
 			t.Errorf("CellsHint() = %q, want %q", p.CellsHint(), "1")
