@@ -520,14 +520,13 @@ func generatePanelBodyXML(body string, x, y, cx, cy int64, shapeID uint32, borde
 // generatePanelGroupXML produces the complete <p:grpSp> XML for a set of panels.
 // Each panel gets a header rectangle and a body rectangle arranged as equal-width
 // columns within the given bounding box. Uses identity child transform (chOff=off, chExt=ext).
-func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string) string {
 	n := len(panels)
 	if n == 0 {
 		return ""
 	}
 
 	totalWidth := bounds.Width
-	totalHeight := bounds.Height
 
 	// Layout: equal-width panels with gaps between them.
 	// panelWidth = (totalWidth - (N-1)*gap) / N
@@ -535,15 +534,18 @@ func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, s
 	panelWidth := (totalWidth - gapTotal) / int64(n)
 
 	// Reserve an icon band at the top when any panel carries an icon; otherwise
-	// the header/body geometry matches the pre-icon layout exactly.
-	hasIcons := panelsHaveIcons(panels)
-	iconBandCY, headerCY, gapCY, bodyCY := panelColumnsBands(totalHeight, hasIcons)
+	// the header/body geometry matches the pre-icon layout exactly. The body
+	// band is sized to the tallest body's measured text and the whole group is
+	// centred in the placeholder, so a one-sentence panel is a box round a
+	// sentence rather than a box round 80% empty space
+	// (go-slide-creator-5smrk).
+	offsetY, iconBandCY, headerCY, gapCY, bodyCY := panelColumnsLayout(bounds, panels, panelWidth, fontName)
 
 	// Generate child shapes for each panel
 	var children [][]byte
 	for i, panel := range panels {
 		panelX := bounds.X + int64(i)*(panelWidth+panelGap)
-		panelY := bounds.Y
+		panelY := bounds.Y + offsetY
 		headerY := panelY + iconBandCY
 
 		headerID := shapeIDBase + uint32(i*2) + 1
@@ -568,7 +570,7 @@ func generatePanelGroupXML(panels []nativePanelData, bounds types.BoundingBox, s
 		children = append(children, []byte(bodyXML))
 	}
 
-	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
+	groupBounds := panelGroupBounds(bounds, offsetY, iconBandCY+headerCY+gapCY+bodyCY)
 	b, err := pptx.GenerateGroup(pptx.GroupOptions{
 		ID:       shapeIDBase,
 		Name:     "Panels",
@@ -688,6 +690,11 @@ const (
 	// statCardInset is the text inset for stat card shapes.
 	statCardInset int64 = 108000 // ~0.118"
 
+	// statCardCaptionSpaceAfter is the space after the caption paragraph, in
+	// hundredths of a point. Named so the content-sizing measurement budgets
+	// the same gap the renderer writes (go-slide-creator-5smrk).
+	statCardCaptionSpaceAfter int = 200
+
 	// statCardMaxCols is the maximum number of columns.
 	statCardMaxCols = 4
 )
@@ -712,7 +719,7 @@ func statCardGridLayout(n int) (cols, rows int) {
 // generateStatCardsGroupXML produces the complete <p:grpSp> XML for a grid of stat cards.
 // Each card has a hero value (large accent-colored text), a title label, and optional body text.
 // Cards with a body field that starts with "+" or "-" get an upArrow or downArrow delta indicator.
-func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string) string {
 	n := len(panels)
 	if n == 0 {
 		return ""
@@ -721,12 +728,14 @@ func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 	cols, rows := statCardGridLayout(n)
 
 	totalWidth := bounds.Width
-	totalHeight := bounds.Height
 
 	hGapTotal := int64(cols-1) * statCardGap
 	vGapTotal := int64(rows-1) * statCardGap
 	cardW := (totalWidth - hGapTotal) / int64(cols)
-	cardH := (totalHeight - vGapTotal) / int64(rows)
+	// Cards are sized to the tallest card's measured content and the grid is
+	// centred, instead of every card taking an equal share of the whole
+	// placeholder height (go-slide-creator-5smrk).
+	offsetY, cardH := statCardsLayout(bounds, panels, rows, cardW, fontName)
 
 	var children [][]byte
 	panelIdx := 0
@@ -738,7 +747,7 @@ func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 			panel := panels[panelIdx]
 
 			cardX := bounds.X + int64(col)*(cardW+statCardGap)
-			cardY := bounds.Y + int64(row)*(cardH+statCardGap)
+			cardY := bounds.Y + offsetY + int64(row)*(cardH+statCardGap)
 
 			// Each stat card uses up to 3 shape IDs: background, value text, label/body text
 			baseID := shapeIDBase + uint32(panelIdx*3) + 1
@@ -750,7 +759,7 @@ func generateStatCardsGroupXML(panels []nativePanelData, bounds types.BoundingBo
 		}
 	}
 
-	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
+	groupBounds := panelGroupBounds(bounds, offsetY, int64(rows)*cardH+vGapTotal)
 	b, err := pptx.GenerateGroup(pptx.GroupOptions{
 		ID:       shapeIDBase,
 		Name:     "Stat Cards",
@@ -838,7 +847,7 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 		paras = append(paras, pptx.Paragraph{
 			Align:      "ctr",
 			NoBullet:   true,
-			SpaceAfter: 200,
+			SpaceAfter: statCardCaptionSpaceAfter,
 			Runs: []pptx.Run{{
 				Text:     caption,
 				Lang:     "en-US",
@@ -979,11 +988,11 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 				)
 			case inserts[i].statCardsMode:
 				inserts[i].groupXML = generateStatCardsGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeFontName,
 				)
 			default:
 				inserts[i].groupXML = generatePanelGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeFontName,
 				)
 			}
 			// A native diagram group carries its alt text on its own cNvPr. The
@@ -1142,7 +1151,7 @@ func (ctx *singlePassContext) registerPanelIconInserts(slideNum int, layoutMode 
 	if n == 0 {
 		return
 	}
-	rects := panelIconRects(layoutMode, bounds, panels)
+	rects := panelIconRects(layoutMode, bounds, panels, ctx.themeFontName)
 	for i := range panels {
 		if len(panels[i].iconSVG) == 0 {
 			continue
@@ -1175,17 +1184,19 @@ func (ctx *singlePassContext) registerPanelIconInserts(slideNum int, layoutMode 
 // mirroring the geometry used by the card generators so overlays align with the
 // reserved icon band. Entries are zero-size for panels without an icon or for
 // layout modes that do not render panel icons.
-func panelIconRects(layoutMode string, bounds types.BoundingBox, panels []nativePanelData) []pptx.RectEmu {
+func panelIconRects(layoutMode string, bounds types.BoundingBox, panels []nativePanelData, fontName string) []pptx.RectEmu {
 	n := len(panels)
 	rects := make([]pptx.RectEmu, n)
 	switch layoutMode {
 	case "columns", "":
 		gapTotal := int64(n-1) * panelGap
 		panelWidth := (bounds.Width - gapTotal) / int64(n)
-		iconBandCY, _, _, _ := panelColumnsBands(bounds.Height, true)
+		// The group is content-sized and centred, so the icon band moves with
+		// it or the icons float above their own cards (go-slide-creator-5smrk).
+		offsetY, iconBandCY, _, _, _ := panelColumnsLayout(bounds, panels, panelWidth, fontName)
 		for i := range panels {
 			panelX := bounds.X + int64(i)*(panelWidth+panelGap)
-			rects[i] = panelColumnsIconRect(panelX, bounds.Y, panelWidth, iconBandCY)
+			rects[i] = panelColumnsIconRect(panelX, bounds.Y+offsetY, panelWidth, iconBandCY)
 		}
 	case "rows":
 		gapTotal := int64(n-1) * rowGap
@@ -1198,14 +1209,13 @@ func panelIconRects(layoutMode string, bounds types.BoundingBox, panels []native
 	case "stat_cards":
 		cols, rows := statCardGridLayout(n)
 		hGapTotal := int64(cols-1) * statCardGap
-		vGapTotal := int64(rows-1) * statCardGap
 		cardW := (bounds.Width - hGapTotal) / int64(cols)
-		cardH := (bounds.Height - vGapTotal) / int64(rows)
+		offsetY, cardH := statCardsLayout(bounds, panels, rows, cardW, fontName)
 		for idx := range panels {
 			row := idx / cols
 			col := idx % cols
 			cardX := bounds.X + int64(col)*(cardW+statCardGap)
-			cardY := bounds.Y + int64(row)*(cardH+statCardGap)
+			cardY := bounds.Y + offsetY + int64(row)*(cardH+statCardGap)
 			iconBandCY := statCardIconBandCY(cardH, len(panels[idx].iconSVG) > 0)
 			rects[idx] = statCardIconRect(cardX, cardY, cardW, iconBandCY)
 		}

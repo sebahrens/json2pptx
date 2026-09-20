@@ -8,6 +8,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Native `panel_layout` and `stat_cards` are sized to their content
+  (go-slide-creator-5smrk).** A columns panel group gave every body rectangle
+  the whole remaining placeholder height and a stat-card grid gave every card
+  an equal share of it, so one sentence rendered as a bordered box around
+  roughly 80% empty space and a two-line stat card as a tile three times
+  taller than its own text.
+  - Each body is now measured at the panel's own width; the band is sized to
+    the tallest body in the row (so the panels keep a shared baseline) and the
+    whole group is centred vertically in the placeholder. Stat cards are sized
+    the same way, from the hero, caption and delta lines measured at their own
+    font sizes.
+  - Content that needs the full height keeps it: the sizing only ever shrinks,
+    and a dense panel renders exactly as before. The measured height carries
+    half a line of slack so a substituted font face cannot clip the last line.
+  - No JSON, response or finding-code change — `panels[]` is authored exactly
+    as before.
+
 - **One title-length rule, measured (go-slide-creator-jcph).** Three
   contradictory numbers used to answer "is this headline too long?" on one
   deck: `title too long (106 chars, max 60)` from the quality score,

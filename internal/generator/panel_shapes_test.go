@@ -3,6 +3,8 @@ package generator
 import (
 	"encoding/xml"
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -252,7 +254,7 @@ func TestGeneratePanelGroupXML_TwoPanels(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 6000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 100)
+	result := generatePanelGroupXML(panels, bounds, 100, "")
 
 	// Should be a group shape
 	if !strings.HasPrefix(result, "<p:grpSp>") {
@@ -262,13 +264,11 @@ func TestGeneratePanelGroupXML_TwoPanels(t *testing.T) {
 		t.Error("should end with </p:grpSp>")
 	}
 
-	// Should contain chOff and chExt matching off and ext (identity transform)
-	if !strings.Contains(result, fmt.Sprintf(`<a:chOff x="%d" y="%d"/>`, bounds.X, bounds.Y)) {
-		t.Error("chOff should match group offset")
-	}
-	if !strings.Contains(result, fmt.Sprintf(`<a:chExt cx="%d" cy="%d"/>`, bounds.Width, bounds.Height)) {
-		t.Error("chExt should match group extent")
-	}
+	// Should contain chOff and chExt matching off and ext (identity transform).
+	// The group is content-sized, so the rectangle is no longer the placeholder
+	// bounds — the invariant is that the child frame equals the group's own
+	// frame (go-slide-creator-5smrk).
+	assertGroupIdentityTransform(t, result)
 
 	// Should contain 2 panel titles
 	if !strings.Contains(result, "Panel A") || !strings.Contains(result, "Panel B") {
@@ -306,7 +306,7 @@ func TestGeneratePanelGroupXML_FourPanels(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 329610, Y: 2129246, Width: 11850000, Height: 4197531}
 
-	result := generatePanelGroupXML(panels, bounds, 200)
+	result := generatePanelGroupXML(panels, bounds, 200, "")
 
 	// Should contain all 4 panel titles
 	for _, p := range panels {
@@ -338,7 +338,7 @@ func TestGeneratePanelGroupXML_SixPanels(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 300000, Y: 2000000, Width: 12000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 300)
+	result := generatePanelGroupXML(panels, bounds, 300, "")
 
 	// 6 panels should still render (readability concern noted in task)
 	spCount := strings.Count(result, "<p:sp>")
@@ -357,7 +357,7 @@ func TestGeneratePanelGroupXML_SixPanels(t *testing.T) {
 }
 
 func TestGeneratePanelGroupXML_Empty(t *testing.T) {
-	result := generatePanelGroupXML(nil, types.BoundingBox{}, 100)
+	result := generatePanelGroupXML(nil, types.BoundingBox{}, 100, "")
 	if result != "" {
 		t.Errorf("empty panels should return empty string, got %q", result)
 	}
@@ -369,7 +369,7 @@ func TestGeneratePanelGroupXML_MissingIcon(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 5000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 50)
+	result := generatePanelGroupXML(panels, bounds, 50, "")
 
 	// Should NOT contain p:pic elements when icon is nil
 	if strings.Contains(result, "<p:pic>") {
@@ -382,37 +382,78 @@ func TestGeneratePanelGroupXML_MissingIcon(t *testing.T) {
 	}
 }
 
+// groupFrame is the <a:off>/<a:ext> of a group's own transform.
+type groupFrame struct{ x, y, cx, cy int64 }
+
+var groupXfrmRe = regexp.MustCompile(
+	`<a:xfrm><a:off x="(-?\d+)" y="(-?\d+)"/><a:ext cx="(\d+)" cy="(\d+)"/><a:chOff x="(-?\d+)" y="(-?\d+)"/><a:chExt cx="(\d+)" cy="(\d+)"/></a:xfrm>`)
+
+// assertGroupIdentityTransform checks the group's child frame equals its own
+// frame, and returns that frame. A group whose chOff/chExt drift from off/ext
+// scales every child it holds.
+func assertGroupIdentityTransform(t *testing.T, groupXML string) groupFrame {
+	t.Helper()
+	m := groupXfrmRe.FindStringSubmatch(groupXML)
+	if m == nil {
+		t.Fatalf("no group xfrm found in:\n%s", groupXML)
+	}
+	n := make([]int64, 8)
+	for i := range n {
+		v, err := strconv.ParseInt(m[i+1], 10, 64)
+		if err != nil {
+			t.Fatalf("parse xfrm field %d (%q): %v", i, m[i+1], err)
+		}
+		n[i] = v
+	}
+	if n[0] != n[4] || n[1] != n[5] {
+		t.Errorf("chOff (%d,%d) != off (%d,%d)", n[4], n[5], n[0], n[1])
+	}
+	if n[2] != n[6] || n[3] != n[7] {
+		t.Errorf("chExt (%d,%d) != ext (%d,%d)", n[6], n[7], n[2], n[3])
+	}
+	return groupFrame{x: n[0], y: n[1], cx: n[2], cy: n[3]}
+}
+
+// TestGeneratePanelGroupXML_ChildOffsetArithmetic pins the group frame and the
+// header/body stacking. The group is sized to its content and centred inside
+// the placeholder, so the frame is a sub-rectangle of bounds rather than bounds
+// itself (go-slide-creator-5smrk).
 func TestGeneratePanelGroupXML_ChildOffsetArithmetic(t *testing.T) {
 	panels := []nativePanelData{
 		{title: "Only Panel", body: "- Single item"},
 	}
 	bounds := types.BoundingBox{X: 500000, Y: 1000000, Width: 4000000, Height: 3000000}
 
-	result := generatePanelGroupXML(panels, bounds, 10)
+	result := generatePanelGroupXML(panels, bounds, 10, "")
+	frame := assertGroupIdentityTransform(t, result)
 
-	// chOff must match group offset
-	expectedChOff := fmt.Sprintf(`<a:chOff x="%d" y="%d"/>`, bounds.X, bounds.Y)
-	if !strings.Contains(result, expectedChOff) {
-		t.Errorf("chOff should be %s", expectedChOff)
+	if frame.x != bounds.X || frame.cx != bounds.Width {
+		t.Errorf("group x/width = %d/%d, want %d/%d (only the height is content-sized)",
+			frame.x, frame.cx, bounds.X, bounds.Width)
+	}
+	if frame.cy >= bounds.Height {
+		t.Errorf("group height %d should be less than the placeholder's %d for a one-line body",
+			frame.cy, bounds.Height)
+	}
+	// Centred: the slack above equals the slack below, to the rounding.
+	above := frame.y - bounds.Y
+	below := (bounds.Y + bounds.Height) - (frame.y + frame.cy)
+	if diff := above - below; diff > 1 || diff < -1 {
+		t.Errorf("group is not centred: %d above, %d below", above, below)
 	}
 
-	// chExt must match group extent
-	expectedChExt := fmt.Sprintf(`<a:chExt cx="%d" cy="%d"/>`, bounds.Width, bounds.Height)
-	if !strings.Contains(result, expectedChExt) {
-		t.Errorf("chExt should be %s", expectedChExt)
-	}
-
-	// Header should start at group origin
-	expectedHeaderOff := fmt.Sprintf(`<a:off x="%d" y="%d"/>`, bounds.X, bounds.Y)
+	// Header starts at the group origin.
+	expectedHeaderOff := fmt.Sprintf(`<a:off x="%d" y="%d"/>`, frame.x, frame.y)
 	if !strings.Contains(result, expectedHeaderOff) {
-		t.Error("header offset should match group origin")
+		t.Errorf("header offset should be the group origin %s", expectedHeaderOff)
 	}
 
-	// Body Y should be offset by header height + gap
+	// Body Y is offset by the header height + gap, both still measured against
+	// the placeholder height so the furniture keeps its size.
 	headerCY := int64(float64(bounds.Height) * panelHeaderHeightRatio)
 	gapCY := int64(float64(bounds.Height) * panelGapHeightRatio)
-	bodyY := bounds.Y + headerCY + gapCY
-	expectedBodyOff := fmt.Sprintf(`<a:off x="%d" y="%d"/>`, bounds.X, bodyY)
+	bodyY := frame.y + headerCY + gapCY
+	expectedBodyOff := fmt.Sprintf(`<a:off x="%d" y="%d"/>`, frame.x, bodyY)
 	if !strings.Contains(result, expectedBodyOff) {
 		t.Errorf("body offset should be at y=%d (header=%d + gap=%d)", bodyY, headerCY, gapCY)
 	}
@@ -424,7 +465,7 @@ func TestGeneratePanelGroupXML_ValidXML(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 5000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 1)
+	result := generatePanelGroupXML(panels, bounds, 1, "")
 
 	// Verify the generated XML is well-formed by parsing it
 	var parsed interface{}
@@ -440,7 +481,7 @@ func TestGeneratePanelGroupXML_SchemeColorAssertions(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 5000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 1)
+	result := generatePanelGroupXML(panels, bounds, 1, "")
 
 	// MUST contain schemeClr for fills and borders
 	if !strings.Contains(result, "schemeClr") {
@@ -476,7 +517,7 @@ func TestGeneratePanelGroupXML_MultiPanelPositions(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 9000000, Height: 4000000}
 
-	result := generatePanelGroupXML(panels, bounds, 50)
+	result := generatePanelGroupXML(panels, bounds, 50, "")
 
 	// Calculate expected panel width: (9000000 - 2*202441) / 3
 	expectedWidth := (bounds.Width - 2*panelGap) / 3
@@ -884,7 +925,7 @@ func TestGenerateStatCardsGroupXML_ThreeCards(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 9000000, Height: 4000000}
 
-	result := generateStatCardsGroupXML(panels, bounds, 100)
+	result := generateStatCardsGroupXML(panels, bounds, 100, "")
 
 	// Should be a group shape
 	if !strings.HasPrefix(result, "<p:grpSp>") {
@@ -928,7 +969,7 @@ func TestGenerateStatCardsGroupXML_ThreeCards(t *testing.T) {
 }
 
 func TestGenerateStatCardsGroupXML_Empty(t *testing.T) {
-	result := generateStatCardsGroupXML(nil, types.BoundingBox{}, 100)
+	result := generateStatCardsGroupXML(nil, types.BoundingBox{}, 100, "")
 	if result != "" {
 		t.Error("empty panels should produce empty string")
 	}
@@ -940,7 +981,7 @@ func TestGenerateStatCardsGroupXML_ValueFallbackToTitle(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 3000000, Height: 2000000}
 
-	result := generateStatCardsGroupXML(panels, bounds, 100)
+	result := generateStatCardsGroupXML(panels, bounds, 100, "")
 
 	// When value is empty, title should be used as the display value
 	if !strings.Contains(result, "42%") {
@@ -958,7 +999,7 @@ func TestGenerateStatCardsGroupXML_SixCardsGrid(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 9000000, Height: 4000000}
 
-	result := generateStatCardsGroupXML(panels, bounds, 100)
+	result := generateStatCardsGroupXML(panels, bounds, 100, "")
 
 	// 6 cards should produce 6 child shapes
 	spCount := strings.Count(result, "<p:sp>")

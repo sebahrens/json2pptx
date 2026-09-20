@@ -121,7 +121,7 @@ func TestPanelIconRectsWithinBounds(t *testing.T) {
 	for _, mode := range []string{"columns", "rows", "stat_cards", "stylish_panels"} {
 		t.Run(mode, func(t *testing.T) {
 			panels := withIcon(3)
-			rects := panelIconRects(mode, bounds, panels)
+			rects := panelIconRects(mode, bounds, panels, "")
 			if len(rects) != len(panels) {
 				t.Fatalf("rects len = %d, want %d", len(rects), len(panels))
 			}

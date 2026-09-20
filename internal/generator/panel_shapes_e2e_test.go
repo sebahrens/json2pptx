@@ -319,7 +319,7 @@ func TestPanelNativeShapes_Golden(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 329610, Y: 2129246, Width: 11850000, Height: 4197531}
 
-	result := generatePanelGroupXML(panels, bounds, 10000)
+	result := generatePanelGroupXML(panels, bounds, 10000, "")
 
 	goldenPath := "testdata/golden/panel_columns_4.xml"
 
