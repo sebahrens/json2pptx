@@ -948,12 +948,19 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 	}
 
+	// Resolve the content rectangle before expanding patterns. Content-sized
+	// patterns must size themselves against the same rectangle the grid renderer
+	// will use, including the rhythm grid and reserved takeaway/source band.
+	geom, contentBounds := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythmGrid)
+	patternBounds := patterns.LayoutBounds{X: contentBounds.X, Y: contentBounds.Y, Width: contentBounds.CX, Height: contentBounds.CY}
+
 	// Expand compose envelope into shape_grid before downstream processing
 	if slide.Compose != nil {
 		ctx := patterns.ExpandContext{
 			Metadata:       metadata,
 			SlideWidth:     slideWidth,
 			SlideHeight:    slideHeight,
+			LayoutBounds:   patternBounds,
 			AccentStrategy: accentStrategy,
 			SlideIndex:     i,
 			SectionIndex:   sectionIndices[i],
@@ -977,6 +984,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			Metadata:       metadata,
 			SlideWidth:     slideWidth,
 			SlideHeight:    slideHeight,
+			LayoutBounds:   patternBounds,
 			AccentStrategy: accentStrategy,
 			SlideIndex:     i,
 			SectionIndex:   sectionIndices[i],
@@ -998,12 +1006,13 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			Metadata:       metadata,
 			SlideWidth:     slideWidth,
 			SlideHeight:    slideHeight,
+			LayoutBounds:   patternBounds,
 			AccentStrategy: accentStrategy,
 			SlideIndex:     i,
 			SectionIndex:   sectionIndices[i],
 			Theme:          patternThemeFromDiag(diagCtx),
 		}
-		if err := expandNestedCellPatterns(slide.ShapeGrid, nestedCtx, patterns.Default()); err != nil {
+		if err := expandNestedCellPatternsInBounds(slide.ShapeGrid, nestedCtx, contentBounds, patterns.Default()); err != nil {
 			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "shape_grid", "nested pattern", err)
 		}
 	}
@@ -1011,8 +1020,8 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	// Resolve shape_grid into raw p:sp XML fragments
 	if slide.ShapeGrid != nil {
 		// Virtual layout resolution: derive layout and bounds from template
-		var overrideBounds *pptx.RectEmu
-		var contentZone *shapegrid.ContentZone
+		overrideBounds := geom.OverrideBounds
+		contentZone := geom.Zone
 
 		// Derive the ContentZone so shape_grid bounds respect the real title
 		// height and footer clearance. resolveGridGeometry is the shared
@@ -1022,28 +1031,12 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		// layout's placeholders, while blank/virtual slides go through virtual
 		// resolution, which also drives the layout pick and override bounds
 		// (go-slide-creator-j15r, go-slide-creator-s1rd).
-		if len(layouts) > 0 {
-			geom := resolveGridGeometry(slide, layouts, slideWidth, slideHeight)
-			contentZone = geom.Zone
-			overrideBounds = geom.OverrideBounds
-			if geom.VirtualUsed {
-				spec.LayoutID = geom.LayoutID
-				slog.Info("virtual layout resolved",
-					slog.Int("slide", i+1),
-					slog.String("layout_id", geom.LayoutID),
-				)
-			}
-		}
-
-		// Rhythm grid: override content zone to enforce consistent positioning.
-		if rhythmGrid != nil {
-			// Reserve the takeaway band on the rhythm zone too, so the
-			// shared-contract reservation in resolveGridGeometry is not lost
-			// when the rhythm grid takes precedence (go-slide-creator-rdtn).
-			rhythmGeom := reserveTakeawayBand(GridGeometry{Zone: gridToContentZone(rhythmGrid), LayoutID: spec.LayoutID}, slide, layouts)
-			contentZone = rhythmGeom.Zone
-			// Clear override bounds — the grid zone takes precedence.
-			overrideBounds = nil
+		if geom.VirtualUsed {
+			spec.LayoutID = geom.LayoutID
+			slog.Info("virtual layout resolved",
+				slog.Int("slide", i+1),
+				slog.String("layout_id", geom.LayoutID),
+			)
 		}
 
 		// Use a high-start allocator to avoid colliding with template shape IDs.

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -348,6 +349,28 @@ type GridGeometry struct {
 	VirtualUsed bool
 }
 
+// patternExpansionGeometry resolves the render rectangle before a pattern or
+// compose envelope has produced a ShapeGrid. The probe makes virtual-layout
+// selection use the same branch it takes after expansion.
+func patternExpansionGeometry(slide SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, rhythmGrid *resolvedGrid) (GridGeometry, pptx.RectEmu) {
+	probe := slide
+	probe.LayoutID = canonicalGridLayoutID(probe.LayoutID, layouts)
+	if probe.ShapeGrid == nil && (probe.Pattern != nil || probe.Compose != nil) {
+		probe.ShapeGrid = &ShapeGridInput{}
+	}
+	geom := resolveGridGeometry(probe, layouts, slideWidth, slideHeight)
+	if rhythmGrid != nil {
+		layoutID := probe.LayoutID
+		if geom.VirtualUsed {
+			layoutID = geom.LayoutID
+		}
+		geom.Zone = reserveTakeawayBand(GridGeometry{Zone: gridToContentZone(rhythmGrid), LayoutID: layoutID}, probe, layouts).Zone
+		geom.OverrideBounds = nil
+	}
+	bounds := resolveGridBounds(&ShapeGridInput{}, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+	return geom, bounds
+}
+
 // resolveGridGeometry resolves the ContentZone and any bounds override for a
 // shape_grid slide using the SAME priority rules as generation:
 //
@@ -366,6 +389,7 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 	if len(layouts) == 0 {
 		return g
 	}
+	slide.LayoutID = canonicalGridLayoutID(slide.LayoutID, layouts)
 	switch {
 	case needsVirtualLayout(slide):
 		if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
@@ -386,6 +410,15 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 		}
 	}
 	return reserveTakeawayBand(g, slide, layouts)
+}
+
+func canonicalGridLayoutID(id string, layouts []types.LayoutMetadata) string {
+	if id != "" {
+		if resolved, ok := layout.ResolveCanonicalLayoutID(id, layouts); ok {
+			return resolved
+		}
+	}
+	return id
 }
 
 // gridChromeGapPt is the standard gap (points) reserved between grid content and

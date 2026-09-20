@@ -9,6 +9,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
@@ -225,8 +226,22 @@ func buildCalloutTextContent(content string, size float64, bold, italic bool, co
 // Image/Diagram/Composite is also rejected — a nested pattern occupies the
 // whole cell rectangle and is incompatible with sibling content.
 func expandNestedCellPatterns(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, reg *patterns.Registry) error {
-	if grid == nil {
+	b := pptx.RectEmu{X: ctx.LayoutBounds.X, Y: ctx.LayoutBounds.Y, CX: ctx.LayoutBounds.Width, CY: ctx.LayoutBounds.Height}
+	if b.CX <= 0 || b.CY <= 0 {
+		b = shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight)
+	}
+	return expandNestedCellPatternsInBounds(grid, ctx, b, reg)
+}
+
+// expandNestedCellPatternsInBounds gives each nested pattern its own cell's
+// usable rectangle, matching the inset rectangle used by renderNestedSubGrids.
+func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, parentBounds pptx.RectEmu, reg *patterns.Registry) error {
+	if !hasNestedCellPattern(grid) {
 		return nil
+	}
+	cellBounds, err := nestedPatternCellBounds(grid, ctx, parentBounds)
+	if err != nil {
+		return err
 	}
 	for ri := range grid.Rows {
 		for ci := range grid.Rows[ri].Cells {
@@ -235,34 +250,98 @@ func expandNestedCellPatterns(grid *jsonschema.ShapeGridInput, ctx patterns.Expa
 				continue
 			}
 			if len(cell.Pattern) > 0 {
-				if cell.Grid != nil {
-					return fmt.Errorf("grid cell row %d col %d: 'pattern' and 'grid' are mutually exclusive", ri, ci)
+				if err := expandPatternInCell(cell, ctx, cellBounds[[2]int{ri, ci}], ri, ci, reg); err != nil {
+					return err
 				}
-				if cell.Shape != nil || cell.Table != nil || cell.Icon != nil ||
-					cell.Image != nil || cell.Diagram != nil || cell.Composite != nil {
-					return fmt.Errorf("grid cell row %d col %d: nested 'pattern' is incompatible with sibling cell content (shape/table/icon/image/diagram/composite)", ri, ci)
-				}
-				var pi PatternInput
-				if err := json.Unmarshal(cell.Pattern, &pi); err != nil {
-					return fmt.Errorf("grid cell row %d col %d: invalid pattern: %w", ri, ci, err)
-				}
-				expanded, _, err := expandPattern(&pi, ctx, reg)
-				if err != nil {
-					return fmt.Errorf("grid cell row %d col %d: %w", ri, ci,
-						prefixPatternFindingPaths(err, fmt.Sprintf("rows[%d].cells[%d].pattern.", ri, ci)))
-				}
-				cell.Pattern = nil
-				cell.Grid = expanded
 			}
-			// Recurse into nested grids (covers multi-level nesting).
 			if cell.Grid != nil {
-				if err := expandNestedCellPatterns(cell.Grid, ctx, reg); err != nil {
+				if err := expandNestedCellPatternsInBounds(cell.Grid, ctx, cellBounds[[2]int{ri, ci}], reg); err != nil {
 					return err
 				}
 			}
 		}
 	}
 	return nil
+}
+
+func expandPatternInCell(cell *jsonschema.GridCellInput, ctx patterns.ExpandContext, bounds pptx.RectEmu, ri, ci int, reg *patterns.Registry) error {
+	if cell.Grid != nil {
+		return fmt.Errorf("grid cell row %d col %d: 'pattern' and 'grid' are mutually exclusive", ri, ci)
+	}
+	if cell.Shape != nil || cell.Table != nil || cell.Icon != nil ||
+		cell.Image != nil || cell.Diagram != nil || cell.Composite != nil {
+		return fmt.Errorf("grid cell row %d col %d: nested 'pattern' is incompatible with sibling cell content (shape/table/icon/image/diagram/composite)", ri, ci)
+	}
+	var pi PatternInput
+	if err := json.Unmarshal(cell.Pattern, &pi); err != nil {
+		return fmt.Errorf("grid cell row %d col %d: invalid pattern: %w", ri, ci, err)
+	}
+	ctx.LayoutBounds = patterns.LayoutBounds{X: bounds.X, Y: bounds.Y, Width: bounds.CX, Height: bounds.CY}
+	expanded, _, err := expandPattern(&pi, ctx, reg)
+	if err != nil {
+		return fmt.Errorf("grid cell row %d col %d: %w", ri, ci,
+			prefixPatternFindingPaths(err, fmt.Sprintf("rows[%d].cells[%d].pattern.", ri, ci)))
+	}
+	cell.Pattern = nil
+	cell.Grid = expanded
+	return nil
+}
+
+func nestedPatternCellBounds(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, parentBounds pptx.RectEmu) (map[[2]int]pptx.RectEmu, error) {
+	bounds := resolveGridBounds(grid, &parentBounds, nil, ctx.SlideWidth, ctx.SlideHeight)
+	cols, err := resolveColumnsDTO(grid.Columns, grid.Rows)
+	if err != nil {
+		return nil, err
+	}
+	rows := convertGridRows(grid.Rows)
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cell != nil && len(cell.Pattern) > 0 {
+				rows[ri].Cells[ci] = shapegrid.Cell{ColSpan: cell.ColSpan, RowSpan: cell.RowSpan, Group: cell.Group, Placeholder: true}
+			}
+		}
+	}
+	colGap, rowGap := grid.ColGap, grid.RowGap
+	if colGap == 0 {
+		colGap = grid.Gap
+	}
+	if rowGap == 0 {
+		rowGap = grid.Gap
+	}
+	align, ok := shapegrid.ParseVerticalAlign(grid.VerticalAlign)
+	if !ok {
+		return nil, fmt.Errorf("shape_grid: invalid vertical_align %q", grid.VerticalAlign)
+	}
+	resolved, err := shapegrid.Resolve(&shapegrid.Grid{Bounds: bounds, Columns: cols, Rows: rows, ColGap: colGap, RowGap: rowGap, VAlign: align}, pptx.NewShapeIDAllocator(nil))
+	if err != nil {
+		return nil, err
+	}
+	cellBounds := make(map[[2]int]pptx.RectEmu)
+	for _, cell := range resolved.Cells {
+		if cell.Kind == shapegrid.CellKindSubGrid {
+			b := cell.Bounds
+			inset := pptx.RectEmu{X: b.X + subGridInsetEMU, Y: b.Y + subGridInsetEMU, CX: b.CX - 2*subGridInsetEMU, CY: b.CY - 2*subGridInsetEMU}
+			if inset.CX > 0 && inset.CY > 0 {
+				b = inset
+			}
+			cellBounds[[2]int{cell.RowIdx, cell.ColIdx}] = b
+		}
+	}
+	return cellBounds, nil
+}
+
+func hasNestedCellPattern(grid *jsonschema.ShapeGridInput) bool {
+	if grid == nil {
+		return false
+	}
+	for _, row := range grid.Rows {
+		for _, cell := range row.Cells {
+			if cell != nil && (len(cell.Pattern) > 0 || hasNestedCellPattern(cell.Grid)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // resolvePatternBounds returns a GridBoundsInput from PatternInput's bounds

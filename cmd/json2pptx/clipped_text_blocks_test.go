@@ -71,7 +71,7 @@ func TestMeasuredMidWordBreakFailsTheGate(t *testing.T) {
 // TestShortLabelsPassTheGateAgain: the escalation must be about the defect, not
 // about the pattern.
 func TestShortLabelsPassTheGateAgain(t *testing.T) {
-	short := chevronDeck("Restructure", "Go global", "Decommission", "Embed", "Operate", "Commercial")
+	short := chevronDeck("Reshape", "Expand", "Retire", "Embed", "Operate", "Sell")
 	_, gate, findings := gateFor(t, short)
 	for _, f := range findings {
 		if f.Code == patterns.ErrCodeTextExceedsShape && f.Action == "shrink_or_split" {

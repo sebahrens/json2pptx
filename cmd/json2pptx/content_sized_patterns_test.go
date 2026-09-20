@@ -1,14 +1,142 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/template"
 )
+
+func TestComposePreflightMatchesGeneratedGeometry(t *testing.T) {
+	reader, err := template.OpenTemplate(filepath.Join("..", "..", "templates", "midnight-blue.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = reader.Close() }()
+	layouts, err := template.ParseLayouts(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sw, sh := template.ParseSlideDimensions(reader)
+	slide := SlideInput{LayoutID: "content", Compose: &ComposeInput{Direction: "vertical", Segments: []SegmentInput{
+		{SizePct: 40, Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"99%","label":"Uptime"}`)}},
+		{SizePct: 60, Pattern: PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$4M | ARR","98% | NRR","1K | Customers"]`)}},
+	}}}
+	preflight := expandComposeForPreflight(&PresentationInput{Slides: []SlideInput{slide}}, sw, sh, layouts...)
+	grid := preflight.Slides[0].ShapeGrid
+	if grid == nil {
+		t.Fatal("preflight did not expand compose")
+	}
+	geom := resolveGridGeometry(preflight.Slides[0], layouts, sw, sh)
+	alloc := pptx.NewShapeIDAllocator(nil)
+	alloc.SetMinID(200)
+	preflightShapes, err := resolveShapeGrid(grid, alloc, geom.OverrideBounds, geom.Zone, sw, sh, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	specs, _, _, err := convertPresentationSlides([]SlideInput{slide}, layouts, sw, sh, nil, nil, "", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(preflightShapes.Shapes) != len(specs[0].RawShapeXML) {
+		t.Fatalf("preflight %d shapes, generation %d", len(preflightShapes.Shapes), len(specs[0].RawShapeXML))
+	}
+	for i := range preflightShapes.Shapes {
+		if !bytes.Equal(preflightShapes.Shapes[i], specs[0].RawShapeXML[i]) {
+			t.Fatalf("compose shape %d differs between preflight and generation", i)
+		}
+	}
+}
+
+// The generate path must size KPI rows against the template's actual content
+// frame. On midnight-blue's content layout this is shorter than the generic
+// default used before go-slide-creator-byr2b.
+func TestGeneratePatternUsesTemplateContentHeight(t *testing.T) {
+	reader, err := template.OpenTemplate(filepath.Join("..", "..", "templates", "midnight-blue.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = reader.Close() }()
+	layouts, err := template.ParseLayouts(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sw, sh := template.ParseSlideDimensions(reader)
+	slide := SlideInput{LayoutID: "content", Pattern: &PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$4.2M | ARR", "127% | NRR", "12 days | Cycle"]`)}}
+	_, content := patternExpansionGeometry(slide, layouts, sw, sh, nil)
+	if content.CY <= 0 || content.CY >= shapegrid.DefaultBounds(sw, sh).CY {
+		t.Fatalf("unexpected midnight-blue content height: %d EMU", content.CY)
+	}
+	specs, _, _, err := convertPresentationSlides([]SlideInput{slide}, layouts, sw, sh, nil, nil, "", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(specs) != 1 || len(specs[0].RawShapeXML) == 0 {
+		t.Fatal("no pattern shapes generated")
+	}
+	re := regexp.MustCompile(`(?:a:ext|p:ext) cx="\d+" cy="(\d+)"`)
+	var maxHeight int64
+	for _, shape := range specs[0].RawShapeXML {
+		for _, m := range re.FindAllSubmatch(shape, -1) {
+			h, err := strconv.ParseInt(string(m[1]), 10, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if h > maxHeight {
+				maxHeight = h
+			}
+		}
+	}
+	if maxHeight == 0 {
+		t.Fatal("no rendered shape extent found")
+	}
+	preflight, _ := expandPatternsForFit(&PresentationInput{Slides: []SlideInput{slide}}, sw, sh, nil, layouts...)
+	if preflight.Slides[0].ShapeGrid == nil {
+		t.Fatal("preflight did not expand KPI pattern")
+	}
+	preflightHeight := preflight.Slides[0].ShapeGrid.Rows[0].MaxHeight
+	if diff := float64(maxHeight)/12700 - preflightHeight; diff < -1 || diff > 1 {
+		t.Errorf("preflight KPI height %.1fpt disagrees with generated shape %.1fpt", preflightHeight, float64(maxHeight)/12700)
+	}
+	if float64(maxHeight) > 0.46*float64(content.CY) {
+		t.Errorf("KPI row height %.1fpt exceeds 46%% of template content height %.1fpt", float64(maxHeight)/12700, float64(content.CY)/12700)
+	}
+
+	// A deck rhythm grid can make the real render frame narrower still. Its
+	// 3913340 EMU frame must yield the 139pt KPI base seen in the original bug.
+	rhythm := &resolvedGrid{TitleBaselineY: 1600000, ContentBottomY: 5741940, LeftMarginX: 838200, RightEdgeX: 11353800, SlideWidth: sw, SlideHeight: sh}
+	_, tight := patternExpansionGeometry(slide, layouts, sw, sh, rhythm)
+	if tight.CY != 3913340 {
+		t.Fatalf("rhythm content height = %d, want 3913340", tight.CY)
+	}
+	tightSpecs, _, _, err := convertPresentationSlides([]SlideInput{slide}, layouts, sw, sh, nil, rhythm, "", nil, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tightMax int64
+	for _, shape := range tightSpecs[0].RawShapeXML {
+		for _, m := range re.FindAllSubmatch(shape, -1) {
+			h, err := strconv.ParseInt(string(m[1]), 10, 64)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if h > tightMax {
+				tightMax = h
+			}
+		}
+	}
+	if got := float64(tightMax) / 12700; got < 138 || got > 140 {
+		t.Errorf("KPI card height = %.1fpt with 308.1pt render frame, want about 139pt", got)
+	}
+}
 
 // contentRect is a 16:9 content area below a title (EMU).
 var contentRect = pptx.RectEmu{X: 457200, Y: 1400000, CX: 11277600, CY: 4700000}

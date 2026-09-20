@@ -542,10 +542,14 @@ func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, r
 
 // resolveSlidePattern expands a pattern and updates the slide's shape_grid.
 func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int) {
+	probe := *slide
+	probe.LayoutID = rs.LayoutID
+	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, nil)
 	expCtx := patterns.ExpandContext{
 		Metadata:       tctx.metadata,
 		SlideWidth:     tctx.slideWidth,
 		SlideHeight:    tctx.slideHeight,
+		LayoutBounds:   patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},
 		AccentStrategy: accentStrategy,
 		SlideIndex:     i,
 		SectionIndex:   sectionIndex,
@@ -581,10 +585,14 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 // emits structured fit findings carrying segment_index for any
 // compose-time warnings.
 func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int) {
+	probe := *slide
+	probe.LayoutID = rs.LayoutID
+	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, nil)
 	expCtx := patterns.ExpandContext{
 		Metadata:       tctx.metadata,
 		SlideWidth:     tctx.slideWidth,
 		SlideHeight:    tctx.slideHeight,
+		LayoutBounds:   patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},
 		AccentStrategy: accentStrategy,
 		SlideIndex:     i,
 		SectionIndex:   sectionIndex,

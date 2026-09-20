@@ -38,7 +38,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// a horizontally-merged segment would never trip CheckDiagramInNarrowBoundsFinding
 	// or aspect-mismatch findings during preflight — the unexpanded slide
 	// carries ShapeGrid == nil, so checkShapeGridStructural is skipped.
-	input = expandComposeForPreflight(input, slideWidth, slideHeight)
+	input = expandComposeForPreflight(input, slideWidth, slideHeight, layouts...)
 
 	// Expand slide-level patterns the same way, so every detector below — text
 	// capacity, readability, structural geometry, table and chart preflight —
@@ -52,9 +52,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// and generate reported "no issues" on a deck the pattern itself had
 	// already objected to (go-slide-creator-wn4v). Collected from the
 	// unexpanded input, before the grid replaces the pattern below.
-	findings = append(findings, collectPatternPostExpandFindings(input, slideWidth, slideHeight, theme)...)
+	findings = append(findings, collectPatternPostExpandFindings(input, slideWidth, slideHeight, theme, layouts...)...)
 
-	input, patternSlides := expandPatternsForFit(input, slideWidth, slideHeight, theme)
+	input, patternSlides := expandPatternsForFit(input, slideWidth, slideHeight, theme, layouts...)
 
 	// 1. Text-fit findings from existing generateFitReport (tables + shape-grid
 	// text). Pass the resolved layout geometry so shape_grid cells are measured
@@ -1724,7 +1724,7 @@ type shapeTextColor struct {
 //
 // When no slide has an unexpanded compose envelope, the original input is
 // returned unchanged (no allocation).
-func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight int64) *PresentationInput {
+func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight int64, layoutSets ...types.LayoutMetadata) *PresentationInput {
 	if input == nil {
 		return nil
 	}
@@ -1753,6 +1753,14 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 			SlideWidth:  slideWidth,
 			SlideHeight: slideHeight,
 			SlideIndex:  i,
+		}
+		if len(layoutSets) > 0 {
+			var rhythm *resolvedGrid
+			if input.Grid != nil && validateGridConfig(input.Grid) == nil {
+				rhythm = resolveGrid(input.Grid, layoutSets, slideWidth, slideHeight)
+			}
+			_, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
+			ctx.LayoutBounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
 		}
 		eg, _, err := expandCompose(s.Compose, ctx, patterns.Default())
 		if err != nil {
