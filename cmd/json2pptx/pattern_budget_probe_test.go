@@ -50,6 +50,150 @@ func TestPatternBudgetProbe(t *testing.T) {
 	}
 }
 
+// JSON2PPTX_DRIVER_BUDGET_PROBE=1 measures the driver-tree copy target for
+// each legal uniform tree shape. The shortest result across templates binds.
+func TestDriverTreeBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_DRIVER_BUDGET_PROBE") != "1" {
+		t.Skip("manual driver-tree budget calibration probe")
+	}
+	for branches := 2; branches <= 4; branches++ {
+		for leaves := 1; leaves <= 4; leaves++ {
+			counts := make([]int, branches)
+			for i := range counts {
+				counts[i] = leaves
+			}
+			for _, annotated := range []bool{false, true} {
+				for _, field := range []string{"root", "branch", "leaf", "annotation"} {
+					if field == "annotation" && !annotated {
+						continue
+					}
+					budget := driverTreeReadableBudget(t, counts, annotated, field)
+					t.Logf("driver-tree %d branches x %d leaves, annotated=%t, %s: %d chars", branches, leaves, annotated, field, budget)
+				}
+			}
+		}
+	}
+	for _, total := range []int{5, 7, 10, 11, 13, 14, 15} {
+		counts := []int{1, 1}
+		if total > 8 {
+			counts = []int{1, 1, 1}
+		}
+		if total > 12 {
+			counts = []int{1, 1, 1, 1}
+		}
+		remaining := total - len(counts)
+		for i := range counts {
+			add := min(3, remaining)
+			counts[i] += add
+			remaining -= add
+		}
+		for _, annotated := range []bool{false, true} {
+			for _, field := range []string{"root", "branch", "leaf", "annotation"} {
+				if field == "annotation" && !annotated {
+					continue
+				}
+				budget := driverTreeReadableBudget(t, counts, annotated, field)
+				t.Logf("driver-tree %d leaves, annotated=%t, %s: %d chars", total, annotated, field, budget)
+			}
+		}
+	}
+}
+
+func TestDriverTreeSpanProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_DRIVER_SPAN_PROBE") != "1" {
+		t.Skip("manual driver-tree span calibration probe")
+	}
+	for total := 2; total <= 14; total++ {
+		for span := 1; span <= 4; span++ {
+			remaining := total - span
+			if remaining < 1 || remaining > 12 {
+				continue
+			}
+			var counts []int
+			for remaining > 0 {
+				n := min(4, remaining)
+				counts = append(counts, n)
+				remaining -= n
+			}
+			counts = append(counts, span)
+			if len(counts) > 4 {
+				continue
+			}
+			for _, annotated := range []bool{false, true} {
+				branch := driverTreeReadableBudget(t, counts, annotated, "branch")
+				if annotated {
+					annotation := driverTreeReadableBudget(t, counts, true, "annotation")
+					t.Logf("total=%d span=%d annotated=true branch=%d annotation=%d", total, span, branch, annotation)
+				} else {
+					t.Logf("total=%d span=%d annotated=false branch=%d", total, span, branch)
+				}
+			}
+		}
+	}
+}
+
+func driverTreeReadableBudget(t *testing.T, counts []int, annotated bool, field string) int {
+	t.Helper()
+	type geometry struct {
+		name          string
+		layouts       []types.LayoutMetadata
+		width, height int64
+	}
+	var geometries []geometry
+	for _, name := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, name)
+		geometries = append(geometries, geometry{name, layouts, width, height})
+	}
+	maxLen := map[string]int{"root": 60, "branch": 60, "leaf": 120, "annotation": 140}[field]
+	clean := func(length int) bool {
+		v := &patterns.DriverTreeValues{Root: patterns.DriverTreeNode{Label: "Root"}}
+		for _, leaves := range counts {
+			branch := patterns.DriverTreeBranch{Label: "Branch"}
+			for j := 0; j < leaves; j++ {
+				branch.Leaves = append(branch.Leaves, "Item")
+			}
+			if annotated {
+				branch.Annotation = "Note"
+			}
+			v.Branches = append(v.Branches, branch)
+		}
+		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+		switch field {
+		case "root":
+			v.Root.Label = copy
+		case "branch":
+			v.Branches[len(v.Branches)-1].Label = copy
+		case "leaf":
+			v.Branches[0].Leaves[0] = copy
+		case "annotation":
+			v.Branches[len(v.Branches)-1].Annotation = copy
+		}
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, geom := range geometries {
+			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "driver-tree", Values: encoded},
+			}}}
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+				return false
+			}
+		}
+		return true
+	}
+	lo, hi := 0, maxLen
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if clean(mid) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
 func bmcProbeCellNames() []string {
 	return []string{"key_partners", "key_activities", "key_resources", "value_propositions", "customer_relations", "channels", "customer_segments", "cost_structure", "revenue_streams"}
 }

@@ -114,6 +114,121 @@ func (dt *driverTree) NewValues() any       { return &DriverTreeValues{} }
 func (dt *driverTree) NewOverrides() any    { return &DriverTreeOverrides{} }
 func (dt *driverTree) NewCellOverride() any { return &DriverTreeCellOverride{} }
 
+// Budgets measured by TestDriverTreeBudgetProbe and TestDriverTreeSpanProbe
+// across the four bundled templates, at default text sizes and without units.
+// 15+ leaf rows have no readable fit even with short labels.
+func driverTreeLeafBudget(total int, annotated bool) int {
+	if total >= 15 {
+		return 0
+	}
+	if total <= 7 {
+		return 120
+	}
+	if total <= 9 {
+		if annotated {
+			return 101
+		}
+		return 120
+	}
+	if annotated {
+		return 51
+	}
+	return 75
+}
+
+func driverTreeBranchBudget(total, span int, annotated bool) int {
+	if total >= 15 {
+		return 0
+	}
+	if span == 1 && total >= 10 {
+		if annotated {
+			return 32
+		}
+		return 38
+	}
+	return 60
+}
+
+func driverTreeAnnotationBudget(total, span int) int {
+	if total >= 15 {
+		return 0
+	}
+	switch span {
+	case 1:
+		switch {
+		case total <= 3:
+			return 140
+		case total == 4:
+			return 126
+		case total == 5:
+			return 101
+		case total <= 7:
+			return 76
+		case total <= 9:
+			return 51
+		default:
+			return 27
+		}
+	case 2:
+		switch {
+		case total <= 7:
+			return 140
+		case total <= 9:
+			return 126
+		case total <= 11:
+			return 101
+		default:
+			return 76
+		}
+	case 3:
+		if total <= 11 {
+			return 140
+		}
+		if total <= 13 {
+			return 126
+		}
+		return 101
+	default:
+		return 140
+	}
+}
+
+func (dt *driverTree) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*DriverTreeValues)
+	if !ok || v == nil {
+		return nil
+	}
+	total, annotated := 0, false
+	for _, b := range v.Branches {
+		total += len(b.Leaves)
+		annotated = annotated || strings.TrimSpace(b.Annotation) != ""
+	}
+	if total >= 15 {
+		return []string{fmt.Sprintf("%s: driver-tree has %d leaf rows; this layout holds at most 14 readable rows — aggregate leaves or split the tree", ErrCodeBodyTooLong, total)}
+	}
+	var warnings []string
+	for i, b := range v.Branches {
+		span := len(b.Leaves)
+		branchBudget := driverTreeBranchBudget(total, span, annotated)
+		if n := runeLen(b.Label); n > branchBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: driver-tree branches[%d].label is %d characters; with %d leaf rows and a %d-row branch, use about %d characters — shorten the label or reduce leaves", ErrCodeBodyTooLong, i, n, total, span, branchBudget))
+		}
+		leafBudget := driverTreeLeafBudget(total, annotated)
+		for j, leaf := range b.Leaves {
+			if n := runeLen(leaf); n > leafBudget {
+				warnings = append(warnings, fmt.Sprintf("%s: driver-tree branches[%d].leaves[%d] is %d characters; with %d leaf rows and annotations=%t, use about %d per leaf — shorten the item or reduce leaves", ErrCodeBodyTooLong, i, j, n, total, annotated, leafBudget))
+			}
+		}
+		if note := strings.TrimSpace(b.Annotation); note != "" {
+			annotationBudget := driverTreeAnnotationBudget(total, span)
+			if n := runeLen(note); n > annotationBudget {
+				warnings = append(warnings, fmt.Sprintf("%s: driver-tree branches[%d].annotation is %d characters; with %d leaf rows and a %d-row branch, use about %d characters — shorten the note or reduce leaves", ErrCodeBodyTooLong, i, n, total, span, annotationBudget))
+			}
+		}
+	}
+	return warnings
+}
+
 func (dt *driverTree) Schema() *Schema {
 	rootSchema := ObjectSchema(
 		map[string]*Schema{
@@ -125,10 +240,10 @@ func (dt *driverTree) Schema() *Schema {
 
 	branchSchema := ObjectSchema(
 		map[string]*Schema{
-			"label":      StringSchema(60).WithDescription("Branch metric name"),
+			"label":      StringSchema(60).WithDescription("Branch metric name. At default sizes without a unit: about 60 chars normally; a one-leaf branch in a tree with 10-14 total leaves holds about 38 without annotations or 32 with them"),
 			"unit":       StringSchema(24).WithDescription("Optional unit suffix rendered under the branch label"),
-			"leaves":     ArraySchema(StringSchema(120), 1, 4).WithDescription("1-4 leaf items decomposing this branch"),
-			"annotation": StringSchema(140).WithDescription("Optional italic explanatory note rendered to the right of the branch"),
+			"leaves":     ArraySchema(StringSchema(120), 1, 4).WithDescription("1-4 leaf items; per-item budget by total leaf rows: 2-7: 120; 8-9: 120 without annotations, 101 with; 10-14: 75 without, 51 with. At most 14 rows per tree"),
+			"annotation": StringSchema(140).WithDescription("Optional italic note. Approximate characters by branch span and total leaf rows: span 1: <=3:140, 4:126, 5:101, 6-7:76, 8-9:51, 10-14:27; span 2: <=7:140, 8-9:126, 10-11:101, 12-14:76; span 3: <=11:140, 12-13:126, 14:101; span 4:140"),
 		},
 		[]string{"label", "leaves"},
 	).WithAdditionalProperties(false)

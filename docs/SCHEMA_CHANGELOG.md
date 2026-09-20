@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Driver-tree copy budgets (go-slide-creator-tp23k.4).** `driver-tree`
+  now warns with measured leaf, branch-label and annotation targets based on
+  total leaf rows, annotation-column presence and per-branch row span. Trees
+  with 15–16 leaf rows warn to aggregate or split: even short copy is below
+  the readable floor at default sizes. The schema describes the budgets while
+  preserving the existing maximum lengths for sparse trees. Measurements used
+  all four bundled templates. Schema version advances to 4.79.0; the input
+  fingerprint is unchanged.
+
 - **BMC cell copy budgets (go-slide-creator-tp23k.3).** `bmc-canvas`
   describes approximate per-bullet readable limits for each of its four cell
   geometries and emits `BODY_TOO_LONG` with the cell, bullet, and target when

@@ -65,6 +65,8 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Business Model Canvas.** `bmc-canvas` has nine fixed cells of different sizes. Its `show_pattern` schema describes the per-bullet copy target for each cell and bullet count at default font sizes. The narrow middle cells (`key_activities`, `key_resources`, `customer_relations`, `channels`) hold about 177 characters with one bullet, 52 each with three, and 26 each with four to seven. Use at most seven bullets in these cells and in the bottom cost/revenue cells. `BODY_TOO_LONG` warnings name the cell and measured target. The 200-character schema maximum permits copy in spacious cells; it is not a readable target for every cell.
 
+**Driver tree.** At default sizes and without units, `driver-tree` supports up to 14 total leaf rows. Leaf copy holds about 120 characters through seven rows; at 8–9 rows it holds 120 without annotations or 101 with them; at 10–14 rows it holds 75 without annotations or 51 with them. A branch spanning one row in a 10–14-row tree holds about 38 label characters without annotations or 32 with them. Annotation limits also vary by branch span; the `show_pattern` schema gives the table. Use the `BODY_TOO_LONG` finding for the exact field and target, and check the fit report when units or font overrides are present.
+
 ---
 
 ## Text Capacity Awareness

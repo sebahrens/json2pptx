@@ -37,6 +37,42 @@ func TestBMCCellBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	}
 }
 
+func TestDriverTreeBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.DriverTreeValues{Root: patterns.DriverTreeNode{Label: "Root"}}
+	for _, count := range []int{4, 4, 2} {
+		branch := patterns.DriverTreeBranch{Label: "Branch"}
+		for i := 0; i < count; i++ {
+			branch.Leaves = append(branch.Leaves, "Item")
+		}
+		values.Branches = append(values.Branches, branch)
+	}
+	values.Branches[0].Leaves[0] = strings.Repeat("long ", 20)
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range schemaMaximaTemplates {
+		t.Run(name, func(t *testing.T) {
+			layouts, width, height := schemaMaximaLayouts(t, name)
+			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title",
+				Pattern: &PatternInput{Name: "driver-tree", Values: encoded},
+			}}}
+			found := false
+			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
+				if finding.Code == patterns.ErrCodeBodyTooLong &&
+					strings.Contains(finding.Message, "branches[0].leaves[0]") &&
+					strings.Contains(finding.Message, "about 75 per leaf") {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatal("driver-tree budget missing from fit report")
+			}
+		})
+	}
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two bios over the budget.
 func postExpandDeck() *PresentationInput {
