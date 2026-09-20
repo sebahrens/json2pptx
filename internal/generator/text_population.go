@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
 // populateShapeText sets text content in a shape based on the content item type.
@@ -326,6 +328,36 @@ func setTitleSlideTitle(shape *shapeXML, placeholderID string, value interface{}
 	return nil
 }
 
+// maxBulletNestingLevel is the deepest OOXML level an authored indent maps to.
+// The slide master defines nine, but past the fourth the glyphs and sizes stop
+// being distinguishable on a projected slide, and BULLET_NESTING_DEEP has
+// already told the author that two is the readable limit.
+const maxBulletNestingLevel = 4
+
+// bulletNestingLevels reads each bullet's leading-whitespace depth and returns
+// the depths alongside the bullet text with that whitespace removed.
+func bulletNestingLevels(bullets []string) ([]int, []string) {
+	depths := make([]int, len(bullets))
+	stripped := make([]string, len(bullets))
+	for i, b := range bullets {
+		depths[i], stripped[i] = pptx.BulletIndentDepth(b)
+	}
+	return depths, stripped
+}
+
+// bulletParagraphLevel maps an authored indent depth onto an OOXML paragraph
+// level, starting from the first bullet-enabled level of the layout.
+func bulletParagraphLevel(baseLevel, depth int) int {
+	level := baseLevel + depth
+	if level > maxBulletNestingLevel {
+		return maxBulletNestingLevel
+	}
+	if level < 0 {
+		return 0
+	}
+	return level
+}
+
 // setBulletParagraphs sets multiple bullet paragraphs in the shape.
 // It preserves paragraph and run properties from the layout template.
 // masterBulletLevel specifies the first level with bullets from the slide master (-1 to auto-detect).
@@ -354,19 +386,27 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 		bulletLevel = 0
 	}
 
+	// Leading whitespace is the author asking for a sub-bullet. Read the depth
+	// and strip the whitespace BEFORE anything else looks at the text, so the
+	// numbered-list detector sees "1. Step" rather than "\t1. Step"
+	// (go-slide-creator-gyfl).
+	depths, stripped := bulletNestingLevels(bullets)
+
 	// An ordered list the author typed as "1. …", "2. …" is rendered with OOXML
 	// auto-numbering and the typed prefixes removed, so it shows one marker
 	// rather than the layout's glyph beside the author's number
 	// (go-slide-creator-6or2).
-	texts, numbered := NumberedList(bullets)
+	texts, numbered := NumberedList(stripped)
 	if !numbered {
-		texts = bullets
+		texts = stripped
 	}
 
 	paragraphs := make([]paragraphXML, len(texts))
 	for i, bullet := range texts {
-		// Use the first bullet-enabled level for all bullets (single-level list)
-		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletLevel)
+		// Each bullet renders at the level its indent asks for, so a nested
+		// bullet picks up the master's smaller size and secondary glyph
+		// instead of the parent's.
+		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletParagraphLevel(bulletLevel, depths[i]))
 		if numbered {
 			applyAutoNumbering(pProps)
 		}
@@ -486,11 +526,12 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 		}
 	}
 
-	// Add bullet paragraphs (using the first bullet-enabled level)
+	// Add bullet paragraphs, each at the level its own indent asks for.
 	for _, bullet := range content.Bullets {
-		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletLevel)
+		depth, text := pptx.BulletIndentDepth(bullet)
+		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletParagraphLevel(bulletLevel, depth))
 		// Parse inline tag formatting and create runs
-		runs := createFormattedRuns(bullet, rProps)
+		runs := createFormattedRuns(text, rProps)
 		paragraphs = append(paragraphs, paragraphXML{
 			Properties: pProps,
 			Runs:       runs,
@@ -601,10 +642,12 @@ func setBodyAndLeadParagraphs(shape *shapeXML, placeholderID string, value inter
 		})
 	}
 
-	// Supporting bullets: 12pt regular with bullet markers
+	// Supporting bullets: 12pt regular with bullet markers, each at the level
+	// its own indent asks for.
 	for _, bullet := range content.Bullets {
-		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletLevel)
-		runs := createFormattedRuns(bullet, rProps)
+		depth, text := pptx.BulletIndentDepth(bullet)
+		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletParagraphLevel(bulletLevel, depth))
+		runs := createFormattedRuns(text, rProps)
 		// Override font size to 12pt for supporting bullets
 		for i := range runs {
 			if runs[i].RunProperties == nil {
@@ -838,11 +881,13 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 		}
 	}
 
-	// Sub-bullets (indented one level deeper than the base bullet level)
+	// Sub-bullets (indented one level deeper than the base bullet level), plus
+	// whatever depth the bullet's own leading whitespace asks for.
 	subBulletLevel := bulletLevel + 1
 	for _, bullet := range group.Bullets {
-		pProps, rProps := getBulletStyleForLevel(templateStyles, subBulletLevel)
-		runs := createFormattedRuns(bullet, rProps)
+		depth, text := pptx.BulletIndentDepth(bullet)
+		pProps, rProps := getBulletStyleForLevel(templateStyles, bulletParagraphLevel(subBulletLevel, depth))
+		runs := createFormattedRuns(text, rProps)
 		if pProps.MarL != nil && *pProps.MarL == 0 {
 			fallbackMarL := 360000
 			pProps.MarL = &fallbackMarL

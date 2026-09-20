@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
@@ -208,28 +209,11 @@ func countBulletWords(bullets []string) int {
 }
 
 // bulletIndentDepth measures the nesting depth implied by a bullet's leading
-// whitespace. Each tab counts as one indent unit; two leading spaces count
-// as one indent unit. Markdown bullet markers (`-`, `*`, `•`) on the leading
-// edge are ignored — the indent that precedes them is what conveys nesting.
+// whitespace, using the same reading the renderer applies when it assigns the
+// paragraph's lvl — the two must not drift (go-slide-creator-gyfl).
 func bulletIndentDepth(s string) int {
-	units := 0
-	spaces := 0
-	for _, r := range s {
-		switch r {
-		case '\t':
-			units++
-			spaces = 0
-		case ' ':
-			spaces++
-			if spaces >= 2 {
-				units++
-				spaces = 0
-			}
-		default:
-			return units
-		}
-	}
-	return units
+	depth, _ := pptx.BulletIndentDepth(s)
+	return depth
 }
 
 // maxBulletDepth returns the maximum rendered nesting depth across a list of

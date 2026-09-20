@@ -936,6 +936,8 @@ Emitted when a single text block exceeds 80 whitespace-separated words. Applies 
 
 Emitted when a bullet list nests more than two levels deep. Depth is measured per bullet from leading whitespace: each tab counts as one indent unit; every two leading spaces count as one indent unit. The base level is 1 for `bullets` / `body_and_bullets` content items and 2 for bullets inside a `bullet_groups` header (header is level 1, bullets render at level 2). Depth 3 or deeper triggers the finding.
 
+**The indent is what the renderer reads too.** A bullet's leading whitespace sets the paragraph's OOXML `lvl` (base level + depth, clamped at 4), and the whitespace is stripped from the text, so a nested bullet inherits the slide master's smaller size and secondary glyph. Both sides read the depth through the same parser (`pptx.BulletIndentDepth`) so the lint and the render cannot drift: this finding used to describe nesting the renderer ignored, emitting every paragraph at `lvl="0"` with the glyph left-aligned and the text pushed right, which read as a typo (go-slide-creator-gyfl).
+
 ```json
 {
   "path": "/slides/4/content/body",

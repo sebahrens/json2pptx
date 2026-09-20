@@ -137,3 +137,37 @@ const (
 	DefaultBulletChar = "\u2022"
 	DefaultBulletFont = "Arial"
 )
+
+// BulletIndentDepth measures the nesting depth a bullet's leading whitespace
+// asks for, and returns the bullet text with that whitespace removed.
+//
+// One tab is one level; two leading spaces are one level. A markdown marker
+// ("- ", "* ", "• ") after the indent is left in the text — the indent that
+// precedes it is what conveys nesting, and the caller decides what to do with
+// the marker.
+//
+// The fit-report lint measured this depth to report BULLET_NESTING_DEEP while
+// the renderer emitted every paragraph at lvl="0", so an authored sub-bullet
+// rendered with the parent's glyph and size and the text pushed right — it
+// read as a typo (go-slide-creator-gyfl). Both sides read the depth here now.
+func BulletIndentDepth(s string) (int, string) {
+	level := 0
+	spaces := 0
+	for i, r := range s {
+		switch r {
+		case '\t':
+			level++
+			spaces = 0
+		case ' ':
+			spaces++
+			if spaces >= 2 {
+				level++
+				spaces = 0
+			}
+		default:
+			return level, s[i:]
+		}
+	}
+	// Whitespace only: there is no bullet to indent.
+	return 0, ""
+}
