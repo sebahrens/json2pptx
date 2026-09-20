@@ -47,6 +47,13 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// skipped the surface the skill tells agents to author through
 	// (go-slide-creator-adur). Paths are rerooted at /slides/N/pattern before
 	// the findings are returned.
+	// A pattern's own post-expand warnings are findings like any other: they
+	// used to reach agents only through preview_presentation_plan, so validate
+	// and generate reported "no issues" on a deck the pattern itself had
+	// already objected to (go-slide-creator-wn4v). Collected from the
+	// unexpanded input, before the grid replaces the pattern below.
+	findings = append(findings, collectPatternPostExpandFindings(input, slideWidth, slideHeight, theme)...)
+
 	input, patternSlides := expandPatternsForFit(input, slideWidth, slideHeight, theme)
 
 	// 1. Text-fit findings from existing generateFitReport (tables + shape-grid

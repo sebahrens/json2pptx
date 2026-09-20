@@ -65,6 +65,39 @@ func expandPatternsForFit(input *PresentationInput, slideWidth, slideHeight int6
 	return &expanded, fromPattern
 }
 
+// collectPatternPostExpandFindings converts every slide-level pattern's own
+// PostExpandWarnings into fit findings.
+//
+// A pattern knows things about the content it was just handed that no geometric
+// detector can see: a bio over its two-line budget, a chart panel with no chart.
+// Those warnings used to be read only by preview_presentation_plan, so validate
+// and generate both reported "no issues" on a deck that rendered 75% empty and
+// whose own pattern had already objected (go-slide-creator-wn4v).
+//
+// It expands the pattern regardless of whether the slide already carries a
+// shape_grid: on the generate path the grid IS the expansion of that pattern,
+// so skipping those slides would silence exactly the surface this fixes.
+func collectPatternPostExpandFindings(input *PresentationInput, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
+	if input == nil {
+		return nil
+	}
+	var out []patterns.FitFinding
+	for i := range input.Slides {
+		p := input.Slides[i].Pattern
+		if p == nil {
+			continue
+		}
+		probe := SlideInput{Pattern: p}
+		_, warnings := expandSlidePatternGridWithWarnings(&probe, i, slideWidth, slideHeight, theme)
+		for _, w := range warnings {
+			if f := patternWarningAsFinding(i, p.Name, w); f != nil {
+				out = append(out, *f)
+			}
+		}
+	}
+	return out
+}
+
 // rerootPatternPath rewrites a finding path on an expanded pattern slide from
 // the synthetic /slides/N/shape_grid root to /slides/N/pattern, matching what
 // the geometry detectors already emit. The deck has no shape_grid at that

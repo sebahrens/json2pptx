@@ -30,6 +30,14 @@ type patternExpansionResult struct {
 	DensityWarnings   []patternValidationError   `json:"density_warnings,omitempty"`
 	CapacityWarnings  []cellDensityWarning       `json:"capacity_warnings,omitempty"`
 	LayoutSuggestions []layoutSuggestion         `json:"layout_suggestions,omitempty"`
+
+	// Warnings are the pattern's own PostExpandWarnings — the structured
+	// "<CODE>: message" lines a pattern emits about the content it was just
+	// given (BODY_TOO_LONG on a bio over budget, CHART_PLACEHOLDER_EMPTY on a
+	// chart panel with no chart). They used to be discarded here, so the tool
+	// that exists to show what a pattern does with your values was silent about
+	// the pattern's own objection to them (go-slide-creator-wn4v).
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // buildPatternExpansionResult expands a single PatternInput against the supplied
@@ -51,7 +59,7 @@ func buildPatternExpansionResult(
 		return patternExpansionResult{}, fmt.Errorf("%s", msg)
 	}
 
-	grid, _, err := expandPattern(pi, expandCtx, reg)
+	grid, expandWarnings, err := expandPattern(pi, expandCtx, reg)
 	if err != nil {
 		return patternExpansionResult{}, err
 	}
@@ -88,6 +96,7 @@ func buildPatternExpansionResult(
 		DensityWarnings:   densityWarnings,
 		CapacityWarnings:  capacityWarnings,
 		LayoutSuggestions: layoutSuggestions,
+		Warnings:          expandWarnings,
 	}, nil
 }
 

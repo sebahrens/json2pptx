@@ -27,8 +27,19 @@ const (
 // shape_grid, or expansion fails — pattern value errors are reported by the
 // pattern validator, not here.
 func expandSlidePatternGrid(slide *SlideInput, slideIdx int, slideWidth, slideHeight int64, theme *types.ThemeInfo) *ShapeGridInput {
+	grid, _ := expandSlidePatternGridWithWarnings(slide, slideIdx, slideWidth, slideHeight, theme)
+	return grid
+}
+
+// expandSlidePatternGridWithWarnings is expandSlidePatternGrid plus the
+// pattern's own PostExpandWarnings. Those warnings — BODY_TOO_LONG on a bio
+// over its budget, CHART_PLACEHOLDER_EMPTY on a chart panel with no chart —
+// used to be discarded here and reached agents only through
+// preview_presentation_plan, so a deck that validate and generate both called
+// clean rendered 75% empty (go-slide-creator-wn4v).
+func expandSlidePatternGridWithWarnings(slide *SlideInput, slideIdx int, slideWidth, slideHeight int64, theme *types.ThemeInfo) (*ShapeGridInput, []string) {
 	if slide == nil || slide.Pattern == nil || slide.ShapeGrid != nil {
-		return nil
+		return nil, nil
 	}
 	if slideWidth <= 0 || slideHeight <= 0 {
 		slideWidth, slideHeight = validationDefaultSlideWidthEMU, validationDefaultSlideHeightEMU
@@ -41,14 +52,14 @@ func expandSlidePatternGrid(slide *SlideInput, slideIdx int, slideWidth, slideHe
 	if theme != nil {
 		ctx.Theme = *theme
 	}
-	grid, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
+	grid, warnings, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 	if err != nil || grid == nil {
-		return nil
+		return nil, nil
 	}
 	if err := expandNestedCellPatterns(grid, ctx, patterns.Default()); err != nil {
-		return nil
+		return nil, nil
 	}
-	return grid
+	return grid, warnings
 }
 
 // gridDiagramValidationDiagnostics runs svggen's data validation on every

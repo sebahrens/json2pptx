@@ -8,6 +8,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Pattern `PostExpandWarnings` reach every surface (go-slide-creator-wn4v).**
+  `BODY_TOO_LONG`, `CHART_PLACEHOLDER_EMPTY` and the other warnings a pattern
+  emits about the content it was just given were read only by
+  `preview_presentation_plan`. A `chart-insights-split` slide with no chart
+  rendered 75% empty while `validate_input`, `generate_presentation` and
+  `score_deck` all reported no issues, and `docs/PATTERNS.md` claimed otherwise.
+  - They are now collected into the shared fit-finding set, so they appear in
+    `validate_input`, `validate --fit-report`,
+    `generate_presentation(fit_report=true)`, `generate --json-output-report`,
+    `score_deck`, `render_deck_spec` and `preview_presentation_plan` alike, as
+    review-severity findings scoped to `/slides/N/pattern`.
+  - `expand_pattern`, `expand_patterns` and the `patterns expand` CLI gain a
+    `warnings[]` array carrying the raw `"<CODE>: message"` lines — the tool for
+    inspecting what a pattern does with your values now reports the pattern's
+    own objection to them.
+  - The collector re-expands the pattern even when the slide already carries a
+    `shape_grid`, so the generate path (where the grid *is* the expansion) is
+    covered rather than skipped.
+
 - **`PATTERN_CONTENT_MISMATCH` (go-slide-creator-h339i).** Every check asked
   whether content *fits*; none asked whether it *belongs*. The calibration
   corpus's `B07_wrong_pattern` draws three KPIs as a timeline and a four-month

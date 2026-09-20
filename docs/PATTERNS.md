@@ -440,6 +440,31 @@ When the field is a bare string, it is classified at unmarshal time by `svggen.C
 
 **Expansion.** Pattern `Expand` code calls `cell.Icon.Resolve(defaultFill, defaultPosition)`. Resolve returns `nil` for empty refs, applies pattern defaults only when the author left a field blank, and copies the underlying `IconInput` so downstream mutation is safe. Patterns that supported a string-only icon field bumped their `Version()` to `2` when migrating. Compute `defaultFill` with `iconFillOn(ctx, shape.Fill, accent)` — never pass the cell accent directly: on a solid accent card that paints the icon in the card's own colour and it vanishes. `iconFillOn` returns the accent when it reaches 3:1 against the effective fill (light cards), else `lt1` when that reaches 3:1 (matching the pattern's on-accent text), else the better of `lt1`/`dk1`.
 
+## PostExpandWarnings reach every surface
+
+A pattern knows things about the content it was handed that no geometric
+detector can see: a bio past its two-line budget, a chart panel with no chart,
+a maturity model with two "current" stages. `PostExpandWarner.PostExpandWarnings`
+is where a pattern says so, as structured `"<CODE>: message"` lines.
+
+Those lines are collected by `collectPatternPostExpandFindings` (cmd/json2pptx)
+and converted by `patternWarningAsFinding` into review-severity fit findings
+scoped to `/slides/N/pattern`. They therefore appear in:
+
+- `validate_input` and `validate --fit-report`
+- `generate_presentation(fit_report=true)` and `generate --json-output-report`
+- `score_deck`, `preview_presentation_plan`, `render_deck_spec`
+- `expand_pattern` / `expand_patterns` / `patterns expand`, as a `warnings[]` array
+
+Two rules for an author writing a new warner:
+
+- **Prefix the code.** A line without a leading `CODE:` is dropped by the
+  converter and reaches only the human-readable warning list.
+- **Expect to be called on an already-expanded slide.** The collector re-expands
+  the pattern regardless of whether the slide carries a `shape_grid`, because on
+  the generate path that grid IS the expansion — skipping those slides would
+  silence the warnings on the surface that matters most (go-slide-creator-wn4v).
+
 ## Secondary chart slot (card-grid, icon-row)
 
 `card-grid` cells (`CardGridCell`) and `icon-row` items (`IconRowItem`) accept an optional `secondary *SecondaryChart` field that embeds a small chart below the cell's title/body or caption. The field is defined once in `internal/patterns/secondary_chart.go` and reused by both patterns:
@@ -472,7 +497,7 @@ For readability the right panel applies vertical rhythm via per-paragraph `space
 
 `values.chart` accepts any svggen `DiagramSpec` payload or the flat `{label: value}` shorthand that `chart_value` accepts (e.g. `{"type": "bar", "data": {"Q1": 12, "Q2": 14}}`); the shorthand is normalized to `categories`/`series` at decode time, preserving key order. Validation expands the pattern and dry-renders the chart, so `validate_input` rejects exactly the charts `generate_presentation` would.
 
-`values.chart` is **optional**. When omitted, the pattern collapses to a single-column insights cell at 100% width and emits the structured warning `CHART_PLACEHOLDER_EMPTY: chart-insights-split rendered insights-only; provide a chart spec to fill the left panel` via the `PostExpandWarner` interface. Downstream `preview_presentation_plan` and `generate_presentation` callers convert that warning into a `FitFinding` with `code = "CHART_PLACEHOLDER_EMPTY"` and `action = "review"`. Agents should either supply a chart spec or switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`).
+`values.chart` is **optional**. When omitted, the pattern collapses to a single-column insights cell at 100% width and emits the structured warning `CHART_PLACEHOLDER_EMPTY: chart-insights-split rendered insights-only; provide a chart spec to fill the left panel` via the `PostExpandWarner` interface. Every surface converts that warning into a `FitFinding` with `code = "CHART_PLACEHOLDER_EMPTY"` and `action = "review"`: `validate_input`, `generate_presentation(fit_report=true)`, `score_deck`, `preview_presentation_plan` and the `validate --fit-report` / `generate --json-output-report` CLI, plus `expand_pattern`'s own `warnings[]`. Until go-slide-creator-wn4v only preview did, so the documented validate → generate loop called a 75%-empty slide clean. Agents should either supply a chart spec or switch to an insights-only pattern (e.g. `card-grid`, `pull-quote`).
 
 `values.chart` is a regular `types.DiagramSpec` — pass the same shape used in slide-level diagram content (`type` + `data`, optional `title` / `style`).
 

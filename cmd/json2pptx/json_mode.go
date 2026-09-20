@@ -613,6 +613,11 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Append strict_fit findings collected before generation so CLI JSON
 	// consumers see warn-mode overflow diagnostics in the structured response.
 	allFitFindings = append(allFitFindings, strictFitFindings...)
+	// A pattern's own post-expand warnings (BODY_TOO_LONG on an over-budget
+	// bio, CHART_PLACEHOLDER_EMPTY on a chart panel with no chart) are part of
+	// what generate saw; without them the JSON report called a degraded deck
+	// clean (go-slide-creator-wn4v).
+	allFitFindings = append(allFitFindings, collectPatternPostExpandFindings(input, runRes.SlideWidth, runRes.SlideHeight, &runRes.TemplateTheme)...)
 	allFitFindings = dedupFitFindings(allFitFindings)
 
 	// Build per-slide resolution summary

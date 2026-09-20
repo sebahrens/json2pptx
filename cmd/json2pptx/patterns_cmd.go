@@ -381,7 +381,7 @@ func runPatternsExpand() error {
 		return err
 	}
 
-	grid, _, err := expandPattern(pi, expandCtx, reg)
+	grid, expandWarnings, err := expandPattern(pi, expandCtx, reg)
 	if err != nil {
 		return err
 	}
@@ -401,12 +401,16 @@ func runPatternsExpand() error {
 		CellBudgets       []cellBudgetEntry          `json:"cell_budgets,omitempty"`
 		DensityWarnings   []cellDensityWarning       `json:"density_warnings,omitempty"`
 		LayoutSuggestions []layoutSuggestion         `json:"layout_suggestions,omitempty"`
+		// Warnings are the pattern's own PostExpandWarnings about the values
+		// it was just given (go-slide-creator-wn4v).
+		Warnings []string `json:"warnings,omitempty"`
 	}{
 		Pattern:           pat.Name(),
 		Version:           pat.Version(),
 		BoundsSource:      boundsSource,
 		BoundsAssumption:  "full_content_area",
 		ShapeGrid:         grid,
+		Warnings:          expandWarnings,
 		CellBudgets:       cellBudgets,
 		DensityWarnings:   densityWarnings,
 		LayoutSuggestions: layoutSuggestions,
