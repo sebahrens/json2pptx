@@ -8,6 +8,30 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **One title-length rule, measured (go-slide-creator-jcph).** Three
+  contradictory numbers used to answer "is this headline too long?" on one
+  deck: `title too long (106 chars, max 60)` from the quality score,
+  `headline is 13 words; trim to 12 or fewer` from the content lint, and
+  `max_chars: 29` in `validate_input`'s placeholder metadata for a layout that
+  renders ~100 characters comfortably. An agent asked to shorten all titles had
+  no single target, and a visibly two-line 54-character title still scored 100.
+  - The measured verdict (`title_wraps` escalated to `shrink_or_split`, or
+    `TITLE_OVERFLOW`) is now the only title-length finding. `validate` emits the
+    identical record — same code, path and message — so the findings envelope
+    carries it once; `max_length` no longer appears for titles.
+  - The 60-character score fallback is deleted. A title that cannot be measured
+    scores clean and is covered by `HEADLINE_TOO_LONG`, which in turn stands
+    down for any title the measurement covered.
+  - `max_chars` reported for a **title** placeholder is now the measured
+    capacity of the box at the comfort size for the resolved font, not the
+    geometric area estimate — in `validate_input` / `generate -dry-run`
+    (`slides[].placeholders[]`), discovery (`layout_summaries[]`, full-mode
+    `layouts[]`) and `examine_template` (`report.json` `layouts[]`). It is a
+    property of the box, not of the current text, so `len(title) <= max_chars`
+    means "no title finding". Body and other placeholders keep the estimate.
+  - The `compact-title` layout tag is unchanged and remains the signal for a
+    short section title; it is not derivable from the reported `max_chars`.
+
 - **Porter's five forces no longer invents an intensity
   (go-slide-creator-ceodq).** A force with no `intensity` defaulted to `0.5`,
   so the renderer printed "Medium (50%)" under it and gave it the accent3

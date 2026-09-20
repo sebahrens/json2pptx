@@ -37,7 +37,7 @@ func TestContentLint_HeadlineTooLong(t *testing.T) {
 		}},
 	}
 
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	f := findFinding(findings, patterns.ErrCodeHeadlineTooLong)
 	if f == nil {
 		t.Fatalf("expected HEADLINE_TOO_LONG finding, got %+v", findings)
@@ -64,7 +64,7 @@ func TestContentLint_HeadlineWithinBudget(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	if findFinding(findings, patterns.ErrCodeHeadlineTooLong) != nil {
 		t.Errorf("did not expect HEADLINE_TOO_LONG for 8-word title, got %+v", findings)
 	}
@@ -85,7 +85,7 @@ func TestContentLint_BodyTooLong(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	f := findFinding(findings, patterns.ErrCodeBodyTooLong)
 	if f == nil {
 		t.Fatalf("expected BODY_TOO_LONG finding for 100-word body, got %+v", findings)
@@ -117,7 +117,7 @@ func TestContentLint_BodyTooLong_BulletsAggregated(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	if findFinding(findings, patterns.ErrCodeBodyTooLong) == nil {
 		t.Errorf("expected BODY_TOO_LONG when bullets sum > 80 words, got %+v", findings)
 	}
@@ -138,7 +138,7 @@ func TestContentLint_BulletNestingDeep_LeadingSpaces(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	f := findFinding(findings, patterns.ErrCodeBulletNestingDeep)
 	if f == nil {
 		t.Fatalf("expected BULLET_NESTING_DEEP for 3-level bullets, got %+v", findings)
@@ -160,7 +160,7 @@ func TestContentLint_BulletNesting_FlatStaysWithinBudget(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	if findFinding(findings, patterns.ErrCodeBulletNestingDeep) != nil {
 		t.Errorf("did not expect BULLET_NESTING_DEEP for flat list, got %+v", findings)
 	}
@@ -182,7 +182,7 @@ func TestContentLint_BulletNesting_BulletGroupsHeaderPlusIndent(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	if findFinding(findings, patterns.ErrCodeBulletNestingDeep) == nil {
 		t.Errorf("expected BULLET_NESTING_DEEP for bullet_groups with indented bullet, got %+v", findings)
 	}
@@ -220,7 +220,7 @@ func TestContentLint_BodyAndBullets_PathTargetsPlaceholder(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	f := findFinding(findings, patterns.ErrCodeBodyTooLong)
 	if f == nil {
 		t.Fatalf("expected BODY_TOO_LONG, got %+v", findings)
@@ -231,7 +231,7 @@ func TestContentLint_BodyAndBullets_PathTargetsPlaceholder(t *testing.T) {
 }
 
 func TestContentLint_NilInputSafe(t *testing.T) {
-	if findings := collectContentLintFindings(nil); findings != nil {
+	if findings := collectContentLintFindings(nil, nil); findings != nil {
 		t.Errorf("expected nil findings for nil input, got %+v", findings)
 	}
 }
@@ -246,7 +246,7 @@ func TestContentLint_NonTitleTextSkipsHeadlineCheck(t *testing.T) {
 			},
 		}},
 	}
-	findings := collectContentLintFindings(input)
+	findings := collectContentLintFindings(input, nil)
 	if findFinding(findings, patterns.ErrCodeHeadlineTooLong) != nil {
 		t.Errorf("HEADLINE_TOO_LONG should only fire on title placeholders, got %+v", findings)
 	}

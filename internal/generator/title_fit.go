@@ -10,6 +10,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textfit"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Title measured fit (go-slide-creator-6cjs / go-slide-creator-vjwn).
@@ -174,6 +175,78 @@ func TitleNeedsShortening(res textfit.FitResult, sizeHPt int) bool {
 		return true
 	}
 	return res.FontScale > 0 && res.FontScale < TitleComfortScalePct(sizeHPt)*1000
+}
+
+// titleCapacityProbe is the filler TitleCapacityChars measures: mixed-width
+// English words of roughly average length, repeated well past any real title
+// box so the prefix search finds the box's ceiling rather than the probe's end.
+var titleCapacityProbe = strings.Repeat("Strategy delivers measured revenue growth across the whole business ", 12)
+
+// TitleCapacityChars estimates how many characters a title placeholder holds at
+// or above minScalePct of the template size, independently of what the slide
+// currently says.
+//
+// MaxTitleCharsAtScale answers "how much of THIS title fits", so its answer is
+// capped by the title's own length. Reporting that as the placeholder's capacity
+// told an agent the box holds exactly what they had already written; reporting
+// the geometric estimate instead told them a 10"-wide 44pt title box holds 29
+// characters when it comfortably renders 96 (go-slide-creator-jcph).
+func TitleCapacityChars(in TitleFitInput, minScalePct int) int {
+	if in.WidthEMU <= 0 || in.HeightEMU <= 0 || in.Style.SizeHPt <= 0 {
+		return 0
+	}
+	probe := in
+	probe.Title = titleCapacityProbe
+	return MaxTitleCharsAtScale(probe, minScalePct)
+}
+
+// TitleFitInputForPlaceholder builds the measured-fit input for title text in a
+// resolved title placeholder: its bounds plus the inherited style (size,
+// all-caps, line spacing) and resolved font.
+func TitleFitInputForPlaceholder(text string, ph *types.PlaceholderInfo) TitleFitInput {
+	return TitleFitInput{
+		Title:     text,
+		WidthEMU:  ph.Bounds.Width,
+		HeightEMU: ph.Bounds.Height,
+		Style: template.InheritedTextStyle{
+			SizeHPt:        ph.FontSize,
+			CapsAll:        ph.TextCaps,
+			LineSpacingPct: ph.LineSpacingPct,
+		},
+		FontName: ph.FontFamily,
+	}
+}
+
+// TitlePlaceholderCapacityChars is TitleCapacityChars for a resolved title
+// placeholder: the characters the box holds at the comfort scale, independent of
+// what the slide currently says. Returns 0 for anything that is not a measurable
+// title placeholder.
+func TitlePlaceholderCapacityChars(ph *types.PlaceholderInfo) int {
+	if ph == nil || ph.Type != types.PlaceholderTitle || ph.FontSize <= 0 {
+		return 0
+	}
+	if ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
+		return 0
+	}
+	return TitleCapacityChars(TitleFitInputForPlaceholder("", ph), TitleComfortScalePct(ph.FontSize))
+}
+
+// ReportedMaxChars is the character capacity to report for a placeholder on an
+// agent-facing surface: the measured title capacity for a title, the geometric
+// estimate (types.PlaceholderInfo.MaxChars) for everything else.
+//
+// A title's capacity has to be measured, not estimated from the box's area: the
+// estimate said 29 characters for a Blank+Title box that comfortably renders
+// ~100, so an agent reading it aimed at a target no slide ever used, while the
+// measured fit check flagged a different number (go-slide-creator-jcph).
+func ReportedMaxChars(ph *types.PlaceholderInfo) int {
+	if ph == nil {
+		return 0
+	}
+	if c := TitlePlaceholderCapacityChars(ph); c > 0 {
+		return c
+	}
+	return ph.MaxChars
 }
 
 // MaxTitleCharsAtScale estimates the longest word-prefix length of the title

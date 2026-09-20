@@ -22,6 +22,7 @@ import (
 	"sort"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -172,7 +173,9 @@ type ZoneReport struct {
 
 // PlaceholderReport describes one placeholder. ZIndex is the document order of
 // the placeholder in the layout shape tree (later = drawn on top). FontPt and
-// MaxChars are the font-aware budget the engine uses for fit decisions.
+// MaxChars are the font-aware budget the engine uses for fit decisions: for a
+// title, MaxChars is the measured capacity at the comfort scale, the same number
+// the measured title check shortens against (go-slide-creator-jcph).
 type PlaceholderReport struct {
 	ID             string       `json:"id"`
 	Type           string       `json:"type"`
@@ -423,7 +426,7 @@ func buildPlaceholderReport(ph *types.PlaceholderInfo, zIndex int) PlaceholderRe
 		Index:          ph.Index,
 		ZIndex:         zIndex,
 		FontPt:         round2(float64(ph.FontSize) / 100.0),
-		MaxChars:       ph.MaxChars,
+		MaxChars:       generator.ReportedMaxChars(ph),
 		Bounds: BoundsReport{
 			XEMU: ph.Bounds.X,
 			YEMU: ph.Bounds.Y,

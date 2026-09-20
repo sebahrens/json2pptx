@@ -63,7 +63,8 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 
 	// 2b. Measured title fit (TITLE_OVERFLOW / title_wraps) against the
 	// resolved title placeholder and inherited title style.
-	findings = append(findings, collectTitleFitFindings(input, layouts)...)
+	titleFindings, measuredTitles := collectTitleFitFindings(input, layouts)
+	findings = append(findings, titleFindings...)
 
 	// 2c. Readability policy: shape_grid text the renderer would shrink below
 	// the viewing_mode floor for its role (TEXT_BELOW_READABLE_MIN).
@@ -134,7 +135,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// 8. Content lint: headline word count, body word count, bullet nesting
 	// depth. Advisory findings that flag verbose / over-nested authoring
 	// before render.
-	findings = append(findings, collectContentLintFindings(input)...)
+	findings = append(findings, collectContentLintFindings(input, measuredTitles)...)
 	findings = append(findings, collectBackgroundFindings(input)...)
 
 	// 9. Accessibility lint: alt text on images / icons sourced from

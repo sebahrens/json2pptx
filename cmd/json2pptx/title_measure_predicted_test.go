@@ -56,7 +56,8 @@ func TestTitleFitMeasuredWithoutLayoutID(t *testing.T) {
 
 	codesOf := func(input *PresentationInput) []string {
 		var out []string
-		for _, f := range collectTitleFitFindings(input, layouts) {
+		titleFindings, _ := collectTitleFitFindings(input, layouts)
+		for _, f := range titleFindings {
 			out = append(out, f.Code)
 		}
 		return out

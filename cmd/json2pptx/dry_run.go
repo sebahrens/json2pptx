@@ -562,18 +562,23 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					}
 					output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
 				} else {
-					ph.MaxChars = phInfo.MaxChars
+					ph.MaxChars = generator.ReportedMaxChars(&phInfo)
 
 					// Titles: measured fit against the resolved title box and
 					// inherited title style replaces the character estimate
-					// (go-slide-creator-vjwn).
+					// (go-slide-creator-vjwn). The capacity reported for the
+					// placeholder is measured too: estimateMaxChars claimed 29
+					// chars for a Blank+Title box that renders 96 comfortably,
+					// so agents shortened titles to a number the renderer never
+					// used (go-slide-creator-jcph).
 					titleMeasured := false
 					if item.Type == "text" && phInfo.Type == types.PlaceholderTitle {
 						resolved, _ := item.ResolveValue()
 						if text, ok := resolved.(string); ok {
-							if d, measured := titleFitDiagnostic(text, &phInfo, i, j); measured {
+							m := measureTitleInPlaceholder(text, &phInfo)
+							if m.OK {
 								titleMeasured = true
-								if d != nil {
+								if d := m.diagnostic(i, item.PlaceholderID); d != nil {
 									output.Diagnostics = append(output.Diagnostics, *d)
 								}
 							}
@@ -613,7 +618,11 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				if phInfo := titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID); phInfo != nil {
 					resolved, _ := item.ResolveValue()
 					if text, ok := resolved.(string); ok {
-						if d, measured := titleFitDiagnostic(text, phInfo, i, j); measured && d != nil {
+						m := measureTitleInPlaceholder(text, phInfo)
+						if capacity := generator.TitlePlaceholderCapacityChars(phInfo); capacity > 0 {
+							ph.MaxChars = capacity
+						}
+						if d := m.diagnostic(i, item.PlaceholderID); d != nil {
 							output.Diagnostics = append(output.Diagnostics, *d)
 						}
 					}

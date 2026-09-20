@@ -9,7 +9,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
-	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -32,8 +31,10 @@ type titleMeasurement struct {
 	ScalePct int
 	// FontPt is the template title size in points.
 	FontPt float64
-	// Chars is the title length in runes; MaxChars the longest prefix that
-	// fits at the comfort scale (only computed when flagged).
+	// Chars is the title length in runes; MaxChars the longest prefix of THIS
+	// title that fits at the comfort scale (only computed when flagged) — the
+	// shorten target. The placeholder's own capacity, which does not depend on
+	// the current text, is generator.TitlePlaceholderCapacityChars.
 	Chars    int
 	MaxChars int
 
@@ -50,17 +51,7 @@ func measureTitleInPlaceholder(text string, ph *types.PlaceholderInfo) titleMeas
 	if ph == nil || text == "" || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 || ph.FontSize <= 0 {
 		return titleMeasurement{}
 	}
-	in := generator.TitleFitInput{
-		Title:     text,
-		WidthEMU:  ph.Bounds.Width,
-		HeightEMU: ph.Bounds.Height,
-		Style: template.InheritedTextStyle{
-			SizeHPt:        ph.FontSize,
-			CapsAll:        ph.TextCaps,
-			LineSpacingPct: ph.LineSpacingPct,
-		},
-		FontName: ph.FontFamily,
-	}
+	in := generator.TitleFitInputForPlaceholder(text, ph)
 	res, err := generator.MeasureTitleFit(in)
 	if err != nil {
 		return titleMeasurement{}
@@ -122,35 +113,40 @@ func (m titleMeasurement) fitFinding(path string) *patterns.FitFinding {
 	}
 }
 
-// titleFitDiagnostic is the validate-time title check. measured is false when
-// the title could not be measured (caller falls back to the max_chars
-// estimate); d is nil when the measured title fits comfortably.
-func titleFitDiagnostic(text string, ph *types.PlaceholderInfo, slideIdx, contentIdx int) (d *diagnostics.Diagnostic, measured bool) {
-	m := measureTitleInPlaceholder(text, ph)
-	if !m.OK {
-		return nil, false
+// diagnostic is the validate-time form of the measured verdict: the very same
+// finding collectTitleFitFindings emits, converted to a Diagnostic. It carries
+// the identical code, path and message, so the two surfaces collapse to one
+// entry in the findings envelope instead of reporting one wrapped title twice
+// under two codes (max_length and title_wraps) — go-slide-creator-jcph.
+// Returns nil when the title was not measurable or fits comfortably.
+func (m titleMeasurement) diagnostic(slideIdx int, placeholderID string) *diagnostics.Diagnostic {
+	f := m.fitFinding(slidepath.Content(slideIdx, placeholderID))
+	if f == nil {
+		return nil
 	}
-	if !m.Flagged() {
-		return nil, true
-	}
-	code := patterns.ErrCodeMaxLength
-	if m.Overflow {
-		code = patterns.ErrCodeTitleOverflow
-	}
-	return &diagnostics.Diagnostic{
-		Code:     code,
-		Path:     slidepath.ContentField(slideIdx, contentIdx, "text"),
-		Message:  fmt.Sprintf("slide %d, content %d: %s", slideIdx+1, contentIdx+1, m.describe()),
-		Severity: diagnostics.SeverityWarning,
-		Fix: &diagnostics.Fix{
-			Kind: "shorten_title",
-			Params: map[string]any{
-				"max_chars":     m.MaxChars,
-				"current_chars": m.Chars,
-				"fit_scale_pct": m.ScalePct,
-			},
-		},
-	}, true
+	d := diagnostics.FromFitFinding(*f)
+	return &d
+}
+
+// measuredTitleKey identifies a content item whose title was measured against a
+// resolved title placeholder.
+type measuredTitleKey struct {
+	slide       int
+	placeholder string
+}
+
+// measuredTitleSet is the set of titles the measured check owns. Every
+// character- and word-count title heuristic stands down for a title in this
+// set, so one over-long headline is reported once, by one code, from every
+// surface — the three contradictory numbers an agent used to see on one deck
+// (60-char score fallback, 12-word HEADLINE_TOO_LONG, a geometric max_chars)
+// were all guesses at what this measurement answers exactly
+// (go-slide-creator-jcph).
+type measuredTitleSet map[measuredTitleKey]bool
+
+// has reports whether the title on this slide's placeholder was measured.
+func (s measuredTitleSet) has(slide int, placeholder string) bool {
+	return s[measuredTitleKey{slide: slide, placeholder: placeholder}]
 }
 
 // layoutForSlideResolved finds a slide's layout by concrete id, falling back
@@ -192,8 +188,12 @@ func titlePlaceholderIn(l *types.LayoutMetadata, placeholderID string) *types.Pl
 // placeholder: TITLE_OVERFLOW when it cannot fit, an escalated title_wraps
 // (shrink_or_split, shorten_title) when it only fits below the comfort scale,
 // and the informational title_wraps otherwise.
-func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMetadata) []patterns.FitFinding {
+//
+// The second return value names every title this measurement covered, so the
+// word-count content lint stands down for them (go-slide-creator-jcph).
+func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMetadata) ([]patterns.FitFinding, measuredTitleSet) {
 	var findings []patterns.FitFinding
+	measured := make(measuredTitleSet)
 	// A slide without an explicit layout_id still lands on a layout — the one
 	// the heuristic selector picks. Measuring against it is the whole point of
 	// a measured check: without this the semantic path, which never sets a
@@ -219,7 +219,11 @@ func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMet
 				continue
 			}
 			path := slidepath.Content(si, content.PlaceholderID)
-			if f := measureTitleInPlaceholder(title, ph).fitFinding(path); f != nil {
+			m := measureTitleInPlaceholder(title, ph)
+			if m.OK {
+				measured[measuredTitleKey{slide: si, placeholder: content.PlaceholderID}] = true
+			}
+			if f := m.fitFinding(path); f != nil {
 				findings = append(findings, *f)
 				continue
 			}
@@ -243,5 +247,5 @@ func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMet
 			}
 		}
 	}
-	return findings
+	return findings, measured
 }

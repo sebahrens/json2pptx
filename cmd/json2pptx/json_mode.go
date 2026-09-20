@@ -1831,7 +1831,6 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 
 	const (
 		maxBullets     = 8
-		maxTitleLen    = 60
 		maxSubtitleLen = 120
 		maxContent     = 6
 	)
@@ -1872,8 +1871,17 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 						issues = append(issues, fmt.Sprintf("subtitle too long (%d chars, max %d)", len(text), maxSubtitleLen))
 					}
 				} else if isLikelyTitle(item.PlaceholderID) {
-					text, isText := resolved.(string)
-					if m := measureTitleInPlaceholder(text, titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID)); isText && m.OK {
+					// Measured fit is the only title rule. The 60-character
+					// fallback that used to sit here fired whenever measurement
+					// was unavailable, so one deck reported "title too long
+					// (106 chars, max 60)" here, "headline is 13 words; trim to
+					// 12" from the content lint, and a max_chars of 29 in the
+					// placeholder metadata — three numbers for one question, and
+					// it still scored a visibly two-line 54-char title at 100.
+					// An unmeasurable title now scores clean rather than against
+					// a number nothing renders (go-slide-creator-jcph).
+					if text, isText := resolved.(string); isText {
+						m := measureTitleInPlaceholder(text, titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID))
 						if m.Flagged() {
 							penalty := 0.15
 							if m.Overflow {
@@ -1882,13 +1890,6 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 							slideScore -= penalty
 							issues = append(issues, m.describe())
 						}
-					} else if isText && len(text) > maxTitleLen {
-						penalty := float64(len(text)-maxTitleLen) / 100.0
-						if penalty > 0.3 {
-							penalty = 0.3
-						}
-						slideScore -= penalty
-						issues = append(issues, fmt.Sprintf("title too long (%d chars, max %d)", len(text), maxTitleLen))
 					}
 				}
 			case "bullets":

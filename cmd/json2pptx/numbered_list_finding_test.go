@@ -34,7 +34,7 @@ func TestNumberedListFindingFires(t *testing.T) {
 	in := &PresentationInput{Slides: []SlideInput{bulletsSlide([]string{
 		"1. Freeze the schema", "Replay the log", "3. Cut over",
 	})}}
-	got := numberedFindings(collectContentLintFindings(in))
+	got := numberedFindings(collectContentLintFindings(in, nil))
 	if len(got) != 1 {
 		t.Fatalf("expected 1 finding, got %d (%+v)", len(got), got)
 	}
@@ -60,7 +60,7 @@ func TestNumberedListFindingStaysSilent(t *testing.T) {
 	}
 	for _, bullets := range quiet {
 		in := &PresentationInput{Slides: []SlideInput{bulletsSlide(bullets)}}
-		if got := numberedFindings(collectContentLintFindings(in)); len(got) != 0 {
+		if got := numberedFindings(collectContentLintFindings(in, nil)); len(got) != 0 {
 			t.Errorf("%v drew %+v", bullets, got)
 		}
 	}
@@ -82,7 +82,7 @@ func TestApplyRenumberBullets(t *testing.T) {
 	}
 	// The repaired list is now one the renderer numbers itself, so the finding
 	// is gone.
-	if f := numberedFindings(collectContentLintFindings(in)); len(f) != 0 {
+	if f := numberedFindings(collectContentLintFindings(in, nil)); len(f) != 0 {
 		t.Errorf("finding survived the repair: %+v", f)
 	}
 

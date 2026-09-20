@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"math"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -626,7 +627,8 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 
 		// Compact placeholder entries (id + type + role + max_chars only)
 		phs := make([]skillPlaceholderCompact, 0, len(l.Placeholders))
-		for _, ph := range l.Placeholders {
+		for k := range l.Placeholders {
+			ph := &l.Placeholders[k]
 			if ph.Type == types.PlaceholderOther {
 				continue
 			}
@@ -634,7 +636,7 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 				ID:       ph.ID,
 				Type:     string(ph.Type),
 				Role:     string(ph.Role),
-				MaxChars: ph.MaxChars,
+				MaxChars: generator.ReportedMaxChars(ph),
 			})
 		}
 		if len(phs) > 0 {
@@ -677,7 +679,8 @@ func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutprevie
 	for i, l := range layouts {
 		phs := make([]skillPlaceholderInfo, 0, len(l.Placeholders))
 		var sectionNumberPH *skillPlaceholderInfo
-		for _, ph := range l.Placeholders {
+		for k := range l.Placeholders {
+			ph := &l.Placeholders[k]
 			if ph.Type == types.PlaceholderOther {
 				continue
 			}
@@ -686,7 +689,7 @@ func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutprevie
 				Type:           string(ph.Type),
 				Role:           string(ph.Role),
 				RoleConfidence: ph.RoleConfidence,
-				MaxChars:       ph.MaxChars,
+				MaxChars:       generator.ReportedMaxChars(ph),
 				X:              ph.Bounds.X,
 				Y:              ph.Bounds.Y,
 				Width:          ph.Bounds.Width,

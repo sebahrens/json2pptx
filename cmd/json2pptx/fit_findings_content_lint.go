@@ -25,14 +25,21 @@ const (
 // BODY_TOO_LONG (>80 words on a text block), BULLET_NESTING_DEEP (bullets
 // nested more than two levels). All findings have action "review"; they
 // never block render.
-func collectContentLintFindings(input *PresentationInput) []patterns.FitFinding {
+//
+// measuredTitles names the titles collectTitleFitFindings already measured
+// against a real placeholder. The word count is a proxy for "does this headline
+// wrap?", and where the answer has actually been measured the proxy only adds a
+// second, differently-worded verdict on the same headline — so it stands down
+// there and remains what it was designed to be: the check for titles with no
+// resolvable geometry (go-slide-creator-jcph).
+func collectContentLintFindings(input *PresentationInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
 	if input == nil {
 		return nil
 	}
 	var findings []patterns.FitFinding
 	for si, slide := range input.Slides {
 		for ci := range slide.Content {
-			findings = append(findings, lintContentItem(si, ci, &slide.Content[ci])...)
+			findings = append(findings, lintContentItem(si, ci, &slide.Content[ci], measuredTitles)...)
 		}
 	}
 	return findings
@@ -42,10 +49,10 @@ func collectContentLintFindings(input *PresentationInput) []patterns.FitFinding 
 // its type. The contentIdx is unused in path construction (paths target the
 // placeholder ID, which is more stable across slide rearrangements) but is
 // accepted so future authors can switch to indexed paths if needed.
-func lintContentItem(slideIdx, _ int, content *ContentInput) []patterns.FitFinding {
+func lintContentItem(slideIdx, _ int, content *ContentInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
 	switch content.Type {
 	case "text":
-		return lintText(slideIdx, content)
+		return lintText(slideIdx, content, measuredTitles)
 	case "bullets":
 		return lintBullets(slideIdx, content)
 	case "body_and_bullets":
@@ -57,13 +64,13 @@ func lintContentItem(slideIdx, _ int, content *ContentInput) []patterns.FitFindi
 }
 
 // lintText applies the word budget, which differs for a headline placeholder.
-func lintText(slideIdx int, content *ContentInput) []patterns.FitFinding {
+func lintText(slideIdx int, content *ContentInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
 	if content.TextValue == nil {
 		return nil
 	}
 	wc := countWords(*content.TextValue)
 	if isHeadlinePlaceholderID(content.PlaceholderID) {
-		if wc > maxHeadlineWords {
+		if wc > maxHeadlineWords && !measuredTitles.has(slideIdx, content.PlaceholderID) {
 			return []patterns.FitFinding{makeHeadlineFinding(slideIdx, content.PlaceholderID, wc)}
 		}
 		return nil
