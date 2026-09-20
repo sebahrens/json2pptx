@@ -37,8 +37,8 @@ import (
 // at the top, and bulleted body items below. All boxes are wrapped in a single
 // p:grpSp with identity child transform.
 //
-// Color strategy: each section uses a rotating accent scheme color (accent1–6,
-// recycling for 7–9) with lumMod/lumOff tints. Text is dk1.
+// Color strategy: one hue — the deck's accent1 — with the Value Proposition a
+// step deeper. Text is dk1. See taxonomy_palette.go.
 
 // BMC EMU constants.
 const (
@@ -81,22 +81,25 @@ const (
 	bmcRevenueStreams   bmcSectionKey = "revenue_streams"
 )
 
-// bmcSectionColors defines the accent scheme color for each BMC section.
-// 9 sections rotate through accent1–accent6, then repeat accent1–accent3.
-var bmcSectionColors = map[bmcSectionKey]struct {
-	scheme string
-	lumMod int
-	lumOff int
-}{
-	bmcKeyPartners:      {"accent1", 20000, 80000},
-	bmcKeyActivities:    {"accent2", 20000, 80000},
-	bmcKeyResources:     {"accent3", 20000, 80000},
-	bmcValueProposition: {"accent4", 20000, 80000},
-	bmcCustRelations:    {"accent5", 20000, 80000},
-	bmcChannels:         {"accent6", 20000, 80000},
-	bmcCustSegments:     {"accent1", 30000, 70000}, // slightly different tint to distinguish from key_partners
-	bmcCostStructure:    {"accent2", 30000, 70000},
-	bmcRevenueStreams:   {"accent3", 30000, 70000},
+// bmcSectionOrder is the canonical order the panels array is built in and the
+// order generateBMCGroupXML reads back, so an index means the same section on
+// both sides. It was duplicated as a local in each.
+var bmcSectionOrder = []bmcSectionKey{
+	bmcKeyPartners, bmcKeyActivities, bmcKeyResources,
+	bmcValueProposition, bmcCustRelations, bmcChannels,
+	bmcCustSegments, bmcCostStructure, bmcRevenueStreams,
+}
+
+// bmcDefaultTint is the fill for BMC section i in render order. One hue — the
+// deck's accent1 — with the Value Proposition carried a step deeper, because it
+// is the one cell the canvas actually privileges: every other block exists to
+// explain it. The nine cells used to take accent1–6 plus repeats, which on a
+// forest-green deck rendered as a nine-colour rainbow (go-slide-creator-w0kj).
+func bmcDefaultTint(i int) taxonomyTint {
+	if i < len(bmcSectionOrder) && bmcSectionOrder[i] == bmcValueProposition {
+		return taxonomyDeep
+	}
+	return taxonomyLight
 }
 
 // bmcDefaultTitles maps section keys to display titles.
@@ -165,20 +168,14 @@ func (ctx *singlePassContext) processBMCNativeShapes(slideNum int, item ContentI
 		return
 	}
 
-
 	// Parse BMC sections from DiagramSpec.Data
 	sections := parseBMCSections(diagramSpec.Data)
 
-	// Convert to nativePanelData. We store sections in a fixed canonical order
-	// so that generateBMCGroupXML knows which section each panel represents.
-	sectionOrder := []bmcSectionKey{
-		bmcKeyPartners, bmcKeyActivities, bmcKeyResources,
-		bmcValueProposition, bmcCustRelations, bmcChannels,
-		bmcCustSegments, bmcCostStructure, bmcRevenueStreams,
-	}
+	// Convert to nativePanelData. Sections are stored in bmcSectionOrder so
+	// generateBMCGroupXML knows which section each panel represents.
 
-	panels := make([]nativePanelData, len(sectionOrder))
-	for i, key := range sectionOrder {
+	panels := make([]nativePanelData, len(bmcSectionOrder))
+	for i, key := range bmcSectionOrder {
 		sec := sections[key]
 		title := sec.title
 		if title == "" {
@@ -212,6 +209,7 @@ func (ctx *singlePassContext) processBMCNativeShapes(slideNum int, item ContentI
 		bounds:         placeholderBounds,
 		panels:         panels,
 		bmcMode:        true,
+		taxonomyTints:  taxonomyPalette(diagramSpec, len(bmcSectionOrder), bmcDefaultTint),
 	})
 }
 
@@ -273,7 +271,7 @@ func parseBMCSections(data map[string]any) map[bmcSectionKey]bmcSectionData {
 // Panels must be in canonical order: key_partners, key_activities, key_resources,
 // value_proposition, customer_relationships, channels, customer_segments,
 // cost_structure, revenue_streams.
-func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, tints []taxonomyTint) string {
 	if len(panels) != 9 {
 		slog.Warn("generateBMCGroupXML: expected 9 panels", "got", len(panels))
 		return ""
@@ -292,13 +290,6 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 	// Top row: columns 0 and 2 and 4 are full height; columns 1 and 3 are split
 	fullH := topH - bmcGap // leave gap before bottom row
 	halfH := (fullH - bmcGap) / 2
-
-	// Section order matches panels array
-	sectionOrder := []bmcSectionKey{
-		bmcKeyPartners, bmcKeyActivities, bmcKeyResources,
-		bmcValueProposition, bmcCustRelations, bmcChannels,
-		bmcCustSegments, bmcCostStructure, bmcRevenueStreams,
-	}
 
 	// Define cell positions (x, y, w, h) for each of the 9 sections
 	type cellRect struct {
@@ -334,9 +325,12 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 
 	var children [][]byte
 	for i, panel := range panels {
-		key := sectionOrder[i]
+		key := bmcSectionOrder[i]
 		cell := cells[key]
-		colors := bmcSectionColors[key]
+		colors := bmcDefaultTint(i)
+		if i < len(tints) {
+			colors = tints[i]
+		}
 
 		headerCY := int64(float64(cell.h) * bmcHeaderHeightRatio)
 		bodyCY := cell.h - headerCY

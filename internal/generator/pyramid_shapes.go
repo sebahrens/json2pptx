@@ -84,7 +84,6 @@ func (ctx *singlePassContext) processPyramidNativeShapes(slideNum int, item Cont
 		return
 	}
 
-
 	levels, err := parsePyramidDiagramData(diagramSpec.Data)
 	if err != nil {
 		slog.Warn("pyramid native shapes: parse failed", "slide", slideNum, "error", err)

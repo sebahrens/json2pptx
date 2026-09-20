@@ -104,7 +104,6 @@ func (ctx *singlePassContext) processHouseDiagramNativeShapes(slideNum int, item
 		return
 	}
 
-
 	panels, meta, err := parseHouseDiagramNativeData(diagramSpec.Data)
 	if err != nil {
 		slog.Warn("house diagram native shapes: parse failed", "slide", slideNum, "error", err)

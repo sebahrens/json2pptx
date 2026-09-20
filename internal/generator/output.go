@@ -20,6 +20,7 @@ import (
 
 // regexSldLayoutID extracts the id attribute from <p:sldLayoutId id="NNN" .../> entries.
 var regexSldLayoutID = regexp.MustCompile(`<p:sldLayoutId\b[^>]*\bid="(\d+)"`)
+
 // tableFrameIDRegex matches the table frame's cNvPr so insertTableFrames can
 // renumber its id. The optional trailing group is the alt text GenerateTableXML
 // wrote; the replacement carries it through rather than dropping it.

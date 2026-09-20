@@ -16,7 +16,7 @@ func TestPFStepHeightScalesWithTheSpace(t *testing.T) {
 		height int64
 		want   int64
 	}{
-		{"a body placeholder gets a readable box", 4 * inch + inch*3/4, pfMinStepHeight * pfMaxStepHeightFactor},
+		{"a body placeholder gets a readable box", 4*inch + inch*3/4, pfMinStepHeight * pfMaxStepHeightFactor},
 		{"a short band keeps the minimum", inch, pfMinStepHeight},
 		{"a half-height zone lands between", 2 * inch, 2 * inch / pfStepHeightDivisor},
 		{"no bounds falls back to the minimum", 0, pfMinStepHeight},

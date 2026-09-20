@@ -5,8 +5,8 @@ package generator
 import (
 	"fmt"
 
-	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // DiagramRenderResult contains rendered image data and fit metadata for PPTX embedding.
@@ -323,4 +323,3 @@ func lookupBackgroundAndSurface(colors []types.ThemeColor) (background, surface 
 	}
 	return background, surface
 }
-

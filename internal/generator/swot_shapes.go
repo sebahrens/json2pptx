@@ -63,15 +63,20 @@ const (
 // swotQuadrantColors defines the accent scheme color for each SWOT quadrant.
 // Order: Strengths, Weaknesses, Opportunities, Threats.
 var swotQuadrantColors = [4]struct {
-	label  string
-	scheme string
-	lumMod int
-	lumOff int
+	label string
 }{
-	{"Strengths", "accent1", 20000, 80000},
-	{"Weaknesses", "accent2", 20000, 80000},
-	{"Opportunities", "accent3", 20000, 80000},
-	{"Threats", "accent4", 20000, 80000},
+	{"Strengths"}, {"Weaknesses"}, {"Opportunities"}, {"Threats"},
+}
+
+// swotDefaultTint is the one framework here whose colour means something: the
+// grid's left column is the positive half (Strengths, Opportunities) and the
+// right column the negative one (Weaknesses, Threats). Two accents, matching
+// the split — not four accents matching nothing (go-slide-creator-w0kj).
+func swotDefaultTint(i int) taxonomyTint {
+	if i == 1 || i == 3 { // Weaknesses, Threats
+		return taxonomyNegative
+	}
+	return taxonomyLight
 }
 
 // isSWOTDiagram returns true if the diagram spec is a swot diagram type.
@@ -127,13 +132,15 @@ func (ctx *singlePassContext) processSWOTNativeShapes(slideNum int, item Content
 		bounds:         placeholderBounds,
 		panels:         panels,
 		// groupXML is generated during finalizePanelGroupXML via generateSWOTGroupXML
-		swotMode: true,
+		swotMode:      true,
+		taxonomyTints: taxonomyPalette(diagramSpec, 4, swotDefaultTint),
 	})
 }
 
 // generateSWOTGroupXML produces the complete <p:grpSp> XML for a 2x2 SWOT grid.
+// tints are the resolved per-quadrant fills (see taxonomy_palette.go).
 // Each quadrant is a roundRect with a tinted scheme fill, bold header, and bulleted body.
-func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, tints []taxonomyTint) string {
 	if len(panels) != 4 {
 		slog.Warn("generateSWOTGroupXML: expected 4 panels", "got", len(panels))
 		return ""
@@ -152,16 +159,19 @@ func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, sh
 
 	// Quadrant positions: [top-left, top-right, bottom-left, bottom-right]
 	positions := [4]struct{ x, y int64 }{
-		{bounds.X, bounds.Y},                                  // Strengths (top-left)
-		{bounds.X + quadW + swotGap, bounds.Y},                // Weaknesses (top-right)
-		{bounds.X, bounds.Y + quadH + swotGap},                // Opportunities (bottom-left)
+		{bounds.X, bounds.Y},                                     // Strengths (top-left)
+		{bounds.X + quadW + swotGap, bounds.Y},                   // Weaknesses (top-right)
+		{bounds.X, bounds.Y + quadH + swotGap},                   // Opportunities (bottom-left)
 		{bounds.X + quadW + swotGap, bounds.Y + quadH + swotGap}, // Threats (bottom-right)
 	}
 
 	var children [][]byte
 	for i, panel := range panels {
 		pos := positions[i]
-		qc := swotQuadrantColors[i]
+		qc := swotDefaultTint(i)
+		if i < len(tints) {
+			qc = tints[i]
+		}
 		headerID := shapeIDBase + uint32(i*2) + 1
 		bodyID := shapeIDBase + uint32(i*2) + 2
 

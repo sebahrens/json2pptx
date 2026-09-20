@@ -40,12 +40,12 @@ const (
 	stylishPanelGap int64 = 283175
 
 	// Height ratios (fraction of total bounding box height).
-	stylishAccentHeightRatio  = 0.217
-	stylishGapHeightRatio     = 0.024
-	stylishRibbonOffsetRatio  = 0.241 // ribbon starts at accent + gap
-	stylishRibbonHeightRatio  = 0.205
-	stylishHeaderOffsetRatio  = 0.266
-	stylishHeaderHeightRatio  = 0.157
+	stylishAccentHeightRatio = 0.217
+	stylishGapHeightRatio    = 0.024
+	stylishRibbonOffsetRatio = 0.241 // ribbon starts at accent + gap
+	stylishRibbonHeightRatio = 0.205
+	stylishHeaderOffsetRatio = 0.266
+	stylishHeaderHeightRatio = 0.157
 
 	// Styling constants.
 	stylishAccentSchemeColor = "accent2"

@@ -946,4 +946,3 @@ func TestCheckDiagramAspectMismatchFinding_NilOnInvalidDims(t *testing.T) {
 		t.Errorf("expected nil for nil spec, got: %+v", f)
 	}
 }
-

@@ -936,11 +936,11 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 			switch {
 			case inserts[i].swotMode:
 				inserts[i].groupXML = generateSWOTGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].taxonomyTints,
 				)
 			case inserts[i].pestelMode:
 				inserts[i].groupXML = generatePESTELGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].taxonomyTints,
 				)
 			case inserts[i].valueChainMode:
 				inserts[i].groupXML = generateValueChainGroupXML(
@@ -960,7 +960,7 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 				)
 			case inserts[i].bmcMode:
 				inserts[i].groupXML = generateBMCGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].taxonomyTints,
 				)
 			case inserts[i].processFlowMode:
 				inserts[i].groupXML = generateProcessFlowGroupXML(

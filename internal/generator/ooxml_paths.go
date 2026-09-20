@@ -11,34 +11,34 @@ import (
 // These constants define the standard paths within a PPTX ZIP archive.
 const (
 	// Core PPTX paths
-	PathPresentationXML     = "ppt/presentation.xml"
-	PathPresentationRels    = "ppt/_rels/presentation.xml.rels"
-	PathContentTypes        = "[Content_Types].xml"
-	PathDocPropsApp         = "docProps/app.xml"
-	PathTableStyles         = "ppt/tableStyles.xml"
-	PathMedia               = "ppt/media/"
-	PathSlides              = "ppt/slides/"
-	PathSlideLayouts        = "ppt/slideLayouts/"
-	PathSlideLayoutRels     = "ppt/slideLayouts/_rels/"
-	PathSlideRels           = "ppt/slides/_rels/"
+	PathPresentationXML  = "ppt/presentation.xml"
+	PathPresentationRels = "ppt/_rels/presentation.xml.rels"
+	PathContentTypes     = "[Content_Types].xml"
+	PathDocPropsApp      = "docProps/app.xml"
+	PathTableStyles      = "ppt/tableStyles.xml"
+	PathMedia            = "ppt/media/"
+	PathSlides           = "ppt/slides/"
+	PathSlideLayouts     = "ppt/slideLayouts/"
+	PathSlideLayoutRels  = "ppt/slideLayouts/_rels/"
+	PathSlideRels        = "ppt/slides/_rels/"
 
 	// Notes slides
-	PathNotesSlides         = "ppt/notesSlides/"
-	PathNotesSlideRels      = "ppt/notesSlides/_rels/"
+	PathNotesSlides    = "ppt/notesSlides/"
+	PathNotesSlideRels = "ppt/notesSlides/_rels/"
 
 	// Format patterns for path generation
-	PatternSlideXML         = "ppt/slides/slide%d.xml"
-	PatternSlideRelsXML     = "ppt/slides/_rels/slide%d.xml.rels"
-	PatternSlideLayoutXML   = "ppt/slideLayouts/%s.xml"
-	PatternSlideLayoutRels  = "ppt/slideLayouts/_rels/%s.xml.rels"
-	PatternMediaImage       = "ppt/media/image%d"
-	PatternNotesSlideXML    = "ppt/notesSlides/notesSlide%d.xml"
-	PatternNotesSlideRels   = "ppt/notesSlides/_rels/notesSlide%d.xml.rels"
+	PatternSlideXML        = "ppt/slides/slide%d.xml"
+	PatternSlideRelsXML    = "ppt/slides/_rels/slide%d.xml.rels"
+	PatternSlideLayoutXML  = "ppt/slideLayouts/%s.xml"
+	PatternSlideLayoutRels = "ppt/slideLayouts/_rels/%s.xml.rels"
+	PatternMediaImage      = "ppt/media/image%d"
+	PatternNotesSlideXML   = "ppt/notesSlides/notesSlide%d.xml"
+	PatternNotesSlideRels  = "ppt/notesSlides/_rels/notesSlide%d.xml.rels"
 
 	// Glob patterns for file matching
-	PatternMatchSlideXML    = "ppt/slides/slide*.xml"
-	PatternMatchMediaImage  = "ppt/media/image*"
-	PatternMatchSlideRels   = "ppt/slides/_rels/slide*.xml.rels"
+	PatternMatchSlideXML   = "ppt/slides/slide*.xml"
+	PatternMatchMediaImage = "ppt/media/image*"
+	PatternMatchSlideRels  = "ppt/slides/_rels/slide*.xml.rels"
 )
 
 // SlidePath returns the path for a slide XML file.

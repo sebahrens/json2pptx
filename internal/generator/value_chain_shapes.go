@@ -124,7 +124,6 @@ func (ctx *singlePassContext) processValueChainNativeShapes(slideNum int, item C
 		return
 	}
 
-
 	panels, meta := parseValueChainData(diagramSpec.Data)
 	if len(panels) == 0 {
 		slog.Warn("value_chain native shapes: no activities parsed", "slide", slideNum)

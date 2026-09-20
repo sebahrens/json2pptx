@@ -75,7 +75,7 @@ func TestGenerateSWOTGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 8000000, Height: 5000000}
 
-	result := generateSWOTGroupXML(panels, bounds, 100)
+	result := generateSWOTGroupXML(panels, bounds, 100, taxonomyPalette(nil, 4, swotDefaultTint))
 
 	// Should produce non-empty XML
 	if result == "" {
@@ -105,11 +105,18 @@ func TestGenerateSWOTGroupXML_Basic(t *testing.T) {
 		}
 	}
 
-	// Should use scheme colors (accent1-4)
-	for i := 1; i <= 4; i++ {
-		accent := "accent" + string(rune('0'+i))
-		if !strings.Contains(result, accent) {
-			t.Errorf("should contain scheme color %q", accent)
+	// Two accents, matching the framework's one real contrast: the positive
+	// half (Strengths, Opportunities) against the negative one (Weaknesses,
+	// Threats). Four accents matched nothing (go-slide-creator-w0kj).
+	for _, want := range []string{"accent1", "accent2"} {
+		if !strings.Contains(result, want) {
+			t.Errorf("should contain scheme color %q", want)
+		}
+	}
+	for i := 3; i <= 6; i++ {
+		accent := fmt.Sprintf("accent%d", i)
+		if strings.Contains(result, accent) {
+			t.Errorf("SWOT should not reach for %q; it has two halves, not four", accent)
 		}
 	}
 
@@ -150,7 +157,7 @@ func TestGenerateSWOTGroupXML_Wrong_Panel_Count(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateSWOTGroupXML(panels, bounds, 100)
+	result := generateSWOTGroupXML(panels, bounds, 100, taxonomyPalette(nil, 4, swotDefaultTint))
 	if result != "" {
 		t.Error("generateSWOTGroupXML should return empty for non-4 panel count")
 	}
@@ -165,7 +172,7 @@ func TestGenerateSWOTGroupXML_2x2_Layout(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 8000000, Height: 6000000}
 
-	result := generateSWOTGroupXML(panels, bounds, 100)
+	result := generateSWOTGroupXML(panels, bounds, 100, taxonomyPalette(nil, 4, swotDefaultTint))
 
 	// Verify 2x2 layout positions
 	quadW := (bounds.Width - swotGap) / 2
@@ -217,7 +224,7 @@ func TestGenerateSWOTGroupXML_EmptyBullets(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateSWOTGroupXML(panels, bounds, 100)
+	result := generateSWOTGroupXML(panels, bounds, 100, taxonomyPalette(nil, 4, swotDefaultTint))
 
 	if result == "" {
 		t.Fatal("should generate XML even with empty bullets")

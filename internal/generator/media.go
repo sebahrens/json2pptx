@@ -439,7 +439,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
 				Code:    patterns.ErrCodeDiagramClamped,
 				Message: fmt.Sprintf("diagram placeholder width clamped: %d EMU → %d EMU minimum", placeholderBounds.Width, minDiagramWidthEMU),
-				Fix: &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "width", "original_emu": placeholderBounds.Width, "clamped_emu": minDiagramWidthEMU}},
+				Fix:     &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "width", "original_emu": placeholderBounds.Width, "clamped_emu": minDiagramWidthEMU}},
 			},
 			Action: "review",
 		})
@@ -456,7 +456,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
 				Code:    patterns.ErrCodeDiagramClamped,
 				Message: fmt.Sprintf("diagram placeholder height clamped: %d EMU → %d EMU minimum", placeholderBounds.Height, minDiagramHeightEMU),
-				Fix: &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "height", "original_emu": placeholderBounds.Height, "clamped_emu": minDiagramHeightEMU}},
+				Fix:     &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "height", "original_emu": placeholderBounds.Height, "clamped_emu": minDiagramHeightEMU}},
 			},
 			Action: "review",
 		})
@@ -768,11 +768,11 @@ func CheckDiagramInNarrowBoundsFinding(diagramSpec *types.DiagramSpec, widthEMU 
 			Fix: &patterns.FixSuggestion{
 				Kind: "reshape_grid",
 				Params: map[string]any{
-					"diagram_type":    diagramSpec.Type,
-					"complexity":      complexity,
-					"cell_width_pct":  widthPct,
-					"cell_width_emu":  widthEMU,
-					"threshold_emu":   narrowPlaceholderThreshold,
+					"diagram_type":   diagramSpec.Type,
+					"complexity":     complexity,
+					"cell_width_pct": widthPct,
+					"cell_width_emu": widthEMU,
+					"threshold_emu":  narrowPlaceholderThreshold,
 				},
 			},
 		},

@@ -87,13 +87,17 @@ type panelShapeInsert struct {
 	kpiDashboardMode  bool              // True for KPI Dashboard grid layout
 	portersFiveMode   bool              // True for Porter's Five Forces cross layout
 	bmcMode           bool              // True for Business Model Canvas 9-box layout
-	processFlowMode   bool              // True for Process Flow diagram layout
-	processFlowMeta   processFlowMeta   // Metadata for process flow layout
-	heatmapMode       bool              // True for Heatmap NxM grid layout
-	heatmapMeta       heatmapMeta       // Metadata for heatmap layout (rows, cols)
-	pyramidMode       bool              // True for Pyramid stacked trapezoid layout
-	houseDiagramMode  bool              // True for House Diagram (roof/pillars/foundation) layout
-	houseDiagramMeta  houseDiagramMeta  // Metadata for house diagram layout (floor structure)
+	// taxonomyTints are the per-cell fills for a taxonomy framework (SWOT /
+	// PESTEL / BMC), resolved at registration where the diagram spec — and so
+	// any authored style.colors — is still in hand (go-slide-creator-w0kj).
+	taxonomyTints    []taxonomyTint
+	processFlowMode  bool             // True for Process Flow diagram layout
+	processFlowMeta  processFlowMeta  // Metadata for process flow layout
+	heatmapMode      bool             // True for Heatmap NxM grid layout
+	heatmapMeta      heatmapMeta      // Metadata for heatmap layout (rows, cols)
+	pyramidMode      bool             // True for Pyramid stacked trapezoid layout
+	houseDiagramMode bool             // True for House Diagram (roof/pillars/foundation) layout
+	houseDiagramMeta houseDiagramMeta // Metadata for house diagram layout (floor structure)
 }
 
 // nativePanelData holds parsed data for a single panel in a native panel shape group.

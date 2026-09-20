@@ -112,6 +112,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Taxonomy frameworks use the deck's accent instead of a rainbow
+  (go-slide-creator-w0kj).** `business_model_canvas` coloured its nine cells
+  accent1–6 plus repeats, `pestel` its six accent1–6, and `swot` its four
+  accent1–4. Templates define accent3–6 as unrelated hues, so a forest-green
+  deck rendered a nine-colour canvas with a cyan "Customer Relationships" box,
+  and warm-coral got a cyan "Threats" quadrant. Colour carried no information
+  and overrode the deck's `accent_strategy`.
+  - BMC and PESTEL now use one hue — the deck's accent1 — with the BMC Value
+    Proposition a step deeper, since the canvas privileges it.
+  - SWOT keeps two accents for the one contrast it actually encodes:
+    Strengths/Opportunities against Weaknesses/Threats.
+  - `porters_five_forces` is unchanged; its colour tracks each force's
+    `intensity`, which is information.
+  - **`style.colors` now applies to these three diagram types**, which
+    previously ignored it. Entries apply in cell order and a short list
+    repeats, so the old rotation is one `style.colors` away and a single
+    colour recolours the whole framework. A `#RRGGBB` entry is used at full
+    strength; a scheme name keeps the standard cell tint.
+
 - **kpi-Nup's 45% is documented as a base, not a cap
   (go-slide-creator-4uxi).** `kpiMaxCardHeightFrac` was passed to `clampPt` as
   the *lower* bound, so the "cap" was a floor and the row rose to whatever the

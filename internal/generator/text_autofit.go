@@ -25,8 +25,8 @@ type autofitOption func(*autofitConfig)
 
 type autofitConfig struct {
 	themeFontName       string
-	readabilityMinScale int // override default 62500 (62.5%)
-	minFontScalePct     int // override textfit min font scale floor (default 0 = use textfit default 60%)
+	readabilityMinScale int                    // override default 62500 (62.5%)
+	minFontScalePct     int                    // override textfit min font scale floor (default 0 = use textfit default 60%)
 	findings            *[]patterns.FitFinding // optional collector for render-time findings
 	findingPath         string                 // JSON path prefix for findings (e.g. "slides[0].content.body")
 

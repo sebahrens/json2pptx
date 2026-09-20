@@ -111,7 +111,7 @@ type SlideSpec struct {
 	// put a numbered badge UNDER the screenshot it annotates
 	// (go-slide-creator-yomm).
 	OverlayShapeXML [][]byte
-	IconInserts     []IconInsert // SVG icon images from shape_grid (require media registration)
+	IconInserts     []IconInsert  // SVG icon images from shape_grid (require media registration)
 	ImageInserts    []ImageInsert // Image files from shape_grid (require media registration)
 }
 
@@ -647,14 +647,14 @@ type runXML struct {
 // child elements (solidFill, latin font, etc.) using innerxml.
 // Bold and Italic are used for inline <b>bold</b> and <i>italic</i> formatting.
 type runPropertiesXML struct {
-	Lang      string `xml:"lang,attr,omitempty"` // Language code (e.g., "en-US")
-	FontSize  string `xml:"sz,attr,omitempty"`   // Font size in hundredths of a point (e.g., "7200" = 72pt)
-	Bold      string `xml:"b,attr,omitempty"`    // Bold flag: "1" for bold, omit otherwise
-	Italic    string `xml:"i,attr,omitempty"`    // Italic flag: "1" for italic, omit otherwise
-	Underline string `xml:"u,attr,omitempty"`    // Underline style: "sng" for single, omit otherwise
+	Lang      string `xml:"lang,attr,omitempty"`     // Language code (e.g., "en-US")
+	FontSize  string `xml:"sz,attr,omitempty"`       // Font size in hundredths of a point (e.g., "7200" = 72pt)
+	Bold      string `xml:"b,attr,omitempty"`        // Bold flag: "1" for bold, omit otherwise
+	Italic    string `xml:"i,attr,omitempty"`        // Italic flag: "1" for italic, omit otherwise
+	Underline string `xml:"u,attr,omitempty"`        // Underline style: "sng" for single, omit otherwise
 	Baseline  string `xml:"baseline,attr,omitempty"` // Baseline shift in thousandths of a percent: "30000" superscript, "-25000" subscript
-	Caps      string `xml:"cap,attr,omitempty"`  // Capitalization: "small" for small-caps, "all" for all-caps
-	Inner     string `xml:",innerxml"`           // Child elements (preserved verbatim)
+	Caps      string `xml:"cap,attr,omitempty"`      // Capitalization: "small" for small-caps, "all" for all-caps
+	Inner     string `xml:",innerxml"`               // Child elements (preserved verbatim)
 }
 
 // endParaRPrXML preserves end paragraph run properties (used by OOXML for cursor styling).

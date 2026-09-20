@@ -194,4 +194,3 @@ func BuildContentItems(slide types.SlideDefinition, mappings []layout.ContentMap
 
 	return items
 }
-

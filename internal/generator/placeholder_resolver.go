@@ -190,14 +190,14 @@ func (t ResolutionTier) String() string {
 type PlaceholderSemanticRole int
 
 const (
-	RoleUnknown        PlaceholderSemanticRole = iota
-	RoleTitle          // ph.Type == "title" or "ctrTitle"
-	RoleSubtitle       // ph.Type == "subTitle"
-	RoleBodyPrimary    // Largest body-type placeholder by area
-	RoleBodySecondary  // Second largest body-type placeholder
-	RoleBodyTertiary   // Third body-type placeholder
-	RoleAccentLarge    // Body placeholder with very large font (Big Statement number)
-	RoleCaption        // Small body placeholder (caption strip)
+	RoleUnknown       PlaceholderSemanticRole = iota
+	RoleTitle                                 // ph.Type == "title" or "ctrTitle"
+	RoleSubtitle                              // ph.Type == "subTitle"
+	RoleBodyPrimary                           // Largest body-type placeholder by area
+	RoleBodySecondary                         // Second largest body-type placeholder
+	RoleBodyTertiary                          // Third body-type placeholder
+	RoleAccentLarge                           // Body placeholder with very large font (Big Statement number)
+	RoleCaption                               // Small body placeholder (caption strip)
 )
 
 // semanticAliases maps common placeholder_id conventions to semantic roles.

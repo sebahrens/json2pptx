@@ -30,7 +30,8 @@ import (
 //   │ (accent4) │       │ (accent5) │       │ (accent6) │
 //   └──────────┘       └──────────┘       └──────────┘
 //
-// Color strategy: each segment uses a different accent scheme color (accent1–6)
+// Color strategy: one hue — the deck's accent1 — at a single tint. PESTEL's
+// six forces are peers, so nothing should stand out (go-slide-creator-w0kj).
 // with lumMod/lumOff tints so the fill is a light pastel. Text is dk1.
 
 // PESTEL EMU constants.
@@ -57,20 +58,18 @@ const (
 	pestelBodyInset int64 = 91440 // ~0.1"
 )
 
-// pestelSegmentColors defines the accent scheme color for each PESTEL segment.
+// pestelSegmentColors names the PESTEL segments in render order. The fills
+// come from taxonomyPalette (go-slide-creator-w0kj).
 // Order: Political, Economic, Social, Technological, Environmental, Legal.
 var pestelSegmentColors = [6]struct {
-	label  string
-	scheme string
-	lumMod int
-	lumOff int
+	label string
 }{
-	{"Political", "accent1", 20000, 80000},
-	{"Economic", "accent2", 20000, 80000},
-	{"Social", "accent3", 20000, 80000},
-	{"Technological", "accent4", 20000, 80000},
-	{"Environmental", "accent5", 20000, 80000},
-	{"Legal", "accent6", 20000, 80000},
+	{"Political"},
+	{"Economic"},
+	{"Social"},
+	{"Technological"},
+	{"Environmental"},
+	{"Legal"},
 }
 
 // isPESTELDiagram returns true if the diagram spec is a pestel diagram type.
@@ -116,6 +115,7 @@ func (ctx *singlePassContext) processPESTELNativeShapes(slideNum int, item Conte
 		bounds:         placeholderBounds,
 		panels:         panels,
 		pestelMode:     true,
+		taxonomyTints:  taxonomyPalette(diagramSpec, len(pestelSegmentColors), uniformTaxonomyTint),
 	})
 }
 
@@ -203,7 +203,7 @@ func parsePESTELSegmentsArray(v any) []nativePanelData {
 
 // generatePESTELGroupXML produces the complete <p:grpSp> XML for a 3x2 PESTEL grid.
 // Each segment is a roundRect with a tinted scheme fill, bold header, and bulleted body.
-func generatePESTELGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generatePESTELGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, tints []taxonomyTint) string {
 	n := len(panels)
 	if n == 0 {
 		slog.Warn("generatePESTELGroupXML: no panels provided")
@@ -232,8 +232,10 @@ func generatePESTELGroupXML(panels []nativePanelData, bounds types.BoundingBox, 
 		cellX := bounds.X + int64(col)*(cellW+pestelGap)
 		cellY := bounds.Y + int64(row)*(cellH+pestelGap)
 
-		// Pick color: use pestelSegmentColors if within range, otherwise cycle accents
-		sc := pestelSegmentColors[i%len(pestelSegmentColors)]
+		sc := uniformTaxonomyTint(i)
+		if i < len(tints) {
+			sc = tints[i]
+		}
 
 		headerID := shapeIDBase + uint32(i*2) + 1
 		bodyID := shapeIDBase + uint32(i*2) + 2

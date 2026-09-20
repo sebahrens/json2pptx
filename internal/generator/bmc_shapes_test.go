@@ -2,6 +2,7 @@ package generator
 
 import (
 	"encoding/xml"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -160,7 +161,7 @@ func TestGenerateBMCGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 8000000, Height: 5000000}
 
-	result := generateBMCGroupXML(panels, bounds, 100)
+	result := generateBMCGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(bmcSectionOrder), bmcDefaultTint))
 
 	if result == "" {
 		t.Fatal("generateBMCGroupXML returned empty string")
@@ -193,11 +194,16 @@ func TestGenerateBMCGroupXML_Basic(t *testing.T) {
 		}
 	}
 
-	// Should use scheme colors (multiple accents)
-	for i := 1; i <= 6; i++ {
-		accent := "accent" + string(rune('0'+i))
-		if !strings.Contains(result, accent) {
-			t.Errorf("should contain scheme color %q", accent)
+	// One hue, not nine (go-slide-creator-w0kj). The canvas is named and laid
+	// out in a fixed grid, so rotating accent1-6 carried no information and
+	// rendered as a rainbow on any template whose accent3-6 are unrelated hues.
+	if !strings.Contains(result, "accent1") {
+		t.Error("should fill cells with the deck's accent1")
+	}
+	for i := 2; i <= 6; i++ {
+		accent := fmt.Sprintf("accent%d", i)
+		if strings.Contains(result, accent) {
+			t.Errorf("BMC should not reach for %q; colour carries no information here", accent)
 		}
 	}
 
@@ -237,7 +243,7 @@ func TestGenerateBMCGroupXML_WrongPanelCount(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateBMCGroupXML(panels, bounds, 100)
+	result := generateBMCGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(bmcSectionOrder), bmcDefaultTint))
 	if result != "" {
 		t.Error("generateBMCGroupXML should return empty for non-9 panel count")
 	}
@@ -250,7 +256,7 @@ func TestGenerateBMCGroupXML_EmptyBullets(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateBMCGroupXML(panels, bounds, 100)
+	result := generateBMCGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(bmcSectionOrder), bmcDefaultTint))
 
 	if result == "" {
 		t.Fatal("should generate XML even with empty bullets")
@@ -270,7 +276,7 @@ func TestGenerateBMCGroupXML_Layout(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 8000000, Height: 6000000}
 
-	result := generateBMCGroupXML(panels, bounds, 100)
+	result := generateBMCGroupXML(panels, bounds, 100, taxonomyPalette(nil, len(bmcSectionOrder), bmcDefaultTint))
 
 	// Count the number of p:sp shapes — should be 18 (9 headers + 9 bodies)
 	shapeCount := strings.Count(result, "<p:sp>")

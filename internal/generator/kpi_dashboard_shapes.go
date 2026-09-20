@@ -106,7 +106,6 @@ func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum int, item
 		return
 	}
 
-
 	// Parse metrics from DiagramSpec.Data — accept "metrics" or "kpis" key.
 	metrics := parseKPIMetrics(diagramSpec.Data)
 	if len(metrics) == 0 {

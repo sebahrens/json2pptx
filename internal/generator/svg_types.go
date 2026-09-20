@@ -38,4 +38,3 @@ const DefaultSVGScale = types.DefaultSVGScale
 
 // Re-export DefaultMaxPNGWidth from the types package.
 const DefaultMaxPNGWidth = types.DefaultMaxPNGWidth
-
