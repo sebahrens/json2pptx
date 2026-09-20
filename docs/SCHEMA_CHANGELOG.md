@@ -104,6 +104,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Embedded templates keep their name (go-slide-creator-qbks).** A server
+  started without `--templates-dir` materialised its template as
+  `json2pptx-template-356087472.pptx`, and everything downstream that reads a
+  template's identity off its base name saw a template called
+  `json2pptx-template-356087472`. `recommend_visual` therefore returned no
+  `layout_preview_png_path` at all and every candidate stayed
+  `metadata_only: true` — on the documented default invocation.
+  - The random part now goes in the temp DIRECTORY name
+    (`<tmp>/json2pptx-template-XXXX/midnight-blue.pptx`), so the file keeps the
+    template's own name and the embedded layout previews resolve.
+  - Fixes every name-derived lookup at once rather than only the preview path.
+
 - **`value-chain` fits its step labels (go-slide-creator-vo0j1).** The label
   size was fixed at 12pt regardless of the step count, so a ten-step chain
   rendered "Manufactur / ing" and "Decommissi / oning end- / of-life" — the

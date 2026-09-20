@@ -169,34 +169,35 @@ func resolveTemplatePath(templateName, flagTemplatesDir string) (string, func(),
 		return "", noop, fmt.Errorf("template %q not found in any search location or embedded templates", templateName)
 	}
 
-	// Extract to temp file (PPTX libraries need a real file path)
-	tmpFile, err := os.CreateTemp("", "json2pptx-template-*.pptx")
+	// Extract to a temp file (PPTX libraries need a real file path). The
+	// RANDOM PART GOES IN THE DIRECTORY NAME, not the file's: everything
+	// downstream reads the template's identity off its base name, so a file
+	// called json2pptx-template-356087472.pptx is a template called
+	// "json2pptx-template-356087472" — which matched no embedded layout
+	// preview, so a server started without --templates-dir returned no
+	// layout_preview_png_path at all (go-slide-creator-qbks).
+	tmpDir, err := os.MkdirTemp("", "json2pptx-template-*")
 	if err != nil {
-		return "", noop, fmt.Errorf("failed to create temp file for embedded template: %w", err)
+		return "", noop, fmt.Errorf("failed to create temp dir for embedded template: %w", err)
 	}
-
-	if _, err := tmpFile.Write(data); err != nil {
-		tmpFile.Close()
-		os.Remove(tmpFile.Name())
+	tmpPath := filepath.Join(tmpDir, filename)
+	if err := os.WriteFile(tmpPath, data, 0o600); err != nil {
+		os.RemoveAll(tmpDir)
 		return "", noop, fmt.Errorf("failed to write embedded template to temp file: %w", err)
-	}
-	if err := tmpFile.Close(); err != nil {
-		os.Remove(tmpFile.Name())
-		return "", noop, fmt.Errorf("failed to close temp file for embedded template: %w", err)
 	}
 
 	slog.Debug("extracted embedded template to temp file",
 		"template", templateName,
-		"path", tmpFile.Name(),
+		"path", tmpPath,
 	)
 
 	cleanup := func() {
-		if err := os.Remove(tmpFile.Name()); err != nil && !os.IsNotExist(err) {
-			slog.Warn("failed to remove temp template file", "path", tmpFile.Name(), "err", err)
+		if err := os.RemoveAll(tmpDir); err != nil && !os.IsNotExist(err) {
+			slog.Warn("failed to remove temp template dir", "path", tmpDir, "err", err)
 		}
 	}
 
-	return tmpFile.Name(), cleanup, nil
+	return tmpPath, cleanup, nil
 }
 
 // listAvailableTemplates returns the names of all available templates
