@@ -123,6 +123,9 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 		server.WithResourceCapabilities(false, false),
 		server.WithPromptCapabilities(false),
 		server.WithLogging(),
+		server.WithCompletions(),
+		server.WithPromptCompletionProvider(&mcpCompletionProvider{mc: mc}),
+		server.WithResourceCompletionProvider(&mcpCompletionProvider{mc: mc}),
 		// The instructions say so when this server cannot render: a client that
 		// never reads get_capabilities would otherwise be told to finish with a
 		// step that cannot run here (go-slide-creator-a7fh).

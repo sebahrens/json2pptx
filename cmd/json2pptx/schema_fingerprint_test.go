@@ -96,6 +96,7 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.73.0 adds content/source and shape/badge hyperlink inputs.
 	// 4.74.0 adds MCP prompts; the fingerprint does not include prompt names.
 	// 4.75.0 adds MCP logging capability; the fingerprint is unchanged.
+	// 4.76.0 adds MCP completions; the fingerprint is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "4e61ab5f35f1ae5a"
 

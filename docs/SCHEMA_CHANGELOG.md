@@ -8,6 +8,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **MCP enum completions (go-slide-creator-zhaw.3).** `initialize` advertises
+  completions. `completion/complete` now filters current template, pattern,
+  slide kind, archetype, chart type, fix kind and fit finding code vocabularies
+  by prefix. Standard MCP completion references are prompts or resources, so
+  the existing `json2pptx://templates`, `json2pptx://patterns`,
+  `json2pptx://schema/deckspec` and `json2pptx://skill` resources carry the
+  tool-argument vocabularies; `deck-from-brief.template` completes through
+  its prompt reference. Unknown reference/argument pairs return an empty list.
+  Schema version advances to 4.76.0; the raw input and tool-name fingerprint
+  is unchanged.
+
 - **MCP logging (go-slide-creator-zhaw.2).** `initialize` advertises logging,
   and `logging/setLevel` lets each client opt into contextual render start,
   finish and warning messages through `notifications/message`. INFO/WARN render

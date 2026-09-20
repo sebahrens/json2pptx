@@ -40,6 +40,22 @@ include `tool` and `slide_count`; a successful finish adds `pptx_path` and
 `duration_ms`. Logs also go to
 server stderr; without an opt-in, INFO/WARN notifications are suppressed.
 
+MCP `completion/complete` uses the resources already in `resources/list` as
+references for enum values. Pass `ref: {type: "ref/resource", uri: "…"}` and
+`argument: {name: "…", value: "<prefix>"}`:
+
+| Resource URI | Argument name | Value for |
+|---|---|---|
+| `json2pptx://templates` | `template` | `render_deck_spec.template` and other template inputs |
+| `json2pptx://patterns` | `pattern` | pattern inputs |
+| `json2pptx://schema/deckspec` | `kind`, `archetype`, `chart_type` | DeckSpec and chart enums |
+| `json2pptx://skill` | `fix_kind`, `finding_code` | repair and fit finding enums |
+
+The `deck-from-brief` prompt also completes its `template` argument with
+`ref: {type: "ref/prompt", name: "deck-from-brief"}`. MCP does not define a
+tool reference for completion, so use the corresponding resource reference
+for a tool argument. Unknown reference/argument pairs return no values.
+
 This skill is split into focused sub-files. SKILL.md (this file) covers preconditions, the 5-tool quick reference, and the workflow overview. Load the sub-files when you need their detail:
 
 | File | Contents |

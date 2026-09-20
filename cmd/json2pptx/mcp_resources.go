@@ -59,28 +59,28 @@ func registerMCPResources(s *server.MCPServer, mc *mcpConfig) {
 
 	s.AddResource(
 		mcp.NewResource(templatesResourceURI, "Templates",
-			mcp.WithResourceDescription("The template catalogue: every registered template with its aspect ratio, layout count and table styles. The same payload list_templates returns with fields=compact, free of per-call tokens."),
+			mcp.WithResourceDescription("The template catalogue: every registered template with its aspect ratio, layout count and table styles. The same payload list_templates returns with fields=compact, free of per-call tokens. Complete template names with completion/complete using this resource URI and argument.name=template."),
 			mcp.WithMIMEType("application/json"),
 		),
 		mc.readTemplatesResource,
 	)
 	s.AddResource(
 		mcp.NewResource(patternsResourceURI, "Patterns",
-			mcp.WithResourceDescription("The named-pattern catalogue: every pattern with its description, cell hint and taxonomy. The same payload list_patterns returns with fields=compact."),
+			mcp.WithResourceDescription("The named-pattern catalogue: every pattern with its description, cell hint and taxonomy. The same payload list_patterns returns with fields=compact. Complete names with completion/complete using this resource URI and argument.name=pattern."),
 			mcp.WithMIMEType("application/json"),
 		),
 		readPatternsResource,
 	)
 	s.AddResource(
 		mcp.NewResource(deckSpecResourceURI, "DeckSpec schema",
-			mcp.WithResourceDescription("The DeckSpec JSON Schema: every slide kind's closed payload contract, as validate_deck_spec and render_deck_spec enforce it."),
+			mcp.WithResourceDescription("The DeckSpec JSON Schema: every slide kind's closed payload contract, as validate_deck_spec and render_deck_spec enforce it. Complete kind, archetype and chart_type names with this resource URI."),
 			mcp.WithMIMEType("application/schema+json"),
 		),
 		readDeckSpecResource,
 	)
 	s.AddResource(
 		mcp.NewResource(skillResourceURI, "Authoring skill",
-			mcp.WithResourceDescription("SKILL.md: the deck-authoring guide this server ships, covering the workflow, the slide kinds, the pattern catalogue and the finding codes."),
+			mcp.WithResourceDescription("SKILL.md: the deck-authoring guide this server ships, covering the workflow, the slide kinds, the pattern catalogue and the finding codes. Complete fix_kind and finding_code with this resource URI."),
 			mcp.WithMIMEType("text/markdown"),
 		),
 		readSkillResource,
