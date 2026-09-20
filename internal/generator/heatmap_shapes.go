@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -115,6 +116,21 @@ func (ctx *singlePassContext) processHeatmapNativeShapes(slideNum int, item Cont
 	numRows := len(parsed.values)
 	numCols := len(parsed.values[0])
 
+	// Get placeholder bounds from the shape being replaced. This is resolved
+	// before the meta is encoded so the labels can be measured against the
+	// boxes they will actually be drawn into (go-slide-creator-3rkpt).
+	slide := ctx.templateSlideData[slideNum]
+	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
+	placeholderBounds := getPlaceholderBounds(shape, nil)
+
+	if shortened := fitHeatmapLabels(&parsed, placeholderBounds); shortened > 0 {
+		if f := heatmapLabelFinding(numRows, numCols, shortened, slidepath.Content(slideNum-1, item.PlaceholderID)); f != nil {
+			ctx.fitFindings = append(ctx.fitFindings, *f)
+		}
+		slog.Warn("native heatmap shapes: labels shortened to fit",
+			"slide", slideNum, "rows", numRows, "cols", numCols, "labels", shortened)
+	}
+
 	// Encode heatmap data into panels for the panelShapeInsert system.
 	// Panel 0: metadata (row count, col count, min, max, colorScale, row labels, col labels)
 	// Panels 1..N: one per cell [row*numCols+col], value encoded as title
@@ -138,11 +154,6 @@ func (ctx *singlePassContext) processHeatmapNativeShapes(slideNum int, item Cont
 			})
 		}
 	}
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
 
 	slog.Info("native heatmap shapes: registered",
 		"slide", slideNum,
@@ -236,27 +247,12 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	hasRowLabels := len(rowLabels) > 0
 	hasColLabels := len(colLabels) > 0
 
-	// Reserve space for labels.
-	rowLabelW := int64(0)
-	if hasRowLabels {
-		rowLabelW = heatmapRowLabelWidth
-	}
-	colLabelH := int64(0)
-	if hasColLabels {
-		colLabelH = heatmapColLabelHeight
-	}
-
-	// Grid bounds.
+	// Same geometry the labels were fitted against at registration.
+	geo := heatmapGeometryFor(bounds, numRows, numCols, hasRowLabels, hasColLabels)
+	rowLabelW, colLabelH := geo.rowLabelW, geo.colLabelH
+	cellW, cellH := geo.cellW, geo.cellH
 	gridX := bounds.X + rowLabelW
 	gridY := bounds.Y + colLabelH
-	gridW := bounds.Width - rowLabelW
-	gridH := bounds.Height - colLabelH
-
-	// Cell dimensions.
-	hGapTotal := int64(numCols-1) * heatmapGap
-	vGapTotal := int64(numRows-1) * heatmapGap
-	cellW := (gridW - hGapTotal) / int64(numCols)
-	cellH := (gridH - vGapTotal) / int64(numRows)
 
 	// Determine if cells are large enough for value text.
 	showValues := cellW >= heatmapMinCellDim && cellH >= heatmapMinCellDim

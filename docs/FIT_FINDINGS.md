@@ -534,6 +534,8 @@ The fix is `autofix_visual`: set the band shape's rotation to 0 and rotate only 
 
 A complex diagram (org_chart, fishbone, swot, heatmap, etc.) is placed in a grid cell whose width is less than 50% of the slide width. At this width, dense diagram labels and structural elements become illegible. The finding is emitted at generation time (not pre-flight) because it requires resolved cell bounds.
 
+The code also carries the **heatmap label-density** case (go-slide-creator-3rkpt): a heatmap dense enough that a row or column label does not fit the box it is drawn into has that label shortened with an ellipsis, and the finding names the grid (`heatmap is 14x14 (196 cells), so 28 label(s) do not fit …`) with `fix.kind: reduce_text` and `fix.params: {diagram_type, rows, columns, cells, labels_shortened}`. Labels used to be drawn at full length into a one-cell-tall box, so they wrapped over their neighbours into unreadable mush while every gate reported success. A heatmap whose labels fit is untouched and emits nothing.
+
 ```json
 {
   "path": "/slides/0/shape_grid/rows/0/cells/1/diagram",

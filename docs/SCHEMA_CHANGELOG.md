@@ -112,6 +112,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Dense heatmap labels are shortened instead of overlapping
+  (go-slide-creator-3rkpt).** The builder divided the available height by the
+  row count with no floor and drew each label at full length into a box one
+  cell tall, so a 14x14 grid of long labels rendered every row label on top of
+  its neighbours and broke the column headers mid-word — and nothing reported
+  it.
+  - Labels are now measured against the box they will be drawn into and
+    shortened with an ellipsis. The budget is a line count with a floor of one
+    line, so a row shorter than a single line still gets one readable line
+    rather than three overlapping ones.
+  - `GRID_DIAGRAM_NARROW` carries the report, naming the grid size and how
+    many labels were shortened, with `fix.kind: reduce_text` and
+    `fix.params: {diagram_type, rows, columns, cells, labels_shortened}`.
+  - A heatmap whose labels already fit is untouched and silent: a 5x4 renders
+    byte-identically.
+
 - **Taxonomy frameworks use the deck's accent instead of a rainbow
   (go-slide-creator-w0kj).** `business_model_canvas` coloured its nine cells
   accent1–6 plus repeats, `pestel` its six accent1–6, and `swot` its four
