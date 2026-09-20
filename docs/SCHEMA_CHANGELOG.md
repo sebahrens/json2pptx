@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Phased-roadmap activity budgets (go-slide-creator-tp23k.6).**
+  `roadmap-phased` now emits `BODY_TOO_LONG` with the workstream, phase and
+  measured activity-pill target for each supported phase/workstream count.
+  The schema carries the 7×5 table while retaining the 80-character limit
+  for sparse grids. Phase labels and workstream names remain readable at
+  their existing schema maxima in the four bundled templates. Schema version
+  advances to 4.81.0; the input fingerprint is unchanged.
+
 - **Comparison row budgets (go-slide-creator-tp23k.5).** `comparison-2col`
   now emits `BODY_TOO_LONG` with the row, side and measured copy target.
   The budget counts body rows plus one when headers are present: up to four

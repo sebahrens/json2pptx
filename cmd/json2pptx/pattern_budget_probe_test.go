@@ -149,6 +149,80 @@ func TestComparisonBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestRoadmapPhasedBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_ROADMAP_BUDGET_PROBE") != "1" {
+		t.Skip("manual roadmap-phased budget calibration probe")
+	}
+	for phases := 2; phases <= 8; phases++ {
+		for workstreams := 2; workstreams <= 6; workstreams++ {
+			for _, field := range []string{"phase", "name", "item"} {
+				budget := roadmapPhasedReadableBudget(t, phases, workstreams, field)
+				t.Logf("roadmap-phased phases=%d workstreams=%d field=%s budget=%d", phases, workstreams, field, budget)
+			}
+		}
+	}
+}
+
+func roadmapPhasedReadableBudget(t *testing.T, phases, workstreams int, field string) int {
+	t.Helper()
+	type geometry struct {
+		name          string
+		layouts       []types.LayoutMetadata
+		width, height int64
+	}
+	var geometries []geometry
+	for _, name := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, name)
+		geometries = append(geometries, geometry{name, layouts, width, height})
+	}
+	limit := map[string]int{"phase": 20, "name": 40, "item": 80}[field]
+	clean := func(length int) bool {
+		v := &patterns.RoadmapPhasedValues{}
+		for i := 0; i < phases; i++ {
+			v.Phases = append(v.Phases, "Q1")
+		}
+		for i := 0; i < workstreams; i++ {
+			ws := patterns.RoadmapWorkstream{Name: "Team"}
+			for j := 0; j < phases; j++ {
+				ws.Items = append(ws.Items, "Task")
+			}
+			v.Workstreams = append(v.Workstreams, ws)
+		}
+		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+		switch field {
+		case "phase":
+			v.Phases[0] = copy
+		case "name":
+			v.Workstreams[0].Name = copy
+		case "item":
+			v.Workstreams[0].Items[0] = copy
+		}
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, geom := range geometries {
+			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "roadmap-phased", Values: encoded},
+			}}}
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+				return false
+			}
+		}
+		return true
+	}
+	lo, hi := 0, limit
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if clean(mid) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
 func comparisonReadableBudget(t *testing.T, rowCount int, headers bool, field string) int {
 	t.Helper()
 	type geometry struct {

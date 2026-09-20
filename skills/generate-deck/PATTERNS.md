@@ -69,6 +69,8 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Two-column comparisons.** For `comparison-2col`, count body rows plus one when the optional headers are present. At default font sizes, each body cell holds about 200 characters through four effective rows, 196 at five, 131 at six or seven, and 66 at eight or more. The 60-character header limit remains readable at all supported row counts. `BODY_TOO_LONG` identifies the row and left/right cell to shorten.
 
+**Phased roadmaps.** `roadmap-phased` activity pills shrink as phase columns and workstream rows increase. At default font sizes, an 8-phase, 6-workstream grid holds about 32 characters per activity; a 2-phase, 2-workstream grid holds the full 80. `show_pattern` lists the measured target for each 2–8 phase by 2–6 workstream combination. `BODY_TOO_LONG` identifies the exact workstream and phase item to shorten.
+
 ---
 
 ## Text Capacity Awareness

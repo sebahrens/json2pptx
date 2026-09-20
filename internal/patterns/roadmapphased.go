@@ -84,11 +84,47 @@ func (r *roadmapPhased) NewValues() any       { return &RoadmapPhasedValues{} }
 func (r *roadmapPhased) NewOverrides() any    { return &RoadmapPhasedOverrides{} }
 func (r *roadmapPhased) NewCellOverride() any { return &RoadmapPhasedCellOverride{} }
 
+// Measured with TestRoadmapPhasedBudgetProbe against all four bundled
+// templates. Rows are phase counts 2..8, columns workstream counts 2..6.
+var roadmapPhasedItemBudgets = [7][5]int{
+	{80, 80, 80, 80, 80},
+	{80, 80, 80, 80, 78},
+	{80, 80, 80, 80, 60},
+	{80, 80, 80, 62, 42},
+	{80, 80, 62, 47, 40},
+	{80, 80, 60, 45, 40},
+	{80, 61, 41, 32, 32},
+}
+
+func roadmapPhasedItemBudget(phases, workstreams int) int {
+	if phases < 2 || phases > 8 || workstreams < 2 || workstreams > 6 {
+		return 80
+	}
+	return roadmapPhasedItemBudgets[phases-2][workstreams-2]
+}
+
+func (r *roadmapPhased) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*RoadmapPhasedValues)
+	if !ok || v == nil {
+		return nil
+	}
+	budget := roadmapPhasedItemBudget(len(v.Phases), len(v.Workstreams))
+	var warnings []string
+	for i, ws := range v.Workstreams {
+		for j, item := range ws.Items {
+			if n := runeLen(item); n > budget {
+				warnings = append(warnings, fmt.Sprintf("%s: roadmap-phased workstreams[%d].items[%d] is %d characters; a %d-phase x %d-workstream roadmap holds about %d per activity pill before text shrinks below the readable minimum — shorten the activity or use fewer phases/workstreams", ErrCodeBodyTooLong, i, j, n, len(v.Phases), len(v.Workstreams), budget))
+			}
+		}
+	}
+	return warnings
+}
+
 func (r *roadmapPhased) Schema() *Schema {
 	workstreamSchema := ObjectSchema(
 		map[string]*Schema{
 			"name":  StringSchema(40).WithDescription("Workstream name"),
-			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One item per phase (empty string = no activity in that phase)"),
+			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One activity per phase (empty = none). Approximate readable chars per pill by phase count x workstream count (workstreams 2/3/4/5/6): phases 2: 80/80/80/80/80; 3: 80/80/80/80/78; 4: 80/80/80/80/60; 5: 80/80/80/62/42; 6: 80/80/62/47/40; 7: 80/80/60/45/40; 8: 80/61/41/32/32"),
 		},
 		[]string{"name", "items"},
 	).WithAdditionalProperties(false)

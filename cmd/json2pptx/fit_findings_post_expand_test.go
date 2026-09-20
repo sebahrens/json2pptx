@@ -105,6 +105,45 @@ func TestComparisonBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	}
 }
 
+func TestRoadmapPhasedBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.RoadmapPhasedValues{}
+	for i := 0; i < 8; i++ {
+		values.Phases = append(values.Phases, "Q")
+	}
+	for i := 0; i < 6; i++ {
+		ws := patterns.RoadmapWorkstream{Name: "Team"}
+		for j := 0; j < 8; j++ {
+			ws.Items = append(ws.Items, "Task")
+		}
+		values.Workstreams = append(values.Workstreams, ws)
+	}
+	values.Workstreams[2].Items[4] = strings.Repeat("word ", 10)
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range schemaMaximaTemplates {
+		t.Run(name, func(t *testing.T) {
+			layouts, width, height := schemaMaximaLayouts(t, name)
+			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title",
+				Pattern: &PatternInput{Name: "roadmap-phased", Values: encoded},
+			}}}
+			found := false
+			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
+				if finding.Code == patterns.ErrCodeBodyTooLong &&
+					strings.Contains(finding.Message, "workstreams[2].items[4]") &&
+					strings.Contains(finding.Message, "about 32 per activity pill") {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatal("roadmap budget missing from fit report")
+			}
+		})
+	}
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two bios over the budget.
 func postExpandDeck() *PresentationInput {
