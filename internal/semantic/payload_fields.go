@@ -109,6 +109,8 @@ var agendaSectionKeys = []string{
 	"subtitle", "description", "detail",
 }
 
+var quoteItemKeys = []string{"text", "quote", "name", "attribution", "speaker", "author", "role", "title"}
+
 var archTierKeys = []string{
 	"label", "name", "title", "tier", "layer",
 	"description", "detail", "summary", "text",
@@ -269,6 +271,20 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"current_section": {typ: "string", desc: "Alias for current."},
 		"highlight":       {typ: "string", desc: "Alias for current."},
 		"active":          {typ: "string", desc: "Alias for current."},
+	}, compositionFields()), universalFields()),
+	KindQuote: withFields(withFields(map[string]payloadField{
+		"title":        strField("Slide title."),
+		"takeaway":     strField("One-line takeaway footer."),
+		"quotes":       {typ: "array", itemStrings: true, itemKeys: quoteItemKeys, desc: "3–8 attributed quotes for quote-cluster, or one for pull-quote. Each item is {text, name, role?}; un-attributed items use a content fallback."},
+		"testimonials": {typ: "array", itemStrings: true, itemKeys: quoteItemKeys, desc: "Alias for quotes."},
+		"voices":       {typ: "array", itemStrings: true, itemKeys: quoteItemKeys, desc: "Alias for quotes."},
+		"quote":        strField("One-quote shorthand: quotation text."),
+		"text":         strField("Alias for quote."),
+		"attribution":  strField("Speaker name for the one-quote shorthand."),
+		"name":         strField("Alias for attribution."),
+		"speaker":      strField("Alias for attribution."),
+		"author":       strField("Alias for attribution."),
+		"role":         strField("Speaker role for the one-quote shorthand."),
 	}, compositionFields()), universalFields()),
 	KindTeam: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

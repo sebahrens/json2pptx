@@ -123,6 +123,12 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"title": shapeString, "sections": shapeArray, "items": shapeArray,
 		"agenda": shapeArray, "takeaway": shapeString,
 	},
+	KindQuote: {
+		"title": shapeString, "quotes": shapeArray, "testimonials": shapeArray,
+		"voices": shapeArray, "quote": shapeString, "text": shapeString,
+		"attribution": shapeString, "name": shapeString, "speaker": shapeString,
+		"author": shapeString, "role": shapeString, "takeaway": shapeString,
+	},
 	KindTeam: {
 		"title": shapeString, "members": shapeArray, "people": shapeArray,
 		"team": shapeArray, "takeaway": shapeString,
@@ -487,6 +493,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateTable(path, slide, s)
 	case KindAgenda:
 		validateAgenda(path, slide, s)
+	case KindQuote:
+		validateQuote(path, slide, s)
 	case KindTeam:
 		validateTeam(path, slide, s)
 	case KindStat:
@@ -528,6 +536,72 @@ func validateAgenda(path string, slide SlideSpec, s *semDiags) {
 		s.degrade(path+".sections",
 			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n),
 			"agenda", degradeToBullets, degradeCountOutOfRange)
+	}
+}
+
+func validateQuote(path string, slide SlideSpec, s *semDiags) {
+	field := slides.QuoteFieldName(slide.Body)
+	var sources []string
+	for _, key := range []string{"quotes", "testimonials", "voices", "quote", "text"} {
+		if hasNonEmpty(slide.Body, key) {
+			sources = append(sources, key)
+		}
+	}
+	if len(sources) > 1 {
+		s.hard(path+"."+sources[1], string(diagnostics.CodeAmbiguousInput),
+			fmt.Sprintf("quote has competing content sources %s; use one list or one shorthand field", strings.Join(sources, ", ")))
+	}
+	validateQuoteItems(path, field, slide.Body[field], s)
+	n := slides.UsableQuoteCount(slide.Body)
+	if !s.requireUsableContent(path, "quotes", slide.Body, n, "testimonials", "voices", "quote", "text") {
+		return
+	}
+	if over := slides.QuoteOverBudget(slide.Body); over != "" {
+		reason := degradeBudgetExceeded
+		if n == 2 || n > 8 {
+			reason = degradeCountOutOfRange
+		}
+		s.degrade(path+"."+field,
+			fmt.Sprintf("quote %s (otherwise it degrades to quote bullets)", over),
+			"pull-quote/quote-cluster", degradeToBullets, reason)
+	}
+}
+
+func validateQuoteItems(path, field string, raw any, s *semDiags) {
+	if field != "quotes" && field != "testimonials" && field != "voices" {
+		return
+	}
+	entries, ok := raw.([]any)
+	if !ok {
+		return // The top-level field-shape validator reports the wrong type.
+	}
+	for i, item := range entries {
+		validateQuoteItem(fmt.Sprintf("%s.%s[%d]", path, field, i), item, s)
+	}
+}
+
+func validateQuoteItem(path string, item any, s *semDiags) {
+	switch v := item.(type) {
+	case string:
+		if strings.TrimSpace(v) == "" {
+			s.hard(path, string(diagnostics.CodeSemanticRequired), "quote text must not be blank")
+		}
+	case map[string]any:
+		usable := false
+		for _, key := range []string{"text", "quote"} {
+			if value, has := v[key]; has {
+				if str, isString := value.(string); isString {
+					usable = usable || strings.TrimSpace(str) != ""
+				} else {
+					s.hard(path+"."+key, string(diagnostics.CodeSemanticFieldType), "quote text must be a string")
+				}
+			}
+		}
+		if !usable {
+			s.hard(path+".text", string(diagnostics.CodeSemanticRequired), "quote item needs non-empty text or quote")
+		}
+	default:
+		s.hard(path, string(diagnostics.CodeSemanticFieldType), "quote item must be a string or object")
 	}
 }
 

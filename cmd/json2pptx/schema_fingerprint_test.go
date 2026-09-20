@@ -82,6 +82,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.60.0 added the shape_grid `vertical_align` input field
 	// (PresentationInput surface), so the hash advanced from 7f195236332af9cf
 	// (4.59.0).
+	// 4.65.0 adds the semantic DeckSpec quote kind. This changes an existing
+	// tool's accepted schema and discovery response, not the raw PresentationInput
+	// fields, MCP tool names, or Fix.Kind vocabulary, so the hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "1767b639a140ecbf"
 

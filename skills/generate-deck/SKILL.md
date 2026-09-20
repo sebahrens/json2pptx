@@ -121,6 +121,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `timeline` | `milestones` (3–7 → `timeline-horizontal`; aliases `stops`, `events`, `timeline`) | `title`, `takeaway` | each milestone: string (a bare label) or `{label, date?, end_date?, body?}`. Label ≤60 chars, date ≤30, body ≤200. A milestone with an `end_date` spans a period, which draws the whole line as range bars instead of dots. Outside 3–7, or past any budget, it degrades to a dated bullet list. For parallel workstreams across phases use `roadmap`, not `timeline` |
 | `stat` | `value` (the number, ≤20 chars; aliases `stat`, `number`, `metric`) | `title`, `label`, `unit`, `context`, `source`, `takeaway` | one number made the whole slide → `stat-hero`. `label` is the words beneath it (≤80 chars, aliases `caption`/`subtitle`; defaults to the slide `title`), `unit` a short suffix beside the number (≤10, alias `suffix`), `context` one line under the label (≤120, aliases `detail`/`description`), `source` the footnote (≤80, drawn in the attribution band). Past any budget it degrades to a content slide keeping every word. For several numbers at equal weight use `kpi_snapshot` |
 | `agenda` | `sections` (2–10 → numbered `agenda`; 3–6 WITH subtitles → `agenda-with-images` rows; aliases `items`, `agenda`) | `title`, `current`, `takeaway` | each section: string or `{title, subtitle?}`. `current` marks the section the deck is at — its 1-based position or its title — highlighting that row (aliases `current_section`, `highlight`, `active`). Outside those counts it degrades to a numbered bullet list with the current section marked |
+| `quote` | `quotes` (one → `pull-quote`; 3–8 → `quote-cluster`; aliases `testimonials`, `voices`) **or** single `quote` string with `attribution` | `title`, `takeaway`, `role` for a single quote | each quote: `{text, name, role?}` (also accepts `quote`/`attribution`/`title` inside an item). The visual needs a speaker name; two quotes, missing names, or text outside pattern budgets degrade to quote bullets with `SEMANTIC_PATTERN_DEGRADED`. Single quote ≤500 chars; cluster text ≤240 each |
 | `architecture` | `tiers` (3–6 → `arch-stack` visual, alias `layers`) | `title`, `rails` (≤3, alias `side_rails`), `takeaway` | each tier: string or `{label, description?}` — or `{label, items[]}`, whose items are joined into the tier's detail line. Label ≤60 chars, detail ≤120, rail ≤30; a payload outside the tier count or those budgets degrades to a bullet list with every word intact, never truncated |
 | `process` | `steps` | `title`, `takeaway` | each step: string or `{label, description?, type?}`. **Steps that carry a `description` render as numbered rows** (`numbered-step-strip`, 3–6 steps; label ≤60 chars, description ≤180) — a bold label over its own detail line. **Bare labels and branching steps** (`type: "decision"`) render as the `process-flow` diagram (3–8 steps, ≤80 chars per box; a description there is appended to the label, because a flow box has nowhere else to put one). Outside both it degrades to bullets |
 | `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?, items?}` (items[] sub-bullets are folded into the phase description) |
@@ -237,7 +238,7 @@ it, replace the `__FILL_*__` tokens. Skeletons pre-encode rhythm, accent strateg
 
 ### Patterns DeckSpec cannot reach
 
-A DeckSpec kind compiles to 23 of the 43 registered patterns. The rest are authored with
+A DeckSpec kind compiles to 25 of the 43 registered patterns. The rest are authored with
 `kind: raw_json2pptx` (or a hand-written `PresentationInput`), carrying a `pattern` block
 verbatim — see the raw skeletons above. `list_slide_kinds` publishes the per-kind
 `compositions` list; everything in that list is an override the kind will honour, and anything
@@ -256,9 +257,7 @@ outside it is reported as `SEMANTIC_PATTERN_NOT_AVAILABLE` and ignored.
 | `kpi-inline` | A horizontal inline KPI bar, height-capped for supporting context |
 | `process-flow-compact` | A compact process flow, height-capped for short labels |
 | `process-grid-2row` | Two parallel process tracks sharing the same phase columns |
-| `pull-quote` | An italic quote block with attribution, optionally beside a headshot (`values.image: {path\|url, alt}`, `overrides.image_side`, `overrides.image_width_pct` 15–40, default 25). The picture narrows the quote column, so a photographed quote needs to be shorter |
 | `pyramid` | A stacked trapezoid hierarchy of 3–5 tiers |
-| `quote-cluster` | A grid of 3–8 attributed stakeholder quotes |
 | `roadmap-phased` | A phased roadmap with parallel workstreams |
 | `scqa-summary` | A 4-row Situation / Complication / Questions / Answer summary |
 | `strategy-house` | Objective banner + pillars + foundation row |

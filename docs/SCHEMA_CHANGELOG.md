@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `quote` (go-slide-creator-ze1p).** A single attributed quote
+  compiles to `pull-quote`; 3–8 attributed quotes compile to `quote-cluster`.
+  Use `{kind:"quote", quote:"…", attribution:"…", role:"…"}` for one voice or
+  `{kind:"quote", quotes:[{text:"…", name:"…"}, …]}` for a cluster. Two quotes,
+  missing attributions and over-budget copy use a content slide with quote
+  bullets and a `SEMANTIC_PATTERN_DEGRADED` finding. The closed per-kind schema,
+  `list_slide_kinds` example and pattern reachability table include the kind.
+
 - **`CHART_SERIES_LENGTH_MISMATCH` and `CHART_VALUE_NOT_NUMERIC`
   (go-slide-creator-pcrp).** `{categories: [Q1,Q2,Q3,Q4], series: [{name: Rev,
   values: [10]}]}` validated clean and rendered one bar over four ticks;

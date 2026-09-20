@@ -123,6 +123,12 @@ var kindExamples = map[SlideKind]map[string]any{
 			map[string]any{"title": "What happens next", "subtitle": "The first ninety days"},
 		},
 	},
+	KindQuote: {
+		"kind": "quote", "title": "What customers told us",
+		"quote":       "The new platform cut our cycle time in half.",
+		"attribution": "J. Lin", "role": "Head of Operations",
+		"takeaway": "Cycle time is the clearest customer benefit.",
+	},
 	KindArchitecture: {
 		"kind":  "architecture",
 		"title": "Four tiers, two concerns that cut across them",

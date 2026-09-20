@@ -222,6 +222,10 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleTransition, family: FamilyStructural, density: DensityLight, layout: "blank-title",
 		pattern: agendaPattern,
 	},
+	KindQuote: {
+		role: RoleEvidence, family: FamilyText, density: DensityLight, layout: "blank-title",
+		pattern: quotePattern,
+	},
 	KindStat: {
 		// One number is the lightest slide in the deck and it is there to make a
 		// point, not to lay out evidence in parts. It shares the big-number
@@ -386,6 +390,20 @@ func processPattern(body map[string]any) string {
 // to bullets (go-slide-creator-3rvk).
 func agendaPattern(body map[string]any) string {
 	return slides.AgendaPattern(body)
+}
+
+func quotePattern(body map[string]any) string {
+	if slides.QuoteOverBudget(body) != "" {
+		return ""
+	}
+	switch slides.UsableQuoteCount(body) {
+	case 1:
+		return "pull-quote"
+	case 3, 4, 5, 6, 7, 8:
+		return "quote-cluster"
+	default:
+		return ""
+	}
 }
 
 // kpiPattern advertises the kpi-Nup pattern the payload will actually compile
@@ -563,6 +581,12 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			visual("agenda", "2-10 sections as a numbered list"),
 			visual("agenda-with-images", "3-6 sections, each with a subtitle, as rows"),
 			{Layout: "content", Reason: "native numbered bullets preserve an agenda outside those counts"},
+		}
+	case KindQuote:
+		return []CompositionCandidate{
+			visual("pull-quote", "one attributed quotation"),
+			visual("quote-cluster", "3–8 attributed stakeholder quotations"),
+			{Layout: "content", Reason: "bullets preserve two quotes or copy outside the patterns' bounds"},
 		}
 	case KindStat:
 		return []CompositionCandidate{

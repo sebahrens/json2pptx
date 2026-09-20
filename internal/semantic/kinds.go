@@ -29,6 +29,8 @@ const (
 	KindArchitecture SlideKind = "architecture"
 	// KindAgenda is the deck's contents page.
 	KindAgenda SlideKind = "agenda"
+	// KindQuote highlights one attributed quote or a cluster of stakeholder voices.
+	KindQuote SlideKind = "quote"
 	// KindTeam is the people grid: who is on the engagement.
 	KindTeam SlideKind = "team"
 	// KindStat is one oversized number carrying the slide.
@@ -143,6 +145,13 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredAliases: map[string][]string{"sections": {"items", "agenda"}},
 		TypicalFields:   []string{"title", "current", "takeaway"},
 	},
+	KindQuote: {
+		Kind:            KindQuote,
+		Summary:         "One attributed quote renders as pull-quote; 3–8 render as quote-cluster. Two quotes, missing attributions, and over-budget copy degrade to quote bullets with a finding.",
+		RequiredFields:  []string{"quotes"},
+		RequiredAliases: map[string][]string{"quotes": {"testimonials", "voices", "quote", "text"}},
+		TypicalFields:   []string{"title", "takeaway", "attribution", "role"},
+	},
 	KindTeam: {
 		Kind:            KindTeam,
 		Summary:         "The people on the engagement: 1–8 cards with a name, a role and an optional short bio. Past eight cards, or past a card's text budgets, it degrades to a bullet list.",
@@ -184,7 +193,7 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 	},
 	KindImageCase: {
 		Kind:            KindImageCase,
-		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide. Needs a body or at least one bullet; without a picture it draws a labelled placeholder. Up to 5 bullets and 3 result metrics; past its text budgets it degrades to a content slide. When the focal content is what someone said rather than a picture, author a pull-quote through raw_json2pptx.",
+		Summary:         "A photo or screenshot beside the words about it — the case study or customer story slide. Needs a body or at least one bullet; without a picture it draws a labelled placeholder. Up to 5 bullets and 3 result metrics; past its text budgets it degrades to a content slide. For spoken testimony use the quote kind.",
 		RequiredFields:  []string{"body"},
 		RequiredAliases: map[string][]string{"body": {"text", "story", "description", "bullets"}},
 		TypicalFields:   []string{"title", "image", "eyebrow", "heading", "bullets", "metrics", "caption", "image_side", "image_label", "takeaway"},

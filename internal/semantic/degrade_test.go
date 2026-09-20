@@ -15,6 +15,12 @@ func degradeCases() map[string]SlideSpec {
 		"agenda": {Kind: KindAgenda, Body: map[string]any{
 			"title": "Agenda", "sections": []any{"only one"},
 		}},
+		"quote": {Kind: KindQuote, Body: map[string]any{
+			"title": "Voices", "quotes": []any{
+				map[string]any{"text": "First", "name": "A"},
+				map[string]any{"text": "Second", "name": "B"},
+			},
+		}},
 		"executive_summary": {Kind: KindExecutiveSummary, Body: map[string]any{
 			"title": "Summary", "takeaway": "t", "points": []any{"one point"},
 		}},

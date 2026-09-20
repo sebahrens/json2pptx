@@ -239,6 +239,23 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 			return map[string]any{"sections": covSections("Where we are"), "current": 2.0}
 		}, rendered: false},
 	},
+	KindQuote: {
+		"quotes": {inject: func(s string) map[string]any {
+			return map[string]any{"quotes": []any{map[string]any{"text": s, "name": "J. Lin"}}}
+		}, rendered: true},
+		"title": {inject: func(s string) map[string]any {
+			return map[string]any{"quote": "Cycle time fell", "attribution": "J. Lin", "title": s}
+		}, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any {
+			return map[string]any{"quote": "Cycle time fell", "attribution": "J. Lin", "takeaway": s}
+		}, rendered: true},
+		"attribution": {inject: func(s string) map[string]any {
+			return map[string]any{"quote": "Cycle time fell", "attribution": s}
+		}, rendered: true},
+		"role": {inject: func(s string) map[string]any {
+			return map[string]any{"quote": "Cycle time fell", "attribution": "J. Lin", "role": s}
+		}, rendered: true},
+	},
 	// go-slide-creator-13lj: a person's name, role and bio all have to reach
 	// the rendered card.
 	KindTeam: {
