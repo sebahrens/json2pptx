@@ -9,6 +9,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/sebahrens/json2pptx/svggen/core"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
@@ -1221,6 +1222,9 @@ func (b *SVGBuilder) Bounds() Rect {
 // 6.6 MB of media for 5 KB of actual drawing, and a 40-slide deck of charts
 // would have been ~45 MB (go-slide-creator-i0ep). Subsetting cuts each block to
 // the glyphs the chart actually draws.
+// svgEmitMu serialises SVG emission; see Render for why.
+var svgEmitMu sync.Mutex
+
 var svgRenderOptions = svg.Options{
 	EmbedFonts:    true,
 	SubsetFonts:   true,
@@ -1240,9 +1244,19 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	widthMM := b.width * ptToMM
 	heightMM := b.height * ptToMM
 
+	// Emission is serialised across goroutines. The renderer's font subsetting
+	// mutates the SHARED cached font: canvas's svg.Close calls SFNT.Subset,
+	// which copies the OS/2 table by POINTER into the new font and then writes
+	// the subset's unicode ranges through it, so two charts rendering at once
+	// (the batch endpoint fans out with an errgroup) race on the one font
+	// object the cache hands both of them — caught by CI's -race on the
+	// mixed-format batch test (go-slide-creator-i0ep). Only the emission is
+	// locked; chart layout, measurement and rasterisation stay parallel.
+	svgEmitMu.Lock()
 	svgWriter := svg.New(&buf, widthMM, heightMM, &svgRenderOptions)
 	b.canvas.RenderTo(svgWriter)
 	_ = svgWriter.Close()
+	svgEmitMu.Unlock()
 
 	content := buf.Bytes()
 
