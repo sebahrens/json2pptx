@@ -176,6 +176,42 @@ func TestTeamBiosBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	}
 }
 
+func TestSwimlaneBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.SwimlaneValues{}
+	for i := 0; i < 6; i++ {
+		lane := patterns.SwimlaneLane{Actor: "Team"}
+		for j := 0; j < 8; j++ {
+			lane.Steps = append(lane.Steps, "Task")
+		}
+		values.Lanes = append(values.Lanes, lane)
+	}
+	values.Lanes[5].Steps[7] = strings.Repeat("word ", 10)
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range schemaMaximaTemplates {
+		t.Run(name, func(t *testing.T) {
+			layouts, width, height := schemaMaximaLayouts(t, name)
+			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title",
+				Pattern: &PatternInput{Name: "swimlane", Values: encoded},
+			}}}
+			found := false
+			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
+				if finding.Code == patterns.ErrCodeBodyTooLong &&
+					strings.Contains(finding.Message, "lanes[5].steps[7]") &&
+					strings.Contains(finding.Message, "about 32 per step") {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatal("swimlane budget missing from fit report")
+			}
+		})
+	}
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

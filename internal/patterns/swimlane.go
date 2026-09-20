@@ -80,11 +80,51 @@ func (s *swimlane) NewValues() any       { return &SwimlaneValues{} }
 func (s *swimlane) NewOverrides() any    { return &SwimlaneOverrides{} }
 func (s *swimlane) NewCellOverride() any { return &SwimlaneCellOverride{} }
 
+// Measured with TestSwimlaneBudgetProbe across all four bundled templates.
+// Rows are step columns 2..8; columns are lane counts 2..6.
+var swimlaneStepBudgets = [7][5]int{
+	{80, 80, 80, 80, 80},
+	{80, 80, 80, 80, 80},
+	{80, 80, 80, 80, 80},
+	{80, 80, 80, 80, 62},
+	{80, 80, 80, 78, 60},
+	{80, 80, 80, 60, 45},
+	{80, 80, 62, 42, 32},
+}
+
+func swimlaneStepBudget(steps, lanes int) int {
+	if steps < 2 || steps > 8 || lanes < 2 || lanes > 6 {
+		return 80
+	}
+	return swimlaneStepBudgets[steps-2][lanes-2]
+}
+
+func (s *swimlane) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*SwimlaneValues)
+	if !ok || v == nil {
+		return nil
+	}
+	steps := 0
+	if len(v.Lanes) > 0 {
+		steps = len(v.Lanes[0].Steps)
+	}
+	budget := swimlaneStepBudget(steps, len(v.Lanes))
+	var warnings []string
+	for i, lane := range v.Lanes {
+		for j, step := range lane.Steps {
+			if n := runeLen(step); n > budget {
+				warnings = append(warnings, fmt.Sprintf("%s: swimlane lanes[%d].steps[%d] is %d characters; a %d-step x %d-lane grid holds about %d per step before text shrinks below the readable minimum — shorten the step or use fewer columns/lanes", ErrCodeBodyTooLong, i, j, n, steps, len(v.Lanes), budget))
+			}
+		}
+	}
+	return warnings
+}
+
 func (s *swimlane) Schema() *Schema {
 	laneSchema := ObjectSchema(
 		map[string]*Schema{
 			"actor": StringSchema(40).WithDescription("Lane actor/function label"),
-			"steps": ArraySchema(StringSchema(80), 2, 8).WithDescription("Steps in this lane (empty string = no shape in that column)"),
+			"steps": ArraySchema(StringSchema(80), 2, 8).WithDescription("Steps in this lane (empty = no shape). Approximate readable chars per step by step columns x lanes (lanes 2/3/4/5/6): steps 2-4: 80/80/80/80/80; 5: 80/80/80/80/62; 6: 80/80/80/78/60; 7: 80/80/80/60/45; 8: 80/80/62/42/32"),
 		},
 		[]string{"actor", "steps"},
 	).WithAdditionalProperties(false)

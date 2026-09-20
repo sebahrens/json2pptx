@@ -73,6 +73,8 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Team bios.** `team-bios` has about 220 readable bio characters per card with 1–4 members and 141 with 5–8, at default font sizes. The fifth member adds a second card row. A headshot changes the photo zone but not this bio target. `BODY_TOO_LONG` names the member and target; move longer biographies to a separate slide.
 
+**Swimlanes.** `swimlane` step text holds the full 80-character schema limit in sparse grids and about 32 characters in an 8-step, 6-lane grid at default sizes. `show_pattern` lists the measured target for each 2–8 step by 2–6 lane combination. Actor labels remain readable through their 40-character limit. `BODY_TOO_LONG` names the lane and step to shorten.
+
 ---
 
 ## Text Capacity Awareness

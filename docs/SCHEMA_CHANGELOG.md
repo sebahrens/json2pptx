@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Swimlane step budgets (go-slide-creator-tp23k.8).** `swimlane` now emits
+  `BODY_TOO_LONG` with the lane, step and measured text target for each
+  supported step-column/lane-count shape. The schema carries the 7×5 table
+  while retaining the 80-character limit for sparse grids. Actor labels
+  remain readable at the 40-character schema maximum. Measurements used all
+  four templates. Schema version advances to 4.83.0; the input fingerprint
+  is unchanged.
+
 - **Team-bio card-count budget (go-slide-creator-tp23k.7).**
   `team-bios` replaces its fixed 24-word bio warning with measured
   member-count guidance: about 220 bio characters with 1–4 members and 141
