@@ -294,6 +294,15 @@ func patternWarningAsFinding(slideIdx int, patternName, warning string) *pattern
 // recommended fit-finding action. Unknown codes default to "review".
 func patternWarningAction(code string) string {
 	switch code {
+	case patterns.ErrCodeTextExceedsShape:
+		// A pattern raising this has MEASURED that text cannot fit its shape at
+		// the readable floor, so the renderer will break it mid-word — a
+		// visible defect on the rendered slide, not a risk. Blocking, so the
+		// default quality gate fails rather than saying ship it
+		// (go-slide-creator-rxkt). The geometry detector's own predicted
+		// TEXT_EXCEEDS_SHAPE stays advisory: it estimates the box from
+		// authored sizes and a 1.15 estimate can still render on one line.
+		return "shrink_or_split"
 	case patterns.ErrCodeChartPlaceholderEmpty:
 		// The chart panel rendered without a chart spec — actionable, agent
 		// should either provide a chart or switch to an insights-only pattern.

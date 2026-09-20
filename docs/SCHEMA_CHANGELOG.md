@@ -104,6 +104,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **A measured mid-word break fails the quality gate (go-slide-creator-rxkt).**
+  `TEXT_EXCEEDS_SHAPE` was advisory from every source, so `score_deck` returned
+  `quality_gate.passed = true` on a deck whose chevrons rendered as
+  "Internationalisatio / n programme".
+  - A pattern raising the code from its own `PostExpandWarnings` — it has
+    MEASURED that the text cannot fit at its readable floor — now carries
+    `action: "shrink_or_split"`, which the default gate counts as P1 and
+    refuses. `numbered-step-strip` is the first: it emits the code once it has
+    surrendered every notch depth and shrunk the label to 12pt.
+  - The deterministic geometry detector's own `TEXT_EXCEEDS_SHAPE` stays
+    `review`. It estimates the box from authored sizes, and the estimate runs
+    tight: a word measured 15% wider than its box renders on one line in
+    `examples/process-grid-2row.json`. Blocking on the estimate would fail decks
+    that are correct.
+  - Verified: the reported deck now fails the gate naming the P1 finding, and
+    passes again once the labels are shortened. No bundled example or
+    calibration deck raises the blocking form.
+
 - **`score_candidates` can tell candidates apart (go-slide-creator-sbqm).** The
   tool for choosing between alternative slides scored a real slide 100, a
   near-empty one 95 and an unreadable one 90 — a spread an agent reads as "all

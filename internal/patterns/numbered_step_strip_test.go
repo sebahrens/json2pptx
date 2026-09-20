@@ -526,7 +526,10 @@ func TestNumberedStepStrip_Chevron_WarnsWhenEvenTheFloorWraps(t *testing.T) {
 	if len(warnings) != 1 {
 		t.Fatalf("want one warning, got %v", warnings)
 	}
-	if !strings.HasPrefix(warnings[0], ErrCodeBodyTooLong+": ") {
+	// TEXT_EXCEEDS_SHAPE, not BODY_TOO_LONG: the strip has measured that the
+	// label cannot fit, so the break is certain and the finding blocks the
+	// quality gate (go-slide-creator-rxkt).
+	if !strings.HasPrefix(warnings[0], ErrCodeTextExceedsShape+": ") {
 		t.Errorf("warning must carry the parseable code prefix: %q", warnings[0])
 	}
 	for _, want := range []string{"Internationalisation", "mid-word", "fewer steps"} {

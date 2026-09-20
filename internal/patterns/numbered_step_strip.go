@@ -229,9 +229,14 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 	if len(fit.unfit) > 1 {
 		noun, verb, pronoun = "labels", "do", "them"
 	}
+	// TEXT_EXCEEDS_SHAPE, not BODY_TOO_LONG: the strip has MEASURED that the
+	// label cannot fit its chevron at the readable floor, so the mid-word break
+	// is certain rather than predicted. That certainty is what earns the
+	// blocking action the geometry detector's estimate cannot claim
+	// (go-slide-creator-rxkt).
 	return []string{fmt.Sprintf(
 		"%s: numbered-step-strip chevron %s %s %s not fit on one line at %d steps even at %.0fpt — the renderer breaks %s mid-word; shorten %s or use fewer steps",
-		ErrCodeBodyTooLong, noun, listFirstN(fit.unfit, 3), verb,
+		ErrCodeTextExceedsShape, noun, listFirstN(fit.unfit, 3), verb,
 		len(vals.Steps), fit.labelPt, pronoun, pronoun)}
 }
 
@@ -492,7 +497,6 @@ func fitChevronLabels(ctx ExpandContext, vals *NumberedStepStripValues, geo chev
 	}
 	return fit
 }
-
 
 // listFirstN quotes at most n entries, noting how many were left out.
 func listFirstN(items []string, n int) string {

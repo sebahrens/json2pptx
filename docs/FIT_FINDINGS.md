@@ -1089,10 +1089,19 @@ Slide selection:
 
 ### `TEXT_EXCEEDS_SHAPE`
 
-**Action:** `review`
+**Action:** `review` when predicted, **`shrink_or_split` (blocking) when measured** — see below
 **Pattern:** the slide's pattern (empty for raw `shape_grid`)
 **Fix kind:** `reduce_text`
-**Emitted at:** preflight (validate / preview / score), deterministic geometry
+**Emitted at:** preflight (validate / preview / score), deterministic geometry — and from a pattern's own `PostExpandWarnings`
+
+**Two sources, two confidences (go-slide-creator-rxkt).**
+
+| Source | What it knows | Action |
+|--------|---------------|--------|
+| The deterministic geometry detector (below) | It *estimates* the text box from the authored size and preset geometry. The estimate runs tight: on `examples/process-grid-2row.json` a word measured 15% wider than its box renders on one line, because the renderer shrinks the label further than the estimate models. | `review` — advisory |
+| A pattern's `PostExpandWarnings` | The pattern has *measured* that the text cannot fit at its own readable floor, after giving up every adjustment it has (`numbered-step-strip` surrenders notch depth first, then type size down to 12pt). The mid-word break is certain. | `shrink_or_split` — **the default quality gate fails** |
+
+That split is what lets the gate block a real defect without failing decks that render correctly. Before it, a deck whose chevrons rendered as "Internationalisatio / n programme" scored 85 with `quality_gate.passed = true`.
 
 A word in a shape_grid shape's text is wider than the text rectangle the shape's preset geometry leaves after text insets, so the renderer breaks it mid-word or the shape outline clips it. The widest whitespace-delimited word of every paragraph (single glyphs such as arrows are ignored) is measured with the template body font at the size the renderer uses (authored size floored to 12pt, default 14pt, bold honoured) and compared with the geometry's text width per ECMA-376 `presetShapeDefinitions`: `chevron` keeps `w − 2·min(w,h)·adj`, `homePlate` `w − min(w,h)·adj/2`, `diamond` / `triangle` / `flowChartDecision` `w/2`, `ellipse` `w·0.707`, `hexagon` / `octagon` their inset rectangles, everything else the full width. Default OOXML insets (0.1" left/right) apply unless the text authors `inset_*`. Charts, tables and images are not measured.
 
