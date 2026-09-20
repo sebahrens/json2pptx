@@ -1,7 +1,9 @@
 package deckplan
 
 import (
+	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
@@ -184,10 +186,30 @@ func TestTruncateBrief(t *testing.T) {
 	}
 	long := "this is a fairly long brief that should be truncated to a much smaller budget"
 	got := TruncateBrief(long, 20)
-	if len(got) != 20 {
-		t.Errorf("expected truncated length 20, got %d (%q)", len(got), got)
+	// The budget is a ceiling, not a target: a cut landing after a space
+	// leaves 19 runes rather than " ...".
+	if n := len([]rune(got)); n > 20 {
+		t.Errorf("expected at most 20 runes, got %d (%q)", n, got)
 	}
-	if got[len(got)-3:] != "..." {
+	if !strings.HasSuffix(got, "...") {
 		t.Errorf("expected ellipsis suffix, got %q", got)
+	}
+	if strings.HasSuffix(got, " ...") {
+		t.Errorf("ellipsis should follow the last word, not a space: %q", got)
+	}
+
+	// The budget counts runes, and a cut never splits one: a brief in anything
+	// but ASCII is the ordinary case (go-slide-creator-vmiy).
+	euro := TruncateBrief("ARR reached €12.5m in the quarter ending September", 20)
+	if n := len([]rune(euro)); n > 20 {
+		t.Errorf("expected at most 20 runes, got %d (%q)", n, euro)
+	}
+	if !utf8.ValidString(euro) {
+		t.Errorf("truncation produced invalid UTF-8: %q", euro)
+	}
+	if !strings.Contains(euro, "€12.5") {
+		// Byte slicing at 17 would have stopped at "ARR reached " and could
+		// have split the euro sign in half.
+		t.Errorf("a 20-rune budget should reach past the currency sign, got %q", euro)
 	}
 }

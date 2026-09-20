@@ -135,10 +135,69 @@ func TestAssignBriefFacts_NumericFirstAndOverflow(t *testing.T) {
 	if want := []string{"APAC pilot", "LATAM hold"}; !reflect.DeepEqual(unplaced, want) {
 		t.Errorf("unplaced = %v, want %v", unplaced, want)
 	}
-	if !strings.HasPrefix(slides[2].ContentSeed, "revenue +10%; margin 30% — ") {
+	// Facts are separate sentences in the seed: joining them with "; " read as
+	// one malformed clause, and the semicolon was the character the clause
+	// splitter had just cut on (go-slide-creator-vmiy).
+	if !strings.HasPrefix(slides[2].ContentSeed, "revenue +10%. margin 30% — ") {
 		t.Errorf("seed not prefixed with facts: %q", slides[2].ContentSeed)
 	}
 	if len(slides[0].Facts)+len(slides[3].Facts) != 0 {
 		t.Error("structural slides must not receive facts")
+	}
+}
+
+// TestExtractBriefFacts_BulletedBrief pins the three defects a normal bulleted
+// brief used to produce (go-slide-creator-vmiy): list markers surviving into
+// the fact, a clause split landing inside a parenthesis, and the two together
+// shipping "- ARR reached €12.5m (up 31%" as a content seed.
+func TestExtractBriefFacts_BulletedBrief(t *testing.T) {
+	brief := strings.Join([]string{
+		"Q3 FY26 business review for the executive team.",
+		"- ARR reached €12.5m (up 31%; ahead of plan)",
+		"* 1,250 customers",
+		"• Gross margin 78.2%",
+		"1. 14 enterprise logos",
+		"2) Net revenue retention 118%",
+	}, "\n")
+
+	facts := extractBriefFacts(brief)
+	if len(facts) == 0 {
+		t.Fatal("no facts extracted from a bulleted brief")
+	}
+	for _, f := range facts {
+		if strings.ContainsAny(f.text[:1], "-*•") {
+			t.Errorf("fact keeps its list marker: %q", f.text)
+		}
+		if strings.Contains(f.text, ";") {
+			t.Errorf("fact contains a semicolon, which is a clause boundary: %q", f.text)
+		}
+		if strings.Count(f.text, "(") != strings.Count(f.text, ")") {
+			t.Errorf("fact has unbalanced brackets: %q", f.text)
+		}
+	}
+
+	// A semicolon is a clause boundary wherever it is, so the parenthetical is
+	// cut there — and the half-open bracket it leaves behind is dropped rather
+	// than shipped. Losing "ahead of plan" from a hint beats shipping
+	// "ARR reached €12.5m (up 31%".
+	if got := facts[0].text; got != "ARR reached €12.5m" {
+		t.Errorf("first fact = %q, want the half-open parenthetical dropped", got)
+	}
+}
+
+// TestBalanceFactBrackets covers the truncation backstop: a cut inside a
+// parenthetical drops the half-open clause rather than shipping it.
+func TestBalanceFactBrackets(t *testing.T) {
+	tests := []struct{ in, want string }{
+		{"ARR reached €12.5m (up 31%)", "ARR reached €12.5m (up 31%)"},
+		{"ARR reached €12.5m (up 31%", "ARR reached €12.5m"},
+		{"ARR reached €12.5m (up 31%, ahead", "ARR reached €12.5m"},
+		{"no brackets here", "no brackets here"},
+		{"(all of it is open", ""},
+	}
+	for _, tt := range tests {
+		if got := balanceFactBrackets(tt.in); got != tt.want {
+			t.Errorf("balanceFactBrackets(%q) = %q, want %q", tt.in, got, tt.want)
+		}
 	}
 }

@@ -651,7 +651,7 @@ func buildIntent(role, brief, audience string) string {
 func contentSeedForRole(role, brief string, idx, total int) string {
 	switch role {
 	case "opening":
-		return "Title and context: " + TruncateBrief(brief, 80)
+		return "Title and context: " + truncateSeed(normalizeBriefForSeed(brief), 80)
 	case "framework":
 		return "Structure or methodology overview"
 	case "evidence":
@@ -1127,11 +1127,52 @@ func computeRhythmCheck(slides []Slide) RhythmCheck {
 // TruncateBrief shortens s to at most maxLen runes, appending an ellipsis when
 // truncation occurs. Exported so make_deck can derive slide titles with the
 // same budget as the planner's content seeds.
+//
+// It counts and cuts RUNES. Cutting bytes at a fixed offset both under-counts
+// a brief written in anything but ASCII and can slice a multi-byte character
+// in half — a brief saying "ARR reached €12.5m" is the ordinary case, not an
+// exotic one (go-slide-creator-vmiy).
 func TruncateBrief(s string, maxLen int) string {
-	if len(s) <= maxLen {
+	runes := []rune(s)
+	if len(runes) <= maxLen {
 		return s
 	}
-	return s[:maxLen-3] + "..."
+	if maxLen <= 3 {
+		return string(runes[:maxLen])
+	}
+	return strings.TrimRight(string(runes[:maxLen-3]), " \t") + "..."
+}
+
+// truncateSeed truncates a seed and then closes what the cut left open: a
+// bracket the ellipsis lands inside would otherwise ship "(up 31…" onto a
+// slide (go-slide-creator-vmiy).
+func truncateSeed(s string, maxLen int) string {
+	truncated := TruncateBrief(s, maxLen)
+	body := strings.TrimSuffix(truncated, "...")
+	if body == truncated {
+		return truncated
+	}
+	balanced := balanceFactBrackets(body)
+	if balanced == body || balanced == "" {
+		return truncated
+	}
+	return balanced + "..."
+}
+
+// normalizeBriefForSeed flattens a brief into one line of prose: list markers
+// dropped, whitespace runs collapsed. A brief written as a bulleted list used
+// to reach the opening slide's seed complete with its newlines and "- "
+// markers, which an agent then copied onto the slide (go-slide-creator-vmiy).
+func normalizeBriefForSeed(brief string) string {
+	lines := strings.FieldsFunc(brief, func(r rune) bool { return r == '\n' || r == '\r' })
+	parts := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(factListMarker.ReplaceAllString(strings.TrimSpace(line), ""))
+		if line != "" {
+			parts = append(parts, line)
+		}
+	}
+	return strings.Join(strings.Fields(strings.Join(parts, " ")), " ")
 }
 
 func containsStr(slice []string, s string) bool {

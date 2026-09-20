@@ -19,7 +19,54 @@ const maxFactLen = 100
 // factClauseSplit splits a brief into clauses: sentence punctuation followed by
 // whitespace (so decimals like "1.5M" survive), semicolons, newlines, commas
 // followed by whitespace (so "1,000" survives), colons, and spaced dashes.
+// Every one of these is a clause boundary wherever it appears — a fact that
+// kept a semicolon would read as two facts spliced together, which is the
+// shape this file exists to avoid (go-slide-creator-vmiy).
 var factClauseSplit = regexp.MustCompile(`[.!?]+(?:\s+|$)|[;\n]+|,\s+|:\s+|\s+[-–—]\s+`)
+
+// factListMarker strips a list marker a brief's bullet leaves at the head of a
+// clause: "- ", "* ", "• ", "1. ", "2) ". The marker is the author's list
+// formatting, not part of the fact, and a seed that keeps it ships "- ARR
+// reached EUR 12.5m" into a slide (go-slide-creator-vmiy).
+var factListMarker = regexp.MustCompile(`^(?:[-*•▪·–—]|\(?\d{1,2}[.)])\s+`)
+
+// factBracketPairs are the bracket kinds balanceFactBrackets tracks. A clause
+// cut — by the splitter or by the length cap — can land inside one, and half a
+// parenthesis reads as a typo in a content seed.
+var factBracketPairs = map[rune]rune{'(': ')', '[': ']', '{': '}'}
+
+// bracketDepths returns, for every byte offset in s, how many brackets are open
+// at that point.
+func bracketDepths(s string) []int {
+	depths := make([]int, len(s))
+	var stack []rune
+	for i, r := range s {
+		if closer, ok := factBracketPairs[r]; ok {
+			stack = append(stack, closer)
+		} else if len(stack) > 0 && r == stack[len(stack)-1] {
+			stack = stack[:len(stack)-1]
+		}
+		depths[i] = len(stack)
+	}
+	return depths
+}
+
+// balanceFactBrackets drops an unterminated bracket clause from the tail of a
+// fact. Truncation at maxFactLen can cut inside a parenthetical even when the
+// split did not, and half a parenthesis reads as a typo in a content seed.
+func balanceFactBrackets(s string) string {
+	depths := bracketDepths(s)
+	if len(depths) == 0 || depths[len(depths)-1] == 0 {
+		return s
+	}
+	// Cut back to the last point where every bracket was closed.
+	for i := len(depths) - 1; i >= 0; i-- {
+		if depths[i] == 0 {
+			return strings.TrimRight(strings.TrimSpace(s[:i+1]), " \t,;:-–—")
+		}
+	}
+	return ""
+}
 
 // factQuantity matches a standalone number (not glued to a preceding letter,
 // so period labels like "Q3", "FY24", "H1" do not count as quantities),
@@ -54,8 +101,10 @@ func extractBriefFacts(brief string) []briefFact {
 	seen := make(map[string]bool)
 	first := true
 	for _, raw := range clauses {
-		c := strings.TrimSpace(strings.Trim(raw, " \t\"'()[]"))
+		c := strings.TrimSpace(strings.Trim(raw, " \t\"'"))
+		c = factListMarker.ReplaceAllString(c, "")
 		c = factLeadingConjunction.ReplaceAllString(c, "")
+		c = strings.TrimSpace(c)
 		if c == "" {
 			continue
 		}
@@ -67,7 +116,10 @@ func extractBriefFacts(brief string) []briefFact {
 		if !numeric && (!entity || isFirst) {
 			continue
 		}
-		c = TruncateBrief(c, maxFactLen)
+		c = balanceFactBrackets(TruncateBrief(c, maxFactLen))
+		if c == "" {
+			continue
+		}
 		key := strings.ToLower(c)
 		if seen[key] {
 			continue
@@ -184,10 +236,13 @@ func assignBriefFacts(slides []Slide, brief string) []string {
 	}
 
 	// Fold the placed facts into each slide's prose seed so agents (and
-	// make_deck's derived titles) see the brief's actual numbers.
+	// make_deck's derived titles) see the brief's actual numbers. Facts are
+	// separate sentences: joining them with "; " read as one malformed clause,
+	// and the semicolon was exactly the character the clause splitter had just
+	// cut on (go-slide-creator-vmiy).
 	for i := range slides {
 		if len(slides[i].Facts) > 0 {
-			slides[i].ContentSeed = strings.Join(slides[i].Facts, "; ") + " — " + slides[i].ContentSeed
+			slides[i].ContentSeed = strings.Join(slides[i].Facts, ". ") + " — " + slides[i].ContentSeed
 		}
 	}
 	return unplaced
