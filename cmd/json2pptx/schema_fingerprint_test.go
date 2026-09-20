@@ -97,6 +97,8 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.74.0 adds MCP prompts; the fingerprint does not include prompt names.
 	// 4.75.0 adds MCP logging capability; the fingerprint is unchanged.
 	// 4.76.0 adds MCP completions; the fingerprint is unchanged.
+	// 4.77.0 classifies pull-quote cells at the body readability floor;
+	// the fingerprint is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "4e61ab5f35f1ae5a"
 

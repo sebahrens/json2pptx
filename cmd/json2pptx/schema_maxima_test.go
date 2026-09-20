@@ -231,20 +231,13 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"phase-roadmap":                6.2,
 	// Layout-aware standalone readability measurement exposed a schema-legal
 	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
-	"process-flow":                 9.1,
-	"process-flow-compact":         9.1,
-	"process-grid-2row":            0.0,
-	// pull-quote's maximum got tighter on purpose: values.image added a
-	// headshot column, so the schema now permits a 500-character quote NEXT TO
-	// a photo, and the quote column loses a quarter of its width. Measured
-	// 17.3pt before the column existed, 15.1pt with it at the default 25%
-	// width. The capability is worth the 2.2pt: the alternative was cutting the
-	// quote's maxLength, which would reject decks that validate today. The
-	// schema's image description tells agents a photographed quote must be
-	// shorter, and TEXT_BELOW_READABLE_MIN still fires on the quote cell — the
-	// column is a sibling of the quote, not a wrapper around it, precisely so
-	// the readability preflight keeps seeing it (go-slide-creator-hdpq).
-	"pull-quote":          15.1,
+	"process-flow":         9.1,
+	"process-flow-compact": 9.1,
+	"process-grid-2row":    0.0,
+	// A long italic quote is prose, not a KPI value. With the 12pt prose floor,
+	// the schema-maximum quote remains readable beside its optional headshot;
+	// genuine sub-12pt shrink still produces a finding (tp23k.2).
+	"pull-quote":          0.0,
 	"pyramid":             9.2,
 	"quote-cluster":       6.7,
 	"roadmap-phased":      5.0,

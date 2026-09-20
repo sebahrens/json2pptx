@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Pull-quote readability role (go-slide-creator-tp23k.2).** The shape-grid
+  readability collector now recognizes the quote row of a `pull-quote` pattern
+  or its source-stamped expanded grid. That row is assessed as prose at the
+  12pt presentation floor, rather than as a numeric KPI at 18pt solely because
+  its authored size is at least 24pt. The schema-maximum 500-character quote
+  with headshot is readable at the measured 15.1pt; a quote below 12pt still
+  gets `TEXT_BELOW_READABLE_MIN`, and other display values keep the 18pt floor.
+  Schema version advances to 4.77.0; the fingerprint is unchanged.
+
 - **MCP enum completions (go-slide-creator-zhaw.3).** `initialize` advertises
   completions. `completion/complete` now filters current template, pattern,
   slide kind, archetype, chart type, fix kind and fit finding code vocabularies

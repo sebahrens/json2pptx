@@ -69,7 +69,8 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 			scale := predictedAutofitScale(paras, d.WidthEMU, d.HeightEMU)
 			cellPath := slidepath.GridCell(si, cell.RowIdx, cell.ColIdx)
 			path := slidepath.Join(cellPath, "shape/text")
-			if f := worstReadability(paras, scale, mode, path); f != nil {
+			roleOverride := patternCellReadabilityRole(slide, cell.RowIdx)
+			if f := worstReadability(paras, scale, mode, path, roleOverride); f != nil {
 				// The generic finding suggests reduce_text, which cannot reach a
 				// grid cell. Point it at the cell with its measured budget
 				// (go-slide-creator-9zof).
@@ -87,6 +88,16 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 		}
 	}
 	return findings
+}
+
+// patternCellReadabilityRole applies a pattern's semantic role when font size
+// alone is misleading. The pull-quote's 36pt quote row is prose, not a KPI;
+// both named and editable expanded patterns carry the source stamp.
+func patternCellReadabilityRole(slide SlideInput, row int) tokens.TextRole {
+	if row == 0 && slide.ShapeGrid != nil && slide.ShapeGrid.Source == "pattern:pull-quote" {
+		return tokens.TextRoleBody
+	}
+	return ""
 }
 
 // cellParagraph is one paragraph of shape_grid cell text at its rendered
@@ -183,7 +194,7 @@ const autofitShrinkReportThreshold = 0.85
 // worstReadability returns the TEXT_BELOW_READABLE_MIN finding for the
 // paragraph furthest below its role's floor after the predicted autofit
 // scale, or nil when every paragraph stays readable.
-func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingMode, path string) *patterns.FitFinding {
+func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingMode, path string, roleOverride tokens.TextRole) *patterns.FitFinding {
 	if scale < 1 && scale > autofitShrinkReportThreshold {
 		return nil
 	}
@@ -191,6 +202,9 @@ func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingM
 	worstRatio := 1.0
 	for _, p := range paras {
 		role := cellTextRole(p.sizePt, p.bold, len([]rune(p.text)))
+		if roleOverride != "" {
+			role = roleOverride
+		}
 		effective := p.sizePt * scale
 		minPt := float64(tokens.MinReadableHPt(mode, role)) / 100.0
 		ratio := effective / minPt

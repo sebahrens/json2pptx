@@ -123,6 +123,65 @@ func TestCellTextRole(t *testing.T) {
 	}
 }
 
+func TestPullQuoteReadabilityUsesProseFloor(t *testing.T) {
+	pat, ok := patterns.Default().Get("pull-quote")
+	if !ok {
+		t.Fatal("pull-quote pattern not registered")
+	}
+	for _, templateName := range schemaMaximaTemplates {
+		t.Run(templateName, func(t *testing.T) {
+			if pt, note := measureSchemaMaximumPt(t, pat, templateName); note != "" || pt != 0 {
+				t.Fatalf("500-character quote with headshot has below-floor finding at %.1fpt: %s", pt, note)
+			}
+			values, note := schemaMaximumValues(pat)
+			if note != "" {
+				t.Fatal(note)
+			}
+			plain := values.(*patterns.PullQuoteValues)
+			plain.Image = nil
+			encoded, err := json.Marshal(plain)
+			if err != nil {
+				t.Fatal(err)
+			}
+			layouts, width, height := schemaMaximaLayouts(t, templateName)
+			input := &PresentationInput{Template: templateName, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "pull-quote", Values: encoded},
+			}}}
+			if findings := collectReadabilityFindings(input, layouts, width, height); len(findings) != 0 {
+				t.Fatalf("500-character quote without headshot should clear the prose floor: %+v", findings)
+			}
+			expanded, _ := expandPatternsForFit(input, width, height, nil, layouts...)
+			grid := expanded.Slides[0].ShapeGrid
+			if grid == nil || grid.Source != "pattern:pull-quote" {
+				t.Fatalf("pull-quote expansion lost its source stamp: %+v", grid)
+			}
+			raw := &PresentationInput{Template: templateName, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", ShapeGrid: grid,
+			}}}
+			if findings := collectReadabilityFindings(raw, layouts, width, height); len(findings) != 0 {
+				t.Fatalf("source-stamped expanded quote changed role: %+v", findings)
+			}
+		})
+	}
+
+	quote := cellParagraph{text: strings.Repeat("quoted prose ", 12), sizePt: 36}
+	if finding := worstReadability([]cellParagraph{quote}, 0.25, tokens.ViewingModePresentation, "/quote", tokens.TextRoleBody); finding == nil {
+		t.Fatal("a quote fitted to 9pt must still be reported below the 12pt prose floor")
+	}
+	shortQuote := cellParagraph{text: "Make it simple.", sizePt: 36}
+	if finding := worstReadability([]cellParagraph{shortQuote}, 0.4, tokens.ViewingModePresentation, "/short-quote", tokens.TextRoleBody); finding != nil {
+		t.Fatalf("a 14.4pt quote should clear the 12pt prose floor: %+v", finding)
+	}
+	kpi := cellParagraph{text: "$12.4M", sizePt: 36}
+	if finding := worstReadability([]cellParagraph{kpi}, 0.4, tokens.ViewingModePresentation, "/kpi", ""); finding == nil || !strings.Contains(finding.Message, "kpi-value") {
+		t.Fatalf("non-italic KPI lost its 18pt floor: %+v", finding)
+	}
+	longKPI := cellParagraph{text: "Revenue $12.4M in Q4, up 30% year-over-year", sizePt: 36}
+	if finding := worstReadability([]cellParagraph{longKPI}, 0.4, tokens.ViewingModePresentation, "/long-kpi", ""); finding == nil || !strings.Contains(finding.Message, "kpi-value") {
+		t.Fatalf("long display KPI lost its 18pt floor: %+v", finding)
+	}
+}
+
 func TestViewingModeEnumValidated(t *testing.T) {
 	errs := checkInputEnumValues(&PresentationInput{ViewingMode: "projector"})
 	if len(errs) == 0 {
