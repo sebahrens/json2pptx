@@ -82,6 +82,9 @@ func renderOverlay(
 	themeColors []types.ThemeColor,
 ) ([]byte, error) {
 	kind := strings.ToLower(strings.TrimSpace(ov.Kind))
+	if ov.Link != nil && kind != "badge" {
+		return nil, fmt.Errorf("link is supported only on badge overlays")
+	}
 	switch kind {
 	case "arrow":
 		return renderOverlayConnector(idx, ov, cellByRC, alloc, slideWidth, slideHeight, true, themeColors)
@@ -265,6 +268,12 @@ func renderOverlayBadge(
 		Bounds:   pptx.RectEmu{X: x0, Y: y0, CX: w, CY: h},
 		Fill:     fill,
 		Line:     pptx.NoLine(),
+	}
+	if ov.Link != nil {
+		opts.HyperlinkRelID = fmt.Sprintf("json2pptx_overlay_link_%d", idx)
+		if ov.Link.Slide > 0 {
+			opts.HyperlinkAction = "ppaction://hlinksldjump"
+		}
 	}
 	if t := strings.TrimSpace(ov.Text); t != "" {
 		opts.Text = &pptx.TextBody{

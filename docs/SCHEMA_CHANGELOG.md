@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **External and slide-jump hyperlinks (go-slide-creator-repp.1,
+  go-slide-creator-repp.2).** Text and bullets accept `link: {url}`;
+  slide source attribution accepts `source_link: {url}`. A `shape_grid`
+  shape or overlay badge accepts `link: {slide: N}` to navigate to a
+  numbered slide in the final deck. External URLs use hyperlink relationships
+  with `TargetMode=External`; slide jumps use slide relationships. Invalid URLs,
+  ambiguous targets and out-of-range slide numbers are rejected. Schema
+  version advances to 4.73.0.
+
 - **`export_deck` PDF and notes handouts (go-slide-creator-c7gm.1,
   go-slide-creator-c7gm.2).** Given an existing PPTX, `format: "pdf"` retains
   LibreOffice's PDF conversion without rasterizing it; `format: "notes"`

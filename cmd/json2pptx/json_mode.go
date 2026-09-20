@@ -76,7 +76,8 @@ type JSONSlide struct {
 	SpeakerNotes string `json:"speaker_notes,omitempty"`
 
 	// Source is optional source attribution text
-	Source string `json:"source,omitempty"`
+	Source     string     `json:"source,omitempty"`
+	SourceLink *LinkInput `json:"source_link,omitempty"`
 
 	// Takeaway is the slide's headline answer / "so what" line. Renders
 	// as bold text above the source note row. Strongly recommended on
@@ -111,9 +112,17 @@ type JSONContentItem struct {
 	// - image: {path: string, alt: string}
 	// - chart: {type: string, title: string, data: {label: value}}
 	Value json.RawMessage `json:"value"`
+	Link  *LinkInput      `json:"link,omitempty"`
 
 	// FontSize overrides the template's default font size (in points, e.g., 72).
 	FontSize *float64 `json:"font_size,omitempty"`
+}
+
+func toGeneratorLink(link *LinkInput) *generator.LinkSpec {
+	if link == nil {
+		return nil
+	}
+	return &generator.LinkSpec{URL: link.URL, Slide: link.Slide}
 }
 
 // SlideResolution describes how a single slide was resolved during generation.
@@ -690,6 +699,7 @@ func convertJSONSlides(jsonSlides []JSONSlide) ([]generator.SlideSpec, error) {
 			Content:         contentItems,
 			SpeakerNotes:    jsonSlide.SpeakerNotes,
 			SourceNote:      jsonSlide.Source,
+			SourceLink:      toGeneratorLink(jsonSlide.SourceLink),
 			Takeaway:        jsonSlide.Takeaway,
 			Transition:      jsonSlide.Transition,
 			TransitionSpeed: jsonSlide.TransitionSpeed,
@@ -908,6 +918,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		Eyebrow:         slide.Eyebrow,
 		SpeakerNotes:    slide.SpeakerNotes,
 		SourceNote:      slide.Source,
+		SourceLink:      toGeneratorLink(slide.SourceLink),
 		Takeaway:        slide.Takeaway,
 		Transition:      slide.Transition,
 		TransitionSpeed: slide.TransitionSpeed,
@@ -1061,6 +1072,14 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		if gridResult != nil {
 			spec.RawShapeXML = gridResult.Shapes
+			for _, cell := range gridResult.Cells {
+				if cell.ShapeSpec != nil && cell.ShapeSpec.Link != nil {
+					spec.ShapeLinks = append(spec.ShapeLinks, generator.ShapeLink{
+						Marker: fmt.Sprintf("json2pptx_shape_link_%d", cell.ID),
+						Link:   generator.LinkSpec{URL: cell.ShapeSpec.Link.URL, Slide: cell.ShapeSpec.Link.Slide},
+					})
+				}
+			}
 			spec.IconInserts = gridResult.IconInserts
 			spec.ImageInserts = gridResult.ImageInserts
 			warnings = append(warnings, gridResult.Warnings...)
@@ -1091,6 +1110,14 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: overlays: %w", i+1, err)
 		}
 		spec.OverlayShapeXML = append(spec.OverlayShapeXML, overlayShapes...)
+	}
+	for idx, overlay := range slide.Overlays {
+		if overlay != nil && overlay.Link != nil {
+			spec.ShapeLinks = append(spec.ShapeLinks, generator.ShapeLink{
+				Marker: fmt.Sprintf("json2pptx_overlay_link_%d", idx),
+				Link:   generator.LinkSpec{URL: overlay.Link.URL, Slide: overlay.Link.Slide},
+			})
+		}
 	}
 
 	return spec, warnings, slideFitFindings, nil
@@ -1187,6 +1214,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 
 		item := generator.ContentItem{
 			PlaceholderID: ci.PlaceholderID,
+			Link:          toGeneratorLink(ci.Link),
 		}
 
 		// Apply font size override (convert points to hundredths of a point).
@@ -1655,6 +1683,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 
 		item := generator.ContentItem{
 			PlaceholderID: jsonItem.PlaceholderID,
+			Link:          toGeneratorLink(jsonItem.Link),
 		}
 
 		// Apply font size override (convert points to hundredths of a point).

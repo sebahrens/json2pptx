@@ -72,6 +72,8 @@ A slide's `content` array is a list of typed items, each targeting a placeholder
 
 Other `*_value` fields are forbidden for the chosen type. The legacy raw `value` field is still accepted (unconstrained) for backward compatibility. `table_value`, `chart_value`, `diagram_value` and a `shape_grid` cell's `diagram` / `table` each take an optional `alt` — one sentence a screen reader announces, written into the shape's `cNvPr/@descr`; without it the engine derives one from the payload and reports `MISSING_ALT_TEXT` (advisory, see [FIT_FINDINGS.md](FIT_FINDINGS.md#missing_alt_text)).
 
+Text content and source attribution can carry clickable links. Set `"link": {"url": "https://example.com"}` on a text or bullets content item to link its text runs (every bullet in a bullets item), or set `"source": "Annual report", "source_link": {"url": "https://example.com/report"}` on the slide. URLs must be absolute HTTP/HTTPS URLs. A link object sets exactly one of `url` and `slide`.
+
 ## Section slides and the title-at-bottom convention
 
 Section dividers (`layout_id: "section"` / `slide_type: "section"`) target a template's Section Divider layout. A slide counts as a section divider for auto-numbering when it declares `slide_type: "section"`, when its `layout_id` is `"section"`, or when the layout it names is the template's Section Divider (canonical type, or tagged `section-header`) — so a deck that reaches the divider through a template-specific layout ID still gets its sections numbered. In some templates the **visual order of the title and the decorative number is reversed** from a normal content slide: a large decorative "section number" frame sits at the top of the slide and the section *title* is placed in a smaller slot near the **bottom**. You still author it the same way — write the section title into the `title` placeholder — but the rendered title will appear lower on the slide than you might expect, and its capacity is small.
@@ -113,6 +115,8 @@ For slides where placeholders aren't expressive enough, use `shape_grid` on a `b
 ```
 
 Each cell holds exactly one of: `shape`, `table`, `icon`, `image`, `diagram`, or `composite`. A raster `image` cell without an explicit `fit` fills its whole cell and is centre-cropped to it ("cover", via `a:srcRect`) — never stretched; with `fit` (`contain` / `fit-width` / `fit-height`) it keeps the square frame and is cover-cropped into it; SVG images keep the square frame. Cells can span columns/rows via `col_span` / `row_span`. A cell's `max_height` (points) caps its rendered height and centers it in its row. Horizontal compose places each segment in a nested grid so its rows keep their own height and alignment. Slide-level `overlays` can float arrows, lines, and badges over the grid; anchor them to cells by `(row, col, at)` or by percent-of-slide coordinates. Grid-level `vertical_align` (`"stretch"` default, `"top"`, `"center"`, `"bottom"`) places a block of `max_height`-capped rows inside the bounds instead of stretching it; named patterns expand with `"center"`.
+
+To make a grid shape or a free-floating badge navigate within the deck, set `"link": {"slide": 12}` on its `shape` or `overlays[]` badge object. Slide numbers refer to the final deck, starting at 1. Out-of-range slide targets are rejected. The generated shape is clickable across its full area.
 
 ## Named patterns (prefer over hand-built grids)
 

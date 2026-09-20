@@ -39,6 +39,7 @@ type GridOverlayInput = jsonschema.GridOverlayInput
 type GridImageTextInput = jsonschema.GridImageTextInput
 type IconInput = jsonschema.IconInput
 type ShapeSpecInput = jsonschema.ShapeSpecInput
+type LinkInput = jsonschema.LinkInput
 type ShapeFillInput = jsonschema.ShapeFillInput
 type TableInput = jsonschema.TableInput
 type TableCellInput = jsonschema.TableCellInput
@@ -247,6 +248,7 @@ type SlideInput struct {
 	Overlays        []*OverlayShapeInput `json:"overlays,omitempty"` // Free-floating shapes (arrows, lines, badges) rendered on top of the grid. See OverlayShapeInput for positioning.
 	SpeakerNotes    string               `json:"speaker_notes,omitempty"`
 	Source          string               `json:"source,omitempty"`
+	SourceLink      *LinkInput           `json:"source_link,omitempty"`
 	Takeaway        string               `json:"takeaway,omitempty"` // Headline answer / "so what" line rendered above the source note. Strongly recommended on chart and matrix slides.
 	Transition      string               `json:"transition,omitempty"`
 	TransitionSpeed string               `json:"transition_speed,omitempty"`
@@ -288,8 +290,9 @@ type BackgroundOverlayInput struct {
 // The "type" field determines which typed value field to use.
 // For backward compat, "value" (json.RawMessage) is also supported.
 type ContentInput struct {
-	PlaceholderID string `json:"placeholder_id"`
-	Type          string `json:"type"`
+	PlaceholderID string     `json:"placeholder_id"`
+	Type          string     `json:"type"`
+	Link          *LinkInput `json:"link,omitempty"`
 
 	// Legacy field — used when typed fields are not set.
 	Value json.RawMessage `json:"value,omitempty"`

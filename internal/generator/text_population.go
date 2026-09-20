@@ -58,6 +58,21 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	if item.FontSize > 0 {
 		applyFontSizeOverride(shape, item.FontSize)
 	}
+	if item.linkMarker != "" {
+		for i := range shape.TextBody.Paragraphs {
+			for j := range shape.TextBody.Paragraphs[i].Runs {
+				run := &shape.TextBody.Paragraphs[i].Runs[j]
+				if run.RunProperties == nil {
+					run.RunProperties = &runPropertiesXML{Lang: "en-US"}
+				}
+				click := `<a:hlinkClick r:id="` + item.linkMarker + `"`
+				if item.Link != nil && item.Link.Slide > 0 {
+					click += ` action="ppaction://hlinksldjump"`
+				}
+				run.RunProperties.Inner += click + `/>`
+			}
+		}
+	}
 
 	return nil
 }

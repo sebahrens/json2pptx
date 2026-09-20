@@ -70,6 +70,12 @@ func GenerateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, extraInse
 		Geometry: pptx.PresetGeometry(spec.Geometry),
 		Rotation: int64(spec.Rotation * 60000), // degrees to 60000ths
 	}
+	if spec.Link != nil {
+		opts.HyperlinkRelID = fmt.Sprintf("json2pptx_shape_link_%d", id)
+		if spec.Link.Slide > 0 {
+			opts.HyperlinkAction = "ppaction://hlinksldjump"
+		}
+	}
 
 	// Adjustments
 	for name, val := range spec.Adjustments {

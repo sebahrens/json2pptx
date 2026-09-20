@@ -20,6 +20,14 @@ const sourceNoteFontSize = int(patterns.SourceNoteSizePt * 100)
 // source band). shapeID must be unique within the slide's shape tree; callers
 // allocate it from findMaxShapeID(slideData)+1 just before insertion.
 func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds pptx.RectEmu) string {
+	return generateLinkedSourceNoteShapeInBounds(sourceText, shapeID, bounds, "", false)
+}
+
+func generateLinkedSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds pptx.RectEmu, relID string, slideJump bool) string {
+	action := ""
+	if slideJump {
+		action = "ppaction://hlinksldjump"
+	}
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "Source Note",
@@ -34,12 +42,14 @@ func generateSourceNoteShapeInBounds(sourceText string, shapeID uint32, bounds p
 			Paragraphs: []pptx.Paragraph{{
 				Align: patterns.SourceNoteAlign,
 				Runs: []pptx.Run{{
-					Text:     sourceNoteText(sourceText),
-					Lang:     "en-US",
-					FontSize: sourceNoteFontSize,
-					Italic:   true,
-					Dirty:    true,
-					Color:    pptx.SchemeFill(patterns.SourceNoteScheme),
+					Text:            sourceNoteText(sourceText),
+					Lang:            "en-US",
+					FontSize:        sourceNoteFontSize,
+					Italic:          true,
+					Dirty:           true,
+					Color:           pptx.SchemeFill(patterns.SourceNoteScheme),
+					HyperlinkRelID:  relID,
+					HyperlinkAction: action,
 				}},
 			}},
 		},
@@ -61,8 +71,12 @@ func sourceNoteText(sourceText string) string {
 // insertSourceNote inserts a source attribution text shape at bounds (the
 // chrome frame's source band) before </p:spTree>.
 func insertSourceNote(slideData []byte, sourceText string, bounds pptx.RectEmu) ([]byte, error) {
+	return insertLinkedSourceNote(slideData, sourceText, bounds, "", false)
+}
+
+func insertLinkedSourceNote(slideData []byte, sourceText string, bounds pptx.RectEmu, relID string, slideJump bool) ([]byte, error) {
 	// Allocate a slide-unique ID above any existing shape (including shapes
 	// injected earlier on this slide, which are already present in slideData).
-	shapeXML := generateSourceNoteShapeInBounds(sourceText, findMaxShapeID(slideData)+1, bounds)
+	shapeXML := generateLinkedSourceNoteShapeInBounds(sourceText, findMaxShapeID(slideData)+1, bounds, relID, slideJump)
 	return pptx.InsertIntoSpTree(slideData, []byte(shapeXML), pptx.InsertAtEnd)
 }

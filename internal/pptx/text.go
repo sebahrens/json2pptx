@@ -39,17 +39,19 @@ type Paragraph struct {
 
 // Run represents a DrawingML text run (a:r) or field (a:fld).
 type Run struct {
-	Text       string
-	FontSize   int // Font size in hundredths of a point (e.g. 1200 = 12pt)
-	Bold       bool
-	Italic     bool
-	Underline  bool
-	Dirty      bool   // Emit dirty="0" (marks text as spell-check clean)
-	Color      Fill   // Text color fill
-	Lang       string // Language tag (e.g. "en-US")
-	FontFamily string // Font typeface (e.g. "+mn-lt" for theme minor font, "Arial")
-	FieldType  string // If set, renders as <a:fld type="..."> instead of <a:r> (e.g. "slidenum")
-	FieldID    string // UUID for field identification (required when FieldType is set)
+	Text            string
+	FontSize        int // Font size in hundredths of a point (e.g. 1200 = 12pt)
+	Bold            bool
+	Italic          bool
+	Underline       bool
+	Dirty           bool   // Emit dirty="0" (marks text as spell-check clean)
+	Color           Fill   // Text color fill
+	Lang            string // Language tag (e.g. "en-US")
+	FontFamily      string // Font typeface (e.g. "+mn-lt" for theme minor font, "Arial")
+	FieldType       string // If set, renders as <a:fld type="..."> instead of <a:r> (e.g. "slidenum")
+	FieldID         string // UUID for field identification (required when FieldType is set)
+	HyperlinkRelID  string // Slide relationship ID for a clickable text run
+	HyperlinkAction string // Optional OOXML action for slide jumps
 
 	// Baseline raises or lowers the run relative to the text baseline, in
 	// thousandths of a percent of the font size — OOXML's a:rPr baseline
@@ -198,8 +200,21 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 		buf.WriteString(`<a:r>`)
 	}
 
-	// Run properties
-	hasRPr := r.FontSize > 0 || r.Bold || r.Italic || r.Underline || r.Dirty || !r.Color.IsZero() || r.Lang != "" || r.FontFamily != "" || r.Baseline != 0
+	r.writeRunProperties(buf)
+
+	buf.WriteString(`<a:t>`)
+	buf.WriteString(escapeXMLText(r.Text))
+	buf.WriteString(`</a:t>`)
+
+	if isField {
+		buf.WriteString(`</a:fld>`)
+	} else {
+		buf.WriteString(`</a:r>`)
+	}
+}
+
+func (r Run) writeRunProperties(buf *bytes.Buffer) {
+	hasRPr := r.FontSize > 0 || r.Bold || r.Italic || r.Underline || r.Dirty || !r.Color.IsZero() || r.Lang != "" || r.FontFamily != "" || r.Baseline != 0 || r.HyperlinkRelID != ""
 	if hasRPr {
 		buf.WriteString(`<a:rPr`)
 		if r.Lang != "" {
@@ -223,7 +238,7 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 		if r.Dirty {
 			buf.WriteString(` dirty="0"`)
 		}
-		hasChildren := !r.Color.IsZero() || r.FontFamily != ""
+		hasChildren := !r.Color.IsZero() || r.FontFamily != "" || r.HyperlinkRelID != ""
 		if hasChildren {
 			buf.WriteString(`>`)
 			if !r.Color.IsZero() {
@@ -232,21 +247,22 @@ func (r Run) marshalXML(buf *bytes.Buffer) {
 			if r.FontFamily != "" {
 				fmt.Fprintf(buf, `<a:latin typeface="%s"/>`, escapeXMLAttr(r.FontFamily))
 			}
+			if r.HyperlinkRelID != "" {
+				r.writeHyperlink(buf)
+			}
 			buf.WriteString(`</a:rPr>`)
 		} else {
 			buf.WriteString(`/>`)
 		}
 	}
+}
 
-	buf.WriteString(`<a:t>`)
-	buf.WriteString(escapeXMLText(r.Text))
-	buf.WriteString(`</a:t>`)
-
-	if isField {
-		buf.WriteString(`</a:fld>`)
-	} else {
-		buf.WriteString(`</a:r>`)
+func (r Run) writeHyperlink(buf *bytes.Buffer) {
+	fmt.Fprintf(buf, `<a:hlinkClick r:id="%s"`, escapeXMLAttr(r.HyperlinkRelID))
+	if r.HyperlinkAction != "" {
+		fmt.Fprintf(buf, ` action="%s"`, escapeXMLAttr(r.HyperlinkAction))
 	}
+	buf.WriteString(`/>`)
 }
 
 // escapeXMLText escapes special characters for XML text content and strips XML

@@ -14,7 +14,9 @@ type ShapeOptions struct {
 	Name string
 
 	// Description is the alt text (cNvPr/@descr). Optional.
-	Description string
+	Description     string
+	HyperlinkRelID  string // Relationship ID for a clickable shape
+	HyperlinkAction string // Optional OOXML action, e.g. ppaction://hlinksldjump
 
 	// Bounds defines position and size in EMU.
 	Bounds RectEmu
@@ -92,7 +94,16 @@ func GenerateShape(opts ShapeOptions) ([]byte, error) {
 	if opts.Description != "" {
 		fmt.Fprintf(&buf, ` descr="%s"`, escapeXMLAttr(opts.Description))
 	}
-	buf.WriteString(`/>`)
+	if opts.HyperlinkRelID != "" {
+		buf.WriteString(`>`)
+		fmt.Fprintf(&buf, `<a:hlinkClick r:id="%s"`, escapeXMLAttr(opts.HyperlinkRelID))
+		if opts.HyperlinkAction != "" {
+			fmt.Fprintf(&buf, ` action="%s"`, escapeXMLAttr(opts.HyperlinkAction))
+		}
+		buf.WriteString(`/></p:cNvPr>`)
+	} else {
+		buf.WriteString(`/>`)
+	}
 	buf.WriteByte('\n')
 
 	// cNvSpPr

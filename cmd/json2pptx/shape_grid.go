@@ -814,6 +814,9 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 			Rotation:    c.Shape.Rotation,
 			Adjustments: c.Shape.Adjustments,
 		}
+		if c.Shape.Link != nil {
+			cell.Shape.Link = &shapegrid.LinkSpec{URL: c.Shape.Link.URL, Slide: c.Shape.Link.Slide}
+		}
 	}
 	if c.Table != nil {
 		cell.TableSpec = c.Table.ToTableSpec()

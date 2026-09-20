@@ -218,6 +218,12 @@ type ShapeSpec struct {
 	Text        json.RawMessage
 	Rotation    float64
 	Adjustments map[string]int64
+	Link        *LinkSpec
+}
+
+type LinkSpec struct {
+	URL   string
+	Slide int
 }
 
 // ResolvedCell is the output of grid resolution: a cell with its absolute

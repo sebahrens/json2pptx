@@ -22,6 +22,7 @@ type GridOverlayInput = jsonschema.GridOverlayInput
 type GridImageTextInput = jsonschema.GridImageTextInput
 type IconInput = jsonschema.IconInput
 type ShapeSpecInput = jsonschema.ShapeSpecInput
+type LinkInput = jsonschema.LinkInput
 type ShapeFillInput = jsonschema.ShapeFillInput
 type TableInput = jsonschema.TableInput
 type TableCellInput = jsonschema.TableCellInput

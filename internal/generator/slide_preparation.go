@@ -530,6 +530,9 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 			autofitOpts = append(autofitOpts, ctx.bodyAutofitOptions(layoutID)...)
 			autofitOpts = append(autofitOpts, withReadabilityPolicy(ctx.viewingMode, tokens.TextRoleBody))
 		}
+		if item.Link != nil {
+			item.linkMarker = contentLinkMarker(j)
+		}
 		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName, autofitOpts...); err != nil {
 			warnings = append(warnings, err.Error())
 		}

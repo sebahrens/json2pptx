@@ -97,6 +97,7 @@ type SlideSpec struct {
 	Background      *BackgroundImage // Slide background image (nil = no background image)
 	SpeakerNotes    string           // Speaker notes text (written to notesSlide XML)
 	SourceNote      string           // Source attribution text (rendered as small text at slide bottom)
+	SourceLink      *LinkSpec        // Optional hyperlink on source attribution
 	Takeaway        string           // Headline answer / "so what" line (rendered as bold text above the source note)
 	Transition      string           // Slide transition type: "fade", "push", "wipe", "cover", "uncover", "cut", "dissolve"
 	TransitionSpeed string           // Transition speed: "slow", "med", "fast" (default: "med")
@@ -111,6 +112,7 @@ type SlideSpec struct {
 	// put a numbered badge UNDER the screenshot it annotates
 	// (go-slide-creator-yomm).
 	OverlayShapeXML [][]byte
+	ShapeLinks      []ShapeLink   // Links on generated grid shapes and overlay badges
 	IconInserts     []IconInsert  // SVG icon images from shape_grid (require media registration)
 	ImageInserts    []ImageInsert // Image files from shape_grid (require media registration)
 }
@@ -145,6 +147,19 @@ type ContentItem struct {
 	Type          ContentType // Type of content
 	Value         any         // Type-specific value
 	FontSize      int         // Font size override in hundredths of a point (e.g., 7200 = 72pt). 0 means no override.
+	Link          *LinkSpec   // Optional hyperlink on every text run in this item
+	linkMarker    string      // Temporary run relationship marker, resolved during slide writing
+}
+
+// LinkSpec targets either an external URL or a slide in the same deck.
+type LinkSpec struct {
+	URL   string
+	Slide int
+}
+
+type ShapeLink struct {
+	Marker string
+	Link   LinkSpec
 }
 
 // ContentType indicates the kind of content.

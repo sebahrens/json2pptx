@@ -16,6 +16,8 @@ below. Drop to raw `PresentationInput` via `generate_presentation` / `json2pptx 
 only when the user needs a feature outside the semantic schema or a targeted raw repair;
 raw JSON is also the compiler's own output format.
 
+Raw decks support clickable text and navigation: add `link: {url: "https://..."}` to a text/bullets content item, `source_link: {url: "https://..."}` beside a slide's `source`, or `link: {slide: N}` to a `shape_grid` shape or overlay badge. `N` is the destination slide in the final deck (1-based). See `docs/INPUT_FORMAT.md` for examples and validation rules.
+
 **Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
 server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices, or render_slide_image for a single one), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
 

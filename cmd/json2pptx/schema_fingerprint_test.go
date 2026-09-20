@@ -93,8 +93,9 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.71.0 makes image-render MCP calls cancellable and adds progress notifications;
 	// the raw input hash is unchanged.
 	// 4.72.0 adds the export_deck MCP tool and advances the tool-name fingerprint.
+	// 4.73.0 adds content/source and shape/badge hyperlink inputs.
 	// If this fails, see file header comment.
-	const wantFingerprint = "3a06926a5037593a"
+	const wantFingerprint = "4e61ab5f35f1ae5a"
 
 	got := schemaFingerprint()
 

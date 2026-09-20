@@ -179,6 +179,13 @@ type ShapeSpecInput struct {
 	Rotation    float64          `json:"rotation,omitempty"`
 	Adjustments map[string]int64 `json:"adjustments,omitempty"`
 	Icon        *IconInput       `json:"icon,omitempty"` // Optional icon overlay rendered on top of the shape
+	Link        *LinkInput       `json:"link,omitempty"` // Click target for the entire shape
+}
+
+// LinkInput names one external URL or one slide number in the output deck.
+type LinkInput struct {
+	URL   string `json:"url,omitempty"`
+	Slide int    `json:"slide,omitempty"`
 }
 
 // ShapeFillInput is the expanded object form for shape fill.
@@ -209,6 +216,7 @@ type OverlayShapeInput struct {
 	Height float64            `json:"height,omitempty"` // Badge: height in slide-percent when To is omitted (ignored for line/arrow)
 	Dash   string             `json:"dash,omitempty"`   // "solid", "dash", "dot", "lgDash", "dashDot" (line/arrow)
 	Text   string             `json:"text,omitempty"`   // Badge label text
+	Link   *LinkInput         `json:"link,omitempty"`   // Badge click target
 }
 
 // OverlayPointInput specifies a position via percent-of-slide or via

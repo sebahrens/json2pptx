@@ -660,6 +660,10 @@ func (ctx *singlePassContext) writePresentationRelationships() error {
 // writeSingleSlide writes a single slide to the output ZIP, handling media and native SVG inserts.
 func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) error { //nolint:gocognit,gocyclo
 	slidePath := SlidePath(slideNum)
+	_, linkIDs, err := ctx.hyperlinkRelationships(slideNum)
+	if err != nil {
+		return err
+	}
 
 	// Check for table inserts (standalone tables replacing placeholder shapes)
 	tableInserts, hasTable := ctx.tableInserts[slideNum]
@@ -822,7 +826,11 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 				}
 			}
 			if hasSource {
-				slideData, err = insertSourceNote(slideData, sourceText, frame.Source.Rect())
+				var slideJump bool
+				if spec, ok := ctx.slideContentMap[slideNum]; ok && spec.SourceLink != nil {
+					slideJump = spec.SourceLink.Slide > 0
+				}
+				slideData, err = insertLinkedSourceNote(slideData, sourceText, frame.Source.Rect(), linkIDs["source"], slideJump)
 				if err != nil {
 					return fmt.Errorf("failed to insert source note for slide %d: %w", slideNum, err)
 				}
@@ -875,6 +883,12 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		if spec, ok := ctx.slideContentMap[slideNum]; ok && spec.Background != nil {
 			slideData = insertBackgroundColor(slideData, spec.Background.Color)
 		}
+	}
+	for marker, id := range linkIDs {
+		if marker == "source" {
+			continue
+		}
+		slideData = bytes.ReplaceAll(slideData, []byte(`r:id="`+marker+`"`), []byte(`r:id="`+id+`"`))
 	}
 
 	fw, err := utils.ZipCreateDeterministic(ctx.outputWriter, slidePath)
@@ -1117,6 +1131,11 @@ func (ctx *singlePassContext) writeNewSlideRelationships(slideNum int, layoutID 
 			Target: fmt.Sprintf("../notesSlides/notesSlide%d.xml", slideNum),
 		})
 	}
+	links, _, err := ctx.hyperlinkRelationships(slideNum)
+	if err != nil {
+		return err
+	}
+	rels.Relationships = append(rels.Relationships, links...)
 
 	return ctx.writeRelationshipsFile(relsFileName, rels)
 }
