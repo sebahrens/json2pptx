@@ -62,6 +62,7 @@ func (cis *chartInsightsSplit) Taxonomy() PatternTaxonomy {
 		RoleOnSlide:   nil,
 		DensityClass:  "medium",
 		AccentWeight:  "normal",
+		DataVisual:    true,
 	}
 }
 

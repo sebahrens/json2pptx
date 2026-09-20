@@ -840,11 +840,13 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 			output.Diagnostics = append(output.Diagnostics, gridDiags...)
 		}
 
-		// Takeaway warning: chart and matrix slides without a takeaway lose
-		// most of their narrative value — the audience cannot tell what the
-		// data is supposed to argue. Warn (do not error) when missing.
-		if strings.TrimSpace(slideInput.Takeaway) == "" && slideRequiresTakeaway(slideInput) {
-			msg := fmt.Sprintf("slide %d: chart/matrix slides should set a takeaway headline so the audience knows the 'so what' — currently empty", i+1)
+		// Takeaway warning: a slide that argues from data and says nothing
+		// about what the data means loses most of its narrative value — the
+		// audience cannot tell what the chart is supposed to argue. Warn (do
+		// not error) when missing, and stay quiet when the title already
+		// carries the argument.
+		if strings.TrimSpace(slideInput.Takeaway) == "" && slideRequiresTakeaway(slideInput) && !slideTitleStatesTakeaway(slideInput) {
+			msg := fmt.Sprintf("slide %d: this slide argues from data — set a takeaway headline (or make the title a full sentence) so the audience knows the 'so what'", i+1)
 			ve := &patterns.ValidationError{
 				Path:    slidepath.SlideField(i, "takeaway"),
 				Code:    patterns.ErrCodeTakeawayMissing,
@@ -863,10 +865,16 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 	}
 }
 
-// slideRequiresTakeaway reports whether a slide carries chart or matrix
-// content for which a takeaway / "so what" headline is strongly recommended.
-// Returns true when any content item is a chart, when diagram_value is a
-// chart-shaped diagram type, or when the slide uses a matrix-* pattern.
+// slideRequiresTakeaway reports whether a slide argues from data, and so wants
+// a takeaway / "so what" headline. True when any content item is a chart, when
+// diagram_value is a chart-shaped diagram type, or when the slide's pattern is
+// marked DataVisual in its own taxonomy.
+//
+// The pattern half used to be the name prefix "matrix-", which meant the nudge
+// landed on exactly one pattern and never on chart-insights-split — the pattern
+// that literally embeds a chart — nor on waterfall-bridge or
+// horizontal-bar-with-callouts, which are charts drawn as shape grids
+// (go-slide-creator-g2cy).
 func slideRequiresTakeaway(s SlideInput) bool {
 	for _, item := range s.Content {
 		switch item.Type {
@@ -881,8 +889,10 @@ func slideRequiresTakeaway(s SlideInput) bool {
 			return true
 		}
 	}
-	if s.Pattern != nil && strings.HasPrefix(s.Pattern.Name, "matrix-") {
-		return true
+	if s.Pattern != nil {
+		if p, ok := patterns.Default().Get(s.Pattern.Name); ok && p.Taxonomy().DataVisual {
+			return true
+		}
 	}
 	return false
 }
@@ -899,6 +909,93 @@ func isChartishDiagramType(t string) bool {
 		return true
 	}
 	return false
+}
+
+// takeawayTitleMinWords is the length at which a title stops reading as a label
+// ("Options matrix") and starts reading as a claim. Six words is the shortest
+// full sentence that carries a subject, a verb and an object with anything to
+// say ("Enterprise carried the year, SMB did not").
+const takeawayTitleMinWords = 6
+
+// slideTitleStatesTakeaway reports whether the slide's title already makes the
+// argument, in which case asking for a separate takeaway is noise: the one
+// place the old lint fired was a matrix-2x2 titled "Prioritise the four
+// initiatives in the top-right quadrant", which is the takeaway
+// (go-slide-creator-g2cy).
+//
+// A title states the takeaway when it is long enough to be a sentence AND
+// carries a verb. The test is deliberately biased toward false negatives — a
+// title with a verb this does not know still gets the nudge, which is the
+// status quo, while a wrong suppression silently removes the signal.
+func slideTitleStatesTakeaway(s SlideInput) bool {
+	_, title := extractTitleText(s)
+	words := strings.Fields(title)
+	if len(words) < takeawayTitleMinWords {
+		return false
+	}
+	for i, w := range words {
+		word := strings.ToLower(strings.Trim(w, `.,;:!?"'()[]`))
+		if takeawayTitleVerbs[word] {
+			return true
+		}
+		// An imperative is a verb only at the head of the title: "Fund the SMB
+		// pod" argues, "Fund performance by vintage" labels.
+		if i == 0 && takeawayTitleImperatives[word] {
+			return true
+		}
+	}
+	return false
+}
+
+// takeawayTitleVerbs are the finite verb forms that turn a title into a claim
+// wherever they appear. Auxiliaries and copulas carry most sentences; the rest
+// are movement, causation and consequence verbs in forms that are not also
+// common nouns — "grew", not "growth"; "climbs", not "climb". Noun-ambiguous
+// forms ("costs", "drives", "needs", "wins") are left out on purpose: they
+// head far more labels than claims.
+var takeawayTitleVerbs = map[string]bool{
+	// copulas and auxiliaries
+	"is": true, "are": true, "was": true, "were": true, "be": true,
+	"been": true, "being": true, "am": true,
+	"has": true, "have": true, "had": true,
+	"does": true, "do": true, "did": true,
+	"will": true, "would": true, "can": true, "cannot": true, "could": true,
+	"must": true, "should": true, "may": true, "might": true, "shall": true,
+	// movement and magnitude
+	"grew": true, "grows": true, "growing": true,
+	"rose": true, "rises": true, "rising": true,
+	"fell": true, "falling": true,
+	"doubled": true, "doubles": true, "halved": true, "tripled": true,
+	"outpaced": true, "outpaces": true, "lagged": true, "lags": true,
+	"led": true, "trails": true, "beat": true, "beats": true,
+	"held": true, "holds": true, "slipped": true, "slips": true,
+	"added": true, "adds": true, "lost": true, "loses": true,
+	"gained": true, "climbed": true, "climbs": true,
+	"dropped": true, "improved": true, "improves": true,
+	"worsened": true, "stalled": true, "widened": true, "narrowed": true,
+	// causation and consequence
+	"drove": true, "driving": true, "explains": true, "explained": true,
+	"created": true, "creates": true, "delivered": true, "delivers": true,
+	"protected": true, "protects": true, "threatens": true, "threatened": true,
+	"requires": true, "required": true, "depends": true, "hinges": true,
+	"makes": true, "made": true, "won": true, "bought": true, "sold": true,
+	"funded": true, "chose": true, "shifted": true, "consolidated": true,
+	"recommends": true, "recommended": true,
+	"carried": true, "gave": true, "took": true, "kept": true,
+	"brought": true, "turned": true, "cleared": true, "missed": true,
+	"hit": true, "reached": true, "landed": true, "closed": true,
+}
+
+// takeawayTitleImperatives are verbs only at the head of a title. "Fund the
+// SMB success pod in Q3" argues; "Fund performance by vintage" labels.
+var takeawayTitleImperatives = map[string]bool{
+	"prioritise": true, "prioritize": true, "focus": true,
+	"choose": true, "pick": true, "fund": true, "invest": true,
+	"stop": true, "start": true, "shift": true, "move": true, "keep": true,
+	"cut": true, "accept": true, "reject": true, "approve": true,
+	"recommend": true, "consolidate": true, "expand": true, "exit": true,
+	"buy": true, "sell": true, "build": true, "double": true, "treat": true,
+	"protect": true, "deliver": true, "act": true, "hold": true, "back": true,
 }
 
 // hexColorRe matches #RGB or #RRGGBB hex color strings.

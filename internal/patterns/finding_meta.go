@@ -424,11 +424,12 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeTakeawayMissing: {
 		Code:        ErrCodeTakeawayMissing,
-		Summary:     "A chart or matrix slide lacks a `takeaway` headline.",
+		Summary:     "A slide that argues from data lacks a `takeaway` headline.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight finds a slide with a chart content item, chart-shaped diagram, or a matrix-* pattern whose `slide.takeaway` field is empty.",
+		WhenEmitted: "Pre-flight finds a slide with a chart content item, a chart-shaped diagram, or a pattern marked `data_visual` in its taxonomy, whose `slide.takeaway` is empty and whose title is not itself a full-sentence takeaway.",
 		RemediationSteps: []string{
 			"Add a one-sentence `takeaway` to the slide stating the 'so what' of the data.",
+			"Or make the slide title the argument — a six-word-or-longer sentence with a verb suppresses the finding.",
 			"Apply via repair_slide(kind=provide_value, params.field='takeaway').",
 		},
 		ExampleBefore: `{"slides":[{"layout_id":"content","content":[{"type":"chart","chart_value":{...}}]}]}  // takeaway omitted`,

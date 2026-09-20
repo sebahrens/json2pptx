@@ -37,6 +37,7 @@ func (m *matrix2x2) Taxonomy() PatternTaxonomy {
 		PairsWith:     []string{"kpi-3up", "card-grid", "pull-quote"},
 		DensityClass:  "medium",
 		AccentWeight:  "subtle",
+		DataVisual:    true,
 	}
 }
 

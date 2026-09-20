@@ -109,6 +109,7 @@ func (p *tableHighlight) Taxonomy() PatternTaxonomy {
 		PairsWith:     []string{"exec-summary", "comparison-2col", "phase-roadmap"},
 		DensityClass:  "high",
 		AccentWeight:  "normal",
+		DataVisual:    true,
 	}
 }
 

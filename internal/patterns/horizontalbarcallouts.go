@@ -66,6 +66,7 @@ func (h *horizontalBarCallouts) Taxonomy() PatternTaxonomy {
 		RoleOnSlide:   nil,
 		DensityClass:  "medium",
 		AccentWeight:  "normal",
+		DataVisual:    true,
 	}
 }
 

@@ -1985,6 +1985,7 @@ func handleShowPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.C
 		TextBudgetGuide: computeTextBudgetGuide(pat),
 		ComposesWith:    tax.ComposesWith,
 		RoleOnSlide:     tax.RoleOnSlide,
+		DataVisual:      tax.DataVisual,
 	}
 	result.Cells = pat.CellsHint()
 

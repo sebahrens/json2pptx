@@ -861,12 +861,17 @@ The resolved frame per layout (content area, takeaway band, source band, footer 
 **Pattern:** *(none — slide-level)*
 **Fix kind:** `provide_value`
 
-Emitted by `validate_input` and the CLI dry-run when a slide carries chart or matrix content but the slide's `takeaway` field is empty. The takeaway is the slide's headline answer — a single sentence that tells the audience the "so what" of the data. A chart or 2x2 without one forces the audience to derive the argument themselves, which they rarely do correctly.
+Emitted by `validate_input` and the CLI dry-run when a slide argues from data but says nothing about what the data means. The takeaway is the slide's headline answer — a single sentence that tells the audience the "so what". A chart or 2x2 without one forces the audience to derive the argument themselves, which they rarely do correctly.
 
 Triggers when **all** of the following hold:
 
 - `slide.takeaway` is empty (or whitespace-only)
-- The slide has at least one of: a `chart` content item, a `diagram` content item whose `diagram_value.type` is chart-shaped (bar, line, area, scatter, bubble, pie, donut, stacked_bar, grouped_bar, waterfall, funnel, radar, gauge, treemap), or a pattern whose `name` starts with `matrix-`
+- The slide has at least one of: a `chart` content item, a `diagram` content item whose `diagram_value.type` is chart-shaped (bar, line, area, scatter, bubble, pie, donut, stacked_bar, grouped_bar, waterfall, funnel, radar, gauge, treemap), or a **pattern marked `data_visual` in its taxonomy**
+- The slide **title** is not itself the takeaway — a title of six words or more containing a finite verb ("Prioritise the four initiatives in the top-right quadrant") suppresses the finding, because asking for a second sentence saying the same thing is noise
+
+`data_visual` is the pattern's own declaration that its job is to argue from data, exposed on `PatternTaxonomy` and returned by `show_pattern` / `list_patterns`. It currently covers `chart-insights-split`, `waterfall-bridge`, `horizontal-bar-with-callouts`, `table-highlight` and `matrix-2x2`. It replaced a `matrix-` name-prefix test that fired on exactly one pattern and never on `chart-insights-split` — the pattern that embeds a chart — nor on the two charts drawn as shape grids (go-slide-creator-g2cy). It is deliberately narrower than `category: "data-display"`: a card grid and an icon row display content without making a quantitative claim, and a 2x2 makes one while being structural.
+
+The verb test is biased toward false negatives: a title with a verb the check does not know keeps its nudge, which is the old behaviour, while a wrong suppression silently removes the signal.
 
 The warning never blocks generation — the takeaway is advisory, not structural. Add a one-sentence `takeaway` to the slide; it renders as 14pt bold dark-gray text in the layout-derived band above the footer placeholders, above the source note row (see `chrome_band_no_fit`).
 
@@ -875,7 +880,7 @@ The warning never blocks generation — the takeaway is advisory, not structural
   "path": "/slides/3/takeaway",
   "code": "takeaway_missing",
   "severity": "warning",
-  "message": "slide 4: chart/matrix slides should set a takeaway headline so the audience knows the 'so what' — currently empty",
+  "message": "slide 4: this slide argues from data — set a takeaway headline (or make the title a full sentence) so the audience knows the 'so what'",
   "fix": { "kind": "provide_value", "params": { "field": "takeaway" } },
   "action": "review"
 }

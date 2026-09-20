@@ -77,6 +77,7 @@ func (w *waterfallBridge) Taxonomy() PatternTaxonomy {
 		DensityClass:       "medium",
 		AccentWeight:       "normal",
 		SparseThresholdPct: 15,
+		DataVisual:         true,
 	}
 }
 func (w *waterfallBridge) SupportsInlineMarkdown() bool { return true }

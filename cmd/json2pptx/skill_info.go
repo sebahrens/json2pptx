@@ -204,6 +204,10 @@ type skillPatternFull struct {
 	RenderingCapabilities *renderingCapabilities        `json:"rendering_capabilities,omitempty"`
 	ComposesWith          []string                      `json:"composes_with,omitempty"`
 	RoleOnSlide           []string                      `json:"role_on_slide,omitempty"`
+	// DataVisual marks a pattern whose job is to argue from data. A slide
+	// using one wants a takeaway saying what the data means; without one it
+	// reports takeaway_missing (go-slide-creator-g2cy).
+	DataVisual bool `json:"data_visual,omitempty"`
 }
 
 // renderingCapabilities describes how a pattern renders icons and other visual elements.

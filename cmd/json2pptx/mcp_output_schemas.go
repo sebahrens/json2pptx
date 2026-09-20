@@ -201,6 +201,7 @@ var outputSchemaShowPattern = json.RawMessage(`{
     "schema":      {"type": "object"},
     "composes_with": {"type": "array", "items": {"type": "string"}},
     "role_on_slide": {"type": "array", "items": {"type": "string"}},
+    "data_visual": {"type": "boolean", "description": "True when the pattern's job is to argue from data (a chart, a chart drawn as a shape grid, a scored comparison matrix). A slide using one wants a takeaway saying what the data means; without one, validate_input reports takeaway_missing unless the slide title is itself a full-sentence takeaway."},
     "text_budget_guide": {
       "type": "object",
       "properties": {

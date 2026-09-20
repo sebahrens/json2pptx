@@ -102,6 +102,16 @@ type PatternTaxonomy struct {
 	// leave this at 0 to use the default (20), or set it explicitly. Single-row
 	// patterns that sprawl vertically (process-flow, kpi-Nup) should use 15.
 	SparseThresholdPct int `json:"sparse_threshold_pct,omitempty"`
+
+	// DataVisual marks a pattern whose whole job is to argue from data: a
+	// chart, a chart drawn as a shape grid, a scored comparison matrix. Those
+	// slides are the ones a missing "so what" hurts most, so the
+	// takeaway_missing lint fires on this flag.
+	//
+	// It is deliberately narrower than Category == "data-display": a card grid
+	// and an icon row display content without making a quantitative claim, and
+	// a 2x2 matrix makes one while being structural (go-slide-creator-g2cy).
+	DataVisual bool `json:"data_visual,omitempty"`
 }
 
 // EffectiveSparseThreshold returns SparseThresholdPct if set, otherwise the
