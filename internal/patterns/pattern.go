@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -131,6 +132,7 @@ func (t PatternTaxonomy) EffectiveSparseThreshold(defaultPct int) int {
 type ExpandContext struct {
 	Theme          types.ThemeInfo
 	Metadata       *types.TemplateMetadata // optional; nil when template has no metadata
+	ContentZone    *shapegrid.ContentZone  // optional; used to clamp authored slide-relative bounds like rendering
 	SlideWidth     int64                   // EMU
 	SlideHeight    int64                   // EMU
 	LayoutBounds   LayoutBounds

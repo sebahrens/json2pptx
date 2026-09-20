@@ -180,12 +180,18 @@ func expandComposeSegments(c *ComposeInput, ctx patterns.ExpandContext, bounds [
 		case seg.HasDiagram():
 			grids[i] = diagramSegmentGrid(seg.Diagram)
 		default:
-			grid, _, err := expandPattern(&seg.Pattern, segCtx, reg)
+			pattern := seg.Pattern
+			ignoredBoundsWarning := segmentBoundsIgnoredWarning(i, &pattern)
+			if ignoredBoundsWarning != "" {
+				pattern.Bounds = nil
+				pattern.MaxHeightPct = 0
+			}
+			grid, _, err := expandPattern(&pattern, segCtx, reg)
 			if err != nil {
 				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
 			}
-			if w := segmentBoundsIgnoredWarning(i, &seg.Pattern); w != "" {
-				warnings = append(warnings, w)
+			if ignoredBoundsWarning != "" {
+				warnings = append(warnings, ignoredBoundsWarning)
 				grid.Bounds = nil
 			}
 			grids[i] = grid

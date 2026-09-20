@@ -1765,8 +1765,9 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 			SlideIndex:  i,
 		}
 		if len(layoutSets) > 0 {
-			_, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
+			geom, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
 			ctx.LayoutBounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
+			ctx.ContentZone = geom.Zone
 		}
 		eg, _, err := expandCompose(s.Compose, ctx, patterns.Default())
 		if err != nil {

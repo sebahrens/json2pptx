@@ -16,6 +16,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -53,11 +54,13 @@ func expandPatternsForFit(input *PresentationInput, slideWidth, slideHeight int6
 			continue
 		}
 		var bounds patterns.LayoutBounds
+		var zone *shapegrid.ContentZone
 		if len(layoutSets) > 0 {
-			_, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
+			geom, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
 			bounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
+			zone = geom.Zone
 		}
-		grid, _ := expandSlidePatternGridWithWarningsAtBounds(s, i, slideWidth, slideHeight, theme, bounds)
+		grid, _ := expandSlidePatternGridWithWarningsAtBounds(s, i, slideWidth, slideHeight, theme, bounds, zone)
 		if grid == nil {
 			// Invalid pattern values: the pattern validator reports those.
 			continue
@@ -96,11 +99,13 @@ func collectPatternPostExpandFindings(input *PresentationInput, slideWidth, slid
 		}
 		probe := SlideInput{Pattern: p}
 		var bounds patterns.LayoutBounds
+		var zone *shapegrid.ContentZone
 		if len(layoutSets) > 0 {
-			_, b := patternExpansionGeometry(input.Slides[i], layoutSets, slideWidth, slideHeight, rhythm)
+			geom, b := patternExpansionGeometry(input.Slides[i], layoutSets, slideWidth, slideHeight, rhythm)
 			bounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
+			zone = geom.Zone
 		}
-		_, warnings := expandSlidePatternGridWithWarningsAtBounds(&probe, i, slideWidth, slideHeight, theme, bounds)
+		_, warnings := expandSlidePatternGridWithWarningsAtBounds(&probe, i, slideWidth, slideHeight, theme, bounds, zone)
 		for _, w := range warnings {
 			if f := patternWarningAsFinding(i, p.Name, w); f != nil {
 				out = append(out, *f)

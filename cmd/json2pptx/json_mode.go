@@ -958,6 +958,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	if slide.Compose != nil {
 		ctx := patterns.ExpandContext{
 			Metadata:       metadata,
+			ContentZone:    geom.Zone,
 			SlideWidth:     slideWidth,
 			SlideHeight:    slideHeight,
 			LayoutBounds:   patternBounds,
@@ -982,6 +983,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	if slide.Pattern != nil {
 		ctx := patterns.ExpandContext{
 			Metadata:       metadata,
+			ContentZone:    geom.Zone,
 			SlideWidth:     slideWidth,
 			SlideHeight:    slideHeight,
 			LayoutBounds:   patternBounds,
@@ -1004,6 +1006,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	if slide.ShapeGrid != nil {
 		nestedCtx := patterns.ExpandContext{
 			Metadata:       metadata,
+			ContentZone:    geom.Zone,
 			SlideWidth:     slideWidth,
 			SlideHeight:    slideHeight,
 			LayoutBounds:   patternBounds,

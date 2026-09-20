@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -38,10 +39,10 @@ func expandSlidePatternGrid(slide *SlideInput, slideIdx int, slideWidth, slideHe
 // preview_presentation_plan, so a deck that validate and generate both called
 // clean rendered 75% empty (go-slide-creator-wn4v).
 func expandSlidePatternGridWithWarnings(slide *SlideInput, slideIdx int, slideWidth, slideHeight int64, theme *types.ThemeInfo) (*ShapeGridInput, []string) {
-	return expandSlidePatternGridWithWarningsAtBounds(slide, slideIdx, slideWidth, slideHeight, theme, patterns.LayoutBounds{})
+	return expandSlidePatternGridWithWarningsAtBounds(slide, slideIdx, slideWidth, slideHeight, theme, patterns.LayoutBounds{}, nil)
 }
 
-func expandSlidePatternGridWithWarningsAtBounds(slide *SlideInput, slideIdx int, slideWidth, slideHeight int64, theme *types.ThemeInfo, bounds patterns.LayoutBounds) (*ShapeGridInput, []string) {
+func expandSlidePatternGridWithWarningsAtBounds(slide *SlideInput, slideIdx int, slideWidth, slideHeight int64, theme *types.ThemeInfo, bounds patterns.LayoutBounds, zone *shapegrid.ContentZone) (*ShapeGridInput, []string) {
 	if slide == nil || slide.Pattern == nil || slide.ShapeGrid != nil {
 		return nil, nil
 	}
@@ -52,6 +53,7 @@ func expandSlidePatternGridWithWarningsAtBounds(slide *SlideInput, slideIdx int,
 		SlideWidth:   slideWidth,
 		SlideHeight:  slideHeight,
 		LayoutBounds: bounds,
+		ContentZone:  zone,
 		SlideIndex:   slideIdx,
 	}
 	if theme != nil {

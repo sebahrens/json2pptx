@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
@@ -117,6 +119,80 @@ func TestExpandPattern_ExplicitBoundsStaySlideRelative(t *testing.T) {
 	}
 	if grid.BoundsRelativeToContentArea {
 		t.Fatal("caller-supplied explicit bounds must stay slide-relative")
+	}
+}
+
+func TestExpandPatternSizesToEffectiveBounds(t *testing.T) {
+	ctx := patterns.ExpandContext{
+		SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: patterns.LayoutBounds{X: 838200, Y: 1500000, Width: 10515600, Height: 3913340},
+	}
+	base := &PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$123.45M | Bookings","$987.65M | Revenue","$555.55M | Pipeline"]`)}
+	full, _, err := expandPattern(base, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	content := *base
+	content.MaxHeightPct = 30
+	short, _, err := expandPattern(&content, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	contentRect := &pptx.RectEmu{X: ctx.LayoutBounds.X, Y: ctx.LayoutBounds.Y, CX: ctx.LayoutBounds.Width, CY: ctx.LayoutBounds.Height}
+	contentBounds := resolveGridBounds(short, contentRect, nil, ctx.SlideWidth, ctx.SlideHeight)
+	if short.Rows[0].MaxHeight >= full.Rows[0].MaxHeight || short.Rows[0].MaxHeight > float64(contentBounds.CY)/12700+1 {
+		t.Errorf("KPI max height %.1fpt not sized to 30%% content bounds %.1fpt (full %.1fpt)", short.Rows[0].MaxHeight, float64(contentBounds.CY)/12700, full.Rows[0].MaxHeight)
+	}
+	if resolved := resolveGridForStructural(short, contentRect, nil, ctx.SlideWidth, ctx.SlideHeight); resolved == nil || len(resolved.Cells) != 3 || resolved.Cells[0].Bounds.CY > contentBounds.CY {
+		t.Fatalf("KPI resolved cells exceed authored bounds: %+v", resolved)
+	}
+
+	explicit := *base
+	explicit.Bounds = &GridBoundsInput{X: 10, Y: 30, Width: 40, Height: 45}
+	narrow, _, err := expandPattern(&explicit, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	actual := resolveGridBounds(narrow, nil, nil, ctx.SlideWidth, ctx.SlideHeight)
+	if got := actual.CX; got != shapegrid.PctToEMU(40, ctx.SlideWidth) {
+		t.Errorf("explicit width %d, want 40%% of slide", got)
+	}
+	if firstCellParagraphSize(t, narrow) >= firstCellParagraphSize(t, full) {
+		t.Error("KPI value font did not shrink for narrow explicit bounds")
+	}
+	clampedInput := *base
+	clampedInput.Bounds = &GridBoundsInput{X: 10, Y: 0, Width: 80, Height: 100}
+	unclamped, _, err := expandPattern(&clampedInput, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	zone := &shapegrid.ContentZone{TitleBottom: ctx.LayoutBounds.Y, FooterTop: ctx.LayoutBounds.Y + ctx.LayoutBounds.Height, LeftMargin: ctx.LayoutBounds.X, RightEdge: ctx.LayoutBounds.X + ctx.LayoutBounds.Width, SlideWidth: ctx.SlideWidth, SlideHeight: ctx.SlideHeight}
+	ctx.ContentZone = zone
+	clamped, _, err := expandPattern(&clampedInput, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	renderBounds := resolveGridBounds(clamped, contentRect, zone, ctx.SlideWidth, ctx.SlideHeight)
+	if clamped.Rows[0].MaxHeight >= unclamped.Rows[0].MaxHeight || clamped.Rows[0].MaxHeight > float64(renderBounds.CY)/12700+1 {
+		t.Errorf("clamped KPI max height %.1fpt not sized to render zone %.1fpt (raw %.1fpt)", clamped.Rows[0].MaxHeight, float64(renderBounds.CY)/12700, unclamped.Rows[0].MaxHeight)
+	}
+
+	flow := &PatternInput{Name: "process-flow", Values: json.RawMessage(`{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Launch"}]}`)}
+	flowFull, _, err := expandPattern(flow, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	flow.MaxHeightPct = 30
+	flowShort, _, err := expandPattern(flow, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if flowShort.Rows[0].MaxHeight >= flowFull.Rows[0].MaxHeight {
+		t.Errorf("flow max height %.1fpt did not shrink from %.1fpt", flowShort.Rows[0].MaxHeight, flowFull.Rows[0].MaxHeight)
+	}
+	flowBounds := resolveGridBounds(flowShort, contentRect, nil, ctx.SlideWidth, ctx.SlideHeight)
+	if resolved := resolveGridForStructural(flowShort, contentRect, nil, ctx.SlideWidth, ctx.SlideHeight); resolved == nil || len(resolved.Cells) != 3 || resolved.Cells[0].Bounds.CY > flowBounds.CY {
+		t.Fatalf("flow resolved cells exceed authored bounds: %+v", resolved)
 	}
 }
 

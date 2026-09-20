@@ -191,6 +191,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Pattern bounds now affect expansion sizing (go-slide-creator-a2ldx).**
+  `bounds` and `max_height_pct` are resolved before a named pattern chooses
+  card height, font size, and flow geometry. Explicit `bounds` remain relative
+  to the slide and are clamped to the template's content zone; `max_height_pct`
+  remains relative to that content area. Compose segment bounds are still
+  ignored with a warning, including during sizing.
+
 - **Pattern expansion uses the template body font in generation and preview
   (go-slide-creator-ex74s, go-slide-creator-o1yei).** Generation previously
   passed theme colors but lost `BodyFont`; preview passed neither. Both now

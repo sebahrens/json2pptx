@@ -93,8 +93,16 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 		}
 	}
 
+	// Size content against the rectangle it will actually render into. Author
+	// bounds used to replace only grid.Bounds after expansion, so card heights
+	// and text fit had already been chosen from the full content area.
+	expandCtx := ctx
+	if b, relative := resolvePatternBounds(p); b != nil {
+		expandCtx.LayoutBounds = patternExpansionBounds(ctx, b, relative)
+	}
+
 	// Expand
-	grid, err := pat.Expand(ctx, values, overrides, cellOverrides)
+	grid, err := pat.Expand(expandCtx, values, overrides, cellOverrides)
 	if err != nil {
 		return nil, nil, fmt.Errorf("pattern %q: expand failed: %w", p.Name, err)
 	}
@@ -130,7 +138,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// parse the leading "<CODE>: " prefix into FitFindings.
 	var warnings []string
 	if warner, ok := pat.(patterns.PostExpandWarner); ok {
-		warnings = warner.PostExpandWarnings(ctx, values, overrides)
+		warnings = warner.PostExpandWarnings(expandCtx, values, overrides)
 	}
 
 	// Stamp the grid with its provenance. It is what lets an agent feed an
@@ -149,6 +157,16 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	)
 
 	return grid, warnings, nil
+}
+
+func patternExpansionBounds(ctx patterns.ExpandContext, pct *GridBoundsInput, relativeToContent bool) patterns.LayoutBounds {
+	content := &pptx.RectEmu{X: ctx.LayoutBounds.X, Y: ctx.LayoutBounds.Y, CX: ctx.LayoutBounds.Width, CY: ctx.LayoutBounds.Height}
+	if content.CX <= 0 || content.CY <= 0 {
+		content = nil
+	}
+	grid := &ShapeGridInput{Bounds: pct, BoundsRelativeToContentArea: relativeToContent}
+	bounds := resolveGridBounds(grid, content, ctx.ContentZone, ctx.SlideWidth, ctx.SlideHeight)
+	return patterns.LayoutBounds{X: bounds.X, Y: bounds.Y, Width: bounds.CX, Height: bounds.CY}
 }
 
 // appendCalloutRow appends a full-width callout row to the expanded grid.

@@ -577,10 +577,11 @@ func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, r
 func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int, rhythmGrid *resolvedGrid) {
 	probe := *slide
 	probe.LayoutID = rs.LayoutID
-	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
+	geom, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
 	expCtx := patterns.ExpandContext{
 		Theme:          previewPatternTheme(tctx),
 		Metadata:       tctx.metadata,
+		ContentZone:    geom.Zone,
 		SlideWidth:     tctx.slideWidth,
 		SlideHeight:    tctx.slideHeight,
 		LayoutBounds:   patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},
@@ -621,10 +622,11 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int, rhythmGrid *resolvedGrid) {
 	probe := *slide
 	probe.LayoutID = rs.LayoutID
-	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
+	geom, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
 	expCtx := patterns.ExpandContext{
 		Theme:          previewPatternTheme(tctx),
 		Metadata:       tctx.metadata,
+		ContentZone:    geom.Zone,
 		SlideWidth:     tctx.slideWidth,
 		SlideHeight:    tctx.slideHeight,
 		LayoutBounds:   patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY},

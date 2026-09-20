@@ -28,6 +28,8 @@ func TestPreviewAutoCompositionMatchesGeneration(t *testing.T) {
 		slide SlideInput
 	}{
 		{"pattern", SlideInput{Pattern: &PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$4M | ARR","98% | NRR","1K | Users"]`)}}},
+		{"pattern_explicit_bounds", SlideInput{Pattern: &PatternInput{Name: "kpi-3up", Bounds: &GridBoundsInput{X: 10, Y: 30, Width: 40, Height: 45}, Values: json.RawMessage(`["$4M | ARR","98% | NRR","1K | Users"]`)}}},
+		{"pattern_height_cap", SlideInput{Pattern: &PatternInput{Name: "process-flow", MaxHeightPct: 30, Values: json.RawMessage(`{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Launch"}]}`)}}},
 		{"compose", SlideInput{Compose: &ComposeInput{Direction: "horizontal", Segments: []SegmentInput{
 			{SizePct: 50, Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"99%","label":"Uptime"}`)}},
 			{SizePct: 50, Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"3x","label":"Growth"}`)}},

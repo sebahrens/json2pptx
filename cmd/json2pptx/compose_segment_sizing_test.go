@@ -216,6 +216,31 @@ func TestComposeHorizontalNestedImageGetsAltFinding(t *testing.T) {
 	}
 }
 
+func TestComposeIgnoresLeafBoundsBeforeSizing(t *testing.T) {
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000, LayoutBounds: patterns.LayoutBounds{X: 838200, Y: 1500000, Width: 10515600, Height: 3913340}}
+	kpi := PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$123.45M | Bookings","$987.65M | Revenue","$555.55M | Pipeline"]`)}
+	hero := PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"99%","label":"Uptime"}`)}
+	plain := &ComposeInput{Direction: "horizontal", Segments: []SegmentInput{{SizePct: 50, Pattern: kpi}, {SizePct: 50, Pattern: hero}}}
+	baseline, _, err := expandCompose(plain, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	kpi.Bounds = &GridBoundsInput{X: 10, Y: 30, Width: 25, Height: 25}
+	ignored := &ComposeInput{Direction: "horizontal", Segments: []SegmentInput{{SizePct: 50, Pattern: kpi}, {SizePct: 50, Pattern: hero}}}
+	got, warnings, err := expandCompose(ignored, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, _ := json.Marshal(baseline)
+	b, _ := json.Marshal(got)
+	if string(a) != string(b) {
+		t.Error("ignored segment bounds changed pattern sizing")
+	}
+	if len(warnings) == 0 || !strings.Contains(warnings[0], "COMPOSE_SEGMENT_BOUNDS_IGNORED") {
+		t.Fatalf("missing ignored bounds warning: %v", warnings)
+	}
+}
+
 func TestNestedComposeInheritsOuterSegmentBounds(t *testing.T) {
 	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000, LayoutBounds: patterns.LayoutBounds{X: 838200, Y: 1500000, Width: 10515600, Height: 3913340}}
 	kpi := PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$123.45M | Bookings","$987.65M | Revenue","$555.55M | Pipeline"]`)}
