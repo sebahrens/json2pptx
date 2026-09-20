@@ -191,6 +191,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Pattern expansion uses the template body font in generation and preview
+  (go-slide-creator-ex74s, go-slide-creator-o1yei).** Generation previously
+  passed theme colors but lost `BodyFont`; preview passed neither. Both now
+  pass the same template colors and body font to font-sensitive pattern sizing
+  and readable fill selection.
+
 - **Horizontal compose segments keep independent rows (go-slide-creator-rbjas).**
   The expanded shape grid now hosts each segment in a nested grid spanning its
   allocated columns. A multirow segment can retain its own row heights, gaps,

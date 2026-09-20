@@ -2930,15 +2930,14 @@ func applyChromeSkip(specs []generator.SlideSpec, chrome *ChromeInput, slides []
 	}
 }
 
-// patternThemeFromDiag exposes the template theme colours to pattern
-// expanders so they can pick readable text colours against tinted fills
-// (see patterns.readableTextOn). Returns the zero ThemeInfo when no diagram
-// context is available; patterns then fall back to their static defaults.
+// patternThemeFromDiag exposes template colors and the body font to pattern
+// expanders for contrast and content-sized text measurement. Returns the zero
+// ThemeInfo when no diagram context is available.
 func patternThemeFromDiag(diagCtx *GridDiagramContext) types.ThemeInfo {
 	if diagCtx == nil {
 		return types.ThemeInfo{}
 	}
-	return types.ThemeInfo{Colors: diagCtx.ThemeColors}
+	return types.ThemeInfo{Colors: diagCtx.ThemeColors, BodyFont: diagCtx.FontFamily}
 }
 
 // droppedPlaceholdersBySlide indexes hard content drops — content targeting a

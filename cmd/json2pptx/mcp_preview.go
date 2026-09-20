@@ -579,6 +579,7 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 	probe.LayoutID = rs.LayoutID
 	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
 	expCtx := patterns.ExpandContext{
+		Theme:          previewPatternTheme(tctx),
 		Metadata:       tctx.metadata,
 		SlideWidth:     tctx.slideWidth,
 		SlideHeight:    tctx.slideHeight,
@@ -622,6 +623,7 @@ func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext,
 	probe.LayoutID = rs.LayoutID
 	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
 	expCtx := patterns.ExpandContext{
+		Theme:          previewPatternTheme(tctx),
 		Metadata:       tctx.metadata,
 		SlideWidth:     tctx.slideWidth,
 		SlideHeight:    tctx.slideHeight,
@@ -655,6 +657,13 @@ func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext,
 	if rs != nil {
 		rs.ExpandedCompose = buildExpandedCompose(slide.Compose, expCtx, patterns.Default(), expanded)
 	}
+}
+
+func previewPatternTheme(tctx *previewTemplateContext) types.ThemeInfo {
+	if tctx == nil || tctx.theme == nil {
+		return types.ThemeInfo{}
+	}
+	return types.ThemeInfo{Colors: tctx.theme.Colors, BodyFont: tctx.theme.BodyFont}
 }
 
 // resolveSlideShapeGrid resolves virtual layout and per-cell wireframe rects

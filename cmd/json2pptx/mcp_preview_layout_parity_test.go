@@ -65,7 +65,8 @@ func TestPreviewAutoCompositionMatchesGeneration(t *testing.T) {
 					t.Fatalf("preview returned %d slides", len(preview.ResolvedSlides))
 				}
 				rs := preview.ResolvedSlides[0]
-				specs, _, _, err := convertPresentationSlides([]SlideInput{tc.slide}, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.metadata, rhythm, "", nil, false)
+				diagCtx := &GridDiagramContext{ThemeColors: tctx.theme.Colors, FontFamily: tctx.theme.BodyFont}
+				specs, _, _, err := convertPresentationSlides([]SlideInput{tc.slide}, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.metadata, rhythm, "", diagCtx, false)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -98,5 +99,56 @@ func TestPreviewAutoCompositionMatchesGeneration(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestPreviewThemeMatchesGenerationForFontSensitivePatterns(t *testing.T) {
+	tctx, err := loadPreviewTemplate(filepath.Join("..", "..", "templates", "modern-yellow.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tctx.reader.Close() }()
+	if tctx.theme == nil || tctx.theme.BodyFont == "" || tctx.theme.BodyFont == "Arial" {
+		t.Fatalf("expected a non-default template body font, got %+v", tctx.theme)
+	}
+	diagCtx := &GridDiagramContext{ThemeColors: tctx.theme.Colors, FontFamily: tctx.theme.BodyFont}
+	if got := patternThemeFromDiag(diagCtx).BodyFont; got != tctx.theme.BodyFont {
+		t.Fatalf("generation theme body font = %q, want %q", got, tctx.theme.BodyFont)
+	}
+	kpi := PatternInput{Name: "kpi-3up", Values: json.RawMessage(`["$123.45M | Enterprise bookings over three years","$987.65M | International recurring revenue","$555.55M | Weighted opportunity pipeline"]`)}
+	hero := PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"99%","label":"Annual uptime"}`)}
+	for _, tc := range []struct {
+		name  string
+		slide SlideInput
+	}{
+		{"pattern", SlideInput{Pattern: &kpi}},
+		{"compose", SlideInput{Compose: &ComposeInput{Direction: "horizontal", Segments: []SegmentInput{{SizePct: 50, Pattern: kpi}, {SizePct: 50, Pattern: hero}}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input := &PresentationInput{Slides: []SlideInput{tc.slide}}
+			preview := resolvePreviewSlides(input, tctx)
+			if len(preview.Errors) > 0 || input.Slides[0].ShapeGrid == nil {
+				t.Fatalf("preview errors: %v", preview.Errors)
+			}
+			specs, _, _, err := convertPresentationSlides([]SlideInput{tc.slide}, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.metadata, nil, "", diagCtx, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			geom, _ := patternExpansionGeometry(input.Slides[0], tctx.layouts, tctx.slideWidth, tctx.slideHeight, nil)
+			alloc := pptx.NewShapeIDAllocator(nil)
+			alloc.SetMinID(200)
+			resolved, err := resolveShapeGrid(input.Slides[0].ShapeGrid, alloc, geom.OverrideBounds, geom.Zone, tctx.slideWidth, tctx.slideHeight, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(resolved.Shapes) != len(specs[0].RawShapeXML) {
+				t.Fatalf("preview shapes %d, generation shapes %d", len(resolved.Shapes), len(specs[0].RawShapeXML))
+			}
+			for i := range resolved.Shapes {
+				if !bytes.Equal(resolved.Shapes[i], specs[0].RawShapeXML[i]) {
+					t.Errorf("shape %d differs between preview and generation with body font %q", i, tctx.theme.BodyFont)
+				}
+			}
+		})
 	}
 }
