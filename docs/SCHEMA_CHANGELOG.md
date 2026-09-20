@@ -104,6 +104,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **`agenda-with-images` keeps the placeholder column rectangular
+  (go-slide-creator-jodu).** `image_label` was read as a per-row switch: a row
+  without one dropped its placeholder and spanned its title across the gap, so
+  a five-item agenda whose last row had no preview rendered four tinted boxes
+  and a hole, and the grid read as ragged.
+  - The column is now all-or-nothing. One `image_label` anywhere earns every
+    row a placeholder; rows without a label get the same tinted box with no
+    caption.
+  - No `image_label` on any item still collapses the column for every row and
+    renders byte-identically to before.
+  - `image_label` is documented as what it is — the caption inside the
+    placeholder, not the switch that creates it. The `show_pattern` schema
+    description says so.
+
 - **`horizontal-bar-with-callouts` drops the callout column when no bar has a
   callout (go-slide-creator-i0x0).** `callout` has always been optional, but the
   layout was not: bars with nothing to say still reserved 40% of the width for

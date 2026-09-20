@@ -123,7 +123,10 @@ func TestAgendaWithImages_Expand_FiveItems_ProducesRows(t *testing.T) {
 	}
 }
 
-func TestAgendaWithImages_Expand_CollapsesRightZoneWhenNoImageLabel(t *testing.T) {
+// go-slide-creator-jodu: the image column is all-or-nothing. One row skipping
+// its box punched a hole in the column and made the whole grid read as ragged
+// — most visibly on a five-item agenda whose last row has no preview.
+func TestAgendaWithImages_Expand_MixedImageLabelsKeepEveryPlaceholder(t *testing.T) {
 	p, _ := Default().Get("agenda-with-images")
 	v := &AgendaWithImagesValues{
 		Items: []AgendaWithImagesItem{
@@ -136,16 +139,50 @@ func TestAgendaWithImages_Expand_CollapsesRightZoneWhenNoImageLabel(t *testing.T
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	// Row 0 (no image): 2 cells (number + title with col_span=2)
-	if len(grid.Rows[0].Cells) != 2 {
-		t.Errorf("row 0 should have 2 cells when no image_label, got %d", len(grid.Rows[0].Cells))
+	// Content rows are at 0, 2, 4 (dividers at 1 and 3).
+	for _, rowIdx := range []int{0, 2, 4} {
+		row := grid.Rows[rowIdx]
+		if len(row.Cells) != 3 {
+			t.Fatalf("row %d: expected number + title + placeholder, got %d cells", rowIdx, len(row.Cells))
+		}
+		if row.Cells[1].ColSpan != 0 {
+			t.Errorf("row %d: title cell must not span the image column, got col_span=%d", rowIdx, row.Cells[1].ColSpan)
+		}
+		if row.Cells[2].Shape == nil || string(row.Cells[2].Shape.Fill) != `"lt2"` {
+			t.Errorf("row %d: placeholder fill = %s, want lt2 on every row", rowIdx, row.Cells[2].Shape.Fill)
+		}
 	}
-	if grid.Rows[0].Cells[1].ColSpan != 2 {
-		t.Errorf("title cell should span 2 columns when right zone collapses, got col_span=%d", grid.Rows[0].Cells[1].ColSpan)
+	// Only the labelled row carries a caption; the others are empty boxes.
+	if len(grid.Rows[0].Cells[2].Shape.Text) != 0 {
+		t.Error("row 0 has no image_label, so its placeholder must carry no caption")
 	}
-	// Row 2 (with image, index 2 in rows array because divider is at 1): 3 cells
-	if len(grid.Rows[2].Cells) != 3 {
-		t.Errorf("row with image_label should have 3 cells, got %d", len(grid.Rows[2].Cells))
+	if len(grid.Rows[2].Cells[2].Shape.Text) == 0 {
+		t.Error("row 1 has an image_label, so its placeholder must carry the caption")
+	}
+}
+
+// No item has a label: there is no column, so every title spans it.
+func TestAgendaWithImages_Expand_CollapsesRightZoneWhenNoImageLabelAnywhere(t *testing.T) {
+	p, _ := Default().Get("agenda-with-images")
+	v := &AgendaWithImagesValues{
+		Items: []AgendaWithImagesItem{
+			{Title: "Why"},
+			{Title: "What"},
+			{Title: "How"},
+		},
+	}
+	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	for _, rowIdx := range []int{0, 2, 4} {
+		row := grid.Rows[rowIdx]
+		if len(row.Cells) != 2 {
+			t.Fatalf("row %d: expected number + title only, got %d cells", rowIdx, len(row.Cells))
+		}
+		if row.Cells[1].ColSpan != 2 {
+			t.Errorf("row %d: title cell should span the collapsed column, got col_span=%d", rowIdx, row.Cells[1].ColSpan)
+		}
 	}
 }
 

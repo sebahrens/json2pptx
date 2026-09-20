@@ -147,7 +147,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Executive summary (problem framing) | `scqa-summary` | 4-row Situation/Complication/Questions/Answer narrative arc |
 | Executive summary (key messages) | `exec-summary` | 3–5 bold lead-in conclusions (≤90 chars) each with one supporting sentence (≤200 chars), rules between rows, optional `bottom_line` ask (a pointing accent flag labelled BOTTOM LINE, then the statement in a tinted box); answer-first rather than an SCQA arc |
 | Deck section list | `agenda` | Numbered section outline |
-| Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items) |
+| Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items); the placeholder column is all-or-nothing — a row with no `image_label` still gets an empty placeholder |
 | Team / 'Our People' page | `team-bios` | 1–8 named people with a headshot (or initials placeholder) + role + short bio, up to 4 per row |
 | Joint-venture / engagement-team paired roles | `dual-org-ladder` | Two parallel columns of 2–6 paired role cards with an org-name header above each column (optional connector line per row) |
 | Icon + caption row | `icon-row` | Visual categories, 3–5 items |

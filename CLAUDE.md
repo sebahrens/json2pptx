@@ -147,7 +147,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | Pattern | Description |
 |---------|-------------|
 | `agenda` | Numbered section list for agenda / table-of-contents slides |
-| `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row |
+| `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row; the placeholder column is all-or-nothing |
 | `arch-stack` | Architecture stack diagram with tiers and optional side rails |
 | `before-after` | Two-column before/after with transition chevron |
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |

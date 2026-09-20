@@ -63,7 +63,7 @@ type AgendaWithImagesItem struct {
 	Number     int    `json:"number,omitempty"`      // 1-based ordinal. When 0, auto-assigned as i+1.
 	Title      string `json:"title"`                 // Section title (bold)
 	Subtitle   string `json:"subtitle,omitempty"`    // Optional descriptive subtitle
-	ImageLabel string `json:"image_label,omitempty"` // Optional label shown in the image placeholder; when empty the right zone collapses
+	ImageLabel string `json:"image_label,omitempty"` // Optional caption in the image placeholder; the column collapses only when NO item has one
 }
 
 // AgendaWithImagesValues holds the agenda rows (3-6 items).
@@ -98,7 +98,7 @@ func (a *agendaWithImages) Schema() *Schema {
 			"number":      IntegerSchema(0, 999).WithDescription("1-based ordinal; auto-assigned 1..N when omitted (use 0 or omit to auto-assign)"),
 			"title":       StringSchema(80).WithDescription("Section title (bold)"),
 			"subtitle":    StringSchema(160).WithDescription("Optional descriptive subtitle rendered below the title"),
-			"image_label": StringSchema(60).WithDescription("Optional label centred in the image placeholder; omit to collapse the right zone"),
+			"image_label": StringSchema(60).WithDescription("Optional caption centred in the image placeholder; omit it on one row and that row still gets an empty placeholder, omit it on every row to collapse the image column"),
 		},
 		[]string{"title"},
 	).WithAdditionalProperties(false)
@@ -200,6 +200,10 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	subtitleSize := ResolveSize(ovr.SubtitleSize, 10.0)
 	imageLabelSize := ResolveSize(ovr.ImageLabelSize, 10.0)
 
+	// The image column is all-or-nothing: one row's label earns the column for
+	// every row, and no labels at all mean no column (go-slide-creator-jodu).
+	withImages := anyAgendaImageLabel(v.Items)
+
 	// Build content rows interleaved with thin divider rows (one divider between
 	// each pair of items, none above the first or below the last).
 	rows := make([]jsonschema.GridRowInput, 0, len(v.Items)*2-1)
@@ -241,19 +245,24 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 
 		cells := []*jsonschema.GridCellInput{numberCell, titleCell}
 
-		if strings.TrimSpace(item.ImageLabel) != "" {
-			// Right zone: light-grey placeholder rectangle with centred label.
-			imageCell := &jsonschema.GridCellInput{
-				Shape: &jsonschema.ShapeSpecInput{
-					Geometry: "rect",
-					Fill:     json.RawMessage(`"lt2"`),
-					Text:     buildAgendaWithImagesImageLabelText(item.ImageLabel, imageLabelSize),
-				},
-			}
-			cells = append(cells, imageCell)
-		} else {
-			// Collapse the right zone by spanning the title across columns 1+2.
+		switch {
+		case !withImages:
+			// No row has a label, so there is no image column at all: span the
+			// title across columns 1+2.
 			titleCell.ColSpan = 2
+		default:
+			// The column exists, so every row gets a placeholder — a captioned
+			// one where there is a label, an empty one where there is not. A row
+			// that simply skipped its box punched a hole in the column and made
+			// the whole grid read as ragged (go-slide-creator-jodu).
+			imageShape := &jsonschema.ShapeSpecInput{
+				Geometry: "rect",
+				Fill:     json.RawMessage(`"lt2"`),
+			}
+			if label := strings.TrimSpace(item.ImageLabel); label != "" {
+				imageShape.Text = buildAgendaWithImagesImageLabelText(item.ImageLabel, imageLabelSize)
+			}
+			cells = append(cells, &jsonschema.GridCellInput{Shape: imageShape})
 		}
 
 		rows = append(rows, jsonschema.GridRowInput{
@@ -336,6 +345,17 @@ func buildAgendaWithImagesTitleText(title, subtitle string, titleSize, subtitleS
 	}
 	data, _ := json.Marshal(textObj)
 	return data
+}
+
+// anyAgendaImageLabel reports whether at least one item carries an image label,
+// which is what earns the deck an image column at all.
+func anyAgendaImageLabel(items []AgendaWithImagesItem) bool {
+	for _, it := range items {
+		if strings.TrimSpace(it.ImageLabel) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func buildAgendaWithImagesImageLabelText(label string, size float64) json.RawMessage {
