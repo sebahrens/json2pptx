@@ -8,9 +8,21 @@ import (
 // go-slide-creator-utej: list-truncating repairs must not silently delete
 // authored facts.
 
+// churnListInput is a VALID four-card grid whose last card carries a figure.
+// The cells were bare strings and the grid dimensions absent, which card-grid
+// rejects outright — so the guard was being asked to propose a split of a deck
+// that could not generate in the first place, and the proposal it made was not
+// testing anything the engine would accept (go-slide-creator-qtjl).
 func churnListInput() PresentationInput {
 	return patternSlideInput("card-grid", map[string]any{
-		"cells": []any{"Retention improved", "Onboarding redesigned", "Pricing simplified", "4% churn in SMB"},
+		"cells": []any{
+			map[string]any{"header": "Retention", "body": "Improved."},
+			map[string]any{"header": "Onboarding", "body": "Redesigned."},
+			map[string]any{"header": "Pricing", "body": "Simplified."},
+			map[string]any{"header": "Churn", "body": "4% churn in SMB"},
+		},
+		"columns": 2,
+		"rows":    2,
 	})
 }
 
@@ -90,8 +102,13 @@ func TestRepairSplitPattern_SplitsPatternValues(t *testing.T) {
 		t.Fatalf("slides = %d, want 2", len(input.Slides))
 	}
 	first, second := cellsOf(t, input.Slides[0]), cellsOf(t, input.Slides[1])
-	if len(first) != 3 || len(second) != 1 || second[0] != "4% churn in SMB" {
-		t.Errorf("split = %v / %v", first, second)
+	if len(first) != 3 || len(second) != 1 {
+		t.Fatalf("split = %v / %v", first, second)
+	}
+	// The card carrying the figure is the one that moved.
+	moved, _ := second[0].(map[string]any)
+	if moved["body"] != "4% churn in SMB" {
+		t.Errorf("second slide holds %v, want the card with the figure", second[0])
 	}
 	if input.Slides[0].Pattern == input.Slides[1].Pattern {
 		t.Error("split slides share one Pattern pointer")

@@ -104,6 +104,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **The fact-loss guard proposes only a split the pattern accepts
+  (go-slide-creator-qtjl).** `reduce_items` / `resize_list` refuse to drop an
+  item carrying a figure and propose `split_pattern` instead. The proposal was
+  unconditional, so on a 4-point `exec-summary` — which needs at least 3 points
+  — following the refusal's own `next_tool_call` produced `points must contain
+  at least 3 items, got 1`. The remediation the refusal advertised led into a
+  hard error.
+  - The guard now validates both halves before proposing: it keeps the point it
+    was going to suggest when that is legal, falls back to the most balanced
+    legal point otherwise, and when the pattern has no legal split at all
+    returns no `next_tool_call` and a message naming the constraint and the
+    alternatives.
+  - `split_pattern` itself already refused an illegal point; it now shares one
+    half-builder with the legality probe, so what the guard promises and what
+    the fix does cannot drift.
+
 - **Embedded chart and diagram fonts are subsetted (go-slide-creator-i0ep).**
   Every SVG the engine embeds carried the *whole* font family as base64 — 547 KB
   of Calibri regular plus 552 KB of its bold — re-embedded per chart. A

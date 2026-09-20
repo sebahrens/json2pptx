@@ -1538,35 +1538,11 @@ func splitPatternValues(input *PresentationInput, slideIdx int, params map[strin
 	}
 	titlePart2 := stringParam(params, "title_part_2", "(continued)")
 
-	half := func(items []any) (SlideInput, error) {
-		vals := make(map[string]any, len(valuesMap))
-		for k, v := range valuesMap {
-			vals[k] = v
-		}
-		vals[path] = items
-		// Patterns that declare their own grid shape require it to match the
-		// item count exactly (card-grid: "cells must contain exactly 12 items
-		// (columns=4 x rows=3)"), so a split that moves items without resizing
-		// the grid produces a deck that fails to generate — which is how the
-		// first working auto_repair pass broke the render (go-slide-creator-wmfo).
-		resizeGridDims(vals, len(items))
-		encoded, err := json.Marshal(vals)
-		if err != nil {
-			return SlideInput{}, err
-		}
-		out := slide
-		pat := *slide.Pattern
-		pat.Values = encoded
-		out.Pattern = &pat
-		out.ShapeGrid = nil
-		out.Content = append([]ContentInput(nil), slide.Content...)
-		return out, nil
-	}
-	slide1, err := half(arr[:firstN])
+	slide1, err := patternSplitHalf(&slide, valuesMap, path, arr[:firstN])
 	if err != nil {
 		return appliedFix{Kind: "split_pattern", Applied: false, Message: fmt.Sprintf("failed to marshal values: %v", err)}
 	}
-	slide2, err := half(arr[firstN:])
+	slide2, err := patternSplitHalf(&slide, valuesMap, path, arr[firstN:])
 	if err != nil {
 		return appliedFix{Kind: "split_pattern", Applied: false, Message: fmt.Sprintf("failed to marshal values: %v", err)}
 	}
@@ -1599,6 +1575,85 @@ func splitPatternValues(input *PresentationInput, slideIdx int, params map[strin
 	newSlides = append(newSlides, input.Slides[slideIdx+1:]...)
 	input.Slides = newSlides
 	return appliedFix{Kind: "split_pattern", Applied: true, Message: fmt.Sprintf("split %q into 2 slides (%d + %d items)", path, firstN, len(arr)-firstN)}
+}
+
+// patternSplitHalf builds one half of a split: the slide's pattern with the
+// given items in place of the split field.
+//
+// Patterns that declare their own grid shape require it to match the item count
+// exactly (card-grid: "cells must contain exactly 12 items (columns=4 x
+// rows=3)"), so a split that moves items without resizing the grid produces a
+// deck that fails to generate — which is how the first working auto_repair pass
+// broke the render (go-slide-creator-wmfo).
+func patternSplitHalf(slide *SlideInput, valuesMap map[string]any, path string, items []any) (SlideInput, error) {
+	vals := make(map[string]any, len(valuesMap))
+	for k, v := range valuesMap {
+		vals[k] = v
+	}
+	vals[path] = items
+	resizeGridDims(vals, len(items))
+	encoded, err := json.Marshal(vals)
+	if err != nil {
+		return SlideInput{}, err
+	}
+	out := *slide
+	pat := *slide.Pattern
+	pat.Values = encoded
+	out.Pattern = &pat
+	out.ShapeGrid = nil
+	out.Content = append([]ContentInput(nil), slide.Content...)
+	return out, nil
+}
+
+// legalPatternSplit finds a split point both halves of which the pattern
+// accepts, preferring the caller's own point.
+//
+// A pattern with a minimum item count cannot be split everywhere: exec-summary
+// needs three points, so a four-point slide has no legal split at all. The
+// refusal guard used to advertise split_pattern{first: keep} regardless, and an
+// agent following its own next_tool_call landed on "points must contain at
+// least 3 items, got 1" (go-slide-creator-qtjl).
+func legalPatternSplit(slide *SlideInput, slideIdx int, path string, preferred int) (int, bool) {
+	if slide == nil || slide.Pattern == nil {
+		return 0, false
+	}
+	var valuesMap map[string]any
+	if json.Unmarshal(slide.Pattern.Values, &valuesMap) != nil {
+		return 0, false
+	}
+	arr, ok := valuesMap[path].([]any)
+	if !ok || len(arr) < 2 {
+		return 0, false
+	}
+	// Values that are already invalid are not the split's doing.
+	if validatePatternHalf(slide, slideIdx) != nil {
+		return 0, false
+	}
+	legal := func(firstN int) bool {
+		if firstN <= 0 || firstN >= len(arr) {
+			return false
+		}
+		for i, items := range [][]any{arr[:firstN], arr[firstN:]} {
+			half, err := patternSplitHalf(slide, valuesMap, path, items)
+			if err != nil || validatePatternHalf(&half, slideIdx+i) != nil {
+				return false
+			}
+		}
+		return true
+	}
+	if legal(preferred) {
+		return preferred, true
+	}
+	// Walk outwards from the middle: the most balanced legal split reads best.
+	mid := len(arr) / 2
+	for offset := 0; offset <= len(arr); offset++ {
+		for _, candidate := range []int{mid - offset, mid + offset} {
+			if candidate != preferred && legal(candidate) {
+				return candidate, true
+			}
+		}
+	}
+	return 0, false
 }
 
 // resizeGridDims rewrites numeric "columns"/"rows" values so a pattern that
@@ -2749,7 +2804,7 @@ func applyReduceItems(input *PresentationInput, slideIdx int, params map[string]
 		return appliedFix{Kind: "reduce_items", Applied: false, Message: fmt.Sprintf("%q already has %d items (max %d)", path, len(arr), maxItems)}
 	}
 
-	if refusal, blocked := guardDroppedItems("reduce_items", slideIdx, path, arr[maxItems:], maxItems, params); blocked {
+	if refusal, blocked := guardDroppedItems("reduce_items", slide, slideIdx, path, arr[maxItems:], maxItems, params); blocked {
 		return refusal
 	}
 
@@ -2770,7 +2825,7 @@ func applyReduceItems(input *PresentationInput, slideIdx int, params map[string]
 // reduce_text / shorten_title / reduce_cell_text). The refusal proposes a
 // split_pattern repair that moves the overflow items to a continuation slide
 // instead of deleting them. confirm_semantic_change: true bypasses the guard.
-func guardDroppedItems(kind string, slideIdx int, path string, dropped []any, keep int, params map[string]any) (appliedFix, bool) {
+func guardDroppedItems(kind string, slide *SlideInput, slideIdx int, path string, dropped []any, keep int, params map[string]any) (appliedFix, bool) {
 	if boolParam(params, "confirm_semantic_change", false) {
 		return appliedFix{}, false
 	}
@@ -2781,22 +2836,34 @@ func guardDroppedItems(kind string, slideIdx int, path string, dropped []any, ke
 	if !losesProtectedFacts(strings.Join(parts, " "), "") {
 		return appliedFix{}, false
 	}
-	return appliedFix{
-		Kind:    kind,
-		Applied: false,
-		Code:    "semantic_review_required",
-		Message: fmt.Sprintf("dropping %d item(s) from %q would remove a number, unit, negation, or qualifier; split the slide instead (split_pattern moves the overflow items to a continuation slide) or pass confirm_semantic_change: true", len(dropped), path),
-		NextToolCall: &patterns.ToolCallSuggestion{
-			Tool: "repair_slide",
-			ArgsTemplate: map[string]any{
-				"slide_index": slideIdx,
-				"fixes": []any{map[string]any{
-					"kind":   "split_pattern",
-					"params": map[string]any{"path": path, "first": keep},
-				}},
-			},
+	refusal := appliedFix{Kind: kind, Applied: false, Code: "semantic_review_required"}
+
+	// Only propose a split the pattern will actually accept. A pattern with a
+	// minimum item count may have no legal split at all — exec-summary needs
+	// three points, so a four-point slide has none — and advertising one led
+	// the agent from this refusal straight into a hard validation error
+	// (go-slide-creator-qtjl).
+	split, ok := legalPatternSplit(slide, slideIdx, path, keep)
+	if !ok {
+		refusal.Message = fmt.Sprintf(
+			"dropping %d item(s) from %q would remove a number, unit, negation, or qualifier, and this pattern cannot be split without leaving a half it rejects (its own minimum item count); move the overflow onto a new slide under a pattern sized for it, shorten the items instead, or pass confirm_semantic_change: true",
+			len(dropped), path)
+		return refusal, true
+	}
+	refusal.Message = fmt.Sprintf(
+		"dropping %d item(s) from %q would remove a number, unit, negation, or qualifier; split the slide instead (split_pattern at %d moves the rest to a continuation slide) or pass confirm_semantic_change: true",
+		len(dropped), path, split)
+	refusal.NextToolCall = &patterns.ToolCallSuggestion{
+		Tool: "repair_slide",
+		ArgsTemplate: map[string]any{
+			"slide_index": slideIdx,
+			"fixes": []any{map[string]any{
+				"kind":   "split_pattern",
+				"params": map[string]any{"path": path, "first": split},
+			}},
 		},
-	}, true
+	}
+	return refusal, true
 }
 
 // collectItemText appends every string leaf of a pattern-values item (string,
@@ -2900,7 +2967,7 @@ func applyResizeList(input *PresentationInput, slideIdx int, params map[string]a
 	}
 
 	if len(arr) > count {
-		if refusal, blocked := guardDroppedItems("resize_list", slideIdx, path, arr[count:], count, params); blocked {
+		if refusal, blocked := guardDroppedItems("resize_list", slide, slideIdx, path, arr[count:], count, params); blocked {
 			return refusal
 		}
 		valuesMap[path] = arr[:count]
