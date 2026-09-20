@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -86,5 +87,102 @@ func TestKPISubRendered(t *testing.T) {
 	}
 	if strings.Contains(string(grid.Rows[0].Cells[2].Shape.Text), "+") {
 		t.Errorf("cell[2] should not contain a delta annotation")
+	}
+}
+
+// go-slide-creator-4uxi: the constant was called kpiMaxCardHeightFrac but was
+// passed to clampPt as the LOWER bound, with the content box as the upper one
+// — so the documented "45% cap" was really a floor, and a reviewer asserting
+// it got a false answer. These tests pin the invariant that is actually true:
+// the row rests on the 45% BASE and is raised only to what the tallest card's
+// measured content needs, never past the content box.
+func TestKPIRowHeightInvariant(t *testing.T) {
+	ctx := ExpandContext{
+		SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: LayoutBounds{Width: 10515600, Height: 3913340},
+	}
+	_, contentH := contentAreaPt(ctx)
+
+	light := KPINupValues{
+		{Big: "42%", Small: "Growth"},
+		{Big: "1.2M", Small: "Users"},
+		{Big: "98", Small: "NPS"},
+		{Big: "4.8", Small: "Rating"},
+		{Big: "12d", Small: "Cycle"},
+		{Big: "3x", Small: "ROI"},
+	}
+	// Schema-maxima content: the only shape that pushes a card past the base.
+	heavy := KPINupValues{
+		{Big: "1,240.5", Sub: "Wirtschaftlichkeitsberechnung", Small: "Geschaeftsbereichsverantwortliche across all four regions must sign off"},
+		{Big: "980.25", Sub: "Lieferantenrahmenvertraege", Small: "Procurement consolidation delivers addressable spend reduction once renegotiated"},
+		{Big: "870.10", Sub: "Bestandsfuehrungssysteme", Small: "Customer onboarding still requires seventeen manual handoffs between teams"},
+		{Big: "742.00", Sub: "Vertriebsinnendienst", Small: "Kreditrisikomanagement and Rechtsabteilung extend the cycle to forty-three days"},
+		{Big: "618.75", Sub: "Kreditrisikomanagement", Small: "Harmonising the twelve legacy platforms is the gating dependency for phase two"},
+		{Big: "503.20", Sub: "Rechtsabteilung", Small: "Steering committee releases the second funding tranche after the review"},
+	}
+
+	for n := 2; n <= 6; n++ {
+		name := fmt.Sprintf("kpi-%dup", n)
+		p, ok := Default().Get(name)
+		if !ok {
+			t.Fatalf("%s not registered", name)
+		}
+		for _, c := range []struct {
+			label  string
+			vals   KPINupValues
+			atBase bool
+		}{
+			{"light", light[:n], true},
+			{"heavy", heavy[:n], false},
+		} {
+			t.Run(name+"/"+c.label, func(t *testing.T) {
+				vals := c.vals
+				grid, err := p.Expand(ctx, &vals, nil, nil)
+				if err != nil {
+					t.Fatalf("Expand: %v", err)
+				}
+				got := grid.Rows[0].MaxHeight
+				base := contentH * kpiBaseCardHeightFrac
+				if got < base-0.5 {
+					t.Errorf("row max_height %.1fpt is below the %.1fpt base", got, base)
+				}
+				if got > contentH+0.5 {
+					t.Errorf("row max_height %.1fpt exceeds the %.1fpt content box", got, contentH)
+				}
+				// Content that fits must not inflate the row: that is the half
+				// of the rule go-slide-creator-7km8 added and it still holds.
+				if c.atBase && got > base+1 {
+					t.Errorf("content that fits raised the row to %.1fpt; it should rest on the %.1fpt base", got, base)
+				}
+			})
+		}
+	}
+}
+
+// The base is a floor, not a cap — say so in a test, because the name used to
+// claim the opposite and nothing caught it.
+func TestKPIRowHeightIsRaisedNotCapped(t *testing.T) {
+	// A short content zone makes even modest content exceed the base.
+	ctx := ExpandContext{
+		SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: LayoutBounds{Width: 10515600, Height: 1200000},
+	}
+	_, contentH := contentAreaPt(ctx)
+	vals := KPINupValues{
+		{Big: "1,240.5", Sub: "Wirtschaftlichkeitsberechnung", Small: "Geschaeftsbereichsverantwortliche across all four regions must sign off before the tranche"},
+		{Big: "980.25", Sub: "Lieferantenrahmenvertraege", Small: "Procurement consolidation delivers addressable spend reduction once renegotiated"},
+		{Big: "870.10", Sub: "Bestandsfuehrungssysteme", Small: "Customer onboarding still requires seventeen manual handoffs between teams"},
+	}
+	p, _ := Default().Get("kpi-3up")
+	grid, err := p.Expand(ctx, &vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	got := grid.Rows[0].MaxHeight
+	if base := contentH * kpiBaseCardHeightFrac; got <= base+0.5 {
+		t.Errorf("row max_height %.1fpt did not rise above the %.1fpt base; the base is meant to be a floor", got, base)
+	}
+	if got > contentH+0.5 {
+		t.Errorf("row max_height %.1fpt exceeds the %.1fpt content box", got, contentH)
 	}
 }

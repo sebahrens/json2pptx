@@ -369,10 +369,17 @@ const (
 	kpiTopIconWFrac  = 0.45
 	kpiLeftIconHFrac = 0.4
 	kpiLeftIconWFrac = 0.2
-	// kpiMaxCardHeightFrac caps a KPI card at this share of the content
-	// height (go-slide-creator-7km8): a big number in a 5in-tall card reads
-	// as an empty box. The row is centred vertically by the grid.
-	kpiMaxCardHeightFrac = 0.45
+	// kpiBaseCardHeightFrac is the share of the content height a KPI card
+	// takes when its content fits (go-slide-creator-7km8): a big number in a
+	// 5in-tall card reads as an empty box. The row is centred vertically by
+	// the grid.
+	//
+	// It is a BASE, not a cap — kpiRowMaxHeightPt raises the row to whatever
+	// the tallest card's measured content needs, bounded only by the content
+	// box. It was named kpiMaxCardHeightFrac and passed to clampPt as the
+	// LOWER bound, so every doc and test asserting a 45% "cap" was false
+	// (go-slide-creator-4uxi).
+	kpiBaseCardHeightFrac = 0.45
 	// kpiCardPadPt is the vertical breathing room added around the card text
 	// when content needs more than the cap.
 	kpiCardPadPt = 24.0
@@ -384,11 +391,11 @@ type kpiCardGeometry struct {
 }
 
 // kpiCardGeometryFor estimates the card size for n cards spread across the
-// content area. Card height is capped at kpiMaxCardHeightFrac of the content
-// height.
+// content area. Card height is the kpiBaseCardHeightFrac share of the content
+// height; kpiRowMaxHeightPt raises it when content needs more.
 func kpiCardGeometryFor(ctx ExpandContext, n int) kpiCardGeometry {
 	w, h := contentAreaPt(ctx)
-	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, kpiCardGapPt), hPt: h * kpiMaxCardHeightFrac}
+	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, kpiCardGapPt), hPt: h * kpiBaseCardHeightFrac}
 }
 
 // kpiRowMaxHeightPt returns the KPI row's max_height: the capped card height,
@@ -415,6 +422,11 @@ func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, 
 		}
 		need = math.Max(need, h+kpiCardPadPt+2*defaultShapeInsetTBPt)
 	}
+	// geo.hPt is the BASE (clampPt's lower bound) and the content box is the
+	// ceiling. A tighter ceiling was considered and rejected: a row can never
+	// exceed the box anyway, so capping below it only clips cards whose text
+	// genuinely needs the height, leaving the rest of the box empty while the
+	// text overflows (go-slide-creator-4uxi).
 	return clampPt(need, geo.hPt, contentH)
 }
 

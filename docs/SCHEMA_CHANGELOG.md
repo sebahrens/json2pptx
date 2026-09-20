@@ -112,6 +112,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **kpi-Nup's 45% is documented as a base, not a cap
+  (go-slide-creator-4uxi).** `kpiMaxCardHeightFrac` was passed to `clampPt` as
+  the *lower* bound, so the "cap" was a floor and the row rose to whatever the
+  tallest card needed. Renamed `kpiBaseCardHeightFrac`, and SKILL.md /
+  docs/PATTERNS.md now state the invariant that is actually true. No behaviour
+  change: a tighter ceiling was considered and rejected because a row cannot
+  exceed the content area anyway, so capping below it would only clip cards
+  whose text genuinely needs the height.
+
 - **A thin delta's value label now sits against its bar
   (go-slide-creator-2fq1).** A bar too small to hold one line of value text
   already moved its label into the adjacent spacer, anchored to the bar's
