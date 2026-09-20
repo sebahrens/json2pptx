@@ -31,6 +31,8 @@ const (
 	KindAgenda SlideKind = "agenda"
 	// KindQuote highlights one attributed quote or a cluster of stakeholder voices.
 	KindQuote SlideKind = "quote"
+	// KindBridge explains an additive walk from a starting value to an ending value.
+	KindBridge SlideKind = "bridge"
 	// KindTeam is the people grid: who is on the engagement.
 	KindTeam SlideKind = "team"
 	// KindStat is one oversized number carrying the slide.
@@ -151,6 +153,12 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		RequiredFields:  []string{"quotes"},
 		RequiredAliases: map[string][]string{"quotes": {"testimonials", "voices", "quote", "text"}},
 		TypicalFields:   []string{"title", "takeaway", "attribution", "role"},
+	},
+	KindBridge: {
+		Kind:           KindBridge,
+		Summary:        "An additive P&L or cost walk: 3–10 ordered total, delta, and subtotal columns render as waterfall-bridge. Outside the visual's count or text budgets, every component becomes a bullet with a degradation finding.",
+		RequiredFields: []string{"columns"},
+		TypicalFields:  []string{"title", "unit", "caption", "takeaway"},
 	},
 	KindTeam: {
 		Kind:            KindTeam,

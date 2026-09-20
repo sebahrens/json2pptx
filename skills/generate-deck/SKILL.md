@@ -122,6 +122,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `stat` | `value` (the number, ≤20 chars; aliases `stat`, `number`, `metric`) | `title`, `label`, `unit`, `context`, `source`, `takeaway` | one number made the whole slide → `stat-hero`. `label` is the words beneath it (≤80 chars, aliases `caption`/`subtitle`; defaults to the slide `title`), `unit` a short suffix beside the number (≤10, alias `suffix`), `context` one line under the label (≤120, aliases `detail`/`description`), `source` the footnote (≤80, drawn in the attribution band). Past any budget it degrades to a content slide keeping every word. For several numbers at equal weight use `kpi_snapshot` |
 | `agenda` | `sections` (2–10 → numbered `agenda`; 3–6 WITH subtitles → `agenda-with-images` rows; aliases `items`, `agenda`) | `title`, `current`, `takeaway` | each section: string or `{title, subtitle?}`. `current` marks the section the deck is at — its 1-based position or its title — highlighting that row (aliases `current_section`, `highlight`, `active`). Outside those counts it degrades to a numbered bullet list with the current section marked |
 | `quote` | `quotes` (one → `pull-quote`; 3–8 → `quote-cluster`; aliases `testimonials`, `voices`) **or** single `quote` string with `attribution` | `title`, `takeaway`, `role` for a single quote | each quote: `{text, name, role?}` (also accepts `quote`/`attribution`/`title` inside an item). The visual needs a speaker name; two quotes, missing names, or text outside pattern budgets degrade to quote bullets with `SEMANTIC_PATTERN_DEGRADED`. Single quote ≤500 chars; cluster text ≤240 each |
+| `bridge` | `columns` (3–10 → `waterfall-bridge`) | `title`, `unit`, `caption`, `takeaway` | each column: `{label, type, value?}` with `type` = `total`, `delta`, or `subtotal`. Give numeric `value` on totals and deltas; omit it on subtotals to use the running total (an explicit subtotal must match it). Label ≤40 chars, unit ≤8, caption ≤60. Outside visual budgets it degrades to bullets with every component and `SEMANTIC_PATTERN_DEGRADED`. Use for a P&L walk or additive cost bridge. |
 | `architecture` | `tiers` (3–6 → `arch-stack` visual, alias `layers`) | `title`, `rails` (≤3, alias `side_rails`), `takeaway` | each tier: string or `{label, description?}` — or `{label, items[]}`, whose items are joined into the tier's detail line. Label ≤60 chars, detail ≤120, rail ≤30; a payload outside the tier count or those budgets degrades to a bullet list with every word intact, never truncated |
 | `process` | `steps` | `title`, `takeaway` | each step: string or `{label, description?, type?}`. **Steps that carry a `description` render as numbered rows** (`numbered-step-strip`, 3–6 steps; label ≤60 chars, description ≤180) — a bold label over its own detail line. **Bare labels and branching steps** (`type: "decision"`) render as the `process-flow` diagram (3–8 steps, ≤80 chars per box; a description there is appended to the label, because a flow box has nowhere else to put one). Outside both it degrades to bullets |
 | `roadmap` | `phases` (3–6 → visual) | `title`, `takeaway` | each phase: string or `{name, date_label?, description?, active?, milestone?, items?}` (items[] sub-bullets are folded into the phase description) |
@@ -238,7 +239,7 @@ it, replace the `__FILL_*__` tokens. Skeletons pre-encode rhythm, accent strateg
 
 ### Patterns DeckSpec cannot reach
 
-A DeckSpec kind compiles to 25 of the 43 registered patterns. The rest are authored with
+A DeckSpec kind compiles to 26 of the 43 registered patterns. The rest are authored with
 `kind: raw_json2pptx` (or a hand-written `PresentationInput`), carrying a `pattern` block
 verbatim — see the raw skeletons above. `list_slide_kinds` publishes the per-kind
 `compositions` list; everything in that list is an override the kind will honour, and anything
@@ -263,7 +264,6 @@ outside it is reported as `SEMANTIC_PATTERN_NOT_AVAILABLE` and ignored.
 | `strategy-house` | Objective banner + pillars + foundation row |
 | `swimlane` | A horizontal swimlane diagram with actors and steps |
 | `value-chain` | A horizontal value chain of 4–10 step columns |
-| `waterfall-bridge` | A waterfall / bridge bar chart of 3–10 columns |
 
 `internal/semantic/reach.go` is the source of this table and a test diffs the two, so a pattern
 cannot become reachable (or stop being) without this list changing with it.

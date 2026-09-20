@@ -43,6 +43,7 @@ var patternReach = map[string]SlideKind{
 	"table-highlight":      KindOptionMatrix,
 	"team-bios":            KindTeam,
 	"timeline-horizontal":  KindTimeline,
+	"waterfall-bridge":     KindBridge,
 
 	// Not reachable: author these with raw_json2pptx.
 	"before-after":                 "",
@@ -62,7 +63,6 @@ var patternReach = map[string]SlideKind{
 	"strategy-house":               "",
 	"swimlane":                     "",
 	"value-chain":                  "",
-	"waterfall-bridge":             "",
 }
 
 // PatternReach returns the DeckSpec kind that compiles to a pattern, and

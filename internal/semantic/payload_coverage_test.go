@@ -256,6 +256,19 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 			return map[string]any{"quote": "Cycle time fell", "attribution": "J. Lin", "role": s}
 		}, rendered: true},
 	},
+	KindBridge: {
+		"columns": {inject: func(s string) map[string]any {
+			return map[string]any{"columns": []any{
+				map[string]any{"label": s, "type": "total", "value": 120},
+				map[string]any{"label": "COGS", "type": "delta", "value": -45},
+				map[string]any{"label": "EBITDA", "type": "subtotal"},
+			}}
+		}, rendered: true},
+		"title":    {inject: func(s string) map[string]any { b := bridgeCoverageBody(); b["title"] = s; return b }, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any { b := bridgeCoverageBody(); b["takeaway"] = s; return b }, rendered: true},
+		"unit":     {inject: func(s string) map[string]any { b := bridgeCoverageBody(); b["unit"] = s; return b }, rendered: true},
+		"caption":  {inject: func(s string) map[string]any { b := bridgeCoverageBody(); b["caption"] = s; return b }, rendered: true},
+	},
 	// go-slide-creator-13lj: a person's name, role and bio all have to reach
 	// the rendered card.
 	KindTeam: {
@@ -360,6 +373,14 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 			}}
 		}, rendered: true},
 	},
+}
+
+func bridgeCoverageBody() map[string]any {
+	return map[string]any{"columns": []any{
+		map[string]any{"label": "Revenue", "type": "total", "value": 120},
+		map[string]any{"label": "COGS", "type": "delta", "value": -45},
+		map[string]any{"label": "EBITDA", "type": "subtotal"},
+	}}
 }
 
 // documentedFields returns the deduplicated, sorted union of a kind's required

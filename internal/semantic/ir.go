@@ -226,6 +226,10 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleEvidence, family: FamilyText, density: DensityLight, layout: "blank-title",
 		pattern: quotePattern,
 	},
+	KindBridge: {
+		role: RoleEvidence, family: FamilyChart, density: DensityMedium, layout: "blank-title",
+		pattern: slides.BridgePattern,
+	},
 	KindStat: {
 		// One number is the lightest slide in the deck and it is there to make a
 		// point, not to lay out evidence in parts. It shares the big-number
@@ -587,6 +591,11 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			visual("pull-quote", "one attributed quotation"),
 			visual("quote-cluster", "3–8 attributed stakeholder quotations"),
 			{Layout: "content", Reason: "bullets preserve two quotes or copy outside the patterns' bounds"},
+		}
+	case KindBridge:
+		return []CompositionCandidate{
+			visual("waterfall-bridge", "3–10 ordered additive components with totals and deltas"),
+			{Layout: "content", Reason: "bullets preserve a walk outside the visual's count or text budgets"},
 		}
 	case KindStat:
 		return []CompositionCandidate{

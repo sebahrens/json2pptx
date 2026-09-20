@@ -129,6 +129,18 @@ var kindExamples = map[SlideKind]map[string]any{
 		"attribution": "J. Lin", "role": "Head of Operations",
 		"takeaway": "Cycle time is the clearest customer benefit.",
 	},
+	KindBridge: {
+		"kind": "bridge", "title": "Revenue growth flowed through to EBITDA",
+		"unit": "$m", "caption": "FY26, USD millions",
+		"columns": []any{
+			map[string]any{"label": "Revenue", "type": "total", "value": 120},
+			map[string]any{"label": "COGS", "type": "delta", "value": -45},
+			map[string]any{"label": "Gross profit", "type": "subtotal"},
+			map[string]any{"label": "OpEx", "type": "delta", "value": -30},
+			map[string]any{"label": "EBITDA", "type": "total", "value": 45},
+		},
+		"takeaway": "EBITDA closes at $45m after cost deductions.",
+	},
 	KindArchitecture: {
 		"kind":  "architecture",
 		"title": "Four tiers, two concerns that cut across them",

@@ -205,10 +205,17 @@ func payloadFieldSchema(f payloadField, role string) map[string]any {
 func payloadItemSchema(f payloadField) map[string]any {
 	var obj map[string]any
 	if len(f.itemKeys) > 0 {
+		props := objectKeySchemas(f.itemKeys)
+		for key, schema := range f.itemKeySchemas {
+			props[key] = schema
+		}
 		obj = map[string]any{
 			"type":                 "object",
-			"properties":           objectKeySchemas(f.itemKeys),
+			"properties":           props,
 			"additionalProperties": false,
+		}
+		if len(f.itemRequired) > 0 {
+			obj["required"] = f.itemRequired
 		}
 	}
 	switch {

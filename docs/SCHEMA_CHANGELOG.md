@@ -8,6 +8,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `bridge` (go-slide-creator-exo2).** Ordered additive
+  `columns: [{label, type, value?}, …]` compile to `waterfall-bridge` for 3–10
+  columns. `type` is `total`, `delta`, or `subtotal`; totals and deltas require
+  numeric values, and a subtotal may use the running total (an explicit value
+  must agree with it). Optional `unit`
+  and `caption` pass through. Outside the visual's count or text budgets, the
+  compiler preserves each component as a bullet and emits
+  `SEMANTIC_PATTERN_DEGRADED`; malformed columns receive a field-path error.
+  The closed schema and `list_slide_kinds` expose a copy-ready example. Schema
+  version advances to 4.67.0; the raw PresentationInput fingerprint is unchanged.
+
 - **Cell `max_height` for `shape_grid` (go-slide-creator-1j7jo).** A cell can
   set a maximum rendered height in points; the renderer centers shorter cells
   in their row. Horizontal compose retains each segment's row cap on its own

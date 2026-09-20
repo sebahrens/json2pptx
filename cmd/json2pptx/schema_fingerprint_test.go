@@ -86,6 +86,7 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// tool's accepted schema and discovery response, not the raw PresentationInput
 	// fields, MCP tool names, or Fix.Kind vocabulary, so the hash is unchanged.
 	// 4.66.0 adds shape_grid cell max_height, so the PresentationInput hash advances.
+	// 4.67.0 adds the DeckSpec bridge kind; the raw PresentationInput hash is unchanged.
 	// If this fails, see file header comment.
 	const wantFingerprint = "203d5604a6bcb22d"
 

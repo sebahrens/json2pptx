@@ -32,6 +32,9 @@ type payloadField struct {
 	// itemKeys lists the keys the compiler reads from object array entries.
 	// Nil means object entries are not read (only strings are).
 	itemKeys []string
+	// itemKeySchemas overrides the default string schema for selected entry keys.
+	itemKeySchemas map[string]any
+	itemRequired   []string
 	// objectKeys lists the keys the compiler reads from an object-valued field.
 	// Nil for an object field means the object is open (validated elsewhere).
 	objectKeys []string
@@ -110,6 +113,7 @@ var agendaSectionKeys = []string{
 }
 
 var quoteItemKeys = []string{"text", "quote", "name", "attribution", "speaker", "author", "role", "title"}
+var bridgeColumnKeys = []string{"label", "value", "type"}
 
 var archTierKeys = []string{
 	"label", "name", "title", "tier", "layer",
@@ -285,6 +289,16 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"speaker":      strField("Alias for attribution."),
 		"author":       strField("Alias for attribution."),
 		"role":         strField("Speaker role for the one-quote shorthand."),
+	}, compositionFields()), universalFields()),
+	KindBridge: withFields(withFields(map[string]payloadField{
+		"title":    strField("Slide title."),
+		"takeaway": strField("One-line takeaway footer."),
+		"columns": {typ: "array", desc: "3–10 ordered {label, type, value?} bars. type is total, delta, or subtotal; subtotal may omit value to use the running total.", itemKeys: bridgeColumnKeys, itemRequired: []string{"label", "type"}, itemKeySchemas: map[string]any{
+			"value": map[string]any{"type": "number", "minimum": -1e12, "maximum": 1e12},
+			"type":  map[string]any{"type": "string", "enum": []any{"total", "delta", "subtotal"}},
+		}},
+		"unit":    strField("Short value-label unit, at most 8 characters (for example $m)."),
+		"caption": strField("Scale note above the bars, at most 60 characters."),
 	}, compositionFields()), universalFields()),
 	KindTeam: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

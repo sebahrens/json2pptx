@@ -53,6 +53,7 @@ var kindNeedsTakeaway = map[SlideKind]bool{
 	KindExecutiveSummary: true,
 	KindKPISnapshot:      true,
 	KindChartInsight:     true,
+	KindBridge:           true,
 	KindComparison:       true,
 	KindOptionMatrix:     true,
 	KindTable:            true,
@@ -129,6 +130,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 		"attribution": shapeString, "name": shapeString, "speaker": shapeString,
 		"author": shapeString, "role": shapeString, "takeaway": shapeString,
 	},
+	KindBridge: {"title": shapeString, "columns": shapeArray, "unit": shapeString, "caption": shapeString, "takeaway": shapeString},
 	KindTeam: {
 		"title": shapeString, "members": shapeArray, "people": shapeArray,
 		"team": shapeArray, "takeaway": shapeString,
@@ -495,6 +497,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateAgenda(path, slide, s)
 	case KindQuote:
 		validateQuote(path, slide, s)
+	case KindBridge:
+		validateBridge(path, slide, s)
 	case KindTeam:
 		validateTeam(path, slide, s)
 	case KindStat:
@@ -537,6 +541,27 @@ func validateAgenda(path string, slide SlideSpec, s *semDiags) {
 			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n),
 			"agenda", degradeToBullets, degradeCountOutOfRange)
 	}
+}
+
+func validateBridge(path string, slide SlideSpec, s *semDiags) {
+	field, problem := slides.BridgeProblem(slide.Body)
+	if problem == "" {
+		return
+	}
+	if field == "columns" && !hasNonEmpty(slide.Body, "columns") {
+		return
+	} // required-field gate
+	fullPath := path + "." + field
+	budget := strings.Contains(problem, "exceed")
+	if budget {
+		reason := degradeBudgetExceeded
+		if field == "columns" {
+			reason = degradeCountOutOfRange
+		}
+		s.degrade(fullPath, "bridge "+problem+"; columns are preserved as bullets", "waterfall-bridge", degradeToBullets, reason)
+		return
+	}
+	s.hard(fullPath, string(diagnostics.CodeSemanticFieldType), "bridge "+problem)
 }
 
 func validateQuote(path string, slide SlideSpec, s *semDiags) {
