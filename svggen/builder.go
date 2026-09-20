@@ -1240,10 +1240,6 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	// same coordinate space the canvas library produced.
 	content = b.fixSVGTextAlignment(content)
 
-	// Inject the executive-default tabular-nums CSS so numeric tick labels and
-	// value labels render with monospaced digits. See tokens.ChartTickLabelTabularNums.
-	content = injectTabularNumsStyle(content)
-
 	// Scale all SVG coordinates from mm to CSS pixels. LibreOffice and PowerPoint
 	// misinterpret font-size "px" values when the viewBox uses mm-scale coordinates,
 	// causing garbled/oversized text in PDF export. The only reliable fix is to
@@ -1257,6 +1253,18 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	// in PDF export. Must run AFTER pixel scaling since both operate on font
 	// shorthand patterns.
 	content = fixSVGFontFamilyFallbacks(content)
+
+	// Inject the executive-default tabular-nums CSS so numeric tick labels and
+	// value labels render with monospaced digits (tokens.ChartTickLabelTabularNums).
+	//
+	// This runs AFTER the pixel scaling, not before. The scaler splits the
+	// document at the LAST <style> / <defs> to avoid rewriting base64 font data,
+	// so a <style> injected at the head made the split land at byte ~146 on any
+	// diagram the canvas emits without a trailing font block — and the entire
+	// drawing was left in millimetre coordinates under a pixel viewBox, rendering
+	// at 26.5% of its own canvas in the corner of the placeholder
+	// (go-slide-creator-rkq0).
+	content = injectTabularNumsStyle(content)
 
 	widthPx := math.Round(widthMM * mmToPxFactor)
 	heightPx := math.Round(heightMM * mmToPxFactor)

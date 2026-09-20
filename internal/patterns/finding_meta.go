@@ -799,32 +799,20 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Reshape the grid so the diagram cell spans ≥50% of slide width.",
 			"Or move the diagram to a full-width layout via repair_slide(kind=reshape_grid).",
 		},
-		RelatedCodes: []string{ErrCodeDiagramAspectMismatch, ErrCodeDiagramAspectConflict},
+		RelatedCodes: []string{ErrCodeDiagramAspectMismatch},
 	},
 	ErrCodeDiagramAspectMismatch: {
 		Code:        ErrCodeDiagramAspectMismatch,
 		Summary:     "A diagram's authored (explicit width×height) aspect differs from the post-fit render frame it is sized into by more than 25%.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight or render-time finds a diagram with BOTH explicit diagram.width and diagram.height whose authored aspect diverges from the post-fit render frame aspect by >25%. Unset or single-axis (width-only / height-only) diagrams adapt to the frame aspect and are not flagged (natural-aspect types are covered by diagram_aspect_conflict). fix.params carry authored_*, effective_* (+ dimension_source), cell_* (pre-fit), and render_* (post-fit) aspect evidence plus fit_adjusted so an authoring mistake is distinguishable from a fit-driven mismatch.",
+		WhenEmitted: "Pre-flight or render-time finds a diagram with BOTH explicit diagram.width and diagram.height whose authored aspect diverges from the post-fit render frame aspect by >25%. Unset or single-axis (width-only / height-only) diagrams adapt to the frame aspect and are not flagged (a natural-aspect type adapts too, because an explicit output box wins over its natural aspect). fix.params carry authored_*, effective_* (+ dimension_source), cell_* (pre-fit), and render_* (post-fit) aspect evidence plus fit_adjusted so an authoring mistake is distinguishable from a fit-driven mismatch.",
 		RemediationSteps: []string{
 			"Reshape the cell to match the diagram's pinned aspect ratio (apply repair_slide(kind=reshape_grid)).",
 			"Or set cell.fit to 'contain' / 'fit-width' / 'fit-height'.",
 			"Or change the explicit diagram.width / diagram.height to match the render frame.",
 		},
-		RelatedCodes: []string{ErrCodeDiagramAspectConflict, ErrCodeGridDiagramNarrow},
+		RelatedCodes: []string{ErrCodeGridDiagramNarrow},
 	},
-	ErrCodeDiagramAspectConflict: {
-		Code:        ErrCodeDiagramAspectConflict,
-		Summary:     "A non-chart diagram cell's aspect conflicts with the diagram type's natural aspect by >30%.",
-		Severity:    "review",
-		WhenEmitted: "Pre-flight or render-time finds a non-chart diagram (timeline, gantt, org_chart) whose cell aspect diverges from svggen.NaturalAspect by >30%.",
-		RemediationSteps: []string{
-			"Reshape the cell to match the diagram's natural aspect ratio.",
-			"Or set cell.fit, or supply explicit diagram.width / diagram.height.",
-		},
-		RelatedCodes: []string{ErrCodeDiagramAspectMismatch, ErrCodeGridDiagramNarrow},
-	},
-
 	// ---- Render-time codes ----
 
 	ErrCodePlaceholderRemapped: {

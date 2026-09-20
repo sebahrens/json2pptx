@@ -152,7 +152,6 @@ const (
 	// Grid visual cell finding codes (emitted for diagram/icon/image grid cells).
 	ErrCodeGridDiagramNarrow     = "grid_diagram_narrow"
 	ErrCodeDiagramAspectMismatch = "diagram_aspect_mismatch"
-	ErrCodeDiagramAspectConflict = "diagram_aspect_conflict"
 
 	// Render-time finding codes (emitted during generation, not pre-flight).
 	ErrCodePlaceholderRemapped = "placeholder_remapped"
@@ -256,7 +255,6 @@ var (
 	ErrTextOverImageUnverified = errors.New("text sits on a background image with no scrim, so its contrast cannot be checked")
 
 	ErrDiagramAspectMismatch = errors.New("diagram cell aspect differs from rendered SVG aspect")
-	ErrDiagramAspectConflict = errors.New("diagram cell aspect conflicts with diagram type's natural aspect")
 )
 
 // codeSentinel maps error code strings to their sentinel errors.
@@ -323,7 +321,6 @@ var codeSentinel = map[string]error{
 	ErrCodeContrastPredicted:       ErrContrastPredicted,
 	ErrCodeTextOverImageUnverified: ErrTextOverImageUnverified,
 	ErrCodeDiagramAspectMismatch:   ErrDiagramAspectMismatch,
-	ErrCodeDiagramAspectConflict:   ErrDiagramAspectConflict,
 }
 
 // AllFitFindingCodes returns the sorted list of all fit-finding error codes.

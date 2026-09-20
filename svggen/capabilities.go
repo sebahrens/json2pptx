@@ -533,9 +533,11 @@ func DiagramCapabilities() []DiagramCapability {
 
 // naturalDiagramAspects maps non-chart diagram types to their natural width/height
 // ratio (W/H) as defined by the renderer's intrinsic canvas. Only diagrams that
-// use a fixed natural aspect via RenderWithHelperDimensions are listed; chart
-// types that fit their container (via RenderWithHelper) intentionally have no
-// entry because they have no intrinsic aspect to conflict with.
+// declare fixed defaults via RenderWithHelperDimensions are listed; chart types
+// that fit their container (via RenderWithHelper) intentionally have no entry.
+//
+// These are the proportions a caller gets when it asks for a diagram WITHOUT
+// dimensions. When it supplies a box, the box wins.
 //
 // Values are sourced from the renderer constants:
 //   - timeline:  RenderWithHelperDimensions(req, 800, 400, ...) → 2.0
@@ -555,9 +557,11 @@ var naturalDiagramAspects = map[string]float64{
 // (most charts) or is not recognized. Aliases are resolved before lookup, so
 // "org" and "orgchart" both resolve to the org_chart aspect.
 //
-// Callers use this at validate / preview time to predict whether a target cell
-// or placeholder shape will conflict with a diagram's intrinsic aspect, which
-// lets agents fix the layout before invoking resvg-convert or rasterising.
+// It is the aspect these diagrams lay out at when the caller supplies NO output
+// dimensions. A caller that supplies a box gets that box — the natural aspect is
+// a default, not a constraint (go-slide-creator-rkq0) — so this no longer
+// predicts letterboxing for a diagram placed in a placeholder or a grid cell,
+// and the diagram_aspect_conflict finding it used to back has been retired.
 func NaturalAspect(diagramType string) float64 {
 	canonical := diagramType
 	if alias, ok := builtinAliases[diagramType]; ok {

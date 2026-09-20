@@ -2227,3 +2227,37 @@ func TestExtractBubbleChartData_SubtitleFootnote(t *testing.T) {
 		t.Errorf("Footnote = %q, want BubbleFoot", data.Footnote)
 	}
 }
+
+// TestExplicitOutputBoxWinsOverTheNaturalAspect pins the fix for
+// go-slide-creator-rkq0: org_chart, gantt and timeline declare a natural
+// aspect via RenderWithHelperDimensions, and "contain" fitted that aspect
+// inside the caller's box. In an 11.5in x 4.75in body placeholder an org chart
+// came out 6.85in wide with 40% of the slide's width empty. A natural aspect
+// is a default for a caller that gives no dimensions, not a constraint on one
+// that does.
+func TestExplicitOutputBoxWinsOverTheNaturalAspect(t *testing.T) {
+	// 1104 x 456 is a 16:9 body placeholder; 1100 x 700 is org_chart's natural.
+	req := &RequestEnvelope{Output: OutputSpec{Width: 1104, Height: 456}}
+	w, h, ox, oy := applyFitModeWithSource("contain", 1100, 700, 1104, 456, req)
+	if w != 1104 || h != 456 {
+		t.Errorf("content = %.0fx%.0f, want the caller's 1104x456", w, h)
+	}
+	if ox != 0 || oy != 0 {
+		t.Errorf("offsets = %.0f,%.0f, want 0,0 — nothing is letterboxed", ox, oy)
+	}
+
+	// Without explicit dimensions the natural aspect still applies: a caller
+	// that asks for nothing gets the diagram's own proportions.
+	bare := &RequestEnvelope{}
+	w, h, _, _ = applyFitModeWithSource("contain", 1100, 700, 1104, 456, bare)
+	if w >= 1104 {
+		t.Errorf("content = %.0fx%.0f, want the 1100x700 aspect fitted inside 1104x456", w, h)
+	}
+
+	// An explicit aspect_ratio on the request still wins over both.
+	pinned := &RequestEnvelope{Output: OutputSpec{Width: 1104, Height: 456, AspectRatio: 1.0}}
+	w, h, _, _ = applyFitModeWithSource("contain", 1100, 700, 1104, 456, pinned)
+	if w != h {
+		t.Errorf("content = %.0fx%.0f, want a square from aspect_ratio 1.0", w, h)
+	}
+}

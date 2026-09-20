@@ -1349,6 +1349,16 @@ func applyFitModeWithSource(fitMode string, srcW, srcH, containerW, containerH f
 	if req.Output.AspectRatio > 0 {
 		srcW = req.Output.AspectRatio
 		srcH = 1.0
+	} else if req.Output.Width > 0 && req.Output.Height > 0 {
+		// The caller sized the box. A diagram's "natural" aspect is a default
+		// for callers that give no dimensions, not a constraint on one that
+		// does: fitting 1100x700 inside an 11.5in x 4.75in placeholder left an
+		// org chart 6.85in wide with 40% of the slide's width empty, and gantt
+		// and timeline did the same (go-slide-creator-rkq0). These diagrams lay
+		// out from the canvas they are handed, so handing them the real box is
+		// a relayout, not a stretch. Charts already work this way
+		// (getSourceAspectRatio returns the container ratio for all of them).
+		return containerW, containerH, 0, 0
 	}
 
 	if srcW <= 0 || srcH <= 0 {

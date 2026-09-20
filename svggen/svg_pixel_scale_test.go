@@ -2,6 +2,8 @@ package svggen
 
 import (
 	"math"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -1259,5 +1261,54 @@ func TestScalePathDataInSVG_NoDAttr(t *testing.T) {
 	result := scalePathDataInSVG(input)
 	if result != input {
 		t.Errorf("expected no change when no d attribute, got %q", result)
+	}
+}
+
+// TestRenderScalesADiagramWithNoTextRuns pins the bug that left a whole diagram
+// in millimetre coordinates under a pixel viewBox.
+//
+// The scaler splits the document at the LAST <style> / <defs> so it never
+// rewrites base64 font data. A <style> injected at the HEAD of the document
+// (the tabular-nums block) made that split land at byte ~146 whenever the
+// canvas emitted no trailing font block — which is every diagram that draws no
+// text. The drawing then rendered at 26.5% of its own canvas, in the corner of
+// the placeholder (go-slide-creator-rkq0).
+func TestRenderScalesADiagramWithNoTextRuns(t *testing.T) {
+	b := NewSVGBuilder(800, 400)
+	b.SetFillColor(MustParseColor("#123456"))
+	b.FillRect(Rect{X: 0, Y: 0, W: 800, H: 400})
+
+	doc, err := b.Render()
+	if err != nil {
+		t.Fatalf("Render: %v", err)
+	}
+	svg := string(doc.Content)
+
+	if !strings.Contains(svg, "tabular-nums") {
+		t.Error("the tabular-nums style must still be injected")
+	}
+
+	// The rect must span the declared viewBox, not 26.5% of it.
+	m := regexp.MustCompile(`<path d="M0 ([\d.]+)H([\d.]+)`).FindStringSubmatch(svg)
+	if m == nil {
+		t.Fatalf("no background path in:\n%s", svg[:min(400, len(svg))])
+	}
+	width, _ := strconv.ParseFloat(m[2], 64)
+	if width < doc.Width*0.95 {
+		t.Errorf("drawing spans %.1f of a %.0f-wide viewBox — the coordinates were never scaled", width, doc.Width)
+	}
+}
+
+// TestSplitSVGContentAndStyleIgnoresALeadingStyle documents the sharp edge the
+// fix works around: the split is "everything before the trailing block", and a
+// style element at the head of the document is not that block.
+func TestSplitSVGContentAndStyleIgnoresALeadingStyle(t *testing.T) {
+	// The canvas form: drawing, then the font <style> at the end.
+	content, suffix := splitSVGContentAndStyle(`<svg width="10"><path d="M0 0H10"/><style>@font-face{}</style></svg>`)
+	if !strings.Contains(content, "<path") {
+		t.Errorf("the drawing belongs in the scaled half, got content=%q suffix=%q", content, suffix)
+	}
+	if !strings.HasPrefix(suffix, "<style>") {
+		t.Errorf("the trailing style belongs in the unscaled half, got %q", suffix)
 	}
 }

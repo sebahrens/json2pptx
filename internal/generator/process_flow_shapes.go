@@ -52,6 +52,16 @@ const (
 
 	// pfMinStepHeight is the minimum step height (EMU). ~0.5"
 	pfMinStepHeight int64 = 457200
+
+	// pfStepHeightDivisor sizes a step against the space it has: a quarter of
+	// the available height, which leaves room for a second row of steps and for
+	// the descriptions under them.
+	pfStepHeightDivisor int64 = 4
+
+	// pfMaxStepHeightFactor caps the step at twice the minimum (~1.0"). A flow
+	// reads as a strip; a box tall enough to fill a body placeholder would be
+	// worse than a short one.
+	pfMaxStepHeightFactor int64 = 2
 )
 
 // processFlowStepType identifies the type of a process step.
@@ -317,6 +327,28 @@ func computeProcessFlowLayout(steps []processFlowStep, bounds types.BoundingBox,
 	return pfLayoutMultiRow(layouts, steps, bounds, maxH, n)
 }
 
+// pfStepHeight is the height of one process step, scaled to the space it has.
+//
+// The step height used to be the 0.5" minimum whatever the placeholder was, so
+// a five-step flow drew a 0.5" strip of boxes in the middle of a 4.75" body and
+// read as an unfinished slide (go-slide-creator-rkq0). It scales with the
+// available height now, capped at twice the minimum: a flow is a strip, and a
+// 3"-tall box would be worse than a short one, so the box grows to a readable
+// size and stops.
+func pfStepHeight(bounds types.BoundingBox) int64 {
+	if bounds.Height <= 0 {
+		return pfMinStepHeight
+	}
+	h := bounds.Height / pfStepHeightDivisor
+	if h < pfMinStepHeight {
+		return pfMinStepHeight
+	}
+	if max := pfMinStepHeight * pfMaxStepHeightFactor; h > max {
+		return max
+	}
+	return h
+}
+
 // pfStepDimensions returns width and height for a step based on its type and available space.
 func pfStepDimensions(step processFlowStep, bounds types.BoundingBox, stepCount int) (cx, cy int64) {
 	// Base dimensions scale with available space and step count.
@@ -329,11 +361,11 @@ func pfStepDimensions(step processFlowStep, bounds types.BoundingBox, stepCount 
 	if baseW < pfMinStepWidth {
 		baseW = pfMinStepWidth
 	}
-	baseH := pfMinStepHeight
+	baseH := pfStepHeight(bounds)
 
 	// Give more height when descriptions are present.
 	if step.description != "" {
-		baseH = pfMinStepHeight * 3 / 2
+		baseH = baseH * 3 / 2
 	}
 
 	switch step.stepType {

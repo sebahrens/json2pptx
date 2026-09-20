@@ -495,15 +495,6 @@ func checkPlaceholderFindings(slide *SlideInput, si int, layout *types.LayoutMet
 			continue
 		}
 
-		// Diagram content placed in a placeholder: predict aspect conflict
-		// against the diagram type's natural viewBox aspect.
-		if content.Type == "diagram" && content.DiagramValue != nil {
-			path := slidepath.Content(si, content.PlaceholderID)
-			if f := generator.CheckDiagramAspectConflictFinding(content.DiagramValue, ph.Bounds.Width, ph.Bounds.Height, path); f != nil {
-				findings = append(findings, *f)
-			}
-		}
-
 		paragraphs := extractContentParagraphs(&content)
 		if len(paragraphs) == 0 {
 			continue
@@ -691,9 +682,6 @@ func checkGridDiagramPreflight(diagram *types.DiagramSpec, slideIdx, ri, ci int,
 		findings = append(findings, *f)
 	}
 	// Non-chart diagrams only — chart aspect issues come from svggen dry-render.
-	if f := generator.CheckDiagramAspectConflictFinding(diagram, renderCX, renderCY, diagPath); f != nil {
-		findings = append(findings, *f)
-	}
 	return findings
 }
 
