@@ -296,3 +296,43 @@ func TestValueChain_Recommend(t *testing.T) {
 		})
 	}
 }
+
+// TestValueChain_DescriptionRowIsContentSized pins the fix for
+// go-slide-creator-pr3g: the description row was uncapped, so it took the
+// remaining 75% of the content area and centred the descriptions inside it —
+// a full-width empty stripe ran between the step boxes and their descriptions.
+func TestValueChain_DescriptionRowIsContentSized(t *testing.T) {
+	p, _ := Default().Get("value-chain")
+	ctx := testThemeCtx()
+	vals := &ValueChainValues{Steps: []ValueChainStep{
+		{Label: "Extraction", Description: "Mining raw materials and managing EPC contracts."},
+		{Label: "Processing", Description: "Refining ore into intermediate inputs."},
+		{Label: "Manufacturing", Description: "Converting inputs into finished goods."},
+		{Label: "Distribution", Description: "Moving product through wholesale channels."},
+	}}
+	grid, err := p.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if grid.VerticalAlign != GridVerticalAlignDefault {
+		t.Errorf("vertical_align = %q, want %q", grid.VerticalAlign, GridVerticalAlignDefault)
+	}
+	if len(grid.Rows) != 2 {
+		t.Fatalf("got %d rows, want label + description", len(grid.Rows))
+	}
+	desc := grid.Rows[1]
+	if desc.MaxHeight <= 0 {
+		t.Fatal("the description row has no max_height: it stretches to the rest of the zone")
+	}
+
+	// A longer description needs a taller row: the cap is measured, not fixed.
+	long := &ValueChainValues{Steps: append([]ValueChainStep(nil), vals.Steps...)}
+	long.Steps[1].Description = "Refining ore into intermediate inputs across three sites, with the quality gate moved upstream to the concentrator."
+	longGrid, err := p.Expand(ctx, long, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand long: %v", err)
+	}
+	if longGrid.Rows[1].MaxHeight <= desc.MaxHeight {
+		t.Errorf("a longer description should grow the row: short=%.0f long=%.0f", desc.MaxHeight, longGrid.Rows[1].MaxHeight)
+	}
+}

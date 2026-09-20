@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"math"
 	"regexp"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 // inlineMarkupRe strips inline emphasis tags (<b>…</b>) before measuring.
@@ -64,6 +66,50 @@ func anchorSparseText(text json.RawMessage, textHPt, boxHPt float64) json.RawMes
 		return text
 	}
 	return withVerticalAlign(text, "ctr")
+}
+
+// ContentSizedRowGapPt is the column gap the content-sized row helper assumes
+// when it derives the card width from the content area.
+const contentSizedRowGapPt = 10.0
+
+// contentSizedRow sizes a row of shape cells to the tallest card's own text
+// and vertically centres the text in every card that does not fill its share.
+//
+// A grid row's height is the row's, not the cell's: every card in a row is as
+// tall as the tallest one. Without a max_height the row also stretches to fill
+// the content area, so a one-line quote next to a four-line quote sat in the
+// top fifth of a tall tinted box (go-slide-creator-pr3g). Sizing the row to its
+// content shrinks the box, and centring the sparse cards' text fixes what is
+// left.
+//
+// Returns the row untouched when any cell is not a plain shape (a composite
+// cell carries a chart that needs the flex height).
+func contentSizedRow(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int) jsonschema.GridRowInput {
+	row := jsonschema.GridRowInput{Cells: cells}
+	for _, c := range cells {
+		if c == nil || c.Shape == nil || c.Composite != nil {
+			return row
+		}
+	}
+
+	font := ctx.Theme.BodyFont
+	contentW, _ := contentAreaPt(ctx)
+	cardW := equalColumnWidthPt(contentW, cols, contentSizedRowGapPt)
+	textW := cardW - 2*defaultShapeInsetLRPt
+
+	textHs := make([]float64, len(cells))
+	cardH := 0.0
+	for i, c := range cells {
+		textHs[i] = shapeTextHeightPt(font, c.Shape.Text, textW)
+		cardH = math.Max(cardH, contentCardHeightPt(textHs[i], cardW, c.Shape.Icon != nil))
+	}
+	for i, c := range cells {
+		if c.Shape.Icon == nil {
+			c.Shape.Text = anchorSparseText(c.Shape.Text, textHs[i], cardH-2*defaultShapeInsetTBPt)
+		}
+	}
+	row.MaxHeight = cardH
+	return row
 }
 
 // headerBandPadPt is extra breathing room inside a header band.

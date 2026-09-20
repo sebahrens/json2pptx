@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -241,7 +242,7 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     8,
+		Gap:     valueChainGapPt,
 		RowGap:  4,
 		Rows: []jsonschema.GridRowInput{
 			{
@@ -250,12 +251,45 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 				Connector: &jsonschema.ConnectorSpecInput{Style: "arrow", Color: baseAccent, Width: 1.5},
 			},
 			{
-				Cells: descCells,
+				// Size the description row to its own text. Uncapped it took
+				// the remaining 75% of the content area and centred the
+				// descriptions inside it, so a full-width empty stripe ran
+				// between the step boxes and their descriptions and the bottom
+				// third of the slide was blank (go-slide-creator-pr3g).
+				MaxHeight: valueChainDescRowHeightPt(ctx, descCells, n),
+				Cells:     descCells,
 			},
 		},
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
+}
+
+// valueChainGapPt is the gap between step columns.
+const valueChainGapPt = 8.0
+
+// valueChainDescRowHeightPt is the height the description row needs for its
+// tallest description at the step column width.
+func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellInput, cols int) float64 {
+	contentW, _ := contentAreaPt(ctx)
+	colW := equalColumnWidthPt(contentW, cols, valueChainGapPt)
+	textW := colW - 2*defaultShapeInsetLRPt
+	if textW <= 0 {
+		return 0
+	}
+	font := ctx.Theme.BodyFont
+	h := 0.0
+	for _, c := range cells {
+		if c == nil || c.Shape == nil {
+			continue
+		}
+		h = math.Max(h, shapeTextHeightPt(font, c.Shape.Text, textW))
+	}
+	if h == 0 {
+		return 0
+	}
+	return math.Round(h + 2*defaultShapeInsetTBPt)
 }
 
 // ---------------------------------------------------------------------------

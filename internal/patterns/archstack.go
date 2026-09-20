@@ -198,7 +198,7 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	numCols := 1 + numRails
 	cols := make([]float64, numCols)
 	if hasSideRails {
-		railWidth := 12.0
+		railWidth := archStackRailWidthPct
 		cols[0] = 100 - float64(numRails)*railWidth
 		for i := 1; i <= numRails; i++ {
 			cols[i] = railWidth
@@ -249,7 +249,7 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		for j := 0; j < numRails; j++ {
 			if i == 0 {
 				// First row: render the side rail label
-				railText := buildArchStackSimpleContent(vals.SideRails[j], 10.0)
+				railText := buildArchStackRailContent(vals.SideRails[j])
 				cells[j+1] = &jsonschema.GridCellInput{
 					RowSpan: len(vals.Tiers),
 					Shape: &jsonschema.ShapeSpecInput{
@@ -300,6 +300,47 @@ func buildArchStackTierContent(label string, labelSize float64, desc string, des
 		VerticalAlign: "ctr",
 	}
 
+	data, _ := json.Marshal(textObj)
+	return data
+}
+
+// archStackRailWidthPct is the width of one cross-cutting rail, as a share of
+// the content area. A rail carries one short label and nothing else; at the old
+// 12% two rails took a quarter of the slide's width to say "Security" and
+// "Monitoring", leaving two tall empty columns beside the stack
+// (go-slide-creator-pr3g). A band wide enough for the rotated label is the
+// consulting convention and gives the width back to the tiers.
+const archStackRailWidthPct = 4.0
+
+// archStackRailLabelSize is the rail label size. It is the smallest text on the
+// slide by design: the rail names a concern, the tiers carry the content.
+const archStackRailLabelSize = 10.0
+
+// buildArchStackRailContent renders a cross-cutting rail label rotated to read
+// bottom-to-top, so the band only needs to be as wide as one line of text.
+func buildArchStackRailContent(label string) json.RawMessage {
+	type paragraph struct {
+		Content string  `json:"content"`
+		Size    float64 `json:"size"`
+		Bold    bool    `json:"bold,omitempty"`
+		Color   string  `json:"color,omitempty"`
+		Align   string  `json:"align,omitempty"`
+	}
+	textObj := struct {
+		Paragraphs    []paragraph `json:"paragraphs"`
+		Align         string      `json:"align"`
+		VerticalAlign string      `json:"vertical_align"`
+		Vert          string      `json:"vert"`
+	}{
+		Paragraphs: []paragraph{
+			{Content: label, Size: archStackRailLabelSize, Bold: true, Color: "dk1", Align: "ctr"},
+		},
+		Align:         "ctr",
+		VerticalAlign: "ctr",
+		// vert270 rotates the TEXT inside an unrotated shape, so the band's
+		// fill stays a clean vertical stripe beside the stack.
+		Vert: "vert270",
+	}
 	data, _ := json.Marshal(textObj)
 	return data
 }

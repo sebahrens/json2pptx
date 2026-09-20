@@ -325,3 +325,45 @@ func TestQuoteCluster_ExemplarValues_ExpandsCleanly(t *testing.T) {
 		t.Fatalf("exemplar Expand: %v", err)
 	}
 }
+
+// TestQuoteCluster_RowsAreContentSized pins the fix for go-slide-creator-pr3g:
+// the rows carried no max_height, so they stretched to fill the content area
+// and every quote was as tall as the longest one in its row — "It just works."
+// sat in the top fifth of a tall tinted box.
+func TestQuoteCluster_RowsAreContentSized(t *testing.T) {
+	p, _ := Default().Get("quote-cluster")
+	ctx := testThemeCtx()
+	vals := &QuoteClusterValues{Quotes: []QuoteClusterItem{
+		{Text: "It just works.", Name: "Ops lead", Title: "retail"},
+		{Text: "The reconciliation model saved us a full week every month, and the finance team noticed within the first cycle.", Name: "CFO", Title: "logistics"},
+		{Text: "Onboarding was fast.", Name: "IT director", Title: "healthcare"},
+	}}
+	grid, err := p.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if grid.VerticalAlign != GridVerticalAlignDefault {
+		t.Errorf("vertical_align = %q, want %q", grid.VerticalAlign, GridVerticalAlignDefault)
+	}
+	if grid.Rows[0].MaxHeight <= 0 {
+		t.Fatal("row has no max_height: the cards stretch to the content area")
+	}
+
+	// The short quotes are centred in the row's height; the tall one that set
+	// the height is left alone.
+	var short, tall struct {
+		VerticalAlign string `json:"vertical_align"`
+	}
+	if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Text, &short); err != nil {
+		t.Fatalf("cell 0 text: %v", err)
+	}
+	if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &tall); err != nil {
+		t.Fatalf("cell 1 text: %v", err)
+	}
+	if short.VerticalAlign != "ctr" {
+		t.Errorf("short quote vertical_align = %q, want ctr", short.VerticalAlign)
+	}
+	if tall.VerticalAlign != "t" {
+		t.Errorf("the quote that set the row height should keep its top anchor, got %q", tall.VerticalAlign)
+	}
+}

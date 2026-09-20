@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 	"unicode"
 
@@ -424,30 +423,16 @@ func cardGridContentRow(ctx ExpandContext, cells []*jsonschema.GridCellInput, co
 			return row
 		}
 	}
-	font := ctx.Theme.BodyFont
-	contentW, _ := contentAreaPt(ctx)
-	cardW := equalColumnWidthPt(contentW, cols, 10)
-	textW := cardW - 2*defaultShapeInsetLRPt
-
 	// Reconcile the header zones first: a header that wraps to two lines while
 	// its neighbour's fits on one pushes only that card's body down, and three
 	// panels meant to read as one comparison come out ragged
-	// (go-slide-creator-ommn).
-	alignCardHeaderLines(cells, font, textW)
+	// (go-slide-creator-ommn). This runs BEFORE the sizing so the padding is
+	// part of the card the row is sized to.
+	contentW, _ := contentAreaPt(ctx)
+	cardW := equalColumnWidthPt(contentW, cols, contentSizedRowGapPt)
+	alignCardHeaderLines(cells, ctx.Theme.BodyFont, cardW-2*defaultShapeInsetLRPt)
 
-	textHs := make([]float64, len(cells))
-	cardH := 0.0
-	for i, c := range cells {
-		textHs[i] = shapeTextHeightPt(font, c.Shape.Text, textW)
-		cardH = math.Max(cardH, contentCardHeightPt(textHs[i], cardW, c.Shape.Icon != nil))
-	}
-	for i, c := range cells {
-		if c.Shape.Icon == nil {
-			c.Shape.Text = anchorSparseText(c.Shape.Text, textHs[i], cardH-2*defaultShapeInsetTBPt)
-		}
-	}
-	row.MaxHeight = cardH
-	return row
+	return contentSizedRow(ctx, cells, cols)
 }
 
 // alignCardHeaderLines pads the shorter headers in a row so every card's body

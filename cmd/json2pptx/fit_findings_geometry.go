@@ -74,6 +74,19 @@ type geomText struct {
 	insets     [4]int64 // authored L,T,R,B in EMU; -1 means "use OOXML default"
 	align      string
 	vAlign     string
+	// vert is the OOXML text-direction ("vert270" for bottom-to-top). Rotated
+	// text runs along the shape's HEIGHT, so the axes swap for every
+	// measurement below. Without this a thin band with a rotated label — the
+	// conventional way to draw a cross-cutting concern — measured its label
+	// against the band's 20pt width and reported TEXT_EXCEEDS_SHAPE
+	// (go-slide-creator-pr3g).
+	vert string
+}
+
+// rotated reports whether the text runs along the shape's height rather than
+// its width.
+func (t geomText) rotated() bool {
+	return strings.HasPrefix(t.vert, "vert")
 }
 
 // collectGeometryFindings walks every slide's resolved grid geometry and
@@ -203,7 +216,12 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 	if len(txt.paragraphs) == 0 {
 		return
 	}
+	// Rotated text runs along the shape's height: the line length it has is the
+	// box's height, not its width.
 	availW := geometryTextWidthEMU(cell.ShapeSpec, cell.Bounds) - txt.insetLR() - cell.TextInsets[0] - cell.TextInsets[2]
+	if txt.rotated() {
+		availW = cell.Bounds.CY - txt.insetTB() - cell.TextInsets[1] - cell.TextInsets[3]
+	}
 	availPt := math.Max(float64(availW)/emuPerPt, 0)
 	if word, wordPt := a.m.widestWord(txt); word != "" && wordPt > availPt*textExceedsTolerance {
 		geometry := cell.ShapeSpec.Geometry
@@ -213,6 +231,11 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		a.exceeds = append(a.exceeds, textExceedsHit{path: cellPath + "/shape/text", word: word, geometry: geometry, wordPt: wordPt, availPt: availPt})
 	}
 	blockW, blockH := a.m.textBlockPt(txt, math.Max(availPt, 1))
+	if txt.rotated() {
+		// The block was measured along the text's own axis; on the slide it
+		// occupies the transposed rectangle.
+		blockW, blockH = blockH, blockW
+	}
 	if !filled {
 		a.ink = append(a.ink, placeTextBlock(cell.Bounds, txt, blockW, blockH))
 		return
@@ -485,6 +508,7 @@ func parseGeomText(raw json.RawMessage) geomText {
 		InsetRight    float64 `json:"inset_right"`
 		InsetTop      float64 `json:"inset_top"`
 		InsetBottom   float64 `json:"inset_bottom"`
+		Vert          string  `json:"vert"`
 		Paragraphs    []struct {
 			Content string  `json:"content"`
 			Size    float64 `json:"size"`
@@ -494,7 +518,7 @@ func parseGeomText(raw json.RawMessage) geomText {
 	if json.Unmarshal(raw, &obj) != nil {
 		return t
 	}
-	t.align, t.vAlign = obj.Align, obj.VerticalAlign
+	t.align, t.vAlign, t.vert = obj.Align, obj.VerticalAlign, obj.Vert
 	if obj.InsetLeft > 0 || obj.InsetTop > 0 || obj.InsetRight > 0 || obj.InsetBottom > 0 {
 		// Mirrors shapegrid.buildTextBody: any authored inset replaces all four.
 		t.insets = [4]int64{int64(obj.InsetLeft * emuPerPt), int64(obj.InsetTop * emuPerPt), int64(obj.InsetRight * emuPerPt), int64(obj.InsetBottom * emuPerPt)}

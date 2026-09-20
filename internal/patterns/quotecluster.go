@@ -242,14 +242,19 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 			}
 			cells[c] = cell
 		}
-		rows = append(rows, jsonschema.GridRowInput{Cells: cells})
+		// Size the row to its tallest quote and centre the short ones. Without
+		// this the rows stretch to fill the content area and every quote is as
+		// tall as the longest one in its row, so "It just works." sat in the
+		// top fifth of a tall tinted box (go-slide-creator-pr3g).
+		rows = append(rows, contentSizedRow(ctx, cells, quoteClusterColumns))
 	}
 
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(fmt.Sprintf(`%d`, quoteClusterColumns)),
-		Gap:     10,
-		RowGap:  10,
-		Rows:    rows,
+		Columns:       json.RawMessage(fmt.Sprintf(`%d`, quoteClusterColumns)),
+		Gap:           contentSizedRowGapPt,
+		RowGap:        10,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 	return grid, nil
 }

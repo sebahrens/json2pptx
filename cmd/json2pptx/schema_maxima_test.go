@@ -205,7 +205,7 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8,
 	"agenda-with-images":           6.0,
-	"arch-stack":                   8.6,
+	"arch-stack":                   0,
 	"before-after":                 0.0,
 	"before-after-compact":         6.0,
 	"bmc-canvas":                   3.8,

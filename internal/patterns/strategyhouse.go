@@ -283,14 +283,19 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 		Cells:  []*jsonschema.GridCellInput{bannerCell},
 	})
 
-	// Pillar row: N cells, light fills with bold titles and bullet bodies
+	// Pillar row: N cells on the template's subtle surface, with bold titles
+	// and bullet bodies. The fill used to be lt1 — white on a white slide — so
+	// a pillar column was invisible below its last bullet and the space between
+	// the bullets and the foundation read as a large empty band rather than as
+	// the pillars holding the house up (go-slide-creator-pr3g).
+	pillarSurface := ctx.ResolveSurface("subtle", "lt2")
 	pillarCells := make([]*jsonschema.GridCellInput, numPillars)
 	for i, p := range vals.Pillars {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
 		pillarCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(`"lt1"`),
+				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, pillarSurface)),
 				Text:     buildStrategyHousePillarText(p.Title, p.Body, headerSize, bodySize, accent),
 			},
 			AccentBar: &jsonschema.AccentBarInput{

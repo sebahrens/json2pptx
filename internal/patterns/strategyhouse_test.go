@@ -1,8 +1,11 @@
 package patterns
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 func TestStrategyHouse_Registration(t *testing.T) {
@@ -259,5 +262,52 @@ func TestStrategyHouse_RecommendVisual(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("expected strategy-house in visual recommendations; got %+v", result.Candidates)
+	}
+}
+
+// TestStrategyHouse_PillarsAreVisible pins the fix for go-slide-creator-pr3g:
+// the pillar fill was lt1 — white on a white slide — so a pillar column was
+// invisible below its last bullet and the space between the bullets and the
+// foundation read as a large empty band rather than as the pillars.
+func TestStrategyHouse_PillarsAreVisible(t *testing.T) {
+	p, _ := Default().Get("strategy-house")
+	ctx := testThemeCtx()
+	vals := &StrategyHouseValues{
+		Objective: "Become the trusted platform for global commerce",
+		Pillars: []StrategyHousePillar{
+			{Title: "Customer Trust", Body: []string{"Privacy by default"}},
+			{Title: "Operational Excellence", Body: []string{"99.99% uptime"}},
+			{Title: "Product Velocity", Body: []string{"Weekly releases"}},
+		},
+		Foundation: "People · Technology · Data",
+	}
+	grid, err := p.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+
+	// Rows: (roof?) banner, pillars, foundation — the pillar row is the one
+	// with one cell per pillar.
+	var pillarRow *jsonschema.GridRowInput
+	for i := range grid.Rows {
+		if len(grid.Rows[i].Cells) == len(vals.Pillars) {
+			pillarRow = &grid.Rows[i]
+			break
+		}
+	}
+	if pillarRow == nil {
+		t.Fatal("no pillar row found")
+	}
+	for i, c := range pillarRow.Cells {
+		var fill string
+		if err := json.Unmarshal(c.Shape.Fill, &fill); err != nil {
+			t.Fatalf("pillar %d fill: %v", i, err)
+		}
+		if fill == "lt1" {
+			t.Errorf("pillar %d is filled lt1 — invisible on a light slide", i)
+		}
+		if fill != ctx.ResolveSurface("subtle", "lt2") {
+			t.Errorf("pillar %d fill = %q, want the template's subtle surface", i, fill)
+		}
 	}
 }

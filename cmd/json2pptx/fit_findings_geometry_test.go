@@ -272,3 +272,47 @@ func TestAuthorCappedBand(t *testing.T) {
 		t.Error("a nil slide is not author-capped")
 	}
 }
+
+// TestGeometryHonoursRotatedText pins the fix that makes a thin band with a
+// rotated label legal: TEXT_EXCEEDS_SHAPE measures a word against the line
+// length it has, and rotated text runs along the shape's HEIGHT. Without this
+// the conventional way to draw a cross-cutting concern — arch-stack's side
+// rails — reported every label as overflowing (go-slide-creator-pr3g).
+func TestGeometryHonoursRotatedText(t *testing.T) {
+	// A 30pt-wide, 300pt-tall band carrying a rotated label.
+	band := func(vert string) *ShapeGridInput {
+		text := `{"paragraphs":[{"content":"Monitoring","size":10}],"align":"ctr","vertical_align":"ctr"}`
+		if vert != "" {
+			text = `{"paragraphs":[{"content":"Monitoring","size":10}],"align":"ctr","vertical_align":"ctr","vert":"` + vert + `"}`
+		}
+		return &ShapeGridInput{
+			Bounds:  &GridBoundsInput{X: 0, Y: 0, Width: 4, Height: 80},
+			Columns: json.RawMessage(`1`),
+			Rows: []GridRowInput{{Cells: []*GridCellInput{{
+				Shape: &ShapeSpecInput{
+					Geometry: "rect",
+					Fill:     json.RawMessage(`"lt2"`),
+					Text:     json.RawMessage(text),
+				},
+			}}}},
+		}
+	}
+
+	countExceeds := func(grid *ShapeGridInput) int {
+		input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: grid}}}
+		n := 0
+		for _, f := range collectGeometryFindings(input, nil, 12192000, 6858000, nil) {
+			if f.Code == patterns.ErrCodeTextExceedsShape {
+				n++
+			}
+		}
+		return n
+	}
+
+	if countExceeds(band("")) == 0 {
+		t.Error("a horizontal label in a 4%-wide band should overflow — the test fixture is wrong")
+	}
+	if got := countExceeds(band("vert270")); got != 0 {
+		t.Errorf("a rotated label has the band's height to run along; got %d TEXT_EXCEEDS_SHAPE findings", got)
+	}
+}
