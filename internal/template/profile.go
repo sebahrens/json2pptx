@@ -226,8 +226,8 @@ func aspectRatio(width, height int64) string {
 // each is recognised within. Order matters only for readability; the bands do
 // not overlap.
 var namedAspectRatios = []struct {
-	name     string
-	ratio    float64
+	name      string
+	ratio     float64
 	tolerance float64
 }{
 	{"4:3", 4.0 / 3.0, 0.03},

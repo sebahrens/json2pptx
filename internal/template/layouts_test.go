@@ -601,9 +601,9 @@ func TestSchemeColorResolution(t *testing.T) {
 		scheme string
 		expect string // May be empty if not in theme
 	}{
-		{"tx1", ""},      // Maps to dk1
-		{"tx2", ""},      // Maps to dk2
-		{"accent1", ""},  // Direct mapping
+		{"tx1", ""},     // Maps to dk1
+		{"tx2", ""},     // Maps to dk2
+		{"accent1", ""}, // Direct mapping
 	}
 
 	for _, tt := range tests {
@@ -657,4 +657,3 @@ func TestExtractPlaceholderBoundsFromZip(t *testing.T) {
 		t.Error("No placeholder has non-zero bounds")
 	}
 }
-

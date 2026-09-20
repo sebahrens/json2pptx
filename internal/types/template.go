@@ -172,6 +172,17 @@ type PlaceholderInfo struct {
 	FontFamily string // Font family name (e.g., "Arial", "Calibri")
 	FontSize   int    // Font size in hundredths of a point (e.g., 1400 = 14pt)
 	FontColor  string // Font color as hex string (e.g., "#000000")
+	// InheritedFontColor is the colour this placeholder RENDERS at when the
+	// layout states none of its own: the slide master's txStyles colour,
+	// mapped through the layout's clrMapOvr. FontColor keeps its narrower
+	// meaning — "the layout declared this" — because examine_template reports
+	// it to agents as the template's own declaration.
+	//
+	// Without it the contrast preflight simply skipped every placeholder whose
+	// colour is inherited, so a layout like midnight-blue's Section Divider got
+	// a contrast_autofixed swap at generate time and silence at validate time
+	// (go-slide-creator-j4364).
+	InheritedFontColor string
 
 	// TextCaps and LineSpacingPct are the inherited text style that changes
 	// measured fit (resolved for title placeholders from the layout lstStyle →

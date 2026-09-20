@@ -680,8 +680,8 @@ func TestCalculateGridPositions_NoOverlap(t *testing.T) {
 
 	// Check no vertical overlaps within columns
 	for col := 0; col < 3; col++ {
-		i := col         // First row
-		j := col + 3     // Second row
+		i := col     // First row
+		j := col + 3 // Second row
 		bottomEdge := positions[i].Y + positions[i].Height
 		if bottomEdge > positions[j].Y {
 			t.Errorf("Position %d overlaps with position %d vertically: bottom edge %d > top edge %d",
@@ -800,8 +800,8 @@ func TestGetGridDimensions(t *testing.T) {
 		{"grid-2x3", 2, 3},
 		{"grid-3x3", 3, 3},
 		{"grid-4x3", 4, 3},
-		{"content-1", 0, 0},         // Not a grid layout
-		{"nonexistent", 0, 0},       // Unknown layout
+		{"content-1", 0, 0},   // Not a grid layout
+		{"nonexistent", 0, 0}, // Unknown layout
 	}
 
 	for _, tt := range tests {

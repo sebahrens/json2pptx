@@ -252,8 +252,8 @@ func TestExtractListStyle(t *testing.T) {
 	// Create a list style with various properties
 	lstStyle := &listStyleStyleXML{
 		Lvl1pPr: &lvlPPrStyleXML{
-			MarginLeft: 457200,      // 0.5 inch
-			Indent:     -228600,     // -0.25 inch (hanging indent)
+			MarginLeft: 457200,  // 0.5 inch
+			Indent:     -228600, // -0.25 inch (hanging indent)
 			SpaceBefore: &spcStyleXML{
 				SpacePoints: &spcPtsStyleXML{Val: 1000}, // 10 pt
 			},

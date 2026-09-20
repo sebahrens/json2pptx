@@ -66,7 +66,7 @@ func SynthesizeIfNeeded(reader *Reader, analysis *types.TemplateAnalysis) []patt
 	for i := range baseLayout.Placeholders {
 		if baseLayout.Placeholders[i].Type == types.PlaceholderTitle {
 			normalized := baseLayout.Placeholders[i] // copy
-			normalized.ID = "title"                   // canonical name
+			normalized.ID = "title"                  // canonical name
 			baseTitlePH = &normalized
 			break
 		}
@@ -894,4 +894,3 @@ func GenerateLayoutRelsXMLBytes(masterTarget string) []byte {
 	buf = append(buf, `</Relationships>`...)
 	return buf
 }
-

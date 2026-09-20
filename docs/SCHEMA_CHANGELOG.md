@@ -178,6 +178,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **`contrast_predicted` covers placeholders whose colour is inherited
+  (go-slide-creator-j4364).** A layout that leaves its placeholder colour to
+  the slide master's `txStyles` reported an empty `FontColor`, and the contrast
+  preflight — which pairs `FontColor` with the slide's own background — skipped
+  it entirely. So a deck with `background.color` on a layout like
+  midnight-blue's Section Divider got a `contrast_autofixed` swap at generate
+  time and silence at validate time.
+  - `PlaceholderInfo` gains `InheritedFontColor`: what the placeholder actually
+    renders at, resolved through the layout's `clrMapOvr` the way the
+    render-time pass resolves it. `FontColor` keeps its narrower meaning — "the
+    layout declared this" — because `examine_template` reports it to agents as
+    the template's own declaration.
+  - The colour map is not optional: modern-template's Section Divider maps
+    `tx1` -> `lt1`, so resolving against the theme alone would predict the
+    opposite of what renders.
+  - No new findings on the bundled examples (all 19 checked, before and after).
+
 - **Peer structural fills are one accent at two luminances
   (go-slide-creator-at7ij).** `dual-org-ladder` coloured its two org headers
   `accent1` / `accent2` and `process-grid-2row` its two rows

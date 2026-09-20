@@ -11,10 +11,10 @@ func TestAspectRatio(t *testing.T) {
 	const in = int64(914400)
 
 	tests := []struct {
-		name          string
-		widthIn       float64
-		heightIn      float64
-		want          string
+		name     string
+		widthIn  float64
+		heightIn float64
+		want     string
 	}{
 		{"widescreen 13.333x7.5", 13.333, 7.5, "16:9"},
 		{"widescreen 10x5.625", 10, 5.625, "16:9"},

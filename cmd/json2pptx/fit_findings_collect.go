@@ -1573,7 +1573,20 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 		for ci := range slide.Content {
 			content := &slide.Content[ci]
 			ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
-			if ph == nil || ph.FontColor == "" {
+			if ph == nil {
+				continue
+			}
+			// A layout that leaves its placeholder colour to the master's
+			// txStyles states no FontColor, and the preflight used to skip it
+			// entirely — so generate swapped the colour and validate said
+			// nothing (go-slide-creator-j4364). InheritedFontColor is what the
+			// placeholder actually renders at, resolved through the layout's
+			// clrMapOvr the same way the render-time pass resolves it.
+			fg := ph.FontColor
+			if fg == "" {
+				fg = ph.InheritedFontColor
+			}
+			if fg == "" {
 				continue
 			}
 			if len(extractContentParagraphs(content)) == 0 {
@@ -1581,7 +1594,7 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 			}
 			pairs = append(pairs, generator.ContrastPreflightPair{
 				Path:       slidepath.Content(si, content.PlaceholderID),
-				Foreground: ph.FontColor,
+				Foreground: fg,
 				Background: bgHex,
 				Source:     "slide_background",
 				// Bold is unknown from placeholder metadata; false is the

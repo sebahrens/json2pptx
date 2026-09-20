@@ -93,7 +93,7 @@ func parseLayoutFile(reader *Reader, filename string, index int, masterResolver 
 	}
 
 	// Extract placeholders from shape tree with master position and font fallback
-	placeholders := extractPlaceholders(xmlLayout.CommonSlideData.ShapeTree.Shapes, name, masterPositions, masterFonts, fontResolver)
+	placeholders := extractPlaceholders(xmlLayout.CommonSlideData.ShapeTree.Shapes, name, masterPositions, masterFonts, fontResolver, parseLayoutColorMapOverride(data))
 
 	// Calculate capacity estimate
 	capacity := estimateCapacity(placeholders)
@@ -176,7 +176,7 @@ func extractLayoutID(filename string) string {
 // masterPositions provides fallback transforms for placeholders that inherit from the master.
 // masterFonts provides fallback font styles from the master's txStyles.
 // fontResolver is used to resolve fonts from shapes and master.
-func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions map[string]*MasterTransform, masterFonts *MasterFontStyles, fontResolver *MasterFontResolver) []types.PlaceholderInfo {
+func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions map[string]*MasterTransform, masterFonts *MasterFontStyles, fontResolver *MasterFontResolver, clrMapOvr map[string]string) []types.PlaceholderInfo {
 	var placeholders []types.PlaceholderInfo
 
 	for i, shape := range shapes {
@@ -237,8 +237,10 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 		switch phType {
 		case types.PlaceholderTitle:
 			applyInheritedTitleText(&info, &shape, masterFonts)
+			info.InheritedFontColor = inheritedTitleColor(&shape, masterFonts, clrMapOvr)
 		case types.PlaceholderBody, types.PlaceholderContent:
 			applyInheritedBodyText(&info, &shape, masterFonts)
+			info.InheritedFontColor = inheritedBodyColor(&shape, masterFonts, clrMapOvr)
 		}
 		placeholders = append(placeholders, info)
 	}

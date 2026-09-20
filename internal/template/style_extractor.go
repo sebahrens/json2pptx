@@ -420,9 +420,9 @@ func (idx *tableStyleIndex) parse() {
 
 // tblStyleLstXML is the root element of ppt/tableStyles.xml.
 type tblStyleLstXML struct {
-	XMLName xml.Name         `xml:"tblStyleLst"`
-	Default string           `xml:"def,attr,omitempty"`
-	Styles  []tblStyleXML    `xml:"tblStyle"`
+	XMLName xml.Name      `xml:"tblStyleLst"`
+	Default string        `xml:"def,attr,omitempty"`
+	Styles  []tblStyleXML `xml:"tblStyle"`
 }
 
 // tblStyleXML represents a single <a:tblStyle> entry.  We only need the ID and
@@ -436,13 +436,13 @@ type tblStyleXML struct {
 // XML structure definitions for style extraction (more detailed than layout parsing)
 
 type slideLayoutStyleXML struct {
-	XMLName         xml.Name                 `xml:"sldLayout"`
-	CommonSlideData commonSlideDataStyleXML  `xml:"cSld"`
+	XMLName         xml.Name                `xml:"sldLayout"`
+	CommonSlideData commonSlideDataStyleXML `xml:"cSld"`
 }
 
 type commonSlideDataStyleXML struct {
-	Name      string              `xml:"name,attr"`
-	ShapeTree shapeTreeStyleXML   `xml:"spTree"`
+	Name      string            `xml:"name,attr"`
+	ShapeTree shapeTreeStyleXML `xml:"spTree"`
 }
 
 type shapeTreeStyleXML struct {
@@ -450,14 +450,14 @@ type shapeTreeStyleXML struct {
 }
 
 type shapeStyleXML struct {
-	NonVisualProperties nvSpPrStyleXML       `xml:"nvSpPr"`
-	ShapeProperties     spPrStyleXML         `xml:"spPr"`
-	TextBody            *txBodyStyleXML      `xml:"txBody"`
+	NonVisualProperties nvSpPrStyleXML  `xml:"nvSpPr"`
+	ShapeProperties     spPrStyleXML    `xml:"spPr"`
+	TextBody            *txBodyStyleXML `xml:"txBody"`
 }
 
 type nvSpPrStyleXML struct {
-	ConnectionNonVisual cNvPrStyleXML   `xml:"cNvPr"`
-	Placeholder         *phStyleXML     `xml:"nvPr>ph"`
+	ConnectionNonVisual cNvPrStyleXML `xml:"cNvPr"`
+	Placeholder         *phStyleXML   `xml:"nvPr>ph"`
 }
 
 type cNvPrStyleXML struct {
@@ -489,8 +489,8 @@ type extStyleXML struct {
 }
 
 type txBodyStyleXML struct {
-	BodyProperties *bodyPrStyleXML     `xml:"bodyPr"`
-	ListStyle      *listStyleStyleXML  `xml:"lstStyle"`
+	BodyProperties *bodyPrStyleXML    `xml:"bodyPr"`
+	ListStyle      *listStyleStyleXML `xml:"lstStyle"`
 }
 
 type bodyPrStyleXML struct {
@@ -505,21 +505,21 @@ type listStyleStyleXML struct {
 }
 
 type lvlPPrStyleXML struct {
-	MarginLeft  int64                `xml:"marL,attr"`
-	Indent      int64                `xml:"indent,attr"`
-	SpaceBefore *spcStyleXML         `xml:"spcBef"`
-	SpaceAfter  *spcStyleXML         `xml:"spcAft"`
-	LineSpacing *spcStyleXML         `xml:"lnSpc"`
-	BulletNone  *struct{}            `xml:"buNone"`
-	BulletChar  *buCharStyleXML      `xml:"buChar"`
-	BulletColor *buClrStyleXML       `xml:"buClr"`
+	MarginLeft        int64            `xml:"marL,attr"`
+	Indent            int64            `xml:"indent,attr"`
+	SpaceBefore       *spcStyleXML     `xml:"spcBef"`
+	SpaceAfter        *spcStyleXML     `xml:"spcAft"`
+	LineSpacing       *spcStyleXML     `xml:"lnSpc"`
+	BulletNone        *struct{}        `xml:"buNone"`
+	BulletChar        *buCharStyleXML  `xml:"buChar"`
+	BulletColor       *buClrStyleXML   `xml:"buClr"`
 	BulletSizePercent *buSzPctStyleXML `xml:"buSzPct"`
-	DefRPr      *defRPrStyleXML      `xml:"defRPr"`
+	DefRPr            *defRPrStyleXML  `xml:"defRPr"`
 }
 
 type spcStyleXML struct {
-	SpacePoints  *spcPtsStyleXML  `xml:"spcPts"`
-	SpacePercent *spcPctStyleXML  `xml:"spcPct"`
+	SpacePoints  *spcPtsStyleXML `xml:"spcPts"`
+	SpacePercent *spcPctStyleXML `xml:"spcPct"`
 }
 
 type spcPtsStyleXML struct {
@@ -552,11 +552,11 @@ type buSzPctStyleXML struct {
 }
 
 type defRPrStyleXML struct {
-	Size      int                  `xml:"sz,attr"`
-	Bold      bool                 `xml:"b,attr"`
-	Italic    bool                 `xml:"i,attr"`
-	Latin     *latinFontStyleXML   `xml:"latin"`
-	SolidFill *solidFillStyleXML   `xml:"solidFill"`
+	Size      int                `xml:"sz,attr"`
+	Bold      bool               `xml:"b,attr"`
+	Italic    bool               `xml:"i,attr"`
+	Latin     *latinFontStyleXML `xml:"latin"`
+	SolidFill *solidFillStyleXML `xml:"solidFill"`
 }
 
 type latinFontStyleXML struct {

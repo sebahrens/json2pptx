@@ -216,7 +216,7 @@ func TestNormalizePlaceholderNames(t *testing.T) {
 			wantShapeNames: []string{"title", "body"},
 		},
 		{
-			name: "empty shapes",
+			name:   "empty shapes",
 			shapes: []shapeXML{},
 		},
 		{
@@ -325,7 +325,7 @@ func TestApplyNormalizationToBytes(t *testing.T) {
 		want   string
 	}{
 		{
-			name: "name rename",
+			name:  "name rename",
 			input: `<p:sp><p:nvSpPr><p:cNvPr id="3" name="Title 1"/></p:nvSpPr></p:sp>`,
 			result: NormalizationResult{
 				Renames: []PlaceholderRename{
@@ -335,7 +335,7 @@ func TestApplyNormalizationToBytes(t *testing.T) {
 			want: `<p:sp><p:nvSpPr><p:cNvPr id="3" name="title"/></p:nvSpPr></p:sp>`,
 		},
 		{
-			name: "type injection",
+			name:  "type injection",
 			input: `<p:nvPr><p:ph idx="1"/></p:nvPr>`,
 			result: NormalizationResult{
 				TypeFixes: []TypeInjection{
@@ -345,7 +345,7 @@ func TestApplyNormalizationToBytes(t *testing.T) {
 			want: `<p:nvPr><p:ph type="body" idx="1"/></p:nvPr>`,
 		},
 		{
-			name: "type injection skips existing type",
+			name:  "type injection skips existing type",
 			input: `<p:nvPr><p:ph type="title" idx="0"/></p:nvPr>`,
 			result: NormalizationResult{
 				TypeFixes: []TypeInjection{
@@ -355,7 +355,7 @@ func TestApplyNormalizationToBytes(t *testing.T) {
 			want: `<p:nvPr><p:ph type="title" idx="0"/></p:nvPr>`,
 		},
 		{
-			name: "combined rename and type injection",
+			name:  "combined rename and type injection",
 			input: `<p:sp><p:nvSpPr><p:cNvPr id="3" name="Text Placeholder 15"/><p:cNvSpPr/><p:nvPr><p:ph idx="15"/></p:nvPr></p:nvSpPr></p:sp>`,
 			result: NormalizationResult{
 				Renames: []PlaceholderRename{

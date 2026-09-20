@@ -37,20 +37,20 @@ func DefaultLayoutGeneratorConfig() LayoutGeneratorConfig {
 // GeneratedLayout represents a programmatically created layout.
 // These layouts are generated from a base content layout's style and dimensions.
 type GeneratedLayout struct {
-	ID           string                  // Unique layout identifier (e.g., "content-2-50-50")
-	Name         string                  // Human-readable name (e.g., "Two Column (50/50)")
-	BasedOnIdx   int                     // Index of the source content layout
-	Placeholders []GeneratedPlaceholder  // Placeholders in this layout
-	TitleBounds  *types.BoundingBox      // Resolved title bounds from base layout (nil = inherit from master)
+	ID           string                 // Unique layout identifier (e.g., "content-2-50-50")
+	Name         string                 // Human-readable name (e.g., "Two Column (50/50)")
+	BasedOnIdx   int                    // Index of the source content layout
+	Placeholders []GeneratedPlaceholder // Placeholders in this layout
+	TitleBounds  *types.BoundingBox     // Resolved title bounds from base layout (nil = inherit from master)
 }
 
 // GeneratedPlaceholder represents a placeholder in a generated layout.
 type GeneratedPlaceholder struct {
-	ID     string               // Slot identifier (e.g., "slot1", "slot2")
-	Index  int                  // Placeholder index (1-based)
-	Type   string               // Placeholder type (always "body" for universal content)
-	Bounds types.BoundingBox    // Position and size in EMUs
-	Style  PlaceholderStyle     // Visual style copied from base layout
+	ID     string            // Slot identifier (e.g., "slot1", "slot2")
+	Index  int               // Placeholder index (1-based)
+	Type   string            // Placeholder type (always "body" for universal content)
+	Bounds types.BoundingBox // Position and size in EMUs
+	Style  PlaceholderStyle  // Visual style copied from base layout
 }
 
 // HorizontalLayoutSpec defines a horizontal layout configuration.

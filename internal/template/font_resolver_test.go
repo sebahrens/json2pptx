@@ -508,10 +508,10 @@ func TestMasterFontResolver_GetMasterFontsForLayout_Integration(t *testing.T) {
 	// GetMasterFontsForLayout expects layoutID without .xml extension (e.g., "slideLayout1")
 	// It builds the rels path as: ppt/slideLayouts/_rels/{layoutID}.xml.rels
 	path := createTestPPTXWithContent(t, map[string][]byte{
-		"ppt/presentation.xml":                                   []byte("<presentation/>"),
-		"ppt/slideLayouts/slideLayout1.xml":                      []byte("<layout/>"),
-		"ppt/slideLayouts/_rels/slideLayout1.xml.rels":           []byte(layoutRelsXML),
-		"ppt/slideMasters/slideMaster1.xml":                      []byte(slideMasterXML),
+		"ppt/presentation.xml":                         []byte("<presentation/>"),
+		"ppt/slideLayouts/slideLayout1.xml":            []byte("<layout/>"),
+		"ppt/slideLayouts/_rels/slideLayout1.xml.rels": []byte(layoutRelsXML),
+		"ppt/slideMasters/slideMaster1.xml":            []byte(slideMasterXML),
 	})
 
 	reader, err := OpenTemplate(path)
@@ -599,9 +599,9 @@ func TestMasterFontResolver_GetMasterFontsForLayout_Errors(t *testing.T) {
 		{
 			name: "invalid rels XML",
 			files: map[string][]byte{
-				"ppt/presentation.xml":                          []byte("<presentation/>"),
-				"ppt/slideLayouts/slideLayout1.xml":             []byte("<layout/>"),
-				"ppt/slideLayouts/_rels/slideLayout1.xml.rels":  []byte("not valid xml"),
+				"ppt/presentation.xml":                         []byte("<presentation/>"),
+				"ppt/slideLayouts/slideLayout1.xml":            []byte("<layout/>"),
+				"ppt/slideLayouts/_rels/slideLayout1.xml.rels": []byte("not valid xml"),
 			},
 			layoutID: "slideLayout1",
 		},

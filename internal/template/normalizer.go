@@ -13,9 +13,9 @@ import (
 
 // NormalizationResult records all changes made by placeholder normalization.
 type NormalizationResult struct {
-	Renames    []PlaceholderRename // Shape name renames
-	TypeFixes  []TypeInjection     // Placeholders that had type="body" injected
-	Warnings   []string            // Structural warnings (e.g., duplicate canonical names)
+	Renames   []PlaceholderRename // Shape name renames
+	TypeFixes []TypeInjection     // Placeholders that had type="body" injected
+	Warnings  []string            // Structural warnings (e.g., duplicate canonical names)
 }
 
 // HasChanges returns true if any renames or type fixes were applied.
