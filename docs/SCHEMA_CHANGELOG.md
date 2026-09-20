@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **MCP workflow prompts (go-slide-creator-zhaw.1).** `prompts/list` now
+  advertises `deck-from-brief` and `revise-deck`; `prompts/get` returns a
+  ready-to-use user message with the task-specific `get_started` fast path and
+  the shared final-revision visual review rule. The first prompt accepts a
+  required brief plus optional template and slide budget. The second accepts
+  a revision goal plus exactly one of a PPTX path or deck JSON. Schema
+  version advances to 4.74.0; the raw input and tool-name fingerprint is
+  unchanged.
+
 - **External and slide-jump hyperlinks (go-slide-creator-repp.1,
   go-slide-creator-repp.2).** Text and bullets accept `link: {url}`;
   slide source attribution accepts `source_link: {url}`. A `shape_grid`

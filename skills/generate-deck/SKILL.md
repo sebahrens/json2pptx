@@ -28,6 +28,11 @@ server `instructions`):** A deck is done only after every slide of the CURRENT r
 content. `get_started{task:"brief"}` returns this DeckSpec path as its `fast_path` (`tool:
 "render_deck_spec"`, `steps[]`); `make_deck` is a skeleton/wireframe tool only.
 
+MCP hosts that expose prompts can use `deck-from-brief` with a required `brief`
+and optional `template` / `slide_budget` (1–100), or `revise-deck` with a required
+`goal` and exactly one of `pptx_path` / `deck_json`. Both prompts include the
+appropriate `get_started` fast path and the same final-revision visual review rule.
+
 This skill is split into focused sub-files. SKILL.md (this file) covers preconditions, the 5-tool quick reference, and the workflow overview. Load the sub-files when you need their detail:
 
 | File | Contents |
