@@ -104,6 +104,24 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Every fit finding carries `severity` (go-slide-creator-dwkkf).**
+  `generate_presentation`'s `fit_findings` had no severity at all while
+  `validate_input` reported the same finding as `info`, so a client filtering by
+  severity got different answers from two tools about one fact.
+  - `FitFinding` now marshals a derived `severity` (`refuse` → `error`,
+    `shrink_or_split` → `warning`, everything else → `info`) on every surface
+    that serialises one.
+  - The mapping moved next to the actions themselves and
+    `diagnostics.SeverityForAction` delegates to it, so the envelope and a raw
+    `fit_findings` array cannot drift apart again.
+- **`UNKNOWN_PARAMETER` suggests a synonym (go-slide-creator-dwkkf).** The
+  server's instructions promise a `did_you_mean`, but
+  `show_pattern{pattern: "agenda"}` got only "Accepted arguments: name":
+  "pattern" and "name" share neither spelling nor tokens, so neither existing
+  rule fired. A small same-meaning table (`pattern` → `name`, `prompt` →
+  `brief`, `deck` → `presentation`, …) is consulted last, and only when the
+  tool actually accepts the target.
+
 - **Embedded templates keep their name (go-slide-creator-qbks).** A server
   started without `--templates-dir` materialised its template as
   `json2pptx-template-356087472.pptx`, and everything downstream that reads a

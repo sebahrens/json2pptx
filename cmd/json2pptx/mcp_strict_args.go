@@ -158,7 +158,48 @@ func suggestArgName(key string, accepted []string) string {
 			best, bestShared = cand, shared
 		}
 	}
-	return best
+	if best != "" {
+		return best
+	}
+	// Neither spelling nor tokens match, but the agent may have used a
+	// different WORD for the same thing. show_pattern{pattern: "agenda"} is the
+	// reported case: "pattern" and "name" share no letters worth counting, so
+	// the server said only "Accepted arguments: name" while its own
+	// instructions promise a did_you_mean (go-slide-creator-dwkkf).
+	for _, syn := range argSynonyms[key] {
+		for _, cand := range accepted {
+			if cand == syn {
+				return syn
+			}
+		}
+	}
+	return ""
+}
+
+// argSynonyms maps a word an agent plausibly reaches for to the argument names
+// this server actually uses. Only same-meaning pairs belong here — edit
+// distance and shared tokens already cover typos and near-misses — and a
+// suggestion is made only when the tool really accepts the target.
+var argSynonyms = map[string][]string{
+	"pattern":       {"name"},
+	"pattern_name":  {"name"},
+	"diagram":       {"name", "type"},
+	"template_name": {"template", "template_path"},
+	"deck":          {"presentation", "deck_spec"},
+	"spec":          {"deck_spec", "presentation"},
+	"slides":        {"presentation", "deck_spec"},
+	"json":          {"presentation", "deck_spec"},
+	"file":          {"path", "pptx_path", "output_path"},
+	"pptx":          {"pptx_path", "path"},
+	"dir":           {"base_dir", "output_dir"},
+	"directory":     {"base_dir", "output_dir"},
+	"prompt":        {"brief", "intent"},
+	"description":   {"intent", "brief"},
+	"goal":          {"intent", "brief"},
+	"slide":         {"slide_index", "slide_json"},
+	"index":         {"slide_index"},
+	"image":         {"image_path", "images"},
+	"model":         {"vision_model"},
 }
 
 // argTokens splits an argument name into its lowercase underscore/hyphen

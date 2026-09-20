@@ -213,14 +213,10 @@ func fromSingleError(err error, fallbackCode string) Diagnostic {
 // came back at two severities depending on which tool an agent asked
 // (go-slide-creator-7xyy).
 func SeverityForAction(action string) Severity {
-	switch action {
-	case "refuse":
-		return SeverityError
-	case "shrink_or_split":
-		return SeverityWarning
-	default: // "review", "info", unknown
-		return SeverityInfo
-	}
+	// One mapping, owned beside the actions themselves, so a diagnostic and a
+	// raw fit_findings entry cannot disagree about the same finding
+	// (go-slide-creator-dwkkf).
+	return Severity(patterns.SeverityForAction(action))
 }
 
 // SeverityForFinding resolves a finding's severity from its action, falling back

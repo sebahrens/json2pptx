@@ -59,6 +59,7 @@ var outputSchemaGenerate = json.RawMessage(`{
         "path":        {"type": "string"},
         "message":     {"type": "string"},
         "action":      {"type": "string"},
+        "severity":    {"type": "string", "enum": ["error", "warning", "info"], "description": "Derived from action (refuse=error, shrink_or_split=warning, everything else=info). Always present, and the same value the findings envelope reports for this finding."},
         "fix":         {"type": "object"},
         "next_tool_call": {
           "type": "object",
@@ -69,7 +70,7 @@ var outputSchemaGenerate = json.RawMessage(`{
           "required": ["tool", "args_template"]
         }
       },
-      "required": ["code", "slide_index", "message", "action"]
+      "required": ["code", "slide_index", "message", "action", "severity"]
     }
   }
 }`)

@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 )
@@ -49,6 +50,53 @@ type FitFinding struct {
 	// segment-scoped (i.e. the slide is not a compose slide or the finding is
 	// emitted against the merged grid rather than a specific segment).
 	SegmentIndex *int `json:"segment_index,omitempty"`
+}
+
+// SeverityForAction maps a finding's action to the severity every surface
+// reports it at. It lives here, beside the actions themselves, so the
+// diagnostics envelope and a raw fit_findings array cannot disagree about one
+// finding — which they did: generate_presentation's fit_findings carried no
+// severity at all while validate_input reported the same finding as "info"
+// (go-slide-creator-dwkkf).
+func SeverityForAction(action string) string {
+	switch action {
+	case "refuse":
+		return "error"
+	case "shrink_or_split":
+		return "warning"
+	default: // "review", "info", unknown
+		return "info"
+	}
+}
+
+// Severity is the finding's severity, resolved from its action and falling
+// back to the action its CODE declares when the emitter stated none.
+func (f FitFinding) Severity() string {
+	action := f.Action
+	if action == "" {
+		if meta, ok := GetFindingMeta(f.Code); ok {
+			action = meta.Severity
+		}
+	}
+	return SeverityForAction(action)
+}
+
+// fitFindingJSON mirrors FitFinding for marshalling, with the derived severity
+// written out. The alias type breaks the recursion into MarshalJSON.
+type fitFindingJSON struct {
+	fitFindingAlias
+	Severity string `json:"severity"`
+}
+
+type fitFindingAlias FitFinding
+
+// MarshalJSON emits the derived severity alongside the action, so a client
+// filtering fit_findings by severity gets the same answer from every tool.
+func (f FitFinding) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fitFindingJSON{
+		fitFindingAlias: fitFindingAlias(f),
+		Severity:        f.Severity(),
+	})
 }
 
 // ContentDropped builds a CONTENT_DROPPED fit finding for a path where

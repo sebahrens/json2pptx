@@ -141,3 +141,39 @@ func TestStrictArgs_RawInputSchemaProperties(t *testing.T) {
 		t.Errorf("expected did-you-mean alpha, got %s", text)
 	}
 }
+
+// TestStrictArgs_SynonymSuggestion is go-slide-creator-dwkkf: the server's own
+// instructions promise a did_you_mean, but show_pattern{pattern: "agenda"} got
+// only "Accepted arguments: name" — "pattern" and "name" share neither spelling
+// nor tokens, so neither existing rule fired.
+func TestStrictArgs_SynonymSuggestion(t *testing.T) {
+	res := unknownArgumentsError(mcpShowPatternTool(), map[string]any{"pattern": "agenda"})
+	if res == nil {
+		t.Fatal("an unknown argument must be rejected")
+	}
+	text := resultText(res)
+	if !strings.Contains(text, "name") || !strings.Contains(text, "did you mean") {
+		t.Errorf("expected a did-you-mean naming %q, got %s", "name", text)
+	}
+	if !strings.Contains(text, "did_you_mean") {
+		t.Errorf("the fix must carry did_you_mean for a machine reader: %s", text)
+	}
+}
+
+// TestSuggestArgName_SynonymsOnlyWhenAccepted: a synonym is offered only when
+// the tool really takes the target, and never invents one.
+func TestSuggestArgName_SynonymsOnlyWhenAccepted(t *testing.T) {
+	if got := suggestArgName("pattern", []string{"name", "fields"}); got != "name" {
+		t.Errorf("suggestArgName(pattern) = %q, want name", got)
+	}
+	if got := suggestArgName("pattern", []string{"brief", "audience"}); got != "" {
+		t.Errorf("a synonym whose target the tool does not accept must not be suggested, got %q", got)
+	}
+	if got := suggestArgName("prompt", []string{"brief", "slide_budget"}); got != "brief" {
+		t.Errorf("suggestArgName(prompt) = %q, want brief", got)
+	}
+	// Spelling and token rules still win before the table is consulted.
+	if got := suggestArgName("slide_count", []string{"slide_budget", "brief"}); got != "slide_budget" {
+		t.Errorf("token overlap should still decide: got %q", got)
+	}
+}

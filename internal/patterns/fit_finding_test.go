@@ -482,3 +482,46 @@ func TestFitFindingJSONOmitsNilExtents(t *testing.T) {
 		t.Error("zero OverflowRatio should be omitted from JSON")
 	}
 }
+
+// TestFitFindingCarriesSeverity is go-slide-creator-dwkkf: generate's
+// fit_findings had no severity at all while validate_input reported the same
+// finding as "info", so a client filtering by severity got different answers
+// from two tools about one fact.
+func TestFitFindingCarriesSeverity(t *testing.T) {
+	cases := map[string]string{
+		"refuse":          "error",
+		"shrink_or_split": "warning",
+		"review":          "info",
+		"info":            "info",
+		"":                "info",
+	}
+	for action, want := range cases {
+		f := FitFinding{Action: action}
+		if got := f.Severity(); got != want {
+			t.Errorf("action %q severity = %q, want %q", action, got, want)
+		}
+		data, err := json.Marshal(f)
+		if err != nil {
+			t.Fatalf("marshal: %v", err)
+		}
+		var out map[string]any
+		if err := json.Unmarshal(data, &out); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if out["severity"] != want {
+			t.Errorf("marshalled severity = %v, want %q (%s)", out["severity"], want, data)
+		}
+		if out["action"] != action && action != "" {
+			t.Errorf("action must survive marshalling: %s", data)
+		}
+	}
+}
+
+// TestFitFindingSeverityFallsBackToTheCode: an emitter that states no action
+// must not silently demote its own finding.
+func TestFitFindingSeverityFallsBackToTheCode(t *testing.T) {
+	f := FitFinding{ValidationError: ValidationError{Code: ErrCodeWeakContent}}
+	if got := f.Severity(); got != "error" {
+		t.Errorf("WEAK_CONTENT with no action = %q; the code declares refuse, so it is an error", got)
+	}
+}
