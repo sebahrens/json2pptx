@@ -37,8 +37,10 @@ func TestStackLineEndLabels(t *testing.T) {
 		if !stackLineEndLabels(labels, plot, lineH) {
 			t.Fatal("two labels fit")
 		}
-		if labels[0].labelY != 40 || labels[1].labelY != 120 {
-			t.Errorf("labels moved without needing to: %.0f, %.0f", labels[0].labelY, labels[1].labelY)
+		for _, l := range labels {
+			if l.labelY != l.y {
+				t.Errorf("label %q moved from %.0f to %.0f without needing to", l.name, l.y, l.labelY)
+			}
 		}
 	})
 
