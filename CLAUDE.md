@@ -127,7 +127,7 @@ examples/         # Example JSON input files (19 decks)
 
 ## Templates
 
-4 bundled templates: `forest-green`, `midnight-blue`, `modern-template`, `warm-coral`. Each has its own theme colors, fonts, and slide layouts. Use `json2pptx validate-template` to inspect.
+`templates/` ships 9 templates, all embedded in the binary: `abstract`, `blue-corporate`, `business-template`, `forest-green`, `midnight-blue`, `modern`, `modern-template`, `modern-yellow`, `warm-coral`. The four used throughout the docs and tests — `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` — are the reference set; the other five exist to catch template-portability bugs. Each has its own theme colors, fonts, and slide layouts. Use `json2pptx validate-template` to inspect.
 
 Template rules are documented in two canonical docs — link to them rather than restating their detail here:
 

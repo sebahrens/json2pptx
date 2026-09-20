@@ -4,7 +4,7 @@ Full catalogue of every tool served by the `json2pptx-mcp` server. SKILL.md carr
 
 For the `svggen-mcp` tool table, see [SKILL.md § Connected MCP servers](SKILL.md#connected-mcp-servers).
 
-> **Tool profiles.** The server's default `core` profile lists only ~20 tools in `tools/list` (see [SKILL.md § Connected MCP servers](SKILL.md#connected-mcp-servers) for the set) and omits their `outputSchema`; start it with `json2pptx mcp --tools all` (or `JSON2PPTX_MCP_TOOLS=all`) to list every tool below. `get_capabilities().mcp_tools_available[].in_core_profile` marks the core set; non-core tools are still callable by name.
+> **Tool profiles.** The server's default `core` profile lists a subset of the tools in `tools/list` (see [SKILL.md § Connected MCP servers](SKILL.md#connected-mcp-servers) for the set) and omits their `outputSchema`; start it with `json2pptx mcp --tools all` (or `JSON2PPTX_MCP_TOOLS=all`) to list every tool below. `get_capabilities().mcp_tools_available[].in_core_profile` marks the core set; non-core tools are still callable by name.
 
 > Prefer MCP tool calls over shelling out to the CLI. Each row below lists the CLI equivalent for reference; CLI usage is for ad-hoc terminal runs and CI, not the agentic workflow.
 

@@ -92,7 +92,7 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 ## Features
 
 - **JSON-to-PPTX conversion** -- structured slide definitions become polished PowerPoint files
-- **4 bundled templates** -- `forest-green`, `midnight-blue`, `modern-template`, `warm-coral` (any `.pptx` works as a template)
+- **Bundled templates** -- 9 ship embedded in the binary; `forest-green`, `midnight-blue`, `modern-template` and `warm-coral` are the reference set the docs use, alongside `abstract`, `blue-corporate`, `business-template`, `modern` and `modern-yellow`. Call `list_templates` (or `json2pptx skill-info`) for the live list; any `.pptx` works as a template
 - **Template-aware layout selection** -- picks the right layout based on your content; synthesizes missing standard layouts
 - **15 chart types** -- bar, grouped_bar, stacked_bar, line, area, stacked_area, pie, donut, scatter, bubble, radar, waterfall, funnel, gauge, treemap
 - **21 diagram types** -- SWOT, timeline, process flow, pyramid, venn, org chart, Gantt, KPI dashboard, heatmap, fishbone, PESTEL, Porter's Five Forces, value chain, Business Model Canvas, nine box talent, house diagram, panel layout, icon columns/rows, stat cards, matrix 2x2
@@ -795,7 +795,7 @@ svg:
 
 ```
 cmd/
-  json2pptx/        Main CLI + HTTP API + MCP server (40 subcommands, 51 MCP tools)
+  json2pptx/        Main CLI + HTTP API + MCP server (the CLI's own --help lists its subcommands; get_capabilities().mcp_tools_available lists the MCP tools and marks the core profile)
   pptx2jpg/         PPTX to image conversion via LibreOffice
   mktemplate/       Template authoring helper
   debugcolors/      Theme color debugging tool
