@@ -148,6 +148,10 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// slide.Pattern directly, before expansion erases which pattern was asked
 	// for.
 	findings = append(findings, collectPatternMismatchFindings(input)...)
+	// 8c. Bundled icon names in diagram panels that do not resolve. The panel
+	// renders without its icon while its siblings keep theirs, and the only
+	// trace used to be a server log line (go-slide-creator-puki).
+	findings = append(findings, collectDiagramIconFindings(input)...)
 	findings = append(findings, collectBackgroundFindings(input)...)
 
 	// 9. Accessibility lint: alt text on images / icons sourced from

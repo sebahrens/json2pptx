@@ -618,6 +618,9 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// what generate saw; without them the JSON report called a degraded deck
 	// clean (go-slide-creator-wn4v).
 	allFitFindings = append(allFitFindings, collectPatternPostExpandFindings(input, runRes.SlideWidth, runRes.SlideHeight, &runRes.TemplateTheme)...)
+	// An icon name that does not resolve drops the icon from its panel while
+	// the siblings keep theirs; generation only logged it (go-slide-creator-puki).
+	allFitFindings = append(allFitFindings, collectDiagramIconFindings(input)...)
 	allFitFindings = dedupFitFindings(allFitFindings)
 
 	// Build per-slide resolution summary

@@ -104,6 +104,21 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **An unknown icon name in a diagram panel is reported
+  (go-slide-creator-puki).** `panels: [{title: "Simplify", icon: "layers"}]`
+  rendered a panel with no icon while its siblings kept theirs, and the only
+  trace was a server log line: `WARN panel native shapes: icon not embedded`.
+  A shape_grid icon *cell* already reported the same typo, so one mistake had
+  two fates depending on which surface the author used.
+  - `ICON_BUNDLED_NAME_UNKNOWN` is now emitted for `panels[].icon` too, at
+    `…diagram_value.data.panels[N].icon` (and at the cell's own path inside a
+    shape_grid or pattern-expanded grid), carrying the same Levenshtein
+    suggestions and a `replace_value` fix.
+  - `action: review`, not the cell path's error: the panel still renders,
+    minus its icon — which is exactly why it went unnoticed.
+  - Reaches `validate_input`, `validate --fit-report`, `score_deck` and the
+    `generate --json-output-report` fit findings.
+
 - **Pattern ink follows the contrast fixer's order (go-slide-creator-1sel).**
   `readableTextOn` picked whichever of `lt1`/`dk1` had MORE contrast, so a light
   accent got `dk1` — pure black — while the generator's own contrast fixer
