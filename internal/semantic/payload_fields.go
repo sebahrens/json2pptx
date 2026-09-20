@@ -115,6 +115,7 @@ var agendaSectionKeys = []string{
 var quoteItemKeys = []string{"text", "quote", "name", "attribution", "speaker", "author", "role", "title"}
 var bridgeColumnKeys = []string{"label", "value", "type"}
 var pillarItemKeys = []string{"title", "body"}
+var orgNodeKeys = []string{"id", "name", "title", "parent"}
 
 var archTierKeys = []string{
 	"label", "name", "title", "tier", "layer",
@@ -308,6 +309,11 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"objective":   strField("Strategy-house objective banner; supply with foundation."),
 		"foundation":  strField("Strategy-house foundation row; supply with objective."),
 		"roof_badges": {typ: "array", itemStrings: true, desc: "Up to three short string badges above a strategy house."},
+	}, compositionFields()), universalFields()),
+	KindOrg: withFields(withFields(map[string]payloadField{
+		"title":    strField("Slide title."),
+		"takeaway": strField("One-line takeaway footer."),
+		"nodes":    {typ: "array", desc: "One root plus reporting nodes, in any order. Each node has id, name, optional title, and parent id; exactly one node omits parent.", itemKeys: orgNodeKeys, itemRequired: []string{"id", "name"}},
 	}, compositionFields()), universalFields()),
 	KindTeam: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

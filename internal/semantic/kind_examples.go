@@ -152,6 +152,15 @@ var kindExamples = map[SlideKind]map[string]any{
 		"foundation": "People · Data · Controls",
 		"takeaway":   "The platform strategy rests on trust, speed, and disciplined growth.",
 	},
+	KindOrg: {
+		"kind": "org", "title": "Programme governance", "takeaway": "One steering group owns the decision; three leads own delivery.",
+		"nodes": []any{
+			map[string]any{"id": "steer", "name": "Steering group", "title": "Decision owner"},
+			map[string]any{"id": "platform", "name": "Platform lead", "title": "Architecture", "parent": "steer"},
+			map[string]any{"id": "data", "name": "Data lead", "title": "Migration", "parent": "steer"},
+			map[string]any{"id": "risk", "name": "Risk lead", "title": "Controls", "parent": "steer"},
+		},
+	},
 	KindArchitecture: {
 		"kind":  "architecture",
 		"title": "Four tiers, two concerns that cut across them",

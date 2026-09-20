@@ -234,6 +234,7 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "blank-title",
 		pattern: slides.PillarsPattern,
 	},
+	KindOrg: {role: RoleAnalysis, family: FamilyProcess, density: DensityMedium, layout: "diagram"},
 	KindStat: {
 		// One number is the lightest slide in the deck and it is there to make a
 		// point, not to lay out evidence in parts. It shares the big-number
@@ -477,6 +478,9 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 	if slide.Kind == KindPillars && pattern == "" {
 		plan.layout = "content"
 	}
+	if slide.Kind == KindOrg && !slides.OrgFits(slide.Body) {
+		plan.layout = "content"
+	}
 	alternatives := compositionCandidates(slide.Kind, pattern)
 	if requested := slide.String("pattern"); requested != "" {
 		for _, candidate := range alternatives {
@@ -497,6 +501,9 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 				break
 			}
 		}
+	}
+	if slide.Kind == KindOrg && !slides.OrgFits(slide.Body) {
+		plan.layout = "content"
 	}
 
 	return SlideIR{
@@ -613,6 +620,8 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			candidates = append(candidates, visual(selected, "3–5 pillars within the selected visual's text budgets"))
 		}
 		return append(candidates, CompositionCandidate{Layout: "content", Reason: "bullets preserve an over-budget or partly framed strategy"})
+	case KindOrg:
+		return []CompositionCandidate{{Layout: "diagram", Reason: "up to seven named nodes across three reporting levels"}, {Layout: "content", Reason: "an indented list preserves a larger hierarchy"}}
 	case KindStat:
 		return []CompositionCandidate{
 			visual("stat-hero", "one oversized number with a label, context and source"),

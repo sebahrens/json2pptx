@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `org` (go-slide-creator-zgvs).** A flat `nodes[]` reporting
+  tree compiles to the `org_chart` diagram for up to seven nodes, three levels,
+  and four direct reports per node. The compiler rejects duplicate IDs,
+  missing parents and cycles at semantic paths; larger trees degrade to a
+  complete attributed list with `SEMANTIC_PATTERN_DEGRADED` so svggen cannot
+  silently prune named people. The node-label overprint fix is already present.
+  Schema version advances to 4.69.0; the raw input fingerprint is unchanged.
+
 - **DeckSpec kind `pillars` (go-slide-creator-r1k1).** Three to five named
   pillars compile to `strategy-house` when `objective` and `foundation` are
   supplied together, or `stylish-panels` without house framing. Pattern limits

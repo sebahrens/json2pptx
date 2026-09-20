@@ -35,6 +35,8 @@ const (
 	KindBridge SlideKind = "bridge"
 	// KindPillars lays out strategic pillars with optional house framing.
 	KindPillars SlideKind = "pillars"
+	// KindOrg shows a reporting or governance tree.
+	KindOrg SlideKind = "org"
 	// KindTeam is the people grid: who is on the engagement.
 	KindTeam SlideKind = "team"
 	// KindStat is one oversized number carrying the slide.
@@ -167,6 +169,12 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		Summary:        "Three to five named pillars render as stylish-panels, or as strategy-house when both objective and foundation are supplied. Over-budget or incomplete framing degrades to complete bullets with a finding.",
 		RequiredFields: []string{"pillars"},
 		TypicalFields:  []string{"title", "objective", "foundation", "roof_badges", "takeaway"},
+	},
+	KindOrg: {
+		Kind:           KindOrg,
+		Summary:        "A reporting or governance tree. Up to seven people or bodies across three levels render as org_chart; larger trees degrade to an indented list so no named node is hidden.",
+		RequiredFields: []string{"nodes"},
+		TypicalFields:  []string{"title", "takeaway"},
 	},
 	KindTeam: {
 		Kind:            KindTeam,

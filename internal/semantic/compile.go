@@ -172,10 +172,8 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 		return slides.CompileAgenda(in)
 	case KindQuote:
 		return slides.CompileQuote(in)
-	case KindBridge:
-		return slides.CompileBridge(in)
-	case KindPillars:
-		return slides.CompilePillars(in)
+	case KindBridge, KindPillars, KindOrg:
+		return compileExtendedKind(kind, in)
 	case KindTeam:
 		return slides.CompileTeam(in)
 	case KindStat:
@@ -200,6 +198,17 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 		return slides.CompileRaw(in)
 	default:
 		return slides.CompileFallback(in)
+	}
+}
+
+func compileExtendedKind(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []slides.SourceLink, error) {
+	switch kind {
+	case KindBridge:
+		return slides.CompileBridge(in)
+	case KindPillars:
+		return slides.CompilePillars(in)
+	default:
+		return slides.CompileOrg(in)
 	}
 }
 

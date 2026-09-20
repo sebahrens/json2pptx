@@ -55,6 +55,7 @@ var kindNeedsTakeaway = map[SlideKind]bool{
 	KindChartInsight:     true,
 	KindBridge:           true,
 	KindPillars:          true,
+	KindOrg:              true,
 	KindComparison:       true,
 	KindOptionMatrix:     true,
 	KindTable:            true,
@@ -133,6 +134,7 @@ var kindFieldShapes = map[SlideKind]map[string]shapeKind{
 	},
 	KindBridge:  {"title": shapeString, "columns": shapeArray, "unit": shapeString, "caption": shapeString, "takeaway": shapeString},
 	KindPillars: {"title": shapeString, "pillars": shapeArray, "objective": shapeString, "foundation": shapeString, "roof_badges": shapeArray, "takeaway": shapeString},
+	KindOrg:     {"title": shapeString, "nodes": shapeArray, "takeaway": shapeString},
 	KindTeam: {
 		"title": shapeString, "members": shapeArray, "people": shapeArray,
 		"team": shapeArray, "takeaway": shapeString,
@@ -503,6 +505,8 @@ func validateKindRules(path string, slide SlideSpec, s *semDiags) {
 		validateBridge(path, slide, s)
 	case KindPillars:
 		validatePillars(path, slide, s)
+	case KindOrg:
+		validateOrg(path, slide, s)
 	case KindTeam:
 		validateTeam(path, slide, s)
 	case KindStat:
@@ -578,6 +582,18 @@ func validatePillars(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	s.degrade(path+"."+field, "pillars "+problem+"; all content is preserved as bullets", "strategy-house/stylish-panels", degradeToBullets, degradeBudgetExceeded)
+}
+
+func validateOrg(path string, slide SlideSpec, s *semDiags) {
+	field, problem, hard := slides.OrgIssue(slide.Body)
+	if problem == "" || (field == "nodes" && !hasNonEmpty(slide.Body, "nodes")) {
+		return
+	}
+	if hard {
+		s.hard(path+"."+field, string(diagnostics.CodeSemanticFieldType), "org "+problem)
+		return
+	}
+	s.degrade(path+"."+field, "org "+problem+"; all named nodes are preserved as bullets", "org_chart", degradeToBullets, degradeBudgetExceeded)
 }
 
 func validateQuote(path string, slide SlideSpec, s *semDiags) {

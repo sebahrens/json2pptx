@@ -297,6 +297,15 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 			return b
 		}, rendered: true},
 	},
+	KindOrg: {
+		"nodes": {inject: func(s string) map[string]any {
+			b := orgCoverageBody()
+			b["nodes"].([]any)[1].(map[string]any)["name"] = s
+			return b
+		}, rendered: true},
+		"title":    {inject: func(s string) map[string]any { b := orgCoverageBody(); b["title"] = s; return b }, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any { b := orgCoverageBody(); b["takeaway"] = s; return b }, rendered: true},
+	},
 	// go-slide-creator-13lj: a person's name, role and bio all have to reach
 	// the rendered card.
 	KindTeam: {
@@ -416,6 +425,13 @@ func pillarsCoverageBody() map[string]any {
 		map[string]any{"title": "Trust", "body": []any{"Reliability"}},
 		map[string]any{"title": "Speed", "body": []any{"Delivery"}},
 		map[string]any{"title": "Scale", "body": []any{"Growth"}},
+	}}
+}
+
+func orgCoverageBody() map[string]any {
+	return map[string]any{"nodes": []any{
+		map[string]any{"id": "root", "name": "Steering group", "title": "Decision owner"},
+		map[string]any{"id": "lead", "name": "Platform lead", "title": "Delivery", "parent": "root"},
 	}}
 }
 
