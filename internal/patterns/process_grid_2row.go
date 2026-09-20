@@ -106,7 +106,7 @@ func (p *processGrid2Row) Schema() *Schema {
 			"row1_color":  StringSchema(0).WithDescription("Scheme color for the top-row phase boxes (default accent1)").WithDefault("accent1"),
 			"row2_label":  StringSchema(40).WithDescription("Label for the bottom row (rendered in the dk2 left column)"),
 			"row2_phases": phasesSchema,
-			"row2_color":  StringSchema(0).WithDescription("Scheme color for the bottom-row phase boxes (default accent3)").WithDefault("accent3"),
+			"row2_color":  StringSchema(0).WithDescription("Scheme color for the bottom-row phase boxes; defaults to a darker tone of row1_color so the two tracks read as parallel rather than unrelated").WithDefault(""),
 		},
 		[]string{"row1_label", "row1_phases", "row2_label", "row2_phases"},
 	).WithAdditionalProperties(false)
@@ -220,10 +220,11 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	if row1Color == "" {
 		row1Color = "accent1"
 	}
+	// row2 defaults to a darker tone of row1, not accent3: the two rows are
+	// parallel tracks of one process, and a second brand hue says they are two
+	// different things (go-slide-creator-at7ij).
 	row2Color := vals.Row2Color
-	if row2Color == "" {
-		row2Color = "accent3"
-	}
+	usePeerToneForRow2 := row2Color == ""
 
 	n := len(vals.Row1Phases)
 	if n == 0 || n != len(vals.Row2Phases) {
@@ -258,7 +259,7 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	applyProcessGrid2RowOverride(row2Cells[0], cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 	for i, phase := range vals.Row2Phases {
-		row2Cells[1+i] = buildProcessGrid2RowPhaseCell(ctx, phase, row2Color, phaseSize)
+		row2Cells[1+i] = buildProcessGrid2RowPhaseTintedCell(ctx, phase, row1Color, row2Color, usePeerToneForRow2, phaseSize)
 		applyProcessGrid2RowOverride(row2Cells[1+i], cellOverrides, cellIdx, baseAccent)
 		cellIdx++
 	}
@@ -293,6 +294,23 @@ func buildProcessGrid2RowLabelCell(ctx ExpandContext, label string, size float64
 			Geometry: "rect",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, processGrid2RowLabelFill)),
 			Text:     text,
+		},
+	}
+}
+
+// buildProcessGrid2RowPhaseTintedCell builds a row-2 phase box: a darker tone
+// of row1's colour by default, or the authored row2_color verbatim.
+func buildProcessGrid2RowPhaseTintedCell(ctx ExpandContext, phase, row1Color, row2Color string, usePeerTone bool, size float64) *jsonschema.GridCellInput {
+	if !usePeerTone {
+		return buildProcessGrid2RowPhaseCell(ctx, phase, row2Color, size)
+	}
+	tone := peerTone(row1Color)
+	textColor := readableTextOn(ctx, tone, "lt1")
+	return &jsonschema.GridCellInput{
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "rect",
+			Fill:     peerFillJSON(row1Color),
+			Text:     buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(phase), size, true, textColor),
 		},
 	}
 }

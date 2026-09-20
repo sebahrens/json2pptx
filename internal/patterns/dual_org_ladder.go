@@ -143,7 +143,7 @@ func (d *dualOrgLadder) Schema() *Schema {
 	overridesSchema := ObjectSchema(
 		map[string]*Schema{
 			"accent_a":   StringSchema(0).WithDescription("Scheme color for the left org header and the shared connector (default accent1)").WithDefault("accent1"),
-			"accent_b":   StringSchema(0).WithDescription("Scheme color for the right org header (default accent2)").WithDefault("accent2"),
+			"accent_b":   StringSchema(0).WithDescription("Scheme color for the right org header; defaults to a darker tone of accent_a so the two orgs read as peers rather than two brands").WithDefault(""),
 			"org_size":   NumberSchema(6, 40).WithDescription("Font size for the org-name headers in points (default 14)"),
 			"name_size":  NumberSchema(6, 40).WithDescription("Font size for member names in points (default 12)"),
 			"title_size": NumberSchema(6, 40).WithDescription("Font size for member titles in points (default 10)"),
@@ -240,10 +240,10 @@ func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverr
 	if accentA == "" {
 		accentA = "accent1"
 	}
+	// accent_b defaults to a darker tone of accent_a, not accent2: the two orgs
+	// are peers and a second brand hue says otherwise (go-slide-creator-at7ij).
 	accentB := ovr.AccentB
-	if accentB == "" {
-		accentB = "accent2"
-	}
+	usePeerToneForB := accentB == ""
 	orgSize := ResolveSize(ovr.OrgSize, 14.0)
 	nameSize := ResolveSize(ovr.NameSize, 12.0)
 	titleSize := ResolveSize(ovr.TitleSize, 10.0)
@@ -256,8 +256,8 @@ func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverr
 	headerRow := jsonschema.GridRowInput{
 		Height: 18, // header is shorter than body rows
 		Cells: []*jsonschema.GridCellInput{
-			buildDualOrgHeaderCell(v.OrgA, accentA, orgSize),
-			buildDualOrgHeaderCell(v.OrgB, accentB, orgSize),
+			buildDualOrgHeaderCell(v.OrgA, accentFillJSON(accentA), orgSize),
+			buildDualOrgHeaderCell(v.OrgB, headerBFill(accentA, accentB, usePeerToneForB), orgSize),
 		},
 	}
 	if co, ok := cellOverrides[0]; ok {
@@ -284,7 +284,7 @@ func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverr
 		if co, ok := cellOverrides[i+1]; ok {
 			if cellOvr, ok2 := co.(*DualOrgLadderCellOverride); ok2 && cellOvr.AccentBar {
 				gridRow.Cells[0].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accentA, Width: 3}
-				gridRow.Cells[1].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accentB, Width: 3}
+				gridRow.Cells[1].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: barBColor(accentA, accentB, usePeerToneForB), Width: 3}
 			}
 		}
 		bodyRows[i] = gridRow
@@ -307,14 +307,23 @@ func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverr
 // Cell builders
 // ---------------------------------------------------------------------------
 
-func buildDualOrgHeaderCell(orgName, accent string, size float64) *jsonschema.GridCellInput {
+func buildDualOrgHeaderCell(orgName string, fill json.RawMessage, size float64) *jsonschema.GridCellInput {
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
+			Fill:     fill,
 			Text:     buildDualOrgHeaderText(orgName, size),
 		},
 	}
+}
+
+// headerBFill is the right org's header fill: a darker tone of accent_a by
+// default, or the authored accent_b verbatim when one was given.
+func headerBFill(accentA, accentB string, usePeerTone bool) json.RawMessage {
+	if usePeerTone {
+		return peerFillJSON(accentA)
+	}
+	return accentFillJSON(accentB)
 }
 
 func buildDualOrgRoleCell(memberName, title string, nameSize, titleSize float64) *jsonschema.GridCellInput {
@@ -369,4 +378,14 @@ func buildDualOrgRoleText(memberName, title string, nameSize, titleSize float64)
 	}
 	data, _ := json.Marshal(obj)
 	return data
+}
+
+// barBColor is the right column's accent-bar colour. An accent bar takes a bare
+// scheme name with no tint, so the peer default reuses accent_a rather than
+// reaching for accent2 — the bar marks the same org the header does.
+func barBColor(accentA, accentB string, usePeerTone bool) string {
+	if usePeerTone {
+		return accentA
+	}
+	return accentB
 }

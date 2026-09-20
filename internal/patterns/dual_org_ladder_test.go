@@ -187,8 +187,35 @@ func TestDualOrgLadder_Expand_HeaderCellsUseAccentFill(t *testing.T) {
 	if !strings.Contains(string(header.Cells[0].Shape.Fill), "accent1") {
 		t.Errorf("left header fill should default to accent1, got %q", string(header.Cells[0].Shape.Fill))
 	}
-	if !strings.Contains(string(header.Cells[1].Shape.Fill), "accent2") {
-		t.Errorf("right header fill should default to accent2, got %q", string(header.Cells[1].Shape.Fill))
+	// go-slide-creator-at7ij: the right header is the SAME accent, darker — the
+	// two orgs are peers and accent2 is a second brand hue (green beside bright
+	// orange on forest-green).
+	rightFill := string(header.Cells[1].Shape.Fill)
+	if !strings.Contains(rightFill, "accent1") {
+		t.Errorf("right header should default to a tone of accent1, got %q", rightFill)
+	}
+	if strings.Contains(rightFill, "accent2") {
+		t.Errorf("right header still reaches for accent2: %q", rightFill)
+	}
+	if !strings.Contains(rightFill, "lumMod") {
+		t.Errorf("right header should be tinted so the pair is distinguishable, got %q", rightFill)
+	}
+	if left := string(header.Cells[0].Shape.Fill); left == rightFill {
+		t.Errorf("both headers render the same fill %q", left)
+	}
+}
+
+// An authored accent_b is used verbatim: this changes defaults, not decks that
+// made a choice.
+func TestDualOrgLadder_Expand_AuthoredAccentBWins(t *testing.T) {
+	p, _ := Default().Get("dual-org-ladder")
+	v := validDualOrgLadderValues(3)
+	grid, err := p.Expand(ExpandContext{}, v, &DualOrgLadderOverrides{AccentB: "accent4"}, nil)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+	if got := string(grid.Rows[0].Cells[1].Shape.Fill); got != `"accent4"` {
+		t.Errorf("right header fill = %q, want the authored accent4 verbatim", got)
 	}
 }
 

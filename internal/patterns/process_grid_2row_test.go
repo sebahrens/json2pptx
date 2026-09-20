@@ -163,11 +163,22 @@ func TestProcessGrid2Row_Expand_DefaultColorsAreAccent1Accent3(t *testing.T) {
 			t.Errorf("row 1 phase %d: expected accent1 fill, got %q", i, string(cell.Shape.Fill))
 		}
 	}
-	// Row 2 phase cells default to accent3.
+	// go-slide-creator-at7ij: row 2 defaults to the SAME accent, darker. The two
+	// rows are parallel tracks of one process; accent3 is a second brand hue
+	// (green beside bright blue on forest-green).
 	for i := 1; i < len(grid.Rows[1].Cells); i++ {
-		cell := grid.Rows[1].Cells[i]
-		if !strings.Contains(string(cell.Shape.Fill), "accent3") {
-			t.Errorf("row 2 phase %d: expected accent3 fill, got %q", i, string(cell.Shape.Fill))
+		got := string(grid.Rows[1].Cells[i].Shape.Fill)
+		if !strings.Contains(got, "accent1") {
+			t.Errorf("row 2 phase %d: expected a tone of accent1, got %q", i, got)
+		}
+		if strings.Contains(got, "accent3") {
+			t.Errorf("row 2 phase %d still reaches for accent3: %q", i, got)
+		}
+		if !strings.Contains(got, "lumMod") {
+			t.Errorf("row 2 phase %d should be tinted so the rows are distinguishable, got %q", i, got)
+		}
+		if row1 := string(grid.Rows[0].Cells[i].Shape.Fill); row1 == got {
+			t.Errorf("row 2 phase %d renders the same fill as row 1 (%q)", i, row1)
 		}
 	}
 }

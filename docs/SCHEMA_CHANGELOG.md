@@ -112,6 +112,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Peer structural fills are one accent at two luminances
+  (go-slide-creator-at7ij).** `dual-org-ladder` coloured its two org headers
+  `accent1` / `accent2` and `process-grid-2row` its two rows
+  `accent1` / `accent3`. Templates pick accent2 and accent3 for contrast with
+  accent1, not kinship, so forest-green rendered green beside bright orange and
+  green beside bright blue; midnight-blue, navy beside red. Neither is a
+  contrast failure — the halves are just peers (two orgs in one engagement, two
+  tracks of one process) and two brand hues say otherwise.
+  - Both now default the second fill to the first accent at `lumMod 65000`.
+    The schema defaults for `accent_b` and `row2_color` are empty rather than
+    a scheme name, and describe the derivation.
+  - An authored `accent_b` / `row2_color` is used verbatim: this changes
+    defaults, not decks that made a choice.
+  - Text colour still comes from the measured contrast of the actual tinted
+    fill, so the light labels on both rows stay readable.
+
 - **`recommend_pattern` admits it is pattern-only (go-slide-creator-m2u2).**
   `recommend_pattern("org chart of the leadership team")` returned `team-bios`
   at 0.97 **high** — the `org_chart` diagram is not in its universe, and
