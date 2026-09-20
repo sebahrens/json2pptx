@@ -475,6 +475,7 @@ Do not let cards / steps stretch to the full content height just because the gri
 - Big single-token values (KPI numbers) must shrink to fit one line (`fitSingleLineSize`) rather than wrap.
 - Header bands: fix the row with `min_height = max_height = headerRowPt(...)` (~1.2× the header line height + padding), never a percentage of the grid.
 - Cards: size with `contentCardHeightPt(shapeTextHeightPt(...), cardW, hasTopIcon)` and pass sparse card text through `anchorSparseText` so a short body is centred instead of hanging top-left (target: < 30% unused area per card). Skip content-sizing for rows that host a secondary chart.
+- **Reconcile header zones across a row.** Cards in a row are top-anchored, so a header that wraps to two lines while its neighbour's fits on one pushes only that card's body down — three panels meant to read as one comparison come out ragged (measured 19.2pt apart in a rendered card-grid; go-slide-creator-ommn). Measure every header in the row at the card's text width, take the max line count, and pad the shorter ones with blank paragraphs at the header's own size (`alignCardHeaderLines`). Pad BEFORE measuring the row height, so the padding is part of the card the row is sized to.
 
 ## Expand conventions
 

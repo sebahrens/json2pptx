@@ -428,6 +428,13 @@ func cardGridContentRow(ctx ExpandContext, cells []*jsonschema.GridCellInput, co
 	contentW, _ := contentAreaPt(ctx)
 	cardW := equalColumnWidthPt(contentW, cols, 10)
 	textW := cardW - 2*defaultShapeInsetLRPt
+
+	// Reconcile the header zones first: a header that wraps to two lines while
+	// its neighbour's fits on one pushes only that card's body down, and three
+	// panels meant to read as one comparison come out ragged
+	// (go-slide-creator-ommn).
+	alignCardHeaderLines(cells, font, textW)
+
 	textHs := make([]float64, len(cells))
 	cardH := 0.0
 	for i, c := range cells {
@@ -441,6 +448,64 @@ func cardGridContentRow(ctx ExpandContext, cells []*jsonschema.GridCellInput, co
 	}
 	row.MaxHeight = cardH
 	return row
+}
+
+// alignCardHeaderLines pads the shorter headers in a row so every card's body
+// starts on the same baseline. The padding is empty paragraphs at the header's
+// own size, inserted after the header — the renderer draws them as blank lines,
+// which is exactly the height a wrapped header would have taken.
+//
+// The header is the paragraph before the body, so this works for the plain
+// (header, body) cards and for numbered-badge's (badge, header, body) alike.
+// Cards with no body have nothing to align.
+func alignCardHeaderLines(cells []*jsonschema.GridCellInput, font string, textWPt float64) {
+	if len(cells) < 2 || textWPt <= 0 {
+		return
+	}
+
+	type headerRef struct {
+		obj   cardTextObj
+		cell  *jsonschema.GridCellInput
+		index int // paragraph index of the header
+		lines int
+	}
+
+	refs := make([]headerRef, 0, len(cells))
+	maxLines := 0
+	for _, c := range cells {
+		var obj cardTextObj
+		if json.Unmarshal(c.Shape.Text, &obj) != nil || len(obj.Paragraphs) < 2 {
+			return // not the header+body shape this pass understands
+		}
+		idx := len(obj.Paragraphs) - 2
+		header := obj.Paragraphs[idx]
+		lines := measuredLines(header.Content, font, header.Bold, header.Size, textWPt)
+		if lines > maxLines {
+			maxLines = lines
+		}
+		refs = append(refs, headerRef{obj: obj, cell: c, index: idx, lines: lines})
+	}
+	if maxLines <= 1 {
+		return
+	}
+
+	for _, ref := range refs {
+		pad := maxLines - ref.lines
+		if pad <= 0 {
+			continue
+		}
+		header := ref.obj.Paragraphs[ref.index]
+		filler := make([]cardParagraph, pad)
+		for i := range filler {
+			filler[i] = cardParagraph{Size: header.Size, Color: header.Color, Align: header.Align}
+		}
+		paras := make([]cardParagraph, 0, len(ref.obj.Paragraphs)+pad)
+		paras = append(paras, ref.obj.Paragraphs[:ref.index+1]...)
+		paras = append(paras, filler...)
+		paras = append(paras, ref.obj.Paragraphs[ref.index+1:]...)
+		ref.obj.Paragraphs = paras
+		ref.cell.Shape.Text = marshalTextObj(ref.obj)
+	}
 }
 
 // expandCell produces a single GridCellInput based on the selected visual style.

@@ -986,3 +986,96 @@ func TestExtractNumberPrefix(t *testing.T) {
 		})
 	}
 }
+
+// TestCardGrid_HeadersShareABodyBaseline pins the fix for go-slide-creator-ommn:
+// a header that wraps to two lines while its neighbour's fits on one pushed
+// only that card's body down, so three panels meant to read as one comparison
+// came out ragged (measured: 19.2pt apart in the rendered PDF).
+func TestCardGrid_HeadersShareABodyBaseline(t *testing.T) {
+	p, _ := Default().Get("card-grid")
+	ctx := testThemeCtx()
+	vals := &CardGridValues{
+		Columns: 3,
+		Rows:    1,
+		Cells: []CardGridCell{
+			{Header: "A | Double down on parcel automation", Body: "Highest return, but it needs the Q3 capex envelope."},
+			{Header: "B | Acquire a regional freight forwarder", Body: "Buys network density fast; integration risk is front-loaded."},
+			{Header: "C | Exit freight", Body: "Releases capital immediately and removes the loss-making lane."},
+		},
+	}
+	grid, err := p.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+
+	// What must match across the row is the number of rendered LINES before
+	// the body — a wrapping header is one paragraph over two lines, a padded
+	// short header is two paragraphs over two lines.
+	contentW, _ := contentAreaPt(ctx)
+	textW := equalColumnWidthPt(contentW, 3, 10) - 2*defaultShapeInsetLRPt
+	want := -1
+	for i, cell := range grid.Rows[0].Cells {
+		var obj cardTextObj
+		if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
+			t.Fatalf("cell %d text: %v", i, err)
+		}
+		lines := 0
+		for _, para := range obj.Paragraphs[:len(obj.Paragraphs)-1] {
+			if strings.TrimSpace(para.Content) == "" {
+				lines++ // a blank padding line
+				continue
+			}
+			lines += measuredLines(para.Content, ctx.Theme.BodyFont, para.Bold, para.Size, textW)
+		}
+		if want < 0 {
+			want = lines
+		}
+		if lines != want {
+			t.Errorf("cell %d: %d lines before the body, want %d — bodies do not share a baseline", i, lines, want)
+		}
+	}
+	if want < 2 {
+		t.Fatalf("expected the short header to be padded to the wrapping headers' height, lines = %d", want)
+	}
+
+	// The short header ("C | Exit freight") is the one that gained a blank line.
+	var third cardTextObj
+	if err := json.Unmarshal(grid.Rows[0].Cells[2].Shape.Text, &third); err != nil {
+		t.Fatalf("third cell text: %v", err)
+	}
+	if got := third.Paragraphs[0].Content; got != "C | Exit freight" {
+		t.Errorf("third card header = %q, want the authored header unchanged", got)
+	}
+	if got := strings.TrimSpace(third.Paragraphs[1].Content); got != "" {
+		t.Errorf("third card paragraph 1 = %q, want a blank padding line", got)
+	}
+}
+
+// TestCardGrid_EqualHeadersAreNotPadded checks the pass is a no-op when every
+// header already occupies the same number of lines.
+func TestCardGrid_EqualHeadersAreNotPadded(t *testing.T) {
+	p, _ := Default().Get("card-grid")
+	ctx := testThemeCtx()
+	vals := &CardGridValues{
+		Columns: 3,
+		Rows:    1,
+		Cells: []CardGridCell{
+			{Header: "Speed", Body: "Ship the first wave in March."},
+			{Header: "Cost", Body: "Hold the run rate flat through H2."},
+			{Header: "Risk", Body: "One integration team, one cutover."},
+		},
+	}
+	grid, err := p.Expand(ctx, vals, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	for i, cell := range grid.Rows[0].Cells {
+		var obj cardTextObj
+		if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
+			t.Fatalf("cell %d text: %v", i, err)
+		}
+		if len(obj.Paragraphs) != 2 {
+			t.Errorf("cell %d has %d paragraphs, want the unpadded header + body", i, len(obj.Paragraphs))
+		}
+	}
+}
