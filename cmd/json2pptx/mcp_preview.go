@@ -387,9 +387,13 @@ func resolvePreviewSlides(input *PresentationInput, tctx *previewTemplateContext
 		}
 	}
 	accentStrategy := patterns.AccentStrategy(input.AccentStrategy)
+	var rhythmGrid *resolvedGrid
+	if input.Grid != nil && validateGridConfig(input.Grid) == nil {
+		rhythmGrid = resolveGrid(input.Grid, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
+	}
 
 	for i := range input.Slides {
-		rs := resolveOneSlide(i, &input.Slides[i], input, tctx, usedLayouts, &output, accentStrategy, sectionIndices[i])
+		rs := resolveOneSlide(i, &input.Slides[i], input, tctx, usedLayouts, &output, accentStrategy, sectionIndices[i], rhythmGrid)
 		output.ResolvedSlides = append(output.ResolvedSlides, rs)
 	}
 
@@ -397,7 +401,7 @@ func resolvePreviewSlides(input *PresentationInput, tctx *previewTemplateContext
 }
 
 // resolveOneSlide resolves layout, placeholders, patterns, and shape_grid for a single slide.
-func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *previewTemplateContext, usedLayouts map[string]int, output *previewPlanOutput, accentStrategy patterns.AccentStrategy, sectionIndex int) resolvedSlide { //nolint:gocognit,gocyclo
+func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *previewTemplateContext, usedLayouts map[string]int, output *previewPlanOutput, accentStrategy patterns.AccentStrategy, sectionIndex int, rhythmGrid *resolvedGrid) resolvedSlide { //nolint:gocognit,gocyclo
 	rs := resolvedSlide{
 		SlideIndex:   i,
 		Placeholders: []resolvedPlaceholder{},
@@ -432,19 +436,19 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 
 	// Compose expansion.
 	if slide.Compose != nil && slide.ShapeGrid == nil {
-		resolveSlideCompose(i, slide, tctx, output, &rs, accentStrategy, sectionIndex)
+		resolveSlideCompose(i, slide, tctx, output, &rs, accentStrategy, sectionIndex, rhythmGrid)
 	}
 
 	// Pattern expansion.
 	if slide.Pattern != nil && slide.ShapeGrid == nil {
-		resolveSlidePattern(i, slide, tctx, output, &rs, accentStrategy, sectionIndex)
+		resolveSlidePattern(i, slide, tctx, output, &rs, accentStrategy, sectionIndex, rhythmGrid)
 	}
 
 	// Shape grid resolution: virtual layout (when template layouts are
 	// available) and per-cell wireframe rectangles (whenever the slide has a
 	// resolved grid, including patterns/compose that produced one above).
 	if slide.ShapeGrid != nil {
-		resolveSlideShapeGrid(slide, tctx, &rs)
+		resolveSlideShapeGrid(slide, tctx, &rs, rhythmGrid)
 	}
 
 	// Grid occupancy for preview response.
@@ -571,10 +575,10 @@ func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, r
 }
 
 // resolveSlidePattern expands a pattern and updates the slide's shape_grid.
-func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int) {
+func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int, rhythmGrid *resolvedGrid) {
 	probe := *slide
 	probe.LayoutID = rs.LayoutID
-	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, nil)
+	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
 	expCtx := patterns.ExpandContext{
 		Metadata:       tctx.metadata,
 		SlideWidth:     tctx.slideWidth,
@@ -614,10 +618,10 @@ func resolveSlidePattern(i int, slide *SlideInput, tctx *previewTemplateContext,
 // merged grid) so agents can attribute findings to a specific segment, and
 // emits structured fit findings carrying segment_index for any
 // compose-time warnings.
-func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int) {
+func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext, output *previewPlanOutput, rs *resolvedSlide, accentStrategy patterns.AccentStrategy, sectionIndex int, rhythmGrid *resolvedGrid) {
 	probe := *slide
 	probe.LayoutID = rs.LayoutID
-	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, nil)
+	_, b := patternExpansionGeometry(probe, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
 	expCtx := patterns.ExpandContext{
 		Metadata:       tctx.metadata,
 		SlideWidth:     tctx.slideWidth,
@@ -656,11 +660,11 @@ func resolveSlideCompose(i int, slide *SlideInput, tctx *previewTemplateContext,
 
 // resolveSlideShapeGrid resolves virtual layout and per-cell wireframe rects
 // for shape_grid slides.
-func resolveSlideShapeGrid(slide *SlideInput, tctx *previewTemplateContext, rs *resolvedSlide) {
+func resolveSlideShapeGrid(slide *SlideInput, tctx *previewTemplateContext, rs *resolvedSlide, rhythmGrid *resolvedGrid) {
 	sgr := &resolvedShapeGrid{}
 	// Resolve the same layout-aware geometry generation uses so the wireframe
 	// cells preview reports land where they render (go-slide-creator-s1rd).
-	geom := resolveGridGeometry(*slide, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
+	geom, _ := patternExpansionGeometry(*slide, tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythmGrid)
 	if geom.VirtualUsed {
 		sgr.VirtualLayoutUsed = true
 		sgr.LayoutID = geom.LayoutID

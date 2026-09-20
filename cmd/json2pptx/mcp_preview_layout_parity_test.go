@@ -36,47 +36,59 @@ func TestPreviewAutoCompositionMatchesGeneration(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			input := &PresentationInput{Slides: []SlideInput{tc.slide}}
-			preview := resolvePreviewSlides(input, tctx)
-			if len(preview.Errors) > 0 {
-				t.Fatalf("preview errors: %v", preview.Errors)
-			}
-			if len(preview.ResolvedSlides) != 1 {
-				t.Fatalf("preview returned %d slides", len(preview.ResolvedSlides))
-			}
-			rs := preview.ResolvedSlides[0]
-			specs, _, _, err := convertPresentationSlides([]SlideInput{tc.slide}, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.metadata, nil, "", nil, false)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if rs.LayoutID != wantLayout || specs[0].LayoutID != wantLayout {
-				t.Fatalf("preview layout %q, generate layout %q, want %q", rs.LayoutID, specs[0].LayoutID, wantLayout)
-			}
-			if rs.ShapeGridResolution == nil {
-				t.Fatal("preview returned no grid resolution")
-			}
-			geom := resolveGridGeometry(input.Slides[0], tctx.layouts, tctx.slideWidth, tctx.slideHeight)
-			alloc := pptx.NewShapeIDAllocator(nil)
-			alloc.SetMinID(200)
-			resolved, err := resolveShapeGrid(input.Slides[0].ShapeGrid, alloc, geom.OverrideBounds, geom.Zone, tctx.slideWidth, tctx.slideHeight, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if len(resolved.Shapes) != len(specs[0].RawShapeXML) || len(resolved.Cells) != len(rs.ShapeGridResolution.Cells) {
-				t.Fatalf("shape/cell counts differ: preview %d/%d, generate %d", len(resolved.Shapes), len(rs.ShapeGridResolution.Cells), len(specs[0].RawShapeXML))
-			}
-			for i, cell := range resolved.Cells {
-				pc := rs.ShapeGridResolution.Cells[i]
-				if pc.X != cell.CellBounds.X || pc.Y != cell.CellBounds.Y || pc.W != cell.CellBounds.CX || pc.H != cell.CellBounds.CY {
-					t.Errorf("cell %d preview rect %+v differs from generation bounds %+v", i, pc, cell.CellBounds)
+		for _, variant := range []struct {
+			name string
+			grid *GridConfig
+		}{
+			{name: "template"},
+			{name: "rhythm", grid: &GridConfig{TitleBaselinePct: 18, ContentTopPct: 22, ContentBottomPct: 75, LeftMarginPct: 8, RightMarginPct: 8}},
+		} {
+			t.Run(tc.name+"/"+variant.name, func(t *testing.T) {
+				input := &PresentationInput{Grid: variant.grid, Slides: []SlideInput{tc.slide}}
+				var rhythm *resolvedGrid
+				if variant.grid != nil {
+					rhythm = resolveGrid(variant.grid, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
 				}
-			}
-			for i := range resolved.Shapes {
-				if !bytes.Equal(resolved.Shapes[i], specs[0].RawShapeXML[i]) {
-					t.Errorf("rendered shape %d differs between preview expansion and generation", i)
+				preview := resolvePreviewSlides(input, tctx)
+				if len(preview.Errors) > 0 {
+					t.Fatalf("preview errors: %v", preview.Errors)
 				}
-			}
-		})
+				if len(preview.ResolvedSlides) != 1 {
+					t.Fatalf("preview returned %d slides", len(preview.ResolvedSlides))
+				}
+				rs := preview.ResolvedSlides[0]
+				specs, _, _, err := convertPresentationSlides([]SlideInput{tc.slide}, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.metadata, rhythm, "", nil, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if rs.LayoutID != wantLayout || specs[0].LayoutID != wantLayout {
+					t.Fatalf("preview layout %q, generate layout %q, want %q", rs.LayoutID, specs[0].LayoutID, wantLayout)
+				}
+				if rs.ShapeGridResolution == nil {
+					t.Fatal("preview returned no grid resolution")
+				}
+				geom, _ := patternExpansionGeometry(input.Slides[0], tctx.layouts, tctx.slideWidth, tctx.slideHeight, rhythm)
+				alloc := pptx.NewShapeIDAllocator(nil)
+				alloc.SetMinID(200)
+				resolved, err := resolveShapeGrid(input.Slides[0].ShapeGrid, alloc, geom.OverrideBounds, geom.Zone, tctx.slideWidth, tctx.slideHeight, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(resolved.Shapes) != len(specs[0].RawShapeXML) || len(resolved.Cells) != len(rs.ShapeGridResolution.Cells) {
+					t.Fatalf("shape/cell counts differ: preview %d/%d, generate %d", len(resolved.Shapes), len(rs.ShapeGridResolution.Cells), len(specs[0].RawShapeXML))
+				}
+				for i, cell := range resolved.Cells {
+					pc := rs.ShapeGridResolution.Cells[i]
+					if pc.X != cell.CellBounds.X || pc.Y != cell.CellBounds.Y || pc.W != cell.CellBounds.CX || pc.H != cell.CellBounds.CY {
+						t.Errorf("cell %d preview rect %+v differs from generation bounds %+v", i, pc, cell.CellBounds)
+					}
+				}
+				for i := range resolved.Shapes {
+					if !bytes.Equal(resolved.Shapes[i], specs[0].RawShapeXML[i]) {
+						t.Errorf("rendered shape %d differs between preview expansion and generation", i)
+					}
+				}
+			})
+		}
 	}
 }
