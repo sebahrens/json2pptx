@@ -56,6 +56,10 @@ type mcpConfig struct {
 	// progressSender forwards notifications/progress through the active MCP
 	// server. Nil in direct-handler tests and CLI calls.
 	progressSender func(context.Context, map[string]any) error
+
+	// logSender forwards a render event only to the MCP session carried by ctx.
+	// Nil for direct-handler and CLI callers, which still log to stderr.
+	logSender func(context.Context, mcp.LoggingLevel, map[string]any) error
 }
 
 // resolvePresentationURLs downloads every URL reference in slides via a
@@ -118,6 +122,7 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 		// notifications, since the static set is fixed at startup.
 		server.WithResourceCapabilities(false, false),
 		server.WithPromptCapabilities(false),
+		server.WithLogging(),
 		// The instructions say so when this server cannot render: a client that
 		// never reads get_capabilities would otherwise be told to finish with a
 		// step that cannot run here (go-slide-creator-a7fh).
@@ -132,6 +137,9 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 	s = server.NewMCPServer("json2pptx", Version, append(opts, extra...)...)
 	mc.progressSender = func(ctx context.Context, params map[string]any) error {
 		return s.SendNotificationToClient(ctx, "notifications/progress", params)
+	}
+	mc.logSender = func(ctx context.Context, level mcp.LoggingLevel, data map[string]any) error {
+		return s.SendLogMessageToClient(ctx, mcp.NewLoggingMessageNotification(level, "json2pptx", data))
 	}
 	registerMCPTools(s, mc)
 	registerMCPResources(s, mc)

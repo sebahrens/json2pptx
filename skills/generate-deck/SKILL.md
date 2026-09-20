@@ -33,6 +33,13 @@ and optional `template` / `slide_budget` (1–100), or `revise-deck` with a requ
 `goal` and exactly one of `pptx_path` / `deck_json`. Both prompts include the
 appropriate `get_started` fast path and the same final-revision visual review rule.
 
+MCP clients can opt into scoped render logs with `logging/setLevel` (`level:
+"info"` or `"warning"`). `render_deck_spec` then sends start, finish and failure
+events as `notifications/message` for that client session. Start and finish
+include `tool` and `slide_count`; a successful finish adds `pptx_path` and
+`duration_ms`. Logs also go to
+server stderr; without an opt-in, INFO/WARN notifications are suppressed.
+
 This skill is split into focused sub-files. SKILL.md (this file) covers preconditions, the 5-tool quick reference, and the workflow overview. Load the sub-files when you need their detail:
 
 | File | Contents |

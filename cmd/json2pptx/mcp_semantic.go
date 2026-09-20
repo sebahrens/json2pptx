@@ -498,6 +498,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	// findings carry their native semantic paths.
 	spec, parseDiags := semantic.Parse(filename, data)
 	if parseDiags.HasErrors() {
+		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck spec parse failed", map[string]any{"tool": "render_deck_spec"})
 		res := renderDeckSpecResponse{OK: false, Success: false, Error: "render_deck_spec: spec could not be parsed"}
 		for _, d := range parseDiags.ToDiagnostics() {
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
@@ -512,6 +513,9 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	if outputFilename == "" {
 		outputFilename = deckSpecOutputFilename(spec.Meta.Title, data)
 	}
+	mc.logRenderEvent(ctx, mcp.LoggingLevelInfo, "deck render started", map[string]any{
+		"tool": "render_deck_spec", "slide_count": len(spec.Slides), "template": spec.Meta.Template,
+	})
 
 	// The explanation is a pure projection of the plan and works even when the
 	// spec still carries advisory findings, so compute it up front.
@@ -524,6 +528,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		DefaultTemplate: templateName,
 	})
 	if err != nil {
+		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck spec compilation failed", map[string]any{"tool": "render_deck_spec"})
 		res := semanticRenderToMCP(buildSemanticRenderFailure(compileResult, err), &explanation)
 		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
 	}
@@ -532,6 +537,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	// hatch passes an author's slide payload through unchanged, and the same
 	// payload is refused by generate_presentation (go-slide-creator-rs4h).
 	if designViolations := compiledDesignModeDiagnostics(input); len(designViolations) > 0 {
+		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck render refused by design mode", map[string]any{"tool": "render_deck_spec"})
 		appendCompiledDesignModeDiags(compileResult, input)
 		failure := buildSemanticRenderFailure(compileResult, blockingDesignModeError(designViolations))
 		return semanticSuccessOrInternal(ctx, "render_deck_spec", semanticRenderToMCP(failure, &explanation))
@@ -555,6 +561,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	if rawTemplatePath != "" && spec.Meta.Template == "" {
 		path, d := resolveRequestTemplatePath(request, "render_deck_spec", rawTemplatePath)
 		if d != nil {
+			mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck template path invalid", map[string]any{"tool": "render_deck_spec"})
 			res := renderDeckSpecResponse{OK: false, Success: false, Error: d.Message}
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(*d))
 			return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
@@ -576,6 +583,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	})
 	defer cleanup()
 	if renderErr != nil {
+		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck render failed", map[string]any{"tool": "render_deck_spec"})
 		res := semanticRenderToMCP(buildSemanticRenderFailure(compileResult, renderErr), &explanation)
 		res.DeckID = mc.rememberDeck(deckID, data, filename, res.Template)
 		res.ChangedSlides = changed
@@ -588,6 +596,10 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	// thumbnails (go-slide-creator-voxp).
 	res.DeckID = mc.rememberDeck(deckID, data, filename, res.Template)
 	res.ChangedSlides = changed
+	mc.logRenderEvent(ctx, mcp.LoggingLevelInfo, "deck render finished", map[string]any{
+		"tool": "render_deck_spec", "slide_count": len(spec.Slides), "pptx_path": res.PptxPath,
+		"duration_ms": time.Since(startTime).Milliseconds(),
+	})
 	result, err := semanticSuccessOrInternal(ctx, "render_deck_spec", res)
 	// The deck itself, as a resource a host can read without touching the
 	// server's filesystem (go-slide-creator-fx52).

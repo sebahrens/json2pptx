@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **MCP logging (go-slide-creator-zhaw.2).** `initialize` advertises logging,
+  and `logging/setLevel` lets each client opt into contextual render start,
+  finish and warning messages through `notifications/message`. INFO/WARN render
+  events still reach stderr. The SDK filters each notification at that
+  session's chosen level; its default error level suppresses these events
+  until opt-in. Schema version advances to 4.75.0; the raw input and tool-name
+  fingerprint is unchanged.
+
 - **MCP workflow prompts (go-slide-creator-zhaw.1).** `prompts/list` now
   advertises `deck-from-brief` and `revise-deck`; `prompts/get` returns a
   ready-to-use user message with the task-specific `get_started` fast path and
