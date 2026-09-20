@@ -20,7 +20,7 @@ func TestValidateChartData_MapDataPointsAtChartData(t *testing.T) {
 		}}},
 	}
 	ds := Validate(spec, StrictnessWarn)
-	d, ok := findAt(ds, diagnostics.CodeSemanticDensity, "slides[0].chart.data")
+	d, ok := findAt(ds, diagnostics.CodeSemanticPatternDegraded, "slides[0].chart.data")
 	if !ok {
 		t.Fatalf("expected finding at slides[0].chart.data, got %v", ds)
 	}

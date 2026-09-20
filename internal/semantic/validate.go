@@ -525,8 +525,9 @@ func validateAgenda(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if slides.AgendaPattern(slide.Body) == "" {
-		s.advisory(path+".sections", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n))
+		s.degrade(path+".sections",
+			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n),
+			"agenda", degradeToBullets, degradeCountOutOfRange)
 	}
 }
 
@@ -539,8 +540,9 @@ func validateTeam(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if over := slides.TeamOverBudget(slide.Body); over != "" {
-		s.advisory(path+".members", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("team %s (otherwise it degrades to a bullet list)", over))
+		s.degrade(path+".members",
+			fmt.Sprintf("team %s (otherwise it degrades to a bullet list)", over),
+			"team-bios", degradeToBullets, degradeBudgetExceeded)
 	}
 }
 
@@ -551,8 +553,9 @@ func validateTeam(path string, slide SlideSpec, s *semDiags) {
 // aliases), so this rule speaks only to budgets (go-slide-creator-2hkc).
 func validateStat(path string, slide SlideSpec, s *semDiags) {
 	if over := slides.StatOverBudget(slide.Body); over != "" {
-		s.advisory(path+".value", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("stat %s (otherwise it degrades to a content slide)", over))
+		s.degrade(path+".value",
+			fmt.Sprintf("stat %s (otherwise it degrades to a content slide)", over),
+			"stat-hero", degradeToContent, degradeBudgetExceeded)
 	}
 }
 
@@ -566,8 +569,9 @@ func validateArchitecture(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if over := slides.ArchitectureOverBudget(slide.Body); over != "" {
-		s.advisory(path+".tiers", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("architecture %s (otherwise it degrades to a bullet list)", over))
+		s.degrade(path+".tiers",
+			fmt.Sprintf("architecture %s (otherwise it degrades to a bullet list)", over),
+			"arch-stack", degradeToBullets, degradeBudgetExceeded)
 	}
 }
 
@@ -581,8 +585,9 @@ func validateTimeline(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if over := slides.TimelineOverBudget(slide.Body); over != "" {
-		s.advisory(path+".milestones", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("timeline %s (otherwise it degrades to a dated bullet list)", over))
+		s.degrade(path+".milestones",
+			fmt.Sprintf("timeline %s (otherwise it degrades to a dated bullet list)", over),
+			"timeline-horizontal", degradeToBullets, degradeBudgetExceeded)
 	}
 }
 
@@ -596,8 +601,9 @@ func validateMatrix(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if over := slides.MatrixOverBudget(slide.Body); over != "" {
-		s.advisory(path+".quadrants", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("matrix %s (otherwise it degrades to a bullet list)", over))
+		s.degrade(path+".quadrants",
+			fmt.Sprintf("matrix %s (otherwise it degrades to a bullet list)", over),
+			"matrix-2x2", degradeToBullets, degradeBudgetExceeded)
 	}
 }
 
@@ -610,8 +616,9 @@ func validateFramework(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if over := slides.FrameworkOverBudget(slide.Body); over != "" {
-		s.advisory(path+".sections", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("framework %s (otherwise it degrades to grouped bullets)", over))
+		s.degrade(path+".sections",
+			fmt.Sprintf("framework %s (otherwise it degrades to grouped bullets)", over),
+			"", degradeToBullets, degradeBudgetExceeded)
 	}
 }
 
@@ -620,8 +627,9 @@ func validateFramework(path string, slide SlideSpec, s *semDiags) {
 // (go-slide-creator-q31s).
 func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 	if over := slides.ImageCaseOverBudget(slide.Body); over != "" {
-		s.advisory(path+".body", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("image case %s (otherwise it degrades to a content slide)", over))
+		s.degrade(path+".body",
+			fmt.Sprintf("image case %s (otherwise it degrades to a content slide)", over),
+			"image-text-split", degradeToContent, degradeBudgetExceeded)
 	}
 }
 
@@ -631,8 +639,9 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 // (go-slide-creator-4ndv).
 func validateDecision(path string, slide SlideSpec, s *semDiags) {
 	if over := slides.DecisionOverBudget(slide.Body); over != "" {
-		s.advisory(path+".options", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("decision %s (otherwise it degrades to a content slide)", over))
+		s.degrade(path+".options",
+			fmt.Sprintf("decision %s (otherwise it degrades to a content slide)", over),
+			"", degradeToContent, degradeBudgetExceeded)
 	}
 }
 
@@ -645,16 +654,18 @@ func validateProcess(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if over := slides.ProcessOverBudget(slide.Body); over != "" {
-		s.advisory(path+".steps", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("process %s (otherwise it degrades to a bullet list)", over))
+		s.degrade(path+".steps",
+			fmt.Sprintf("process %s (otherwise it degrades to a bullet list)", over),
+			"process-flow", degradeToBullets, degradeBudgetExceeded)
 	}
 }
 
 // validateRoadmap applies the same usable-count rule to a roadmap's phases.
 func validateRoadmap(path string, slide SlideSpec, s *semDiags) {
 	if n := slides.UsablePhaseCount(slide.Body); s.requireUsableContent(path, "phases", slide.Body, n) && (n < 3 || n > 6) {
-		s.advisory(path+".phases", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("roadmap has %d usable phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n))
+		s.degrade(path+".phases",
+			fmt.Sprintf("roadmap has %d usable phases; 3–6 render as a phase-roadmap visual (otherwise it degrades to a bullet list)", n),
+			"phase-roadmap", degradeToBullets, degradeCountOutOfRange)
 	}
 }
 
@@ -697,8 +708,9 @@ func validateChartData(chartPath string, chart map[string]any, s *semDiags) {
 
 	data, ok := chart["data"].(map[string]any)
 	if !ok || len(data) == 0 {
-		s.advisoryFix(dataPath, diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("chart_insight chart has no data; the chart panel is dropped. Provide chart.data as %s", shape), fix)
+		s.degradeFix(dataPath,
+			fmt.Sprintf("chart_insight chart has no data; the chart panel is dropped. Provide chart.data as %s", shape), fix,
+			"chart-insights-split", degradeToInsightsOnly, degradeChartDataMissing)
 		return
 	}
 	if chartDataHasValues(data, chartType) {
@@ -718,8 +730,9 @@ func validateChartData(chartPath string, chart map[string]any, s *semDiags) {
 		return
 	}
 
-	s.advisoryFix(dataPath, diagnostics.CodeSemanticDensity,
-		fmt.Sprintf("chart_insight chart.data declares no data series (found keys %s); expected chart.data as %s", joinQuoted(sortedKeys(data)), shape), fix)
+	s.degradeFix(dataPath,
+		fmt.Sprintf("chart_insight chart.data declares no data series (found keys %s); expected chart.data as %s", joinQuoted(sortedKeys(data)), shape), fix,
+		"chart-insights-split", degradeToInsightsOnly, degradeChartDataMissing)
 }
 
 // misshapedChartList reports the data list that is present but is not a JSON
@@ -886,8 +899,9 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 		if pattern := slides.ComparisonPattern(slide.Body); pattern != "" {
 			return
 		}
-		s.advisory(path+".columns", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("a comparison renders as a visual with 2 columns (comparison-2col) or 3–5 (stylish-panels / card-grid); found %d, so this slide degrades to a bullet list — split it, or use kind raw_json2pptx with a table-highlight pattern for a wider matrix", len(cols)))
+		s.degrade(path+".columns",
+			fmt.Sprintf("a comparison renders as a visual with 2 columns (comparison-2col) or 3–5 (stylish-panels / card-grid); found %d, so this slide degrades to a bullet list — split it, or use kind raw_json2pptx with a table-highlight pattern for a wider matrix", len(cols)),
+			"comparison-2col", degradeToBullets, degradeCountOutOfRange)
 		return
 	}
 	counts := make([]int, 0, len(cols))
@@ -907,11 +921,16 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 			// An unbalanced pair still gets a visual (card-grid) rather than
 			// bullets, so say what it costs — the side-by-side row alignment —
 			// instead of implying the content is lost.
-			msg := "comparison columns are unbalanced; give each column the same number of items to get the side-by-side comparison-2col visual"
 			if slides.ComparisonPattern(slide.Body) == "" {
-				msg = "comparison columns are unbalanced; give each column the same number of items (otherwise this slide degrades to a bullet list)"
+				s.degrade(path+".columns",
+					"comparison columns are unbalanced; give each column the same number of items (otherwise this slide degrades to a bullet list)",
+					"comparison-2col", degradeToBullets, degradeColumnsUnbalanced)
+				return
 			}
-			s.advisory(path+".columns", diagnostics.CodeSemanticDensity, msg)
+			// A card-grid still draws the columns, so this is alignment advice,
+			// not a fallback.
+			s.advisory(path+".columns", diagnostics.CodeSemanticDensity,
+				"comparison columns are unbalanced; give each column the same number of items to get the side-by-side comparison-2col visual")
 			return
 		}
 	}
@@ -920,12 +939,18 @@ func validateComparison(path string, slide SlideSpec, s *semDiags) {
 	// so flag the over-cap count here (blocking under strict) to keep validate in
 	// step with what compile emits.
 	if counts[0] > slides.ComparisonMaxRows {
+		pattern := slides.ComparisonPattern(slide.Body)
 		tail := "otherwise it degrades to a bullet list"
-		if pattern := slides.ComparisonPattern(slide.Body); pattern != "" {
+		if pattern != "" {
 			tail = "otherwise it renders as " + pattern
 		}
-		s.advisory(path+".columns", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("comparison-2col renders 1–%d rows per column; found %d — split or shorten the comparison (%s)", slides.ComparisonMaxRows, counts[0], tail))
+		msg := fmt.Sprintf("comparison-2col renders 1–%d rows per column; found %d — split or shorten the comparison (%s)", slides.ComparisonMaxRows, counts[0], tail)
+		if pattern != "" {
+			// Another pattern takes the overflow, so the slide keeps a visual.
+			s.advisory(path+".columns", diagnostics.CodeSemanticDensity, msg)
+			return
+		}
+		s.degrade(path+".columns", msg, "comparison-2col", degradeToBullets, degradeCountOutOfRange)
 	}
 }
 
@@ -1134,12 +1159,14 @@ func validateOptionMatrix(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if criteria < 2 || criteria > 6 {
-		s.advisory(path+"."+criteriaField, diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("table-highlight scores 2–6 criteria; found %d — group them or split the matrix across two slides (otherwise this slide degrades to a scored bullet list)", criteria))
+		s.degrade(path+"."+criteriaField,
+			fmt.Sprintf("table-highlight scores 2–6 criteria; found %d — group them or split the matrix across two slides (otherwise this slide degrades to a scored bullet list)", criteria),
+			"table-highlight", degradeToBullets, degradeCountOutOfRange)
 	}
 	if options < 2 || options > 6 {
-		s.advisory(path+"."+optionsField, diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("table-highlight scores 2–6 options; found %d — shortlist them or split the matrix across two slides (otherwise this slide degrades to a scored bullet list)", options))
+		s.degrade(path+"."+optionsField,
+			fmt.Sprintf("table-highlight scores 2–6 options; found %d — shortlist them or split the matrix across two slides (otherwise this slide degrades to a scored bullet list)", options),
+			"table-highlight", degradeToBullets, degradeCountOutOfRange)
 	}
 
 	// One score per criterion is the matrix's own contract: a row with fewer
@@ -1155,8 +1182,9 @@ func validateOptionMatrix(path string, slide SlideSpec, s *semDiags) {
 			continue
 		}
 		if scores != criteria {
-			s.advisory(fmt.Sprintf("%s.%s[%d].scores", path, optionsField, i), diagnostics.CodeSemanticDensity,
-				fmt.Sprintf("option %d has %d scores for %d criteria; give every option exactly one score per criterion (otherwise this slide degrades to a scored bullet list)", i+1, scores, criteria))
+			s.degrade(fmt.Sprintf("%s.%s[%d].scores", path, optionsField, i),
+				fmt.Sprintf("option %d has %d scores for %d criteria; give every option exactly one score per criterion (otherwise this slide degrades to a scored bullet list)", i+1, scores, criteria),
+				"table-highlight", degradeToBullets, degradeScoresIncomplete)
 		}
 	}
 
@@ -1171,8 +1199,9 @@ func validateOptionMatrix(path string, slide SlideSpec, s *semDiags) {
 	// read (a harvey column given "yes", a RAG column given 7). The compiler asks
 	// the pattern; so does this, so validate and compile agree.
 	if criteria >= 2 && criteria <= 6 && options >= 2 && options <= 6 && !slides.OptionMatrixPatternFeasible(slide.Body) {
-		s.advisory(path+"."+optionsField, diagnostics.CodeSemanticDensity,
-			"a score is not readable on this matrix's scale (harvey: 0–4 or none/quarter/half/three-quarter/full; rag: red/amber/green; text: ≤24 chars; \"-\" for n/a) — this slide degrades to a scored bullet list")
+		s.degrade(path+"."+optionsField,
+			"a score is not readable on this matrix's scale (harvey: 0–4 or none/quarter/half/three-quarter/full; rag: red/amber/green; text: ≤24 chars; \"-\" for n/a) — this slide degrades to a scored bullet list",
+			"table-highlight", degradeToBullets, degradeScoreUnreadable)
 	}
 }
 
@@ -1261,13 +1290,15 @@ func validateExecutiveSummary(path string, slide SlideSpec, s *semDiags) {
 	}
 	pointsPath := path + "." + execSummaryPointsPath(slide.Body)
 	if n < 3 || n > 5 {
-		s.advisory(pointsPath, diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("executive summary has %d points; exec-summary renders 3–5 as numbered conclusions (otherwise it degrades to a bullet list)", n))
+		s.degrade(pointsPath,
+			fmt.Sprintf("executive summary has %d points; exec-summary renders 3–5 as numbered conclusions (otherwise it degrades to a bullet list)", n),
+			"exec-summary", degradeToBullets, degradeCountOutOfRange)
 		return
 	}
 	if !slides.ExecSummaryPatternFeasible(slide.Body) {
-		s.advisory(pointsPath, diagnostics.CodeSemanticDensity,
-			"executive summary points exceed the exec-summary text budgets (lead ≤90 chars, support ≤200); shorten them or the slide degrades to a bullet list")
+		s.degrade(pointsPath,
+			"executive summary points exceed the exec-summary text budgets (lead ≤90 chars, support ≤200); shorten them or the slide degrades to a bullet list",
+			"exec-summary", degradeToBullets, degradeBudgetExceeded)
 	}
 }
 
@@ -1286,16 +1317,18 @@ func validateKPISnapshot(path string, slide SlideSpec, s *semDiags) {
 		return
 	}
 	if n < 2 || n > 6 {
-		s.advisory(path+".kpis", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 render as KPI cards (otherwise it degrades to a bullet list)", n))
+		s.degrade(path+".kpis",
+			fmt.Sprintf("kpi snapshot has %d usable KPIs; 2–6 render as KPI cards (otherwise it degrades to a bullet list)", n),
+			"kpi-Nup", degradeToBullets, degradeCountOutOfRange)
 		return
 	}
 	// A metric can be valid semantically and still too long for the compact
 	// cards, and the compiler silently swaps the whole slide for bullets. Say
 	// which value broke which budget here, where the author can shorten it.
 	if reason := slides.KPIDegradeReason(slide.Body); reason != "" {
-		s.advisory(path+".kpis", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("kpi snapshot degrades to a bullet list — %s; shorten the value or drop a metric to keep the KPI cards", reason))
+		s.degrade(path+".kpis",
+			fmt.Sprintf("kpi snapshot degrades to a bullet list — %s; shorten the value or drop a metric to keep the KPI cards", reason),
+			"kpi-Nup", degradeToBullets, degradeBudgetExceeded)
 	}
 }
 
@@ -1371,7 +1404,8 @@ func validateChartInsight(path string, slide SlideSpec, s *semDiags) {
 	// full insight list). Flag the over-cap count here (blocking under strict)
 	// to keep validate in step with compile.
 	if n := slides.ChartInsightInsightCount(slide.Body); n > slides.ChartInsightMaxInsights {
-		s.advisory(path+".insights", diagnostics.CodeSemanticDensity,
-			fmt.Sprintf("chart-insights-split renders 1–%d insights alongside the chart; found %d — split or shorten the insights (otherwise it degrades to a native two-column slide: chart beside the full insight list)", slides.ChartInsightMaxInsights, n))
+		s.degrade(path+".insights",
+			fmt.Sprintf("chart-insights-split renders 1–%d insights alongside the chart; found %d — split or shorten the insights (otherwise it degrades to a native two-column slide: chart beside the full insight list)", slides.ChartInsightMaxInsights, n),
+			"chart-insights-split", degradeToTwoColumn, degradeCountOutOfRange)
 	}
 }

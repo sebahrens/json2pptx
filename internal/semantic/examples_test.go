@@ -159,12 +159,12 @@ func TestInvalidExample_MultipleDiagnosticsStablePaths(t *testing.T) {
 	}{
 		{diagnostics.CodeSemanticRequired, "meta.title", diagnostics.SeverityError},
 		{diagnostics.CodeSemanticUnknownArchetype, "meta.archetype", diagnostics.SeverityError},
-		{diagnostics.CodeSemanticDensity, "slides[0].points", diagnostics.SeverityWarning},
+		{diagnostics.CodeSemanticPatternDegraded, "slides[0].points", diagnostics.SeverityWarning},
 		{diagnostics.CodeSemanticTakeawayRequired, "slides[0].takeaway", diagnostics.SeverityWarning},
 		{diagnostics.CodeSemanticRequired, "slides[1].kpis", diagnostics.SeverityError},
 		{diagnostics.CodeSemanticUnknownKind, "slides[2].kind", diagnostics.SeverityError},
 		{diagnostics.CodeSemanticWeakContent, "slides[3].title", diagnostics.SeverityWarning},
-		{diagnostics.CodeSemanticDensity, "slides[3].chart.data", diagnostics.SeverityWarning},
+		{diagnostics.CodeSemanticPatternDegraded, "slides[3].chart.data", diagnostics.SeverityWarning},
 	}
 
 	codes := map[string]bool{}

@@ -132,6 +132,12 @@ const (
 	CodeSemanticTakeawayRequired Code = "SEMANTIC_TAKEAWAY_REQUIRED"
 	CodeSemanticDensity          Code = "SEMANTIC_DENSITY"
 	CodeSemanticWeakContent      Code = "SEMANTIC_WEAK_CONTENT"
+	// CodeSemanticPatternDegraded flags a slide whose content will not fit the
+	// visual its kind promised, so the compiler renders it as bullets or a plain
+	// content slide instead. Split out of SEMANTIC_DENSITY, which was a misnomer
+	// for the text-budget cases and gave an agent no way to tell a fallback from
+	// a count suggestion without reading the message (go-slide-creator-kjc8l).
+	CodeSemanticPatternDegraded Code = "SEMANTIC_PATTERN_DEGRADED"
 	// CodeSemanticFieldType flags a payload field that is present but carries the
 	// wrong JSON type for its kind (e.g. a numeric title, or points given as a
 	// string instead of an array). The compiler silently drops wrong-typed values,
@@ -249,6 +255,7 @@ func AllCodes() []Code {
 		CodeSemanticUnknownArchetype,
 		CodeSemanticTakeawayRequired,
 		CodeSemanticDensity,
+		CodeSemanticPatternDegraded,
 		CodeSemanticWeakContent,
 		CodeSemanticFieldType,
 		CodeChartSeriesLengthMismatch,

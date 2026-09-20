@@ -109,8 +109,8 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 | `title` | `title` | `subtitle`, `eyebrow` | — |
 | `section` | `title` | `subtitle` | — |
 | `executive_summary` | `title` | `points` (3–5 → `exec-summary` visual; any other count → bullet list), `bottom_line` (the ask, as a labelled callout), `takeaway` (footer one-liner) | each point: string (the conclusion alone) or `{lead, support?}` (`lead` ≤90 chars, `support` ≤200) |
-| `kpi_snapshot` | `kpis` (2–6 → cards) | `title`, `takeaway` | each KPI: `{value, label, delta?}` — `value` ≤8 **characters**, `label` ≤40, `delta` ≤12 (e.g. `"+5%"`, renders a small annotation; aliases `sub`/`trend`/`change`). Budgets count characters, so `"€186.4M"` (7) fits; a value past the budget degrades the whole slide to a bullet list and says so as `SEMANTIC_DENSITY` naming the field and the budget |
-| `chart_insight` | `chart` | `insights[]` (1–6 → chart+insights visual; >6 → native `two-column` chart + full insight list), `title`, `source`, `takeaway` (dropped when it is word-for-word the slide's ONLY insight — the same sentence in the bullet and the band reads as a mistake, not emphasis; a takeaway summarising several insights is kept) | chart: `{type, data, title?}`; `data` = `{categories:[…], series:[{name, values:[…]}]}` (bar/line/area) or `{categories:[…], values:[…]}` (pie/donut) — a missing/malformed `data` yields `SEMANTIC_DENSITY` at `slides[i].chart.data` with `fix.params.{expected_shape, example}`. **Every series needs exactly one value per category and every value must be an unquoted number**: a short array is `CHART_SERIES_LENGTH_MISMATCH` (error) at `slides[i].chart.data.series[j].values`, a quoted figure or a null is `CHART_VALUE_NOT_NUMERIC` (error) at the offending element. Both used to validate clean and render a chart with empty slots or an empty plot |
+| `kpi_snapshot` | `kpis` (2–6 → cards) | `title`, `takeaway` | each KPI: `{value, label, delta?}` — `value` ≤8 **characters**, `label` ≤40, `delta` ≤12 (e.g. `"+5%"`, renders a small annotation; aliases `sub`/`trend`/`change`). Budgets count characters, so `"€186.4M"` (7) fits; a value past the budget degrades the whole slide to a bullet list and says so as `SEMANTIC_PATTERN_DEGRADED` naming the field and the budget |
+| `chart_insight` | `chart` | `insights[]` (1–6 → chart+insights visual; >6 → native `two-column` chart + full insight list), `title`, `source`, `takeaway` (dropped when it is word-for-word the slide's ONLY insight — the same sentence in the bullet and the band reads as a mistake, not emphasis; a takeaway summarising several insights is kept) | chart: `{type, data, title?}`; `data` = `{categories:[…], series:[{name, values:[…]}]}` (bar/line/area) or `{categories:[…], values:[…]}` (pie/donut) — a missing/malformed `data` yields `SEMANTIC_PATTERN_DEGRADED` at `slides[i].chart.data` with `fix.params.{expected_shape, example, from, to, reason}`. **Every series needs exactly one value per category and every value must be an unquoted number**: a short array is `CHART_SERIES_LENGTH_MISMATCH` (error) at `slides[i].chart.data.series[j].values`, a quoted figure or a null is `CHART_VALUE_NOT_NUMERIC` (error) at the offending element. Both used to validate clean and render a chart with empty slots or an empty plot |
 | `comparison` | `columns` (2 balanced ≤10 rows each → `comparison-2col`; 3–5 → `stylish-panels`; 2–5 otherwise → `card-grid`; 6+ → bullets) | `title`, `takeaway` | each column: `{header, items[]}` *(or `{header, pros[], cons[]}`)*; every column needs a header to get a visual |
 | `table` | `headers` (≤6, alias `columns`), `rows` (≤6 so the table stays within the 7-row budget) | `title`, `column_alignments`, `highlight_column`, `totals_row`, `column_types`, `takeaway` | each row: a list of cell values, or an object keyed by header label; short rows render blank cells. `highlight_column` takes a header NAME or a 0-based index; `column_alignments` are `left`/`center`/`right`. For options scored against criteria use `option_matrix`, not a table of symbols |
 | `option_matrix` | `criteria` (2–6, alias `columns`), `options` (2–6, alias `rows`) | `title`, `scale` (`harvey` default / `rag` / `text`), `recommended`, `decisive_criterion`, `highlight_label`, `corner_label`, `takeaway` | each criterion: string or `{label, scale?}` (per-column scale, ≤30 chars); each option: `{name, detail?, scores[]}` — exactly one score per criterion (harvey `0–4` or `none`/`quarter`/`half`/`three-quarter`/`full`; rag `red`/`amber`/`green`; text ≤24 chars; `"-"` for n/a) |
@@ -137,7 +137,7 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > `bottom_line` callout. Write each point as `{lead, support}` — `lead` is the conclusion
 > (answer-first), `support` the one sentence of evidence. A bare string is the conclusion with no
 > support line. Outside 3–5 points, or past the char budgets (`lead` ≤90, `support` ≤200), the
-> slide degrades to a bullet list and `validate_deck_spec` says so with `SEMANTIC_DENSITY` at
+> slide degrades to a bullet list and `validate_deck_spec` says so with `SEMANTIC_PATTERN_DEGRADED` at
 > `slides[i].points`; `explain_deck_spec` / `render_deck_spec`'s `explanation_summary` reports
 > `pattern: "exec-summary"` only when the visual is what you will actually get.
 >
@@ -149,11 +149,22 @@ order: spec `meta.template` > tool/CLI `template` arg > archetype default.
 > `label`↔`title`/`name`/`step`/`text`/`description`; `roadmap` phase `name`↔`title`/`label`/`phase`,
 > `date_label`↔`dates`/`date`/`period`, `description`↔`detail`/`summary` (plus `items`/`bullets` folded in); `decision` option
 > `label`↔`title`/`name`. Counts outside a visual's range degrade to a readable content slide (with a
-> `SEMANTIC_DENSITY` advisory) rather than failing. A field present with the **wrong JSON type** for its
+> `SEMANTIC_PATTERN_DEGRADED` advisory) rather than failing. A field present with the **wrong JSON type** for its
 > kind (a numeric title, `points`/`steps`/`columns` given as a bare string instead of an array) is
 > flagged with a `SEMANTIC_FIELD_TYPE` advisory (`warning` under `warn`, `error` under `strict`) — the
 > compiler would otherwise drop the wrong-typed value silently, so wrap single list values in `[ ]` and
 > keep scalar fields as strings.
+>
+> **`SEMANTIC_PATTERN_DEGRADED` vs `SEMANTIC_DENSITY`.** The first means you are losing the visual:
+> the content does not fit the pattern its kind promised, so the compiler renders bullets or a plain
+> content slide instead. `fix.kind` is `restore_visual` and `fix.params` answer the three questions
+> without reading the message — `from` (the pattern refused, `""` when the kind has not committed to
+> one), `to` (`content-bullets` / `content-slide` / `native-two-column` / `insights-only`) and
+> `reason` (`count_out_of_range`, `budget_exceeded`, `columns_unbalanced`, `scores_incomplete`,
+> `score_unreadable`, `chart_data_missing`). Branch on `reason`: `count_out_of_range` wants the list
+> brought into range, `budget_exceeded` wants the named text shortened. `SEMANTIC_DENSITY` now means
+> only count advice that does **not** cost you the visual — an over-wide or over-tall table, a row
+> with fewer cells than its header, an unbalanced comparison a card-grid still draws.
 >
 > **`raw_json2pptx` structural contract:** the `slide` payload is decoded as a raw `PresentationInput`
 > slide and must be a valid one, or validate/compile **blocks** (`SEMANTIC_REQUIRED` / `SEMANTIC_UNKNOWN_FIELD`

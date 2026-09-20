@@ -104,6 +104,39 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **`SEMANTIC_PATTERN_DEGRADED` splits the fallback advisories off
+  `SEMANTIC_DENSITY` (go-slide-creator-kjc8l).** Eight slide kinds reported the
+  same thing — "you asked for a visual, you are getting bullets" — as
+  `SEMANTIC_DENSITY`, sharing the code with plain count-range advice. The code
+  was a misnomer for the budget cases (a KPI value twenty characters too long
+  is not a density problem) and an agent could not tell a fallback from a
+  suggestion without parsing the message.
+  - Every advisory that announces a fallback now carries
+    `SEMANTIC_PATTERN_DEGRADED`: `agenda`, `team`, `stat`, `architecture`,
+    `timeline`, `matrix_2x2`, `framework`, `image_case`, `decision`, `process`,
+    `roadmap`, `executive_summary`, `kpi_snapshot`, `option_matrix`,
+    `chart_insight` and the `comparison` cases that no comparison pattern can
+    hold.
+  - Each carries `fix.kind: "restore_visual"` with
+    `fix.params.{from, to, reason}` — `from` is the pattern refused (`""` when
+    the kind has not committed to one), `to` is `content-bullets` /
+    `content-slide` / `native-two-column` / `insights-only`, and `reason` is
+    `count_out_of_range` / `budget_exceeded` / `columns_unbalanced` /
+    `scores_incomplete` / `score_unreadable` / `chart_data_missing`. The two
+    `chart_insight` data findings keep their `provide_value` fix and gain the
+    same three params, so the contract is uniform however the finding was
+    raised.
+  - `SEMANTIC_DENSITY` keeps only the advisories that do NOT cost the slide its
+    visual: an over-wide or over-tall table, a row with fewer cells than its
+    header, an unbalanced comparison a card-grid still draws, a dropped
+    `table-highlight` badge.
+  - `restore_visual` joins `get_capabilities().vocabularies.advisory_fix_kinds`.
+    `describe_finding("SEMANTIC_PATTERN_DEGRADED")` returns remediation steps
+    that branch on `reason`.
+  - Severity and strictness are unchanged (warning under `warn`, error under
+    `strict`), as are the messages and paths. No finding appears or disappears —
+    only the code and the fix change.
+
 - **`agenda-with-images` keeps the placeholder column rectangular
   (go-slide-creator-jodu).** `image_label` was read as a per-row switch: a row
   without one dropped its placeholder and spanned its title across the gap, so

@@ -1087,14 +1087,29 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 	},
 	CodeSemanticDensity: {
 		Code:        CodeSemanticDensity,
-		Summary:     "A slide's item count falls outside its recommended density range.",
+		Summary:     "A slide's item count falls outside its recommended density range, but the slide keeps its visual.",
 		Severity:    describeSeverityReview,
-		WhenEmitted: "semantic validation finds a count outside the advisory range for the slide kind — e.g. kpi_snapshot kpis not in 2–6, executive_summary points not in 3–5, process steps not in 3–8, roadmap phases not in 3–6, or a comparison with other than two (or unbalanced) columns. A count outside the visual pattern's range degrades the slide to a bullet list instead of the planned visual. Promoted to an error under strict validation.",
+		WhenEmitted: "semantic validation finds a count or shape outside the advisory range for the slide kind WITHOUT losing the planned visual — e.g. a table wider or taller than the renderer lays out, a row with fewer cells than the header, an unbalanced comparison that a card-grid still draws, or a dropped table-highlight badge. When the count or budget costs the slide its visual, SEMANTIC_PATTERN_DEGRADED is emitted instead. Promoted to an error under strict validation.",
 		RemediationSteps: []string{
 			"Adjust the item count at evidence.path into the recommended range.",
 			"Split overflowing content across multiple slides, or merge sparse slides.",
 		},
-		RelatedCodes: []string{CodeSemanticTakeawayRequired, CodeSemanticRequired},
+		RelatedCodes: []string{CodeSemanticPatternDegraded, CodeSemanticTakeawayRequired, CodeSemanticRequired},
+	},
+	CodeSemanticPatternDegraded: {
+		Code:        CodeSemanticPatternDegraded,
+		Summary:     "A slide's content will not fit the visual its kind promised, so it renders as bullets or a plain content slide instead.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds a count or a text budget the planned pattern cannot take, and the compiler will silently fall back — e.g. kpi_snapshot kpis not in 2–6 or a KPI value past the card's character budget, executive_summary points not in 3–5 or a lead over 90 characters, agenda sections not in 2–10, process steps, roadmap phases, architecture tiers, timeline milestones, a 2x2 short of four headed quadrants, a team-bios roster past its budgets, a comparison that no comparison pattern can hold, a table-highlight matrix outside 2–6 x 2–6 or carrying a score its scale cannot read, a chart_insight with no chart data or more insights than the split renders. The slide still renders, which is why the fallback used to go unnoticed. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Read fix.params: from is the pattern that was refused, to is what renders instead (content-bullets, content-slide, native-two-column), and reason is why (count_out_of_range, budget_exceeded, columns_unbalanced, scores_incomplete, score_unreadable, chart_data_missing).",
+			"For count_out_of_range, bring the list at evidence.path into the pattern's range — drop, merge or split items.",
+			"For budget_exceeded, shorten the over-budget text the message names rather than changing the count.",
+			"Or accept the fallback: the content is never lost, only the visual.",
+		},
+		ExampleBefore: `{"kind": "kpi_snapshot", "kpis": [{"value": "1", "label": "a"}]}`,
+		ExampleAfter:  `{"kind": "kpi_snapshot", "kpis": [{"value": "1", "label": "a"}, {"value": "2", "label": "b"}]}`,
+		RelatedCodes:  []string{CodeSemanticDensity, CodeSemanticRequired},
 	},
 	CodeSemanticWeakContent: {
 		Code:        CodeSemanticWeakContent,

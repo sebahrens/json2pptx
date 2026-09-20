@@ -172,6 +172,12 @@ var fixKindRegistry = map[string]FixKindInfo{
 		Guidance:     "A shape overruns the slide, the footer band, or the title. Move or resize it within the content area, or move to a layout that fits it.",
 		Alternatives: []string{"reshape_grid", "swap_layout", "set_max_height_pct"},
 	},
+	"restore_visual": {
+		Kind:         "restore_visual",
+		Class:        FixClassAdvisory,
+		Guidance:     "The slide's content will not fit the visual its kind promised, so it renders as bullets (or a plain content slide) instead. params.to says what you get and params.reason why; bring the count into range or shorten the over-budget text to keep params.from, or accept the fallback.",
+		Alternatives: []string{"reduce_items", "add_items", "reduce_text", "split_pattern"},
+	},
 	"review": {
 		Kind:     "review",
 		Class:    FixClassAdvisory,

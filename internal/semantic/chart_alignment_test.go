@@ -176,7 +176,7 @@ func TestMisshapenChartListNamesTheKey(t *testing.T) {
 		}
 	}
 	// The self-contradicting message must be gone.
-	if other := findCode(ds, diagnostics.CodeSemanticDensity); other != nil &&
+	if other := findCode(ds, diagnostics.CodeSemanticPatternDegraded); other != nil &&
 		strings.Contains(other.Message, "declares no data series") {
 		t.Errorf("the generic message still fires alongside: %s", other.Message)
 	}
@@ -188,9 +188,9 @@ func TestMissingChartSeriesKeepsTheGenericMessage(t *testing.T) {
 	ds := chartFindings(t, `        categories: [a, b]
         totals: [1, 2]
 `)
-	d := findCode(ds, diagnostics.CodeSemanticDensity)
+	d := findCode(ds, diagnostics.CodeSemanticPatternDegraded)
 	if d == nil {
-		t.Fatalf("expected SEMANTIC_DENSITY, got %v", codesOf(ds))
+		t.Fatalf("expected SEMANTIC_PATTERN_DEGRADED, got %v", codesOf(ds))
 	}
 	if !strings.Contains(d.Message, "declares no data series") {
 		t.Errorf("message = %q, want the missing-series guidance", d.Message)

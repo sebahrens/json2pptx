@@ -344,9 +344,9 @@ func TestValidateKPIDensity(t *testing.T) {
 		}}},
 	}
 	ds := Validate(spec, StrictnessWarn)
-	d, ok := findAt(ds, diagnostics.CodeSemanticDensity, "slides[0].kpis")
+	d, ok := findAt(ds, diagnostics.CodeSemanticPatternDegraded, "slides[0].kpis")
 	if !ok {
-		t.Fatalf("expected SEMANTIC_DENSITY at slides[0].kpis, got %v", ds)
+		t.Fatalf("expected SEMANTIC_PATTERN_DEGRADED at slides[0].kpis, got %v", ds)
 	}
 	if d.Severity != diagnostics.SeverityWarning {
 		t.Errorf("density severity = %q, want warning under warn strictness", d.Severity)
@@ -363,15 +363,15 @@ func TestValidateChartSeriesAdvisory(t *testing.T) {
 		}}},
 	}
 	ds := Validate(spec, StrictnessWarn)
-	d, ok := findAt(ds, diagnostics.CodeSemanticDensity, "slides[0].chart.data")
+	d, ok := findAt(ds, diagnostics.CodeSemanticPatternDegraded, "slides[0].chart.data")
 	if !ok {
-		t.Fatalf("expected SEMANTIC_DENSITY at slides[0].chart.data, got %v", ds)
+		t.Fatalf("expected SEMANTIC_PATTERN_DEGRADED at slides[0].chart.data, got %v", ds)
 	}
 	if d.Severity != diagnostics.SeverityWarning {
 		t.Errorf("chart series severity = %q, want warning under warn strictness", d.Severity)
 	}
 	// And under off it must be suppressed (advisory).
-	if hasCode(Validate(spec, StrictnessOff), diagnostics.CodeSemanticDensity) {
+	if hasCode(Validate(spec, StrictnessOff), diagnostics.CodeSemanticPatternDegraded) {
 		t.Error("advisory chart-series finding must be suppressed under off")
 	}
 }
@@ -405,16 +405,16 @@ func TestValidateChartInsightOverCap(t *testing.T) {
 	}
 
 	warnDS := Validate(newSpec(), StrictnessWarn)
-	d, ok := findAt(warnDS, diagnostics.CodeSemanticDensity, "slides[0].insights")
+	d, ok := findAt(warnDS, diagnostics.CodeSemanticPatternDegraded, "slides[0].insights")
 	if !ok {
-		t.Fatalf("expected SEMANTIC_DENSITY (over-cap) at slides[0].insights, got %v", warnDS)
+		t.Fatalf("expected SEMANTIC_PATTERN_DEGRADED (over-cap) at slides[0].insights, got %v", warnDS)
 	}
 	if d.Severity != diagnostics.SeverityWarning {
 		t.Errorf("warn severity = %q, want warning", d.Severity)
 	}
 
 	strictDS := Validate(newSpec(), StrictnessStrict)
-	d, ok = findAt(strictDS, diagnostics.CodeSemanticDensity, "slides[0].insights")
+	d, ok = findAt(strictDS, diagnostics.CodeSemanticPatternDegraded, "slides[0].insights")
 	if !ok {
 		t.Fatalf("expected over-cap finding under strict, got %v", strictDS)
 	}
@@ -431,8 +431,8 @@ func TestValidateChartInsightOverCap(t *testing.T) {
 			"insights": insights(6),
 		}}},
 	}
-	if _, ok := findAt(Validate(atCap, StrictnessWarn), diagnostics.CodeSemanticDensity, "slides[0].insights"); ok {
-		t.Errorf("chart_insight at the insight cap must not emit SEMANTIC_DENSITY at .insights")
+	if _, ok := findAt(Validate(atCap, StrictnessWarn), diagnostics.CodeSemanticPatternDegraded, "slides[0].insights"); ok {
+		t.Errorf("chart_insight at the insight cap must not emit SEMANTIC_PATTERN_DEGRADED at .insights")
 	}
 }
 
@@ -674,9 +674,9 @@ func TestValidateUsableDensityMatchesCompile(t *testing.T) {
 		}}},
 	}
 	ds := Validate(spec, StrictnessWarn)
-	d, ok := findAt(ds, diagnostics.CodeSemanticDensity, "slides[0].steps")
+	d, ok := findAt(ds, diagnostics.CodeSemanticPatternDegraded, "slides[0].steps")
 	if !ok {
-		t.Fatalf("expected SEMANTIC_DENSITY at slides[0].steps for 2 usable steps, got %v", ds)
+		t.Fatalf("expected SEMANTIC_PATTERN_DEGRADED at slides[0].steps for 2 usable steps, got %v", ds)
 	}
 	if !strings.Contains(d.Message, "2 usable steps") {
 		t.Errorf("density message = %q, want it to report 2 usable steps", d.Message)

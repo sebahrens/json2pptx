@@ -38,7 +38,7 @@ func TestKPISnapshotKeepsCardsForMultiByteValues(t *testing.T) {
 		t.Fatalf("expected a kpi-3up pattern, got %+v", slide.Pattern)
 	}
 	for _, d := range result.Diagnostics {
-		if d.Code == string(diagnostics.CodeSemanticDensity) {
+		if d.Code == string(diagnostics.CodeSemanticPatternDegraded) {
 			t.Errorf("content inside the budget drew a degrade advisory: %s", d.Message)
 		}
 	}
@@ -72,8 +72,8 @@ func TestKPISnapshotReportsBudgetDegrade(t *testing.T) {
 	if found == nil {
 		t.Fatalf("no degrade finding; the slide lost its KPI cards silently (%+v)", result.Diagnostics)
 	}
-	if found.Code != string(diagnostics.CodeSemanticDensity) {
-		t.Errorf("code = %q, want %q", found.Code, diagnostics.CodeSemanticDensity)
+	if found.Code != string(diagnostics.CodeSemanticPatternDegraded) {
+		t.Errorf("code = %q, want %q", found.Code, diagnostics.CodeSemanticPatternDegraded)
 	}
 	// The author needs the field and the budget, not just "it degraded".
 	for _, want := range []string{"kpi-3up", "values[0].big", "maxLength 8"} {
