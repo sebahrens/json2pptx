@@ -190,6 +190,15 @@ func collectTextFitFailures(layouts []types.LayoutMetadata, templateName string,
 
 	for li := range layouts {
 		layout := &layouts[li]
+		// A statement layout is a one-statement surface, not a paragraph
+		// surface: its body inherits display-sized type from the master (28pt
+		// on modern-yellow) precisely so a single line lands hard. Asking it to
+		// hold eight or twelve wrapped paragraphs measures nothing about the
+		// template (go-slide-creator-c8fxn).
+		maxLevel := 5
+		if isStatementLayout(layout) {
+			maxLevel = statementMaxLevel
+		}
 		for pi := range layout.Placeholders {
 			ph := &layout.Placeholders[pi]
 			if !isMeasurableBody(ph) {
@@ -197,6 +206,9 @@ func collectTextFitFailures(layouts []types.LayoutMetadata, templateName string,
 			}
 			tested++
 			for _, lvl := range levels {
+				if lvl.Level > maxLevel {
+					continue
+				}
 				params := textfit.Params{
 					WidthEMU:    ph.Bounds.Width,
 					HeightEMU:   ph.Bounds.Height,
@@ -367,4 +379,100 @@ func loadTextFitAllowlist(t *testing.T) textFitAllowlist {
 		t.Fatalf("parse text-fit allow-list %s: %v", textFitAllowlistPath, err)
 	}
 	return al
+}
+
+// statementMaxLevel is the densest fixture a statement-layout body is asked to
+// hold. P0-P2 still apply — a statement box that cannot hold a statement is a
+// real defect and still fails — but P3 (eight paragraphs) and P4 (twelve) are
+// not what the surface is for, and P5 exists to overflow.
+//
+// Measured before choosing it (go-slide-creator-c8fxn): modern-yellow's
+// Statement body is 560x220pt at 28pt inherited type and classifies
+// P0->P0, P1->P0, P2->P2, P3->P4, P4->P5. It holds a statement perfectly and
+// only misses when asked for paragraph density.
+const statementMaxLevel = 2
+
+// isStatementLayout reports whether a layout declares itself a statement
+// surface. The tag comes from the template's own layout name via the canonical
+// classifier, so this follows the author's declared intent rather than guessing
+// from geometry or font size — a body that merely renders large might be a
+// genuinely mis-sized placeholder, which must still fail.
+func isStatementLayout(layout *types.LayoutMetadata) bool {
+	for _, tag := range layout.Tags {
+		if tag == "statement" {
+			return true
+		}
+	}
+	return false
+}
+
+// go-slide-creator-c8fxn: the statement exemption must stay narrow. P0-P2 are
+// still enforced, so a statement box that cannot hold a statement is still a
+// failure — only paragraph density is excused.
+func TestStatementExemptionStaysNarrow(t *testing.T) {
+	if statementMaxLevel < 2 {
+		t.Errorf("statementMaxLevel = %d; a statement surface must still be held to P0-P2", statementMaxLevel)
+	}
+	if statementMaxLevel >= 5 {
+		t.Errorf("statementMaxLevel = %d exempts everything, which is not an exemption", statementMaxLevel)
+	}
+}
+
+// The tag drives the exemption, not geometry or font size: a body that merely
+// renders large may be a genuinely mis-sized placeholder and must still fail.
+func TestIsStatementLayoutReadsTheTag(t *testing.T) {
+	cases := []struct {
+		name string
+		tags []string
+		want bool
+	}{
+		{"statement", []string{"statement"}, true},
+		{"statement among others", []string{"blank", "statement"}, true},
+		{"content", []string{"content"}, false},
+		{"untagged", nil, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			layout := &types.LayoutMetadata{Tags: c.tags}
+			if got := isStatementLayout(layout); got != c.want {
+				t.Errorf("isStatementLayout(%v) = %v, want %v", c.tags, got, c.want)
+			}
+		})
+	}
+}
+
+// Exactly one bundled template declares a statement layout with a measurable
+// body. If that changes, the exemption's measured justification needs
+// re-checking against the new template rather than being assumed to hold.
+func TestStatementLayoutsAreStillRare(t *testing.T) {
+	tmplDir := filepath.Join("..", "..", "templates")
+	files, err := filepath.Glob(filepath.Join(tmplDir, "*.pptx"))
+	if err != nil || len(files) == 0 {
+		t.Fatalf("no templates under %s: %v", tmplDir, err)
+	}
+	var found []string
+	for _, file := range files {
+		reader, err := template.OpenTemplate(file)
+		if err != nil {
+			continue
+		}
+		layouts, err := template.ParseLayouts(reader)
+		if err == nil {
+			_, _ = template.NormalizeLayoutFiles(reader, layouts)
+			for li := range layouts {
+				if !isStatementLayout(&layouts[li]) {
+					continue
+				}
+				for pi := range layouts[li].Placeholders {
+					if isMeasurableBody(&layouts[li].Placeholders[pi]) {
+						found = append(found, filepath.Base(file)+"/"+layouts[li].Name)
+					}
+				}
+			}
+		}
+		_ = reader.Close()
+	}
+	if len(found) != 1 {
+		t.Errorf("statement layouts with a measurable body = %v; the exemption was justified by measuring the single known case, so re-measure before widening", found)
+	}
 }
