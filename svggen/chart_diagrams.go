@@ -158,9 +158,12 @@ func (d *LineChartDiagram) Validate(req *RequestEnvelope) error {
 		if !ok || len(catSlice) == 0 {
 			return &ValidationError{Field: "data.categories", Code: ErrCodeInvalidType, Message: "line_chart 'categories' must be a non-empty array of strings, e.g. [\"Jan\", \"Feb\", \"Mar\"]", Value: categories}
 		}
+		// One value per category (go-slide-creator-pcrp). A time series is
+		// exempt: its x positions come from the series' own time fields.
+		return validateSeriesValues(seriesSlice, len(catSlice), "line_chart")
 	}
 
-	return nil
+	return validateSeriesValues(seriesSlice, 0, "line_chart")
 }
 
 // Render generates an SVG document for the line chart.
@@ -433,7 +436,9 @@ func (d *RadarChartDiagram) Validate(req *RequestEnvelope) error {
 		return &ValidationError{Field: "data.series", Code: ErrCodeInvalidType, Message: "radar_chart 'series' must be a non-empty array of objects, e.g. [{\"name\": \"Model A\", \"values\": [8, 6, 7]}]", Value: series}
 	}
 
-	return nil
+	// One value per axis: a radar with a short series draws a polygon that
+	// closes through the origin (go-slide-creator-pcrp).
+	return validateSeriesValues(seriesSlice, len(catSlice), "radar_chart")
 }
 
 // Render generates an SVG document for the radar chart.

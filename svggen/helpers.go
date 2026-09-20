@@ -222,7 +222,18 @@ func validateCategoriesAndSeries(data map[string]any, chartType string, requireC
 		return &ValidationError{Field: "data.series", Code: ErrCodeInvalidType, Message: chartType + " 'series' must be a non-empty array of objects, e.g. [{\"name\": \"Revenue\", \"values\": [10, 20, 30]}]", Value: series}
 	}
 
-	return nil
+	// One value per category, and every value a number. A short series used to
+	// render as a missing bar and a quoted number as an empty plot, both with
+	// every gate reporting success (go-slide-creator-pcrp).
+	//
+	// Only the categorical charts are checked. scatter_chart and bubble_chart
+	// reach here with requireCategories=false and carry point objects
+	// ({x, y} / {x, y, size}) in the same `values` field, which are neither
+	// numbers nor one-per-category.
+	if !requireCategories {
+		return nil
+	}
+	return validateSeriesValues(seriesSlice, categoryCountOf(data), chartType)
 }
 
 // normalizeCategoryAliases promotes common aliases ("labels", "x_labels") to

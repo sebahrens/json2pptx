@@ -1121,6 +1121,32 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"kind": "executive_summary", "title": "Q3", "points": ["single point"]}`,
 		RelatedCodes:  []string{CodeSemanticRequired, CodeSemanticDensity},
 	},
+	CodeChartSeriesLengthMismatch: {
+		Code:        CodeChartSeriesLengthMismatch,
+		Summary:     "A chart series has a different number of values than the chart has categories.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "chart validation finds a series whose values array is shorter or longer than categories. The renderer plots the values it has and leaves the rest of the categories empty, so a truncated array — the most likely slip after editing a chart by hand — used to ship as a confidently wrong chart that every gate called clean.",
+		RemediationSteps: []string{
+			"Give every series exactly one value per category.",
+			"Pad a short series with 0 where the figure is genuinely missing, or drop the categories you have no data for.",
+		},
+		ExampleBefore: `{"categories": ["Q1","Q2","Q3","Q4"], "series": [{"name": "Revenue", "values": [10]}]}`,
+		ExampleAfter:  `{"categories": ["Q1","Q2","Q3","Q4"], "series": [{"name": "Revenue", "values": [10, 12, 15, 18]}]}`,
+		RelatedCodes:  []string{CodeChartValueNotNumeric, CodeSemanticFieldType},
+	},
+	CodeChartValueNotNumeric: {
+		Code:        CodeChartValueNotNumeric,
+		Summary:     "A chart value is not a number.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "chart validation finds a quoted figure (\"10\"), a null, or an object where a number belongs. The chart then renders as an empty plot with a format-error label.",
+		RemediationSteps: []string{
+			"Write the values unquoted: [10, 20, 30], not [\"10\", \"20\", \"30\"].",
+			"Replace a null with 0, or drop its category.",
+		},
+		ExampleBefore: `{"categories": ["A","B"], "series": [{"name": "Revenue", "values": ["1", "two"]}]}`,
+		ExampleAfter:  `{"categories": ["A","B"], "series": [{"name": "Revenue", "values": [1, 2]}]}`,
+		RelatedCodes:  []string{CodeChartSeriesLengthMismatch},
+	},
 	CodeSemanticPatternNotAvailable: {
 		Code:        CodeSemanticPatternNotAvailable,
 		Summary:     "A slide's pattern / layout override names a composition its kind cannot compile to, so the override is ignored.",

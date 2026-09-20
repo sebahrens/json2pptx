@@ -8,6 +8,23 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`CHART_SERIES_LENGTH_MISMATCH` and `CHART_VALUE_NOT_NUMERIC`
+  (go-slide-creator-pcrp).** `{categories: [Q1,Q2,Q3,Q4], series: [{name: Rev,
+  values: [10]}]}` validated clean and rendered one bar over four ticks;
+  `values: ["1", "two"]` rendered an empty plot with a format-error label. Both
+  came back `ok: true` with a quality score of 100, so the deterministic gate an
+  agent is told to run before rendering could not see the two most common chart
+  mistakes.
+  - `validate_deck_spec` / `semantic validate` now emit both as **errors**, at
+    `slides[i].chart.data.series[j].values` and `…values[k]` respectively.
+  - svggen refuses the same two shapes in its per-chart `Validate`, so
+    `validate_input`, `validate --fit-report` and `generate_presentation` report
+    them as `refuse` fit findings and validate agrees with generate.
+  - Covers the categorical charts (bar, line, area, stacked bar/area, grouped
+    bar, radar). `scatter_chart` / `bubble_chart` are exempt — they carry point
+    objects in the same `values` field — and a time series is exempt from the
+    length check only, not the numeric one.
+
 - **Pattern `PostExpandWarnings` reach every surface (go-slide-creator-wn4v).**
   `BODY_TOO_LONG`, `CHART_PLACEHOLDER_EMPTY` and the other warnings a pattern
   emits about the content it was just given were read only by

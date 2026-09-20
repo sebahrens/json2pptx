@@ -10,9 +10,11 @@ package semantic
 // validation findings in one envelope.
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -700,10 +702,87 @@ func validateChartData(chartPath string, chart map[string]any, s *semDiags) {
 		return
 	}
 	if chartDataHasValues(data, chartType) {
+		validateChartSeriesAlignment(dataPath, data, s)
 		return
 	}
 	s.advisoryFix(dataPath, diagnostics.CodeSemanticDensity,
 		fmt.Sprintf("chart_insight chart.data declares no data series (found keys %s); expected chart.data as %s", joinQuoted(sortedKeys(data)), shape), fix)
+}
+
+// validateChartSeriesAlignment checks each series against the category count
+// and rejects values that are not numbers.
+//
+// Both were accepted in silence: {categories: [Q1..Q4], series: [{values: [10]}]}
+// validated clean and rendered one bar over four ticks, and ["1", "two"]
+// rendered an empty plot with a format-error label — each with ok:true and a
+// quality score of 100 (go-slide-creator-pcrp). They are errors, not
+// advisories: svggen refuses both at render time, so a warning here would put
+// validate and generate back in disagreement.
+func validateChartSeriesAlignment(dataPath string, data map[string]any, s *semDiags) {
+	catCount, hasCats := chartCategoryCount(data)
+	series, ok := data["series"].([]any)
+	if !ok {
+		return
+	}
+	for i, raw := range series {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		valuesPath := fmt.Sprintf("%s.series[%d].values", dataPath, i)
+		values, ok := entry["values"].([]any)
+		if !ok {
+			continue // a missing or non-array values list is the shape check's job
+		}
+		if idx, desc, bad := firstNonNumericValue(values); bad {
+			s.hard(fmt.Sprintf("%s[%d]", valuesPath, idx), diagnostics.CodeChartValueNotNumeric,
+				fmt.Sprintf("chart series %s value %d is %s; chart values must be unquoted numbers, or the chart renders as an empty plot",
+					chartSeriesLabel(entry, i), idx, desc))
+			continue
+		}
+		if hasCats && len(values) != catCount {
+			s.hard(valuesPath, diagnostics.CodeChartSeriesLengthMismatch,
+				fmt.Sprintf("chart has %d categories but series %s has %d value(s); every series needs exactly one value per category, or the extra categories render empty",
+					catCount, chartSeriesLabel(entry, i), len(values)))
+		}
+	}
+}
+
+// chartCategoryCount returns the declared category count and whether the chart
+// declares categories at all.
+func chartCategoryCount(data map[string]any) (int, bool) {
+	for _, key := range []string{"categories", "labels", "x_labels"} {
+		if list, ok := data[key].([]any); ok {
+			return len(list), true
+		}
+	}
+	return 0, false
+}
+
+// chartSeriesLabel names a series for a message: its own name, else its index.
+func chartSeriesLabel(entry map[string]any, idx int) string {
+	if n, ok := entry["name"].(string); ok && strings.TrimSpace(n) != "" {
+		return strconv.Quote(n)
+	}
+	return fmt.Sprintf("[%d]", idx)
+}
+
+// firstNonNumericValue finds the first element that is not a number, with a
+// short description of what it is instead.
+func firstNonNumericValue(values []any) (int, string, bool) {
+	for i, v := range values {
+		switch val := v.(type) {
+		case float64, int, int64, json.Number:
+			continue
+		case nil:
+			return i, "null", true
+		case string:
+			return i, fmt.Sprintf("the string %s", strconv.Quote(val)), true
+		default:
+			return i, fmt.Sprintf("a %T", v), true
+		}
+	}
+	return 0, "", false
 }
 
 // chartDataHasValues reports whether chart.data carries a non-empty series

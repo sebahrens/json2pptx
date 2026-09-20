@@ -137,6 +137,16 @@ const (
 	// string instead of an array). The compiler silently drops wrong-typed values,
 	// so without this finding the content vanishes behind a green validate gate.
 	CodeSemanticFieldType Code = "SEMANTIC_FIELD_TYPE"
+	// CodeChartSeriesLengthMismatch flags a chart series carrying a different
+	// number of values than the chart has categories. The renderer draws the
+	// values it has and leaves the remaining categories empty, so a truncated
+	// array — the most likely hand-authoring slip — used to ship as a
+	// confidently wrong chart (go-slide-creator-pcrp).
+	CodeChartSeriesLengthMismatch Code = "CHART_SERIES_LENGTH_MISMATCH"
+	// CodeChartValueNotNumeric flags a chart value that is not a number: a
+	// quoted figure ("10"), a null, or an object. The chart then renders as an
+	// empty plot with a format-error label (go-slide-creator-pcrp).
+	CodeChartValueNotNumeric Code = "CHART_VALUE_NOT_NUMERIC"
 	// CodeSemanticPatternNotAvailable flags a slide's pattern / layout override
 	// that names something the kind cannot compile to. The override is a no-op
 	// — the compiler keeps its own choice — and before this code said so the
@@ -241,6 +251,8 @@ func AllCodes() []Code {
 		CodeSemanticDensity,
 		CodeSemanticWeakContent,
 		CodeSemanticFieldType,
+		CodeChartSeriesLengthMismatch,
+		CodeChartValueNotNumeric,
 		CodeSemanticPatternNotAvailable,
 		CodeSemanticRhythmMonotony,
 		CodeSemanticRhythmDensity,
