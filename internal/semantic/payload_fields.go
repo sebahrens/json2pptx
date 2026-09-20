@@ -114,6 +114,7 @@ var agendaSectionKeys = []string{
 
 var quoteItemKeys = []string{"text", "quote", "name", "attribution", "speaker", "author", "role", "title"}
 var bridgeColumnKeys = []string{"label", "value", "type"}
+var pillarItemKeys = []string{"title", "body"}
 
 var archTierKeys = []string{
 	"label", "name", "title", "tier", "layer",
@@ -299,6 +300,14 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		}},
 		"unit":    strField("Short value-label unit, at most 8 characters (for example $m)."),
 		"caption": strField("Scale note above the bars, at most 60 characters."),
+	}, compositionFields()), universalFields()),
+	KindPillars: withFields(withFields(map[string]payloadField{
+		"title":       strField("Slide title."),
+		"takeaway":    strField("One-line takeaway footer."),
+		"pillars":     {typ: "array", desc: "3–5 named pillars; each {title, body?}. Body is a list of short bullet strings.", itemKeys: pillarItemKeys, itemRequired: []string{"title"}, itemKeySchemas: map[string]any{"body": map[string]any{"type": "array", "items": map[string]any{"type": "string"}}}},
+		"objective":   strField("Strategy-house objective banner; supply with foundation."),
+		"foundation":  strField("Strategy-house foundation row; supply with objective."),
+		"roof_badges": {typ: "array", itemStrings: true, desc: "Up to three short string badges above a strategy house."},
 	}, compositionFields()), universalFields()),
 	KindTeam: withFields(withFields(map[string]payloadField{
 		"title":    strField("Slide title."),

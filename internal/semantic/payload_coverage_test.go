@@ -269,6 +269,34 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"unit":     {inject: func(s string) map[string]any { b := bridgeCoverageBody(); b["unit"] = s; return b }, rendered: true},
 		"caption":  {inject: func(s string) map[string]any { b := bridgeCoverageBody(); b["caption"] = s; return b }, rendered: true},
 	},
+	KindPillars: {
+		"pillars": {inject: func(s string) map[string]any {
+			b := pillarsCoverageBody()
+			b["pillars"].([]any)[0].(map[string]any)["title"] = s
+			return b
+		}, rendered: true},
+		"title":    {inject: func(s string) map[string]any { b := pillarsCoverageBody(); b["title"] = s; return b }, rendered: true},
+		"takeaway": {inject: func(s string) map[string]any { b := pillarsCoverageBody(); b["takeaway"] = s; return b }, rendered: true},
+		"objective": {inject: func(s string) map[string]any {
+			b := pillarsCoverageBody()
+			b["objective"] = s
+			b["foundation"] = "Data"
+			return b
+		}, rendered: true},
+		"foundation": {inject: func(s string) map[string]any {
+			b := pillarsCoverageBody()
+			b["objective"] = "Grow trust"
+			b["foundation"] = s
+			return b
+		}, rendered: true},
+		"roof_badges": {inject: func(s string) map[string]any {
+			b := pillarsCoverageBody()
+			b["objective"] = "Grow trust"
+			b["foundation"] = "Data"
+			b["roof_badges"] = []any{s}
+			return b
+		}, rendered: true},
+	},
 	// go-slide-creator-13lj: a person's name, role and bio all have to reach
 	// the rendered card.
 	KindTeam: {
@@ -380,6 +408,14 @@ func bridgeCoverageBody() map[string]any {
 		map[string]any{"label": "Revenue", "type": "total", "value": 120},
 		map[string]any{"label": "COGS", "type": "delta", "value": -45},
 		map[string]any{"label": "EBITDA", "type": "subtotal"},
+	}}
+}
+
+func pillarsCoverageBody() map[string]any {
+	return map[string]any{"pillars": []any{
+		map[string]any{"title": "Trust", "body": []any{"Reliability"}},
+		map[string]any{"title": "Speed", "body": []any{"Delivery"}},
+		map[string]any{"title": "Scale", "body": []any{"Growth"}},
 	}}
 }
 

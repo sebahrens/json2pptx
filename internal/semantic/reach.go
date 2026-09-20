@@ -44,6 +44,7 @@ var patternReach = map[string]SlideKind{
 	"team-bios":            KindTeam,
 	"timeline-horizontal":  KindTimeline,
 	"waterfall-bridge":     KindBridge,
+	"strategy-house":       KindPillars,
 
 	// Not reachable: author these with raw_json2pptx.
 	"before-after":                 "",
@@ -60,7 +61,6 @@ var patternReach = map[string]SlideKind{
 	"pyramid":                      "",
 	"roadmap-phased":               "",
 	"scqa-summary":                 "",
-	"strategy-house":               "",
 	"swimlane":                     "",
 	"value-chain":                  "",
 }

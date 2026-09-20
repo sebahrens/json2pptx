@@ -174,6 +174,8 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 		return slides.CompileQuote(in)
 	case KindBridge:
 		return slides.CompileBridge(in)
+	case KindPillars:
+		return slides.CompilePillars(in)
 	case KindTeam:
 		return slides.CompileTeam(in)
 	case KindStat:

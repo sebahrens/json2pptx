@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **DeckSpec kind `pillars` (go-slide-creator-r1k1).** Three to five named
+  pillars compile to `strategy-house` when `objective` and `foundation` are
+  supplied together, or `stylish-panels` without house framing. Pattern limits
+  and malformed item fields are checked at semantic paths; a fallback preserves
+  all text and reports `SEMANTIC_PATTERN_DEGRADED`. The closed schema and
+  `list_slide_kinds` include a copy-ready example. Schema version is 4.68.0;
+  the raw PresentationInput fingerprint is unchanged.
+
 - **DeckSpec kind `bridge` (go-slide-creator-exo2).** Ordered additive
   `columns: [{label, type, value?}, …]` compile to `waterfall-bridge` for 3–10
   columns. `type` is `total`, `delta`, or `subtotal`; totals and deltas require

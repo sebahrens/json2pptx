@@ -141,6 +141,17 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"takeaway": "EBITDA closes at $45m after cost deductions.",
 	},
+	KindPillars: {
+		"kind": "pillars", "title": "Three pillars support the FY27 plan",
+		"objective": "Become the trusted settlement platform",
+		"pillars": []any{
+			map[string]any{"title": "Customer trust", "body": []any{"Transparent pricing", "Operational resilience"}},
+			map[string]any{"title": "Product velocity", "body": []any{"Weekly releases", "Shared platform"}},
+			map[string]any{"title": "Disciplined growth", "body": []any{"Enterprise focus", "Measured expansion"}},
+		},
+		"foundation": "People · Data · Controls",
+		"takeaway":   "The platform strategy rests on trust, speed, and disciplined growth.",
+	},
 	KindArchitecture: {
 		"kind":  "architecture",
 		"title": "Four tiers, two concerns that cut across them",

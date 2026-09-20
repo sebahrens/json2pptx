@@ -230,6 +230,10 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleEvidence, family: FamilyChart, density: DensityMedium, layout: "blank-title",
 		pattern: slides.BridgePattern,
 	},
+	KindPillars: {
+		role: RoleAnalysis, family: FamilyComparison, density: DensityMedium, layout: "blank-title",
+		pattern: slides.PillarsPattern,
+	},
 	KindStat: {
 		// One number is the lightest slide in the deck and it is there to make a
 		// point, not to lay out evidence in parts. It shares the big-number
@@ -470,6 +474,9 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 	if slide.Kind == KindChartInsight && pattern == "" {
 		plan.layout = slides.ChartInsightFallbackSlideType(slide.Body)
 	}
+	if slide.Kind == KindPillars && pattern == "" {
+		plan.layout = "content"
+	}
 	alternatives := compositionCandidates(slide.Kind, pattern)
 	if requested := slide.String("pattern"); requested != "" {
 		for _, candidate := range alternatives {
@@ -484,6 +491,9 @@ func normalizeSlide(index int, slide SlideSpec) SlideIR {
 		for _, candidate := range alternatives {
 			if candidate.Layout == requested {
 				plan.layout = requested
+				if slide.Kind == KindPillars && requested == "content" {
+					pattern = ""
+				}
 				break
 			}
 		}
@@ -597,6 +607,12 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 			visual("waterfall-bridge", "3–10 ordered additive components with totals and deltas"),
 			{Layout: "content", Reason: "bullets preserve a walk outside the visual's count or text budgets"},
 		}
+	case KindPillars:
+		candidates := []CompositionCandidate{}
+		if selected != "" {
+			candidates = append(candidates, visual(selected, "3–5 pillars within the selected visual's text budgets"))
+		}
+		return append(candidates, CompositionCandidate{Layout: "content", Reason: "bullets preserve an over-budget or partly framed strategy"})
 	case KindStat:
 		return []CompositionCandidate{
 			visual("stat-hero", "one oversized number with a label, context and source"),
