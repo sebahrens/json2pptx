@@ -854,11 +854,11 @@ type chartStyleHints struct {
 func buildChartStyleHints() *chartStyleHints {
 	return &chartStyleHints{
 		Style: map[string]string{
-			"show_values": "Draw the value on each bar / point / slice (bool). This is the data-labels switch.",
-			"show_legend": "Force the legend on, including on a single-series chart where it is suppressed by default (bool).",
-			"colors":      "Hex colours for the data series, in series order (string[]). Overrides the template's data palette.",
-			"font_family": "Font for chart labels and text (string). Defaults to the template's body font.",
-			"background":  "Chart background colour (string). Defaults to transparent so the slide shows through.",
+			"show_values":  "Draw the value on each bar / point / slice (bool). This is the data-labels switch.",
+			"show_legend":  "Force the legend on, including on a single-series chart where it is suppressed by default (bool).",
+			"colors":       "Hex colours for the data series, in series order (string[]). Overrides the template's data palette.",
+			"font_family":  "Font for chart labels and text (string). Defaults to the template's body font.",
+			"background":   "Chart background colour (string). Defaults to transparent so the slide shows through.",
 			"value_format": "ONE number format for the chart, applied to the value-axis ticks, the data labels and any in-mark label alike: {style: plain|compact|percent|currency, decimals, prefix, suffix, thousands_sep}. Set {\"style\":\"compact\",\"prefix\":\"€\"} and both the axis and the bars read \"€1.2M\". Omit it and the renderer picks: grouped digits (\"1,240\") with enough decimals to keep the labels distinct, switching to compact notation on a value axis once the numbers pass 9,999. decimals fixes the precision; thousands_sep forces grouping on or off.",
 		},
 		ChartStyle: map[string]string{
@@ -1154,7 +1154,7 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 
 func mcpRecommendPatternTool() mcp.Tool {
 	return mcp.NewTool("recommend_pattern",
-		mcp.WithDescription("Recommend named patterns for a content intent. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected. When candidates is supplied, scores ONLY those pattern names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation, no near-misses)."),
+		mcp.WithDescription("Recommend NAMED PATTERNS for a content intent — patterns only. Charts and diagrams are NOT in its universe, so an intent whose best answer is one (an org chart, a sankey, a scatter) still returns the best-scoring pattern; use recommend_visual to rank all categories together. When a chart or diagram scores competitively the response says so in beyond_patterns, caps the confidence band at medium, and points next_tool_call at recommend_visual. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected. When candidates is supplied, scores ONLY those pattern names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation, no near-misses)."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRecommendPattern)),
 		mcp.WithString("intent",
 			mcp.Required(),
@@ -1560,6 +1560,11 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		Suggestion              string            `json:"suggestion,omitempty"`
 		NearMisses              []nearMissResult  `json:"near_misses,omitempty"`
 		DisambiguatingQuestions []string          `json:"disambiguating_questions,omitempty"`
+		// BeyondPatterns / NextToolCall are set when a chart or diagram beats
+		// or matches the best pattern. This tool ranks patterns only, so it
+		// says where the better answer lives (go-slide-creator-m2u2).
+		BeyondPatterns *patterns.BeyondPatterns     `json:"beyond_patterns,omitempty"`
+		NextToolCall   *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 	}
 
 	result := resultType{
@@ -1567,6 +1572,8 @@ func (mc *mcpConfig) handleRecommendPattern(ctx context.Context, request mcp.Cal
 		QueryUnderstood:         rec.QueryUnderstood,
 		NearMisses:              nearMisses,
 		DisambiguatingQuestions: rec.DisambiguatingQuestions,
+		BeyondPatterns:          rec.BeyondPatterns,
+		NextToolCall:            rec.NextToolCall,
 	}
 
 	// When no candidates match, add a suggestion.

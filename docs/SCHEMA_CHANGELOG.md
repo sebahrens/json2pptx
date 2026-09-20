@@ -112,6 +112,25 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **`recommend_pattern` admits it is pattern-only (go-slide-creator-m2u2).**
+  `recommend_pattern("org chart of the leadership team")` returned `team-bios`
+  at 0.97 **high** — the `org_chart` diagram is not in its universe, and
+  nothing in the response or the tool description said so. A high band on an
+  answer the tool cannot see is worse than no answer.
+  - The recommender now asks the multi-category scorer the same intent. When a
+    chart or diagram lands within 0.08 of the top pattern, the response gains
+    `beyond_patterns: {category, name, score}`, every `high` band is capped to
+    `medium`, and `next_tool_call` points at `recommend_visual` with the same
+    intent.
+  - Frameworks that exist as both a pattern and a native diagram
+    (`bmc-canvas` / `business_model_canvas`, `process-flow` / `process_flow`)
+    are exempt: redirecting there is the same picture under another name.
+  - The tool description now leads with "patterns only" and names
+    `recommend_visual`.
+  - An intent a pattern genuinely answers is untouched: `agenda for the
+    session` and `three big number KPIs` keep their `high` band and emit
+    neither field.
+
 - **Dense heatmap labels are shortened instead of overlapping
   (go-slide-creator-3rkpt).** The builder divided the available height by the
   row count with no floor and drew each label at full length into a box one

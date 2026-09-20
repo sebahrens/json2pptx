@@ -66,6 +66,13 @@ type RecommendResult struct {
 	QueryUnderstood         string              `json:"query_understood_as"`
 	NearMisses              []NearMiss          `json:"near_misses,omitempty"`
 	DisambiguatingQuestions []string            `json:"disambiguating_questions,omitempty"`
+	// BeyondPatterns names a chart or diagram that scores competitively with
+	// the top pattern. recommend_pattern cannot return it — its universe is the
+	// named-pattern registry — so it says where the answer lives instead
+	// (go-slide-creator-m2u2).
+	BeyondPatterns *BeyondPatterns `json:"beyond_patterns,omitempty"`
+	// NextToolCall points at recommend_visual when BeyondPatterns is set.
+	NextToolCall *ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
 // rule maps keywords and content hints to a pattern with a base confidence.
@@ -870,6 +877,10 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 	// Suggest compose pairings for compound intents.
 	result.ComposeSuggestions = suggestCompose(intentLower, hints)
 
+	// A chart or diagram may be the real answer, and this tool cannot return
+	// one. Say so rather than reporting high confidence in a pattern.
+	applyBeyondPatterns(&result, reg, intent, hints, opts...)
+
 	return result
 }
 
@@ -1117,15 +1128,22 @@ func injectDiversityBonus(result *RecommendResult, dc *scored) {
 	})
 }
 
+// Confidence bands a recommendation can report.
+const (
+	confidenceHigh   = "high"
+	confidenceMedium = "medium"
+	confidenceLow    = "low"
+)
+
 // confidenceBand classifies a score into high/medium/low.
 func confidenceBand(score float64) string {
 	switch {
 	case score >= 0.85:
-		return "high"
+		return confidenceHigh
 	case score >= 0.65:
-		return "medium"
+		return confidenceMedium
 	default:
-		return "low"
+		return confidenceLow
 	}
 }
 

@@ -10,6 +10,16 @@ Use `recommend_pattern` when you know **what a slide should show** but not **whi
 
 Use `plan_deck` instead when you need a full deck outline — it calls `recommend_pattern` internally with variety awareness.
 
+**This tool ranks NAMED PATTERNS only.** Charts and diagrams are not in its universe, so an intent whose best answer is one — an org chart, a scatter, a waterfall — still returns the best-scoring *pattern*. Use [`recommend_visual`](./recommend_visual.md) to rank patterns, charts, diagrams and placeholder layouts together.
+
+When a chart or diagram scores within 0.08 of the top pattern, the response says so rather than pretending (go-slide-creator-m2u2):
+
+- `beyond_patterns: {category, name, score}` names what this tool cannot return.
+- Every `high` confidence band is capped to `medium` — the tool is not confident when it cannot see the better answer.
+- `next_tool_call` points at `recommend_visual`, carrying the same intent.
+
+Frameworks that exist as both a pattern and a native diagram (`bmc-canvas` / `business_model_canvas`, `process-flow` / `process_flow`) do **not** trigger this: redirecting there sends you to the same picture under another name.
+
 ## Input Schema
 
 | Parameter | Type | Required | Default | Description |

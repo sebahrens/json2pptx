@@ -412,6 +412,24 @@ var outputSchemaRecommendPattern = json.RawMessage(`{
     "disambiguating_questions": {
       "type": "array",
       "items": {"type": "string"}
+    },
+    "beyond_patterns": {
+      "type": "object",
+      "description": "Present when a chart or diagram scores within 0.08 of the top pattern. This tool ranks patterns only and cannot return it, so the confidence band is capped at medium and next_tool_call points at recommend_visual.",
+      "properties": {
+        "category": {"type": "string", "enum": ["chart", "diagram"]},
+        "name":     {"type": "string"},
+        "score":    {"type": "number"}
+      },
+      "required": ["category", "name", "score"]
+    },
+    "next_tool_call": {
+      "type": "object",
+      "properties": {
+        "tool":          {"type": "string"},
+        "args_template": {"type": "object"}
+      },
+      "required": ["tool"]
     }
   },
   "required": ["candidates", "query_understood_as"]
