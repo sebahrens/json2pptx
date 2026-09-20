@@ -81,6 +81,7 @@ func cliCommandClassifications() map[string]cliCommandClass {
 		"render-slide":           {AgentFacing: true},
 		"render-slide-from-json": {AgentFacing: true},
 		"render-thumbnails":      {AgentFacing: true},
+		"purge-render-cache":     {AgentFacing: true},
 		"template-settings":      {AgentFacing: true},
 		"data-format-hints":      {AgentFacing: true},
 		"shape-catalog":          {AgentFacing: true},

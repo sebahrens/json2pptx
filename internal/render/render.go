@@ -16,6 +16,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // pngIndexFromName extracts the integer N from a filename matching "slide-N.png".
@@ -47,9 +48,17 @@ const maxInlineBytes = 200 * 1024 // 200 KB
 // ArtifactCleanupPolicy documents the lifetime of on-disk render artifacts
 // returned via SlideImage.Path. Artifacts are content-addressed: the filename
 // embeds the SHA-256 of the PNG, so a given path always holds the same bytes and
-// is never overwritten with different content. They live under the render cache
-// directory and are removed by InvalidateCache or by OS temp cleanup.
-const ArtifactCleanupPolicy = "content-addressed; path is stable while the file exists and is never overwritten with different content; removed by render-cache invalidation (InvalidateCache) or OS temp cleanup"
+// is never overwritten with different content.
+//
+// The string used to promise removal "by InvalidateCache or OS temp cleanup",
+// which was not a policy: InvalidateCache had no callers and nothing bounded the
+// directory (go-slide-creator-dpys). Renders now sweep the cache, so the string
+// states the bound a caller can actually rely on.
+var ArtifactCleanupPolicy = fmt.Sprintf(
+	"content-addressed; path is stable while the file exists and is never overwritten with different content; "+
+		"evicted after %dh unused, or oldest-first once the cache exceeds %d MiB, swept on render; "+
+		"get_capabilities().runtime.render_cache_bytes reports current usage",
+	int(CacheMaxAge/time.Hour), CacheMaxBytes>>20)
 
 // mu serializes LibreOffice invocations (single-threaded per process).
 var mu sync.Mutex
@@ -553,6 +562,8 @@ func RenderSlideOpts(pptxPath string, slideIndex, density int, force bool) (*Sli
 // The cache directory layout matches RenderSlideOpts (one subdirectory per
 // key+density), so invalidation via InvalidateCache also clears these entries.
 func RenderSlideWithCacheKey(pptxPath string, slideIndex, density int, force bool, key string) (*SlideImage, error) {
+	// Keep the cache inside its age/size bound (go-slide-creator-dpys).
+	maybeSweepCache()
 	if key == "" {
 		return nil, fmt.Errorf("cache key is required")
 	}
@@ -657,6 +668,8 @@ func RenderDeckOpts(pptxPath string, density, maxSlides int, force bool) (*DeckR
 // deck is an IndexRangeError rather than a silent omission: an agent that
 // asked to look at slide 9 must not be told it looked at slide 9.
 func RenderDeckIndices(pptxPath string, density int, indices []int, force bool) (*DeckResult, error) {
+	// Keep the cache inside its age/size bound (go-slide-creator-dpys).
+	maybeSweepCache()
 	pngs, hash, cleanup, err := deckPNGs(pptxPath, density, force)
 	if err != nil {
 		return nil, err

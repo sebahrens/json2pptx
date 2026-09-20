@@ -44,6 +44,7 @@ var mcpToCLI = map[string]string{
 	"render_slide_image":           "render-slide",
 	"render_slide_image_from_json": "render-slide-from-json",
 	"render_deck_thumbnails":       "render-thumbnails",
+	"purge_render_cache":           "purge-render-cache",
 	"list_template_settings":       "template-settings list",
 	"register_template_setting":    "template-settings register",
 	"delete_template_setting":      "template-settings delete",

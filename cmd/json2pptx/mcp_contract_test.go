@@ -589,6 +589,7 @@ func TestMCPOutputSchemas_AllToolsCovered(t *testing.T) {
 		"render_slide_image":           true,
 		"render_slide_image_from_json": true,
 		"render_deck_thumbnails":       true,
+		"purge_render_cache":           true,
 		"score_deck":                   true,
 		"score_candidates":             true,
 		"inspect_slide_images":         true,

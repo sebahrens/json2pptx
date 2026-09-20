@@ -19,7 +19,7 @@ var (
 // Bump the major version when fields are removed or renamed; bump the minor
 // version when new fields are added; bump the patch for documentation-only
 // changes. Agents compare this value across sessions to detect contract drift.
-const SchemaVersion = "4.63.0"
+const SchemaVersion = "4.64.0"
 
 func main() {
 	if err := dispatch(); err != nil {
@@ -106,6 +106,8 @@ func dispatch() error { //nolint:gocyclo
 		return runRenderSlideFromJSON()
 	case "render-thumbnails":
 		return runRenderThumbnails()
+	case "purge-render-cache":
+		return runPurgeRenderCache()
 	case "template-settings":
 		return runTemplateSettings()
 	case "data-format-hints":
@@ -169,6 +171,7 @@ Commands:
   render-slide        Render a single slide from a PPTX to PNG
   render-slide-from-json  Render one slide directly from JSON (no full deck render)
   render-thumbnails   Render all slides as PNG thumbnails
+  purge-render-cache  Reclaim the on-disk render cache
   template-settings   Manage named styles (list/register/delete)
   data-format-hints   Show data format hints for chart/diagram types
   shape-catalog       List available preset geometries

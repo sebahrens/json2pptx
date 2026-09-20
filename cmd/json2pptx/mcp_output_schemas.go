@@ -1830,9 +1830,11 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
         "render_missing_commands": {"type": "array", "items": {"type": "string"}},
         "templates_dir":           {"type": "string"},
         "output_dir":              {"type": "string"},
-        "schema_fingerprint":      {"type": "string"}
+        "schema_fingerprint":      {"type": "string"},
+        "render_cache_bytes":      {"type": "integer", "description": "Bytes the on-disk render cache currently occupies."},
+        "render_cache_policy":     {"type": "string", "description": "How render artifacts are evicted: age and size bounds, swept on render."}
       },
-      "required": ["settings_write_enabled", "render_available", "render_missing_commands", "templates_dir", "output_dir", "schema_fingerprint"]
+      "required": ["settings_write_enabled", "render_available", "render_missing_commands", "templates_dir", "output_dir", "schema_fingerprint", "render_cache_bytes", "render_cache_policy"]
     },
     "vocabularies": {
       "type": "object",
@@ -2527,4 +2529,18 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
     }
   },
   "required": ["slide_kinds"]
+}`)
+
+// --- purge_render_cache ---
+
+var outputSchemaPurgeRenderCache = json.RawMessage(`{
+  "type": "object",
+  "properties": {
+    "bytes_before":    {"type": "integer", "description": "Cache size before the purge."},
+    "bytes_reclaimed": {"type": "integer", "description": "Bytes removed."},
+    "bytes_after":     {"type": "integer", "description": "Cache size after the purge."},
+    "scope":           {"type": "string", "enum": ["bounds", "all"], "description": "\"bounds\" applied the standard age/size eviction; \"all\" removed every cached render."},
+    "policy":          {"type": "string", "description": "The eviction policy renders apply automatically."}
+  },
+  "required": ["bytes_before", "bytes_reclaimed", "bytes_after", "scope", "policy"]
 }`)

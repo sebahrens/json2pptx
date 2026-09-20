@@ -477,6 +477,7 @@ collapse a whole chain into one call:
 | `render_slide_image` | Render one PPTX slide to PNG (requires LibreOffice + ImageMagick) | `render-slide` |
 | `render_slide_image_from_json` | Render one slide directly from its JSON (requires LibreOffice + ImageMagick) | `render-slide-from-json` |
 | `render_deck_thumbnails` | Render all slides to low-res thumbnails (requires LibreOffice + ImageMagick) | `render-thumbnails` |
+| `purge_render_cache` | Reclaim the on-disk render cache (renders bound it automatically; this is the deliberate reclaim) | `purge-render-cache` |
 | `read_presentation` | Extract placeholders/shapes/tables/notes from an existing PPTX (no LibreOffice) | `read` |
 | `audit_palette` | Render to PNG and report ΔE between chart pics and adjacent solid-filled shapes | `audit-palette` |
 | `score_deck` | Deterministic 0-100 score with composition axis and a quality gate | `score` |

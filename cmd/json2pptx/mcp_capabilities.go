@@ -96,6 +96,13 @@ type capabilitiesRuntime struct {
 	TemplatesDir         string   `json:"templates_dir"`
 	OutputDir            string   `json:"output_dir"`
 	SchemaFingerprint    string   `json:"schema_fingerprint"`
+	// RenderCacheBytes is what the on-disk render cache currently occupies.
+	// Artifacts accumulate under the temp dir on a long-lived server, and an
+	// agent had no way to see how much it was using (go-slide-creator-dpys).
+	// The cache is bounded — see RenderCachePolicy — so this is visibility,
+	// not a chore.
+	RenderCacheBytes  int64  `json:"render_cache_bytes"`
+	RenderCachePolicy string `json:"render_cache_policy"`
 }
 
 // mcpToolEntry describes an MCP tool with its version and classification
@@ -292,6 +299,7 @@ func mcpToolCatalog() []mcpToolEntry {
 		{Name: "resolve_theme", AddedIn: "2.0.0"},
 		{Name: "render_slide_image", AddedIn: "2.0.0"},
 		{Name: "render_deck_thumbnails", AddedIn: "2.0.0"},
+		{Name: "purge_render_cache", AddedIn: "4.64.0"},
 		{Name: "score_deck", AddedIn: "2.0.0"},
 		{Name: "preview_presentation_plan", AddedIn: "2.0.0"},
 		{Name: "repair_slide", AddedIn: "2.0.0"},
@@ -557,6 +565,8 @@ func buildCapabilitiesResultFor(ctx context.Context, templatesDir, outputDir str
 			TemplatesDir:         resolvedTemplatesDir,
 			OutputDir:            resolvedOutputDir,
 			SchemaFingerprint:    schemaFingerprint(),
+			RenderCacheBytes:     render.CacheBytes(),
+			RenderCachePolicy:    render.ArtifactCleanupPolicy,
 		},
 		Vocabularies:    buildVocabularies(),
 		ErrorCodes:      codes,
@@ -677,6 +687,7 @@ func toolConstructors() map[string]func() mcp.Tool {
 		mcpRenderSlideImageTool,
 		mcpRenderSlideImageFromJSONTool,
 		mcpRenderDeckThumbnailsTool,
+		mcpPurgeRenderCacheTool,
 		mcpScoreDeckTool,
 		mcpScoreCandidatesTool,
 		mcpInspectSlideImagesTool,

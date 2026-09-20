@@ -37,6 +37,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	addTool(s, mcpRenderSlideImageTool(), mc.handleRenderSlideImage)
 	addTool(s, mcpRenderSlideImageFromJSONTool(), mc.handleRenderSlideImageFromJSON)
 	addTool(s, mcpRenderDeckThumbnailsTool(), mc.handleRenderDeckThumbnails)
+	addTool(s, mcpPurgeRenderCacheTool(), handlePurgeRenderCache)
 	addTool(s, mcpScoreDeckTool(), mc.handleScoreDeck)
 	addTool(s, mcpScoreCandidatesTool(), mc.handleScoreCandidates)
 	addTool(s, mcpInspectSlideImagesTool(), mc.handleInspectSlideImages)

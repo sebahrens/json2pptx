@@ -215,6 +215,7 @@ func toolClassifications() map[string]toolClassification {
 		"render_slide_image":           {Kind: toolKindPrimitive, Phase: toolPhaseRepair, WritesFiles: true, RenderDependency: true, CLICounterpart: "render-slide"},
 		"render_slide_image_from_json": {Kind: toolKindPrimitive, Phase: toolPhaseRepair, WritesFiles: true, RenderDependency: true, CLICounterpart: "render-slide-from-json"},
 		"render_deck_thumbnails":       {Kind: toolKindPrimitive, Phase: toolPhaseRepair, WritesFiles: true, RenderDependency: true, CLICounterpart: "render-thumbnails"},
+		"purge_render_cache":           {Kind: toolKindPrimitive, Phase: toolPhaseRepair, WritesFiles: true, CLICounterpart: "purge-render-cache"},
 		"read_presentation":            {Kind: toolKindDiagnostic, Phase: toolPhaseRepair, CLICounterpart: "read"},
 		"audit_palette":                {Kind: toolKindDiagnostic, Phase: toolPhaseRepair, RenderDependency: true, CLICounterpart: "audit-palette"},
 		"score_deck":                   {Kind: toolKindDiagnostic, Phase: toolPhaseRepair, RenderDependency: true, CLICounterpart: "score"},

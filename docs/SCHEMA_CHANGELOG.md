@@ -112,6 +112,27 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **`purge_render_cache`, and the render cache is now bounded
+  (go-slide-creator-dpys).** Every `render_*` call wrote content-addressed PNGs
+  under the temp dir, and the documented cleanup was "removed by
+  InvalidateCache or OS temp cleanup" — but `InvalidateCache` had no callers
+  anywhere in the repo, nothing capped size or age, and no tool exposed it. One
+  review session left 418 files / 13MB behind; on a long-lived MCP server the
+  cache only grew.
+  - Renders now sweep the cache: artifacts are evicted after **24h** unused,
+    then oldest-first once the total exceeds **500 MiB**. The sweep is
+    stat-based and throttled to once per 5 minutes, so a burst of renders pays
+    for one walk.
+  - `get_capabilities().runtime` gains `render_cache_bytes` (current usage) and
+    `render_cache_policy` (the rule). Both are required fields.
+  - New `purge_render_cache` tool / `json2pptx purge-render-cache` command for
+    the deliberate reclaim, with `all: true` to ignore the bounds. Returns
+    `{bytes_before, bytes_reclaimed, bytes_after, scope, policy}`.
+  - `ArtifactCleanupPolicy` — echoed as `cleanup` on every path-returning
+    render response — now states the bound that exists instead of naming a
+    function nothing called.
+  - `SchemaVersion` 4.63.0 -> 4.64.0 (new tool, new required runtime fields).
+
 - **Sibling argument names are accepted on the three tools that spelled them
   differently (go-slide-creator-r1m3).** `validate_presentation_output` takes
   `path` while five other PPTX tools take `pptx_path`; `resolve_theme` takes
