@@ -15,6 +15,7 @@ import (
 type TitleFitContext struct {
 	titleFontName   string                                 // theme major (heading) font
 	titleStyleCache map[string]template.InheritedTextStyle // masterPath -> inherited title style (lazy)
+	bodyStyleCache  map[string]template.InheritedTextStyle // masterPath -> inherited body style (lazy)
 	viewingMode     tokens.ViewingMode                     // readability policy mode (go-slide-creator-vbic)
 	// masterXMLCache holds raw master XML per path, for the inherited-color
 	// resolution the contrast pass needs (go-slide-creator-ucmgr).
@@ -76,6 +77,46 @@ func (ctx *singlePassContext) titleAutofitOptions(layoutID string) []autofitOpti
 		opts = append(opts, withInheritedTextStyle(st, fontName))
 	}
 	return opts
+}
+
+// inheritedBodyStyle returns the body text style (size, line spacing,
+// space-before, typeface) the layout's body placeholders inherit from their
+// slide master. Cached per master alongside the title style.
+//
+// Without it the body autofit guessed: no size (textfit fell back to its own
+// default) and a flat 12pt of per-paragraph spacing where midnight-blue's
+// master declares 8pt. The guess is what made validate and generate predict
+// different font scales for the same fourteen bullets (go-slide-creator-nlrg).
+func (ctx *singlePassContext) inheritedBodyStyle(layoutID string) (template.InheritedTextStyle, bool) {
+	masterPath := ctx.masterPathForLayout(layoutID)
+	if masterPath == "" {
+		return template.InheritedTextStyle{}, false
+	}
+	if ctx.bodyStyleCache == nil {
+		ctx.bodyStyleCache = make(map[string]template.InheritedTextStyle)
+	}
+	st, cached := ctx.bodyStyleCache[masterPath]
+	if !cached {
+		if data, err := utils.ReadFileFromZipIndex(ctx.templateIndex, masterPath); err == nil {
+			st = template.ParseMasterBodyStyle(data)
+		}
+		ctx.bodyStyleCache[masterPath] = st
+	}
+	// A master's bodyStyle often declares spacing and line height without a
+	// size, and the spacing alone changes the measured fit.
+	return st, st.SizeHPt > 0 || st.SpcBefPt > 0 || st.LineSpacingPct > 0
+}
+
+// bodyAutofitOptions returns the autofit options for a body placeholder on the
+// given layout: the inherited master body style, so the measured fit uses the
+// real size, line spacing and space-before instead of defaults.
+func (ctx *singlePassContext) bodyAutofitOptions(layoutID string) []autofitOption {
+	st, ok := ctx.inheritedBodyStyle(layoutID)
+	if !ok {
+		return nil
+	}
+	fontName := resolveStyleFontName(st.Typeface, ctx.themeFontName, ctx.themeFontName)
+	return []autofitOption{withInheritedTextStyle(st, fontName)}
 }
 
 // isTitleShape reports whether a slide shape is a title placeholder

@@ -527,6 +527,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 			autofitOpts = append(autofitOpts, ctx.titleAutofitOptions(layoutID)...)
 			autofitOpts = append(autofitOpts, withReadabilityPolicy(ctx.viewingMode, tokens.TextRoleTitle))
 		} else {
+			autofitOpts = append(autofitOpts, ctx.bodyAutofitOptions(layoutID)...)
 			autofitOpts = append(autofitOpts, withReadabilityPolicy(ctx.viewingMode, tokens.TextRoleBody))
 		}
 		if err := populateShapeText(shape, item, masterBulletLevel, ctx.themeFontName, autofitOpts...); err != nil {

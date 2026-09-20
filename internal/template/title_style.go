@@ -32,6 +32,11 @@ type masterTitleStyleXML struct {
 	Lvl1    *titleLevelPropsXML `xml:"txStyles>titleStyle>lvl1pPr"`
 }
 
+type masterBodyStyleXML struct {
+	XMLName xml.Name            `xml:"sldMaster"`
+	Lvl1    *titleLevelPropsXML `xml:"txStyles>bodyStyle>lvl1pPr"`
+}
+
 type titleLevelPropsXML struct {
 	LnSpc  *spacingXML `xml:"lnSpc"`
 	SpcBef *spacingXML `xml:"spcBef"`
@@ -59,14 +64,35 @@ func ParseMasterTitleStyle(masterData []byte) InheritedTextStyle {
 	if err := xml.Unmarshal(masterData, &m); err != nil || m.Lvl1 == nil {
 		return InheritedTextStyle{}
 	}
+	return inheritedFromLevelProps(m.Lvl1)
+}
+
+// ParseMasterBodyStyle extracts the level-1 body text style from a slide
+// master's <p:txStyles><p:bodyStyle>. Returns the zero value when the master
+// cannot be parsed or declares no body style.
+//
+// The space-before it carries is what a body placeholder's autofit has to
+// budget for: with fourteen bullets, a 10pt spcBef is 140pt of height the
+// preflight was not counting, and validate predicted a 70% font scale where
+// the renderer applied 50% (go-slide-creator-nlrg).
+func ParseMasterBodyStyle(masterData []byte) InheritedTextStyle {
+	var m masterBodyStyleXML
+	if err := xml.Unmarshal(masterData, &m); err != nil || m.Lvl1 == nil {
+		return InheritedTextStyle{}
+	}
+	return inheritedFromLevelProps(m.Lvl1)
+}
+
+// inheritedFromLevelProps converts one parsed lvl1pPr into an InheritedTextStyle.
+func inheritedFromLevelProps(lvl *titleLevelPropsXML) InheritedTextStyle {
 	var st InheritedTextStyle
-	if m.Lvl1.LnSpc != nil && m.Lvl1.LnSpc.SpcPct != nil && m.Lvl1.LnSpc.SpcPct.Val > 0 {
-		st.LineSpacingPct = m.Lvl1.LnSpc.SpcPct.Val / 1000
+	if lvl.LnSpc != nil && lvl.LnSpc.SpcPct != nil && lvl.LnSpc.SpcPct.Val > 0 {
+		st.LineSpacingPct = lvl.LnSpc.SpcPct.Val / 1000
 	}
-	if m.Lvl1.SpcBef != nil && m.Lvl1.SpcBef.SpcPts != nil {
-		st.SpcBefPt = float64(m.Lvl1.SpcBef.SpcPts.Val) / 100.0
+	if lvl.SpcBef != nil && lvl.SpcBef.SpcPts != nil {
+		st.SpcBefPt = float64(lvl.SpcBef.SpcPts.Val) / 100.0
 	}
-	if r := m.Lvl1.DefRPr; r != nil {
+	if r := lvl.DefRPr; r != nil {
 		st.SizeHPt = r.Size
 		st.CapsAll = r.Cap == "all"
 		if r.Latin != nil {

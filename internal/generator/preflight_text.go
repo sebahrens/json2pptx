@@ -50,7 +50,35 @@ type TextAutofitPreflightInput struct {
 	// that the text lands under the readable floor (go-slide-creator-nlrg).
 	ViewingMode tokens.ViewingMode
 	TextRole    tokens.TextRole
+	// ExtraSpacingPt is the inherited per-paragraph space-before in points.
+	// The renderer budgets it whenever the shape carries no explicit size, so
+	// a preflight that ignores it under-counts the height a dense list needs:
+	// fourteen bullets on a 10pt spcBef predicted a 70% font scale where the
+	// render applied 50% (go-slide-creator-nlrg).
+	ExtraSpacingPt float64
 }
+
+// AutofitDensityPolicy returns the readability floor (font scale ×1000) and the
+// minimum font scale percent the renderer applies to a bullet list of n
+// paragraphs. One definition, used by the render path and by the preflight, so
+// the prediction cannot drift from the behaviour it predicts.
+func AutofitDensityPolicy(paragraphs int) (readabilityMinScalePct, minFontScalePct int) {
+	switch {
+	case paragraphs >= denseBulletCount:
+		return 45000, 45
+	case paragraphs >= moderateBulletCount:
+		return 50000, 50
+	}
+	return readabilityMinScale, 0
+}
+
+const (
+	// denseBulletCount and moderateBulletCount are the list lengths at which
+	// the renderer lowers its readability floor rather than trimming: a dense
+	// list is better small than short.
+	denseBulletCount    = 12
+	moderateBulletCount = 10
+)
 
 // DetectTextAutofitPreflight predicts whether applySmartAutofitWithOptions
 // would emit readability_trimmed or text_trimmed for the given placeholder
@@ -70,20 +98,23 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 		return nil
 	}
 
+	paraCount := len(input.Paragraphs)
+	readabilityFloor, minFontScalePct := AutofitDensityPolicy(paraCount)
+
 	params := textfit.Params{
-		WidthEMU:    input.WidthEMU,
-		HeightEMU:   input.HeightEMU,
-		FontSizeHPt: input.FontSizeHPt,
-		FontName:    input.FontName,
-		Paragraphs:  input.Paragraphs,
+		WidthEMU:        input.WidthEMU,
+		HeightEMU:       input.HeightEMU,
+		FontSizeHPt:     input.FontSizeHPt,
+		FontName:        input.FontName,
+		Paragraphs:      input.Paragraphs,
+		ExtraSpacingPt:  input.ExtraSpacingPt,
+		MinFontScalePct: minFontScalePct,
 	}
 
 	result, err := textfit.Calculate(params)
 	if err != nil {
 		return nil
 	}
-
-	paraCount := len(input.Paragraphs)
 
 	var findings []patterns.FitFinding
 
@@ -117,7 +148,7 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 
 	// Readability path — content fits but at a scale below 62.5%, and there
 	// are enough paragraphs (>6) that the engine will proactively trim.
-	if result.FontScale > 0 && result.FontScale < readabilityMinScale && paraCount > readabilityTrimMinParas {
+	if result.FontScale > 0 && result.FontScale < readabilityFloor && paraCount > readabilityTrimMinParas {
 		return append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path: input.Path,

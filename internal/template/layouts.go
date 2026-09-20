@@ -234,8 +234,11 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 			FontSize:   fontSize,
 			FontColor:  fontColor,
 		}
-		if phType == types.PlaceholderTitle {
+		switch phType {
+		case types.PlaceholderTitle:
 			applyInheritedTitleText(&info, &shape, masterFonts)
+		case types.PlaceholderBody, types.PlaceholderContent:
+			applyInheritedBodyText(&info, &shape, masterFonts)
 		}
 		placeholders = append(placeholders, info)
 	}

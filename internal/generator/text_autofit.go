@@ -290,9 +290,13 @@ func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []stri
 	if fontSizeHPt == 0 {
 		if style != nil && style.SizeHPt > 0 {
 			fontSizeHPt = style.SizeHPt
+		}
+		// A known style speaks for itself, including when it declares no
+		// space-before. Only an unknown style falls back to the typical value.
+		if style != nil {
 			extraSpacingPt = style.SpcBefPt
 		} else {
-			extraSpacingPt = 12.0 // typical slide master spcBef + spcAft
+			extraSpacingPt = defaultParagraphSpacingPt
 		}
 	}
 
@@ -320,6 +324,22 @@ func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []stri
 		applyInheritedStyleToParams(&params, *style)
 	}
 	return params
+}
+
+// defaultParagraphSpacingPt is the per-paragraph space a slide master
+// typically adds (spcBef + spcAft) when it declares none we can read.
+const defaultParagraphSpacingPt = 12.0
+
+// InheritedParagraphSpacingPt is the per-paragraph extra spacing a measured fit
+// budgets: the master's declared space-before when there is one, else the
+// typical value. Exported so the preflight predictor applies the same rule —
+// the two sides disagreeing on this is what made validate predict a 70% font
+// scale where the render applied 50% (go-slide-creator-nlrg).
+func InheritedParagraphSpacingPt(declaredSpcBefPt float64) float64 {
+	if declaredSpcBefPt > 0 {
+		return declaredSpcBefPt
+	}
+	return defaultParagraphSpacingPt
 }
 
 // buildNormAutofitElement renders the OOXML <a:normAutofit/> element from a

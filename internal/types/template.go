@@ -180,6 +180,14 @@ type PlaceholderInfo struct {
 	TextCaps       bool
 	LineSpacingPct int
 
+	// SpcBefPt is the inherited space-before in points (master bodyStyle /
+	// titleStyle level 1, overridden by the layout placeholder's own lstStyle).
+	// A body placeholder's autofit has to budget it per paragraph: fourteen
+	// bullets at a 10pt spcBef is 140pt of height, which is the difference
+	// between a predicted 70% font scale and the 50% the renderer applies
+	// (go-slide-creator-nlrg).
+	SpcBefPt float64
+
 	// Role is the canonical, agent-facing placeholder role assigned by
 	// internal/template.ClassifyPlaceholderRole. It refines Type with
 	// intent-level distinctions (eyebrow vs title, section_number vs body,

@@ -453,11 +453,8 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 	// ~8-9pt which is near the projection readability limit. The raised
 	// thresholds trigger trimForReadability to drop trailing bullets with "…"
 	// rather than rendering all bullets at an illegibly small size.
-	if len(bullets) >= 12 {
-		opts := append([]autofitOption{withReadabilityMinScale(45000), withMinFontScalePct(45)}, autofitOpts...)
-		applySmartAutofitWithOptions(shape, opts...)
-	} else if len(bullets) >= 10 {
-		opts := append([]autofitOption{withReadabilityMinScale(50000), withMinFontScalePct(50)}, autofitOpts...)
+	if floor, minPct := AutofitDensityPolicy(len(bullets)); minPct > 0 {
+		opts := append([]autofitOption{withReadabilityMinScale(floor), withMinFontScalePct(minPct)}, autofitOpts...)
 		applySmartAutofitWithOptions(shape, opts...)
 	} else {
 		applySmartAutofitWithOptions(shape, autofitOpts...)

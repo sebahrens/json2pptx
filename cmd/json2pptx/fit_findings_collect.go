@@ -1468,6 +1468,11 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 				// generate would (go-slide-creator-nlrg).
 				ViewingMode: tokens.ParseViewingMode(input.ViewingMode),
 				TextRole:    tokens.TextRoleBody,
+				// The per-paragraph space-before the master declares. The
+				// renderer budgets it whenever the shape carries no explicit
+				// size, so without it the prediction under-counts the height a
+				// dense list needs (go-slide-creator-nlrg).
+				ExtraSpacingPt: generator.InheritedParagraphSpacingPt(ph.SpcBefPt),
 			})...)
 		}
 	}

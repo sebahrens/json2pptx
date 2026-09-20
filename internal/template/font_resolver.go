@@ -23,7 +23,10 @@ type MasterFontResolver struct {
 type MasterFontStyles struct {
 	// TitleText is the full inherited title text style (size, all-caps, line
 	// spacing, space-before, typeface) used for measured title fit.
-	TitleText  InheritedTextStyle
+	TitleText InheritedTextStyle
+	// BodyText is the inherited body text style (size, line spacing,
+	// space-before) a body placeholder's measured fit has to budget for.
+	BodyText   InheritedTextStyle
 	TitleStyle *FontStyle         // p:titleStyle
 	BodyStyle  map[int]*FontStyle // p:bodyStyle lvlNpPr (0-8)
 	OtherStyle map[int]*FontStyle // p:otherStyle lvlNpPr (0-8)
@@ -128,6 +131,7 @@ func (r *MasterFontResolver) parseMasterFontStyles(masterData []byte) *MasterFon
 
 	styles := &MasterFontStyles{
 		TitleText:  ParseMasterTitleStyle(masterData),
+		BodyText:   ParseMasterBodyStyle(masterData),
 		BodyStyle:  make(map[int]*FontStyle),
 		OtherStyle: make(map[int]*FontStyle),
 	}
