@@ -56,18 +56,15 @@ func strictArgsTestServer(t *testing.T) *server.MCPServer {
 	return newMCPServer(&mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir()})
 }
 
-// plan_deck{slide_count} must be rejected, naming the real slide_budget arg.
-func TestStrictArgs_PlanDeckSlideCountSuggestsSlideBudget(t *testing.T) {
+// plan_deck{slide_count} is now ACCEPTED and rewritten to slide_budget
+// (go-slide-creator-r1m3). The did_you_mean error it used to return was good,
+// but the cheapest fix is not to need it. A genuinely unknown argument is still
+// rejected — see TestStrictArgs_AllToolsRejectBogusArgument.
+func TestStrictArgs_PlanDeckAcceptsSlideCount(t *testing.T) {
 	s := strictArgsTestServer(t)
 	res := callToolViaServer(t, s, "plan_deck", map[string]any{"brief": "Series B pitch", "slide_count": 8})
-	if !res.IsError {
-		t.Fatalf("plan_deck with slide_count must be rejected, got %s", resultText(res))
-	}
-	text := resultText(res)
-	for _, want := range []string{"UNKNOWN_PARAMETER", "slide_count", "slide_budget", "did_you_mean"} {
-		if !strings.Contains(text, want) {
-			t.Errorf("error must mention %q, got %s", want, text)
-		}
+	if res.IsError && strings.Contains(resultText(res), "UNKNOWN_PARAMETER") {
+		t.Fatalf("plan_deck rejected the sibling name slide_count: %s", resultText(res))
 	}
 }
 

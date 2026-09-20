@@ -271,4 +271,3 @@ func dryRenderSpec(
 	// same finding raised while actually drawing agree on code, path and action.
 	return append(out, generator.SvggenFindingsToFit(dryFindings, spec.Type, path)...)
 }
-

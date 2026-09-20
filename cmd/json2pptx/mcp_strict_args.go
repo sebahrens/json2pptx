@@ -60,6 +60,22 @@ func strictArgsMiddleware(lookup func(name string) *server.ServerTool) server.To
 // toolArgNames returns the sorted argument names a tool accepts: its declared
 // input-schema properties plus any legacy aliases its handler still reads.
 func toolArgNames(tool mcp.Tool) []string {
+	names := declaredArgNames(tool)
+	names = append(names, mcpUndeclaredArgAliases[tool.Name]...)
+	// Sibling aliases are rewritten by argAliasMiddleware before this check
+	// runs, but list them so did_you_mean and the accepted-name reporting stay
+	// truthful about what the tool takes (go-slide-creator-r1m3).
+	for alias := range mcpArgAliasTargets[tool.Name] {
+		names = append(names, alias)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// declaredArgNames returns only the argument names a tool's input schema
+// declares — no legacy or sibling aliases. Kept separate from toolArgNames so
+// "what the schema says" and "what the tool accepts" stay distinguishable.
+func declaredArgNames(tool mcp.Tool) []string {
 	props := tool.InputSchema.Properties
 	if len(tool.RawInputSchema) > 0 {
 		var raw struct {
@@ -73,7 +89,6 @@ func toolArgNames(tool mcp.Tool) []string {
 	for name := range props {
 		names = append(names, name)
 	}
-	names = append(names, mcpUndeclaredArgAliases[tool.Name]...)
 	sort.Strings(names)
 	return names
 }

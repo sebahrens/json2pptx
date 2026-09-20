@@ -117,6 +117,9 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 		// never reads get_capabilities would otherwise be told to finish with a
 		// step that cannot run here (go-slide-creator-a7fh).
 		server.WithInstructions(mcpInstructionsFor(renderDependencyStatus())),
+		// Alias normalisation runs BEFORE the strict check so a sibling name is
+		// rewritten rather than rejected (go-slide-creator-r1m3).
+		server.WithToolHandlerMiddleware(argAliasMiddleware()),
 		server.WithToolHandlerMiddleware(strictArgsMiddleware(func(name string) *server.ServerTool {
 			return s.GetTool(name)
 		})),

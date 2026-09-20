@@ -110,6 +110,28 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
   aligned in `dk2` — "EUR millions", "$m, constant FX". It takes its band off
   the bar row, so a deck without one expands and renders byte-identically.
 
+### Added
+
+- **Sibling argument names are accepted on the three tools that spelled them
+  differently (go-slide-creator-r1m3).** `validate_presentation_output` takes
+  `path` while five other PPTX tools take `pptx_path`; `resolve_theme` takes
+  `template_name` while eleven tools take `template`; `plan_deck` takes
+  `slide_budget` while every slide-counting response field is `slide_count`.
+  Each mismatch cost an agent a round-trip.
+  - The majority spelling is now accepted on each and rewritten to the declared
+    name before the strict-argument check and the handler run, so handlers read
+    one name and the schema advertises one name. `template` is also accepted on
+    `examine_template`, `list_template_settings`, `register_template_setting`
+    and `delete_template_setting`.
+  - The declared name still works and WINS when both are sent: a caller
+    honouring the schema must not have its value discarded.
+  - A genuinely unknown argument is still rejected with `UNKNOWN_PARAMETER`,
+    `did_you_mean` and a `rename_field` patch.
+  - A registration-time test asserts that any tool taking a pptx path accepts
+    `pptx_path`, any tool taking a template accepts `template`, and any tool
+    taking a slide count accepts `slide_count`, so the next tool cannot
+    reintroduce the cost.
+
 ### Changed
 
 - **Peer structural fills are one accent at two luminances
