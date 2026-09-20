@@ -13,12 +13,15 @@ func TestReadableTextOn(t *testing.T) {
 		tone fillTone
 		want string
 	}{
+		// dk2 before dk1 on every light fill: the same order the generator's
+		// contrast fixer uses, so a card's icon and its text land on one theme
+		// ink instead of pure black beside brand dark (go-slide-creator-1sel).
 		{"opaque dark accent", fillTone{Color: "accent1"}, "lt1"},
-		{"light alpha tint", fillTone{Color: "accent1", Alpha: 40}, "dk1"},
-		{"lumMod/lumOff tint", fillTone{Color: "accent1", LumMod: 20000, LumOff: 80000}, "dk1"},
-		{"light yellow accent", fillTone{Color: "accent2"}, "dk1"},
+		{"light alpha tint", fillTone{Color: "accent1", Alpha: 40}, "dk2"},
+		{"lumMod/lumOff tint", fillTone{Color: "accent1", LumMod: 20000, LumOff: 80000}, "dk2"},
+		{"light yellow accent", fillTone{Color: "accent2"}, "dk2"},
 		{"dk2 label column", fillTone{Color: "dk2"}, "lt1"},
-		{"bg alias", fillTone{Color: "bg1"}, "dk1"},
+		{"bg alias", fillTone{Color: "bg1"}, "dk2"},
 		{"hex literal", fillTone{Color: "#101010"}, "lt1"},
 	}
 	for _, tt := range tests {

@@ -104,6 +104,21 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **Pattern ink follows the contrast fixer's order (go-slide-creator-1sel).**
+  `readableTextOn` picked whichever of `lt1`/`dk1` had MORE contrast, so a light
+  accent got `dk1` — pure black — while the generator's own contrast fixer
+  swapped the card's text on the same fill to `dk2`. A black icon sat beside
+  brand-dark text on one card, and the off-brand black
+  go-slide-creator-sis2 removed from text was still reachable through every
+  pattern that asked.
+  - Both now try `lt1` → `dk2` → `dk1` and take the first that clears the bar,
+    which is exactly `pickThemeTextColor`'s order. Text uses the 4.5:1 text bar,
+    icons the 3:1 graphical one.
+  - When nothing clears, the highest-contrast candidate still wins, so no case
+    gets worse.
+  - Verified on the reported deck: the accent3 card's icon and caption are both
+    `#1B2A4A` (midnight-blue's dk2), and no icon in the deck is `#000000`.
+
 - **Every fit finding carries `severity` (go-slide-creator-dwkkf).**
   `generate_presentation`'s `fit_findings` had no severity at all while
   `validate_input` reported the same finding as `info`, so a client filtering by

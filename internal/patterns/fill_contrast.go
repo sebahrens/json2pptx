@@ -238,19 +238,46 @@ func linearToSRGB(v float64) uint8 {
 // ratio against the effective fill. When the theme cannot be resolved it
 // returns fallback so behaviour without a template is unchanged.
 func readableTextOn(ctx ExpandContext, tone fillTone, fallback string) string {
+	return readableInkOn(ctx, tone, fallback, svggen.WCAGAANormal)
+}
+
+// readableInkCandidates is the order the generator's own contrast fixer tries
+// (internal/generator/text_contrast.go pickThemeTextColor), and the order this
+// package must share.
+//
+// Picking whichever of lt1/dk1 had MORE contrast meant a light accent got dk1 —
+// pure black — while the render-time fixer swapped the card's text on the same
+// fill to dk2. The off-brand black that go-slide-creator-sis2 removed from text
+// was still reachable through every pattern that asked this function, icons
+// included (go-slide-creator-1sel).
+var readableInkCandidates = []string{"lt1", "dk2", "dk1"}
+
+// readableInkOn returns the first theme ink that clears minContrast against the
+// fill, in the fixer's order. When none clears it, the highest-contrast of the
+// candidates wins, so the answer is never worse than the old one.
+func readableInkOn(ctx ExpandContext, tone fillTone, fallback string, minContrast float64) string {
 	fill, ok := effectiveFillColor(ctx, tone)
 	if !ok {
 		return fallback
 	}
-	light, lok := resolveThemeColor(ctx, "lt1")
-	dark, dok := resolveThemeColor(ctx, "dk1")
-	if !lok || !dok {
+	best, bestRatio := "", 0.0
+	for _, scheme := range readableInkCandidates {
+		c, cok := resolveThemeColor(ctx, scheme)
+		if !cok {
+			continue
+		}
+		ratio := c.ContrastWith(fill)
+		if ratio >= minContrast {
+			return scheme
+		}
+		if ratio > bestRatio {
+			best, bestRatio = scheme, ratio
+		}
+	}
+	if best == "" {
 		return fallback
 	}
-	if light.ContrastWith(fill) >= dark.ContrastWith(fill) {
-		return "lt1"
-	}
-	return "dk1"
+	return best
 }
 
 // applyLumModOff applies the OOXML lumMod / lumOff transforms (in HSL space).

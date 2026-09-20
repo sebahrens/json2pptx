@@ -51,7 +51,10 @@ func iconFillOn(ctx ExpandContext, fillJSON json.RawMessage, accent string) stri
 	if light, lok := resolveThemeColor(ctx, "lt1"); lok && light.ContrastWith(fill) >= iconMinContrast {
 		return "lt1"
 	}
-	return readableTextOn(ctx, tone, fallback)
+	// Non-text: the icon only has to clear the 3:1 graphical bar, and it should
+	// land on the same theme ink the card's text does rather than on pure black
+	// (go-slide-creator-1sel).
+	return readableInkOn(ctx, tone, fallback, iconMinContrast)
 }
 
 // parseFillTone decodes a shape-grid fill value into a fillTone. ok is false

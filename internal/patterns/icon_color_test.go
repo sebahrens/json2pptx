@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // Bundled template palettes (theme1.xml) the icons are verified against.
@@ -159,14 +160,55 @@ func TestIconFillOn(t *testing.T) {
 	if got := iconFillOn(coral, json.RawMessage(`"accent1"`), "accent1"); got != "lt1" {
 		t.Errorf("warm-coral solid accent: iconFillOn = %q, want lt1", got)
 	}
-	// Solid light accent (yellow): lt1 fails, dk1 wins.
-	if got := iconFillOn(ctx, json.RawMessage(`"accent3"`), "accent3"); got != "dk1" {
-		t.Errorf("solid yellow accent: iconFillOn = %q, want dk1", got)
+	// Solid light accent (yellow): lt1 fails the 3:1 bar, so the icon takes the
+	// next theme ink that clears it — dk2, the brand dark the contrast fixer
+	// gives the card's text, not pure black (go-slide-creator-1sel).
+	if got := iconFillOn(ctx, json.RawMessage(`"accent3"`), "accent3"); got != "dk2" {
+		t.Errorf("solid yellow accent: iconFillOn = %q, want dk2", got)
 	}
 	if _, ok := parseFillTone(json.RawMessage(`{bad`)); ok {
 		t.Error("parseFillTone accepted malformed JSON")
 	}
 	if _, ok := parseFillTone(json.RawMessage(`{"color":"none"}`)); ok {
 		t.Error("parseFillTone accepted none object")
+	}
+}
+
+// TestIconAndTextShareOneInk is go-slide-creator-1sel's acceptance check: on
+// every bundled theme, for every accent, the icon colour an accent card gets
+// must be the same theme ink the card's text gets — and never literal dk1 when
+// dk2 clears the bar.
+func TestIconAndTextShareOneInk(t *testing.T) {
+	for name, colors := range iconColorThemes {
+		ctx := ExpandContext{Theme: types.ThemeInfo{Colors: colors}}
+		for _, accent := range []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"} {
+			fill := json.RawMessage(`"` + accent + `"`)
+			icon := iconFillOn(ctx, fill, accent)
+			text := readableTextOn(ctx, fillTone{Color: accent}, "dk1")
+
+			// dk1 is only acceptable when dk2 genuinely cannot do the job.
+			for who, got := range map[string]string{"icon": icon, "text": text} {
+				if got != "dk1" {
+					continue
+				}
+				dk2, ok := resolveThemeColor(ctx, "dk2")
+				if !ok {
+					continue
+				}
+				bar := svggen.WCAGAANormal
+				if who == "icon" {
+					bar = iconMinContrast
+				}
+				if f, fok := effectiveFillColor(ctx, fillTone{Color: accent}); fok && dk2.ContrastWith(f) >= bar {
+					t.Errorf("%s/%s: %s is dk1 (pure black) though dk2 clears %.1f:1", name, accent, who, bar)
+				}
+			}
+
+			// Where both are dark inks, they must be the SAME dark ink: a black
+			// icon beside brand-dark text on one card is the reported defect.
+			if icon != "lt1" && text != "lt1" && icon != accent && icon != text {
+				t.Errorf("%s/%s: icon %q and text %q are different inks on one card", name, accent, icon, text)
+			}
+		}
 	}
 }
