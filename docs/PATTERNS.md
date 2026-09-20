@@ -124,7 +124,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Intent | Pattern | Disambiguator |
 |---|---|---|
 | Big-number KPIs (2–6 items) | `kpi-Nup` | Fixed count, ≤8-char metrics; optional per-cell `sub` (delta/trend annotation, aliases `delta`/`trend`/`change`) |
-| Ranked horizontal bars (3–8) with per-bar insight | `horizontal-bar-with-callouts` | One callout per bar, accent-bar bound to the row |
+| Ranked horizontal bars (3–8) with per-bar insight | `horizontal-bar-with-callouts` | One callout per bar, accent-bar bound to the row; omit every `callout` and the column is dropped so the bars span the full width |
 | Single dominant metric | `stat-hero` | One hero number with context |
 | Feature/capability cards | `card-grid` | Multi-line body text per card |
 | Sequential process | `process-flow` | Ordered steps with arrows |

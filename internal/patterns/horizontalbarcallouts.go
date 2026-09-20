@@ -19,6 +19,10 @@ import (
 //   Two-column outer split: left 60% = bar area, right 40% = callout area.
 //   N rows (one per bar) carry both the bar (left) and its callout (right).
 //
+//   When NO bar carries a callout the callout column is dropped entirely and
+//   the bars take the full content width. The label gutter keeps its absolute
+//   width, so the whole freed 40% goes to the bars (go-slide-creator-i0x0).
+//
 //   Each bar row's left cell hosts a sub-grid with three columns
 //     [labelPct, fillPct, restPct]
 //   so the bar fill width is strictly proportional to (value / max_value).
@@ -40,9 +44,10 @@ const (
 	hbcLabelMax    = 40
 	hbcCalloutMax  = 200
 	hbcUnitMax     = 8
-	hbcLabelColPct = 22.0 // % of the left column reserved for the bar label
-	hbcLeftColPct  = 60.0 // outer split: left bar area
-	hbcRightColPct = 40.0 // outer split: right callout column
+	hbcLabelColPct = 22.0  // % of the left column reserved for the bar label
+	hbcLeftColPct  = 60.0  // outer split: left bar area
+	hbcRightColPct = 40.0  // outer split: right callout column
+	hbcFullColPct  = 100.0 // single column when no bar carries a callout
 )
 
 func (h *horizontalBarCallouts) Name() string { return "horizontal-bar-with-callouts" }
@@ -274,11 +279,25 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 	n := len(vals.Bars)
 	rows := make([]jsonschema.GridRowInput, n)
 
+	// A callout column with nothing in it is not empty space, it is a 40%-wide
+	// hole with a column of floating accent ticks beside the bars. Drop it when
+	// no bar has anything to say (go-slide-creator-i0x0).
+	withCallouts := anyHorizontalBarCallout(vals.Bars)
+	barColPct := hbcFullColPct
+	if withCallouts {
+		barColPct = hbcLeftColPct
+	}
+	// The labels did not get longer, so their gutter should not get wider: hold
+	// it at the absolute width it has in the two-column layout and give every
+	// reclaimed point to the bars.
+	labelColPct := hbcLabelColPct * hbcLeftColPct / barColPct
+
 	// Width (in points) of the whole bar area, used to decide whether a bar is
-	// wide enough to hold its own value label (go-slide-creator-d6zo).
+	// wide enough to hold its own value label (go-slide-creator-d6zo). It is the
+	// bar COLUMN's share of the content width, not the whole of it.
 	barAreaWidthPt := 0.0
 	if cw, _ := expandContentSize(ctx); cw > 0 {
-		barAreaWidthPt = float64(cw) / 12700 * (100.0 - hbcLabelColPct) / 100.0
+		barAreaWidthPt = float64(cw) / 12700 * barColPct / 100.0 * (100.0 - labelColPct) / 100.0
 	}
 
 	for i, bar := range vals.Bars {
@@ -295,27 +314,35 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 			clampedValue = maxVal
 		}
 		fillFraction := clampedValue / maxVal
-		// Reserve hbcLabelColPct for the label; split the remainder into
+		// Reserve labelColPct for the label; split the remainder into
 		// fillPct (proportional) and restPct (transparent placeholder).
-		barAreaPct := 100.0 - hbcLabelColPct
+		barAreaPct := 100.0 - labelColPct
 		fillPct := barAreaPct * fillFraction
 		restPct := barAreaPct - fillPct
 
-		barCell := buildHorizontalBarRowCell(bar, accent, vals.Unit, labelSize, valueSize, fillPct, restPct, barAreaWidthPt)
+		barCell := buildHorizontalBarRowCell(bar, accent, vals.Unit, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt)
+		if !withCallouts {
+			rows[i] = jsonschema.GridRowInput{Cells: []*jsonschema.GridCellInput{barCell}}
+			continue
+		}
+
 		calloutCell := buildHorizontalBarCalloutCell(bar.Callout, calloutSize)
 
-		// Cell-override accent bar always renders on the callout cell so the
-		// visual link between bar and callout is preserved by default; users
-		// who set accent_bar:false in cell_overrides suppress only that bar.
-		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*HorizontalBarCalloutsCellOverride); ok2 && !cellOvr.AccentBar {
-				calloutCell.AccentBar = nil
-			}
-		} else {
-			calloutCell.AccentBar = &jsonschema.AccentBarInput{
-				Position: "left",
-				Color:    accent,
-				Width:    2,
+		// The accent bar is the visual bond between a bar and its insight, so it
+		// only renders where there is an insight to bind to: on a callout-less
+		// row it is a coloured dash anchored to nothing. Users who set
+		// accent_bar:false in cell_overrides suppress it for that row.
+		if strings.TrimSpace(bar.Callout) != "" {
+			if co, coOk := cellOverrides[i]; coOk {
+				if cellOvr, ok2 := co.(*HorizontalBarCalloutsCellOverride); ok2 && !cellOvr.AccentBar {
+					calloutCell.AccentBar = nil
+				}
+			} else {
+				calloutCell.AccentBar = &jsonschema.AccentBarInput{
+					Position: "left",
+					Color:    accent,
+					Width:    2,
+				}
 			}
 		}
 
@@ -324,7 +351,11 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 		}
 	}
 
-	colsJSON, _ := json.Marshal([]float64{hbcLeftColPct, hbcRightColPct})
+	outerCols := []float64{hbcLeftColPct, hbcRightColPct}
+	if !withCallouts {
+		outerCols = []float64{hbcFullColPct}
+	}
+	colsJSON, _ := json.Marshal(outerCols)
 
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
@@ -341,7 +372,7 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 
 // buildHorizontalBarRowCell constructs the left-column cell containing a
 // three-column sub-grid: [label, fill, rest].
-func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string, labelSize, valueSize, fillPct, restPct, barAreaWidthPt float64) *jsonschema.GridCellInput {
+func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt float64) *jsonschema.GridCellInput {
 	labelCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
@@ -369,7 +400,7 @@ func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string
 	fillCell := &jsonschema.GridCellInput{Shape: fillShape}
 
 	cells := []*jsonschema.GridCellInput{labelCell, fillCell}
-	cols := []float64{hbcLabelColPct, fillPct}
+	cols := []float64{labelColPct, fillPct}
 	if restPct > 0.01 {
 		restShape := &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
@@ -396,6 +427,17 @@ func buildHorizontalBarRowCell(bar HorizontalBarCalloutsBar, accent, unit string
 	}
 
 	return &jsonschema.GridCellInput{Grid: subGrid}
+}
+
+// anyHorizontalBarCallout reports whether at least one bar carries callout
+// text, which is what earns the deck a callout column at all.
+func anyHorizontalBarCallout(bars []HorizontalBarCalloutsBar) bool {
+	for _, b := range bars {
+		if strings.TrimSpace(b.Callout) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // buildHorizontalBarCalloutCell constructs the right-column callout cell.

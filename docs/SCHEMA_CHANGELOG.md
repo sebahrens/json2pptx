@@ -104,6 +104,22 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Changed
 
+- **`horizontal-bar-with-callouts` drops the callout column when no bar has a
+  callout (go-slide-creator-i0x0).** `callout` has always been optional, but the
+  layout was not: bars with nothing to say still reserved 40% of the width for
+  an empty column and drew the per-bar accent tick beside it, so the slide came
+  out as a row of floating coloured dashes next to bars squeezed into the left
+  60%.
+  - No bar carries a callout -> the outer grid is a single 100% column and the
+    bars span the full content width. The label gutter keeps its absolute width
+    (22% of the old 60% column = 13.2% of the full width), so every reclaimed
+    point goes to the bars and the longest bar reaches the axis.
+  - Some bars carry a callout -> the two-column split is unchanged, but the
+    accent tick renders only on rows that actually have an insight to anchor.
+  - No input change: a deck where every bar has a callout expands and renders
+    byte-identically. `max_value` already defaulted to the largest bar value;
+    what made the top bar look short was the empty column beside it.
+
 - **An unknown icon name in a diagram panel is reported
   (go-slide-creator-puki).** `panels: [{title: "Simplify", icon: "layers"}]`
   rendered a panel with no icon while its siblings kept theirs, and the only

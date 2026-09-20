@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -468,4 +469,101 @@ func TestHorizontalBarCallouts_ShortBarLabelMovesOutside(t *testing.T) {
 	if !strings.Contains(string(small[2].Shape.Text), "dk1") {
 		t.Errorf("outside label should be dark text on the transparent remainder, got %s", small[2].Shape.Text)
 	}
+}
+
+// go-slide-creator-i0x0: bars with nothing to say used to keep a 40%-wide
+// callout column and a row of accent ticks anchored to empty cells, which read
+// as a column of floating coloured dashes beside bars squeezed into 60% of the
+// slide.
+func TestHorizontalBarCallouts_NoCalloutsDropsTheCalloutColumn(t *testing.T) {
+	p, _ := Default().Get("horizontal-bar-with-callouts")
+	v := &HorizontalBarCalloutsValues{
+		Bars: []HorizontalBarCalloutsBar{
+			{Label: "A", Value: 3},
+			{Label: "B", Value: 2},
+			{Label: "C", Value: 1},
+		},
+	}
+	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+	if got := string(grid.Columns); got != "[100]" {
+		t.Errorf("outer columns = %s, want [100] — the callout column should be gone", got)
+	}
+	for i, row := range grid.Rows {
+		if got := len(row.Cells); got != 1 {
+			t.Fatalf("row %d: expected only the bar cell, got %d cells", i, got)
+		}
+		if row.Cells[0].AccentBar != nil {
+			t.Errorf("row %d: bar cell carries an accent bar with no callout to anchor", i)
+		}
+		if row.Cells[0].Grid == nil {
+			t.Fatalf("row %d: expected the bar cell to host a sub-grid", i)
+		}
+	}
+
+	// The labels did not get longer, so the gutter keeps its absolute width:
+	// 22% of the old 60% column is 13.2% of the full width. Every reclaimed
+	// point goes to the bars.
+	cols := hbcSubGridColumns(t, grid, 0)
+	if diff := cols[0] - hbcLabelColPct*hbcLeftColPct/100; diff > 0.01 || diff < -0.01 {
+		t.Errorf("label column = %.2f%% of full width, want %.2f%%", cols[0], hbcLabelColPct*hbcLeftColPct/100)
+	}
+	// The longest bar (value == derived max_value) must reach the right edge.
+	if rest := cols[len(cols)-1]; len(cols) > 2 && rest > 0.01 {
+		t.Errorf("longest bar leaves a %.2f%% remainder; it should reach the axis", rest)
+	}
+	if fill := cols[1]; fill < 100-cols[0]-0.01 {
+		t.Errorf("longest bar fill = %.2f%%, want the whole %.2f%% bar area", fill, 100-cols[0])
+	}
+}
+
+// A single callout still earns the column — but only that row gets a tick.
+func TestHorizontalBarCallouts_TickOnlyWhereThereIsACallout(t *testing.T) {
+	p, _ := Default().Get("horizontal-bar-with-callouts")
+	v := &HorizontalBarCalloutsValues{
+		Unit: "%",
+		Bars: []HorizontalBarCalloutsBar{
+			{Label: "Vendor A", Value: 87, Callout: "Strongest on price."},
+			{Label: "Vendor B", Value: 72},
+			{Label: "Vendor C", Value: 64, Callout: "   "},
+		},
+	}
+	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+	if !strings.Contains(string(grid.Columns), "60") {
+		t.Fatalf("one callout should keep the two-column split, got %s", string(grid.Columns))
+	}
+	want := []bool{true, false, false}
+	for i, row := range grid.Rows {
+		if len(row.Cells) != 2 {
+			t.Fatalf("row %d: expected bar + callout cells, got %d", i, len(row.Cells))
+		}
+		if got := row.Cells[1].AccentBar != nil; got != want[i] {
+			t.Errorf("row %d: accent bar present = %v, want %v", i, got, want[i])
+		}
+	}
+	// The bar geometry is untouched by the per-row tick decision.
+	cols := hbcSubGridColumns(t, grid, 0)
+	if diff := cols[0] - hbcLabelColPct; diff > 0.01 || diff < -0.01 {
+		t.Errorf("label column = %.2f%%, want the two-column %.2f%%", cols[0], hbcLabelColPct)
+	}
+}
+
+// hbcSubGridColumns returns the [label, fill, rest?] column percentages of a
+// bar row's sub-grid.
+func hbcSubGridColumns(t *testing.T, grid *jsonschema.ShapeGridInput, rowIdx int) []float64 {
+	t.Helper()
+	row := grid.Rows[rowIdx]
+	if len(row.Cells) == 0 || row.Cells[0].Grid == nil {
+		t.Fatalf("row %d has no bar sub-grid", rowIdx)
+	}
+	var cols []float64
+	if err := json.Unmarshal(row.Cells[0].Grid.Columns, &cols); err != nil {
+		t.Fatalf("row %d sub-grid columns %s: %v", rowIdx, row.Cells[0].Grid.Columns, err)
+	}
+	return cols
 }
