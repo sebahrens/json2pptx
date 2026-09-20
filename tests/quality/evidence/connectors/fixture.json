@@ -1,0 +1,400 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "connector-fixture.pptx",
+  "slides": [
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "1. Driver tree — four branches"
+        }
+      ],
+      "pattern": {
+        "name": "driver-tree",
+        "values": {
+          "root": {
+            "label": "Total Cost to Serve",
+            "unit": "($/order)"
+          },
+          "branches": [
+            {
+              "label": "Fulfilment",
+              "leaves": [
+                "Pick & pack",
+                "Outbound freight"
+              ]
+            },
+            {
+              "label": "Customer Care",
+              "leaves": [
+                "Contact handling",
+                "Returns processing"
+              ]
+            },
+            {
+              "label": "Platform",
+              "leaves": [
+                "Hosting",
+                "Licences",
+                "Payment fees"
+              ]
+            },
+            {
+              "label": "People",
+              "leaves": [
+                "Training",
+                "Capacity"
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "2. Dual organisation — six rows"
+        }
+      ],
+      "pattern": {
+        "name": "dual-org-ladder",
+        "values": {
+          "org_a": "Northwind Group",
+          "org_b": "Helios Advisory",
+          "rows": [
+            {
+              "a_name": "Eva Larsen",
+              "a_title": "Chief Executive",
+              "b_name": "Pavel Novak",
+              "b_title": "Managing Partner"
+            },
+            {
+              "a_name": "Kenji Sato",
+              "a_title": "Chief Operating Officer",
+              "b_name": "Naomi Reyes",
+              "b_title": "Programme Director"
+            },
+            {
+              "a_name": "Olu Adeyemi",
+              "a_title": "Programme Sponsor",
+              "b_name": "Aisha Khan",
+              "b_title": "Engagement Manager"
+            },
+            {
+              "a_name": "Marta Silva",
+              "a_title": "Functional Lead",
+              "b_name": "Yusuf Bello",
+              "b_title": "Senior Consultant"
+            },
+            {
+              "a_name": "Chen Wei",
+              "a_title": "Technology Lead",
+              "b_name": "Hannah Wolf",
+              "b_title": "Solution Architect"
+            },
+            {
+              "a_name": "Sofia Russo",
+              "a_title": "Change Champion",
+              "b_name": "Ravi Iyer",
+              "b_title": "Change Lead"
+            }
+          ]
+        },
+        "overrides": {
+          "accent_a": "accent3",
+          "accent_b": "accent4"
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "3. Process flow — decision"
+        }
+      ],
+      "pattern": {
+        "name": "process-flow",
+        "values": {
+          "steps": [
+            {
+              "label": "Ingest",
+              "type": "step"
+            },
+            {
+              "label": "Transform",
+              "type": "step"
+            },
+            {
+              "label": "Validate",
+              "type": "decision"
+            },
+            {
+              "label": "Analyze",
+              "type": "step"
+            },
+            {
+              "label": "Alert",
+              "type": "step"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "4. Swimlane — cross-team handoffs"
+        }
+      ],
+      "pattern": {
+        "name": "swimlane",
+        "values": {
+          "lanes": [
+            {
+              "actor": "Sales Rep",
+              "steps": [
+                "Qualify lead",
+                "Submit proposal",
+                ""
+              ]
+            },
+            {
+              "actor": "Legal",
+              "steps": [
+                "",
+                "Review terms",
+                "Approve contract"
+              ]
+            },
+            {
+              "actor": "Finance",
+              "steps": [
+                "",
+                "",
+                "Book revenue"
+              ]
+            }
+          ]
+        }
+      },
+      "overlays": [
+        {
+          "kind": "arrow",
+          "from": {
+            "anchor_cell": {
+              "row": 0,
+              "col": 1,
+              "at": "center"
+            }
+          },
+          "to": {
+            "anchor_cell": {
+              "row": 1,
+              "col": 2,
+              "at": "center"
+            }
+          },
+          "color": "accent1",
+          "width": 1.5
+        },
+        {
+          "kind": "arrow",
+          "from": {
+            "anchor_cell": {
+              "row": 1,
+              "col": 3,
+              "at": "center"
+            }
+          },
+          "to": {
+            "anchor_cell": {
+              "row": 2,
+              "col": 3,
+              "at": "center"
+            }
+          },
+          "color": "accent1",
+          "width": 1.5
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "5. Porter’s Five Forces"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "diagram",
+          "diagram_value": {
+            "type": "porters_five_forces",
+            "title": "Enterprise Cloud Services",
+            "data": {
+              "industry_name": "Enterprise Cloud Services",
+              "forces": [
+                {
+                  "type": "rivalry",
+                  "label": "Competitive Rivalry",
+                  "intensity": 0.9,
+                  "factors": [
+                    "AWS, Azure, GCP dominance",
+                    "Price competition",
+                    "Feature parity race"
+                  ]
+                },
+                {
+                  "type": "new_entrants",
+                  "label": "Threat of New Entrants",
+                  "intensity": 0.3,
+                  "factors": [
+                    "High capital requirements",
+                    "Economies of scale needed",
+                    "Brand loyalty barriers"
+                  ]
+                },
+                {
+                  "type": "substitutes",
+                  "label": "Threat of Substitutes",
+                  "intensity": 0.5,
+                  "factors": [
+                    "On-premise declining",
+                    "Hybrid options",
+                    "Edge computing emerging"
+                  ]
+                },
+                {
+                  "type": "suppliers",
+                  "label": "Supplier Power",
+                  "intensity": 0.6,
+                  "factors": [
+                    "Chip shortages impact",
+                    "Data center real estate",
+                    "Network providers"
+                  ]
+                },
+                {
+                  "type": "buyers",
+                  "label": "Buyer Power",
+                  "intensity": 0.7,
+                  "factors": [
+                    "Multi-cloud strategies",
+                    "Negotiation leverage",
+                    "Switching costs decreasing"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "slideLayout2",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "6. Explicit connectors — fan-out"
+        }
+      ],
+      "shape_grid": {
+        "columns": 3,
+        "col_gap": 16,
+        "row_gap": 14,
+        "rows": [
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent1",
+                  "text": "Programme"
+                },
+                "row_span": 3
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": "Technology"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": "Deploy platform"
+                }
+              }
+            ],
+            "connector": {
+              "style": "arrow",
+              "color": "accent1",
+              "width": 1.5
+            }
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": "Operations"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": "Redesign process"
+                }
+              }
+            ],
+            "connector": {
+              "style": "arrow",
+              "color": "accent1",
+              "width": 1.5
+            }
+          },
+          {
+            "cells": [
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "lt2",
+                  "text": "People"
+                }
+              },
+              {
+                "shape": {
+                  "geometry": "roundRect",
+                  "fill": "accent3",
+                  "text": "Train teams"
+                }
+              }
+            ],
+            "connector": {
+              "style": "arrow",
+              "color": "accent1",
+              "width": 1.5
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
