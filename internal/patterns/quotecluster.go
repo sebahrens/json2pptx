@@ -103,10 +103,52 @@ func (q *quoteCluster) NewValues() any       { return &QuoteClusterValues{} }
 func (q *quoteCluster) NewOverrides() any    { return &QuoteClusterOverrides{} }
 func (q *quoteCluster) NewCellOverride() any { return &QuoteClusterCellOverride{} }
 
+func (q *quoteCluster) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
+	v, ok := values.(*QuoteClusterValues)
+	if !ok || v == nil || len(v.Quotes) <= 6 {
+		return nil
+	}
+	grid, err := q.Expand(ctx, values, overrides, nil)
+	if err != nil {
+		return nil
+	}
+	limit := 0.0
+	for _, target := range []QuoteClusterItem{
+		{Text: quoteClusterBudgetCopy(148), Name: quoteClusterBudgetCopy(60), Title: quoteClusterBudgetCopy(80)},
+		{Text: quoteClusterBudgetCopy(195), Name: quoteClusterBudgetCopy(48), Title: quoteClusterBudgetCopy(65)},
+	} {
+		reference := &QuoteClusterValues{Quotes: make([]QuoteClusterItem, len(v.Quotes))}
+		for i := range reference.Quotes {
+			reference.Quotes[i] = target
+		}
+		referenceGrid, err := q.Expand(ctx, reference, overrides, nil)
+		if err != nil {
+			return nil
+		}
+		limit = max(limit, quoteClusterHeight(referenceGrid))
+	}
+	if quoteClusterHeight(grid) <= limit {
+		return nil
+	}
+	return []string{fmt.Sprintf("%s: quote-cluster quotes.text/name/title exceed the measured three-row copy budget; with 7–8 quotes, keep quote text near 148 characters when names and titles are at their maxima, or near 195 with shorter attributions — shorten copy or split the quotes across slides", ErrCodeBodyTooLong)}
+}
+
+func quoteClusterBudgetCopy(length int) string {
+	return strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+}
+
+func quoteClusterHeight(grid *jsonschema.ShapeGridInput) float64 {
+	height := float64(len(grid.Rows)-1) * 10
+	for _, row := range grid.Rows {
+		height += row.MaxHeight
+	}
+	return height
+}
+
 func (q *quoteCluster) Schema() *Schema {
 	quoteSchema := ObjectSchema(
 		map[string]*Schema{
-			"text":  StringSchema(quoteClusterTextMax).WithDescription("Quote text (italic, ~10pt)"),
+			"text":  StringSchema(quoteClusterTextMax).WithDescription("Quote text (italic, ~10pt); with 7-8 quotes, target about 148 characters when names/titles are at maxima, or 195 with shorter attributions"),
 			"name":  StringSchema(quoteClusterNameMax).WithDescription("Speaker name (bold)"),
 			"title": StringSchema(quoteClusterTitleMax).WithDescription("Optional role or title rendered next to the name"),
 		},

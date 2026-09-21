@@ -865,6 +865,58 @@ func TestTableHighlightBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestQuoteClusterBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_QUOTE_CLUSTER_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_QUOTE_CLUSTER_BUDGET_PROBE=1")
+	}
+	for count := 3; count <= 8; count++ {
+		for _, field := range []string{"text", "name", "title", "all_text", "all_name", "all_title", "paired_text", "balanced", "single_paired_text", "single_balanced"} {
+			maxChars := map[string]int{"text": 240, "name": 60, "title": 80, "all_text": 240, "all_name": 60, "all_title": 80, "paired_text": 240, "balanced": 240, "single_paired_text": 240, "single_balanced": 240}[field]
+			budget := probeReadableBudget(t, "quote-cluster", maxChars, func(length int) any {
+				v := &patterns.QuoteClusterValues{}
+				for i := 0; i < count; i++ {
+					v.Quotes = append(v.Quotes, patterns.QuoteClusterItem{Text: "A concise customer quote.", Name: "J. Lin", Title: "Director"})
+				}
+				copy := budgetProbeCopy(length)
+				switch field {
+				case "text":
+					v.Quotes[0].Text = copy
+				case "name":
+					v.Quotes[0].Name = copy
+				case "title":
+					v.Quotes[0].Title = copy
+				case "all_text":
+					for i := range v.Quotes {
+						v.Quotes[i].Text = copy
+					}
+				case "all_name":
+					for i := range v.Quotes {
+						v.Quotes[i].Name = copy
+					}
+				case "all_title":
+					for i := range v.Quotes {
+						v.Quotes[i].Title = copy
+					}
+				case "paired_text":
+					for i := range v.Quotes {
+						v.Quotes[i] = patterns.QuoteClusterItem{Text: copy, Name: budgetProbeCopy(60), Title: budgetProbeCopy(80)}
+					}
+				case "balanced":
+					for i := range v.Quotes {
+						v.Quotes[i] = patterns.QuoteClusterItem{Text: copy, Name: budgetProbeCopy(length / 4), Title: budgetProbeCopy(length / 3)}
+					}
+				case "single_paired_text":
+					v.Quotes[0] = patterns.QuoteClusterItem{Text: copy, Name: budgetProbeCopy(60), Title: budgetProbeCopy(80)}
+				case "single_balanced":
+					v.Quotes[0] = patterns.QuoteClusterItem{Text: copy, Name: budgetProbeCopy(length / 4), Title: budgetProbeCopy(length / 3)}
+				}
+				return v
+			})
+			t.Logf("quotes=%d field=%s budget=%d", count, field, budget)
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

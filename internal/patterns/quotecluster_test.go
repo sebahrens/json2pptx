@@ -52,6 +52,42 @@ func validQuoteClusterValues(n int) *QuoteClusterValues {
 	return &QuoteClusterValues{Quotes: out}
 }
 
+func TestQuoteClusterDenseCombinedCopyWarning(t *testing.T) {
+	p := &quoteCluster{}
+	values := &QuoteClusterValues{}
+	for i := 0; i < 8; i++ {
+		values.Quotes = append(values.Quotes, QuoteClusterItem{
+			Text: strings.Repeat("word ", 48), Name: strings.Repeat("name ", 12), Title: strings.Repeat("role ", 16),
+		})
+	}
+	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) == 0 ||
+		!strings.Contains(got[0], ErrCodeBodyTooLong) || !strings.Contains(got[0], "quotes.text/name/title") {
+		t.Fatalf("dense full attribution warning: %v", got)
+	}
+	for i := range values.Quotes {
+		values.Quotes[i].Text = strings.Repeat("word ", 29)
+	}
+	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
+		t.Fatalf("measured 145-character target should fit: %v", got)
+	}
+	values.Quotes[0] = QuoteClusterItem{Text: strings.Repeat("word ", 48), Name: strings.Repeat("name ", 12), Title: strings.Repeat("role ", 16)}
+	for i := 1; i < len(values.Quotes); i++ {
+		values.Quotes[i] = QuoteClusterItem{Text: "A concise customer quote.", Name: "J. Lin", Title: "Director"}
+	}
+	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
+		t.Fatalf("a single full-length quote should fit: %v", got)
+	}
+	for i := range values.Quotes {
+		values.Quotes[i] = QuoteClusterItem{Text: quoteClusterBudgetCopy(195), Name: quoteClusterBudgetCopy(48), Title: quoteClusterBudgetCopy(65)}
+	}
+	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
+		t.Fatalf("measured balanced target should fit: %v", got)
+	}
+	if got := p.PostExpandWarnings(testThemeCtx(), nil, nil); got != nil {
+		t.Fatalf("nil values: %v", got)
+	}
+}
+
 func TestQuoteCluster_Validate_Valid(t *testing.T) {
 	p, _ := Default().Get("quote-cluster")
 	for _, n := range []int{3, 4, 5, 6, 7, 8} {

@@ -242,6 +242,16 @@ func TestTableHighlightPairedCopyWarningReachesFitReportAcrossTemplates(t *testi
 	assertBudgetFindingAcrossTemplates(t, "table-highlight", values, "options[0].name/detail", "about 30 characters each")
 }
 
+func TestQuoteClusterCombinedCopyWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.QuoteClusterValues{}
+	for i := 0; i < 8; i++ {
+		values.Quotes = append(values.Quotes, patterns.QuoteClusterItem{
+			Text: strings.Repeat("word ", 48), Name: strings.Repeat("name ", 12), Title: strings.Repeat("role ", 16),
+		})
+	}
+	assertBudgetFindingAcrossTemplates(t, "quote-cluster", values, "quotes.text/name/title", "near 148 characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Quote-cluster combined copy target (go-slide-creator-tp23k.19).**
+  `quote-cluster` now reports `BODY_TOO_LONG` when seven or eight quotes
+  together exceed the measured three-row budget. Quote text fits about 148
+  characters with maximum-length names and titles, or about 195 with shorter
+  attributions. Isolated long quotes and layouts of up to six quotes keep
+  their 240-character quote maximum. The fit report and schema describe the
+  dense targets. Measurements used all four bundled templates. Schema version
+  advances to 4.96.0.
+
 - **Dense table-highlight paired copy targets (go-slide-creator-tp23k.18).**
   `table-highlight` now reports `BODY_TOO_LONG` for rows whose combined
   option name and detail exceed the measured dense-table budget. Six rows
