@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Full process-flow step targets (go-slide-creator-tp23k.33).**
+  `process-flow` now reports `BODY_TOO_LONG` for step labels beyond the
+  measured shape and count budget. Chevron and arrow labels hold about
+  76/42/30/17 word-like characters at five through eight steps, with tighter
+  limits for wide unbroken text. Rectangles and diamonds retain their
+  80-character maximum except for wide unbroken text at seven or eight steps.
+  Measurements used all four bundled templates. Schema version advances to
+  4.110.0.
+
 - **Matrix quadrant paired-copy target (go-slide-creator-tp23k.32).**
   `matrix-2x2` now reports `BODY_TOO_LONG` when an 80-character unbroken
   quadrant header is paired with more than about 176 wide unbroken body

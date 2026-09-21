@@ -509,3 +509,12 @@ func TestMatrix2x2PairedQuadrantBudgetReachesFitReportAcrossTemplates(t *testing
 	}
 	assertBudgetFindingAcrossTemplates(t, "matrix-2x2", values, "top_left.header/body", "about 176 wide characters")
 }
+
+func TestProcessFlowStepBudgetReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.ProcessFlowValues{Steps: make([]patterns.ProcessFlowStep, 8)}
+	for i := range values.Steps {
+		values.Steps[i] = patterns.ProcessFlowStep{Label: "Stage", Type: "chevron"}
+	}
+	values.Steps[2].Label = strings.Repeat("word ", 4)
+	assertBudgetFindingAcrossTemplates(t, "process-flow", values, "steps[2].label", "about 17 word-like or 13 wide unbroken characters")
+}
