@@ -8,6 +8,16 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Stylish panel shared bullet budgets (go-slide-creator-tp23k.16).**
+  `stylish-panels` now reports `BODY_TOO_LONG` when a panel's average bullet
+  copy exceeds the measured budget for its panel count, bullet count, and
+  longest ribbon title. Short titles with eight bullets allow about 81/60/42
+  characters per bullet at three/four/five panels; five panels with a long
+  title can fall to 26. A single longer bullet still fits when its neighbors
+  are short. The schema describes sparse and dense targets, retaining the
+  200-character item maximum. Measurements used all four bundled templates.
+  Schema version advances to 4.93.0.
+
 - **Gantt body-loss diagnostic (go-slide-creator-d2pz1).** A
   `timeline-horizontal` stop with `body` copy in `gantt` style now receives
   `CONTENT_DROPPED` with the stop path and options to move or render that

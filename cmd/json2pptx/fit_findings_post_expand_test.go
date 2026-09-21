@@ -206,6 +206,18 @@ func TestTimelineGanttDroppedBodyReachesFitReportAcrossTemplates(t *testing.T) {
 		"values[1].body", "not rendered in gantt style", &patterns.TimelineHorizontalOverrides{Style: "gantt"})
 }
 
+func TestStylishPanelsBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := patterns.StylishPanelsValues{}
+	for i := 0; i < 5; i++ {
+		panel := patterns.StylishPanelsItem{Title: strings.Repeat("T", 80)}
+		for j := 0; j < 8; j++ {
+			panel.Body = append(panel.Body, strings.Repeat("B", 27))
+		}
+		values = append(values, panel)
+	}
+	assertBudgetFindingAcrossTemplates(t, "stylish-panels", &values, "values[0].body", "about 26 characters per bullet")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

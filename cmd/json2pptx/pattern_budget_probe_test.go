@@ -472,6 +472,161 @@ func TestTimelineHorizontalBudgetProbe(t *testing.T) {
 	}
 }
 
+// Run with JSON2PPTX_STYLISH_PANELS_BUDGET_PROBE=1 to measure the ribbon title
+// and shared bullet-list body budget by panel and bullet count.
+func TestStylishPanelsBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_STYLISH_PANELS_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_STYLISH_PANELS_BUDGET_PROBE=1")
+	}
+	for panels := 3; panels <= 5; panels++ {
+		titleBudget := probeReadableBudget(t, "stylish-panels", 80, func(length int) any {
+			v := patterns.StylishPanelsValues{}
+			for i := 0; i < panels; i++ {
+				v = append(v, patterns.StylishPanelsItem{Title: "Panel", Body: []string{"Short"}})
+			}
+			v[0].Title = budgetProbeCopy(length)
+			return &v
+		})
+		t.Logf("panels=%d field=title budget=%d", panels, titleBudget)
+		for bullets := 1; bullets <= 8; bullets++ {
+			for _, all := range []bool{false, true} {
+				bodyBudget := probeReadableBudget(t, "stylish-panels", 200, func(length int) any {
+					v := patterns.StylishPanelsValues{}
+					for i := 0; i < panels; i++ {
+						item := patterns.StylishPanelsItem{Title: "Panel"}
+						for j := 0; j < bullets; j++ {
+							item.Body = append(item.Body, "Short")
+						}
+						v = append(v, item)
+					}
+					if all {
+						for i := range v[0].Body {
+							v[0].Body[i] = budgetProbeCopy(length)
+						}
+					} else {
+						v[0].Body[0] = budgetProbeCopy(length)
+					}
+					return &v
+				})
+				t.Logf("panels=%d bullets=%d all=%t body_budget=%d", panels, bullets, all, bodyBudget)
+			}
+		}
+	}
+	for panels := 3; panels <= 5; panels++ {
+		for bullets := 1; bullets <= 8; bullets++ {
+			bodyBudget := probeReadableBudget(t, "stylish-panels", 200, func(length int) any {
+				v := patterns.StylishPanelsValues{}
+				for i := 0; i < panels; i++ {
+					item := patterns.StylishPanelsItem{Title: budgetProbeCopy(80)}
+					for j := 0; j < bullets; j++ {
+						item.Body = append(item.Body, budgetProbeCopy(length))
+					}
+					v = append(v, item)
+				}
+				return &v
+			})
+			t.Logf("panels=%d bullets=%d max_titles=true all=true body_budget=%d", panels, bullets, bodyBudget)
+		}
+	}
+	for _, tc := range []struct{ panels, bullets, bodyChars int }{
+		{3, 6, 121}, {4, 4, 120}, {5, 8, 42},
+	} {
+		titleBudget := probeReadableBudget(t, "stylish-panels", 80, func(length int) any {
+			v := patterns.StylishPanelsValues{}
+			for i := 0; i < tc.panels; i++ {
+				item := patterns.StylishPanelsItem{Title: "Panel"}
+				for j := 0; j < tc.bullets; j++ {
+					item.Body = append(item.Body, budgetProbeCopy(tc.bodyChars))
+				}
+				v = append(v, item)
+			}
+			v[0].Title = budgetProbeCopy(length)
+			return &v
+		})
+		t.Logf("panels=%d bullets=%d body_chars=%d title_budget=%d", tc.panels, tc.bullets, tc.bodyChars, titleBudget)
+	}
+	for panels := 3; panels <= 5; panels++ {
+		for bullets := 1; bullets <= 8; bullets++ {
+			for _, titleChars := range []int{5, 25, 45, 65, 80} {
+				bodyBudget := probeReadableBudget(t, "stylish-panels", 200, func(length int) any {
+					v := patterns.StylishPanelsValues{}
+					for i := 0; i < panels; i++ {
+						item := patterns.StylishPanelsItem{Title: budgetProbeCopy(titleChars)}
+						for j := 0; j < bullets; j++ {
+							item.Body = append(item.Body, budgetProbeCopy(length))
+						}
+						v = append(v, item)
+					}
+					return &v
+				})
+				t.Logf("panels=%d bullets=%d title_chars=%d body_budget=%d", panels, bullets, titleChars, bodyBudget)
+			}
+		}
+	}
+	for _, tc := range []struct{ panels, bullets, bodyChars int }{
+		{3, 6, 121},
+		{4, 3, 180}, {4, 4, 120}, {4, 6, 90}, {4, 8, 60},
+		{5, 2, 182}, {5, 2, 162}, {5, 3, 122}, {5, 3, 102},
+		{5, 4, 82}, {5, 6, 62}, {5, 8, 42}, {5, 8, 38},
+	} {
+		titleBudget := probeReadableBudget(t, "stylish-panels", 80, func(length int) any {
+			v := patterns.StylishPanelsValues{}
+			for i := 0; i < tc.panels; i++ {
+				item := patterns.StylishPanelsItem{Title: "Panel"}
+				for j := 0; j < tc.bullets; j++ {
+					item.Body = append(item.Body, budgetProbeCopy(tc.bodyChars))
+				}
+				v = append(v, item)
+			}
+			v[0].Title = budgetProbeCopy(length)
+			return &v
+		})
+		t.Logf("panels=%d bullets=%d body_chars=%d title_limit=%d", tc.panels, tc.bullets, tc.bodyChars, titleBudget)
+	}
+}
+
+func TestStylishPanelsThresholdProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_STYLISH_PANELS_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_STYLISH_PANELS_BUDGET_PROBE=1")
+	}
+	for _, bullets := range []int{5, 7} {
+		titleBudget := probeReadableBudget(t, "stylish-panels", 80, func(length int) any {
+			v := patterns.StylishPanelsValues{}
+			for i := 0; i < 5; i++ {
+				item := patterns.StylishPanelsItem{Title: "Panel"}
+				for j := 0; j < bullets; j++ {
+					item.Body = append(item.Body, budgetProbeCopy(map[int]int{5: 62, 7: 42}[bullets]))
+				}
+				v = append(v, item)
+			}
+			v[0].Title = budgetProbeCopy(length)
+			return &v
+		})
+		t.Logf("panels=5 bullets=%d body_target=%d title_limit=%d", bullets, map[int]int{5: 62, 7: 42}[bullets], titleBudget)
+	}
+}
+
+func TestStylishPanelsSingleLongProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_STYLISH_PANELS_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_STYLISH_PANELS_BUDGET_PROBE=1")
+	}
+	for _, panels := range []int{3, 4, 5} {
+		budget := probeReadableBudget(t, "stylish-panels", 200, func(length int) any {
+			v := patterns.StylishPanelsValues{}
+			for i := 0; i < panels; i++ {
+				item := patterns.StylishPanelsItem{Title: budgetProbeCopy(80)}
+				for j := 0; j < 8; j++ {
+					item.Body = append(item.Body, "Short")
+				}
+				v = append(v, item)
+			}
+			v[0].Body[0] = budgetProbeCopy(length)
+			return &v
+		})
+		t.Logf("panels=%d title_chars=80 bullets=8 single_long_budget=%d", panels, budget)
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal
