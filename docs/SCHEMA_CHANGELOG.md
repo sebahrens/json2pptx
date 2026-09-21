@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Horizontal-bar callout copy targets (go-slide-creator-tp23k.11).**
+  `horizontal-bar-with-callouts` now emits `BODY_TOO_LONG` with the bar index
+  and a measured readable target when a callout exceeds about 181 characters
+  at six bars or 121 at seven or eight. Three to five bars retain the
+  200-character schema maximum; labels and units remain readable at their
+  existing maxima. The callout field describes these row-count budgets.
+  Measurements used all four bundled templates. Schema version advances to
+  4.87.0; the sparse input maximum remains 200.
+
 - **KPI delta validation parity (go-slide-creator-rbkl9).** `kpi-inline`
   and `kpi-2up` through `kpi-6up` now enforce the existing 12-character
   `sub` schema maximum. The `delta`, `trend` and `change` input aliases

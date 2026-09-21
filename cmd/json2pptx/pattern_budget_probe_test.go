@@ -57,6 +57,75 @@ func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload fun
 	return lo
 }
 
+// Run with JSON2PPTX_HORIZONTAL_BAR_BUDGET_PROBE=1 to measure row-count and
+// callout-column effects against all bundled templates.
+func TestHorizontalBarBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_HORIZONTAL_BAR_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_HORIZONTAL_BAR_BUDGET_PROBE=1")
+	}
+	pat, _ := patterns.Default().Get("horizontal-bar-with-callouts")
+	maximum, note := schemaMaximumValues(pat)
+	if note != "" {
+		t.Fatal(note)
+	}
+	maximumJSON, err := json.Marshal(maximum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, templateName := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, templateName)
+		deck := &PresentationInput{Template: templateName, Slides: []SlideInput{{
+			SlideType: "content", LayoutID: "blank-title",
+			Pattern: &PatternInput{Name: pat.Name(), Values: maximumJSON},
+		}}}
+		for _, finding := range collectReadabilityFindings(deck, layouts, width, height) {
+			t.Logf("schema maximum on %s: %s", templateName, finding.Message)
+		}
+		withoutCallouts := *maximum.(*patterns.HorizontalBarCalloutsValues)
+		withoutCallouts.Bars = append([]patterns.HorizontalBarCalloutsBar(nil), withoutCallouts.Bars...)
+		for i := range withoutCallouts.Bars {
+			withoutCallouts.Bars[i].Callout = ""
+		}
+		noCalloutJSON, err := json.Marshal(&withoutCallouts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		deck.Slides[0].Pattern.Values = noCalloutJSON
+		t.Logf("schema maximum without callouts on %s: readability findings=%d", templateName,
+			len(collectReadabilityFindings(deck, layouts, width, height)))
+	}
+	for _, bars := range []int{3, 4, 5, 6, 7, 8} {
+		for _, withCallouts := range []bool{false, true} {
+			for _, field := range []string{"label", "unit", "callout"} {
+				if field == "callout" && !withCallouts {
+					continue
+				}
+				maxChars := map[string]int{"label": 40, "unit": 8, "callout": 200}[field]
+				budget := probeReadableBudget(t, "horizontal-bar-with-callouts", maxChars, func(length int) any {
+					values := &patterns.HorizontalBarCalloutsValues{MaxValue: 100, Unit: "%"}
+					for i := 0; i < bars; i++ {
+						bar := patterns.HorizontalBarCalloutsBar{Label: "Item", Value: 80}
+						if withCallouts {
+							bar.Callout = "Insight"
+						}
+						values.Bars = append(values.Bars, bar)
+					}
+					switch field {
+					case "label":
+						values.Bars[0].Label = budgetProbeCopy(length)
+					case "unit":
+						values.Unit = strings.Repeat("M", length)
+					case "callout":
+						values.Bars[0].Callout = budgetProbeCopy(length)
+					}
+					return values
+				})
+				t.Logf("bars=%d callouts=%t field=%s budget=%d", bars, withCallouts, field, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

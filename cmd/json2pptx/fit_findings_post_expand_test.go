@@ -113,6 +113,15 @@ func TestKPIInlineBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	assertBudgetFindingAcrossTemplates(t, "kpi-inline", values, "values[3].small", "about 16 caption characters")
 }
 
+func TestHorizontalBarBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.HorizontalBarCalloutsValues{Unit: "%"}
+	for i := 0; i < 8; i++ {
+		values.Bars = append(values.Bars, patterns.HorizontalBarCalloutsBar{Label: "Item", Value: 80, Callout: "Insight"})
+	}
+	values.Bars[3].Callout = strings.Repeat("C", 122)
+	assertBudgetFindingAcrossTemplates(t, "horizontal-bar-with-callouts", values, "bars[3].callout", "about 121 characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

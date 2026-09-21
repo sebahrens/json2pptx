@@ -78,6 +78,34 @@ func (h *horizontalBarCallouts) Taxonomy() PatternTaxonomy {
 func (h *horizontalBarCallouts) SupportsCallout() bool        { return true }
 func (h *horizontalBarCallouts) SupportsInlineMarkdown() bool { return true }
 
+// hbcReadableCalloutBudget is measured with the fit-report readability
+// collector on all four bundled templates at the default text sizes.
+func hbcReadableCalloutBudget(bars int) int {
+	switch {
+	case bars <= 5:
+		return hbcCalloutMax
+	case bars == 6:
+		return 181
+	default:
+		return 121
+	}
+}
+
+func (h *horizontalBarCallouts) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*HorizontalBarCalloutsValues)
+	if !ok || v == nil {
+		return nil
+	}
+	budget := hbcReadableCalloutBudget(len(v.Bars))
+	var warnings []string
+	for i, bar := range v.Bars {
+		if n := runeLen(bar.Callout); n > budget {
+			warnings = append(warnings, fmt.Sprintf("%s: horizontal-bar-with-callouts bars[%d].callout is %d characters; %d bars hold about %d characters per callout before text shrinks below the readable minimum — shorten the insight or use fewer bars", ErrCodeBodyTooLong, i, n, len(v.Bars), budget))
+		}
+	}
+	return warnings
+}
+
 func (h *horizontalBarCallouts) ExemplarValues() any {
 	return &HorizontalBarCalloutsValues{
 		Unit: "%",
@@ -137,7 +165,7 @@ func (h *horizontalBarCallouts) Schema() *Schema {
 		map[string]*Schema{
 			"label":   StringSchema(hbcLabelMax).WithDescription("Short bar label (1-3 words)"),
 			"value":   NumberSchema(0, 1e12).WithDescription("Numeric value rendered as a proportional bar"),
-			"callout": StringSchema(hbcCalloutMax).WithDescription("One-sentence insight rendered next to the bar"),
+			"callout": StringSchema(hbcCalloutMax).WithDescription("One-sentence insight rendered next to the bar; about 200 readable characters per callout with 3-5 bars, 181 with 6, or 121 with 7-8 (at default text sizes)"),
 		},
 		[]string{"label", "value"},
 	).WithAdditionalProperties(false)
