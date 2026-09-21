@@ -313,6 +313,18 @@ func TestValueChainDenseUnbrokenDescriptionWarningReachesFitReportAcrossTemplate
 	assertBudgetFindingAcrossTemplates(t, "value-chain", values, "steps[3].description", "about 118 wide characters")
 }
 
+func TestStrategyHouseDenseSharedBulletBudgetReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.StrategyHouseValues{Objective: "Grow", Foundation: "Capabilities", RoofBadges: []string{"Vision"}}
+	for i := 0; i < 5; i++ {
+		pillar := patterns.StrategyHousePillar{Title: "Growth"}
+		for j := 0; j < 5; j++ {
+			pillar.Body = append(pillar.Body, strings.Repeat("B", 53))
+		}
+		values.Pillars = append(values.Pillars, pillar)
+	}
+	assertBudgetFindingAcrossTemplates(t, "strategy-house", values, "pillars.body", "about 52 characters per bullet")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

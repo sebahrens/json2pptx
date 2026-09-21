@@ -8,6 +8,43 @@ import (
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
+func TestStrategyHouseDenseSharedBulletBudget(t *testing.T) {
+	p := &strategyHouse{}
+	v := &StrategyHouseValues{Objective: "Grow", Foundation: "Capabilities", RoofBadges: []string{"Vision"}}
+	for i := 0; i < 5; i++ {
+		pillar := StrategyHousePillar{Title: "Growth"}
+		for j := 0; j < 5; j++ {
+			pillar.Body = append(pillar.Body, strings.Repeat("B", 53))
+		}
+		v.Pillars = append(v.Pillars, pillar)
+	}
+	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "pillars.body") || !strings.Contains(got[0], "about 52") {
+		t.Fatalf("dense pillar warning: %v", got)
+	}
+	for i := range v.Pillars {
+		for j := range v.Pillars[i].Body {
+			v.Pillars[i].Body[j] = strings.Repeat("B", 52)
+		}
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("measured dense target should fit: %v", got)
+	}
+	v.Pillars[0].Body[0] = strings.Repeat("B", 120)
+	v.Pillars[0].Body[1] = "Brief"
+	v.Pillars[0].Body[2] = "Brief"
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("one long bullet with a short neighbor should fit: %v", got)
+	}
+	v.Pillars = v.Pillars[:3]
+	for i := range v.Pillars {
+		v.Pillars[i].Body = []string{strings.Repeat("B", 120)}
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("sparse schema maximum should fit: %v", got)
+	}
+}
+
 func TestStrategyHouse_Registration(t *testing.T) {
 	p, ok := Default().Get("strategy-house")
 	if !ok {

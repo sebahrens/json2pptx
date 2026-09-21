@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Strategy-house shared pillar bullet budgets
+  (go-slide-creator-tp23k.27).** `strategy-house` now reports
+  `BODY_TOO_LONG` when average pillar bullet copy exceeds measured targets
+  for pillar count, bullet count, and roof presence. Five pillars with five
+  bullets and a roof hold about 52 characters per bullet; sparse pillars
+  retain the 120-character item maximum. The fit report names the shared
+  field and suggests reducing copy or bullets. Measurements used all four
+  bundled templates. Schema version advances to 4.104.0.
+
 - **Value-chain dense unbroken-description targets
   (go-slide-creator-tp23k.26).** `value-chain` now reports `BODY_TOO_LONG`
   when wide unbroken description text exceeds about 159/136/118 characters

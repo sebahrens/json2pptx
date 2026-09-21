@@ -1280,6 +1280,67 @@ func TestValueChainBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestStrategyHouseBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_STRATEGY_HOUSE_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_STRATEGY_HOUSE_BUDGET_PROBE=1")
+	}
+	for pillars := 3; pillars <= 5; pillars++ {
+		for bullets := 1; bullets <= 5; bullets++ {
+			for _, roof := range []bool{false, true} {
+				for _, all := range []bool{false, true} {
+					budget := probeReadableBudget(t, "strategy-house", 120, func(length int) any {
+						v := &patterns.StrategyHouseValues{Objective: "Grow the business", Foundation: "Core capabilities"}
+						if roof {
+							v.RoofBadges = []string{"Vision", "Mission"}
+						}
+						for i := 0; i < pillars; i++ {
+							p := patterns.StrategyHousePillar{Title: "Growth"}
+							for j := 0; j < bullets; j++ {
+								p.Body = append(p.Body, "Brief")
+							}
+							v.Pillars = append(v.Pillars, p)
+						}
+						v.Pillars[0].Body[0] = budgetProbeCopy(length)
+						if all {
+							for i := range v.Pillars {
+								for j := range v.Pillars[i].Body {
+									v.Pillars[i].Body[j] = budgetProbeCopy(length)
+								}
+							}
+						}
+						return v
+					})
+					t.Logf("pillars=%d bullets=%d roof=%t all=%t budget=%d", pillars, bullets, roof, all, budget)
+				}
+			}
+		}
+	}
+	for _, pillars := range []int{3, 5} {
+		for _, field := range []string{"objective", "foundation", "title", "badge"} {
+			limit := map[string]int{"objective": 140, "foundation": 140, "title": 60, "badge": 24}[field]
+			budget := probeReadableBudget(t, "strategy-house", limit, func(length int) any {
+				v := &patterns.StrategyHouseValues{Objective: "Grow", Foundation: "Capabilities", RoofBadges: []string{"Vision", "Mission"}}
+				for i := 0; i < pillars; i++ {
+					v.Pillars = append(v.Pillars, patterns.StrategyHousePillar{Title: "Growth", Body: []string{"Brief"}})
+				}
+				copy := budgetProbeCopy(length)
+				switch field {
+				case "objective":
+					v.Objective = copy
+				case "foundation":
+					v.Foundation = copy
+				case "title":
+					v.Pillars[0].Title = copy
+				case "badge":
+					v.RoofBadges[0] = copy
+				}
+				return v
+			})
+			t.Logf("pillars=%d field=%s budget=%d", pillars, field, budget)
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

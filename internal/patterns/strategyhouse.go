@@ -101,11 +101,48 @@ func (sh *strategyHouse) NewValues() any       { return &StrategyHouseValues{} }
 func (sh *strategyHouse) NewOverrides() any    { return &StrategyHouseOverrides{} }
 func (sh *strategyHouse) NewCellOverride() any { return &StrategyHouseCellOverride{} }
 
+// Equal-copy fit probes give an average per-bullet target for each layout.
+// A single long bullet can still fit when the other pillars stay concise.
+func strategyHouseBulletBudget(pillars, bullets int, roof bool) int {
+	if pillars < 3 || pillars > 5 || bullets < 1 || bullets > 5 {
+		return 120
+	}
+	withoutRoof := [3][6]int{{120, 120, 120, 120, 120, 95}, {120, 120, 120, 120, 106, 71}, {120, 120, 120, 102, 77, 52}}
+	withRoof := [3][6]int{{120, 120, 120, 120, 95, 95}, {120, 120, 120, 106, 71, 71}, {120, 120, 120, 77, 52, 52}}
+	if roof {
+		return withRoof[pillars-3][bullets]
+	}
+	return withoutRoof[pillars-3][bullets]
+}
+
+func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*StrategyHouseValues)
+	if !ok || v == nil || len(v.Pillars) < 3 {
+		return nil
+	}
+	totalBullets, totalChars := 0, 0
+	for _, pillar := range v.Pillars {
+		for _, bullet := range pillar.Body {
+			totalBullets++
+			totalChars += runeLen(bullet)
+		}
+	}
+	if totalBullets == 0 {
+		return nil
+	}
+	bulletsPerPillar := (totalBullets + len(v.Pillars) - 1) / len(v.Pillars)
+	budget := strategyHouseBulletBudget(len(v.Pillars), bulletsPerPillar, len(v.RoofBadges) > 0)
+	if totalChars <= budget*totalBullets {
+		return nil
+	}
+	return []string{fmt.Sprintf("%s: strategy-house pillars.body averages %.0f characters across %d bullets; this %d-pillar layout holds about %d characters per bullet at its current density — shorten bullet copy, use fewer bullets, or split the house", ErrCodeBodyTooLong, float64(totalChars)/float64(totalBullets), totalBullets, len(v.Pillars), budget)}
+}
+
 func (sh *strategyHouse) Schema() *Schema {
 	pillarSchema := ObjectSchema(
 		map[string]*Schema{
 			"title": StringSchema(60).WithDescription("Pillar title"),
-			"body":  ArraySchema(StringSchema(120), 0, 5).WithDescription("Pillar bullet items (0-5)"),
+			"body":  ArraySchema(StringSchema(120), 0, 5).WithDescription("Pillar bullet items (0-5); dense average targets depend on pillar count, bullet count and roof: five pillars with five bullets hold about 52 characters per bullet"),
 		},
 		[]string{"title"},
 	).WithAdditionalProperties(false).WithDescription("Pillar column with title and optional bullet body")
