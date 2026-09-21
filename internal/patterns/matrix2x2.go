@@ -152,6 +152,34 @@ func (m *matrix2x2) NewValues() any       { return &Matrix2x2Values{} }
 func (m *matrix2x2) NewOverrides() any    { return &Matrix2x2Overrides{} }
 func (m *matrix2x2) NewCellOverride() any { return &Matrix2x2CellOverride{} }
 
+func (m *matrix2x2) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*Matrix2x2Values)
+	if !ok || v == nil {
+		return nil
+	}
+	quadrants := []struct {
+		name  string
+		value Matrix2x2Quadrant
+	}{
+		{"top_left", v.TopLeft}, {"top_right", v.TopRight},
+		{"bottom_left", v.BottomLeft}, {"bottom_right", v.BottomRight},
+	}
+	var warnings []string
+	for _, quadrant := range quadrants {
+		headerRun, bodyRun := 0, 0
+		for _, word := range strings.Fields(quadrant.value.Header) {
+			headerRun = max(headerRun, runeLen(word))
+		}
+		for _, word := range strings.Fields(quadrant.value.Body) {
+			bodyRun = max(bodyRun, runeLen(word))
+		}
+		if headerRun >= 80 && bodyRun > 176 {
+			warnings = append(warnings, fmt.Sprintf("%s: matrix-2x2 %s.header/body contain %d/%d-character unbroken runs; a maximum-width header leaves about 176 wide characters for its body — add word breaks or shorten the paired copy", ErrCodeBodyTooLong, quadrant.name, headerRun, bodyRun))
+		}
+	}
+	return warnings
+}
+
 func (m *matrix2x2) Schema() *Schema {
 	// Define the quadrant schema once in $defs and reference it from each
 	// quadrant slot so a polymorphic icon spec doesn't multiply the schema size
@@ -159,7 +187,7 @@ func (m *matrix2x2) Schema() *Schema {
 	quadrantObjSchema := ObjectSchema(
 		map[string]*Schema{
 			"header": StringSchema(80).WithDescription("Quadrant header text"),
-			"body":   StringSchema(200).WithDescription("Quadrant body text"),
+			"body":   StringSchema(200).WithDescription("Quadrant body text; with an 80-character unbroken header, target about 176 wide unbroken body characters or add word breaks"),
 			"icon":   IconRefSchema(""),
 		},
 		[]string{"header"},

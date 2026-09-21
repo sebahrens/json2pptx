@@ -497,3 +497,15 @@ func TestExpandPatternResultCarriesWarnings(t *testing.T) {
 		t.Errorf("warnings = %v, want the CHART_PLACEHOLDER_EMPTY line", res.Warnings)
 	}
 }
+
+func TestMatrix2x2PairedQuadrantBudgetReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.Matrix2x2Values{
+		XAxisLabel:  "Market",
+		YAxisLabel:  "Growth",
+		TopLeft:     patterns.Matrix2x2Quadrant{Header: strings.Repeat("W", 80), Body: strings.Repeat("W", 177)},
+		TopRight:    patterns.Matrix2x2Quadrant{Header: "Invest"},
+		BottomLeft:  patterns.Matrix2x2Quadrant{Header: "Maintain"},
+		BottomRight: patterns.Matrix2x2Quadrant{Header: "Exit"},
+	}
+	assertBudgetFindingAcrossTemplates(t, "matrix-2x2", values, "top_left.header/body", "about 176 wide characters")
+}

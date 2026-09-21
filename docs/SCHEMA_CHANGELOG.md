@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Matrix quadrant paired-copy target (go-slide-creator-tp23k.32).**
+  `matrix-2x2` now reports `BODY_TOO_LONG` when an 80-character unbroken
+  quadrant header is paired with more than about 176 wide unbroken body
+  characters. Each field fits its schema maximum alone, and word-like copy
+  retains the existing limits. The fit report names the quadrant and suggests
+  word breaks. Measurements used all four bundled templates. Schema version
+  advances to 4.109.0.
+
 - **Chart-insights source line targets (go-slide-creator-tp23k.31).**
   `chart-insights-split` now reports `BODY_TOO_LONG` when a chart source
   exceeds about 108 characters with one insight and no headline/callout,

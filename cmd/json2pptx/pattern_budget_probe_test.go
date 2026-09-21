@@ -1562,6 +1562,100 @@ func TestChartInsightsSplitBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestMatrix2x2BudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_MATRIX_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_MATRIX_BUDGET_PROBE=1")
+	}
+	for _, field := range []string{"header", "body", "x_axis", "y_axis", "axis_end", "paired_header", "paired_body", "all_body"} {
+		limit := map[string]int{"header": 80, "body": 200, "x_axis": 60, "y_axis": 60, "axis_end": 20, "paired_header": 80, "paired_body": 200, "all_body": 200}[field]
+		budget := probeReadableBudget(t, "matrix-2x2", limit, func(length int) any {
+			v := &patterns.Matrix2x2Values{XAxisLabel: "Market", YAxisLabel: "Growth", TopLeft: patterns.Matrix2x2Quadrant{Header: "Stars", Body: "Brief"}, TopRight: patterns.Matrix2x2Quadrant{Header: "Emerging", Body: "Brief"}, BottomLeft: patterns.Matrix2x2Quadrant{Header: "Core", Body: "Brief"}, BottomRight: patterns.Matrix2x2Quadrant{Header: "Exit", Body: "Brief"}}
+			copy := budgetProbeCopy(length)
+			switch field {
+			case "header":
+				v.TopLeft.Header = copy
+			case "body":
+				v.TopLeft.Body = copy
+			case "x_axis":
+				v.XAxisLabel = copy
+			case "y_axis":
+				v.YAxisLabel = copy
+			case "axis_end":
+				v.XLow = copy
+			case "paired_header":
+				v.TopLeft.Header = copy
+				v.TopLeft.Body = budgetProbeCopy(200)
+			case "paired_body":
+				v.TopLeft.Header = budgetProbeCopy(80)
+				v.TopLeft.Body = copy
+			case "all_body":
+				v.TopLeft.Body = copy
+				v.TopRight.Body = copy
+				v.BottomLeft.Body = copy
+				v.BottomRight.Body = copy
+			}
+			return v
+		})
+		t.Logf("field=%s budget=%d", field, budget)
+	}
+	for _, field := range []string{"header", "body", "x_axis", "y_axis", "axis_end", "paired_body", "body_word_header", "body_wide_header", "header_word_body", "header_wide_body", "all_body", "full_stack_body"} {
+		limit := map[string]int{"header": 80, "body": 200, "x_axis": 60, "y_axis": 60, "axis_end": 20, "paired_body": 200, "body_word_header": 200, "body_wide_header": 200, "header_word_body": 80, "header_wide_body": 80, "all_body": 200, "full_stack_body": 200}[field]
+		budget := probeReadableBudget(t, "matrix-2x2", limit, func(length int) any {
+			v := &patterns.Matrix2x2Values{XAxisLabel: "Market", YAxisLabel: "Growth", TopLeft: patterns.Matrix2x2Quadrant{Header: "Stars", Body: "Brief"}, TopRight: patterns.Matrix2x2Quadrant{Header: "Emerging", Body: "Brief"}, BottomLeft: patterns.Matrix2x2Quadrant{Header: "Core", Body: "Brief"}, BottomRight: patterns.Matrix2x2Quadrant{Header: "Exit", Body: "Brief"}}
+			copy := strings.Repeat("W", length)
+			switch field {
+			case "header":
+				v.TopLeft.Header = copy
+			case "body":
+				v.TopLeft.Body = copy
+			case "x_axis":
+				v.XAxisLabel = copy
+			case "y_axis":
+				v.YAxisLabel = copy
+			case "axis_end":
+				v.XLow = copy
+			case "paired_body":
+				v.TopLeft.Header = strings.Repeat("W", 80)
+				v.TopLeft.Body = copy
+			case "body_word_header":
+				v.TopLeft.Header = budgetProbeCopy(80)
+				v.TopLeft.Body = copy
+			case "body_wide_header":
+				v.TopLeft.Header = strings.Repeat("W", 80)
+				v.TopLeft.Body = copy
+			case "header_word_body":
+				v.TopLeft.Header = copy
+				v.TopLeft.Body = budgetProbeCopy(200)
+			case "header_wide_body":
+				v.TopLeft.Header = copy
+				v.TopLeft.Body = strings.Repeat("W", 200)
+			case "all_body":
+				v.TopLeft.Body = copy
+				v.TopRight.Body = copy
+				v.BottomLeft.Body = copy
+				v.BottomRight.Body = copy
+			case "full_stack_body":
+				v.XAxisLabel = strings.Repeat("W", 60)
+				v.YAxisLabel = strings.Repeat("W", 60)
+				v.XLow = strings.Repeat("W", 20)
+				v.XHigh = strings.Repeat("W", 20)
+				v.YLow = strings.Repeat("W", 20)
+				v.YHigh = strings.Repeat("W", 20)
+				v.TopLeft.Header = strings.Repeat("W", 80)
+				v.TopRight.Header = strings.Repeat("W", 80)
+				v.BottomLeft.Header = strings.Repeat("W", 80)
+				v.BottomRight.Header = strings.Repeat("W", 80)
+				v.TopLeft.Body = copy
+				v.TopRight.Body = copy
+				v.BottomLeft.Body = copy
+				v.BottomRight.Body = copy
+			}
+			return v
+		})
+		t.Logf("field=wide_%s budget=%d", field, budget)
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal
