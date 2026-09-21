@@ -752,6 +752,119 @@ func TestHeroDetailBudgetProbe(t *testing.T) {
 	t.Logf("details=4 target_icon=false other_icons=true title_chars=60 body_budget=%d", noIconBudget)
 }
 
+// Run with JSON2PPTX_TABLE_HIGHLIGHT_BUDGET_PROBE=1 to measure each matrix
+// text field at sparse, medium and dense option/criterion counts.
+func TestTableHighlightBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_TABLE_HIGHLIGHT_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_TABLE_HIGHLIGHT_BUDGET_PROBE=1")
+	}
+	for _, options := range []int{2, 4, 6} {
+		for _, criteria := range []int{2, 4, 6} {
+			for _, field := range []string{"name", "detail", "criterion", "text_score", "legend"} {
+				limit := map[string]int{"name": 40, "detail": 60, "criterion": 30, "text_score": 24, "legend": 20}[field]
+				budget := probeReadableBudget(t, "table-highlight", limit, func(length int) any {
+					v := &patterns.TableHighlightValues{Scale: "harvey"}
+					if field == "text_score" {
+						v.Scale = "text"
+					}
+					for i := 0; i < criteria; i++ {
+						v.Criteria = append(v.Criteria, patterns.TableHighlightCriterion{Label: "Quality"})
+					}
+					for i := 0; i < options; i++ {
+						option := patterns.TableHighlightOption{Name: "Option", Detail: "Brief"}
+						for j := 0; j < criteria; j++ {
+							score := patterns.TableHighlightScore("3")
+							if field == "text_score" {
+								score = "Good"
+							}
+							option.Scores = append(option.Scores, score)
+						}
+						v.Options = append(v.Options, option)
+					}
+					v.LegendLabels = []string{"High", "Middle", "Low"}
+					copy := budgetProbeCopy(length)
+					switch field {
+					case "name":
+						v.Options[0].Name = copy
+					case "detail":
+						v.Options[0].Detail = copy
+					case "criterion":
+						v.Criteria[0].Label = copy
+					case "text_score":
+						v.Options[0].Scores[0] = patterns.TableHighlightScore(copy)
+					case "legend":
+						v.LegendLabels[0] = copy
+					}
+					return v
+				})
+				t.Logf("options=%d criteria=%d field=%s budget=%d", options, criteria, field, budget)
+			}
+		}
+	}
+	for _, options := range []int{4, 5, 6} {
+		for _, criteria := range []int{2, 4, 6} {
+			for _, tagChars := range []int{0, 24} {
+				for _, field := range []string{"name", "detail"} {
+					limit := map[string]int{"name": 40, "detail": 60}[field]
+					budget := probeReadableBudget(t, "table-highlight", limit, func(length int) any {
+						v := &patterns.TableHighlightValues{Scale: "harvey"}
+						for i := 0; i < criteria; i++ {
+							v.Criteria = append(v.Criteria, patterns.TableHighlightCriterion{Label: "Quality"})
+						}
+						for i := 0; i < options; i++ {
+							option := patterns.TableHighlightOption{Name: "Option", Detail: "Brief"}
+							for j := 0; j < criteria; j++ {
+								option.Scores = append(option.Scores, "3")
+							}
+							v.Options = append(v.Options, option)
+						}
+						v.Options[0].Name = budgetProbeCopy(40)
+						v.Options[0].Detail = budgetProbeCopy(60)
+						if tagChars > 0 {
+							zero := 0
+							v.HighlightRow = &zero
+							v.HighlightLabel = budgetProbeCopy(tagChars)
+						}
+						if field == "name" {
+							v.Options[0].Name = budgetProbeCopy(length)
+						} else {
+							v.Options[0].Detail = budgetProbeCopy(length)
+						}
+						return v
+					})
+					t.Logf("options=%d criteria=%d tag_chars=%d paired_max=true field=%s budget=%d", options, criteria, tagChars, field, budget)
+				}
+			}
+		}
+	}
+	for options := 2; options <= 6; options++ {
+		for criteria := 2; criteria <= 6; criteria++ {
+			for _, highlighted := range []bool{false, true} {
+				budget := probeReadableBudget(t, "table-highlight", 40, func(length int) any {
+					v := &patterns.TableHighlightValues{Scale: "harvey"}
+					for i := 0; i < criteria; i++ {
+						v.Criteria = append(v.Criteria, patterns.TableHighlightCriterion{Label: "Quality"})
+					}
+					for i := 0; i < options; i++ {
+						option := patterns.TableHighlightOption{Name: budgetProbeCopy(length), Detail: budgetProbeCopy(length)}
+						for j := 0; j < criteria; j++ {
+							option.Scores = append(option.Scores, "3")
+						}
+						v.Options = append(v.Options, option)
+					}
+					if highlighted {
+						zero := 0
+						v.HighlightRow = &zero
+						v.HighlightLabel = budgetProbeCopy(24)
+					}
+					return v
+				})
+				t.Logf("options=%d criteria=%d highlighted=%t paired_equal_budget=%d", options, criteria, highlighted, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

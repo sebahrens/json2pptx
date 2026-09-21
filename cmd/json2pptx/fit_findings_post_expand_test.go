@@ -229,6 +229,19 @@ func TestHeroDetailBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	assertBudgetFindingAcrossTemplates(t, "hero-detail", values, "details[2].body", "about 30 readable body characters")
 }
 
+func TestTableHighlightPairedCopyWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.TableHighlightValues{Scale: "harvey"}
+	for i := 0; i < 6; i++ {
+		values.Criteria = append(values.Criteria, patterns.TableHighlightCriterion{Label: "Quality"})
+		option := patterns.TableHighlightOption{Name: strings.Repeat("N", 40), Detail: strings.Repeat("D", 60)}
+		for j := 0; j < 6; j++ {
+			option.Scores = append(option.Scores, "3")
+		}
+		values.Options = append(values.Options, option)
+	}
+	assertBudgetFindingAcrossTemplates(t, "table-highlight", values, "options[0].name/detail", "about 30 characters each")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

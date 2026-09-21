@@ -219,6 +219,59 @@ func (p *tableHighlight) NewValues() any       { return &TableHighlightValues{} 
 func (p *tableHighlight) NewOverrides() any    { return &TableHighlightOverrides{} }
 func (p *tableHighlight) NewCellOverride() any { return &TableHighlightCellOverride{} }
 
+// The paired name/detail target was measured with the fit collector on all
+// four bundled templates. It is guidance for a dense matrix, not a per-field
+// validation limit: a sparse row can use its full schema maxima.
+func tableHighlightPairedCopyBudget(options, criteria int) int {
+	if options <= 4 {
+		return 40
+	}
+	if options == 5 {
+		if criteria >= 5 {
+			return 37
+		}
+		return 40
+	}
+	if criteria >= 5 {
+		return 30
+	}
+	if criteria == 4 {
+		return 33
+	}
+	return 35
+}
+
+func (p *tableHighlight) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*TableHighlightValues)
+	if !ok || v == nil {
+		return nil
+	}
+	budget := tableHighlightPairedCopyBudget(len(v.Options), len(v.Criteria))
+	if budget >= thNameMax {
+		return nil
+	}
+	var warnings []string
+	for i, option := range v.Options {
+		// The two paragraphs share a row. A highlighted tag can make one
+		// otherwise tall row fit because the renderer gives it its own height.
+		if i == highlightRow(v) && v.HighlightLabel != "" &&
+			(len(v.Options) == 5 || len(v.Criteria) <= 4) {
+			continue
+		}
+		if runeLen(option.Name)+runeLen(option.Detail) > 2*budget {
+			warnings = append(warnings, fmt.Sprintf("%s: table-highlight options[%d].name/detail use %d/%d characters; a %d-option x %d-criterion matrix holds about %d characters each when both are populated — shorten the option copy, hide the legend, or split the table", ErrCodeBodyTooLong, i, runeLen(option.Name), runeLen(option.Detail), len(v.Options), len(v.Criteria), budget))
+		}
+	}
+	return warnings
+}
+
+func highlightRow(v *TableHighlightValues) int {
+	if v.HighlightRow != nil {
+		return *v.HighlightRow
+	}
+	return -1
+}
+
 func (p *tableHighlight) Schema() *Schema {
 	scaleEnum := func() *Schema { return EnumSchema(thScaleHarvey, thScaleRAG, thScaleText) }
 	criterion := OneOfSchema(
@@ -233,10 +286,11 @@ func (p *tableHighlight) Schema() *Schema {
 		WithDescription("harvey: 0-4 (or none/quarter/half/three-quarter/full); rag: red/amber/green (r/a/g); text: ≤24 chars; any scale: \"-\" or \"n/a\" for not applicable")
 
 	option := ObjectSchema(map[string]*Schema{
-		"name":   StringSchema(thNameMax).WithDescription("Option name (≤40 chars)"),
-		"detail": StringSchema(thDetailMax).WithDescription("Optional one-line descriptor under the name (≤60 chars)"),
+		"name":   StringSchema(thNameMax).WithDescription("Option name (≤40 chars); dense paired name/detail targets depend on matrix shape"),
+		"detail": StringSchema(thDetailMax).WithDescription("Optional descriptor under the name (≤60 chars); shorten paired copy in dense matrices"),
 		"scores": ArraySchema(score, thMinCriteria, thMaxCriteria).WithDescription("One score per criterion, in criteria order"),
-	}, []string{"name", "scores"}).WithAdditionalProperties(false)
+	}, []string{"name", "scores"}).WithAdditionalProperties(false).
+		WithDescription("Paired name/detail readable characters by option rows x criteria: 2-4 rows about 40 each; 5 rows with 5-6 criteria about 37; 6 rows with 2-3/4/5-6 criteria about 35/33/30. Sparse rows can use field maxima; fit reports flag copy beyond dense paired targets")
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
 		"criteria":          ArraySchema(criterion, thMinCriteria, thMaxCriteria).WithDescription("2-6 criteria (columns)"),

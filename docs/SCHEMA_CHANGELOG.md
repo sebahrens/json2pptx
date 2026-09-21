@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Dense table-highlight paired copy targets (go-slide-creator-tp23k.18).**
+  `table-highlight` now reports `BODY_TOO_LONG` for rows whose combined
+  option name and detail exceed the measured dense-table budget. Six rows
+  allow about 35/33/30 characters each at two to three/four/five to six
+  criteria; five rows with five to six criteria allow about 37 each.
+  Sparse layouts keep the 40/60-character field maxima. The fit report names
+  the row and the schema describes these targets. Measurements used all four
+  bundled templates. Schema version advances to 4.95.0.
+
 - **Hero-detail icon card body targets (go-slide-creator-tp23k.17).**
   `hero-detail` now reports `BODY_TOO_LONG` when an icon card's body exceeds
   the room left by its title. Three icon cards allow about 200 characters
