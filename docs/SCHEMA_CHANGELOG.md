@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Dual-org-ladder six-row title target (go-slide-creator-tp23k.20).**
+  `dual-org-ladder` now reports `BODY_TOO_LONG` for member titles over about
+  75 characters when six role rows share a slide. Organisation headers and
+  member names remain readable at their schema maxima; two to five rows
+  retain the 80-character title maximum. The fit report names the affected
+  row and side. Measurements used all four bundled templates. Schema version
+  advances to 4.97.0.
+
 - **Quote-cluster combined copy target (go-slide-creator-tp23k.19).**
   `quote-cluster` now reports `BODY_TOO_LONG` when seven or eight quotes
   together exceed the measured three-row budget. Quote text fits about 148

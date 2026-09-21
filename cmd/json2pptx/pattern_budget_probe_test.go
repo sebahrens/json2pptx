@@ -917,6 +917,55 @@ func TestQuoteClusterBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestDualOrgLadderBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_DUAL_ORG_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_DUAL_ORG_BUDGET_PROBE=1")
+	}
+	for count := 2; count <= 6; count++ {
+		for _, field := range []string{"org", "name", "title", "paired_name", "paired_title", "balanced"} {
+			maxChars := map[string]int{"org": 60, "name": 60, "title": 80, "paired_name": 60, "paired_title": 80, "balanced": 60}[field]
+			budget := probeReadableBudget(t, "dual-org-ladder", maxChars, func(length int) any {
+				v := &patterns.DualOrgLadderValues{OrgA: "Client", OrgB: "Partner"}
+				for i := 0; i < count; i++ {
+					v.Rows = append(v.Rows, patterns.DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
+				}
+				copy := budgetProbeCopy(length)
+				switch field {
+				case "org":
+					v.OrgA = copy
+				case "name":
+					v.Rows[0].ANameField = copy
+				case "title":
+					v.Rows[0].ATitle = copy
+				case "paired_name":
+					for i := range v.Rows {
+						v.Rows[i].ANameField = copy
+						v.Rows[i].BNameField = copy
+						v.Rows[i].ATitle = budgetProbeCopy(80)
+						v.Rows[i].BTitle = budgetProbeCopy(80)
+					}
+				case "paired_title":
+					for i := range v.Rows {
+						v.Rows[i].ATitle = copy
+						v.Rows[i].BTitle = copy
+						v.Rows[i].ANameField = budgetProbeCopy(60)
+						v.Rows[i].BNameField = budgetProbeCopy(60)
+					}
+				case "balanced":
+					for i := range v.Rows {
+						v.Rows[i].ANameField = copy
+						v.Rows[i].BNameField = copy
+						v.Rows[i].ATitle = budgetProbeCopy(length * 4 / 3)
+						v.Rows[i].BTitle = budgetProbeCopy(length * 4 / 3)
+					}
+				}
+				return v
+			})
+			t.Logf("rows=%d field=%s budget=%d", count, field, budget)
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

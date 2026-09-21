@@ -6,6 +6,31 @@ import (
 	"testing"
 )
 
+func TestDualOrgLadderDenseTitleWarning(t *testing.T) {
+	p := &dualOrgLadder{}
+	values := &DualOrgLadderValues{OrgA: "Client", OrgB: "Partner"}
+	for i := 0; i < 6; i++ {
+		values.Rows = append(values.Rows, DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
+	}
+	values.Rows[2].ATitle = strings.Repeat("T", 76)
+	got := p.PostExpandWarnings(ExpandContext{}, values, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "rows[2].a_title") || !strings.Contains(got[0], "about 75") {
+		t.Fatalf("dense title warning: %v", got)
+	}
+	values.Rows[2].ATitle = strings.Repeat("T", 75)
+	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
+		t.Fatalf("measured six-row target should fit: %v", got)
+	}
+	values.Rows = values.Rows[:5]
+	values.Rows[2].ATitle = strings.Repeat("T", 80)
+	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
+		t.Fatalf("five-row schema maximum should fit: %v", got)
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
+		t.Fatalf("nil values: %v", got)
+	}
+}
+
 func TestDualOrgLadder_Registration(t *testing.T) {
 	p, ok := Default().Get("dual-org-ladder")
 	if !ok {

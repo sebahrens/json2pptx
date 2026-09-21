@@ -119,13 +119,29 @@ func (d *dualOrgLadder) NewValues() any       { return &DualOrgLadderValues{} }
 func (d *dualOrgLadder) NewOverrides() any    { return &DualOrgLadderOverrides{} }
 func (d *dualOrgLadder) NewCellOverride() any { return &DualOrgLadderCellOverride{} }
 
+func (d *dualOrgLadder) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*DualOrgLadderValues)
+	if !ok || v == nil || len(v.Rows) < dualOrgLadderMaxRows {
+		return nil
+	}
+	var warnings []string
+	for i, row := range v.Rows {
+		for _, field := range []struct{ name, text string }{{"a_title", row.ATitle}, {"b_title", row.BTitle}} {
+			if runeLen(field.text) > 75 {
+				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters; six role rows hold about 75 title characters per card — shorten the title or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text)))
+			}
+		}
+	}
+	return warnings
+}
+
 func (d *dualOrgLadder) Schema() *Schema {
 	rowSchema := ObjectSchema(
 		map[string]*Schema{
 			"a_name":  StringSchema(dualOrgLadderNameMaxChars).WithDescription("Name of the org A member on this row (rendered bold)"),
-			"a_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org A member"),
+			"a_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org A member; target about 75 characters with six role rows"),
 			"b_name":  StringSchema(dualOrgLadderNameMaxChars).WithDescription("Name of the org B member on this row (rendered bold)"),
-			"b_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org B member"),
+			"b_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org B member; target about 75 characters with six role rows"),
 		},
 		[]string{"a_name", "a_title", "b_name", "b_title"},
 	).WithAdditionalProperties(false)

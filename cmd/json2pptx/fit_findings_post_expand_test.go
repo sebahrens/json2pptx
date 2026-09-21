@@ -252,6 +252,15 @@ func TestQuoteClusterCombinedCopyWarningReachesFitReportAcrossTemplates(t *testi
 	assertBudgetFindingAcrossTemplates(t, "quote-cluster", values, "quotes.text/name/title", "near 148 characters")
 }
 
+func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.DualOrgLadderValues{OrgA: "Client", OrgB: "Partner"}
+	for i := 0; i < 6; i++ {
+		values.Rows = append(values.Rows, patterns.DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
+	}
+	values.Rows[2].ATitle = strings.Repeat("T", 76)
+	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 75 title characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {
