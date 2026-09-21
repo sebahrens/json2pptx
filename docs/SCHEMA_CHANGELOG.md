@@ -8,6 +8,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Pyramid narrow top-tier text targets (go-slide-creator-tp23k.30).**
+  `pyramid` now reports `BODY_TOO_LONG` when wide unbroken top-tier text
+  exceeds about 116/70 characters in four/five-tier layouts. Word-like
+  labels and the wider middle/base tiers retain the 120-character maximum.
+  The fit report names the top tier and recommends word breaks. Measurements
+  used all four bundled templates. Schema version advances to 4.107.0.
+
 - **Compact process-flow shape-aware label targets
   (go-slide-creator-tp23k.29).** `process-flow-compact` now reports
   `BODY_TOO_LONG` when a step label exceeds the measured space for its shape

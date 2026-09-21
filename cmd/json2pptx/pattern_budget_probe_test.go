@@ -1401,6 +1401,42 @@ func TestProcessFlowCompactBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestPyramidBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_PYRAMID_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_PYRAMID_BUDGET_PROBE=1")
+	}
+	for tiers := 3; tiers <= 5; tiers++ {
+		for _, position := range []string{"top", "middle", "base", "all"} {
+			for _, wide := range []bool{false, true} {
+				budget := probeReadableBudget(t, "pyramid", 120, func(length int) any {
+					v := &patterns.PyramidValues{Tiers: make([]string, tiers)}
+					for i := range v.Tiers {
+						v.Tiers[i] = "Core capability"
+					}
+					copy := budgetProbeCopy(length)
+					if wide {
+						copy = strings.Repeat("W", length)
+					}
+					switch position {
+					case "top":
+						v.Tiers[0] = copy
+					case "middle":
+						v.Tiers[tiers/2] = copy
+					case "base":
+						v.Tiers[tiers-1] = copy
+					case "all":
+						for i := range v.Tiers {
+							v.Tiers[i] = copy
+						}
+					}
+					return v
+				})
+				t.Logf("tiers=%d position=%s wide=%t budget=%d", tiers, position, wide, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

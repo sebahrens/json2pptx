@@ -3,11 +3,35 @@ package patterns
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+func TestPyramidDenseTopTierUnbrokenBudget(t *testing.T) {
+	p := &pyramid{}
+	v := &PyramidValues{Tiers: []string{"Core", "Middle", "Middle", "Base", "Base"}}
+	v.Tiers[0] = strings.Repeat("W", 71)
+	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "tiers[0]") || !strings.Contains(got[0], "about 70") {
+		t.Fatalf("dense top-tier warning: %v", got)
+	}
+	v.Tiers[0] = strings.Repeat("W", 70)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("measured five-tier target should fit: %v", got)
+	}
+	v.Tiers[0] = strings.Repeat("word ", 24)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("word-like schema maximum should fit: %v", got)
+	}
+	v.Tiers = v.Tiers[:3]
+	v.Tiers[0] = strings.Repeat("W", 120)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("three-tier schema maximum should fit: %v", got)
+	}
+}
 
 // testThemeCtx returns an ExpandContext with a midnight-blue-like theme so
 // fill-aware text colour selection can resolve scheme colours.

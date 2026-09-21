@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -70,10 +71,29 @@ func (p *pyramid) NewValues() any       { return &PyramidValues{} }
 func (p *pyramid) NewOverrides() any    { return &PyramidOverrides{} }
 func (p *pyramid) NewCellOverride() any { return &PyramidCellOverride{} }
 
+func (p *pyramid) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*PyramidValues)
+	if !ok || v == nil || len(v.Tiers) < 4 {
+		return nil
+	}
+	budget := 116
+	if len(v.Tiers) >= 5 {
+		budget = 70
+	}
+	longest := 0
+	for _, word := range strings.Fields(v.Tiers[0]) {
+		longest = max(longest, runeLen(word))
+	}
+	if longest <= budget {
+		return nil
+	}
+	return []string{fmt.Sprintf("%s: pyramid tiers[0] contains a %d-character unbroken word; the top tier of a %d-tier pyramid holds about %d wide characters — add word breaks, shorten the label, or use fewer tiers", ErrCodeBodyTooLong, longest, len(v.Tiers), budget)}
+}
+
 func (p *pyramid) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"tiers": ArraySchema(StringSchema(120), 3, 5).WithDescription("Tier labels, top (narrowest) to bottom (widest)"),
+			"tiers": ArraySchema(StringSchema(120), 3, 5).WithDescription("Tier labels, top (narrowest) to bottom (widest); top tier with 4/5 tiers holds about 116/70 wide unbroken characters; add word breaks for longer copy"),
 		},
 		[]string{"tiers"},
 	).WithAdditionalProperties(false)

@@ -343,6 +343,11 @@ func TestProcessFlowCompactPointedLabelBudgetReachesFitReportAcrossTemplates(t *
 	assertBudgetFindingAcrossTemplates(t, "process-flow-compact", values, "steps[3].label", "about 35 word-like or 13 wide")
 }
 
+func TestPyramidDenseTopTierBudgetReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.PyramidValues{Tiers: []string{strings.Repeat("W", 71), "Middle", "Middle", "Base", "Base"}}
+	assertBudgetFindingAcrossTemplates(t, "pyramid", values, "tiers[0]", "about 70 wide characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {
