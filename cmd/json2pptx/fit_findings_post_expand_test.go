@@ -212,6 +212,38 @@ func TestSwimlaneBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	}
 }
 
+func TestNumberedStepBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.NumberedStepStripValues{Style: "chevron"}
+	for i := 0; i < 6; i++ {
+		values.Steps = append(values.Steps, patterns.NumberedStepStripStep{Label: "Step", Body: "Detail"})
+	}
+	values.Steps[4].Label = strings.Repeat("word ", 10)
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range schemaMaximaTemplates {
+		t.Run(name, func(t *testing.T) {
+			layouts, width, height := schemaMaximaLayouts(t, name)
+			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title",
+				Pattern: &PatternInput{Name: "numbered-step-strip", Values: encoded},
+			}}}
+			found := false
+			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
+				if finding.Code == patterns.ErrCodeBodyTooLong &&
+					strings.Contains(finding.Message, "steps[4].label") &&
+					strings.Contains(finding.Message, "about 47") {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatal("numbered-step budget missing from fit report")
+			}
+		})
+	}
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

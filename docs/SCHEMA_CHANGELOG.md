@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Six-step chevron copy target (go-slide-creator-tp23k.9).** A
+  `numbered-step-strip` with six chevrons now emits `BODY_TOO_LONG` naming
+  any label above the measured 47-character readable target. Three to five
+  chevrons and all `stacked-box` / `toc` labels remain readable at the
+  60-character schema maximum; optional detail bodies stay readable at 180.
+  The existing `TEXT_EXCEEDS_SHAPE` finding for labels that certainly break
+  mid-word remains. Measurements used all four templates. Schema version
+  advances to 4.84.0; the input fingerprint is unchanged.
+
 - **Swimlane step budgets (go-slide-creator-tp23k.8).** `swimlane` now emits
   `BODY_TOO_LONG` with the lane, step and measured text target for each
   supported step-column/lane-count shape. The schema carries the 7×5 table

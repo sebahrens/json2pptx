@@ -75,6 +75,8 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Swimlanes.** `swimlane` step text holds the full 80-character schema limit in sparse grids and about 32 characters in an 8-step, 6-lane grid at default sizes. `show_pattern` lists the measured target for each 2–8 step by 2–6 lane combination. Actor labels remain readable through their 40-character limit. `BODY_TOO_LONG` names the lane and step to shorten.
 
+**Numbered steps.** For `numbered-step-strip`, a six-step `chevron` holds about 47 readable label characters at default size; three to five chevrons and all `stacked-box` / `toc` labels hold the 60-character schema limit. Optional step bodies hold 180. `BODY_TOO_LONG` names labels past the six-chevron target; `TEXT_EXCEEDS_SHAPE` remains the stronger signal when the chevron renderer knows a label will break mid-word.
+
 ---
 
 ## Text Capacity Awareness

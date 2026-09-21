@@ -121,7 +121,7 @@ func (n *numberedStepStrip) NewCellOverride() any { return &NumberedStepStripCel
 func (n *numberedStepStrip) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
-			"label":     StringSchema(60).WithDescription("Short ordinal step label"),
+			"label":     StringSchema(60).WithDescription("Short ordinal step label. Six-step chevrons hold about 47 readable characters per label at default size; all other supported styles/counts hold 60"),
 			"body":      StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone"),
 			"number":    StringSchema(6).WithDescription("Optional ordinal override (e.g. \"01\", \"A\"); defaults to the 1-based index"),
 			"tip_color": StringSchema(0).WithDescription("Optional scheme color for this step's number / tip lane (default: rotating accent)"),
@@ -217,13 +217,21 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 	if !ok || vals == nil || vals.Style != numberedStepStripChevron {
 		return nil
 	}
+	var warnings []string
+	if len(vals.Steps) == 6 {
+		for i, step := range vals.Steps {
+			if length := runeLen(step.Label); length > 47 {
+				warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].label is %d characters; a six-step chevron holds about 47 readable label characters — shorten the label or use fewer steps", ErrCodeBodyTooLong, i, length))
+			}
+		}
+	}
 	ovr, _ := overrides.(*NumberedStepStripOverrides)
 	if ovr == nil {
 		ovr = &NumberedStepStripOverrides{}
 	}
 	fit := fitChevronLabels(ctx, vals, chevronStripGeometry(ctx, len(vals.Steps)), ResolveSize(ovr.HeaderSize, 13.0))
 	if len(fit.unfit) == 0 {
-		return nil
+		return warnings
 	}
 	noun, verb, pronoun := "label", "does", "it"
 	if len(fit.unfit) > 1 {
@@ -234,10 +242,10 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 	// is certain rather than predicted. That certainty is what earns the
 	// blocking action the geometry detector's estimate cannot claim
 	// (go-slide-creator-rxkt).
-	return []string{fmt.Sprintf(
+	return append(warnings, fmt.Sprintf(
 		"%s: numbered-step-strip chevron %s %s %s not fit on one line at %d steps even at %.0fpt — the renderer breaks %s mid-word; shorten %s or use fewer steps",
 		ErrCodeTextExceedsShape, noun, listFirstN(fit.unfit, 3), verb,
-		len(vals.Steps), fit.labelPt, pronoun, pronoun)}
+		len(vals.Steps), fit.labelPt, pronoun, pronoun))
 }
 
 func (n *numberedStepStrip) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {

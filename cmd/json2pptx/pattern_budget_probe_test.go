@@ -189,6 +189,82 @@ func TestSwimlaneBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestNumberedStepBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_NUMBERED_BUDGET_PROBE") != "1" {
+		t.Skip("manual numbered-step budget calibration probe")
+	}
+	for _, style := range []string{"chevron", "stacked-box", "toc"} {
+		for steps := 3; steps <= 6; steps++ {
+			for _, bodies := range []bool{false, true} {
+				for _, field := range []string{"label", "body"} {
+					if field == "body" && !bodies {
+						continue
+					}
+					budget := numberedStepReadableBudget(t, style, steps, bodies, field)
+					t.Logf("numbered-step-strip style=%s steps=%d bodies=%t field=%s budget=%d", style, steps, bodies, field, budget)
+				}
+			}
+		}
+	}
+}
+
+func numberedStepReadableBudget(t *testing.T, style string, steps int, bodies bool, field string) int {
+	t.Helper()
+	type geometry struct {
+		name          string
+		layouts       []types.LayoutMetadata
+		width, height int64
+	}
+	var geometries []geometry
+	for _, name := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, name)
+		geometries = append(geometries, geometry{name, layouts, width, height})
+	}
+	limit := 60
+	if field == "body" {
+		limit = 180
+	}
+	clean := func(length int) bool {
+		v := &patterns.NumberedStepStripValues{Style: style}
+		for i := 0; i < steps; i++ {
+			step := patterns.NumberedStepStripStep{Label: "Step"}
+			if bodies {
+				step.Body = "Detail"
+			}
+			v.Steps = append(v.Steps, step)
+		}
+		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+		if field == "label" {
+			v.Steps[0].Label = copy
+		} else {
+			v.Steps[0].Body = copy
+		}
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, geom := range geometries {
+			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "numbered-step-strip", Values: encoded},
+			}}}
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+				return false
+			}
+		}
+		return true
+	}
+	lo, hi := 0, limit
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if clean(mid) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
 func swimlaneReadableBudget(t *testing.T, steps, lanes int, field string) int {
 	t.Helper()
 	type geometry struct {
