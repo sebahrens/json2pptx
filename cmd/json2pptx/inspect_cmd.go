@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -26,6 +27,7 @@ func runInspect() error {
 	fs := flag.NewFlagSet("inspect", flag.ContinueOnError)
 
 	imagesDir := fs.String("images", "", "Directory containing slide PNG/JPG images (slide-0.png, slide-1.png, ...)")
+	slideInfoPath := fs.String("slide-info", "", "JSON file containing [{index, slide_type?, title?}] metadata (optional)")
 	templateName := fs.String("template", "", "Template name to echo back on the report (optional)")
 	model := fs.String("model", "", "Claude model override (default: claude-haiku-4-5-20251001)")
 
@@ -35,7 +37,7 @@ func runInspect() error {
 		fmt.Fprintf(os.Stderr, "Requires ANTHROPIC_API_KEY in the environment.\n\n")
 		fmt.Fprintf(os.Stderr, "Examples:\n")
 		fmt.Fprintf(os.Stderr, "  json2pptx inspect --images /tmp/slides/\n")
-		fmt.Fprintf(os.Stderr, "  json2pptx inspect --images /tmp/slides/ --template midnight-blue\n\n")
+		fmt.Fprintf(os.Stderr, "  json2pptx inspect --images /tmp/slides/ --slide-info /tmp/slide-info.json --template midnight-blue\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -60,6 +62,13 @@ func runInspect() error {
 	args := map[string]any{
 		"slide_images": images,
 	}
+	if *slideInfoPath != "" {
+		slideInfo, err := loadInspectSlideInfo(*slideInfoPath)
+		if err != nil {
+			return err
+		}
+		args["slide_info"] = slideInfo
+	}
 	if *templateName != "" {
 		args["deck_metadata"] = map[string]any{"template": *templateName}
 	}
@@ -73,6 +82,23 @@ func runInspect() error {
 		return fmt.Errorf("inspect: %w", err)
 	}
 	return printMCPResultJSON(result)
+}
+
+func loadInspectSlideInfo(path string) ([]any, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read slide info: %w", err)
+	}
+	var list []any
+	if err := json.Unmarshal(data, &list); err != nil {
+		return nil, fmt.Errorf("parse slide info %s: expected a JSON array of {index, slide_type?, title?} objects: %w", path, err)
+	}
+	for i, item := range list {
+		if _, ok := item.(map[string]any); !ok {
+			return nil, fmt.Errorf("parse slide info %s: item %d must be an object", path, i)
+		}
+	}
+	return list, nil
 }
 
 // collectInspectImages lists image files in dir, sorted by name, and returns

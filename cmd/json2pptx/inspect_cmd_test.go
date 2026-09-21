@@ -108,3 +108,50 @@ func TestCollectInspectImagesRetainsArbitraryImageFallback(t *testing.T) {
 		t.Fatalf("images = %v, want %v", got, want)
 	}
 }
+
+func TestLoadInspectSlideInfo(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "slide-info.json")
+	data := `[
+		{"index": 0, "slide_type": "title", "title": "Opening"},
+		{"index": 1, "slide_type": "content"}
+	]`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	list, err := loadInspectSlideInfo(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("len(slide_info) = %d, want 2", len(list))
+	}
+	first := list[0].(map[string]any)
+	if first["slide_type"] != "title" || first["title"] != "Opening" {
+		t.Fatalf("first slide info = %#v", first)
+	}
+}
+
+func TestLoadInspectSlideInfoRejectsNonArray(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "slide-info.json")
+	if err := os.WriteFile(path, []byte(`{"index": 0}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := loadInspectSlideInfo(path)
+	if err == nil || !strings.Contains(err.Error(), "expected a JSON array") {
+		t.Fatalf("error = %v, want JSON array error", err)
+	}
+}
+
+func TestLoadInspectSlideInfoRejectsNonObjectItem(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "slide-info.json")
+	if err := os.WriteFile(path, []byte(`[1]`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := loadInspectSlideInfo(path)
+	if err == nil || !strings.Contains(err.Error(), "item 0 must be an object") {
+		t.Fatalf("error = %v, want object item error", err)
+	}
+}
