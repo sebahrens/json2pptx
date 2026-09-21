@@ -157,6 +157,9 @@ func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) e
 		} else if runeLen(cell.Small) > 40 {
 			errs = append(errs, errMaxLength(name, smallPath, 40, runeLen(cell.Small)))
 		}
+		if subLength := runeLen(cell.Sub); subLength > kpiSubMaxChars {
+			errs = append(errs, errMaxLength(name, fmt.Sprintf("values[%d].sub", i), kpiSubMaxChars, subLength))
+		}
 		if cell.Icon != nil {
 			iconPath := fmt.Sprintf("values[%d].icon", i)
 			errs = append(errs, validateIconRef(name, iconPath, *cell.Icon)...)

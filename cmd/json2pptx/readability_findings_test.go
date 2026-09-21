@@ -11,8 +11,15 @@ import (
 
 func kpiSlide(t *testing.T, small, sub string) SlideInput {
 	t.Helper()
+	// The pattern caps deltas at 12 characters. These readability tests also
+	// exercise a raw shape_grid carrying much longer text, so expand a valid
+	// KPI first and then replace only that paragraph in the editable grid.
+	patternSub := sub
+	if len([]rune(sub)) > 12 {
+		patternSub = "+4%"
+	}
 	values := []map[string]string{
-		{"big": "$52M", "small": small, "sub": sub},
+		{"big": "$52M", "small": small, "sub": patternSub},
 		{"big": "+21%", "small": "YoY growth"},
 		{"big": "117%", "small": "NRR"},
 	}
@@ -26,6 +33,20 @@ func kpiSlide(t *testing.T, small, sub string) SlideInput {
 	grid, _, err := expandPattern(&PatternInput{Name: "kpi-3up", Values: raw}, ctx, patterns.Default())
 	if err != nil {
 		t.Fatalf("expand kpi-3up: %v", err)
+	}
+	if patternSub != sub {
+		var text struct {
+			Paragraphs []map[string]any `json:"paragraphs"`
+		}
+		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Text, &text); err != nil {
+			t.Fatal(err)
+		}
+		text.Paragraphs[1]["content"] = sub
+		encoded, err := json.Marshal(text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		grid.Rows[0].Cells[0].Shape.Text = encoded
 	}
 	grid.Bounds = &GridBoundsInput{X: 5, Y: 20, Width: 90, Height: 20} // banner strip
 	return SlideInput{LayoutID: "blank", ShapeGrid: grid}

@@ -29,6 +29,8 @@ type KPICell struct {
 	Icon  *IconRef `json:"icon,omitempty"`
 }
 
+const kpiSubMaxChars = 12
+
 // UnmarshalJSON supports string shorthand "Big | Small" or an object. The object
 // canonical keys are {big, small}, but the intuitive aliases {value|number} and
 // {label|caption} are also accepted so agents that reach for the natural field
@@ -250,6 +252,9 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 		} else if runeLen(cell.Small) > 40 {
 			errs = append(errs, errMaxLength(patternName, smallPath, 40, runeLen(cell.Small)))
 		}
+		if subLength := runeLen(cell.Sub); subLength > kpiSubMaxChars {
+			errs = append(errs, errMaxLength(patternName, fmt.Sprintf("values[%d].sub", i), kpiSubMaxChars, subLength))
+		}
 		if cell.Icon != nil {
 			iconPath := fmt.Sprintf("values[%d].icon", i)
 			errs = append(errs, validateIconRef(patternName, iconPath, *cell.Icon)...)
@@ -277,7 +282,7 @@ func kpiCellSchema() *Schema {
 			map[string]*Schema{
 				"big":   StringSchema(8).WithDescription("The big number (e.g. \"$4.2M\")"),
 				"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
-				"sub":   StringSchema(12).WithDescription("Optional delta/trend annotation rendered below the number (e.g. \"+5%\"); aliases delta/trend/change"),
+				"sub":   StringSchema(kpiSubMaxChars).WithDescription("Optional delta/trend annotation rendered below the number (e.g. \"+5%\"); aliases delta/trend/change"),
 				"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),
 			},
 			[]string{"big", "small"},

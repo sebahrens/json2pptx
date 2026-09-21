@@ -8,6 +8,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **KPI delta validation parity (go-slide-creator-rbkl9).** `kpi-inline`
+  and `kpi-2up` through `kpi-6up` now enforce the existing 12-character
+  `sub` schema maximum. The `delta`, `trend` and `change` input aliases
+  normalize to `sub` and receive the same `max_length` diagnostic with a
+  `values[i].sub` path. Schema version advances to 4.86.0; the schema
+  fingerprint is unchanged.
+
 - **Inline KPI combined-copy budgets (go-slide-creator-tp23k.10).**
   `kpi-inline` now emits `BODY_TOO_LONG` for dense icon cells when the
   caption exceeds the readable target implied by KPI count, number length
