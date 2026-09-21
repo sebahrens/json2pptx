@@ -6,9 +6,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
+
+var numberedSlideImageRE = regexp.MustCompile(`(?i)^(.*slide-)([0-9]+)\.(png|jpe?g)$`)
+
+type numberedSlideImage struct {
+	path   string
+	number int
+}
 
 // runInspect implements the "inspect" CLI subcommand — runs visual QA on
 // rendered slide images via the same handler as the inspect_slide_images MCP
@@ -78,16 +87,36 @@ func collectInspectImages(dir string) ([]map[string]any, error) {
 		return nil, fmt.Errorf("read images dir: %w", err)
 	}
 	var files []string
+	groups := make(map[string][]numberedSlideImage)
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
 		}
 		name := strings.ToLower(e.Name())
-		if strings.HasSuffix(name, ".png") || strings.HasSuffix(name, ".jpg") || strings.HasSuffix(name, ".jpeg") {
-			files = append(files, filepath.Join(abs, e.Name()))
+		if !strings.HasSuffix(name, ".png") && !strings.HasSuffix(name, ".jpg") && !strings.HasSuffix(name, ".jpeg") {
+			continue
+		}
+		path := filepath.Join(abs, e.Name())
+		files = append(files, path)
+		if match := numberedSlideImageRE.FindStringSubmatch(e.Name()); match != nil {
+			n, convErr := strconv.Atoi(match[2])
+			if convErr != nil {
+				return nil, fmt.Errorf("parse slide number from %q: %w", e.Name(), convErr)
+			}
+			prefix := strings.ToLower(match[1])
+			groups[prefix] = append(groups[prefix], numberedSlideImage{path: path, number: n})
 		}
 	}
-	sort.Strings(files)
+
+	selected, err := selectNumberedSlideImages(abs, groups)
+	if err != nil {
+		return nil, err
+	}
+	if selected != nil {
+		files = selected
+	} else {
+		sort.Strings(files)
+	}
 	out := make([]map[string]any, len(files))
 	for i, p := range files {
 		out[i] = map[string]any{
@@ -96,4 +125,55 @@ func collectInspectImages(dir string) ([]map[string]any, error) {
 		}
 	}
 	return out, nil
+}
+
+// selectNumberedSlideImages chooses one coherent slide-image sequence from a
+// directory that may also contain contact sheets, crops, row composites, or
+// prior render variants. A renderer-owned directory uses
+// <directory-name>-slide-N; the general CLI convention is slide-N. If neither
+// preferred group exists, a sole numbered group is unambiguous. Multiple
+// unmatched groups are rejected instead of silently inspecting a mixed deck.
+// A nil result means there are no numbered slide groups, so callers may retain
+// the legacy arbitrary-image-directory behavior.
+func selectNumberedSlideImages(dir string, groups map[string][]numberedSlideImage) ([]string, error) {
+	if len(groups) == 0 {
+		return nil, nil
+	}
+
+	dirPrefix := strings.ToLower(filepath.Base(dir) + "-slide-")
+	selectedPrefix := ""
+	switch {
+	case len(groups[dirPrefix]) > 0:
+		selectedPrefix = dirPrefix
+	case len(groups["slide-"]) > 0:
+		selectedPrefix = "slide-"
+	case len(groups) == 1:
+		for prefix := range groups {
+			selectedPrefix = prefix
+		}
+	default:
+		prefixes := make([]string, 0, len(groups))
+		for prefix := range groups {
+			prefixes = append(prefixes, prefix)
+		}
+		sort.Strings(prefixes)
+		return nil, fmt.Errorf("ambiguous slide image groups in %s: %s; keep one numbered slide sequence or name it slide-N / %sN",
+			dir, strings.Join(prefixes, ", "), dirPrefix)
+	}
+
+	images := groups[selectedPrefix]
+	sort.Slice(images, func(i, j int) bool {
+		if images[i].number != images[j].number {
+			return images[i].number < images[j].number
+		}
+		return images[i].path < images[j].path
+	})
+	files := make([]string, len(images))
+	for i, image := range images {
+		if i > 0 && image.number == images[i-1].number {
+			return nil, fmt.Errorf("duplicate slide number %d in image group %q", image.number, selectedPrefix)
+		}
+		files[i] = image.path
+	}
+	return files, nil
 }
