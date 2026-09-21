@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Compact before/after shared bullet budget (go-slide-creator-tp23k.13).**
+  `before-after-compact` now reports `BODY_TOO_LONG` when a side's bullets
+  together exceed its measured vertical budget. Bullets of about 67, 133,
+  and 200 characters use one, two, and three wrapped lines; each side holds
+  about 12 lines with short headers or 10 when either header exceeds about
+  46 characters. The warning names the side and suggests ways to recover
+  room. Sparse bullets retain the 200-character schema maximum. Measurements
+  used all four bundled templates. Schema version advances to 4.89.0.
+
 - **Agenda-with-images paired copy targets (go-slide-creator-tp23k.12).**
   `agenda-with-images` now warns when a subtitle exceeds the readable room
   left by its title on a five- or six-row agenda with image labels. Titles up

@@ -54,11 +54,57 @@ func (b *beforeAfterCompact) NewValues() any       { return &BeforeAfterValues{}
 func (b *beforeAfterCompact) NewOverrides() any    { return &BeforeAfterOverrides{} }
 func (b *beforeAfterCompact) NewCellOverride() any { return &BeforeAfterCellOverride{} }
 
+// Each compact body column has a measured vertical budget. At default text
+// sizes, a bullet up to 67/133/200 characters occupies about 1/2/3 wrapped
+// lines. A header above 46 characters wraps and takes room from the body.
+func beforeAfterCompactBulletLines(item string) int {
+	switch n := runeLen(item); {
+	case n <= 67:
+		return 1
+	case n <= 133:
+		return 2
+	default:
+		return 3
+	}
+}
+
+func beforeAfterCompactBodyLineBudget(before, after string) int {
+	if runeLen(before) > 46 || runeLen(after) > 46 {
+		return 10
+	}
+	return 12
+}
+
+func (b *beforeAfterCompact) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*BeforeAfterValues)
+	if !ok || v == nil {
+		return nil
+	}
+	budget := beforeAfterCompactBodyLineBudget(v.Before.Header, v.After.Header)
+	var warnings []string
+	for _, side := range []struct {
+		name  string
+		items []string
+	}{
+		{"before", v.Before.Items},
+		{"after", v.After.Items},
+	} {
+		lines := 0
+		for _, item := range side.items {
+			lines += beforeAfterCompactBulletLines(item)
+		}
+		if lines > budget {
+			warnings = append(warnings, fmt.Sprintf("%s: before-after-compact %s.items use about %d wrapped text lines across %d bullets; this compact column holds about %d lines with the chosen headers — shorten bullets above 133 or 67 characters, use fewer bullets, shorten the headers, or use before-after for more height", ErrCodeBodyTooLong, side.name, lines, len(side.items), budget))
+		}
+	}
+	return warnings
+}
+
 func (b *beforeAfterCompact) Schema() *Schema {
 	columnSchema := ObjectSchema(
 		map[string]*Schema{
-			"header": StringSchema(60).WithDescription("Column header"),
-			"items":  ArraySchema(StringSchema(200), 1, 8).WithDescription("Bullet items (1-8)"),
+			"header": StringSchema(60).WithDescription("Column header; above about 46 characters, wrapping reduces each compact body column from about 12 to 10 readable text lines"),
+			"items":  ArraySchema(StringSchema(200), 1, 8).WithDescription("Bullet items (1-8), sharing one compact body column. About 67/133/200 characters use 1/2/3 wrapped lines per bullet; the column holds about 12 lines with short headers or 10 if either header exceeds 46 characters"),
 		},
 		[]string{"header", "items"},
 	).WithAdditionalProperties(false)

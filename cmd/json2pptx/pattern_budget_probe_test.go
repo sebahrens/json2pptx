@@ -222,6 +222,114 @@ func TestAgendaWithImagesBudgetProbe(t *testing.T) {
 	}
 }
 
+// Run with JSON2PPTX_BEFORE_AFTER_COMPACT_BUDGET_PROBE=1 to measure the
+// height-capped body's per-bullet target as item count increases.
+func TestBeforeAfterCompactBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_BEFORE_AFTER_COMPACT_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_BEFORE_AFTER_COMPACT_BUDGET_PROBE=1")
+	}
+	for items := 1; items <= 8; items++ {
+		for _, all := range []bool{false, true} {
+			budget := probeReadableBudget(t, "before-after-compact", 200, func(length int) any {
+				v := &patterns.BeforeAfterValues{
+					Before: patterns.BeforeAfterColumn{Header: "Current"},
+					After:  patterns.BeforeAfterColumn{Header: "Future"},
+				}
+				for i := 0; i < items; i++ {
+					v.Before.Items = append(v.Before.Items, "Short")
+					v.After.Items = append(v.After.Items, "Short")
+				}
+				if all {
+					for i := range v.Before.Items {
+						v.Before.Items[i] = budgetProbeCopy(length)
+						v.After.Items[i] = budgetProbeCopy(length)
+					}
+				} else {
+					v.Before.Items[0] = budgetProbeCopy(length)
+				}
+				return v
+			})
+			t.Logf("items=%d all=%t per_bullet_budget=%d", items, all, budget)
+		}
+	}
+	for items := 5; items <= 8; items++ {
+		for longItems := 1; longItems <= items; longItems++ {
+			budget := probeReadableBudget(t, "before-after-compact", 200, func(length int) any {
+				v := &patterns.BeforeAfterValues{
+					Before: patterns.BeforeAfterColumn{Header: "Current"},
+					After:  patterns.BeforeAfterColumn{Header: "Future"},
+				}
+				for i := 0; i < items; i++ {
+					item := "Short"
+					if i < longItems-1 {
+						item = budgetProbeCopy(200)
+					}
+					v.Before.Items = append(v.Before.Items, item)
+					v.After.Items = append(v.After.Items, "Short")
+				}
+				v.Before.Items[longItems-1] = budgetProbeCopy(length)
+				return v
+			})
+			t.Logf("items=%d long_items=%d last_long_budget=%d", items, longItems, budget)
+		}
+	}
+	for items := 1; items <= 8; items++ {
+		budget := probeReadableBudget(t, "before-after-compact", 200, func(length int) any {
+			v := &patterns.BeforeAfterValues{
+				Before: patterns.BeforeAfterColumn{Header: budgetProbeCopy(60)},
+				After:  patterns.BeforeAfterColumn{Header: budgetProbeCopy(60)},
+			}
+			for i := 0; i < items; i++ {
+				v.Before.Items = append(v.Before.Items, budgetProbeCopy(length))
+				v.After.Items = append(v.After.Items, budgetProbeCopy(length))
+			}
+			return v
+		})
+		t.Logf("items=%d max_headers=true all=true per_bullet_budget=%d", items, budget)
+	}
+	for items := 5; items <= 8; items++ {
+		for longItems := 1; longItems <= 3; longItems++ {
+			budget := probeReadableBudget(t, "before-after-compact", 200, func(length int) any {
+				v := &patterns.BeforeAfterValues{
+					Before: patterns.BeforeAfterColumn{Header: budgetProbeCopy(60)},
+					After:  patterns.BeforeAfterColumn{Header: budgetProbeCopy(60)},
+				}
+				for i := 0; i < items; i++ {
+					item := "Short"
+					if i < longItems-1 {
+						item = budgetProbeCopy(200)
+					}
+					v.Before.Items = append(v.Before.Items, item)
+					v.After.Items = append(v.After.Items, "Short")
+				}
+				v.Before.Items[longItems-1] = budgetProbeCopy(length)
+				return v
+			})
+			t.Logf("items=%d max_headers=true long_items=%d last_long_budget=%d", items, longItems, budget)
+		}
+	}
+	for _, slots := range []int{10, 11, 12} {
+		budget := probeReadableBudget(t, "before-after-compact", 60, func(length int) any {
+			v := &patterns.BeforeAfterValues{
+				Before: patterns.BeforeAfterColumn{Header: budgetProbeCopy(length)},
+				After:  patterns.BeforeAfterColumn{Header: budgetProbeCopy(length)},
+			}
+			for i := 0; i < 8; i++ {
+				v.Before.Items = append(v.Before.Items, "Short")
+				v.After.Items = append(v.After.Items, "Short")
+			}
+			v.Before.Items[0] = budgetProbeCopy(200)
+			if slots == 11 {
+				v.Before.Items[1] = budgetProbeCopy(133)
+			} else if slots == 12 {
+				v.Before.Items[1] = budgetProbeCopy(200)
+			}
+			return v
+		})
+		t.Logf("body_slots=%d header_budget=%d", slots, budget)
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal
