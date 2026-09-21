@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -76,12 +77,30 @@ func (a *agenda) NewValues() any       { return &AgendaValues{} }
 func (a *agenda) NewOverrides() any    { return &AgendaOverrides{} }
 func (a *agenda) NewCellOverride() any { return &AgendaCellOverride{} }
 
+func (a *agenda) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*AgendaValues)
+	if !ok || v == nil || len(v.Items) < 8 {
+		return nil
+	}
+	var warnings []string
+	for i, title := range v.Items {
+		longest := 0
+		for _, word := range strings.Fields(title) {
+			longest = max(longest, runeLen(word))
+		}
+		if longest > 58 {
+			warnings = append(warnings, fmt.Sprintf("%s: agenda items[%d] contains a %d-character unbroken word; eight to ten rows hold about 58 wide characters per title — add a word break, shorten the title, or split the agenda", ErrCodeBodyTooLong, i, longest))
+		}
+	}
+	return warnings
+}
+
 func (a *agenda) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values": ObjectSchema(
 				map[string]*Schema{
-					"items": ArraySchema(StringSchema(100).WithDescription("Section title"), 2, 10).
+					"items": ArraySchema(StringSchema(100).WithDescription("Section title; with 8-10 items, keep wide unbroken runs near 58 characters or add word breaks"), 2, 10).
 						WithDescription("Section titles in order"),
 				},
 				[]string{"items"},

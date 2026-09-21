@@ -295,6 +295,15 @@ func TestSCQASummarySharedRowBudgetReachesFitReportAcrossTemplates(t *testing.T)
 	assertBudgetFindingAcrossTemplates(t, "scqa-summary", values, "questions", "about 8 lines")
 }
 
+func TestAgendaDenseUnbrokenTitleWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.AgendaValues{Items: make([]string, 8)}
+	for i := range values.Items {
+		values.Items[i] = "Section title"
+	}
+	values.Items[2] = strings.Repeat("W", 59)
+	assertBudgetFindingAcrossTemplates(t, "agenda", values, "items[2]", "about 58 wide characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

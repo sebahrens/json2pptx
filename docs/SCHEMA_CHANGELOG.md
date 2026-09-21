@@ -8,6 +8,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Agenda dense unbroken-title target (go-slide-creator-tp23k.25).**
+  `agenda` now reports `BODY_TOO_LONG` when a title in an eight to ten item
+  agenda has an unbroken run over about 58 wide characters. Word-like titles
+  and agendas of up to seven items retain the 100-character field maximum.
+  The fit report names the item and recommends a word break. Measurements
+  used all four bundled templates. Schema version advances to 4.102.0.
+
 - **SCQA shared row copy budget (go-slide-creator-tp23k.24).**
   `scqa-summary` now reports `BODY_TOO_LONG` when a situation,
   complication, question or answer row exceeds about eight wrapped lines.

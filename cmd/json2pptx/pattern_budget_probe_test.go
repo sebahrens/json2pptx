@@ -1216,6 +1216,42 @@ func TestSCQASummaryBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestAgendaBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_AGENDA_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_AGENDA_BUDGET_PROBE=1")
+	}
+	for count := 2; count <= 10; count++ {
+		for _, highlighted := range []bool{false, true} {
+			for _, all := range []bool{false, true} {
+				for _, wide := range []bool{false, true} {
+					overrides := &patterns.AgendaOverrides{}
+					if highlighted {
+						overrides.Highlight = 1
+					}
+					budget := probeReadableBudget(t, "agenda", 100, func(length int) any {
+						v := &patterns.AgendaValues{Items: make([]string, count)}
+						for i := range v.Items {
+							v.Items[i] = "Section"
+						}
+						copy := budgetProbeCopy(length)
+						if wide {
+							copy = strings.Repeat("W", length)
+						}
+						v.Items[0] = copy
+						if all {
+							for i := range v.Items {
+								v.Items[i] = copy
+							}
+						}
+						return v
+					}, overrides)
+					t.Logf("items=%d highlighted=%t all=%t wide=%t budget=%d", count, highlighted, all, wide, budget)
+				}
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

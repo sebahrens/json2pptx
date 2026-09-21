@@ -1,8 +1,35 @@
 package patterns
 
 import (
+	"strings"
 	"testing"
 )
+
+func TestAgendaDenseUnbrokenTitleWarning(t *testing.T) {
+	p := &agenda{}
+	v := &AgendaValues{Items: make([]string, 8)}
+	for i := range v.Items {
+		v.Items[i] = "Section title"
+	}
+	v.Items[2] = strings.Repeat("W", 59)
+	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "items[2]") || !strings.Contains(got[0], "about 58") {
+		t.Fatalf("dense unbroken title warning: %v", got)
+	}
+	v.Items[2] = strings.Repeat("W", 58)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("measured wide target should fit: %v", got)
+	}
+	v.Items[2] = strings.Repeat("word ", 20)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("word-like schema maximum should fit: %v", got)
+	}
+	v.Items = v.Items[:7]
+	v.Items[2] = strings.Repeat("W", 100)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("seven-row schema maximum should fit: %v", got)
+	}
+}
 
 func TestAgenda_Validate_Basic(t *testing.T) {
 	a := &agenda{}
