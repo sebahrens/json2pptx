@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sebahrens/json2pptx/internal/safeyaml"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen/safeyaml"
 )
 
 // Config holds all configuration for the service.
@@ -19,7 +19,7 @@ type Config struct {
 	Templates TemplatesConfig `yaml:"templates"`
 	Storage   StorageConfig   `yaml:"storage"`
 	Images    ImageConfig     `yaml:"images"`
-	SVG       types.SVGConfig  `yaml:"svg"`
+	SVG       types.SVGConfig `yaml:"svg"`
 }
 
 // ValidationMode defines how template validation errors are handled.

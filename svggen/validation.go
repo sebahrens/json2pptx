@@ -2,7 +2,7 @@
 // to core/validation.go. They are re-exported via core_aliases.go.
 //
 // This file contains the Decoder and related parsing functions which depend on
-// internal/safeyaml and therefore stay in the root package.
+// the shared safeyaml package and therefore stay in the root package.
 package svggen
 
 import (
@@ -13,7 +13,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/svggen/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/svggen/safeyaml"
 )
 
 // DecodeOptions configures the parsing and validation behavior.

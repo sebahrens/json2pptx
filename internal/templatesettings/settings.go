@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/svggen/safeyaml"
 	"gopkg.in/yaml.v3"
 )
 

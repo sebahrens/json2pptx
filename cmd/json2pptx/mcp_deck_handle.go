@@ -14,7 +14,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/svggen/safeyaml"
 )
 
 // Server-side deck handles (go-slide-creator-voxp).

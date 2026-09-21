@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sebahrens/json2pptx/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/svggen/safeyaml"
 )
 
 // maxSpecSize bounds a semantic source document. It is generous relative to the

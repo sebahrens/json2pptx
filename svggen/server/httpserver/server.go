@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/svggen"
-	"github.com/sebahrens/json2pptx/svggen/internal/safeyaml"
+	"github.com/sebahrens/json2pptx/svggen/safeyaml"
 	"golang.org/x/sync/errgroup"
 )
 
