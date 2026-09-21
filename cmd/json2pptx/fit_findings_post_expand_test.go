@@ -8,33 +8,35 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
-func TestBMCCellBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
-	values := bmcProbeValues()
-	values.KeyActivities.Bullets = []string{strings.Repeat("long ", 30), "short", "short"}
+func assertBudgetFindingAcrossTemplates(t *testing.T, pattern string, values any, field, target string) {
+	t.Helper()
 	encoded, err := json.Marshal(values)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range schemaMaximaTemplates {
-		t.Run(name, func(t *testing.T) {
-			layouts, width, height := schemaMaximaLayouts(t, name)
-			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
+	for _, templateName := range schemaMaximaTemplates {
+		t.Run(templateName, func(t *testing.T) {
+			layouts, width, height := schemaMaximaLayouts(t, templateName)
+			deck := &PresentationInput{Template: templateName, Slides: []SlideInput{{
 				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: "bmc-canvas", Values: encoded},
+				Pattern: &PatternInput{Name: pattern, Values: encoded},
 			}}}
-			found := false
-			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
+			findings := collectFitFindings(deck, layouts, width, height, nil)
+			for _, finding := range findings {
 				if finding.Code == patterns.ErrCodeBodyTooLong &&
-					strings.Contains(finding.Message, "key_activities.bullets[0]") &&
-					strings.Contains(finding.Message, "about 52 characters") {
-					found = true
+					strings.Contains(finding.Message, field) && strings.Contains(finding.Message, target) {
+					return
 				}
 			}
-			if !found {
-				t.Fatal("BMC copy target missing from fit report")
-			}
+			t.Fatalf("%s %s budget %q missing from fit report: %+v", pattern, field, target, findings)
 		})
 	}
+}
+
+func TestBMCCellBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := bmcProbeValues()
+	values.KeyActivities.Bullets = []string{strings.Repeat("long ", 30), "short", "short"}
+	assertBudgetFindingAcrossTemplates(t, "bmc-canvas", values, "key_activities.bullets[0]", "about 52 characters")
 }
 
 func TestDriverTreeBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -47,64 +49,16 @@ func TestDriverTreeBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Branches = append(values.Branches, branch)
 	}
 	values.Branches[0].Leaves[0] = strings.Repeat("long ", 20)
-	encoded, err := json.Marshal(values)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range schemaMaximaTemplates {
-		t.Run(name, func(t *testing.T) {
-			layouts, width, height := schemaMaximaLayouts(t, name)
-			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: "driver-tree", Values: encoded},
-			}}}
-			found := false
-			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
-				if finding.Code == patterns.ErrCodeBodyTooLong &&
-					strings.Contains(finding.Message, "branches[0].leaves[0]") &&
-					strings.Contains(finding.Message, "about 75 per leaf") {
-					found = true
-				}
-			}
-			if !found {
-				t.Fatal("driver-tree budget missing from fit report")
-			}
-		})
-	}
+	assertBudgetFindingAcrossTemplates(t, "driver-tree", values, "branches[0].leaves[0]", "about 75 per leaf")
 }
-
 func TestComparisonBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.Comparison2colValues{Headers: [2]string{"Left", "Right"}}
 	for i := 0; i < 7; i++ {
 		values.Rows = append(values.Rows, patterns.Comparison2colRow{Left: "Item", Right: "Other"})
 	}
 	values.Rows[6].Right = strings.Repeat("word ", 20)
-	encoded, err := json.Marshal(values)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range schemaMaximaTemplates {
-		t.Run(name, func(t *testing.T) {
-			layouts, width, height := schemaMaximaLayouts(t, name)
-			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: "comparison-2col", Values: encoded},
-			}}}
-			found := false
-			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
-				if finding.Code == patterns.ErrCodeBodyTooLong &&
-					strings.Contains(finding.Message, "rows[6].right") &&
-					strings.Contains(finding.Message, "about 66 characters") {
-					found = true
-				}
-			}
-			if !found {
-				t.Fatal("comparison budget missing from fit report")
-			}
-		})
-	}
+	assertBudgetFindingAcrossTemplates(t, "comparison-2col", values, "rows[6].right", "about 66 characters")
 }
-
 func TestRoadmapPhasedBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.RoadmapPhasedValues{}
 	for i := 0; i < 8; i++ {
@@ -118,64 +72,16 @@ func TestRoadmapPhasedBudgetWarningReachesFitReportAcrossTemplates(t *testing.T)
 		values.Workstreams = append(values.Workstreams, ws)
 	}
 	values.Workstreams[2].Items[4] = strings.Repeat("word ", 10)
-	encoded, err := json.Marshal(values)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range schemaMaximaTemplates {
-		t.Run(name, func(t *testing.T) {
-			layouts, width, height := schemaMaximaLayouts(t, name)
-			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: "roadmap-phased", Values: encoded},
-			}}}
-			found := false
-			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
-				if finding.Code == patterns.ErrCodeBodyTooLong &&
-					strings.Contains(finding.Message, "workstreams[2].items[4]") &&
-					strings.Contains(finding.Message, "about 32 per activity pill") {
-					found = true
-				}
-			}
-			if !found {
-				t.Fatal("roadmap budget missing from fit report")
-			}
-		})
-	}
+	assertBudgetFindingAcrossTemplates(t, "roadmap-phased", values, "workstreams[2].items[4]", "about 32 per activity pill")
 }
-
 func TestTeamBiosBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.TeamBiosValues{}
 	for i := 0; i < 5; i++ {
 		values.Members = append(values.Members, patterns.TeamBiosMember{Name: "Jane Doe", Role: "Lead", Bio: "Short"})
 	}
 	values.Members[4].Bio = strings.Repeat("word ", 30)
-	encoded, err := json.Marshal(values)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range schemaMaximaTemplates {
-		t.Run(name, func(t *testing.T) {
-			layouts, width, height := schemaMaximaLayouts(t, name)
-			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: "team-bios", Values: encoded},
-			}}}
-			found := false
-			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
-				if finding.Code == patterns.ErrCodeBodyTooLong &&
-					strings.Contains(finding.Message, "members[4].bio") &&
-					strings.Contains(finding.Message, "about 141 bio characters") {
-					found = true
-				}
-			}
-			if !found {
-				t.Fatal("team-bios budget missing from fit report")
-			}
-		})
-	}
+	assertBudgetFindingAcrossTemplates(t, "team-bios", values, "members[4].bio", "about 141 bio characters")
 }
-
 func TestSwimlaneBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.SwimlaneValues{}
 	for i := 0; i < 6; i++ {
@@ -186,64 +92,16 @@ func TestSwimlaneBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Lanes = append(values.Lanes, lane)
 	}
 	values.Lanes[5].Steps[7] = strings.Repeat("word ", 10)
-	encoded, err := json.Marshal(values)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range schemaMaximaTemplates {
-		t.Run(name, func(t *testing.T) {
-			layouts, width, height := schemaMaximaLayouts(t, name)
-			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: "swimlane", Values: encoded},
-			}}}
-			found := false
-			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
-				if finding.Code == patterns.ErrCodeBodyTooLong &&
-					strings.Contains(finding.Message, "lanes[5].steps[7]") &&
-					strings.Contains(finding.Message, "about 32 per step") {
-					found = true
-				}
-			}
-			if !found {
-				t.Fatal("swimlane budget missing from fit report")
-			}
-		})
-	}
+	assertBudgetFindingAcrossTemplates(t, "swimlane", values, "lanes[5].steps[7]", "about 32 per step")
 }
-
 func TestNumberedStepBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.NumberedStepStripValues{Style: "chevron"}
 	for i := 0; i < 6; i++ {
 		values.Steps = append(values.Steps, patterns.NumberedStepStripStep{Label: "Step", Body: "Detail"})
 	}
 	values.Steps[4].Label = strings.Repeat("word ", 10)
-	encoded, err := json.Marshal(values)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range schemaMaximaTemplates {
-		t.Run(name, func(t *testing.T) {
-			layouts, width, height := schemaMaximaLayouts(t, name)
-			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: "numbered-step-strip", Values: encoded},
-			}}}
-			found := false
-			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
-				if finding.Code == patterns.ErrCodeBodyTooLong &&
-					strings.Contains(finding.Message, "steps[4].label") &&
-					strings.Contains(finding.Message, "about 47") {
-					found = true
-				}
-			}
-			if !found {
-				t.Fatal("numbered-step budget missing from fit report")
-			}
-		})
-	}
+	assertBudgetFindingAcrossTemplates(t, "numbered-step-strip", values, "steps[4].label", "about 47")
 }
-
 func TestKPIInlineBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := patterns.KPINupValues{}
 	for i := 0; i < 5; i++ {
@@ -252,28 +110,7 @@ func TestKPIInlineBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values[3].Big = "12345678"
 	values[3].Small = strings.Repeat("C", 17)
 	values[3].Icon = &patterns.IconRef{Name: "rocket"}
-	encoded, err := json.Marshal(values)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range schemaMaximaTemplates {
-		t.Run(name, func(t *testing.T) {
-			layouts, width, height := schemaMaximaLayouts(t, name)
-			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: "kpi-inline", Values: encoded},
-			}}}
-			found := false
-			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
-				if finding.Code == patterns.ErrCodeBodyTooLong && strings.Contains(finding.Message, "values[3].small") && strings.Contains(finding.Message, "about 16 caption characters") {
-					found = true
-				}
-			}
-			if !found {
-				t.Fatal("kpi-inline budget missing from fit report")
-			}
-		})
-	}
+	assertBudgetFindingAcrossTemplates(t, "kpi-inline", values, "values[3].small", "about 16 caption characters")
 }
 
 // postExpandDeck builds a two-slide deck whose patterns both object to their

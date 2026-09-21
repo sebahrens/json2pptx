@@ -10,6 +10,53 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+type budgetProbeGeometry struct {
+	name          string
+	layouts       []types.LayoutMetadata
+	width, height int64
+}
+
+func budgetProbeCopy(length int) string {
+	return strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+}
+
+// probeReadableBudget runs a pattern payload through the same collector used
+// by fit reports on every bundled template, then finds the largest clean
+// character count. Pattern-specific probes only need to build their payload.
+func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload func(int) any) int {
+	t.Helper()
+	geometries := make([]budgetProbeGeometry, 0, len(schemaMaximaTemplates))
+	for _, name := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, name)
+		geometries = append(geometries, budgetProbeGeometry{name, layouts, width, height})
+	}
+	clean := func(length int) bool {
+		encoded, err := json.Marshal(payload(length))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, geom := range geometries {
+			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: pattern, Values: encoded},
+			}}}
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+				return false
+			}
+		}
+		return true
+	}
+	lo, hi := 0, maxChars
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if clean(mid) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal
@@ -250,18 +297,7 @@ func TestKPIInlineBudgetProbe(t *testing.T) {
 }
 
 func kpiInlineCaptionFullBudget(t *testing.T, cells, bigLen, subLen int, icon bool) int {
-	t.Helper()
-	type geometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	var geometries []geometry
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, geometry{name, layouts, width, height})
-	}
-	clean := func(length int) bool {
+	return probeReadableBudget(t, "kpi-inline", 40, func(length int) any {
 		v := patterns.KPINupValues{}
 		for i := 0; i < cells; i++ {
 			v = append(v, patterns.KPICell{Big: "42%", Small: "Revenue"})
@@ -273,45 +309,14 @@ func kpiInlineCaptionFullBudget(t *testing.T, cells, bigLen, subLen int, icon bo
 		if icon {
 			v[0].Icon = &patterns.IconRef{Name: "rocket"}
 		}
-		v[0].Small = strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "kpi-inline", Values: encoded}}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, 40
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		v[0].Small = budgetProbeCopy(length)
+		return v
+	})
 }
 
 func kpiInlineReadableBudget(t *testing.T, cells int, sub bool, field string) int {
-	t.Helper()
-	type geometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	var geometries []geometry
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, geometry{name, layouts, width, height})
-	}
 	limit := map[string]int{"big": 8, "small": 40, "sub": 12}[field]
-	clean := func(length int) bool {
+	return probeReadableBudget(t, "kpi-inline", limit, func(length int) any {
 		v := patterns.KPINupValues{}
 		for i := 0; i < cells; i++ {
 			cell := patterns.KPICell{Big: "42%", Small: "Revenue"}
@@ -320,58 +325,23 @@ func kpiInlineReadableBudget(t *testing.T, cells int, sub bool, field string) in
 			}
 			v = append(v, cell)
 		}
-		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
 		switch field {
 		case "big":
-			v[0].Big = copy
+			v[0].Big = budgetProbeCopy(length)
 		case "small":
-			v[0].Small = copy
+			v[0].Small = budgetProbeCopy(length)
 		case "sub":
-			v[0].Sub = copy
+			v[0].Sub = budgetProbeCopy(length)
 		}
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "kpi-inline", Values: encoded},
-			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, limit
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		return v
+	})
 }
-
 func numberedStepReadableBudget(t *testing.T, style string, steps int, bodies bool, field string) int {
-	t.Helper()
-	type geometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	var geometries []geometry
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, geometry{name, layouts, width, height})
-	}
 	limit := 60
 	if field == "body" {
 		limit = 180
 	}
-	clean := func(length int) bool {
+	return probeReadableBudget(t, "numbered-step-strip", limit, func(length int) any {
 		v := &patterns.NumberedStepStripValues{Style: style}
 		for i := 0; i < steps; i++ {
 			step := patterns.NumberedStepStripStep{Label: "Step"}
@@ -380,55 +350,20 @@ func numberedStepReadableBudget(t *testing.T, style string, steps int, bodies bo
 			}
 			v.Steps = append(v.Steps, step)
 		}
-		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
 		if field == "label" {
-			v.Steps[0].Label = copy
+			v.Steps[0].Label = budgetProbeCopy(length)
 		} else {
-			v.Steps[0].Body = copy
+			v.Steps[0].Body = budgetProbeCopy(length)
 		}
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "numbered-step-strip", Values: encoded},
-			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, limit
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		return v
+	})
 }
-
 func swimlaneReadableBudget(t *testing.T, steps, lanes int, field string) int {
-	t.Helper()
-	type geometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	var geometries []geometry
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, geometry{name, layouts, width, height})
-	}
 	limit := 80
 	if field == "actor" {
 		limit = 40
 	}
-	clean := func(length int) bool {
+	return probeReadableBudget(t, "swimlane", limit, func(length int) any {
 		v := &patterns.SwimlaneValues{}
 		for i := 0; i < lanes; i++ {
 			lane := patterns.SwimlaneLane{Actor: "Team"}
@@ -437,105 +372,35 @@ func swimlaneReadableBudget(t *testing.T, steps, lanes int, field string) int {
 			}
 			v.Lanes = append(v.Lanes, lane)
 		}
-		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
 		if field == "actor" {
-			v.Lanes[0].Actor = copy
+			v.Lanes[0].Actor = budgetProbeCopy(length)
 		} else {
-			v.Lanes[0].Steps[0] = copy
+			v.Lanes[0].Steps[0] = budgetProbeCopy(length)
 		}
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "swimlane", Values: encoded},
-			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, limit
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		return v
+	})
 }
-
 func teamBiosReadableBudget(t *testing.T, members int, field string) int {
-	t.Helper()
-	type geometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	var geometries []geometry
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, geometry{name, layouts, width, height})
-	}
 	limit := map[string]int{"name": 60, "role": 80, "bio": 220}[field]
-	clean := func(length int) bool {
+	return probeReadableBudget(t, "team-bios", limit, func(length int) any {
 		v := &patterns.TeamBiosValues{}
 		for i := 0; i < members; i++ {
 			v.Members = append(v.Members, patterns.TeamBiosMember{Name: "Jane Doe", Role: "Lead", Bio: "Short biography"})
 		}
-		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
 		switch field {
 		case "name":
-			v.Members[0].Name = copy
+			v.Members[0].Name = budgetProbeCopy(length)
 		case "role":
-			v.Members[0].Role = copy
+			v.Members[0].Role = budgetProbeCopy(length)
 		case "bio":
-			v.Members[0].Bio = copy
+			v.Members[0].Bio = budgetProbeCopy(length)
 		}
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "team-bios", Values: encoded},
-			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, limit
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		return v
+	})
 }
-
 func roadmapPhasedReadableBudget(t *testing.T, phases, workstreams int, field string) int {
-	t.Helper()
-	type geometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	var geometries []geometry
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, geometry{name, layouts, width, height})
-	}
 	limit := map[string]int{"phase": 20, "name": 40, "item": 80}[field]
-	clean := func(length int) bool {
+	return probeReadableBudget(t, "roadmap-phased", limit, func(length int) any {
 		v := &patterns.RoadmapPhasedValues{}
 		for i := 0; i < phases; i++ {
 			v.Phases = append(v.Phases, "Q1")
@@ -547,58 +412,23 @@ func roadmapPhasedReadableBudget(t *testing.T, phases, workstreams int, field st
 			}
 			v.Workstreams = append(v.Workstreams, ws)
 		}
-		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
 		switch field {
 		case "phase":
-			v.Phases[0] = copy
+			v.Phases[0] = budgetProbeCopy(length)
 		case "name":
-			v.Workstreams[0].Name = copy
+			v.Workstreams[0].Name = budgetProbeCopy(length)
 		case "item":
-			v.Workstreams[0].Items[0] = copy
+			v.Workstreams[0].Items[0] = budgetProbeCopy(length)
 		}
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "roadmap-phased", Values: encoded},
-			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, limit
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		return v
+	})
 }
-
 func comparisonReadableBudget(t *testing.T, rowCount int, headers bool, field string) int {
-	t.Helper()
-	type geometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	var geometries []geometry
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, geometry{name, layouts, width, height})
-	}
 	limit := 200
 	if field == "header" {
 		limit = 60
 	}
-	clean := func(length int) bool {
+	return probeReadableBudget(t, "comparison-2col", limit, func(length int) any {
 		v := &patterns.Comparison2colValues{}
 		if headers {
 			v.Headers = [2]string{"Left", "Right"}
@@ -606,52 +436,17 @@ func comparisonReadableBudget(t *testing.T, rowCount int, headers bool, field st
 		for i := 0; i < rowCount; i++ {
 			v.Rows = append(v.Rows, patterns.Comparison2colRow{Left: "Item", Right: "Other"})
 		}
-		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
 		if field == "header" {
-			v.Headers[0] = copy
+			v.Headers[0] = budgetProbeCopy(length)
 		} else {
-			v.Rows[0].Left = copy
+			v.Rows[0].Left = budgetProbeCopy(length)
 		}
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "comparison-2col", Values: encoded},
-			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, limit
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		return v
+	})
 }
-
 func driverTreeReadableBudget(t *testing.T, counts []int, annotated bool, field string) int {
-	t.Helper()
-	type geometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	var geometries []geometry
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, geometry{name, layouts, width, height})
-	}
-	maxLen := map[string]int{"root": 60, "branch": 60, "leaf": 120, "annotation": 140}[field]
-	clean := func(length int) bool {
+	maxChars := map[string]int{"root": 60, "branch": 60, "leaf": 120, "annotation": 140}[field]
+	return probeReadableBudget(t, "driver-tree", maxChars, func(length int) any {
 		v := &patterns.DriverTreeValues{Root: patterns.DriverTreeNode{Label: "Root"}}
 		for _, leaves := range counts {
 			branch := patterns.DriverTreeBranch{Label: "Branch"}
@@ -663,92 +458,34 @@ func driverTreeReadableBudget(t *testing.T, counts []int, annotated bool, field 
 			}
 			v.Branches = append(v.Branches, branch)
 		}
-		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
 		switch field {
 		case "root":
-			v.Root.Label = copy
+			v.Root.Label = budgetProbeCopy(length)
 		case "branch":
-			v.Branches[len(v.Branches)-1].Label = copy
+			v.Branches[len(v.Branches)-1].Label = budgetProbeCopy(length)
 		case "leaf":
-			v.Branches[0].Leaves[0] = copy
+			v.Branches[0].Leaves[0] = budgetProbeCopy(length)
 		case "annotation":
-			v.Branches[len(v.Branches)-1].Annotation = copy
+			v.Branches[len(v.Branches)-1].Annotation = budgetProbeCopy(length)
 		}
-		encoded, err := json.Marshal(v)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "driver-tree", Values: encoded},
-			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, maxLen
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		return v
+	})
 }
-
 func bmcProbeCellNames() []string {
 	return []string{"key_partners", "key_activities", "key_resources", "value_propositions", "customer_relations", "channels", "customer_segments", "cost_structure", "revenue_streams"}
 }
 
 func bmcReadableBudget(t *testing.T, cellName string, bulletCount int) int {
-	t.Helper()
-	type templateGeometry struct {
-		name          string
-		layouts       []types.LayoutMetadata
-		width, height int64
-	}
-	geometries := make([]templateGeometry, 0, len(schemaMaximaTemplates))
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, templateGeometry{name, layouts, width, height})
-	}
-	clean := func(length int) bool {
+	return probeReadableBudget(t, "bmc-canvas", 200, func(length int) any {
 		values := bmcProbeValues()
 		cell := bmcProbeCell(values, cellName)
 		cell.Bullets = make([]string, bulletCount)
 		for i := range cell.Bullets {
-			cell.Bullets[i] = strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+			cell.Bullets[i] = budgetProbeCopy(length)
 		}
-		encoded, err := json.Marshal(values)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, geom := range geometries {
-			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "bmc-canvas", Values: encoded},
-			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
-				return false
-			}
-		}
-		return true
-	}
-	lo, hi := 0, 200
-	for lo < hi {
-		mid := (lo + hi + 1) / 2
-		if clean(mid) {
-			lo = mid
-		} else {
-			hi = mid - 1
-		}
-	}
-	return lo
+		return values
+	})
 }
-
 func bmcProbeValues() *patterns.BMCCanvasValues {
 	cell := func(header string) patterns.BMCCell {
 		return patterns.BMCCell{Header: header, Bullets: []string{"base"}}
