@@ -15,8 +15,9 @@ const ReferenceConfiguration = "dry-run-reference"
 
 // ReferenceDeck returns a deterministic PresentationInput JSON for a brief:
 // a title slide plus two category-appropriate pattern slides. The template
-// field is set to tmpl.
-func ReferenceDeck(b Brief, tmpl string) ([]byte, error) {
+// template field is set to tmpl.Name, or template_path to tmpl.Path for an
+// explicitly located fixture outside the normal template search directory.
+func ReferenceDeck(b Brief, tmpl Template) ([]byte, error) {
 	title := briefTitle(b)
 	slides := []map[string]any{{
 		"layout_id": "title",
@@ -33,9 +34,13 @@ func ReferenceDeck(b Brief, tmpl string) ([]byte, error) {
 		})
 	}
 	deck := map[string]any{
-		"template":        tmpl,
 		"output_filename": b.ID + ".pptx",
 		"slides":          slides,
+	}
+	if tmpl.Path != "" {
+		deck["template_path"] = tmpl.Path
+	} else {
+		deck["template"] = tmpl.Name
 	}
 	return json.MarshalIndent(deck, "", "  ")
 }

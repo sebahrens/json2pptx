@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Held-out quality benchmark fixture and two-human rating contract
+  (go-slide-creator-0ek6).** `qualitybench --templates` now accepts
+  `name=path:family[:heldout]`, and the default held-out family is the
+  purpose-built side-logo portability fixture outside `templates/`. Rating
+  CSVs carry `reviewer_type`; multiple reviewer files can be applied together,
+  and only two distinct human reviewers satisfy a rated pair. Invalid scores,
+  booleans, columns, and blind IDs fail fast. Schema version advances to
+  4.114.0.
+
 - **Measurable vision checklist and deterministic layout-balance prepass
   (go-slide-creator-brhc).** `inspect_slide_images` now requires explicit
   judgments for content coverage, peer baselines, type size, source lines, and

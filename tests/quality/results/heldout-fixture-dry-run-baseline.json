@@ -1,0 +1,1398 @@
+{
+  "generated_at": "2026-09-21T04:21:21.282307Z",
+  "evidence": [
+    {
+      "request": {
+        "run_id": "dry-run-reference-kpi-quarter-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "kpi-quarter",
+          "Category": "KPI",
+          "Prompt": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-kpi-quarter-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.28234Z",
+      "duration_ms": 0,
+      "blind_id": "f01cde9c8a50",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/f01cde9c8a50.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-kpi-quarter-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "kpi-quarter",
+          "Category": "KPI",
+          "Prompt": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-kpi-quarter-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.346159Z",
+      "duration_ms": 0,
+      "blind_id": "56551c25a888",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/56551c25a888.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-kpi-quarter-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "kpi-quarter",
+          "Category": "KPI",
+          "Prompt": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-kpi-quarter-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.401922Z",
+      "duration_ms": 0,
+      "blind_id": "7ac4a52f1e08",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/7ac4a52f1e08.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-kpi-risk-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "kpi-risk",
+          "Category": "KPI",
+          "Prompt": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-kpi-risk-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.455779Z",
+      "duration_ms": 0,
+      "blind_id": "29fa0e59828c",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/29fa0e59828c.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-kpi-risk-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "kpi-risk",
+          "Category": "KPI",
+          "Prompt": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-kpi-risk-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.509598Z",
+      "duration_ms": 0,
+      "blind_id": "f3417d74e21c",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/f3417d74e21c.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-kpi-risk-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "kpi-risk",
+          "Category": "KPI",
+          "Prompt": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-kpi-risk-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.564907Z",
+      "duration_ms": 0,
+      "blind_id": "a0d78f1ac8d4",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/a0d78f1ac8d4.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-comparison-vendors-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "comparison-vendors",
+          "Category": "comparison",
+          "Prompt": "Compare three vendors across price, capability, implementation time and risk."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Compare three vendors across price, capability, implementation time and risk.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-comparison-vendors-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.618458Z",
+      "duration_ms": 0,
+      "blind_id": "ff9d7b6b91cf",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/ff9d7b6b91cf.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-comparison-vendors-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "comparison-vendors",
+          "Category": "comparison",
+          "Prompt": "Compare three vendors across price, capability, implementation time and risk."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Compare three vendors across price, capability, implementation time and risk.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-comparison-vendors-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.656599Z",
+      "duration_ms": 0,
+      "blind_id": "55da7ebb37b2",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/55da7ebb37b2.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-comparison-vendors-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "comparison-vendors",
+          "Category": "comparison",
+          "Prompt": "Compare three vendors across price, capability, implementation time and risk."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Compare three vendors across price, capability, implementation time and risk.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-comparison-vendors-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.696261Z",
+      "duration_ms": 0,
+      "blind_id": "091a0b55b959",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/091a0b55b959.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-comparison-options-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "comparison-options",
+          "Category": "comparison",
+          "Prompt": "Compare build, buy and partner options and recommend one with explicit tradeoffs."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-comparison-options-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.734791Z",
+      "duration_ms": 0,
+      "blind_id": "ec882c2ad9cd",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/ec882c2ad9cd.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-comparison-options-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "comparison-options",
+          "Category": "comparison",
+          "Prompt": "Compare build, buy and partner options and recommend one with explicit tradeoffs."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-comparison-options-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.775659Z",
+      "duration_ms": 0,
+      "blind_id": "debf17a4ca19",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/debf17a4ca19.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-comparison-options-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "comparison-options",
+          "Category": "comparison",
+          "Prompt": "Compare build, buy and partner options and recommend one with explicit tradeoffs."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-comparison-options-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.818969Z",
+      "duration_ms": 0,
+      "blind_id": "e6e24c3421a9",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/e6e24c3421a9.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-process-onboarding-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "process-onboarding",
+          "Category": "process",
+          "Prompt": "Explain a five-stage customer onboarding process with owners and decision gates."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Explain a five-stage customer onboarding process with owners and decision gates.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-process-onboarding-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.857966Z",
+      "duration_ms": 0,
+      "blind_id": "cf74bc2bf8ac",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/cf74bc2bf8ac.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-process-onboarding-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "process-onboarding",
+          "Category": "process",
+          "Prompt": "Explain a five-stage customer onboarding process with owners and decision gates."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Explain a five-stage customer onboarding process with owners and decision gates.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-process-onboarding-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.911096Z",
+      "duration_ms": 0,
+      "blind_id": "fd32f87fafea",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/fd32f87fafea.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-process-onboarding-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "process-onboarding",
+          "Category": "process",
+          "Prompt": "Explain a five-stage customer onboarding process with owners and decision gates."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Explain a five-stage customer onboarding process with owners and decision gates.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-process-onboarding-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:21.966615Z",
+      "duration_ms": 0,
+      "blind_id": "7433a376e93b",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/7433a376e93b.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-process-transformation-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "process-transformation",
+          "Category": "process",
+          "Prompt": "Show a two-track transformation roadmap for technology and operating model."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show a two-track transformation roadmap for technology and operating model.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-process-transformation-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.021064Z",
+      "duration_ms": 0,
+      "blind_id": "ed717b6c41f4",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/ed717b6c41f4.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-process-transformation-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "process-transformation",
+          "Category": "process",
+          "Prompt": "Show a two-track transformation roadmap for technology and operating model."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show a two-track transformation roadmap for technology and operating model.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-process-transformation-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.074343Z",
+      "duration_ms": 0,
+      "blind_id": "1a238227ef80",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/1a238227ef80.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-process-transformation-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "process-transformation",
+          "Category": "process",
+          "Prompt": "Show a two-track transformation roadmap for technology and operating model."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show a two-track transformation roadmap for technology and operating model.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-process-transformation-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.12942Z",
+      "duration_ms": 0,
+      "blind_id": "0461c50ef1b4",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/0461c50ef1b4.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-narrative-strategy-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "narrative-strategy",
+          "Category": "narrative",
+          "Prompt": "Build a concise strategy narrative from market shift through choice, action and impact."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Build a concise strategy narrative from market shift through choice, action and impact.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-narrative-strategy-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.184092Z",
+      "duration_ms": 0,
+      "blind_id": "6026e07f2988",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/6026e07f2988.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-narrative-strategy-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "narrative-strategy",
+          "Category": "narrative",
+          "Prompt": "Build a concise strategy narrative from market shift through choice, action and impact."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Build a concise strategy narrative from market shift through choice, action and impact.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-narrative-strategy-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.237744Z",
+      "duration_ms": 0,
+      "blind_id": "5fe38b0284e6",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/5fe38b0284e6.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-narrative-strategy-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "narrative-strategy",
+          "Category": "narrative",
+          "Prompt": "Build a concise strategy narrative from market shift through choice, action and impact."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Build a concise strategy narrative from market shift through choice, action and impact.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-narrative-strategy-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.292689Z",
+      "duration_ms": 0,
+      "blind_id": "e59b647d6472",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/e59b647d6472.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-narrative-board-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "narrative-board",
+          "Category": "narrative",
+          "Prompt": "Prepare a board update covering context, performance, risks, decisions and next steps."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-narrative-board-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.346982Z",
+      "duration_ms": 0,
+      "blind_id": "15f95857dc8a",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/15f95857dc8a.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-narrative-board-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "narrative-board",
+          "Category": "narrative",
+          "Prompt": "Prepare a board update covering context, performance, risks, decisions and next steps."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-narrative-board-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.399725Z",
+      "duration_ms": 0,
+      "blind_id": "28e65b4b07d9",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/28e65b4b07d9.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-narrative-board-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "narrative-board",
+          "Category": "narrative",
+          "Prompt": "Prepare a board update covering context, performance, risks, decisions and next steps."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-narrative-board-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.45431Z",
+      "duration_ms": 0,
+      "blind_id": "60dfa2a3ae09",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/60dfa2a3ae09.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-chart-revenue-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "chart-revenue",
+          "Category": "chart",
+          "Prompt": "Show five years of revenue and margin data with a clear evidence-based takeaway."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-chart-revenue-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.50786Z",
+      "duration_ms": 0,
+      "blind_id": "709a17151619",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/709a17151619.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-chart-revenue-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "chart-revenue",
+          "Category": "chart",
+          "Prompt": "Show five years of revenue and margin data with a clear evidence-based takeaway."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-chart-revenue-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.561296Z",
+      "duration_ms": 0,
+      "blind_id": "ca4001c54636",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/ca4001c54636.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-chart-revenue-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "chart-revenue",
+          "Category": "chart",
+          "Prompt": "Show five years of revenue and margin data with a clear evidence-based takeaway."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-chart-revenue-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.616032Z",
+      "duration_ms": 0,
+      "blind_id": "c4dc95a40ba2",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/c4dc95a40ba2.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-chart-regions-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "chart-regions",
+          "Category": "chart",
+          "Prompt": "Show regional performance, mix shift and the two largest drivers without losing values."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show regional performance, mix shift and the two largest drivers without losing values.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-chart-regions-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.669597Z",
+      "duration_ms": 0,
+      "blind_id": "caa1a5d7d0e5",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/caa1a5d7d0e5.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-chart-regions-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "chart-regions",
+          "Category": "chart",
+          "Prompt": "Show regional performance, mix shift and the two largest drivers without losing values."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show regional performance, mix shift and the two largest drivers without losing values.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-chart-regions-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.722724Z",
+      "duration_ms": 0,
+      "blind_id": "19050e17fcb2",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/19050e17fcb2.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-chart-regions-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "chart-regions",
+          "Category": "chart",
+          "Prompt": "Show regional performance, mix shift and the two largest drivers without losing values."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Show regional performance, mix shift and the two largest drivers without losing values.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-chart-regions-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.777496Z",
+      "duration_ms": 0,
+      "blind_id": "1e209c344471",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/1e209c344471.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-multilingual-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "multilingual",
+          "Category": "narrative",
+          "Prompt": "Create a German and Japanese market-entry summary with long labels and cited facts."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-multilingual-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.831058Z",
+      "duration_ms": 0,
+      "blind_id": "5c7eec6ab859",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/5c7eec6ab859.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-multilingual-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "multilingual",
+          "Category": "narrative",
+          "Prompt": "Create a German and Japanese market-entry summary with long labels and cited facts."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-multilingual-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.884212Z",
+      "duration_ms": 0,
+      "blind_id": "60de0b5f13e2",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/60de0b5f13e2.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-multilingual-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "multilingual",
+          "Category": "narrative",
+          "Prompt": "Create a German and Japanese market-entry summary with long labels and cited facts."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-multilingual-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.939167Z",
+      "duration_ms": 0,
+      "blind_id": "e54ef4ded2a0",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/e54ef4ded2a0.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-dense-plan-midnight-blue-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "dense-plan",
+          "Category": "process",
+          "Prompt": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones."
+        },
+        "template": {
+          "Name": "midnight-blue",
+          "Family": "corporate",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-dense-plan-midnight-blue-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:22.992861Z",
+      "duration_ms": 0,
+      "blind_id": "7c0a2847f54f",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/7c0a2847f54f.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-dense-plan-warm-coral-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "dense-plan",
+          "Category": "process",
+          "Prompt": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones."
+        },
+        "template": {
+          "Name": "warm-coral",
+          "Family": "editorial",
+          "HeldOut": false
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-dense-plan-warm-coral-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:23.046679Z",
+      "duration_ms": 0,
+      "blind_id": "44844f148f88",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/44844f148f88.png",
+      "slide_count": 3
+    },
+    {
+      "request": {
+        "run_id": "dry-run-reference-dense-plan-portability-side-logo-1",
+        "configuration": "dry-run-reference",
+        "brief": {
+          "ID": "dense-plan",
+          "Category": "process",
+          "Prompt": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones."
+        },
+        "template": {
+          "Name": "portability-side-logo",
+          "Family": "portability",
+          "Path": "/Users/seb/projects/json2pptx/tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+          "HeldOut": true
+        },
+        "repetition": 1
+      },
+      "result": {
+        "model": "none (deterministic reference deck)",
+        "version": "dry-run-reference",
+        "prompt": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+        "tool_calls": [
+          {
+            "tool": "json2pptx generate",
+            "reference_deck": true
+          }
+        ],
+        "artifacts": [
+          "output/quality-benchmark-heldout/decks/dry-run-reference-dense-plan-portability-side-logo-1.pptx"
+        ],
+        "cost_usd": 0,
+        "iterations": 0
+      },
+      "started_at": "2026-09-21T04:21:23.102154Z",
+      "duration_ms": 0,
+      "blind_id": "49847dae4970",
+      "contact_sheet": "output/quality-benchmark-heldout/sheets/49847dae4970.png",
+      "slide_count": 3
+    }
+  ],
+  "summary": {
+    "Runs": 36,
+    "RatedPairs": 0,
+    "Usable": 0,
+    "UsableRate": 0,
+    "WilsonLow": 0,
+    "WilsonHigh": 0,
+    "LostCriticalFacts": 0,
+    "CriticalTemplateDefects": 0,
+    "Disagreements": 0,
+    "PairedImprovement": false,
+    "ReleaseDecision": "inconclusive: dry-run reference decks only; agent runs plus two blind reviewer ratings are required"
+  }
+}

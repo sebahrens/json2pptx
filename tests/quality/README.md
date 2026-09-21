@@ -104,17 +104,21 @@ run and both ratings exist this remains a proposed bar and the release decision
 is `inconclusive` or `hold`.
 
 Templates default to `midnight-blue` (corporate), `warm-coral` (editorial) and
-the held-out `business-template` (seven-layout; not one of the four templates
-used for day-to-day pattern tuning); override with
-`--templates name:family[:heldout],...`. Missing template files fail fast.
+the purpose-built held-out `portability-side-logo` fixture outside the bundled
+template directory. Override with `--templates name:family[:heldout],...` or
+`--templates name=path/to/template.pptx:family[:heldout],...`. Missing template
+files fail fast.
 
 After the agent runs, every `.pptx` artifact is rendered (LibreOffice →
 pdftoppm/ImageMagick) into a contact sheet named by an opaque blind ID under
 `<out>/sheets/`, alongside `ratings_template.csv` (blind IDs only) and
 `blind_key.json` (the un-blinding key — keep it away from reviewers). The
-results JSON goes to `tests/quality/results/`. Apply the two reviewers' filled
-CSV with `go run ./cmd/qualitybench --report tests/quality/results/<file>.json
---ratings ratings.csv`, which computes the summary and release decision.
+results JSON goes to `tests/quality/results/`. Give each human reviewer a
+separate copy of the CSV, set `reviewer_type=human`, then apply both with
+`go run ./cmd/qualitybench --report tests/quality/results/<file>.json
+--ratings reviewer-a.csv,reviewer-b.csv`. Duplicate reviewers and optional
+`reviewer_type=llm` rows do not satisfy the two-human release gate. The complete
+rerun and rating procedure is in [docs/QUALITY_BENCHMARK.md](../../docs/QUALITY_BENCHMARK.md).
 
 `go run ./cmd/qualitybench --dry-run` exercises the whole harness without an
 agent: each brief gets a deterministic category-based reference deck

@@ -9,12 +9,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
 type Brief struct{ ID, Category, Prompt string }
 type Template struct {
 	Name, Family string
+	Path         string `json:"Path,omitempty"`
 	HeldOut      bool
 }
 type Request struct {
@@ -46,7 +48,7 @@ type Evidence struct {
 	SlideCount   int    `json:"slide_count,omitempty"`
 }
 type Rating struct {
-	RunID, Reviewer                                                          string
+	RunID, Reviewer, ReviewerType                                            string
 	Readability, Hierarchy, TemplateFidelity, FactualCompleteness, Usability int
 	LostCriticalFact, CriticalTemplateDefect                                 bool
 }
@@ -139,6 +141,9 @@ func ApplyRatings(report *Report, ratings []Rating) Summary {
 	s := Summary{Runs: len(report.Evidence)}
 	byRun := map[string][]Rating{}
 	for _, r := range ratings {
+		if r.Reviewer == "" || (r.ReviewerType != "" && !strings.EqualFold(r.ReviewerType, "human")) {
+			continue
+		}
 		byRun[r.RunID] = append(byRun[r.RunID], r)
 	}
 	configByRun := map[string]string{}
@@ -146,7 +151,8 @@ func ApplyRatings(report *Report, ratings []Rating) Summary {
 		configByRun[ev.Request.RunID] = ev.Request.Configuration
 	}
 	var baseTotal, newTotal, baseN, newN int
-	for _, pair := range byRun {
+	for _, candidates := range byRun {
+		pair := distinctReviewerPair(candidates)
 		if len(pair) < 2 {
 			continue
 		}
@@ -191,6 +197,23 @@ func ApplyRatings(report *Report, ratings []Rating) Summary {
 	}
 	report.Summary = s
 	return s
+}
+
+func distinctReviewerPair(candidates []Rating) []Rating {
+	seen := map[string]bool{}
+	pair := make([]Rating, 0, 2)
+	for _, rating := range candidates {
+		key := strings.ToLower(strings.TrimSpace(rating.Reviewer))
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		pair = append(pair, rating)
+		if len(pair) == 2 {
+			break
+		}
+	}
+	return pair
 }
 func wilson(k, n int) (float64, float64) {
 	if n == 0 {

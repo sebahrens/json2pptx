@@ -68,7 +68,7 @@ func (d DryRun) one(ctx context.Context, req Request) Evidence {
 	started := time.Now().UTC()
 	ev := Evidence{Request: req, StartedAt: started, Result: AgentResult{Model: "none (deterministic reference deck)", Version: ReferenceConfiguration, Prompt: req.Brief.Prompt, Iterations: 0}}
 	defer func() { ev.DurationMS = time.Since(started).Milliseconds() }()
-	deck, err := ReferenceDeck(req.Brief, req.Template.Name)
+	deck, err := ReferenceDeck(req.Brief, req.Template)
 	if err != nil {
 		ev.Error = err.Error()
 		return ev
@@ -153,9 +153,9 @@ func writeRatingsTemplate(path string, key map[string]string) error {
 	}
 	defer func() { _ = f.Close() }()
 	w := csv.NewWriter(f)
-	_ = w.Write([]string{"blind_id", "reviewer", "readability", "hierarchy", "template_fidelity", "factual_completeness", "usability", "lost_critical_fact", "critical_template_defect"})
+	_ = w.Write([]string{"blind_id", "reviewer", "reviewer_type", "readability", "hierarchy", "template_fidelity", "factual_completeness", "usability", "lost_critical_fact", "critical_template_defect"})
 	for _, id := range ids {
-		_ = w.Write([]string{id, "", "", "", "", "", "", "", ""})
+		_ = w.Write([]string{id, "", "human", "", "", "", "", "", "", ""})
 	}
 	w.Flush()
 	return w.Error()

@@ -18,7 +18,7 @@ import (
 
 func TestReferenceDeck_AllCategoriesProduceValidDecks(t *testing.T) {
 	for _, cat := range []string{"KPI", "comparison", "process", "narrative", "chart", "unknown"} {
-		data, err := ReferenceDeck(Brief{ID: "b-" + cat, Category: cat, Prompt: "Create a deck about something important, with details: more"}, "midnight-blue")
+		data, err := ReferenceDeck(Brief{ID: "b-" + cat, Category: cat, Prompt: "Create a deck about something important, with details: more"}, Template{Name: "midnight-blue"})
 		if err != nil {
 			t.Fatalf("%s: %v", cat, err)
 		}
@@ -37,6 +37,20 @@ func TestReferenceDeck_AllCategoriesProduceValidDecks(t *testing.T) {
 		if deck.Template != "midnight-blue" || len(deck.Slides) != 3 || deck.Slides[1].Pattern == nil {
 			t.Errorf("%s: unexpected deck %s", cat, data)
 		}
+	}
+}
+
+func TestReferenceDeckUsesExplicitTemplatePath(t *testing.T) {
+	data, err := ReferenceDeck(Brief{ID: "fixture", Category: "KPI", Prompt: "Fixture"}, Template{Name: "held", Path: "/tmp/held.pptx"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var deck map[string]any
+	if err := json.Unmarshal(data, &deck); err != nil {
+		t.Fatal(err)
+	}
+	if deck["template_path"] != "/tmp/held.pptx" || deck["template"] != nil {
+		t.Fatalf("deck template fields = %+v", deck)
 	}
 }
 
@@ -101,7 +115,7 @@ func TestRatingsTemplateHasBlindIDsOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 3 || rows[1][0] != "aaa" || rows[2][0] != "bbb" {
+	if len(rows) != 3 || rows[1][0] != "aaa" || rows[2][0] != "bbb" || rows[0][2] != "reviewer_type" || rows[1][2] != "human" {
 		t.Fatalf("rows = %v", rows)
 	}
 	for _, r := range rows {
@@ -169,7 +183,7 @@ func TestDryRunEndToEnd(t *testing.T) {
 	for i := range briefs {
 		briefs[i] = Brief{ID: "b" + string(rune('a'+i)), Category: []string{"KPI", "process", "chart"}[i%3], Prompt: "Brief"}
 	}
-	d := DryRun{Renderer: r, Briefs: briefs, Templates: []Template{{"midnight-blue", "corporate", false}, {"warm-coral", "editorial", false}, {"business-template", "seven-layout", true}}, OutputDir: filepath.Join(dir, "out"), ResultsDir: filepath.Join(dir, "results")}
+	d := DryRun{Renderer: r, Briefs: briefs, Templates: []Template{{Name: "midnight-blue", Family: "corporate"}, {Name: "warm-coral", Family: "editorial"}, {Name: "business-template", Family: "seven-layout", HeldOut: true}}, OutputDir: filepath.Join(dir, "out"), ResultsDir: filepath.Join(dir, "results")}
 	r.Density = 20 // thumbnails only; keeps the 36 renders fast
 	report, path, err := d.Run(context.Background())
 	if err != nil {

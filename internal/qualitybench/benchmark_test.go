@@ -22,7 +22,7 @@ func TestRunnerInvokesConfiguredAgentAndCapturesEvidence(t *testing.T) {
 	for i := range briefs {
 		briefs[i] = Brief{ID: string(rune('a' + i)), Category: "kpi", Prompt: "brief"}
 	}
-	r := Runner{Agent: []string{agent}, OutputDir: dir, Configurations: []string{"redesigned"}, Briefs: briefs, Templates: []Template{{"a", "corporate", false}, {"b", "editorial", false}, {"c", "seven-layout", true}}, Repetitions: 2}
+	r := Runner{Agent: []string{agent}, OutputDir: dir, Configurations: []string{"redesigned"}, Briefs: briefs, Templates: []Template{{Name: "a", Family: "corporate"}, {Name: "b", Family: "editorial"}, {Name: "c", Family: "seven-layout", HeldOut: true}}, Repetitions: 2}
 	report, err := r.Run(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -47,5 +47,21 @@ func TestApplyRatingsKeepsReleaseBarHonest(t *testing.T) {
 	s := ApplyRatings(report, []Rating{{RunID: "r", Reviewer: "a", Usability: 5}, {RunID: "r", Reviewer: "b", Usability: 5}})
 	if s.ReleaseDecision == "pass" {
 		t.Fatal("must not pass without paired improvement evidence")
+	}
+}
+
+func TestApplyRatingsRequiresTwoDistinctHumanReviewers(t *testing.T) {
+	report := &Report{Evidence: []Evidence{{Request: Request{RunID: "r", Configuration: "redesigned"}}}}
+	ratings := []Rating{
+		{RunID: "r", Reviewer: "alice", ReviewerType: "human", Usability: 5},
+		{RunID: "r", Reviewer: "alice", ReviewerType: "human", Usability: 5},
+		{RunID: "r", Reviewer: "vision-rater", ReviewerType: "llm", Usability: 5},
+	}
+	if got := ApplyRatings(report, ratings).RatedPairs; got != 0 {
+		t.Fatalf("rated pairs = %d, want 0 until a second human reviewer rates", got)
+	}
+	ratings = append(ratings, Rating{RunID: "r", Reviewer: "bob", ReviewerType: "human", Usability: 5})
+	if got := ApplyRatings(report, ratings).RatedPairs; got != 1 {
+		t.Fatalf("rated pairs = %d, want 1 with two distinct human reviewers", got)
 	}
 }

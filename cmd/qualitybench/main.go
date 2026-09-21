@@ -28,10 +28,10 @@ import (
 	"github.com/sebahrens/json2pptx/internal/qualitybench"
 )
 
-// defaultTemplates are the benchmark's three template families. They must
-// exist in -templates-dir; business-template is held out from day-to-day
-// development and pattern tuning (the four CLAUDE.md templates are not).
-const defaultTemplates = "midnight-blue:corporate,warm-coral:editorial,business-template:held-out-seven-layout:heldout"
+// defaultTemplates includes two bundled templates and one purpose-built
+// portability fixture that lives outside -templates-dir. Explicit paths are
+// resolved from the working directory, then relative to -templates-dir.
+const defaultTemplates = "midnight-blue:corporate,warm-coral:editorial,portability-side-logo=../tests/quality/fixtures/portability/templates/portability-side-logo.pptx:portability:heldout"
 
 func main() {
 	if err := run(); err != nil {
@@ -51,12 +51,12 @@ func run() error {
 	flag.StringVar(&out, "out", "output/quality-benchmark", "evidence directory (decks, renders, blind contact sheets)")
 	flag.StringVar(&resultsDir, "results-dir", "tests/quality/results", "directory for the results JSON")
 	flag.StringVar(&templatesDir, "templates-dir", "templates", "templates directory")
-	flag.StringVar(&templatesSpec, "templates", defaultTemplates, "comma list of name:family[:heldout]")
+	flag.StringVar(&templatesSpec, "templates", defaultTemplates, "comma list of name:family[:heldout] or name=path:family[:heldout]")
 	flag.StringVar(&briefsPath, "briefs", "tests/quality/agent_briefs.json", "briefs JSON")
 	flag.StringVar(&bin, "json2pptx", "", "json2pptx binary (default: build ./cmd/json2pptx into a temp dir)")
 	flag.IntVar(&reps, "repetitions", 2, "agent-mode repetitions per configuration")
 	flag.StringVar(&reportPath, "report", "", "results JSON to apply -ratings to")
-	flag.StringVar(&ratingsPath, "ratings", "", "filled ratings CSV (blind_id,reviewer,...) to apply to -report")
+	flag.StringVar(&ratingsPath, "ratings", "", "comma-separated filled reviewer CSVs to apply to -report")
 	flag.Parse()
 
 	if ratingsPath != "" {
@@ -145,20 +145,39 @@ func loadBriefs(path string) ([]qualitybench.Brief, error) {
 	return briefs, nil
 }
 
-// parseTemplates parses name:family[:heldout] entries and fails fast when a
-// template file is missing, so the benchmark never silently references
-// templates that do not exist.
+// parseTemplates parses name:family[:heldout] and name=path:family[:heldout]
+// entries and fails fast when a template file is missing. Relative explicit
+// paths are tried from the working directory and then from -templates-dir.
 func parseTemplates(spec, dir string) ([]qualitybench.Template, error) {
 	var out []qualitybench.Template
-	for _, entry := range strings.Split(spec, ",") {
-		parts := strings.Split(strings.TrimSpace(entry), ":")
-		if len(parts) < 2 || parts[0] == "" {
-			return nil, fmt.Errorf("template entry %q must be name:family[:heldout]", entry)
+	for _, raw := range strings.Split(spec, ",") {
+		entry := strings.TrimSpace(raw)
+		heldOut := strings.HasSuffix(entry, ":heldout")
+		if heldOut {
+			entry = strings.TrimSuffix(entry, ":heldout")
 		}
-		if _, err := os.Stat(filepath.Join(dir, parts[0]+".pptx")); err != nil {
-			return nil, fmt.Errorf("benchmark template %q not found in %s", parts[0], dir)
+		sep := strings.LastIndex(entry, ":")
+		if sep <= 0 || sep == len(entry)-1 {
+			return nil, fmt.Errorf("template entry %q must be name:family[:heldout] or name=path:family[:heldout]", raw)
 		}
-		out = append(out, qualitybench.Template{Name: parts[0], Family: parts[1], HeldOut: len(parts) > 2 && parts[2] == "heldout"})
+		locator, family := entry[:sep], entry[sep+1:]
+		name, explicitPath, hasPath := strings.Cut(locator, "=")
+		if name == "" || family == "" || (hasPath && explicitPath == "") {
+			return nil, fmt.Errorf("invalid template entry %q", raw)
+		}
+		tmpl := qualitybench.Template{Name: name, Family: family, HeldOut: heldOut}
+		path := filepath.Join(dir, name+".pptx")
+		if hasPath {
+			path = explicitPath
+			if _, err := os.Stat(path); err != nil && !filepath.IsAbs(path) {
+				path = filepath.Join(dir, path)
+			}
+			tmpl.Path, _ = filepath.Abs(path)
+		}
+		if _, err := os.Stat(path); err != nil {
+			return nil, fmt.Errorf("benchmark template %q not found at %s", name, path)
+		}
+		out = append(out, tmpl)
 	}
 	return out, nil
 }
@@ -196,28 +215,13 @@ func applyRatings(reportPath, ratingsPath string) error {
 			runByBlind[ev.BlindID] = ev.Request.RunID
 		}
 	}
-	f, err := os.Open(ratingsPath) // #nosec G304 -- operator-supplied path
-	if err != nil {
-		return err
-	}
-	defer func() { _ = f.Close() }()
-	rows, err := csv.NewReader(f).ReadAll()
-	if err != nil {
-		return err
-	}
 	var ratings []qualitybench.Rating
-	for i, row := range rows {
-		if i == 0 || len(row) < 9 || row[1] == "" {
-			continue
+	for _, path := range strings.Split(ratingsPath, ",") {
+		parsed, err := readRatingsCSV(strings.TrimSpace(path), runByBlind)
+		if err != nil {
+			return err
 		}
-		run, ok := runByBlind[row[0]]
-		if !ok {
-			return fmt.Errorf("ratings row %d: unknown blind_id %q", i+1, row[0])
-		}
-		n := func(s string) int { v, _ := strconv.Atoi(strings.TrimSpace(s)); return v }
-		b := func(s string) bool { v, _ := strconv.ParseBool(strings.TrimSpace(s)); return v }
-		ratings = append(ratings, qualitybench.Rating{RunID: run, Reviewer: row[1], Readability: n(row[2]), Hierarchy: n(row[3]),
-			TemplateFidelity: n(row[4]), FactualCompleteness: n(row[5]), Usability: n(row[6]), LostCriticalFact: b(row[7]), CriticalTemplateDefect: b(row[8])})
+		ratings = append(ratings, parsed...)
 	}
 	s := qualitybench.ApplyRatings(&report, ratings)
 	report.GeneratedAt = time.Now().UTC()
@@ -227,6 +231,106 @@ func applyRatings(reportPath, ratingsPath string) error {
 	fmt.Printf("rated pairs: %d, usable: %.0f%% (Wilson %.2f–%.2f), disagreements: %d\nrelease decision: %s\n",
 		s.RatedPairs, 100*s.UsableRate, s.WilsonLow, s.WilsonHigh, s.Disagreements, s.ReleaseDecision)
 	return nil
+}
+
+func readRatingsCSV(path string, runByBlind map[string]string) ([]qualitybench.Rating, error) {
+	f, err := os.Open(path) // #nosec G304 -- operator-supplied path
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = f.Close() }()
+	rows, err := csv.NewReader(f).ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("ratings file %s is empty", path)
+	}
+	parser := ratingCSV{path: path, cols: map[string]int{}}
+	for i, name := range rows[0] {
+		parser.cols[strings.TrimSpace(name)] = i
+	}
+	required := []string{"blind_id", "reviewer", "readability", "hierarchy", "template_fidelity", "factual_completeness", "usability", "lost_critical_fact", "critical_template_defect"}
+	for _, name := range required {
+		if _, ok := parser.cols[name]; !ok {
+			return nil, fmt.Errorf("ratings file %s missing column %q", path, name)
+		}
+	}
+	var ratings []qualitybench.Rating
+	for i, row := range rows[1:] {
+		blindID, reviewer := parser.value(row, "blind_id"), parser.value(row, "reviewer")
+		if reviewer == "" {
+			continue
+		}
+		run, ok := runByBlind[blindID]
+		if !ok {
+			return nil, fmt.Errorf("ratings %s row %d: unknown blind_id %q", path, i+2, blindID)
+		}
+		rating, err := parser.parse(row, i+2, run, reviewer)
+		if err != nil {
+			return nil, err
+		}
+		ratings = append(ratings, rating)
+	}
+	return ratings, nil
+}
+
+type ratingCSV struct {
+	path string
+	cols map[string]int
+}
+
+func (p ratingCSV) value(row []string, name string) string {
+	i, ok := p.cols[name]
+	if !ok || i >= len(row) {
+		return ""
+	}
+	return strings.TrimSpace(row[i])
+}
+
+func (p ratingCSV) score(row []string, line int, name string) (int, error) {
+	v, err := strconv.Atoi(p.value(row, name))
+	if err != nil || v < 1 || v > 5 {
+		return 0, fmt.Errorf("ratings %s row %d: %s must be an integer from 1 to 5", p.path, line, name)
+	}
+	return v, nil
+}
+
+func (p ratingCSV) boolean(row []string, line int, name string) (bool, error) {
+	v, err := strconv.ParseBool(p.value(row, name))
+	if err != nil {
+		return false, fmt.Errorf("ratings %s row %d: %s must be true or false", p.path, line, name)
+	}
+	return v, nil
+}
+
+func (p ratingCSV) parse(row []string, line int, run, reviewer string) (qualitybench.Rating, error) {
+	values := make([]int, 5)
+	for i, name := range []string{"readability", "hierarchy", "template_fidelity", "factual_completeness", "usability"} {
+		v, err := p.score(row, line, name)
+		if err != nil {
+			return qualitybench.Rating{}, err
+		}
+		values[i] = v
+	}
+	lost, err := p.boolean(row, line, "lost_critical_fact")
+	if err != nil {
+		return qualitybench.Rating{}, err
+	}
+	defect, err := p.boolean(row, line, "critical_template_defect")
+	if err != nil {
+		return qualitybench.Rating{}, err
+	}
+	reviewerType := strings.ToLower(p.value(row, "reviewer_type"))
+	if reviewerType == "" {
+		reviewerType = "human"
+	}
+	if reviewerType != "human" && reviewerType != "llm" {
+		return qualitybench.Rating{}, fmt.Errorf("ratings %s row %d: reviewer_type must be human or llm", p.path, line)
+	}
+	return qualitybench.Rating{RunID: run, Reviewer: reviewer, ReviewerType: reviewerType,
+		Readability: values[0], Hierarchy: values[1], TemplateFidelity: values[2],
+		FactualCompleteness: values[3], Usability: values[4], LostCriticalFact: lost, CriticalTemplateDefect: defect}, nil
 }
 
 func writeJSON(path string, v any) error {
