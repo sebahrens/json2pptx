@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Exec-summary shared support budget (go-slide-creator-tp23k.21).**
+  `exec-summary` now reports `BODY_TOO_LONG` when five points and a bottom
+  line together contain more than about 178 support characters per point.
+  One longer support can fit beside shorter ones; three or four points and
+  summaries without a bottom line retain the 200-character field maximum.
+  The fit report and schema describe the dense target. Measurements used all
+  four bundled templates. Schema version advances to 4.98.0.
+
 - **Dual-org-ladder six-row title target (go-slide-creator-tp23k.20).**
   `dual-org-ladder` now reports `BODY_TOO_LONG` for member titles over about
   75 characters when six role rows share a slide. Organisation headers and

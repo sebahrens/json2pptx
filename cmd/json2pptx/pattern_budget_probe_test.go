@@ -966,6 +966,73 @@ func TestDualOrgLadderBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestExecSummaryBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_EXEC_SUMMARY_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_EXEC_SUMMARY_BUDGET_PROBE=1")
+	}
+	for count := 3; count <= 5; count++ {
+		for _, bottom := range []bool{false, true} {
+			for _, field := range []string{"lead", "support", "bottom_line", "all_lead", "all_support", "paired_lead", "paired_support", "full_bottom_support", "full_support_bottom"} {
+				if field == "bottom_line" && !bottom {
+					continue
+				}
+				if (field == "full_bottom_support" || field == "full_support_bottom") && !bottom {
+					continue
+				}
+				maxChars := map[string]int{"lead": 90, "support": 200, "bottom_line": 160, "all_lead": 90, "all_support": 200, "paired_lead": 90, "paired_support": 200, "full_bottom_support": 200, "full_support_bottom": 160}[field]
+				budget := probeReadableBudget(t, "exec-summary", maxChars, func(length int) any {
+					v := &patterns.ExecSummaryValues{}
+					for i := 0; i < count; i++ {
+						v.Points = append(v.Points, patterns.ExecSummaryPoint{Lead: "A concise conclusion", Support: "Evidence supports the conclusion."})
+					}
+					if bottom {
+						v.BottomLine = "Act on the recommendation."
+					}
+					copy := budgetProbeCopy(length)
+					switch field {
+					case "lead":
+						v.Points[0].Lead = copy
+					case "support":
+						v.Points[0].Support = copy
+					case "bottom_line":
+						v.BottomLine = copy
+					case "all_lead":
+						for i := range v.Points {
+							v.Points[i].Lead = copy
+						}
+					case "all_support":
+						for i := range v.Points {
+							v.Points[i].Support = copy
+						}
+					case "paired_lead":
+						for i := range v.Points {
+							v.Points[i].Lead = copy
+							v.Points[i].Support = budgetProbeCopy(200)
+						}
+					case "paired_support":
+						for i := range v.Points {
+							v.Points[i].Lead = budgetProbeCopy(90)
+							v.Points[i].Support = copy
+						}
+					case "full_bottom_support":
+						v.BottomLine = budgetProbeCopy(160)
+						for i := range v.Points {
+							v.Points[i].Support = copy
+						}
+					case "full_support_bottom":
+						v.BottomLine = copy
+						for i := range v.Points {
+							v.Points[i].Support = budgetProbeCopy(200)
+						}
+					}
+					return v
+				})
+				t.Logf("points=%d bottom=%t field=%s budget=%d", count, bottom, field, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

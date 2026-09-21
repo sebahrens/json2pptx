@@ -8,6 +8,39 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+func TestExecSummaryFivePointSupportBudget(t *testing.T) {
+	p := &execSummary{}
+	v := &ExecSummaryValues{BottomLine: "Act now"}
+	for i := 0; i < 5; i++ {
+		v.Points = append(v.Points, ExecSummaryPoint{Lead: "Conclusion", Support: strings.Repeat("S", 200)})
+	}
+	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "points.support") || !strings.Contains(got[0], "about 178") {
+		t.Fatalf("dense support warning: %v", got)
+	}
+	for i := range v.Points {
+		v.Points[i].Support = strings.Repeat("S", 178)
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("measured dense target should fit: %v", got)
+	}
+	v.Points[0].Support = strings.Repeat("S", 200)
+	v.Points[1].Support = "Brief"
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("one long support with short neighbors should fit: %v", got)
+	}
+	v.BottomLine = ""
+	for i := range v.Points {
+		v.Points[i].Support = strings.Repeat("S", 200)
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("without bottom line schema maxima should fit: %v", got)
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
+		t.Fatalf("nil values: %v", got)
+	}
+}
+
 // fullThemeCtx returns an expand context with a midnight-blue-like theme so
 // contrast-aware colour choices resolve deterministically.
 func fullThemeCtx() ExpandContext {

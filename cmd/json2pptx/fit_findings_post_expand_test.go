@@ -261,6 +261,14 @@ func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testin
 	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 75 title characters")
 }
 
+func TestExecSummaryDenseSupportWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.ExecSummaryValues{BottomLine: "Act now"}
+	for i := 0; i < 5; i++ {
+		values.Points = append(values.Points, patterns.ExecSummaryPoint{Lead: "Conclusion", Support: strings.Repeat("S", 200)})
+	}
+	assertBudgetFindingAcrossTemplates(t, "exec-summary", values, "points.support", "about 178 support characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

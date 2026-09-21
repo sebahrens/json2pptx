@@ -130,11 +130,26 @@ func (e *execSummary) NewValues() any       { return &ExecSummaryValues{} }
 func (e *execSummary) NewOverrides() any    { return &ExecSummaryOverrides{} }
 func (e *execSummary) NewCellOverride() any { return &ExecSummaryCellOverride{} }
 
+func (e *execSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*ExecSummaryValues)
+	if !ok || v == nil || len(v.Points) < execSummaryMaxPoints || strings.TrimSpace(v.BottomLine) == "" {
+		return nil
+	}
+	total := 0
+	for _, point := range v.Points {
+		total += runeLen(point.Support)
+	}
+	if total <= 178*len(v.Points) {
+		return nil
+	}
+	return []string{fmt.Sprintf("%s: exec-summary points.support contains %d characters across five points with a bottom line; the shared space holds about 178 support characters per point — shorten supporting sentences or split the summary", ErrCodeBodyTooLong, total)}
+}
+
 func (e *execSummary) Schema() *Schema {
 	pointSchema := ObjectSchema(
 		map[string]*Schema{
 			"lead":    StringSchema(execSummaryLeadMax).WithDescription("Bold lead-in statement — the conclusion, stated as a full sentence (≤90 chars)"),
-			"support": StringSchema(execSummarySupportMax).WithDescription("One supporting sentence with the evidence (≤200 chars)"),
+			"support": StringSchema(execSummarySupportMax).WithDescription("One supporting sentence with the evidence (≤200 chars); with five points and a bottom line, target about 178 per point when all supports are populated"),
 		},
 		[]string{"lead"},
 	).WithAdditionalProperties(false)
