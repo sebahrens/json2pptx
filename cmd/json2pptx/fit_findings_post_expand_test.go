@@ -244,6 +244,38 @@ func TestNumberedStepBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) 
 	}
 }
 
+func TestKPIInlineBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := patterns.KPINupValues{}
+	for i := 0; i < 5; i++ {
+		values = append(values, patterns.KPICell{Big: "42%", Small: "Revenue"})
+	}
+	values[3].Big = "12345678"
+	values[3].Small = strings.Repeat("C", 17)
+	values[3].Icon = &patterns.IconRef{Name: "rocket"}
+	encoded, err := json.Marshal(values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range schemaMaximaTemplates {
+		t.Run(name, func(t *testing.T) {
+			layouts, width, height := schemaMaximaLayouts(t, name)
+			deck := &PresentationInput{Template: name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title",
+				Pattern: &PatternInput{Name: "kpi-inline", Values: encoded},
+			}}}
+			found := false
+			for _, finding := range collectFitFindings(deck, layouts, width, height, nil) {
+				if finding.Code == patterns.ErrCodeBodyTooLong && strings.Contains(finding.Message, "values[3].small") && strings.Contains(finding.Message, "about 16 caption characters") {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatal("kpi-inline budget missing from fit report")
+			}
+		})
+	}
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

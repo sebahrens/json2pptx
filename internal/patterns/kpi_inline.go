@@ -55,10 +55,62 @@ func (k *kpiInline) NewValues() any       { return &KPINupValues{} }
 func (k *kpiInline) NewOverrides() any    { return &KPIOverrides{} }
 func (k *kpiInline) NewCellOverride() any { return &KPICellOverride{} }
 
+// Measured by TestKPIInlineBudgetProbe across all four bundled templates at
+// default sizes. The icon consumes horizontal space; number and delta lines
+// then determine whether the caption can stay at the readable floor.
+func kpiInlineCaptionBudget(cells, bigChars, subChars int, icon bool) int {
+	if !icon || cells <= 4 {
+		return 40
+	}
+	if cells == 5 {
+		if bigChars >= 8 {
+			if subChars > 0 {
+				return 0
+			}
+			return 16
+		}
+		if subChars > 0 {
+			return 31
+		}
+		return 40
+	}
+	if bigChars >= 6 {
+		if subChars > 0 {
+			return 0
+		}
+		return 11
+	}
+	if subChars == 0 {
+		return 31
+	}
+	if subChars >= 11 {
+		return 11
+	}
+	return 21
+}
+
+func (k *kpiInline) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*KPINupValues)
+	if !ok || v == nil {
+		return nil
+	}
+	var warnings []string
+	for i, cell := range *v {
+		icon := cell.Icon != nil && !cell.Icon.IsEmpty()
+		budget := kpiInlineCaptionBudget(len(*v), runeLen(cell.Big), runeLen(cell.Sub), icon)
+		if budget == 0 {
+			warnings = append(warnings, fmt.Sprintf("%s: kpi-inline values[%d] combines an icon, %d-character number and %d-character delta in a %d-KPI bar; no readable caption fits — shorten the number, omit the delta/icon, or use fewer KPIs", ErrCodeBodyTooLong, i, runeLen(cell.Big), runeLen(cell.Sub), len(*v)))
+		} else if n := runeLen(cell.Small); n > budget {
+			warnings = append(warnings, fmt.Sprintf("%s: kpi-inline values[%d].small is %d characters; a %d-KPI bar with icon=%t, %d-character number and %d-character delta holds about %d caption characters — shorten the caption or simplify the cell", ErrCodeBodyTooLong, i, n, len(*v), icon, runeLen(cell.Big), runeLen(cell.Sub), budget))
+		}
+	}
+	return warnings
+}
+
 func (k *kpiInline) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
-			"values":         ArraySchema(kpiCellSchema(), 2, 6).WithDescription("2-6 KPI cells rendered as a compact horizontal bar"),
+			"values":         ArraySchema(kpiCellSchema(), 2, 6).WithDescription("2-6 KPI cells in a compact bar. Caption budget without icons: 40 chars. With icons at 5 KPIs: 40 if number <=7 chars/no delta, 31 with delta, or 16 for an 8-char number/no delta; an 8-char number plus delta leaves no readable caption. At 6 KPIs with icons: number <=5 chars holds 31 without delta, 21 with a 1-10 char delta, 11 with an 11-12 char delta; number >=6 chars holds 11 without delta and no readable caption with delta."),
 			"overrides":      kpiOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},

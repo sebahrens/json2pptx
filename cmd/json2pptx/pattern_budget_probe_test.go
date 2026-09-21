@@ -208,6 +208,153 @@ func TestNumberedStepBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestKPIInlineBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_KPI_INLINE_BUDGET_PROBE") != "1" {
+		t.Skip("manual kpi-inline budget calibration probe")
+	}
+	pat, _ := patterns.Default().Get("kpi-inline")
+	maximum, note := schemaMaximumValues(pat)
+	if note != "" {
+		t.Fatal(note)
+	}
+	encodedMaximum, err := json.Marshal(maximum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, templateName := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, templateName)
+		input := &PresentationInput{Template: templateName, Slides: []SlideInput{{SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "kpi-inline", Values: encodedMaximum}}}}
+		for _, finding := range collectReadabilityFindings(input, layouts, width, height) {
+			t.Logf("kpi-inline schema max %s: %s", templateName, finding.Message)
+		}
+	}
+	for cells := 2; cells <= 6; cells++ {
+		for _, sub := range []bool{false, true} {
+			for _, field := range []string{"big", "small", "sub"} {
+				if field == "sub" && !sub {
+					continue
+				}
+				budget := kpiInlineReadableBudget(t, cells, sub, field)
+				t.Logf("kpi-inline cells=%d sub=%t field=%s budget=%d", cells, sub, field, budget)
+			}
+		}
+	}
+	for cells := 5; cells <= 6; cells++ {
+		for bigLen := 1; bigLen <= 8; bigLen++ {
+			for subLen := 0; subLen <= 12; subLen++ {
+				budget := kpiInlineCaptionFullBudget(t, cells, bigLen, subLen, true)
+				t.Logf("kpi-inline dense icon cells=%d big=%d sub=%d budget=%d", cells, bigLen, subLen, budget)
+			}
+		}
+	}
+}
+
+func kpiInlineCaptionFullBudget(t *testing.T, cells, bigLen, subLen int, icon bool) int {
+	t.Helper()
+	type geometry struct {
+		name          string
+		layouts       []types.LayoutMetadata
+		width, height int64
+	}
+	var geometries []geometry
+	for _, name := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, name)
+		geometries = append(geometries, geometry{name, layouts, width, height})
+	}
+	clean := func(length int) bool {
+		v := patterns.KPINupValues{}
+		for i := 0; i < cells; i++ {
+			v = append(v, patterns.KPICell{Big: "42%", Small: "Revenue"})
+		}
+		v[0].Big = strings.Repeat("8", bigLen)
+		if subLen > 0 {
+			v[0].Sub = strings.Repeat("+", subLen)
+		}
+		if icon {
+			v[0].Icon = &patterns.IconRef{Name: "rocket"}
+		}
+		v[0].Small = strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, geom := range geometries {
+			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "kpi-inline", Values: encoded}}}}
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+				return false
+			}
+		}
+		return true
+	}
+	lo, hi := 0, 40
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if clean(mid) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
+func kpiInlineReadableBudget(t *testing.T, cells int, sub bool, field string) int {
+	t.Helper()
+	type geometry struct {
+		name          string
+		layouts       []types.LayoutMetadata
+		width, height int64
+	}
+	var geometries []geometry
+	for _, name := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, name)
+		geometries = append(geometries, geometry{name, layouts, width, height})
+	}
+	limit := map[string]int{"big": 8, "small": 40, "sub": 12}[field]
+	clean := func(length int) bool {
+		v := patterns.KPINupValues{}
+		for i := 0; i < cells; i++ {
+			cell := patterns.KPICell{Big: "42%", Small: "Revenue"}
+			if sub {
+				cell.Sub = "+5%"
+			}
+			v = append(v, cell)
+		}
+		copy := strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+		switch field {
+		case "big":
+			v[0].Big = copy
+		case "small":
+			v[0].Small = copy
+		case "sub":
+			v[0].Sub = copy
+		}
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, geom := range geometries {
+			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "kpi-inline", Values: encoded},
+			}}}
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+				return false
+			}
+		}
+		return true
+	}
+	lo, hi := 0, limit
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		if clean(mid) {
+			lo = mid
+		} else {
+			hi = mid - 1
+		}
+	}
+	return lo
+}
+
 func numberedStepReadableBudget(t *testing.T, style string, steps int, bodies bool, field string) int {
 	t.Helper()
 	type geometry struct {

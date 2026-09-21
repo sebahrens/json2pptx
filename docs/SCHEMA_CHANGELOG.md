@@ -8,6 +8,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Inline KPI combined-copy budgets (go-slide-creator-tp23k.10).**
+  `kpi-inline` now emits `BODY_TOO_LONG` for dense icon cells when the
+  caption exceeds the readable target implied by KPI count, number length
+  and delta length. Five or six cells without icons, and up to four cells
+  with icons, retain the 40-character caption limit. At five cells, an icon
+  with an eight-character number holds about 16 caption characters without
+  a delta and none with one; at six cells the limit can fall to 11 or zero.
+  Schema guidance keeps the 40-character sparse maximum. Measurements used
+  all four templates. Schema version advances to 4.85.0; the input
+  fingerprint is unchanged.
+
 - **Six-step chevron copy target (go-slide-creator-tp23k.9).** A
   `numbered-step-strip` with six chevrons now emits `BODY_TOO_LONG` naming
   any label above the measured 47-character readable target. Three to five
