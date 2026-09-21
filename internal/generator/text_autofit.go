@@ -40,6 +40,11 @@ type autofitConfig struct {
 	// isTitle marks a title placeholder: overflow is reported as
 	// TITLE_OVERFLOW and no paragraphs are trimmed.
 	isTitle bool
+	// overrideNoAutofit allows a content-populated display title to replace a
+	// template's noAutofit directive with measured shrink-to-fit protection.
+	// Layout placeholder copy is often short, while authored closing statements
+	// can wrap upward out of a bottom-anchored box when noAutofit is preserved.
+	overrideNoAutofit bool
 
 	// viewingMode / textRole select the readability policy the final fit is
 	// judged against (TEXT_BELOW_READABLE_MIN). Empty role = not checked.
@@ -60,6 +65,10 @@ func withInheritedTextStyle(st template.InheritedTextStyle, fontName string) aut
 // withTitleRole marks the shape as a title placeholder.
 func withTitleRole() autofitOption {
 	return func(c *autofitConfig) { c.isTitle = true }
+}
+
+func withNoAutofitOverride() autofitOption {
+	return func(c *autofitConfig) { c.overrideNoAutofit = true }
 }
 
 // withThemeFont sets the theme font name for autofit calculations.
@@ -193,6 +202,10 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 // that overflow is likely under the suppressed autofit.
 func handleNoAutofitDirective(bp *bodyPropertiesXML, shape *shapeXML, cfg *autofitConfig) bool {
 	if !strings.Contains(bp.Inner, "noAutofit") && !strings.Contains(bp.Inner, "noAutoFit") {
+		return false
+	}
+	if cfg.overrideNoAutofit {
+		bp.Inner = noAutofitRegexp.ReplaceAllString(bp.Inner, "")
 		return false
 	}
 	if cfg.findings == nil {
@@ -606,6 +619,8 @@ var spAutoFitRegexp = regexp.MustCompile(`<(?:a:)?spAutoFit\b[^>]*/>|<(?:a:)?spA
 // values, since the template's normAutofit was calibrated for placeholder text,
 // not for the authored content we are populating.
 var normAutofitRegexp = regexp.MustCompile(`<(?:a:)?normAutofit\b[^>]*/>|<(?:a:)?normAutofit\b[^>]*>.*?</(?:a:)?normAutofit>`)
+
+var noAutofitRegexp = regexp.MustCompile(`(?i)<(?:a:)?noautofit\b[^>]*/>|<(?:a:)?noautofit\b[^>]*>.*?</(?:a:)?noautofit>`)
 
 // replaceSpAutoFitWithNorm strips <a:spAutoFit/> from the shape's bodyPr Inner XML.
 // In OOXML, spAutoFit means "grow the text box to fit the text" — the opposite of what

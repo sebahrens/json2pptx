@@ -76,6 +76,23 @@ func TestDetectTablePreflight_RowsTruncated(t *testing.T) {
 	}
 }
 
+func TestDetectTablePreflight_WrappedRowsUseMeasuredHeight(t *testing.T) {
+	rows := [][]types.TableCell{
+		{{Content: "Customer identity migration and regional consent controls"}, {Content: "プラットフォーム運用チーム"}},
+		{{Content: "Datenmigration und Abnahme durch alle Landesgesellschaften"}, {Content: "進行中 — validation pending"}},
+	}
+	findings := DetectTablePreflight(TablePreflightInput{
+		Path:    "/slides/0/content/0",
+		Headers: []string{"Workstream", "Owner"},
+		Rows:    rows,
+		// Three fixed-height rows would fit. The wrapped content does not.
+		Bounds: types.BoundingBox{Width: 2400000, Height: 3 * defaultRowHeight},
+	})
+	if !containsCode(findings, patterns.ErrCodeTableRowsTruncated) {
+		t.Fatalf("wrapped row measurement should predict truncation, got %v", findingCodes(findings))
+	}
+}
+
 func TestDetectTablePreflight_ColumnWidthDeficit(t *testing.T) {
 	// Two columns where one has a very long unbreakable word that won't fit.
 	headers := []string{"A", "VeryLongTokenThatCannotBreakAndShouldOverflowAvailableWidth"}

@@ -143,85 +143,62 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		}
 	}
 
-	// After all font scaling, determine how many rows actually fit.
-	// If the table still overflows at the minimum font size, truncate
-	// data rows and replace the last visible row with an italic summary.
-	//
-	// IMPORTANT: The row height floor here MUST match the rendering floor
-	// below (defaultRowHeight). Using a lower floor causes the truncation
-	// check to overestimate capacity, leading to table overflow.
+	// Calculate widths before row capacity. Wrapped line counts depend on the
+	// actual column widths, so fixed-height capacity math can claim a table fits
+	// while PowerPoint or LibreOffice grows its rows beyond the frame.
+	colWidths, colWidthDeficit := calculateColumnWidthsWithDiag(numCols, config.Bounds.Width, table.Headers, table.Rows, config.DefaultSize)
+
+	// Determine how many measured rows fit. If the table still overflows at the
+	// minimum font size, truncate data rows and replace the last visible row
+	// with an italic summary. The same measured heights are emitted below.
 	// renderRows is the row set actually emitted. Rendering must be pure over
 	// the input spec, so truncation builds a fresh slice here instead of
 	// mutating the caller-owned table.Rows (and its shared backing array).
 	renderRows := table.Rows
 	summaryRowIdx := -1 // index into renderRows; -1 means no truncation
-	if config.Bounds.Height > 0 {
-		fontRatio := float64(config.DefaultSize) / float64(defaultFontSize)
-		scaledRowHeight := int64(float64(defaultRowHeight) * fontRatio)
-		if scaledRowHeight < defaultRowHeight {
-			scaledRowHeight = defaultRowHeight
-		}
-		maxVisibleRows := int(config.Bounds.Height / scaledRowHeight)
-		headerRowCount := 1 // header always occupies one row
-		dataRowCapacity := maxVisibleRows - headerRowCount
-		if dataRowCapacity < 1 {
-			dataRowCapacity = 1
-		}
-		if len(table.Rows) > dataRowCapacity {
-			overflow := len(table.Rows) - dataRowCapacity + 1 // +1 to make room for summary row
-			keep := len(table.Rows) - overflow
-			// Copy the retained rows into a fresh slice so the append below
-			// cannot write the summary row into the caller's backing array.
-			truncatedRows := make([][]types.TableCell, keep, keep+1)
-			copy(truncatedRows, table.Rows[:keep])
-			// Build summary row with the correct number of columns
-			summaryRow := make([]types.TableCell, numCols)
-			summaryRow[0] = types.TableCell{
-				Content: fmt.Sprintf("...and %d more rows", overflow),
-				ColSpan: 1,
-				RowSpan: 1,
-			}
-			for i := 1; i < numCols; i++ {
-				summaryRow[i] = types.TableCell{Content: "", ColSpan: 1, RowSpan: 1}
-			}
-			renderRows = append(truncatedRows, summaryRow)
-			summaryRowIdx = len(renderRows) - 1
-			numRows = len(renderRows) + 1 // +1 for header
+	rowPlan := planTableRows(table, colWidths, config)
+	if rowPlan.HiddenRows > 0 {
+		overflow := rowPlan.HiddenRows
+		keep := rowPlan.KeptRows
+		// Copy the retained rows into a fresh slice so the append below
+		// cannot write the summary row into the caller's backing array.
+		truncatedRows := make([][]types.TableCell, keep, keep+1)
+		copy(truncatedRows, table.Rows[:keep])
+		// Build summary row with the correct number of columns.
+		summaryRow := summaryTableRow(numCols, overflow)
+		renderRows = append(truncatedRows, summaryRow)
+		summaryRowIdx = len(renderRows) - 1
 
-			// Warn about truncation so users don't ship decks with missing data.
-			tableID := strings.Join(table.Headers, ", ")
-			slog.Warn("table rows truncated: data exceeds allocated height",
-				slog.String("headers", tableID),
-				slog.Int("total_rows", len(truncatedRows)+overflow),
-				slog.Int("visible_rows", len(truncatedRows)),
-				slog.Int("hidden_rows", overflow),
-			)
+		// Warn about truncation so users don't ship decks with missing data.
+		tableID := strings.Join(table.Headers, ", ")
+		slog.Warn("table rows truncated: data exceeds allocated height",
+			slog.String("headers", tableID),
+			slog.Int("total_rows", len(truncatedRows)+overflow),
+			slog.Int("visible_rows", len(truncatedRows)),
+			slog.Int("hidden_rows", overflow),
+		)
 
-			// Site 5: dropping authored rows is DATA LOSS, not a layout nit —
-			// three regions' financials simply vanish from the deck. The action
-			// is "refuse" so the strict-fit gate and the deck score both treat
-			// it as blocking; the fix (the row to split at) is already computed
-			// here, so the deck is trivially repairable (go-slide-creator-oaif).
-			findings = append(findings, patterns.FitFinding{
-				ValidationError: patterns.ValidationError{
-					Code:    patterns.ErrCodeTableRowsTruncated,
-					Message: fmt.Sprintf("table rows truncated: %d of %d rows hidden (headers: %s) — the hidden rows are absent from the deck; split the table at row %d", overflow, len(truncatedRows)+overflow, tableID, len(truncatedRows)),
-					Fix: &patterns.FixSuggestion{
-						Kind: "split_at_row",
-						Params: map[string]any{
-							"visible_rows": len(truncatedRows),
-							"hidden_rows":  overflow,
-							"split_at_row": len(truncatedRows),
-						},
+		// Site 5: dropping authored rows is DATA LOSS, not a layout nit —
+		// three regions' financials simply vanish from the deck. The action
+		// is "refuse" so the strict-fit gate and the deck score both treat
+		// it as blocking; the fix (the row to split at) is already computed
+		// here, so the deck is trivially repairable (go-slide-creator-oaif).
+		findings = append(findings, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Code:    patterns.ErrCodeTableRowsTruncated,
+				Message: fmt.Sprintf("table rows truncated: %d of %d rows hidden (headers: %s) — the hidden rows are absent from the deck; split the table at row %d", overflow, len(truncatedRows)+overflow, tableID, len(truncatedRows)),
+				Fix: &patterns.FixSuggestion{
+					Kind: "split_at_row",
+					Params: map[string]any{
+						"visible_rows": len(truncatedRows),
+						"hidden_rows":  overflow,
+						"split_at_row": len(truncatedRows),
 					},
 				},
-				Action: "refuse",
-			})
-		}
+			},
+			Action: "refuse",
+		})
 	}
-
-	// Calculate dimensions
-	colWidths, colWidthDeficit := calculateColumnWidthsWithDiag(numCols, config.Bounds.Width, table.Headers, renderRows, config.DefaultSize)
 
 	// Site 10: emit warning when column widths fell back to global floor.
 	if colWidthDeficit {
@@ -235,30 +212,9 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		})
 	}
 
-	// Dynamic row height: fill the placeholder evenly, with a minimum floor.
-	// When rows are clamped to defaultRowHeight and the total exceeds bounds,
-	// cap totalHeight to bounds so the table doesn't overflow the slide.
-	var rowHeight, totalHeight int64
-	if config.Bounds.Height > 0 {
-		// Content-driven: rows are sized for their text (renderers grow rows
-		// that wrap) instead of being stretched to fill the placeholder, which
-		// produced tall rows with small text. Never exceed the even split.
-		computedRowHeight := config.Bounds.Height / int64(numRows)
-		if natural := contentRowHeight(config.DefaultSize); computedRowHeight > natural {
-			computedRowHeight = natural
-		}
-		if computedRowHeight < defaultRowHeight {
-			computedRowHeight = defaultRowHeight
-		}
-		rowHeight = computedRowHeight
-		totalHeight = rowHeight * int64(numRows)
-		if totalHeight > config.Bounds.Height {
-			totalHeight = config.Bounds.Height
-		}
-	} else {
-		rowHeight = int64(defaultRowHeight)
-		totalHeight = rowHeight * int64(numRows)
-	}
+	// Row heights come from the same content measurements used for capacity.
+	rowHeights := rowPlan.RowHeights
+	totalHeight := rowPlan.TotalHeight
 
 	// A content-sized table is centred in its placeholder rather than hung from
 	// the top: rows are sized for their text, so a 5-row table in a full-height
@@ -327,9 +283,9 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 
 	// Header row
 	if len(table.HeaderCells) > 0 {
-		xml.WriteString(generateHeaderRowWithMerges(table.HeaderCells, rowHeight, config))
+		xml.WriteString(generateHeaderRowWithMerges(table.HeaderCells, rowPlan.HeaderHeight, config))
 	} else {
-		xml.WriteString(generateHeaderRow(table.Headers, rowHeight, config))
+		xml.WriteString(generateHeaderRow(table.Headers, rowPlan.HeaderHeight, config))
 	}
 
 	// Data rows
@@ -338,6 +294,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		lastDataRowIdx = summaryRowIdx - 1
 	}
 	for rowIdx, row := range renderRows {
+		rowHeight := rowHeights[rowIdx]
 		if rowIdx == summaryRowIdx {
 			xml.WriteString(generateSummaryRow(row, rowIdx, rowHeight, config))
 		} else {
@@ -355,6 +312,123 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		Height:   totalHeight,
 		Findings: findings,
 	}, nil
+}
+
+// tableRowPlan is the measured row geometry used for both capacity decisions
+// and emitted <a:tr h> values. RowHeights contains data-row heights and, when
+// HiddenRows is non-zero, one final summary-row height.
+type tableRowPlan struct {
+	HeaderHeight int64
+	RowHeights   []int64
+	KeptRows     int
+	HiddenRows   int
+	TotalHeight  int64
+}
+
+func planTableRows(table *types.TableSpec, colWidths []int64, config TableRenderConfig) tableRowPlan {
+	headerCells := table.HeaderCells
+	if len(headerCells) == 0 {
+		headerCells = make([]types.TableCell, len(table.Headers))
+		for i, header := range table.Headers {
+			headerCells[i] = types.TableCell{Content: header, ColSpan: 1, RowSpan: 1}
+		}
+	}
+
+	headerHeight := measureTableRowHeight(headerCells, colWidths, config, true)
+	allHeights := make([]int64, len(table.Rows))
+	totalHeight := headerHeight
+	for i, row := range table.Rows {
+		allHeights[i] = measureTableRowHeight(row, colWidths, config, false)
+		totalHeight += allHeights[i]
+	}
+
+	if config.Bounds.Height <= 0 || totalHeight <= config.Bounds.Height {
+		return tableRowPlan{
+			HeaderHeight: headerHeight,
+			RowHeights:   allHeights,
+			KeptRows:     len(table.Rows),
+			TotalHeight:  totalHeight,
+		}
+	}
+
+	// Reserve a measured summary row before retaining authored rows. Recompute
+	// it for each candidate because the hidden-row count changes its text.
+	kept := 0
+	used := headerHeight
+	for candidate := 0; candidate < len(table.Rows); candidate++ {
+		hidden := len(table.Rows) - (candidate + 1)
+		if hidden == 0 {
+			break
+		}
+		summaryHeight := measureTableRowHeight(summaryTableRow(len(table.Headers), hidden), colWidths, config, false)
+		if used+allHeights[candidate]+summaryHeight > config.Bounds.Height {
+			break
+		}
+		used += allHeights[candidate]
+		kept = candidate + 1
+	}
+
+	hidden := len(table.Rows) - kept
+	summaryHeight := measureTableRowHeight(summaryTableRow(len(table.Headers), hidden), colWidths, config, false)
+	rowHeights := append([]int64(nil), allHeights[:kept]...)
+	rowHeights = append(rowHeights, summaryHeight)
+	return tableRowPlan{
+		HeaderHeight: headerHeight,
+		RowHeights:   rowHeights,
+		KeptRows:     kept,
+		HiddenRows:   hidden,
+		TotalHeight:  headerHeight + sumTableRowHeights(rowHeights),
+	}
+}
+
+func summaryTableRow(numCols, hidden int) []types.TableCell {
+	row := make([]types.TableCell, numCols)
+	if numCols > 0 {
+		row[0] = types.TableCell{Content: fmt.Sprintf("...and %d more rows", hidden), ColSpan: 1, RowSpan: 1}
+		for i := 1; i < numCols; i++ {
+			row[i] = types.TableCell{ColSpan: 1, RowSpan: 1}
+		}
+	}
+	return row
+}
+
+func measureTableRowHeight(cells []types.TableCell, colWidths []int64, config TableRenderConfig, header bool) int64 {
+	fontSize := config.DefaultSize
+	if header {
+		fontSize = int(float64(fontSize) * 1.1)
+	}
+	rowHeight := contentRowHeight(fontSize)
+	fontPt := float64(fontSize) / 100.0
+	for colIdx, cell := range cells {
+		if cell.Content == "" || cell.IsMerged || colIdx >= len(colWidths) {
+			continue
+		}
+		span := cell.ColSpan
+		if span < 1 {
+			span = 1
+		}
+		width := int64(0)
+		for i := colIdx; i < colIdx+span && i < len(colWidths); i++ {
+			width += colWidths[i]
+		}
+		measurement, err := textfit.MeasureRun(cell.Content, config.DefaultFont, fontPt, width, 0)
+		if err != nil {
+			continue
+		}
+		required := measurement.RequiredEMU + cellMargin // top + bottom insets
+		if required > rowHeight {
+			rowHeight = required
+		}
+	}
+	return rowHeight
+}
+
+func sumTableRowHeights(heights []int64) int64 {
+	var total int64
+	for _, height := range heights {
+		total += height
+	}
+	return total
 }
 
 // longestToken returns the length of the longest whitespace-separated token

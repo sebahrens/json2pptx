@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestClampContentPlaceholdersToChrome(t *testing.T) {
@@ -44,6 +45,27 @@ func TestClampContentPlaceholdersToChrome(t *testing.T) {
 	clampContentPlaceholdersToChrome(slide, template.ChromeFrame{Content: frame.Content, Fits: false})
 	if slide.CommonSlideData.ShapeTree.Shapes[0].ShapeProperties.Transform.Extent.CY != 4351338 {
 		t.Error("non-fitting frame must not clamp")
+	}
+}
+
+func TestClampBoundsToChromeReservesLateTableInsertion(t *testing.T) {
+	frame := template.ChromeFrame{
+		Content: template.ChromeRect{Y: 1200000, CY: 3000000},
+		Fits:    true,
+	}
+	bounds := types.BoundingBox{X: 500000, Y: 1800000, Width: 8000000, Height: 3600000}
+
+	got := clampBoundsToChrome(bounds, frame)
+	if got.Height != 2400000 {
+		t.Fatalf("height = %d, want 2400000 so bottom stops at chrome limit", got.Height)
+	}
+	if got.Y+got.Height != frame.Content.Bottom() {
+		t.Fatalf("bottom = %d, chrome limit = %d", got.Y+got.Height, frame.Content.Bottom())
+	}
+
+	unchanged := clampBoundsToChrome(bounds, template.ChromeFrame{Content: frame.Content, Fits: false})
+	if unchanged != bounds {
+		t.Fatalf("non-fitting frame changed bounds: got %+v want %+v", unchanged, bounds)
 	}
 }
 

@@ -598,6 +598,42 @@ func TestSetTitleSlideTitle_OverflowProtection(t *testing.T) {
 			t.Errorf("long title bodyPr missing normAutofit overflow protection: %q", shape.TextBody.BodyProperties.Inner)
 		}
 	})
+
+	t.Run("closing title overrides noAutofit and stays in its box", func(t *testing.T) {
+		shape := titleShape(9486900, 1851025, "6600", "Click to edit title")
+		shape.TextBody.BodyProperties.Inner = `<a:noAutofit/>`
+		title := "Deutschland beweist den Kaufanlass. 日本は信頼を証明する。"
+		if err := setTitleSlideTitle(shape, "title", title, "", withTitleRole()); err != nil {
+			t.Fatalf("setTitleSlideTitle: %v", err)
+		}
+		inner := shape.TextBody.BodyProperties.Inner
+		if strings.Contains(strings.ToLower(inner), "noautofit") {
+			t.Fatalf("closing title retained noAutofit: %q", inner)
+		}
+		if !strings.Contains(inner, "normAutofit") {
+			t.Fatalf("closing title missing measured overflow protection: %q", inner)
+		}
+		if got := extractFontSizeFromShape(shape); got >= 6600 {
+			t.Fatalf("wrapped closing title font = %d, want measured reduction below 6600", got)
+		}
+		if got := renderedText(shape); got != title {
+			t.Fatalf("closing title text changed: got %q", got)
+		}
+	})
+
+	t.Run("short closing title preserves template size", func(t *testing.T) {
+		shape := titleShape(9486900, 1851025, "6600", "Click to edit title")
+		shape.TextBody.BodyProperties.Inner = `<a:noAutofit/>`
+		if err := setTitleSlideTitle(shape, "title", "Thank you", "", withTitleRole()); err != nil {
+			t.Fatalf("setTitleSlideTitle: %v", err)
+		}
+		if got := extractFontSizeFromShape(shape); got != 6600 {
+			t.Fatalf("short closing title font = %d, want template size 6600", got)
+		}
+		if got := renderedText(shape); got != "Thank you" {
+			t.Fatalf("short closing title text = %q", got)
+		}
+	})
 }
 
 func TestParseSzAttr(t *testing.T) {

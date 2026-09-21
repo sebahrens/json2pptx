@@ -338,6 +338,13 @@ func setTitleSlideTitle(shape *shapeXML, placeholderID string, value interface{}
 	replaceSpAutoFitWithNorm(shape)
 	enforceTextWrap(shape)
 	opts := append([]autofitOption{withThemeFont(themeFontName)}, autofitOpts...)
+	if isTitlePlaceholder(placeholderID) {
+		// Closing layouts commonly declare noAutofit for their short prompt text.
+		// Authored statements can wrap above a bottom-anchored title box and cross
+		// the template's top band, so populated display titles always get measured
+		// overflow protection. A short title measures at 100% and stays unchanged.
+		opts = append(opts, withNoAutofitOverride())
+	}
 	applySmartAutofitWithOptions(shape, opts...)
 
 	return nil

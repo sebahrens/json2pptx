@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // loadTemplateProfile builds (or fetches from the content-hash cache) the
@@ -43,6 +44,21 @@ func (ctx *singlePassContext) chromeFrameForSlide(slideNum int) template.ChromeF
 	_, hasTakeaway := ctx.slideTakeaways[slideNum]
 	_, hasSource := ctx.slideSources[slideNum]
 	return ctx.chromeFrameForLayout(ctx.slideContentMap[slideNum].LayoutID, hasTakeaway, hasSource)
+}
+
+// clampBoundsToChrome applies the same reservation as
+// clampContentPlaceholdersToChrome to late-bound visual content. Native tables
+// are generated after placeholder population and can resolve an inherited
+// layout transform even when the slide-level placeholder was already clamped.
+func clampBoundsToChrome(bounds types.BoundingBox, frame template.ChromeFrame) types.BoundingBox {
+	if !frame.Fits || bounds.Height <= 0 {
+		return bounds
+	}
+	limit := frame.Content.Bottom()
+	if bottom := bounds.Y + bounds.Height; bounds.Y < limit && bottom > limit {
+		bounds.Height = limit - bounds.Y
+	}
+	return bounds
 }
 
 // clampContentPlaceholdersToChrome shrinks content placeholders (body,

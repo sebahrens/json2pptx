@@ -118,21 +118,16 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 			})
 		}
 
-		// Truncation: at the post-scale font size, see how many rows fit
-		// when the row height is clamped to defaultRowHeight.
-		fontRatio = float64(fontSize) / float64(defaultFontSize)
-		scaledRowHeight = int64(float64(defaultRowHeight) * fontRatio)
-		if scaledRowHeight < defaultRowHeight {
-			scaledRowHeight = defaultRowHeight
-		}
-		maxVisibleRows = int(input.Bounds.Height / scaledRowHeight)
-		headerRowCount := 1
-		dataRowCapacity := maxVisibleRows - headerRowCount
-		if dataRowCapacity < 1 {
-			dataRowCapacity = 1
-		}
-		if len(input.Rows) > dataRowCapacity {
-			overflow := len(input.Rows) - dataRowCapacity + 1 // +1 to make room for summary row
+		// Truncation uses the renderer's measured wrapped-row geometry so
+		// preflight and the generated <a:tr h> values cannot disagree.
+		colWidths := calculateColumnWidths(len(input.Headers), input.Bounds.Width, input.Headers, input.Rows, fontSize)
+		plan := planTableRows(&types.TableSpec{Headers: input.Headers, Rows: input.Rows}, colWidths, TableRenderConfig{
+			Bounds:      input.Bounds,
+			DefaultFont: defaultFontFamily,
+			DefaultSize: fontSize,
+		})
+		if plan.HiddenRows > 0 {
+			overflow := plan.HiddenRows
 			tableID := strings.Join(input.Headers, ", ")
 			findings = append(findings, patterns.FitFinding{
 				ValidationError: patterns.ValidationError{
@@ -140,14 +135,14 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 					Code: patterns.ErrCodeTableRowsTruncated,
 					Message: fmt.Sprintf(
 						"predicted: table rows will be truncated — %d of %d rows hidden (headers: %s); the hidden rows would be absent from the deck, so split the table at row %d",
-						overflow, len(input.Rows), tableID, len(input.Rows)-overflow,
+						overflow, len(input.Rows), tableID, plan.KeptRows,
 					),
 					Fix: &patterns.FixSuggestion{
 						Kind: "split_at_row",
 						Params: map[string]any{
-							"visible_rows": len(input.Rows) - overflow,
+							"visible_rows": plan.KeptRows,
 							"hidden_rows":  overflow,
-							"split_at_row": len(input.Rows) - overflow,
+							"split_at_row": plan.KeptRows,
 						},
 					},
 				},

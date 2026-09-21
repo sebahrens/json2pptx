@@ -287,6 +287,7 @@ func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem
 	}
 
 	placeholderBounds := getPlaceholderBounds(shape, nil)
+	placeholderBounds = clampBoundsToChrome(placeholderBounds, ctx.chromeFrameForSlide(slideNum))
 	placeholder := types.PlaceholderInfo{
 		ID: item.PlaceholderID,
 		Bounds: types.BoundingBox{

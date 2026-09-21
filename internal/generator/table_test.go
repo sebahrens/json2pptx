@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1759,6 +1761,85 @@ func TestGenerateTableXML_WideTable_TruncatesOverflow(t *testing.T) {
 	// Last original row should be truncated
 	if strings.Contains(result.XML, fmt.Sprintf("R%dC1", numDataRows)) {
 		t.Error("last data row should be truncated")
+	}
+}
+
+func TestGenerateTableXML_WrappedMultilingualRowsStayWithinBounds(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Workstream", "Owner", "Milestone", "Status"},
+		Style:   types.DefaultTableStyle,
+	}
+	for i := 0; i < 8; i++ {
+		table.Rows = append(table.Rows, []types.TableCell{
+			{Content: "Customer identity migration and regional consent controls", ColSpan: 1, RowSpan: 1},
+			{Content: "プラットフォーム運用チーム", ColSpan: 1, RowSpan: 1},
+			{Content: "Datenmigration und Abnahme durch alle Landesgesellschaften", ColSpan: 1, RowSpan: 1},
+			{Content: "進行中 — validation pending", ColSpan: 1, RowSpan: 1},
+		})
+	}
+
+	config := TableRenderConfig{
+		Bounds: types.BoundingBox{X: 457200, Y: 914400, Width: 8229600, Height: 2200000},
+		Style:  table.Style,
+	}
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatalf("GenerateTableXML: %v", err)
+	}
+	if result.Height > config.Bounds.Height {
+		t.Fatalf("measured table height %d exceeds safe bounds %d", result.Height, config.Bounds.Height)
+	}
+
+	rowPattern := regexp.MustCompile(`<a:tr h="(\d+)">`)
+	matches := rowPattern.FindAllStringSubmatch(result.XML, -1)
+	if len(matches) < 2 {
+		t.Fatalf("expected emitted table rows, got %d", len(matches))
+	}
+	var emittedHeight int64
+	for _, match := range matches {
+		height, parseErr := strconv.ParseInt(match[1], 10, 64)
+		if parseErr != nil {
+			t.Fatalf("parse row height %q: %v", match[1], parseErr)
+		}
+		emittedHeight += height
+	}
+	if emittedHeight != result.Height {
+		t.Fatalf("emitted row heights sum to %d, frame reports %d", emittedHeight, result.Height)
+	}
+	hasTruncation := false
+	for _, finding := range result.Findings {
+		if finding.Code == patterns.ErrCodeTableRowsTruncated {
+			hasTruncation = true
+			break
+		}
+	}
+	if !hasTruncation {
+		t.Fatalf("wrapped rows should be truncated with an explicit finding, got %+v", result.Findings)
+	}
+}
+
+func TestGenerateTableXML_StrictFitRefusesWrappedRowsBeyondBounds(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"Workstream", "Owner", "Milestone", "Status"},
+		Rows: [][]types.TableCell{{
+			{Content: "Customer identity migration and regional consent controls", ColSpan: 1, RowSpan: 1},
+			{Content: "プラットフォーム運用チーム", ColSpan: 1, RowSpan: 1},
+			{Content: "Datenmigration und Abnahme durch alle Landesgesellschaften", ColSpan: 1, RowSpan: 1},
+			{Content: "進行中 — validation pending", ColSpan: 1, RowSpan: 1},
+		}},
+		Style: types.DefaultTableStyle,
+	}
+	_, err := GenerateTableXML(table, TableRenderConfig{
+		Bounds:    types.BoundingBox{Width: 8229600, Height: 500000},
+		Style:     table.Style,
+		StrictFit: true,
+	})
+	if err == nil {
+		t.Fatal("strict fit must refuse wrapped rows that exceed the safe height")
+	}
+	var validationErr *patterns.ValidationError
+	if !errors.As(err, &validationErr) || validationErr.Code != patterns.ErrCodeFitOverflow {
+		t.Fatalf("error = %v, want fit_overflow ValidationError", err)
 	}
 }
 
