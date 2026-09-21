@@ -212,6 +212,7 @@ func (tr timelineRange) dateToX(date time.Time, plotArea Rect) float64 {
 }
 
 // Draw renders the timeline diagram.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (tc *TimelineChart) Draw(data TimelineData) error {
 	if len(data.Activities) == 0 {
@@ -799,15 +800,16 @@ func (tc *TimelineChart) drawActivityBar(activity TimelineActivity, index int, r
 	}
 
 	// Draw label
+	labelBelowHeight := 0.0
 	if tc.config.ShowLabels && activity.Label != "" {
-		tc.drawActivityLabel(activity.Label, rect, row, plotArea, fillColor, labelBudget, labelBelow)
+		labelBelowHeight = tc.drawActivityLabel(activity.Label, rect, row, plotArea, fillColor, labelBudget, labelBelow)
 	}
 
 	// Draw description below the bar (if present and space permits).
 	// Descriptions are disabled by Draw() when vertical space is too tight
 	// (e.g., narrow two-column placeholders) to prevent illegible text.
 	if tc.showDescriptions && activity.Description != "" {
-		tc.drawActivityDescription(activity.Description, rect, fillColor, labelBudget)
+		tc.drawActivityDescription(activity.Description, rect, fillColor, labelBudget, labelBelowHeight)
 	}
 }
 
@@ -815,7 +817,7 @@ func (tc *TimelineChart) drawActivityBar(activity TimelineActivity, index int, r
 // labelBudget is the horizontal space allocated per activity for label sizing.
 // labelBelow overrides the label position to "below" when staggering is needed
 // to prevent horizontal overlap with adjacent activities on the same row.
-func (tc *TimelineChart) drawActivityLabel(label string, barRect Rect, row int, plotArea Rect, bgColor Color, labelBudget float64, labelBelow bool) {
+func (tc *TimelineChart) drawActivityLabel(label string, barRect Rect, row int, plotArea Rect, bgColor Color, labelBudget float64, labelBelow bool) float64 {
 	b := tc.builder
 	style := b.StyleGuide()
 
@@ -880,11 +882,15 @@ func (tc *TimelineChart) drawActivityLabel(label string, barRect Rect, row int, 
 	}
 
 	b.Pop()
+	if pos == "below" {
+		return fit.FontSize*style.Typography.LineHeight + style.Spacing.XS
+	}
+	return 0
 }
 
 // drawActivityDescription draws the description text below an activity bar.
 // labelBudget is the horizontal space allocated per activity for text sizing.
-func (tc *TimelineChart) drawActivityDescription(desc string, barRect Rect, barColor Color, labelBudget float64) {
+func (tc *TimelineChart) drawActivityDescription(desc string, barRect Rect, barColor Color, labelBudget, labelBelowHeight float64) {
 	b := tc.builder
 	style := b.StyleGuide()
 
@@ -907,7 +913,7 @@ func (tc *TimelineChart) drawActivityDescription(desc string, barRect Rect, barC
 
 	descRect := Rect{
 		X: barRect.X + barRect.W/2 - maxDescW/2,
-		Y: barRect.Y + barRect.H + style.Spacing.XS,
+		Y: barRect.Y + barRect.H + style.Spacing.XS + labelBelowHeight,
 		W: maxDescW,
 		H: descH,
 	}
@@ -1312,6 +1318,7 @@ func (tc *TimelineChart) drawTimeGrid(dateRange timelineRange, timeUnit string, 
 // activityDates are dates where activities/milestones occur. When label
 // thinning is active (labelStep > 1), the axis will prioritise showing
 // labels at these dates so the axis aligns with visible chart elements.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (tc *TimelineChart) drawTimeAxis(dateRange timelineRange, timeUnit string, axisArea Rect, activityDates []time.Time) {
 	b := tc.builder
@@ -1679,6 +1686,7 @@ func parseTimelineData(req *RequestEnvelope) (TimelineData, error) {
 }
 
 // parseTimelineActivity parses a single activity from map data.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func parseTimelineActivity(raw any, index int) TimelineActivity {
 	activity := TimelineActivity{
@@ -1913,4 +1921,3 @@ func CreateSimpleTimeline(items []struct {
 	}
 	return activities
 }
-

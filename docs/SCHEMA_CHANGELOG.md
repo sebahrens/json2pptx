@@ -1348,6 +1348,11 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **Timeline labels staggered below bars now clear their descriptions
+  (go-slide-creator-72qai.2).** The renderer reserves the actual fitted label
+  line height before placing detail text. The shipped timeline example no
+  longer draws its title and description in the same space.
+
 ### Added
 
 - **`plan_deck` caps how often one pattern family repeats, and reports what it
