@@ -190,19 +190,20 @@ func TestFindingFromDiagnostic_PreservesAgentRecoveryFields(t *testing.T) {
 
 func TestClassifyCode(t *testing.T) {
 	cases := map[string]Namespace{
-		"TEMPLATE_NOT_FOUND":    NamespaceTemplate,
-		"INVALID_JSON":          NamespaceInput,
-		"MISSING_PARAMETER":     NamespaceInput,
-		"GENERATION_FAILED":     NamespaceRender,
-		"PATTERN_ERROR":         NamespaceGrid,
-		"STRICT_FIT":            NamespaceFit,
-		"placeholder_overflow":  NamespaceFit,
-		"accent_overload":       NamespaceFit,
-		"body_too_long":         NamespaceFit,
-		"chart.zero_sum_pie":    NamespaceRender,
-		"NO_EMOJI_POLICY":       NamespacePolicy,
+		"TEMPLATE_NOT_FOUND":     NamespaceTemplate,
+		"INVALID_JSON":           NamespaceInput,
+		"MISSING_PARAMETER":      NamespaceInput,
+		"GENERATION_FAILED":      NamespaceRender,
+		"PATTERN_ERROR":          NamespaceGrid,
+		"STRICT_FIT":             NamespaceFit,
+		"placeholder_overflow":   NamespaceFit,
+		"accent_overload":        NamespaceFit,
+		"body_too_long":          NamespaceFit,
+		"chart.zero_sum_pie":     NamespaceRender,
+		"diagram.text_overlap":   NamespaceRender,
+		"NO_EMOJI_POLICY":        NamespacePolicy,
 		"FIT.already_namespaced": NamespaceFit,
-		"":                      NamespaceInput,
+		"":                       NamespaceInput,
 	}
 	for code, want := range cases {
 		if got := ClassifyCode(code); got != want {
@@ -298,15 +299,15 @@ func TestDescribeCommandResolvesForFitCodes(t *testing.T) {
 // schema is the minimal subset of JSON Schema this test interprets to validate
 // real envelope output against docs/api/finding-envelope.schema.json.
 type schema struct {
-	Type                 string             `json:"type"`
-	Required             []string           `json:"required"`
-	Properties           map[string]schema  `json:"properties"`
-	AdditionalProperties *bool              `json:"additionalProperties"`
-	Items                *schema            `json:"items"`
-	Enum                 []string           `json:"enum"`
-	Ref                  string             `json:"$ref"`
-	Const                string             `json:"const"`
-	Defs                 map[string]schema  `json:"$defs"`
+	Type                 string            `json:"type"`
+	Required             []string          `json:"required"`
+	Properties           map[string]schema `json:"properties"`
+	AdditionalProperties *bool             `json:"additionalProperties"`
+	Items                *schema           `json:"items"`
+	Enum                 []string          `json:"enum"`
+	Ref                  string            `json:"$ref"`
+	Const                string            `json:"const"`
+	Defs                 map[string]schema `json:"$defs"`
 }
 
 // TestEnvelopeConformsToCommittedSchema marshals a real envelope and validates

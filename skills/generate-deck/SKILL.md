@@ -68,6 +68,10 @@ This skill is split into focused sub-files. SKILL.md (this file) covers precondi
 
 Read `../template-deck/TEMPLATE_GUIDE.md` for the complete field reference (content types, chart types, diagram types, shape grid properties, patch operations).
 
+After authoring a chart or svggen diagram, run `validate_input` with the fit
+report enabled. A `RENDER.diagram.text_overlap` finding names the two drawn
+labels that collide; shorten one or give the diagram more space.
+
 See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
 
 ## Semantic deck specs — the default authoring path

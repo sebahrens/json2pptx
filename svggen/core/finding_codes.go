@@ -67,6 +67,9 @@ const (
 	// (go-slide-creator-onop).
 	FindingDiagramItemsDropped = "diagram.items_dropped"
 
+	// FindingDiagramTextOverlap identifies visibly intersecting drawn labels.
+	FindingDiagramTextOverlap = "diagram.text_overlap"
+
 	// FindingOrgChartDepthPruned is emitted when an org chart drops whole
 	// levels of the hierarchy to keep the remaining boxes readable. The chart
 	// then misrepresents the org, so the loss must be visible

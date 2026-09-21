@@ -379,6 +379,7 @@ type mockDiagramWithBuilder struct {
 	typeID      string
 	renderErr   error
 	validateErr error
+	overlapText bool
 }
 
 func (m *mockDiagramWithBuilder) Type() string { return m.typeID }
@@ -411,6 +412,10 @@ func (m *mockDiagramWithBuilder) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 	c, _ := ParseColor("#336699")
 	builder.SetFillColor(c)
 	builder.FillRect(Rect{X: 0, Y: 0, W: width, H: height})
+	if m.overlapText {
+		builder.DrawText("Revenue growth", 15, 20, TextAlignLeft, TextBaselineTop)
+		builder.DrawText("Margin growth", 16, 21, TextAlignLeft, TextBaselineTop)
+	}
 
 	doc, err := builder.Render()
 	if err != nil {

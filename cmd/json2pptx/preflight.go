@@ -329,6 +329,9 @@ func classifySlideValidationStage(d diagnostics.Diagnostic) string {
 // shape-grid layout findings to GRID, pattern-fill findings to PATTERN, and
 // every remaining content-fit finding to PLACEHOLDER.
 func classifyFitStage(d diagnostics.Diagnostic) string {
+	if strings.HasPrefix(d.Code, "chart.") || strings.HasPrefix(d.Code, "diagram.") {
+		return preflightStageRender
+	}
 	switch d.Code {
 	case patterns.ErrCodeFooterCollision, patterns.ErrCodeTitleCollision, patterns.ErrCodeTitleWraps:
 		return preflightStageRender

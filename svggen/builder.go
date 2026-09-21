@@ -144,6 +144,11 @@ type SVGBuilder struct {
 	// explicit dominant-baseline attribute so downstream renderers don't drift
 	// the label up or down based on their own font ascent/descent metrics.
 	textBaselines []TextBaseline
+
+	// Drawn text geometry is inspected after rendering for visible collisions.
+	textBoxes     []drawnTextBox
+	textRotation  textRotation
+	rotationStack []textRotation
 }
 
 // FontErr returns the first font-related error recorded during text operations,
@@ -625,6 +630,7 @@ func (b *SVGBuilder) SetDashes(pattern ...float64) *SVGBuilder {
 func (b *SVGBuilder) Push() *SVGBuilder {
 	b.ctx.Push()
 	b.textColorStack = append(b.textColorStack, b.textColor)
+	b.rotationStack = append(b.rotationStack, b.textRotation)
 	return b
 }
 
@@ -634,6 +640,10 @@ func (b *SVGBuilder) Pop() *SVGBuilder {
 	if n := len(b.textColorStack); n > 0 {
 		b.textColor = b.textColorStack[n-1]
 		b.textColorStack = b.textColorStack[:n-1]
+	}
+	if n := len(b.rotationStack); n > 0 {
+		b.textRotation = b.rotationStack[n-1]
+		b.rotationStack = b.rotationStack[:n-1]
 	}
 	return b
 }
@@ -988,6 +998,7 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 	}
 
 	b.ctx.DrawText(xMM, yMM, textLine)
+	b.recordDrawnText(text, x, y, align, baseline, face)
 	// Record the alignment and baseline so fixSVGTextAlignment can inject the
 	// matching text-anchor and dominant-baseline on the corresponding <text>
 	// element. We append only after a successful canvas draw (early-returns
@@ -1181,6 +1192,7 @@ func (b *SVGBuilder) Translate(tx, ty float64) *SVGBuilder {
 // to the canvas library's coordinate system (Y-up, counterclockwise positive).
 func (b *SVGBuilder) Rotate(angle float64) *SVGBuilder {
 	b.ctx.Rotate(-angle)
+	b.textRotation.skip = true // No rotation origin is available for diagnostics.
 	return b
 }
 
@@ -1189,6 +1201,7 @@ func (b *SVGBuilder) Rotate(angle float64) *SVGBuilder {
 // negate angle for Y-flip, convert cx/cy from points to mm, flip cy for Y-up.
 func (b *SVGBuilder) RotateAround(angle, cx, cy float64) *SVGBuilder {
 	b.ctx.RotateAbout(-angle, cx*ptToMM, (b.height-cy)*ptToMM)
+	b.textRotation = textRotation{angle: angle, cx: cx, cy: cy}
 	return b
 }
 

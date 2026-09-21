@@ -8,6 +8,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Drawn svggen text-overlap finding (go-slide-creator-72qai.1).**
+  `svggen.DryRender` now reports `diagram.text_overlap` with both colliding
+  strings when measured text boxes intersect substantially. The CLI and MCP
+  fit reports expose it as `RENDER.diagram.text_overlap`; diagonal tick labels
+  are excluded until oriented text bounds can be measured reliably. Schema
+  version advances to 4.111.0.
+
 - **Full process-flow step targets (go-slide-creator-tp23k.33).**
   `process-flow` now reports `BODY_TOO_LONG` for step labels beyond the
   measured shape and count budget. Chevron and arrow labels hold about

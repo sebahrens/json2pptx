@@ -6,6 +6,13 @@ Fit findings are structured diagnostics emitted when generated slide content may
 
 **Chart / diagram dry-render.** `validate_input` and `preview_presentation_plan` also drive svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item **and every diagram surface embedded in a slide's `shape_grid` or in a named pattern's expanded grid (e.g. `chart-insights-split`, paths rooted at `/slides/{i}/pattern`)** — cell `diagram`s, composite cell `sub_diagram`s, and diagrams inside recursively nested sub-grids — merging the resulting `chart.*` / `diagram.*` findings (e.g. `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`, `chart.plot_area_collapsed`, `diagram.org_chart_depth_pruned`, `diagram.items_dropped`) into the fit-finding stream. Content-item findings keep the legacy `slides[i].content[j].chart_value` path; shape_grid findings use the slidepath JSON Pointer convention shared with the structural detectors (e.g. `/slides/0/shape_grid/rows/1/cells/2/diagram`, `.../composite/sub_diagram`, or a nested `.../cells/2/grid/rows/0/cells/1/diagram`). Agents see render-time chart issues at validate / preview time without paying for full generation. The strict-fit severity ladder applies identically to the generate path. The svggen top-level helper is `svggen.DryRender(req) ([]Finding, error)`; the corresponding MCP entry point is `render_diagram` with `dry_run: true`.
 
+`diagram.text_overlap` is emitted after svggen draws text. It names both
+intersecting strings when their measured text boxes overlap substantially;
+`validate --fit-report` and `validate_input` expose it as
+`RENDER.diagram.text_overlap`. Shorten one label or give the chart more space.
+Diagonal tick labels are excluded from this check until their rotated text
+outlines can be measured reliably.
+
 ## Output-Validation Findings — Separate Category
 
 This document catalogs **fit findings** (`patterns.FitFinding`) emitted by the layout/textfit/chart preflight and runtime. They are distinct from **output-validation findings** (`pptx.Finding`) emitted by `internal/pptx.OutputValidator` after the `.pptx` is serialized, and from **visual-QA findings** emitted by the `slide-visual-qa` Haiku skill from rendered screenshots:

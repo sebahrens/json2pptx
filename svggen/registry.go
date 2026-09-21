@@ -32,7 +32,7 @@ func RegistryRenderMultiFormat(r *Registry, req *RequestEnvelope, formats ...str
 }
 
 // RenderMultiFormatWithFindings is like RenderMultiFormat but returns a
-// RenderOutput that includes a (currently empty) Findings slice. Callers
+// RenderOutput that includes a Findings slice. Callers
 // that want structured chart/diagram findings use this entry point; the
 // existing RenderMultiFormat signature is unchanged.
 func RenderMultiFormatWithFindings(req *RequestEnvelope, formats ...string) (*RenderOutput, error) {
@@ -106,6 +106,7 @@ func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ..
 	// negative-on-log, invalid time format).
 	if builder != nil {
 		findings = append(findings, builder.Findings()...)
+		findings = append(findings, builder.textOverlapFindings()...)
 	}
 
 	// Apply strict-fit severity promotion ladder.

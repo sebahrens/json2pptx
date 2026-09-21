@@ -325,6 +325,8 @@ func TestClassifyFitStage(t *testing.T) {
 		patterns.ErrCodeFooterCollision:     preflightStageRender,
 		patterns.ErrCodeTitleCollision:      preflightStageRender,
 		patterns.ErrCodeTitleWraps:          preflightStageRender,
+		"diagram.text_overlap":              preflightStageRender,
+		"chart.plot_area_collapsed":         preflightStageRender,
 		patterns.ErrCodeSlideBoundsOverflow: preflightStageGrid,
 		patterns.ErrCodeSparseLayout:        preflightStageGrid,
 		patterns.ErrCodeCellUnderfilled:     preflightStageGrid,

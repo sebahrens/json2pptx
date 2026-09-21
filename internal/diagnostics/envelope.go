@@ -539,7 +539,7 @@ func ClassifyCode(legacy string) Namespace {
 	switch {
 	case strings.Contains(l, "emoji"), strings.Contains(l, "policy"):
 		return NamespacePolicy
-	case strings.HasPrefix(l, "chart."), strings.Contains(l, "render"),
+	case strings.HasPrefix(l, "chart."), strings.HasPrefix(l, "diagram."), strings.Contains(l, "render"),
 		strings.Contains(l, "generation"), strings.Contains(l, "overlay"):
 		return NamespaceRender
 	case strings.Contains(l, "template"), strings.HasPrefix(l, "layout."),
