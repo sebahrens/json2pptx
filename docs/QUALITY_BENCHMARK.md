@@ -30,6 +30,8 @@ An agent run is opt-in and requires an explicit executable:
 ```bash
 go run ./cmd/qualitybench \
   --agent "/absolute/path/to/agent --its-flag" \
+  --agent-model "provider-model-id" \
+  --agent-version "agent-cli-version" \
   --parallel 4 \
   --out output/quality-benchmark \
   --results-dir tests/quality/results
@@ -38,6 +40,9 @@ go run ./cmd/qualitybench \
 Agent runs default to one worker. Use `--parallel N` only when the configured
 provider and local renderer can sustain `N` independent runs; evidence stays in
 the same deterministic request order regardless of completion order.
+Pass `--agent-model` and `--agent-version` from provider or CLI configuration
+so every evidence record carries the same authoritative identity instead of a
+model-generated label.
 
 For a provider-free harness check, use `--dry-run`. It renders deterministic
 reference decks and is useful for testing the fixture and contact-sheet path;

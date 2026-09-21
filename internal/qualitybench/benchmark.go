@@ -68,6 +68,8 @@ type Report struct {
 
 type Runner struct {
 	Agent          []string
+	AgentModel     string
+	AgentVersion   string
 	OutputDir      string
 	Configurations []string
 	Briefs         []Brief
@@ -110,6 +112,12 @@ func (r Runner) Run(ctx context.Context) (*Report, error) {
 	}
 	evidence := runRequests(ctx, requests, r.Parallelism, func(ctx context.Context, req Request) Evidence {
 		ev := r.invoke(ctx, req)
+		if r.AgentModel != "" {
+			ev.Result.Model = r.AgentModel
+		}
+		if r.AgentVersion != "" {
+			ev.Result.Version = r.AgentVersion
+		}
 		data, _ := json.MarshalIndent(ev, "", "  ")
 		_ = os.WriteFile(filepath.Join(r.OutputDir, req.RunID+".json"), append(data, '\n'), 0o644)
 		return ev

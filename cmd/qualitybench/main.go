@@ -42,12 +42,14 @@ func main() {
 
 func run() error {
 	var (
-		agent, out, resultsDir, templatesDir, templatesSpec, briefsPath, bin, reportPath, ratingsPath string
-		dryRun                                                                                        bool
-		reps, parallel                                                                                int
+		agent, agentModel, agentVersion, out, resultsDir, templatesDir, templatesSpec, briefsPath, bin, reportPath, ratingsPath string
+		dryRun                                                                                                                  bool
+		reps, parallel                                                                                                          int
 	)
 	flag.BoolVar(&dryRun, "dry-run", false, "render deterministic reference decks (no agent, no provider call)")
 	flag.StringVar(&agent, "agent", "", "agent executable plus optional space-separated arguments")
+	flag.StringVar(&agentModel, "agent-model", "", "canonical model identity recorded for every agent run")
+	flag.StringVar(&agentVersion, "agent-version", "", "canonical agent/CLI version recorded for every agent run")
 	flag.StringVar(&out, "out", "output/quality-benchmark", "evidence directory (decks, renders, blind contact sheets)")
 	flag.StringVar(&resultsDir, "results-dir", "tests/quality/results", "directory for the results JSON")
 	flag.StringVar(&templatesDir, "templates-dir", "templates", "templates directory")
@@ -93,7 +95,7 @@ func run() error {
 		return summarize(report, path, out)
 	}
 
-	r := qualitybench.Runner{Agent: strings.Fields(agent), OutputDir: out, Briefs: briefs, Templates: templates, Repetitions: reps, Parallelism: parallel}
+	r := qualitybench.Runner{Agent: strings.Fields(agent), AgentModel: agentModel, AgentVersion: agentVersion, OutputDir: out, Briefs: briefs, Templates: templates, Repetitions: reps, Parallelism: parallel}
 	report, err := r.Run(ctx)
 	if err != nil {
 		return err

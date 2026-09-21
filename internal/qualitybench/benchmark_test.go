@@ -24,7 +24,7 @@ func TestRunnerInvokesConfiguredAgentAndCapturesEvidence(t *testing.T) {
 	for i := range briefs {
 		briefs[i] = Brief{ID: string(rune('a' + i)), Category: "kpi", Prompt: "brief"}
 	}
-	r := Runner{Agent: []string{agent}, OutputDir: dir, Configurations: []string{"redesigned"}, Briefs: briefs, Templates: []Template{{Name: "a", Family: "corporate"}, {Name: "b", Family: "editorial"}, {Name: "c", Family: "seven-layout", HeldOut: true}}, Repetitions: 2}
+	r := Runner{Agent: []string{agent}, AgentModel: "canonical-model", AgentVersion: "canonical-version", OutputDir: dir, Configurations: []string{"redesigned"}, Briefs: briefs, Templates: []Template{{Name: "a", Family: "corporate"}, {Name: "b", Family: "editorial"}, {Name: "c", Family: "seven-layout", HeldOut: true}}, Repetitions: 2}
 	report, err := r.Run(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -34,6 +34,11 @@ func TestRunnerInvokesConfiguredAgentAndCapturesEvidence(t *testing.T) {
 	}
 	if report.Evidence[0].Error != "" || len(report.Evidence[0].Result.ToolCalls) != 1 {
 		t.Fatalf("bad evidence: %+v", report.Evidence[0])
+	}
+	for i, ev := range report.Evidence {
+		if ev.Result.Model != "canonical-model" || ev.Result.Version != "canonical-version" {
+			t.Fatalf("evidence[%d] identity = %q / %q", i, ev.Result.Model, ev.Result.Version)
+		}
 	}
 }
 

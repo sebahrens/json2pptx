@@ -1,5 +1,10 @@
 # Schema Changelog
 
+- **2026-09-21 — Canonical benchmark agent identity (`go-slide-creator-pixq8`).**
+  `qualitybench --agent-model` and `--agent-version` now apply an authoritative
+  identity to every run, preventing model-generated labels from weakening a
+  frozen benchmark's provenance or comparability.
+
 - **2026-09-21 — Bounded quality benchmark concurrency (`go-slide-creator-64kgu`).**
   `qualitybench --parallel N` now runs up to `N` independent agent requests at
   once while retaining deterministic evidence ordering. The default remains one

@@ -86,13 +86,17 @@ tests/quality/
 
 ## Fresh-agent benchmark
 
-`go run ./cmd/qualitybench --agent "/absolute/path/to/agent" --parallel 4` runs the configured
+`go run ./cmd/qualitybench --agent "/absolute/path/to/agent" --agent-model
+"provider-model-id" --agent-version "agent-cli-version" --parallel 4` runs the configured
 agent for the 12 frozen briefs in `agent_briefs.json`, three template families,
 two workflow configurations, and two repetitions. The runner invokes the agent
 for every run with the requested bounded concurrency (default one) and writes
 one evidence file containing the model/version, prompt,
 tool calls, artifacts, cost, iterations, duration, and failures. It never calls
 a provider in default CI and refuses to run without `--agent`.
+The model and version flags should come from authoritative provider/CLI
+configuration; when supplied they replace inconsistent self-reported labels in
+every run.
 
 Rate artifact pairs blind with two reviewers on five frozen 1–5 dimensions:
 readability, hierarchy, template fidelity, factual completeness, and overall
