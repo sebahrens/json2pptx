@@ -1,5 +1,10 @@
 # Schema Changelog
 
+- **2026-09-21 — Bounded quality benchmark concurrency (`go-slide-creator-64kgu`).**
+  `qualitybench --parallel N` now runs up to `N` independent agent requests at
+  once while retaining deterministic evidence ordering. The default remains one
+  worker, and provider execution still requires an explicit `--agent` command.
+
 Tracks backward-incompatible and notable additions to the JSON input schema,
 MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 (from `get_capabilities`) across sessions to detect contract drift.

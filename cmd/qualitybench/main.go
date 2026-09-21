@@ -44,7 +44,7 @@ func run() error {
 	var (
 		agent, out, resultsDir, templatesDir, templatesSpec, briefsPath, bin, reportPath, ratingsPath string
 		dryRun                                                                                        bool
-		reps                                                                                          int
+		reps, parallel                                                                                int
 	)
 	flag.BoolVar(&dryRun, "dry-run", false, "render deterministic reference decks (no agent, no provider call)")
 	flag.StringVar(&agent, "agent", "", "agent executable plus optional space-separated arguments")
@@ -55,6 +55,7 @@ func run() error {
 	flag.StringVar(&briefsPath, "briefs", "tests/quality/agent_briefs.json", "briefs JSON")
 	flag.StringVar(&bin, "json2pptx", "", "json2pptx binary (default: build ./cmd/json2pptx into a temp dir)")
 	flag.IntVar(&reps, "repetitions", 2, "agent-mode repetitions per configuration")
+	flag.IntVar(&parallel, "parallel", 1, "maximum concurrent agent runs (agent mode only)")
 	flag.StringVar(&reportPath, "report", "", "results JSON to apply -ratings to")
 	flag.StringVar(&ratingsPath, "ratings", "", "comma-separated filled reviewer CSVs to apply to -report")
 	flag.Parse()
@@ -64,6 +65,9 @@ func run() error {
 	}
 	if !dryRun && agent == "" {
 		return fmt.Errorf("pass -dry-run or -agent; no provider calls occur by default")
+	}
+	if parallel < 1 {
+		return fmt.Errorf("-parallel must be at least 1")
 	}
 	briefs, err := loadBriefs(briefsPath)
 	if err != nil {
@@ -89,7 +93,7 @@ func run() error {
 		return summarize(report, path, out)
 	}
 
-	r := qualitybench.Runner{Agent: strings.Fields(agent), OutputDir: out, Briefs: briefs, Templates: templates, Repetitions: reps}
+	r := qualitybench.Runner{Agent: strings.Fields(agent), OutputDir: out, Briefs: briefs, Templates: templates, Repetitions: reps, Parallelism: parallel}
 	report, err := r.Run(ctx)
 	if err != nil {
 		return err

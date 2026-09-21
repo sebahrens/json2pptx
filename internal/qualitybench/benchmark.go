@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -72,6 +73,7 @@ type Runner struct {
 	Briefs         []Brief
 	Templates      []Template
 	Repetitions    int
+	Parallelism    int
 }
 
 func (r Runner) Run(ctx context.Context) (*Report, error) {
@@ -90,26 +92,66 @@ func (r Runner) Run(ctx context.Context) (*Report, error) {
 	if len(r.Configurations) == 0 {
 		r.Configurations = []string{"baseline", "redesigned"}
 	}
+	if r.Parallelism <= 0 {
+		r.Parallelism = 1
+	}
 	if err := os.MkdirAll(r.OutputDir, 0o755); err != nil {
 		return nil, err
 	}
-	report := &Report{GeneratedAt: time.Now().UTC(), Evidence: []Evidence{}}
+	requests := make([]Request, 0, len(r.Configurations)*len(r.Briefs)*len(r.Templates)*r.Repetitions)
 	for _, config := range r.Configurations {
 		for _, brief := range r.Briefs {
 			for _, tmpl := range r.Templates {
 				for rep := 1; rep <= r.Repetitions; rep++ {
-					req := Request{RunID: fmt.Sprintf("%s-%s-%s-%d", config, brief.ID, tmpl.Name, rep), Configuration: config, Brief: brief, Template: tmpl, Repetition: rep}
-					ev := r.invoke(ctx, req)
-					report.Evidence = append(report.Evidence, ev)
-					data, _ := json.MarshalIndent(ev, "", "  ")
-					_ = os.WriteFile(filepath.Join(r.OutputDir, req.RunID+".json"), append(data, '\n'), 0o644)
+					requests = append(requests, Request{RunID: fmt.Sprintf("%s-%s-%s-%d", config, brief.ID, tmpl.Name, rep), Configuration: config, Brief: brief, Template: tmpl, Repetition: rep})
 				}
 			}
 		}
 	}
+	evidence := runRequests(ctx, requests, r.Parallelism, func(ctx context.Context, req Request) Evidence {
+		ev := r.invoke(ctx, req)
+		data, _ := json.MarshalIndent(ev, "", "  ")
+		_ = os.WriteFile(filepath.Join(r.OutputDir, req.RunID+".json"), append(data, '\n'), 0o644)
+		return ev
+	})
+	report := &Report{GeneratedAt: time.Now().UTC(), Evidence: evidence}
 	report.Summary.Runs = len(report.Evidence)
 	report.Summary.ReleaseDecision = "inconclusive: blind ratings from two reviewers are required"
 	return report, nil
+}
+
+func runRequests(ctx context.Context, requests []Request, parallelism int, invoke func(context.Context, Request) Evidence) []Evidence {
+	if parallelism < 1 {
+		parallelism = 1
+	}
+	if parallelism > len(requests) {
+		parallelism = len(requests)
+	}
+	if len(requests) == 0 {
+		return []Evidence{}
+	}
+	type job struct {
+		index int
+		req   Request
+	}
+	jobs := make(chan job)
+	evidence := make([]Evidence, len(requests))
+	var workers sync.WaitGroup
+	workers.Add(parallelism)
+	for range parallelism {
+		go func() {
+			defer workers.Done()
+			for next := range jobs {
+				evidence[next.index] = invoke(ctx, next.req)
+			}
+		}()
+	}
+	for i, req := range requests {
+		jobs <- job{index: i, req: req}
+	}
+	close(jobs)
+	workers.Wait()
+	return evidence
 }
 
 func (r Runner) invoke(ctx context.Context, req Request) Evidence {

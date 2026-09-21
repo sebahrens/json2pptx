@@ -30,9 +30,14 @@ An agent run is opt-in and requires an explicit executable:
 ```bash
 go run ./cmd/qualitybench \
   --agent "/absolute/path/to/agent --its-flag" \
+  --parallel 4 \
   --out output/quality-benchmark \
   --results-dir tests/quality/results
 ```
+
+Agent runs default to one worker. Use `--parallel N` only when the configured
+provider and local renderer can sustain `N` independent runs; evidence stays in
+the same deterministic request order regardless of completion order.
 
 For a provider-free harness check, use `--dry-run`. It renders deterministic
 reference decks and is useful for testing the fixture and contact-sheet path;

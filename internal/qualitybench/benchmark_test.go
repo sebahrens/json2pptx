@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestRunnerInvokesConfiguredAgentAndCapturesEvidence(t *testing.T) {
@@ -32,6 +34,34 @@ func TestRunnerInvokesConfiguredAgentAndCapturesEvidence(t *testing.T) {
 	}
 	if report.Evidence[0].Error != "" || len(report.Evidence[0].Result.ToolCalls) != 1 {
 		t.Fatalf("bad evidence: %+v", report.Evidence[0])
+	}
+}
+
+func TestRunRequestsBoundsConcurrencyAndPreservesOrder(t *testing.T) {
+	requests := make([]Request, 12)
+	for i := range requests {
+		requests[i].RunID = string(rune('a' + i))
+	}
+	var active, maximum atomic.Int32
+	evidence := runRequests(context.Background(), requests, 3, func(_ context.Context, req Request) Evidence {
+		current := active.Add(1)
+		for {
+			seen := maximum.Load()
+			if current <= seen || maximum.CompareAndSwap(seen, current) {
+				break
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+		active.Add(-1)
+		return Evidence{Request: req}
+	})
+	if got := maximum.Load(); got < 2 || got > 3 {
+		t.Fatalf("maximum concurrency = %d, want 2..3", got)
+	}
+	for i, ev := range evidence {
+		if ev.Request.RunID != requests[i].RunID {
+			t.Fatalf("evidence[%d] run = %q, want %q", i, ev.Request.RunID, requests[i].RunID)
+		}
 	}
 }
 

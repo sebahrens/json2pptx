@@ -86,10 +86,11 @@ tests/quality/
 
 ## Fresh-agent benchmark
 
-`go run ./cmd/qualitybench --agent "/absolute/path/to/agent"` runs the configured
+`go run ./cmd/qualitybench --agent "/absolute/path/to/agent" --parallel 4` runs the configured
 agent for the 12 frozen briefs in `agent_briefs.json`, three template families,
 two workflow configurations, and two repetitions. The runner invokes the agent
-for every run and writes one evidence file containing the model/version, prompt,
+for every run with the requested bounded concurrency (default one) and writes
+one evidence file containing the model/version, prompt,
 tool calls, artifacts, cost, iterations, duration, and failures. It never calls
 a provider in default CI and refuses to run without `--agent`.
 
