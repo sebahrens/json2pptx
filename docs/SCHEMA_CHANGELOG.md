@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Journey-maturity dense unbroken-description targets
+  (go-slide-creator-tp23k.28).** `journey-maturity-model` now reports
+  `BODY_TOO_LONG` when wide unbroken stage descriptions exceed about 177/143
+  characters at five/six stages. Word-like descriptions retain their
+  180-character maximum. Stage labels fit their 40-character maximum, and
+  the current marker does not change the budget. The existing multiple-current
+  diagnostic remains. Measurements used all four bundled templates. Schema
+  version advances to 4.105.0.
+
 - **Strategy-house shared pillar bullet budgets
   (go-slide-creator-tp23k.27).** `strategy-house` now reports
   `BODY_TOO_LONG` when average pillar bullet copy exceeds measured targets

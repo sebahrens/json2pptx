@@ -5,6 +5,32 @@ import (
 	"testing"
 )
 
+func TestJourneyMaturityDenseUnbrokenDescriptionWarning(t *testing.T) {
+	p := &journeyMaturity{}
+	v := &JourneyMaturityValues{Stages: make([]JourneyMaturityStage, 6)}
+	for i := range v.Stages {
+		v.Stages[i] = JourneyMaturityStage{Label: "Stage", Description: "Brief description"}
+	}
+	v.Stages[2].Description = strings.Repeat("W", 144)
+	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "stages[2].description") || !strings.Contains(got[0], "about 143") {
+		t.Fatalf("dense description warning: %v", got)
+	}
+	v.Stages[2].Description = strings.Repeat("W", 143)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("measured six-stage target should fit: %v", got)
+	}
+	v.Stages[2].Description = strings.Repeat("word ", 36)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("word-like schema maximum should fit: %v", got)
+	}
+	v.Stages = v.Stages[:4]
+	v.Stages[2].Description = strings.Repeat("W", 180)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("four-stage schema maximum should fit: %v", got)
+	}
+}
+
 func TestJourneyMaturity_Registration(t *testing.T) {
 	p, ok := Default().Get("journey-maturity-model")
 	if !ok {

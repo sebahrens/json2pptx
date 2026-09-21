@@ -1341,6 +1341,41 @@ func TestStrategyHouseBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestJourneyMaturityBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_JOURNEY_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_JOURNEY_BUDGET_PROBE=1")
+	}
+	for stages := 3; stages <= 6; stages++ {
+		for _, current := range []bool{false, true} {
+			for _, field := range []string{"label", "wide_label", "description", "wide_description"} {
+				limit := map[string]int{"label": 40, "wide_label": 40, "description": 180, "wide_description": 180}[field]
+				budget := probeReadableBudget(t, "journey-maturity-model", limit, func(length int) any {
+					v := &patterns.JourneyMaturityValues{Stages: make([]patterns.JourneyMaturityStage, stages)}
+					for i := range v.Stages {
+						v.Stages[i] = patterns.JourneyMaturityStage{Label: "Stage", Description: "Brief description"}
+					}
+					if current {
+						v.Stages[0].Current = true
+					}
+					copy := budgetProbeCopy(length)
+					switch field {
+					case "label":
+						v.Stages[0].Label = copy
+					case "wide_label":
+						v.Stages[0].Label = strings.Repeat("W", length)
+					case "description":
+						v.Stages[0].Description = copy
+					case "wide_description":
+						v.Stages[0].Description = strings.Repeat("W", length)
+					}
+					return v
+				})
+				t.Logf("stages=%d current=%t field=%s budget=%d", stages, current, field, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

@@ -95,7 +95,7 @@ func (jm *journeyMaturity) Schema() *Schema {
 		map[string]*Schema{
 			"number":      IntegerSchema(1, 9).WithDescription("Optional stage number (defaults to 1..N by position)"),
 			"label":       StringSchema(40).WithDescription("Short stage label (1-3 words)"),
-			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label"),
+			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 5/6 stages keep wide unbroken runs near 177/143 characters or add word breaks"),
 			"current":     BooleanSchema().WithDescription("When true, marks this stage as the present state and renders a 'where we are' marker beneath it"),
 		},
 		[]string{"label"},
@@ -171,6 +171,22 @@ func (jm *journeyMaturity) PostExpandWarnings(_ ExpandContext, values, _ any) []
 	if !ok || vals == nil {
 		return nil
 	}
+	var warnings []string
+	if len(vals.Stages) >= 5 {
+		budget := 177
+		if len(vals.Stages) >= 6 {
+			budget = 143
+		}
+		for i, stage := range vals.Stages {
+			longest := 0
+			for _, word := range strings.Fields(stage.Description) {
+				longest = max(longest, runeLen(word))
+			}
+			if longest > budget {
+				warnings = append(warnings, fmt.Sprintf("%s: journey-maturity-model stages[%d].description contains a %d-character unbroken word; %d stages hold about %d wide characters per description — add a word break, shorten the copy, or use fewer stages", ErrCodeBodyTooLong, i, longest, len(vals.Stages), budget))
+			}
+		}
+	}
 	count := 0
 	for _, stage := range vals.Stages {
 		if stage.Current {
@@ -178,9 +194,9 @@ func (jm *journeyMaturity) PostExpandWarnings(_ ExpandContext, values, _ any) []
 		}
 	}
 	if count <= 1 {
-		return nil
+		return warnings
 	}
-	return []string{fmt.Sprintf("MULTIPLE_CURRENT_STAGES: %d stages flagged as current; only one 'where we are' marker is rendered meaningfully", count)}
+	return append(warnings, fmt.Sprintf("MULTIPLE_CURRENT_STAGES: %d stages flagged as current; only one 'where we are' marker is rendered meaningfully", count))
 }
 
 func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
