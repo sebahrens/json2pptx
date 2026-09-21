@@ -122,6 +122,26 @@ func TestHorizontalBarBudgetWarningReachesFitReportAcrossTemplates(t *testing.T)
 	assertBudgetFindingAcrossTemplates(t, "horizontal-bar-with-callouts", values, "bars[3].callout", "about 121 characters")
 }
 
+func TestAgendaWithImagesBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.AgendaWithImagesValues{}
+	for i := 0; i < 5; i++ {
+		values.Items = append(values.Items, patterns.AgendaWithImagesItem{Title: "Title", Subtitle: "Summary", ImageLabel: "Image"})
+	}
+	values.Items[2].Title = strings.Repeat("T", 80)
+	values.Items[2].Subtitle = strings.Repeat("S", 76)
+	assertBudgetFindingAcrossTemplates(t, "agenda-with-images", values, "items[2].subtitle", "about 75 subtitle characters")
+}
+
+func TestAgendaWithImagesFullAgendaWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.AgendaWithImagesValues{}
+	for i := 0; i < 6; i++ {
+		values.Items = append(values.Items, patterns.AgendaWithImagesItem{Title: "Title", ImageLabel: "Image"})
+	}
+	values.Items[4].Title = strings.Repeat("T", 80)
+	values.Items[4].Subtitle = "Summary"
+	assertBudgetFindingAcrossTemplates(t, "agenda-with-images", values, "items[4].subtitle", "no readable subtitle room")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

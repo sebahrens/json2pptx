@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Agenda-with-images paired copy targets (go-slide-creator-tp23k.12).**
+  `agenda-with-images` now warns when a subtitle exceeds the readable room
+  left by its title on a five- or six-row agenda with image labels. Titles up
+  to about 65 characters allow about 150 subtitle characters; longer titles
+  allow about 75 at five rows and no subtitle at six. Three or four rows, and
+  agendas without image labels, retain the 160-character subtitle maximum.
+  The title and subtitle descriptions include the paired limits. Measurements
+  used all four bundled templates. Schema version advances to 4.88.0.
+
 - **Horizontal-bar callout copy targets (go-slide-creator-tp23k.11).**
   `horizontal-bar-with-callouts` now emits `BODY_TOO_LONG` with the bar index
   and a measured readable target when a callout exceeds about 181 characters

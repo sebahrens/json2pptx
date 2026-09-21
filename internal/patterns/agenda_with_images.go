@@ -92,12 +92,48 @@ func (a *agendaWithImages) NewValues() any       { return &AgendaWithImagesValue
 func (a *agendaWithImages) NewOverrides() any    { return &AgendaWithImagesOverrides{} }
 func (a *agendaWithImages) NewCellOverride() any { return &AgendaWithImagesCellOverride{} }
 
+// The title and subtitle share one text cell. The budget was measured at
+// default text sizes across all four bundled templates. Without image labels,
+// the text cell expands into the image column and retains its schema maximum.
+func agendaWithImagesSubtitleBudget(rows, titleChars int, withImages bool) int {
+	if !withImages || rows <= 4 {
+		return 160
+	}
+	if titleChars <= 65 {
+		return 150
+	}
+	if rows == 5 {
+		return 75
+	}
+	return 0
+}
+
+func (a *agendaWithImages) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*AgendaWithImagesValues)
+	if !ok || v == nil {
+		return nil
+	}
+	withImages := anyAgendaImageLabel(v.Items)
+	var warnings []string
+	for i, item := range v.Items {
+		budget := agendaWithImagesSubtitleBudget(len(v.Items), runeLen(item.Title), withImages)
+		if n := runeLen(item.Subtitle); n > budget {
+			if budget == 0 {
+				warnings = append(warnings, fmt.Sprintf("%s: agenda-with-images items[%d].subtitle has %d characters; a %d-row agenda with image labels and a %d-character title leaves no readable subtitle room — shorten the title to about 65 characters, omit the subtitle, or use fewer rows", ErrCodeBodyTooLong, i, n, len(v.Items), runeLen(item.Title)))
+			} else {
+				warnings = append(warnings, fmt.Sprintf("%s: agenda-with-images items[%d].subtitle is %d characters; a %d-row agenda with image labels=%t and a %d-character title holds about %d subtitle characters before text shrinks below the readable minimum — shorten the subtitle or title, omit image labels, or use fewer rows", ErrCodeBodyTooLong, i, n, len(v.Items), withImages, runeLen(item.Title), budget))
+			}
+		}
+	}
+	return warnings
+}
+
 func (a *agendaWithImages) Schema() *Schema {
 	itemSchema := ObjectSchema(
 		map[string]*Schema{
 			"number":      IntegerSchema(0, 999).WithDescription("1-based ordinal; auto-assigned 1..N when omitted (use 0 or omit to auto-assign)"),
-			"title":       StringSchema(80).WithDescription("Section title (bold)"),
-			"subtitle":    StringSchema(160).WithDescription("Optional descriptive subtitle rendered below the title"),
+			"title":       StringSchema(80).WithDescription("Section title (bold); with 5-6 image rows, keep it to about 65 characters when the subtitle exceeds 75 characters"),
+			"subtitle":    StringSchema(160).WithDescription("Optional text below the title. About 160 readable characters with 3-4 rows or no image labels. With 5-6 image rows and a title up to 65 characters, use about 150. With a longer title, use about 75 at 5 rows or omit the subtitle at 6 rows"),
 			"image_label": StringSchema(60).WithDescription("Optional caption centred in the image placeholder; omit it on one row and that row still gets an empty placeholder, omit it on every row to collapse the image column"),
 		},
 		[]string{"title"},

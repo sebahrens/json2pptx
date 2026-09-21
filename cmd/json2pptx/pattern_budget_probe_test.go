@@ -126,6 +126,102 @@ func TestHorizontalBarBudgetProbe(t *testing.T) {
 	}
 }
 
+// Run with JSON2PPTX_AGENDA_IMAGES_BUDGET_PROBE=1 to measure each agenda row
+// field by row count and whether image and subtitle content are present.
+func TestAgendaWithImagesBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_AGENDA_IMAGES_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_AGENDA_IMAGES_BUDGET_PROBE=1")
+	}
+	for rows := 3; rows <= 6; rows++ {
+		for _, images := range []bool{false, true} {
+			for _, subtitles := range []bool{false, true} {
+				for _, field := range []string{"title", "subtitle", "image_label"} {
+					if field == "image_label" && !images {
+						continue
+					}
+					maxChars := map[string]int{"title": 80, "subtitle": 160, "image_label": 60}[field]
+					budget := probeReadableBudget(t, "agenda-with-images", maxChars, func(length int) any {
+						v := &patterns.AgendaWithImagesValues{}
+						for i := 0; i < rows; i++ {
+							item := patterns.AgendaWithImagesItem{Title: "Title"}
+							if subtitles {
+								item.Subtitle = "Summary"
+							}
+							if images {
+								item.ImageLabel = "Image"
+							}
+							v.Items = append(v.Items, item)
+						}
+						copy := budgetProbeCopy(length)
+						switch field {
+						case "title":
+							v.Items[0].Title = copy
+						case "subtitle":
+							v.Items[0].Subtitle = copy
+						case "image_label":
+							v.Items[0].ImageLabel = copy
+						}
+						return v
+					})
+					t.Logf("rows=%d images=%t subtitles=%t field=%s budget=%d", rows, images, subtitles, field, budget)
+				}
+			}
+		}
+	}
+	for _, rows := range []int{5, 6} {
+		for _, subtitleChars := range []int{0, 40, 80, 120, 150} {
+			budget := probeReadableBudget(t, "agenda-with-images", 80, func(length int) any {
+				v := &patterns.AgendaWithImagesValues{}
+				for i := 0; i < rows; i++ {
+					v.Items = append(v.Items, patterns.AgendaWithImagesItem{Title: "Title", Subtitle: "Summary", ImageLabel: "Image"})
+				}
+				v.Items[0].Title = budgetProbeCopy(length)
+				v.Items[0].Subtitle = budgetProbeCopy(subtitleChars)
+				return v
+			})
+			t.Logf("rows=%d images=true subtitle_chars=%d title_budget=%d", rows, subtitleChars, budget)
+		}
+		for _, titleChars := range []int{5, 40, 65, 80} {
+			budget := probeReadableBudget(t, "agenda-with-images", 160, func(length int) any {
+				v := &patterns.AgendaWithImagesValues{}
+				for i := 0; i < rows; i++ {
+					v.Items = append(v.Items, patterns.AgendaWithImagesItem{Title: "Title", Subtitle: "Summary", ImageLabel: "Image"})
+				}
+				v.Items[0].Title = budgetProbeCopy(titleChars)
+				v.Items[0].Subtitle = budgetProbeCopy(length)
+				return v
+			})
+			t.Logf("rows=%d images=true title_chars=%d subtitle_budget=%d", rows, titleChars, budget)
+		}
+	}
+	for rows := 3; rows <= 6; rows++ {
+		for _, images := range []bool{false, true} {
+			for _, field := range []string{"title", "subtitle"} {
+				limit := map[string]int{"title": 80, "subtitle": 160}[field]
+				budget := probeReadableBudget(t, "agenda-with-images", limit, func(length int) any {
+					v := &patterns.AgendaWithImagesValues{}
+					for i := 0; i < rows; i++ {
+						item := patterns.AgendaWithImagesItem{Title: "Title", Subtitle: "Summary"}
+						if images {
+							item.ImageLabel = "Image"
+						}
+						v.Items = append(v.Items, item)
+					}
+					if field == "title" {
+						v.Items[0].Title = budgetProbeCopy(length)
+						v.Items[0].Subtitle = budgetProbeCopy(160)
+					} else {
+						v.Items[0].Title = budgetProbeCopy(80)
+						v.Items[0].Subtitle = budgetProbeCopy(length)
+					}
+					return v
+				})
+				t.Logf("rows=%d images=%t other_max=true field=%s budget=%d", rows, images, field, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal
