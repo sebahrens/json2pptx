@@ -1376,6 +1376,31 @@ func TestJourneyMaturityBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestProcessFlowCompactBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_PROCESS_COMPACT_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_PROCESS_COMPACT_BUDGET_PROBE=1")
+	}
+	for steps := 3; steps <= 8; steps++ {
+		for _, shape := range []string{"step", "decision", "chevron", "arrow"} {
+			for _, wide := range []bool{false, true} {
+				budget := probeReadableBudget(t, "process-flow-compact", 80, func(length int) any {
+					v := &patterns.ProcessFlowValues{Steps: make([]patterns.ProcessFlowStep, steps)}
+					for i := range v.Steps {
+						v.Steps[i] = patterns.ProcessFlowStep{Label: "Stage", Type: shape}
+					}
+					copy := budgetProbeCopy(length)
+					if wide {
+						copy = strings.Repeat("W", length)
+					}
+					v.Steps[0].Label = copy
+					return v
+				})
+				t.Logf("steps=%d shape=%s wide=%t budget=%d", steps, shape, wide, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

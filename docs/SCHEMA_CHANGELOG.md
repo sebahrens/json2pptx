@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Compact process-flow shape-aware label targets
+  (go-slide-creator-tp23k.29).** `process-flow-compact` now reports
+  `BODY_TOO_LONG` when a step label exceeds the measured space for its shape
+  and step count. Chevrons and arrows allow about 41/40/35 word-like
+  characters at six/seven/eight steps and less for wide unbroken text.
+  Rectangles and diamonds retain more room. The fit report names the step
+  and provides its two targets. Measurements used all four bundled templates.
+  Schema version advances to 4.106.0.
+
 - **Journey-maturity dense unbroken-description targets
   (go-slide-creator-tp23k.28).** `journey-maturity-model` now reports
   `BODY_TOO_LONG` when wide unbroken stage descriptions exceed about 177/143

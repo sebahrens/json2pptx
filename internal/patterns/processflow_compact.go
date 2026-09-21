@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -61,10 +62,54 @@ func (p *processFlowCompact) NewValues() any       { return &ProcessFlowValues{}
 func (p *processFlowCompact) NewOverrides() any    { return &ProcessFlowOverrides{} }
 func (p *processFlowCompact) NewCellOverride() any { return &ProcessFlowCellOverride{} }
 
+func processFlowCompactLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
+	if pointed {
+		switch steps {
+		case 5:
+			return 80, 52
+		case 6:
+			return 41, 30
+		case 7:
+			return 40, 18
+		case 8:
+			return 35, 13
+		default:
+			return 80, 80
+		}
+	}
+	if steps == 7 {
+		return 80, 76
+	}
+	if steps >= 8 {
+		return 80, 64
+	}
+	return 80, 80
+}
+
+func (p *processFlowCompact) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*ProcessFlowValues)
+	if !ok || v == nil {
+		return nil
+	}
+	var warnings []string
+	for i, step := range v.Steps {
+		pointed := step.Type == "chevron" || step.Type == "arrow"
+		wordBudget, unbrokenBudget := processFlowCompactLabelBudget(len(v.Steps), pointed)
+		longest := 0
+		for _, word := range strings.Fields(step.Label) {
+			longest = max(longest, runeLen(word))
+		}
+		if runeLen(step.Label) > wordBudget || longest > unbrokenBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: process-flow-compact steps[%d].label has %d characters (longest unbroken run %d); this %d-step %s holds about %d word-like or %d wide unbroken characters — shorten the label, add word breaks, or use fewer steps", ErrCodeBodyTooLong, i, runeLen(step.Label), longest, len(v.Steps), step.Type, wordBudget, unbrokenBudget))
+		}
+	}
+	return warnings
+}
+
 func (p *processFlowCompact) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
-			"label": StringSchema(80).WithDescription("Step label text"),
+			"label": StringSchema(80).WithDescription("Step label text; compact chevron/arrow labels tighten to about 41/40/35 word-like characters at 6/7/8 steps, less for wide unbroken text"),
 			"type":  EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: rectangle (step), diamond (decision), chevron, or right-arrow (arrow)").WithDefault("step"),
 		},
 		[]string{"label"},

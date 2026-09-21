@@ -334,6 +334,15 @@ func TestJourneyMaturityDenseUnbrokenDescriptionWarningReachesFitReportAcrossTem
 	assertBudgetFindingAcrossTemplates(t, "journey-maturity-model", values, "stages[2].description", "about 143 wide characters")
 }
 
+func TestProcessFlowCompactPointedLabelBudgetReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.ProcessFlowValues{Steps: make([]patterns.ProcessFlowStep, 8)}
+	for i := range values.Steps {
+		values.Steps[i] = patterns.ProcessFlowStep{Label: "Stage", Type: "chevron"}
+	}
+	values.Steps[3].Label = strings.Repeat("word ", 7) + "w"
+	assertBudgetFindingAcrossTemplates(t, "process-flow-compact", values, "steps[3].label", "about 35 word-like or 13 wide")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {
