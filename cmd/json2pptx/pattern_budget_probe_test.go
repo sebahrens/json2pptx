@@ -330,6 +330,47 @@ func TestBeforeAfterCompactBudgetProbe(t *testing.T) {
 	}
 }
 
+// Run with JSON2PPTX_PHASE_ROADMAP_BUDGET_PROBE=1 to measure per-phase copy
+// against all bundled templates, including the optional milestone row.
+func TestPhaseRoadmapBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_PHASE_ROADMAP_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_PHASE_ROADMAP_BUDGET_PROBE=1")
+	}
+	for phases := 3; phases <= 6; phases++ {
+		for _, milestones := range []bool{false, true} {
+			for _, field := range []string{"name", "date_label", "description", "milestone"} {
+				if field == "milestone" && !milestones {
+					continue
+				}
+				limit := map[string]int{"name": 40, "date_label": 30, "description": 160, "milestone": 60}[field]
+				budget := probeReadableBudget(t, "phase-roadmap", limit, func(length int) any {
+					v := &patterns.PhaseRoadmapValues{}
+					for i := 0; i < phases; i++ {
+						phase := patterns.PhaseRoadmapPhase{Name: "Plan", DateLabel: "Q1", Description: "Brief"}
+						if milestones {
+							phase.Milestone = "Gate"
+						}
+						v.Phases = append(v.Phases, phase)
+					}
+					copy := budgetProbeCopy(length)
+					switch field {
+					case "name":
+						v.Phases[0].Name = copy
+					case "date_label":
+						v.Phases[0].DateLabel = copy
+					case "description":
+						v.Phases[0].Description = copy
+					case "milestone":
+						v.Phases[0].Milestone = copy
+					}
+					return v
+				})
+				t.Logf("phases=%d milestones=%t field=%s budget=%d", phases, milestones, field, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

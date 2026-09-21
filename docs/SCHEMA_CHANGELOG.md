@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Dense phase-roadmap date and milestone targets
+  (go-slide-creator-tp23k.14).** `phase-roadmap` now reports
+  `BODY_TOO_LONG` when date labels or milestones exceed measured per-phase
+  targets: 30/60 characters at three or four phases, 27/52 at five, and
+  22/42 at six. Schema descriptions include the row-count guidance; phase
+  names and descriptions retain their existing maxima. Measurements used all
+  four bundled templates. Schema version advances to 4.90.0.
+
 - **Compact before/after shared bullet budget (go-slide-creator-tp23k.13).**
   `before-after-compact` now reports `BODY_TOO_LONG` when a side's bullets
   together exceed its measured vertical budget. Bullets of about 67, 133,

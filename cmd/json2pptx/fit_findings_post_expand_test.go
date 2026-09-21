@@ -158,6 +158,17 @@ func TestBeforeAfterCompactBudgetWarningReachesFitReportAcrossTemplates(t *testi
 	assertBudgetFindingAcrossTemplates(t, "before-after-compact", values, "before.items", "holds about 12 lines")
 }
 
+func TestPhaseRoadmapBudgetWarningsReachFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.PhaseRoadmapValues{}
+	for i := 0; i < 6; i++ {
+		values.Phases = append(values.Phases, patterns.PhaseRoadmapPhase{Name: "Plan", DateLabel: "Q1", Description: "Brief", Milestone: "Gate"})
+	}
+	values.Phases[2].DateLabel = strings.Repeat("D", 23)
+	values.Phases[2].Milestone = strings.Repeat("M", 43)
+	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].date_label", "about 22 readable date-label characters")
+	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].milestone", "about 42 readable milestone characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

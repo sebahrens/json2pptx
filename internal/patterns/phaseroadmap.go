@@ -112,14 +112,57 @@ func (pr *phaseRoadmap) NewValues() any       { return &PhaseRoadmapValues{} }
 func (pr *phaseRoadmap) NewOverrides() any    { return &PhaseRoadmapOverrides{} }
 func (pr *phaseRoadmap) NewCellOverride() any { return &PhaseRoadmapCellOverride{} }
 
+// Readable targets were measured against the fit collector on all four
+// bundled templates at the pattern's default text sizes.
+func phaseRoadmapDateBudget(phases int) int {
+	switch phases {
+	case 5:
+		return 27
+	case 6:
+		return 22
+	default:
+		return 30
+	}
+}
+
+func phaseRoadmapMilestoneBudget(phases int) int {
+	switch phases {
+	case 5:
+		return 52
+	case 6:
+		return 42
+	default:
+		return 60
+	}
+}
+
+func (pr *phaseRoadmap) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*PhaseRoadmapValues)
+	if !ok || v == nil {
+		return nil
+	}
+	dateBudget := phaseRoadmapDateBudget(len(v.Phases))
+	milestoneBudget := phaseRoadmapMilestoneBudget(len(v.Phases))
+	var warnings []string
+	for i, phase := range v.Phases {
+		if n := runeLen(phase.DateLabel); n > dateBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: phase-roadmap phases[%d].date_label is %d characters; %d phases hold about %d readable date-label characters per phase — shorten the range or use fewer phases", ErrCodeBodyTooLong, i, n, len(v.Phases), dateBudget))
+		}
+		if n := runeLen(phase.Milestone); n > milestoneBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: phase-roadmap phases[%d].milestone is %d characters; %d phases hold about %d readable milestone characters per phase — shorten the milestone or use fewer phases", ErrCodeBodyTooLong, i, n, len(v.Phases), milestoneBudget))
+		}
+	}
+	return warnings
+}
+
 func (pr *phaseRoadmap) Schema() *Schema {
 	phaseSchema := ObjectSchema(
 		map[string]*Schema{
 			"name":        StringSchema(40).WithDescription("Phase name (e.g. \"Plan\", \"Build\")"),
-			"date_label":  StringSchema(30).WithDescription("Optional date range label rendered below the timeline bar (e.g. \"Mar–Apr 2025\")"),
+			"date_label":  StringSchema(30).WithDescription("Optional date range below the timeline bar; about 30 readable characters with 3-4 phases, 27 with 5, or 22 with 6"),
 			"description": StringSchema(160).WithDescription("Short description rendered below the date label"),
 			"active":      BooleanSchema().WithDescription("When true, this phase renders with the accent fill (others use a light tint of the accent)"),
-			"milestone":   StringSchema(60).WithDescription("Optional milestone callout (e.g. \"Pilot go-live\"); when any phase sets one, a milestone row is rendered"),
+			"milestone":   StringSchema(60).WithDescription("Optional milestone callout; when any phase sets one, a milestone row is rendered. About 60 readable characters with 3-4 phases, 52 with 5, or 42 with 6"),
 		},
 		[]string{"name"},
 	).WithAdditionalProperties(false)
