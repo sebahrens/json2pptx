@@ -1,78 +1,78 @@
 {
   "by_configuration": {
     "baseline": {
-      "affected_decks": 56,
+      "affected_decks": 21,
       "by_category": {
-        "layout_balance": 67,
+        "layout_balance": 4,
         "text_overflow": 21
       },
       "by_severity": {
-        "P2": 67,
+        "P2": 4,
         "P3": 21
       },
       "decks": 72,
-      "findings": 88,
-      "findings_per_100_slides": 18.68,
+      "findings": 25,
+      "findings_per_100_slides": 5.31,
       "slides": 471
     },
     "redesigned": {
-      "affected_decks": 44,
+      "affected_decks": 3,
       "by_category": {
-        "layout_balance": 52
+        "layout_balance": 3
       },
       "by_severity": {
-        "P2": 52
+        "P2": 3
       },
       "decks": 72,
-      "findings": 52,
-      "findings_per_100_slides": 9.32,
+      "findings": 3,
+      "findings_per_100_slides": 0.54,
       "slides": 558
     }
   },
   "by_template": {
     "midnight-blue": {
-      "affected_decks": 35,
+      "affected_decks": 10,
       "by_category": {
-        "layout_balance": 42,
+        "layout_balance": 2,
         "text_overflow": 10
       },
       "by_severity": {
-        "P2": 42,
+        "P2": 2,
         "P3": 10
       },
       "decks": 48,
-      "findings": 52,
-      "findings_per_100_slides": 14.53,
+      "findings": 12,
+      "findings_per_100_slides": 3.35,
       "slides": 358
     },
     "portability-side-logo": {
-      "affected_decks": 31,
+      "affected_decks": 10,
       "by_category": {
-        "layout_balance": 35,
+        "layout_balance": 1,
         "text_overflow": 10
       },
       "by_severity": {
-        "P2": 35,
+        "P2": 1,
         "P3": 10
       },
       "decks": 48,
-      "findings": 45,
-      "findings_per_100_slides": 14.2,
+      "findings": 11,
+      "findings_per_100_slides": 3.47,
       "slides": 317
     },
     "warm-coral": {
-      "affected_decks": 34,
+      "affected_decks": 4,
       "by_category": {
-        "layout_balance": 42,
+        "layout_balance": 4,
         "text_overflow": 1
       },
       "by_severity": {
-        "P2": 42,
+        "P2": 4,
         "P3": 1
       },
       "decks": 48,
-      "findings": 43,
-      "findings_per_100_slides": 12.15,
+      "findings": 5,
+      "findings_per_100_slides": 1.41,
       "slides": 354
     }
   },
@@ -80,17 +80,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-chart-regions-midnight-blue-1",
@@ -111,17 +102,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.6%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "baseline-chart-regions-portability-side-logo-1",
@@ -131,17 +113,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.9%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "baseline-chart-regions-portability-side-logo-2",
@@ -151,17 +124,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 13.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-chart-regions-warm-coral-1",
@@ -171,17 +135,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 13.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-chart-regions-warm-coral-2",
@@ -191,17 +146,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-chart-revenue-midnight-blue-1",
@@ -211,17 +157,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-chart-revenue-midnight-blue-2",
@@ -231,17 +168,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "baseline-chart-revenue-portability-side-logo-1",
@@ -251,17 +179,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 15.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "baseline-chart-revenue-portability-side-logo-2",
@@ -271,17 +190,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.2%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-chart-revenue-warm-coral-1",
@@ -291,17 +201,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-chart-revenue-warm-coral-2",
@@ -311,17 +212,8 @@
     {
       "brief_id": "comparison-options",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.7%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-comparison-options-midnight-blue-1",
@@ -339,6 +231,7 @@
           "location": "top edge",
           "severity": "P3",
           "slide_index": 5,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -351,17 +244,8 @@
     {
       "brief_id": "comparison-options",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "baseline-comparison-options-portability-side-logo-1",
@@ -371,22 +255,15 @@
     {
       "brief_id": "comparison-options",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "6.7% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 5,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -410,17 +287,8 @@
     {
       "brief_id": "comparison-options",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.0%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 6,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-comparison-options-warm-coral-2",
@@ -430,30 +298,15 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 15.2%) while the lower content region is nearly empty (ink 0.15%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "6.9% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 5,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -466,22 +319,15 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "layout_balance",
           "description": "Main content is concentrated in the upper half (ink 46.5%) while the lower content region is nearly empty (ink 3.30%); resize or redistribute the content to use the slide.",
           "location": "main content region",
           "severity": "P2",
           "slide_index": 1,
+          "slide_type": "content",
           "source": "deterministic"
         }
       ],
@@ -505,17 +351,8 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 13.7%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "baseline-comparison-vendors-portability-side-logo-2",
@@ -525,17 +362,8 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.7%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-comparison-vendors-warm-coral-1",
@@ -545,17 +373,8 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 6,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-comparison-vendors-warm-coral-2",
@@ -565,22 +384,15 @@
     {
       "brief_id": "dense-plan",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "7.3% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 7,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -593,7 +405,7 @@
     {
       "brief_id": "dense-plan",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 2,
       "findings": [
         {
           "category": "text_overflow",
@@ -601,6 +413,7 @@
           "location": "bottom edge",
           "severity": "P3",
           "slide_index": 6,
+          "slide_type": "content",
           "source": "heuristic"
         },
         {
@@ -609,15 +422,8 @@
           "location": "bottom edge",
           "severity": "P3",
           "slide_index": 7,
+          "slide_type": "content",
           "source": "heuristic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 9,
-          "source": "deterministic"
         }
       ],
       "held_out": false,
@@ -629,17 +435,8 @@
     {
       "brief_id": "dense-plan",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "baseline-dense-plan-portability-side-logo-1",
@@ -649,7 +446,7 @@
     {
       "brief_id": "dense-plan",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
         {
           "category": "text_overflow",
@@ -657,15 +454,8 @@
           "location": "bottom edge",
           "severity": "P3",
           "slide_index": 6,
+          "slide_type": "table",
           "source": "heuristic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 10,
-          "source": "deterministic"
         }
       ],
       "held_out": true,
@@ -677,31 +467,16 @@
     {
       "brief_id": "dense-plan",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 13.7%) while the lower content region is nearly empty (ink 1.17%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "15.7% of pixels in the bottom edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "bottom edge",
           "severity": "P3",
           "slide_index": 4,
+          "slide_type": "table",
           "source": "heuristic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.9%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 9,
-          "source": "deterministic"
         }
       ],
       "held_out": false,
@@ -790,17 +565,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.6%) while the lower content region is nearly empty (ink 1.54%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-kpi-risk-midnight-blue-1",
@@ -821,22 +587,15 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.9%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "6.4% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 7,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -857,6 +616,7 @@
           "location": "top edge",
           "severity": "P3",
           "slide_index": 6,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -869,17 +629,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.2%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 6,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-kpi-risk-warm-coral-1",
@@ -889,25 +640,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "baseline",
-      "finding_count": 2,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-kpi-risk-warm-coral-2",
@@ -917,22 +651,15 @@
     {
       "brief_id": "multilingual",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.6%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "7.2% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 7,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -945,7 +672,7 @@
     {
       "brief_id": "multilingual",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 2,
       "findings": [
         {
           "category": "text_overflow",
@@ -953,15 +680,8 @@
           "location": "bottom edge",
           "severity": "P3",
           "slide_index": 3,
+          "slide_type": "table",
           "source": "heuristic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
         },
         {
           "category": "text_overflow",
@@ -969,6 +689,7 @@
           "location": "top edge",
           "severity": "P3",
           "slide_index": 7,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -981,22 +702,15 @@
     {
       "brief_id": "multilingual",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.6%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "7.1% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 7,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -1009,7 +723,7 @@
     {
       "brief_id": "multilingual",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 2,
       "findings": [
         {
           "category": "text_overflow",
@@ -1017,15 +731,8 @@
           "location": "bottom edge",
           "severity": "P3",
           "slide_index": 3,
+          "slide_type": "table",
           "source": "heuristic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.2%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
         },
         {
           "category": "text_overflow",
@@ -1033,6 +740,7 @@
           "location": "top edge",
           "severity": "P3",
           "slide_index": 7,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -1056,25 +764,8 @@
     {
       "brief_id": "multilingual",
       "configuration": "baseline",
-      "finding_count": 2,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.0%) while the lower content region is nearly empty (ink 0.66%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.2%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-multilingual-warm-coral-2",
@@ -1084,17 +775,8 @@
     {
       "brief_id": "narrative-board",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-narrative-board-midnight-blue-1",
@@ -1104,17 +786,8 @@
     {
       "brief_id": "narrative-board",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-narrative-board-midnight-blue-2",
@@ -1124,25 +797,8 @@
     {
       "brief_id": "narrative-board",
       "configuration": "baseline",
-      "finding_count": 2,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.6%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "baseline-narrative-board-portability-side-logo-1",
@@ -1163,22 +819,15 @@
     {
       "brief_id": "narrative-board",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 2,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "layout_balance",
           "description": "Main content is concentrated in the upper half (ink 21.0%) while the lower content region is nearly empty (ink 0.22%); resize or redistribute the content to use the slide.",
           "location": "main content region",
           "severity": "P2",
           "slide_index": 2,
+          "slide_type": "content",
           "source": "deterministic"
         },
         {
@@ -1187,6 +836,7 @@
           "location": "main content region",
           "severity": "P2",
           "slide_index": 6,
+          "slide_type": "content",
           "source": "deterministic"
         }
       ],
@@ -1199,17 +849,8 @@
     {
       "brief_id": "narrative-board",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.8%) while the lower content region is nearly empty (ink 0.37%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-narrative-board-warm-coral-2",
@@ -1230,22 +871,15 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "5.7% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 6,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -1258,30 +892,15 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "6.4% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 5,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -1294,22 +913,15 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.5%) while the lower content region is nearly empty (ink 0.51%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "layout_balance",
           "description": "Main content is concentrated in the upper half (ink 14.0%) while the lower content region is nearly empty (ink 1.61%); resize or redistribute the content to use the slide.",
           "location": "main content region",
           "severity": "P2",
           "slide_index": 2,
+          "slide_type": "content",
           "source": "deterministic"
         }
       ],
@@ -1322,17 +934,8 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.7%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-narrative-strategy-warm-coral-1",
@@ -1342,17 +945,8 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-narrative-strategy-warm-coral-2",
@@ -1362,17 +956,8 @@
     {
       "brief_id": "process-onboarding",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-process-onboarding-midnight-blue-1",
@@ -1393,25 +978,8 @@
     {
       "brief_id": "process-onboarding",
       "configuration": "baseline",
-      "finding_count": 2,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 4,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "baseline-process-onboarding-portability-side-logo-1",
@@ -1421,22 +989,15 @@
     {
       "brief_id": "process-onboarding",
       "configuration": "baseline",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "5.2% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 4,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -1460,17 +1021,8 @@
     {
       "brief_id": "process-onboarding",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.1%) while the lower content region is nearly empty (ink 1.10%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-process-onboarding-warm-coral-2",
@@ -1480,31 +1032,16 @@
     {
       "brief_id": "process-transformation",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.5%) while the lower content region is nearly empty (ink 0.95%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "88.0% of pixels in the bottom edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "bottom edge",
           "severity": "P3",
           "slide_index": 4,
+          "slide_type": "content",
           "source": "heuristic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
         }
       ],
       "held_out": false,
@@ -1516,17 +1053,8 @@
     {
       "brief_id": "process-transformation",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-process-transformation-midnight-blue-2",
@@ -1536,17 +1064,8 @@
     {
       "brief_id": "process-transformation",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 5,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "baseline-process-transformation-portability-side-logo-1",
@@ -1556,30 +1075,15 @@
     {
       "brief_id": "process-transformation",
       "configuration": "baseline",
-      "finding_count": 3,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.6%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.9%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 4,
-          "source": "deterministic"
-        },
         {
           "category": "text_overflow",
           "description": "6.7% of pixels in the top edge contain text-like content; possible overflow or content touching the slide edge.",
           "location": "top edge",
           "severity": "P3",
           "slide_index": 4,
+          "slide_type": "closing",
           "source": "heuristic"
         }
       ],
@@ -1592,17 +1096,8 @@
     {
       "brief_id": "process-transformation",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.0%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "baseline-process-transformation-warm-coral-1",
@@ -1612,17 +1107,8 @@
     {
       "brief_id": "process-transformation",
       "configuration": "baseline",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.2%) while the lower content region is nearly empty (ink 0.95%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "baseline-process-transformation-warm-coral-2",
@@ -1643,17 +1129,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 13.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-chart-regions-midnight-blue-2",
@@ -1674,17 +1151,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.0%) while the lower content region is nearly empty (ink 0.73%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "redesigned-chart-regions-portability-side-logo-2",
@@ -1694,17 +1162,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.2%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-chart-regions-warm-coral-1",
@@ -1714,17 +1173,8 @@
     {
       "brief_id": "chart-regions",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-chart-regions-warm-coral-2",
@@ -1734,25 +1184,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "redesigned",
-      "finding_count": 2,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.7%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 3,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-chart-revenue-midnight-blue-1",
@@ -1762,17 +1195,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-chart-revenue-midnight-blue-2",
@@ -1815,17 +1239,8 @@
     {
       "brief_id": "chart-revenue",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.7%) while the lower content region is nearly empty (ink 0.81%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-chart-revenue-warm-coral-2",
@@ -1846,17 +1261,8 @@
     {
       "brief_id": "comparison-options",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.0%) while the lower content region is nearly empty (ink 0.88%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-comparison-options-midnight-blue-2",
@@ -1910,17 +1316,8 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.8%) while the lower content region is nearly empty (ink 0.15%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-comparison-vendors-midnight-blue-1",
@@ -1930,17 +1327,8 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.2%) while the lower content region is nearly empty (ink 0.15%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-comparison-vendors-midnight-blue-2",
@@ -1950,17 +1338,8 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "redesigned-comparison-vendors-portability-side-logo-1",
@@ -1970,17 +1349,8 @@
     {
       "brief_id": "comparison-vendors",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.2%) while the lower content region is nearly empty (ink 0.15%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "redesigned-comparison-vendors-portability-side-logo-2",
@@ -2023,17 +1393,8 @@
     {
       "brief_id": "dense-plan",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-dense-plan-midnight-blue-2",
@@ -2054,17 +1415,8 @@
     {
       "brief_id": "dense-plan",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "redesigned-dense-plan-portability-side-logo-2",
@@ -2074,17 +1426,8 @@
     {
       "brief_id": "dense-plan",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.6%) while the lower content region is nearly empty (ink 0.44%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-dense-plan-warm-coral-1",
@@ -2094,17 +1437,8 @@
     {
       "brief_id": "dense-plan",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.2%) while the lower content region is nearly empty (ink 1.03%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-dense-plan-warm-coral-2",
@@ -2158,17 +1492,8 @@
     {
       "brief_id": "kpi-quarter",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-kpi-quarter-warm-coral-1",
@@ -2189,17 +1514,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 15.2%) while the lower content region is nearly empty (ink 1.90%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-kpi-risk-midnight-blue-1",
@@ -2209,17 +1525,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.5%) while the lower content region is nearly empty (ink 0.59%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-kpi-risk-midnight-blue-2",
@@ -2229,17 +1536,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.3%) while the lower content region is nearly empty (ink 0.81%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "redesigned-kpi-risk-portability-side-logo-1",
@@ -2249,17 +1547,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "redesigned-kpi-risk-portability-side-logo-2",
@@ -2269,17 +1558,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.9%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-kpi-risk-warm-coral-1",
@@ -2289,17 +1569,8 @@
     {
       "brief_id": "kpi-risk",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-kpi-risk-warm-coral-2",
@@ -2309,33 +1580,8 @@
     {
       "brief_id": "multilingual",
       "configuration": "redesigned",
-      "finding_count": 3,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.9%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 2,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 6,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.0%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 10,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-multilingual-midnight-blue-1",
@@ -2345,17 +1591,8 @@
     {
       "brief_id": "multilingual",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 4,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-multilingual-midnight-blue-2",
@@ -2365,17 +1602,8 @@
     {
       "brief_id": "multilingual",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 6.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "redesigned-multilingual-portability-side-logo-1",
@@ -2396,17 +1624,8 @@
     {
       "brief_id": "multilingual",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 36.0%) while the lower content region is nearly empty (ink 3.30%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 6,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-multilingual-warm-coral-1",
@@ -2416,25 +1635,8 @@
     {
       "brief_id": "multilingual",
       "configuration": "redesigned",
-      "finding_count": 2,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 13.2%) while the lower content region is nearly empty (ink 1.32%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-multilingual-warm-coral-2",
@@ -2444,33 +1646,8 @@
     {
       "brief_id": "narrative-board",
       "configuration": "redesigned",
-      "finding_count": 3,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.6%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 2,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.2%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 7,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-narrative-board-midnight-blue-1",
@@ -2480,17 +1657,8 @@
     {
       "brief_id": "narrative-board",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.1%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-narrative-board-midnight-blue-2",
@@ -2522,25 +1690,8 @@
     {
       "brief_id": "narrative-board",
       "configuration": "redesigned",
-      "finding_count": 2,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 12.4%) while the lower content region is nearly empty (ink 0.66%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        },
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.0%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 9,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-narrative-board-warm-coral-1",
@@ -2550,17 +1701,8 @@
     {
       "brief_id": "narrative-board",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 9.5%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-narrative-board-warm-coral-2",
@@ -2592,17 +1734,8 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "redesigned-narrative-strategy-portability-side-logo-1",
@@ -2612,17 +1745,8 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.6%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "redesigned-narrative-strategy-portability-side-logo-2",
@@ -2632,17 +1756,8 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.5%) while the lower content region is nearly empty (ink 0.59%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-narrative-strategy-warm-coral-1",
@@ -2652,17 +1767,8 @@
     {
       "brief_id": "narrative-strategy",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 28.8%) while the lower content region is nearly empty (ink 2.93%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 4,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-narrative-strategy-warm-coral-2",
@@ -2680,6 +1786,7 @@
           "location": "main content region",
           "severity": "P2",
           "slide_index": 4,
+          "slide_type": "content",
           "source": "deterministic"
         }
       ],
@@ -2692,17 +1799,8 @@
     {
       "brief_id": "process-onboarding",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.3%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-process-onboarding-midnight-blue-2",
@@ -2745,22 +1843,15 @@
     {
       "brief_id": "process-onboarding",
       "configuration": "redesigned",
-      "finding_count": 2,
+      "finding_count": 1,
       "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 27.5%) while the lower content region is nearly empty (ink 2.64%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 2,
-          "source": "deterministic"
-        },
         {
           "category": "layout_balance",
           "description": "Main content is concentrated in the upper half (ink 24.3%) while the lower content region is nearly empty (ink 2.56%); resize or redistribute the content to use the slide.",
           "location": "main content region",
           "severity": "P2",
           "slide_index": 3,
+          "slide_type": "content",
           "source": "deterministic"
         }
       ],
@@ -2773,17 +1864,8 @@
     {
       "brief_id": "process-transformation",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 10.0%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 1,
       "run_id": "redesigned-process-transformation-midnight-blue-1",
@@ -2793,17 +1875,8 @@
     {
       "brief_id": "process-transformation",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 7.4%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": false,
       "repetition": 2,
       "run_id": "redesigned-process-transformation-midnight-blue-2",
@@ -2813,17 +1886,8 @@
     {
       "brief_id": "process-transformation",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 11.2%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 1,
       "run_id": "redesigned-process-transformation-portability-side-logo-1",
@@ -2833,17 +1897,8 @@
     {
       "brief_id": "process-transformation",
       "configuration": "redesigned",
-      "finding_count": 1,
-      "findings": [
-        {
-          "category": "layout_balance",
-          "description": "Main content is concentrated in the upper half (ink 8.8%) while the lower content region is nearly empty (ink 0.00%); resize or redistribute the content to use the slide.",
-          "location": "main content region",
-          "severity": "P2",
-          "slide_index": 0,
-          "source": "deterministic"
-        }
-      ],
+      "finding_count": 0,
+      "findings": [],
       "held_out": true,
       "repetition": 2,
       "run_id": "redesigned-process-transformation-portability-side-logo-2",
@@ -2872,6 +1927,7 @@
           "location": "main content region",
           "severity": "P2",
           "slide_index": 2,
+          "slide_type": "content",
           "source": "deterministic"
         }
       ],
@@ -2884,12 +1940,13 @@
   ],
   "evaluator": {
     "anthropic_api_key_present": false,
-    "command": "json2pptx inspect --images <render-dir>",
-    "commit": "f7b03eaa0feaa41a273c4860b8c2e1e0b7e8f837",
-    "mode": "heuristic"
+    "command": "json2pptx inspect --images <render-dir> --slide-info <json>",
+    "commit": "f6d212e4c7f7336ba6cb29183bd3a8fde2003171",
+    "mode": "heuristic",
+    "slide_type_source": "authoring JSON; explicit raw types and semantic kinds mapped conservatively"
   },
   "failures": [],
-  "generated_at": "2026-09-21T17:28:03.016707Z",
+  "generated_at": "2026-09-21T17:45:17.486144Z",
   "human_release_gate_satisfied": false,
   "limitations": [
     "Heuristic mode reads pixels but cannot judge meaning or approve a deck.",
@@ -2899,24 +1956,34 @@
   "slide_count_mismatches": [],
   "source_benchmark": "tests/quality/results/agent-20260921T101451Z.json",
   "summary": {
-    "affected_decks": 100,
+    "affected_decks": 24,
     "by_category": {
-      "layout_balance": 119,
+      "layout_balance": 7,
       "text_overflow": 21
     },
     "by_severity": {
-      "P2": 119,
+      "P2": 7,
       "P3": 21
     },
     "decks": 144,
-    "findings": 140,
+    "findings": 28,
     "inspection_failures": 0,
     "redesigned_vs_baseline": {
-      "affected_deck_change_pct": -21.43,
-      "finding_count_change_pct": -40.91,
-      "findings_per_100_slides_change_pct": -50.11
+      "affected_deck_change_pct": -85.71,
+      "finding_count_change_pct": -88.0,
+      "findings_per_100_slides_change_pct": -89.83
     },
     "slide_count_mismatches": 0,
+    "slide_types": {
+      "chart": 60,
+      "closing": 82,
+      "comparison": 6,
+      "content": 570,
+      "diagram": 67,
+      "section": 21,
+      "table": 76,
+      "title": 147
+    },
     "slides": 1029
   }
 }
