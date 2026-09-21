@@ -28,7 +28,22 @@ done
 
 Both PPTX files pass the CLI's strict OOXML validator. The slide XML contains
 13, 6, 4, 2, 4 and 6 `p:cxnSp` connectors respectively. The committed
-LibreOffice PNGs provide the pre-PowerPoint reference: connector endpoints
-meet their intended shape edges, no elbow crosses a shape, and every slide's
-text remains visible. The PowerPoint comparison and edit/gluing check belong
-to Bead `go-slide-creator-rzu9.2`.
+LibreOffice PNGs and native PowerPoint PNGs provide paired references for both
+templates. PowerPoint images were exported on PowerPoint for Mac 16.113.1 by
+copying each slide and saving the native PNG clipboard representation.
+
+The paired renders agree on connector position, direction, and routing. The
+four Five Forces arrows on slide 5 initially exposed `go-slide-creator-7ec2s`:
+PowerPoint did not render connectors whose attached endpoints were accompanied
+by a 1x1 EMU placeholder transform. The rebuilt fixtures store resolved bounds
+and render all four arrows in both applications.
+
+PowerPoint's object model reports both endpoints attached for the shape-grid
+connectors on slides 1, 2, 3 and 6 (13/13, 6/6, 4/4 and 6/6). Slide 4's two
+handoff arrows are coordinate overlays and intentionally have no shape
+attachments. After temporarily ungrouping slide 5 in a disposable session,
+PowerPoint reports 4/4 Porter connectors attached to their named source and
+target boxes. Moving the New Entrants box by 20 points changed its connector
+width from approximately 0 to 20 points while both endpoints remained
+attached; the box was restored and the disposable session was closed without
+saving. No file-repair prompt appeared for either template.

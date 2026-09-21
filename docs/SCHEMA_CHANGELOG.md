@@ -6,6 +6,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ## Unreleased
 
+### Fixed
+
+- **PowerPoint-visible Porter connectors (go-slide-creator-7ec2s).** Native
+  Five Forces arrows now store their resolved bounds and flip flags alongside
+  the shape attachment metadata. PowerPoint previously treated their 1x1 EMU
+  placeholder transforms as invisible while LibreOffice auto-routed them.
+  Schema version advances to 4.115.0.
+
 ### Added
 
 - **Held-out quality benchmark fixture and two-human rating contract

@@ -465,6 +465,7 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 
 	// Track shape IDs for connector references.
 	shapeIDs := make(map[porterForceType]uint32)
+	shapeBounds := make(map[porterForceType]pptx.RectEmu)
 
 	// Generate force box shapes.
 	for _, layout := range layouts {
@@ -481,6 +482,7 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 
 		shapeID := nextID
 		shapeIDs[layout.ft] = shapeID
+		shapeBounds[layout.ft] = pptx.RectEmu{X: layout.x, Y: layout.y, CX: layout.w, CY: layout.h}
 		nextID++
 
 		xml := generatePorterForceBoxXML(f, layout.x, layout.y, layout.w, layout.h, shapeID, layout.isCenter, themeColors)
@@ -525,10 +527,15 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 		// Find force for color
 		f := forceMap[cp.from]
 		scheme, _, _ := porterIntensityColor(f.intensity)
+		route := pptx.Route(
+			pptx.ShapeOptions{Bounds: shapeBounds[cp.from], Geometry: pptx.GeomRoundRect},
+			pptx.ShapeOptions{Bounds: shapeBounds[cp.to], Geometry: pptx.GeomRoundRect},
+			false,
+		)
 
 		connXML := generatePorterConnectorXML(
-			nextID, fromID, cp.fromSite, toID, cp.toSite,
-			scheme,
+			nextID, fromID, cp.fromSite, toID, cp.toSite, route.Bounds,
+			route.FlipH, route.FlipV, scheme,
 		)
 		children = append(children, []byte(connXML))
 		nextID++
@@ -702,16 +709,25 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 }
 
 // generatePorterConnectorXML produces a straightConnector1 between two shapes.
-func generatePorterConnectorXML(connID, fromShapeID uint32, fromSite int, toShapeID uint32, toSite int, scheme string) string {
+func generatePorterConnectorXML(connID, fromShapeID uint32, fromSite int, toShapeID uint32, toSite int,
+	bounds pptx.RectEmu, flipH, flipV bool, scheme string,
+) string {
 	b, err := pptx.GenerateConnector(pptx.ConnectorOptions{
 		ID:       connID,
 		Name:     fmt.Sprintf("Porter Connector %d", connID),
 		Geometry: pptx.GeomStraightConnector1,
-		Bounds:   pptx.RectEmu{X: 0, Y: 0, CX: 1, CY: 1}, // Position computed by PowerPoint from stCxn/endCxn
+		// PowerPoint does not derive a visible path from stCxn/endCxn when the
+		// stored transform is the old 1x1 placeholder. LibreOffice does, which
+		// hid the portability bug. Keep the attachment metadata and also persist
+		// the resolved path so both applications draw the same connector
+		// (go-slide-creator-7ec2s).
+		Bounds: bounds,
 		Line: pptx.Line{
 			Width: porterConnectorWidth,
 			Fill:  pptx.SchemeFill(scheme),
 		},
+		FlipH: flipH,
+		FlipV: flipV,
 		TailEnd: &pptx.ArrowHead{
 			Type: "triangle",
 			W:    "med",

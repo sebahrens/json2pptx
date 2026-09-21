@@ -538,6 +538,41 @@ func TestPorterConnectorSites(t *testing.T) {
 	}
 }
 
+// PowerPoint requires a real connector transform even when stCxn/endCxn are
+// present. A 1x1 placeholder is auto-routed by LibreOffice but disappears in
+// PowerPoint (go-slide-creator-7ec2s).
+func TestPorterConnectorBoundsAreExplicit(t *testing.T) {
+	xml := generatePorterFiveForcesXMLForTest(t)
+	connector := regexp.MustCompile(`(?s)<p:cxnSp>.*?<a:xfrm(?: flipH="([01])")?(?: flipV="([01])")?>\s*<a:off x="(\d+)" y="(\d+)"/>\s*<a:ext cx="(\d+)" cy="(\d+)"/>`).FindAllStringSubmatch(xml, -1)
+	if len(connector) != 4 {
+		t.Fatalf("expected 4 connector transforms, got %d", len(connector))
+	}
+
+	wantFlips := [][2]string{
+		{"", ""},  // top to center
+		{"", "1"}, // bottom to center
+		{"", ""},  // left to center
+		{"1", ""}, // right to center
+	}
+	for i, match := range connector {
+		cx, err := strconv.ParseInt(match[5], 10, 64)
+		if err != nil {
+			t.Fatalf("connector %d cx %q: %v", i, match[5], err)
+		}
+		cy, err := strconv.ParseInt(match[6], 10, 64)
+		if err != nil {
+			t.Fatalf("connector %d cy %q: %v", i, match[6], err)
+		}
+		if (cx == 1) == (cy == 1) {
+			t.Errorf("connector %d bounds = %dx%d, want one axis at 1 EMU and a resolved span on the other", i, cx, cy)
+		}
+		if match[1] != wantFlips[i][0] || match[2] != wantFlips[i][1] {
+			t.Errorf("connector %d flips = (%q,%q), want (%q,%q)",
+				i, match[1], match[2], wantFlips[i][0], wantFlips[i][1])
+		}
+	}
+}
+
 // The factor bullets must name their buFont: a <a:buChar> resolved in the theme
 // font can fall back to a different glyph (the reported stray "*").
 func TestPorterFactorBulletsDeclareBuFont(t *testing.T) {
