@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Waterfall-bridge ten-column label target (go-slide-creator-tp23k.22).**
+  `waterfall-bridge` now reports `BODY_TOO_LONG` for column labels over
+  about 32 characters at ten columns. Three to nine columns retain the
+  40-character label maximum; unit and caption copy fit their schema maxima
+  in the measured layouts. The fit report names the affected column.
+  Measurements used all four bundled templates. Schema version advances to
+  4.99.0.
+
 - **Exec-summary shared support budget (go-slide-creator-tp23k.21).**
   `exec-summary` now reports `BODY_TOO_LONG` when five points and a bottom
   line together contain more than about 178 support characters per point.

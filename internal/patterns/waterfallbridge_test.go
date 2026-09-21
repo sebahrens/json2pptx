@@ -9,6 +9,34 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+func TestWaterfallBridgeTenColumnLabelWarning(t *testing.T) {
+	p := &waterfallBridge{}
+	v := &WaterfallBridgeValues{}
+	for i := 0; i < 10; i++ {
+		v.Columns = append(v.Columns, WaterfallBridgeColumn{Label: "Driver", Value: 10, Type: wbTypeDelta})
+	}
+	v.Columns[0].Type = wbTypeTotal
+	v.Columns[0].Value = 100
+	v.Columns[9].Type = wbTypeSubtotal
+	v.Columns[4].Label = strings.Repeat("L", 33)
+	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "columns[4].label") || !strings.Contains(got[0], "about 32") {
+		t.Fatalf("dense label warning: %v", got)
+	}
+	v.Columns[4].Label = strings.Repeat("L", 32)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("measured ten-column target should fit: %v", got)
+	}
+	v.Columns = v.Columns[:9]
+	v.Columns[4].Label = strings.Repeat("L", 40)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("nine-column schema maximum should fit: %v", got)
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
+		t.Fatalf("nil values: %v", got)
+	}
+}
+
 // wbStructuralRows counts a column sub-grid's spacer/bar rows, ignoring the
 // hairline bridge-line rows.
 func wbStructuralRows(g *jsonschema.ShapeGridInput) int {

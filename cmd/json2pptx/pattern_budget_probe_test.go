@@ -1033,6 +1033,55 @@ func TestExecSummaryBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestWaterfallBridgeBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_WATERFALL_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_WATERFALL_BUDGET_PROBE=1")
+	}
+	for columns := 3; columns <= 10; columns++ {
+		for _, caption := range []bool{false, true} {
+			for _, field := range []string{"label", "all_label", "unit", "caption"} {
+				if field == "caption" && !caption {
+					continue
+				}
+				limit := map[string]int{"label": 40, "all_label": 40, "unit": 8, "caption": 60}[field]
+				budget := probeReadableBudget(t, "waterfall-bridge", limit, func(length int) any {
+					v := &patterns.WaterfallBridgeValues{Unit: "%"}
+					for i := 0; i < columns; i++ {
+						column := patterns.WaterfallBridgeColumn{Label: "Driver", Value: 10, Type: "delta"}
+						if i == 0 {
+							column.Type = "total"
+							column.Value = 100
+						}
+						if i == columns-1 {
+							column.Type = "subtotal"
+							column.Value = 0
+						}
+						v.Columns = append(v.Columns, column)
+					}
+					if caption {
+						v.Caption = "Values in percent"
+					}
+					copy := budgetProbeCopy(length)
+					switch field {
+					case "label":
+						v.Columns[0].Label = copy
+					case "all_label":
+						for i := range v.Columns {
+							v.Columns[i].Label = copy
+						}
+					case "unit":
+						v.Unit = strings.Repeat("u", length)
+					case "caption":
+						v.Caption = copy
+					}
+					return v
+				})
+				t.Logf("columns=%d caption=%t field=%s budget=%d", columns, caption, field, budget)
+			}
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

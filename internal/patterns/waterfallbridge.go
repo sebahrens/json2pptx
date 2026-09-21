@@ -140,10 +140,24 @@ func (w *waterfallBridge) NewValues() any       { return &WaterfallBridgeValues{
 func (w *waterfallBridge) NewOverrides() any    { return &WaterfallBridgeOverrides{} }
 func (w *waterfallBridge) NewCellOverride() any { return &WaterfallBridgeCellOverride{} }
 
+func (w *waterfallBridge) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*WaterfallBridgeValues)
+	if !ok || v == nil || len(v.Columns) < wbMaxColumns {
+		return nil
+	}
+	var warnings []string
+	for i, column := range v.Columns {
+		if runeLen(column.Label) > 32 {
+			warnings = append(warnings, fmt.Sprintf("%s: waterfall-bridge columns[%d].label has %d characters; ten columns hold about 32 readable label characters — shorten the label or split the bridge", ErrCodeBodyTooLong, i, runeLen(column.Label)))
+		}
+	}
+	return warnings
+}
+
 func (w *waterfallBridge) Schema() *Schema {
 	columnSchema := ObjectSchema(
 		map[string]*Schema{
-			"label": StringSchema(wbLabelMax).WithDescription("Short column label (1-3 words)"),
+			"label": StringSchema(wbLabelMax).WithDescription("Short column label (1-3 words); target about 32 characters with ten columns"),
 			"value": NumberSchema(-1e12, 1e12).WithDescription("Numeric value; sign determines direction for delta; omit for subtotal to auto-compute"),
 			"type":  EnumSchema(wbTypeTotal, wbTypeDelta, wbTypeSubtotal).WithDescription("\"total\" (anchored bar from 0), \"delta\" (floating bar of length value), or \"subtotal\" (running total to date)"),
 		},

@@ -269,6 +269,18 @@ func TestExecSummaryDenseSupportWarningReachesFitReportAcrossTemplates(t *testin
 	assertBudgetFindingAcrossTemplates(t, "exec-summary", values, "points.support", "about 178 support characters")
 }
 
+func TestWaterfallBridgeTenColumnLabelWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.WaterfallBridgeValues{}
+	for i := 0; i < 10; i++ {
+		values.Columns = append(values.Columns, patterns.WaterfallBridgeColumn{Label: "Driver", Value: 10, Type: "delta"})
+	}
+	values.Columns[0].Type = "total"
+	values.Columns[0].Value = 100
+	values.Columns[9].Type = "subtotal"
+	values.Columns[4].Label = strings.Repeat("L", 33)
+	assertBudgetFindingAcrossTemplates(t, "waterfall-bridge", values, "columns[4].label", "about 32 readable label characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {
