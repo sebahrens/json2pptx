@@ -1426,6 +1426,55 @@ func TestProcessFlowBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestArchStackBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_ARCH_STACK_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_ARCH_STACK_BUDGET_PROBE=1")
+	}
+	for tiers := 3; tiers <= 6; tiers++ {
+		for rails := 0; rails <= 3; rails++ {
+			for _, field := range []string{"label", "description", "rail", "all"} {
+				if field == "rail" && rails == 0 {
+					continue
+				}
+				for _, wide := range []bool{false, true} {
+					maxChars := map[string]int{"label": 60, "description": 120, "rail": 30, "all": 120}[field]
+					budget := probeReadableBudget(t, "arch-stack", maxChars, func(length int) any {
+						v := &patterns.ArchStackValues{Tiers: make([]patterns.ArchStackTier, tiers), SideRails: make([]string, rails)}
+						for i := range v.Tiers {
+							v.Tiers[i] = patterns.ArchStackTier{Label: "Layer", Description: "Brief"}
+						}
+						for i := range v.SideRails {
+							v.SideRails[i] = "Security"
+						}
+						copy := budgetProbeCopy(length)
+						if wide {
+							copy = strings.Repeat("W", length)
+						}
+						switch field {
+						case "label":
+							v.Tiers[0].Label = copy
+						case "description":
+							v.Tiers[0].Description = copy
+						case "rail":
+							v.SideRails[0] = copy
+						case "all":
+							for i := range v.Tiers {
+								v.Tiers[i].Label = copy[:min(len(copy), 60)]
+								v.Tiers[i].Description = copy
+							}
+							for i := range v.SideRails {
+								v.SideRails[i] = copy[:min(len(copy), 30)]
+							}
+						}
+						return v
+					})
+					t.Logf("tiers=%d rails=%d field=%s wide=%t budget=%d", tiers, rails, field, wide, budget)
+				}
+			}
+		}
+	}
+}
+
 func TestPyramidBudgetProbe(t *testing.T) {
 	if os.Getenv("JSON2PPTX_PYRAMID_BUDGET_PROBE") == "" {
 		t.Skip("set JSON2PPTX_PYRAMID_BUDGET_PROBE=1")
