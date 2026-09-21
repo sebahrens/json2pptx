@@ -120,6 +120,42 @@ func (hd *heroDetail) NewValues() any       { return &HeroDetailValues{} }
 func (hd *heroDetail) NewOverrides() any    { return &HeroDetailOverrides{} }
 func (hd *heroDetail) NewCellOverride() any { return &HeroDetailCellOverride{} }
 
+// Measured with the fit collector on all four bundled templates. Icons occupy
+// vertical room in their own card; no-icon cards keep the 200-char maximum.
+func heroDetailBodyBudget(details, titleChars int, icon bool) int {
+	if !icon || details <= 2 {
+		return 200
+	}
+	if details == 3 {
+		if titleChars > 38 {
+			return 181
+		}
+		return 200
+	}
+	if titleChars > 48 {
+		return 30
+	}
+	if titleChars > 27 {
+		return 60
+	}
+	return 90
+}
+
+func (hd *heroDetail) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*HeroDetailValues)
+	if !ok || v == nil {
+		return nil
+	}
+	var warnings []string
+	for i, detail := range v.Details {
+		budget := heroDetailBodyBudget(len(v.Details), runeLen(detail.Title), detail.Icon != nil)
+		if n := runeLen(detail.Body); n > budget {
+			warnings = append(warnings, fmt.Sprintf("%s: hero-detail details[%d].body is %d characters; %d detail cards with an icon and a %d-character title hold about %d readable body characters — shorten the body or title, omit the icon, or use fewer cards", ErrCodeBodyTooLong, i, n, len(v.Details), runeLen(detail.Title), budget))
+		}
+	}
+	return warnings
+}
+
 func (hd *heroDetail) Schema() *Schema {
 	heroSchema := ObjectSchema(
 		map[string]*Schema{
@@ -134,7 +170,7 @@ func (hd *heroDetail) Schema() *Schema {
 		map[string]*Schema{
 			"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),
 			"title": StringSchema(60).WithDescription("Detail card title"),
-			"body":  StringSchema(200).WithDescription("Detail card body text"),
+			"body":  StringSchema(200).WithDescription("Detail card body. No-icon cards and two-card layouts retain 200 readable characters. With icons, three cards hold about 200 body characters for titles up to 38 characters or 181 for longer titles; four cards hold about 90/60/30 for titles up to 27/48/60 characters"),
 		},
 		[]string{"title"},
 	).WithAdditionalProperties(false)

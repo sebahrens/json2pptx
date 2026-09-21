@@ -218,6 +218,17 @@ func TestStylishPanelsBudgetWarningReachesFitReportAcrossTemplates(t *testing.T)
 	assertBudgetFindingAcrossTemplates(t, "stylish-panels", &values, "values[0].body", "about 26 characters per bullet")
 }
 
+func TestHeroDetailBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.HeroDetailValues{Hero: patterns.HeroDetailHero{Value: "$2.4B", Label: "Market size"}}
+	for i := 0; i < 4; i++ {
+		values.Details = append(values.Details, patterns.HeroDetailItem{Title: "Driver", Body: "Brief"})
+	}
+	values.Details[2].Icon = &patterns.IconRef{Name: "rocket"}
+	values.Details[2].Title = strings.Repeat("T", 60)
+	values.Details[2].Body = strings.Repeat("B", 31)
+	assertBudgetFindingAcrossTemplates(t, "hero-detail", values, "details[2].body", "about 30 readable body characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

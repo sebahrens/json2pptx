@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Hero-detail icon card body targets (go-slide-creator-tp23k.17).**
+  `hero-detail` now reports `BODY_TOO_LONG` when an icon card's body exceeds
+  the room left by its title. Three icon cards allow about 200 characters
+  with a title up to 38 characters, or 181 with a longer title. Four icon
+  cards allow about 90/60/30 body characters for titles up to 27/48/60.
+  No-icon cards and two-card layouts retain the 200-character body maximum.
+  The warning names the card and measured target. Measurements used all four
+  bundled templates. Schema version advances to 4.94.0.
+
 - **Stylish panel shared bullet budgets (go-slide-creator-tp23k.16).**
   `stylish-panels` now reports `BODY_TOO_LONG` when a panel's average bullet
   copy exceeds the measured budget for its panel count, bullet count, and

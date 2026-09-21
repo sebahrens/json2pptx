@@ -627,6 +627,131 @@ func TestStylishPanelsSingleLongProbe(t *testing.T) {
 	}
 }
 
+// Run with JSON2PPTX_HERO_DETAIL_BUDGET_PROBE=1 to measure the hero and detail
+// fields across card counts, styles, and icon presence.
+func TestHeroDetailBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_HERO_DETAIL_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_HERO_DETAIL_BUDGET_PROBE=1")
+	}
+	for _, style := range []string{"cards", "minimal"} {
+		for details := 2; details <= 4; details++ {
+			for _, icon := range []bool{false, true} {
+				for _, field := range []string{"hero.value", "hero.label", "hero.context", "detail.title", "detail.body"} {
+					limit := map[string]int{"hero.value": 20, "hero.label": 80, "hero.context": 120, "detail.title": 60, "detail.body": 200}[field]
+					budget := probeReadableBudget(t, "hero-detail", limit, func(length int) any {
+						v := &patterns.HeroDetailValues{Hero: patterns.HeroDetailHero{Value: "$2.4B", Label: "Market size", Context: "Forecast"}}
+						for i := 0; i < details; i++ {
+							item := patterns.HeroDetailItem{Title: "Driver", Body: "Brief"}
+							if icon {
+								item.Icon = &patterns.IconRef{Name: "rocket"}
+							}
+							v.Details = append(v.Details, item)
+						}
+						copy := budgetProbeCopy(length)
+						switch field {
+						case "hero.value":
+							v.Hero.Value = copy
+						case "hero.label":
+							v.Hero.Label = copy
+						case "hero.context":
+							v.Hero.Context = copy
+						case "detail.title":
+							v.Details[0].Title = copy
+						case "detail.body":
+							v.Details[0].Body = copy
+						}
+						return v
+					}, patterns.HeroDetailOverrides{Style: style})
+					t.Logf("style=%s details=%d icon=%t field=%s budget=%d", style, details, icon, field, budget)
+				}
+			}
+		}
+	}
+	for _, titleChars := range []int{6, 20, 40, 60} {
+		for _, maxHero := range []bool{false, true} {
+			budget := probeReadableBudget(t, "hero-detail", 200, func(length int) any {
+				v := &patterns.HeroDetailValues{Hero: patterns.HeroDetailHero{Value: "$2.4B", Label: "Market size", Context: "Forecast"}}
+				if maxHero {
+					v.Hero = patterns.HeroDetailHero{Value: budgetProbeCopy(20), Label: budgetProbeCopy(80), Context: budgetProbeCopy(120)}
+				}
+				for i := 0; i < 4; i++ {
+					v.Details = append(v.Details, patterns.HeroDetailItem{Icon: &patterns.IconRef{Name: "rocket"}, Title: "Driver", Body: "Brief"})
+				}
+				v.Details[0].Title = budgetProbeCopy(titleChars)
+				v.Details[0].Body = budgetProbeCopy(length)
+				return v
+			})
+			t.Logf("details=4 icon=true title_chars=%d max_hero=%t body_budget=%d", titleChars, maxHero, budget)
+		}
+	}
+	for _, bodyChars := range []int{90, 60, 30} {
+		budget := probeReadableBudget(t, "hero-detail", 60, func(length int) any {
+			v := &patterns.HeroDetailValues{Hero: patterns.HeroDetailHero{Value: "$2.4B", Label: "Market size"}}
+			for i := 0; i < 4; i++ {
+				v.Details = append(v.Details, patterns.HeroDetailItem{Icon: &patterns.IconRef{Name: "rocket"}, Title: "Driver", Body: "Brief"})
+			}
+			v.Details[0].Title = budgetProbeCopy(length)
+			v.Details[0].Body = budgetProbeCopy(bodyChars)
+			return v
+		})
+		t.Logf("details=4 icon=true body_chars=%d title_budget=%d", bodyChars, budget)
+	}
+	for details := 2; details <= 4; details++ {
+		for _, icon := range []bool{false, true} {
+			budget := probeReadableBudget(t, "hero-detail", 200, func(length int) any {
+				v := &patterns.HeroDetailValues{Hero: patterns.HeroDetailHero{Value: "$2.4B", Label: "Market size"}}
+				for i := 0; i < details; i++ {
+					item := patterns.HeroDetailItem{Title: "Driver", Body: "Brief"}
+					if icon {
+						item.Icon = &patterns.IconRef{Name: "rocket"}
+					}
+					v.Details = append(v.Details, item)
+				}
+				v.Details[0].Title = budgetProbeCopy(60)
+				v.Details[0].Body = budgetProbeCopy(length)
+				return v
+			})
+			t.Logf("details=%d icon=%t title_chars=60 body_budget=%d", details, icon, budget)
+		}
+	}
+	for _, titleChars := range []int{20, 40, 60} {
+		budget := probeReadableBudget(t, "hero-detail", 200, func(length int) any {
+			v := &patterns.HeroDetailValues{Hero: patterns.HeroDetailHero{Value: "$2.4B", Label: "Market size"}}
+			for i := 0; i < 3; i++ {
+				v.Details = append(v.Details, patterns.HeroDetailItem{Icon: &patterns.IconRef{Name: "rocket"}, Title: "Driver", Body: "Brief"})
+			}
+			v.Details[0].Title = budgetProbeCopy(titleChars)
+			v.Details[0].Body = budgetProbeCopy(length)
+			return v
+		})
+		t.Logf("details=3 icon=true title_chars=%d body_budget=%d", titleChars, budget)
+	}
+	titleBudget := probeReadableBudget(t, "hero-detail", 60, func(length int) any {
+		v := &patterns.HeroDetailValues{Hero: patterns.HeroDetailHero{Value: "$2.4B", Label: "Market size"}}
+		for i := 0; i < 3; i++ {
+			v.Details = append(v.Details, patterns.HeroDetailItem{Icon: &patterns.IconRef{Name: "rocket"}, Title: "Driver", Body: "Brief"})
+		}
+		v.Details[0].Title = budgetProbeCopy(length)
+		v.Details[0].Body = budgetProbeCopy(200)
+		return v
+	})
+	t.Logf("details=3 icon=true body_chars=200 title_budget=%d", titleBudget)
+	noIconBudget := probeReadableBudget(t, "hero-detail", 200, func(length int) any {
+		v := &patterns.HeroDetailValues{Hero: patterns.HeroDetailHero{Value: "$2.4B", Label: "Market size"}}
+		for i := 0; i < 4; i++ {
+			item := patterns.HeroDetailItem{Icon: &patterns.IconRef{Name: "rocket"}, Title: "Driver", Body: "Brief"}
+			if i == 0 {
+				item.Icon = nil
+				item.Title = budgetProbeCopy(60)
+				item.Body = budgetProbeCopy(length)
+			}
+			v.Details = append(v.Details, item)
+		}
+		return v
+	})
+	t.Logf("details=4 target_icon=false other_icons=true title_chars=60 body_budget=%d", noIconBudget)
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal
