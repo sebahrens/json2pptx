@@ -33,86 +33,53 @@ func createTestImage(t *testing.T, path string, width, height int) {
 	}
 }
 
-func TestScaleImageToFit_FitWidth(t *testing.T) {
-	// Create a wide image that needs to fit into a tall placeholder
-	tmpDir := t.TempDir()
-	imgPath := filepath.Join(tmpDir, "wide.png")
-
-	// Image: 200x100 pixels (wide)
-	createTestImage(t, imgPath, 200, 100)
-
-	// Placeholder: 1000000x2000000 EMUs (tall)
-	// With EMUsPerPixel = 9525, 200px = 1905000 EMU, 100px = 952500 EMU
-	// Scale to fit width: 1000000 / 1905000 ≈ 0.525
-	// Resulting height: 952500 * 0.525 ≈ 500000 EMU
-	bounds := types.BoundingBox{
-		X:      0,
-		Y:      0,
-		Width:  1000000,
-		Height: 2000000,
+func TestScaleImageToFit_RectangularImages(t *testing.T) {
+	tests := []struct {
+		name                    string
+		imageWidth, imageHeight int
+		bounds                  types.BoundingBox
+		constrainedAxis         string
+		wantAspect              float64
+	}{
+		{
+			name:       "fit width",
+			imageWidth: 200, imageHeight: 100,
+			bounds:          types.BoundingBox{Width: 1000000, Height: 2000000},
+			constrainedAxis: "width", wantAspect: 2.0,
+		},
+		{
+			name:       "fit height",
+			imageWidth: 100, imageHeight: 200,
+			bounds:          types.BoundingBox{Width: 2000000, Height: 1000000},
+			constrainedAxis: "height", wantAspect: 0.5,
+		},
 	}
 
-	result, err := ScaleImageToFit(imgPath, bounds)
-	if err != nil {
-		t.Fatalf("ScaleImageToFit() returned error: %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			imgPath := filepath.Join(t.TempDir(), "image.png")
+			createTestImage(t, imgPath, tt.imageWidth, tt.imageHeight)
 
-	// Width should match placeholder width
-	if result.Width != bounds.Width {
-		t.Errorf("ScaleImageToFit() width = %d, want %d", result.Width, bounds.Width)
-	}
+			result, err := ScaleImageToFit(imgPath, tt.bounds)
+			if err != nil {
+				t.Fatalf("ScaleImageToFit() returned error: %v", err)
+			}
+			switch tt.constrainedAxis {
+			case "width":
+				if result.Width != tt.bounds.Width || result.Height >= tt.bounds.Height {
+					t.Errorf("width fit = %dx%d inside %dx%d", result.Width, result.Height, tt.bounds.Width, tt.bounds.Height)
+				}
+			case "height":
+				if result.Height != tt.bounds.Height || result.Width >= tt.bounds.Width {
+					t.Errorf("height fit = %dx%d inside %dx%d", result.Width, result.Height, tt.bounds.Width, tt.bounds.Height)
+				}
+			}
 
-	// Height should be smaller than placeholder (aspect ratio preserved)
-	if result.Height >= bounds.Height {
-		t.Errorf("ScaleImageToFit() height = %d, should be < %d", result.Height, bounds.Height)
-	}
-
-	// Aspect ratio preserved (2:1 for 200x100)
-	aspectRatio := float64(result.Width) / float64(result.Height)
-	expectedRatio := 2.0
-	if diff := aspectRatio - expectedRatio; diff > 0.01 || diff < -0.01 {
-		t.Errorf("ScaleImageToFit() aspect ratio = %f, want ≈ %f", aspectRatio, expectedRatio)
-	}
-}
-
-func TestScaleImageToFit_FitHeight(t *testing.T) {
-	// Create a tall image that needs to fit into a wide placeholder
-	tmpDir := t.TempDir()
-	imgPath := filepath.Join(tmpDir, "tall.png")
-
-	// Image: 100x200 pixels (tall)
-	createTestImage(t, imgPath, 100, 200)
-
-	// Placeholder: 2000000x1000000 EMUs (wide)
-	// With EMUsPerPixel = 9525, 100px = 952500 EMU, 200px = 1905000 EMU
-	// Scale to fit height: 1000000 / 1905000 ≈ 0.525
-	bounds := types.BoundingBox{
-		X:      0,
-		Y:      0,
-		Width:  2000000,
-		Height: 1000000,
-	}
-
-	result, err := ScaleImageToFit(imgPath, bounds)
-	if err != nil {
-		t.Fatalf("ScaleImageToFit() returned error: %v", err)
-	}
-
-	// Height should match placeholder height
-	if result.Height != bounds.Height {
-		t.Errorf("ScaleImageToFit() height = %d, want %d", result.Height, bounds.Height)
-	}
-
-	// Width should be smaller than placeholder
-	if result.Width >= bounds.Width {
-		t.Errorf("ScaleImageToFit() width = %d, should be < %d", result.Width, bounds.Width)
-	}
-
-	// Aspect ratio preserved (1:2 for 100x200)
-	aspectRatio := float64(result.Width) / float64(result.Height)
-	expectedRatio := 0.5
-	if diff := aspectRatio - expectedRatio; diff > 0.01 || diff < -0.01 {
-		t.Errorf("ScaleImageToFit() aspect ratio = %f, want ≈ %f", aspectRatio, expectedRatio)
+			aspect := float64(result.Width) / float64(result.Height)
+			if diff := aspect - tt.wantAspect; diff > 0.01 || diff < -0.01 {
+				t.Errorf("aspect ratio = %f, want ≈ %f", aspect, tt.wantAspect)
+			}
+		})
 	}
 }
 

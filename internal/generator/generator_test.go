@@ -646,6 +646,29 @@ func TestGenerate_MixedContent(t *testing.T) {
 // When generated
 // Then image appears in slide at placeholder position
 func TestGenerate_ImageEmbedding_AC5(t *testing.T) {
+	outputPath := generateSingleImageDeck(t, "image_embed.pptx", "Test image for AC5")
+
+	// AC5: Verify image is embedded.
+	r, err := zip.OpenReader(outputPath)
+	if err != nil {
+		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
+	}
+	defer func() { _ = r.Close() }()
+
+	foundMedia := false
+	for _, f := range r.File {
+		if matched, _ := filepath.Match("ppt/media/image*", f.Name); matched {
+			foundMedia = true
+			break
+		}
+	}
+	if !foundMedia {
+		t.Error("AC5/AC-NEW3: Image not found in ppt/media/")
+	}
+}
+
+func generateSingleImageDeck(t *testing.T, outputName, alt string) string {
+	t.Helper()
 	templatePath := "../template/testdata/standard.pptx"
 	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
 		t.Skip("test template not found")
@@ -657,7 +680,7 @@ func TestGenerate_ImageEmbedding_AC5(t *testing.T) {
 	}
 
 	tmpDir := t.TempDir()
-	outputPath := filepath.Join(tmpDir, "image_embed.pptx")
+	outputPath := filepath.Join(tmpDir, outputName)
 
 	req := GenerationRequest{
 		TemplatePath: templatePath,
@@ -671,7 +694,7 @@ func TestGenerate_ImageEmbedding_AC5(t *testing.T) {
 						Type:          ContentImage,
 						Value: ImageContent{
 							Path: testImage,
-							Alt:  "Test image for AC5",
+							Alt:  alt,
 						},
 					},
 				},
@@ -688,28 +711,8 @@ func TestGenerate_ImageEmbedding_AC5(t *testing.T) {
 		t.Errorf("SlideCount = %d, want 1", result.SlideCount)
 	}
 
-	// AC5: Verify image is embedded
 	validatePPTXStructure(t, outputPath)
-	r, err := zip.OpenReader(outputPath)
-	if err != nil {
-		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
-	}
-	defer func() { _ = r.Close() }()
-
-	// AC-NEW3: Image should be in ppt/media/
-	foundMedia := false
-	for _, f := range r.File {
-		if matched, _ := filepath.Match("ppt/media/image*", f.Name); matched {
-			foundMedia = true
-			break
-		}
-	}
-
-	if !foundMedia {
-		t.Error("AC5/AC-NEW3: Image not found in ppt/media/")
-	}
-
-	t.Logf("AC5 test complete: image embedded successfully")
+	return outputPath
 }
 
 // TestGenerate_ImageScaling_AC6 tests AC6: Image Scaling
@@ -797,50 +800,9 @@ func TestGenerate_ImageScaling_AC6(t *testing.T) {
 // When generated
 // Then slide .rels file contains relationship matching r:embed attribute
 func TestGenerate_RelationshipLinkage_AC_NEW2(t *testing.T) {
-	templatePath := "../template/testdata/standard.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("test template not found")
-	}
+	outputPath := generateSingleImageDeck(t, "relationship_test.pptx", "Test image for AC-NEW2")
 
-	testImage := "testdata/test_image_small.png"
-	if _, err := os.Stat(testImage); os.IsNotExist(err) {
-		t.Skip("test image not found")
-	}
-
-	tmpDir := t.TempDir()
-	outputPath := filepath.Join(tmpDir, "relationship_test.pptx")
-
-	req := GenerationRequest{
-		TemplatePath: templatePath,
-		OutputPath:   outputPath,
-		Slides: []SlideSpec{
-			{
-				LayoutID: "slideLayout9",
-				Content: []ContentItem{
-					{
-						PlaceholderID: "image",
-						Type:          ContentImage,
-						Value: ImageContent{
-							Path: testImage,
-							Alt:  "Test image for AC-NEW2",
-						},
-					},
-				},
-			},
-		},
-	}
-
-	result, err := Generate(context.Background(), req)
-	if err != nil {
-		t.Fatalf("Generate failed: %v", err)
-	}
-
-	if result.SlideCount != 1 {
-		t.Errorf("SlideCount = %d, want 1", result.SlideCount)
-	}
-
-	// AC-NEW2: Verify relationships file is present
-	validatePPTXStructure(t, outputPath)
+	// AC-NEW2: Verify relationships file is present.
 	r, err := zip.OpenReader(outputPath)
 	if err != nil {
 		t.Fatalf("Output is not a valid ZIP/PPTX: %v", err)
@@ -860,7 +822,6 @@ func TestGenerate_RelationshipLinkage_AC_NEW2(t *testing.T) {
 		t.Error("AC-NEW2: No relationship files found")
 	}
 
-	t.Logf("AC-NEW2 test complete: relationship linkage verified")
 }
 
 // TestGenerate_FullPipelineValidation validates the complete generation pipeline

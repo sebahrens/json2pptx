@@ -1424,6 +1424,41 @@ func relativeAssetDeckJSON(bg, photo, gridImg, gridIcon string) string {
 	}`, bg, photo, gridImg, gridIcon)
 }
 
+type relativeAssetParityHandler struct {
+	name string
+	call func(*mcpConfig) (*mcp.CallToolResult, error)
+}
+
+func relativeAssetParityHandlers(deckJSON, baseDir string) []relativeAssetParityHandler {
+	request := func(extra map[string]any) map[string]any {
+		args := map[string]any{
+			"presentation": mustParseJSON(deckJSON),
+			"base_dir":     baseDir,
+		}
+		for key, value := range extra {
+			args[key] = value
+		}
+		return args
+	}
+	return []relativeAssetParityHandler{
+		{"validate_input", func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+			return mc.handleValidate(context.Background(), makeRequest(request(nil)))
+		}},
+		{"generate_presentation", func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+			return mc.handleGenerate(context.Background(), makeRequest(request(nil)))
+		}},
+		{"preview_presentation_plan", func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+			return mc.handlePreviewPlan(context.Background(), makeRequest(request(nil)))
+		}},
+		{"score_deck", func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+			return mc.handleScoreDeck(context.Background(), makeRequest(request(nil)))
+		}},
+		{"auto_repair", func(mc *mcpConfig) (*mcp.CallToolResult, error) {
+			return mc.handleAutoRepair(context.Background(), makeRequest(request(map[string]any{"max_passes": float64(1)})))
+		}},
+	}
+}
+
 // TestMCPRelativeAssetParity exercises the base_dir flow across every MCP
 // handler that advertises it (generate_presentation, validate_input,
 // preview_presentation_plan). Each handler must resolve relative paths
@@ -1463,57 +1498,7 @@ func TestMCPRelativeAssetParity(t *testing.T) {
 
 		deckJSON := relativeAssetDeckJSON(bgName, photoName, gridImgName, gridIconName)
 
-		handlers := []struct {
-			name string
-			call func(*mcpConfig) (*mcp.CallToolResult, error)
-		}{
-			{
-				name: "validate_input",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleValidate(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-					}))
-				},
-			},
-			{
-				name: "generate_presentation",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-					}))
-				},
-			},
-			{
-				name: "preview_presentation_plan",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-					}))
-				},
-			},
-			{
-				name: "score_deck",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-					}))
-				},
-			},
-			{
-				name: "auto_repair",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-						"max_passes":   float64(1),
-					}))
-				},
-			},
-		}
+		handlers := relativeAssetParityHandlers(deckJSON, baseDir)
 
 		for _, h := range handlers {
 			t.Run(h.name, func(t *testing.T) {
@@ -1564,57 +1549,7 @@ func TestMCPRelativeAssetParity(t *testing.T) {
 			"/slides/0/shape_grid/rows/0/cells/1/icon":       {code: "ICON_NOT_FOUND", assetKind: "icon"},
 		}
 
-		handlers := []struct {
-			name string
-			call func(*mcpConfig) (*mcp.CallToolResult, error)
-		}{
-			{
-				name: "validate_input",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleValidate(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-					}))
-				},
-			},
-			{
-				name: "generate_presentation",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-					}))
-				},
-			},
-			{
-				name: "preview_presentation_plan",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-					}))
-				},
-			},
-			{
-				name: "score_deck",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-					}))
-				},
-			},
-			{
-				name: "auto_repair",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     baseDir,
-						"max_passes":   float64(1),
-					}))
-				},
-			},
-		}
+		handlers := relativeAssetParityHandlers(deckJSON, baseDir)
 
 		for _, h := range handlers {
 			t.Run(h.name, func(t *testing.T) {
@@ -1665,58 +1600,9 @@ func TestMCPRelativeAssetParity(t *testing.T) {
 		// structured diagnostic, so agents see one signal rather than a
 		// scattershot of broken-asset findings.
 		deckJSON := relativeAssetDeckJSON("bg.png", "photo.png", "grid.jpg", "icon.svg")
+		baseDir := "relative/assets"
 
-		handlers := []struct {
-			name string
-			call func(*mcpConfig) (*mcp.CallToolResult, error)
-		}{
-			{
-				name: "validate_input",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleValidate(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     "relative/path/not/allowed",
-					}))
-				},
-			},
-			{
-				name: "generate_presentation",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     "relative/path/not/allowed",
-					}))
-				},
-			},
-			{
-				name: "preview_presentation_plan",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handlePreviewPlan(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     "relative/path/not/allowed",
-					}))
-				},
-			},
-			{
-				name: "score_deck",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     "relative/path/not/allowed",
-					}))
-				},
-			},
-			{
-				name: "auto_repair",
-				call: func(mc *mcpConfig) (*mcp.CallToolResult, error) {
-					return mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
-						"presentation": mustParseJSON(deckJSON),
-						"base_dir":     "relative/path/not/allowed",
-						"max_passes":   float64(1),
-					}))
-				},
-			},
-		}
+		handlers := relativeAssetParityHandlers(deckJSON, baseDir)
 
 		for _, h := range handlers {
 			t.Run(h.name, func(t *testing.T) {

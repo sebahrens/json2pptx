@@ -37,20 +37,13 @@ func TestSwimlaneWarningsNameStepAndShape(t *testing.T) {
 	pat := &swimlane{}
 	v := budgetSwimlane(8, 6)
 	v.Lanes[2].Steps[4] = strings.Repeat("S", 32)
-	if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("at budget: %v", got)
-	}
+	atBudget := pat.PostExpandWarnings(ExpandContext{}, v, nil)
 	v.Lanes[2].Steps[4] += "x"
-	got := pat.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "lanes[2].steps[4]") || !strings.Contains(got[0], "8-step x 6-lane") || !strings.Contains(got[0], "about 32") {
-		t.Fatalf("dense step warning: %v", got)
-	}
+	overBudget := pat.PostExpandWarnings(ExpandContext{}, v, nil)
 	v = budgetSwimlane(2, 2)
 	v.Lanes[0].Steps[0] = strings.Repeat("S", 80)
-	if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("sparse step at schema maximum warned: %v", got)
-	}
-	if got := pat.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
-		t.Fatalf("nil values: %v", got)
-	}
+	assertDenseGridWarnings(t, atBudget, overBudget,
+		pat.PostExpandWarnings(ExpandContext{}, v, nil),
+		pat.PostExpandWarnings(ExpandContext{}, nil, nil),
+		"lanes[2].steps[4]", "8-step x 6-lane", "about 32")
 }

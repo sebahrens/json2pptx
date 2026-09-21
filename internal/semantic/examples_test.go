@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
-	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // Bundled semantic authoring examples, relative to this package dir. These are
@@ -86,39 +85,7 @@ func TestCompileSalesPitch_Resolution(t *testing.T) {
 // validate" on the pattern-bearing slides.
 func TestCompileSalesPitch_PatternsValidate(t *testing.T) {
 	input, _ := compileExample(t, salesPitchExamplePath)
-
-	patternSlides := 0
-	for i := range input.Slides {
-		p := input.Slides[i].Pattern
-		if p == nil {
-			continue
-		}
-		patternSlides++
-		pat, ok := patterns.Default().Get(p.Name)
-		if !ok {
-			t.Errorf("slide %d: emitted unknown pattern %q", i, p.Name)
-			continue
-		}
-		values := pat.NewValues()
-		if err := json.Unmarshal(p.Values, values); err != nil {
-			t.Errorf("slide %d: pattern %q values do not decode: %v", i, p.Name, err)
-			continue
-		}
-		var overrides any
-		if len(p.Overrides) > 0 {
-			overrides = pat.NewOverrides()
-			if err := json.Unmarshal(p.Overrides, overrides); err != nil {
-				t.Errorf("slide %d: pattern %q overrides do not decode: %v", i, p.Name, err)
-				continue
-			}
-		}
-		if err := pat.Validate(values, overrides, nil); err != nil {
-			t.Errorf("slide %d: pattern %q failed validation: %v", i, p.Name, err)
-		}
-	}
-	if patternSlides == 0 {
-		t.Fatal("expected at least one pattern-bearing slide in the sales_pitch deck")
-	}
+	assertCompiledPatternsValidate(t, input)
 }
 
 // TestSalesPitchExample_NoBlockingFindings asserts the bundled sales_pitch

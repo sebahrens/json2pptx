@@ -1470,121 +1470,44 @@ func TestSVGConverter_IsPNGAvailable_EitherTool(t *testing.T) {
 	t.Logf("PNG available: %v (rsvg=%v, resvg=%v)", pngAvailable, rsvgAvailable, resvgAvailable)
 }
 
-// TestSVGConverter_ConvertToPNG_WithResvg tests PNG conversion using resvg
-func TestSVGConverter_ConvertToPNG_WithResvg(t *testing.T) {
-	converter := NewSVGConverterWithConfig(SVGConfig{
-		Strategy:              SVGStrategyPNG,
-		Scale:                 DefaultSVGScale,
-		PreferredPNGConverter: PNGConverterResvg,
-	})
-
-	if !converter.IsResvgAvailable() {
-		t.Skip("resvg not available")
+// TestSVGConverter_ConvertToPNG_Converters covers explicit and fallback tool
+// selection with one shared conversion contract.
+func TestSVGConverter_ConvertToPNG_Converters(t *testing.T) {
+	tests := []struct {
+		name      string
+		preferred string
+		available func(*SVGConverter) bool
+	}{
+		{"resvg", PNGConverterResvg, (*SVGConverter).IsResvgAvailable},
+		{"rsvg-convert", PNGConverterRsvg, (*SVGConverter).IsRsvgConvertAvailable},
+		{"auto", PNGConverterAuto, (*SVGConverter).IsPNGAvailable},
 	}
-
-	// Create test SVG file
-	tmpDir := t.TempDir()
-	svgPath := filepath.Join(tmpDir, "test.svg")
-	if err := os.WriteFile(svgPath, []byte(testSVGContent), 0644); err != nil {
-		t.Fatalf("Failed to write test SVG: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			converter := NewSVGConverterWithConfig(SVGConfig{
+				Strategy: SVGStrategyPNG, Scale: DefaultSVGScale, PreferredPNGConverter: tt.preferred,
+			})
+			if !tt.available(converter) {
+				t.Skipf("%s converter unavailable", tt.name)
+			}
+			svgPath := filepath.Join(t.TempDir(), "test.svg")
+			if err := os.WriteFile(svgPath, []byte(testSVGContent), 0o644); err != nil {
+				t.Fatalf("write SVG: %v", err)
+			}
+			pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
+			if err != nil {
+				t.Fatalf("ConvertToPNG with %s failed: %v", tt.name, err)
+			}
+			defer cleanup()
+			info, err := os.Stat(pngPath)
+			if err != nil {
+				t.Fatalf("PNG file not created: %v", err)
+			}
+			if info.Size() == 0 {
+				t.Error("PNG file is empty")
+			}
+		})
 	}
-
-	// Convert to PNG using resvg
-	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
-	if err != nil {
-		t.Fatalf("ConvertToPNG with resvg failed: %v", err)
-	}
-	defer cleanup()
-
-	// Verify PNG was created
-	info, err := os.Stat(pngPath)
-	if err != nil {
-		t.Fatalf("PNG file not created: %v", err)
-	}
-
-	if info.Size() == 0 {
-		t.Error("PNG file is empty")
-	}
-
-	t.Logf("Converted SVG to PNG using resvg: %s (size: %d bytes)", pngPath, info.Size())
-}
-
-// TestSVGConverter_ConvertToPNG_PreferRsvg tests forcing rsvg-convert
-func TestSVGConverter_ConvertToPNG_PreferRsvg(t *testing.T) {
-	converter := NewSVGConverterWithConfig(SVGConfig{
-		Strategy:              SVGStrategyPNG,
-		Scale:                 DefaultSVGScale,
-		PreferredPNGConverter: PNGConverterRsvg,
-	})
-
-	if !converter.IsRsvgConvertAvailable() {
-		t.Skip("rsvg-convert not available")
-	}
-
-	// Create test SVG file
-	tmpDir := t.TempDir()
-	svgPath := filepath.Join(tmpDir, "test.svg")
-	if err := os.WriteFile(svgPath, []byte(testSVGContent), 0644); err != nil {
-		t.Fatalf("Failed to write test SVG: %v", err)
-	}
-
-	// Convert to PNG using rsvg-convert
-	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
-	if err != nil {
-		t.Fatalf("ConvertToPNG with rsvg-convert failed: %v", err)
-	}
-	defer cleanup()
-
-	// Verify PNG was created
-	info, err := os.Stat(pngPath)
-	if err != nil {
-		t.Fatalf("PNG file not created: %v", err)
-	}
-
-	if info.Size() == 0 {
-		t.Error("PNG file is empty")
-	}
-
-	t.Logf("Converted SVG to PNG using rsvg-convert: %s (size: %d bytes)", pngPath, info.Size())
-}
-
-// TestSVGConverter_ConvertToPNG_Auto tests automatic fallback behavior
-func TestSVGConverter_ConvertToPNG_Auto(t *testing.T) {
-	converter := NewSVGConverterWithConfig(SVGConfig{
-		Strategy:              SVGStrategyPNG,
-		Scale:                 DefaultSVGScale,
-		PreferredPNGConverter: PNGConverterAuto, // Default: try rsvg-convert first, then resvg
-	})
-
-	if !converter.IsPNGAvailable() {
-		t.Skip("No PNG converter available")
-	}
-
-	// Create test SVG file
-	tmpDir := t.TempDir()
-	svgPath := filepath.Join(tmpDir, "test.svg")
-	if err := os.WriteFile(svgPath, []byte(testSVGContent), 0644); err != nil {
-		t.Fatalf("Failed to write test SVG: %v", err)
-	}
-
-	// Convert to PNG using auto mode
-	pngPath, cleanup, err := converter.ConvertToPNG(context.Background(), svgPath, 0)
-	if err != nil {
-		t.Fatalf("ConvertToPNG with auto mode failed: %v", err)
-	}
-	defer cleanup()
-
-	// Verify PNG was created
-	info, err := os.Stat(pngPath)
-	if err != nil {
-		t.Fatalf("PNG file not created: %v", err)
-	}
-
-	if info.Size() == 0 {
-		t.Error("PNG file is empty")
-	}
-
-	t.Logf("Converted SVG to PNG using auto mode: %s (size: %d bytes)", pngPath, info.Size())
 }
 
 // TestSVGConverter_ConvertToPNG_ResvgMissing tests error when resvg is required but missing

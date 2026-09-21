@@ -169,69 +169,35 @@ func TestHTTPConvertUnsupportedField_RejectsShapeGrid(t *testing.T) {
 	}
 }
 
-// TestHTTPConvertUnsupportedField_RejectsPattern verifies pattern field is rejected.
-func TestHTTPConvertUnsupportedField_RejectsPattern(t *testing.T) {
-	tempDir := t.TempDir()
-	cache := template.NewMemoryCache(24 * 60 * 60)
-	templateService := NewTemplateService(tempDir, cache, false)
-	service := NewConvertService(tempDir, tempDir, templateService, nil)
-
-	body := `{
-		"template": "test",
-		"slides": [{
-			"type": "content",
-			"title": "Test",
-			"pattern": {"name": "kpi-3up"}
-		}]
-	}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
-	w := httptest.NewRecorder()
-
-	service.ConvertHandler()(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Status = %d, want 400", w.Code)
+// TestHTTPConvertUnsupportedField_RejectsOtherSurfaces verifies pattern and
+// deck-level MCP/CLI fields are rejected by the narrower HTTP contract.
+func TestHTTPConvertUnsupportedField_RejectsOtherSurfaces(t *testing.T) {
+	tests := []struct {
+		name, body string
+	}{
+		{"pattern", `{"template":"test","slides":[{"type":"content","title":"Test","pattern":{"name":"kpi-3up"}}]}`},
+		{"deck level field", `{"template":"test","slides":[{"type":"content","title":"Test"}],"design_mode":"free"}`},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			cache := template.NewMemoryCache(24 * 60 * 60)
+			service := NewConvertService(tempDir, tempDir, NewTemplateService(tempDir, cache, false), nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(tt.body))
+			w := httptest.NewRecorder()
 
-	var resp apierrors.Response
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("parse error response: %v", err)
-	}
-
-	if resp.Error.Code != apierrors.CodeUnsupportedFeature {
-		t.Errorf("error.code = %q, want %q", resp.Error.Code, apierrors.CodeUnsupportedFeature)
-	}
-}
-
-// TestHTTPConvertUnsupportedField_RejectsDeckLevelFields verifies deck-level
-// MCP/CLI fields are rejected at the top-level ConvertRequest.
-func TestHTTPConvertUnsupportedField_RejectsDeckLevelFields(t *testing.T) {
-	tempDir := t.TempDir()
-	cache := template.NewMemoryCache(24 * 60 * 60)
-	templateService := NewTemplateService(tempDir, cache, false)
-	service := NewConvertService(tempDir, tempDir, templateService, nil)
-
-	body := `{
-		"template": "test",
-		"slides": [{"type": "content", "title": "Test"}],
-		"design_mode": "free"
-	}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
-	w := httptest.NewRecorder()
-
-	service.ConvertHandler()(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Status = %d, want 400", w.Code)
-	}
-
-	var resp apierrors.Response
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("parse error response: %v", err)
-	}
-
-	if resp.Error.Code != apierrors.CodeUnsupportedFeature {
-		t.Errorf("error.code = %q, want %q", resp.Error.Code, apierrors.CodeUnsupportedFeature)
+			service.ConvertHandler()(w, req)
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("Status = %d, want 400", w.Code)
+			}
+			var resp apierrors.Response
+			if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+				t.Fatalf("parse error response: %v", err)
+			}
+			if resp.Error.Code != apierrors.CodeUnsupportedFeature {
+				t.Errorf("error.code = %q, want %q", resp.Error.Code, apierrors.CodeUnsupportedFeature)
+			}
+		})
 	}
 }
 

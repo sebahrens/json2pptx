@@ -2,7 +2,6 @@ package patterns
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -69,66 +68,25 @@ func TestCardGridCellUnmarshalJSON(t *testing.T) {
 	t.Run("string_object_expand_equivalence", func(t *testing.T) {
 		objJSON := `{"columns":2,"rows":1,"cells":[{"header":"A","body":"B"},{"header":"C","body":"D"}]}`
 		strJSON := `{"columns":2,"rows":1,"cells":["A | B","C | D"]}`
-
-		var objVals, strVals CardGridValues
-		if err := json.Unmarshal([]byte(objJSON), &objVals); err != nil {
-			t.Fatalf("unmarshal object form: %v", err)
-		}
-		if err := json.Unmarshal([]byte(strJSON), &strVals); err != nil {
-			t.Fatalf("unmarshal string form: %v", err)
-		}
-
-		p := &cardGrid{}
-		objGrid, err := p.Expand(ExpandContext{}, &objVals, nil, nil)
-		if err != nil {
-			t.Fatalf("expand object: %v", err)
-		}
-		strGrid, err := p.Expand(ExpandContext{}, &strVals, nil, nil)
-		if err != nil {
-			t.Fatalf("expand string: %v", err)
-		}
-
-		objOut, _ := json.Marshal(objGrid)
-		strOut, _ := json.Marshal(strGrid)
-		if string(objOut) != string(strOut) {
-			t.Errorf("expand outputs differ.\nobject: %s\nstring: %s", objOut, strOut)
-		}
+		assertExpandEquivalent(t, objJSON, strJSON, func(raw string) (any, error) {
+			var values CardGridValues
+			if err := json.Unmarshal([]byte(raw), &values); err != nil {
+				return nil, err
+			}
+			return (&cardGrid{}).Expand(ExpandContext{}, &values, nil, nil)
+		})
 	})
 }
 
 func TestCardGridCellUnmarshalReturnsValidationError(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-	}{
+	tests := []invalidShapeCase{
 		{"string_no_pipe", `"NoPipe"`},
 		{"array_instead_of_object", `[1,2]`},
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			var c CardGridCell
-			err := json.Unmarshal([]byte(tc.input), &c)
-			if err == nil {
-				t.Fatal("expected error, got nil")
-			}
-			var ve *ValidationError
-			if !errors.As(err, &ve) {
-				t.Fatalf("expected *ValidationError, got %T: %v", err, err)
-			}
-			if ve.Code != ErrCodeInvalidShape {
-				t.Errorf("Code = %q, want %q", ve.Code, ErrCodeInvalidShape)
-			}
-			if ve.Fix == nil {
-				t.Fatal("Fix is nil")
-			}
-			if ve.Fix.Kind != "reshape_value" {
-				t.Errorf("Fix.Kind = %q, want %q", ve.Fix.Kind, "reshape_value")
-			}
-			if ve.Fix.Params["example"] != "Header | Body" {
-				t.Errorf("Fix.Params[example] = %v, want %q", ve.Fix.Params["example"], "Header | Body")
-			}
-		})
-	}
+	assertInvalidShapeErrors(t, tests, "Header | Body", func(raw string) error {
+		var c CardGridCell
+		return json.Unmarshal([]byte(raw), &c)
+	})
 }
 
 func TestCardGrid(t *testing.T) {

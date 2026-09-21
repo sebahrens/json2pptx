@@ -497,57 +497,33 @@ func TestConvertInvalidJSONSyntaxIncludesOffset(t *testing.T) {
 	}
 }
 
-// TestConvertTrailingObject verifies a valid object followed by a second JSON
-// document is rejected as invalid JSON rather than silently accepted.
-func TestConvertTrailingObject(t *testing.T) {
-	tempDir := t.TempDir()
-	cache := template.NewMemoryCache(24 * 60 * 60)
-	templateService := NewTemplateService(tempDir, cache, false)
-	service := NewConvertService(tempDir, tempDir, templateService, nil)
+// TestConvertRejectsTrailingContent verifies a valid object followed by a
+// second document or non-JSON garbage is never silently accepted.
+func TestConvertRejectsTrailingContent(t *testing.T) {
+	valid := `{"template":"x","slides":[{"type":"content","title":"A"}]}`
+	for _, tt := range []struct{ name, suffix string }{
+		{"object", ` {"unexpected":true}`},
+		{"junk", ` not-json`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tempDir := t.TempDir()
+			cache := template.NewMemoryCache(24 * 60 * 60)
+			service := NewConvertService(tempDir, tempDir, NewTemplateService(tempDir, cache, false), nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(valid+tt.suffix))
+			w := httptest.NewRecorder()
 
-	body := `{"template":"x","slides":[{"type":"content","title":"A"}]} {"unexpected":true}`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
-	w := httptest.NewRecorder()
-
-	service.ConvertHandler()(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Expected status 400, got %d (body: %s)", w.Code, w.Body.String())
-	}
-
-	var resp apierrors.Response
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
-	if resp.Error.Code != apierrors.CodeInvalidJSON {
-		t.Errorf("Expected error code %s, got %s", apierrors.CodeInvalidJSON, resp.Error.Code)
-	}
-}
-
-// TestConvertTrailingJunk verifies a valid object followed by trailing
-// non-JSON garbage is rejected as invalid JSON.
-func TestConvertTrailingJunk(t *testing.T) {
-	tempDir := t.TempDir()
-	cache := template.NewMemoryCache(24 * 60 * 60)
-	templateService := NewTemplateService(tempDir, cache, false)
-	service := NewConvertService(tempDir, tempDir, templateService, nil)
-
-	body := `{"template":"x","slides":[{"type":"content","title":"A"}]} not-json`
-	req := httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(body))
-	w := httptest.NewRecorder()
-
-	service.ConvertHandler()(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Expected status 400, got %d (body: %s)", w.Code, w.Body.String())
-	}
-
-	var resp apierrors.Response
-	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
-	}
-	if resp.Error.Code != apierrors.CodeInvalidJSON {
-		t.Errorf("Expected error code %s, got %s", apierrors.CodeInvalidJSON, resp.Error.Code)
+			service.ConvertHandler()(w, req)
+			if w.Code != http.StatusBadRequest {
+				t.Fatalf("Expected status 400, got %d (body: %s)", w.Code, w.Body.String())
+			}
+			var resp apierrors.Response
+			if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+				t.Fatalf("Failed to decode response: %v", err)
+			}
+			if resp.Error.Code != apierrors.CodeInvalidJSON {
+				t.Errorf("Expected error code %s, got %s", apierrors.CodeInvalidJSON, resp.Error.Code)
+			}
+		})
 	}
 }
 

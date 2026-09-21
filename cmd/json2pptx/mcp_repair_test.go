@@ -670,20 +670,14 @@ func shapeGridDeck(fillColor string) string {
 	return string(b)
 }
 
-func TestRepairSlide_ReplaceColor(t *testing.T) {
-	mc := repairMC(t)
-
-	deck := shapeGridDeck("#FFE8D4")
-
-	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+func applyShapeGridRepair(t *testing.T, deck, kind string, params map[string]any) repairSlideOutput {
+	t.Helper()
+	result, err := repairMC(t).handleRepairSlide(context.Background(), makeRequest(map[string]any{
 		"presentation": mustParseJSON(deck),
 		"slide_index":  float64(0),
 		"fixes": []any{map[string]any{
-			"kind": "replace_color",
-			"params": map[string]any{
-				"from": "#FFE8D4",
-				"to":   "#1A1A1A",
-			},
+			"kind":   kind,
+			"params": params,
 		}},
 	}))
 	if err != nil {
@@ -692,15 +686,20 @@ func TestRepairSlide_ReplaceColor(t *testing.T) {
 	if result.IsError {
 		t.Fatalf("unexpected tool error: %s", textContent(result))
 	}
-
 	var output repairSlideOutput
 	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
 		t.Fatalf("unmarshal response: %v", err)
 	}
-
 	if len(output.AppliedFixes) != 1 || !output.AppliedFixes[0].Applied {
-		t.Fatalf("expected replace_color applied, got: %+v", output.AppliedFixes)
+		t.Fatalf("expected %s applied, got: %+v", kind, output.AppliedFixes)
 	}
+	return output
+}
+
+func TestRepairSlide_ReplaceColor(t *testing.T) {
+	output := applyShapeGridRepair(t, shapeGridDeck("#FFE8D4"), "replace_color", map[string]any{
+		"from": "#FFE8D4", "to": "#1A1A1A",
+	})
 
 	// Verify the color was changed in the patched deck.
 	var patched PresentationInput
@@ -718,37 +717,9 @@ func TestRepairSlide_ReplaceColor(t *testing.T) {
 }
 
 func TestRepairSlide_ReplaceColor_ContrastAutoFixedParams(t *testing.T) {
-	mc := repairMC(t)
-
-	deck := shapeGridDeck("#FFE8D4")
-
-	// Use the param names from contrast_autofixed findings.
-	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation": mustParseJSON(deck),
-		"slide_index":  float64(0),
-		"fixes": []any{map[string]any{
-			"kind": "replace_color",
-			"params": map[string]any{
-				"original_color":    "#FFE8D4",
-				"replacement_color": "#333333",
-			},
-		}},
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result.IsError {
-		t.Fatalf("unexpected tool error: %s", textContent(result))
-	}
-
-	var output repairSlideOutput
-	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
-		t.Fatalf("unmarshal response: %v", err)
-	}
-
-	if len(output.AppliedFixes) != 1 || !output.AppliedFixes[0].Applied {
-		t.Fatalf("expected replace_color applied, got: %+v", output.AppliedFixes)
-	}
+	applyShapeGridRepair(t, shapeGridDeck("#FFE8D4"), "replace_color", map[string]any{
+		"original_color": "#FFE8D4", "replacement_color": "#333333",
+	})
 }
 
 func TestRepairSlide_ReplaceColor_NotFound(t *testing.T) {
@@ -781,36 +752,9 @@ func TestRepairSlide_ReplaceColor_NotFound(t *testing.T) {
 // --- use_semantic_color tests ---
 
 func TestRepairSlide_UseSemanticColor_WithPath(t *testing.T) {
-	mc := repairMC(t)
-
-	deck := shapeGridDeck("#FF0000")
-
-	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
-		"presentation": mustParseJSON(deck),
-		"slide_index":  float64(0),
-		"fixes": []any{map[string]any{
-			"kind": "use_semantic_color",
-			"params": map[string]any{
-				"path":  "/slides/0/shape_grid/rows/0/cells/0/shape/fill",
-				"value": "accent1",
-			},
-		}},
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if result.IsError {
-		t.Fatalf("unexpected tool error: %s", textContent(result))
-	}
-
-	var output repairSlideOutput
-	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
-		t.Fatalf("unmarshal response: %v", err)
-	}
-
-	if len(output.AppliedFixes) != 1 || !output.AppliedFixes[0].Applied {
-		t.Fatalf("expected use_semantic_color applied, got: %+v", output.AppliedFixes)
-	}
+	output := applyShapeGridRepair(t, shapeGridDeck("#FF0000"), "use_semantic_color", map[string]any{
+		"path": "/slides/0/shape_grid/rows/0/cells/0/shape/fill", "value": "accent1",
+	})
 
 	// Verify the fill is now "accent1".
 	var patched PresentationInput

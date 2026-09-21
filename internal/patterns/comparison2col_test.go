@@ -2,7 +2,6 @@ package patterns
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -115,29 +114,7 @@ func TestComparison2colRowUnmarshalJSON(t *testing.T) {
 		arrayJSON := `{"headers":["Pros","Cons"],"rows":[{"left":"Fast","right":"Expensive"}]}`
 		legacyJSON := `{"header_left":"Pros","header_right":"Cons","rows":[{"left":"Fast","right":"Expensive"}]}`
 
-		var arrayVals, legacyVals Comparison2colValues
-		if err := json.Unmarshal([]byte(arrayJSON), &arrayVals); err != nil {
-			t.Fatalf("unmarshal array form: %v", err)
-		}
-		if err := json.Unmarshal([]byte(legacyJSON), &legacyVals); err != nil {
-			t.Fatalf("unmarshal legacy form: %v", err)
-		}
-
-		p := &comparison2col{}
-		arrayGrid, err := p.Expand(ExpandContext{}, &arrayVals, nil, nil)
-		if err != nil {
-			t.Fatalf("expand array: %v", err)
-		}
-		legacyGrid, err := p.Expand(ExpandContext{}, &legacyVals, nil, nil)
-		if err != nil {
-			t.Fatalf("expand legacy: %v", err)
-		}
-
-		arrayOut, _ := json.Marshal(arrayGrid)
-		legacyOut, _ := json.Marshal(legacyGrid)
-		if string(arrayOut) != string(legacyOut) {
-			t.Errorf("expand outputs differ.\narray:  %s\nlegacy: %s", arrayOut, legacyOut)
-		}
+		assertExpandEquivalent(t, arrayJSON, legacyJSON, expandComparison2colJSON)
 	})
 
 	t.Run("marshal_uses_compact_headers_form", func(t *testing.T) {
@@ -165,65 +142,27 @@ func TestComparison2colRowUnmarshalJSON(t *testing.T) {
 		objJSON := `{"rows":[{"left":"Fast","right":"Expensive"},{"left":"Reliable","right":"Complex"}]}`
 		strJSON := `{"rows":["Fast | Expensive","Reliable | Complex"]}`
 
-		var objVals, strVals Comparison2colValues
-		if err := json.Unmarshal([]byte(objJSON), &objVals); err != nil {
-			t.Fatalf("unmarshal object form: %v", err)
-		}
-		if err := json.Unmarshal([]byte(strJSON), &strVals); err != nil {
-			t.Fatalf("unmarshal string form: %v", err)
-		}
-
-		p := &comparison2col{}
-		objGrid, err := p.Expand(ExpandContext{}, &objVals, nil, nil)
-		if err != nil {
-			t.Fatalf("expand object: %v", err)
-		}
-		strGrid, err := p.Expand(ExpandContext{}, &strVals, nil, nil)
-		if err != nil {
-			t.Fatalf("expand string: %v", err)
-		}
-
-		objOut, _ := json.Marshal(objGrid)
-		strOut, _ := json.Marshal(strGrid)
-		if string(objOut) != string(strOut) {
-			t.Errorf("expand outputs differ.\nobject: %s\nstring: %s", objOut, strOut)
-		}
+		assertExpandEquivalent(t, objJSON, strJSON, expandComparison2colJSON)
 	})
 }
 
+func expandComparison2colJSON(raw string) (any, error) {
+	var values Comparison2colValues
+	if err := json.Unmarshal([]byte(raw), &values); err != nil {
+		return nil, err
+	}
+	return (&comparison2col{}).Expand(ExpandContext{}, &values, nil, nil)
+}
+
 func TestComparison2colRowUnmarshalReturnsValidationError(t *testing.T) {
-	tests := []struct {
-		name  string
-		input string
-	}{
+	tests := []invalidShapeCase{
 		{"string_no_pipe", `"NoPipe"`},
 		{"array_instead_of_object", `[1,2]`},
 	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			var r Comparison2colRow
-			err := json.Unmarshal([]byte(tc.input), &r)
-			if err == nil {
-				t.Fatal("expected error, got nil")
-			}
-			var ve *ValidationError
-			if !errors.As(err, &ve) {
-				t.Fatalf("expected *ValidationError, got %T: %v", err, err)
-			}
-			if ve.Code != ErrCodeInvalidShape {
-				t.Errorf("Code = %q, want %q", ve.Code, ErrCodeInvalidShape)
-			}
-			if ve.Fix == nil {
-				t.Fatal("Fix is nil")
-			}
-			if ve.Fix.Kind != "reshape_value" {
-				t.Errorf("Fix.Kind = %q, want %q", ve.Fix.Kind, "reshape_value")
-			}
-			if ve.Fix.Params["example"] != "left_value | right_value" {
-				t.Errorf("Fix.Params[example] = %v, want %q", ve.Fix.Params["example"], "left_value | right_value")
-			}
-		})
-	}
+	assertInvalidShapeErrors(t, tests, "left_value | right_value", func(raw string) error {
+		var r Comparison2colRow
+		return json.Unmarshal([]byte(raw), &r)
+	})
 }
 
 func TestComparison2col(t *testing.T) {

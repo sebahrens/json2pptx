@@ -1046,77 +1046,34 @@ func TestStatCardGridLayout(t *testing.T) {
 // =============================================================================
 
 func TestAllocatePanelIconRelIDs_RowsMode(t *testing.T) {
+	assertFinalizedPanelMode(t, panelShapeInsert{
+		bounds:   types.BoundingBox{Width: 8000000, Height: 4000000},
+		panels:   []nativePanelData{{title: "Row A", body: "- Item 1"}, {title: "Row B", body: "- Item 2"}},
+		rowsMode: true,
+	}, "Panel Rows")
+}
+
+func assertFinalizedPanelMode(t *testing.T, insert panelShapeInsert, wantGroup string) {
+	t.Helper()
 	ctx := &singlePassContext{
-		SlideContext: SlideContext{
-			panelShapeInserts: map[int][]panelShapeInsert{
-				1: {
-					{
-						placeholderIdx: 0,
-						bounds:         types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 4000000},
-						panels: []nativePanelData{
-							{title: "Row A", body: "- Item 1"},
-							{title: "Row B", body: "- Item 2"},
-						},
-						rowsMode: true,
-					},
-				},
-			},
-		},
-		MediaContext: MediaContext{
-			usedExtensions:  make(map[string]bool),
-			slideRelUpdates: make(map[int][]mediaRel),
-		},
-		SVGContext: SVGContext{
-			nativeSVGInserts: make(map[int][]nativeSVGInsert),
-		},
+		SlideContext: SlideContext{panelShapeInserts: map[int][]panelShapeInsert{1: {insert}}},
+		MediaContext: MediaContext{usedExtensions: make(map[string]bool), slideRelUpdates: make(map[int][]mediaRel)},
+		SVGContext:   SVGContext{nativeSVGInserts: make(map[int][]nativeSVGInsert)},
 	}
-
 	ctx.finalizePanelGroupXML()
-
 	inserts := ctx.panelShapeInserts[1]
 	if len(inserts) == 0 || inserts[0].groupXML == "" {
-		t.Fatal("expected groupXML to be generated for rows mode")
+		t.Fatal("expected groupXML to be generated")
 	}
-
-	if !strings.Contains(inserts[0].groupXML, `name="Panel Rows"`) {
-		t.Error("rows mode should produce Panel Rows group")
+	if !strings.Contains(inserts[0].groupXML, `name="`+wantGroup+`"`) {
+		t.Errorf("group XML does not contain %q", wantGroup)
 	}
 }
 
 func TestAllocatePanelIconRelIDs_StatCardsMode(t *testing.T) {
-	ctx := &singlePassContext{
-		SlideContext: SlideContext{
-			panelShapeInserts: map[int][]panelShapeInsert{
-				1: {
-					{
-						placeholderIdx: 0,
-						bounds:         types.BoundingBox{X: 0, Y: 0, Width: 9000000, Height: 4000000},
-						panels: []nativePanelData{
-							{title: "Revenue", value: "$1.2M"},
-							{title: "Users", value: "50K"},
-						},
-						statCardsMode: true,
-					},
-				},
-			},
-		},
-		MediaContext: MediaContext{
-			usedExtensions:  make(map[string]bool),
-			slideRelUpdates: make(map[int][]mediaRel),
-		},
-		SVGContext: SVGContext{
-			nativeSVGInserts: make(map[int][]nativeSVGInsert),
-		},
-	}
-
-	ctx.finalizePanelGroupXML()
-
-	inserts := ctx.panelShapeInserts[1]
-	if len(inserts) == 0 || inserts[0].groupXML == "" {
-		t.Fatal("expected groupXML to be generated for stat_cards mode")
-	}
-
-	if !strings.Contains(inserts[0].groupXML, `name="Stat Cards"`) {
-		t.Error("stat_cards mode should produce Stat Cards group")
-	}
+	assertFinalizedPanelMode(t, panelShapeInsert{
+		bounds:        types.BoundingBox{Width: 9000000, Height: 4000000},
+		panels:        []nativePanelData{{title: "Revenue", value: "$1.2M"}, {title: "Users", value: "50K"}},
+		statCardsMode: true,
+	}, "Stat Cards")
 }

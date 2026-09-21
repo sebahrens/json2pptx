@@ -2,7 +2,6 @@ package patterns
 
 import (
 	"encoding/json"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -460,29 +459,5 @@ func TestPhaseRoadmap_Golden_Default(t *testing.T) {
 		t.Fatalf("Expand: %v", err)
 	}
 
-	got, err := json.MarshalIndent(grid, "", "  ")
-	if err != nil {
-		t.Fatalf("Marshal: %v", err)
-	}
-
-	goldenPath := filepath.Join("testdata", "phase-roadmap", "default.golden.json")
-	if os.Getenv("UPDATE_GOLDEN") == "1" {
-		if err := os.MkdirAll(filepath.Dir(goldenPath), 0o755); err != nil {
-			t.Fatalf("mkdir: %v", err)
-		}
-		if err := os.WriteFile(goldenPath, got, 0o644); err != nil {
-			t.Fatalf("write golden: %v", err)
-		}
-		t.Log("golden file updated")
-		return
-	}
-
-	want, err := os.ReadFile(goldenPath)
-	if err != nil {
-		t.Fatalf("read golden (run with UPDATE_GOLDEN=1 to create): %v", err)
-	}
-
-	if string(got) != string(want) {
-		t.Errorf("golden mismatch.\ngot:\n%s\nwant:\n%s", got, want)
-	}
+	assertPatternGolden(t, grid, filepath.Join("testdata", "phase-roadmap", "default.golden.json"))
 }

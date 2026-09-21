@@ -2373,8 +2373,8 @@ func TestSelectLayout_SectionSlidePrefersSectionHeader(t *testing.T) {
 			slideTitle: "Strategic Analysis",
 		},
 		{
-			name:       "section-header preferred even when previously used",
-			slideTitle: "Financial Overview",
+			name:           "section-header preferred even when previously used",
+			slideTitle:     "Financial Overview",
 			previousLayout: "layout-section-header",
 			usedLayouts:    map[string]int{"layout-section-header": 2},
 		},
@@ -2622,92 +2622,44 @@ func TestPenalizeNarrowDiagramSlot(t *testing.T) {
 		halfWidth int64 = 5000000  // ~41% of slide width — narrow column
 	)
 
-	t.Run("slotted slide with complex diagram in narrow column gets penalty", func(t *testing.T) {
-		narrowTwoCol := types.LayoutMetadata{
-			ID:   "layout-narrow-twocol",
-			Name: "Two Column Narrow",
-			Tags: []string{"two-column"},
-			Placeholders: []types.PlaceholderInfo{
-				{ID: "title-1", Type: types.PlaceholderTitle, Index: 0},
-				{ID: "body-1", Type: types.PlaceholderBody, Index: 1, Bounds: types.BoundingBox{Width: halfWidth}},
-				{ID: "body-2", Type: types.PlaceholderBody, Index: 2, Bounds: types.BoundingBox{Width: halfWidth}},
-			},
-		}
-
-		slide := types.SlideDefinition{
-			Type: types.SlideTypeTwoColumn,
-			Slots: map[int]*types.SlotContent{
-				1: {SlotNumber: 1, Type: types.SlotContentBullets, Bullets: []string{"item"}},
-				2: {SlotNumber: 2, Type: types.SlotContentChart, DiagramSpec: &types.DiagramSpec{
-					Type: "business_model_canvas",
-					Data: map[string]any{"sections": []any{1, 2, 3}},
-				}},
-			},
-		}
-
-		penalty := penalizeNarrowDiagramSlot(narrowTwoCol, slide)
-		if penalty < 0.4 {
-			t.Errorf("expected heavy penalty (>=0.4) for complex diagram in narrow slot, got %.2f", penalty)
-		}
-	})
-
-	t.Run("slotted slide with complex diagram in wide column gets no penalty", func(t *testing.T) {
-		wideTwoCol := types.LayoutMetadata{
-			ID:   "layout-wide-twocol",
-			Name: "Two Column Wide",
-			Tags: []string{"two-column"},
-			Placeholders: []types.PlaceholderInfo{
-				{ID: "title-1", Type: types.PlaceholderTitle, Index: 0},
-				{ID: "body-1", Type: types.PlaceholderBody, Index: 1, Bounds: types.BoundingBox{Width: fullWidth}},
-				{ID: "body-2", Type: types.PlaceholderBody, Index: 2, Bounds: types.BoundingBox{Width: fullWidth}},
-			},
-		}
-
-		slide := types.SlideDefinition{
-			Type: types.SlideTypeTwoColumn,
-			Slots: map[int]*types.SlotContent{
-				1: {SlotNumber: 1, Type: types.SlotContentBullets, Bullets: []string{"item"}},
-				2: {SlotNumber: 2, Type: types.SlotContentChart, DiagramSpec: &types.DiagramSpec{
-					Type: "business_model_canvas",
-					Data: map[string]any{"sections": []any{1, 2, 3}},
-				}},
-			},
-		}
-
-		penalty := penalizeNarrowDiagramSlot(wideTwoCol, slide)
-		if penalty != 0.0 {
-			t.Errorf("expected no penalty for wide layout, got %.2f", penalty)
-		}
-	})
-
-	t.Run("non-complex diagram type in narrow column gets no penalty", func(t *testing.T) {
-		narrowTwoCol := types.LayoutMetadata{
-			ID:   "layout-narrow-twocol",
-			Name: "Two Column Narrow",
-			Tags: []string{"two-column"},
-			Placeholders: []types.PlaceholderInfo{
-				{ID: "title-1", Type: types.PlaceholderTitle, Index: 0},
-				{ID: "body-1", Type: types.PlaceholderBody, Index: 1, Bounds: types.BoundingBox{Width: halfWidth}},
-				{ID: "body-2", Type: types.PlaceholderBody, Index: 2, Bounds: types.BoundingBox{Width: halfWidth}},
-			},
-		}
-
-		slide := types.SlideDefinition{
-			Type: types.SlideTypeTwoColumn,
-			Slots: map[int]*types.SlotContent{
-				1: {SlotNumber: 1, Type: types.SlotContentBullets, Bullets: []string{"item"}},
-				2: {SlotNumber: 2, Type: types.SlotContentChart, DiagramSpec: &types.DiagramSpec{
-					Type: "bar_chart",
-					Data: map[string]any{"values": []any{1, 2, 3}},
-				}},
-			},
-		}
-
-		penalty := penalizeNarrowDiagramSlot(narrowTwoCol, slide)
-		if penalty != 0.0 {
-			t.Errorf("expected no penalty for bar_chart (not complex), got %.2f", penalty)
-		}
-	})
+	slottedCases := []struct {
+		name        string
+		width       int64
+		diagramType string
+		wantHeavy   bool
+	}{
+		{"slotted slide with complex diagram in narrow column gets penalty", halfWidth, "business_model_canvas", true},
+		{"slotted slide with complex diagram in wide column gets no penalty", fullWidth, "business_model_canvas", false},
+		{"non-complex diagram type in narrow column gets no penalty", halfWidth, "bar_chart", false},
+	}
+	for _, tt := range slottedCases {
+		t.Run(tt.name, func(t *testing.T) {
+			layout := types.LayoutMetadata{
+				ID: "layout-twocol", Name: "Two Column", Tags: []string{"two-column"},
+				Placeholders: []types.PlaceholderInfo{
+					{ID: "title-1", Type: types.PlaceholderTitle, Index: 0},
+					{ID: "body-1", Type: types.PlaceholderBody, Index: 1, Bounds: types.BoundingBox{Width: tt.width}},
+					{ID: "body-2", Type: types.PlaceholderBody, Index: 2, Bounds: types.BoundingBox{Width: tt.width}},
+				},
+			}
+			slide := types.SlideDefinition{
+				Type: types.SlideTypeTwoColumn,
+				Slots: map[int]*types.SlotContent{
+					1: {SlotNumber: 1, Type: types.SlotContentBullets, Bullets: []string{"item"}},
+					2: {SlotNumber: 2, Type: types.SlotContentChart, DiagramSpec: &types.DiagramSpec{
+						Type: tt.diagramType, Data: map[string]any{"values": []any{1, 2, 3}},
+					}},
+				},
+			}
+			penalty := penalizeNarrowDiagramSlot(layout, slide)
+			if tt.wantHeavy && penalty < 0.4 {
+				t.Errorf("expected heavy penalty (>=0.4), got %.2f", penalty)
+			}
+			if !tt.wantHeavy && penalty != 0 {
+				t.Errorf("expected no penalty, got %.2f", penalty)
+			}
+		})
+	}
 
 	t.Run("non-slotted diagram slide in narrow body gets penalty", func(t *testing.T) {
 		narrowContent := types.LayoutMetadata{
@@ -2902,7 +2854,7 @@ func TestSelectLayout_ComplexDiagramPrefersFullWidth(t *testing.T) {
 // (where chart slot layouts are only ~45% of slide width).
 func TestSelectLayout_SimpleChartPrefersWiderBody(t *testing.T) {
 	const (
-		wideBody       int64 = 9500000 // ~78% of slide width
+		wideBody        int64 = 9500000 // ~78% of slide width
 		narrowChartSlot int64 = 5200000 // ~43% of slide width
 	)
 

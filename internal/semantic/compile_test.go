@@ -87,7 +87,11 @@ func TestCompileQBR_Deterministic(t *testing.T) {
 // JSON passes json2pptx validate" for the pattern-bearing slides.
 func TestCompileQBR_PatternsValidate(t *testing.T) {
 	input, _ := compileExample(t, qbrExamplePath)
+	assertCompiledPatternsValidate(t, input)
+}
 
+func assertCompiledPatternsValidate(t *testing.T, input *deckinput.PresentationInput) {
+	t.Helper()
 	patternSlides := 0
 	for i := range input.Slides {
 		p := input.Slides[i].Pattern
@@ -118,7 +122,7 @@ func TestCompileQBR_PatternsValidate(t *testing.T) {
 		}
 	}
 	if patternSlides == 0 {
-		t.Fatal("expected at least one pattern-bearing slide in the QBR deck")
+		t.Fatal("expected at least one pattern-bearing slide")
 	}
 }
 

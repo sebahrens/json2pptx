@@ -69,30 +69,13 @@ func TestIconRowItemUnmarshalJSON(t *testing.T) {
 	t.Run("string_object_expand_equivalence", func(t *testing.T) {
 		objJSON := `[{"icon":"🚀","caption":"Launch"},{"icon":"📈","caption":"Growth"},{"icon":"💰","caption":"Revenue"}]`
 		strJSON := `["🚀 | Launch","📈 | Growth","💰 | Revenue"]`
-
-		var objVals, strVals IconRowValues
-		if err := json.Unmarshal([]byte(objJSON), &objVals); err != nil {
-			t.Fatalf("unmarshal object form: %v", err)
-		}
-		if err := json.Unmarshal([]byte(strJSON), &strVals); err != nil {
-			t.Fatalf("unmarshal string form: %v", err)
-		}
-
-		p := &iconRow{}
-		objGrid, err := p.Expand(ExpandContext{}, &objVals, nil, nil)
-		if err != nil {
-			t.Fatalf("expand object: %v", err)
-		}
-		strGrid, err := p.Expand(ExpandContext{}, &strVals, nil, nil)
-		if err != nil {
-			t.Fatalf("expand string: %v", err)
-		}
-
-		objOut, _ := json.Marshal(objGrid)
-		strOut, _ := json.Marshal(strGrid)
-		if string(objOut) != string(strOut) {
-			t.Errorf("expand outputs differ.\nobject: %s\nstring: %s", objOut, strOut)
-		}
+		assertExpandEquivalent(t, objJSON, strJSON, func(raw string) (any, error) {
+			var values IconRowValues
+			if err := json.Unmarshal([]byte(raw), &values); err != nil {
+				return nil, err
+			}
+			return (&iconRow{}).Expand(ExpandContext{}, &values, nil, nil)
+		})
 	})
 }
 

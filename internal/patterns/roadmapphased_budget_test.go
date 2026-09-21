@@ -44,20 +44,13 @@ func TestRoadmapPhasedWarnsOnlyOverBudgetActivityPills(t *testing.T) {
 	pat := &roadmapPhased{}
 	v := budgetRoadmap(8, 6)
 	v.Workstreams[1].Items[3] = strings.Repeat("A", 32)
-	if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("at budget: %v", got)
-	}
+	atBudget := pat.PostExpandWarnings(ExpandContext{}, v, nil)
 	v.Workstreams[1].Items[3] += "x"
-	got := pat.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "workstreams[1].items[3]") || !strings.Contains(got[0], "8-phase x 6-workstream") || !strings.Contains(got[0], "about 32") {
-		t.Fatalf("dense grid warning: %v", got)
-	}
+	overBudget := pat.PostExpandWarnings(ExpandContext{}, v, nil)
 	v = budgetRoadmap(2, 2)
 	v.Workstreams[0].Items[0] = strings.Repeat("A", 80)
-	if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("sparse grid at schema maximum warned: %v", got)
-	}
-	if got := pat.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
-		t.Fatalf("nil values: %v", got)
-	}
+	assertDenseGridWarnings(t, atBudget, overBudget,
+		pat.PostExpandWarnings(ExpandContext{}, v, nil),
+		pat.PostExpandWarnings(ExpandContext{}, nil, nil),
+		"workstreams[1].items[3]", "8-phase x 6-workstream", "about 32")
 }
