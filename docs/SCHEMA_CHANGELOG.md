@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **SCQA shared row copy budget (go-slide-creator-tp23k.24).**
+  `scqa-summary` now reports `BODY_TOO_LONG` when a situation,
+  complication, question or answer row exceeds about eight wrapped lines.
+  Three to four similarly sized bullets fit about 125 characters each; one
+  longer bullet can fit beside shorter ones. One or two bullets retain the
+  240-character item maximum. The fit report names the row, and schema
+  guidance describes the dense target. Measurements used all four bundled
+  templates. Schema version advances to 4.101.0.
+
 - **Stat-hero combined wide-copy diagnostic (go-slide-creator-tp23k.23).**
   `stat-hero` now reports `BODY_TOO_LONG` when long unbroken text across the
   value, unit, label, context and source overfills the single text stack.

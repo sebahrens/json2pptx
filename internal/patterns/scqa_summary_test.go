@@ -8,6 +8,27 @@ import (
 	"testing"
 )
 
+func TestSCQASummarySharedRowBudget(t *testing.T) {
+	p := &scqaSummary{}
+	v := validSCQAValues()
+	v.Questions = []string{strings.Repeat("Q", 126), strings.Repeat("Q", 126), strings.Repeat("Q", 126)}
+	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "questions") || !strings.Contains(got[0], "about 8 lines") {
+		t.Fatalf("three dense bullets warning: %v", got)
+	}
+	v.Questions = []string{strings.Repeat("Q", 125), strings.Repeat("Q", 125), strings.Repeat("Q", 125), strings.Repeat("Q", 125)}
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("four measured-length bullets should fit: %v", got)
+	}
+	v.Questions = []string{strings.Repeat("Q", 240), "Brief", "Brief", "Brief"}
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("one long bullet with short neighbors should fit: %v", got)
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
+		t.Fatalf("nil values: %v", got)
+	}
+}
+
 func TestSCQASummary_Registration(t *testing.T) {
 	p, ok := Default().Get("scqa-summary")
 	if !ok {

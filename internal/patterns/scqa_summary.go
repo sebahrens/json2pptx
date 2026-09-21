@@ -127,14 +127,43 @@ func (s *scqaSummary) NewValues() any       { return &SCQASummaryValues{} }
 func (s *scqaSummary) NewOverrides() any    { return &SCQASummaryOverrides{} }
 func (s *scqaSummary) NewCellOverride() any { return &SCQASummaryCellOverride{} }
 
+func (s *scqaSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*SCQASummaryValues)
+	if !ok || v == nil {
+		return nil
+	}
+	rows := []struct {
+		name  string
+		items []string
+	}{
+		{"situation", []string(v.Situation)}, {"complication", []string(v.Complication)},
+		{"questions", v.Questions}, {"answer", v.Answer},
+	}
+	var warnings []string
+	for _, row := range rows {
+		if len(row.items) < 3 {
+			continue
+		}
+		slots := 0
+		for _, item := range row.items {
+			length := runeLen(item)
+			slots += max(1, (2*length+124)/125)
+		}
+		if slots > 8 {
+			warnings = append(warnings, fmt.Sprintf("%s: scqa-summary %s uses about %d wrapped lines; a row holds about 8 lines (roughly 125 characters each with 3–4 bullets) — shorten bullets or split the summary", ErrCodeBodyTooLong, row.name, slots))
+		}
+	}
+	return warnings
+}
+
 func (s *scqaSummary) Schema() *Schema {
 	stringOrArray := OneOfSchema(
 		StringSchema(240).WithDescription("Single-paragraph form"),
 		ArraySchema(StringSchema(240), 1, 4).WithDescription("Array form (1-4 bullet points)"),
-	).WithDescription("String (single paragraph) or array of strings (1-4 bullets)")
+	).WithDescription("String (single paragraph) or array of strings (1-4 bullets); with 3-4 bullets target about 125 characters each or 8 wrapped lines per row")
 
 	bulletArray := ArraySchema(StringSchema(240), 1, 4).
-		WithDescription("1-4 bullet points")
+		WithDescription("1-4 bullet points; with 3-4 bullets target about 125 characters each or 8 wrapped lines per row")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{

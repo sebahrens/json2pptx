@@ -1175,6 +1175,47 @@ func TestStatHeroBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestSCQASummaryBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_SCQA_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_SCQA_BUDGET_PROBE=1")
+	}
+	for items := 1; items <= 4; items++ {
+		for _, field := range []string{"situation", "complication", "questions", "answer", "all", "one_item"} {
+			budget := probeReadableBudget(t, "scqa-summary", 240, func(length int) any {
+				v := &patterns.SCQASummaryValues{Situation: patterns.SCQAText{"Current position."}, Complication: patterns.SCQAText{"New pressure."}, Questions: []string{"What changes?"}, Answer: []string{"Take action."}}
+				copy := budgetProbeCopy(length)
+				arr := make([]string, items)
+				for i := range arr {
+					arr[i] = copy
+				}
+				switch field {
+				case "situation":
+					v.Situation = patterns.SCQAText(arr)
+				case "complication":
+					v.Complication = patterns.SCQAText(arr)
+				case "questions":
+					v.Questions = arr
+				case "answer":
+					v.Answer = arr
+				case "all":
+					v.Situation = patterns.SCQAText(arr)
+					v.Complication = patterns.SCQAText(arr)
+					v.Questions = arr
+					v.Answer = arr
+				case "one_item":
+					for i := range arr {
+						arr[i] = "Brief"
+					}
+					arr[0] = copy
+					v.Questions = arr
+				}
+				return v
+			})
+			t.Logf("items=%d field=%s budget=%d", items, field, budget)
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

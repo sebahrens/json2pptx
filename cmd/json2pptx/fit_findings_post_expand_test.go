@@ -286,6 +286,15 @@ func TestStatHeroCombinedWideCopyWarningReachesFitReportAcrossTemplates(t *testi
 	assertBudgetFindingAcrossTemplates(t, "stat-hero", values, "values.value/unit/label/context/source", "long unbroken runs")
 }
 
+func TestSCQASummarySharedRowBudgetReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.SCQASummaryValues{
+		Situation: patterns.SCQAText{"Current position"}, Complication: patterns.SCQAText{"New pressure"},
+		Questions: []string{strings.Repeat("Q", 126), strings.Repeat("Q", 126), strings.Repeat("Q", 126)},
+		Answer:    []string{"Take action"},
+	}
+	assertBudgetFindingAcrossTemplates(t, "scqa-summary", values, "questions", "about 8 lines")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

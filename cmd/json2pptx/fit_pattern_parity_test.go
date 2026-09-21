@@ -36,8 +36,8 @@ func TestPatternAndShapeGridFormsAgree(t *testing.T) {
 		Slides:   []SlideInput{{LayoutID: "slideLayout2", ShapeGrid: expanded.Slides[0].ShapeGrid}},
 	}
 
-	patternCodes := fitCodeSet(t, patternDeck)
-	gridCodes := fitCodeSet(t, gridDeck)
+	patternCodes := fitCodeSet(t, patternDeck, true)
+	gridCodes := fitCodeSet(t, gridDeck, false)
 	// sparse_layout is the one deliberate difference: it measures authored grid
 	// bounds against estimated text height, and a pattern's bounds are the
 	// PATTERN's choice, not the author's — on a clean three-card KPI slide it
@@ -119,10 +119,17 @@ func TestPatternCellFixCarriesTheBudget(t *testing.T) {
 }
 
 // fitCodeSet returns the finding-code histogram for a deck.
-func fitCodeSet(t *testing.T, deck *PresentationInput) map[string]int {
+func fitCodeSet(t *testing.T, deck *PresentationInput, excludePatternAdvice bool) map[string]int {
 	t.Helper()
 	out := map[string]int{}
 	for _, f := range collectFitFindings(deck, nil, 12192000, 6858000, nil) {
+		// The authored SCQA values have a row-budget advisory that a raw
+		// shape_grid cannot provide. Compare the common grid detectors here;
+		// the pattern-specific advice has its own cross-template test.
+		if excludePatternAdvice && f.Code == patterns.ErrCodeBodyTooLong &&
+			strings.Contains(f.Message, "scqa-summary ") {
+			continue
+		}
 		out[f.Code]++
 	}
 	return out
