@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -1633,7 +1634,7 @@ func TestInjectSectionNumber(t *testing.T) {
 		if len(got) != 1 {
 			t.Fatalf("len(got) = %d, want 1", len(got))
 		}
-		if !generator.IsSectionNumberAlias(got[0].PlaceholderID) {
+		if !placeholderrole.IsSectionNumberAlias(got[0].PlaceholderID) {
 			t.Errorf("injected PlaceholderID = %q, want a section_number alias", got[0].PlaceholderID)
 		}
 		if got[0].TextValue == nil || *got[0].TextValue != "01" {
@@ -1671,7 +1672,7 @@ func TestInjectSectionNumber(t *testing.T) {
 			},
 		}
 		got := injectSectionNumber(nil, &unclassified, "05")
-		if len(got) != 1 || !generator.IsSectionNumberAlias(got[0].PlaceholderID) {
+		if len(got) != 1 || !placeholderrole.IsSectionNumberAlias(got[0].PlaceholderID) {
 			t.Errorf("got %+v, want a single section_number alias item", got)
 		}
 	})
@@ -1716,7 +1717,7 @@ func TestSectionNumberRoutedThroughConversion(t *testing.T) {
 			continue
 		}
 		foundNumber = true
-		if !generator.IsSectionNumberAlias(item.PlaceholderID) {
+		if !placeholderrole.IsSectionNumberAlias(item.PlaceholderID) {
 			t.Errorf("section number '01' targeted placeholder %q, want a section_number alias", item.PlaceholderID)
 		}
 	}

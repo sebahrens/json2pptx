@@ -11,17 +11,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 )
 
-// IsSectionNumberAlias returns true if the given placeholder ID is one of the
-// section_number resolver aliases (section_number, section_no, large_number).
-//
-// The alias set lives in internal/placeholderrole so that internal/template's
-// canonical classifier shares one source of truth without importing
-// internal/generator. This function is kept as a convenience re-export for the
-// many generator and cmd callers that already reference it.
-func IsSectionNumberAlias(placeholderID string) bool {
-	return placeholderrole.IsSectionNumberAlias(placeholderID)
-}
-
 // placeholderResolver provides flexible placeholder lookup by canonical name or
 // OOXML placeholder index. It supports:
 //   - Name-based lookup: "body", "body_2", "title"
@@ -360,7 +349,7 @@ func (r *placeholderResolver) resolveSectionNumber() (int, bool) {
 //  5. Topmost: for "title" only — picks the placeholder with smallest Y offset
 func (r *placeholderResolver) ResolveWithFallback(placeholderID string) (int, ResolutionTier, bool) {
 	// Section number aliases: resolve via dedicated priority chain.
-	if IsSectionNumberAlias(placeholderID) {
+	if placeholderrole.IsSectionNumberAlias(placeholderID) {
 		if idx, ok := r.resolveSectionNumber(); ok {
 			return idx, TierSemantic, true
 		}

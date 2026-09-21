@@ -14,26 +14,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-func TestSlideIndexFromPath(t *testing.T) {
-	tests := []struct {
-		path string
-		want int
-	}{
-		{"/slides/0/content/body", 0},
-		{"/slides/3/shape_grid/rows/1/cells/0", 3},
-		{"/slides/12/content/1", 12},
-		{"other_path", -1},
-		{"/slides/", -1},
-		{"/slides/abc", -1},
-	}
-	for _, tt := range tests {
-		got := slideIndexFromPath(tt.path)
-		if got != tt.want {
-			t.Errorf("slideIndexFromPath(%q) = %d, want %d", tt.path, got, tt.want)
-		}
-	}
-}
-
 func TestConvertTextFitFinding(t *testing.T) {
 	tf := fitFinding{
 		Code:        patterns.ErrCodeFitOverflow,

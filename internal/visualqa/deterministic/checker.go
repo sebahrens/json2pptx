@@ -408,7 +408,7 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 	// Group findings by slide index, but only those whose slide is included.
 	bySlide := map[int][]patterns.FitFinding{}
 	for _, f := range findings {
-		si := slideIndexFromPath(f.Path)
+		si := slidepath.SlideIndex(f.Path)
 		if !seen[si] {
 			continue
 		}
@@ -490,7 +490,7 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 	// Group findings by slide index.
 	bySlide := map[int][]patterns.FitFinding{}
 	for _, f := range findings {
-		si := slideIndexFromPath(f.Path)
+		si := slidepath.SlideIndex(f.Path)
 		bySlide[si] = append(bySlide[si], f)
 	}
 
@@ -567,11 +567,6 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 		},
 		ModeUsed: "deterministic",
 	}
-}
-
-// slideIndexFromPath extracts the slide index from a JSON Pointer path.
-func slideIndexFromPath(path string) int {
-	return slidepath.SlideIndex(path)
 }
 
 // FormatTopCodes returns a concise human-readable summary of the top finding codes.

@@ -1049,13 +1049,6 @@ func extractContentParagraphs(c *ContentInput) []string {
 	return nil
 }
 
-// slideIndexFromPath extracts the slide index from a JSON Pointer path like "/slides/3/foo".
-// Deprecated: use slidepath.SlideIndex directly. Kept as a package-level alias for callers
-// in other files that reference it.
-func slideIndexFromPath(path string) int {
-	return slidepath.SlideIndex(path)
-}
-
 // findingCodeHistogram builds a sorted "code:count" list from suppressed
 // patterns.FitFinding items, ordered by count descending.
 func findingCodeHistogram(items []patterns.FitFinding) []string {

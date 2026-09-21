@@ -593,7 +593,7 @@ func printFitFindingsBySlide(findings []fitFinding) {
 	groups := make(map[int][]fitFinding)
 	var slideOrder []int
 	for _, f := range findings {
-		si := slideIndexFromPath(f.Path)
+		si := slidepath.SlideIndex(f.Path)
 		if _, seen := groups[si]; !seen {
 			slideOrder = append(slideOrder, si)
 		}

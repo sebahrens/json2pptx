@@ -531,19 +531,3 @@ func TestResolveWithFallback_SectionNumberAlias_FallbackBodyIdx1_NonSectionLayou
 		t.Errorf("ResolveWithFallback(section_number) = %d, want 1", idx)
 	}
 }
-
-func TestIsSectionNumberAlias(t *testing.T) {
-	trueCases := []string{"section_number", "section_no", "large_number"}
-	for _, id := range trueCases {
-		if !IsSectionNumberAlias(id) {
-			t.Errorf("IsSectionNumberAlias(%q) = false, want true", id)
-		}
-	}
-
-	falseCases := []string{"body", "title", "subtitle", "section"}
-	for _, id := range falseCases {
-		if IsSectionNumberAlias(id) {
-			t.Errorf("IsSectionNumberAlias(%q) = true, want false", id)
-		}
-	}
-}

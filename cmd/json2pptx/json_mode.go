@@ -19,6 +19,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pipeline"
+	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/policy/emoji"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/resource"
@@ -1245,7 +1246,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			// font size regardless of slide type.
 			if slideType == types.SlideTypeSection {
 				item.Type = generator.ContentSectionTitle
-			} else if generator.IsSectionNumberAlias(ci.PlaceholderID) {
+			} else if placeholderrole.IsSectionNumberAlias(ci.PlaceholderID) {
 				item.Type = generator.ContentSectionTitle
 			} else if slideType == types.SlideTypeTitle && (isTitlePlaceholderID(ci.PlaceholderID) || isLikelySubtitle(ci.PlaceholderID)) {
 				item.Type = generator.ContentTitleSlideTitle
@@ -1697,7 +1698,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			// template's ctrTitle font size (typically 40-60pt) and centered
 			// alignment instead of capping to 24pt body-text size.
 			// Section number aliases preserve the template's large decorative font.
-			if generator.IsSectionNumberAlias(jsonItem.PlaceholderID) {
+			if placeholderrole.IsSectionNumberAlias(jsonItem.PlaceholderID) {
 				item.Type = generator.ContentSectionTitle
 			} else if slideType == types.SlideTypeTitle && (isTitlePlaceholderID(jsonItem.PlaceholderID) || isLikelySubtitle(jsonItem.PlaceholderID)) {
 				item.Type = generator.ContentTitleSlideTitle
@@ -2545,7 +2546,7 @@ func synthesizeContentSlots(content []ContentInput) map[int]*types.SlotContent {
 		if id == "" {
 			continue
 		}
-		if isTitlePlaceholderID(id) || isLikelySubtitle(id) || generator.IsSectionNumberAlias(id) {
+		if isTitlePlaceholderID(id) || isLikelySubtitle(id) || placeholderrole.IsSectionNumberAlias(id) {
 			continue
 		}
 		key := strings.ToLower(strings.TrimSpace(id))
@@ -2730,7 +2731,7 @@ func layoutHasSectionNumberPlaceholder(layout types.LayoutMetadata) bool {
 		if ph.Role == types.PlaceholderRoleSectionNumber {
 			return true
 		}
-		if generator.IsSectionNumberAlias(ph.ID) {
+		if placeholderrole.IsSectionNumberAlias(ph.ID) {
 			return true
 		}
 		lid := strings.ToLower(ph.ID)
@@ -2749,7 +2750,7 @@ func layoutHasSectionNumberPlaceholder(layout types.LayoutMetadata) bool {
 func contentTargetsSectionSlot(content []ContentInput, target string) bool {
 	for _, ci := range content {
 		if target == "section_number" {
-			if generator.IsSectionNumberAlias(ci.PlaceholderID) {
+			if placeholderrole.IsSectionNumberAlias(ci.PlaceholderID) {
 				return true
 			}
 			lid := strings.ToLower(ci.PlaceholderID)

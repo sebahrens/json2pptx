@@ -152,25 +152,6 @@ func TestScoreFinding_Severity(t *testing.T) {
 	}
 }
 
-func TestSlideIndexFromPath(t *testing.T) {
-	tests := []struct {
-		path string
-		want int
-	}{
-		{"/slides/0/content/body", 0},
-		{"/slides/12/shape_grid", 12},
-		{"/slides/?", -1},
-		{"other", -1},
-		{"", -1},
-	}
-	for _, tt := range tests {
-		got := slideIndexFromPath(tt.path)
-		if got != tt.want {
-			t.Errorf("slideIndexFromPath(%q) = %d, want %d", tt.path, got, tt.want)
-		}
-	}
-}
-
 // TestDeckScore_ContractShape verifies the JSON field names are stable.
 func TestDeckScore_ContractShape(t *testing.T) {
 	ds := &DeckScore{
