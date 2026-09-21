@@ -10,6 +10,11 @@ import (
 
 func assertBudgetFindingAcrossTemplates(t *testing.T, pattern string, values any, field, target string, overrides ...any) {
 	t.Helper()
+	assertPatternFindingAcrossTemplates(t, patterns.ErrCodeBodyTooLong, pattern, values, field, target, overrides...)
+}
+
+func assertPatternFindingAcrossTemplates(t *testing.T, code, pattern string, values any, field, target string, overrides ...any) {
+	t.Helper()
 	encoded, err := json.Marshal(values)
 	if err != nil {
 		t.Fatal(err)
@@ -30,7 +35,7 @@ func assertBudgetFindingAcrossTemplates(t *testing.T, pattern string, values any
 			}}}
 			findings := collectFitFindings(deck, layouts, width, height, nil)
 			for _, finding := range findings {
-				if finding.Code == patterns.ErrCodeBodyTooLong &&
+				if finding.Code == code &&
 					strings.Contains(finding.Message, field) && strings.Contains(finding.Message, target) {
 					return
 				}
@@ -189,6 +194,16 @@ func TestTimelineHorizontalBudgetWarningsReachFitReportAcrossTemplates(t *testin
 	chevron := &patterns.TimelineHorizontalOverrides{Style: "chevron"}
 	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "about 32 readable body characters", chevron)
 	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].date", "about 18 readable date characters", chevron)
+}
+
+func TestTimelineGanttDroppedBodyReachesFitReportAcrossTemplates(t *testing.T) {
+	values := patterns.TimelineHorizontalValues{
+		{Label: "Plan", Date: "Q1", EndDate: "Q2"},
+		{Label: "Build", Date: "Q2", EndDate: "Q3", Body: "Critical handoff"},
+		{Label: "Launch", Date: "Q3", EndDate: "Q4"},
+	}
+	assertPatternFindingAcrossTemplates(t, patterns.ErrCodeContentDropped, "timeline-horizontal", &values,
+		"values[1].body", "not rendered in gantt style", &patterns.TimelineHorizontalOverrides{Style: "gantt"})
 }
 
 // postExpandDeck builds a two-slide deck whose patterns both object to their

@@ -63,3 +63,25 @@ func TestTimelineHorizontalDenseCopyWarnings(t *testing.T) {
 		t.Fatalf("schema loses sparse maximum or dense guidance")
 	}
 }
+
+func TestTimelineGanttBodyContentIsReported(t *testing.T) {
+	pat := &timelineHorizontal{}
+	v := TimelineHorizontalValues{
+		{Label: "Plan", Date: "Q1", EndDate: "Q2"},
+		{Label: "Build", Date: "Q2", EndDate: "Q3", Body: "Critical handoff"},
+		{Label: "Launch", Date: "Q3", EndDate: "Q4"},
+	}
+	got := pat.PostExpandWarnings(ExpandContext{}, &v, &TimelineHorizontalOverrides{Style: "gantt"})
+	if len(got) != 1 || !strings.Contains(got[0], ErrCodeContentDropped) ||
+		!strings.Contains(got[0], "values[1].body") || !strings.Contains(got[0], "dots or chevron") {
+		t.Fatalf("gantt body warning: %v", got)
+	}
+	v[1].Body = ""
+	if got := pat.PostExpandWarnings(ExpandContext{}, &v, &TimelineHorizontalOverrides{Style: "gantt"}); len(got) != 0 {
+		t.Fatalf("empty gantt body should not warn: %v", got)
+	}
+	v[1].Body = "Critical handoff"
+	if got := pat.PostExpandWarnings(ExpandContext{}, &v, &TimelineHorizontalOverrides{Style: "dots"}); len(got) != 0 {
+		t.Fatalf("rendered dots body should not warn: %v", got)
+	}
+}

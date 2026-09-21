@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -145,7 +146,11 @@ func (th *timelineHorizontal) PostExpandWarnings(_ ExpandContext, values, overri
 	}
 	var warnings []string
 	for i, stop := range *v {
-		if style != "gantt" {
+		if style == "gantt" {
+			if strings.TrimSpace(stop.Body) != "" {
+				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].body is not rendered in gantt style — move the detail into the label, choose dots or chevron style, or remove the body", ErrCodeContentDropped, i))
+			}
+		} else {
 			budget := timelineBodyBudget(style, len(*v), runeLen(stop.Label))
 			if n := runeLen(stop.Body); n > budget {
 				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].body is %d characters; %d-stop %s style with a %d-character label holds about %d readable body characters — shorten the body or label, or use fewer stops", ErrCodeBodyTooLong, i, n, len(*v), style, runeLen(stop.Label), budget))
@@ -167,7 +172,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\")"),
 			"date":     StringSchema(30).WithDescription("Optional date or time annotation. Chevron style holds about 30 characters at 3-4 stops, 27 at 5, 22 at 6, or 18 at 7; dots and gantt retain 30"),
 			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date)"),
-			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops. Readable chars for short/long labels by stop count: dots 3-4: 200/200, 5: 200/151, 6: 181/101, 7: 136/76; chevron 3: 200/198, 4: 176/141, 5: 127/77, 6: 102/62, 7: 77/32. Short means about 5-15 label chars, long about 55-60; fit warnings give the intermediate targets"),
+			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Readable chars for short/long labels by stop count: dots 3-4: 200/200, 5: 200/151, 6: 181/101, 7: 136/76; chevron 3: 200/198, 4: 176/141, 5: 127/77, 6: 102/62, 7: 77/32. Short means about 5-15 label chars, long about 55-60; fit warnings give the intermediate targets"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)

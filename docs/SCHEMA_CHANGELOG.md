@@ -8,6 +8,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Gantt body-loss diagnostic (go-slide-creator-d2pz1).** A
+  `timeline-horizontal` stop with `body` copy in `gantt` style now receives
+  `CONTENT_DROPPED` with the stop path and options to move or render that
+  detail. The Gantt layout uses only the label and date range, so this makes
+  previously silent copy loss visible before generation. Schema version
+  advances to 4.92.0; the input fingerprint is unchanged.
+
 - **Timeline copy targets by style and stop count
   (go-slide-creator-tp23k.15).** `timeline-horizontal` now reports
   `BODY_TOO_LONG` for dots and chevron bodies based on stop count and label
