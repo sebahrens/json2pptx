@@ -13,6 +13,13 @@ intersecting strings when their measured text boxes overlap substantially;
 Diagonal tick labels are excluded from this check until their rotated text
 outlines can be measured reliably.
 
+Native OOXML diagrams use a companion preflight. It measures BMC, value-chain,
+panel, and heatmap copy against the same fixed-font cell proportions as their
+PowerPoint shape builders, and applies measured density ceilings to the other
+native framework layouts. It emits `RENDER.diagram.text_overlap`,
+`RENDER.diagram.text_below_readable_min`, or the existing heatmap label finding
+before PowerPoint autofit shrinks text to an unreadable size.
+
 ## Output-Validation Findings — Separate Category
 
 This document catalogs **fit findings** (`patterns.FitFinding`) emitted by the layout/textfit/chart preflight and runtime. They are distinct from **output-validation findings** (`pptx.Finding`) emitted by `internal/pptx.OutputValidator` after the `.pptx` is serialized, and from **visual-QA findings** emitted by the `slide-visual-qa` Haiku skill from rendered screenshots:

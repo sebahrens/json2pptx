@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Native OOXML diagram geometry preflight (go-slide-creator-72qai.3).**
+  Fit reports now inspect the text geometry of diagrams rendered as editable
+  PowerPoint shapes. Dense BMC, value-chain, panel, taxonomy, process, pyramid,
+  house and icon layouts report `diagram.text_overlap`; dense heatmaps report
+  shortened labels; stat cards report `diagram.text_below_readable_min` before
+  autofit makes captions illegible. The round-2 native stress catalogue now
+  produces findings while its real fixtures remain quiet. Schema version
+  advances to 4.112.0.
+
 - **Drawn svggen text-overlap finding (go-slide-creator-72qai.1).**
   `svggen.DryRender` now reports `diagram.text_overlap` with both colliding
   strings when measured text boxes intersect substantially. The CLI and MCP

@@ -72,6 +72,9 @@ After authoring a chart or svggen diagram, run `validate_input` with the fit
 report enabled. A `RENDER.diagram.text_overlap` finding names the two drawn
 labels that collide; shorten one or give the diagram more space.
 Timeline activity descriptions are placed after labels staggered below bars.
+The same validation step checks editable native OOXML diagrams for dense copy;
+reduce items or shorten labels when it reports native text overlap or text below
+the readable minimum.
 
 See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
 

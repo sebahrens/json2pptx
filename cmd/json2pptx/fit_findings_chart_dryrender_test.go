@@ -245,6 +245,20 @@ func TestDryRender_NativeDiagramsAreNotSvggenBusiness(t *testing.T) {
 	}
 }
 
+func TestDryRender_NativeDiagramGeometryFindings(t *testing.T) {
+	items := make([]any, 9)
+	for i := range items {
+		items[i] = strings.Repeat("Long architecture capability ", 3)
+	}
+	spec := &types.DiagramSpec{Type: "business_model_canvas", Data: map[string]any{
+		"key_partners": items, "key_activities": items, "value_propositions": items,
+	}}
+	got := dryRenderSpecToFindings(spec, nil, "Arial", "warn", "slides[0].content[0].diagram_value")
+	if len(got) == 0 || got[0].Code != "diagram.text_overlap" || !strings.Contains(got[0].Path, "data.key_partners") {
+		t.Fatalf("native BMC findings = %+v", got)
+	}
+}
+
 // A dry run has to dry-run what actually happens: the render path normalizes an
 // authored chart shorthand before svggen sees it, and the dry run used to skip
 // that step and validate the shorthand instead. Four shipped example decks

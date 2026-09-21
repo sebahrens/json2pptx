@@ -200,7 +200,7 @@ func dryRenderSpec(
 	// finding at all (go-slide-creator-r87g). A type neither renderer owns
 	// still refuses: that one really does become a placeholder.
 	if generator.IsNativeDiagramType(spec) {
-		return nil
+		return generator.NativeDiagramPreflight(spec, bodyFont, path)
 	}
 	// Build a minimal RequestEnvelope. The full diagramSpecToSVGGen converter
 	// in internal/generator pulls in too many dependencies (and is render-path
