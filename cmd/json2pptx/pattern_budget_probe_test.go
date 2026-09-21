@@ -1082,6 +1082,99 @@ func TestWaterfallBridgeBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestStatHeroBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_STAT_HERO_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_STAT_HERO_BUDGET_PROBE=1")
+	}
+	pat, _ := patterns.Default().Get("stat-hero")
+	maximum, note := schemaMaximumValues(pat)
+	if note != "" {
+		t.Fatal(note)
+	}
+	maximumJSON, err := json.Marshal(maximum)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, templateName := range schemaMaximaTemplates {
+		layouts, width, height := schemaMaximaLayouts(t, templateName)
+		deck := &PresentationInput{Template: templateName, Slides: []SlideInput{{SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "stat-hero", Values: maximumJSON}}}}
+		for _, finding := range collectReadabilityFindings(deck, layouts, width, height) {
+			t.Logf("schema maximum on %s: %s", templateName, finding.Message)
+		}
+	}
+	for _, field := range []string{"value", "unit", "label", "context", "source", "paired_value", "full_stack_label", "full_stack_context", "wide_value", "wide_unit", "wide_paired_value", "wide_full_stack_value", "wide_full_stack_unit", "wide_full_stack_label", "wide_full_stack_context", "wide_full_stack_source", "wide_balanced"} {
+		limit := map[string]int{"value": 20, "unit": 10, "label": 80, "context": 120, "source": 80, "paired_value": 20, "full_stack_label": 80, "full_stack_context": 120, "wide_value": 20, "wide_unit": 10, "wide_paired_value": 20, "wide_full_stack_value": 20, "wide_full_stack_unit": 10, "wide_full_stack_label": 80, "wide_full_stack_context": 120, "wide_full_stack_source": 80, "wide_balanced": 100}[field]
+		budget := probeReadableBudget(t, "stat-hero", limit, func(length int) any {
+			v := &patterns.StatHeroValues{Value: "$2.4B", Label: "Market size"}
+			copy := budgetProbeCopy(length)
+			switch field {
+			case "value":
+				v.Value = copy
+			case "unit":
+				v.Unit = copy
+			case "label":
+				v.Label = copy
+			case "context":
+				v.Context = copy
+			case "source":
+				v.Source = copy
+			case "paired_value":
+				v.Value = copy
+				v.Unit = budgetProbeCopy(10)
+			case "full_stack_label":
+				v.Value = budgetProbeCopy(20)
+				v.Unit = budgetProbeCopy(10)
+				v.Label = copy
+				v.Context = budgetProbeCopy(120)
+				v.Source = budgetProbeCopy(80)
+			case "full_stack_context":
+				v.Value = budgetProbeCopy(20)
+				v.Unit = budgetProbeCopy(10)
+				v.Label = budgetProbeCopy(80)
+				v.Context = copy
+				v.Source = budgetProbeCopy(80)
+			case "wide_value":
+				v.Value = strings.Repeat("W", length)
+			case "wide_unit":
+				v.Unit = strings.Repeat("W", length)
+			case "wide_paired_value":
+				v.Value = strings.Repeat("W", length)
+				v.Unit = strings.Repeat("W", 10)
+			case "wide_full_stack_value":
+				v.Value = strings.Repeat("W", length)
+				v.Unit = strings.Repeat("W", 10)
+				v.Label = strings.Repeat("W", 80)
+				v.Context = strings.Repeat("W", 120)
+				v.Source = strings.Repeat("W", 80)
+			case "wide_full_stack_unit", "wide_full_stack_label", "wide_full_stack_context", "wide_full_stack_source":
+				v.Value = strings.Repeat("W", 20)
+				v.Unit = strings.Repeat("W", 10)
+				v.Label = strings.Repeat("W", 80)
+				v.Context = strings.Repeat("W", 120)
+				v.Source = strings.Repeat("W", 80)
+				switch field {
+				case "wide_full_stack_unit":
+					v.Unit = strings.Repeat("W", length)
+				case "wide_full_stack_label":
+					v.Label = strings.Repeat("W", length)
+				case "wide_full_stack_context":
+					v.Context = strings.Repeat("W", length)
+				case "wide_full_stack_source":
+					v.Source = strings.Repeat("W", length)
+				}
+			case "wide_balanced":
+				v.Value = strings.Repeat("W", 20*length/100)
+				v.Unit = strings.Repeat("W", 10*length/100)
+				v.Label = strings.Repeat("W", 80*length/100)
+				v.Context = strings.Repeat("W", 120*length/100)
+				v.Source = strings.Repeat("W", 80*length/100)
+			}
+			return v
+		})
+		t.Logf("field=%s budget=%d", field, budget)
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Stat-hero combined wide-copy diagnostic (go-slide-creator-tp23k.23).**
+  `stat-hero` now reports `BODY_TOO_LONG` when long unbroken text across the
+  value, unit, label, context and source overfills the single text stack.
+  Word-like copy and isolated wide fields retain their schema maxima. The
+  fit report suggests adding word breaks or moving context/source copy.
+  Measurements used all four bundled templates. Schema version advances to
+  4.100.0.
+
 - **Waterfall-bridge ten-column label target (go-slide-creator-tp23k.22).**
   `waterfall-bridge` now reports `BODY_TOO_LONG` for column labels over
   about 32 characters at ten columns. Three to nine columns retain the

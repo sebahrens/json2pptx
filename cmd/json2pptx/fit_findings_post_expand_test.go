@@ -281,6 +281,11 @@ func TestWaterfallBridgeTenColumnLabelWarningReachesFitReportAcrossTemplates(t *
 	assertBudgetFindingAcrossTemplates(t, "waterfall-bridge", values, "columns[4].label", "about 32 readable label characters")
 }
 
+func TestStatHeroCombinedWideCopyWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.StatHeroValues{Value: strings.Repeat("W", 20), Unit: strings.Repeat("W", 10), Label: strings.Repeat("W", 80), Context: strings.Repeat("W", 120), Source: strings.Repeat("W", 80)}
+	assertBudgetFindingAcrossTemplates(t, "stat-hero", values, "values.value/unit/label/context/source", "long unbroken runs")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

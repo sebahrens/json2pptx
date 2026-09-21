@@ -8,6 +8,27 @@ import (
 	"testing"
 )
 
+func TestStatHeroCombinedWideCopyWarning(t *testing.T) {
+	p := &statHero{}
+	full := &StatHeroValues{Value: strings.Repeat("W", 20), Unit: strings.Repeat("W", 10), Label: strings.Repeat("W", 80), Context: strings.Repeat("W", 120), Source: strings.Repeat("W", 80)}
+	got := p.PostExpandWarnings(testThemeCtx(), full, nil)
+	if len(got) != 1 || !strings.Contains(got[0], ErrCodeBodyTooLong) || !strings.Contains(got[0], "values.value/unit/label/context/source") {
+		t.Fatalf("full wide stack warning: %v", got)
+	}
+	wordy := &StatHeroValues{Value: budgetLikeCopy(20), Unit: budgetLikeCopy(10), Label: budgetLikeCopy(80), Context: budgetLikeCopy(120), Source: budgetLikeCopy(80)}
+	if got := p.PostExpandWarnings(testThemeCtx(), wordy, nil); len(got) != 0 {
+		t.Fatalf("full word-like stack should fit: %v", got)
+	}
+	isolated := &StatHeroValues{Value: strings.Repeat("W", 20), Label: "Market size"}
+	if got := p.PostExpandWarnings(testThemeCtx(), isolated, nil); len(got) != 0 {
+		t.Fatalf("isolated wide value should fit: %v", got)
+	}
+}
+
+func budgetLikeCopy(length int) string {
+	return strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
+}
+
 func TestStatHero(t *testing.T) {
 	p := &statHero{}
 

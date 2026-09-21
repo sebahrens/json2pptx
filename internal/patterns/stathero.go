@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -80,12 +81,39 @@ func (sh *statHero) NewValues() any       { return &StatHeroValues{} }
 func (sh *statHero) NewOverrides() any    { return &StatHeroOverrides{} }
 func (sh *statHero) NewCellOverride() any { return nil }
 
+func (sh *statHero) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
+	v, ok := values.(*StatHeroValues)
+	if !ok || v == nil {
+		return nil
+	}
+	grid, err := sh.Expand(ctx, values, overrides, nil)
+	if err != nil {
+		return nil
+	}
+	reference := &StatHeroValues{
+		Value: strings.Repeat("W", 11), Unit: strings.Repeat("W", 5),
+		Label: strings.Repeat("W", 47), Context: strings.Repeat("W", 70), Source: strings.Repeat("W", 47),
+	}
+	referenceGrid, err := sh.Expand(ctx, reference, overrides, nil)
+	if err != nil {
+		return nil
+	}
+	width, _ := contentAreaPt(ctx)
+	textWidth := width - 2*defaultShapeInsetLRPt
+	actualHeight := shapeTextHeightPt(ctx.Theme.BodyFont, grid.Rows[0].Cells[0].Shape.Text, textWidth)
+	referenceHeight := shapeTextHeightPt(ctx.Theme.BodyFont, referenceGrid.Rows[0].Cells[0].Shape.Text, textWidth)
+	if actualHeight <= referenceHeight {
+		return nil
+	}
+	return []string{fmt.Sprintf("%s: stat-hero values.value/unit/label/context/source exceed the measured combined text stack; long unbroken runs in all five fields shrink the slide text below readable size — use word breaks, shorten the copy, or move context/source elsewhere", ErrCodeBodyTooLong)}
+}
+
 func (sh *statHero) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values": ObjectSchema(
 				map[string]*Schema{
-					"value":   StringSchema(20).WithDescription("The big number (e.g. \"$2.4B\", \"99.9%\")"),
+					"value":   StringSchema(20).WithDescription("The big number (e.g. \"$2.4B\", \"99.9%\"); shorten long unbroken text when all context fields are populated"),
 					"unit":    StringSchema(10).WithDescription("Optional unit suffix (e.g. \"TAM\", \"MRR\")"),
 					"label":   StringSchema(80).WithDescription("One-line label beneath the number"),
 					"context": StringSchema(120).WithDescription("Optional subtext line"),
