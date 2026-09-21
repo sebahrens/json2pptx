@@ -1252,6 +1252,34 @@ func TestAgendaBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestValueChainBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_VALUE_CHAIN_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_VALUE_CHAIN_BUDGET_PROBE=1")
+	}
+	for steps := 4; steps <= 10; steps++ {
+		for _, field := range []string{"description", "all_description", "wide_description", "wide_all_description"} {
+			budget := probeReadableBudget(t, "value-chain", 180, func(length int) any {
+				v := &patterns.ValueChainValues{Steps: make([]patterns.ValueChainStep, steps)}
+				for i := range v.Steps {
+					v.Steps[i] = patterns.ValueChainStep{Label: "Stage", Description: "Brief description"}
+				}
+				copy := budgetProbeCopy(length)
+				if strings.HasPrefix(field, "wide") {
+					copy = strings.Repeat("W", length)
+				}
+				v.Steps[0].Description = copy
+				if strings.Contains(field, "all") {
+					for i := range v.Steps {
+						v.Steps[i].Description = copy
+					}
+				}
+				return v
+			})
+			t.Logf("steps=%d field=%s budget=%d", steps, field, budget)
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

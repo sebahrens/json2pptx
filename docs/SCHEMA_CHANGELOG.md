@@ -8,6 +8,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Value-chain dense unbroken-description targets
+  (go-slide-creator-tp23k.26).** `value-chain` now reports `BODY_TOO_LONG`
+  when wide unbroken description text exceeds about 159/136/118 characters
+  at eight/nine/ten steps. Word-like descriptions retain their 180-character
+  maximum. The warning complements the existing one-line label diagnostic
+  and names the step. Measurements used all four bundled templates. Schema
+  version advances to 4.103.0.
+
 - **Agenda dense unbroken-title target (go-slide-creator-tp23k.25).**
   `agenda` now reports `BODY_TOO_LONG` when a title in an eight to ten item
   agenda has an unbroken run over about 58 wide characters. Word-like titles

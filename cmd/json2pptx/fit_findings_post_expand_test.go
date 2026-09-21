@@ -304,6 +304,15 @@ func TestAgendaDenseUnbrokenTitleWarningReachesFitReportAcrossTemplates(t *testi
 	assertBudgetFindingAcrossTemplates(t, "agenda", values, "items[2]", "about 58 wide characters")
 }
 
+func TestValueChainDenseUnbrokenDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.ValueChainValues{Steps: make([]patterns.ValueChainStep, 10)}
+	for i := range values.Steps {
+		values.Steps[i] = patterns.ValueChainStep{Label: "Stage", Description: "Brief description"}
+	}
+	values.Steps[3].Description = strings.Repeat("W", 119)
+	assertBudgetFindingAcrossTemplates(t, "value-chain", values, "steps[3].description", "about 118 wide characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {

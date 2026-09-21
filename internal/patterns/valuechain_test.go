@@ -7,6 +7,32 @@ import (
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
+func TestValueChainDenseUnbrokenDescriptionWarning(t *testing.T) {
+	p := &valueChain{}
+	v := &ValueChainValues{Steps: make([]ValueChainStep, 10)}
+	for i := range v.Steps {
+		v.Steps[i] = ValueChainStep{Label: "Stage", Description: "Brief description"}
+	}
+	v.Steps[3].Description = strings.Repeat("W", 119)
+	got := p.PostExpandWarnings(testThemeCtx(), v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], "steps[3].description") || !strings.Contains(got[0], "about 118") {
+		t.Fatalf("dense description warning: %v", got)
+	}
+	v.Steps[3].Description = strings.Repeat("W", 118)
+	if got := p.PostExpandWarnings(testThemeCtx(), v, nil); len(got) != 0 {
+		t.Fatalf("measured ten-step target should fit: %v", got)
+	}
+	v.Steps[3].Description = strings.Repeat("word ", 36)
+	if got := p.PostExpandWarnings(testThemeCtx(), v, nil); len(got) != 0 {
+		t.Fatalf("word-like schema maximum should fit: %v", got)
+	}
+	v.Steps = v.Steps[:7]
+	v.Steps[3].Description = strings.Repeat("W", 180)
+	if got := p.PostExpandWarnings(testThemeCtx(), v, nil); len(got) != 0 {
+		t.Fatalf("seven-step schema maximum should fit: %v", got)
+	}
+}
+
 func TestValueChain_Registration(t *testing.T) {
 	p, ok := Default().Get("value-chain")
 	if !ok {
