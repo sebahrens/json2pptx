@@ -1437,6 +1437,131 @@ func TestPyramidBudgetProbe(t *testing.T) {
 	}
 }
 
+func TestChartInsightsSplitBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_CHART_INSIGHTS_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_CHART_INSIGHTS_BUDGET_PROBE=1")
+	}
+	pat, _ := patterns.Default().Get("chart-insights-split")
+	chart := pat.(patterns.Exemplar).ExemplarValues().(*patterns.ChartInsightsSplitValues).Chart
+	for bullets := 1; bullets <= 6; bullets++ {
+		for _, withChart := range []bool{false, true} {
+			for _, extras := range []bool{false, true} {
+				for _, all := range []bool{false, true} {
+					for _, wide := range []bool{false, true} {
+						budget := probeReadableBudget(t, "chart-insights-split", 160, func(length int) any {
+							v := &patterns.ChartInsightsSplitValues{Insights: make([]string, bullets)}
+							if withChart {
+								v.Chart = chart
+							}
+							if extras {
+								v.Headline = &patterns.ChartInsightsHeadline{Value: "+75%", Label: "Revenue growth"}
+								v.SoWhat = "Invest now."
+							}
+							for i := range v.Insights {
+								v.Insights[i] = "Brief insight"
+							}
+							copy := budgetProbeCopy(length)
+							if wide {
+								copy = strings.Repeat("W", length)
+							}
+							v.Insights[0] = copy
+							if all {
+								for i := range v.Insights {
+									v.Insights[i] = copy
+								}
+							}
+							return v
+						})
+						t.Logf("bullets=%d chart=%t extras=%t all=%t wide=%t budget=%d", bullets, withChart, extras, all, wide, budget)
+					}
+				}
+			}
+		}
+	}
+	for bullets := 1; bullets <= 6; bullets++ {
+		for _, wide := range []bool{false, true} {
+			budget := probeReadableBudget(t, "chart-insights-split", 160, func(length int) any {
+				copy := budgetProbeCopy
+				if wide {
+					copy = func(n int) string { return strings.Repeat("W", n) }
+				}
+				v := &patterns.ChartInsightsSplitValues{
+					Chart: chart, InsightsTitle: copy(40), Source: copy(120),
+					Headline: &patterns.ChartInsightsHeadline{Value: copy(12), Label: copy(60)},
+					SoWhat:   copy(160), ChartLabel: copy(60), Unit: copy(12),
+					Insights: make([]string, bullets),
+				}
+				for i := range v.Insights {
+					v.Insights[i] = copy(length)
+				}
+				return v
+			})
+			t.Logf("bullets=%d full_stack=true wide=%t budget=%d", bullets, wide, budget)
+		}
+	}
+	for _, field := range []string{"insights_title", "source", "source_no_chart", "source_with_extras", "source_with_headline", "source_with_so_what", "source_with_headline_so_what", "headline_value", "headline_label", "so_what", "chart_label", "unit"} {
+		limit := map[string]int{"insights_title": 40, "source": 120, "source_no_chart": 120, "source_with_extras": 120, "source_with_headline": 120, "source_with_so_what": 120, "source_with_headline_so_what": 120, "headline_value": 12, "headline_label": 60, "so_what": 160, "chart_label": 60, "unit": 12}[field]
+		budget := probeReadableBudget(t, "chart-insights-split", limit, func(length int) any {
+			v := &patterns.ChartInsightsSplitValues{Chart: chart, Insights: []string{"Brief insight"}}
+			copy := budgetProbeCopy(length)
+			switch field {
+			case "insights_title":
+				v.InsightsTitle = copy
+			case "source":
+				v.Source = copy
+			case "source_no_chart":
+				v.Chart = nil
+				v.Source = copy
+			case "source_with_extras":
+				v.InsightsTitle = budgetProbeCopy(40)
+				v.Source = copy
+				v.Headline = &patterns.ChartInsightsHeadline{Value: budgetProbeCopy(12), Label: budgetProbeCopy(60)}
+				v.SoWhat = budgetProbeCopy(160)
+				v.ChartLabel = budgetProbeCopy(60)
+				v.Unit = budgetProbeCopy(12)
+			case "source_with_headline":
+				v.Source = copy
+				v.Headline = &patterns.ChartInsightsHeadline{Value: "+75%", Label: "Revenue growth"}
+			case "source_with_so_what":
+				v.Source = copy
+				v.SoWhat = "Invest now"
+			case "source_with_headline_so_what":
+				v.Source = copy
+				v.Headline = &patterns.ChartInsightsHeadline{Value: "+75%", Label: "Revenue growth"}
+				v.SoWhat = "Invest now"
+			case "headline_value":
+				v.Headline = &patterns.ChartInsightsHeadline{Value: copy}
+			case "headline_label":
+				v.Headline = &patterns.ChartInsightsHeadline{Value: "+75%", Label: copy}
+			case "so_what":
+				v.SoWhat = copy
+			case "chart_label":
+				v.ChartLabel = copy
+			case "unit":
+				v.Unit = copy
+			}
+			return v
+		})
+		t.Logf("field=%s isolated_budget=%d", field, budget)
+	}
+	for _, bullets := range []int{1, 3, 6} {
+		for _, extras := range []bool{false, true} {
+			budget := probeReadableBudget(t, "chart-insights-split", 120, func(length int) any {
+				v := &patterns.ChartInsightsSplitValues{Chart: chart, Source: budgetProbeCopy(length), Insights: make([]string, bullets)}
+				for i := range v.Insights {
+					v.Insights[i] = "Brief insight"
+				}
+				if extras {
+					v.Headline = &patterns.ChartInsightsHeadline{Value: "+75%", Label: "Revenue growth"}
+					v.SoWhat = "Invest now"
+				}
+				return v
+			})
+			t.Logf("source_bullets=%d extras=%t budget=%d", bullets, extras, budget)
+		}
+	}
+}
+
 // Run with JSON2PPTX_BUDGET_PROBE=1 go test ./cmd/json2pptx
 // -run TestPatternBudgetProbe -v. It measures the actual fit collector against
 // every bundled template, without adding a slow combinatorial sweep to normal

@@ -196,7 +196,7 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 			"chart":          chartSchema,
 			"insights_title": StringSchema(40).WithDescription("Label above the bullet list (default \"Key Insights\")").WithDefault("Key Insights"),
 			"insights":       ArraySchema(StringSchema(160), 1, 6).WithDescription("1–6 narrative takeaway bullets"),
-			"source":         StringSchema(120).WithDescription("Optional source/footnote rendered below the left panel"),
+			"source":         StringSchema(120).WithDescription("Optional source/footnote below the chart; target about 108 characters with one insight and no headline/callout, or 95 when the right column has more content"),
 			"headline": ObjectSchema(map[string]*Schema{
 				"value": StringSchema(cisHeadlineValueMax).WithDescription("Headline figure, e.g. \"+75%\""),
 				"label": StringSchema(cisHeadlineLabelMax).WithDescription("What the figure means"),
@@ -295,6 +295,13 @@ func (cis *chartInsightsSplit) PostExpandWarnings(ctx ExpandContext, values, ove
 		return nil
 	}
 	if v.Chart != nil {
+		budget := 95
+		if len(v.Insights) == 1 && v.Headline == nil && strings.TrimSpace(v.SoWhat) == "" {
+			budget = 108
+		}
+		if runeLen(v.Source) > budget {
+			return []string{fmt.Sprintf("%s: chart-insights-split source has %d characters; the chart source line holds about %d readable characters with this insights column — shorten the source or move detail to slide notes", ErrCodeBodyTooLong, runeLen(v.Source), budget)}
+		}
 		return nil
 	}
 	return []string{

@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Chart-insights source line targets (go-slide-creator-tp23k.31).**
+  `chart-insights-split` now reports `BODY_TOO_LONG` when a chart source
+  exceeds about 108 characters with one insight and no headline/callout,
+  or 95 characters with more right-column content. Insight bullets, chart
+  caption, headline, and callout copy fit their individual schema maxima in
+  the measured layouts. The no-chart layout retains the 120-character source
+  maximum and its missing-chart warning. Measurements used all four bundled
+  templates. Schema version advances to 4.108.0.
+
 - **Pyramid narrow top-tier text targets (go-slide-creator-tp23k.30).**
   `pyramid` now reports `BODY_TOO_LONG` when wide unbroken top-tier text
   exceeds about 116/70 characters in four/five-tier layouts. Word-like

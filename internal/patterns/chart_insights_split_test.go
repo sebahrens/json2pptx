@@ -8,6 +8,34 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+func TestChartInsightsSplitSourceBudget(t *testing.T) {
+	p := &chartInsightsSplit{}
+	chart := p.ExemplarValues().(*ChartInsightsSplitValues).Chart
+	v := &ChartInsightsSplitValues{Chart: chart, Insights: []string{"Brief insight"}, Source: strings.Repeat("S", 109)}
+	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
+	if len(got) != 1 || !strings.Contains(got[0], ErrCodeBodyTooLong) || !strings.Contains(got[0], "about 108") {
+		t.Fatalf("single-insight source warning: %v", got)
+	}
+	v.Source = strings.Repeat("S", 108)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("measured sparse source target should fit: %v", got)
+	}
+	v.Insights = append(v.Insights, "Second insight")
+	v.Source = strings.Repeat("S", 96)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 95") {
+		t.Fatalf("dense source warning: %v", got)
+	}
+	v.Source = strings.Repeat("S", 95)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("measured dense source target should fit: %v", got)
+	}
+	v.Chart = nil
+	v.Source = strings.Repeat("S", 120)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], ErrCodeChartPlaceholderEmpty) {
+		t.Fatalf("missing-chart warning should remain: %v", got)
+	}
+}
+
 func TestChartInsightsSplit(t *testing.T) {
 	p := &chartInsightsSplit{}
 

@@ -348,6 +348,13 @@ func TestPyramidDenseTopTierBudgetReachesFitReportAcrossTemplates(t *testing.T) 
 	assertBudgetFindingAcrossTemplates(t, "pyramid", values, "tiers[0]", "about 70 wide characters")
 }
 
+func TestChartInsightsSplitSourceBudgetReachesFitReportAcrossTemplates(t *testing.T) {
+	pat, _ := patterns.Default().Get("chart-insights-split")
+	chart := pat.(patterns.Exemplar).ExemplarValues().(*patterns.ChartInsightsSplitValues).Chart
+	values := &patterns.ChartInsightsSplitValues{Chart: chart, Insights: []string{"First", "Second"}, Source: strings.Repeat("S", 96)}
+	assertBudgetFindingAcrossTemplates(t, "chart-insights-split", values, "source", "about 95 readable characters")
+}
+
 // postExpandDeck builds a two-slide deck whose patterns both object to their
 // own content: a chart panel with no chart, and two dense-grid bios over budget.
 func postExpandDeck() *PresentationInput {
