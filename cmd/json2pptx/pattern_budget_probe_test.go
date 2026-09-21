@@ -23,8 +23,16 @@ func budgetProbeCopy(length int) string {
 // probeReadableBudget runs a pattern payload through the same collector used
 // by fit reports on every bundled template, then finds the largest clean
 // character count. Pattern-specific probes only need to build their payload.
-func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload func(int) any) int {
+func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload func(int) any, overrides ...any) int {
 	t.Helper()
+	var encodedOverrides json.RawMessage
+	if len(overrides) > 0 {
+		var err error
+		encodedOverrides, err = json.Marshal(overrides[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
 	geometries := make([]budgetProbeGeometry, 0, len(schemaMaximaTemplates))
 	for _, name := range schemaMaximaTemplates {
 		layouts, width, height := schemaMaximaLayouts(t, name)
@@ -37,7 +45,7 @@ func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload fun
 		}
 		for _, geom := range geometries {
 			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
-				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: pattern, Values: encoded},
+				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: pattern, Values: encoded, Overrides: encodedOverrides},
 			}}}
 			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
 				return false
@@ -366,6 +374,99 @@ func TestPhaseRoadmapBudgetProbe(t *testing.T) {
 					return v
 				})
 				t.Logf("phases=%d milestones=%t field=%s budget=%d", phases, milestones, field, budget)
+			}
+		}
+	}
+}
+
+// Run with JSON2PPTX_TIMELINE_BUDGET_PROBE=1 to measure each timeline style
+// against all bundled templates as stop count grows.
+func TestTimelineHorizontalBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_TIMELINE_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_TIMELINE_BUDGET_PROBE=1")
+	}
+	for _, style := range []string{"dots", "chevron", "gantt"} {
+		for stops := 3; stops <= 7; stops++ {
+			fields := []string{"label", "date", "body"}
+			if style == "gantt" {
+				fields = []string{"label", "date", "end_date"}
+			}
+			for _, field := range fields {
+				limit := map[string]int{"label": 60, "date": 30, "end_date": 30, "body": 200}[field]
+				budget := probeReadableBudget(t, "timeline-horizontal", limit, func(length int) any {
+					v := patterns.TimelineHorizontalValues{}
+					for i := 0; i < stops; i++ {
+						stop := patterns.TimelineStop{Label: "Launch", Date: "Q1", Body: "Brief"}
+						if style == "gantt" {
+							stop.EndDate = "Q2"
+						}
+						v = append(v, stop)
+					}
+					copy := budgetProbeCopy(length)
+					switch field {
+					case "label":
+						v[0].Label = copy
+					case "date":
+						v[0].Date = copy
+					case "end_date":
+						v[0].EndDate = copy
+					case "body":
+						v[0].Body = copy
+					}
+					return &v
+				}, patterns.TimelineHorizontalOverrides{Style: style})
+				t.Logf("style=%s stops=%d field=%s budget=%d", style, stops, field, budget)
+			}
+		}
+	}
+	for _, style := range []string{"dots", "chevron"} {
+		for stops := 3; stops <= 7; stops++ {
+			for _, field := range []string{"label", "body"} {
+				limit := map[string]int{"label": 60, "body": 200}[field]
+				budget := probeReadableBudget(t, "timeline-horizontal", limit, func(length int) any {
+					v := patterns.TimelineHorizontalValues{}
+					for i := 0; i < stops; i++ {
+						v = append(v, patterns.TimelineStop{Label: "Launch", Date: "Q1", Body: "Brief"})
+					}
+					if field == "label" {
+						v[0].Label = budgetProbeCopy(length)
+						v[0].Body = budgetProbeCopy(200)
+					} else {
+						v[0].Label = budgetProbeCopy(60)
+						v[0].Body = budgetProbeCopy(length)
+					}
+					return &v
+				}, patterns.TimelineHorizontalOverrides{Style: style})
+				t.Logf("style=%s stops=%d paired_max=true field=%s budget=%d", style, stops, field, budget)
+			}
+		}
+	}
+	for stops := 3; stops <= 7; stops++ {
+		budget := probeReadableBudget(t, "timeline-horizontal", 30, func(length int) any {
+			v := patterns.TimelineHorizontalValues{}
+			for i := 0; i < stops; i++ {
+				v = append(v, patterns.TimelineStop{Label: "Launch", Date: "Q1", EndDate: "Q2"})
+			}
+			v[0].Label = budgetProbeCopy(60)
+			v[0].Date = budgetProbeCopy(30)
+			v[0].EndDate = budgetProbeCopy(length)
+			return &v
+		}, patterns.TimelineHorizontalOverrides{Style: "gantt"})
+		t.Logf("style=gantt stops=%d paired_dates=true end_date_budget=%d", stops, budget)
+	}
+	for _, style := range []string{"dots", "chevron"} {
+		for stops := 3; stops <= 7; stops++ {
+			for _, labelChars := range []int{5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60} {
+				budget := probeReadableBudget(t, "timeline-horizontal", 200, func(length int) any {
+					v := patterns.TimelineHorizontalValues{}
+					for i := 0; i < stops; i++ {
+						v = append(v, patterns.TimelineStop{Label: "Launch", Date: "Q1", Body: "Brief"})
+					}
+					v[0].Label = budgetProbeCopy(labelChars)
+					v[0].Body = budgetProbeCopy(length)
+					return &v
+				}, patterns.TimelineHorizontalOverrides{Style: style})
+				t.Logf("style=%s stops=%d label_chars=%d body_budget=%d", style, stops, labelChars, budget)
 			}
 		}
 	}

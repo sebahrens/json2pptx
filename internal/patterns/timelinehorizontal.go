@@ -85,13 +85,89 @@ func (th *timelineHorizontal) NewValues() any       { return &TimelineHorizontal
 func (th *timelineHorizontal) NewOverrides() any    { return &TimelineHorizontalOverrides{} }
 func (th *timelineHorizontal) NewCellOverride() any { return &TimelineHorizontalCellOverride{} }
 
+// Measured against the fit collector on all four bundled templates at default
+// text sizes. Label wrapping consumes room in the same text shape as the body.
+type timelineBudgetBand struct {
+	maxLabel, body int
+}
+
+var timelineBodyBudgetBands = map[string]map[int][]timelineBudgetBand{
+	"dots": {
+		3: {{60, 200}},
+		4: {{60, 200}},
+		5: {{20, 200}, {40, 176}, {60, 151}},
+		6: {{15, 181}, {30, 141}, {45, 121}, {60, 101}},
+		7: {{15, 136}, {30, 106}, {45, 91}, {60, 76}},
+	},
+	"chevron": {
+		3: {{50, 200}, {60, 198}},
+		4: {{35, 176}, {60, 141}},
+		5: {{25, 127}, {50, 102}, {60, 77}},
+		6: {{20, 102}, {40, 82}, {60, 62}},
+		7: {{15, 77}, {30, 62}, {45, 47}, {60, 32}},
+	},
+}
+
+func timelineBodyBudget(style string, stops, labelChars int) int {
+	bands := timelineBodyBudgetBands[style][stops]
+	for _, band := range bands {
+		if labelChars <= band.maxLabel {
+			return band.body
+		}
+	}
+	if len(bands) > 0 {
+		return bands[len(bands)-1].body
+	}
+	return 200
+}
+
+func timelineChevronDateBudget(stops int) int {
+	switch stops {
+	case 5:
+		return 27
+	case 6:
+		return 22
+	case 7:
+		return 18
+	default:
+		return 30
+	}
+}
+
+func (th *timelineHorizontal) PostExpandWarnings(_ ExpandContext, values, overrides any) []string {
+	v, ok := values.(*TimelineHorizontalValues)
+	if !ok || v == nil {
+		return nil
+	}
+	style := "dots"
+	if o, ok := overrides.(*TimelineHorizontalOverrides); ok && o != nil && o.Style != "" {
+		style = o.Style
+	}
+	var warnings []string
+	for i, stop := range *v {
+		if style != "gantt" {
+			budget := timelineBodyBudget(style, len(*v), runeLen(stop.Label))
+			if n := runeLen(stop.Body); n > budget {
+				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].body is %d characters; %d-stop %s style with a %d-character label holds about %d readable body characters — shorten the body or label, or use fewer stops", ErrCodeBodyTooLong, i, n, len(*v), style, runeLen(stop.Label), budget))
+			}
+		}
+		if style == "chevron" {
+			budget := timelineChevronDateBudget(len(*v))
+			if n := runeLen(stop.Date); n > budget {
+				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].date is %d characters; %d-stop chevron style holds about %d readable date characters — shorten the date or use fewer stops", ErrCodeBodyTooLong, i, n, len(*v), budget))
+			}
+		}
+	}
+	return warnings
+}
+
 func (th *timelineHorizontal) Schema() *Schema {
 	stopSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\")"),
-			"date":     StringSchema(30).WithDescription("Optional date or time annotation"),
+			"date":     StringSchema(30).WithDescription("Optional date or time annotation. Chevron style holds about 30 characters at 3-4 stops, 27 at 5, 22 at 6, or 18 at 7; dots and gantt retain 30"),
 			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date)"),
-			"body":     StringSchema(200).WithDescription("Optional body text for the stop"),
+			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops. Readable chars for short/long labels by stop count: dots 3-4: 200/200, 5: 200/151, 6: 181/101, 7: 136/76; chevron 3: 200/198, 4: 176/141, 5: 127/77, 6: 102/62, 7: 77/32. Short means about 5-15 label chars, long about 55-60; fit warnings give the intermediate targets"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)

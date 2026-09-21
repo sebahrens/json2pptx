@@ -8,6 +8,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Timeline copy targets by style and stop count
+  (go-slide-creator-tp23k.15).** `timeline-horizontal` now reports
+  `BODY_TOO_LONG` for dots and chevron bodies based on stop count and label
+  length, since label and body share one shape. Seven dots allow about
+  136 body characters with a short label or 76 with a long label; seven
+  chevrons allow about 77 or 32. Chevron date labels also tighten to about
+  27/22/18 characters at five/six/seven stops. Gantt date ranges remain
+  readable at their schema maxima. Measurements used all four bundled
+  templates and the corrected timeline geometry. Schema version advances to
+  4.91.0.
+
 - **Dense phase-roadmap date and milestone targets
   (go-slide-creator-tp23k.14).** `phase-roadmap` now reports
   `BODY_TOO_LONG` when date labels or milestones exceed measured per-phase

@@ -8,18 +8,25 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
-func assertBudgetFindingAcrossTemplates(t *testing.T, pattern string, values any, field, target string) {
+func assertBudgetFindingAcrossTemplates(t *testing.T, pattern string, values any, field, target string, overrides ...any) {
 	t.Helper()
 	encoded, err := json.Marshal(values)
 	if err != nil {
 		t.Fatal(err)
+	}
+	var encodedOverrides json.RawMessage
+	if len(overrides) > 0 {
+		encodedOverrides, err = json.Marshal(overrides[0])
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, templateName := range schemaMaximaTemplates {
 		t.Run(templateName, func(t *testing.T) {
 			layouts, width, height := schemaMaximaLayouts(t, templateName)
 			deck := &PresentationInput{Template: templateName, Slides: []SlideInput{{
 				SlideType: "content", LayoutID: "blank-title",
-				Pattern: &PatternInput{Name: pattern, Values: encoded},
+				Pattern: &PatternInput{Name: pattern, Values: encoded, Overrides: encodedOverrides},
 			}}}
 			findings := collectFitFindings(deck, layouts, width, height, nil)
 			for _, finding := range findings {
@@ -167,6 +174,21 @@ func TestPhaseRoadmapBudgetWarningsReachFitReportAcrossTemplates(t *testing.T) {
 	values.Phases[2].Milestone = strings.Repeat("M", 43)
 	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].date_label", "about 22 readable date-label characters")
 	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].milestone", "about 42 readable milestone characters")
+}
+
+func TestTimelineHorizontalBudgetWarningsReachFitReportAcrossTemplates(t *testing.T) {
+	values := patterns.TimelineHorizontalValues{}
+	for i := 0; i < 7; i++ {
+		values = append(values, patterns.TimelineStop{Label: "Launch", Date: "Q1", Body: "Brief"})
+	}
+	values[3].Label = strings.Repeat("L", 60)
+	values[3].Body = strings.Repeat("B", 77)
+	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "about 76 readable body characters")
+	values[3].Body = strings.Repeat("B", 33)
+	values[3].Date = strings.Repeat("D", 19)
+	chevron := &patterns.TimelineHorizontalOverrides{Style: "chevron"}
+	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "about 32 readable body characters", chevron)
+	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].date", "about 18 readable date characters", chevron)
 }
 
 // postExpandDeck builds a two-slide deck whose patterns both object to their
