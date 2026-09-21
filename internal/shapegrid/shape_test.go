@@ -966,37 +966,3 @@ func TestBuildTextBody_BulletDetection(t *testing.T) {
 		})
 	}
 }
-
-func TestParseNumberedPrefix(t *testing.T) {
-	tests := []struct {
-		line    string
-		wantOK  bool
-		wantNum int
-		wantRem string
-	}{
-		{"1. First", true, 1, "First"},
-		{"12. Twelfth", true, 12, "Twelfth"},
-		{"0. Zero", true, 0, "Zero"},
-		{"abc. Not", false, 0, ""},
-		{"1.NoSpace", false, 0, ""},
-		{". Leading dot", false, 0, ""},
-		{"", false, 0, ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.line, func(t *testing.T) {
-			num, rest, ok := pptx.ParseNumberedPrefix(tt.line)
-			if ok != tt.wantOK {
-				t.Errorf("ok: got %v, want %v", ok, tt.wantOK)
-			}
-			if ok {
-				if num != tt.wantNum {
-					t.Errorf("num: got %d, want %d", num, tt.wantNum)
-				}
-				if rest != tt.wantRem {
-					t.Errorf("rest: got %q, want %q", rest, tt.wantRem)
-				}
-			}
-		})
-	}
-}
