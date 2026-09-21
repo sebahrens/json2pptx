@@ -494,13 +494,15 @@ func applyAndReRenderVisualRepairs(input *PresentationInput, proposed proposeRep
 // the pure-Go heuristic fallback. Mirrors handleInspectSlideImages's backend
 // selection so both surfaces report the same mode semantics.
 func (mc *mcpConfig) inspectVisualQA(ctx context.Context, images []visualqa.SlideImage, model string) (*visualqa.Report, string) {
-	var opts []visualqa.Option
+	opts := append([]visualqa.Option(nil), mc.visualQAOptions...)
 	if model != "" {
 		opts = append(opts, visualqa.WithModel(model))
 	}
+	geometry := heuristic.InspectAll(images)
 	if agent, err := visualqa.NewAgent(opts...); err == nil {
 		report := agent.InspectAll(ctx, images)
 		report.Mode = "vision"
+		mergeDeterministicGeometry(report, geometry)
 		for ri := range report.Results {
 			for fi := range report.Results[ri].Findings {
 				if report.Results[ri].Findings[fi].Source == "" {
@@ -508,10 +510,10 @@ func (mc *mcpConfig) inspectVisualQA(ctx context.Context, images []visualqa.Slid
 				}
 			}
 		}
+		report.Summarize()
 		return report, "vision"
 	}
-	report := heuristic.InspectAll(images)
-	return report, "heuristic"
+	return geometry, "heuristic"
 }
 
 // runVisualQAPaletteAudit runs the deterministic palette ΔE audit on the final

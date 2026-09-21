@@ -58,9 +58,9 @@ This is the canonical entry point for the visual refinement loop:
 
 Each slide_images[] entry must include "index" (0-based) and one of "path" (absolute filesystem path to a .png/.jpg) or "png_base64" (raw base64-encoded image bytes, no data: URL prefix). Optional per-slide "slide_type" (title/content/section/chart/diagram/...) and "title" tune the prompt for that slide.
 
-When ANTHROPIC_API_KEY is set, vision-backed checks run via Claude (Report.mode="vision"). When unset, the tool falls back to a deterministic heuristic pass — pure-Go image checks for blank slides, text-like edge-band overflow, and aspect ratio (Report.mode="heuristic", findings tagged source="heuristic", severity P3).
+When ANTHROPIC_API_KEY is set, vision-backed checks run via Claude (Report.mode="vision") and conservative pixel geometry is merged with source="deterministic", including a P2 check for content/table slides whose lower content region is largely unused. When unset, the tool falls back to a pure-Go image pass for that layout-balance defect plus blank slides, text-like edge-band overflow, and aspect ratio (Report.mode="heuristic"; other fallback findings are tagged source="heuristic", severity P3).
 
-HEURISTIC MODE CANNOT APPROVE A DECK. It reads pixels, not meaning: an empty findings list there means "no blank slide, no text against an edge, standard aspect ratio", not "this deck looks right". Completion still requires looking at every rendered slide yourself (or a vision provider) and recording the verdict with submit_visual_review — see the completion protocol. Its findings are advisory and may have higher false-positive rates than vision-backed checks.
+HEURISTIC MODE CANNOT APPROVE A DECK. It reads pixels, not meaning: an empty findings list there means only that the limited pixel checks passed, not "this deck looks right". Completion still requires looking at every rendered slide yourself (or a vision provider) and recording the verdict with submit_visual_review — see the completion protocol. Findings tagged source="heuristic" are advisory and may have higher false-positive rates than vision-backed checks.
 
 Image source policy: paths must be absolute and end in .png/.jpg/.jpeg. Path traversal (..) is rejected. For images already in memory (e.g. just-rendered thumbnails), prefer png_base64 to avoid disk round-trips.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaInspectSlideImages)),
@@ -144,15 +144,20 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 	// fall back to the deterministic heuristic checker so callers still
 	// get an actionable — if coarser — visual QA pass instead of an
 	// INSPECT_DISABLED error.
-	var opts []visualqa.Option
+	opts := append([]visualqa.Option(nil), mc.visualQAOptions...)
 	if m, ok := request.GetArguments()["model"].(string); ok && m != "" {
 		opts = append(opts, visualqa.WithModel(m))
 	}
 
+	geometry := heuristic.InspectAll(slideImages)
 	var report *visualqa.Report
 	if agent, err := visualqa.NewAgent(opts...); err == nil {
 		report = agent.InspectAll(ctx, slideImages)
 		report.Mode = "vision"
+		// Conservative raster geometry runs before vision. Merge only
+		// deterministic findings; the broader heuristic fallback remains a
+		// no-key mode so it cannot add noise to a successful vision pass.
+		mergeDeterministicGeometry(report, geometry)
 		for ri := range report.Results {
 			for fi := range report.Results[ri].Findings {
 				if report.Results[ri].Findings[fi].Source == "" {
@@ -160,8 +165,9 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 				}
 			}
 		}
+		report.Summarize()
 	} else {
-		report = heuristic.InspectAll(slideImages)
+		report = geometry
 	}
 	report.Template = template
 
@@ -181,6 +187,32 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// mergeDeterministicGeometry preserves vision as the primary inspector while
+// adding only conservative pixel-geometry failures. It deliberately excludes
+// the advisory heuristic fallback checks from a successful vision report.
+func mergeDeterministicGeometry(report, geometry *visualqa.Report) {
+	for ri := range report.Results {
+		if ri >= len(geometry.Results) {
+			break
+		}
+		for _, finding := range geometry.Results[ri].Findings {
+			if finding.Source == heuristic.DeterministicSourceTag {
+				duplicate := false
+				for _, existing := range report.Results[ri].Findings {
+					if existing.Category == finding.Category {
+						duplicate = true
+						break
+					}
+				}
+				if duplicate {
+					continue
+				}
+				report.Results[ri].Findings = append(report.Results[ri].Findings, finding)
+			}
+		}
+	}
 }
 
 // --- Finding envelope projection ---

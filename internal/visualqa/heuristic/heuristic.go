@@ -3,10 +3,11 @@
 //
 // These checks are an offline fallback for inspect_slide_images when
 // ANTHROPIC_API_KEY is unset. They are intentionally conservative — each
-// check has a clear, simple signal (image entropy, edge-band content,
-// aspect ratio) and produces findings tagged with Source="heuristic" and
-// SeverityP3 (advisory). Vision-backed findings remain distinguishable
-// by their Source="vision" tag and the Report.Mode field.
+// check has a clear, simple signal (image entropy, content distribution,
+// edge-band content, aspect ratio). The conservative layout-balance check is
+// tagged Source="deterministic" at SeverityP2 so it can accompany vision;
+// broader fallback checks use Source="heuristic" at SeverityP3. Vision-backed
+// findings remain distinguishable by Source="vision" and Report.Mode.
 //
 // What this package does NOT do:
 //   - It does not call any external service.
@@ -34,6 +35,10 @@ import (
 // SourceTag is the value written to Finding.Source for heuristic findings.
 const SourceTag = "heuristic"
 
+// DeterministicSourceTag marks conservative raster geometry checks that also
+// run before vision inspection.
+const DeterministicSourceTag = "deterministic"
+
 // edgeBandFraction is the relative width of the border band scanned for
 // content touching the slide edge. 0.01 = 1% of the smaller dimension.
 const edgeBandFraction = 0.01
@@ -52,8 +57,7 @@ const blankContentRatioThreshold = 0.005
 const aspectTolerance = 0.02
 
 // Inspect runs all heuristic checks on a single decoded slide image and
-// returns a visualqa.SlideResult. Findings are tagged with
-// Source="heuristic" and SeverityP3 (advisory).
+// returns a visualqa.SlideResult. Each check tags its own source and severity.
 //
 // If the image cannot be decoded, the returned SlideResult has Error set
 // and no findings.
@@ -73,10 +77,41 @@ func Inspect(data []byte, info visualqa.SlideInfo) visualqa.SlideResult {
 	bg, contentRatio := analyzePixels(img)
 
 	res.Findings = append(res.Findings, checkBlank(info, contentRatio)...)
+	res.Findings = append(res.Findings, checkUnderusedLowerContent(img, bg, info)...)
 	res.Findings = append(res.Findings, checkEdgeOverflow(img, bg, info)...)
 	res.Findings = append(res.Findings, checkAspectRatio(img, info)...)
 
 	return res
+}
+
+// checkUnderusedLowerContent catches the common unfinished-slide composition:
+// meaningful ink in the upper content region and an almost entirely empty lower
+// region. Title/section/blank slides intentionally use whitespace and are exempt.
+func checkUnderusedLowerContent(img image.Image, bg color8, info visualqa.SlideInfo) []visualqa.Finding {
+	if info.Type != "content" && info.Type != "table" {
+		return nil
+	}
+	b := img.Bounds()
+	x0, x1 := b.Min.X+b.Dx()/20, b.Max.X-b.Dx()/20
+	// The bottom band is roughly the lower 40% of the usable content rectangle.
+	// Allow a small amount of footer/source ink while requiring the upper region
+	// to be substantially denser. These bounds catch the dogfood risk table
+	// without treating a truly blank slide as an under-filled content slide.
+	upper := nonBackgroundRatio(img, bg, x0, b.Min.Y+b.Dy()*18/100, x1, b.Min.Y+b.Dy()*60/100)
+	lower := nonBackgroundRatio(img, bg, x0, b.Min.Y+b.Dy()*60/100, x1, b.Min.Y+b.Dy()*86/100)
+	if upper < 0.06 || lower >= 0.04 || upper < lower*8 {
+		return nil
+	}
+	return []visualqa.Finding{{
+		SlideIndex:     info.Index,
+		SlideType:      info.Type,
+		Severity:       visualqa.SeverityP2,
+		Category:       "layout_balance",
+		Description:    fmt.Sprintf("Main content is concentrated in the upper half (ink %.1f%%) while the lower content region is nearly empty (ink %.2f%%); resize or redistribute the content to use the slide.", upper*100, lower*100),
+		Location:       "main content region",
+		Source:         DeterministicSourceTag,
+		SuggestedFixes: visualqa.SuggestedFixesForCategory("layout_balance"),
+	}}
 }
 
 // InspectAll runs heuristic checks on every slide and returns a Report

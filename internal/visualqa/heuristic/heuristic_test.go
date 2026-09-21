@@ -100,6 +100,79 @@ func TestInspect_BlankSlideFlagged(t *testing.T) {
 	}
 }
 
+func TestInspect_UnderusedLowerContentFlagged(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 1600, 900))
+	white := color.RGBA{255, 255, 255, 255}
+	black := color.RGBA{0, 0, 0, 255}
+	for y := 0; y < 900; y++ {
+		for x := 0; x < 1600; x++ {
+			img.SetRGBA(x, y, white)
+		}
+	}
+	// Dense table-like block in the upper content region; lower content empty.
+	for y := 190; y < 430; y++ {
+		for x := 100; x < 1500; x++ {
+			if y%24 < 12 {
+				img.SetRGBA(x, y, black)
+			}
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	res := Inspect(buf.Bytes(), visualqa.SlideInfo{Index: 9, Type: "table"})
+	for _, finding := range res.Findings {
+		if finding.Category == "layout_balance" && finding.Source == DeterministicSourceTag && finding.Severity == visualqa.SeverityP2 {
+			if len(finding.SuggestedFixes) == 0 {
+				t.Fatal("deterministic layout finding is missing repair mappings")
+			}
+			return
+		}
+	}
+	t.Fatalf("underused table findings = %+v", res.Findings)
+}
+
+func TestInspect_BalancedContentNotFlagged(t *testing.T) {
+	img := image.NewRGBA(image.Rect(0, 0, 1600, 900))
+	white := color.RGBA{255, 255, 255, 255}
+	black := color.RGBA{0, 0, 0, 255}
+	for y := 0; y < 900; y++ {
+		for x := 0; x < 1600; x++ {
+			img.SetRGBA(x, y, white)
+		}
+	}
+	for y := 190; y < 750; y++ {
+		for x := 100; x < 1500; x++ {
+			if y%24 < 12 {
+				img.SetRGBA(x, y, black)
+			}
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	res := Inspect(buf.Bytes(), visualqa.SlideInfo{Type: "content"})
+	for _, finding := range res.Findings {
+		if finding.Category == "layout_balance" {
+			t.Fatalf("balanced content produced layout-balance finding: %+v", finding)
+		}
+	}
+}
+
+func TestInspect_UnderusedCheckExemptsStructuralSlides(t *testing.T) {
+	data := solidPNG(t, 1600, 900, color.RGBA{255, 255, 255, 255})
+	for _, typ := range []string{"title", "section", "blank"} {
+		res := Inspect(data, visualqa.SlideInfo{Type: typ})
+		for _, finding := range res.Findings {
+			if finding.Category == "layout_balance" {
+				t.Fatalf("%s slide produced layout-balance finding: %+v", typ, finding)
+			}
+		}
+	}
+}
+
 // TestInspect_EdgeOverflowFlagged: a fully-white image with TEXT-LIKE ink along
 // the bottom should trigger an overflow finding on the bottom edge.
 //

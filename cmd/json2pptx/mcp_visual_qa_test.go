@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/render"
@@ -12,6 +14,31 @@ import (
 	// Ensure all patterns are registered via init().
 	_ "github.com/sebahrens/json2pptx/internal/patterns"
 )
+
+func TestInspectVisualQA_MergesDeterministicGeometry(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"content":[{"type":"text","text":"[]"}]}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	mc := cliMCPConfig("./templates", "./out")
+	mc.visualQAOptions = []visualqa.Option{
+		visualqa.WithAPIURL(srv.URL),
+		visualqa.WithParallelism(1),
+	}
+	report, mode := mc.inspectVisualQA(context.Background(), []visualqa.SlideImage{{
+		Info: visualqa.SlideInfo{Index: 4, Type: "table"},
+		Data: makeUpperHeavyPNG(t),
+	}}, "")
+	if mode != "vision" || report.TotalByP2 != 1 {
+		t.Fatalf("mode=%q total_p2=%d, want vision and one P2", mode, report.TotalByP2)
+	}
+	if got := report.Results[0].Findings[0].Source; got != "deterministic" {
+		t.Fatalf("source = %q, want deterministic", got)
+	}
+}
 
 // heavyVisualRepairDeck returns a one-slide deck whose body carries six bullets,
 // plus a P1 visual finding proposing a reduce_text(max_items:2) repair. The pair

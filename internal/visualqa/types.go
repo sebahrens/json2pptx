@@ -76,9 +76,10 @@ type SuggestedFix struct {
 // Finding represents a single visual defect detected by the QA agent.
 //
 // Source distinguishes vision-backed findings (Claude vision API) from
-// heuristic fallback findings produced when ANTHROPIC_API_KEY is unset.
-// Heuristic findings are advisory only (typically SeverityP3) and may have
-// higher false-positive rates than vision-backed findings.
+// heuristic fallback findings produced when ANTHROPIC_API_KEY is unset, and
+// conservative deterministic pixel-geometry findings merged into vision mode.
+// Heuristic findings are advisory only (typically SeverityP3); deterministic
+// findings are conservative geometry checks (typically SeverityP2).
 type Finding struct {
 	SlideIndex     int            `json:"slide_index"`
 	SlideType      string         `json:"slide_type"`
@@ -86,7 +87,7 @@ type Finding struct {
 	Category       string         `json:"category"`    // e.g. "text_overflow", "contrast", "alignment"
 	Description    string         `json:"description"` // Human-readable description
 	Location       string         `json:"location"`    // Where on the slide (e.g. "bottom-left", "title area")
-	Source         string         `json:"source,omitempty"`          // "vision" (default) or "heuristic"
+	Source         string         `json:"source,omitempty"`          // "vision" (default), "deterministic", or "heuristic"
 	SuggestedFixes []SuggestedFix `json:"suggested_fixes,omitempty"` // Mapped repair_slide fix kinds
 	// BBox is the optional defect region in normalized slide coordinates.
 	// propose_repairs hit-tests it against generated element bounds to target

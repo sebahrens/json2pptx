@@ -8,6 +8,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **Measurable vision checklist and deterministic layout-balance prepass
+  (go-slide-creator-brhc).** `inspect_slide_images` now requires explicit
+  judgments for content coverage, peer baselines, type size, source lines, and
+  completeness instead of accepting general praise. A conservative raster
+  check reports P2 `layout_balance` when content/table slides concentrate ink
+  above a largely unused lower content region; it runs in fallback mode and is
+  merged into successful vision reports with `source: "deterministic"`.
+  Schema version advances to 4.113.0.
+
 - **Native OOXML diagram geometry preflight (go-slide-creator-72qai.3).**
   Fit reports now inspect the text geometry of diagrams rendered as editable
   PowerPoint shapes. Dense BMC, value-chain, panel, taxonomy, process, pyramid,

@@ -16,6 +16,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/visualqa"
 	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
 
@@ -52,6 +53,10 @@ type mcpConfig struct {
 	// point at httptest.NewServer instances on loopback addresses without
 	// tripping SSRF blocks.
 	resolverOpts resource.ResolverOptions
+
+	// visualQAOptions supplies test-only transport overrides for vision-backed
+	// inspection. Production leaves this empty and uses the standard endpoint.
+	visualQAOptions []visualqa.Option
 
 	// progressSender forwards notifications/progress through the active MCP
 	// server. Nil in direct-handler tests and CLI calls.

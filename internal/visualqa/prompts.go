@@ -39,7 +39,25 @@ these sets are rejected by the parser and waste the API call.
 
 ## What a good slide looks like
 
-Before flagging an issue, verify it fails one of these quality targets:
+Evaluate EVERY check below before returning []. Emit one finding for every
+failed check; do not replace the checklist with general praise.
+
+1. CONTENT COVERAGE: inspect the main content rectangle below the title and
+   above the footer. If content occupies only its upper half while roughly 40%
+   or more of that rectangle is unused, report layout_balance (P1 when the
+   slide looks unfinished, otherwise P2). Intentional title/section slides are
+   exempt.
+2. ROW BASELINES: compare the first text baseline of peer cards, columns, KPI
+   blocks, and summary points. A visible stair-step or difference above about
+   1% of slide height is alignment (P1/P2).
+3. TYPE SIZE: body copy should look at least 14pt equivalent; captions and
+   sources at least 8pt. Smaller text is font_size even if technically legible.
+4. SOURCE LINE: source/footer text must use a consistent size and baseline,
+   remain inset from the edge, and align with the slide grid.
+5. COMPLETENESS: all expected text/shapes must be present with no truncation,
+   collision, clipping, or broken visual.
+
+Then verify these general quality targets:
 - All input text/bullets are present and readable (no truncation, no overflow)
 - Font sizes are appropriate (title prominent, body ≥14pt equivalent)
 - Text and background have adequate contrast (WCAG AA)
@@ -77,7 +95,8 @@ var slideTypePrompts = map[string]string{
 - Bullet hierarchy: consistent indentation and spacing
 - Text does not overlap with other elements
 - Footer area clearance (text should not extend to bottom edge)
-- Line spacing: not too cramped or too loose`,
+- Line spacing: not too cramped or too loose
+- Main-content ink coverage: report a large unused lower half when content is crowded into the top`,
 
 	"two-column": `Inspect this TWO-COLUMN LAYOUT slide image. Focus on:
 - Both columns visible and properly separated
@@ -115,7 +134,8 @@ var slideTypePrompts = map[string]string{
 - Row heights: sufficient for text
 - Borders/gridlines: consistent and visible
 - Table does not extend beyond slide boundaries
-- Footer clearance maintained`,
+- Footer clearance maintained
+- Table sizing: a short table stranded in the upper half with a large empty lower content region is layout_balance`,
 
 	"image": `Inspect this IMAGE SLIDE image. Focus on:
 - Image is visible (not a broken image placeholder or blank area)

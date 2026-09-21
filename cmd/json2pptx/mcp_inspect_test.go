@@ -488,6 +488,91 @@ func TestHandleInspectSlideImages_HeuristicDecodeFailure(t *testing.T) {
 	}
 }
 
+func TestHandleInspectSlideImages_VisionMergesDeterministicGeometry(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"content":[{"type":"text","text":"[]"}]}`))
+	}))
+	defer srv.Close()
+
+	t.Setenv("ANTHROPIC_API_KEY", "test-key")
+	mc := cliMCPConfig("./templates", "./out")
+	mc.visualQAOptions = []visualqa.Option{
+		visualqa.WithAPIURL(srv.URL),
+		visualqa.WithParallelism(1),
+	}
+	result, err := mc.handleInspectSlideImages(context.Background(), makeRequest(map[string]any{
+		"slide_images": []any{map[string]any{
+			"index":      float64(0),
+			"slide_type": "table",
+			"png_base64": base64.StdEncoding.EncodeToString(makeUpperHeavyPNG(t)),
+		}},
+	}))
+	if err != nil {
+		t.Fatalf("handleInspectSlideImages: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected tool error: %s", textContent(result))
+	}
+	var output inspectOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if output.Mode != "vision" || output.TotalByP2 != 1 {
+		t.Fatalf("mode=%q total_p2=%d, want vision and one P2", output.Mode, output.TotalByP2)
+	}
+	if len(output.Results) != 1 || len(output.Results[0].Findings) != 1 {
+		t.Fatalf("results = %+v, want one deterministic finding", output.Results)
+	}
+	finding := output.Results[0].Findings[0]
+	if finding.Category != "layout_balance" || finding.Source != "deterministic" {
+		t.Fatalf("finding = %+v, want deterministic layout_balance", finding)
+	}
+}
+
+func TestMergeDeterministicGeometry_DeduplicatesVisionCategory(t *testing.T) {
+	report := &visualqa.Report{Results: []visualqa.SlideResult{{
+		SlideIndex: 3,
+		Findings: []visualqa.Finding{{
+			Category: "layout_balance",
+			Source:   "vision",
+		}},
+	}}}
+	geometry := &visualqa.Report{Results: []visualqa.SlideResult{{
+		SlideIndex: 3,
+		Findings: []visualqa.Finding{{
+			Category: "layout_balance",
+			Source:   "deterministic",
+		}},
+	}}}
+	mergeDeterministicGeometry(report, geometry)
+	if got := len(report.Results[0].Findings); got != 1 {
+		t.Fatalf("findings = %d, want one vision finding without duplicate", got)
+	}
+}
+
+func makeUpperHeavyPNG(t *testing.T) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 1600, 900))
+	for y := 0; y < 900; y++ {
+		for x := 0; x < 1600; x++ {
+			img.SetRGBA(x, y, color.RGBA{255, 255, 255, 255})
+		}
+	}
+	for y := 190; y < 430; y++ {
+		for x := 100; x < 1500; x++ {
+			if y%24 < 12 {
+				img.SetRGBA(x, y, color.RGBA{0, 0, 0, 255})
+			}
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	return buf.Bytes()
+}
+
 // makeSolidPNG returns a single-color PNG of the given dimensions.
 func makeSolidPNG(t *testing.T, w, h int, r, g, b uint8) []byte {
 	t.Helper()

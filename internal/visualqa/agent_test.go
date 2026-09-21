@@ -276,6 +276,14 @@ func TestPromptForSlideType(t *testing.T) {
 	}
 }
 
+func TestSystemPromptRequiresMeasurableChecklist(t *testing.T) {
+	for _, phrase := range []string{"CONTENT COVERAGE", "ROW BASELINES", "TYPE SIZE", "SOURCE LINE", "do not replace the checklist with general praise"} {
+		if !strings.Contains(systemPrompt, phrase) {
+			t.Errorf("system prompt missing %q", phrase)
+		}
+	}
+}
+
 func TestReportSummarize(t *testing.T) {
 	r := &Report{
 		Results: []SlideResult{
