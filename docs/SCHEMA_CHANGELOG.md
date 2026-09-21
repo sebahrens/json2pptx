@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-09-21 — Three-agent, two-run blind rating comparison
+  (`go-slide-creator-0ek6.2`, `go-slide-creator-0ek6.3`).** `qualitybench
+  --prepare-agent-ratings` now creates a manifest and six blank
+  `reviewer_type=llm` ballots without launching reviewers.
+  `--compare-agent-ratings` validates the complete 3x2 matrix and writes raw,
+  repeatability, and consensus results. Numeric scores use the median of three
+  per-agent two-run means; boolean defects require four of six votes, with 3–3
+  ties left unresolved. These ratings remain supplemental and cannot satisfy
+  the two-human release gate.
+
 - **2026-09-21 — Canonical benchmark agent identity (`go-slide-creator-pixq8`).**
   `qualitybench --agent-model` and `--agent-version` now apply an authoritative
   identity to every run, preventing model-generated labels from weakening a

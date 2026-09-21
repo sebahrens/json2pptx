@@ -79,6 +79,39 @@ The command rejects missing columns, scores outside 1–5, invalid booleans, and
 unknown blind IDs. A rated pair requires two distinct reviewers marked
 `human`; duplicate rows and `llm` ratings do not satisfy the release gate.
 
+## Compare three agent reviewers across two runs
+
+Agent ratings are supplemental and never satisfy the two-human release gate.
+Prepare six blank blinded ballots without launching any reviewer:
+
+```bash
+go run ./cmd/qualitybench \
+  --prepare-agent-ratings output/quality-benchmark/ratings_template.csv \
+  --agent-reviewers agent-a,agent-b,agent-c \
+  --agent-review-runs 2 \
+  --agent-review-dir output/quality-benchmark/agent-reviews
+```
+
+The command writes `manifest.json` and one CSV for each agent and run. Give an
+agent only its ballot and `sheets/`; keep `blind_key.json`, the other ballots,
+and prior ratings private. Use a fresh context for run 2 so the second run does
+not inherit scores or discussion from run 1.
+
+After all six CSVs are complete, compare them with:
+
+```bash
+go run ./cmd/qualitybench \
+  --compare-agent-ratings output/quality-benchmark/agent-reviews/manifest.json
+```
+
+The comparison rejects missing agents, runs, blind IDs, scores, and duplicate
+ballots. It writes detailed JSON with all six raw ballots, per-agent two-run
+means, run-to-run repeatability, and consensus values, plus a compact consensus
+CSV. Numeric consensus is the median of the three agent means, where each
+agent mean averages its two runs. Boolean defect flags use a strict majority
+across all six ballots: four or more `true` votes resolve to `true`, two or
+fewer resolve to `false`, and a 3–3 split is reported as `tie` for adjudication.
+
 ## Refresh the committed baseline
 
 After an engine or workflow change:

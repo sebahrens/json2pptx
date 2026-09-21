@@ -43,8 +43,9 @@ func main() {
 func run() error {
 	var (
 		agent, agentModel, agentVersion, out, resultsDir, templatesDir, templatesSpec, briefsPath, bin, reportPath, ratingsPath string
+		prepareAgentRatings, compareAgentRatings, agentReviewers, agentReviewDir, comparisonOut                                 string
 		dryRun                                                                                                                  bool
-		reps, parallel                                                                                                          int
+		reps, parallel, agentReviewRuns                                                                                         int
 	)
 	flag.BoolVar(&dryRun, "dry-run", false, "render deterministic reference decks (no agent, no provider call)")
 	flag.StringVar(&agent, "agent", "", "agent executable plus optional space-separated arguments")
@@ -60,8 +61,20 @@ func run() error {
 	flag.IntVar(&parallel, "parallel", 1, "maximum concurrent agent runs (agent mode only)")
 	flag.StringVar(&reportPath, "report", "", "results JSON to apply -ratings to")
 	flag.StringVar(&ratingsPath, "ratings", "", "comma-separated filled reviewer CSVs to apply to -report")
+	flag.StringVar(&prepareAgentRatings, "prepare-agent-ratings", "", "blank ratings template used to prepare a blinded multi-agent review")
+	flag.StringVar(&compareAgentRatings, "compare-agent-ratings", "", "multi-agent review manifest whose completed ballots should be compared")
+	flag.StringVar(&agentReviewers, "agent-reviewers", "agent-a,agent-b,agent-c", "three comma-separated stable agent reviewer IDs")
+	flag.IntVar(&agentReviewRuns, "agent-review-runs", 2, "independent rating runs per agent (must be 2)")
+	flag.StringVar(&agentReviewDir, "agent-review-dir", "output/quality-benchmark/agent-reviews", "directory for blank agent rating packets")
+	flag.StringVar(&comparisonOut, "comparison-out", "", "comparison output directory (default: manifest directory/comparison)")
 	flag.Parse()
 
+	if prepareAgentRatings != "" {
+		return prepareAgentReviewPackets(prepareAgentRatings, agentReviewers, agentReviewRuns, agentReviewDir)
+	}
+	if compareAgentRatings != "" {
+		return compareAgentReviewPackets(compareAgentRatings, comparisonOut)
+	}
 	if ratingsPath != "" {
 		return applyRatings(reportPath, ratingsPath)
 	}
