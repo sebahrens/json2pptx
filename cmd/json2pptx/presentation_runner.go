@@ -249,6 +249,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		ThemeColors: templateTheme.Colors,
 		DataPalette: dataPalette,
 		FontFamily:  templateTheme.BodyFont,
+		TitleFont:   templateTheme.TitleFont,
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, convErr := convertPresentationSlides(
 		input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata,

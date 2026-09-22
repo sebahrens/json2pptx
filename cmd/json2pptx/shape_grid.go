@@ -41,6 +41,7 @@ type GridDiagramContext struct {
 	ThemeColors []types.ThemeColor // Template theme colors for chart styling
 	DataPalette []string           // Ordered hex palette for chart series (from TemplateMetadata)
 	FontFamily  string             // Template body font, injected when a diagram omits style.font_family
+	TitleFont   string             // Template title font for generated canvas headlines
 	SlideNum    int                // 1-based slide number for warning messages
 }
 
@@ -367,6 +368,7 @@ func patternExpansionGeometry(slide SlideInput, layouts []types.LayoutMetadata, 
 		geom.Zone = reserveTakeawayBand(GridGeometry{Zone: gridToContentZone(rhythmGrid), LayoutID: layoutID}, probe, layouts).Zone
 		geom.OverrideBounds = nil
 	}
+	geom = reserveCanvasHeadline(geom, probe, layouts, slideWidth, slideHeight)
 	bounds := resolveGridBounds(&ShapeGridInput{}, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 	return geom, bounds
 }
@@ -409,7 +411,65 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 			}
 		}
 	}
-	return reserveTakeawayBand(g, slide, layouts)
+	g = reserveTakeawayBand(g, slide, layouts)
+	return reserveCanvasHeadline(g, slide, layouts, slideWidth, slideHeight)
+}
+
+// canvasHeadlineBounds returns the theme-aware headline band used on a true
+// blank canvas. The band follows the normal slide margins and leaves a small
+// gap before visual content begins.
+func canvasHeadlineBounds(slideWidth, slideHeight int64) pptx.RectEmu {
+	if slideWidth <= 0 {
+		slideWidth = shapegrid.DefaultSlideWidthEMU
+	}
+	if slideHeight <= 0 {
+		slideHeight = shapegrid.DefaultSlideHeightEMU
+	}
+	return pptx.RectEmu{
+		X:  slideWidth * 6 / 100,
+		Y:  slideHeight * 5 / 100,
+		CX: slideWidth * 88 / 100,
+		CY: slideHeight * 13 / 100,
+	}
+}
+
+func reserveCanvasHeadline(g GridGeometry, slide SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) GridGeometry {
+	if strings.TrimSpace(slide.Headline) == "" || !isBlankCanvasLayout(slide.LayoutID, layouts) {
+		return g
+	}
+	b := canvasHeadlineBounds(slideWidth, slideHeight)
+	top := b.Y + b.CY
+	if g.Zone == nil {
+		g.Zone = &shapegrid.ContentZone{
+			TitleBottom: top, FooterTop: slideHeight * 94 / 100,
+			LeftMargin: b.X, RightEdge: b.X + b.CX,
+			SlideWidth: slideWidth, SlideHeight: slideHeight,
+		}
+	} else if g.Zone.TitleBottom < top {
+		g.Zone.TitleBottom = top
+	}
+	if g.OverrideBounds != nil && g.OverrideBounds.Y < top {
+		adjusted := *g.OverrideBounds
+		bottom := adjusted.Y + adjusted.CY
+		adjusted.Y = top
+		adjusted.CY = bottom - top
+		if adjusted.CY < 1 {
+			adjusted.CY = 1
+		}
+		g.OverrideBounds = &adjusted
+	}
+	return g
+}
+
+func isBlankCanvasLayout(layoutID string, layouts []types.LayoutMetadata) bool {
+	if strings.EqualFold(strings.TrimSpace(layoutID), "blank-canvas") {
+		return true
+	}
+	resolved := canonicalGridLayoutID(layoutID, layouts)
+	if l := findLayoutByID(layouts, resolved); l != nil {
+		return template.EffectiveCanonicalType(l) == types.CanonicalLayoutBlank
+	}
+	return false
 }
 
 func canonicalGridLayoutID(id string, layouts []types.LayoutMetadata) string {

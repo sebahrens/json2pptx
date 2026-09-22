@@ -163,10 +163,15 @@ const (
 	// Deck-rhythm advisories — emitted by internal/semantic rhythm analysis over
 	// the normalized DeckIR (not per-slide authoring rules). They flag monotony
 	// and missing narrative structure before a deck is rendered.
-	CodeSemanticRhythmMonotony   Code = "SEMANTIC_RHYTHM_MONOTONY"
-	CodeSemanticRhythmDensity    Code = "SEMANTIC_RHYTHM_DENSITY"
-	CodeSemanticRhythmSectioning Code = "SEMANTIC_RHYTHM_SECTIONING"
-	CodeSemanticRhythmSynthesis  Code = "SEMANTIC_RHYTHM_SYNTHESIS"
+	CodeSemanticRhythmMonotony          Code = "SEMANTIC_RHYTHM_MONOTONY"
+	CodeSemanticRhythmDensity           Code = "SEMANTIC_RHYTHM_DENSITY"
+	CodeSemanticRhythmSectioning        Code = "SEMANTIC_RHYTHM_SECTIONING"
+	CodeSemanticRhythmSynthesis         Code = "SEMANTIC_RHYTHM_SYNTHESIS"
+	CodeSemanticEvidenceVisualMissing   Code = "SEMANTIC_EVIDENCE_VISUAL_MISSING"
+	CodeSemanticVisualFamilyNarrow      Code = "SEMANTIC_VISUAL_FAMILY_NARROW"
+	CodeSemanticRequiredLayoutUnknown   Code = "SEMANTIC_REQUIRED_LAYOUT_UNKNOWN"
+	CodeSemanticRequiredLayoutDuplicate Code = "SEMANTIC_REQUIRED_LAYOUT_DUPLICATE"
+	CodeSemanticRequiredLayoutMissing   Code = "SEMANTIC_REQUIRED_LAYOUT_MISSING"
 )
 
 // Internal family — unexpected server-side failures.
@@ -267,6 +272,11 @@ func AllCodes() []Code {
 		CodeSemanticRhythmDensity,
 		CodeSemanticRhythmSectioning,
 		CodeSemanticRhythmSynthesis,
+		CodeSemanticEvidenceVisualMissing,
+		CodeSemanticVisualFamilyNarrow,
+		CodeSemanticRequiredLayoutUnknown,
+		CodeSemanticRequiredLayoutDuplicate,
+		CodeSemanticRequiredLayoutMissing,
 		// Internal
 		CodeInternal,
 	}

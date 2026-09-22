@@ -166,41 +166,14 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	stripLstStyleBold(shape)
 	stripLstStyleCaps(shape)
 
-	// Cap font sizes only when the layout doesn't explicitly declare one.
-	// If lstStyle has an explicit sz, the layout designer intentionally chose that size;
-	// normAutofit handles overflow. Only cap when no explicit sz exists (bare inherited default).
+	// Cap ordinary text only when the layout doesn't explicitly declare a size.
 	if maxFontSizeHPt > 0 {
 		capLstStyleFontSizeIfUnset(shape, maxFontSizeHPt)
-	} else {
-		// Section titles (maxFontSizeHPt=0): cap based on placeholder width so that
-		// individual words don't wrap at character boundaries. Templates define large
-		// lstStyle fonts (e.g., 96pt) in section divider placeholders that overflow
-		// narrow body placeholders, causing "Performance" → "Perform/ance" wrapping.
-		//
-		// Use a character-based width estimate instead of font metric measurement.
-		// The tdewolff/canvas library's metrics underestimate rendered widths by ~2x
-		// compared to LibreOffice/PowerPoint, making metric-based caps unreliable.
-		// Average advance width for a sans-serif character ≈ 0.55 × em (conservative).
-		widthEMU, _ := getShapeDimensions(shape)
-		fontSizeHPt := extractFontSizeFromShape(shape)
-		if widthEMU > 0 && fontSizeHPt > 0 {
-			safeMax := maxFontForWordFit(text, widthEMU)
-			if safeMax > 0 && fontSizeHPt > safeMax {
-				slog.Info("capping section title font to fit placeholder width",
-					slog.Int("original_hpt", fontSizeHPt),
-					slog.Int("capped_hpt", safeMax),
-					slog.Int64("width_emu", widthEMU))
-				capLstStyleFontSize(shape, safeMax)
-			}
-		}
 	}
 	floorLstStyleFontSize(shape, 1200) // 12pt min
 
-	// Section titles: boost small fonts so the title is visually prominent
-	// in its placeholder. Templates may define a small lstStyle font (e.g., 36pt)
-	// in a large placeholder where it looks diminished. normAutofit handles overflow.
 	if maxFontSizeHPt == 0 {
-		boostSectionTitleFont(shape)
+		fitSectionTitle(shape, text)
 	}
 
 	// Limit title wrapping: truncate extremely long titles to maxTitleLines so they
@@ -250,6 +223,36 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	applySmartAutofitWithOptions(shape, opts...)
 
 	return nil
+}
+
+// fitSectionTitle establishes prominence before applying the final width cap.
+// Keeping this separate also makes the section-specific sizing order explicit:
+// a later prominence boost must never undo the safe fit calculation.
+func fitSectionTitle(shape *shapeXML, text string) {
+	boostSectionTitleFont(shape)
+
+	widthEMU, _ := getShapeDimensions(shape)
+	fontSizeHPt := extractFontSizeFromShape(shape)
+	if widthEMU <= 0 || fontSizeHPt <= 0 {
+		return
+	}
+
+	safeMax := maxFontForWordFit(text, widthEMU)
+	// The shipped divider layouts reserve the other column for a large section
+	// number. When the full heading fits at the 32pt readability floor, keep it
+	// on one line so LibreOffice does not shift that adjacent number off-slide.
+	if singleLine := maxFontForSingleLineFit(text, widthEMU); singleLine >= 3200 && singleLine < safeMax {
+		safeMax = singleLine
+	}
+	if safeMax <= 0 || fontSizeHPt <= safeMax {
+		return
+	}
+
+	slog.Info("capping section title font to fit placeholder width",
+		slog.Int("original_hpt", fontSizeHPt),
+		slog.Int("capped_hpt", safeMax),
+		slog.Int64("width_emu", widthEMU))
+	capLstStyleFontSize(shape, safeMax)
 }
 
 // setTitleSlideTitle replaces the text in a title slide's title/ctrTitle or

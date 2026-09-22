@@ -1429,6 +1429,24 @@ func TestSectionHeaderOverflow(t *testing.T) {
 			t.Errorf("short section title font should be >=4000 (40pt+), got %d", lstSz)
 		}
 	})
+
+	t.Run("moderate section title fits the full title band", func(t *testing.T) {
+		shape := makeSectionHeaderShape()
+		shape.ShapeProperties.Transform.Extent.CX = 6400800
+		shape.TextBody.ListStyle.Inner = strings.ReplaceAll(shape.TextBody.ListStyle.Inner, `sz="35000"`, `sz="5400"`)
+		err := populateShapeText(shape, ContentItem{
+			PlaceholderID: "title",
+			Type:          ContentSectionTitle,
+			Value:         "What leaders should do",
+		}, 0, "")
+		if err != nil {
+			t.Fatalf("populateShapeText() error = %v", err)
+		}
+		got := parseSzAttr(shape.TextBody.ListStyle.Inner)
+		if got >= 5400 || got < 3200 {
+			t.Errorf("moderate section title size = %d, want readable single-line cap in [3200, 5400)", got)
+		}
+	})
 }
 
 // TestLayoutDeclaredFontPreserved verifies that when a layout explicitly declares

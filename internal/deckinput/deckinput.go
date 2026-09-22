@@ -240,6 +240,7 @@ type SlideInput struct {
 	LayoutID        string               `json:"layout_id,omitempty"`
 	SlideType       string               `json:"slide_type,omitempty"` // Optional hint: content, title, section, chart, two-column, diagram, image, comparison, blank
 	Eyebrow         string               `json:"eyebrow,omitempty"`    // Small-caps label above title (e.g., "STRATEGY — Market Expansion")
+	Headline        string               `json:"headline,omitempty"`   // Visible slide headline for blank-canvas compositions; rendered in a reserved title band.
 	Background      *BackgroundInput     `json:"background,omitempty"`
 	Content         []ContentInput       `json:"content"`
 	ShapeGrid       *ShapeGridInput      `json:"shape_grid,omitempty"`

@@ -569,6 +569,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeDuplicateTitle, ErrCodeHeadlineTooLong},
 	},
+	ErrCodeSectionNumberSequenceMismatch: {
+		Code:        ErrCodeSectionNumberSequenceMismatch,
+		Summary:     "An authored numeric section label contradicts the automatic divider sequence.",
+		Severity:    "refuse",
+		WhenEmitted: "A section-divider slide explicitly populates its section-number slot with digits whose numeric value differs from that divider's 1-based sequence. Leading zeroes are ignored for comparison; non-numeric labels remain supported as custom numbering.",
+		RemediationSteps: []string{
+			"Replace the authored label with the expected value reported in the finding.",
+			"Or remove the authored section-number content and let json2pptx inject the sequence automatically.",
+		},
+	},
 	ErrCodeSlideNearlyEmpty: {
 		Code:        ErrCodeSlideNearlyEmpty,
 		Summary:     "A content slide carries almost no content.",

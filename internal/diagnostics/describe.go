@@ -1228,6 +1228,54 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		},
 		RelatedCodes: []string{CodeSemanticTakeawayRequired},
 	},
+	CodeSemanticEvidenceVisualMissing: {
+		Code:        CodeSemanticEvidenceVisualMissing,
+		Summary:     "A market-analysis deck has no data-bearing evidence visual.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "deck-rhythm analysis finds a market_analysis deck of at least five slides with no chart_insight, table, kpi_snapshot, bridge, or sourced stat. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Add a chart_insight, table, kpi_snapshot, bridge, or sourced stat that supports a claim in the narrative.",
+			"Use source on the slide so readers can assess the evidence.",
+		},
+		RelatedCodes: []string{CodeSemanticVisualFamilyNarrow},
+	},
+	CodeSemanticVisualFamilyNarrow: {
+		Code:        CodeSemanticVisualFamilyNarrow,
+		Summary:     "A longer deck uses too few non-structural visual families.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "deck-rhythm analysis finds a deck of at least seven slides with fewer than three distinct non-structural visual families. Structural and raw passthrough slides do not count. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Use compatible semantic kinds from another family, such as chart_insight, timeline, process, comparison, or kpi_snapshot.",
+			"Choose the family because it expresses the slide's evidence or relationship, rather than adding decoration.",
+		},
+		RelatedCodes: []string{CodeSemanticEvidenceVisualMissing, CodeSemanticRhythmMonotony},
+	},
+	CodeSemanticRequiredLayoutUnknown: {
+		Code:             CodeSemanticRequiredLayoutUnknown,
+		Summary:          "meta.required_layouts contains an unknown canonical layout ID.",
+		Severity:         describeSeverityRefuse,
+		WhenEmitted:      "semantic validation finds a required_layouts value outside the canonical layout vocabulary.",
+		RemediationSteps: []string{"Use one of the canonical layout IDs listed in the finding."},
+	},
+	CodeSemanticRequiredLayoutDuplicate: {
+		Code:             CodeSemanticRequiredLayoutDuplicate,
+		Summary:          "meta.required_layouts lists the same canonical layout more than once.",
+		Severity:         describeSeverityRefuse,
+		WhenEmitted:      "semantic validation normalizes canonical layout IDs and finds a duplicate.",
+		RemediationSteps: []string{"Remove the duplicate value; one constraint covers the whole deck."},
+	},
+	CodeSemanticRequiredLayoutMissing: {
+		Code:        CodeSemanticRequiredLayoutMissing,
+		Summary:     "A required layout lacks a compatible slide or is unavailable in the selected template.",
+		Severity:    describeSeverityRefuse,
+		WhenEmitted: "layout-coverage planning cannot assign a required canonical layout safely, or template analysis cannot resolve that canonical layout.",
+		RemediationSteps: []string{
+			"Add a semantic slide compatible with the missing layout, then re-run semantic explain.",
+			"If the template lacks the layout, choose a compatible template or remove that requirement.",
+			"Keep the story outline intact; do not replace it with one generated slide per layout.",
+		},
+		RelatedCodes: []string{CodeSemanticRequiredLayoutUnknown},
+	},
 
 	// ---- Internal family — unexpected server-side failures ----
 

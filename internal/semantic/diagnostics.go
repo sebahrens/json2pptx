@@ -45,8 +45,8 @@ const (
 	CodeInvalidKindType = "invalid_kind_type"
 	// CodeUnknownKind indicates a slide's kind is not a registered slide kind.
 	CodeUnknownKind = "unknown_kind"
-	// CodeUnknownField indicates an unrecognized top-level key in the document
-	// (a key other than "meta" or "slides", e.g. a stale "deck" object).
+	// CodeUnknownField indicates an unrecognized key in a closed semantic
+	// object such as the root, meta, structure, a section, or a slide payload.
 	CodeUnknownField = "unknown_field"
 	// CodeUnknownArchetype indicates meta.archetype is not a registered archetype.
 	CodeUnknownArchetype = "unknown_archetype"

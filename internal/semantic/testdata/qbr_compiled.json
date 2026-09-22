@@ -3,6 +3,7 @@
   "design_mode": "constrained",
   "slides": [
     {
+      "layout_id": "title",
       "slide_type": "title",
       "content": [
         {
@@ -163,6 +164,7 @@
       "takeaway": "Fund a dedicated SMB success pod now to protect net retention."
     },
     {
+      "layout_id": "title",
       "slide_type": "title",
       "content": [
         {

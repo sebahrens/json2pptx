@@ -26,7 +26,9 @@ const (
 	maxConsecutiveDense = 2
 	// sectioningSlideThreshold is the slide count above which a deck with no
 	// section divider is flagged for missing chapter structure.
-	sectioningSlideThreshold = 8
+	sectioningSlideThreshold      = 8
+	visualBreadthSlideThreshold   = 7
+	minimumDistinctVisualFamilies = 3
 )
 
 // RhythmWarning is a single deck-rhythm advisory: a monotony or
@@ -58,16 +60,54 @@ func (ir *DeckIR) RhythmWarnings() []RhythmWarning {
 	if w, ok := ir.synthesisWarning(); ok {
 		out = append(out, w)
 	}
+	if w, ok := ir.evidenceVisualWarning(); ok {
+		out = append(out, w)
+	}
+	if w, ok := ir.visualFamilyWarning(); ok {
+		out = append(out, w)
+	}
+	for _, missing := range ir.LayoutCoverage.Missing {
+		out = append(out, RhythmWarning{
+			Code:    string(diagnostics.CodeSemanticRequiredLayoutMissing),
+			Message: fmt.Sprintf("required layout %q has no compatible authored slide; add a suitable semantic slide instead of forcing an incompatible layout", missing),
+			Path:    "meta.required_layouts",
+		})
+	}
 	return out
+}
+
+func (ir *DeckIR) evidenceVisualWarning() (RhythmWarning, bool) {
+	if ir.Archetype != ArchetypeMarketAnalysis || len(ir.Slides) < 5 || ir.Rhythm.EvidenceFamilyCount > 0 {
+		return RhythmWarning{}, false
+	}
+	return RhythmWarning{
+		Code:    string(diagnostics.CodeSemanticEvidenceVisualMissing),
+		Message: "market_analysis decks need at least one data-bearing evidence visual; add a chart_insight, table, kpi_snapshot, bridge, or sourced stat slide",
+		Path:    "meta.archetype",
+	}, true
+}
+
+func (ir *DeckIR) visualFamilyWarning() (RhythmWarning, bool) {
+	if len(ir.Slides) < visualBreadthSlideThreshold || ir.Rhythm.DistinctFamilyCount >= minimumDistinctVisualFamilies {
+		return RhythmWarning{}, false
+	}
+	return RhythmWarning{
+		Code: string(diagnostics.CodeSemanticVisualFamilyNarrow),
+		Message: fmt.Sprintf("a %d-slide deck uses only %d non-structural visual families; use at least %d compatible families so evidence, analysis, and structure do not all read the same",
+			len(ir.Slides), ir.Rhythm.DistinctFamilyCount, minimumDistinctVisualFamilies),
+		Path: "slides",
+	}, true
 }
 
 // monotonyWarnings flags every run of more than maxConsecutiveSameFamily
 // adjacent slides sharing one visual family. Raw/passthrough slides have no
-// modeled family and never trip the rule.
+// modeled family and structural slides are deliberate navigation/chrome; neither
+// trips the rule. This keeps the normal cover → agenda → section sequence from
+// being diagnosed as monotony.
 func (ir *DeckIR) monotonyWarnings() []RhythmWarning {
 	var out []RhythmWarning
 	for _, run := range familyRuns(ir.Slides) {
-		if run.family == FamilyRaw || run.length <= maxConsecutiveSameFamily {
+		if run.family == FamilyRaw || run.family == FamilyStructural || run.length <= maxConsecutiveSameFamily {
 			continue
 		}
 		out = append(out, RhythmWarning{
@@ -186,11 +226,15 @@ func rhythmDiagnostics(ir *DeckIR, strict Strictness) []diagnostics.Diagnostic {
 	}
 	out := make([]diagnostics.Diagnostic, 0, len(warnings))
 	for _, w := range warnings {
+		findingSeverity := sev
+		if w.Code == string(diagnostics.CodeSemanticRequiredLayoutMissing) {
+			findingSeverity = diagnostics.SeverityError
+		}
 		out = append(out, diagnostics.Diagnostic{
 			Code:     w.Code,
 			Message:  w.Message,
 			Path:     w.Path,
-			Severity: sev,
+			Severity: findingSeverity,
 		})
 	}
 	return out

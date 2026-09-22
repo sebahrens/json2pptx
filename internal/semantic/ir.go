@@ -103,8 +103,10 @@ type CompositionCandidate struct {
 
 // SlideIR is the normalized, planned view of one semantic slide.
 type SlideIR struct {
-	// SourceIndex is the slide's index in DeckSpec.Slides.
-	SourceIndex int `json:"source_index"`
+	// SourceIndex is the slide's index in the expanded semantic slide stream.
+	SourceIndex  int    `json:"source_index"`
+	SourcePath   string `json:"source_path,omitempty"`
+	SectionTitle string `json:"section_title,omitempty"`
 	// Kind is the semantic slide kind.
 	Kind SlideKind `json:"kind"`
 	// Title is the slide title extracted from the payload (may be empty).
@@ -127,6 +129,12 @@ type RhythmPlan struct {
 	SlideCount int `json:"slide_count"`
 	// Families counts slides per visual family.
 	Families map[VisualFamily]int `json:"families"`
+	// EvidenceFamilies counts data-bearing evidence slides by visual family.
+	EvidenceFamilies map[VisualFamily]int `json:"evidence_families"`
+	// DistinctFamilyCount excludes structural and raw chrome/passthrough slides.
+	DistinctFamilyCount int `json:"distinct_family_count"`
+	// EvidenceFamilyCount is the number of distinct data-bearing visual families.
+	EvidenceFamilyCount int `json:"evidence_family_count"`
 	// Densities counts slides per density bucket.
 	Densities map[Density]int `json:"densities"`
 }
@@ -160,6 +168,9 @@ type DeckIR struct {
 	Slides []SlideIR `json:"slides"`
 	// Rhythm is the deck-level rhythm summary.
 	Rhythm RhythmPlan `json:"rhythm"`
+	// LayoutCoverage records required canonical layouts, their slide assignments,
+	// and any constraints the authored narrative could not satisfy safely.
+	LayoutCoverage LayoutCoverage `json:"layout_coverage"`
 	// SourceMap maps generated raw JSON pointers back to semantic paths. It is
 	// empty until the compiler emits PresentationInput in a later phase.
 	SourceMap *SourceMap `json:"-"`
@@ -450,12 +461,29 @@ func Normalize(spec *DeckSpec) *DeckIR {
 	ir.ArchetypeTemplate = defaults.Template
 	ir.Executive = defaults.Executive
 
-	ir.Slides = make([]SlideIR, 0, len(spec.Slides))
-	for i := range spec.Slides {
-		ir.Slides = append(ir.Slides, normalizeSlide(i, spec.Slides[i]))
+	sources := expandedSlides(spec)
+	ir.Slides = make([]SlideIR, 0, len(sources))
+	for i, source := range sources {
+		planned := normalizeSlide(i, source.Slide)
+		planned.SourcePath = source.SourcePath
+		planned.SectionTitle = source.SectionTitle
+		ir.Slides = append(ir.Slides, planned)
 	}
 	ir.Rhythm = computeRhythm(ir.Slides)
+	ir.LayoutCoverage = applyRequiredLayoutCoverage(ir.Slides, spec.Meta.RequiredLayouts)
 	return ir
+}
+
+type LayoutAssignment struct {
+	Layout     string `json:"layout"`
+	SlideIndex int    `json:"slide_index"`
+	SourcePath string `json:"source_path,omitempty"`
+}
+
+type LayoutCoverage struct {
+	Requested []string           `json:"requested"`
+	Assigned  []LayoutAssignment `json:"assigned"`
+	Missing   []string           `json:"missing"`
 }
 
 // normalizeSlide plans a single slide from its semantic spec.
@@ -673,8 +701,9 @@ func slideTakeaway(slide SlideSpec) string {
 // newRhythmPlan returns an empty, initialized RhythmPlan.
 func newRhythmPlan() RhythmPlan {
 	return RhythmPlan{
-		Families:  map[VisualFamily]int{},
-		Densities: map[Density]int{},
+		Families:         map[VisualFamily]int{},
+		EvidenceFamilies: map[VisualFamily]int{},
+		Densities:        map[Density]int{},
 	}
 }
 
@@ -685,6 +714,26 @@ func computeRhythm(slides []SlideIR) RhythmPlan {
 	for _, s := range slides {
 		r.Families[s.Visual.Family]++
 		r.Densities[s.Visual.Density]++
+		if isDataBearingEvidence(s) {
+			r.EvidenceFamilies[s.Visual.Family]++
+		}
 	}
+	for family := range r.Families {
+		if family != FamilyStructural && family != FamilyRaw {
+			r.DistinctFamilyCount++
+		}
+	}
+	r.EvidenceFamilyCount = len(r.EvidenceFamilies)
 	return r
+}
+
+func isDataBearingEvidence(slide SlideIR) bool {
+	switch slide.Kind {
+	case KindChartInsight, KindKPISnapshot, KindTable, KindBridge:
+		return true
+	case KindStat:
+		return bodyString(slide.Body, "source") != ""
+	default:
+		return false
+	}
 }

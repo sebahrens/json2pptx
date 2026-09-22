@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/layout"
 )
 
 // schemaDialect is the JSON Schema dialect emitted by Schema.
@@ -23,8 +25,9 @@ const schemaDialect = "https://json-schema.org/draft/2020-12/schema"
 // as a SEMANTIC_UNKNOWN_FIELD warning instead of silently dropping it.
 func Schema() map[string]any {
 	defs := map[string]any{
-		"DeckMeta":  deckMetaSchema(),
-		"SlideSpec": slideSpecSchema(),
+		"DeckMeta":      deckMetaSchema(),
+		"SlideSpec":     slideSpecSchema(),
+		"DeckStructure": deckStructureSchema(),
 	}
 	for name, variant := range kindVariantSchemas() {
 		defs[name] = variant
@@ -34,14 +37,19 @@ func Schema() map[string]any {
 		"title":       "DeckSpec",
 		"description": "Compact semantic deck authoring format. A DeckSpec compiles into a json2pptx PresentationInput.",
 		"type":        "object",
-		"required":    []any{"slides"},
 		"properties": map[string]any{
 			"meta": map[string]any{"$ref": "#/$defs/DeckMeta"},
 			"slides": map[string]any{
 				"type":        "array",
+				"minItems":    1,
 				"description": "Ordered list of semantic slides.",
 				"items":       map[string]any{"$ref": "#/$defs/SlideSpec"},
 			},
+			"structure": map[string]any{"$ref": "#/$defs/DeckStructure"},
+		},
+		"oneOf": []any{
+			map[string]any{"required": []any{"slides"}, "not": map[string]any{"required": []any{"structure"}}},
+			map[string]any{"required": []any{"structure"}, "not": map[string]any{"required": []any{"slides"}}},
 		},
 		"additionalProperties": false,
 		"$defs":                defs,
@@ -92,6 +100,32 @@ func deckMetaSchema() map[string]any {
 				"enum": []any{"constrained", "free"},
 			},
 			"chrome": chromeSchema(),
+			"required_layouts": map[string]any{
+				"type": "array", "uniqueItems": true,
+				"items":       map[string]any{"type": "string", "enum": stringEnum(layout.CanonicalNames())},
+				"description": "Canonical layout IDs the planned deck must cover.",
+			},
+		},
+		"additionalProperties": false,
+	}
+}
+
+func deckStructureSchema() map[string]any {
+	section := map[string]any{
+		"type": "object", "required": []any{"title", "slides"},
+		"properties": map[string]any{
+			"title":  map[string]any{"type": "string", "minLength": 1},
+			"slides": map[string]any{"type": "array", "minItems": 1, "items": map[string]any{"$ref": "#/$defs/SlideSpec"}},
+		},
+		"additionalProperties": false,
+	}
+	return map[string]any{
+		"type": "object", "required": []any{"sections"},
+		"properties": map[string]any{
+			"cover":       map[string]any{"$ref": "#/$defs/SlideSpec"},
+			"auto_agenda": map[string]any{"type": "boolean"},
+			"sections":    map[string]any{"type": "array", "minItems": 1, "items": section},
+			"closing":     map[string]any{"$ref": "#/$defs/SlideSpec"},
 		},
 		"additionalProperties": false,
 	}
@@ -348,11 +382,135 @@ func InlineSchema() map[string]any {
 
 // CompactInlineSchema returns InlineSchema() without annotation keywords
 // (description, title, examples, $comment). It keeps every structural
-// constraint (types, required, enums, oneOf, additionalProperties) and is used
-// where the schema is repeated per MCP tool, so tools/list stays small; the
-// per-kind prose lives in list_slide_kinds / `json2pptx semantic schema`.
+// constraint and supplies the meta portion used by OutlineInlineSchema.
 func CompactInlineSchema() map[string]any {
 	out, _ := stripAnnotations(InlineSchema(), false).(map[string]any)
+	return out
+}
+
+// CompactSchemaAt keeps the schema's shared definitions and rewrites local
+// references for embedding at a nested JSON-Schema path. This avoids four
+// inlined copies of the complete SlideSpec union while preserving the closed
+// payload contract for flat and structured slides.
+func CompactSchemaAt(base string) map[string]any {
+	out, _ := stripAnnotations(Schema(), false).(map[string]any)
+	delete(out, "$schema")
+	compactSchemaDefinitions(out)
+	minifySchemaDefinitionNames(out)
+	rewriteSchemaRefs(out, strings.TrimSuffix(base, "/"))
+	return out
+}
+
+func minifySchemaDefinitionNames(root map[string]any) {
+	defs, _ := root["$defs"].(map[string]any)
+	if defs == nil {
+		return
+	}
+	names := map[string]string{"DeckMeta": "M", "SlideSpec": "S", "DeckStructure": "T"}
+	for i, kind := range AllSlideKinds() {
+		names[kindDefName(kind)] = fmt.Sprintf("K%d", i)
+	}
+	minified := make(map[string]any, len(defs))
+	for old, definition := range defs {
+		name := names[old]
+		if name == "" {
+			name = old
+		}
+		minified[name] = definition
+	}
+	root["$defs"] = minified
+	rewriteDefinitionNames(root, names)
+}
+
+func rewriteDefinitionNames(value any, names map[string]string) {
+	switch typed := value.(type) {
+	case map[string]any:
+		if ref, ok := typed["$ref"].(string); ok && strings.HasPrefix(ref, "#/$defs/") {
+			old := strings.TrimPrefix(ref, "#/$defs/")
+			if name := names[old]; name != "" {
+				typed["$ref"] = "#/$defs/" + name
+			}
+		}
+		for _, child := range typed {
+			rewriteDefinitionNames(child, names)
+		}
+	case []any:
+		for _, child := range typed {
+			rewriteDefinitionNames(child, names)
+		}
+	}
+}
+
+// compactSchemaDefinitions uses draft-2020-12 unevaluatedProperties at the
+// SlideSpec union boundary. The full schema keeps each variant independently
+// closed for readability; the nested MCP copy can state the shared object,
+// kind type, and closure once while each selected variant evaluates its own
+// payload fields. This preserves validation and saves enough repeated keywords
+// to keep tools/list below its transport budget.
+func compactSchemaDefinitions(root map[string]any) {
+	defs, _ := root["$defs"].(map[string]any)
+	slide, _ := defs["SlideSpec"].(map[string]any)
+	if slide == nil {
+		return
+	}
+	delete(slide, "additionalProperties")
+	slide["unevaluatedProperties"] = false
+	if properties, ok := slide["properties"].(map[string]any); ok {
+		if kindProperty, ok := properties["kind"].(map[string]any); ok {
+			// The selected oneOf variant already pins every supported kind with
+			// const, so repeating the complete enum here adds bytes, not checks.
+			delete(kindProperty, "enum")
+		}
+	}
+	for _, kind := range AllSlideKinds() {
+		variant, _ := defs[kindDefName(kind)].(map[string]any)
+		if variant == nil {
+			continue
+		}
+		delete(variant, "type")
+		delete(variant, "additionalProperties")
+		if properties, ok := variant["properties"].(map[string]any); ok {
+			if kindProperty, ok := properties["kind"].(map[string]any); ok {
+				delete(kindProperty, "type")
+			}
+		}
+		if required, ok := variant["required"].([]any); ok {
+			filtered := required[:0]
+			for _, field := range required {
+				if field != "kind" {
+					filtered = append(filtered, field)
+				}
+			}
+			if len(filtered) == 0 {
+				delete(variant, "required")
+			} else {
+				variant["required"] = filtered
+			}
+		}
+	}
+}
+
+func rewriteSchemaRefs(value any, base string) {
+	switch typed := value.(type) {
+	case map[string]any:
+		if ref, ok := typed["$ref"].(string); ok && strings.HasPrefix(ref, "#/$defs/") {
+			typed["$ref"] = base + "/$defs/" + strings.TrimPrefix(ref, "#/$defs/")
+		}
+		for _, child := range typed {
+			rewriteSchemaRefs(child, base)
+		}
+	case []any:
+		for _, child := range typed {
+			rewriteSchemaRefs(child, base)
+		}
+	}
+}
+
+func stringEnum(values []string) []any {
+	out := make([]any, len(values))
+	for i, value := range values {
+		out[i] = value
+	}
 	return out
 }
 
@@ -368,11 +526,6 @@ func CompactInlineSchema() map[string]any {
 // payload field is still rejected: that check is the compiler's
 // (SEMANTIC_UNKNOWN_FIELD), not the input schema's.
 func OutlineInlineSchema() map[string]any {
-	kinds := AllSlideKinds()
-	enum := make([]any, 0, len(kinds))
-	for _, k := range kinds {
-		enum = append(enum, string(k))
-	}
 	full := CompactInlineSchema()
 	meta := map[string]any{"type": "object"}
 	if props, ok := full["properties"].(map[string]any); ok {
@@ -380,21 +533,49 @@ func OutlineInlineSchema() map[string]any {
 			meta = m
 		}
 	}
+	slide := slideOutlineSchema()
+	structure := map[string]any{
+		"type": "object", "required": []any{"sections"},
+		"properties": map[string]any{
+			"auto_agenda": map[string]any{"type": "boolean"},
+			"sections":    map[string]any{"type": "array", "minItems": 1},
+		},
+	}
 	return map[string]any{
-		"type":     "object",
-		"required": []any{"slides"},
+		"type": "object",
+		"oneOf": []any{
+			map[string]any{"required": []any{"slides"}, "not": map[string]any{"required": []any{"structure"}}},
+			map[string]any{"required": []any{"structure"}, "not": map[string]any{"required": []any{"slides"}}},
+		},
 		"properties": map[string]any{
 			"meta": meta,
 			"slides": map[string]any{
-				"type": "array",
-				"items": map[string]any{
-					"type":     "object",
-					"required": []any{"kind"},
-					"properties": map[string]any{
-						"kind": map[string]any{"type": "string", "enum": enum},
-					},
-				},
+				"type": "array", "minItems": 1, "items": slide,
 			},
+			"structure": structure,
+		},
+	}
+}
+
+func slideOutlineSchema() map[string]any {
+	return slideKindShapeSchema(true)
+}
+
+func slideKindShapeSchema(withEnum bool) map[string]any {
+	kinds := AllSlideKinds()
+	enum := make([]any, 0, len(kinds))
+	for _, k := range kinds {
+		enum = append(enum, string(k))
+	}
+	kind := map[string]any{"type": "string"}
+	if withEnum {
+		kind["enum"] = enum
+	}
+	return map[string]any{
+		"type":     "object",
+		"required": []any{"kind"},
+		"properties": map[string]any{
+			"kind": kind,
 		},
 	}
 }

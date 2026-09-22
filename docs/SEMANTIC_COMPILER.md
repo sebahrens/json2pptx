@@ -118,6 +118,27 @@ json2pptx semantic explain --spec deck.yaml
 json2pptx semantic schema
 ```
 
+DeckSpec accepts either flat `slides[]` or a chapter form:
+
+```yaml
+meta:
+  title: Quarterly review
+  required_layouts: [title, content, section, closing]
+structure:
+  cover: {kind: title, title: Quarterly review}
+  auto_agenda: true
+  sections:
+    - title: Performance
+      slides:
+        - {kind: kpi_snapshot, title: Momentum, kpis: [{value: 42, label: Wins}], takeaway: Execution accelerated}
+  closing: {kind: closing, title: Decisions}
+```
+
+Structured expansion inserts section dividers and carries source paths and
+section crumbs into the compiled deck. `meta.required_layouts` is applied after
+narrative planning; `semantic explain` exposes
+`layout_coverage.{requested,assigned,missing}`.
+
 Pass `--spec -` to read the spec from stdin (e.g. `… --spec - < deck.yaml`), portable across platforms. Each subcommand's `-h`/`--help` prints usage and exits **0**, so automated probes can introspect the surface without treating help as a failure.
 
 `semantic compile` writes the raw `PresentationInput` JSON by default. Add `--envelope` to emit a structured result instead — `{ok, slide_count, template, findings, compiled_json}` — so a compile-only flow surfaces non-blocking diagnostics (density, rhythm, raw-pattern preflight) without a separate `validate` run. This mirrors the HTTP `POST /api/v1/semantic/compile?include_compiled_json=true` response shape. A blocking parse/compile failure still emits the (`ok:false`) envelope and exits non-zero.

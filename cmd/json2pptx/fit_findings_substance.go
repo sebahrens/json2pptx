@@ -23,20 +23,104 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/policy/textwalk"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+var numericSectionLabelRE = regexp.MustCompile(`^\d+$`)
+
+// collectSectionNumberSequenceFindings compares authored numeric divider labels
+// with the same 1-based sequence convertPresentationSlides auto-injects. Custom
+// non-numeric labels remain an explicit authoring choice and are left alone.
+func collectSectionNumberSequenceFindings(input *PresentationInput, layouts []types.LayoutMetadata) []patterns.FitFinding {
+	if input == nil {
+		return nil
+	}
+	predicted := predictSlideLayouts(input, layouts)
+	sectionIndex := 0
+	var out []patterns.FitFinding
+	for slideIndex, slide := range input.Slides {
+		if !isSectionSlideInput(slide, layouts) {
+			continue
+		}
+		sectionIndex++
+		var resolved *types.LayoutMetadata
+		if slideIndex < len(predicted) {
+			resolved = predicted[slideIndex]
+		}
+		contentIndex, actual, ok := authoredSectionLabel(slide.Content, resolved)
+		if !ok || !numericSectionLabelRE.MatchString(actual) {
+			continue
+		}
+		if normalizeDecimalLabel(actual) == fmt.Sprintf("%d", sectionIndex) {
+			continue
+		}
+		expected := fmt.Sprintf("%02d", sectionIndex)
+		out = append(out, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{
+				Path:    fmt.Sprintf("/slides/%d/content/%d/text_value", slideIndex, contentIndex),
+				Code:    patterns.ErrCodeSectionNumberSequenceMismatch,
+				Message: fmt.Sprintf("slide %d is section %d but its authored numeric label is %q; use %q or remove the label and let json2pptx number sections automatically", slideIndex+1, sectionIndex, actual, expected),
+				Fix: &patterns.FixSuggestion{Kind: "provide_value", Params: map[string]any{
+					"path":          fmt.Sprintf("slides[%d].content[%d].text_value", slideIndex, contentIndex),
+					"value":         expected,
+					"expected":      expected,
+					"actual":        actual,
+					"section_index": sectionIndex,
+					"slide_index":   slideIndex,
+				}},
+			},
+			Action: "refuse",
+		})
+	}
+	return out
+}
+
+func normalizeDecimalLabel(value string) string {
+	normalized := strings.TrimLeft(value, "0")
+	if normalized == "" {
+		return "0"
+	}
+	return normalized
+}
+
+// authoredSectionLabel returns the first value occupying the resolved section
+// number slot. Dedicated section-number aliases win; templates without that
+// slot use the body placeholder, matching injectSectionNumber.
+func authoredSectionLabel(content []ContentInput, layout *types.LayoutMetadata) (int, string, bool) {
+	dedicated := layout != nil && layoutHasSectionNumberPlaceholder(*layout)
+	for i := range content {
+		item := &content[i]
+		isTarget := placeholderrole.IsSectionNumberAlias(item.PlaceholderID)
+		if !isTarget {
+			id := strings.ToLower(item.PlaceholderID)
+			isTarget = strings.Contains(id, "section") && strings.Contains(id, "number")
+		}
+		if dedicated && !isTarget {
+			continue
+		}
+		if !dedicated && item.PlaceholderID != "body" && !isTarget {
+			continue
+		}
+		value := strings.TrimSpace(contentItemText(item))
+		if value != "" {
+			return i, value, true
+		}
+	}
+	return 0, "", false
+}
+
 // collectSubstanceFindings returns the content-substance findings for a deck:
 // placeholder copy, missing titles, near-empty slides and deck monotony.
-func collectSubstanceFindings(input *PresentationInput) []patterns.FitFinding {
+func collectSubstanceFindings(input *PresentationInput, layouts ...types.LayoutMetadata) []patterns.FitFinding {
 	if input == nil || len(input.Slides) == 0 {
 		return nil
 	}
 	var findings []patterns.FitFinding
 	findings = append(findings, collectPlaceholderContentFindings(input)...)
-	findings = append(findings, collectSlideSubstanceFindings(input)...)
+	findings = append(findings, collectSlideSubstanceFindings(input, layouts...)...)
 	findings = append(findings, collectMonotonyFindings(input)...)
 	findings = append(findings, collectChartLegibilityFindings(input)...)
 	return findings
@@ -204,7 +288,7 @@ const minSlideWords = 8
 
 // collectSlideSubstanceFindings reports content slides with no title and
 // content slides that carry almost no text.
-func collectSlideSubstanceFindings(input *PresentationInput) []patterns.FitFinding {
+func collectSlideSubstanceFindings(input *PresentationInput, layouts ...types.LayoutMetadata) []patterns.FitFinding {
 	var out []patterns.FitFinding
 	// A deck whose every slide is content-free is not a deck to grade: it is
 	// almost always a DeckSpec handed to a PresentationInput tool. Say that
@@ -249,7 +333,12 @@ func collectSlideSubstanceFindings(input *PresentationInput) []patterns.FitFindi
 		if !slideCarriesArgument(slide) {
 			continue
 		}
-		if _, title := extractTitleText(slide); title == "" && patternTitleValue(slide) == "" {
+		headlineRenders := strings.TrimSpace(slide.Headline) != "" && isBlankCanvasLayout(slide.LayoutID, layouts)
+		if _, title := extractTitleText(slide); title == "" && patternTitleValue(slide) == "" && !headlineRenders {
+			fixPath := "title"
+			if isBlankCanvasLayout(slide.LayoutID, layouts) {
+				fixPath = "headline"
+			}
 			out = append(out, patterns.FitFinding{
 				ValidationError: patterns.ValidationError{
 					Path: slidepath.Slide(si),
@@ -258,7 +347,7 @@ func collectSlideSubstanceFindings(input *PresentationInput) []patterns.FitFindi
 						si+1),
 					Fix: &patterns.FixSuggestion{
 						Kind:   "provide_value",
-						Params: map[string]any{"path": "title", "value": "<the point this slide makes>"},
+						Params: map[string]any{"path": fixPath, "value": "<the point this slide makes>"},
 					},
 				},
 				Action: "review",
@@ -311,16 +400,25 @@ func isContentFreeSlide(slide SlideInput) bool {
 // Title, section and blank slides are chrome, not argument.
 func slideCarriesArgument(slide SlideInput) bool {
 	switch types.SlideType(slide.SlideType) {
-	case types.SlideTypeTitle, types.SlideTypeSection, types.SlideTypeBlank:
+	case types.SlideTypeTitle, types.SlideTypeSection:
 		return false
+	case types.SlideTypeBlank:
+		return hasArgumentContent(slide)
 	}
 	if slide.SlideType == "" {
 		switch inferSlideType(slide) {
-		case types.SlideTypeTitle, types.SlideTypeSection, types.SlideTypeBlank:
+		case types.SlideTypeTitle, types.SlideTypeSection:
 			return false
+		case types.SlideTypeBlank:
+			return hasArgumentContent(slide)
 		}
 	}
 	return true
+}
+
+func hasArgumentContent(slide SlideInput) bool {
+	return len(slide.Content) > 0 || slide.ShapeGrid != nil || slide.Pattern != nil ||
+		slide.Compose != nil || len(slide.Overlays) > 0 || slide.Background != nil
 }
 
 // hasNonTextContent reports whether the slide carries a chart, diagram, table,

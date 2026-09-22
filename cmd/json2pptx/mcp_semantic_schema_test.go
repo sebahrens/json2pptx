@@ -36,18 +36,25 @@ func TestSemanticMCP_SpecInputSchemaHasPerKindOneOf(t *testing.T) {
 	props, _ := spec["properties"].(map[string]any)
 	slides, _ := props["slides"].(map[string]any)
 	items, _ := slides["items"].(map[string]any)
-	oneOf, _ := items["oneOf"].([]any)
+	defs, _ := spec["$defs"].(map[string]any)
+	if ref, _ := items["$ref"].(string); !strings.HasSuffix(ref, "/$defs/S") {
+		t.Fatalf("%s: slides.items ref = %q, want compact SlideSpec definition", tool, ref)
+	}
+	slideSpec, _ := defs["S"].(map[string]any)
+	if slideSpec["unevaluatedProperties"] != false {
+		t.Fatalf("%s: SlideSpec union must set unevaluatedProperties:false", tool)
+	}
+	oneOf, _ := slideSpec["oneOf"].([]any)
 	if len(oneOf) != len(kinds) {
 		t.Fatalf("%s: slides.items.oneOf has %d variants, want %d (one per kind)", tool, len(oneOf), len(kinds))
 	}
 	seen := map[string]bool{}
 	for _, v := range oneOf {
-		variant, _ := v.(map[string]any)
-		if _, isRef := variant["$ref"]; isRef {
-			t.Fatalf("%s: variant is an unresolved $ref: %v", tool, variant)
-		}
-		if variant["additionalProperties"] != false {
-			t.Errorf("%s: variant %v must set additionalProperties:false", tool, variant["title"])
+		variantRef, _ := v.(map[string]any)["$ref"].(string)
+		name := variantRef[strings.LastIndex(variantRef, "/")+1:]
+		variant, _ := defs[name].(map[string]any)
+		if variant == nil {
+			t.Fatalf("%s: variant ref %q does not resolve", tool, variantRef)
 		}
 		vp, _ := variant["properties"].(map[string]any)
 		kind, _ := vp["kind"].(map[string]any)

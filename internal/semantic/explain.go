@@ -26,10 +26,11 @@ type SlideExplanation struct {
 // resolved template, the rhythm summary and warnings, and the per-slide
 // explanations in source order.
 type DeckExplanation struct {
-	Title     string     `json:"title,omitempty"`
-	Archetype Archetype  `json:"archetype,omitempty"`
-	Template  string     `json:"template,omitempty"`
-	Rhythm    RhythmPlan `json:"rhythm"`
+	Title          string         `json:"title,omitempty"`
+	Archetype      Archetype      `json:"archetype,omitempty"`
+	Template       string         `json:"template,omitempty"`
+	Rhythm         RhythmPlan     `json:"rhythm"`
+	LayoutCoverage LayoutCoverage `json:"layout_coverage"`
 	// RhythmWarnings are the deck-rhythm advisories (monotony, missing structure)
 	// the author should address before rendering. Empty when the deck reads well.
 	RhythmWarnings []RhythmWarning    `json:"rhythm_warnings,omitempty"`
@@ -49,6 +50,7 @@ func (ir *DeckIR) Explain() DeckExplanation {
 		Archetype:      ir.Archetype,
 		Template:       firstNonEmptyStr(ir.Template, ir.ArchetypeTemplate),
 		Rhythm:         ir.Rhythm,
+		LayoutCoverage: ir.LayoutCoverage,
 		RhythmWarnings: ir.RhythmWarnings(),
 		Slides:         make([]SlideExplanation, 0, len(ir.Slides)),
 	}

@@ -5,7 +5,27 @@ package semantic
 // payload. Later compiler phases validate and compile a DeckSpec into the raw
 // internal/deckinput.PresentationInput model consumed by the generator.
 type DeckSpec struct {
-	Meta   DeckMeta    `json:"meta" yaml:"meta"`
+	Meta      DeckMeta       `json:"meta" yaml:"meta"`
+	Slides    []SlideSpec    `json:"slides,omitempty" yaml:"slides,omitempty"`
+	Structure *DeckStructure `json:"structure,omitempty" yaml:"structure,omitempty"`
+
+	// slidesPresent preserves the distinction between an absent slides field
+	// and an explicitly authored empty array. JSON/YAML omitempty cannot carry
+	// that distinction after decoding, but the slides/structure XOR contract
+	// depends on field presence.
+	slidesPresent bool
+}
+
+// DeckStructure is the chapter-oriented alternative to flat Slides.
+type DeckStructure struct {
+	Cover      *SlideSpec    `json:"cover,omitempty" yaml:"cover,omitempty"`
+	AutoAgenda bool          `json:"auto_agenda,omitempty" yaml:"auto_agenda,omitempty"`
+	Sections   []DeckSection `json:"sections" yaml:"sections"`
+	Closing    *SlideSpec    `json:"closing,omitempty" yaml:"closing,omitempty"`
+}
+
+type DeckSection struct {
+	Title  string      `json:"title" yaml:"title"`
 	Slides []SlideSpec `json:"slides" yaml:"slides"`
 }
 
@@ -43,6 +63,9 @@ type DeckMeta struct {
 	// opt-out the raw path has, or its slides are refused with no way to say
 	// they are deliberate (go-slide-creator-rs4h).
 	DesignMode string `json:"design_mode,omitempty" yaml:"design_mode,omitempty"`
+	// RequiredLayouts constrains planning to cover these canonical template
+	// layout IDs without turning the list into a one-slide-per-layout outline.
+	RequiredLayouts []string `json:"required_layouts,omitempty" yaml:"required_layouts,omitempty"`
 }
 
 // ChromeSpec mirrors deckinput.ChromeInput: the deck furniture rendered into

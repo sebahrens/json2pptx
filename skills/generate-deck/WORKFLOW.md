@@ -32,6 +32,28 @@ Present the outline to the user. Proceed to Phase 2 only after approval or if th
 
 **Narrative coherence matters.** A consulting deck tells a story: situation, complication, resolution, evidence, implementation, call to action. The outline is where you design the argument arc. Do not fragment this across phases.
 
+### Layout coverage requests
+
+When the brief asks for a complete deck that also showcases layouts, plan the argument and chapters
+before applying the coverage constraint:
+
+1. Write the story and section outline without counting layouts as slides.
+2. Choose a slide budget that supports the subject. “Complete” usually needs repeated content
+   layouts and more slides than the number of required layouts.
+3. Put chapter boundaries in DeckSpec `structure.sections`; use `auto_agenda` when there are at least
+   two sections. The engine creates and numbers dividers.
+4. Add canonical IDs to `meta.required_layouts`, then run `explain_deck_spec`. Review every
+   `layout_coverage.assigned` entry and resolve `missing` by adding a compatible narrative slide.
+5. Keep DeckSpec as the authoring source. Use `raw_json2pptx` only for the smallest visual the
+   semantic kinds cannot express.
+6. If `blank-canvas` is assigned to a content slide, the compiler carries its title into the raw
+   slide's `headline` field and reserves the remaining canvas for the visual.
+
+Reject the plan before rendering when it produces an isolated numeric divider, an untitled visual
+canvas, one slide per required layout, or a deck made only of bullets and colored rectangles.
+Evidence-oriented decks need at least one data-bearing visual and enough distinct visual families to
+separate evidence, analysis, process, and chapter structure.
+
 **Cold-start checklist (for decks ≥4 slides):**
 
 1. Pick a template. Call `list_templates` for available options, `canonical_layout_ids`, and `color_roles`. Use `canonical_layout_ids` to map canonical names (`title`, `content`, `blank`, `section`, `closing`, etc.) to concrete layout IDs — do not reverse-engineer raw `slideLayoutN` IDs. The compact response also includes `layout_summaries[]` with per-layout `placeholders[]` (each entry has `id`, `type`, `max_chars`) — use these to rough-size content before calling `expand_pattern`. For full placeholder bounds and font details, switch to full mode.

@@ -109,11 +109,14 @@ const (
 	// ErrCodeWeakContent is the raw-path twin of the semantic compiler's
 	// SEMANTIC_WEAK_CONTENT: exemplar copy that reached a deck
 	// (go-slide-creator-q7ar, go-slide-creator-7ucp).
-	ErrCodeWeakContent      = "WEAK_CONTENT"
-	ErrCodeMissingTitle     = "MISSING_TITLE"
-	ErrCodeSlideNearlyEmpty = "SLIDE_NEARLY_EMPTY"
-	ErrCodeDeckMonotony     = "DECK_MONOTONY"
-	ErrCodeChartOverloaded  = "CHART_OVERLOADED"
+	ErrCodeWeakContent  = "WEAK_CONTENT"
+	ErrCodeMissingTitle = "MISSING_TITLE"
+	// ErrCodeSectionNumberSequenceMismatch reports an authored numeric section
+	// label that contradicts the divider's automatic sequence.
+	ErrCodeSectionNumberSequenceMismatch = "SECTION_NUMBER_SEQUENCE_MISMATCH"
+	ErrCodeSlideNearlyEmpty              = "SLIDE_NEARLY_EMPTY"
+	ErrCodeDeckMonotony                  = "DECK_MONOTONY"
+	ErrCodeChartOverloaded               = "CHART_OVERLOADED"
 
 	// PATTERN_CONTENT_MISMATCH: the pattern is not the shape of its content —
 	// KPIs drawn as a timeline, a four-month plan drawn as a 2x2

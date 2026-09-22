@@ -2,8 +2,11 @@ package semantic
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/layout"
 )
 
 func TestSchemaIsValidJSON(t *testing.T) {
@@ -173,6 +176,50 @@ func TestSchemaArchetypeEnumMatchesRegistry(t *testing.T) {
 	}
 	if len(enum) != len(archetypeRegistry) {
 		t.Errorf("archetype enum has %d entries, registry has %d", len(enum), len(archetypeRegistry))
+	}
+}
+
+func TestSchemaRequiredLayoutsEnumMatchesCanonicalRegistry(t *testing.T) {
+	defs := Schema()["$defs"].(map[string]any)
+	meta := defs["DeckMeta"].(map[string]any)
+	items := meta["properties"].(map[string]any)["required_layouts"].(map[string]any)["items"].(map[string]any)
+	enum := items["enum"].([]any)
+	got := make([]string, len(enum))
+	for i := range enum {
+		got[i] = enum[i].(string)
+	}
+	if want := layout.CanonicalNames(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("required layout enum = %v, want %v", got, want)
+	}
+}
+
+func TestPublishedSchemasRequireAtLeastOneFlatSlide(t *testing.T) {
+	for name, schema := range map[string]map[string]any{
+		"full":    Schema(),
+		"compact": CompactSchemaAt("#/properties/spec"),
+		"outline": OutlineInlineSchema(),
+	} {
+		properties := schema["properties"].(map[string]any)
+		slides := properties["slides"].(map[string]any)
+		if slides["minItems"] != 1 {
+			t.Errorf("%s slides.minItems = %v, want 1", name, slides["minItems"])
+		}
+	}
+}
+
+func TestCompactSchemaAtRebasesEveryDefinitionReference(t *testing.T) {
+	schema := CompactSchemaAt("#/properties/spec")
+	encoded, _ := json.Marshal(schema)
+	if strings.Contains(string(encoded), `"$ref":"#/$defs/`) {
+		t.Fatalf("schema retains an unrebased local ref: %s", encoded)
+	}
+	if !strings.Contains(string(encoded), `"$ref":"#/properties/spec/$defs/S"`) {
+		t.Fatalf("schema lacks rebased structured SlideSpec ref: %s", encoded)
+	}
+	defs := schema["$defs"].(map[string]any)
+	slide := defs["S"].(map[string]any)
+	if slide["unevaluatedProperties"] != false {
+		t.Fatalf("structured slide union is not closed: %+v", slide)
 	}
 }
 

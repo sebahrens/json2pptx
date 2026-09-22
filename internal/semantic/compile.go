@@ -93,11 +93,16 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		input.DesignMode = ir.DesignMode
 	}
 	input.Chrome = compileChrome(ir)
+	forcedLayouts := make(map[int]string, len(ir.LayoutCoverage.Assigned))
+	for _, assignment := range ir.LayoutCoverage.Assigned {
+		forcedLayouts[assignment.SlideIndex] = assignment.Layout
+	}
 
 	for i := range ir.Slides {
 		si := &ir.Slides[i]
 		in := slides.Input{
 			SourceIndex: si.SourceIndex,
+			SourcePath:  si.SourcePath,
 			OutputIndex: len(input.Slides),
 			Title:       si.Title,
 			Takeaway:    si.Takeaway,
@@ -108,6 +113,13 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		compiled, links, err := compileSlide(si.Kind, in)
 		if err != nil {
 			return nil, result, fmt.Errorf("slide %d (%s): %w", si.SourceIndex, si.Kind, err)
+		}
+		if requiredLayout := forcedLayouts[i]; requiredLayout != "" {
+			compiled.LayoutID = requiredLayout
+			if requiredLayout == "blank-canvas" {
+				compiled.Headline = si.Title
+				compiled.Content = withoutTitleContent(compiled.Content)
+			}
 		}
 		outputIndex := len(input.Slides)
 		for _, l := range links {
@@ -126,6 +138,7 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		// and before go-slide-creator-zmjs only chart_insight could carry a
 		// source — an option matrix or financial case could not cite anything.
 		applyUniversalSlideFields(compiled, si, ir.SourceMap)
+		compiled.SectionTitle = si.SectionTitle
 		input.Slides = append(input.Slides, *compiled)
 	}
 
@@ -143,6 +156,18 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 	}
 
 	return input, result, nil
+}
+
+func withoutTitleContent(content []deckinput.ContentInput) []deckinput.ContentInput {
+	out := content[:0]
+	for _, item := range content {
+		id := strings.ToLower(strings.TrimSpace(item.PlaceholderID))
+		if id == "title" || strings.HasPrefix(id, "title_") {
+			continue
+		}
+		out = append(out, item)
+	}
+	return out
 }
 
 // compileSlide dispatches a planned slide to its per-kind compiler, falling back
@@ -267,7 +292,10 @@ func applyUniversalSlideFields(compiled *deckinput.SlideInput, si *SlideIR, sm *
 		return
 	}
 	rawSlide := fmt.Sprintf("/slides/%d", si.SourceIndex)
-	semSlide := fmt.Sprintf("slides[%d]", si.SourceIndex)
+	semSlide := si.SourcePath
+	if semSlide == "" {
+		semSlide = fmt.Sprintf("slides[%d]", si.SourceIndex)
+	}
 	if notes := bodyString(si.Body, "notes", "speaker_notes"); notes != "" {
 		compiled.SpeakerNotes = notes
 		if sm != nil {

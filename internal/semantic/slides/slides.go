@@ -30,6 +30,7 @@ import (
 type Input struct {
 	// SourceIndex is the slide's index in the semantic DeckSpec.Slides.
 	SourceIndex int
+	SourcePath  string
 	// OutputIndex is the slide's index in the emitted PresentationInput.Slides.
 	OutputIndex int
 	// Title is the slide title extracted from the payload (may be empty).
@@ -77,6 +78,9 @@ func (in Input) rawSlide() string {
 
 // semSlide returns the semantic JSON path prefix for the source slide.
 func (in Input) semSlide() string {
+	if in.SourcePath != "" {
+		return in.SourcePath
+	}
 	return fmt.Sprintf("slides[%d]", in.SourceIndex)
 }
 

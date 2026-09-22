@@ -3,6 +3,7 @@
   "design_mode": "constrained",
   "slides": [
     {
+      "layout_id": "title",
       "slide_type": "title",
       "content": [
         {
@@ -136,6 +137,7 @@
       "takeaway": "Early customers are already seeing the decision gap close."
     },
     {
+      "layout_id": "section",
       "slide_type": "section",
       "content": [
         {
@@ -169,6 +171,7 @@
       "takeaway": "Start with a focused pilot on one operations team, then scale on proof."
     },
     {
+      "layout_id": "title",
       "slide_type": "title",
       "content": [
         {

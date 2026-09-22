@@ -9,7 +9,7 @@ import (
 // CompileTitle compiles a title slide: a title placeholder plus an optional
 // subtitle. The deck's opening chrome carries no body content.
 func CompileTitle(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	slide := &deckinput.SlideInput{SlideType: "title"}
+	slide := &deckinput.SlideInput{SlideType: "title", LayoutID: in.Layout}
 	var links []SourceLink
 
 	if in.Title != "" {
@@ -44,7 +44,7 @@ func CompileTitle(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 // semantic subtitle is intentionally not emitted as placeholder content: doing
 // so would be remapped into the section-number slot by placeholder fallback.
 func CompileSection(in Input) (*deckinput.SlideInput, []SourceLink, error) {
-	slide := &deckinput.SlideInput{SlideType: "section"}
+	slide := &deckinput.SlideInput{SlideType: "section", LayoutID: in.Layout}
 	var links []SourceLink
 
 	if in.Title != "" {
@@ -83,7 +83,7 @@ func CompileClosing(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		return slide, links, nil
 	}
 
-	slide := &deckinput.SlideInput{SlideType: "title"}
+	slide := &deckinput.SlideInput{SlideType: "title", LayoutID: in.Layout}
 	if in.Title != "" {
 		idx := appendContent(slide, textContent("title", in.Title))
 		links = append(links, SourceLink{

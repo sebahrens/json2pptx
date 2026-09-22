@@ -357,6 +357,29 @@ func maxFontForWordFit(text string, widthEMU int64) int {
 	return maxFontHPt
 }
 
+// maxFontForSingleLineFit returns the conservative font size at which the
+// complete text fits on one line. Section-divider templates place a large
+// number beside the title; keeping a moderate heading on one line avoids a
+// LibreOffice layout defect where a wrapped title shifts and clips that number.
+// Callers retain normal wrapping when this would require type below their
+// readability floor.
+func maxFontForSingleLineFit(text string, widthEMU int64) int {
+	if strings.TrimSpace(text) == "" || widthEMU <= 0 {
+		return 0
+	}
+	const emuPerPt = 12700
+	usablePt := float64(widthEMU)/emuPerPt - 2*7.2
+	if usablePt <= 0 {
+		return 0
+	}
+	chars := len([]rune(strings.Join(strings.Fields(text), " ")))
+	if chars == 0 {
+		return 0
+	}
+	const avgCharRatio = 0.55
+	return int(usablePt / (float64(chars) * avgCharRatio) * 0.90 * 100)
+}
+
 // maxTitleLines is the maximum number of wrapped lines allowed for title placeholders.
 // Titles exceeding this limit are truncated with an ellipsis to prevent them from
 // crowding body text in the placeholder below.

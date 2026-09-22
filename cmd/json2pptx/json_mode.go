@@ -926,6 +926,13 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		Build:           slide.Build,
 		ContrastCheck:   slide.ContrastCheck,
 	}
+	if strings.TrimSpace(slide.Headline) != "" && isBlankCanvasLayout(slide.LayoutID, layouts) {
+		headlineXML, headlineErr := generateCanvasHeadline(slide.Headline, canvasHeadlineBounds(slideWidth, slideHeight), diagCtx)
+		if headlineErr != nil {
+			return generator.SlideSpec{}, nil, nil, fmt.Errorf("slide %d: headline: %w", i+1, headlineErr)
+		}
+		spec.OverlayShapeXML = append(spec.OverlayShapeXML, headlineXML)
+	}
 
 	// Convert the background spec: an image, a solid colour, or both
 	// (go-slide-creator-uy5s).
@@ -1064,6 +1071,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 				ThemeColors: diagCtx.ThemeColors,
 				DataPalette: diagCtx.DataPalette,
 				FontFamily:  diagCtx.FontFamily,
+				TitleFont:   diagCtx.TitleFont,
 				SlideNum:    i + 1,
 			}
 		}

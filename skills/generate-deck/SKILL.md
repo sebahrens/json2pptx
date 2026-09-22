@@ -77,6 +77,8 @@ reduce items or shorten labels when it reports native text overlap or text below
 the readable minimum.
 
 See `examples/four-phase-workflow.md` for a worked end-to-end example of the 4-phase flow.
+For a coherent deck that must exercise template layouts, read
+[`examples/layout-coverage-deckspec.md`](examples/layout-coverage-deckspec.md).
 
 ## Semantic deck specs — the default authoring path
 
@@ -84,6 +86,17 @@ For ordinary business decks, author a compact **DeckSpec** (`meta` + `slides[].k
 the compiler choose patterns, layouts, accents, and rhythm — a spec is far shorter than the raw
 `PresentationInput` it lowers to. Write it as YAML or JSON; both the MCP `spec` arg and the CLI
 `--spec` accept either.
+
+DeckSpec also supports a chapter form, mutually exclusive with flat `slides[]`:
+`structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`. It expands to the cover,
+optional agenda, a numbered divider before each non-empty section, the section's content slides,
+and the closing slide. Set `meta.chrome.section_crumb: true` to show the current section on content
+slides. Divider numbers come from the engine; never write numeric divider labels yourself.
+
+When a request explicitly requires native layout coverage, list canonical IDs in
+`meta.required_layouts`. `semantic explain` reports `layout_coverage.{requested,assigned,missing}`
+and assigns compatible narrative slides after planning. Missing coverage is blocking: add an
+appropriate semantic slide. Do not replace the story with one generated slide per required layout.
 
 **Tools** (MCP `json2pptx-mcp` · CLI `json2pptx semantic <sub>`):
 
@@ -125,6 +138,12 @@ slides:
 `project_roadmap`, `market_analysis` — biases template choice, default rhythm, and whether a
 synthesis/decision slide is expected (call `list_deck_archetypes` for each one's default template +
 `executive` flag).
+
+Semantic quality diagnostics include `SEMANTIC_EVIDENCE_VISUAL_MISSING` for evidence-oriented
+market analysis without a data-bearing visual, `SEMANTIC_VISUAL_FAMILY_NARROW` for longer decks
+using fewer than three non-structural visual families, and the required-layout diagnostics
+`SEMANTIC_REQUIRED_LAYOUT_UNKNOWN`, `SEMANTIC_REQUIRED_LAYOUT_DUPLICATE`, and
+`SEMANTIC_REQUIRED_LAYOUT_MISSING`.
 
 **`slides[].kind`** — `list_slide_kinds` (CLI `semantic schema`) is the **single source of truth**
 for each kind's required + typical fields; the table below mirrors it exactly. Template resolution

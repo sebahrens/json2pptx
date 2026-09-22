@@ -138,6 +138,36 @@ Deck-level findings whose path does not match `/slides/N/...` (slide index extra
 
 ## Finding Codes
 
+### `SECTION_NUMBER_SEQUENCE_MISMATCH`
+
+**Action:** `refuse`
+
+**Fix kind:** `provide_value`
+
+**Emitted at:** fit/content preflight (`validate -fit-report`, preview, generate, MCP equivalents)
+
+A section divider contains an authored numeric value in a section-number alias
+(`section_number`, `section_no`, `large_number`, or the resolved body fallback)
+that contradicts its automatic 1-based position. Leading zeroes are normalized,
+so `1` and `01` both satisfy the first divider. Non-numeric labels such as
+`PART II` remain valid custom numbering and are not overwritten.
+
+The finding reports `expected`, `actual`, `section_index`, and `slide_index`.
+Remove the authored number to let the engine inject it, or change it to the
+expected value.
+
+### `MISSING_TITLE`
+
+**Action:** `refuse` for a content-bearing untitled canvas
+
+**Fix kind:** `provide_value`
+
+A content slide has no machine-recognized audience-facing title. For a
+`blank-canvas` slide carrying a pattern, shape grid, compose tree, chart,
+diagram, image, or other argument content, set the slide-level `headline`.
+That field renders as a theme-aware title in a reserved band above the visual.
+An empty blank interstitial is exempt.
+
 ### `PATTERN_UNKNOWN_FIELD`
 
 **Action:** `refuse`

@@ -19,8 +19,21 @@ const maxSpecSize = 1 << 20 // 1 MiB
 // unknown or malformed slide kind — surfaces as a path-scoped semantic
 // diagnostic rather than an opaque decoder error that leaks internal Go types.
 type rawDeck struct {
-	Meta   DeckMeta `json:"meta" yaml:"meta"`
-	Slides []any    `json:"slides" yaml:"slides"`
+	Meta      DeckMeta      `json:"meta" yaml:"meta"`
+	Slides    []any         `json:"slides" yaml:"slides"`
+	Structure *rawStructure `json:"structure" yaml:"structure"`
+}
+
+type rawStructure struct {
+	Cover      map[string]any `json:"cover" yaml:"cover"`
+	AutoAgenda bool           `json:"auto_agenda" yaml:"auto_agenda"`
+	Sections   []rawSection   `json:"sections" yaml:"sections"`
+	Closing    map[string]any `json:"closing" yaml:"closing"`
+}
+
+type rawSection struct {
+	Title  string `json:"title" yaml:"title"`
+	Slides []any  `json:"slides" yaml:"slides"`
 }
 
 // Parse decodes a semantic deck document, dispatching on the filename
@@ -85,7 +98,7 @@ func ParseJSON(data []byte) (*DeckSpec, Diagnostics) {
 
 // validateContainerShapes checks the generic decode of a deck document for the
 // top-level container shapes the semantic model requires: an object root with an
-// optional object "meta" and an optional array "slides". It returns path-scoped
+// optional object "meta", optional object "structure", and optional array "slides". It returns path-scoped
 // diagnostics so a malformed container fails fast with an actionable message
 // instead of leaking the decoder's internal Go/YAML type names to the agent.
 //
@@ -112,7 +125,52 @@ func validateContainerShapes(root any) Diagnostics {
 				fmt.Sprintf("slides must be an array, got %s", jsonShapeName(slides)))
 		}
 	}
+	if structure, present := m["structure"]; present {
+		structureMap, isMap := structure.(map[string]any)
+		if !isMap {
+			ds.add("structure", CodeInvalidSlides,
+				fmt.Sprintf("structure must be an object, got %s", jsonShapeName(structure)))
+		} else {
+			validateStructureContainerShapes(structureMap, &ds)
+		}
+	}
 	return ds
+}
+
+func validateStructureContainerShapes(structure map[string]any, ds *Diagnostics) {
+	for _, key := range []string{"cover", "closing"} {
+		if value, present := structure[key]; present {
+			if _, ok := value.(map[string]any); !ok {
+				ds.add("structure."+key, CodeInvalidSlide,
+					fmt.Sprintf("%s must be an object, got %s", key, jsonShapeName(value)))
+			}
+		}
+	}
+	value, present := structure["sections"]
+	if !present {
+		return
+	}
+	sections, ok := value.([]any)
+	if !ok {
+		ds.add("structure.sections", CodeInvalidSlides,
+			fmt.Sprintf("sections must be an array, got %s", jsonShapeName(value)))
+		return
+	}
+	for i, value := range sections {
+		path := fmt.Sprintf("structure.sections[%d]", i)
+		section, ok := value.(map[string]any)
+		if !ok {
+			ds.add(path, CodeInvalidSlide,
+				fmt.Sprintf("section must be an object, got %s", jsonShapeName(value)))
+			continue
+		}
+		if slides, present := section["slides"]; present {
+			if _, ok := slides.([]any); !ok {
+				ds.add(path+".slides", CodeInvalidSlides,
+					fmt.Sprintf("section slides must be an array, got %s", jsonShapeName(slides)))
+			}
+		}
+	}
 }
 
 // jsonShapeName returns a friendly name for the JSON/YAML shape of v, used in
@@ -144,7 +202,7 @@ func parseErrorDiagnostics(err error) Diagnostics {
 }
 
 // knownTopLevelKeys are the only top-level fields a semantic deck spec carries.
-var knownTopLevelKeys = []string{"meta", "slides"}
+var knownTopLevelKeys = []string{"meta", "slides", "structure"}
 
 // topLevelMigrations maps a common stale top-level key onto the field it should
 // be. These are checked before the generic fuzzy suggestion so well-known
@@ -160,7 +218,10 @@ var topLevelMigrations = map[string]string{
 // DeckMeta's json tags and the schema's DeckMeta.additionalProperties:false, so
 // unknown meta keys are reported rather than silently dropped by the struct
 // decode of rawDeck.Meta.
-var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date", "chrome", "viewing_mode", "accent_strategy", "design_mode"}
+var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date", "chrome", "viewing_mode", "accent_strategy", "design_mode", "required_layouts"}
+
+var knownStructureKeys = []string{"cover", "auto_agenda", "sections", "closing"}
+var knownSectionKeys = []string{"title", "slides"}
 
 // metaMigrations maps a common stale/alias meta key onto the field it should be,
 // checked before the generic fuzzy suggestion (mirrors topLevelMigrations).
@@ -190,8 +251,10 @@ func buildDeckSpec(raw rawDeck, top map[string]any) (*DeckSpec, Diagnostics) {
 
 	checkUnknownTopLevel(top, &ds)
 	checkUnknownMeta(top, &ds)
+	checkUnknownStructure(top, &ds)
 
-	spec := &DeckSpec{Meta: raw.Meta}
+	_, slidesPresent := top["slides"]
+	spec := &DeckSpec{Meta: raw.Meta, slidesPresent: slidesPresent}
 
 	if raw.Meta.Archetype != "" && !raw.Meta.Archetype.Valid() {
 		ds.add("meta.archetype", CodeUnknownArchetype,
@@ -215,8 +278,78 @@ func buildDeckSpec(raw rawDeck, top map[string]any) (*DeckSpec, Diagnostics) {
 		slide := buildSlideSpec(path, m, &ds)
 		spec.Slides = append(spec.Slides, slide)
 	}
+	if raw.Structure != nil {
+		st := &DeckStructure{AutoAgenda: raw.Structure.AutoAgenda}
+		if raw.Structure.Cover != nil {
+			cover := buildSlideSpec("structure.cover", raw.Structure.Cover, &ds)
+			st.Cover = &cover
+		}
+		for i, rawSection := range raw.Structure.Sections {
+			section := DeckSection{Title: rawSection.Title}
+			for j, elem := range rawSection.Slides {
+				path := fmt.Sprintf("structure.sections[%d].slides[%d]", i, j)
+				m, ok := elem.(map[string]any)
+				if !ok {
+					ds.add(path, CodeInvalidSlide, fmt.Sprintf("slide must be an object, got %s", jsonShapeName(elem)))
+					continue
+				}
+				section.Slides = append(section.Slides, buildSlideSpec(path, m, &ds))
+			}
+			st.Sections = append(st.Sections, section)
+		}
+		if raw.Structure.Closing != nil {
+			closing := buildSlideSpec("structure.closing", raw.Structure.Closing, &ds)
+			st.Closing = &closing
+		}
+		spec.Structure = st
+	}
 
 	return spec, ds
+}
+
+func checkUnknownStructure(top map[string]any, ds *Diagnostics) {
+	structure, ok := top["structure"].(map[string]any)
+	if !ok {
+		return
+	}
+	checkUnknownKeysAt("structure", structure, knownStructureKeys, ds)
+	sections, ok := structure["sections"].([]any)
+	if !ok {
+		return
+	}
+	for i, value := range sections {
+		if section, ok := value.(map[string]any); ok {
+			checkUnknownKeysAt(fmt.Sprintf("structure.sections[%d]", i), section, knownSectionKeys, ds)
+		}
+	}
+}
+
+func checkUnknownKeysAt(path string, object map[string]any, allowed []string, ds *Diagnostics) {
+	known := make(map[string]bool, len(allowed))
+	for _, key := range allowed {
+		known[key] = true
+	}
+	keys := make([]string, 0)
+	for key := range object {
+		if !known[key] {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		message := fmt.Sprintf("unknown field %q; expected one of %s", key, strings.Join(allowed, ", "))
+		best, bestDistance := "", -1
+		for _, candidate := range allowed {
+			distance := editDistance(strings.ToLower(key), candidate)
+			if bestDistance < 0 || distance < bestDistance {
+				best, bestDistance = candidate, distance
+			}
+		}
+		if bestDistance >= 0 && bestDistance <= 2 {
+			message = fmt.Sprintf("unknown field %q; did you mean %q?", key, best)
+		}
+		ds.add(path+"."+key, CodeUnknownField, message)
+	}
 }
 
 // buildSlideSpec validates and converts a single raw slide map.

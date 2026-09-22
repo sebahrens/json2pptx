@@ -171,6 +171,17 @@ func runSemanticValidate() error {
 	// to see them — otherwise it passes a spec render then refuses
 	// (go-slide-creator-rs4h).
 	ds = append(ds, specDesignModeDiagnostics(*specPath, data, strictness)...)
+	if spec, parseDiags := semantic.Parse(*specPath, data); spec != nil && !parseDiags.HasErrors() {
+		explanation := semantic.ExplainSpec(spec)
+		if explanation.Template == "" {
+			// Template is optional at validate time; render may receive one via
+			// its --template flag.
+		} else if layouts, templateDiagnostic := semanticTemplateLayouts(explanation.Template, "", nil); templateDiagnostic == nil {
+			ds = append(ds, requiredLayoutTemplateDiagnostics(spec.Meta.RequiredLayouts, explanation.Template, layouts)...)
+		} else {
+			ds = append(ds, *templateDiagnostic)
+		}
+	}
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "semantic validate",
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
@@ -547,9 +558,9 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	if marshalErr != nil {
 		return fmt.Errorf("semantic render: marshal authoring input: %w", marshalErr)
 	}
-	slidePayloads := make([]json.RawMessage, len(spec.Slides))
-	for i := range spec.Slides {
-		slidePayloads[i], _ = json.Marshal(spec.Slides[i])
+	slidePayloads, payloadErr := semantic.ExpandedSlidePayloads(spec)
+	if payloadErr != nil {
+		return fmt.Errorf("semantic render: build manifest slide payloads: %w", payloadErr)
 	}
 	diagnosticJSON, _ := json.Marshal(res.Diagnostics)
 	manifest := pipeline.NewAuthoringManifest(data, strings.TrimPrefix(strings.ToLower(filepath.Ext(*specPath)), "."), runRes.TemplatePath, runRes.TemplateHash, compiledJSON, runRes.OutputPath, res.ContentHash, compileResult.SourceMap, slidePayloads, diagnosticJSON)
@@ -595,6 +606,11 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	if cr != nil {
 		for _, d := range cr.Diagnostics {
 			diags = append(diags, semanticDiagFromCompile(d))
+		}
+		if cr.IR != nil {
+			for _, d := range requiredLayoutTemplateDiagnostics(cr.IR.LayoutCoverage.Requested, input.Template, rr.TemplateLayouts) {
+				diags = append(diags, semanticDiagFromCompile(d))
+			}
 		}
 	}
 
@@ -777,7 +793,20 @@ func runSemanticExplain() error {
 		return fmt.Errorf("semantic explain: spec could not be parsed")
 	}
 
-	return printJSONIndent(semantic.ExplainSpec(spec))
+	explanation := semantic.ExplainSpec(spec)
+	if explanation.Template == "" {
+		return printJSONIndent(explanation)
+	} else if layouts, templateDiagnostic := semanticTemplateLayouts(explanation.Template, "", nil); templateDiagnostic == nil {
+		reconcileExplanationTemplateCoverage(&explanation, layouts)
+	} else {
+		envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+			Subcommand:  "semantic explain",
+			InputSHA256: diagnostics.ComputeInputSHA256(data),
+		}, []diagnostics.Diagnostic{*templateDiagnostic})
+		_ = fprintJSONIndent(os.Stderr, envelope)
+		return fmt.Errorf("semantic explain: template is unavailable")
+	}
+	return printJSONIndent(explanation)
 }
 
 // runSemanticSchema implements "semantic schema". It prints the DeckSpec JSON

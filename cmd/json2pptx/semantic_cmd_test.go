@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 )
 
@@ -113,6 +114,36 @@ func TestSemanticValidate_InvalidFixture(t *testing.T) {
 	}
 	if !sawError {
 		t.Errorf("invalid spec produced no error findings; summary=%q", env.Summary)
+	}
+}
+
+func TestSemanticValidate_RejectsUnknownTemplate(t *testing.T) {
+	path := writeSpec(t, "missing-template.yaml", `meta:
+  title: Missing template
+  template: definitely-not-a-template
+slides:
+  - kind: title
+    title: Missing template
+`)
+	out, err := runSemanticArgs(t, "validate", "--spec", path)
+	if err == nil {
+		t.Fatalf("semantic validate accepted an unknown template: %s", out)
+	}
+	var env diagnostics.FindingEnvelope
+	if jsonErr := json.Unmarshal([]byte(out), &env); jsonErr != nil {
+		t.Fatalf("decode validation envelope: %v\n%s", jsonErr, out)
+	}
+	found := false
+	for _, finding := range env.Findings {
+		if strings.HasSuffix(finding.Code, string(diagnostics.CodeTemplateNotFound)) && finding.Evidence["path"] == "meta.template" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing TEMPLATE_NOT_FOUND at meta.template: %+v", env.Findings)
+	}
+	if _, err := runSemanticArgs(t, "explain", "--spec", path); err == nil {
+		t.Fatal("semantic explain accepted an unknown template")
 	}
 }
 
@@ -231,6 +262,48 @@ func TestSemanticRender_QBRExample(t *testing.T) {
 	}
 	if !report.IsValid() {
 		t.Errorf("rendered deck failed validate-output: %d blocking finding(s)", len(report.Blocking()))
+	}
+}
+
+func TestSemanticRender_StructuredManifestMatchesExpandedSlides(t *testing.T) {
+	path := writeSpec(t, "structured.yaml", `meta:
+  title: Structured manifest
+  template: midnight-blue
+structure:
+  cover: {kind: title, title: Structured manifest}
+  auto_agenda: true
+  sections:
+    - title: One
+      slides:
+        - {kind: stat, title: Growth, value: "10%", takeaway: Growth is durable}
+    - title: Two
+      slides:
+        - {kind: stat, title: Margin, value: "20%", takeaway: Margin is expanding}
+  closing: {kind: closing, title: Questions}
+`)
+	out := filepath.Join(t.TempDir(), "structured.pptx")
+	stdout, err := runSemanticArgs(t, "render", "--spec", path, "--output", out,
+		"--templates-dir", testTemplatesDir, "--output-validation", "off")
+	if err != nil {
+		t.Fatalf("structured semantic render: %v\n%s", err, stdout)
+	}
+	var result semanticRenderResult
+	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
+		t.Fatalf("decode render result: %v", err)
+	}
+	manifest, err := pipeline.ReadAuthoringManifest(result.ManifestPath)
+	if err != nil {
+		t.Fatalf("read authoring manifest: %v", err)
+	}
+	if len(manifest.Slides) != result.SlideCount || result.SlideCount != 7 {
+		t.Fatalf("manifest/result slide counts = %d/%d, want 7", len(manifest.Slides), result.SlideCount)
+	}
+	seen := map[string]bool{}
+	for _, slide := range manifest.Slides {
+		if slide.ID == "" || seen[slide.ID] {
+			t.Fatalf("manifest logical slide IDs must be nonempty and unique: %+v", manifest.Slides)
+		}
+		seen[slide.ID] = true
 	}
 }
 

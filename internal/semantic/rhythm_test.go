@@ -52,6 +52,20 @@ func TestRhythmMonotonyAllowsTwoInARow(t *testing.T) {
 	}
 }
 
+func TestRhythmMonotonyAllowsStructuredOpening(t *testing.T) {
+	cover := SlideSpec{Kind: KindTitle, Body: map[string]any{"title": "Deck"}}
+	spec := &DeckSpec{
+		Meta: DeckMeta{Title: "Deck"},
+		Structure: &DeckStructure{Cover: &cover, AutoAgenda: true, Sections: []DeckSection{
+			{Title: "One", Slides: []SlideSpec{kpiSlide(3)}},
+			{Title: "Two", Slides: []SlideSpec{kpiSlide(3)}},
+		}},
+	}
+	if ws := Normalize(spec).RhythmWarnings(); rhythmCodes(ws)[string(diagnostics.CodeSemanticRhythmMonotony)] {
+		t.Errorf("cover, agenda, and first divider are intentional structure, got %+v", ws)
+	}
+}
+
 func TestRhythmSectioningFlagsLongUnbrokenDeck(t *testing.T) {
 	slides := make([]SlideSpec, 0, 9)
 	for i := 0; i < 9; i++ {
@@ -156,6 +170,83 @@ func TestRhythmDiagnosticsStrictness(t *testing.T) {
 func TestRhythmWarningsEmptyDeck(t *testing.T) {
 	if ws := Normalize(nil).RhythmWarnings(); len(ws) != 0 {
 		t.Errorf("empty deck should have no rhythm warnings, got %+v", ws)
+	}
+}
+
+func TestMarketAnalysisWarnsWithoutEvidenceVisual(t *testing.T) {
+	spec := &DeckSpec{
+		Meta: DeckMeta{Title: "Market", Archetype: ArchetypeMarketAnalysis},
+		Slides: []SlideSpec{
+			{Kind: KindTitle, Body: map[string]any{"title": "Market"}},
+			{Kind: KindSection, Body: map[string]any{"title": "Context"}},
+			{Kind: KindExecutiveSummary, Body: map[string]any{"title": "Summary", "points": []any{"a", "b", "c"}}},
+			{Kind: KindComparison, Body: map[string]any{"title": "Choices", "columns": []any{map[string]any{"title": "A"}, map[string]any{"title": "B"}}}},
+			{Kind: KindExecutiveSummary, Body: map[string]any{"title": "Signals", "points": []any{"a", "b", "c"}}},
+			{Kind: KindComparison, Body: map[string]any{"title": "Response", "columns": []any{map[string]any{"title": "A"}, map[string]any{"title": "B"}}}},
+			{Kind: KindClosing, Body: map[string]any{"title": "Close"}},
+		},
+	}
+	ir := Normalize(spec)
+	codes := rhythmCodes(ir.RhythmWarnings())
+	if !codes[string(diagnostics.CodeSemanticEvidenceVisualMissing)] {
+		t.Fatalf("expected evidence warning, got %+v", ir.RhythmWarnings())
+	}
+	if !codes[string(diagnostics.CodeSemanticVisualFamilyNarrow)] {
+		t.Fatalf("expected family-breadth warning, got %+v", ir.RhythmWarnings())
+	}
+	if ir.Rhythm.DistinctFamilyCount != 2 || ir.Rhythm.EvidenceFamilyCount != 0 {
+		t.Errorf("rhythm counts = %+v, want distinct=2 evidence=0", ir.Rhythm)
+	}
+}
+
+func TestMarketAnalysisEvidenceAndBreadthClearWarnings(t *testing.T) {
+	spec := &DeckSpec{
+		Meta: DeckMeta{Title: "Market", Archetype: ArchetypeMarketAnalysis},
+		Slides: []SlideSpec{
+			{Kind: KindTitle, Body: map[string]any{"title": "Market"}},
+			{Kind: KindExecutiveSummary, Body: map[string]any{"title": "Summary", "points": []any{"a", "b", "c"}}},
+			{Kind: KindComparison, Body: map[string]any{"title": "Choices", "columns": []any{map[string]any{"title": "A"}, map[string]any{"title": "B"}}}},
+			kpiSlide(3),
+			{Kind: KindProcess, Body: map[string]any{"title": "Method", "steps": []any{"a", "b", "c"}}},
+			{Kind: KindTimeline, Body: map[string]any{"title": "History", "milestones": []any{"a", "b", "c"}}},
+			{Kind: KindClosing, Body: map[string]any{"title": "Close"}},
+		},
+	}
+	ir := Normalize(spec)
+	codes := rhythmCodes(ir.RhythmWarnings())
+	if codes[string(diagnostics.CodeSemanticEvidenceVisualMissing)] || codes[string(diagnostics.CodeSemanticVisualFamilyNarrow)] {
+		t.Fatalf("varied evidence deck should pass breadth checks, got %+v", ir.RhythmWarnings())
+	}
+	if ir.Rhythm.DistinctFamilyCount < 3 || ir.Rhythm.EvidenceFamilyCount != 1 {
+		t.Errorf("rhythm counts = %+v", ir.Rhythm)
+	}
+	explained := ir.Explain()
+	if explained.Rhythm.DistinctFamilyCount != ir.Rhythm.DistinctFamilyCount || explained.Rhythm.EvidenceFamilyCount != 1 {
+		t.Errorf("explain dropped family counts: %+v", explained.Rhythm)
+	}
+}
+
+func TestEvidenceWarningsAvoidShortAndNonEvidenceDecks(t *testing.T) {
+	short := Normalize(&DeckSpec{Meta: DeckMeta{Title: "Status"}, Slides: []SlideSpec{
+		{Kind: KindTitle, Body: map[string]any{"title": "Status"}},
+		{Kind: KindExecutiveSummary, Body: map[string]any{"title": "Update", "points": []any{"a", "b", "c"}}},
+		{Kind: KindClosing, Body: map[string]any{"title": "Close"}},
+	}})
+	if codes := rhythmCodes(short.RhythmWarnings()); codes[string(diagnostics.CodeSemanticEvidenceVisualMissing)] || codes[string(diagnostics.CodeSemanticVisualFamilyNarrow)] {
+		t.Fatalf("short status note false-positive: %+v", short.RhythmWarnings())
+	}
+
+	strategy := Normalize(&DeckSpec{Meta: DeckMeta{Title: "Strategy", Archetype: ArchetypeStrategyProposal}, Slides: []SlideSpec{
+		{Kind: KindTitle, Body: map[string]any{"title": "Strategy"}},
+		{Kind: KindExecutiveSummary, Body: map[string]any{"title": "Case", "points": []any{"a", "b", "c"}}},
+		{Kind: KindComparison, Body: map[string]any{"title": "Options", "columns": []any{map[string]any{"title": "A"}, map[string]any{"title": "B"}}}},
+		{Kind: KindProcess, Body: map[string]any{"title": "Operating model", "steps": []any{"a", "b", "c"}}},
+		{Kind: KindRoadmap, Body: map[string]any{"title": "Plan", "phases": []any{"a", "b", "c"}}},
+		{Kind: KindDecision, Body: map[string]any{"title": "Decision", "recommendation": "Proceed"}},
+		{Kind: KindClosing, Body: map[string]any{"title": "Close"}},
+	}})
+	if codes := rhythmCodes(strategy.RhythmWarnings()); codes[string(diagnostics.CodeSemanticEvidenceVisualMissing)] || codes[string(diagnostics.CodeSemanticVisualFamilyNarrow)] {
+		t.Fatalf("varied strategy proposal false-positive: %+v", strategy.RhythmWarnings())
 	}
 }
 

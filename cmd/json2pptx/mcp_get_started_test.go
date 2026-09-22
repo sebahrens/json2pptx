@@ -718,10 +718,8 @@ func TestGetStartedNotesDoNotMisreportTheProfile(t *testing.T) {
 }
 
 // go-slide-creator-c66z: get_started(brief)'s notes advertised top-level
-// `chrome` and `structure` while its fast_path is the DeckSpec path, which
-// rejected both — a direct contradiction inside one response, and an agent that
-// followed the note got a blocked render. The note must now name the field that
-// works on the path it is describing.
+// `chrome` and `structure` while its fast_path is the DeckSpec path. Both now
+// have explicit semantic forms, so the note must name those forms accurately.
 func TestGetStartedChromeNoteMatchesTheRecommendedPath(t *testing.T) {
 	withToolProfile(t, toolProfileAll)
 	resp := buildGetStartedResponse("brief", testRenderReady())
@@ -739,8 +737,10 @@ func TestGetStartedChromeNoteMatchesTheRecommendedPath(t *testing.T) {
 	if !strings.Contains(note, "meta.chrome") {
 		t.Error("the note must name meta.chrome — the spelling the DeckSpec fast path accepts")
 	}
-	if !strings.Contains(note, "structure") || !strings.Contains(note, "no DeckSpec equivalent") {
-		t.Error("the note must say that structure is raw-path only, and how to get to it")
+	for _, want := range []string{"structure", "auto_agenda", "sections", "sequential dividers"} {
+		if !strings.Contains(note, want) {
+			t.Errorf("the note must describe DeckSpec structured sections; missing %q in %q", want, note)
+		}
 	}
 
 	// And the claim must be true: meta.chrome compiles.

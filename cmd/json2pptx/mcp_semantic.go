@@ -169,11 +169,11 @@ func deckSpecFullSchemaArg(desc string) mcp.ToolOption {
 
 // deckSpecSchemaNote is the tail of the description on the tool that carries the
 // full schema.
-const deckSpecSchemaNote = " Schema: the DeckSpec JSON Schema (same as `json2pptx semantic schema`); each slides[] entry matches exactly one per-kind variant selected by `kind`. Unknown payload fields are schema-invalid and reported as SEMANTIC_UNKNOWN_FIELD. Field prose is omitted here; call list_slide_kinds for per-kind item_schema and a copy-ready example."
+const deckSpecSchemaNote = " Schema: full closed DeckSpec contract. Call list_slide_kinds for field prose and examples. Unknown payload fields report SEMANTIC_UNKNOWN_FIELD."
 
 // deckSpecOutlineNote is the tail everywhere else: the shape is declared, the
 // per-kind contract is one call away, and the contract still binds.
-const deckSpecOutlineNote = " Schema: the DeckSpec outline (meta + slides[].kind from the registered enum). The per-kind payload contract is NOT repeated here — call list_slide_kinds for each kind's item_schema and a copy-ready example, or validate_deck_spec, whose `spec` carries the full closed schema. The contract binds either way: an unknown payload field is reported as SEMANTIC_UNKNOWN_FIELD."
+const deckSpecOutlineNote = " Schema: DeckSpec outline. Call list_slide_kinds for per-kind item_schema and examples, then validate_deck_spec for closed-schema checks. Unknown payload fields still report SEMANTIC_UNKNOWN_FIELD."
 
 // withDeckSpecOutline merges the DeckSpec outline into the property schema.
 func withDeckSpecOutline() mcp.PropertyOption {
@@ -188,11 +188,11 @@ func withDeckSpecOutline() mcp.PropertyOption {
 	}
 }
 
-// withDeckSpecSchema merges the inlined DeckSpec schema into the property
-// schema, keeping the property's own type/description.
+// withDeckSpecSchema merges the compact, reference-preserving DeckSpec schema
+// into the property, keeping the property's own type/description.
 func withDeckSpecSchema() mcp.PropertyOption {
 	return func(schema map[string]any) {
-		for k, v := range semantic.CompactInlineSchema() {
+		for k, v := range semantic.CompactSchemaAt("#/properties/spec") {
 			switch k {
 			case "type", "description", "title":
 				continue
@@ -206,7 +206,7 @@ func withDeckSpecSchema() mcp.PropertyOption {
 
 func mcpValidateDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("validate_deck_spec",
-		mcp.WithDescription(`Validate a compact semantic deck spec (DeckSpec) and return the shared finding envelope {schema_version, tool, subcommand, ok, summary, findings[]}. The recommended first check when authoring a NEW deck with the semantic surface: it catches unknown slide kinds/archetypes, missing required payload fields, and advisory rhythm/density issues before you compile or render. ok=false means at least one error-severity finding; warnings/info leave ok=true. Mirrors the `+"`json2pptx semantic validate`"+` CLI. The raw-model equivalent is validate_input over a compiled PresentationInput.`),
+		mcp.WithDescription(`Validate a semantic DeckSpec before compile or render. Returns the shared finding envelope and catches unknown kinds, missing payload fields, and rhythm or density issues. ok=false means an error finding; warnings and info keep ok=true. Mirrors `+"`json2pptx semantic validate`"+`.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidateDeckSpec)),
 		deckSpecFullSchemaArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		deckHandleToolParams()[0],
@@ -514,7 +514,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		outputFilename = deckSpecOutputFilename(spec.Meta.Title, data)
 	}
 	mc.logRenderEvent(ctx, mcp.LoggingLevelInfo, "deck render started", map[string]any{
-		"tool": "render_deck_spec", "slide_count": len(spec.Slides), "template": spec.Meta.Template,
+		"tool": "render_deck_spec", "slide_count": semantic.ExpandedSlideCount(spec), "template": spec.Meta.Template,
 	})
 
 	// The explanation is a pure projection of the plan and works even when the
@@ -597,7 +597,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	res.DeckID = mc.rememberDeck(deckID, data, filename, res.Template)
 	res.ChangedSlides = changed
 	mc.logRenderEvent(ctx, mcp.LoggingLevelInfo, "deck render finished", map[string]any{
-		"tool": "render_deck_spec", "slide_count": len(spec.Slides), "pptx_path": res.PptxPath,
+		"tool": "render_deck_spec", "slide_count": len(input.Slides), "pptx_path": res.PptxPath,
 		"duration_ms": time.Since(startTime).Milliseconds(),
 	})
 	result, err := semanticSuccessOrInternal(ctx, "render_deck_spec", res)
@@ -630,8 +630,26 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 		return api.MCPDiagnosticsError(parseDiags.ToDiagnostics()), nil
 	}
 
+	explanation := semantic.ExplainSpec(spec)
+	if explanation.Template == "" {
+		resp := explainDeckSpecResponse{
+			DeckExplanation: explanation,
+			DeckID:          mc.rememberDeck(deckID, data, filename, ""),
+			ChangedSlides:   changed,
+		}
+		return api.MCPSuccessResult(ctx, resp)
+	}
+	var cache types.TemplateCache
+	if mc.cache != nil {
+		cache = mc.cache
+	}
+	if layouts, templateDiagnostic := semanticTemplateLayouts(explanation.Template, mc.templatesDir, cache); templateDiagnostic == nil {
+		reconcileExplanationTemplateCoverage(&explanation, layouts)
+	} else {
+		return api.MCPDiagnosticsError([]diagnostics.Diagnostic{*templateDiagnostic}), nil
+	}
 	resp := explainDeckSpecResponse{
-		DeckExplanation: semantic.ExplainSpec(spec),
+		DeckExplanation: explanation,
 		DeckID:          mc.rememberDeck(deckID, data, filename, ""),
 		ChangedSlides:   changed,
 	}
@@ -802,9 +820,14 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 	designViolations := compiledDesignModeDiagnostics(input)
 
 	var layouts []types.LayoutMetadata
+	var templateCoverage []diagnostics.Diagnostic
+	var templateDiagnostics []diagnostics.Diagnostic
 	var slideWidth, slideHeight int64
 	var theme *types.ThemeInfo
-	if templatePath, cleanup, terr := resolveTemplatePath(input.Template, mc.templatesDir); terr == nil {
+	if input.Template == "" {
+		// The semantic spec may deliberately leave template selection to the
+		// later render call. There is nothing to resolve during validation.
+	} else if templatePath, cleanup, terr := resolveTemplatePath(input.Template, mc.templatesDir); terr == nil {
 		defer cleanup()
 		cache := mc.cache
 		if cache == nil {
@@ -815,16 +838,29 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 			slideWidth, slideHeight = analysis.SlideWidth, analysis.SlideHeight
 			theme = &analysis.Theme
 			resolveCanonicalLayoutIDs(input.Slides, layouts)
+			templateCoverage = requiredLayoutTemplateDiagnostics(spec.Meta.RequiredLayouts, input.Template, layouts)
+		} else {
+			templateDiagnostics = append(templateDiagnostics, *semanticTemplateDiagnostic(input.Template, diagnostics.CodeTemplateError, aerr))
 		}
+	} else {
+		templateDiagnostics = append(templateDiagnostics, *semanticTemplateDiagnostic(input.Template, diagnostics.CodeTemplateNotFound, terr))
 	}
 
 	var sm *semantic.SourceMap
 	if compileResult != nil {
 		sm = compileResult.SourceMap
 	}
+	if len(templateDiagnostics) > 0 {
+		out := make([]diagnostics.Diagnostic, 0, len(designViolations)+len(templateDiagnostics))
+		out = append(out, designViolations...)
+		out = append(out, templateDiagnostics...)
+		return out
+	}
 	findings := collectFitFindings(input, layouts, slideWidth, slideHeight, theme)
-	out := make([]diagnostics.Diagnostic, 0, len(findings)+len(designViolations))
+	out := make([]diagnostics.Diagnostic, 0, len(findings)+len(designViolations)+len(templateCoverage)+len(templateDiagnostics))
 	out = append(out, designViolations...)
+	out = append(out, templateDiagnostics...)
+	out = append(out, templateCoverage...)
 	for _, f := range findings {
 		d := diagnostics.FromFitFinding(f)
 		// Geometry-airiness advisories belong to the render/score path: a

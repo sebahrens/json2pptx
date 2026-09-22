@@ -163,7 +163,8 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// 9b. Content substance: exemplar copy, titleless slides, near-empty slides
 	// and deck monotony — the defect classes the score could not see
 	// (go-slide-creator-q7ar).
-	findings = append(findings, collectSubstanceFindings(input)...)
+	findings = append(findings, collectSubstanceFindings(input, layouts...)...)
+	findings = append(findings, collectSectionNumberSequenceFindings(input, layouts)...)
 
 	// 10. Deck-level duplicate-title lint: flags content slides that share a
 	// title (case-insensitive, whitespace-normalized) so authors don't ship

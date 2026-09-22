@@ -26,7 +26,57 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ## Unreleased
 
+### Added
+
+- **Narrative-first layout coverage and structured semantic sections
+  (`go-slide-creator-5udoz`, `go-slide-creator-ieshl`).** DeckSpec accepts
+  mutually exclusive flat `slides[]` or chapter-oriented `structure` with an
+  optional cover, automatic agenda, ordered non-empty sections, and closing.
+  Expansion produces sequential dividers, section crumbs, and semantic source
+  paths. `meta.required_layouts` requests canonical native layouts as a planning
+  constraint; explain reports requested, assigned, and missing coverage, and
+  missing compatible coverage blocks publication.
+
+- **Semantic evidence and visual-family diagnostics
+  (`go-slide-creator-se9bw`).** Market-analysis decks of substantive length now
+  warn when they contain no data-bearing evidence family, and longer decks warn
+  when their non-structural visual vocabulary is materially narrow. Explain
+  reports distinct and evidence-family counts.
+
 ### Fixed
+
+- **Semantic authoring contract hardening (`go-slide-creator-0vhs8`,
+  `go-slide-creator-mim6r`, `go-slide-creator-oechj`,
+  `go-slide-creator-sftti`, `go-slide-creator-kkgo7`,
+  `go-slide-creator-baavc`, `go-slide-creator-vp36k`,
+  `go-slide-creator-ld7lx`, `go-slide-creator-qstjs`).** Required-layout
+  planning now finds a complete one-to-one assignment instead of relying on
+  request-order first-fit. Structured parsing preserves the `slides` field's
+  presence, rejects malformed nested containers, and diagnoses unknown section
+  keys at their exact paths. Structured render manifests and MCP telemetry use
+  the expanded slide count. Headline validation follows the layout that will
+  actually render it, section-number comparison cannot overflow, and semantic
+  validate/explain refuse unresolved templates. The full validate_deck_spec
+  schema keeps closed structured payloads within the tools/list budget and
+  publishes the canonical `required_layouts` enum. All DeckSpec schema variants
+  now require at least one flat slide (`go-slide-creator-296v5`), matching the
+  runtime gate.
+
+- **Divider layout preservation and safe section-title fitting
+  (`go-slide-creator-68by5`, `go-slide-creator-91yf7`).** Semantic title,
+  section, and simple closing compilers preserve compatible planned native
+  layouts. Section-title sizing now applies prominence before its final fit
+  cap, keeping moderate one-line titles from shifting or clipping the adjacent
+  section-number placeholder in rendered PowerPoint files.
+
+- **Visible blank-canvas headlines and sequential section labels
+  (`go-slide-creator-1hyr5`, `go-slide-creator-b1nye`).** Raw slides accept an
+  optional `headline`, rendered in a reserved theme-aware band on
+  `blank-canvas`; content-bearing canvases without one emit `MISSING_TITLE`.
+  Numeric authored section labels that contradict automatic divider order emit
+  blocking `SECTION_NUMBER_SEQUENCE_MISMATCH`, while matching padded values and
+  non-numeric custom labels remain supported. Schema version advances to
+  4.116.0.
 
 - **PowerPoint-visible Porter connectors (go-slide-creator-7ec2s).** Native
   Five Forces arrows now store their resolved bounds and flip flags alongside

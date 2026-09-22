@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 )
 
@@ -308,17 +309,34 @@ func Validate(spec *DeckSpec, strict Strictness) []diagnostics.Diagnostic {
 		return s.out
 	}
 	validateMeta(spec, s)
-	// The slides array is required and must hold at least one slide. The lenient
+	if spec.Structure != nil && (len(spec.Slides) > 0 || spec.slidesPresent) {
+		s.hard("structure", "STRUCTURE_AND_SLIDES", "structure and slides are mutually exclusive — use one or the other")
+	}
+	if spec.Structure != nil {
+		if len(spec.Structure.Sections) == 0 {
+			s.hard("structure.sections", diagnostics.CodeSemanticRequired, "structured deck must contain at least one section")
+		}
+		for i, section := range spec.Structure.Sections {
+			path := fmt.Sprintf("structure.sections[%d]", i)
+			if strings.TrimSpace(section.Title) == "" {
+				s.hard(path+".title", diagnostics.CodeSemanticRequired, "section title is required")
+			}
+			if len(section.Slides) == 0 {
+				s.hard(path+".slides", diagnostics.CodeSemanticRequired, "section must contain at least one semantic slide")
+			}
+		}
+	}
+	// The slides array or structured form is required and must produce at least one slide. The lenient
 	// decoder turns an absent or empty slides field into a zero-length slice, so
 	// both the missing-array case and an explicit empty array land here. Blocking
 	// early keeps a zero-slide deck from compiling to a null/empty deck behind a
 	// green validate gate.
-	if len(spec.Slides) == 0 {
+	if len(spec.Slides) == 0 && spec.Structure == nil {
 		s.hard("slides", diagnostics.CodeSemanticRequired,
 			"deck must contain at least one slide; the required \"slides\" array is missing or empty")
 	}
-	for i := range spec.Slides {
-		validateSlide(i, spec.Slides[i], s)
+	for _, source := range expandedSlides(spec) {
+		validateSlideAt(source.SourcePath, source.Slide, s)
 	}
 	return s.out
 }
@@ -382,13 +400,24 @@ func validateMeta(spec *DeckSpec, s *semDiags) {
 		s.hard("meta.archetype", diagnostics.CodeSemanticUnknownArchetype,
 			fmt.Sprintf("unknown archetype %q; expected one of %s", spec.Meta.Archetype, joinArchetypes()))
 	}
+	seenLayouts := map[string]bool{}
+	for i, requested := range spec.Meta.RequiredLayouts {
+		normalized := strings.ToLower(strings.TrimSpace(requested))
+		path := fmt.Sprintf("meta.required_layouts[%d]", i)
+		if !layout.IsCanonicalName(normalized) {
+			s.hard(path, diagnostics.CodeSemanticRequiredLayoutUnknown,
+				fmt.Sprintf("unknown canonical layout %q; expected one of %s", requested, strings.Join(layout.CanonicalNames(), ", ")))
+			continue
+		}
+		if seenLayouts[normalized] {
+			s.hard(path, diagnostics.CodeSemanticRequiredLayoutDuplicate,
+				fmt.Sprintf("canonical layout %q is listed more than once", normalized))
+		}
+		seenLayouts[normalized] = true
+	}
 }
 
-// validateSlide enforces per-slide rules: a known kind, the kind's required
-// payload fields, kind-specific density/richness rules, a takeaway for content
-// slides, and placeholder-content detection across the payload.
-func validateSlide(i int, slide SlideSpec, s *semDiags) {
-	path := fmt.Sprintf("slides[%d]", i)
+func validateSlideAt(path string, slide SlideSpec, s *semDiags) {
 
 	// Kind discriminator must be present and registered before the payload can
 	// be interpreted.

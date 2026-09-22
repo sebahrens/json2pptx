@@ -93,6 +93,16 @@ var fixKindRegistry = map[string]FixKindInfo{
 		Guidance:     "A raw shape_grid is doing work a named pattern does better. Call recommend_visual with the slide's intent and item_count, then author the winning pattern.",
 		Alternatives: []string{"swap_pattern"},
 	},
+	"choose_template": {
+		Kind:     "choose_template",
+		Class:    FixClassAdvisory,
+		Guidance: "The requested template cannot be resolved or parsed. Call list_templates, choose a listed template, and replace meta.template before compiling or rendering.",
+	},
+	"choose_template_or_remove_requirement": {
+		Kind:     "choose_template_or_remove_requirement",
+		Class:    FixClassAdvisory,
+		Guidance: "The selected template does not provide a required native layout. Choose a template that provides it, or remove that layout from meta.required_layouts if it is not essential to the brief.",
+	},
 	"consolidate_accents": {
 		Kind:         "consolidate_accents",
 		Class:        FixClassAdvisory,

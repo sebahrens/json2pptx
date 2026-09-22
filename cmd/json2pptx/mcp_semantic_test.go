@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -74,6 +75,43 @@ func TestSemanticMCP_ValidateDeckSpec(t *testing.T) {
 	}
 	if len(env2.Findings) == 0 {
 		t.Error("invalid spec should surface findings")
+	}
+}
+
+func TestSemanticMCP_ValidateAndExplainRejectUnknownTemplate(t *testing.T) {
+	ctx := context.Background()
+	mc := semanticTestConfig(t)
+	spec := `meta:
+  title: Missing template
+  template: definitely-not-a-template
+slides:
+  - kind: title
+    title: Missing template
+`
+	validated, err := mc.handleValidateDeckSpec(ctx, makeRequest(map[string]any{"spec": spec}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var env diagnostics.FindingEnvelope
+	structuredInto(t, validated.StructuredContent, &env)
+	if env.OK {
+		t.Fatalf("validate_deck_spec accepted an unknown template: %+v", env)
+	}
+	found := false
+	for _, finding := range env.Findings {
+		if strings.HasSuffix(finding.Code, string(diagnostics.CodeTemplateNotFound)) && finding.Evidence["path"] == "meta.template" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing TEMPLATE_NOT_FOUND at meta.template: %+v", env.Findings)
+	}
+	explained, err := mc.handleExplainDeckSpec(ctx, makeRequest(map[string]any{"spec": spec}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !explained.IsError {
+		t.Fatal("explain_deck_spec accepted an unknown template")
 	}
 }
 
