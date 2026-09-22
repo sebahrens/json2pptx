@@ -28,6 +28,18 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-22 — CLI pattern content-fit validation (`go-slide-creator-or54d`).**
+  `patterns validate` now runs the same expansion, post-expansion warnings,
+  density, and cell-budget checks as MCP `validate_pattern`. `--template` and
+  `--templates-dir` select template-aware bounds. `--json` now returns the
+  standard findings envelope instead of `{ok,pattern,errors}`; blocking fit
+  findings produce a non-zero exit and include actionable paths.
+
+- **2026-09-22 — CLI pattern name authority (`go-slide-creator-jbav8`).**
+  For `patterns validate` and `patterns expand`, the positional pattern name
+  now wins when a full input file also contains `name`; both commands operate
+  on the same explicitly selected pattern.
+
 - **2026-09-22 — `validate_pattern` content-fit diagnostics (`go-slide-creator-dclyc`).**
   The MCP tool now accepts `theme_template`, `bounds`, and `max_height_pct`
   like `expand_pattern`, expands against the same context, and returns the

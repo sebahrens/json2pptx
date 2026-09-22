@@ -58,16 +58,7 @@ func (mc *mcpConfig) handleValidatePattern(ctx context.Context, request mcp.Call
 		return api.MCPSimpleError("TEMPLATE_NOT_FOUND", fmt.Sprintf("template %q: %v", templateName, err)), nil
 	}
 
-	result, expandErr := buildPatternExpansionResult(pi, expandCtx, boundsSource, reg)
-	var ds []diagnostics.Diagnostic
-	if expandErr != nil {
-		ds = patternInputDiagnostics(expandErr, "", "")
-		if len(ds) == 0 {
-			ds = diagnostics.FromJoinedError(expandErr, diagnostics.CodeValidationFailed)
-		}
-	} else {
-		ds = patternExpansionDiagnostics(name, result)
-	}
+	ds := patternValidationDiagnostics(pi, expandCtx, boundsSource, reg)
 	inputJSON, _ := json.Marshal(request.GetArguments())
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "validate_pattern",
@@ -79,6 +70,20 @@ func (mc *mcpConfig) handleValidatePattern(ctx context.Context, request mcp.Call
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+func patternValidationDiagnostics(pi *PatternInput, expandCtx patterns.ExpandContext, boundsSource string, reg *patterns.Registry) []diagnostics.Diagnostic {
+	result, expandErr := buildPatternExpansionResult(pi, expandCtx, boundsSource, reg)
+	var ds []diagnostics.Diagnostic
+	if expandErr != nil {
+		ds = patternInputDiagnostics(expandErr, "", "")
+		if len(ds) == 0 {
+			ds = diagnostics.FromJoinedError(expandErr, diagnostics.CodeValidationFailed)
+		}
+	} else {
+		ds = patternExpansionDiagnostics(pi.Name, result)
+	}
+	return ds
 }
 
 func validationPatternInput(request mcp.CallToolRequest, name, valuesStr string) (*PatternInput, *mcp.CallToolResult) {

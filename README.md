@@ -440,7 +440,7 @@ collapse a whole chain into one call:
 | `plan_deck` | Turn a brief into an ordered slide outline with rhythm rules (template-aware) | `plan-deck` |
 | `recommend_visual` | Unified router across placeholder layouts, patterns, charts, diagrams, raw grids | `recommend-visual` |
 | `recommend_pattern` | Rank named patterns for a slide intent (legacy subset of `recommend_visual`) | `recommend-pattern` |
-| `validate_pattern` | Validate pattern values without expanding | `patterns validate` |
+| `validate_pattern` | Check pattern values and content fit without returning the expanded grid | `patterns validate` |
 | `expand_pattern` | Expand a pattern into a full `shape_grid` | `patterns expand` |
 | `expand_patterns` | Batch-expand N patterns under one template load | MCP-only |
 

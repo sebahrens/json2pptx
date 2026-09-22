@@ -2,13 +2,12 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -227,11 +226,13 @@ func runPatternsShow() error {
 
 func runPatternsValidate() error {
 	fs := flag.NewFlagSet("patterns validate", flag.ContinueOnError)
-	jsonOut := fs.Bool("json", false, "Output as JSON (D10 structured errors)")
+	jsonOut := fs.Bool("json", false, "Output a standard findings envelope as JSON")
+	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
+	templateName := fs.String("template", "", "Template name for template-aware fit checks")
 
 	fs.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: json2pptx patterns validate [--json] <name> <values.json>\n\n")
-		fmt.Fprintf(os.Stderr, "Validate pattern values without generating a deck.\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: json2pptx patterns validate [--json] [--templates-dir DIR] [--template NAME] <name> <values.json>\n\n")
+		fmt.Fprintf(os.Stderr, "Validate pattern values and content fit without generating a deck.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -249,81 +250,81 @@ func runPatternsValidate() error {
 	valuesFile := args[1]
 
 	reg := patterns.Default()
-	pat, ok := reg.Get(name)
-	if !ok {
+	if _, ok := reg.Get(name); !ok {
+		if *jsonOut {
+			return emitPatternCLIValidation(name, nil, *templateName, true,
+				patternInputDiagnostics(unknownPatternInputError(reg, name), "", ""))
+		}
 		return unknownPatternError(name, reg)
 	}
 
 	// Read and parse values file — expects a PatternInput-shaped JSON
 	content, err := os.ReadFile(valuesFile)
 	if err != nil {
+		if *jsonOut {
+			code := diagnostics.CodeInvalidParameter
+			if os.IsNotExist(err) {
+				code = diagnostics.CodeFileNotFound
+			}
+			return emitPatternCLIValidation(name, nil, *templateName, true, []diagnostics.Diagnostic{{
+				Code: code, Message: err.Error(), Path: "/input_file", Severity: diagnostics.SeverityError,
+			}})
+		}
 		return fmt.Errorf("failed to read %s: %w", valuesFile, err)
 	}
 
 	pi, err := parsePatternInputFile(content, name)
 	if err != nil {
+		if *jsonOut {
+			return emitPatternCLIValidation(name, content, *templateName, true, []diagnostics.Diagnostic{{
+				Code: diagnostics.CodeInvalidParameter, Message: err.Error(), Path: "/values", Severity: diagnostics.SeverityError,
+			}})
+		}
 		return err
 	}
 
-	// Unmarshal values
-	values := pat.NewValues()
-	if err := json.Unmarshal(pi.Values, values); err != nil {
-		return emitValidationResult(name, *jsonOut, fmt.Errorf("invalid values: %w", err))
-	}
-
-	// Unmarshal overrides
-	var overrides any
-	if len(pi.Overrides) > 0 {
-		overrides = pat.NewOverrides()
-		if overrides != nil {
-			if err := json.Unmarshal(pi.Overrides, overrides); err != nil {
-				return emitValidationResult(name, *jsonOut, fmt.Errorf("invalid overrides: %w", err))
-			}
-		}
-	}
-
-	// Unmarshal cell_overrides
-	cellOverrides, err := unmarshalCellOverrides(pat, pi.CellOverrides)
+	expandCtx, boundsSource, err := resolveExpandContext(*templateName, *templatesDir)
 	if err != nil {
-		return emitValidationResult(name, *jsonOut, err)
-	}
-
-	// Keys the pattern's own decoder drops never reach the slide, so a deck
-	// that misspells an override ("bodySize" for "body_size") renders with
-	// template defaults and used to be told it was valid
-	// (go-slide-creator-4cqh). The same inspector the deck path runs is the
-	// authority here.
-	if dropped := patterns.InspectPatternInput(pat, pi.Values, pi.Overrides, pi.CellOverrides); len(dropped) > 0 {
-		errs := make([]error, len(dropped))
-		for i, e := range dropped {
-			errs[i] = e
+		if *jsonOut {
+			return emitPatternCLIValidation(name, content, *templateName, true, []diagnostics.Diagnostic{{
+				Code: diagnostics.CodeTemplateNotFound, Message: err.Error(), Path: "/template", Severity: diagnostics.SeverityError,
+			}})
 		}
-		return emitValidationResult(name, *jsonOut, errors.Join(errs...))
+		return err
 	}
+	ds := patternValidationDiagnostics(pi, expandCtx, boundsSource, reg)
+	return emitPatternCLIValidation(name, content, *templateName, *jsonOut, ds)
+}
 
-	// Validate
-	if err := pat.Validate(values, overrides, cellOverrides); err != nil {
-		return emitValidationResult(name, *jsonOut, err)
+func emitPatternCLIValidation(name string, content []byte, templateName string, jsonOut bool, ds []diagnostics.Diagnostic) error {
+	inputHash := ""
+	if len(content) > 0 {
+		inputHash = diagnostics.ComputeInputSHA256(content)
 	}
-
-	// Callout support check — parity with expandPattern (0kyd)
-	if pi.Callout != nil {
-		cs, ok := pat.(patterns.CalloutSupport)
-		if !ok || !cs.SupportsCallout() {
-			return emitValidationResult(name, *jsonOut, patterns.ErrCalloutUnsupportedFor(name, reg.CalloutSupportedPatterns()))
+	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
+		Subcommand:  "patterns validate",
+		Template:    templateName,
+		InputSHA256: inputHash,
+	}, ds)
+	if jsonOut {
+		data, err := json.MarshalIndent(envelope, "", "  ")
+		if err != nil {
+			return fmt.Errorf("marshal pattern findings: %w", err)
 		}
-	}
-
-	// Success
-	if *jsonOut {
-		result := struct {
-			OK      bool   `json:"ok"`
-			Pattern string `json:"pattern"`
-		}{OK: true, Pattern: name}
-		data, _ := json.MarshalIndent(result, "", "  ")
 		fmt.Println(string(data))
-	} else {
+	} else if envelope.OK {
 		fmt.Printf("Pattern %q: valid\n", name)
+		for _, d := range ds {
+			fmt.Printf("  %s: %s\n", d.Code, d.Message)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "Pattern %q: validation failed\n", name)
+		for _, d := range ds {
+			fmt.Fprintf(os.Stderr, "  %s: %s\n", d.Code, d.Message)
+		}
+	}
+	if !envelope.OK {
+		return fmt.Errorf("validation failed")
 	}
 	return nil
 }
@@ -514,9 +515,9 @@ func parsePatternInputFile(content []byte, name string) (*PatternInput, error) {
 	// Try full PatternInput first
 	var pi PatternInput
 	if err := json.Unmarshal(content, &pi); err == nil && len(pi.Values) > 0 {
-		if pi.Name == "" {
-			pi.Name = name
-		}
+		// The explicit CLI argument wins over an embedded name so validate and
+		// expand cannot silently operate on different patterns for one command.
+		pi.Name = name
 		return &pi, nil
 	}
 
@@ -526,53 +527,6 @@ func parsePatternInputFile(content []byte, name string) (*PatternInput, error) {
 		Values: json.RawMessage(content),
 	}
 	return &pi, nil
-}
-
-// unmarshalCellOverrides converts raw cell override JSON to typed overrides.
-func unmarshalCellOverrides(pat patterns.Pattern, rawCO map[string]json.RawMessage) (map[int]any, error) {
-	if len(rawCO) == 0 {
-		return nil, nil
-	}
-
-	result := make(map[int]any, len(rawCO))
-	for key, raw := range rawCO {
-		idx, err := strconv.Atoi(key)
-		if err != nil {
-			return nil, fmt.Errorf("cell_overrides key %q is not an integer", key)
-		}
-		co := pat.NewCellOverride()
-		if co == nil {
-			return nil, fmt.Errorf("pattern %q does not support cell_overrides", pat.Name())
-		}
-		if err := json.Unmarshal(raw, co); err != nil {
-			return nil, fmt.Errorf("invalid cell_overrides[%d]: %w", idx, err)
-		}
-		result[idx] = co
-	}
-	return result, nil
-}
-
-// emitValidationResult outputs a validation failure and returns an error to
-// signal non-zero exit. In --json mode it uses D10 structured errors.
-func emitValidationResult(name string, jsonMode bool, validationErr error) error {
-	if jsonMode {
-		errs := splitValidationErrors(validationErr)
-		attachNextToolCallsToValidationErrors(errs, name)
-		result := struct {
-			OK      bool                     `json:"ok"`
-			Pattern string                   `json:"pattern"`
-			Errors  []patternValidationError `json:"errors"`
-		}{
-			OK:      false,
-			Pattern: name,
-			Errors:  errs,
-		}
-		data, _ := json.MarshalIndent(result, "", "  ")
-		fmt.Println(string(data))
-	} else {
-		fmt.Fprintf(os.Stderr, "Pattern %q: validation failed\n  %s\n", name, validationErr)
-	}
-	return fmt.Errorf("validation failed")
 }
 
 // patternCalloutSchemaJSON returns the JSON Schema fragment for PatternCallout.

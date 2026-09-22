@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
@@ -36,6 +38,20 @@ func writeTestFile(t *testing.T, dir, name, content string) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+func decodePatternCLIEnvelope(t *testing.T, output []byte) diagnostics.FindingEnvelope {
+	t.Helper()
+	jsonStart := strings.Index(string(output), "{")
+	jsonEnd := strings.LastIndex(string(output), "}") + 1
+	if jsonStart < 0 || jsonEnd <= jsonStart {
+		t.Fatalf("no JSON findings envelope in output: %s", output)
+	}
+	var envelope diagnostics.FindingEnvelope
+	if err := json.Unmarshal(output[jsonStart:jsonEnd], &envelope); err != nil {
+		t.Fatalf("invalid findings envelope: %v\n%s", err, output)
+	}
+	return envelope
 }
 
 func TestPatternsList(t *testing.T) {
@@ -157,19 +173,23 @@ func TestPatternsValidate(t *testing.T) {
 		}
 	})
 
+	t.Run("positional_name_wins", func(t *testing.T) {
+		conflictingFile := writeTestFile(t, dir, "conflicting_validate.json",
+			`{"name":"nonexistent","values":[{"big":"$4.2M","small":"ARR"},{"big":"127%","small":"NRR"},{"big":"12d","small":"Cycle"}]}`)
+		out, err := runBin(bin, "patterns", "validate", "kpi-3up", conflictingFile)
+		if err != nil || !strings.Contains(string(out), `Pattern "kpi-3up": valid`) {
+			t.Fatalf("positional name was not used: err=%v output=%s", err, out)
+		}
+	})
+
 	t.Run("valid_json", func(t *testing.T) {
 		out, err := runBin(bin, "patterns", "validate", "--json", "kpi-3up", validFile)
 		if err != nil {
 			t.Fatalf("exit error: %v\n%s", err, out)
 		}
-		var result struct {
-			OK bool `json:"ok"`
-		}
-		if err := json.Unmarshal(out, &result); err != nil {
-			t.Fatalf("invalid JSON: %v\n%s", err, out)
-		}
-		if !result.OK {
-			t.Error("expected ok=true")
+		envelope := decodePatternCLIEnvelope(t, out)
+		if !envelope.OK || envelope.Subcommand != "patterns validate" || envelope.SchemaVersion != diagnostics.SchemaVersion || envelope.InputSHA256 != diagnostics.ComputeInputSHA256([]byte(validValues)) {
+			t.Errorf("unexpected valid envelope: %+v", envelope)
 		}
 	})
 
@@ -207,34 +227,21 @@ func TestPatternsValidate(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid_json_d10", func(t *testing.T) {
+	t.Run("invalid_json_findings", func(t *testing.T) {
 		out, err := runBin(bin, "patterns", "validate", "--json", "kpi-3up", invalidFile)
 		if err == nil {
 			t.Fatal("expected non-zero exit for invalid values")
 		}
-		var result struct {
-			OK     bool                     `json:"ok"`
-			Errors []patternValidationError `json:"errors"`
-		}
-		// stdout has the JSON, stderr has the error line — parse combined output
-		// by finding the JSON object
-		jsonStart := strings.Index(string(out), "{")
-		jsonEnd := strings.LastIndex(string(out), "}") + 1
-		if jsonStart < 0 || jsonEnd <= jsonStart {
-			t.Fatalf("no JSON found in output: %s", out)
-		}
-		if err := json.Unmarshal(out[jsonStart:jsonEnd], &result); err != nil {
-			t.Fatalf("invalid JSON: %v\n%s", err, out)
-		}
-		if result.OK {
+		envelope := decodePatternCLIEnvelope(t, out)
+		if envelope.OK {
 			t.Error("expected ok=false")
 		}
-		if len(result.Errors) == 0 {
-			t.Error("expected at least one error")
+		if len(envelope.Findings) == 0 {
+			t.Error("expected at least one finding")
 		}
 	})
 
-	t.Run("multi_error_split_d10", func(t *testing.T) {
+	t.Run("multi_error_split", func(t *testing.T) {
 		// card-grid with columns=0, rows=0 produces two validation errors;
 		// they must appear as separate entries (not collapsed into one).
 		multiErrValues := `{"columns":0,"rows":0,"cells":[]}`
@@ -244,27 +251,76 @@ func TestPatternsValidate(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected non-zero exit for invalid values")
 		}
-		var result struct {
-			OK     bool                     `json:"ok"`
-			Errors []patternValidationError `json:"errors"`
-		}
-		jsonStart := strings.Index(string(out), "{")
-		jsonEnd := strings.LastIndex(string(out), "}") + 1
-		if jsonStart < 0 || jsonEnd <= jsonStart {
-			t.Fatalf("no JSON found in output: %s", out)
-		}
-		if err := json.Unmarshal(out[jsonStart:jsonEnd], &result); err != nil {
-			t.Fatalf("invalid JSON: %v\n%s", err, out)
-		}
-		if result.OK {
+		envelope := decodePatternCLIEnvelope(t, out)
+		if envelope.OK {
 			t.Error("expected ok=false")
 		}
-		if len(result.Errors) < 2 {
-			t.Errorf("expected at least 2 separate errors, got %d", len(result.Errors))
+		if len(envelope.Findings) < 2 {
+			t.Errorf("expected at least 2 separate findings, got %d", len(envelope.Findings))
 		}
-		// Verify field extraction — first error should target "columns"
-		if len(result.Errors) > 0 && result.Errors[0].Field != "columns" {
-			t.Errorf("expected first error field='columns', got %q", result.Errors[0].Field)
+		if len(envelope.Findings) > 0 && envelope.Findings[0].Evidence["path"] != "/values/columns" {
+			t.Errorf("expected first finding path /values/columns, got %v", envelope.Findings[0].Evidence["path"])
+		}
+	})
+
+	t.Run("card_grid_overflow", func(t *testing.T) {
+		cells := make([]map[string]string, 12)
+		for i := range cells {
+			cells[i] = map[string]string{"header": "Card", "body": strings.Repeat("x", 105)}
+		}
+		content, err := json.Marshal(map[string]any{"columns": 4, "rows": 3, "cells": cells})
+		if err != nil {
+			t.Fatal(err)
+		}
+		valuesFile := writeTestFile(t, dir, "card_grid_overflow.json", string(content))
+		out, err := runBin(bin, "patterns", "validate", "--json", "--templates-dir", "../../templates", "--template", "midnight-blue", "card-grid", valuesFile)
+		if err == nil {
+			t.Fatalf("expected non-zero exit for overlong card bodies: %s", out)
+		}
+		envelope := decodePatternCLIEnvelope(t, out)
+		if envelope.OK || envelope.Template != "midnight-blue" {
+			t.Fatalf("unexpected fit verdict: %+v", envelope)
+		}
+		paths := map[string]bool{}
+		for _, finding := range envelope.Findings {
+			if finding.Code == "FIT.BODY_TOO_LONG" {
+				path, _ := finding.Evidence["path"].(string)
+				paths[path] = true
+			}
+		}
+		if len(paths) != 12 {
+			t.Fatalf("want 12 addressable body findings, got %d: %+v", len(paths), paths)
+		}
+		for i := range cells {
+			path := fmt.Sprintf("/values/cells/%d/body", i)
+			if !paths[path] {
+				t.Errorf("missing finding at %s", path)
+			}
+		}
+	})
+
+	t.Run("json_precondition_errors", func(t *testing.T) {
+		tests := []struct {
+			name string
+			args []string
+			code string
+			path string
+		}{
+			{"unknown_pattern", []string{"patterns", "validate", "--json", "nonexistent", validFile}, "INPUT.UNKNOWN_PATTERN", "/name"},
+			{"missing_file", []string{"patterns", "validate", "--json", "kpi-3up", filepath.Join(dir, "absent.json")}, "INPUT.FILE_NOT_FOUND", "/input_file"},
+			{"missing_template", []string{"patterns", "validate", "--json", "--templates-dir", "../../templates", "--template", "definitely-not-a-template", "kpi-3up", validFile}, "TPL.TEMPLATE_NOT_FOUND", "/template"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				out, err := runBin(bin, tt.args...)
+				if err == nil {
+					t.Fatalf("expected non-zero exit: %s", out)
+				}
+				envelope := decodePatternCLIEnvelope(t, out)
+				if envelope.OK || len(envelope.Findings) != 1 || envelope.Findings[0].Code != tt.code || envelope.Findings[0].Evidence["path"] != tt.path {
+					t.Fatalf("unexpected precondition finding: %+v", envelope)
+				}
+			})
 		}
 	})
 }
@@ -275,6 +331,26 @@ func TestPatternsExpand(t *testing.T) {
 
 	values := `[{"big":"$4.2M","small":"ARR"},{"big":"127%","small":"NRR"},{"big":"12d","small":"Cycle"}]`
 	valuesFile := writeTestFile(t, dir, "values.json", values)
+
+	t.Run("positional_name_wins", func(t *testing.T) {
+		conflictingFile := writeTestFile(t, dir, "conflicting_expand.json",
+			`{"name":"nonexistent","values":[{"big":"$4.2M","small":"ARR"},{"big":"127%","small":"NRR"},{"big":"12d","small":"Cycle"}]}`)
+		out, err := runBin(bin, "patterns", "expand", "kpi-3up", conflictingFile)
+		if err != nil {
+			t.Fatalf("expand failed: %v\n%s", err, out)
+		}
+		var result struct {
+			Pattern string `json:"pattern"`
+		}
+		jsonStart := strings.Index(string(out), "{")
+		jsonEnd := strings.LastIndex(string(out), "}") + 1
+		if jsonStart < 0 || jsonEnd <= jsonStart {
+			t.Fatalf("no JSON in expand output: %s", out)
+		}
+		if err := json.Unmarshal(out[jsonStart:jsonEnd], &result); err != nil || result.Pattern != "kpi-3up" {
+			t.Fatalf("expanded pattern = %q, parse error = %v, output = %s", result.Pattern, err, out)
+		}
+	})
 
 	t.Run("expand_output", func(t *testing.T) {
 		out, err := runBin(bin, "patterns", "expand", "kpi-3up", valuesFile)
