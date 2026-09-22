@@ -179,23 +179,27 @@ func (p *processFlowCompact) Validate(values, overrides any, cellOverrides map[i
 	return errors.Join(errs...)
 }
 
-// processFlowCompactHeightPct is the share of the content area the compact
-// band occupies. The notch calculation reads it, so the two cannot drift.
+// processFlowCompactHeightPct is the largest share of the content area the
+// compact band occupies. Pointed steps can reduce it further.
 const processFlowCompactHeightPct = 35.0
 
-// processFlowCompactNotchPt is the depth of a pointed step's point in the
-// compact band.
-func processFlowCompactNotchPt(ctx ExpandContext, steps int) float64 {
+// processFlowCompactCellSize returns the compact step width and band height in
+// points. Pointed presets need a shallow band so their own text rectangle
+// retains useful width after the point and notch.
+func processFlowCompactCellSize(ctx ExpandContext, steps int, pointed bool) (width, height float64) {
 	if steps < 1 {
 		steps = 1
 	}
 	contentW, contentH := contentAreaPt(ctx)
-	cellW := (contentW - processFlowGapPt*float64(steps-1)) / float64(steps)
-	cellH := contentH * processFlowCompactHeightPct / 100
-	if cellW <= 0 || cellH <= 0 {
-		return 0
+	width = (contentW - processFlowGapPt*float64(steps-1)) / float64(steps)
+	height = contentH * processFlowCompactHeightPct / 100
+	if width <= 0 || height <= 0 {
+		return 0, 0
 	}
-	return float64(chevronAdj) / 100000 * math.Min(cellW, cellH)
+	if pointed {
+		height = math.Min(height, width*chevronMaxAspectH)
+	}
+	return width, height
 }
 
 func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -216,10 +220,13 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	bodySize := ResolveSize(ovr.BodySize, processFlowDefaultFontPt(len(vals.Steps)))
 	cellAccentMode := ovr.CellAccentMode
 
-	// The compact variant draws the same shapes in a shorter band, so it takes
-	// the same notch treatment: text inset past the point, a shallower point,
-	// and no connector when every step already points (go-slide-creator-czk4).
-	notchPt := processFlowCompactNotchPt(ctx, len(vals.Steps))
+	pointedRow := false
+	for _, step := range vals.Steps {
+		if step.Type == "chevron" || step.Type == "arrow" {
+			pointedRow = true
+			break
+		}
+	}
 
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
 	for i, step := range vals.Steps {
@@ -239,7 +246,7 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 
 		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
 		if pointed {
-			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize, notchPt+chevronTextPadPt)
+			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize, chevronTextPadPt)
 		}
 
 		cell := &jsonschema.GridCellInput{
@@ -276,9 +283,15 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		row.Connector = nil
 	}
 
+	_, bandHeight := processFlowCompactCellSize(ctx, len(vals.Steps), pointedRow)
+	_, contentHeight := contentAreaPt(ctx)
+	bandHeightPct := processFlowCompactHeightPct
+	if contentHeight > 0 {
+		bandHeightPct = bandHeight / contentHeight * 100
+	}
 	grid := &jsonschema.ShapeGridInput{
 		Bounds: &jsonschema.GridBoundsInput{
-			X: 0, Y: 0, Width: 100, Height: processFlowCompactHeightPct,
+			X: 0, Y: 0, Width: 100, Height: bandHeightPct,
 		},
 		Columns: json.RawMessage(colsJSON),
 		Gap:     processFlowGapPt,

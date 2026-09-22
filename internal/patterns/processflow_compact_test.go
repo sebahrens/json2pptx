@@ -1,9 +1,66 @@
 package patterns
 
 import (
+	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 )
+
+func TestProcessFlowCompactPointedStepsKeepReadableTextWidth(t *testing.T) {
+	ctx := processFlowChevronCtx()
+	for _, tc := range []struct {
+		name  string
+		steps []ProcessFlowStep
+	}{
+		{name: "all chevrons", steps: []ProcessFlowStep{
+			{Label: "Baseline", Type: "chevron"}, {Label: "Review", Type: "chevron"},
+			{Label: "Approve", Type: "chevron"}, {Label: "Launch", Type: "chevron"},
+		}},
+		{name: "mixed shapes", steps: []ProcessFlowStep{
+			{Label: "Baseline", Type: "chevron"}, {Label: "Review", Type: "step"},
+			{Label: "Approve", Type: "arrow"}, {Label: "Launch", Type: "step"},
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			grid, err := (&processFlowCompact{}).Expand(ctx, &ProcessFlowValues{Steps: tc.steps}, nil, nil)
+			if err != nil {
+				t.Fatalf("expand: %v", err)
+			}
+			if grid.Bounds == nil {
+				t.Fatal("missing compact bounds")
+			}
+			width, height := processFlowCompactCellSize(ctx, len(tc.steps), true)
+			_, contentHeight := contentAreaPt(ctx)
+			if got := grid.Bounds.Height / 100 * contentHeight; math.Abs(got-height) > 0.01 {
+				t.Fatalf("rendered band height = %.2fpt, want %.2fpt", got, height)
+			}
+			if height > width*chevronMaxAspectH {
+				t.Errorf("%.1fpt pointed band exceeds half of %.1fpt step width", height, width)
+			}
+			for i, cell := range grid.Rows[0].Cells {
+				if tc.steps[i].Type != "chevron" && tc.steps[i].Type != "arrow" {
+					continue
+				}
+				var text struct {
+					InsetLeft  float64 `json:"inset_left"`
+					InsetRight float64 `json:"inset_right"`
+				}
+				if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+					t.Fatalf("cell %d text: %v", i, err)
+				}
+				notch := float64(chevronAdj) / 100000 * height
+				usable := width - 2*notch - text.InsetLeft - text.InsetRight
+				if usable < width*0.6 {
+					t.Errorf("cell %d leaves only %.1fpt of %.1fpt for text", i, usable, width)
+				}
+				if measuredLines(tc.steps[i].Label, ctx.Theme.BodyFont, true, processFlowDefaultFontPt(len(tc.steps)), usable) != 1 {
+					t.Errorf("cell %d label %q wraps despite short authored text (usable %.1fpt)", i, tc.steps[i].Label, usable)
+				}
+			}
+		})
+	}
+}
 
 func TestProcessFlowCompactPointedLabelBudgets(t *testing.T) {
 	p := &processFlowCompact{}

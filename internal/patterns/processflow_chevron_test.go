@@ -50,7 +50,8 @@ func TestProcessFlowChevronKeepsItsLabelOutOfTheNotch(t *testing.T) {
 		t.Errorf("a row of chevrons still carries a connector: %+v", grid.Rows[0].Connector)
 	}
 
-	notch := processFlowNotchPt(ctx, len(vals.Steps))
+	width, height := processFlowCellSize(ctx, len(vals.Steps), true)
+	notch := float64(chevronAdj) / 100000 * math.Min(width, height)
 	if notch <= 0 {
 		t.Fatal("notch depth computed as zero")
 	}
@@ -73,15 +74,14 @@ func TestProcessFlowChevronKeepsItsLabelOutOfTheNotch(t *testing.T) {
 		if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
 			t.Fatalf("cell %d text: %v", i, err)
 		}
-		if text.InsetLeft < notch || text.InsetRight < notch {
-			t.Errorf("cell %d insets (%.1f, %.1f) do not clear the %.1fpt notch",
+		if text.InsetLeft != chevronTextPadPt || text.InsetRight != chevronTextPadPt {
+			t.Errorf("cell %d adds notch depth twice: bodyPr insets = (%.1f, %.1f)pt; preset already reserves %.1fpt per side",
 				i, text.InsetLeft, text.InsetRight, notch)
 		}
 	}
 
 	// The notch is a fraction of the SHORTER side, so a tall chevron eats its
 	// own label: the row is capped to half its step width.
-	width, height := processFlowCellSize(ctx, len(vals.Steps), true)
 	if height > math.Round(width*chevronMaxAspectH) {
 		t.Errorf("pointed row height %.0fpt exceeds half its %.0fpt step width", height, width)
 	}

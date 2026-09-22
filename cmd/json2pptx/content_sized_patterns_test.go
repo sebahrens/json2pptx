@@ -207,6 +207,35 @@ func TestProcessFlow_StepsCappedAndCentred(t *testing.T) {
 	assertCentred(t, "process-flow", res.Cells)
 }
 
+func TestProcessFlowCompactChevronResolvedGeometry(t *testing.T) {
+	res, _ := resolvePatternForTest(t, "process-flow-compact", `{"steps":[{"label":"Baseline","type":"chevron"},{"label":"Review","type":"chevron"},{"label":"Approve","type":"chevron"},{"label":"Launch","type":"chevron"}]}`)
+	if len(res.Cells) != 4 {
+		t.Fatalf("resolved %d cells, want 4", len(res.Cells))
+	}
+	for i, cell := range res.Cells {
+		if cell.Bounds.CY*2 > cell.Bounds.CX+12700 {
+			t.Errorf("chevron %d is too tall: %dx%d EMU", i, cell.Bounds.CX, cell.Bounds.CY)
+		}
+		if cell.ShapeSpec == nil || cell.ShapeSpec.Geometry != "chevron" {
+			t.Errorf("cell %d lost chevron geometry", i)
+		}
+	}
+	assertCentred(t, "process-flow-compact chevrons", res.Cells)
+	shapes := 0
+	for _, shape := range res.Shapes {
+		if !bytes.Contains(shape, []byte(`prst="chevron"`)) {
+			continue
+		}
+		shapes++
+		if !bytes.Contains(shape, []byte(`lIns="38100"`)) || !bytes.Contains(shape, []byte(`rIns="38100"`)) {
+			t.Errorf("chevron XML has wrong text insets: %s", shape)
+		}
+	}
+	if shapes != 4 {
+		t.Errorf("generated %d chevron shapes, want 4", shapes)
+	}
+}
+
 // TestTimelineDots_AxisAndDots: the default dots style draws real dots joined
 // by connector lines (the axis), not full-height filled pillars.
 func TestTimelineDots_AxisAndDots(t *testing.T) {

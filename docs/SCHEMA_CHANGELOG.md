@@ -54,6 +54,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **2026-09-22 — Readable pointed process-flow labels (`go-slide-creator-0e7lj`).**
+  `process-flow-compact` now caps bands containing chevrons or right arrows to
+  half a step's width. Both process-flow variants add only text padding inside
+  the preset's already narrowed text rectangle, avoiding double subtraction
+  of the point/notch width that wrapped short labels one character per line.
+
 - **2026-09-22 — Semantic nine-box talent colors (`go-slide-creator-7itun`).**
   Native `nine_box_talent` cells now resolve negative, neutral, and positive
   score bands through the template's `semantic_accents`. Adjacent score bands

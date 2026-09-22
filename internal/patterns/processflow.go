@@ -251,13 +251,6 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	bodySize := ResolveSize(ovr.BodySize, processFlowDefaultFontPt(len(vals.Steps)))
 	cellAccentMode := ovr.CellAccentMode
 
-	// A chevron's point and notch eat the width its label has to live in, and
-	// text that starts at the bounding box is drawn into them. At the OOXML
-	// default (50000 of the shorter side) the notch took half the width;
-	// numbered-step-strip already draws its chevrons at 30% for exactly this
-	// reason (go-slide-creator-czk4).
-	notchPt := processFlowNotchPt(ctx, len(vals.Steps))
-
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
 	for i, step := range vals.Steps {
 		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
@@ -276,9 +269,7 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
 		if pointed {
-			// Inset the text past the notch on both sides so the first and last
-			// characters are not drawn into the point.
-			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize, notchPt+chevronTextPadPt)
+			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize, chevronTextPadPt)
 		}
 
 		cell := &jsonschema.GridCellInput{
@@ -342,21 +333,6 @@ const processFlowMaxHeightFrac = 0.35
 // reads it, so the two cannot drift.
 const processFlowGapPt = 12.0
 
-// processFlowNotchPt is the depth of a chevron's point at this pattern's own
-// geometry. It has to be computed here rather than borrowed from
-// numbered-step-strip: that pattern sizes its chevrons from its own aspect cap,
-// and at four steps the two differ by 55pt — enough that an inset taken from
-// the wrong one leaves the label inside the notch.
-//
-// OOXML puts the point's depth at adj x the SHORTER side of the shape.
-func processFlowNotchPt(ctx ExpandContext, steps int) float64 {
-	cellW, cellH := processFlowCellSize(ctx, steps, true)
-	if cellW <= 0 || cellH <= 0 {
-		return 0
-	}
-	return float64(chevronAdj) / 100000 * math.Min(cellW, cellH)
-}
-
 // processFlowCellSize is one step's width and the row's height in points.
 // A row of pointed steps is additionally capped to half its step width: the
 // notch is a fraction of the SHORTER side, so a tall chevron eats its own
@@ -386,9 +362,10 @@ func allStepsPointed(steps []ProcessFlowStep) bool {
 	return len(steps) > 0
 }
 
-// buildProcessFlowPointedText is buildProcessFlowTextContent with the side
-// insets a pointed shape needs: the label sits inside the chevron body rather
-// than starting at the bounding box and running into the notch.
+// buildProcessFlowPointedText adds padding inside the preset's text rectangle.
+// Chevron and rightArrow presets already reserve their point/notch width in
+// that rectangle; adding the notch again as bodyPr insets leaves almost no
+// room for text in narrow steps.
 func buildProcessFlowPointedText(content string, size, insetPt float64) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
