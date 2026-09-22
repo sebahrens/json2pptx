@@ -527,8 +527,10 @@ func (ls *LineSeries) draw(coords []Point, baseY float64, points []DataPoint) {
 		b.DrawPolyline(coords)
 	}
 
-	// Draw markers
-	if ls.config.ShowMarkers {
+	// Dense marker halos interrupt the stroke and make a continuous series
+	// read as dashed. Keep markers only when consecutive plotted points have
+	// at least two marker diameters of clearance.
+	if ls.config.ShowMarkers && lineMarkersHaveClearance(coords, ls.config.MarkerSize) {
 		for _, c := range coords {
 			ls.drawMarker(c.X, c.Y)
 		}
@@ -545,6 +547,21 @@ func (ls *LineSeries) draw(coords []Point, baseY float64, points []DataPoint) {
 	}
 
 	b.Pop()
+}
+
+func lineMarkersHaveClearance(coords []Point, diameter float64) bool {
+	if diameter <= 0 {
+		return false
+	}
+	minDistanceSquared := 4 * diameter * diameter
+	for i := 1; i < len(coords); i++ {
+		dx := coords[i].X - coords[i-1].X
+		dy := coords[i].Y - coords[i-1].Y
+		if dx*dx+dy*dy < minDistanceSquared {
+			return false
+		}
+	}
+	return true
 }
 
 // drawAreaFill draws the filled area below the line.

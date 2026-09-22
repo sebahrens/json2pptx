@@ -1986,6 +1986,33 @@ func TestLineChartDiagram_ColorOverride(t *testing.T) {
 	}
 }
 
+func TestLineChartPaletteColorAlsoFillsMarkers(t *testing.T) {
+	d := &LineChartDiagram{NewBaseDiagram("line_chart")}
+	req := &RequestEnvelope{
+		Type: "line_chart",
+		Data: map[string]any{
+			"categories": []any{"Jan", "Feb", "Mar"},
+			"series":     []any{map[string]any{"name": "Revenue", "values": []any{10.0, 20.0, 15.0}}},
+			"colors":     []any{"#C14422"},
+		},
+		Output: OutputSpec{Width: 800, Height: 600},
+	}
+	doc, err := d.Render(req)
+	if err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	svg := strings.ToLower(string(doc.Content))
+	if !strings.Contains(svg, "stroke:#c14422") {
+		t.Fatal("rendered line lost the requested palette color")
+	}
+	if !strings.Contains(svg, "fill:#c14422;stroke:") {
+		t.Fatal("line markers do not use the requested palette color")
+	}
+	if strings.Contains(svg, strings.ToLower(DefaultThemeAccent1Hex)) {
+		t.Error("line markers still use the default Tableau blue instead of the series color")
+	}
+}
+
 func TestScatterChartDiagram_ColorOverride(t *testing.T) {
 	d := &ScatterChartDiagram{NewBaseDiagram("scatter_chart")}
 

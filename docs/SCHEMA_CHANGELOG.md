@@ -54,6 +54,11 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **2026-09-22 — Line marker palette and dense-series clarity (`go-slide-creator-ofzjq`).**
+  Line-chart point markers now use their series color, including colors chosen
+  from a template palette. When adjacent plotted points are closer than twice
+  the marker diameter, the series omits marker halos while retaining its line.
+
 - **2026-09-22 — Readable pointed process-flow labels (`go-slide-creator-0e7lj`).**
   `process-flow-compact` now caps bands containing chevrons or right arrows to
   half a step's width. Both process-flow variants add only text padding inside

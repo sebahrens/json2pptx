@@ -1788,6 +1788,7 @@ func (lc *LineChart) drawLines(data ChartData, plotArea Rect, xScale Scale, ySca
 	for seriesIdx, series := range data.Series {
 		lineConfig := DefaultLineSeriesConfig()
 		lineConfig.Color = colors[seriesIdx%len(colors)]
+		lineConfig.MarkerFillColor = lineConfig.Color
 		lineConfig.StrokeWidth = lc.config.StrokeWidth
 		lineConfig.ShowMarkers = lc.config.ShowMarkers
 		lineConfig.MarkerSize = lc.config.MarkerSize

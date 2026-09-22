@@ -571,6 +571,42 @@ func TestLineSeriesSinglePoint(t *testing.T) {
 	}
 }
 
+func TestLineSeriesDensePointsSuppressMarkerHalos(t *testing.T) {
+	render := func(count int) string {
+		t.Helper()
+		b := NewSVGBuilder(400, 300)
+		config := DefaultLineSeriesConfig()
+		config.Color = MustParseColor("#123456")
+		config.MarkerFillColor = MustParseColor("#E65432")
+		series := NewLineSeries(b, config)
+		xScale := NewLinearScale(0, float64(count-1))
+		xScale.SetRangeLinear(50, 350)
+		yScale := NewLinearScale(0, 100)
+		yScale.SetRangeLinear(250, 50)
+		points := make([]DataPoint, count)
+		for i := range points {
+			points[i] = DataPoint{X: float64(i), Y: 50}
+		}
+		series.DrawLinear(points, xScale, yScale, 250)
+		doc, err := b.Render()
+		if err != nil {
+			t.Fatalf("render %d points: %v", count, err)
+		}
+		return strings.ToLower(string(doc.Content))
+	}
+	sparse := render(3)
+	dense := render(24)
+	if !strings.Contains(sparse, "#e65432") {
+		t.Fatal("sparse line lost its markers")
+	}
+	if strings.Contains(dense, "#e65432") {
+		t.Fatal("dense line still draws marker halos across the stroke")
+	}
+	if !strings.Contains(dense, "#123456") {
+		t.Fatal("suppressing markers also removed the line")
+	}
+}
+
 func TestLineSeriesWithValueLabels(t *testing.T) {
 	b := NewSVGBuilder(400, 300)
 	config := DefaultLineSeriesConfig()
@@ -1331,9 +1367,9 @@ func labelPositionName(p ArcLabelPosition) string {
 
 func TestBlendOver(t *testing.T) {
 	tests := []struct {
-		name string
-		fg   Color
-		bg   Color
+		name                string
+		fg                  Color
+		bg                  Color
 		wantR, wantG, wantB uint8
 	}{
 		{
@@ -1460,7 +1496,7 @@ func TestMarkerStrokeFollowsPaletteBackgroundOnDarkTemplate(t *testing.T) {
 		if err != nil {
 			t.Fatalf("render: %v", err)
 		}
-		assertContainsExpectedNotWhite(t, string(doc.Content),"line marker stroke")
+		assertContainsExpectedNotWhite(t, string(doc.Content), "line marker stroke")
 	})
 
 	t.Run("point series stroke", func(t *testing.T) {
@@ -1477,7 +1513,7 @@ func TestMarkerStrokeFollowsPaletteBackgroundOnDarkTemplate(t *testing.T) {
 		if err != nil {
 			t.Fatalf("render: %v", err)
 		}
-		assertContainsExpectedNotWhite(t, string(doc.Content),"point series stroke")
+		assertContainsExpectedNotWhite(t, string(doc.Content), "point series stroke")
 	})
 
 	t.Run("arc series stroke", func(t *testing.T) {
@@ -1495,7 +1531,7 @@ func TestMarkerStrokeFollowsPaletteBackgroundOnDarkTemplate(t *testing.T) {
 		if err != nil {
 			t.Fatalf("render: %v", err)
 		}
-		assertContainsExpectedNotWhite(t, string(doc.Content),"arc slice stroke")
+		assertContainsExpectedNotWhite(t, string(doc.Content), "arc slice stroke")
 	})
 
 	t.Run("matrix2x2 divider/point stroke", func(t *testing.T) {
@@ -1515,7 +1551,7 @@ func TestMarkerStrokeFollowsPaletteBackgroundOnDarkTemplate(t *testing.T) {
 		if err != nil {
 			t.Fatalf("render: %v", err)
 		}
-		assertContainsExpectedNotWhite(t, string(doc.Content),"matrix2x2 point stroke")
+		assertContainsExpectedNotWhite(t, string(doc.Content), "matrix2x2 point stroke")
 	})
 }
 
