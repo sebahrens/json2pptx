@@ -165,7 +165,7 @@ func TestHandleShowPattern_UnknownPattern_StructuredError(t *testing.T) {
 }
 
 func TestHandleValidatePattern_InvalidValues_StructuredSuccess(t *testing.T) {
-	// Validate with wrong values shape — returns {ok: false, errors} as success
+	// Validate with wrong values shape — returns a findings envelope as success
 	// (the tool ran successfully, it found validation problems).
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 		"name":   "kpi-3up",
@@ -177,19 +177,12 @@ func TestHandleValidatePattern_InvalidValues_StructuredSuccess(t *testing.T) {
 	// Validation result is a success response (tool ran OK) with structured content.
 	requireStructuredContent(t, result)
 
-	b, _ := json.Marshal(result.StructuredContent)
-	var resp struct {
-		OK     bool                     `json:"ok"`
-		Errors []patternValidationError `json:"errors"`
-	}
-	if err := json.Unmarshal(b, &resp); err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if resp.OK {
+	env := patternValidationEnvelope(t, result)
+	if env.OK {
 		t.Error("expected ok=false for invalid values")
 	}
-	if len(resp.Errors) == 0 {
-		t.Error("expected non-empty errors for invalid values")
+	if len(env.Findings) == 0 {
+		t.Error("expected non-empty findings for invalid values")
 	}
 }
 

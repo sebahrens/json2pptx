@@ -381,8 +381,7 @@ func TestMCPValidateWithDiagnostics_ContractShape(t *testing.T) {
 	}
 }
 
-// TestMCPPatternValidate_ContractShape verifies the pattern validation response
-// shape: {ok: bool, errors?: [{code, message, path?, fix?}]}.
+// TestMCPPatternValidate_ContractShape verifies the shared findings envelope.
 func TestMCPPatternValidate_ContractShape(t *testing.T) {
 	// Valid input → {ok: true}
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
@@ -434,24 +433,23 @@ func TestMCPPatternValidate_ContractShape(t *testing.T) {
 		t.Fatalf("response is not a JSON object: %v", err)
 	}
 
-	errorsRaw, hasErrors := raw2["errors"]
-	if !hasErrors {
-		t.Fatal("expected 'errors' field in invalid pattern validation")
+	findingsRaw, hasFindings := raw2["findings"]
+	if !hasFindings {
+		t.Fatal("expected 'findings' field in invalid pattern validation")
 	}
 
-	var validationErrors []map[string]json.RawMessage
-	if err := json.Unmarshal(errorsRaw, &validationErrors); err != nil {
-		t.Fatalf("errors is not an array: %v", err)
+	var findings []map[string]json.RawMessage
+	if err := json.Unmarshal(findingsRaw, &findings); err != nil {
+		t.Fatalf("findings is not an array: %v", err)
 	}
-	if len(validationErrors) == 0 {
-		t.Fatal("expected non-empty errors array")
+	if len(findings) == 0 {
+		t.Fatal("expected non-empty findings array")
 	}
 
-	// Each error must have at least code and message.
-	for i, ve := range validationErrors {
-		for _, field := range []string{"code", "message"} {
-			if _, ok := ve[field]; !ok {
-				t.Errorf("errors[%d] missing required field %q", i, field)
+	for i, finding := range findings {
+		for _, field := range []string{"code", "message", "severity", "category"} {
+			if _, ok := finding[field]; !ok {
+				t.Errorf("findings[%d] missing required field %q", i, field)
 			}
 		}
 	}

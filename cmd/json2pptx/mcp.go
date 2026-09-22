@@ -9,7 +9,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -1218,7 +1217,7 @@ func mcpShowPatternTool() mcp.Tool {
 
 func mcpValidatePatternTool() mcp.Tool {
 	return mcp.NewTool("validate_pattern",
-		mcp.WithDescription("Validate pattern inputs without expanding. Returns structured errors on failure."),
+		mcp.WithDescription("Assess pattern values and content fit against the same context as expand_pattern, without returning a shape_grid. Returns a standard findings envelope."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidatePattern)),
 		mcp.WithString("name",
 			mcp.Required(),
@@ -1233,6 +1232,15 @@ func mcpValidatePatternTool() mcp.Tool {
 		),
 		mcp.WithObject("callout",
 			mcp.Description("Callout band (optional). Only supported by some patterns (card-grid, comparison-2col). Example: {\"text\":\"Key takeaway\",\"emphasis\":\"bold\"}"),
+		),
+		mcp.WithString("theme_template",
+			mcp.Description("Template name for theme and layout bounds. If omitted, the default fallback context is used."),
+		),
+		mcp.WithObject("bounds",
+			mcp.Description("Explicit bounding rectangle (percentages of slide dimensions: x, y, width, height), matching expand_pattern."),
+		),
+		mcp.WithNumber("max_height_pct",
+			mcp.Description("Maximum grid height as a percentage of the content area (1-99), matching expand_pattern."),
 		),
 	)
 }
@@ -1345,30 +1353,6 @@ func toPatternValidationError(e error) patternValidationError {
 		Field:   field,
 		Message: msg,
 	}
-}
-
-// unmarshalValidationErrorResult checks if a json.Unmarshal error contains
-// structured *ValidationError(s) from custom UnmarshalJSON methods. If so,
-// it returns a structured validation failure result; otherwise returns nil.
-func unmarshalValidationErrorResult(ctx context.Context, err error, patternName string) *mcp.CallToolResult {
-	errs := splitValidationErrors(err)
-	hasStructured := false
-	for _, e := range errs {
-		if e.Fix != nil {
-			hasStructured = true
-			break
-		}
-	}
-	if !hasStructured {
-		return nil
-	}
-	attachNextToolCallsToValidationErrors(errs, patternName)
-	result := struct {
-		OK     bool                     `json:"ok"`
-		Errors []patternValidationError `json:"errors"`
-	}{OK: false, Errors: errs}
-	mcpResult, _ := api.MCPSuccessResult(ctx, result)
-	return mcpResult
 }
 
 // attachNextToolCallsToValidationErrors populates NextToolCall on each
@@ -2042,139 +2026,7 @@ func patternRenderingCapabilities(name string) *renderingCapabilities {
 }
 
 func handleValidatePattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	name, err := request.RequireString("name")
-	if err != nil {
-		return argRequired(request, "validate_pattern", "name", "string", "kpi-3up", nextCallListPatterns()), nil
-	}
-	valuesStr, paramErr := objectParamAsJSON(request, "values")
-	if paramErr != nil {
-		return paramErr, nil
-	}
-	if valuesStr == "" {
-		return argRequired(request, "validate_pattern", "values", "object", map[string]any{
-			"items": []any{map[string]any{"label": "Revenue", "value": "$1.2M"}},
-		}, nil), nil
-	}
-
-	reg := patterns.Default()
-	pat, ok := reg.Get(name)
-	if !ok {
-		msg := fmt.Sprintf("unknown pattern %q", name)
-		fix := &diagnostics.Fix{Kind: "use_one_of"}
-		if suggestion, ok := reg.Suggest(name); ok {
-			msg += fmt.Sprintf("; did you mean %q?", suggestion)
-			fix = &diagnostics.Fix{Kind: "replace_value", Params: map[string]any{"suggestion": suggestion}}
-		}
-		return mcpParseErrorWithFix("UNKNOWN_PATTERN", "name", msg, fix), nil
-	}
-
-	// Unmarshal values
-	values := pat.NewValues()
-	if err := json.Unmarshal([]byte(valuesStr), values); err != nil {
-		if result := unmarshalValidationErrorResult(ctx, err, name); result != nil {
-			return result, nil
-		}
-		return argInvalidJSON("values", fmt.Sprintf("invalid values JSON: %v", err), "object", nil, nil), nil
-	}
-
-	// Unmarshal overrides
-	var overrides any
-	overridesStr, paramErr2 := objectParamAsJSON(request, "overrides")
-	if paramErr2 != nil {
-		return paramErr2, nil
-	}
-	if overridesStr != "" {
-		overrides = pat.NewOverrides()
-		if overrides != nil {
-			if err := json.Unmarshal([]byte(overridesStr), overrides); err != nil {
-				return argInvalidJSON("overrides", fmt.Sprintf("invalid overrides JSON: %v", err), "object", nil, nil), nil
-			}
-		}
-	}
-
-	// Unmarshal cell_overrides
-	coStr, paramErr3 := objectParamAsJSON(request, "cell_overrides")
-	if paramErr3 != nil {
-		return paramErr3, nil
-	}
-	var cellOverrides map[int]any
-	if coStr != "" {
-		var rawCO map[string]json.RawMessage
-		if err := json.Unmarshal([]byte(coStr), &rawCO); err != nil {
-			return argInvalidJSON("cell_overrides", fmt.Sprintf("invalid cell_overrides JSON: %v", err), "object", nil, nil), nil
-		}
-		cellOverrides = make(map[int]any, len(rawCO))
-		for key, raw := range rawCO {
-			idx, err := strconv.Atoi(key)
-			if err != nil {
-				return argInvalidValue("validate_pattern", "INVALID_KEY", fmt.Sprintf("cell_overrides.%s", key), fmt.Sprintf("cell_overrides key %q is not an integer", key), "integer", 0, nil), nil
-			}
-			co := pat.NewCellOverride()
-			if co == nil {
-				return api.MCPSimpleError("UNSUPPORTED", fmt.Sprintf("pattern %q does not support cell_overrides", name)), nil
-			}
-			if err := json.Unmarshal(raw, co); err != nil {
-				return argInvalidJSON(fmt.Sprintf("cell_overrides[%d]", idx), fmt.Sprintf("invalid cell_overrides[%d]: %v", idx, err), "object", nil, nil), nil
-			}
-			cellOverrides[idx] = co
-		}
-	}
-
-	// Validate
-	if err := pat.Validate(values, overrides, cellOverrides); err != nil {
-		// Return D10 structured errors — split joined errors into individual entries.
-		errs := splitValidationErrors(err)
-		attachNextToolCallsToValidationErrors(errs, name)
-		result := struct {
-			OK     bool                     `json:"ok"`
-			Errors []patternValidationError `json:"errors"`
-		}{OK: false, Errors: errs}
-
-		mcpResult, _ := api.MCPSuccessResult(ctx, result)
-		return mcpResult, nil
-	}
-
-	// Callout support check — parity with expandPattern (0kyd)
-	if calloutResult := validateCalloutParam(ctx, request, name, pat); calloutResult != nil {
-		return calloutResult, nil
-	}
-
-	result := struct {
-		OK bool `json:"ok"`
-	}{OK: true}
-	mcpResult, _ := api.MCPSuccessResult(ctx, result)
-	return mcpResult, nil
-}
-
-// validateCalloutParam checks the optional "callout" parameter against the
-// pattern's CalloutSupport interface. Returns a non-nil result on error,
-// or nil when callout is absent or the pattern supports it.
-func validateCalloutParam(ctx context.Context, request mcp.CallToolRequest, name string, pat patterns.Pattern) *mcp.CallToolResult {
-	calloutStr, paramErr := objectParamAsJSON(request, "callout")
-	if paramErr != nil {
-		return paramErr
-	}
-	if calloutStr == "" {
-		return nil
-	}
-	var callout patterns.PatternCallout
-	if err := json.Unmarshal([]byte(calloutStr), &callout); err != nil {
-		return argInvalidJSON("callout", fmt.Sprintf("invalid callout JSON: %v", err), "object", nil, nil)
-	}
-	cs, ok := pat.(patterns.CalloutSupport)
-	if ok && cs.SupportsCallout() {
-		return nil
-	}
-	reg := patterns.Default()
-	veErr := patterns.ErrCalloutUnsupportedFor(name, reg.CalloutSupportedPatterns())
-	errs := splitValidationErrors(veErr)
-	attachNextToolCallsToValidationErrors(errs, name)
-	result := struct {
-		OK     bool                     `json:"ok"`
-		Errors []patternValidationError `json:"errors"`
-	}{OK: false, Errors: errs}
-	mcpResult, _ := api.MCPSuccessResult(ctx, result)
-	return mcpResult
+	return (&mcpConfig{}).handleValidatePattern(ctx, request)
 }
 
 func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

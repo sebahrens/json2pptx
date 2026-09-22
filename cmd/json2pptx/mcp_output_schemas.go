@@ -271,33 +271,7 @@ var outputSchemaDescribeFinding = json.RawMessage(`{
 }`)
 
 // --- validate_pattern ---
-var outputSchemaValidatePattern = json.RawMessage(`{
-  "type": "object",
-  "properties": {
-    "ok":     {"type": "boolean"},
-    "errors": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "field":   {"type": "string"},
-          "code":    {"type": "string"},
-          "message": {"type": "string"},
-          "fix":     {
-            "type": "object",
-            "properties": {
-              "kind":   {"type": "string", "description": "Machine-readable fix category (e.g. rename_field, reshape_value, use_one_of)"},
-              "params": {"type": "object", "description": "Kind-specific parameters for the fix"}
-            },
-            "required": ["kind"]
-          }
-        },
-        "required": ["field", "message"]
-      }
-    }
-  },
-  "required": ["ok"]
-}`)
+var outputSchemaValidatePattern = json.RawMessage(findingEnvelopeSchema)
 
 // --- expand_pattern ---
 var outputSchemaExpandPattern = json.RawMessage(`{

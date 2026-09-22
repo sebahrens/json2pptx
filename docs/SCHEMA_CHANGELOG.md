@@ -28,6 +28,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-22 — `validate_pattern` content-fit diagnostics (`go-slide-creator-dclyc`).**
+  The MCP tool now accepts `theme_template`, `bounds`, and `max_height_pct`
+  like `expand_pattern`, expands against the same context, and returns the
+  standard findings envelope instead of the legacy `{ok,errors}` shape.
+  Pattern value errors have field paths and `show_pattern` recovery; content
+  budget and density failures set `ok:false` while the assessing tool call
+  itself remains successful (`isError:false`).
+
 - **2026-09-22 — Percent/currency value-format semantics (`go-slide-creator-3y4i0`).**
   `style.value_format:{style:"percent"}` now treats values in `[0,1]` as
   fractions and multiplies them by 100 (`0.412` renders `41.2%`). Values above

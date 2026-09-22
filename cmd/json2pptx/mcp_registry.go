@@ -26,7 +26,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	addTool(s, mcpRecommendVisualTool(), mc.handleRecommendVisual)
 	addTool(s, mcpListPatternsTool(), handleListPatterns)
 	addTool(s, mcpShowPatternTool(), handleShowPattern)
-	addTool(s, mcpValidatePatternTool(), handleValidatePattern)
+	addTool(s, mcpValidatePatternTool(), mc.handleValidatePattern)
 	addTool(s, mcpExpandPatternTool(), mc.handleExpandPattern)
 	addTool(s, mcpExpandPatternsTool(), mc.handleExpandPatterns)
 	addTool(s, mcpListIconsTool(), handleListIcons)

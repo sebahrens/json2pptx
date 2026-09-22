@@ -7,8 +7,18 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
+
+func patternValidationEnvelope(t *testing.T, result *mcp.CallToolResult) diagnostics.FindingEnvelope {
+	t.Helper()
+	env, ok := result.StructuredContent.(diagnostics.FindingEnvelope)
+	if !ok {
+		t.Fatalf("validate_pattern returned %T, want FindingEnvelope", result.StructuredContent)
+	}
+	return env
+}
 
 func makeRequest(args map[string]any) mcp.CallToolRequest {
 	return mcp.CallToolRequest{
@@ -373,18 +383,11 @@ func TestMCPValidatePattern(t *testing.T) {
 			t.Fatalf("unexpected tool error (should be structured validation): %v", result.Content)
 		}
 
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp struct {
-			OK     bool                     `json:"ok"`
-			Errors []patternValidationError `json:"errors"`
-		}
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
-		if resp.OK {
+		env := patternValidationEnvelope(t, result)
+		if env.OK {
 			t.Error("expected ok=false for invalid input")
 		}
-		if len(resp.Errors) == 0 {
+		if len(env.Findings) == 0 {
 			t.Error("expected at least one structured error")
 		}
 	})
@@ -400,22 +403,15 @@ func TestMCPValidatePattern(t *testing.T) {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp struct {
-			OK     bool                     `json:"ok"`
-			Errors []patternValidationError `json:"errors"`
-		}
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
-		if resp.OK {
+		env := patternValidationEnvelope(t, result)
+		if env.OK {
 			t.Error("expected ok=false")
 		}
-		if len(resp.Errors) < 2 {
-			t.Errorf("expected at least 2 separate errors, got %d", len(resp.Errors))
+		if len(env.Findings) < 2 {
+			t.Errorf("expected at least 2 separate findings, got %d", len(env.Findings))
 		}
-		if len(resp.Errors) > 0 && resp.Errors[0].Field != "columns" {
-			t.Errorf("expected first error field='columns', got %q", resp.Errors[0].Field)
+		if len(env.Findings) > 0 && env.Findings[0].Evidence["path"] != "/values/columns" {
+			t.Errorf("expected first finding path /values/columns, got %v", env.Findings[0].Evidence["path"])
 		}
 	})
 
@@ -446,35 +442,29 @@ func TestMCPValidatePattern(t *testing.T) {
 			t.Fatalf("expected structured error, got tool error: %v", result.Content)
 		}
 
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp struct {
-			OK     bool                     `json:"ok"`
-			Errors []patternValidationError `json:"errors"`
-		}
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
-		if resp.OK {
+		env := patternValidationEnvelope(t, result)
+		if env.OK {
 			t.Fatal("expected ok=false for callout on unsupported pattern")
 		}
-		if len(resp.Errors) != 1 {
-			t.Fatalf("expected 1 error, got %d", len(resp.Errors))
+		if len(env.Findings) != 1 {
+			t.Fatalf("expected 1 finding, got %d", len(env.Findings))
 		}
-		if resp.Errors[0].Code != "callout_unsupported" {
-			t.Errorf("expected code=callout_unsupported, got %q", resp.Errors[0].Code)
+		finding := env.Findings[0]
+		if finding.Code != "INPUT.callout_unsupported" {
+			t.Errorf("expected code=INPUT.callout_unsupported, got %q", finding.Code)
 		}
-		if resp.Errors[0].Fix == nil {
+		if finding.Remediation == nil || finding.Remediation.Primary == nil {
 			t.Fatal("expected fix suggestion")
 		}
-		if resp.Errors[0].Fix.Kind != "remove_field_or_switch_pattern" {
-			t.Errorf("expected fix kind=remove_field_or_switch_pattern, got %q", resp.Errors[0].Fix.Kind)
+		if finding.Remediation.Primary.Params["kind"] != "remove_field_or_switch_pattern" {
+			t.Errorf("expected fix kind=remove_field_or_switch_pattern, got %+v", finding.Remediation.Primary)
 		}
-		supported, ok := resp.Errors[0].Fix.Params["supports_callout_patterns"]
+		supported, ok := finding.Remediation.Primary.Params["supports_callout_patterns"]
 		if !ok {
 			t.Fatal("fix params missing supports_callout_patterns")
 		}
 		// Should be a non-empty array
-		arr, ok := supported.([]any)
+		arr, ok := supported.([]string)
 		if !ok || len(arr) == 0 {
 			t.Errorf("expected non-empty supports_callout_patterns, got %v", supported)
 		}
@@ -650,8 +640,8 @@ func TestAttachNextToolCallsToValidationErrors(t *testing.T) {
 }
 
 func TestValidatePatternNextToolCallInResponse(t *testing.T) {
-	// card-grid with columns=0 produces a validation error with a fix —
-	// the response should include next_tool_call.
+	// A pre-slide value error can point to the pattern schema, but must not
+	// suggest repair_slide with the impossible slide_index:-1 sentinel.
 	result, err := handleValidatePattern(context.Background(), makeRequest(map[string]any{
 		"name":   "card-grid",
 		"values": mustParseJSON(`{"columns":0,"rows":0,"cells":[]}`),
@@ -660,39 +650,23 @@ func TestValidatePatternNextToolCallInResponse(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	text := result.Content[0].(mcp.TextContent).Text
-	var resp struct {
-		OK     bool                     `json:"ok"`
-		Errors []patternValidationError `json:"errors"`
-	}
-	if err := json.Unmarshal([]byte(text), &resp); err != nil {
-		t.Fatalf("failed to parse response: %v", err)
-	}
-	if resp.OK {
+	env := patternValidationEnvelope(t, result)
+	if env.OK {
 		t.Fatal("expected ok=false")
 	}
-
-	// Check that next_tool_call is present in JSON output for errors with fixes
-	hasNextToolCall := false
-	for _, e := range resp.Errors {
-		if e.Fix != nil && e.NextToolCall != nil {
-			hasNextToolCall = true
-			break
+	if len(env.Findings) == 0 {
+		t.Fatal("expected value findings")
+	}
+	for _, f := range env.Findings {
+		if _, ok := diagnostics.Describe(f.Code); !ok {
+			t.Errorf("finding %q cannot be described", f.Code)
+		}
+		if f.NextToolCall == nil || f.NextToolCall.Tool != "show_pattern" {
+			t.Errorf("finding %q does not suggest show_pattern: %+v", f.Code, f.NextToolCall)
+			continue
+		}
+		if _, exists := f.NextToolCall.ArgsTemplate["slide_index"]; exists {
+			t.Errorf("finding %q suggests a nonexistent slide: %+v", f.Code, f.NextToolCall)
 		}
 	}
-
-	// Also verify next_tool_call appears in raw JSON
-	if json.Valid([]byte(text)) {
-		var raw map[string]json.RawMessage
-		_ = json.Unmarshal([]byte(text), &raw)
-		// The response should be parseable and well-formed
-		if _, ok := raw["errors"]; !ok {
-			t.Error("response missing errors field")
-		}
-	}
-
-	// It's OK if no fix suggestions are present for simple value range errors —
-	// those don't have fix kinds in repairFixKinds. The important thing is the
-	// field is included in the struct and marshalled when present.
-	_ = hasNextToolCall
 }
