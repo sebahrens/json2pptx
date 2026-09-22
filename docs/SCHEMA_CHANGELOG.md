@@ -28,6 +28,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-22 — Percent/currency value-format semantics (`go-slide-creator-3y4i0`).**
+  `style.value_format:{style:"percent"}` now treats values in `[0,1]` as
+  fractions and multiplies them by 100 (`0.412` renders `41.2%`). Values above
+  `1` remain already-scaled percentages and emit
+  `chart.percent_scale_ambiguous`. Currency formatting without `prefix` now
+  defaults visibly to the generic `¤` marker and emits
+  `chart.currency_prefix_defaulted`; set the intended symbol/code explicitly to
+  avoid that advisory.
+
 - **Narrative-first layout coverage and structured semantic sections
   (`go-slide-creator-5udoz`, `go-slide-creator-ieshl`).** DeckSpec accepts
   mutually exclusive flat `slides[]` or chapter-oriented `structure` with an

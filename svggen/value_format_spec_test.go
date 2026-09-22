@@ -29,7 +29,7 @@ func TestValueFormatterStyles(t *testing.T) {
 		{"plain groups digits", &ValueFormatSpec{Style: "plain"}, 1240000, "1,240,000"},
 		{"plain without grouping", &ValueFormatSpec{Style: "plain", ThousandsSep: boolPtrVF(false)}, 1240000, "1240000"},
 		{"currency", &ValueFormatSpec{Style: "currency", Prefix: "$"}, 1240000, "$1,240,000"},
-		{"percent", &ValueFormatSpec{Style: "percent", Decimals: intPtrVF(1)}, 42.1, "42.1%"},
+		{"currency without prefix is visibly currency", &ValueFormatSpec{Style: "currency"}, 1240000, "¤1,240,000"},
 		{"suffix", &ValueFormatSpec{Style: "compact", Suffix: " ARR"}, 1240000, "1.2M ARR"},
 		{"an unknown style is plain", &ValueFormatSpec{Style: "klingon"}, 1240000, "1,240,000"},
 		{"style casing does not matter", &ValueFormatSpec{Style: "COMPACT"}, 1240000, "1.2M"},
@@ -42,6 +42,69 @@ func TestValueFormatterStyles(t *testing.T) {
 				t.Errorf("Format(%v) = %q, want %q", tc.in, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestValueFormatterPercentScale(t *testing.T) {
+	tests := []struct {
+		name   string
+		spec   *ValueFormatSpec
+		values []float64
+		input  float64
+		want   string
+	}{
+		{name: "fractional values scale before auto precision", spec: &ValueFormatSpec{Style: "percent"}, values: []float64{0.412, 0.408, 0.401}, input: 0.412, want: "41.2%"},
+		{name: "already-scaled values are preserved", spec: &ValueFormatSpec{Style: "percent", Decimals: intPtrVF(1)}, values: []float64{42.1, 40.8, 40.1}, input: 42.1, want: "42.1%"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewValueFormatter(tt.spec, tt.values, defaultValueFormat, true)
+			if got := f.Format(tt.input); got != tt.want {
+				t.Fatalf("Format(%v) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestValueFormatFindings(t *testing.T) {
+	tests := []struct {
+		name     string
+		spec     *ValueFormatSpec
+		values   []any
+		wantCode string
+	}{
+		{name: "fractional percent is unambiguous", spec: &ValueFormatSpec{Style: "percent"}, values: []any{0.412, 0.408, 0.401}},
+		{name: "already-scaled percent warns", spec: &ValueFormatSpec{Style: "percent"}, values: []any{41.2, 40.8, 40.1}, wantCode: FindingPercentScaleAmbiguous},
+		{name: "currency symbol is explicit", spec: &ValueFormatSpec{Style: "currency", Prefix: "€"}, values: []any{12.0}},
+		{name: "currency symbol defaults visibly", spec: &ValueFormatSpec{Style: "currency"}, values: []any{12.0}, wantCode: FindingCurrencyPrefixDefaulted},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &RequestEnvelope{Style: StyleSpec{ValueFormat: tt.spec}, Data: map[string]any{"series": []any{map[string]any{"values": tt.values}}}}
+			findings := valueFormatFindings(req)
+			if tt.wantCode == "" {
+				if len(findings) != 0 {
+					t.Fatalf("findings = %+v, want none", findings)
+				}
+				return
+			}
+			if len(findings) != 1 || findings[0].Code != tt.wantCode {
+				t.Fatalf("findings = %+v, want one %q finding", findings, tt.wantCode)
+			}
+		})
+	}
+}
+
+func TestValueFormatFindingsProgrammaticTypedData(t *testing.T) {
+	req := &RequestEnvelope{
+		Style: StyleSpec{ValueFormat: &ValueFormatSpec{Style: "percent"}},
+		Data: map[string]any{
+			"series": []map[string]any{{"values": []float64{41.2, 40.8, 40.1}}},
+		},
+	}
+	findings := valueFormatFindings(req)
+	if len(findings) != 1 || findings[0].Code != FindingPercentScaleAmbiguous {
+		t.Fatalf("findings = %+v, want one %q finding", findings, FindingPercentScaleAmbiguous)
 	}
 }
 

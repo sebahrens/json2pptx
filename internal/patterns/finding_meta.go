@@ -1022,6 +1022,25 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeChartValueCoerced},
 	},
+	"chart.percent_scale_ambiguous": {
+		Code:        "chart.percent_scale_ambiguous",
+		Summary:     "Percent formatting received values above 1, so their scale is ambiguous.",
+		Severity:    "review",
+		WhenEmitted: "svggen receives style.value_format.style=percent and at least one formatted value has magnitude above 1; those values are preserved as already-scaled percentage points.",
+		RemediationSteps: []string{
+			"Use fractional values in [0,1] when percent should multiply by 100 (0.412 → 41.2%).",
+			"Or keep already-scaled values and review the rendered labels to confirm that percentage points are intended.",
+		},
+	},
+	"chart.currency_prefix_defaulted": {
+		Code:        "chart.currency_prefix_defaulted",
+		Summary:     "Currency formatting omitted the currency symbol or code.",
+		Severity:    "review",
+		WhenEmitted: "svggen receives style.value_format.style=currency without prefix and renders the generic ¤ marker instead of guessing a currency.",
+		RemediationSteps: []string{
+			"Set style.value_format.prefix to the intended symbol or code, such as $, €, £, or USD.",
+		},
+	},
 	"chart.zero_sum_pie": {
 		Code:        "chart.zero_sum_pie",
 		Summary:     "A pie/donut chart's slices sum to zero, producing a blank chart.",

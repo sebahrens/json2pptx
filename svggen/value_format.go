@@ -5,6 +5,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
 // Number formatting for data labels (go-slide-creator-66qb).
@@ -172,6 +174,9 @@ type ValueFormatter struct {
 	prefix, suffix string
 	// percent appends a % sign after the number (before suffix).
 	percent bool
+	// scale is applied before formatting. Fractional percent inputs use 100;
+	// other styles and already-scaled percentages use 1.
+	scale float64
 	// compactDecimals is the decimal places for compact notation; -1 means the
 	// compact default (one place, trailing ".0" trimmed).
 	compactDecimals int
@@ -251,14 +256,22 @@ func NewValueFormatter(spec *ValueFormatSpec, values []float64, legacy string, a
 
 // valueFormatterFromSpec builds the formatter an explicit value_format asks for.
 func valueFormatterFromSpec(spec *ValueFormatSpec, values []float64) *ValueFormatter {
-	f := &ValueFormatter{prefix: spec.Prefix, suffix: spec.Suffix, compactDecimals: -1}
+	f := &ValueFormatter{prefix: spec.Prefix, suffix: spec.Suffix, compactDecimals: -1, scale: 1}
+	formatValues := values
 	switch strings.ToLower(strings.TrimSpace(spec.Style)) {
 	case "compact":
 		f.compact = true
 	case "percent":
 		f.percent = true
+		if maxMagnitude(values) <= 1+1e-9 {
+			f.scale = 100
+			formatValues = scaledValues(values, f.scale)
+		}
 	case "currency":
 		f.group = true
+		if f.prefix == "" {
+			f.prefix = "¤"
+		}
 	default: // "", "plain"
 		f.group = true
 	}
@@ -277,7 +290,7 @@ func valueFormatterFromSpec(spec *ValueFormatSpec, values []float64) *ValueForma
 		f.printf = "%." + strconv.Itoa(decimals) + "f"
 	case f.percent, f.group:
 		// Pick a precision that keeps the labels distinct, as the default does.
-		f.printf = autoValueFormat(defaultValueFormat, values)
+		f.printf = autoValueFormat(defaultValueFormat, formatValues)
 	default:
 		f.printf = defaultValueFormat
 	}
@@ -317,6 +330,9 @@ func (f *ValueFormatter) Format(v float64) string {
 	if f == nil {
 		return formatValueGrouped(v, defaultValueFormat)
 	}
+	if f.scale != 0 {
+		v *= f.scale
+	}
 	var body string
 	switch {
 	case f.compact:
@@ -331,6 +347,114 @@ func (f *ValueFormatter) Format(v float64) string {
 		body += "%"
 	}
 	return f.prefix + body + f.suffix
+}
+
+func scaledValues(values []float64, scale float64) []float64 {
+	out := make([]float64, len(values))
+	for i, value := range values {
+		out[i] = value * scale
+	}
+	return out
+}
+
+// valueFormatFindings reports conventions that the renderer can preserve but
+// cannot infer with confidence. It deliberately does not refuse rendering:
+// fractional percentages and a default currency symbol still produce useful
+// output, while the finding makes the assumption visible to callers.
+func valueFormatFindings(req *RequestEnvelope) []Finding {
+	spec := req.Style.ValueFormat
+	if spec == nil {
+		return nil
+	}
+	style := strings.ToLower(strings.TrimSpace(spec.Style))
+	switch style {
+	case "percent":
+		values := requestFormattedValues(req.Data)
+		if maxMagnitude(values) > 1+1e-9 {
+			return []Finding{{
+				Field:    "style.value_format",
+				Code:     FindingPercentScaleAmbiguous,
+				Message:  "percent values above 1 were preserved as already-scaled percentages; use fractions in [0,1] or plain formatting when the scale is not percentage points",
+				Severity: core.SeverityWarning,
+				Fix: &FixSuggestion{Kind: FixKindExplicitScale, Params: map[string]any{
+					"style": "percent", "fractional_range": "0..1",
+				}},
+			}}
+		}
+	case "currency":
+		if strings.TrimSpace(spec.Prefix) == "" {
+			return []Finding{{
+				Field:    "style.value_format.prefix",
+				Code:     FindingCurrencyPrefixDefaulted,
+				Message:  "currency format omitted prefix; defaulted to the generic \"¤\" marker — set prefix explicitly for the intended currency",
+				Severity: core.SeverityWarning,
+				Fix: &FixSuggestion{Kind: FixKindReplaceValue, Params: map[string]any{
+					"field": "style.value_format.prefix", "defaulted_to": "¤",
+				}},
+			}}
+		}
+	}
+	return nil
+}
+
+// requestFormattedValues extracts numeric leaves named value/values. Those are
+// the fields consumed by chart value formatters; unrelated numeric layout data
+// such as width, height, x and y must not influence scale inference.
+func requestFormattedValues(data map[string]any) []float64 {
+	var out []float64
+	var walk func(any, bool)
+	walk = func(value any, collect bool) {
+		if collect {
+			var appended bool
+			out, appended = appendFormattedNumbers(out, value)
+			if appended {
+				return
+			}
+		}
+		switch typed := value.(type) {
+		case map[string]any:
+			for key, child := range typed {
+				walk(child, key == "value" || key == "values")
+			}
+		case []any:
+			for _, child := range typed {
+				walk(child, collect)
+			}
+		case []map[string]any:
+			for _, child := range typed {
+				walk(child, collect)
+			}
+		}
+	}
+	walk(data, false)
+	return out
+}
+
+func appendFormattedNumbers(out []float64, value any) ([]float64, bool) {
+	switch typed := value.(type) {
+	case []float64:
+		return append(out, typed...), true
+	case []int:
+		for _, child := range typed {
+			out = append(out, float64(child))
+		}
+		return out, true
+	case []int64:
+		for _, child := range typed {
+			out = append(out, float64(child))
+		}
+		return out, true
+	case float64:
+		return append(out, typed), true
+	case float32:
+		return append(out, float64(typed)), true
+	case int:
+		return append(out, float64(typed)), true
+	case int64:
+		return append(out, float64(typed)), true
+	default:
+		return out, false
+	}
 }
 
 // FormatOr renders one value, falling back to the legacy per-site formatting

@@ -312,7 +312,7 @@ Charts and diagrams emit structured findings at render time, following the same 
 
 (`chart.capacity_exceeded` is also a content-loss code but is grouped with data-integrity above because strict promotes it all the way to `refuse`.)
 
-### Advisory codes — informational fitting/labeling adjustments; never promoted
+### Advisory codes — formatting/fitting adjustments; never promoted
 
 | Code | When emitted | Fix kind |
 |------|-------------|----------|
@@ -322,6 +322,8 @@ Charts and diagrams emit structured findings at render time, following the same 
 | `chart.label_truncated` | Label truncated to fit available space | `increase_canvas` |
 | `chart.label_ellipsized` | Label shortened with ellipsis (x-axis categories: only after a two-line horizontal wrap and rotation both fail) | `increase_canvas` |
 | `chart.label_clipped` | Label hard-clipped at container boundary | `increase_canvas` |
+| `chart.percent_scale_ambiguous` | Percent formatting sees a value above 1; values are preserved as already-scaled percentage points | `explicit_scale` |
+| `chart.currency_prefix_defaulted` | Currency formatting omitted `prefix`; the generic `¤` marker is rendered | `replace_value` |
 
 ### Strict-fit promotion ladder for chart codes
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 	"github.com/sebahrens/json2pptx/svggen/core"
 
 	// Import root package to auto-register all diagram types.
-	_ "github.com/sebahrens/json2pptx/svggen"
+	svggen "github.com/sebahrens/json2pptx/svggen"
 )
 
 func makeRequest(args map[string]any) mcp.CallToolRequest {
@@ -1235,6 +1236,11 @@ func TestGetCapabilities(t *testing.T) {
 		for _, code := range resp.Vocabularies.FindingCodes {
 			if !strings.HasPrefix(code, "chart.") {
 				t.Errorf("finding_code %q does not start with %q prefix", code, "chart.")
+			}
+		}
+		for _, code := range []string{svggen.FindingPercentScaleAmbiguous, svggen.FindingCurrencyPrefixDefaulted} {
+			if !slices.Contains(resp.Vocabularies.FindingCodes, code) {
+				t.Errorf("vocabularies.finding_codes missing %q", code)
 			}
 		}
 		// fix_kinds must contain the documented chart-finding enum used by

@@ -1,6 +1,7 @@
 package svggen
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/svggen/core"
@@ -71,6 +72,47 @@ func TestBarChart_AllZeroSeriesFinding(t *testing.T) {
 	}
 	if found.Severity != "warning" {
 		t.Errorf("severity = %q, want %q", found.Severity, "warning")
+	}
+}
+
+func TestBarChart_ValueFormatBehaviorAndFindingsReachRenderOutput(t *testing.T) {
+	tests := []struct {
+		name        string
+		values      []any
+		format      *ValueFormatSpec
+		wantLabel   string
+		wantFinding string
+	}{
+		{name: "fractional percent scales with distinct auto precision", values: []any{0.412, 0.408, 0.401}, format: &ValueFormatSpec{Style: "percent"}, wantLabel: "41.2%"},
+		{name: "already-scaled percent warns", values: []any{41.2, 40.8, 40.1}, format: &ValueFormatSpec{Style: "percent", Decimals: intPtrVF(1)}, wantLabel: "41.2%", wantFinding: FindingPercentScaleAmbiguous},
+		{name: "currency defaults visibly and warns", values: []any{412.0, 408.0, 401.0}, format: &ValueFormatSpec{Style: "currency"}, wantLabel: "¤412", wantFinding: FindingCurrencyPrefixDefaulted},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &RequestEnvelope{
+				Type: "bar_chart",
+				Data: map[string]any{
+					"categories": []any{"A", "B", "C"},
+					"series":     []any{map[string]any{"name": "Rate", "values": tt.values}},
+				},
+				Style:  StyleSpec{ShowValues: true, ValueFormat: tt.format},
+				Output: OutputSpec{Width: 800, Height: 600},
+			}
+			output, err := RenderMultiFormatWithFindings(req, "svg")
+			if err != nil {
+				t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
+			}
+			if !strings.Contains(string(output.SVG.Bytes()), tt.wantLabel) {
+				t.Errorf("SVG does not contain formatted label %q", tt.wantLabel)
+			}
+			found := findFindingByCode(output.Findings, tt.wantFinding)
+			if tt.wantFinding == "" && found != nil {
+				t.Errorf("unexpected finding %+v", found)
+			}
+			if tt.wantFinding != "" && found == nil {
+				t.Errorf("missing finding %q in %+v", tt.wantFinding, output.Findings)
+			}
+		})
 	}
 }
 

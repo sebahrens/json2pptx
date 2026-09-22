@@ -92,6 +92,17 @@ const (
 	// than bad data. The coordinate is clamped to the axis range and the finding
 	// names the point and its original value (go-slide-creator-s27x).
 	FindingPointOutOfRange = "chart.point_out_of_range"
+
+	// FindingPercentScaleAmbiguous is emitted when percent formatting receives
+	// values above 1. Values in [0,1] are scaled to percentage points; larger
+	// values are preserved as already-scaled percentages, but mixed conventions
+	// cannot be inferred safely.
+	FindingPercentScaleAmbiguous = "chart.percent_scale_ambiguous"
+
+	// FindingCurrencyPrefixDefaulted is emitted when currency formatting omits a
+	// prefix. The renderer uses "¤" so currency is not byte-identical to plain
+	// formatting, while asking the author to provide the intended symbol/code.
+	FindingCurrencyPrefixDefaulted = "chart.currency_prefix_defaulted"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.

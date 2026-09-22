@@ -253,9 +253,10 @@ type StyleSpec struct {
 // side; the chart_render bridge copies field-for-field.
 type ValueFormatSpec struct {
 	// Style selects the notation: "plain" (grouped digits, the default),
-	// "compact" (1.2K / 3.4M / 5.6B / 7.8T), "percent" (the value with a %
-	// sign; values are taken as already being percentages), or "currency"
-	// (grouped digits with Prefix, defaulting to 0 decimals).
+	// "compact" (1.2K / 3.4M / 5.6B / 7.8T), "percent" (fractions in [0,1]
+	// are multiplied by 100; larger values are preserved with an ambiguity
+	// finding), or "currency" (grouped digits with Prefix; "¤" plus a finding
+	// when Prefix is omitted).
 	Style string `json:"style,omitempty" yaml:"style,omitempty"`
 
 	// Decimals fixes the number of decimal places. Nil lets the renderer pick:

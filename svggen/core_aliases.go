@@ -170,6 +170,8 @@ const (
 	FindingOrgChartDepthPruned   = core.FindingOrgChartDepthPruned
 	FindingPlotAreaCollapsed     = core.FindingPlotAreaCollapsed
 	FindingPointOutOfRange       = core.FindingPointOutOfRange
+	FindingPercentScaleAmbiguous   = core.FindingPercentScaleAmbiguous
+	FindingCurrencyPrefixDefaulted = core.FindingCurrencyPrefixDefaulted
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries

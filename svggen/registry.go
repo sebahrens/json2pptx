@@ -93,6 +93,7 @@ func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ..
 	if req.Data != nil {
 		findings = core.ClampDataValuesWithFindings(req.Data)
 	}
+	findings = append(findings, valueFormatFindings(req)...)
 
 	result, builder, err := renderMultiFormatInternal(r, req, formats...)
 	if err != nil {
