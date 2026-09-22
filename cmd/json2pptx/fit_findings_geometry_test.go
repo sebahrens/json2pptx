@@ -197,6 +197,7 @@ func geomPatternSlide(t *testing.T, maxHeightPct float64) *PresentationInput {
 func TestGeometry_ContentSizedPatternBandIsNotUnderused(t *testing.T) {
 	for _, pattern := range []string{
 		`{"name":"process-flow","values":{"steps":[{"label":"Discover"},{"label":"Build"},{"label":"Ship"}]}}`,
+		`{"name":"process-flow-compact","values":{"steps":[{"label":"Discover"},{"label":"Build"},{"label":"Ship"}]}}`,
 		`{"name":"stylish-panels","values":[{"title":"A","body":["one","two"]},{"title":"B","body":["one","two"]},{"title":"C","body":["one","two"]}]}`,
 		`{"name":"kpi-3up","values":[{"big":"41%","small":"Share of revenue"},{"big":"17","small":"New logos"},{"big":"3x","small":"Pipeline growth"}]}`,
 	} {
@@ -251,6 +252,70 @@ func TestGeometry_UncappedSliverAdvisesContentNotCaps(t *testing.T) {
 		if !strings.Contains(hint, want) {
 			t.Errorf("hint %q does not name an action the agent can take (%q)", hint, want)
 		}
+	}
+}
+
+func geomCompactChevronSlide(t *testing.T) *PresentationInput {
+	t.Helper()
+	return geomSlides(t, `[{"layout_id":"content","pattern":{"name":"process-flow-compact",
+		"values":{"steps":[{"label":"A","type":"chevron"},{"label":"B","type":"chevron"},
+		{"label":"C","type":"chevron"},{"label":"D","type":"chevron"},
+		{"label":"E","type":"chevron"},{"label":"F","type":"chevron"},
+		{"label":"G","type":"chevron"},{"label":"H","type":"chevron"}]}}}]`)
+}
+
+// process-flow-compact emits its own Bounds during expansion. Those bounds are
+// not an author cap and must not change the threshold or remediation advice.
+func TestGeometry_ExpandedPatternBoundsAreNotAuthorCaps(t *testing.T) {
+	in := geomCompactChevronSlide(t)
+	fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+	if len(fs) != 1 {
+		t.Fatalf("want one SLIDE_UNDERUSED for a compact pattern sliver, got %+v", fs)
+	}
+	f := fs[0]
+	if got := f.Fix.Params["band_capped_by"]; got != "pattern" {
+		t.Errorf("band_capped_by = %v, want pattern", got)
+	}
+	if got := f.Fix.Params["threshold_pct"]; got != math.Round(100*slideUnderusedPatternMaxFrac) {
+		t.Errorf("threshold_pct = %v, want %.0f", got, 100*slideUnderusedPatternMaxFrac)
+	}
+	if hint, _ := f.Fix.Params["hint"].(string); strings.Contains(hint, "max_height_pct") {
+		t.Errorf("pattern-owned bounds should not produce author-cap advice: %q", hint)
+	}
+}
+
+// collectFitFindings expands patterns before geometry detection; this is the
+// production path that previously reintroduced the synthesized-bounds bug.
+func TestFitFindings_PatternBandCapAttribution(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		in   *PresentationInput
+		want string
+	}{
+		{"pattern_owned", geomCompactChevronSlide(t), "pattern"},
+		{"author_capped", geomPatternSlide(t, 20), "author"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			fs := findingsByCode(collectFitFindings(tt.in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+			if len(fs) != 1 {
+				t.Fatalf("want one SLIDE_UNDERUSED, got %+v", fs)
+			}
+			if got := fs[0].Fix.Params["band_capped_by"]; got != tt.want {
+				t.Errorf("band_capped_by = %v, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestGeometry_RawGridBoundsRemainAuthorCaps(t *testing.T) {
+	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"bounds":{"x":0,"y":0,"width":100,"height":20},
+		"columns":1,"rows":[{"cells":[{"shape":{"geometry":"rect","fill":"accent1","text":"Short"}}]}]}}]`)
+	fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+	if len(fs) != 1 {
+		t.Fatalf("want one SLIDE_UNDERUSED for an author-bounded raw grid, got %+v", fs)
+	}
+	if got := fs[0].Fix.Params["band_capped_by"]; got != "author" {
+		t.Errorf("band_capped_by = %v, want author", got)
 	}
 }
 

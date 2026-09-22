@@ -28,6 +28,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-22 — Pattern band-cap attribution (`go-slide-creator-hqar0`).**
+  Geometry preflight now attributes `SLIDE_UNDERUSED` from authored pattern
+  bounds, ignoring any `ShapeGrid.Bounds` attached by expansion. Content-sized
+  patterns use the 22% threshold and content-focused remediation; explicit author
+  bounds and `max_height_pct` retain the 45% threshold and cap advice.
+
 - **2026-09-22 — CLI pattern content-fit validation (`go-slide-creator-or54d`).**
   `patterns validate` now runs the same expansion, post-expansion warnings,
   density, and cell-budget checks as MCP `validate_pattern`. `--template` and

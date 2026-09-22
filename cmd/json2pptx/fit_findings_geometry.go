@@ -380,6 +380,9 @@ func authorCappedBand(slide *SlideInput) bool {
 		if b, _ := resolvePatternBounds(slide.Pattern); b != nil {
 			return true
 		}
+		// Fit preflight may already have expanded the pattern into ShapeGrid.
+		// Its grid bounds are pattern-owned, never an author cap.
+		return false
 	}
 	return slide.ShapeGrid != nil && slide.ShapeGrid.Bounds != nil
 }
