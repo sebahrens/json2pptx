@@ -396,7 +396,7 @@ HR performance/potential assessment.
 }
 ```
 
-> Alternatively use the auto-routed `employees: [{name, performance, potential}]` form — but `performance`/`potential` must be the **strings** `"low"`/`"medium"`/`"high"`, not numbers. Numeric ratings are ignored and dump everyone in the center cell. See [nine_box_talent.md](./nine_box_talent.md).
+> Alternatively use the auto-routed `employees: [{name, performance, potential}]` form. Ratings accept `"low"`/`"medium"`/`"high"` or numbers `1`/`2`/`3` (1=low, 2=medium, 3=high). See [nine_box_talent.md](./nine_box_talent.md).
 
 #### House Diagram (`house_diagram`)
 Radial relationship diagram (e.g., McKinsey 7S).

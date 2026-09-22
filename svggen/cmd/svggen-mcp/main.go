@@ -1000,7 +1000,7 @@ func getSchemaForType(typ string) diagramSchema {
 			},
 		},
 		"nine_box_talent": {
-			description: "9-box talent grid with performance and potential axes. People go in 'employees' (NOT 'people'); performance/potential are the strings \"low\"|\"medium\"|\"high\" (NOT numbers — numeric values are ignored and dump everyone in the center cell). Axis names use x_axis_label/y_axis_label. Alternatively place people explicitly via 'cells'.",
+			description: "9-box talent grid with performance and potential axes. People go in 'employees' (NOT 'people'); performance/potential accept \"low\"|\"medium\"|\"high\" or numeric 1|2|3 (1=low, 2=medium, 3=high). Axis names use x_axis_label/y_axis_label. Alternatively place people explicitly via 'cells'.",
 			minimal: map[string]any{
 				"x_axis_label": "Performance",
 				"y_axis_label": "Potential",

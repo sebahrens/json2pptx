@@ -79,7 +79,8 @@ Instead of placing people in explicit cells, supply a flat `employees` list and 
     "employees": [
       {"name": "Alice", "performance": "high", "potential": "high"},
       {"name": "Bob",   "performance": "medium", "potential": "medium"},
-      {"name": "Dave",  "performance": "low",  "potential": "low"}
+      {"name": "Dave",  "performance": "low",  "potential": "low"},
+      {"name": "Eve",   "performance": 3,      "potential": 1}
     ]
   }
 }
@@ -88,10 +89,10 @@ Instead of placing people in explicit cells, supply a flat `employees` list and 
 | Field | Type | Description |
 |-------|------|-------------|
 | `employees[].name` | `string` | Person name (required; blank entries are skipped) |
-| `employees[].performance` | `string` | **`"low"` \| `"medium"` \| `"high"`** — picks the column (low=left, medium=center, high=right). **Must be a string, not a number.** |
-| `employees[].potential` | `string` | **`"low"` \| `"medium"` \| `"high"`** — picks the row (high=top, medium=center, low=bottom). **Must be a string, not a number.** |
+| `employees[].performance` | `string` or `number` | `"low"` / `"medium"` / `"high"` or `1` / `2` / `3` — picks the column (low/1=left, medium/2=center, high/3=right). |
+| `employees[].potential` | `string` or `number` | `"low"` / `"medium"` / `"high"` or `1` / `2` / `3` — picks the row (high/3=top, medium/2=center, low/1=bottom). |
 
-> **Common mistake (do not do this):** numeric ratings like `"performance": 1` or `"potential": 3` are **ignored** — they are not strings, so every employee silently falls through to the center "Core Employee" cell. Always use the words `"low"`, `"medium"`, or `"high"`.
+Rating words are case-insensitive; the strings `"1"`, `"2"`, and `"3"` are also accepted. Numeric values use the renderer's thresholds (`<=1` low, `>=3` high, otherwise medium). Missing or unrecognized ratings default to medium.
 
 ## Optional Fields
 
