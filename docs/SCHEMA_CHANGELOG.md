@@ -54,6 +54,10 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **2026-09-22 — Right-axis titles clear wide tick labels (`go-slide-creator-316e7`).**
+  Right-axis titles now use the same measured label-width clearance as left
+  axes, preventing collisions when callers render a right-side value axis.
+
 - **2026-09-22 — Y-axis titles clear wide tick labels (`go-slide-creator-9s6bu`).**
   Left-axis titles now clear the measured width of visible tick labels instead
   of using the labels' line height as their horizontal offset.

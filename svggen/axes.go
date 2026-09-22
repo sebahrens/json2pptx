@@ -537,6 +537,7 @@ func (a *Axis) drawTitle(originX, originY float64, positions []float64, labels [
 		b.Pop()
 
 	case AxisPositionRight:
+		titleOffset = a.sideTitleOffset(style, positions, labels)
 		titleX = originX + titleOffset
 		titleY = originY + axisMid
 		// Rotate title for vertical axis

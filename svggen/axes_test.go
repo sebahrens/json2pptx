@@ -231,6 +231,52 @@ func TestLeftAxisTitleMeasuresOnlyDisplayedLabels(t *testing.T) {
 	}
 }
 
+func TestRightAxisTitleClearsWideTickLabels(t *testing.T) {
+	const widthPt = 400.0
+	builder := NewSVGBuilder(widthPt, 300)
+	scale := NewLinearScale(0, 1_000_000).SetRangeLinear(200, 0)
+	config := DefaultAxisConfig(AxisPositionRight)
+	config.Title = "Revenue"
+	config.Format = "%.0f"
+	config.TickCount = 5
+	NewAxis(builder, config).DrawLinearAxis(scale, 250, 40)
+	svg, err := builder.RenderToString()
+	if err != nil {
+		t.Fatalf("render axis: %v", err)
+	}
+	texts := ParseSVGTexts(t, svg)
+	title := FindByContent(texts, "Revenue")
+	tick := FindByContent(texts, "1000000")
+	if title == nil || tick == nil {
+		t.Fatalf("expected title and wide tick label in SVG: title=%v tick=%v", title != nil, tick != nil)
+	}
+	pxToPt, ok := ViewBoxPxToPt(t, svg, widthPt)
+	if !ok {
+		t.Fatal("could not parse SVG viewBox")
+	}
+	builder.Push()
+	builder.SetFontSize(builder.StyleGuide().Typography.SizeSmall)
+	tickWidth, _ := builder.MeasureText("1000000")
+	builder.Pop()
+	// The canvas backend encodes +90° text as a matrix rather than the
+	// translate/rotate form handled by ParseSVGTexts. Read its X translation.
+	titleMatrix := regexp.MustCompile(`<text transform="matrix\((?:[^,]*,){4}([0-9.]+),[^"]+\)"[^>]*><tspan[^>]*>Revenue</tspan>`).FindStringSubmatch(svg)
+	if len(titleMatrix) != 2 {
+		t.Fatal("right title transform missing from SVG")
+	}
+	titleX, err := strconv.ParseFloat(titleMatrix[1], 64)
+	if err != nil {
+		t.Fatalf("parse right title X: %v", err)
+	}
+	gap := titleX*pxToPt - (tick.X*pxToPt + tickWidth)
+	if gap < 2 {
+		t.Errorf("right title overlaps wide tick labels: gap=%.2fpt, want at least 2pt", gap)
+	}
+	if titleX*pxToPt >= widthPt {
+		t.Errorf("right title starts outside chart viewBox: x=%.2fpt", titleX*pxToPt)
+	}
+}
+
 // TestLeftAxisLabels_TextAnchorEnd is the regression test for adversarial
 // finding A1: Y-axis tick labels (drawn with TextAlignRight) must emit an
 // explicit text-anchor="end" on the <text> element. Without it, downstream
