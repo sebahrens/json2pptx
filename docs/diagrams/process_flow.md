@@ -78,6 +78,14 @@ Document workflows with steps, decisions, and connections.
 | `direction` | `string` | `horizontal` | Flow direction: `horizontal`, `vertical` |
 | `footnote` | `string` | - | Footnote text |
 
+In `vertical` mode, step boxes are content-sized and capped at 40% of the
+diagram width so the flow retains side lanes. A decision with two or more
+outgoing connections places its direct targets on left/right lanes (`Yes` left,
+`No` right; otherwise alternating), and connection labels sit beside the route
+inside the edge-to-edge gap. If a short frame still forces text or a connection
+label into a step, preflight reports `diagram.text_overlap` instead of silently
+shipping unreadable 5pt text.
+
 ## Step Optional Fields
 
 | Field | Type | Description |

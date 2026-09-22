@@ -62,6 +62,18 @@ const (
 	// reads as a strip; a box tall enough to fill a body placeholder would be
 	// worse than a short one.
 	pfMaxStepHeightFactor int64 = 2
+
+	// Vertical flows need whitespace on both sides of the spine for decision
+	// branches. Steps are content-sized but never consume more than 40% of the
+	// frame width; branch targets sit on the 25% / 75% lanes.
+	pfVerticalMaxWidthPct    int64 = 40
+	pfVerticalLeftCenterPct  int64 = 25
+	pfVerticalRightCenterPct int64 = 75
+
+	// Approximate text widths used only to choose a sensible native-shape width.
+	// PowerPoint still performs the authoritative normAutofit inside the box.
+	pfLabelGlyphWidthEMU int64 = 7 * 12700
+	pfBodyGlyphWidthEMU  int64 = 5 * 12700
 )
 
 // processFlowStepType identifies the type of a process step.
@@ -277,7 +289,7 @@ type pfLayoutResult struct {
 }
 
 // computeProcessFlowLayout calculates EMU positions for all steps within bounds.
-func computeProcessFlowLayout(steps []processFlowStep, bounds types.BoundingBox, direction string) pfLayoutResult {
+func computeProcessFlowLayout(steps []processFlowStep, connections []processFlowConnection, bounds types.BoundingBox, direction string) pfLayoutResult {
 	n := len(steps)
 	if n == 0 {
 		return pfLayoutResult{direction: direction}
@@ -304,7 +316,7 @@ func computeProcessFlowLayout(steps []processFlowStep, bounds types.BoundingBox,
 	}
 
 	if direction == "vertical" {
-		return pfLayoutVertical(layouts, bounds)
+		return pfLayoutVertical(layouts, steps, connections, bounds)
 	}
 
 	// Horizontal layout — check if single row fits.
@@ -400,42 +412,177 @@ func pfStepDimensions(step processFlowStep, bounds types.BoundingBox, stepCount 
 	}
 }
 
-// pfLayoutVertical positions steps in a single vertical column.
-func pfLayoutVertical(layouts []pfStepLayout, bounds types.BoundingBox) pfLayoutResult {
-	// Expand widths to fill 80% of available width.
-	maxW := bounds.Width * 80 / 100
+// pfLayoutVertical positions steps on a central spine, with the direct targets
+// of a decision placed on left/right lanes. This makes Yes/No paths visually
+// distinct while preserving the authored step order and merge connections.
+func pfLayoutVertical(layouts []pfStepLayout, steps []processFlowStep, connections []processFlowConnection, bounds types.BoundingBox) pfLayoutResult {
 	for i := range layouts {
-		if layouts[i].cx < maxW {
-			layouts[i].cx = maxW
-		}
+		layouts[i].cx = pfVerticalStepWidth(steps[i], layouts[i], bounds)
 	}
 
-	totalH := int64(0)
-	for i, l := range layouts {
-		totalH += l.cy
-		if i > 0 {
-			totalH += pfGap
-		}
+	gap := pfVerticalGap(len(layouts), bounds.Height)
+	availableForSteps := bounds.Height - int64(len(layouts)-1)*gap
+	if availableForSteps < 1 {
+		availableForSteps = 1
 	}
-
-	// Scale down if total exceeds bounds.
-	if totalH > bounds.Height {
-		scale := float64(bounds.Height) / float64(totalH)
+	stepHeight := int64(0)
+	for _, layout := range layouts {
+		stepHeight += layout.cy
+	}
+	if stepHeight > availableForSteps {
+		scale := float64(availableForSteps) / float64(stepHeight)
+		stepHeight = 0
 		for i := range layouts {
-			layouts[i].cy = int64(float64(layouts[i].cy) * scale)
+			layouts[i].cy = pfMax64(1, int64(float64(layouts[i].cy)*scale))
+			stepHeight += layouts[i].cy
 		}
-		totalH = bounds.Height
 	}
-
-	startY := bounds.Y + (bounds.Height-totalH)/2
+	pfConstrainVerticalDecisionAspect(layouts, steps)
+	totalH := stepHeight + int64(len(layouts)-1)*gap
+	startY := bounds.Y + pfMax64(0, bounds.Height-totalH)/2
 	currentY := startY
 	for i := range layouts {
 		layouts[i].x = bounds.X + (bounds.Width-layouts[i].cx)/2
 		layouts[i].y = currentY
-		currentY += layouts[i].cy + pfGap
+		currentY += layouts[i].cy + gap
 	}
+	pfPlaceVerticalDecisionBranches(layouts, steps, connections, bounds)
 
 	return pfLayoutResult{steps: layouts, direction: "vertical"}
+}
+
+func pfConstrainVerticalDecisionAspect(layouts []pfStepLayout, steps []processFlowStep) {
+	for i := range layouts {
+		if steps[i].stepType != pfDecisionType {
+			continue
+		}
+		maxW := layouts[i].cy * 2
+		if maxW < pfMinStepWidth {
+			maxW = pfMinStepWidth
+		}
+		if layouts[i].cx > maxW {
+			layouts[i].cx = maxW
+		}
+	}
+}
+
+func pfVerticalStepWidth(step processFlowStep, layout pfStepLayout, bounds types.BoundingBox) int64 {
+	capW := bounds.Width * pfVerticalMaxWidthPct / 100
+	if capW < pfMinStepWidth {
+		capW = bounds.Width
+	}
+	w := layout.cx
+	labelW := int64(len([]rune(step.label)))*pfLabelGlyphWidthEMU + 2*pfTextInset
+	if step.stepType == pfDecisionType {
+		// Only the central portion of a diamond is usable for text.
+		labelW = labelW * 3 / 2
+	}
+	if labelW > w {
+		w = labelW
+	}
+	if step.description != "" {
+		// Descriptions should wrap at roughly 36 characters rather than turn a
+		// vertical process into a row of slide-wide banners.
+		chars := len([]rune(step.description))
+		if chars > 36 {
+			chars = 36
+		}
+		bodyW := int64(chars)*pfBodyGlyphWidthEMU + 2*pfTextInset
+		if bodyW > w {
+			w = bodyW
+		}
+	}
+	if w < pfMinStepWidth {
+		w = pfMinStepWidth
+	}
+	if w > capW {
+		w = capW
+	}
+	return w
+}
+
+func pfVerticalGap(stepCount int, height int64) int64 {
+	if stepCount <= 1 {
+		return 0
+	}
+	gap := pfGap
+	// Connectors and their 0.2" labels get at most one third of the frame;
+	// dense flows retain visible gaps without pushing the final step outside.
+	if maxGap := height / (3 * int64(stepCount-1)); gap > maxGap {
+		gap = maxGap
+	}
+	if gap < 1 {
+		return 1
+	}
+	return gap
+}
+
+func pfPlaceVerticalDecisionBranches(layouts []pfStepLayout, steps []processFlowStep, connections []processFlowConnection, bounds types.BoundingBox) {
+	index := make(map[string]int, len(steps))
+	for i, step := range steps {
+		index[step.id] = i
+	}
+	for i, step := range steps {
+		if step.stepType != pfDecisionType {
+			continue
+		}
+		var outgoing []processFlowConnection
+		for _, conn := range connections {
+			if conn.from == step.id {
+				outgoing = append(outgoing, conn)
+			}
+		}
+		if len(outgoing) < 2 {
+			continue
+		}
+		usedLeft, usedRight := false, false
+		for branchIndex, conn := range outgoing {
+			target, ok := index[conn.to]
+			if !ok || target == i {
+				continue
+			}
+			side := pfVerticalBranchSide(conn.label, branchIndex, usedLeft, usedRight)
+			if side < 0 {
+				usedLeft = true
+				pfCenterLayoutAt(&layouts[target], bounds, pfVerticalLeftCenterPct)
+			} else {
+				usedRight = true
+				pfCenterLayoutAt(&layouts[target], bounds, pfVerticalRightCenterPct)
+			}
+		}
+	}
+}
+
+func pfVerticalBranchSide(label string, index int, usedLeft, usedRight bool) int {
+	switch strings.ToLower(strings.TrimSpace(label)) {
+	case "yes", "y", "true":
+		return -1
+	case "no", "n", "false":
+		return 1
+	}
+	if !usedLeft {
+		return -1
+	}
+	if !usedRight {
+		return 1
+	}
+	if index%2 == 0 {
+		return -1
+	}
+	return 1
+}
+
+func pfCenterLayoutAt(layout *pfStepLayout, bounds types.BoundingBox, centerPct int64) {
+	center := bounds.X + bounds.Width*centerPct/100
+	x := center - layout.cx/2
+	minX, maxX := bounds.X, bounds.X+bounds.Width-layout.cx
+	if x < minX {
+		x = minX
+	}
+	if x > maxX {
+		x = maxX
+	}
+	layout.x = x
 }
 
 // pfLayoutSingleRow positions all steps in one horizontal row.
@@ -599,7 +746,7 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 	}
 
 	// Compute layout.
-	layout := computeProcessFlowLayout(steps, bounds, meta.direction)
+	layout := computeProcessFlowLayout(steps, connections, bounds, meta.direction)
 
 	var children [][]byte
 	nextID := shapeIDBase + 1
@@ -843,34 +990,12 @@ func pfGenerateConnector(connID uint32, src, tgt pptx.ShapeOptions, srcShapeID, 
 // pfGenerateConnLabel produces a small text shape for a connection label,
 // positioned at the midpoint between two shapes.
 func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, direction string) []byte {
-	// Compute midpoint between shape centers.
-	srcCX := src.Bounds.X + src.Bounds.CX/2
-	srcCY := src.Bounds.Y + src.Bounds.CY/2
-	tgtCX := tgt.Bounds.X + tgt.Bounds.CX/2
-	tgtCY := tgt.Bounds.Y + tgt.Bounds.CY/2
-
-	midX := (srcCX + tgtCX) / 2
-	midY := (srcCY + tgtCY) / 2
-
-	// Small text box for the label.
-	labelW := int64(457200) // ~0.5"
-	labelH := int64(182880) // ~0.2"
-
-	// Offset perpendicular to the flow direction.
-	offsetAmt := int64(91440) // ~0.1"
-	x := midX - labelW/2
-	y := midY - labelH/2
-
-	if direction == "horizontal" {
-		y -= offsetAmt // Shift above the connector line
-	} else {
-		x += offsetAmt // Shift to the right of the connector line
-	}
+	labelBounds := pfConnLabelBounds(src.Bounds, tgt.Bounds, direction)
 
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     fmt.Sprintf("Conn Label %s", label),
-		Bounds:   pptx.RectEmu{X: x, Y: y, CX: labelW, CY: labelH},
+		Bounds:   labelBounds,
 		Geometry: pptx.GeomRect,
 		Fill:     pptx.NoFill(),
 		Line:     pptx.Line{Width: 0, Fill: pptx.NoFill()},
@@ -896,6 +1021,39 @@ func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, dire
 	if err != nil {
 		slog.Warn("process flow conn label failed", "error", err)
 		return nil
+	}
+	return b
+}
+
+func pfConnLabelBounds(src, tgt pptx.RectEmu, direction string) pptx.RectEmu {
+	const (
+		labelW    int64 = 457200 // ~0.5"
+		labelH    int64 = 182880 // ~0.2"
+		offsetAmt int64 = 91440  // ~0.1"
+	)
+	srcCX, srcCY := src.X+src.CX/2, src.Y+src.CY/2
+	tgtCX, tgtCY := tgt.X+tgt.CX/2, tgt.Y+tgt.CY/2
+	midX, midY := (srcCX+tgtCX)/2, (srcCY+tgtCY)/2
+	if direction == "vertical" {
+		// Centre the label in the actual edge-to-edge gap, not halfway between
+		// shape centres (which can put it on top of a tall target).
+		if tgtCY >= srcCY {
+			midY = (src.Y + src.CY + tgt.Y) / 2
+		} else {
+			midY = (tgt.Y + tgt.CY + src.Y) / 2
+		}
+		x := midX + offsetAmt
+		if tgtCX < srcCX {
+			x = midX - labelW - offsetAmt
+		}
+		return pptx.RectEmu{X: x, Y: midY - labelH/2, CX: labelW, CY: labelH}
+	}
+	return pptx.RectEmu{X: midX - labelW/2, Y: midY - labelH/2 - offsetAmt, CX: labelW, CY: labelH}
+}
+
+func pfMax64(a, b int64) int64 {
+	if a > b {
+		return a
 	}
 	return b
 }

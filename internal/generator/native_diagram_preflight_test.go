@@ -77,6 +77,42 @@ func TestNativeDiagramDensityBudgets(t *testing.T) {
 	}
 }
 
+func TestNativeProcessFlowVerticalPreflightUsesResolvedBoxes(t *testing.T) {
+	data := map[string]any{
+		"direction": "vertical",
+		"steps": []any{
+			map[string]any{"id": "start", "label": "Start", "type": "start"},
+			map[string]any{"id": "check", "label": "Approved?", "type": "decision"},
+			map[string]any{"id": "yes", "label": "Release"},
+			map[string]any{"id": "no", "label": "Revise"},
+			map[string]any{"id": "end", "label": "Complete", "type": "end"},
+		},
+		"connections": []any{
+			map[string]any{"from": "start", "to": "check"},
+			map[string]any{"from": "check", "to": "yes", "label": "Yes"},
+			map[string]any{"from": "check", "to": "no", "label": "No"},
+			map[string]any{"from": "yes", "to": "end"},
+			map[string]any{"from": "no", "to": "end"},
+		},
+	}
+	clean := &types.DiagramSpec{Type: "process_flow", Data: data}
+	if got := NativeDiagramPreflight(clean, "Arial", "slides[0].content[0]"); len(got) != 0 {
+		t.Fatalf("standard vertical flow findings = %+v, want none", got)
+	}
+
+	shortFrame := &types.DiagramSpec{Type: "process_flow", Data: data, Height: 120}
+	got := NativeDiagramPreflight(shortFrame, "Arial", "slides[0].content[0]")
+	if len(got) == 0 {
+		t.Fatal("short vertical frame must report text/label overlap")
+	}
+	for _, finding := range got {
+		if finding.Code == "diagram.text_overlap" {
+			return
+		}
+	}
+	t.Fatalf("short vertical frame findings = %+v, want diagram.text_overlap", got)
+}
+
 func TestNativeStatCardTinyCaption(t *testing.T) {
 	stress := &types.DiagramSpec{Type: "stat_cards", Data: map[string]any{"panels": []any{
 		map[string]any{"title": "Rechtsschutzversicherungsgesellschaften", "value": "1,234,567,890.12"},

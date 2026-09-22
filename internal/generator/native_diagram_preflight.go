@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -49,9 +50,76 @@ func NativeDiagramPreflight(spec *types.DiagramSpec, fontName, path string) []pa
 			return []patterns.FitFinding{*finding}
 		}
 		return nil
+	case "process_flow":
+		return nativeProcessFlowPreflight(spec, fontName, path, width, height)
 	default:
 		return nativeDiagramDensityPreflight(spec, path)
 	}
+}
+
+func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, width, height int64) []patterns.FitFinding {
+	out := nativeDiagramDensityPreflight(spec, path)
+	steps, connections, direction := parseProcessFlowDiagramData(spec.Data)
+	if len(steps) == 0 {
+		return out
+	}
+	bounds := types.BoundingBox{Width: width, Height: height}
+	layout := computeProcessFlowLayout(steps, connections, bounds, direction)
+	for i, step := range steps {
+		box := layout.steps[i]
+		usableW := box.cx - 2*pfTextInset
+		availableH := box.cy - 2*pfTextInset
+		if usableW < 1 {
+			usableW = 1
+		}
+		if availableH < 1 {
+			availableH = 1
+		}
+		required := measureNativeText(step.label, font, float64(pfLabelFontSize)/100, usableW)
+		if step.description != "" {
+			required += measureNativeText(step.description, font, float64(pfDescFontSize)/100, usableW)
+		}
+		if required > availableH {
+			out = append(out, nativeTextCollisionFinding(spec.Type, fmt.Sprintf("%s.data.steps[%d]", path, i), step.label, step.description, required, availableH))
+		}
+	}
+
+	stepRects := make(map[string]pptx.RectEmu, len(steps))
+	for i, step := range steps {
+		box := layout.steps[i]
+		stepRects[step.id] = pptx.RectEmu{X: box.x, Y: box.y, CX: box.cx, CY: box.cy}
+	}
+	for i, connection := range connections {
+		if connection.label == "" {
+			continue
+		}
+		src, srcOK := stepRects[connection.from]
+		tgt, tgtOK := stepRects[connection.to]
+		if !srcOK || !tgtOK {
+			continue
+		}
+		label := pfConnLabelBounds(src, tgt, layout.direction)
+		for _, stepRect := range stepRects {
+			if nativeRectsOverlap(label, stepRect) {
+				out = append(out, patterns.FitFinding{
+					ValidationError: patterns.ValidationError{
+						Pattern: spec.Type,
+						Path:    fmt.Sprintf("%s.data.connections[%d].label", path, i),
+						Code:    "diagram.text_overlap",
+						Message: fmt.Sprintf("process-flow connection label %q overlaps a step box; enlarge the diagram, shorten the flow, or remove the label", connection.label),
+						Fix:     &patterns.FixSuggestion{Kind: "reduce_items"},
+					},
+					Action: "review",
+				})
+				break
+			}
+		}
+	}
+	return out
+}
+
+func nativeRectsOverlap(a, b pptx.RectEmu) bool {
+	return a.X < b.X+b.CX && a.X+a.CX > b.X && a.Y < b.Y+b.CY && a.Y+a.CY > b.Y
 }
 
 var nativeDiagramTextBudgets = map[string]int{

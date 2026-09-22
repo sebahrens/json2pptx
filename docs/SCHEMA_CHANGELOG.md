@@ -54,6 +54,15 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **2026-09-22 — Usable vertical native process flows (`go-slide-creator-o7s5i`).**
+  `process_flow.data.direction:"vertical"` no longer stretches every step and
+  decision to 80% of the slide width. Boxes are content-sized with a 40% cap,
+  step heights plus connector gaps stay inside the resolved frame, decision
+  targets route onto left/right lanes, and branch labels sit beside connectors
+  in the true edge-to-edge gap. Dimension-aware native preflight now emits
+  `diagram.text_overlap` when a short frame still cannot preserve readable text
+  or label clearance.
+
 - **Semantic authoring contract hardening (`go-slide-creator-0vhs8`,
   `go-slide-creator-mim6r`, `go-slide-creator-oechj`,
   `go-slide-creator-sftti`, `go-slide-creator-kkgo7`,
