@@ -49,6 +49,12 @@ LOW      │   Under   │  Average  │   Solid   │  row 2
                ← PERFORMANCE →
 ```
 
+Cell fills follow the template's `semantic_accents`: low score bands use the
+negative accent, the middle diagonal uses neutral, and high score bands use
+positive. Adjacent bands vary lightness within the same semantic hue, so the
+grid preserves its meaning across templates instead of assuming fixed accent
+numbers are red, yellow, or green.
+
 ## Required Fields
 
 Provide **one** of two mutually exclusive forms: explicit `cells` (most reliable) or `employees` (auto-routed). If both are present, `cells` wins.

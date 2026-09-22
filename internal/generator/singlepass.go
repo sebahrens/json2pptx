@@ -4,6 +4,7 @@ package generator
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"log/slog"
@@ -15,6 +16,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/tokens"
+	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
@@ -351,6 +353,19 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 	ctx.whiteTextSafeHex = computeWhiteTextSafeHex(themeInfo.Colors)
 	ctx.themeFontName = themeInfo.BodyFont
 	ctx.titleFontName = themeInfo.TitleFont
+	if _, ok := ctx.templateIndex[template.MetadataFilePath]; ok {
+		data, err := utils.ReadFileFromZipIndex(ctx.templateIndex, template.MetadataFilePath)
+		if err != nil {
+			slog.Warn("template semantic accents unavailable", "error", err)
+		} else {
+			var metadata types.TemplateMetadata
+			if err := json.Unmarshal(data, &metadata); err != nil {
+				slog.Warn("template semantic accents unavailable", "error", err)
+			} else {
+				ctx.semanticAccents = metadata.SemanticAccents
+			}
+		}
+	}
 
 	// Detect logo images in slide layouts so title/diagram positions can be adjusted
 	ctx.logoZones = detectLogoZones(&ctx.templateReader.Reader, ctx.templateIndex)

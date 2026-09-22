@@ -948,7 +948,7 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 				)
 			case inserts[i].nineBoxMode:
 				inserts[i].groupXML = generateNineBoxGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, inserts[i].nineBoxTints,
 				)
 			case inserts[i].kpiDashboardMode:
 				inserts[i].groupXML = generateKPIDashboardGroupXML(

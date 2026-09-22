@@ -54,6 +54,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **2026-09-22 — Semantic nine-box talent colors (`go-slide-creator-7itun`).**
+  Native `nine_box_talent` cells now resolve negative, neutral, and positive
+  score bands through the template's `semantic_accents`. Adjacent score bands
+  use lightness steps of the same hue, replacing the positional accent mapping
+  that made strong performers blue or weak performers green on some templates.
+
 - **2026-09-22 — Usable vertical native process flows (`go-slide-creator-o7s5i`).**
   `process_flow.data.direction:"vertical"` no longer stretches every step and
   decision to 80% of the slide width. Boxes are content-sized with a 40% cap,

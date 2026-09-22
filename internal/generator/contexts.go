@@ -79,6 +79,7 @@ type panelShapeInsert struct {
 	swotMode          bool              // True for SWOT 2x2 grid layout (vs column panels)
 	pestelMode        bool              // True for PESTEL 3x2 grid layout
 	nineBoxMode       bool              // True for Nine Box Talent 3x3 grid layout
+	nineBoxTints      []taxonomyTint    // Semantic score-band fills for Nine Box Talent
 	rowsMode          bool              // True for horizontal rows layout
 	statCardsMode     bool              // True for stat_cards grid layout
 	stylishPanelsMode bool              // True for stylish_panels layout
@@ -157,6 +158,11 @@ type ChartContext struct {
 	// Resolved from TemplateMetadata.DataPalette (scheme names → hex) at init time.
 	// When non-empty, passed to svggen StyleSpec.DataPalette to override accent ordering.
 	dataPalette []string
+
+	// semanticAccents maps roles such as positive, negative, and neutral to
+	// template scheme colors. Native diagrams use this instead of guessing
+	// that a positional accent has a universal meaning.
+	semanticAccents map[string]string
 
 	// themeOverride contains per-deck color/font overrides from frontmatter.
 	// Applied after template theme is parsed, before chart rendering.

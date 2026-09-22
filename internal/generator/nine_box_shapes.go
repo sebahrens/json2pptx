@@ -23,23 +23,23 @@ import (
 //                  Low          Medium         High
 //           ┌──────────┐  gap  ┌──────────┐  gap  ┌──────────┐
 //   High    │  Enigma   │       │ Growth   │       │  Star    │
-//           │ (accent4) │       │ (accent3) │       │ (accent1) │
+//           │ (neutral) │       │(positive)│       │(positive)│
 //           └──────────┘       └──────────┘       └──────────┘
 //                 gap                gap                gap
 //           ┌──────────┐  gap  ┌──────────┐  gap  ┌──────────┐
 //   Medium  │ Dilemma   │       │  Core    │       │  High    │
-//           │ (accent4) │       │ (accent3) │       │ Performer│
-//           └──────────┘       └──────────┘       │ (accent1) │
+//           │(negative) │       │ (neutral) │       │ Performer│
+//           └──────────┘       └──────────┘       │(positive)│
 //                 gap                gap           └──────────┘
 //           ┌──────────┐  gap  ┌──────────┐  gap  ┌──────────┐
 //   Low     │  Under   │       │ Average  │       │  Solid   │
 //           │Performer │       │Performer │       │Performer │
-//           │ (accent2) │       │ (accent4) │       │ (accent3) │
+//           │(negative) │       │(negative) │       │ (neutral) │
 //           └──────────┘       └──────────┘       └──────────┘
 //
-// Color strategy: cells use scheme accent colors with tints based on their
-// position in the performance/potential grid (top-right = green/accent1,
-// bottom-left = red/accent2, diagonal = yellow/accent3, off-diagonal = amber/accent4).
+// Color strategy: performance + potential forms five score bands. The bands
+// resolve through the template's negative, neutral, and positive semantic
+// accents; lightness distinguishes adjacent bands without unrelated hues.
 
 // Nine Box EMU constants.
 const (
@@ -80,23 +80,35 @@ const (
 	nineBoxAxisTitleSpace int64 = 228600 // ~0.25"
 )
 
-// nineBoxCellColors maps each cell position [row][col] to a scheme color.
-// Uses a traffic-light-inspired pattern:
-//   - Top-right (high potential, high performance) = green tones (accent1)
-//   - Bottom-left (low potential, low performance) = red tones (accent2)
-//   - Diagonal = yellow/neutral tones (accent3)
-//   - Off-diagonal = amber tones (accent4)
-var nineBoxCellColors = [3][3]struct {
-	scheme string
-	lumMod int
-	lumOff int
-}{
-	// Row 0 (High Potential): amber, green, green
-	{{"accent4", 20000, 80000}, {"accent1", 25000, 75000}, {"accent1", 20000, 80000}},
-	// Row 1 (Medium Potential): amber, yellow, green
-	{{"accent4", 25000, 75000}, {"accent3", 20000, 80000}, {"accent1", 25000, 75000}},
-	// Row 2 (Low Potential): red, amber, yellow
-	{{"accent2", 20000, 80000}, {"accent4", 20000, 80000}, {"accent3", 25000, 75000}},
+func nineBoxSemanticTints(semanticAccents map[string]string) []taxonomyTint {
+	role := func(name, fallback string) string {
+		if resolved := strings.TrimSpace(semanticAccents[name]); resolved != "" {
+			return resolved
+		}
+		return fallback
+	}
+	negative := role("negative", "accent2")
+	neutral := role("neutral", "accent3")
+	positive := role("positive", "accent1")
+
+	// Score = performance + potential on two 0..2 axes. Each anti-diagonal
+	// therefore shares one meaning; only the outer bands need a lightness step
+	// to preserve the five-level progression.
+	band := [5]taxonomyTint{
+		{negative, 35000, 65000},
+		{negative, 20000, 80000},
+		{neutral, 25000, 75000},
+		{positive, 20000, 80000},
+		{positive, 35000, 65000},
+	}
+	out := make([]taxonomyTint, 0, 9)
+	for row := 0; row < 3; row++ {
+		potential := 2 - row
+		for performance := 0; performance < 3; performance++ {
+			out = append(out, band[potential+performance])
+		}
+	}
+	return out
 }
 
 // nineBoxDefaultLabels returns the standard 9-box cell labels indexed [row][col].
@@ -199,6 +211,7 @@ func (ctx *singlePassContext) processNineBoxNativeShapes(slideNum int, item Cont
 		bounds:         placeholderBounds,
 		panels:         panels,
 		nineBoxMode:    true,
+		nineBoxTints:   nineBoxSemanticTints(ctx.semanticAccents),
 	})
 }
 
@@ -223,11 +236,14 @@ func decodeNineBoxAxes(encoded string) (xTitle string, yTitle string, xLabels, y
 
 // generateNineBoxGroupXML produces the complete <p:grpSp> XML for a 3x3 nine box grid
 // with axis labels.
-func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string { //nolint:gocognit
+func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, tints []taxonomyTint) string { //nolint:gocognit
 	// panels[0] = axis metadata, panels[1..9] = cells [row*3+col]
 	if len(panels) != 10 {
 		slog.Warn("generateNineBoxGroupXML: expected 10 panels (1 axis + 9 cells)", "got", len(panels))
 		return ""
+	}
+	if len(tints) != 9 {
+		tints = nineBoxSemanticTints(nil)
 	}
 
 	// Decode axis info from first panel.
@@ -278,7 +294,8 @@ func generateNineBoxGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 				continue
 			}
 			panel := panels[panelIdx]
-			colors := nineBoxCellColors[row][col]
+			colorIdx := row*3 + col
+			colors := tints[colorIdx]
 
 			cellX := gridX + int64(col)*(cellW+nineBoxGap)
 			cellY := gridY + int64(row)*(cellH+nineBoxGap)

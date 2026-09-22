@@ -2,6 +2,7 @@ package generator
 
 import (
 	"encoding/xml"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -37,6 +38,61 @@ func TestIsNineBoxDiagram(t *testing.T) {
 				t.Errorf("isNineBoxDiagram() = %v, want %v", got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestNineBoxSemanticTintsUseTemplateRolesAndScoreBands(t *testing.T) {
+	tints := nineBoxSemanticTints(map[string]string{
+		"negative": "accent6",
+		"neutral":  "accent5",
+		"positive": "accent4",
+	})
+	wantSchemes := []string{
+		"accent5", "accent4", "accent4",
+		"accent6", "accent5", "accent4",
+		"accent6", "accent6", "accent5",
+	}
+	if len(tints) != len(wantSchemes) {
+		t.Fatalf("len(tints) = %d, want %d", len(tints), len(wantSchemes))
+	}
+	for i, want := range wantSchemes {
+		if tints[i].scheme != want {
+			t.Errorf("tints[%d].scheme = %q, want %q", i, tints[i].scheme, want)
+		}
+	}
+	// The semantic endpoints share their hue with the adjacent score band but
+	// are darker, producing an ordered five-band scale rather than a rainbow.
+	if tints[6].lumMod <= tints[7].lumMod {
+		t.Errorf("weakest endpoint should be darker than adjacent band: endpoint=%+v adjacent=%+v", tints[6], tints[7])
+	}
+	if tints[2].lumMod <= tints[1].lumMod {
+		t.Errorf("star endpoint should be darker than adjacent band: star=%+v adjacent=%+v", tints[2], tints[1])
+	}
+}
+
+func TestNineBoxSemanticTintsFallbacksAreStable(t *testing.T) {
+	tints := nineBoxSemanticTints(nil)
+	if tints[2].scheme != "accent1" || tints[8].scheme != "accent3" || tints[6].scheme != "accent2" {
+		t.Fatalf("fallback semantic roles = star:%q neutral:%q weakest:%q", tints[2].scheme, tints[8].scheme, tints[6].scheme)
+	}
+}
+
+func TestScanTemplateLoadsSemanticAccentsForNativeDiagrams(t *testing.T) {
+	templatePath := filepath.Join("..", "..", "templates", "midnight-blue.pptx")
+	ctx := newSinglePassContext(filepath.Join(t.TempDir(), "out.pptx"), nil, nil, true, nil)
+	cleanup, err := ctx.initializeContext(templatePath)
+	if err != nil {
+		t.Fatalf("initializeContext() error = %v", err)
+	}
+	defer cleanup()
+	if err := ctx.scanTemplate(); err != nil {
+		t.Fatalf("scanTemplate() error = %v", err)
+	}
+	want := map[string]string{"positive": "accent4", "negative": "accent2", "neutral": "accent5"}
+	for role, scheme := range want {
+		if got := ctx.semanticAccents[role]; got != scheme {
+			t.Errorf("semanticAccents[%q] = %q, want %q", role, got, scheme)
+		}
 	}
 }
 
@@ -240,7 +296,7 @@ func TestGenerateNineBoxGroupXML_Basic(t *testing.T) {
 	}
 
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 10000000, Height: 6000000}
-	result := generateNineBoxGroupXML(panels, bounds, 100)
+	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(nil))
 
 	if result == "" {
 		t.Fatal("generateNineBoxGroupXML returned empty string")
@@ -310,7 +366,7 @@ func TestGenerateNineBoxGroupXML_WrongPanelCount(t *testing.T) {
 	panels := []nativePanelData{{title: "only one"}}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
 
-	result := generateNineBoxGroupXML(panels, bounds, 100)
+	result := generateNineBoxGroupXML(panels, bounds, 100, nil)
 	if result != "" {
 		t.Error("expected empty string for wrong panel count")
 	}
@@ -345,7 +401,7 @@ func TestGenerateNineBoxGroupXML_NoAxes(t *testing.T) {
 	}
 
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
-	result := generateNineBoxGroupXML(panels, bounds, 100)
+	result := generateNineBoxGroupXML(panels, bounds, 100, nineBoxSemanticTints(nil))
 
 	if result == "" {
 		t.Fatal("should produce valid XML even without axis labels")
