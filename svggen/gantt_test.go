@@ -136,6 +136,72 @@ func TestGanttChart_Draw(t *testing.T) {
 	}
 }
 
+func TestGanttMilestoneDateStaysAboveTimeAxis(t *testing.T) {
+	for _, standalone := range []bool{false, true} {
+		name := "task milestone"
+		if standalone {
+			name = "standalone milestone"
+		}
+		t.Run(name, func(t *testing.T) {
+			tasks := make([]GanttTask, 10)
+			for i := range tasks {
+				tasks[i] = GanttTask{
+					ID:        fmt.Sprintf("task-%d", i),
+					Label:     fmt.Sprintf("Task %d", i),
+					StartDate: date(2026, 1, i+1),
+					EndDate:   date(2026, 2, i+1),
+				}
+			}
+			data := GanttData{Tasks: tasks}
+			if standalone {
+				data.Milestones = []GanttMilestone{{ID: "launch", Label: "Launch", Date: date(2026, 6, 30)}}
+			} else {
+				data.Tasks = append(data.Tasks, GanttTask{ID: "launch", Label: "Launch", Date: date(2026, 6, 30), IsMilestone: true})
+			}
+			const widthPt, heightPt = 800.0, 360.0
+			builder := NewSVGBuilder(widthPt, heightPt)
+			config := DefaultGanttConfig(widthPt, heightPt)
+			if err := NewGanttChart(builder, config).Draw(data); err != nil {
+				t.Fatalf("draw Gantt: %v", err)
+			}
+			svg, err := builder.RenderToString()
+			if err != nil {
+				t.Fatalf("render Gantt: %v", err)
+			}
+			dateLabel := FindByContent(ParseSVGTexts(t, svg), "30 Jun")
+			if dateLabel == nil {
+				t.Fatal("milestone date missing or not day-first")
+			}
+			pxToPt, ok := ViewBoxPxToPt(t, svg, widthPt)
+			if !ok {
+				t.Fatal("could not parse SVG viewBox")
+			}
+			plotArea := config.PlotArea()
+			axisY := plotArea.Y + plotArea.H - config.TimeAxisHeight
+			labelBottom := dateLabel.Y*pxToPt + builder.StyleGuide().Typography.SizeCaption/2
+			if labelBottom >= axisY {
+				t.Errorf("milestone date enters time-axis band: label bottom=%.2fpt, axis=%.2fpt", labelBottom, axisY)
+			}
+		})
+	}
+}
+
+func TestGanttMilestoneDateReportsInsufficientRowSpace(t *testing.T) {
+	builder := NewSVGBuilder(120, 100)
+	chart := NewGanttChart(builder, DefaultGanttConfig(120, 100))
+	chart.drawMilestoneDateLabel(date(2026, 6, 30), 55, 75, 10, Rect{X: 40, Y: 0, W: 30, H: 80}, builder.StyleGuide())
+	svg, err := builder.RenderToString()
+	if err != nil {
+		t.Fatalf("render milestone label: %v", err)
+	}
+	if strings.Contains(svg, "30 Jun") {
+		t.Fatal("unfittable milestone date was drawn outside its row")
+	}
+	if findFindingByCode(builder.Findings(), FindingOverflowSuppressed) == nil {
+		t.Fatalf("missing finding for suppressed milestone date: %+v", builder.Findings())
+	}
+}
+
 func TestGanttDiagram_Validate(t *testing.T) {
 	diagram := &GanttDiagram{NewBaseDiagram("gantt")}
 
@@ -252,12 +318,12 @@ func TestGanttDiagram_Render(t *testing.T) {
 
 func TestParseGanttTask(t *testing.T) {
 	tests := []struct {
-		name             string
-		input            map[string]any
-		wantLabel        string
-		wantCategory     string
-		wantIsMilestone  bool
-		wantDepsCount    int
+		name            string
+		input           map[string]any
+		wantLabel       string
+		wantCategory    string
+		wantIsMilestone bool
+		wantDepsCount   int
 	}{
 		{
 			name:         "basic task with start and end",
@@ -351,10 +417,10 @@ func TestGanttChart_AutoSizeLabelWidth(t *testing.T) {
 	plotArea := config.PlotArea()
 
 	tests := []struct {
-		name      string
-		labels    []string
-		wantMin   float64 // should be at least this wide
-		wantMax   float64 // should not exceed this
+		name    string
+		labels  []string
+		wantMin float64 // should be at least this wide
+		wantMax float64 // should not exceed this
 	}{
 		{
 			name:    "short labels use default width",
@@ -552,11 +618,11 @@ func TestGanttChart_XAxisLabelThinning(t *testing.T) {
 	// Verify that when a Gantt chart has many ticks, x-axis labels are thinned
 	// to prevent overcrowding.
 	tests := []struct {
-		name          string
-		start         string
-		end           string
-		timeUnit      string
-		maxLabels     int // expected maximum number of labels after thinning
+		name      string
+		start     string
+		end       string
+		timeUnit  string
+		maxLabels int // expected maximum number of labels after thinning
 	}{
 		{
 			name:      "short timeline shows all labels",

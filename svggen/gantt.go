@@ -686,8 +686,7 @@ func (gc *GanttChart) drawMilestoneMarker(task GanttTask, rowY float64, dateRang
 	b.DrawPolygon(points)
 	b.Pop()
 
-	// Draw date label below the diamond
-	gc.drawMilestoneDateLabel(task.Date, x, y+halfSize, style)
+	gc.drawMilestoneDateLabel(task.Date, x, y, halfSize, chartArea, style)
 }
 
 // drawStandaloneMilestone draws a standalone milestone from the Milestones list.
@@ -719,33 +718,55 @@ func (gc *GanttChart) drawStandaloneMilestone(ms GanttMilestone, rowY float64, d
 	b.DrawPolygon(points)
 	b.Pop()
 
-	// Draw date label below the diamond
-	gc.drawMilestoneDateLabel(ms.Date, x, y+halfSize, style)
+	gc.drawMilestoneDateLabel(ms.Date, x, y, halfSize, chartArea, style)
 }
 
-// drawMilestoneDateLabel renders a compact date label just below a milestone diamond.
-// The label uses a small muted font so it provides context without cluttering the chart.
-func (gc *GanttChart) drawMilestoneDateLabel(d time.Time, cx, belowY float64, style *StyleGuide) {
+// drawMilestoneDateLabel keeps the date in its row when a below-diamond label
+// would intrude into the x-axis band.
+func (gc *GanttChart) drawMilestoneDateLabel(d time.Time, cx, cy, halfSize float64, chartArea Rect, style *StyleGuide) {
 	if d.IsZero() {
 		return
 	}
 	b := gc.builder
 
-	label := d.Format("Jan 2")
+	label := d.Format("2 Jan")
 	fontSize := style.Typography.SizeCaption
 	if fontSize == 0 {
 		fontSize = style.Typography.SizeSmall * 0.8
 	}
 
 	b.Push()
+	defer b.Pop()
 	b.SetFontSize(fontSize)
 	b.SetFontWeight(style.Typography.WeightNormal)
 	b.SetTextColor(style.Palette.TextSecondary)
 
-	// Position just below the diamond with a small gap
 	gap := style.Spacing.XS
-	b.DrawText(label, cx, belowY+gap, TextAlignCenter, TextBaselineTop)
-	b.Pop()
+	belowY := cy + halfSize + gap
+	if belowY+fontSize+gap <= chartArea.Y+chartArea.H {
+		b.DrawText(label, cx, belowY, TextAlignCenter, TextBaselineTop)
+	} else {
+		labelWidth, _ := b.MeasureText(label)
+		labelY := math.Min(cy, chartArea.Y+chartArea.H-fontSize/2-gap)
+		if labelY-fontSize/2 >= chartArea.Y+gap {
+			rightX := cx + halfSize + gap
+			if rightX+labelWidth <= chartArea.X+chartArea.W {
+				b.DrawText(label, rightX, labelY, TextAlignLeft, TextBaselineMiddle)
+				return
+			}
+			leftX := cx - halfSize - gap
+			if leftX-labelWidth >= chartArea.X {
+				b.DrawText(label, leftX, labelY, TextAlignRight, TextBaselineMiddle)
+				return
+			}
+		}
+		b.AddFinding(Finding{
+			Code:     FindingOverflowSuppressed,
+			Message:  fmt.Sprintf("gantt milestone date %q omitted — not enough space in its row", label),
+			Severity: "warning",
+			Fix:      &FixSuggestion{Kind: FixKindIncreaseCanvas},
+		})
+	}
 }
 
 // drawDependencies draws arrows between dependent tasks.
@@ -1448,4 +1469,3 @@ func parseGanttMilestone(raw any, index int) GanttMilestone {
 
 	return ms
 }
-

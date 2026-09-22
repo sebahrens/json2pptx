@@ -54,6 +54,11 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **2026-09-22 — Gantt milestone dates clear the time axis (`go-slide-creator-ff4hq`).**
+  Milestone dates use day-first labels (for example `30 Jun`). When a label
+  would enter the time-axis band, it sits beside its diamond within the row;
+  an unfittable date is omitted with an overflow warning.
+
 - **2026-09-22 — Right-axis titles clear wide tick labels (`go-slide-creator-316e7`).**
   Right-axis titles now use the same measured label-width clearance as left
   axes, preventing collisions when callers render a right-side value axis.
