@@ -1231,12 +1231,13 @@ A filled shape covering more than **10% of the slide area** holds text whose est
 
 The bounding box of the slide's grid "ink" covers too little of the safe content area (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). Ink is every filled shape, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area); a near-empty placeholder slide is `SLIDE_NEARLY_EMPTY`'s business, not this one.
 
-**The threshold depends on who chose the band's height** (`fix.params.band_capped_by`):
+**The threshold depends on whether the author imposed a restrictive size cap** (`fix.params.band_capped_by`):
 
 | `band_capped_by` | threshold | why |
 |---|---|---|
-| `author` | 45% | the slide sets `bounds` or `max_height_pct`, so the height is an authoring decision and "the cap is too tight" is actionable |
-| `pattern` | 22% | the pattern derived its height from its content ([go-slide-creator-7km8](SCHEMA_CHANGELOG.md)), so it is SUPPOSED to be shorter than the zone — only a genuine sliver is worth reporting, and the advice is about content, never about a cap the author never set |
+| `author` | 45% | the slide sets restrictive `bounds` or `max_height_pct`, so loosening the cap is actionable |
+| `pattern` | 22% | the pattern derived its height from its content ([go-slide-creator-7km8](SCHEMA_CHANGELOG.md)), so only a genuine sliver is worth reporting |
+| `none` | 22% | a raw grid or a pattern with explicit full-area bounds has no restrictive cap; add content or combine zones, not raise a nonexistent cap |
 
 Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to a thin band, or a four-stop `timeline-horizontal` (10% of the zone).
 

@@ -331,22 +331,28 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 	u = intersectRect(u, safe)
 	frac := float64(u.CX) * float64(u.CY) / (float64(safe.CX) * float64(safe.CY))
 
-	// Whether the band's height was the AUTHOR's decision or the pattern's
-	// decides both the threshold and the advice (go-slide-creator-up04).
-	capped := authorCappedBand(slide)
+	// A restrictive author cap uses the stricter threshold. An uncapped raw
+	// grid needs different advice from a content-sized pattern.
+	source := bandCapSource(slide)
 	threshold := slideUnderusedPatternMaxFrac
-	hint := "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern"
-	if capped {
+	hint := "add detail to the grid, pair it with supporting content, or merge with another slide"
+	switch source {
+	case "author":
 		threshold = slideUnderusedMaxFrac
 		hint = "raise or remove the bounds / max_height_pct cap on this slide, add a supporting zone, or merge with another slide"
+	case "pattern":
+		hint = "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern"
 	}
 	if frac >= threshold {
 		return nil
 	}
 
-	reason := "the pattern's own content-derived height leaves it a thin strip"
-	if capped {
+	reason := "the grid's ink is sparse despite no restrictive size cap"
+	switch source {
+	case "author":
 		reason = "the bounds / max_height_pct cap on this slide leaves it a thin strip"
+	case "pattern":
+		reason = "the pattern's own content-derived height leaves it a thin strip"
 	}
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
@@ -359,7 +365,7 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 				Params: map[string]any{
 					"content_area_pct": math.Round(100 * frac),
 					"threshold_pct":    math.Round(100 * threshold),
-					"band_capped_by":   bandCappedBy(capped),
+					"band_capped_by":   source,
 					"hint":             hint,
 				},
 			},
@@ -368,32 +374,37 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 	}
 }
 
-// authorCappedBand reports whether the slide itself constrains the grid's
-// height — an explicit bounds block or max_height_pct on the pattern, or bounds
-// on a raw shape_grid. When it does not, the height came from the pattern's own
-// content sizing and no amount of editing the slide JSON will change it.
-func authorCappedBand(slide *SlideInput) bool {
+// bandCapSource identifies a restrictive authored bound, a pattern-owned
+// content-sized band, or a raw/full-area grid with no effective cap.
+func bandCapSource(slide *SlideInput) string {
 	if slide == nil {
-		return false
+		return "none"
 	}
 	if slide.Pattern != nil {
 		if b, _ := resolvePatternBounds(slide.Pattern); b != nil {
-			return true
+			if boundsConstrainArea(b) {
+				return "author"
+			}
+			return "none"
 		}
 		// Fit preflight may already have expanded the pattern into ShapeGrid.
 		// Its grid bounds are pattern-owned, never an author cap.
-		return false
+		return "pattern"
 	}
-	return slide.ShapeGrid != nil && slide.ShapeGrid.Bounds != nil
-}
-
-// bandCappedBy names who chose the band's height, so an agent can branch on it
-// without parsing the hint prose.
-func bandCappedBy(capped bool) string {
-	if capped {
+	if slide.ShapeGrid != nil && boundsConstrainArea(slide.ShapeGrid.Bounds) {
 		return "author"
 	}
-	return "pattern"
+	return "none"
+}
+
+// boundsConstrainArea excludes explicit full-slide bounds: x/y may be shifted
+// or width/height expanded and still cover the whole slide, but a missing edge
+// is a real author-imposed restriction that can make the grid underuse it.
+func boundsConstrainArea(b *GridBoundsInput) bool {
+	if b == nil {
+		return false
+	}
+	return b.X > 0 || b.Y > 0 || b.X+b.Width < 100 || b.Y+b.Height < 100
 }
 
 // hasBodyPlaceholderContent reports whether the slide puts content into a

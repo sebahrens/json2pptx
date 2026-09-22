@@ -28,6 +28,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-22 — Uncapped grid attribution (`go-slide-creator-nf8ad`,
+  `go-slide-creator-gt3ao`).** `SLIDE_UNDERUSED` now treats full-area explicit
+  bounds as non-restrictive and uses `band_capped_by:"none"` for uncapped raw
+  grids or patterns whose author selected the full area. The 22% threshold
+  remains for these cases, with content-focused advice; only genuinely
+  restrictive bounds use the 45% author-cap branch.
+
 - **2026-09-22 — Pattern band-cap attribution (`go-slide-creator-hqar0`).**
   Geometry preflight now attributes `SLIDE_UNDERUSED` from authored pattern
   bounds, ignoring any `ShapeGrid.Bounds` attached by expansion. Content-sized

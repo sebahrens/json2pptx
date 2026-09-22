@@ -285,8 +285,8 @@ func TestGeometry_ExpandedPatternBoundsAreNotAuthorCaps(t *testing.T) {
 }
 
 // collectFitFindings expands patterns before geometry detection; this is the
-// production path that previously reintroduced the synthesized-bounds bug.
-func TestFitFindings_PatternBandCapAttribution(t *testing.T) {
+// production path for all three attribution sources.
+func TestFitFindings_BandCapAttribution(t *testing.T) {
 	for _, tt := range []struct {
 		name string
 		in   *PresentationInput
@@ -294,6 +294,7 @@ func TestFitFindings_PatternBandCapAttribution(t *testing.T) {
 	}{
 		{"pattern_owned", geomCompactChevronSlide(t), "pattern"},
 		{"author_capped", geomPatternSlide(t, 20), "author"},
+		{"raw_full_area", geomSparseRawGrid(t, `"bounds":{"x":0,"y":0,"width":100,"height":100},`), "none"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			fs := findingsByCode(collectFitFindings(tt.in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
@@ -319,22 +320,85 @@ func TestGeometry_RawGridBoundsRemainAuthorCaps(t *testing.T) {
 	}
 }
 
-func TestAuthorCappedBand(t *testing.T) {
+func geomSparseRawGrid(t *testing.T, bounds string) *PresentationInput {
+	t.Helper()
+	return geomSlides(t, `[{"layout_id":"content","shape_grid":{`+bounds+`"columns":1,
+		"rows":[{"cells":[{"shape":{"geometry":"rect","text":{"content":"Short","align":"ctr","vertical_align":"ctr"}}}]}]}}]`)
+}
+
+func TestGeometry_UncappedRawGridAdvice(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		bounds string
+	}{
+		{"no_bounds", ""},
+		{"full_area_bounds", `"bounds":{"x":0,"y":0,"width":100,"height":100},`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			in := geomSparseRawGrid(t, tt.bounds)
+			fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+			if len(fs) != 1 {
+				t.Fatalf("want one SLIDE_UNDERUSED for sparse raw grid, got %+v", fs)
+			}
+			f := fs[0]
+			if got := f.Fix.Params["band_capped_by"]; got != "none" {
+				t.Errorf("band_capped_by = %v, want none", got)
+			}
+			if hint, _ := f.Fix.Params["hint"].(string); strings.Contains(hint, "max_height_pct") || strings.Contains(hint, "denser pattern") {
+				t.Errorf("uncapped raw grid received cap/pattern advice: %q", hint)
+			}
+		})
+	}
+}
+
+func TestGeometry_FullAreaPatternBoundsHaveNoCapAdvice(t *testing.T) {
+	full := &GridBoundsInput{X: 0, Y: 0, Width: 100, Height: 100}
+	slide := &SlideInput{Pattern: &PatternInput{Bounds: full}, ShapeGrid: &ShapeGridInput{Bounds: full}}
+	fs := checkSlideUnderused([]pptx.RectEmu{{X: 45, Y: 45, CX: 10, CY: 10}},
+		pptx.RectEmu{X: 0, Y: 0, CX: 100, CY: 100}, slide, 0, "process-flow")
+	if fs == nil {
+		t.Fatal("want SLIDE_UNDERUSED for a sparse full-area pattern")
+	}
+	if got := fs.Fix.Params["band_capped_by"]; got != "none" {
+		t.Errorf("band_capped_by = %v, want none", got)
+	}
+	if hint, _ := fs.Fix.Params["hint"].(string); strings.Contains(hint, "max_height_pct") {
+		t.Errorf("full-area pattern bounds received cap advice: %q", hint)
+	}
+}
+
+func TestBandCapSource(t *testing.T) {
 	capped := geomPatternSlide(t, 20)
-	if !authorCappedBand(&capped.Slides[0]) {
+	if got := bandCapSource(&capped.Slides[0]); got != "author" {
 		t.Error("max_height_pct on the pattern is an author cap")
 	}
 	uncapped := geomPatternSlide(t, 0)
-	if authorCappedBand(&uncapped.Slides[0]) {
+	if got := bandCapSource(&uncapped.Slides[0]); got != "pattern" {
 		t.Error("a pattern with no bounds and no max_height_pct is not author-capped")
 	}
 	bounded := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"kpi-3up","bounds":{"x":0,"y":0,"width":100,"height":30},
 		"values":[{"big":"1","small":"a"},{"big":"2","small":"b"},{"big":"3","small":"c"}]}}]`)
-	if !authorCappedBand(&bounded.Slides[0]) {
+	if got := bandCapSource(&bounded.Slides[0]); got != "author" {
 		t.Error("explicit bounds on the pattern is an author cap")
 	}
-	if authorCappedBand(nil) {
-		t.Error("a nil slide is not author-capped")
+	if got := bandCapSource(nil); got != "none" {
+		t.Errorf("nil slide source = %q, want none", got)
+	}
+	for _, tt := range []struct {
+		name   string
+		bounds GridBoundsInput
+		want   bool
+	}{
+		{"full_slide", GridBoundsInput{X: 0, Y: 0, Width: 100, Height: 100}, false},
+		{"inset_left", GridBoundsInput{X: 10, Y: 0, Width: 90, Height: 100}, true},
+		{"inset_bottom", GridBoundsInput{X: 0, Y: 0, Width: 100, Height: 90}, true},
+		{"oversized_covering_slide", GridBoundsInput{X: -10, Y: -10, Width: 120, Height: 120}, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := boundsConstrainArea(&tt.bounds); got != tt.want {
+				t.Errorf("boundsConstrainArea(%+v) = %v, want %v", tt.bounds, got, tt.want)
+			}
+		})
 	}
 }
 

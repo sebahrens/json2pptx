@@ -65,10 +65,11 @@ func init() {
 		Code:        ErrCodeSlideUnderused,
 		Summary:     "The slide's grid content covers too little of the layout's safe content area.",
 		Severity:    "review",
-		WhenEmitted: "Preflight unions the ink rectangles of every resolved grid cell (filled shapes, estimated text blocks, images, icons, tables, diagrams) and compares the bounding box with the content area below the title. The threshold depends on who chose the band's height: 45% when the slide caps it (bounds / max_height_pct), 22% when the pattern derived it from its own content — a content-sized pattern is SUPPOSED to be shorter than the zone, so only a genuine sliver is reported. fix.params.band_capped_by says which case it is.",
+		WhenEmitted: "Preflight unions the ink rectangles of every resolved grid cell (filled shapes, estimated text blocks, images, icons, tables, diagrams) and compares the bounding box with the content area below the title. The threshold is 45% for genuinely restrictive author bounds / max_height_pct, and 22% for content-sized patterns or uncapped grids. Explicit full-area bounds are not a cap. fix.params.band_capped_by identifies author, pattern, or none.",
 		RemediationSteps: []string{
-			"band_capped_by \"author\": raise or remove the bounds / max_height_pct cap so the grid fills more of the content area.",
+			"band_capped_by \"author\": raise or remove restrictive bounds / max_height_pct so the grid fills more of the content area.",
 			"band_capped_by \"pattern\": the height comes from the content, not from a cap — add detail to the block, pair it with a supporting zone using compose, or choose a denser pattern.",
+			"band_capped_by \"none\": no restrictive cap or content-sized pattern set the height — add detail to the raw grid, pair it with supporting content, or merge slides.",
 			"Or merge this slide's content with a neighbour.",
 		},
 		RelatedCodes: []string{ErrCodeSparseLayout, ErrCodeSparseFill, ErrCodePatternUnderfilled, ErrCodeSlideNearlyEmpty},
