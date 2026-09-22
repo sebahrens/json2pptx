@@ -54,6 +54,10 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **2026-09-22 — Y-axis titles clear wide tick labels (`go-slide-creator-9s6bu`).**
+  Left-axis titles now clear the measured width of visible tick labels instead
+  of using the labels' line height as their horizontal offset.
+
 - **2026-09-22 — Line marker palette and dense-series clarity (`go-slide-creator-ofzjq`).**
   Line-chart point markers now use their series color, including colors chosen
   from a template palette. When adjacent plotted points are closer than twice

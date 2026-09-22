@@ -152,6 +152,85 @@ func TestDrawLinearAxis_Left(t *testing.T) {
 	}
 }
 
+func TestLeftAxisTitleClearsWideTickLabels(t *testing.T) {
+	const widthPt = 400.0
+	builder := NewSVGBuilder(widthPt, 300)
+	scale := NewLinearScale(0, 1_000_000).SetRangeLinear(200, 0)
+	config := DefaultAxisConfig(AxisPositionLeft)
+	config.Title = "Revenue"
+	config.Format = "%.0f"
+	config.TickCount = 5
+	NewAxis(builder, config).DrawLinearAxis(scale, 100, 40)
+	svg, err := builder.RenderToString()
+	if err != nil {
+		t.Fatalf("render axis: %v", err)
+	}
+	texts := ParseSVGTexts(t, svg)
+	title := FindByContent(texts, "Revenue")
+	tick := FindByContent(texts, "1000000")
+	if title == nil || tick == nil {
+		t.Fatalf("expected title and wide tick label in SVG: title=%v tick=%v", title != nil, tick != nil)
+	}
+	pxToPt, ok := ViewBoxPxToPt(t, svg, widthPt)
+	if !ok {
+		t.Fatal("could not parse SVG viewBox")
+	}
+	builder.Push()
+	builder.SetFontSize(builder.StyleGuide().Typography.SizeSmall)
+	tickWidth, _ := builder.MeasureText("1000000")
+	builder.Pop()
+	// The rotated title's anchor must sit outside the widest visible tick's
+	// left edge with at least a small visual gap. The old line-height-based
+	// offset placed it inside the label block.
+	gap := tick.X*pxToPt - tickWidth - title.TranslateX*pxToPt
+	if gap < 2 {
+		t.Errorf("title overlaps wide y tick labels: gap=%.2fpt, want at least 2pt", gap)
+	}
+}
+
+func TestLeftAxisTitleMeasuresOnlyDisplayedLabels(t *testing.T) {
+	renderTitleX := func(config AxisConfig) float64 {
+		t.Helper()
+		builder := NewSVGBuilder(400, 300)
+		scale := NewCategoricalScale([]string{"1", "1000000", "2", "3"})
+		scale.SetRange(0, 240)
+		config.Title = "Revenue"
+		NewAxis(builder, config).DrawCategoricalAxis(scale, 100, 20)
+		svg, err := builder.RenderToString()
+		if err != nil {
+			t.Fatalf("render axis: %v", err)
+		}
+		title := FindByContent(ParseSVGTexts(t, svg), "Revenue")
+		if title == nil {
+			t.Fatal("axis title missing from SVG")
+		}
+		return title.TranslateX
+	}
+	config := DefaultAxisConfig(AxisPositionLeft)
+	all := renderTitleX(config)
+	config.RangeExtent = 50 // the wide label at index 1 is outside the plot
+	clipped := renderTitleX(config)
+	if clipped <= all {
+		t.Errorf("clipping the wide tick should move the title closer to the axis: all=%.2f clipped=%.2f", all, clipped)
+	}
+	config.RangeExtent = 0
+	config.LabelStep = 3 // the wide label at index 1 is not drawn
+	thinned := renderTitleX(config)
+	if thinned <= all {
+		t.Errorf("thinning the wide tick should move the title closer to the axis: all=%.2f thinned=%.2f", all, thinned)
+	}
+	config.ImportantLabels = []int{1}
+	important := renderTitleX(config)
+	if math.Abs(important-all) > 0.01 {
+		t.Errorf("important wide tick should retain its title clearance: all=%.2f important=%.2f", all, important)
+	}
+	config.HideLabels = true
+	hidden := renderTitleX(config)
+	if hidden <= thinned {
+		t.Errorf("hiding tick labels should move the title closer to the axis: thinned=%.2f hidden=%.2f", thinned, hidden)
+	}
+}
+
 // TestLeftAxisLabels_TextAnchorEnd is the regression test for adversarial
 // finding A1: Y-axis tick labels (drawn with TextAlignRight) must emit an
 // explicit text-anchor="end" on the <text> element. Without it, downstream
@@ -584,15 +663,15 @@ func TestAxis_WithRotatedLabels(t *testing.T) {
 // invariants:
 //
 //   - Left unrotated         → text-anchor=end, dominant-baseline=central,
-//                              on-screen label x < origin x.
+//     on-screen label x < origin x.
 //   - Bottom unrotated       → text-anchor=middle,
-//                              dominant-baseline=text-before-edge,
-//                              on-screen label y > axis y (below the axis line).
+//     dominant-baseline=text-before-edge,
+//     on-screen label y > axis y (below the axis line).
 //   - Bottom rotated -45°    → text-anchor=end,
-//                              dominant-baseline=text-before-edge,
-//                              pivot ≈ tick x (post-translate),
-//                              post-rotation top of bbox sits at or below the
-//                              axis line (i.e. label hangs into the bottom strip).
+//     dominant-baseline=text-before-edge,
+//     pivot ≈ tick x (post-translate),
+//     post-rotation top of bbox sits at or below the
+//     axis line (i.e. label hangs into the bottom strip).
 //
 // This is the parsing-based safety net. Specific finding regressions (A1, A5,
 // awcz, fnsf, …) still have their own narrow tests; this one is the breadth
@@ -801,22 +880,22 @@ func TestAxisLabels_Geometry(t *testing.T) {
 // labels at -45° rotation and verifies the SVG geometry against the post-fix
 // invariants:
 //
-//   (1) The rotation pivot Y is at labelY = tickY2 + tickPadding — there is
-//       no extra "+fontSize" hack lifting the label far below the tick. The
-//       SVG `translate(tx, ty)` places the baseline-end of the text; for SVG
-//       rotate(-45) the pivot Y satisfies ty_pt = pivot_Y + 0.707*Ascent_pt.
-//       Without the hack the difference (ty_pt - labelY) is one Ascent term
-//       (≈ 0.65 × fontSize); with the hack it would be one Ascent term plus
-//       a full fontSize.
+//	(1) The rotation pivot Y is at labelY = tickY2 + tickPadding — there is
+//	    no extra "+fontSize" hack lifting the label far below the tick. The
+//	    SVG `translate(tx, ty)` places the baseline-end of the text; for SVG
+//	    rotate(-45) the pivot Y satisfies ty_pt = pivot_Y + 0.707*Ascent_pt.
+//	    Without the hack the difference (ty_pt - labelY) is one Ascent term
+//	    (≈ 0.65 × fontSize); with the hack it would be one Ascent term plus
+//	    a full fontSize.
 //
-//   (2) The rotation pivot X is shifted LEFT of the tick mark by tickPadding/√2
-//       so the rotated label's right corner (the post-rotation top-right of
-//       the bbox = pivot) has a clean horizontal gap to the tick mark vertical
-//       line. The SVG translate X reflects this: tx_pt = pivot_X + 0.707*Ascent
-//       where pivot_X = tickX - tickPadding/√2.
+//	(2) The rotation pivot X is shifted LEFT of the tick mark by tickPadding/√2
+//	    so the rotated label's right corner (the post-rotation top-right of
+//	    the bbox = pivot) has a clean horizontal gap to the tick mark vertical
+//	    line. The SVG translate X reflects this: tx_pt = pivot_X + 0.707*Ascent
+//	    where pivot_X = tickX - tickPadding/√2.
 //
-//   (3) Every corner of the rotated glyph bounding box sits at or below the
-//       axis line in screen Y.
+//	(3) Every corner of the rotated glyph bounding box sits at or below the
+//	    axis line in screen Y.
 func TestAxis_RotatedLabelsStayBelowAxisLine(t *testing.T) {
 	builder := NewSVGBuilder(600, 400)
 	categories := []string{

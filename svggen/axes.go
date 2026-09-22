@@ -2,6 +2,7 @@ package svggen
 
 import (
 	"math"
+	"slices"
 	"strings"
 )
 
@@ -269,7 +270,7 @@ func (a *Axis) drawAxis(positions []float64, labels []string, originX, originY f
 
 	// Draw title
 	if a.config.Title != "" {
-		a.drawTitle(originX, originY, positions)
+		a.drawTitle(originX, originY, positions, labels)
 	}
 
 	// Restore state
@@ -491,7 +492,7 @@ func (a *Axis) drawTickLabel(pos, originX, originY float64, label string) {
 }
 
 // drawTitle draws the axis title.
-func (a *Axis) drawTitle(originX, originY float64, positions []float64) {
+func (a *Axis) drawTitle(originX, originY float64, positions []float64, labels []string) {
 	if len(positions) == 0 || a.config.Title == "" {
 		return
 	}
@@ -526,6 +527,7 @@ func (a *Axis) drawTitle(originX, originY float64, positions []float64) {
 		b.DrawText(a.config.Title, titleX, titleY, align, TextBaselineBottom)
 
 	case AxisPositionLeft:
+		titleOffset = a.sideTitleOffset(style, positions, labels)
 		titleX = originX - titleOffset
 		titleY = originY + axisMid
 		// Rotate title for vertical axis
@@ -545,6 +547,40 @@ func (a *Axis) drawTitle(originX, originY float64, positions []float64) {
 	}
 
 	b.Pop()
+}
+
+// sideTitleOffset clears the horizontal width of the rendered tick labels.
+// The ordinary axisTitleOffset measures their height, which is only correct
+// for top and bottom axes.
+func (a *Axis) sideTitleOffset(style *StyleGuide, positions []float64, labels []string) float64 {
+	labelWidth := 0.0
+	if !a.config.HideLabels {
+		b := a.builder
+		b.Push()
+		fontSize := a.config.FontSize
+		if fontSize <= 0 {
+			fontSize = style.Typography.SizeSmall
+		}
+		b.SetFontSize(fontSize).SetFontWeight(style.Typography.WeightNormal)
+		step := a.config.LabelStep
+		if step < 1 {
+			step = 1
+		}
+		for i, label := range labels {
+			if label == "" || a.config.RangeExtent > 0 && (positions[i] < -0.5 || positions[i] > a.config.RangeExtent+0.5) {
+				continue
+			}
+			if step > 1 && i%step != 0 && i != len(labels)-1 && !slices.Contains(a.config.ImportantLabels, i) {
+				continue
+			}
+			for _, line := range strings.Split(label, "\n") {
+				width, _ := b.MeasureText(line)
+				labelWidth = math.Max(labelWidth, width)
+			}
+		}
+		b.Pop()
+	}
+	return a.config.TickSize + math.Max(a.config.TickPadding, 3) + labelWidth*1.1 + style.Spacing.SM
 }
 
 // =============================================================================
@@ -774,7 +810,6 @@ func (ab *AxisBuilder) DrawTime(scale *TimeScale, x, y float64) *SVGBuilder {
 	axis.DrawTimeAxis(scale, x, y)
 	return ab.builder
 }
-
 
 // axisLabelBlockHeight returns the vertical space an axis's tick labels occupy
 // beyond the axis line: one line at the axis font size plus whatever rotation
