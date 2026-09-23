@@ -636,6 +636,45 @@ func TestSetTitleSlideTitle_OverflowProtection(t *testing.T) {
 	})
 }
 
+func TestContentTitleOverridesTemplateNoAutofit(t *testing.T) {
+	makeShape := func() *shapeXML {
+		return &shapeXML{
+			ShapeProperties: shapePropertiesXML{Transform: &transformXML{Extent: extentXML{CX: 6 * 914400, CY: 914400}}},
+			TextBody: &textBodyXML{
+				BodyProperties: &bodyPropertiesXML{Inner: `<a:noAutofit/>`},
+				ListStyle:      &listStyleXML{},
+				Paragraphs: []paragraphXML{{Runs: []runXML{{
+					RunProperties: &runPropertiesXML{FontSize: "2400", Lang: "en-US"},
+					Text:          "Click to edit",
+				}}}},
+			},
+		}
+	}
+	for _, tc := range []struct {
+		id             string
+		wantNormalized bool
+	}{
+		{"title", true},
+		{"title_1", true},
+		{"body", false},
+	} {
+		t.Run(tc.id, func(t *testing.T) {
+			shape := makeShape()
+			if err := populateShapeText(shape, ContentItem{PlaceholderID: tc.id, Type: ContentText, Value: "A long content title that must remain inside its own placeholder"}, -1, ""); err != nil {
+				t.Fatal(err)
+			}
+			inner := shape.TextBody.BodyProperties.Inner
+			if tc.wantNormalized {
+				if !strings.Contains(inner, "normAutofit") || strings.Contains(inner, "noAutofit") {
+					t.Errorf("content title lost overflow protection: %q", inner)
+				}
+			} else if !strings.Contains(inner, "noAutofit") {
+				t.Errorf("non-title template directive changed: %q", inner)
+			}
+		})
+	}
+}
+
 func TestParseSzAttr(t *testing.T) {
 	tests := []struct {
 		input string

@@ -220,6 +220,13 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 
 	// Enable autofit if text overflows (e.g. title routed to large-font body placeholder)
 	opts := append([]autofitOption{withThemeFont(themeFontName)}, autofitOpts...)
+	if isTitlePlaceholder(placeholderID) {
+		// A content-layout title is authored text, not the template's short
+		// prompt. Some templates explicitly set noAutofit on that prompt; keeping
+		// it lets a long title spill into the pattern even when the boxes do not
+		// overlap. Match the title-slide path's overflow protection.
+		opts = append(opts, withNoAutofitOverride())
+	}
 	applySmartAutofitWithOptions(shape, opts...)
 
 	return nil
