@@ -44,6 +44,55 @@ func TestAbstractChartPaletteSkipsNearBackgroundAccents(t *testing.T) {
 	}
 }
 
+func TestDiagramBridgePreservesTemplateSemanticAccents(t *testing.T) {
+	theme := []types.ThemeColor{
+		{Name: "accent1", RGB: "#C00000"},
+		{Name: "accent2", RGB: "#777777"},
+		{Name: "accent3", RGB: "#008000"},
+	}
+	spec := &types.DiagramSpec{Type: "gantt", Style: &types.DiagramStyle{
+		SemanticAccents: map[string]string{"positive": "accent3", "negative": "accent1", "neutral": "accent2"},
+		DataPalette:     []string{"#123456", "#654321", "#ABCDEF"},
+	}}
+	guide := svggen.StyleGuideFromSpec(diagramSpecToSVGGen(spec, theme, 0, "").Style)
+	if got := guide.Palette.Success.Hex(); got != "#008000" {
+		t.Errorf("positive = %s", got)
+	}
+	if got := guide.Palette.Error.Hex(); got != "#C00000" {
+		t.Errorf("negative = %s", got)
+	}
+	if got := guide.Palette.Warning.Hex(); got != "#777777" {
+		t.Errorf("neutral = %s", got)
+	}
+}
+
+func TestPlaceholderDiagramReceivesTemplateSemanticAccents(t *testing.T) {
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	ctx.svgConverter = NewSVGConverterWithConfig(SVGConfig{Strategy: SVGStrategyNative, Scale: DefaultSVGScale})
+	ctx.themeColors = []types.ThemeColor{
+		{Name: "accent1", RGB: "#C00000"},
+		{Name: "accent2", RGB: "#777777"},
+		{Name: "accent3", RGB: "#008000"},
+	}
+	ctx.semanticAccents = map[string]string{"positive": "accent3", "negative": "accent1", "neutral": "accent2"}
+	spec := &types.DiagramSpec{Type: "gantt", Data: map[string]any{
+		"show_progress": true,
+		"tasks":         []any{map[string]any{"name": "Task", "start": "2024-01-01", "end": "2024-02-01", "progress": 100.0}},
+	}}
+	item := ContentItem{PlaceholderID: "body", Type: ContentDiagram, Value: spec}
+	bounds := types.BoundingBox{Width: 5_000_000, Height: 3_000_000}
+	result, ok := ctx.resolveDiagramWithMetadata(1, item, bounds)
+	if !ok {
+		t.Fatalf("diagram failed: %v", ctx.warnings)
+	}
+	if got := spec.Style.SemanticAccents["positive"]; got != "accent3" {
+		t.Errorf("injected positive = %q", got)
+	}
+	if !strings.Contains(strings.ToLower(string(result.SVG)), `fill="#008000"`) && !strings.Contains(strings.ToLower(string(result.SVG)), `fill="#080"`) {
+		t.Error("completed Gantt segment does not use template's positive accent")
+	}
+}
+
 func TestExplicitChartColorsRemainAuthorControlled(t *testing.T) {
 	theme := []types.ThemeColor{
 		{Name: "lt1", RGB: "#FFFFFF"},

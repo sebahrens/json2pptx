@@ -911,6 +911,12 @@ func StyleGuideFromSpec(spec StyleSpec) *StyleGuide {
 		}
 	}
 
+	// Resolve semantic roles against the original theme slots, before DataPalette
+	// reorders accent slots for chart series. Never infer meaning from slot index.
+	if len(spec.ThemeColors) > 0 {
+		applySemanticAccents(guide.Palette, spec.ThemeColors, spec.SemanticAccents)
+	}
+
 	// Handle DataPalette — override accent ordering for chart series
 	if len(spec.DataPalette) > 0 {
 		colors := make([]Color, 0, len(spec.DataPalette))
@@ -927,6 +933,47 @@ func StyleGuideFromSpec(spec StyleSpec) *StyleGuide {
 	finalizeRoleMap(guide.Palette, spec.RoleMap)
 
 	return guide
+}
+
+func applySemanticAccents(p *Palette, theme []ThemeColorInput, spec SemanticAccentSpec) {
+	slots := make(map[string]Color, 6)
+	for _, input := range theme {
+		if len(input.Name) == len("accent1") && strings.HasPrefix(input.Name, "accent") && input.Name[len("accent")] >= '1' && input.Name[len("accent")] <= '6' {
+			if color, err := ParseColor(input.RGB); err == nil {
+				slots[input.Name] = color
+			}
+		}
+	}
+	if len(slots) == 0 {
+		return
+	}
+	choose := func(name string, hue float64, neutral bool) Color {
+		if color, ok := slots[name]; ok {
+			return color
+		}
+		bestScore := math.Inf(1)
+		var best Color
+		for i := 1; i <= 6; i++ {
+			color, ok := slots[fmt.Sprintf("accent%d", i)]
+			if !ok {
+				continue
+			}
+			h, s, _ := rgbToHSL(color.R, color.G, color.B)
+			distance := math.Abs(h - hue)
+			distance = math.Min(distance, 360-distance) / 180
+			score := distance + (1-s)*0.5
+			if neutral {
+				score = s + distance*0.15
+			}
+			if score < bestScore {
+				bestScore, best = score, color
+			}
+		}
+		return best
+	}
+	p.Success = choose(spec.Positive, 120, false)
+	p.Error = choose(spec.Negative, 0, false)
+	p.Warning = choose(spec.Neutral, 210, true)
 }
 
 // finalizeRoleMap guarantees guide.Palette.Roles is populated (auto-deriving
@@ -1241,19 +1288,10 @@ func newPaletteFromThemeColors(themeColors []ThemeColorInput, enforce bool) *Pal
 		p.Surface = *lt2
 	}
 
-	// Set semantic colors from accents (using common mappings)
-	if len(accentColors) >= 1 {
-		p.Info = accentColors[0]
-	}
-	if len(accentColors) >= 3 {
-		p.Error = accentColors[2] // Often red/warm color
-	}
-	if len(accentColors) >= 5 {
-		p.Success = accentColors[4] // Often green
-	}
-	if len(accentColors) >= 2 {
-		p.Warning = accentColors[1] // Often orange/yellow
-	}
+	// Info is a general accent; semantic Success/Error/Warning are resolved
+	// separately by hue or explicit template metadata in StyleGuideFromSpec.
+	p.Info = accentColors[0]
+	applySemanticAccents(p, themeColors, SemanticAccentSpec{})
 
 	// Enforce chart-quality constraints on the accent palette.
 	// Some templates define accent colors that are too light or too

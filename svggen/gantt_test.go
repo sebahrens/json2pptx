@@ -2,6 +2,9 @@ package svggen
 
 import (
 	"fmt"
+	"math"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -131,6 +134,95 @@ func TestGanttChart_Draw(t *testing.T) {
 				if doc == nil || len(doc.Content) == 0 {
 					t.Error("Expected non-empty SVG document")
 				}
+			}
+		})
+	}
+}
+
+func TestGanttProgressRendering(t *testing.T) {
+	var partialRight, fullRight float64
+	solidPath := regexp.MustCompile(`<path d="[^"]*?H([0-9.]+)Q[^"]*" fill="#0a0"`)
+	for _, progress := range []float64{0, 25, 100} {
+		b := NewSVGBuilder(900, 500)
+		guide := DefaultStyleGuide()
+		guide.Palette.Success = MustParseColor("#00AA00")
+		b.SetStyleGuide(guide)
+		config := DefaultGanttConfig(900, 500)
+		config.ShowProgress = true
+		chart := NewGanttChart(b, config)
+		if err := chart.Draw(GanttData{Tasks: []GanttTask{{Label: "Task", StartDate: date(2024, 1, 1), EndDate: date(2024, 2, 1), Progress: progress}}}); err != nil {
+			t.Fatal(err)
+		}
+		doc, err := b.Render()
+		if err != nil {
+			t.Fatal(err)
+		}
+		svg := string(doc.Content)
+		if !strings.Contains(svg, "fill:rgba(0,170,0,.24705882)") {
+			t.Errorf("progress %.0f is missing the pale remaining segment", progress)
+		}
+		match := solidPath.FindStringSubmatch(svg)
+		if progress == 0 {
+			if match != nil {
+				t.Error("0% task has a completed segment")
+			}
+			continue
+		}
+		if match == nil {
+			t.Fatalf("progress %.0f is missing solid completed segment; fills=%v", progress, regexp.MustCompile(`fill="#[0-9a-f]+"`).FindAllString(svg, -1))
+		}
+		right, err := strconv.ParseFloat(match[1], 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if progress == 25 {
+			partialRight = right
+		} else {
+			fullRight = right
+		}
+	}
+	if !(partialRight < fullRight) {
+		t.Errorf("25%% segment right edge %v must precede 100%% edge %v", partialRight, fullRight)
+	}
+}
+
+func TestGanttProgressPreservesExplicitTaskColor(t *testing.T) {
+	b := NewSVGBuilder(900, 500)
+	config := DefaultGanttConfig(900, 500)
+	config.ShowProgress = true
+	color := MustParseColor("#CC0000")
+	chart := NewGanttChart(b, config)
+	if err := chart.Draw(GanttData{Tasks: []GanttTask{{Label: "Task", StartDate: date(2024, 1, 1), EndDate: date(2024, 2, 1), Progress: 50, Color: &color}}}); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := b.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(doc.Content), `fill="#c00"`) {
+		t.Error("completed segment did not retain explicit task color")
+	}
+}
+
+func TestGanttProgressRangeValidation(t *testing.T) {
+	diagram := &GanttDiagram{NewBaseDiagram("gantt")}
+	for _, tc := range []struct {
+		name     string
+		progress any
+		valid    bool
+	}{
+		{"zero", 0, true}, {"hundred", 100.0, true},
+		{"negative", -1.0, false}, {"over", 101, false},
+		{"nan", math.NaN(), false}, {"string", "half", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &RequestEnvelope{Type: "gantt", Data: map[string]any{"tasks": []any{map[string]any{"name": "Task", "start": "2024-01-01", "end": "2024-02-01", "progress": tc.progress}}}}
+			if err := diagram.Validate(req); (err == nil) != tc.valid {
+				t.Errorf("validation error = %v, valid = %v", err, tc.valid)
+			}
+			_, err := diagram.Render(req)
+			if (err == nil) != tc.valid {
+				t.Errorf("render error = %v, valid = %v", err, tc.valid)
 			}
 		})
 	}

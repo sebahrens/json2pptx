@@ -27,6 +27,8 @@ type PaletteSpec = core.PaletteSpec
 // ThemeColorInput carries a single theme color from the PPTX template.
 type ThemeColorInput = core.ThemeColorInput
 
+type SemanticAccentSpec = core.SemanticAccentSpec
+
 // RoleMapSpec carries design-intent colors so callers can hand svggen the
 // header / body fill the native skill-info would have chosen.
 type RoleMapSpec = core.RoleMapSpec
@@ -151,25 +153,25 @@ const (
 	MaxSVGScale           = core.MaxSVGScale
 
 	// Finding codes (re-exported from core/finding_codes.go).
-	FindingInvalidNumeric        = core.FindingInvalidNumeric
-	FindingZeroSumPie            = core.FindingZeroSumPie
-	FindingNegativeOnLog         = core.FindingNegativeOnLog
-	FindingAllZeroSeries         = core.FindingAllZeroSeries
-	FindingCapacityExceeded      = core.FindingCapacityExceeded
-	FindingInvalidTimeFormat     = core.FindingInvalidTimeFormat
-	FindingAutoLogScaleApplied   = core.FindingAutoLogScaleApplied
-	FindingTickThinned           = core.FindingTickThinned
-	FindingScatterLabelSkipped   = core.FindingScatterLabelSkipped
-	FindingLabelTruncated        = core.FindingLabelTruncated
-	FindingLabelEllipsized       = core.FindingLabelEllipsized
-	FindingLabelClipped          = core.FindingLabelClipped
-	FindingLegendOverflowDropped = core.FindingLegendOverflowDropped
-	FindingOverflowSuppressed    = core.FindingOverflowSuppressed
-	FindingDiagramItemsDropped   = core.FindingDiagramItemsDropped
-	FindingDiagramTextOverlap    = core.FindingDiagramTextOverlap
-	FindingOrgChartDepthPruned   = core.FindingOrgChartDepthPruned
-	FindingPlotAreaCollapsed     = core.FindingPlotAreaCollapsed
-	FindingPointOutOfRange       = core.FindingPointOutOfRange
+	FindingInvalidNumeric          = core.FindingInvalidNumeric
+	FindingZeroSumPie              = core.FindingZeroSumPie
+	FindingNegativeOnLog           = core.FindingNegativeOnLog
+	FindingAllZeroSeries           = core.FindingAllZeroSeries
+	FindingCapacityExceeded        = core.FindingCapacityExceeded
+	FindingInvalidTimeFormat       = core.FindingInvalidTimeFormat
+	FindingAutoLogScaleApplied     = core.FindingAutoLogScaleApplied
+	FindingTickThinned             = core.FindingTickThinned
+	FindingScatterLabelSkipped     = core.FindingScatterLabelSkipped
+	FindingLabelTruncated          = core.FindingLabelTruncated
+	FindingLabelEllipsized         = core.FindingLabelEllipsized
+	FindingLabelClipped            = core.FindingLabelClipped
+	FindingLegendOverflowDropped   = core.FindingLegendOverflowDropped
+	FindingOverflowSuppressed      = core.FindingOverflowSuppressed
+	FindingDiagramItemsDropped     = core.FindingDiagramItemsDropped
+	FindingDiagramTextOverlap      = core.FindingDiagramTextOverlap
+	FindingOrgChartDepthPruned     = core.FindingOrgChartDepthPruned
+	FindingPlotAreaCollapsed       = core.FindingPlotAreaCollapsed
+	FindingPointOutOfRange         = core.FindingPointOutOfRange
 	FindingPercentScaleAmbiguous   = core.FindingPercentScaleAmbiguous
 	FindingCurrencyPrefixDefaulted = core.FindingCurrencyPrefixDefaulted
 

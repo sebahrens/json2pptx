@@ -255,13 +255,14 @@ type ChartDiagnostic struct {
 
 // DiagramStyle provides styling options for diagram rendering.
 type DiagramStyle struct {
-	Colors      []string     `json:"colors,omitempty" yaml:"colors,omitempty"`           // Hex colors for data series
-	ThemeColors []ThemeColor `json:"-" yaml:"-"`                                         // Theme colors from template (internal use)
-	DataPalette []string     `json:"-" yaml:"-"`                                         // Ordered hex colors for chart series (internal use, from TemplateMetadata)
-	FontFamily  string       `json:"font_family,omitempty" yaml:"font_family,omitempty"` // Font for labels and text
-	ShowLegend  bool         `json:"show_legend,omitempty" yaml:"show_legend,omitempty"` // Display legend
-	ShowValues  bool         `json:"show_values,omitempty" yaml:"show_values,omitempty"` // Display values on elements
-	Background  string       `json:"background,omitempty" yaml:"background,omitempty"`   // Background color
+	Colors          []string          `json:"colors,omitempty" yaml:"colors,omitempty"`           // Hex colors for data series
+	ThemeColors     []ThemeColor      `json:"-" yaml:"-"`                                         // Theme colors from template (internal use)
+	SemanticAccents map[string]string `json:"-" yaml:"-"`                                         // Semantic theme slots from template (internal use)
+	DataPalette     []string          `json:"-" yaml:"-"`                                         // Ordered hex colors for chart series (internal use, from TemplateMetadata)
+	FontFamily      string            `json:"font_family,omitempty" yaml:"font_family,omitempty"` // Font for labels and text
+	ShowLegend      bool              `json:"show_legend,omitempty" yaml:"show_legend,omitempty"` // Display legend
+	ShowValues      bool              `json:"show_values,omitempty" yaml:"show_values,omitempty"` // Display values on elements
+	Background      string            `json:"background,omitempty" yaml:"background,omitempty"`   // Background color
 	// ValueFormat is one number format for the diagram's values — axis ticks,
 	// data labels and in-mark labels alike (go-slide-creator-e2ck9).
 	ValueFormat *ValueFormatSpec `json:"value_format,omitempty" yaml:"value_format,omitempty"`

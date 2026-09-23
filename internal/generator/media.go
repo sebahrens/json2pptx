@@ -1207,6 +1207,9 @@ func (ctx *singlePassContext) resolveDiagramWithMetadata(slideNum int, item Cont
 	if len(diagramSpec.Style.Colors) == 0 && len(ctx.dataPalette) > 0 {
 		diagramSpec.Style.DataPalette = ctx.dataPalette
 	}
+	if len(diagramSpec.Style.SemanticAccents) == 0 && len(ctx.semanticAccents) > 0 {
+		diagramSpec.Style.SemanticAccents = ctx.semanticAccents
+	}
 	// Inject the template body font when the diagram doesn't set one explicitly,
 	// so placeholder diagrams (and placeholder charts, which share this path)
 	// render with the template's typography instead of the svggen default. An

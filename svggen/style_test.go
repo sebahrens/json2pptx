@@ -5,6 +5,54 @@ import (
 	"testing"
 )
 
+func TestSemanticAccentsResolveBeforeDataPaletteReordering(t *testing.T) {
+	theme := []ThemeColorInput{
+		{Name: "accent1", RGB: "#C00000"},
+		{Name: "accent2", RGB: "#808080"},
+		{Name: "accent3", RGB: "#008000"},
+	}
+	guide := StyleGuideFromSpec(StyleSpec{
+		ThemeColors:     theme,
+		SemanticAccents: SemanticAccentSpec{Positive: "accent3", Negative: "accent1", Neutral: "accent2"},
+		DataPalette:     []string{"#123456", "#654321", "#ABCDEF"},
+	})
+	for _, tc := range []struct{ name, got, want string }{
+		{"positive", guide.Palette.Success.Hex(), "#008000"},
+		{"negative", guide.Palette.Error.Hex(), "#C00000"},
+		{"neutral", guide.Palette.Warning.Hex(), "#808080"},
+		{"series", guide.Palette.Accent1.Hex(), "#123456"},
+	} {
+		if tc.got != tc.want {
+			t.Errorf("%s = %s, want %s", tc.name, tc.got, tc.want)
+		}
+	}
+}
+
+func TestSemanticAccentsFallBackByHueNotSlot(t *testing.T) {
+	theme := []ThemeColorInput{
+		{Name: "accent1", RGB: "#008000"},
+		{Name: "accent2", RGB: "#C00000"},
+		{Name: "accent3", RGB: "#777777"},
+	}
+	guide := StyleGuideFromSpec(StyleSpec{ThemeColors: theme, SemanticAccents: SemanticAccentSpec{Positive: "missing"}})
+	if got := guide.Palette.Success.Hex(); got != "#008000" {
+		t.Errorf("positive = %s", got)
+	}
+	if got := guide.Palette.Error.Hex(); got != "#C00000" {
+		t.Errorf("negative = %s", got)
+	}
+	if got := guide.Palette.Warning.Hex(); got != "#777777" {
+		t.Errorf("neutral = %s", got)
+	}
+}
+
+func TestSemanticAccentsIgnoreMalformedThemeSlots(t *testing.T) {
+	guide := StyleGuideFromSpec(StyleSpec{ThemeColors: []ThemeColorInput{{Name: "accentfoo", RGB: "#FF0000"}}})
+	if guide.Palette.Success == (Color{}) || guide.Palette.Error == (Color{}) || guide.Palette.Warning == (Color{}) {
+		t.Fatal("malformed theme slot produced a zero semantic color")
+	}
+}
+
 func TestParseColor(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -731,7 +779,7 @@ func TestTypography_ScaleForDimensions(t *testing.T) {
 		{
 			name:      "asymmetric uses geometric mean",
 			width:     1600,
-			height:    600, // height unchanged, width doubled
+			height:    600,            // height unchanged, width doubled
 			wantScale: math.Sqrt(2.0), // geometric mean: sqrt(2.0 * 1.0) ≈ 1.414
 		},
 	}
@@ -1100,7 +1148,7 @@ func TestEnforceAccentContrast_GoodPalette(t *testing.T) {
 
 	// All accents should be unchanged since they already meet both constraints
 	accents := []struct {
-		name     string
+		name      string
 		got, want Color
 	}{
 		{"Accent1", p.Accent1, original.Accent1},
@@ -1127,12 +1175,12 @@ func TestEnforceAccentContrast_NilPalette(t *testing.T) {
 func TestEnforceAccentContrast_DarkBackground(t *testing.T) {
 	p := &Palette{
 		Background: MustParseColor("#1A1A1A"), // Dark background
-		Accent1:    MustParseColor("#222222"),  // Too dark, low contrast
-		Accent2:    MustParseColor("#252525"),  // Too similar to Accent1
-		Accent3:    MustParseColor("#FF0000"),  // Good contrast
-		Accent4:    MustParseColor("#00CC00"),  // Good contrast
-		Accent5:    MustParseColor("#0000FF"),  // Good contrast
-		Accent6:    MustParseColor("#CC00CC"),  // Good contrast
+		Accent1:    MustParseColor("#222222"), // Too dark, low contrast
+		Accent2:    MustParseColor("#252525"), // Too similar to Accent1
+		Accent3:    MustParseColor("#FF0000"), // Good contrast
+		Accent4:    MustParseColor("#00CC00"), // Good contrast
+		Accent5:    MustParseColor("#0000FF"), // Good contrast
+		Accent6:    MustParseColor("#CC00CC"), // Good contrast
 	}
 
 	EnforceAccentContrast(p)
@@ -1307,58 +1355,58 @@ func TestColorDistanceRGB(t *testing.T) {
 // TestScaleToFit tests the ScaleToFit helper function.
 func TestScaleToFit(t *testing.T) {
 	tests := []struct {
-		name               string
-		srcW, srcH         float64
-		maxW, maxH         float64
-		wantW, wantH       float64
+		name         string
+		srcW, srcH   float64
+		maxW, maxH   float64
+		wantW, wantH float64
 	}{
 		{
-			name:   "square content in wide container",
-			srcW:   1.0, srcH: 1.0,
-			maxW:   800, maxH: 400,
-			wantW:  400, wantH: 400, // Height-constrained
+			name: "square content in wide container",
+			srcW: 1.0, srcH: 1.0,
+			maxW: 800, maxH: 400,
+			wantW: 400, wantH: 400, // Height-constrained
 		},
 		{
-			name:   "square content in tall container",
-			srcW:   1.0, srcH: 1.0,
-			maxW:   400, maxH: 800,
-			wantW:  400, wantH: 400, // Width-constrained
+			name: "square content in tall container",
+			srcW: 1.0, srcH: 1.0,
+			maxW: 400, maxH: 800,
+			wantW: 400, wantH: 400, // Width-constrained
 		},
 		{
-			name:   "wide content in wide container",
-			srcW:   2.0, srcH: 1.0, // 2:1 aspect ratio
-			maxW:   800, maxH: 400,
-			wantW:  800, wantH: 400, // Exact fit
+			name: "wide content in wide container",
+			srcW: 2.0, srcH: 1.0, // 2:1 aspect ratio
+			maxW: 800, maxH: 400,
+			wantW: 800, wantH: 400, // Exact fit
 		},
 		{
-			name:   "wide content in square container",
-			srcW:   2.0, srcH: 1.0,
-			maxW:   600, maxH: 600,
-			wantW:  600, wantH: 300, // Width-constrained
+			name: "wide content in square container",
+			srcW: 2.0, srcH: 1.0,
+			maxW: 600, maxH: 600,
+			wantW: 600, wantH: 300, // Width-constrained
 		},
 		{
-			name:   "tall content in square container",
-			srcW:   1.0, srcH: 2.0,
-			maxW:   600, maxH: 600,
-			wantW:  300, wantH: 600, // Height-constrained
+			name: "tall content in square container",
+			srcW: 1.0, srcH: 2.0,
+			maxW: 600, maxH: 600,
+			wantW: 300, wantH: 600, // Height-constrained
 		},
 		{
-			name:   "content already fits exactly",
-			srcW:   800, srcH: 600,
-			maxW:   800, maxH: 600,
-			wantW:  800, wantH: 600,
+			name: "content already fits exactly",
+			srcW: 800, srcH: 600,
+			maxW: 800, maxH: 600,
+			wantW: 800, wantH: 600,
 		},
 		{
-			name:   "zero source width returns max",
-			srcW:   0, srcH: 600,
-			maxW:   800, maxH: 600,
-			wantW:  800, wantH: 600,
+			name: "zero source width returns max",
+			srcW: 0, srcH: 600,
+			maxW: 800, maxH: 600,
+			wantW: 800, wantH: 600,
 		},
 		{
-			name:   "zero max width returns max",
-			srcW:   800, srcH: 600,
-			maxW:   0, maxH: 600,
-			wantW:  0, wantH: 600,
+			name: "zero max width returns max",
+			srcW: 800, srcH: 600,
+			maxW: 0, maxH: 600,
+			wantW: 0, wantH: 600,
 		},
 	}
 
@@ -1376,40 +1424,40 @@ func TestScaleToFit(t *testing.T) {
 // TestScaleToCover tests the ScaleToCover helper function.
 func TestScaleToCover(t *testing.T) {
 	tests := []struct {
-		name               string
-		srcW, srcH         float64
-		minW, minH         float64
-		wantW, wantH       float64
+		name         string
+		srcW, srcH   float64
+		minW, minH   float64
+		wantW, wantH float64
 	}{
 		{
-			name:   "square content in wide container",
-			srcW:   1.0, srcH: 1.0,
-			minW:   800, minH: 400,
-			wantW:  800, wantH: 800, // Width-constrained, overflows height
+			name: "square content in wide container",
+			srcW: 1.0, srcH: 1.0,
+			minW: 800, minH: 400,
+			wantW: 800, wantH: 800, // Width-constrained, overflows height
 		},
 		{
-			name:   "square content in tall container",
-			srcW:   1.0, srcH: 1.0,
-			minW:   400, minH: 800,
-			wantW:  800, wantH: 800, // Height-constrained, overflows width
+			name: "square content in tall container",
+			srcW: 1.0, srcH: 1.0,
+			minW: 400, minH: 800,
+			wantW: 800, wantH: 800, // Height-constrained, overflows width
 		},
 		{
-			name:   "wide content in wide container (exact fit)",
-			srcW:   2.0, srcH: 1.0,
-			minW:   800, minH: 400,
-			wantW:  800, wantH: 400, // Perfect fit
+			name: "wide content in wide container (exact fit)",
+			srcW: 2.0, srcH: 1.0,
+			minW: 800, minH: 400,
+			wantW: 800, wantH: 400, // Perfect fit
 		},
 		{
-			name:   "tall content covers wide container",
-			srcW:   1.0, srcH: 2.0,
-			minW:   800, minH: 400,
-			wantW:  800, wantH: 1600, // Overflows height
+			name: "tall content covers wide container",
+			srcW: 1.0, srcH: 2.0,
+			minW: 800, minH: 400,
+			wantW: 800, wantH: 1600, // Overflows height
 		},
 		{
-			name:   "zero source returns min",
-			srcW:   0, srcH: 600,
-			minW:   800, minH: 600,
-			wantW:  800, wantH: 600,
+			name: "zero source returns min",
+			srcW: 0, srcH: 600,
+			minW: 800, minH: 600,
+			wantW: 800, wantH: 600,
 		},
 	}
 
@@ -1433,27 +1481,27 @@ func TestCenterInSlot(t *testing.T) {
 		wantOffsetX, wantOffsetY float64
 	}{
 		{
-			name:        "centered square in wide slot",
-			contentW:    400, contentH: 400,
-			slotW:       800, slotH: 400,
+			name:     "centered square in wide slot",
+			contentW: 400, contentH: 400,
+			slotW: 800, slotH: 400,
 			wantOffsetX: 200, wantOffsetY: 0,
 		},
 		{
-			name:        "centered square in tall slot",
-			contentW:    400, contentH: 400,
-			slotW:       400, slotH: 800,
+			name:     "centered square in tall slot",
+			contentW: 400, contentH: 400,
+			slotW: 400, slotH: 800,
 			wantOffsetX: 0, wantOffsetY: 200,
 		},
 		{
-			name:        "content matches slot",
-			contentW:    800, contentH: 600,
-			slotW:       800, slotH: 600,
+			name:     "content matches slot",
+			contentW: 800, contentH: 600,
+			slotW: 800, slotH: 600,
 			wantOffsetX: 0, wantOffsetY: 0,
 		},
 		{
-			name:        "content larger than slot (negative offset)",
-			contentW:    1000, contentH: 800,
-			slotW:       800, slotH: 600,
+			name:     "content larger than slot (negative offset)",
+			contentW: 1000, contentH: 800,
+			slotW: 800, slotH: 600,
 			wantOffsetX: -100, wantOffsetY: -100,
 		},
 	}
@@ -1473,60 +1521,60 @@ func TestCenterInSlot(t *testing.T) {
 // TestFitDimensions tests the FitDimensions convenience function.
 func TestFitDimensions(t *testing.T) {
 	tests := []struct {
-		name                                     string
-		fitMode                                  string
-		srcW, srcH                               float64
-		containerW, containerH                   float64
-		wantContentW, wantContentH               float64
-		wantOffsetX, wantOffsetY                 float64
+		name                       string
+		fitMode                    string
+		srcW, srcH                 float64
+		containerW, containerH     float64
+		wantContentW, wantContentH float64
+		wantOffsetX, wantOffsetY   float64
 	}{
 		{
-			name:           "stretch mode uses container dimensions",
-			fitMode:        "stretch",
-			srcW:           1.0, srcH: 1.0,
-			containerW:     800, containerH: 400,
-			wantContentW:   800, wantContentH: 400,
-			wantOffsetX:    0, wantOffsetY: 0,
+			name:    "stretch mode uses container dimensions",
+			fitMode: "stretch",
+			srcW:    1.0, srcH: 1.0,
+			containerW: 800, containerH: 400,
+			wantContentW: 800, wantContentH: 400,
+			wantOffsetX: 0, wantOffsetY: 0,
 		},
 		{
-			name:           "empty mode defaults to stretch",
-			fitMode:        "",
-			srcW:           1.0, srcH: 1.0,
-			containerW:     800, containerH: 400,
-			wantContentW:   800, wantContentH: 400,
-			wantOffsetX:    0, wantOffsetY: 0,
+			name:    "empty mode defaults to stretch",
+			fitMode: "",
+			srcW:    1.0, srcH: 1.0,
+			containerW: 800, containerH: 400,
+			wantContentW: 800, wantContentH: 400,
+			wantOffsetX: 0, wantOffsetY: 0,
 		},
 		{
-			name:           "contain mode fits square in wide container",
-			fitMode:        "contain",
-			srcW:           1.0, srcH: 1.0,
-			containerW:     800, containerH: 400,
-			wantContentW:   400, wantContentH: 400,
-			wantOffsetX:    200, wantOffsetY: 0,
+			name:    "contain mode fits square in wide container",
+			fitMode: "contain",
+			srcW:    1.0, srcH: 1.0,
+			containerW: 800, containerH: 400,
+			wantContentW: 400, wantContentH: 400,
+			wantOffsetX: 200, wantOffsetY: 0,
 		},
 		{
-			name:           "contain mode fits square in tall container",
-			fitMode:        "contain",
-			srcW:           1.0, srcH: 1.0,
-			containerW:     400, containerH: 800,
-			wantContentW:   400, wantContentH: 400,
-			wantOffsetX:    0, wantOffsetY: 200,
+			name:    "contain mode fits square in tall container",
+			fitMode: "contain",
+			srcW:    1.0, srcH: 1.0,
+			containerW: 400, containerH: 800,
+			wantContentW: 400, wantContentH: 400,
+			wantOffsetX: 0, wantOffsetY: 200,
 		},
 		{
-			name:           "cover mode fills with square in wide container",
-			fitMode:        "cover",
-			srcW:           1.0, srcH: 1.0,
-			containerW:     800, containerH: 400,
-			wantContentW:   800, wantContentH: 800,
-			wantOffsetX:    0, wantOffsetY: -200,
+			name:    "cover mode fills with square in wide container",
+			fitMode: "cover",
+			srcW:    1.0, srcH: 1.0,
+			containerW: 800, containerH: 400,
+			wantContentW: 800, wantContentH: 800,
+			wantOffsetX: 0, wantOffsetY: -200,
 		},
 		{
-			name:           "cover mode fills with square in tall container",
-			fitMode:        "cover",
-			srcW:           1.0, srcH: 1.0,
-			containerW:     400, containerH: 800,
-			wantContentW:   800, wantContentH: 800,
-			wantOffsetX:    -200, wantOffsetY: 0,
+			name:    "cover mode fills with square in tall container",
+			fitMode: "cover",
+			srcW:    1.0, srcH: 1.0,
+			containerW: 400, containerH: 800,
+			wantContentW: 800, wantContentH: 800,
+			wantOffsetX: -200, wantOffsetY: 0,
 		},
 	}
 

@@ -162,6 +162,14 @@ type ThemeColorInput struct {
 	RGB string `json:"rgb" yaml:"rgb"`
 }
 
+// SemanticAccentSpec maps meaning to a template theme color name (for example,
+// positive: accent3). These names are resolved before chart-series reordering.
+type SemanticAccentSpec struct {
+	Positive string `json:"positive,omitempty" yaml:"positive,omitempty"`
+	Negative string `json:"negative,omitempty" yaml:"negative,omitempty"`
+	Neutral  string `json:"neutral,omitempty" yaml:"neutral,omitempty"`
+}
+
 // StyleSpec defines theming and appearance options.
 type StyleSpec struct {
 	// Palette is the color scheme name or custom colors.
@@ -187,7 +195,8 @@ type StyleSpec struct {
 	// a full palette with semantic colors (Success, Warning, Error, etc.)
 	// and text/background colors from the template theme—instead of only
 	// carrying the 6 accent hex values.
-	ThemeColors []ThemeColorInput `json:"theme_colors,omitempty" yaml:"theme_colors,omitempty"`
+	ThemeColors     []ThemeColorInput  `json:"theme_colors,omitempty" yaml:"theme_colors,omitempty"`
+	SemanticAccents SemanticAccentSpec `json:"semantic_accents,omitempty" yaml:"semantic_accents,omitempty"`
 
 	// DataPalette is an ordered list of hex colors for chart series rendering.
 	// When set, these colors take priority over the accent color order from

@@ -785,7 +785,7 @@ func (d *WaterfallDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		style := builder.StyleGuide()
 		config.IncreaseColor = style.Palette.Success
 		config.DecreaseColor = style.Palette.Error
-		config.TotalColor = style.Palette.Primary
+		config.TotalColor = style.Palette.Warning
 		config.ConnectorColor = style.Palette.TextMuted
 
 		// Apply custom colors if specified (overrides theme defaults)

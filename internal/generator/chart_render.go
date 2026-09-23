@@ -237,6 +237,11 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 
 	// Apply other style settings
 	if spec.Style != nil {
+		style.SemanticAccents = svggen.SemanticAccentSpec{
+			Positive: spec.Style.SemanticAccents["positive"],
+			Negative: spec.Style.SemanticAccents["negative"],
+			Neutral:  spec.Style.SemanticAccents["neutral"],
+		}
 		style.ShowLegend = spec.Style.ShowLegend
 		style.ShowValues = spec.Style.ShowValues
 		if spec.Style.FontFamily != "" {

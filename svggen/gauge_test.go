@@ -4,6 +4,24 @@ import (
 	"testing"
 )
 
+func TestGaugeUnsetThresholdsUseSemanticRoles(t *testing.T) {
+	b := NewSVGBuilder(800, 600)
+	guide := DefaultStyleGuide()
+	guide.Palette.Error = MustParseColor("#AA0000")
+	guide.Palette.Warning = MustParseColor("#777777")
+	guide.Palette.Success = MustParseColor("#00AA00")
+	b.SetStyleGuide(guide)
+	config := DefaultGaugeChartConfig(800, 600)
+	config.Thresholds = []GaugeThreshold{{Value: 25}, {Value: 50, Color: MustParseColor("#010203")}, {Value: 75}, {Value: 100}}
+	chart := NewGaugeChart(b, config)
+	chart.applyThemeColors()
+	for i, want := range []string{"#AA0000", "#010203", "#777777", "#00AA00"} {
+		if got := chart.config.Thresholds[i].Color.Hex(); got != want {
+			t.Errorf("threshold %d = %s, want %s", i, got, want)
+		}
+	}
+}
+
 func TestGaugeChart_Draw(t *testing.T) {
 	tests := []struct {
 		name    string

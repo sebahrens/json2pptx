@@ -447,7 +447,8 @@ func TestWaterfallDiagram_RenderWithCustomColors(t *testing.T) {
 		Data: map[string]any{
 			"points": []any{
 				map[string]any{"label": "Start", "value": 100.0},
-				map[string]any{"label": "End", "value": 100.0, "type": "total"},
+				map[string]any{"label": "Drop", "value": -10.0},
+				map[string]any{"label": "End", "value": 90.0, "type": "total"},
 			},
 			"colors": map[string]any{
 				"increase": "#00FF00",
@@ -464,6 +465,41 @@ func TestWaterfallDiagram_RenderWithCustomColors(t *testing.T) {
 
 	if svg == nil {
 		t.Fatal("Expected non-nil SVG document")
+	}
+	for _, color := range []string{"#0f0", "#f00", "#00f"} {
+		if !strings.Contains(strings.ToLower(svg.String()), color) {
+			t.Errorf("explicit waterfall color %s was not rendered", color)
+		}
+	}
+}
+
+func TestWaterfallDiagram_UsesSemanticThemeAccents(t *testing.T) {
+	req := &RequestEnvelope{
+		Type: "waterfall",
+		Data: map[string]any{"points": []any{
+			map[string]any{"label": "Gain", "value": 100.0},
+			map[string]any{"label": "Loss", "value": -25.0},
+			map[string]any{"label": "Total", "value": 75.0, "type": "total"},
+		}},
+		Style: StyleSpec{
+			ThemeColors: []ThemeColorInput{
+				{Name: "accent1", RGB: "#B54C27"},
+				{Name: "accent2", RGB: "#58718A"},
+				{Name: "accent3", RGB: "#1A7B3C"},
+			},
+			SemanticAccents: SemanticAccentSpec{Positive: "accent3", Negative: "accent1", Neutral: "accent2"},
+			DataPalette:     []string{"#123456", "#654321", "#ABCDEF"},
+		},
+	}
+	diagram := &WaterfallDiagram{NewBaseDiagram("waterfall")}
+	svg, err := diagram.Render(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, color := range []string{"#1a7b3c", "#b54c27", "#58718a"} {
+		if !strings.Contains(strings.ToLower(svg.String()), `fill="`+color+`"`) {
+			t.Errorf("semantic waterfall color %s was not rendered", color)
+		}
 	}
 }
 

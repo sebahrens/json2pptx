@@ -611,8 +611,12 @@ func (gc *GanttChart) drawTaskBar(task GanttTask, rowY float64, dateRange timeli
 
 	barY := rowY + (gc.config.RowHeight-gc.config.BarHeight)/2
 
-	// Determine color
+	// An explicit task/category color remains authoritative; otherwise progress
+	// uses the template's semantic positive color.
 	fillColor := gc.taskColor(task, categoryColors, style)
+	if gc.config.ShowProgress && task.Color == nil && task.Category == "" {
+		fillColor = gc.config.ProgressColor
+	}
 
 	rect := Rect{
 		X: startX,
@@ -623,7 +627,11 @@ func (gc *GanttChart) drawTaskBar(task GanttTask, rowY float64, dateRange timeli
 
 	// Draw bar background
 	b.Push()
-	b.SetFillColor(fillColor)
+	if gc.config.ShowProgress {
+		b.SetFillColor(fillColor.WithAlpha(0.25))
+	} else {
+		b.SetFillColor(fillColor)
+	}
 	b.SetStrokeColor(fillColor.Darken(0.15))
 	b.SetStrokeWidth(style.Strokes.WidthNormal)
 	b.DrawRoundedRect(rect, gc.config.BarCornerRadius)
@@ -631,9 +639,9 @@ func (gc *GanttChart) drawTaskBar(task GanttTask, rowY float64, dateRange timeli
 
 	// Draw progress overlay if enabled
 	if gc.config.ShowProgress && task.Progress > 0 {
-		progressWidth := barWidth * (task.Progress / 100.0)
+		progressWidth := barWidth * (math.Min(task.Progress, 100) / 100.0)
 		b.Push()
-		b.SetFillColor(gc.config.ProgressColor)
+		b.SetFillColor(fillColor)
 		b.SetStrokeWidth(0)
 		b.DrawRoundedRect(Rect{
 			X: startX,
@@ -1258,6 +1266,22 @@ func (d *GanttDiagram) Validate(req *RequestEnvelope) error {
 	if !hasTasks && !hasMilestones {
 		return fmt.Errorf("gantt chart requires 'tasks' or 'milestones' in data. Expected: {\"tasks\": [{\"name\": \"Design\", \"start\": \"2024-01-01\", \"end\": \"2024-01-15\"}]} or {\"milestones\": [{\"name\": \"Launch\", \"date\": \"2024-03-01\"}]}")
 	}
+	return validateGanttProgress(req.Data)
+}
+
+func validateGanttProgress(data map[string]any) error {
+	if tasks, ok := toAnySlice(data["tasks"]); ok {
+		for i, raw := range tasks {
+			if task, ok := raw.(map[string]any); ok {
+				if progress, present := task["progress"]; present {
+					value, numeric := toFloat64(progress)
+					if !numeric || math.IsNaN(value) || math.IsInf(value, 0) || value < 0 || value > 100 {
+						return fmt.Errorf("gantt task %d progress must be a number from 0 to 100", i+1)
+					}
+				}
+			}
+		}
+	}
 
 	return nil
 }
@@ -1303,6 +1327,9 @@ func (d *GanttDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SV
 
 // parseGanttData parses the request data into GanttData.
 func parseGanttData(req *RequestEnvelope) (GanttData, error) {
+	if err := validateGanttProgress(req.Data); err != nil {
+		return GanttData{}, err
+	}
 	data := GanttData{
 		Title:    req.Title,
 		Subtitle: req.Subtitle,
@@ -1379,7 +1406,7 @@ func parseGanttTask(raw any, index int) GanttTask {
 	task.Category = mapStr(m, "category", "status")
 	task.Swimlane = mapStr(m, "swimlane", "team")
 
-	if progress, ok := m["progress"].(float64); ok {
+	if progress, ok := toFloat64(m["progress"]); ok {
 		task.Progress = progress
 	}
 	if colorStr, ok := m["color"].(string); ok {

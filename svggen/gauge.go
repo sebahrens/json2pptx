@@ -191,8 +191,8 @@ func (gc *GaugeChart) Draw(data GaugeData) error {
 
 	// Find the max vertical extent above and below the center.
 	// Sample key angles: start, end, and cardinal directions within sweep.
-	topExtent := 0.0  // max distance above center (negative Y in math coords)
-	botExtent := 0.0  // max distance below center (positive Y in math coords)
+	topExtent := 0.0 // max distance above center (negative Y in math coords)
+	botExtent := 0.0 // max distance below center (positive Y in math coords)
 	sweep := endAngleRad - startAngleRad
 	steps := 36
 	for i := 0; i <= steps; i++ {
@@ -307,11 +307,19 @@ func (gc *GaugeChart) applyThemeColors() {
 	// the Accent1 arc on templates like forest-green.
 	gc.config.NeedleStyle.Color = style.Palette.TextPrimary
 
-	// Assign accent colors to any thresholds that have zero-value (unset) colors.
-	accents := style.Palette.AccentColors()
+	// Unset zones progress from negative through neutral to positive.
 	for i := range gc.config.Thresholds {
 		if gc.config.Thresholds[i].Color == (Color{}) {
-			gc.config.Thresholds[i].Color = accents[i%len(accents)]
+			switch {
+			case len(gc.config.Thresholds) == 1:
+				gc.config.Thresholds[i].Color = style.Palette.Success
+			case i == 0:
+				gc.config.Thresholds[i].Color = style.Palette.Error
+			case i == len(gc.config.Thresholds)-1:
+				gc.config.Thresholds[i].Color = style.Palette.Success
+			default:
+				gc.config.Thresholds[i].Color = style.Palette.Warning
+			}
 		}
 	}
 }
@@ -817,4 +825,3 @@ func parseThresholds(raw []any) []GaugeThreshold {
 
 	return thresholds
 }
-
