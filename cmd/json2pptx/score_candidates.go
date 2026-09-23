@@ -22,13 +22,12 @@ type CandidateScore struct {
 	// Rank is the 1-based ranking after sorting (1 = best score).
 	Rank int `json:"rank"`
 	// Score is the ranking score, clamped to [0, 100]. It is
-	// slide_score - rhythm_penalty, except that a candidate carrying a
-	// refuse-action finding starts from the refusal ceiling instead of 100: a
-	// slide the engine would refuse is not a choice, however tidy the rest of
-	// it is (go-slide-creator-sbqm).
+	// slide_score - rhythm_penalty, except that invalid pattern inputs score 0
+	// and fit-refused candidates start from the refusal ceiling (go-slide-creator-sbqm).
 	Score int `json:"score"`
-	// SlideScore is the score from fit findings alone (100 - sum of severity
-	// weights). It is the number score_deck reports for the same slide, kept
+	// SlideScore is the score from fit findings alone for valid candidates
+	// (100 - sum of severity weights), or 0 for invalid pattern inputs. It is
+	// the number score_deck reports for the same valid slide, kept
 	// comparable on purpose; Score is the ranking number.
 	SlideScore int `json:"slide_score"`
 	// RhythmPenalty is the penalty subtracted for pattern repetition / occupancy issues.
@@ -129,7 +128,7 @@ WHAT IT MEASURES, reported as axes so two candidates with the same total can sti
 
 WHAT IT CANNOT MEASURE: which visual reads better. Two legible charts of the same data score the same. When the top candidates tie, the response carries a "tie" note saying so — rank 1 is then input order, not a verdict. Render them (render_slide_image) and compare, or ask inspect_slide_images.
 
-score = slide_score - rhythm_penalty, clamped to [0, 100], EXCEPT that a candidate carrying any refuse-action finding starts from 50 rather than 100: a slide the engine would refuse to render is not a choice, however tidy the rest of it is. blocking_findings counts those. slide_score itself stays the number score_deck reports for the same slide (100 - sum of severity weights: refuse=25, shrink_or_split=15, review=5, info=0), so the two tools agree about the slide even though score ranks it.
+score = slide_score - rhythm_penalty, clamped to [0, 100]. An invalid pattern or compose input that validate_input would reject scores 0 with its blocking codes. Other candidates carrying refuse-action fit findings start from 50 rather than 100. blocking_findings counts both classes. For valid inputs, slide_score stays comparable to score_deck (100 - sum of severity weights: refuse=25, shrink_or_split=15, review=5, info=0).
 
 Candidates are sorted best→worst by score; ties broken by input order. Findings are returned per-candidate so the caller can see why each scored as it did.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreCandidates)),
@@ -297,6 +296,30 @@ func scoreCandidate(
 
 	// Build a deck copy with the candidate substituted at slideIdx.
 	substituted := substituteSlide(baseInput, slideIdx, candidate)
+	// validate_input uses this same expansion/validation path. A malformed
+	// pattern cannot render, so scoring its fit geometry (which cannot expand)
+	// would falsely rank it as a clean 100-point candidate.
+	patternCtx := patterns.ExpandContext{SlideWidth: slideWidth, SlideHeight: slideHeight, SlideIndex: slideIdx}
+	if theme != nil {
+		patternCtx.Theme = *theme
+	}
+	if validation := slidePatternDiagnostics(&candidate, slideIdx, patternCtx, patterns.Default()); len(validation) > 0 {
+		out.Blocking = len(validation)
+		out.Findings = make([]deterministic.ScoreFinding, 0, len(validation))
+		for _, d := range validation {
+			var fix *patterns.FixSuggestion
+			if d.Fix != nil {
+				fix = &patterns.FixSuggestion{Kind: d.Fix.Kind, Params: d.Fix.Params}
+			}
+			out.Findings = append(out.Findings, deterministic.ScoreFinding{
+				Code: d.Code, Severity: "error", Message: d.Message, Fix: fix,
+				Class: patterns.FindingClass(d.Code),
+			})
+		}
+		out.Axes = CandidateAxes{Fit: 100, Content: 0, Rhythm: 100}
+		out.Notes = []string{"pattern validation refused this candidate; repair its blocking findings before comparing visual quality"}
+		return out
+	}
 
 	// 1. Static fit findings for the whole deck, filtered to the target slide.
 	findings := collectFitFindings(substituted, layouts, slideWidth, slideHeight, theme)

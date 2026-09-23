@@ -121,6 +121,76 @@ func TestScoreCandidates_RanksByScore(t *testing.T) {
 	}
 }
 
+func TestScoreCandidatesRejectsInvalidPatternBeforeRanking(t *testing.T) {
+	mc := scoreCandidatesMC(t)
+	deck := minimalScoreDeck(1)
+	candidates := []any{
+		map[string]any{
+			"layout_id": "content", "content": []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Workflow"}},
+			"pattern": map[string]any{"name": "process-flow", "values": map[string]any{"steps": []any{map[string]any{"label": "Start", "type": "banana"}}}},
+		},
+		map[string]any{
+			"layout_id": "content", "content": []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Performance"}},
+			"pattern": map[string]any{"name": "kpi-3up", "values": []any{
+				map[string]any{"big": "42", "small": "Active teams"},
+				map[string]any{"big": "17", "small": "Markets"},
+				map[string]any{"big": "98%", "small": "Availability"},
+			}},
+		},
+	}
+	result, err := mc.handleScoreCandidates(context.Background(), makeRequest(map[string]any{
+		"presentation": deck,
+		"slide_index":  float64(0),
+		"candidates":   candidates,
+	}))
+	if err != nil || result.IsError {
+		t.Fatalf("score_candidates failed: err=%v result=%s", err, textContent(result))
+	}
+	var out CandidateScoresResult
+	if err := json.Unmarshal([]byte(textContent(result)), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Candidates) != 2 || out.Candidates[0].Index != 1 || out.Candidates[0].Score <= 0 {
+		t.Fatalf("valid KPI candidate was not ranked first: %+v", out.Candidates)
+	}
+	invalid := out.Candidates[1]
+	if invalid.Score != 0 || invalid.Blocking < 2 || invalid.ParseError != "" {
+		t.Fatalf("invalid pattern was not scored as validation-refused: %+v", invalid)
+	}
+	codes := map[string]bool{}
+	for _, finding := range invalid.Findings {
+		codes[finding.Code] = true
+	}
+	if !codes["min_items"] || !codes["UNKNOWN_ENUM"] {
+		t.Fatalf("pattern schema blocking codes were lost: %+v", invalid.Findings)
+	}
+	validated, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+		"presentation": map[string]any{"template": "midnight-blue", "slides": []any{candidates[0]}},
+	}))
+	if err != nil || !validated.IsError {
+		t.Fatalf("validate_input did not refuse the same pattern: err=%v result=%s", err, textContent(validated))
+	}
+	var validation struct {
+		Findings []struct {
+			Code string `json:"code"`
+		} `json:"findings"`
+	}
+	if err := json.Unmarshal([]byte(textContent(validated)), &validation); err != nil {
+		t.Fatal(err)
+	}
+	for code := range codes {
+		found := false
+		for _, finding := range validation.Findings {
+			if strings.HasSuffix(finding.Code, "."+code) {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("score_candidates code %q absent from validate_input: %+v", code, validation.Findings)
+		}
+	}
+}
+
 func TestScoreCandidates_ParseError(t *testing.T) {
 	mc := scoreCandidatesMC(t)
 
