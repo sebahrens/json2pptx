@@ -1880,6 +1880,53 @@ func TestSelectLayout_TitleHiddenLayoutRejection(t *testing.T) {
 	}
 }
 
+func TestSelectLayoutVisualSlidesRequireTitlePlaceholder(t *testing.T) {
+	statement := contentLayout(6)
+	statement.ID = "statement"
+	statement.Name = "Statement"
+	statement.Tags = []string{"content", "statement"}
+	statement.Placeholders = statement.Placeholders[1:] // body-sized, but title-less
+	statement.Capacity.HasChartSlot = true
+	content := contentLayout(6)
+	content.ID = "one-content"
+
+	slides := []struct {
+		name    string
+		typeID  types.SlideType
+		content types.SlideContent
+	}{
+		{name: "chart", typeID: types.SlideTypeChart},
+		{name: "diagram", typeID: types.SlideTypeDiagram},
+		{name: "embedded diagram", typeID: types.SlideTypeContent, content: types.SlideContent{DiagramSpec: &types.DiagramSpec{Type: "bar_chart"}}},
+		{name: "raw table", typeID: types.SlideTypeContent, content: types.SlideContent{TableRaw: "| A | B |"}},
+		{name: "parsed table", typeID: types.SlideTypeContent, content: types.SlideContent{Table: &types.TableSpec{}}},
+	}
+	for _, tc := range slides {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := types.SlideDefinition{Type: tc.typeID, Title: "Performance", Content: tc.content}
+			if isLayoutSuitable(statement, slide) {
+				t.Fatal("title-less statement layout accepted a visual slide")
+			}
+			result, err := SelectLayout(SelectionRequest{Slide: slide, Layouts: []types.LayoutMetadata{statement, content}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.LayoutID != content.ID {
+				t.Fatalf("selected %q, want %q", result.LayoutID, content.ID)
+			}
+		})
+	}
+	for _, tag := range []string{"statement", "quote"} {
+		t.Run(tag+" with title slot", func(t *testing.T) {
+			decorative := contentLayout(6)
+			decorative.Tags = []string{"content", tag}
+			if isLayoutSuitable(decorative, types.SlideDefinition{Type: types.SlideTypeChart, Title: "Revenue"}) {
+				t.Fatalf("%s layout with a title slot accepted a chart", tag)
+			}
+		})
+	}
+}
+
 // TestIsLayoutSuitable_TitleHidden verifies the isLayoutSuitable function
 // correctly rejects title-hidden layouts when slide has a title.
 func TestIsLayoutSuitable_TitleHidden(t *testing.T) {

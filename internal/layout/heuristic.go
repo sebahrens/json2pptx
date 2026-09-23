@@ -1028,6 +1028,16 @@ func calculateConfidence(topScore float64, scored []scoredLayout, secondIdx int)
 
 // isLayoutSuitable checks if layout can handle required content types.
 func isLayoutSuitable(layout types.LayoutMetadata, slide types.SlideDefinition) bool { //nolint:gocyclo
+	// Visual slides need a real title slot as well as a media/body slot.
+	// Statement and quote layouts may have generous body bounds but are
+	// intentionally title-less, so they cannot host an automatically selected
+	// chart, diagram, or table layout.
+	visual := slide.Type == types.SlideTypeChart || slide.Type == types.SlideTypeDiagram ||
+		slide.Content.DiagramSpec != nil || slide.Content.TableRaw != "" || slide.Content.Table != nil
+	if visual && (findPlaceholder(layout, types.PlaceholderTitle) == nil ||
+		hasTag(layout.Tags, "statement") || hasTag(layout.Tags, "quote")) {
+		return false
+	}
 	// A section divider's body-shaped slots are decorative (often a large
 	// section number), even when the template accidentally labels them content.
 	// Never route an ordinary slide into one merely because it has body capacity.
