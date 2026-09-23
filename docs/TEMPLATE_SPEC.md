@@ -89,15 +89,18 @@ canonical `section_number` placeholder role, a `section_number` / `section_no` /
 lands in the large decorative numeral instead of any small body slot. If the
 layout has no section-number frame, the number falls back to the `body`
 placeholder (preserving behavior for templates that display the number inline).
-Auto-injection is skipped when the slide already populates the target slot.
+Auto-injection is skipped when the section slide already carries body, bullets,
+table, media, or slot content; authored body text uses the tagline slot normally.
 
 **Optional tagline body.** A section divider may carry an extra `body`
 placeholder alongside `Section Number` (for a section tagline or sub-label).
 Because auto-numbering targets the `Section Number` frame, the `body` slot is
 never overwritten by the running number and is free for optional tagline text;
 it is treated as ordinary body text (caps/autofit), not boosted to section-title
-size. `modern-template`'s Section Divider keeps such a tagline `body` slot
-intentionally — templates need not drop it to be conformant.
+size. The tagline slot must not overlap the title or Section Number frame.
+`modern-template` keeps its tagline body below the title; templates need not
+drop such a slot to be conformant. A divider with a Section Number frame is
+never tagged `content`, even if its tagline body is large enough to hold text.
 
 ## Typography Constraints
 

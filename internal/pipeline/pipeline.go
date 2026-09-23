@@ -310,20 +310,7 @@ func ConvertSlidesPartial(
 	templateAnalysis *types.TemplateAnalysis,
 	partial bool,
 ) ([]generator.SlideSpec, []string, []SlideError, error) {
-	// Assign section numbers to section divider slides. Templates design
-	// section dividers with a decorative body placeholder (e.g., a large "01"
-	// or "#" indicator). Without body text, this placeholder is cleared,
-	// leaving ~30% of the slide blank. Setting the body to the section number
-	// fills the placeholder with the template's intended design.
-	sectionNum := 0
-	for i := range presentation.Slides {
-		if presentation.Slides[i].Type == types.SlideTypeSection {
-			sectionNum++
-			if presentation.Slides[i].Content.Body == "" {
-				presentation.Slides[i].Content.Body = fmt.Sprintf("%02d", sectionNum)
-			}
-		}
-	}
+	assignSectionNumbers(presentation.Slides)
 
 	specs := make([]generator.SlideSpec, 0, len(presentation.Slides))
 	var allWarnings []string
@@ -373,6 +360,26 @@ func ConvertSlidesPartial(
 	}
 
 	return specs, allWarnings, slideErrors, nil
+}
+
+// assignSectionNumbers fills the divider's decorative number slot only when
+// the section slide has no authored content to occupy it.
+func assignSectionNumbers(slides []types.SlideDefinition) {
+	sectionNum := 0
+	for i := range slides {
+		if slides[i].Type != types.SlideTypeSection {
+			continue
+		}
+		sectionNum++
+		content := slides[i].Content
+		if content.Body == "" && content.BodyAfterBullets == "" && len(content.Bullets) == 0 &&
+			len(content.BulletGroups) == 0 && len(content.Left) == 0 && len(content.Right) == 0 &&
+			content.TableRaw == "" && content.Table == nil && content.ImagePath == "" && content.DiagramSpec == nil &&
+			!slides[i].HasSlots() {
+			slides[i].Content.Body = fmt.Sprintf("%02d", sectionNum)
+			slides[i].AutoSectionNumber = true
+		}
+	}
 }
 
 // convertSingleSlide converts a single parsed slide to a generator SlideSpec.

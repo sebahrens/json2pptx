@@ -3,6 +3,7 @@ package template
 import (
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 
@@ -176,6 +177,14 @@ func ClassifyLayout(layout *types.LayoutMetadata) { //nolint:gocyclo
 
 	counts := countPlaceholders(layout.Placeholders)
 	var tags []string
+	semanticTags := classifyByName(layout.Name, counts)
+	sectionNumber := false
+	for _, ph := range layout.Placeholders {
+		if role, _ := ClassifyPlaceholderRole(ph, layout); role == types.PlaceholderRoleSectionNumber {
+			sectionNumber = true
+			break
+		}
+	}
 
 	// Title slide: Single visible title + optional subtitle, no body
 	// Uses visibleTitle to ensure the title is actually displayed
@@ -189,7 +198,7 @@ func ClassifyLayout(layout *types.LayoutMetadata) { //nolint:gocyclo
 	// for slides that need to display a title.
 	// Uses usableBody to ensure placeholders are large enough for actual content;
 	// tiny placeholders (e.g., section number "#") don't make a layout suitable for content.
-	if counts.visibleTitle > 0 && counts.usableBody > 0 {
+	if counts.visibleTitle > 0 && counts.usableBody > 0 && !(slices.Contains(semanticTags, "section-header") && sectionNumber) {
 		tags = append(tags, "content")
 	}
 
@@ -252,7 +261,7 @@ func ClassifyLayout(layout *types.LayoutMetadata) { //nolint:gocyclo
 	}
 
 	// Semantic tags based on layout name patterns
-	tags = append(tags, classifyByName(layout.Name, counts)...)
+	tags = append(tags, semanticTags...)
 
 	// Compact-title: a visible title placeholder that is BOTH positioned low on
 	// the slide (title-at-bottom geometry) AND small enough to hold only a short

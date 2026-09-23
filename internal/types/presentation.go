@@ -73,33 +73,34 @@ func (m Metadata) AutopaginateEnabled() bool {
 
 // SlideDefinition represents a single slide parsed from markdown.
 type SlideDefinition struct {
-	Index        int                  // Zero-based slide index
-	SourceLine   int                  // 1-based line number where this slide starts in the source document
-	Title        string               // Slide title
-	Type         SlideType            // Slide type
-	Content      SlideContent         // Structured content
-	RawContent   string               // Original markdown for debugging
-	Slots        map[int]*SlotContent // Parsed slot content (nil if no ::slotN:: markers)
-	SpeakerNotes    string               // Speaker notes text (from <!-- notes: ... --> or @notes block)
-	Source          string               // Source attribution text (from @source("...") or <!-- source: "..." -->)
-	Transition      string               // Per-slide transition override (from @transition("fade") or frontmatter default)
-	TransitionSpeed string               // Per-slide transition speed override ("slow", "med", "fast")
-	Build           string               // Build animation type for bullets: "bullets" for one-by-one reveal
+	Index             int                  // Zero-based slide index
+	SourceLine        int                  // 1-based line number where this slide starts in the source document
+	Title             string               // Slide title
+	Type              SlideType            // Slide type
+	Content           SlideContent         // Structured content
+	AutoSectionNumber bool                 // Body was injected as a decorative section number by the pipeline
+	RawContent        string               // Original markdown for debugging
+	Slots             map[int]*SlotContent // Parsed slot content (nil if no ::slotN:: markers)
+	SpeakerNotes      string               // Speaker notes text (from <!-- notes: ... --> or @notes block)
+	Source            string               // Source attribution text (from @source("...") or <!-- source: "..." -->)
+	Transition        string               // Per-slide transition override (from @transition("fade") or frontmatter default)
+	TransitionSpeed   string               // Per-slide transition speed override ("slow", "med", "fast")
+	Build             string               // Build animation type for bullets: "bullets" for one-by-one reveal
 }
 
 // SlotContentType identifies the type of content in a slot.
 type SlotContentType string
 
 const (
-	SlotContentText            SlotContentType = "text"
-	SlotContentBullets         SlotContentType = "bullets"
-	SlotContentBodyAndBullets  SlotContentType = "body_and_bullets"
-	SlotContentBodyAndLead     SlotContentType = "body_and_lead"
-	SlotContentBulletGroups    SlotContentType = "bullet_groups"
-	SlotContentTable           SlotContentType = "table"
-	SlotContentChart           SlotContentType = "chart"
-	SlotContentInfographic     SlotContentType = "infographic"
-	SlotContentImage           SlotContentType = "image"
+	SlotContentText           SlotContentType = "text"
+	SlotContentBullets        SlotContentType = "bullets"
+	SlotContentBodyAndBullets SlotContentType = "body_and_bullets"
+	SlotContentBodyAndLead    SlotContentType = "body_and_lead"
+	SlotContentBulletGroups   SlotContentType = "bullet_groups"
+	SlotContentTable          SlotContentType = "table"
+	SlotContentChart          SlotContentType = "chart"
+	SlotContentInfographic    SlotContentType = "infographic"
+	SlotContentImage          SlotContentType = "image"
 )
 
 // SlotContent represents content for a single slot in a multi-placeholder layout.
@@ -217,13 +218,13 @@ func (c *SlideContent) HasGraphic() bool {
 // The Data map is passed directly to svggen, supporting all registered diagram types.
 // svggen validates the type and data at render time.
 type DiagramSpec struct {
-	Type    string         `json:"type" yaml:"type"`                             // Diagram type (bar_chart, timeline, process_flow, etc.)
+	Type     string         `json:"type" yaml:"type"`                             // Diagram type (bar_chart, timeline, process_flow, etc.)
 	Title    string         `json:"title,omitempty" yaml:"title,omitempty"`       // Optional title
 	Subtitle string         `json:"subtitle,omitempty" yaml:"subtitle,omitempty"` // Optional subtitle / post-fence caption
 	Data     map[string]any `json:"data" yaml:"data"`                             // Diagram-specific data payload
-	Width   int            `json:"width,omitempty" yaml:"width,omitempty"`       // Width in pixels (default: 800)
-	Height  int            `json:"height,omitempty" yaml:"height,omitempty"`     // Height in pixels (default: 600)
-	Scale   float64        `json:"scale,omitempty" yaml:"scale,omitempty"`       // Resolution scale (default: calculated dynamically, min 2.0)
+	Width    int            `json:"width,omitempty" yaml:"width,omitempty"`       // Width in pixels (default: 800)
+	Height   int            `json:"height,omitempty" yaml:"height,omitempty"`     // Height in pixels (default: 600)
+	Scale    float64        `json:"scale,omitempty" yaml:"scale,omitempty"`       // Resolution scale (default: calculated dynamically, min 2.0)
 	FitMode  string         `json:"fit_mode,omitempty" yaml:"fit_mode,omitempty"` // Fit mode: "stretch" (default), "contain", or "cover"
 	Style    *DiagramStyle  `json:"style,omitempty" yaml:"style,omitempty"`       // Optional styling overrides
 	// ChartStyle carries per-slide overrides for the executive chart-style
@@ -231,8 +232,8 @@ type DiagramSpec struct {
 	// "use the token default". Mirrors ChartSpec.ChartStyle so callers
 	// reaching svggen via DiagramSpec keep the same override surface.
 	ChartStyle       *ChartStyleOverrides `json:"chart_style,omitempty" yaml:"chart_style,omitempty"`
-	Warnings         []string             `json:"warnings,omitempty" yaml:"-"`                  // Non-fatal warnings (e.g., flat-map auto-conversion)
-	ChartDiagnostics []ChartDiagnostic    `json:"-" yaml:"-"`                                   // Structured chart data diagnostics (internal use)
+	Warnings         []string             `json:"warnings,omitempty" yaml:"-"` // Non-fatal warnings (e.g., flat-map auto-conversion)
+	ChartDiagnostics []ChartDiagnostic    `json:"-" yaml:"-"`                  // Structured chart data diagnostics (internal use)
 
 	// Alt is the description a screen reader announces for this diagram. Write one
 	// sentence saying what it shows; the engine derives a fallback from the

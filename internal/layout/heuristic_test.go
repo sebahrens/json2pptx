@@ -1350,8 +1350,9 @@ func TestSelectLayout_AgendaLayout(t *testing.T) {
 	}
 }
 
-// Test semantic scoring for section header layouts
-func TestSelectLayout_SectionHeader(t *testing.T) {
+// A title slide should not be routed to a section divider merely because it
+// carries the structural title-slide tag as well.
+func TestSelectLayout_TitleAvoidsSectionHeader(t *testing.T) {
 	sectionLayout := types.LayoutMetadata{
 		ID:   "layout-section",
 		Name: "Section Header",
@@ -1385,8 +1386,8 @@ func TestSelectLayout_SectionHeader(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if result.LayoutID != "layout-section" {
-		t.Errorf("expected layout-section for section title, got %s", result.LayoutID)
+	if result.LayoutID != "layout-title" {
+		t.Errorf("expected layout-title for title slide, got %s", result.LayoutID)
 	}
 }
 

@@ -466,8 +466,9 @@ func TestBuildContentItems_SectionBodyUsesContentSectionTitle(t *testing.T) {
 	// should use ContentSectionTitle to preserve the template's large font,
 	// not ContentText which caps at 24pt.
 	slide := types.SlideDefinition{
-		Title: "Performance Overview",
-		Type:  types.SlideTypeSection,
+		Title:             "Performance Overview",
+		Type:              types.SlideTypeSection,
+		AutoSectionNumber: true,
 		Content: types.SlideContent{
 			Body: "01", // Section number set by pipeline
 		},
@@ -497,6 +498,14 @@ func TestBuildContentItems_SectionBodyUsesContentSectionTitle(t *testing.T) {
 		t.Errorf("item[1].Value = %q, want %q", got[1].Value, "01")
 	}
 
+	// A section's authored tagline is ordinary body text, not a giant number.
+	slide.AutoSectionNumber = false
+	slide.Content.Body = "A short introduction"
+	authored := BuildContentItems(slide, mappings)
+	if len(authored) != 2 || authored[1].Type != ContentText {
+		t.Errorf("authored section tagline = %+v, want ordinary body text", authored)
+	}
+
 	// Non-section slide body should still use ContentText
 	contentSlide := types.SlideDefinition{
 		Title: "Regular",
@@ -519,8 +528,9 @@ func TestBuildContentItems_SectionTitleBodySharedPlaceholder(t *testing.T) {
 	// ("Text Placeholder 5"). Both title and body map to it. The builder must
 	// combine them so the title text is not lost.
 	slide := types.SlideDefinition{
-		Title: "Content Type Coverage",
-		Type:  types.SlideTypeSection,
+		Title:             "Content Type Coverage",
+		Type:              types.SlideTypeSection,
+		AutoSectionNumber: true,
 		Content: types.SlideContent{
 			Body: "01",
 		},

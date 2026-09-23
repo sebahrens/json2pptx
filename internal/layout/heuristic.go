@@ -1028,6 +1028,12 @@ func calculateConfidence(topScore float64, scored []scoredLayout, secondIdx int)
 
 // isLayoutSuitable checks if layout can handle required content types.
 func isLayoutSuitable(layout types.LayoutMetadata, slide types.SlideDefinition) bool { //nolint:gocyclo
+	// A section divider's body-shaped slots are decorative (often a large
+	// section number), even when the template accidentally labels them content.
+	// Never route an ordinary slide into one merely because it has body capacity.
+	if hasTag(layout.Tags, "section-header") && slide.Type != types.SlideTypeSection {
+		return false
+	}
 	if slide.Type == types.SlideTypeBlank && slide.Title != "" && findPlaceholder(layout, types.PlaceholderTitle) == nil {
 		return false
 	}
@@ -1309,6 +1315,14 @@ func buildMappings(layout types.LayoutMetadata, slide types.SlideDefinition) ([]
 	} else {
 		// Standard content: use single body placeholder
 		bodyPH := findPlaceholder(layout, types.PlaceholderBody)
+		if slide.AutoSectionNumber {
+			for i := range layout.Placeholders {
+				if layout.Placeholders[i].Role == types.PlaceholderRoleSectionNumber {
+					bodyPH = &layout.Placeholders[i]
+					break
+				}
+			}
+		}
 
 		// For title-only layouts (like "Title Slide"), fall back to subtitle placeholder
 		// when body placeholder is not available. This allows content like "Questions and

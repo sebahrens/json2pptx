@@ -71,14 +71,6 @@ var themeCorpusKnownBroken = []themeCorpusException{
 		Category: "layout contrast",
 		Tracking: "go-slide-creator-pxdp",
 	},
-	{
-		// modern-template.pptx: Section Divider body placeholder color="tx1"
-		// against a layout background that resolves to the same theme dk1,
-		// giving 1.00 contrast. Repair will fix the layout's body color.
-		Template: "modern-template.pptx",
-		Category: "layout contrast",
-		Tracking: "go-slide-creator-iy2k",
-	},
 }
 
 // themeCorpusException allow-lists a single (template, gate) pair.

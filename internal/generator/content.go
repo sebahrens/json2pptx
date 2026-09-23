@@ -101,7 +101,7 @@ func BuildContentItems(slide types.SlideDefinition, mappings []layout.ContentMap
 			// Section divider body uses ContentSectionTitle to preserve
 			// the template's large decorative font (e.g., 96pt "#" placeholder).
 			// The pipeline populates this with a section number like "01".
-			if slide.Type == types.SlideTypeSection {
+			if slide.AutoSectionNumber {
 				item.Type = ContentSectionTitle
 			} else {
 				item.Type = ContentText

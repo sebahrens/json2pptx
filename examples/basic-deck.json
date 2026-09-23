@@ -3,7 +3,7 @@
   "output_filename": "basic-deck.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {
           "placeholder_id": "title",
@@ -18,7 +18,7 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {
           "placeholder_id": "title",
@@ -39,7 +39,7 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {
           "placeholder_id": "title",
@@ -60,7 +60,7 @@
       ]
     },
     {
-      "layout_id": "slideLayout3",
+      "layout_id": "two-column",
       "content": [
         {
           "placeholder_id": "title",
@@ -90,7 +90,7 @@
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {
           "placeholder_id": "title",
@@ -111,7 +111,7 @@
       ]
     },
     {
-      "layout_id": "slideLayout4",
+      "layout_id": "section",
       "content": [
         {
           "placeholder_id": "title",
@@ -121,7 +121,7 @@
       ]
     },
     {
-      "layout_id": "slideLayout5",
+      "layout_id": "closing",
       "content": [
         {
           "placeholder_id": "title",
