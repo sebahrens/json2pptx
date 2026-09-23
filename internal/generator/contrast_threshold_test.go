@@ -110,9 +110,27 @@ func TestSmallestTextPt(t *testing.T) {
 			wantBold: true,
 		},
 		{
+			name:     "unmarked caption beside bold KPI is not bold",
+			fragment: `<a:r><a:rPr sz="3600" b="1"/><a:t>$12.4M</a:t></a:r><a:r><a:rPr sz="1400"/><a:t>ARR</a:t></a:r>`,
+			wantPt:   14,
+			wantBold: false,
+		},
+		{
 			name:     "no declared size falls back to the body default",
 			fragment: `<a:r><a:rPr/><a:t>text</a:t></a:r>`,
 			wantPt:   defaultBodyTextPt,
+			wantBold: false,
+		},
+		{
+			name:     "bold list style without runs",
+			fragment: `<a:lvl1pPr><a:defRPr sz="1400" b="1"/></a:lvl1pPr>`,
+			wantPt:   14,
+			wantBold: true,
+		},
+		{
+			name:     "run without properties does not inherit a bold verdict",
+			fragment: `<a:defRPr sz="1400" b="1"/><a:r><a:t>Caption</a:t></a:r>`,
+			wantPt:   14,
 			wantBold: false,
 		},
 	}
@@ -126,5 +144,28 @@ func TestSmallestTextPt(t *testing.T) {
 				t.Errorf("bold = %v, want %v", bold, tt.wantBold)
 			}
 		})
+	}
+}
+
+func TestShapeGridMixedWeightCaptionGetsNormalTextContrast(t *testing.T) {
+	const fill = "#8F8F8F" // White clears 3:1 but not 4.5:1.
+	const shape = `<p:sp><p:spPr><a:solidFill><a:srgbClr val="8F8F8F"/></a:solidFill></p:spPr>` +
+		`<p:txBody><a:bodyPr/><a:lstStyle/><a:p>` +
+		`<a:r><a:rPr sz="3600" b="1"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>$12.4M</a:t></a:r>` +
+		`<a:r><a:rPr sz="1400"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>ARR</a:t></a:r>` +
+		`</a:p></p:txBody></p:sp>`
+	fixed, swaps := enforceShapeGridContrast([][]byte{[]byte(shape)}, nil, nil, 0)
+	if len(swaps) == 0 {
+		t.Error("14pt regular caption was not corrected")
+	}
+	for _, cell := range fixed {
+		colors := textColorsIn(shapeTextBody(cell), nil)
+		if len(colors) != 1 {
+			t.Fatalf("cell has %v text colors, want one", colors)
+		}
+		ink := svggen.MustParseColor(colors[0])
+		if ratio := ink.ContrastWith(svggen.MustParseColor(fill)); ratio < svggen.WCAGAANormal {
+			t.Errorf("caption ink %s has %.2f contrast, want >= 4.5", colors[0], ratio)
+		}
 	}
 }

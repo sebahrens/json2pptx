@@ -400,8 +400,15 @@ func isNeutralForeground(value string) bool {
 // or paragraph default in a text body.
 var runSizeRegexp = regexp.MustCompile(`\bsz="(\d+)"`)
 
-// runBoldRegexp captures the b attribute of every run in a text body.
+// runBoldRegexp captures an explicit b attribute in run properties or a
+// default-run style fragment.
 var runBoldRegexp = regexp.MustCompile(`\bb="([01])"`)
+
+// A bold attribute on one run does not make its unmarked siblings bold.
+// Restrict the check to actual text runs; list-style fragments have no runs
+// and continue to use their declared default-run formatting.
+var textRunBlockRegexp = regexp.MustCompile(`(?s)<a:r\b[^>]*>(.*?)</a:r>`)
+var textRunPropertiesRegexp = regexp.MustCompile(`<a:rPr\b([^>]*)>`)
 
 // defaultBodyTextPt is assumed when a text body declares no explicit size: the
 // inherited body size is the conservative case, and it is below the
@@ -435,7 +442,7 @@ func contrastThresholdFor(textPt float64, bold bool) float64 {
 }
 
 // smallestTextPt returns the smallest declared run size in a text-body fragment
-// (in points) and whether every sized run in it is bold. A fragment with no
+// (in points) and whether every text run in it is explicitly bold. A fragment with no
 // explicit size reports defaultBodyTextPt.
 //
 // The contrast pass rewrites a whole text body against one background, so the
@@ -464,9 +471,24 @@ func smallestTextPt(fragment string) (float64, bool) {
 	return smallest, allRunsBold(fragment)
 }
 
-// allRunsBold reports whether every run that declares a b attribute declares
-// b="1". A fragment with no b attribute at all is not bold.
+// allRunsBold reports whether every text run explicitly declares b="1".
+// An omitted b attribute is regular weight, not evidence of boldness.
+// For a style fragment with no runs, its default-run b attribute is used.
 func allRunsBold(fragment string) bool {
+	runs := textRunBlockRegexp.FindAllStringSubmatch(fragment, -1)
+	if len(runs) > 0 {
+		for _, run := range runs {
+			props := textRunPropertiesRegexp.FindStringSubmatch(run[1])
+			if len(props) < 2 {
+				return false
+			}
+			bold := runBoldRegexp.FindStringSubmatch(props[1])
+			if len(bold) < 2 || bold[1] != "1" {
+				return false
+			}
+		}
+		return true
+	}
 	matches := runBoldRegexp.FindAllStringSubmatch(fragment, -1)
 	if len(matches) == 0 {
 		return false
