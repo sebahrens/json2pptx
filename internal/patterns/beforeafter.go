@@ -319,8 +319,7 @@ func withBeforeAfterPanelInsets(text json.RawMessage) json.RawMessage {
 	return out
 }
 
-// Size the full panels against their actual 0.5 cm text insets. The compact
-// variant deliberately retains its smaller default insets and sizing.
+// Size both before-after variants against their actual 0.5 cm text insets.
 func beforeAfterFullRowHeights(ctx ExpandContext, beforeHeader, afterHeader, beforeBody, afterBody json.RawMessage, gapPt float64) (headerPt, bodyPt float64) {
 	font := ctx.Theme.BodyFont
 	w, _ := contentAreaPt(ctx)
@@ -341,21 +340,6 @@ func beforeAfterPanelTone(accent string) fillTone {
 		return fillTone{Color: applyLinearMix(c, 0.12, svggen.Color{R: 255, G: 255, B: 255, A: 1}).Hex()}
 	}
 	return fillTone{Color: accent, Tint: 12000}
-}
-
-// beforeAfterRowHeights returns the fixed header-band height and the body
-// row's max height (points) for the [45, 10, 45] before/after layout.
-func beforeAfterRowHeights(ctx ExpandContext, vals *BeforeAfterValues, headerSize, bodySize, gapPt float64) (headerPt, bodyPt float64) {
-	font := ctx.Theme.BodyFont
-	w, _ := contentAreaPt(ctx)
-	colW := (w-2*gapPt)*0.45 - 2*defaultShapeInsetLRPt
-	headerPt = headerRowPt(font, []string{vals.Before.Header, vals.After.Header}, headerSize, colW)
-	body := math.Max(
-		shapeTextHeightPt(font, buildBeforeAfterBulletContent(vals.Before.Items, bodySize), colW),
-		shapeTextHeightPt(font, buildBeforeAfterBulletContent(vals.After.Items, bodySize), colW),
-	)
-	bodyPt = math.Round(body + 2*defaultShapeInsetTBPt + cardPadPt)
-	return headerPt, bodyPt
 }
 
 func buildBeforeAfterTextContent(content string, size float64, bold bool, color, align string) json.RawMessage {

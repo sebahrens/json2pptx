@@ -57,7 +57,8 @@ func TestBeforeAfterCompact_WithinSixtyPercent(t *testing.T) {
 	if float64(bottom-top) > 0.6*float64(contentRect.CY) {
 		t.Errorf("compact block %.0fpt exceeds 60%% of the content height", float64(bottom-top)/pt)
 	}
-	if h := maxCellHeight(rowCells(res.Cells, 0)); h > 45*pt {
+	headers := rowCells(res.Cells, 0)
+	if h := maxCellHeight([]shapegrid.ResolvedCell{headers[0], headers[2]}); h > 45*pt {
 		t.Errorf("compact header band %.0fpt, want <= 45pt", float64(h)/pt)
 	}
 }

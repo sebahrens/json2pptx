@@ -52,8 +52,9 @@ func TestBeforeAfterCompactWarningsUseSharedLineBudget(t *testing.T) {
 	}
 	column := pat.Schema().raw.Properties["values"].raw.Properties["before"]
 	items := column.raw.Properties["items"]
-	if items.raw.Items.raw.MaxLength == nil || *items.raw.Items.raw.MaxLength != 200 ||
-		!strings.Contains(items.raw.Description, "12 lines") || !strings.Contains(items.raw.Description, "10 if either header") {
-		t.Fatalf("schema loses sparse maximum or shared line guidance: %+v", items.raw)
+	if items.raw.Items.raw.MaxLength == nil || *items.raw.Items.raw.MaxLength != 133 ||
+		items.raw.MaxItems == nil || *items.raw.MaxItems != 4 ||
+		!strings.Contains(items.raw.Description, "1-4") {
+		t.Fatalf("schema loses compact copy limits: %+v", items.raw)
 	}
 }

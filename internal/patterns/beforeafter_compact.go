@@ -103,8 +103,8 @@ func (b *beforeAfterCompact) PostExpandWarnings(_ ExpandContext, values, _ any) 
 func (b *beforeAfterCompact) Schema() *Schema {
 	columnSchema := ObjectSchema(
 		map[string]*Schema{
-			"header": StringSchema(60).WithDescription("Column header; above about 46 characters, wrapping reduces each compact body column from about 12 to 10 readable text lines"),
-			"items":  ArraySchema(StringSchema(200), 1, 8).WithDescription("Bullet items (1-8), sharing one compact body column. About 67/133/200 characters use 1/2/3 wrapped lines per bullet; the column holds about 12 lines with short headers or 10 if either header exceeds 46 characters"),
+			"header": StringSchema(46).WithDescription("Short column header; use the full before-after variant for longer headers"),
+			"items":  ArraySchema(StringSchema(133), 1, 4).WithDescription("Brief bullet items (1-4); use full before-after for longer copy or more items"),
 		},
 		[]string{"header", "items"},
 	).WithAdditionalProperties(false)
@@ -149,42 +149,42 @@ func (b *beforeAfterCompact) Validate(values, overrides any, cellOverrides map[i
 	// Validate before column
 	if vals.Before.Header == "" {
 		errs = append(errs, errRequired(name, "before.header"))
-	} else if runeLen(vals.Before.Header) > 60 {
-		errs = append(errs, errMaxLength(name, "before.header", 60, runeLen(vals.Before.Header)))
+	} else if runeLen(vals.Before.Header) > 46 {
+		errs = append(errs, errMaxLength(name, "before.header", 46, runeLen(vals.Before.Header)))
 	}
 	if len(vals.Before.Items) == 0 {
 		errs = append(errs, errMinItems(name, "before.items", 1, 0, ""))
 	}
-	if len(vals.Before.Items) > 8 {
-		errs = append(errs, errMaxItems(name, "before.items", 8, len(vals.Before.Items), ""))
+	if len(vals.Before.Items) > 4 {
+		errs = append(errs, errMaxItems(name, "before.items", 4, len(vals.Before.Items), ""))
 	}
 	for i, item := range vals.Before.Items {
 		path := fmt.Sprintf("before.items[%d]", i)
 		if item == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if runeLen(item) > 200 {
-			errs = append(errs, errMaxLength(name, path, 200, runeLen(item)))
+		} else if runeLen(item) > 133 {
+			errs = append(errs, errMaxLength(name, path, 133, runeLen(item)))
 		}
 	}
 
 	// Validate after column
 	if vals.After.Header == "" {
 		errs = append(errs, errRequired(name, "after.header"))
-	} else if runeLen(vals.After.Header) > 60 {
-		errs = append(errs, errMaxLength(name, "after.header", 60, runeLen(vals.After.Header)))
+	} else if runeLen(vals.After.Header) > 46 {
+		errs = append(errs, errMaxLength(name, "after.header", 46, runeLen(vals.After.Header)))
 	}
 	if len(vals.After.Items) == 0 {
 		errs = append(errs, errMinItems(name, "after.items", 1, 0, ""))
 	}
-	if len(vals.After.Items) > 8 {
-		errs = append(errs, errMaxItems(name, "after.items", 8, len(vals.After.Items), ""))
+	if len(vals.After.Items) > 4 {
+		errs = append(errs, errMaxItems(name, "after.items", 4, len(vals.After.Items), ""))
 	}
 	for i, item := range vals.After.Items {
 		path := fmt.Sprintf("after.items[%d]", i)
 		if item == "" {
 			errs = append(errs, errRequired(name, path))
-		} else if runeLen(item) > 200 {
-			errs = append(errs, errMaxLength(name, path, 200, runeLen(item)))
+		} else if runeLen(item) > 133 {
+			errs = append(errs, errMaxLength(name, path, 133, runeLen(item)))
 		}
 	}
 
@@ -220,10 +220,9 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 
 	cellIdx := 0
 
-	// Header row: Before header | chevron | After header
-	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr")
-	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr")
-	chevronText := buildBeforeAfterTextContent("→", 20.0, true, "lt1", "ctr")
+	// Header row: Before header | full-height chevron | After header.
+	beforeHeader := withBeforeAfterPanelInsets(buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr"))
+	afterHeader := withBeforeAfterPanelInsets(buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr"))
 
 	beforeHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -236,10 +235,10 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	cellIdx++
 
 	chevronCell := &jsonschema.GridCellInput{
+		RowSpan: 2,
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "chevron",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
-			Text:     chevronText,
 		},
 	}
 	applyBeforeAfterCellOverride(chevronCell, cellOverrides, cellIdx, baseAccent)
@@ -255,14 +254,14 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	applyBeforeAfterCellOverride(afterHeaderCell, cellOverrides, cellIdx, afterAccent)
 	cellIdx++
 
-	// Body row: before items | spacer | after items
-	beforeBody := buildBeforeAfterBulletContent(vals.Before.Items, bodySize)
-	afterBody := buildBeforeAfterBulletContent(vals.After.Items, bodySize)
+	// Body row: light accent-derived panels; the chevron owns the middle column.
+	beforeBody := withBeforeAfterPanelInsets(buildBeforeAfterBulletContent(vals.Before.Items, bodySize))
+	afterBody := withBeforeAfterPanelInsets(buildBeforeAfterBulletContent(vals.After.Items, bodySize))
 
 	beforeBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"lt1"`),
+			Fill:     beforeAfterPanelTone(beforeAccent).fillJSON(),
 			Text:     beforeBody,
 		},
 	}
@@ -272,7 +271,7 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	afterBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"lt1"`),
+			Fill:     beforeAfterPanelTone(afterAccent).fillJSON(),
 			Text:     afterBody,
 		},
 	}
@@ -283,7 +282,7 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	// Compact means compact (go-slide-creator-3i7c): a header band sized to
 	// the header text and a body row that hugs the bullets, the whole block
 	// capped at 60% of the content area and centred there.
-	headerPt, bodyPt := beforeAfterRowHeights(ctx, vals, headerSize, bodySize, 6)
+	headerPt, bodyPt := beforeAfterFullRowHeights(ctx, beforeHeader, afterHeader, beforeBody, afterBody, 6)
 	grid := &jsonschema.ShapeGridInput{
 		Bounds: &jsonschema.GridBoundsInput{
 			X: 0, Y: 0, Width: 100, Height: 60,
@@ -299,11 +298,7 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 			},
 			{
 				MaxHeight: bodyPt,
-				Cells: []*jsonschema.GridCellInput{
-					beforeBodyCell,
-					{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`)}},
-					afterBodyCell,
-				},
+				Cells:     []*jsonschema.GridCellInput{beforeBodyCell, afterBodyCell},
 			},
 		},
 	}

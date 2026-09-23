@@ -154,22 +154,6 @@ func TestAgendaWithImagesFullAgendaWarningReachesFitReportAcrossTemplates(t *tes
 	assertBudgetFindingAcrossTemplates(t, "agenda-with-images", values, "items[4].subtitle", "no readable subtitle room")
 }
 
-func TestBeforeAfterCompactBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
-	values := &patterns.BeforeAfterValues{
-		Before: patterns.BeforeAfterColumn{Header: "Current"},
-		After:  patterns.BeforeAfterColumn{Header: "Future"},
-	}
-	for i := 0; i < 8; i++ {
-		item := "Short"
-		if i < 3 {
-			item = strings.Repeat("word ", 40)
-		}
-		values.Before.Items = append(values.Before.Items, item)
-		values.After.Items = append(values.After.Items, "Short")
-	}
-	assertBudgetFindingAcrossTemplates(t, "before-after-compact", values, "before.items", "holds about 12 lines")
-}
-
 func TestPhaseRoadmapBudgetWarningsReachFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.PhaseRoadmapValues{}
 	for i := 0; i < 6; i++ {

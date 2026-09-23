@@ -207,7 +207,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"agenda-with-images":           6.0,
 	"arch-stack":                   0,
 	"before-after":                 0.0,
-	"before-after-compact":         6.0,
+	"before-after-compact":         10.1,
 	"bmc-canvas":                   3.8,
 	"card-grid":                    2.4,
 	"chart-insights-split":         9.4,
