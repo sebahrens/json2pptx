@@ -11,4 +11,6 @@ func setProcessGroup(cmd *exec.Cmd) {}
 
 // RunGuardedLibreOffice retains CommandContext's direct-child cancellation on
 // systems without POSIX process groups.
-func RunGuardedLibreOffice(cmd *exec.Cmd) error { return cmd.Run() }
+func RunGuardedProcess(cmd *exec.Cmd) error { return cmd.Run() }
+
+func RunGuardedLibreOffice(cmd *exec.Cmd) error { return RunGuardedProcess(cmd) }

@@ -45,6 +45,22 @@ func TestIsLibreOfficeCommand(t *testing.T) {
 	}
 }
 
+func TestIsRasterizerCommand(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		want bool
+	}{
+		{"pdftoppm", true}, {"/usr/bin/magick", true}, {"convert.exe", true},
+		{"soffice", false}, {"magick-helper", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isRasterizerCommand(tc.name); got != tc.want {
+				t.Errorf("isRasterizerCommand(%q) = %v, want %v", tc.name, got, tc.want)
+			}
+		})
+	}
+}
+
 func readOfficeWorkerPID(t *testing.T, path string) int {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -151,5 +167,27 @@ func TestRealCommandRunnerLibreOfficeCallerDeath(t *testing.T) {
 	assertWorkerGone(t, workerPID)
 	if err := syscall.Kill(unrelated.Process.Pid, 0); err != nil {
 		t.Fatalf("unrelated process was affected: %v", err)
+	}
+}
+
+func TestRealCommandRunnerRasterizerTimeoutKillsWorker(t *testing.T) {
+	prior := pptx2jpgRasterizerTimeout
+	pptx2jpgRasterizerTimeout = 100 * time.Millisecond
+	t.Cleanup(func() { pptx2jpgRasterizerTimeout = prior })
+	for _, binary := range []string{"pdftoppm", "magick", "convert"} {
+		t.Run(binary, func(t *testing.T) {
+			rasterizer := filepath.Join(t.TempDir(), binary)
+			content := "#!/bin/sh\n/bin/sleep 30 &\nprintf '%s\\n' \"$!\" > \"$1\"\nwait\n"
+			if err := os.WriteFile(rasterizer, []byte(content), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			workerFile := filepath.Join(t.TempDir(), "worker.pid")
+			runner := &RealCommandRunner{Stdout: io.Discard, Stderr: io.Discard}
+			err := runner.Run(rasterizer, workerFile)
+			if !errors.Is(err, context.DeadlineExceeded) {
+				t.Fatalf("run error = %v, want deadline exceeded", err)
+			}
+			assertWorkerGone(t, readOfficeWorkerPID(t, workerFile))
+		})
 	}
 }

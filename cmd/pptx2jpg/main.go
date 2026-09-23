@@ -33,10 +33,16 @@ type RealCommandRunner struct {
 // Kept separate from the mocked CommandRunner contract so tests can use a
 // short deadline without changing every test double.
 var pptx2jpgLibreOfficeTimeout = 90 * time.Second
+var pptx2jpgRasterizerTimeout = 120 * time.Second
 
 func isLibreOfficeCommand(name string) bool {
 	base := strings.TrimSuffix(strings.ToLower(filepath.Base(name)), ".exe")
 	return base == "libreoffice" || base == "soffice"
+}
+
+func isRasterizerCommand(name string) bool {
+	base := strings.TrimSuffix(strings.ToLower(filepath.Base(name)), ".exe")
+	return base == "pdftoppm" || base == "magick" || base == "convert"
 }
 
 // Run executes the command with the given name and arguments.
@@ -50,6 +56,18 @@ func (r *RealCommandRunner) Run(name string, args ...string) error {
 		err := render.RunGuardedLibreOffice(cmd)
 		if ctx.Err() == context.DeadlineExceeded {
 			return fmt.Errorf("LibreOffice timed out after %s: %w", pptx2jpgLibreOfficeTimeout, ctx.Err())
+		}
+		return err
+	}
+	if isRasterizerCommand(name) {
+		ctx, cancel := context.WithTimeout(context.Background(), pptx2jpgRasterizerTimeout)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // executable comes from the resolved rasterizer toolchain
+		cmd.Stdout, cmd.Stderr = r.Stdout, r.Stderr
+		cmd.WaitDelay = 5 * time.Second
+		err := render.RunGuardedProcess(cmd)
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("rasterizer %s timed out after %s: %w", filepath.Base(name), pptx2jpgRasterizerTimeout, ctx.Err())
 		}
 		return err
 	}

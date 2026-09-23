@@ -9,7 +9,7 @@ import (
 	"syscall"
 )
 
-// RunGuardedLibreOffice keeps a tiny independent process alive while a
+// RunGuardedProcess keeps a tiny independent process alive while a
 // conversion runs. Its stdin is held open only by the caller. If the caller is
 // killed (so no Go defer or context callback can run), EOF makes the guard
 // kill precisely the process group it created for this conversion. Normal
@@ -17,10 +17,10 @@ import (
 // worker is still cleaned up. The guard is the group leader, reserving its ID
 // until cleanup.
 // No process discovery or broad "killall soffice" is involved.
-func RunGuardedLibreOffice(cmd *exec.Cmd) error {
+func RunGuardedProcess(cmd *exec.Cmd) error {
 	readEnd, writeEnd, err := os.Pipe()
 	if err != nil {
-		return fmt.Errorf("create LibreOffice process guard pipe: %w", err)
+		return fmt.Errorf("create process guard pipe: %w", err)
 	}
 	defer readEnd.Close()
 	defer writeEnd.Close()
@@ -32,7 +32,7 @@ IFS= read -r _ || :
 	guard.Stdin = readEnd
 	guard.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := guard.Start(); err != nil {
-		return fmt.Errorf("start LibreOffice process guard: %w", err)
+		return fmt.Errorf("start process guard: %w", err)
 	}
 	groupID := guard.Process.Pid
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: groupID}
@@ -48,8 +48,11 @@ IFS= read -r _ || :
 			return nil
 		}
 	}
-	return fmt.Errorf("LibreOffice process guard did not clean up its group: %v", guardErr)
+	return fmt.Errorf("process guard did not clean up its group: %v", guardErr)
 }
+
+// RunGuardedLibreOffice preserves the converter-specific API for existing callers.
+func RunGuardedLibreOffice(cmd *exec.Cmd) error { return RunGuardedProcess(cmd) }
 
 // setProcessGroup keeps the existing group-cancellation behavior for other
 // render subprocesses (ImageMagick). LibreOffice uses RunGuardedLibreOffice so
