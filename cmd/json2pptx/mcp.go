@@ -2448,7 +2448,7 @@ When the request carries _meta.progressToken, emits notifications/progress durin
 
 Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
 
-Cost note: the JSON metadata stays small (<5KB for typical decks); each thumbnail is one image block, and a 15-slide deck is ~370KB of base64 per pass. After a repair, pass slide_indices with just the slides that changed (render_deck_spec's changed_slides is exactly that list) instead of pulling the whole deck again; use max_slides to cap a first look at a large deck.`),
+Cost note: the JSON metadata stays small (<5KB for typical decks), but image payload grows with slide count and visual complexity; a 15-slide deck can exceed 600KB in one pass. After a repair, pass slide_indices with just the slides that changed (render_deck_spec's changed_slides is exactly that list) instead of pulling the whole deck again; use max_slides to cap a first look at a large deck.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckThumbnails)),
 		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",

@@ -977,8 +977,8 @@ Full details for each phase live in [WORKFLOW.md](WORKFLOW.md). One-line summary
 
 **Rendered slides arrive as images you can see.** `render_slide_image`, `render_slide_image_from_json`, and `render_deck_thumbnails` return each slide as a native MCP image content block (`image/jpeg`, max 1280px wide) after a small JSON metadata block (`delivery: "image_content"`, per-slide `index` / `path` / `image_content_index`, no base64). Look at the images directly — no `ANTHROPIC_API_KEY` or `inspect_slide_images` round-trip is needed to see the slides; hand the returned `path`s to `inspect_slide_images` only when you want its categorized findings. Clients that cannot display MCP images can pass `include_base64_json: true` to get the legacy base64-PNG-in-JSON envelope (the CLI `render-slide` / `render-thumbnails` / `render-slide-from-json` subcommands always print that legacy JSON).
 
-**Re-inspect the slides that changed, not the deck.** A 15-slide deck is ~370KB of
-base64 per thumbnail pass, and a repair loop that re-pulls all of it to look at one fixed slide
+**Re-inspect the slides that changed, not the deck.** Thumbnail payload varies with image
+complexity; a 15-slide pass can exceed 600KB. A repair loop that re-pulls all images to look at one fixed slide
 spends nearly all of its context on images it has already seen. `render_deck_thumbnails` takes
 **`slide_indices: [int]`** — render ONLY those 0-based slides, one image block each, ascending.
 Pass `render_deck_spec` / `validate_deck_spec`'s `changed_slides` verbatim. The response carries
