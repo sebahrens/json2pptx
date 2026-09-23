@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -9,10 +10,10 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// narrowTickThinnedDiagram builds a 40-category bar chart at a render width
-// narrow enough that svggen's labeling pass thins tick labels, emitting
-// chart.tick_thinned. Shared by the dry-render shape_grid tests below.
-func narrowTickThinnedDiagram() *types.DiagramSpec {
+// crowdedNominalDiagram builds a 40-category bar chart at a render width
+// where every named category cannot fit even vertically. Shared by the
+// dry-render shape_grid tests below.
+func crowdedNominalDiagram() *types.DiagramSpec {
 	const n = 40
 	cats := make([]any, n)
 	vals := make([]any, n)
@@ -33,11 +34,11 @@ func narrowTickThinnedDiagram() *types.DiagramSpec {
 	}
 }
 
-// TestCollectChartDryRenderFindings_TickThinned verifies that a 20-category
-// bar chart at a narrow render width surfaces chart.tick_thinned via the
+// TestCollectChartDryRenderFindings_CrowdedNominal verifies that a 40-category
+// bar chart at a narrow render width surfaces actionable crowding via the
 // dry-render path, closing the validate → preview → generate feedback loop
 // (acceptance criterion 6 of bead go-slide-creator-0ywh).
-func TestCollectChartDryRenderFindings_TickThinned(t *testing.T) {
+func TestCollectChartDryRenderFindings_CrowdedNominal(t *testing.T) {
 	const n = 40
 	cats := make([]any, n)
 	vals := make([]any, n)
@@ -72,26 +73,54 @@ func TestCollectChartDryRenderFindings_TickThinned(t *testing.T) {
 
 	findings := collectChartDryRenderFindings(input, nil, "", "warn")
 	if len(findings) == 0 {
-		t.Fatalf("expected at least one finding for 20-cat narrow bar chart, got none")
+		t.Fatalf("expected at least one finding for 40-cat narrow bar chart, got none")
 	}
 
-	var sawTickThinned bool
+	var sawCrowding bool
 	for _, f := range findings {
-		if f.Code == "chart.tick_thinned" {
-			sawTickThinned = true
+		if f.Code == "chart.tick_thinned" && strings.Contains(f.Path, "x_axis.labels") {
+			t.Errorf("nominal categories must not be thinned: %+v", f)
+		}
+		if f.Code == "chart.capacity_exceeded" {
+			sawCrowding = true
 			if !strings.Contains(f.Path, "slides[0].content[0].diagram_value") {
-				t.Errorf("tick_thinned path = %q; want prefix slides[0].content[0].diagram_value", f.Path)
+				t.Errorf("capacity_exceeded path = %q; want prefix slides[0].content[0].diagram_value", f.Path)
+			}
+			if f.Action != "shrink_or_split" {
+				t.Errorf("capacity_exceeded action = %q, want shrink_or_split", f.Action)
 			}
 		}
 	}
-	if !sawTickThinned {
+	if !sawCrowding {
 		// Helpful diagnostics when the geometry changes upstream.
 		codes := make([]string, 0, len(findings))
 		for _, f := range findings {
 			codes = append(codes, f.Code)
 		}
-		t.Errorf("expected chart.tick_thinned in dry-render findings; got codes=%v", codes)
+		t.Errorf("expected chart.capacity_exceeded in dry-render findings; got codes=%v", codes)
 	}
+}
+
+func TestCollectChartDryRenderFindings_EllipsizedCategoryAction(t *testing.T) {
+	categories := make([]any, 14)
+	values := make([]any, 14)
+	for i := range categories {
+		categories[i] = fmt.Sprintf("Category number %d with a long name", i+1)
+		values[i] = float64(i + 1)
+	}
+	input := &PresentationInput{Slides: []SlideInput{{Content: []ContentInput{{
+		Type: "diagram", DiagramValue: &types.DiagramSpec{
+			Type: "bar_chart", Width: 800, Height: 360,
+			Data: map[string]any{"categories": categories, "series": []any{map[string]any{"name": "S", "values": values}}},
+		},
+	}}}}}
+	findings := collectChartDryRenderFindings(input, nil, "", "warn")
+	for _, f := range findings {
+		if f.Code == "chart.label_ellipsized" && f.Action == "shrink_or_split" {
+			return
+		}
+	}
+	t.Errorf("majority-ellipsized category names must reach fit report as shrink_or_split; got %+v", findings)
 }
 
 // TestCollectChartDryRenderFindings_EmptyInput is a regression guard: passing
@@ -132,7 +161,7 @@ func TestCollectChartDryRenderFindings_ShapeGridDiagram(t *testing.T) {
 					Rows: []GridRowInput{
 						{
 							Cells: []*GridCellInput{
-								{Diagram: narrowTickThinnedDiagram()},
+								{Diagram: crowdedNominalDiagram()},
 							},
 						},
 					},
@@ -143,7 +172,7 @@ func TestCollectChartDryRenderFindings_ShapeGridDiagram(t *testing.T) {
 
 	findings := collectChartDryRenderFindings(input, nil, "", "warn")
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/diagram"
-	assertTickThinnedAt(t, findings, wantPath)
+	assertCrowdedNominalAt(t, findings, wantPath)
 }
 
 // TestCollectChartDryRenderFindings_CompositeSubDiagram verifies that the
@@ -158,7 +187,7 @@ func TestCollectChartDryRenderFindings_CompositeSubDiagram(t *testing.T) {
 						{
 							Cells: []*GridCellInput{
 								{Composite: &jsonschema.CompositeInput{
-									SubDiagram: narrowTickThinnedDiagram(),
+									SubDiagram: crowdedNominalDiagram(),
 								}},
 							},
 						},
@@ -170,7 +199,7 @@ func TestCollectChartDryRenderFindings_CompositeSubDiagram(t *testing.T) {
 
 	findings := collectChartDryRenderFindings(input, nil, "", "warn")
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/composite/sub_diagram"
-	assertTickThinnedAt(t, findings, wantPath)
+	assertCrowdedNominalAt(t, findings, wantPath)
 }
 
 // TestCollectChartDryRenderFindings_NestedGridDiagram verifies that a diagram
@@ -189,7 +218,7 @@ func TestCollectChartDryRenderFindings_NestedGridDiagram(t *testing.T) {
 										{
 											Cells: []*GridCellInput{
 												nil, // exercise the nil-cell skip
-												{Diagram: narrowTickThinnedDiagram()},
+												{Diagram: crowdedNominalDiagram()},
 											},
 										},
 									},
@@ -204,15 +233,14 @@ func TestCollectChartDryRenderFindings_NestedGridDiagram(t *testing.T) {
 
 	findings := collectChartDryRenderFindings(input, nil, "", "warn")
 	const wantPath = "/slides/0/shape_grid/rows/0/cells/0/grid/rows/0/cells/1/diagram"
-	assertTickThinnedAt(t, findings, wantPath)
+	assertCrowdedNominalAt(t, findings, wantPath)
 }
 
-// assertTickThinnedAt fails the test unless findings contains a
-// chart.tick_thinned finding whose Path contains wantPath.
-func assertTickThinnedAt(t *testing.T, findings []patterns.FitFinding, wantPath string) {
+// assertCrowdedNominalAt verifies both the traversal path and action contract.
+func assertCrowdedNominalAt(t *testing.T, findings []patterns.FitFinding, wantPath string) {
 	t.Helper()
 	for _, f := range findings {
-		if f.Code == "chart.tick_thinned" && strings.Contains(f.Path, wantPath) {
+		if f.Code == "chart.capacity_exceeded" && f.Action == "shrink_or_split" && strings.Contains(f.Path, wantPath) {
 			return
 		}
 	}
@@ -220,7 +248,7 @@ func assertTickThinnedAt(t *testing.T, findings []patterns.FitFinding, wantPath 
 	for _, f := range findings {
 		codes = append(codes, f.Code+"@"+f.Path)
 	}
-	t.Errorf("expected chart.tick_thinned at path containing %q; got %v", wantPath, codes)
+	t.Errorf("expected actionable chart.capacity_exceeded at path containing %q; got %v", wantPath, codes)
 }
 
 // go-slide-creator-r87g. The preflight dry-render asked svggen about every

@@ -1398,11 +1398,11 @@ func TestPieChartZeroValue(t *testing.T) {
 // caused the bottom legend items to be clipped.
 func TestPieChartLegendManyItems(t *testing.T) {
 	tests := []struct {
-		name       string
-		numItems   int
-		chartType  string // "pie" or "donut"
-		width      float64
-		height     float64
+		name      string
+		numItems  int
+		chartType string // "pie" or "donut"
+		width     float64
+		height    float64
 	}{
 		{"5 items pie", 5, "pie", 400, 300},
 		{"6 items pie", 6, "pie", 400, 300},
@@ -1581,11 +1581,10 @@ var rotatedLabelRe = regexp.MustCompile(
 // TestBarLineRotatedLabelParity is the regression test for
 // go-slide-creator-5wun. It renders a BarChart and a LineChart with the same
 // many-long-category data on the same canvas, forcing AdaptXLabels into the
-// manual-thinning + rotation branch in each chart's drawAxes path. It then
+// vertical rotation branch in each chart's drawAxes path. It then
 // asserts:
 //
-//  1. Both chart types emit rotated <text> elements for the thinned X-axis
-//     ticks (the manual-thinning branch fired).
+//  1. Both chart types emit rotated <text> elements for every X-axis tick.
 //  2. Both chart types use the SAME rotation angle (driven by the shared
 //     AdaptXLabels output) — neither swings the wrong way.
 //  3. Both chart types right-anchor the rotated labels (tspanX < 0 ⇔
@@ -1638,9 +1637,9 @@ func TestBarLineRotatedLabelParity(t *testing.T) {
 	}
 
 	// Collect only the rotated <text> elements whose angle matches AdaptXLabels'
-	// X-axis tick rotation range (−45° or −60°). This excludes the rotated
+	// X-axis tick rotation range (−45°, −60°, or −90°). This excludes the rotated
 	// Y-axis title and any other non-tick rotated text from the comparison.
-	// Categories may be truncated by AdaptXLabels' step-4 ellipsis fallback,
+	// Categories may be truncated by the bounded-label-band ellipsis fallback,
 	// so we compare by document order rather than label string.
 	xTickFilterOrdered := func(svg string) []rotatedLabel {
 		out := make([]rotatedLabel, 0)
@@ -1649,7 +1648,7 @@ func TestBarLineRotatedLabelParity(t *testing.T) {
 			ty, _ := strconv.ParseFloat(m[2], 64)
 			ang, _ := strconv.ParseFloat(m[3], 64)
 			tspan, _ := strconv.ParseFloat(m[4], 64)
-			if ang != -45 && ang != -60 {
+			if ang != -45 && ang != -60 && ang != -90 {
 				continue
 			}
 			out = append(out, rotatedLabel{tx: tx, ty: ty, angle: ang, tspanX: tspan})
@@ -1661,10 +1660,10 @@ func TestBarLineRotatedLabelParity(t *testing.T) {
 	lineTicks := xTickFilterOrdered(lineSVG)
 
 	if len(barTicks) == 0 {
-		t.Fatalf("BarChart: expected rotated X-axis tick labels, got 0 — test inputs failed to trigger thinning+rotation")
+		t.Fatalf("BarChart: expected rotated X-axis tick labels, got 0")
 	}
 	if len(lineTicks) == 0 {
-		t.Fatalf("LineChart: expected rotated X-axis tick labels, got 0 — test inputs failed to trigger thinning+rotation")
+		t.Fatalf("LineChart: expected rotated X-axis tick labels, got 0")
 	}
 
 	// Invariant: both charts right-anchor their rotated X-axis labels.
@@ -1675,13 +1674,13 @@ func TestBarLineRotatedLabelParity(t *testing.T) {
 	}
 	for i, lab := range lineTicks {
 		if lab.tspanX >= 0 {
-			t.Errorf("LineChart tick[%d]: tspanX=%.2f ≥ 0 — not right-anchored on negative rotation (LineChart manual-thinning regression)", i, lab.tspanX)
+			t.Errorf("LineChart tick[%d]: tspanX=%.2f ≥ 0 — not right-anchored on negative rotation", i, lab.tspanX)
 		}
 	}
 
 	// Invariant: identical rotation angle and identical pivot Y for every
 	// rotated X-tick at the same document position. The BarChart and LineChart
-	// manual-thinning loops iterate categories in the same order after
+	// axis loops iterate all categories in the same order after
 	// AdaptXLabels, so a positional pairing is precise. Pivot X is NOT
 	// compared because BarChart adds bar-group padding to its categorical
 	// scale while LineChart does not — the band centres legitimately differ.

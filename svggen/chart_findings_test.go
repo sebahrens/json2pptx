@@ -1,6 +1,7 @@
 package svggen
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -288,10 +289,8 @@ func TestBarChart_NoAutoLogScale_NoFinding(t *testing.T) {
 	}
 }
 
-// TestBarChart_TickThinnedXAxis verifies that a bar chart with many categories
-// emits a chart.tick_thinned finding for x-axis label thinning.
-func TestBarChart_TickThinnedXAxis(t *testing.T) {
-	// Create 40 categories to trigger AdaptXLabels thinning.
+// Nominal category labels identify bars and must never be silently thinned.
+func TestBarChart_DenseNominalLabelsRequireSplit(t *testing.T) {
 	cats := make([]any, 40)
 	vals := make([]any, 40)
 	for i := range cats {
@@ -320,18 +319,55 @@ func TestBarChart_TickThinnedXAxis(t *testing.T) {
 	if output.SVG == nil {
 		t.Fatal("expected SVG output")
 	}
-
-	found := findFindingByCode(output.Findings, FindingTickThinned)
-	if found == nil {
-		t.Fatalf("expected finding with code %q, got findings: %v", FindingTickThinned, output.Findings)
+	svg := output.SVG.String()
+	for _, category := range cats {
+		if !strings.Contains(svg, category.(string)) {
+			t.Errorf("nominal category %q is missing from the rendered axis", category)
+		}
 	}
-	if found.Severity != "info" {
-		t.Errorf("severity = %q, want %q", found.Severity, "info")
+
+	if got := findFindingByCode(output.Findings, FindingTickThinned); got != nil {
+		t.Errorf("nominal axis must not thin labels: %+v", got)
+	}
+	found := findFindingByCode(output.Findings, FindingCapacityExceeded)
+	if found == nil {
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingCapacityExceeded, output.Findings)
+	}
+	if found.Severity != "shrink_or_split" {
+		t.Errorf("severity = %q, want shrink_or_split", found.Severity)
 	}
 	if found.Fix == nil {
 		t.Error("expected Fix to be non-nil")
 	} else if found.Fix.Kind != FixKindReduceItems {
 		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindReduceItems)
+	}
+}
+
+func TestBarChart_MostLongCategoryLabelsRequireRepair(t *testing.T) {
+	categories := make([]any, 14)
+	values := make([]any, 14)
+	for i := range categories {
+		categories[i] = fmt.Sprintf("Category number %d with a long name", i+1)
+		values[i] = float64(i + 1)
+	}
+	req := &RequestEnvelope{
+		Type: "bar_chart",
+		Data: map[string]any{
+			"categories": categories,
+			"series":     []any{map[string]any{"name": "S", "values": values}},
+		},
+		Output: OutputSpec{Width: 800, Height: 360},
+	}
+	output, err := RenderMultiFormatWithFindings(req, "svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	finding := findFindingByCode(output.Findings, FindingLabelEllipsized)
+	if finding == nil || finding.Severity != "shrink_or_split" {
+		t.Fatalf("mostly ellipsized categories must require repair, got %+v", output.Findings)
+	}
+	if got := findFindingByCode(output.Findings, FindingTickThinned); got != nil {
+		t.Errorf("nominal axis was thinned: %+v", got)
 	}
 }
 
@@ -509,7 +545,7 @@ func TestScatterChart_LabelSkippedFinding(t *testing.T) {
 	xValues := make([]any, 30)
 	labels := make([]any, 30)
 	for i := 0; i < 30; i++ {
-		values[i] = 50.0 // All at the same Y
+		values[i] = 50.0  // All at the same Y
 		xValues[i] = 50.0 // All at the same X — maximum collision
 		labels[i] = "Label" + string(rune('A'+i%26))
 	}

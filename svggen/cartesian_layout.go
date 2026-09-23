@@ -438,7 +438,7 @@ type XLabelLayout struct {
 	// LabelStep is the thinning factor (1 = show all, 2 = every other, etc.).
 	LabelStep int
 
-	// Categories holds the (potentially truncated) category labels.
+	// Categories holds the original category identities used by the scale.
 	Categories []string
 
 	// ExtraBottomMargin is the additional bottom margin needed for rotated
@@ -499,15 +499,16 @@ func wrapXLabelsTwoLines(b *SVGBuilder, cats []string, limit, fontSize float64) 
 	return out, true
 }
 
-// AdaptXLabels computes adaptive font size, rotation, thinning, and truncation
-// for x-axis category labels to prevent overlap and truncation.
+// AdaptXLabels computes adaptive font size and rotation for nominal x-axis
+// categories. A category label identifies a bar or point, so it is never
+// thinned like a time-axis tick.
 //
 // Strategy (applied in order):
 //  1. Shrink font size toward a 9pt floor.
 //  2. Word-wrap labels onto two horizontal lines (rotation 0).
 //  3. Rotate labels 45 degrees when a two-line wrap still does not fit.
-//  4. Thin labels (show every Nth) if rotated labels still overlap.
-//  5. Truncate with ellipsis as a last resort (emits chart.label_ellipsized).
+//  4. Rotate 90 degrees if the angled labels still overlap. If even vertical
+//     labels cannot fit, emit an actionable finding rather than dropping them.
 //
 // Parameters:
 //   - b: SVGBuilder for text measurement
@@ -527,18 +528,9 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 	cats := make([]string, numCats)
 	copy(cats, categories)
 
-	// display carries what the axis PRINTS; cats stays what the caller passed.
-	// The two used to be the same slice, so ellipsizing a label also changed the
-	// key its categorical scale was built from — while the series still looked
-	// its position up by the original label. Every lookup missed, Scale returned
-	// its range minimum, and every bar in the chart stacked in the first slot
-	// (go-slide-creator-4xsi).
-	var display []string
-
 	bandwidth := plotWidth / float64(numCats)
 	fontSize := baseFontSize
 	rotation := 0.0
-	labelStep := 1
 	extraBottom := 0.0
 
 	const fontFloor = 9.0 // Minimum readable font size
@@ -550,17 +542,11 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 	// factor forced unnecessary rotation on moderate-density charts (e.g.,
 	// 6-label waterfall at half-width where "Downgrades" measured 56pt in
 	// a 68pt bandwidth).
-	// It measures what the axis will PRINT: once labels are ellipsized, the
-	// band they need is the ellipsized width, not the original one.
 	measureMaxLabel := func(fs float64) float64 {
-		labels := cats
-		if display != nil {
-			labels = display
-		}
 		b.Push()
 		b.SetFontSize(fs)
 		var maxW float64
-		for _, cat := range labels {
+		for _, cat := range cats {
 			w, _ := b.MeasureText(cat)
 			if w > maxW {
 				maxW = w
@@ -628,48 +614,22 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 		rotAngleRad := math.Abs(rotation) * math.Pi / 180
 		horizFootprint := maxLabelWidth * math.Cos(rotAngleRad)
 
-		// ── Step 3: Thin labels if rotated labels still overlap ──
+		// ── Step 4: Use vertical labels instead of hiding categories ──
 		if horizFootprint > bandwidth*0.95 {
-			labelStep = ComputeLabelStep(numCats)
-			// Also try further thinning for narrow charts
-			if isNarrow && labelStep < 2 {
-				labelStep = 2
-			}
-		}
-
-		// After thinning, re-check: if thinned labels still overlap, truncate.
-		effectiveBandwidth := bandwidth * float64(labelStep)
-		if horizFootprint > effectiveBandwidth*0.95 {
-			// ── Step 4: Truncate with ellipsis as last resort ──
-			targetW := effectiveBandwidth * 0.90 / math.Cos(rotAngleRad)
-			charW := fontSize * 0.6
-			maxChars := int(targetW / charW)
-			if maxChars < 3 {
-				maxChars = 3
-			}
-			truncated := 0
-			display = make([]string, numCats)
-			copy(display, cats)
-			for i, cat := range cats {
-				runes := []rune(cat)
-				if len(runes) > maxChars {
-					display[i] = string(runes[:maxChars-1]) + "\u2026"
-					truncated++
-				}
-			}
-			if truncated > 0 {
+			rotation = -90
+			rotAngleRad = math.Pi / 2
+			if fontSize*1.1 > bandwidth*0.95 {
 				b.AddFinding(Finding{
 					Field:    "x_axis.labels",
-					Code:     FindingLabelEllipsized,
-					Message:  fmt.Sprintf("%d of %d x-axis category labels ellipsized — too long even for a two-line wrap or rotation", truncated, numCats),
-					Severity: "warning",
+					Code:     FindingCapacityExceeded,
+					Message:  fmt.Sprintf("%d named categories cannot all fit on this x-axis, even at 90°; use a horizontal-bar-with-callouts chart or split the categories", numCats),
+					Severity: "shrink_or_split",
 					Fix: &FixSuggestion{
-						Kind:   FixKindIncreaseCanvas,
-						Params: map[string]any{"max_chars": maxChars, "truncated_labels": truncated},
+						Kind:   FixKindReduceItems,
+						Params: map[string]any{"total_categories": numCats, "recommended_pattern": "horizontal-bar-with-callouts", "alternative": "split_slide"},
 					},
 				})
 			}
-			maxLabelWidth = measureMaxLabel(fontSize)
 		}
 
 		// Add extra bottom margin for rotated labels. The caller caps this
@@ -686,9 +646,8 @@ func AdaptXLabels(b *SVGBuilder, categories []string, plotWidth, baseFontSize fl
 	return XLabelLayout{
 		FontSize:          fontSize,
 		Rotation:          rotation,
-		LabelStep:         labelStep,
+		LabelStep:         1,
 		Categories:        cats,
-		DisplayLabels:     display,
 		ExtraBottomMargin: extraBottom,
 	}
 }
@@ -718,6 +677,9 @@ func CapXLabelBand(b *SVGBuilder, layout *XLabelLayout, prelimPlotH float64, cat
 
 	needed := layout.ExtraBottomMargin
 	layout.ExtraBottomMargin = maxBand
+	if layout.Rotation != 0 {
+		ellipsizeXLabelsToBand(b, layout, categories, maxBand)
+	}
 
 	b.AddFinding(Finding{
 		Field: "x_axis.labels",
@@ -730,12 +692,77 @@ func CapXLabelBand(b *SVGBuilder, layout *XLabelLayout, prelimPlotH float64, cat
 		Fix: &FixSuggestion{
 			Kind: FixKindShortenLabels,
 			Params: map[string]any{
-				"needed_px":         math.Round(needed),
-				"capped_px":         math.Round(maxBand),
-				"total_categories":  len(categories),
-				"longest_label_len": longestLabelLen(categories),
+				"needed_px":           math.Round(needed),
+				"capped_px":           math.Round(maxBand),
+				"total_categories":    len(categories),
+				"longest_label_len":   longestLabelLen(categories),
+				"recommended_pattern": "horizontal-bar-with-callouts",
+				"alternative":         "split_slide",
 			},
 		},
+	})
+}
+
+// Ellipsize only when a rotated label would otherwise be clipped by the
+// bounded label band. Keep the original categories as scale identities.
+func ellipsizeXLabelsToBand(b *SVGBuilder, layout *XLabelLayout, categories []string, maxBand float64) {
+	angle := math.Abs(layout.Rotation) * math.Pi / 180
+	limit := (maxBand + layout.FontSize) / (1.1 * math.Sin(angle))
+	b.Push()
+	b.SetFontSize(layout.FontSize)
+	defer b.Pop()
+
+	display := make([]string, len(categories))
+	wasTruncated := make([]bool, len(categories))
+	truncated := 0
+	for i, original := range categories {
+		label := original
+		width, _ := b.MeasureText(label)
+		if width > limit {
+			runes := []rune(original)
+			label = "…"
+			lo, hi := 0, len(runes)-1
+			for lo <= hi {
+				mid := lo + (hi-lo)/2
+				candidate := string(runes[:mid]) + "…"
+				candidateWidth, _ := b.MeasureText(candidate)
+				if candidateWidth <= limit {
+					label = candidate
+					lo = mid + 1
+				} else {
+					hi = mid - 1
+				}
+			}
+			truncated++
+			wasTruncated[i] = true
+		}
+		display[i] = label
+	}
+	if truncated == 0 {
+		return
+	}
+	layout.DisplayLabels = display
+	duplicate := false
+	seen := make(map[string]int, len(display))
+	for i, label := range display {
+		if prev, ok := seen[label]; ok && (wasTruncated[prev] || wasTruncated[i]) {
+			duplicate = true
+		}
+		seen[label] = i
+	}
+	severity := "info"
+	if truncated*2 >= len(categories) || duplicate {
+		severity = "shrink_or_split"
+	}
+	b.AddFinding(Finding{
+		Field:    "x_axis.labels",
+		Code:     FindingLabelEllipsized,
+		Message:  fmt.Sprintf("%d of %d x-axis category labels ellipsized to fit the vertical label band; use horizontal-bar-with-callouts or split the categories", truncated, len(categories)),
+		Severity: severity,
+		Fix: &FixSuggestion{Kind: FixKindTruncateOrSplit, Params: map[string]any{
+			"truncated_labels": truncated, "total_categories": len(categories),
+			"duplicate_stubs": duplicate, "recommended_pattern": "horizontal-bar-with-callouts", "alternative": "split_slide",
+		}},
 	})
 }
 

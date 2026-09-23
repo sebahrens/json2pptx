@@ -178,8 +178,7 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 		}
 	}
 
-	// Compute adaptive x-axis label layout (font size, rotation, thinning,
-	// and truncation) using the shared strategy so labels are not clipped.
+	// Compute adaptive x-axis labels without thinning named categories.
 	prelimPlotW := wc.config.Width - wc.config.MarginLeft - wc.config.MarginRight
 	xLayout := AdaptXLabels(b, categories, prelimPlotW, style.Typography.SizeBody, isNarrow)
 	axisFontSize := xLayout.FontSize
@@ -359,11 +358,9 @@ func (wc *WaterfallChart) calculateDomain(points []WaterfallDataPoint) (min, max
 func (wc *WaterfallChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, axisFontSize float64, xLabelRotation float64, labelStep int, importantLabels map[int]bool) {
 	b := wc.builder
 
-	// X axis — horizontal by default, rotated when labels are dense. Label
-	// thinning (every Nth + last + important totals/subtotals) and rotated
-	// label pivot geometry are owned by the shared AxisConfig / drawTick
-	// pipeline. The first index (i=0) is preserved naturally because
-	// 0 % step == 0 for any step.
+	// X axis — horizontal by default, rotated when labels are dense. The
+	// shared AxisConfig owns rotated-label pivot geometry; AdaptXLabels keeps
+	// every named category, including totals and subtotals.
 	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
 	xAxisConfig.Title = wc.config.XAxisTitle
 	xAxisConfig.FontSize = axisFontSize

@@ -341,12 +341,15 @@ func (bc *BarChart) Draw(data ChartData) error {
 
 	b.CheckChartCapacity(len(data.Series), len(data.Categories))
 
-	// Compute adaptive x-axis label layout (font size, rotation, thinning,
-	// and truncation) using the shared strategy so labels are not clipped.
+	// Compute adaptive x-axis labels without thinning named categories.
 	isNarrow := bc.config.Width < 500
 	prelimPlotW := bc.config.Width - bc.config.MarginLeft - bc.config.MarginRight
 	xLayout := AdaptXLabels(b, data.Categories, prelimPlotW, style.Typography.SizeSmall, isNarrow)
-	CapXLabelBand(b, &xLayout, bc.config.Height-bc.config.MarginTop-bc.config.MarginBottom, data.Categories)
+	// Cap against the actual pre-label plot height, not raw canvas height:
+	// title/footnote/legend reservations make the latter too generous and put
+	// bar labels below their line-chart counterparts on the same canvas.
+	prelimPlotH := ComputeCartesianLayout(bc.config.ChartConfig, style, data.Title, data.Subtitle, data.Footnote, len(data.Series)).PlotArea.H
+	CapXLabelBand(b, &xLayout, prelimPlotH, data.Categories)
 	axisFontSize := xLayout.FontSize
 	xLabelRotation := xLayout.Rotation
 	labelStep := xLayout.LabelStep
@@ -354,19 +357,6 @@ func (bc *BarChart) Draw(data ChartData) error {
 	bc.xDisplayLabels = xLayout.DisplayLabels
 	if xLayout.ExtraBottomMargin > 0 {
 		bc.config.MarginBottom += xLayout.ExtraBottomMargin
-	}
-
-	if labelStep > 1 {
-		b.AddFinding(Finding{
-			Field:    "x_axis.labels",
-			Code:     FindingTickThinned,
-			Message:  fmt.Sprintf("x-axis labels thinned — showing every %d of %d categories", labelStep, len(data.Categories)),
-			Severity: "info",
-			Fix: &FixSuggestion{
-				Kind:   FixKindReduceItems,
-				Params: map[string]any{"label_step": labelStep, "total_categories": len(data.Categories)},
-			},
-		})
 	}
 
 	// Calculate domain early so we can probe y-axis label widths and grow
@@ -405,13 +395,14 @@ func (bc *BarChart) Draw(data ChartData) error {
 		})
 	}
 
-	// Create scales (use potentially-truncated categories for label display)
+	// Create scales from the original category identities; only axis display
+	// text may be ellipsized after its label-band bounds are known.
 	xScale := NewCategoricalScale(categories)
 	xScale.SetRangeCategorical(0, plotArea.W)
 	xScale.PaddingOuter(bc.config.GroupPadding)
 	xScale.PaddingInner(bc.config.GroupPadding)
 
-	// Use a display data copy with potentially-truncated categories for drawing
+	// Keep series data aligned with the scale's original categories.
 	displayData := data
 	displayData.Categories = categories
 
@@ -881,8 +872,7 @@ func (bc *BarChart) drawLogGrid(plotArea Rect) {
 func (bc *BarChart) drawLogAxes(plotArea Rect, xScale *CategoricalScale, axisFontSize, xLabelRotation float64, labelStep int) {
 	b := bc.builder
 
-	// X axis (same as linear). Label thinning (every Nth + last) and rotated
-	// label geometry are handled by the shared AxisConfig / drawTick pipeline.
+	// X axis (same as linear). The shared AxisConfig owns rotated-label geometry.
 	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
 	xAxisConfig.Title = bc.config.XAxisTitle
 	xAxisConfig.FontSize = axisFontSize
@@ -904,9 +894,8 @@ func (bc *BarChart) drawLogAxes(plotArea Rect, xScale *CategoricalScale, axisFon
 func (bc *BarChart) drawAxes(plotArea Rect, xScale *CategoricalScale, yScale *LinearScale, axisFontSize, xLabelRotation float64, labelStep int) {
 	b := bc.builder
 
-	// X axis — with density-adaptive font size and rotation. Label thinning
-	// (every Nth + last) and rotated-label pivot geometry are owned by the
-	// shared AxisConfig / drawTick pipeline.
+	// X axis — with density-adaptive font size and rotation. The shared
+	// AxisConfig owns rotated-label pivot geometry.
 	xAxisConfig := DefaultAxisConfig(AxisPositionBottom)
 	xAxisConfig.Title = bc.config.XAxisTitle
 	xAxisConfig.FontSize = axisFontSize
@@ -1266,18 +1255,6 @@ func (lc *LineChart) Draw(data ChartData) error {
 		if xLayout.ExtraBottomMargin > 0 {
 			plotArea.H -= xLayout.ExtraBottomMargin
 		}
-		if xLayout.LabelStep > 1 {
-			b.AddFinding(Finding{
-				Field:    "x_axis.labels",
-				Code:     FindingTickThinned,
-				Message:  fmt.Sprintf("x-axis labels thinned — showing every %d of %d categories", xLayout.LabelStep, len(data.Categories)),
-				Severity: "info",
-				Fix: &FixSuggestion{
-					Kind:   FixKindReduceItems,
-					Params: map[string]any{"label_step": xLayout.LabelStep, "total_categories": len(data.Categories)},
-				},
-			})
-		}
 	}
 
 	// Create scales
@@ -1329,8 +1306,8 @@ func (lc *LineChart) Draw(data ChartData) error {
 		}
 	}
 
-	// Draw lines — use adapted categories (potentially truncated) so
-	// DataPoint.XCategory matches the CategoricalScale keys.
+	// Draw lines using the original categorical-scale keys. Axis display
+	// labels may be shortened independently.
 	drawData := data
 	if len(categories) > 0 && !isTimeSeries {
 		drawData.Categories = categories
@@ -1752,9 +1729,8 @@ func (lc *LineChart) drawAxes(plotArea Rect, xScale Scale, yScale *LinearScale, 
 
 	switch xs := xScale.(type) {
 	case *CategoricalScale:
-		// Apply adaptive font size, rotation, and thinning from AdaptXLabels.
-		// Label thinning (every Nth + last) and rotated-label pivot geometry
-		// are owned by the shared AxisConfig / drawTick pipeline.
+		// Apply adaptive font size and rotation from AdaptXLabels. Nominal
+		// categories always use LabelStep=1; AxisConfig owns pivot geometry.
 		xAxisConfig.FontSize = xLayout.FontSize
 		xAxisConfig.LabelRotation = xLayout.Rotation
 		xAxisConfig.LabelStep = xLayout.LabelStep

@@ -106,6 +106,7 @@ func TestAdaptXLabels_TruncationEmitsEllipsizedFinding(t *testing.T) {
 	}
 	b := NewSVGBuilder(300, 240)
 	layout := AdaptXLabels(b, cats, 200, b.StyleGuide().Typography.SizeSmall, true)
+	CapXLabelBand(b, &layout, 100, cats)
 	truncated := false
 	for _, c := range layout.DisplayLabels {
 		if strings.HasSuffix(c, "…") {
@@ -134,5 +135,54 @@ func TestAdaptXLabels_TruncationEmitsEllipsizedFinding(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("truncation must emit %s finding; got %+v", FindingLabelEllipsized, b.Findings())
+	}
+}
+
+func TestAdaptXLabels_NominalCategoriesNeverThin(t *testing.T) {
+	cats := []string{
+		"Cloud Infrastructure", "Hardware and Devices", "Data and Analytics", "Professional Services",
+		"Facilities Management", "Marketing Operations", "Customer Success", "Product Engineering",
+	}
+	b := NewSVGBuilder(360, 260)
+	layout := AdaptXLabels(b, cats, 190, b.StyleGuide().Typography.SizeSmall, true)
+	if layout.LabelStep != 1 {
+		t.Errorf("nominal labels step = %d, want 1 so every bar can be identified", layout.LabelStep)
+	}
+	if layout.Rotation != -90 {
+		t.Errorf("crowded labels rotation = %.0f, want -90 rather than thinning", layout.Rotation)
+	}
+}
+
+func TestEllipsizedCategoryLabelsEscalateWhenIdentityIsLost(t *testing.T) {
+	tests := []struct {
+		name       string
+		categories []string
+		want       string
+	}{
+		{"majority", []string{"Extended category Alpha", "Extended category Beta", "Extended category Gamma", "A", "B"}, "shrink_or_split"},
+		{"duplicate minority", []string{"Shared category Alpha", "Shared category Beta", "A", "B", "C"}, "shrink_or_split"},
+		{"distinct minority", []string{"Distinctly long category Alpha", "A", "B", "C", "D"}, "info"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewSVGBuilder(320, 240)
+			layout := XLabelLayout{FontSize: 9, Rotation: -90, LabelStep: 1, Categories: append([]string(nil), tt.categories...)}
+			ellipsizeXLabelsToBand(b, &layout, tt.categories, 50)
+			finding := findFindingByCode(b.Findings(), FindingLabelEllipsized)
+			if finding == nil {
+				t.Fatalf("expected ellipsis finding, got %+v", b.Findings())
+			}
+			if finding.Severity != tt.want {
+				t.Errorf("severity = %q, want %q", finding.Severity, tt.want)
+			}
+			if len(layout.DisplayLabels) != len(tt.categories) {
+				t.Fatalf("display labels = %v, want one per category", layout.DisplayLabels)
+			}
+			for i, cat := range tt.categories {
+				if layout.Categories[i] != cat {
+					t.Errorf("scale category %d was mutated: %q", i, layout.Categories[i])
+				}
+			}
+		})
 	}
 }

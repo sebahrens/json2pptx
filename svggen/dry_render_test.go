@@ -2,11 +2,9 @@ package svggen
 
 import "testing"
 
-// TestDryRender_BarChartTickThinned verifies that the top-level DryRender
-// helper returns chart.tick_thinned findings for a 40-category bar chart at
-// narrow width WITHOUT requiring callers to consume SVG bytes. This is the
-// contract used by validate_input / preview_presentation_plan in json2pptx.
-func TestDryRender_BarChartTickThinned(t *testing.T) {
+// DryRender must surface nominal-axis crowding as an actionable finding
+// without hiding categories. validate_input and preview use this path.
+func TestDryRender_DenseNominalCategories(t *testing.T) {
 	cats := make([]any, 40)
 	vals := make([]any, 40)
 	for i := range cats {
@@ -33,15 +31,17 @@ func TestDryRender_BarChartTickThinned(t *testing.T) {
 		t.Fatalf("expected at least one finding, got none")
 	}
 
-	var sawTickThinned bool
+	var sawCapacity bool
 	for _, f := range findings {
-		if f.Code == FindingTickThinned {
-			sawTickThinned = true
-			break
+		if f.Code == FindingTickThinned && f.Field == "x_axis.labels" {
+			t.Errorf("nominal categories must not be thinned: %+v", f)
+		}
+		if f.Code == FindingCapacityExceeded && f.Field == "x_axis.labels" && f.Severity == "shrink_or_split" {
+			sawCapacity = true
 		}
 	}
-	if !sawTickThinned {
-		t.Fatalf("expected %q in findings, got %v", FindingTickThinned, findings)
+	if !sawCapacity {
+		t.Fatalf("expected actionable %q in findings, got %v", FindingCapacityExceeded, findings)
 	}
 }
 

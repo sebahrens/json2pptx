@@ -290,7 +290,7 @@ An **unknown** kind — one in neither vocabulary — is a caller mistake and ke
 
 Charts and diagrams emit structured findings at render time, following the same `{path, code, message, fix}` envelope as native layout findings. Codes use the `chart.*` prefix.
 
-**Dry-render parity:** `validate_input` (with `fit_report: true`) and `preview_presentation_plan` now invoke svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item and merge the resulting `chart.*` findings into `fit_findings`. Agents see `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`, `chart.label_truncated`, and `chart.scatter_label_skipped` BEFORE calling `generate_presentation` — no full render required. The same strict-fit severity ladder applies. For ad-hoc per-diagram dry-runs use the svggen-mcp `render_diagram` tool with `dry_run: true`.
+**Dry-render parity:** `validate_input` (with `fit_report: true`) and `preview_presentation_plan` now invoke svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item and merge the resulting `chart.*` findings into `fit_findings`. Agents see `chart.capacity_exceeded`, `chart.label_ellipsized`, `chart.tick_thinned` (time/numeric axes only), and other chart findings BEFORE calling `generate_presentation` — no full render required. The same strict-fit severity ladder applies. For ad-hoc per-diagram dry-runs use the svggen-mcp `render_diagram` tool with `dry_run: true`.
 
 ### Data-integrity codes — indicate bad input data
 
@@ -300,7 +300,7 @@ Charts and diagrams emit structured findings at render time, following the same 
 | `chart.zero_sum_pie` | Pie/donut with all-zero or all-negative values | `replace_value` |
 | `chart.negative_on_log` | Negative values on a log-scale chart | `explicit_scale` |
 | `chart.all_zero_series` | All series values are zero (flat chart) | `replace_value` |
-| `chart.capacity_exceeded` | Series/points/categories exceed renderer limits | `reduce_items` |
+| `chart.capacity_exceeded` | Series/points/categories exceed renderer limits, or named x-axis categories cannot all fit even vertically | `reduce_items` |
 | `chart.invalid_time_format` | Time-series string cannot be parsed | `replace_value` |
 
 ### Content-loss codes — successful degradation that dropped or truncated payload; promoted under `warn`
@@ -312,15 +312,15 @@ Charts and diagrams emit structured findings at render time, following the same 
 
 (`chart.capacity_exceeded` is also a content-loss code but is grouped with data-integrity above because strict promotes it all the way to `refuse`.)
 
-### Advisory codes — formatting/fitting adjustments; never promoted
+### Advisory codes — formatting/fitting adjustments (unless content identity is lost)
 
 | Code | When emitted | Fix kind |
 |------|-------------|----------|
 | `chart.auto_log_scale_applied` | Auto-switched to log scale based on data range | `explicit_scale` |
-| `chart.tick_thinned` | Axis tick labels thinned to prevent overlap | `reduce_items` |
+| `chart.tick_thinned` | Time/numeric axis tick labels thinned to prevent overlap; nominal categories are never thinned | `reduce_items` |
 | `chart.scatter_label_skipped` | Scatter label skipped due to collision | `increase_canvas` |
 | `chart.label_truncated` | Label truncated to fit available space | `increase_canvas` |
-| `chart.label_ellipsized` | Label shortened with ellipsis (x-axis categories: only after a two-line horizontal wrap and rotation both fail) | `increase_canvas` |
+| `chart.label_ellipsized` | Label shortened with ellipsis; x-axis categories use a bounded label band after wrapping/rotation. When at least half are shortened or two shortened labels become identical, action escalates to `shrink_or_split` with a horizontal-bar/split recommendation | `truncate_or_split` |
 | `chart.label_clipped` | Label hard-clipped at container boundary | `increase_canvas` |
 | `chart.percent_scale_ambiguous` | Percent formatting sees a value above 1; values are preserved as already-scaled percentage points | `explicit_scale` |
 | `chart.currency_prefix_defaulted` | Currency formatting omitted `prefix`; the generic `¤` marker is rendered | `replace_value` |
