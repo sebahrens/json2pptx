@@ -20,6 +20,17 @@ import (
 
 const examineSchemaPath = "../../docs/api/finding-envelope.schema.json"
 
+func TestCanonicalRolesMarksSectionNumberAutoFilled(t *testing.T) {
+	report := &examine.Report{Layouts: []examine.LayoutReport{{
+		Placeholders: []examine.PlaceholderReport{{ID: "title"}, {ID: "Section Number"}},
+	}}}
+	roles := buildCanonicalRoles(report)
+	got := roles.Layouts[0].Placeholders
+	if got[0].AutoFilled || !got[1].AutoFilled {
+		t.Fatalf("canonical role auto-filled flags = %+v", got)
+	}
+}
+
 // TestExamineTemplate_BundledTemplatesProduceValidReport runs the examination
 // over every bundled template, asserts the directory tree is produced, and
 // validates the report's findings envelope against the committed schema.

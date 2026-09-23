@@ -179,6 +179,7 @@ type ZoneReport struct {
 type PlaceholderReport struct {
 	ID             string       `json:"id"`
 	Type           string       `json:"type"`
+	AutoFilled     bool         `json:"auto_filled,omitempty"`
 	Role           string       `json:"role"`
 	RoleConfidence float64      `json:"role_confidence"`
 	Index          int          `json:"index"`
@@ -421,6 +422,7 @@ func buildPlaceholderReport(ph *types.PlaceholderInfo, zIndex int) PlaceholderRe
 	return PlaceholderReport{
 		ID:             ph.ID,
 		Type:           string(ph.Type),
+		AutoFilled:     types.IsAutoFilledPlaceholder(ph.ID),
 		Role:           string(ph.Role),
 		RoleConfidence: ph.RoleConfidence,
 		Index:          ph.Index,

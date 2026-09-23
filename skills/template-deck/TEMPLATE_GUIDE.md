@@ -41,6 +41,7 @@ All placeholders use **normalized canonical IDs**. The binary automatically norm
 | `body_3` | `body` | Third body placeholder |
 | `image` | `pic` | Primary image placeholder (leftmost) |
 | `image_2` | `pic` | Second image placeholder |
+| `Section Number` | `body` | Auto-filled `01`, `02`, … for section dividers; omit from authored content (`auto_filled: true` in template discovery) |
 
 **Numbering rule:** The first placeholder in each role has no suffix. Subsequent placeholders are suffixed `_2`, `_3`, etc., ordered left-to-right by X offset (top-to-bottom as tiebreaker).
 

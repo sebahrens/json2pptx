@@ -49,6 +49,7 @@ type canonicalRolesEntry struct {
 type canonicalRolesPlaceholder struct {
 	ID             string  `json:"id"`
 	Type           string  `json:"type"`
+	AutoFilled     bool    `json:"auto_filled,omitempty"`
 	Role           string  `json:"role"`
 	RoleConfidence float64 `json:"role_confidence"`
 }
@@ -291,6 +292,7 @@ func buildCanonicalRoles(report *examine.Report) canonicalRolesReport {
 			entry.Placeholders = append(entry.Placeholders, canonicalRolesPlaceholder{
 				ID:             ph.ID,
 				Type:           ph.Type,
+				AutoFilled:     types.IsAutoFilledPlaceholder(ph.ID),
 				Role:           ph.Role,
 				RoleConfidence: ph.RoleConfidence,
 			})

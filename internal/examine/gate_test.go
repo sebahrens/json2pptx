@@ -76,6 +76,26 @@ func TestGatePassesConformantTemplate(t *testing.T) {
 	}
 }
 
+func TestReportMarksSectionNumberAutoFilled(t *testing.T) {
+	report := conformantReport(conformantLayouts())
+	found := false
+	for _, layout := range report.Layouts {
+		for _, ph := range layout.Placeholders {
+			if ph.ID == "Section Number" {
+				found = true
+				if !ph.AutoFilled {
+					t.Error("section number is not auto-filled")
+				}
+			} else if ph.AutoFilled {
+				t.Errorf("%q incorrectly marked auto-filled", ph.ID)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("fixture has no Section Number placeholder")
+	}
+}
+
 func TestGateNilReport(t *testing.T) {
 	if v := Gate(nil); v != nil {
 		t.Fatalf("expected nil violations for nil report, got %+v", v)

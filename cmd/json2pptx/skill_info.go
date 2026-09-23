@@ -351,8 +351,9 @@ type skillLayoutSummary struct {
 // skillPlaceholderCompact is the minimal placeholder info surfaced in compact
 // mode — just enough for agents to size content and place it by role.
 type skillPlaceholderCompact struct {
-	ID   string `json:"id"`
-	Type string `json:"type"`
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	AutoFilled bool   `json:"auto_filled,omitempty"`
 	// Role is the canonical, intent-level placeholder role (title, eyebrow,
 	// section_number, body, image, chart, …) — refines Type for role-aware
 	// placement. Omitted when unclassified.
@@ -378,8 +379,9 @@ type skillLayoutInfo struct {
 
 // skillPlaceholderInfo describes a placeholder within a layout.
 type skillPlaceholderInfo struct {
-	ID   string `json:"id"`
-	Type string `json:"type"`
+	ID         string `json:"id"`
+	Type       string `json:"type"`
+	AutoFilled bool   `json:"auto_filled,omitempty"`
 	// Role / RoleConfidence are the canonical, intent-level placeholder role and
 	// the classifier's 0.0–1.0 confidence in it.
 	Role           string  `json:"role,omitempty"`
@@ -661,10 +663,11 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 				continue
 			}
 			phs = append(phs, skillPlaceholderCompact{
-				ID:       ph.ID,
-				Type:     string(ph.Type),
-				Role:     string(ph.Role),
-				MaxChars: generator.ReportedMaxChars(ph),
+				ID:         ph.ID,
+				Type:       string(ph.Type),
+				AutoFilled: types.IsAutoFilledPlaceholder(ph.ID),
+				Role:       string(ph.Role),
+				MaxChars:   generator.ReportedMaxChars(ph),
 			})
 		}
 		if len(phs) > 0 {
@@ -715,6 +718,7 @@ func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutprevie
 			pi := skillPlaceholderInfo{
 				ID:             ph.ID,
 				Type:           string(ph.Type),
+				AutoFilled:     types.IsAutoFilledPlaceholder(ph.ID),
 				Role:           string(ph.Role),
 				RoleConfidence: ph.RoleConfidence,
 				MaxChars:       generator.ReportedMaxChars(ph),

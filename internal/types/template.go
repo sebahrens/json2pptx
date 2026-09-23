@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -237,6 +238,12 @@ type PlaceholderInfo struct {
 
 	// RoleConfidence is the 0.0–1.0 confidence of Role.
 	RoleConfidence float64
+}
+
+// IsAutoFilledPlaceholder reports template fields populated by the generator,
+// not by an authored slide placeholder value.
+func IsAutoFilledPlaceholder(id string) bool {
+	return strings.EqualFold(id, "Section Number") || strings.EqualFold(id, "section_number")
 }
 
 // PlaceholderRole is the canonical, agent-facing role of a placeholder within a

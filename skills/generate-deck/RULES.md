@@ -68,6 +68,8 @@ The numeric ranges above are the published surface of the canonical design token
 
 **`placeholder_id` per layout:** `title`/`closing` → `title`, `subtitle`; `content` → `title`, `body`; `two-column` → `title`, `body`, `body_2`; `blank-title` (and legacy `blank`) → `title` only (body goes in `shape_grid`); `blank-canvas` → no placeholders (all content via `shape_grid`/`pattern`); `section` → `title`, `body` (engine remaps `subtitle` → `body` with a `placeholder_remapped` finding). For authoritative per-template lists, use `json2pptx skill-info` or `list_templates` (MCP).
 
+Section dividers are numbered automatically `01`, `02`, … in deck order. Omit the `Section Number` placeholder from authored content; `auto_filled: true` in template discovery marks it as engine-owned.
+
 ## Contrast Auto-Fix
 
 | # | Rule | Rationale |

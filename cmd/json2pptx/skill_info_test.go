@@ -525,6 +525,49 @@ func TestAnalyzeTemplateForSkillInfo_CompactPlaceholders(t *testing.T) {
 	}
 }
 
+func TestTemplateDiscoveryMarksSectionNumberAutoFilled(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	for _, mode := range []string{"compact", "full"} {
+		t.Run(mode, func(t *testing.T) {
+			info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, mode)
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			if mode == "compact" {
+				for _, layout := range info.LayoutSummaries {
+					for _, ph := range layout.Placeholders {
+						if ph.ID == "Section Number" || ph.ID == "section_number" {
+							found = true
+							if !ph.AutoFilled {
+								t.Error("compact section number is not auto-filled")
+							}
+						} else if ph.AutoFilled {
+							t.Errorf("compact %q incorrectly marked auto-filled", ph.ID)
+						}
+					}
+				}
+			} else {
+				for _, layout := range info.Layouts {
+					for _, ph := range layout.Placeholders {
+						if ph.ID == "Section Number" || ph.ID == "section_number" {
+							found = true
+							if !ph.AutoFilled {
+								t.Error("full section number is not auto-filled")
+							}
+						} else if ph.AutoFilled {
+							t.Errorf("full %q incorrectly marked auto-filled", ph.ID)
+						}
+					}
+				}
+			}
+			if !found {
+				t.Fatal("fixture has no Section Number placeholder")
+			}
+		})
+	}
+}
+
 func TestAnalyzeTemplateForSkillInfo_AccentUsageGuideOmittedWhenAbsent(t *testing.T) {
 	// Bundled templates don't currently ship accent_usage_guide metadata,
 	// so the field should be omitted (nil map → omitempty).
