@@ -369,6 +369,11 @@ func valueFormatFindings(req *RequestEnvelope) []Finding {
 	style := strings.ToLower(strings.TrimSpace(spec.Style))
 	switch style {
 	case "percent":
+		// Pie/donut percentages are computed from each slice's share, not
+		// interpreted from the raw source values. Their scale is unambiguous.
+		if req.Type == "pie_chart" || req.Type == "donut_chart" {
+			return nil
+		}
 		values := requestFormattedValues(req.Data)
 		if maxMagnitude(values) > 1+1e-9 {
 			return []Finding{{

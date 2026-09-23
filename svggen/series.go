@@ -989,6 +989,10 @@ type ArcSeriesConfig struct {
 
 	// LabelFormat is the format string for labels.
 	LabelFormat string
+	// ValueFmt overrides LabelFormat. Percent styles format each slice's share;
+	// other explicit styles format the raw slice value.
+	ValueFmt          *ValueFormatter
+	LabelValuesAreRaw bool
 
 	// ExplodeOffset is the offset for exploded slices.
 	ExplodeOffset float64
@@ -1001,6 +1005,16 @@ type ArcSeriesConfig struct {
 
 	// SortSlices sorts slices by value (descending).
 	SortSlices bool
+}
+
+func (c ArcSeriesConfig) formatSliceValue(value, total float64) string {
+	if c.ValueFmt != nil {
+		if c.LabelValuesAreRaw {
+			return c.ValueFmt.Format(value)
+		}
+		return c.ValueFmt.Format(value / total)
+	}
+	return formatValue((value/total)*100, c.LabelFormat)
 }
 
 // ArcLabelPosition specifies where arc labels are placed.
@@ -1254,8 +1268,7 @@ func (as *ArcSeries) drawArcLabel(centerX, centerY, startAngle, sweepAngle float
 	// since the legend already displays segment names. This prevents
 	// long labels from overflowing the SVG viewBox when rendered in
 	// LibreOffice (which uses wider font metrics than the Go canvas library).
-	percentage := (slice.Value / total) * 100
-	pctStr := formatValue(percentage, as.config.LabelFormat)
+	pctStr := as.config.formatSliceValue(slice.Value, total)
 	var label string
 	if as.config.LabelPosition == ArcLabelOutside {
 		label = pctStr

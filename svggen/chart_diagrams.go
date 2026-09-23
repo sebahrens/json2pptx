@@ -315,6 +315,7 @@ func (d *DonutChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder
 
 		width, height := builder.Width(), builder.Height()
 		config := DefaultDonutChartConfig(width, height)
+		config.ValueFormatSpec = req.Style.ValueFormat
 		config.ShowTitle = req.Title != ""
 		// Donut charts ALWAYS show legend by default - it's essential to know what each segment represents
 		// The percentage labels on slices show values (40.0%) but not category names (Development, Marketing)

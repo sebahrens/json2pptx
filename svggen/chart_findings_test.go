@@ -117,6 +117,51 @@ func TestBarChart_ValueFormatBehaviorAndFindingsReachRenderOutput(t *testing.T) 
 	}
 }
 
+func TestPieAndDonutValueFormatLabelsAndFindings(t *testing.T) {
+	for _, chartType := range []string{"pie_chart", "donut_chart"} {
+		for _, tc := range []struct {
+			name        string
+			values      []any
+			format      *ValueFormatSpec
+			wantLabel   string
+			wantFinding string
+		}{
+			{name: "default share", wantLabel: "40%"},
+			{name: "percent share precision", format: &ValueFormatSpec{Style: "percent", Decimals: intPtrVF(1)}, wantLabel: "40.0%"},
+			{name: "raw currency", format: &ValueFormatSpec{Style: "currency", Prefix: "€"}, wantLabel: "€20"},
+			{name: "raw compact", values: []any{20000.0, 30000.0}, format: &ValueFormatSpec{Style: "compact"}, wantLabel: "20K"},
+			{name: "raw prefix and suffix", format: &ValueFormatSpec{Style: "plain", Prefix: "~", Suffix: " units"}, wantLabel: "~20 units"},
+			{name: "currency finding matches default label", format: &ValueFormatSpec{Style: "currency"}, wantLabel: "¤20", wantFinding: FindingCurrencyPrefixDefaulted},
+		} {
+			t.Run(chartType+"/"+tc.name, func(t *testing.T) {
+				values := tc.values
+				if values == nil {
+					values = []any{20.0, 30.0}
+				}
+				req := &RequestEnvelope{
+					Type:   chartType,
+					Data:   map[string]any{"categories": []any{"A", "B"}, "values": values},
+					Style:  StyleSpec{ValueFormat: tc.format},
+					Output: OutputSpec{Width: 800, Height: 600},
+				}
+				output, err := RenderMultiFormatWithFindings(req, "svg")
+				if err != nil {
+					t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
+				}
+				if !strings.Contains(string(output.SVG.Bytes()), tc.wantLabel) {
+					t.Errorf("SVG does not contain formatted slice label %q", tc.wantLabel)
+				}
+				if tc.format != nil && tc.format.Style == "percent" && findFindingByCode(output.Findings, FindingPercentScaleAmbiguous) != nil {
+					t.Errorf("share percentage unexpectedly reported raw-value scale ambiguity: %+v", output.Findings)
+				}
+				if tc.wantFinding != "" && findFindingByCode(output.Findings, tc.wantFinding) == nil {
+					t.Errorf("missing finding %q in %+v", tc.wantFinding, output.Findings)
+				}
+			})
+		}
+	}
+}
+
 // TestBarChart_NegativeOnLogFinding verifies that a bar chart with zero
 // values on an auto-log scale emits a chart.negative_on_log finding.
 // Auto-log triggers when all-positive data spans 3+ orders of magnitude;

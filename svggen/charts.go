@@ -2655,6 +2655,18 @@ func (pc *PieChart) Draw(data ChartData) error {
 			},
 		})
 	}
+	labelConfig := ArcSeriesConfig{LabelFormat: pc.config.LabelFormat}
+	if spec := pc.config.ValueFormatSpec; !spec.IsZero() {
+		labelValues := values
+		labelConfig.LabelValuesAreRaw = !strings.EqualFold(strings.TrimSpace(spec.Style), "percent")
+		if !labelConfig.LabelValuesAreRaw && total > 0 {
+			labelValues = make([]float64, len(values))
+			for i, value := range values {
+				labelValues[i] = value / total
+			}
+		}
+		labelConfig.ValueFmt = NewValueFormatter(spec, labelValues, "", false)
+	}
 
 	colors := pc.getColors(style, len(values))
 
@@ -2783,8 +2795,7 @@ func (pc *PieChart) Draw(data ChartData) error {
 			b.SetFontSize(style.Typography.SizeBody)
 			b.SetFontWeight(style.Typography.WeightNormal)
 			for i, v := range values {
-				pct := (v / total) * 100
-				pctStr := formatValue(pct, pc.config.LabelFormat)
+				pctStr := labelConfig.formatSliceValue(v, total)
 				lbl := pctStr
 				if i < len(labels) && labels[i] != "" {
 					lbl = labels[i] + " " + pctStr
@@ -2841,6 +2852,8 @@ func (pc *PieChart) Draw(data ChartData) error {
 	arcConfig.ShowLabels = pc.config.ShowLabels
 	arcConfig.LabelPosition = pc.config.LabelPosition
 	arcConfig.LabelFormat = pc.config.LabelFormat
+	arcConfig.ValueFmt = labelConfig.ValueFmt
+	arcConfig.LabelValuesAreRaw = labelConfig.LabelValuesAreRaw
 	arcConfig.ExplodeOffset = pc.config.ExplodeOffset
 	arcConfig.ExplodedSlices = pc.config.ExplodedSlices
 	arcConfig.Colors = colors
