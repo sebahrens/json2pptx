@@ -98,19 +98,20 @@ func (s *LoopState) MarkVisualQADone(slideIndices []int) {
 // JSON object per file). Diagnostics — including fit findings — are folded into
 // the single findings envelope (replacing the legacy fit_findings[] array); fit
 // findings carry category "FIT" and stash their action and JSON path in the
-// finding's evidence map. For invalid inputs the CLI emits the diagnostics error
-// envelope, which has no findings envelope; this function then returns an empty
-// slice (the loop driver only cares about fit findings).
-func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
+// finding's evidence map. For refused inputs the CLI exits nonzero and emits a
+// top-level diagnostics envelope; parse its FIT findings too so the repair loop
+// can act on the defects that caused the refusal.
+func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) { //nolint:gocognit // Handles both success and refusal wire envelopes while failing closed on process errors.
 	cmd := exec.Command(cfg.Binary, "validate", "--fit-report", "--format=ndjson", jsonPath) //nolint:gosec // controlled inputs in test/agent context
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("validate command failed: %w: %s", err, strings.TrimSpace(stderr.String()))
-	}
+	runErr := cmd.Run()
 	if strings.TrimSpace(stdout.String()) == "" {
+		if runErr != nil {
+			return nil, fmt.Errorf("validate command failed: %w: %s", runErr, strings.TrimSpace(stderr.String()))
+		}
 		return nil, fmt.Errorf("validate command returned empty stdout")
 	}
 
@@ -123,13 +124,13 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 		Evidence map[string]any `json:"evidence"`
 	}
 	type dryRunEnvelope struct {
-		Findings struct {
-			Findings []wireFinding `json:"findings"`
-		} `json:"findings"`
+		OK       *bool           `json:"ok,omitempty"`
+		Findings json.RawMessage `json:"findings"`
 	}
 
 	var findings []fitFinding
 	parsedEnvelopes := 0
+	parsedErrorEnvelope := false
 	for _, line := range strings.Split(stdout.String(), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {
@@ -140,7 +141,27 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 			return nil, fmt.Errorf("validate command returned malformed JSON: %w", err)
 		}
 		parsedEnvelopes++
-		for _, f := range env.Findings.Findings {
+		var wireFindings []wireFinding
+		if len(env.Findings) > 0 && env.Findings[0] == '[' {
+			if err := json.Unmarshal(env.Findings, &wireFindings); err != nil {
+				return nil, fmt.Errorf("validate command returned malformed error findings: %w", err)
+			}
+		} else {
+			var nested struct {
+				Findings []wireFinding `json:"findings"`
+			}
+			if err := json.Unmarshal(env.Findings, &nested); err != nil {
+				return nil, fmt.Errorf("validate command returned malformed findings envelope: %w", err)
+			}
+			wireFindings = nested.Findings
+		}
+		if runErr != nil && (env.OK == nil || *env.OK || len(wireFindings) == 0) {
+			return nil, fmt.Errorf("validate command failed: %w: %s", runErr, strings.TrimSpace(stderr.String()))
+		}
+		if runErr != nil {
+			parsedErrorEnvelope = true
+		}
+		for _, f := range wireFindings {
 			if f.Category != "FIT" {
 				continue
 			}
@@ -156,6 +177,9 @@ func RunValidatePass(cfg LoopConfig, jsonPath string) ([]fitFinding, error) {
 	}
 	if parsedEnvelopes == 0 {
 		return nil, fmt.Errorf("validate command returned no JSON envelopes")
+	}
+	if runErr != nil && !parsedErrorEnvelope {
+		return nil, fmt.Errorf("validate command failed without a diagnostics envelope: %w: %s", runErr, strings.TrimSpace(stderr.String()))
 	}
 
 	return findings, nil

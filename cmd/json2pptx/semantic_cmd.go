@@ -688,7 +688,7 @@ func buildSemanticRenderFailure(cr *semantic.CompileResult, err error) semanticR
 	var refusal *StrictFitRefusal
 	if errors.As(err, &refusal) {
 		for _, f := range refusal.Findings {
-			res.Diagnostics = append(res.Diagnostics, semanticDiagFromFit(sm, convertTextFitFinding(f)))
+			res.Diagnostics = append(res.Diagnostics, semanticDiagFromFit(sm, f))
 		}
 	}
 	return res

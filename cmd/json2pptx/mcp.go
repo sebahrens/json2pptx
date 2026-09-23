@@ -414,18 +414,16 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// error.
 	var strictFitFindings []patterns.FitFinding
 	if strictFit != "off" {
-		rawFindings, refuseErr := evaluateStrictFit(&input, strictFit, templateLayouts, slideWidth, slideHeight)
+		rawFindings, refuseErr := evaluateStrictFit(&input, strictFit, templateLayouts, slideWidth, slideHeight, &theme)
 		if refuseErr != nil {
 			// Preserve historical stderr NDJSON dump on refuse for CLI/log parity.
 			enc := json.NewEncoder(os.Stderr)
 			for _, f := range rawFindings {
 				_ = enc.Encode(f)
 			}
-			return api.MCPDiagnosticsError(diagnostics.FromJoinedError(refuseErr, "STRICT_FIT")), nil
+			return api.MCPDiagnosticsError(diagnostics.FromFitFindings(rawFindings)), nil
 		}
-		for _, f := range rawFindings {
-			strictFitFindings = append(strictFitFindings, convertTextFitFinding(f))
-		}
+		strictFitFindings = append(strictFitFindings, rawFindings...)
 	}
 
 	// Resolve URL references (background.url, image_value.url, grid image.url,
@@ -1120,6 +1118,9 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	}
 	if fitReport {
 		findings := collectFitFindings(&input, templateAnalysis.Layouts, templateAnalysis.SlideWidth, templateAnalysis.SlideHeight, &templateAnalysis.Theme)
+		if hasRefuseFinding(findings) {
+			output.Valid = false
+		}
 		verboseFit, _ := request.GetArguments()["verbose_fit"].(bool)
 		output.FitFindings = BudgetFitFindings(findings, DefaultFindingBudget, verboseFit)
 	}
@@ -1135,7 +1136,9 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallToolResult, error) {
 	if !output.Valid {
 		// Return the same error envelope shape as generate_presentation.
-		return api.MCPDiagnosticsError(output.Diagnostics), nil
+		all := append([]diagnostics.Diagnostic(nil), output.Diagnostics...)
+		all = append(all, diagnostics.FromFitFindings(output.FitFindings)...)
+		return api.MCPDiagnosticsError(all), nil
 	}
 	// Success path: fold the accumulated diagnostics and fit findings into the
 	// single Findings envelope just before serialization.

@@ -110,7 +110,7 @@ func runValidate() error { //nolint:gocognit
 	// In human mode we only emit human-readable findings to stderr — NDJSON on
 	// stdout would mix shapes and break agents parsing the human output.
 	if *fitReport {
-		for _, filePath := range args {
+		for resultIndex, filePath := range args {
 			content, err := os.ReadFile(filePath)
 			if err != nil {
 				continue
@@ -133,6 +133,7 @@ func runValidate() error { //nolint:gocognit
 			for _, f := range findings {
 				if f.Action == "refuse" {
 					hasErrors = true
+					results[resultIndex].Valid = false
 				}
 			}
 		}

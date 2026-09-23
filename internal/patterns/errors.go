@@ -114,6 +114,7 @@ const (
 	// ErrCodeSectionNumberSequenceMismatch reports an authored numeric section
 	// label that contradicts the divider's automatic sequence.
 	ErrCodeSectionNumberSequenceMismatch = "SECTION_NUMBER_SEQUENCE_MISMATCH"
+	ErrCodeSectionNumberRenumbered       = "SECTION_NUMBER_RENUMBERED"
 	ErrCodeSlideNearlyEmpty              = "SLIDE_NEARLY_EMPTY"
 	ErrCodeDeckMonotony                  = "DECK_MONOTONY"
 	ErrCodeChartOverloaded               = "CHART_OVERLOADED"

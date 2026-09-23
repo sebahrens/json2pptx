@@ -35,44 +35,76 @@ type fitFinding struct {
 	Action           string                  `json:"action,omitempty"`
 }
 
-// evaluateStrictFit runs the fit report and applies the given mode's policy
+// evaluateStrictFit runs the shared fit collector and applies the given mode's policy
 // without any stderr side effects. It returns the raw findings and, in strict
-// mode, a refuse error when any finding's action is "refuse" or severity is
-// "error". Callers are responsible for deciding how to surface findings
+// mode, a refuse error when any finding's action is "refuse". In warn mode it
+// corrects conflicting authored numeric section labels before conversion and
+// replaces their refusal with an informational renumbered finding.
+// Callers are responsible for deciding how to surface findings
 // (structured response, stderr, etc.).
 //
 // layouts/slideWidth/slideHeight carry the resolved template geometry so the
 // shape_grid bounds measured here match what generation renders. Pass nil/0/0
 // when no template has been analyzed (the report then falls back to generic
 // default bounds — identical to the pre-geometry behavior).
-func evaluateStrictFit(input *PresentationInput, mode string, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) ([]fitFinding, error) {
-	findings := generateFitReport(input, layouts, slideWidth, slideHeight)
-	// Table row truncation is predicted BEFORE generation (DetectTablePreflight)
-	// and is refuse-class because the hidden rows are absent from the deck. The
-	// gate read only generateFitReport, so that prediction never reached it and
-	// a deck shipped with three rows of data missing (go-slide-creator-oaif).
-	findings = append(findings, tablePreflightLocalFindings(input, layouts)...)
-	// A chart whose type or data svggen rejects is a lost visual — the slide
-	// gets a grey "Data unavailable" box, or generation aborts on a grid
-	// surface. Predicted here so the gate sees it (go-slide-creator-rrjj).
-	findings = append(findings, chartDryRenderLocalFindings(input)...)
+func evaluateStrictFit(input *PresentationInput, mode string, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) ([]patterns.FitFinding, error) {
+	findings := collectFitFindings(input, layouts, slideWidth, slideHeight, theme)
 	if len(findings) == 0 {
 		return nil, nil
 	}
+	if mode == "warn" {
+		var err error
+		findings, err = renumberWarnModeSections(input, findings)
+		if err != nil {
+			return findings, err
+		}
+	}
 
 	if mode == "strict" {
-		hasRefuse := false
-		for _, f := range findings {
-			if f.Action == "refuse" || f.Severity == "error" {
-				hasRefuse = true
-				break
-			}
-		}
-		if hasRefuse {
+		if hasRefuseFinding(findings) {
 			return findings, fmt.Errorf("strict-fit: %d finding(s), generation refused", len(findings))
 		}
 	}
 
+	return findings, nil
+}
+
+func hasRefuseFinding(findings []patterns.FitFinding) bool {
+	for _, finding := range findings {
+		if finding.Action == "refuse" {
+			return true
+		}
+	}
+	return false
+}
+
+func renumberWarnModeSections(input *PresentationInput, findings []patterns.FitFinding) ([]patterns.FitFinding, error) {
+	for i := range findings {
+		f := &findings[i]
+		if f.Code != patterns.ErrCodeSectionNumberSequenceMismatch {
+			continue
+		}
+		if f.Fix == nil {
+			return findings, fmt.Errorf("section-number finding at %s has no correction", f.Path)
+		}
+		slideIndex, slideOK := f.Fix.Params["slide_index"].(int)
+		contentIndex, contentOK := f.Fix.Params["content_index"].(int)
+		expected, expectedOK := f.Fix.Params["expected"].(string)
+		if !slideOK || !contentOK || !expectedOK || slideIndex < 0 || slideIndex >= len(input.Slides) || contentIndex < 0 || contentIndex >= len(input.Slides[slideIndex].Content) {
+			return findings, fmt.Errorf("section-number finding at %s has invalid correction target", f.Path)
+		}
+		item := &input.Slides[slideIndex].Content[contentIndex]
+		item.TextValue = &expected
+		item.Value = nil
+		f.Code = patterns.ErrCodeSectionNumberRenumbered
+		f.Message = fmt.Sprintf("slide %d section number was corrected from %q to %q in warn mode", slideIndex+1, f.Fix.Params["actual"], expected)
+		f.Fix = nil
+		f.NextToolCall = nil
+		f.Action = "info"
+	}
+	// The collector sorted the mismatch as a refusal. After correction it is
+	// informational, so restore the canonical severity-first wire order.
+	patterns.SortCanonical(findings, slidepath.SlideIndex)
 	return findings, nil
 }
 
@@ -611,50 +643,6 @@ func printFitFindingsBySlide(findings []fitFinding) {
 			fmt.Fprintf(os.Stderr, "    [%s] %s — %s\n", f.Action, f.Path, f.Message)
 		}
 	}
-}
-
-// tablePreflightLocalFindings runs the pre-generation table predictor and
-// converts its findings into the local fitFinding shape the CLI fit report and
-// the strict-fit gate share.
-func tablePreflightLocalFindings(input *PresentationInput, layouts []types.LayoutMetadata) []fitFinding {
-	var out []fitFinding
-	for _, f := range collectTablePreflightFindings(input, layouts) {
-		severity := "warning"
-		if f.Action == "refuse" {
-			severity = "error"
-		}
-		out = append(out, fitFinding{
-			Code:     f.Code,
-			Path:     f.Path,
-			Message:  f.Message,
-			Fix:      f.Fix,
-			Action:   f.Action,
-			Severity: severity,
-		})
-	}
-	return out
-}
-
-// chartDryRenderLocalFindings dry-renders every chart and diagram surface and
-// converts the resulting findings into the local fitFinding shape the CLI fit
-// report and the strict-fit gate share.
-func chartDryRenderLocalFindings(input *PresentationInput) []fitFinding {
-	var out []fitFinding
-	for _, f := range collectChartDryRenderFindings(input, nil, "", "warn") {
-		severity := "warning"
-		if f.Action == "refuse" {
-			severity = "error"
-		}
-		out = append(out, fitFinding{
-			Code:     f.Code,
-			Path:     f.Path,
-			Message:  f.Message,
-			Fix:      f.Fix,
-			Action:   f.Action,
-			Severity: severity,
-		})
-	}
-	return out
 }
 
 // declaredFindingAction returns the action a finding code declares in the

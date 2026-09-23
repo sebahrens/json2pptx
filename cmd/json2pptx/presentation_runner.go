@@ -216,13 +216,11 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	// refuse-class findings; the caller is responsible for the stderr NDJSON
 	// dump on refuse (it is part of each caller's error shape).
 	if strictFit != "off" {
-		rawFindings, refuseErr := evaluateStrictFit(input, strictFit, templateLayouts, slideWidth, slideHeight)
+		rawFindings, refuseErr := evaluateStrictFit(input, strictFit, templateLayouts, slideWidth, slideHeight, &templateTheme)
 		if refuseErr != nil {
 			return res, cleanup, &StrictFitRefusal{Findings: rawFindings, Err: refuseErr}
 		}
-		for _, f := range rawFindings {
-			res.StrictFitFindings = append(res.StrictFitFindings, convertTextFitFinding(f))
-		}
+		res.StrictFitFindings = append(res.StrictFitFindings, rawFindings...)
 	}
 
 	// Caller-supplied pre-conversion step (e.g. URL / relative-asset resolution
@@ -337,7 +335,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 // finding. Callers unwrap it to preserve their distinct error-shaping (the CLI
 // dumps NDJSON to stderr + returns the error; MCP emits structured diagnostics).
 type StrictFitRefusal struct {
-	Findings []fitFinding
+	Findings []patterns.FitFinding
 	Err      error
 }
 

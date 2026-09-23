@@ -579,6 +579,15 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Or remove the authored section-number content and let json2pptx inject the sequence automatically.",
 		},
 	},
+	ErrCodeSectionNumberRenumbered: {
+		Code:        ErrCodeSectionNumberRenumbered,
+		Summary:     "Warn-mode generation corrected an authored numeric section label to the divider sequence.",
+		Severity:    "info",
+		WhenEmitted: "A section-divider label conflicts with its 1-based sequence and generation runs with strict_fit=warn.",
+		RemediationSteps: []string{
+			"Update the authored label to the reported value so validation and the source deck agree.",
+		},
+	},
 	ErrCodeSlideNearlyEmpty: {
 		Code:        ErrCodeSlideNearlyEmpty,
 		Summary:     "A content slide carries almost no content.",

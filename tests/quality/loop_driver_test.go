@@ -28,6 +28,9 @@ func TestRunValidatePassFailsClosedAndParsesEnvelope(t *testing.T) {
 		{name: "malformed", body: `echo '{bad'`, wantErr: true},
 		{name: "zero findings", body: `echo '{"findings":{"findings":[]}}'`},
 		{name: "current envelope", body: `echo '{"findings":{"findings":[{"code":"fit_overflow","category":"FIT","message":"too tall","evidence":{"path":"/slides/0/content/0","action":"refuse"}}]}}'`, wantCount: 1, wantAction: "refuse"},
+		{name: "refusal error envelope", body: `echo '{"ok":false,"findings":[{"code":"FIT.fit_overflow","category":"FIT","message":"too tall","evidence":{"path":"/slides/0/content/0","action":"refuse"}}]}'; exit 1`, wantCount: 1, wantAction: "refuse"},
+		{name: "nonzero with input finding only", body: `echo '{"ok":false,"findings":[{"code":"INPUT.REQUIRED","category":"INPUT","message":"missing"}]}'; exit 1`},
+		{name: "nonzero with empty error envelope", body: `echo '{"ok":false,"findings":[]}'; exit 1`, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

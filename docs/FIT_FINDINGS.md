@@ -156,6 +156,22 @@ The finding reports `expected`, `actual`, `section_index`, and `slide_index`.
 Remove the authored number to let the engine inject it, or change it to the
 expected value.
 
+Strict generation refuses this finding. Warn-mode generation instead changes
+the authored numeric label to the expected sequence value before rendering and
+reports `SECTION_NUMBER_RENUMBERED` with action `info`; custom non-numeric
+labels remain untouched.
+
+### `SECTION_NUMBER_RENUMBERED`
+
+**Action:** `info`
+
+**Emitted at:** warn-mode generation when a numeric section number is corrected
+
+The generated deck contains the corrected number. This finding replaces the
+corresponding `SECTION_NUMBER_SEQUENCE_MISMATCH` refusal in the generation
+response, so callers can distinguish an applied correction from an unresolved
+authoring error.
+
 ### `MISSING_TITLE`
 
 **Action:** `refuse` for a content-bearing untitled canvas

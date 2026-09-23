@@ -834,11 +834,9 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 			t.Logf("expected tool error for strict-fit overflow, got success: %s", text)
 			t.Skip("test data did not trigger unfittable finding — adjust if thresholds change")
 		}
-		// Verify the error message mentions strict-fit.
-		errText := result.Content[0].(mcp.TextContent).Text
-		if !strings.Contains(errText, "strict-fit") {
-			t.Errorf("expected error to mention strict-fit, got: %s", errText)
-		}
+		// The refusal must identify a concrete fit defect in the structured
+		// envelope, not rely on an unparseable generic strict-fit message.
+		requireStructuredError(t, result, "table_rows_truncated")
 	})
 }
 

@@ -210,15 +210,13 @@ func TestHandleGenerate_StrictFitRefusal_StructuredError(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// strict_fit=strict should refuse with structured diagnostics.
+	// Strict generation must refuse the known row-truncation case and tell the
+	// caller which content is lost, not merely return a generic STRICT_FIT code.
 	if !result.IsError {
-		// If generation succeeded (no overflow detected), the test is still valid
-		// — it proves the path works. Log and skip the assertion.
-		t.Log("strict_fit did not refuse — table may not have triggered overflow")
-		return
+		t.Fatal("strict_fit accepted a table whose rows are truncated")
 	}
 	requireStructuredContent(t, result)
-	requireStructuredError(t, result, "STRICT_FIT")
+	requireStructuredError(t, result, "table_rows_truncated")
 }
 
 // --- AC#1: Recoverable failures carry stable error codes ---

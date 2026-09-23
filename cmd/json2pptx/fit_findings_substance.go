@@ -70,6 +70,7 @@ func collectSectionNumberSequenceFindings(input *PresentationInput, layouts []ty
 					"actual":        actual,
 					"section_index": sectionIndex,
 					"slide_index":   slideIndex,
+					"content_index": contentIndex,
 				}},
 			},
 			Action: "refuse",
