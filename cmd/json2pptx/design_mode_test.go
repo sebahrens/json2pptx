@@ -208,6 +208,33 @@ func TestValidateDesignMode_FreeAllowsHex(t *testing.T) {
 	}
 }
 
+func TestValidateDesignMode_ChartBackgroundColor(t *testing.T) {
+	for _, tc := range []struct {
+		name, mode, color string
+		wantViolation     bool
+	}{
+		{name: "constrained hex", color: "#AABBCC", wantViolation: true},
+		{name: "constrained scheme", color: "lt2"},
+		{name: "free hex", mode: "free", color: "#AABBCC"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			input := &PresentationInput{DesignMode: tc.mode, Slides: []SlideInput{{Content: []ContentInput{{
+				Type: "chart", ChartValue: &types.ChartSpec{Style: &types.ChartStyle{Background: tc.color}},
+			}}}}}
+			findings := validateDesignMode(input)
+			if !tc.wantViolation {
+				if len(findings) != 0 {
+					t.Errorf("unexpected findings: %+v", findings)
+				}
+				return
+			}
+			if len(findings) != 1 || findings[0].Code != "design_mode_violation" || findings[0].Action != "refuse" || !strings.HasSuffix(findings[0].Path, ".chart_value.style.background") {
+				t.Errorf("chart background finding = %+v", findings)
+			}
+		})
+	}
+}
+
 func TestValidateDesignMode_ConstrainedRejectsAbsoluteSize(t *testing.T) {
 	input := &PresentationInput{
 		Template: "midnight-blue",

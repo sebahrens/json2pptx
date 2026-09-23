@@ -191,6 +191,8 @@ func dryRenderSpec(
 	if spec == nil || spec.Type == "" {
 		return nil
 	}
+	colorFindings := generator.SvggenFindingsToFit(
+		generator.DiagramStyleColorFindings(spec, themeColors), spec.Type, path)
 	// Half the diagram catalogue is drawn as native OOXML shapes by
 	// internal/generator, not by svggen. Asking svggen about one of those gets
 	// "unknown diagram type", which used to be reported as a REFUSE claiming
@@ -219,10 +221,22 @@ func dryRenderSpec(
 		req.Output.Height = spec.Height
 	}
 	req.Output.StrictFit = strictFit
-	// Style: forward explicit accent colors when set so palette-sensitive
-	// findings (none currently, but room to grow) see the right palette.
+	// Forward resolved colors so dry-render palette behavior matches generation.
 	if spec.Style != nil && len(spec.Style.Colors) > 0 {
-		req.Style.Palette.Colors = spec.Style.Colors
+		effectiveTheme := themeColors
+		if len(spec.Style.ThemeColors) > 0 {
+			effectiveTheme = spec.Style.ThemeColors
+		}
+		for i, value := range spec.Style.Colors {
+			if i >= 6 {
+				break
+			}
+			color, ok := generator.ResolveDiagramStyleColor(value, effectiveTheme)
+			if !ok {
+				color = generator.ChartAccentFallback(i, effectiveTheme)
+			}
+			req.Style.Palette.Colors = append(req.Style.Palette.Colors, color)
+		}
 	}
 	// Font: measure label fit under the same typeface the renderer will use.
 	// An explicit per-diagram style.font_family wins; otherwise fall back to the
@@ -235,11 +249,8 @@ func dryRenderSpec(
 	} else if bodyFont != "" {
 		req.Style.FontFamily = bodyFont
 	}
-	// Theme colors enable contrast-related findings if any are added later.
-	_ = themeColors
-
 	dryFindings, renderErr := svggen.DryRender(req)
-	var out []patterns.FitFinding
+	out := colorFindings
 	if renderErr != nil {
 		// Both outcomes lose the visual, so both refuse. A grid/pattern surface
 		// aborts generation outright; a content placeholder degrades to a

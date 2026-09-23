@@ -34,6 +34,38 @@ func crowdedNominalDiagram() *types.DiagramSpec {
 	}
 }
 
+func TestDryRenderChartStyleUnresolvedColorFinding(t *testing.T) {
+	spec := &types.DiagramSpec{
+		Type: "bar_chart", Style: &types.DiagramStyle{
+			Colors: []string{"accent9"}, Background: "lt2",
+		}, Data: map[string]any{
+			"categories": []string{"A"}, "values": []float64{1},
+		},
+	}
+	theme := []types.ThemeColor{{Name: "accent1", RGB: "#123456"}, {Name: "lt1", RGB: "#FFFFFF"}}
+	findings := dryRenderSpecToFindings(spec, theme, "", "warn", "slides[0].content[0].diagram_value")
+	var dropped []string
+	for _, finding := range findings {
+		if finding.Code == "CUSTOM_COLOR_DROPPED" {
+			if finding.Action != "info" {
+				t.Errorf("dropped color action = %q, want info", finding.Action)
+			}
+			dropped = append(dropped, finding.Path)
+		}
+	}
+	if len(dropped) != 2 || dropped[0] != "slides[0].content[0].diagram_value.style.colors[0]" || dropped[1] != "slides[0].content[0].diagram_value.style.background" {
+		t.Errorf("dropped color paths = %v", dropped)
+	}
+
+	spec.Style.Colors = []string{"accent1"}
+	spec.Style.Background = "lt1"
+	for _, finding := range dryRenderSpecToFindings(spec, theme, "", "warn", "valid") {
+		if finding.Code == "CUSTOM_COLOR_DROPPED" {
+			t.Errorf("valid template color reported dropped: %+v", finding)
+		}
+	}
+}
+
 // TestCollectChartDryRenderFindings_CrowdedNominal verifies that a 40-category
 // bar chart at a narrow render width surfaces actionable crowding via the
 // dry-render path, closing the validate → preview → generate feedback loop

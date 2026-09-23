@@ -400,6 +400,12 @@ func checkContentInput(ci *ContentInput, slideNum, contentNum int) []patterns.Fi
 	if ci.ChartValue != nil && ci.ChartValue.Style != nil {
 		findings = append(findings, checkDiagramStyleColors(
 			ci.ChartValue.Style.Colors, slideNum, basePath+".chart_value.style.colors")...)
+		if ci.ChartValue.Style.Background != "" {
+			if f := checkColorField(ci.ChartValue.Style.Background, slideNum,
+				basePath+".chart_value.style.background"); f != nil {
+				findings = append(findings, *f)
+			}
+		}
 	}
 
 	return findings

@@ -114,7 +114,7 @@ func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeCol
 	// Extract fit metadata from SVGDocument
 	renderResult := &DiagramRenderResult{
 		PNG:      output.PNG,
-		Findings: output.Findings,
+		Findings: append(output.Findings, DiagramStyleColorFindings(spec, themeColors)...),
 	}
 
 	// Include SVG data for native embedding
@@ -141,6 +141,10 @@ func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeCol
 func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, strictFit string) *svggen.RequestEnvelope { //nolint:gocognit,gocyclo
 	// Build style spec
 	style := svggen.StyleSpec{}
+	effectiveTheme := themeColors
+	if spec.Style != nil && len(spec.Style.ThemeColors) > 0 {
+		effectiveTheme = spec.Style.ThemeColors
+	}
 
 	// Apply explicit style colors if available.
 	//
@@ -155,25 +159,25 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 	// pulled from spec.Style.Colors plus dk/lt slots from the effective theme,
 	// and route through the ThemeColors branch.
 	if spec.Style != nil && len(spec.Style.Colors) > 0 {
-		effective := themeColors
-		if len(spec.Style.ThemeColors) > 0 {
-			effective = spec.Style.ThemeColors
-		}
 		// Cap synthesized accent names at 6 (the slots svggen recognizes).
-		// Excess colors still reach the chart series via spec.Style.DataPalette
-		// or by callers passing them through that field directly.
+		// Additional authored colors are not representable by the current
+		// six-slot palette; see go-slide-creator-30j2u.
 		accentLimit := len(spec.Style.Colors)
 		if accentLimit > 6 {
 			accentLimit = 6
 		}
 		inputs := make([]svggen.ThemeColorInput, 0, accentLimit+4)
 		for i := 0; i < accentLimit; i++ {
+			color, ok := ResolveDiagramStyleColor(spec.Style.Colors[i], effectiveTheme)
+			if !ok {
+				color = ChartAccentFallback(i, effectiveTheme)
+			}
 			inputs = append(inputs, svggen.ThemeColorInput{
 				Name: fmt.Sprintf("accent%d", i+1),
-				RGB:  spec.Style.Colors[i],
+				RGB:  color,
 			})
 		}
-		for _, tc := range effective {
+		for _, tc := range effectiveTheme {
 			switch tc.Name {
 			case "dk1", "dk2", "lt1", "lt2":
 				inputs = append(inputs, svggen.ThemeColorInput{Name: tc.Name, RGB: tc.RGB})
@@ -221,12 +225,6 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 	// svggen's contrast calculations match native enforceTextContrastInSlide
 	// on templates whose visible slide surface is tinted (not pure white).
 	// Per-spec ThemeColors take priority over caller-supplied themeColors.
-	var effectiveTheme []types.ThemeColor
-	if spec.Style != nil && len(spec.Style.ThemeColors) > 0 {
-		effectiveTheme = spec.Style.ThemeColors
-	} else {
-		effectiveTheme = themeColors
-	}
 	bg, surface := lookupBackgroundAndSurface(effectiveTheme)
 	if surface != "" {
 		style.Surface = surface
@@ -249,7 +247,9 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		}
 		if spec.Style.Background != "" {
 			// Explicit per-spec background wins over theme lt1.
-			style.Background = spec.Style.Background
+			if color, ok := ResolveDiagramStyleColor(spec.Style.Background, effectiveTheme); ok {
+				style.Background = color
+			}
 		}
 		if len(spec.Style.DataPalette) > 0 {
 			style.DataPalette = spec.Style.DataPalette
@@ -322,6 +322,66 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		Output:   output,
 		Style:    style,
 	}
+}
+
+// ResolveDiagramStyleColor accepts authored hex colors and resolves semantic
+// scheme names against the same effective theme used by native OOXML shapes.
+func ResolveDiagramStyleColor(value string, theme []types.ThemeColor) (string, bool) {
+	value = strings.TrimSpace(value)
+	if color := resolveSchemeColorToHex(value, theme); color != "" {
+		if _, err := svggen.ParseColor(color); err == nil {
+			return color, true
+		}
+	}
+	if strings.HasPrefix(value, "#") {
+		if _, err := svggen.ParseColor(value); err == nil {
+			return value, true
+		}
+	}
+	return "", false
+}
+
+// ChartAccentFallback preserves series position when an authored color cannot
+// be resolved, preferring the corresponding template accent.
+func ChartAccentFallback(index int, theme []types.ThemeColor) string {
+	if color := resolveSchemeColorToHex(fmt.Sprintf("accent%d", index+1), theme); color != "" {
+		if _, err := svggen.ParseColor(color); err == nil {
+			return color
+		}
+	}
+	return svggen.DefaultPalette().AccentColor(index).Hex()
+}
+
+// DiagramStyleColorFindings reports authored colors the render path cannot
+// resolve; otherwise svggen silently substitutes its default palette.
+func DiagramStyleColorFindings(spec *types.DiagramSpec, themeColors []types.ThemeColor) []svggen.Finding {
+	if spec == nil || spec.Style == nil {
+		return nil
+	}
+	if len(spec.Style.ThemeColors) > 0 {
+		themeColors = spec.Style.ThemeColors
+	}
+	var findings []svggen.Finding
+	check := func(value, field string) {
+		if _, ok := ResolveDiagramStyleColor(value, themeColors); ok {
+			return
+		}
+		findings = append(findings, svggen.Finding{
+			Field: field, Code: "CUSTOM_COLOR_DROPPED", Severity: "info",
+			Message: fmt.Sprintf("chart style color %q cannot be resolved against the effective theme; the template/default color is used", value),
+			Fix:     &svggen.FixSuggestion{Kind: "use_semantic_color", Params: map[string]any{"field": field}},
+		})
+	}
+	for i, color := range spec.Style.Colors {
+		if i >= 6 {
+			break
+		}
+		check(color, fmt.Sprintf("style.colors[%d]", i))
+	}
+	if spec.Style.Background != "" {
+		check(spec.Style.Background, "style.background")
+	}
+	return findings
 }
 
 func isSVGChartType(name string) bool {

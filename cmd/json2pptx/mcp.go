@@ -854,9 +854,9 @@ func buildChartStyleHints() *chartStyleHints {
 		Style: map[string]string{
 			"show_values":  "Draw the value on each bar / point / slice (bool). This is the data-labels switch.",
 			"show_legend":  "Force the legend on, including on a single-series chart where it is suppressed by default (bool).",
-			"colors":       "Hex colours for the data series, in series order (string[]). Overrides the template's data palette.",
+			"colors":       "Template scheme colors (accent1-6, dk1/dk2, lt1/lt2) for data series, in series order (string[]). Raw hex is allowed only in design_mode free. Unresolvable colors report CUSTOM_COLOR_DROPPED and fall back to the template/default accent.",
 			"font_family":  "Font for chart labels and text (string). Defaults to the template's body font.",
-			"background":   "Chart background colour (string). Defaults to transparent so the slide shows through.",
+			"background":   "Chart background template scheme color (string); raw hex only in design_mode free. Defaults to template lt1. Unresolvable colors report CUSTOM_COLOR_DROPPED and retain the default.",
 			"value_format": "ONE number format for the chart, applied to the value-axis ticks, the data labels and any in-mark label alike: {style: plain|compact|percent|currency, decimals, prefix, suffix, thousands_sep}. Percent treats values in [0,1] as fractions (0.412 -> 41.2%); values above 1 are preserved and raise chart.percent_scale_ambiguous. Currency should set prefix (for example € or $); omitting it uses the generic ¤ marker and raises chart.currency_prefix_defaulted. Set {\"style\":\"compact\",\"prefix\":\"€\"} and both the axis and the bars read \"€1.2M\". Omit value_format and the renderer picks grouped digits (\"1,240\") with enough decimals to keep labels distinct, switching to compact notation on a value axis once values pass 9,999. decimals fixes precision; thousands_sep forces grouping on or off.",
 		},
 		ChartStyle: map[string]string{

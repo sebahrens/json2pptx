@@ -44,6 +44,84 @@ func TestAbstractChartPaletteSkipsNearBackgroundAccents(t *testing.T) {
 	}
 }
 
+func TestChartStyleSchemeColorsResolveAgainstEffectiveTheme(t *testing.T) {
+	caller := []types.ThemeColor{
+		{Name: "accent1", RGB: "#112233"}, {Name: "accent3", RGB: "#445566"},
+		{Name: "lt1", RGB: "#FFFFFF"}, {Name: "lt2", RGB: "#EEEEEE"},
+	}
+	spec := &types.DiagramSpec{Type: "bar_chart", Style: &types.DiagramStyle{
+		Colors: []string{"accent3", "accent1"}, Background: "lt2",
+	}, Data: map[string]any{"categories": []string{"A"}, "series": []map[string]any{{"name": "Data", "values": []float64{1}}}}}
+	req := diagramSpecToSVGGen(spec, caller, 0, "")
+	if got := svggen.StyleGuideFromSpec(req.Style).Palette.Accent1.Hex(); got != "#445566" {
+		t.Errorf("first series = %s, want template accent3", got)
+	}
+	if got := req.Style.Background; got != "#EEEEEE" {
+		t.Errorf("background = %s, want template lt2", got)
+	}
+	if got := DiagramStyleColorFindings(spec, caller); len(got) != 0 {
+		t.Errorf("valid scheme colors should not be dropped: %+v", got)
+	}
+
+	// Per-diagram theme colors take precedence over the caller's template theme.
+	spec.Style.ThemeColors = []types.ThemeColor{
+		{Name: "accent1", RGB: "#778899"}, {Name: "accent3", RGB: "#AABBCC"},
+		{Name: "lt1", RGB: "#FAFAFA"}, {Name: "lt2", RGB: "#F0F0F0"},
+	}
+	req = diagramSpecToSVGGen(spec, caller, 0, "")
+	if got := svggen.StyleGuideFromSpec(req.Style).Palette.Accent1.Hex(); got != "#AABBCC" {
+		t.Errorf("first series = %s, want per-diagram accent3", got)
+	}
+	if got := req.Style.Background; got != "#F0F0F0" {
+		t.Errorf("background = %s, want per-diagram lt2", got)
+	}
+}
+
+func TestChartStyleUnresolvedColorsFallBackWithFindings(t *testing.T) {
+	theme := []types.ThemeColor{{Name: "accent1", RGB: "#123456"}, {Name: "lt1", RGB: "#FFFFFF"}}
+	spec := &types.DiagramSpec{Type: "bar_chart", Style: &types.DiagramStyle{
+		Colors: []string{"accent9"}, Background: "lt2",
+	}, Data: map[string]any{"categories": []string{"A"}, "series": []map[string]any{{"name": "Data", "values": []float64{1}}}}}
+	req := diagramSpecToSVGGen(spec, theme, 0, "")
+	if got := svggen.StyleGuideFromSpec(req.Style).Palette.Accent1.Hex(); got != "#123456" {
+		t.Errorf("unresolved accent fallback = %s, want template accent1", got)
+	}
+	if got := req.Style.Background; got != "#FFFFFF" {
+		t.Errorf("unresolved background fallback = %s, want template lt1", got)
+	}
+	findings := DiagramStyleColorFindings(spec, theme)
+	if len(findings) != 2 || findings[0].Field != "style.colors[0]" || findings[1].Field != "style.background" {
+		t.Fatalf("unresolved color findings = %+v", findings)
+	}
+	for _, f := range findings {
+		if f.Code != "CUSTOM_COLOR_DROPPED" || f.Severity != "info" {
+			t.Errorf("unresolved color finding = %+v", f)
+		}
+	}
+	rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rendered.Findings) < 2 || rendered.Findings[len(rendered.Findings)-2].Code != "CUSTOM_COLOR_DROPPED" || rendered.Findings[len(rendered.Findings)-1].Code != "CUSTOM_COLOR_DROPPED" {
+		t.Errorf("render-time dropped color findings = %+v", rendered.Findings)
+	}
+	if got := strings.ToUpper(string(rendered.SVG)); !strings.Contains(got, "#123456") {
+		t.Error("rendered chart did not use the template accent fallback")
+	}
+	if _, ok := ResolveDiagramStyleColor("bad", theme); ok {
+		t.Error("unrecognized scheme-like value was accepted as unprefixed shorthand hex")
+	}
+	if _, ok := ResolveDiagramStyleColor("accent1", nil); ok {
+		t.Error("scheme name without an effective theme must be reported unresolved")
+	}
+	// Free-mode authored hex remains valid; constrained mode rejects it earlier.
+	spec.Style.Colors = []string{"#ABCDEF"}
+	spec.Style.Background = "#F5F5F5"
+	if got := DiagramStyleColorFindings(spec, theme); len(got) != 0 {
+		t.Errorf("valid hex colors should not be dropped: %+v", got)
+	}
+}
+
 func TestDiagramBridgePreservesTemplateSemanticAccents(t *testing.T) {
 	theme := []types.ThemeColor{
 		{Name: "accent1", RGB: "#C00000"},
