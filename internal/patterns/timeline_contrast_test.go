@@ -123,3 +123,40 @@ func TestEffectiveColorModsMatchesRenderedTintAndShade(t *testing.T) {
 		})
 	}
 }
+
+func TestTimelineGradientWithoutThemeUsesDarkInkOnTintedStops(t *testing.T) {
+	p := &timelineHorizontal{}
+	stops := TimelineHorizontalValues{}
+	for i := 0; i < 7; i++ {
+		stops = append(stops, TimelineStop{Label: "Wave close", Date: "Q1", Body: "Milestone detail"})
+	}
+	for _, style := range []string{"chevron", "gantt"} {
+		t.Run(style, func(t *testing.T) {
+			grid, err := p.Expand(ExpandContext{}, &stops, &TimelineHorizontalOverrides{Style: style}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i := 4; i < 7; i++ {
+				var cell *jsonschema.GridCellInput
+				if style == "gantt" {
+					cell = grid.Rows[i].Cells[1]
+				} else {
+					cell = grid.Rows[0].Cells[i]
+				}
+				var text struct {
+					Paragraphs []struct {
+						Color string `json:"color"`
+					} `json:"paragraphs"`
+				}
+				if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+					t.Fatal(err)
+				}
+				for _, para := range text.Paragraphs {
+					if para.Color != "dk2" {
+						t.Errorf("stop %d tint has %s ink without a theme, want dk2", i, para.Color)
+					}
+				}
+			}
+		})
+	}
+}

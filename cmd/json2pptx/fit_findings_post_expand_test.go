@@ -192,7 +192,7 @@ func TestTimelineHorizontalBudgetWarningsReachFitReportAcrossTemplates(t *testin
 	values[3].Body = strings.Repeat("B", 33)
 	values[3].Date = strings.Repeat("D", 19)
 	chevron := &patterns.TimelineHorizontalOverrides{Style: "chevron"}
-	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "about 32 readable body characters", chevron)
+	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "7-stop chevron holds", chevron)
 	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].date", "about 18 readable date characters", chevron)
 }
 

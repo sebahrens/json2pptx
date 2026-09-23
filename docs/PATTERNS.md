@@ -402,9 +402,10 @@ A pattern's JSON schema is the contract an agent sizes its copy against, and a p
 
 The same rule applies to the text a pattern paints INSIDE a fill it tints itself. `timeline-horizontal` tints each bar of its gantt and chevron chains — shade 70000 at the first stop through tint 40000 at the last — and hardcoded `lt1` inside every one of them, so the lightest bar measured **1.54:1** in a real midnight-blue render and its date label was invisible (go-slide-creator-5qotm).
 
-- Ask `readableTextOn(ctx, tone, fallback)` (`internal/patterns/fill_contrast.go`) which of the light / dark text roles reads on the fill's EFFECTIVE colour. Without a theme it returns the fallback, so an expansion with no template is unchanged.
+- Ask `readableTextOn(ctx, tone, fallback)` (`internal/patterns/fill_contrast.go`) which of the light / dark text roles reads on the fill's EFFECTIVE colour. Without a theme, `timeline-horizontal` uses `dk2` on tinted links and `lt1` on darker links; a portable expansion must not bake white text onto a pale tint.
 - Build the fill from a `fillTone` and emit it with `tone.fillJSON()`, so the tone you measured and the fill you paint cannot drift apart.
 - `tint` and `shade` are **linear-light mixes** toward white and black, not the HSL lightness that `lumMod` / `lumOff` act on. `EffectiveColorMods` models all four; both transforms are pinned against measured render pixels in `internal/patterns/timeline_contrast_test.go`. A model that treats a tint as a lumMod is out by 30-50 per channel, which is the difference between "readable" and "invisible".
+- In `timeline-horizontal` chevrons, measure the label and body against the chevron's usable text width and capped row height. Emit `BODY_TOO_LONG` with the available body-line count when the description would clip; a raw character limit misses narrow seven-stop layouts.
 
 ## Composition
 

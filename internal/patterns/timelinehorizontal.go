@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -100,13 +101,6 @@ var timelineBodyBudgetBands = map[string]map[int][]timelineBudgetBand{
 		6: {{15, 181}, {30, 141}, {45, 121}, {60, 101}},
 		7: {{15, 136}, {30, 106}, {45, 91}, {60, 76}},
 	},
-	"chevron": {
-		3: {{50, 200}, {60, 198}},
-		4: {{35, 176}, {60, 141}},
-		5: {{25, 127}, {50, 102}, {60, 77}},
-		6: {{20, 102}, {40, 82}, {60, 62}},
-		7: {{15, 77}, {30, 62}, {45, 47}, {60, 32}},
-	},
 }
 
 func timelineBodyBudget(style string, stops, labelChars int) int {
@@ -135,20 +129,29 @@ func timelineChevronDateBudget(stops int) int {
 	}
 }
 
-func (th *timelineHorizontal) PostExpandWarnings(_ ExpandContext, values, overrides any) []string {
+func (th *timelineHorizontal) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*TimelineHorizontalValues)
 	if !ok || v == nil {
 		return nil
 	}
 	style := "dots"
-	if o, ok := overrides.(*TimelineHorizontalOverrides); ok && o != nil && o.Style != "" {
-		style = o.Style
+	var ovr *TimelineHorizontalOverrides
+	if o, ok := overrides.(*TimelineHorizontalOverrides); ok && o != nil {
+		ovr = o
+		if o.Style != "" {
+			style = o.Style
+		}
 	}
 	var warnings []string
 	for i, stop := range *v {
 		if style == "gantt" {
 			if strings.TrimSpace(stop.Body) != "" {
 				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].body is not rendered in gantt style — move the detail into the label, choose dots or chevron style, or remove the body", ErrCodeContentDropped, i))
+			}
+		} else if style == "chevron" {
+			lines, capacity := timelineChevronBodyCapacity(ctx, *v, i, ovr)
+			if lines > capacity {
+				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].body needs %d lines but this %d-stop chevron holds %d below its label — shorten the body or label, use fewer stops, or choose dots style", ErrCodeBodyTooLong, i, lines, len(*v), capacity))
 			}
 		} else {
 			budget := timelineBodyBudget(style, len(*v), runeLen(stop.Label))
@@ -166,13 +169,41 @@ func (th *timelineHorizontal) PostExpandWarnings(_ ExpandContext, values, overri
 	return warnings
 }
 
+// timelineChevronBodyCapacity measures the actual line budget beneath one
+// stop's label. The homePlate preset's pointed right quarter is not usable
+// text width; measuring the full rectangular cell undercounts wrapping.
+func timelineChevronBodyCapacity(ctx ExpandContext, stops TimelineHorizontalValues, i int, ovr *TimelineHorizontalOverrides) (lines, capacity int) {
+	stop := stops[i]
+	if stop.Body == "" {
+		return 0, 0
+	}
+	labelSize := 12.0
+	if ovr != nil {
+		labelSize = ResolveSize(ovr.LabelSize, labelSize)
+	}
+	bodySize := shapegrid.EffectiveTextSizePt(labelSize - 2)
+	labelSize = shapegrid.EffectiveTextSizePt(labelSize)
+	contentW, contentH := contentAreaPt(ctx)
+	textW := math.Max(equalColumnWidthPt(contentW, len(stops), 0)*0.75-2*defaultShapeInsetLRPt, 1)
+	font := ctx.Theme.BodyFont
+	labelLines := measuredLines(stop.Label, font, true, labelSize, textW)
+	lines = measuredLines(stop.Body, font, false, bodySize, textW)
+	rowH := math.Round(contentH * timelineChevronMaxHeightFrac)
+	availableH := rowH - 2*defaultShapeInsetTBPt - 4 - float64(labelLines)*labelSize*contentLineHeight
+	if availableH <= 0 {
+		return lines, 0
+	}
+	capacity = int(math.Floor(availableH / (bodySize * contentLineHeight)))
+	return lines, capacity
+}
+
 func (th *timelineHorizontal) Schema() *Schema {
 	stopSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\")"),
 			"date":     StringSchema(30).WithDescription("Optional date or time annotation. Chevron style holds about 30 characters at 3-4 stops, 27 at 5, 22 at 6, or 18 at 7; dots and gantt retain 30"),
 			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date)"),
-			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Readable chars for short/long labels by stop count: dots 3-4: 200/200, 5: 200/151, 6: 181/101, 7: 136/76; chevron 3: 200/198, 4: 176/141, 5: 127/77, 6: 102/62, 7: 77/32. Short means about 5-15 label chars, long about 55-60; fit warnings give the intermediate targets"),
+			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Dots readable chars for short/long labels by stop count: 3-4: 200/200, 5: 200/151, 6: 181/101, 7: 136/76. Chevron body capacity is measured from its actual width, height, label wrapping, and font sizes; BODY_TOO_LONG reports the line limit for the chosen layout. Shorten descriptions or use fewer stops when warned."),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -434,7 +465,7 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 
 		// Label (and optionally body) inside the chevron, in whichever text
 		// colour reads on this link's own tint.
-		textContent := buildChevronTextContent(stop, labelSize, readableTextOn(ctx, tone, "lt1"))
+		textContent := buildChevronTextContent(stop, labelSize, timelineGradientTextColor(ctx, tone))
 
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "homePlate",
@@ -536,7 +567,7 @@ func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHori
 		tone := chevronGradientTone(accent, i, n)
 		barText := json.RawMessage(fmt.Sprintf(
 			`{"paragraphs":[{"content":%q,"size":%g,"color":%q,"align":"left"}],"align":"left","vertical_align":"ctr"}`,
-			dateLabel, dateSize, readableTextOn(ctx, tone, "lt1"),
+			dateLabel, dateSize, timelineGradientTextColor(ctx, tone),
 		))
 
 		barShape := &jsonschema.ShapeSpecInput{
@@ -602,6 +633,19 @@ func chevronGradientTone(accent string, index, total int) fillTone {
 		}
 	}
 	return tone
+}
+
+// timelineGradientTextColor uses measured theme contrast when available. An
+// expand_pattern call without a template has no theme to measure, but the
+// gradient modifier still tells us tinted links are light surfaces. Choosing
+// dark ink there prevents a portable expansion from baking in white-on-pale
+// text before the eventual rendering template is known.
+func timelineGradientTextColor(ctx ExpandContext, tone fillTone) string {
+	fallback := "lt1"
+	if tone.Tint > 0 {
+		fallback = "dk2"
+	}
+	return readableTextOn(ctx, tone, fallback)
 }
 
 // buildChevronTextContent creates text for inside a chevron shape (label +

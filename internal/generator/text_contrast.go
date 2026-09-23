@@ -567,14 +567,13 @@ func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor) string
 // be read.
 var shapeFillBlockRegexp = regexp.MustCompile(`(?s)<a:solidFill[^>]*>(.*?)</a:solidFill>`)
 
-// shapeFillModRegexp matches lumMod / lumOff / alpha colour modifiers.
-var shapeFillModRegexp = regexp.MustCompile(`<a:(lumMod|lumOff|alpha)\s+val="(\d+)"`)
+// shapeFillModRegexp matches the colour modifiers emitted by PPTX fills.
+var shapeFillModRegexp = regexp.MustCompile(`<a:(lumMod|lumOff|tint|shade|alpha)\s+val="(\d+)"`)
 
-// applyShapeFillModifiers folds lumMod / lumOff / alpha modifiers on the
+// applyShapeFillModifiers folds lumMod / lumOff / tint / shade / alpha on the
 // shape's solid fill into baseHex so contrast is judged against the colour
-// the viewer actually sees. Without this, a light accent tint (e.g. accent1
-// at 40% alpha, or lumMod 20% / lumOff 80%) is evaluated as the saturated
-// base accent and correct dark text gets "fixed" to white.
+// the viewer actually sees. Without this, a light accent tint is evaluated
+// as the saturated base accent and correct dark text gets "fixed" to white.
 func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.ThemeColor) string {
 	if baseHex == "" {
 		return ""
@@ -583,8 +582,7 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 	if len(block) < 2 {
 		return baseHex
 	}
-	var lumMod, lumOff int
-	alpha := 1.0
+	mods := patterns.ColorMods{Alpha: 1}
 	found := false
 	for _, m := range shapeFillModRegexp.FindAllSubmatch(block[1], -1) {
 		v, err := strconv.Atoi(string(m[2]))
@@ -594,11 +592,15 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 		found = true
 		switch string(m[1]) {
 		case "lumMod":
-			lumMod = v
+			mods.LumMod = v
 		case "lumOff":
-			lumOff = v
+			mods.LumOff = v
+		case "tint":
+			mods.Tint = v
+		case "shade":
+			mods.Shade = v
 		case "alpha":
-			alpha = float64(v) / 100000
+			mods.Alpha = float64(v) / 100000
 		}
 	}
 	if !found {
@@ -614,7 +616,7 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 			bg = c
 		}
 	}
-	return strings.ToUpper(patterns.EffectiveColor(base, lumMod, lumOff, alpha, bg).Hex())
+	return strings.ToUpper(patterns.EffectiveColorMods(base, mods, bg).Hex())
 }
 
 // enforceShapeGridContrast checks text colors within shape_grid raw shape XML

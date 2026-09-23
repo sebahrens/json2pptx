@@ -15,9 +15,6 @@ func TestTimelineHorizontalDenseCopyWarnings(t *testing.T) {
 		{"dots", 5, 40, 176},
 		{"dots", 6, 15, 181},
 		{"dots", 7, 60, 76},
-		{"chevron", 4, 40, 141},
-		{"chevron", 5, 60, 77},
-		{"chevron", 7, 60, 32},
 	} {
 		t.Run(fmt.Sprintf("%s_%d_%d", tc.style, tc.stops, tc.label), func(t *testing.T) {
 			v := TimelineHorizontalValues{}
@@ -58,7 +55,7 @@ func TestTimelineHorizontalDenseCopyWarnings(t *testing.T) {
 	}
 	fields := pat.Schema().raw.Properties["values"].raw.Items.raw.Properties
 	if fields["body"].raw.MaxLength == nil || *fields["body"].raw.MaxLength != 200 ||
-		!strings.Contains(fields["body"].raw.Description, "7: 77/32") ||
+		!strings.Contains(fields["body"].raw.Description, "Chevron body capacity is measured") ||
 		!strings.Contains(fields["date"].raw.Description, "18 at 7") {
 		t.Fatalf("schema loses sparse maximum or dense guidance")
 	}

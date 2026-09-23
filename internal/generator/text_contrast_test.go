@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -745,6 +746,31 @@ func TestComputeWhiteTextSafeHex(t *testing.T) {
 	// accent6 (#CBD1D6, light gray) should NOT be white-text-safe
 	if safe["#CBD1D6"] {
 		t.Error("accent6 (#CBD1D6) should not be in whiteTextSafeHex (low contrast vs white)")
+	}
+}
+
+func TestExtractShapeFillHexAppliesTintAndShade(t *testing.T) {
+	theme := []types.ThemeColor{
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent1", RGB: "#2E5090"},
+	}
+	base := svggen.MustParseColor("#2E5090")
+	white := svggen.MustParseColor("#FFFFFF")
+	for _, tc := range []struct {
+		name string
+		mod  string
+		mods patterns.ColorMods
+	}{
+		{"tint", `<a:tint val="40000"/>`, patterns.ColorMods{Tint: 40000, Alpha: 1}},
+		{"shade", `<a:shade val="70000"/>`, patterns.ColorMods{Shade: 70000, Alpha: 1}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			shape := []byte(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1">` + tc.mod + `</a:schemeClr></a:solidFill></p:spPr></p:sp>`)
+			want := strings.ToUpper(patterns.EffectiveColorMods(base, tc.mods, white).Hex())
+			if got := extractShapeFillHex(shape, theme); got != want {
+				t.Errorf("fill = %s, want %s", got, want)
+			}
+		})
 	}
 }
 
