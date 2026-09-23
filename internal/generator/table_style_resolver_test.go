@@ -1,9 +1,12 @@
 package generator
 
 import (
+	"archive/zip"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -25,7 +28,7 @@ func TestDefaultTableStyleResolver_Passthrough(t *testing.T) {
 }
 
 // Regression for the @template-default sentinel leaking into output. When no
-// template-aware resolver is wired (the common path through media.go), the
+// template-aware resolver is supplied (e.g. a standalone table render), the
 // default resolver must still translate the sentinel to the engine-default
 // GUID; otherwise the generated <a:tableStyleId> contains an invalid value
 // and LibreOffice refuses to open the file.
@@ -34,6 +37,70 @@ func TestDefaultTableStyleResolver_TemplateDefaultSentinel(t *testing.T) {
 	got := r.ResolveTableStyleID("@template-default")
 	if got != types.DefaultTableStyleID {
 		t.Errorf("got %q, want %q", got, types.DefaultTableStyleID)
+	}
+}
+
+func TestTemplateTableStyleResolverMissingTemplateFails(t *testing.T) {
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	if _, err := ctx.templateTableStyleResolver(); err == nil {
+		t.Fatal("missing template ZIP must fail instead of silently using engine default")
+	}
+	if ctx.tableStyleReader != nil {
+		t.Error("failed lookup cached a resolver")
+	}
+}
+
+func TestTemplateTableStyleResolverIsReused(t *testing.T) {
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	ctx.templatePath = "../../templates/modern.pptx"
+	var err error
+	ctx.templateReader, err = zip.OpenReader(ctx.templatePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ctx.templateReader.Close()
+	first, err := ctx.templateTableStyleResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ctx.tableStyleReader.Close()
+	ctx.templatePath = filepath.Join(t.TempDir(), "missing.pptx")
+	second, err := ctx.templateTableStyleResolver()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first != second {
+		t.Error("template table-style resolver was recreated instead of reused")
+	}
+	if got := second.ResolveTableStyleID(template.TemplateDefaultSentinel); got == "" {
+		t.Error("borrowed resolver did not read the open ZIP")
+	}
+}
+
+func TestPrepareImagesDoesNotRenderTableWithUnresolvedTemplateStyle(t *testing.T) {
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	ctx.templatePath = filepath.Join(t.TempDir(), "missing.pptx")
+	ctx.templateSlideData[1] = &slideXML{CommonSlideData: commonSlideDataXML{
+		ShapeTree: shapeTreeXML{Shapes: []shapeXML{{
+			NonVisualProperties: nonVisualPropertiesXML{
+				ConnectionNonVisual: connectionNonVisualXML{Name: "body"},
+				NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "body"}},
+			},
+		}}},
+	}}
+	ctx.slideContentMap[1] = SlideSpec{Content: []ContentItem{{
+		PlaceholderID: "body",
+		Type:          ContentTable,
+		Value: &types.TableSpec{
+			Headers: []string{"A"},
+			Style:   types.TableStyle{StyleID: "@template-default"},
+		},
+	}}}
+	if err := ctx.prepareImages(); err == nil {
+		t.Fatal("expected table style resolution failure to stop generation")
+	}
+	if len(ctx.tableInserts[1]) != 0 {
+		t.Error("table was rendered despite missing template style resolver")
 	}
 }
 

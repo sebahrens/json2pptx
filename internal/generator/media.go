@@ -11,6 +11,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -260,7 +261,15 @@ func (ctx *singlePassContext) prepareImages() error {
 			case ContentImage:
 				ctx.processImageContent(slideNum, item, shape, shapeIdx)
 			case ContentTable:
-				ctx.processTableContent(slideNum, item, shape, shapeIdx)
+				var tableStyleResolver TableStyleResolver
+				if tableSpec, ok := item.Value.(*types.TableSpec); ok && tableSpec.Style.StyleID == template.TemplateDefaultSentinel {
+					var err error
+					tableStyleResolver, err = ctx.templateTableStyleResolver()
+					if err != nil {
+						return fmt.Errorf("slide %d table style resolution: %w", slideNum, err)
+					}
+				}
+				ctx.processTableContent(slideNum, item, shape, shapeIdx, tableStyleResolver)
 			}
 		}
 	}
@@ -271,7 +280,7 @@ func (ctx *singlePassContext) prepareImages() error {
 // processTableContent handles standalone table content items.
 // It generates the OOXML graphicFrame XML for the table and tracks it
 // for placeholder replacement during slide writing.
-func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem, shape *shapeXML, shapeIdx int) {
+func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem, shape *shapeXML, shapeIdx int, styleResolver TableStyleResolver) {
 	tableSpec, ok := item.Value.(*types.TableSpec)
 	if !ok {
 		reason := fmt.Sprintf("invalid table value for placeholder %s", item.PlaceholderID)
@@ -298,7 +307,7 @@ func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem
 		},
 	}
 
-	result, err := PopulateTableInShape(tableSpec, placeholder, nil, nil)
+	result, err := PopulateTableInShape(tableSpec, placeholder, nil, styleResolver)
 	if err != nil {
 		reason := fmt.Sprintf("failed to generate table XML: %v", err)
 		ctx.warnings = append(ctx.warnings, reason)

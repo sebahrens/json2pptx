@@ -21,10 +21,14 @@ import (
 type ZipContext struct {
 	templateReader *zip.ReadCloser
 	templateIndex  utils.ZipIndex // O(1) filename lookups into templateReader
-	outputWriter   *zip.Writer
-	outputFile     *os.File
-	tmpPath        string
-	outputPath     string
+	templatePath   string
+	// Borrowed lazily from templateReader only when a table requests
+	// @template-default; both reads use the same ZIP snapshot.
+	tableStyleReader *template.Reader
+	outputWriter     *zip.Writer
+	outputFile       *os.File
+	tmpPath          string
+	outputPath       string
 }
 
 // LogoZone describes a rectangular area occupied by a template logo.

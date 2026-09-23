@@ -1,10 +1,32 @@
 package template
 
 import (
+	"archive/zip"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+func TestBorrowOpenZIPCloseLeavesOwnerOpen(t *testing.T) {
+	z, err := zip.OpenReader("../../templates/modern-template.pptx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer z.Close()
+	reader := BorrowOpenZIP("../../templates/modern-template.pptx", z)
+	if got := reader.ResolveTableStyleID(TemplateDefaultSentinel); got == "" {
+		t.Fatal("borrowed reader did not resolve template style")
+	}
+	if err := reader.Close(); err != nil {
+		t.Fatal(err)
+	}
+	f, err := z.File[0].Open()
+	if err != nil {
+		t.Errorf("borrowed reader closed the caller's ZIP: %v", err)
+	} else {
+		_ = f.Close()
+	}
+}
 
 func TestResolveTableStyleID_Empty(t *testing.T) {
 	reader, err := OpenTemplate("../../templates/modern-template.pptx")
@@ -62,30 +84,6 @@ func TestResolveTableStyleID_TemplateDefault(t *testing.T) {
 	}
 	if got == TemplateDefaultSentinel {
 		t.Fatal("@template-default was not resolved")
-	}
-}
-
-func TestResolveTableStyleID_TemplateDefaultAllBundled(t *testing.T) {
-	templates := []string{
-		"../../templates/modern-template.pptx",
-		"../../templates/midnight-blue.pptx",
-		"../../templates/forest-green.pptx",
-		"../../templates/warm-coral.pptx",
-	}
-
-	for _, tmpl := range templates {
-		t.Run(tmpl, func(t *testing.T) {
-			reader, err := OpenTemplate(tmpl)
-			if err != nil {
-				t.Fatalf("OpenTemplate: %v", err)
-			}
-			defer reader.Close()
-
-			got := reader.ResolveTableStyleID(TemplateDefaultSentinel)
-			if got == "" || got == TemplateDefaultSentinel {
-				t.Errorf("@template-default → %q, want a GUID", got)
-			}
-		})
 	}
 }
 

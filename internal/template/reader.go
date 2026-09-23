@@ -19,8 +19,15 @@ type Reader struct {
 	path      string
 	hash      string
 	zip       *zip.ReadCloser
+	borrowed  bool // caller owns the ZIP; Close must not close it
 	closed    bool
 	tblStyles *tableStyleIndex // lazy; created on first ResolveTableStyleID call
+}
+
+// BorrowOpenZIP provides template lookups against an already-open PPTX ZIP.
+// The caller retains ownership of z and must keep it open while using Reader.
+func BorrowOpenZIP(path string, z *zip.ReadCloser) *Reader {
+	return &Reader{path: path, zip: z, borrowed: true}
 }
 
 // OpenTemplate opens a PPTX template file and validates its structure.
@@ -197,6 +204,9 @@ func (r *Reader) Close() error {
 		return nil
 	}
 	r.closed = true
+	if r.borrowed {
+		return nil
+	}
 	return r.zip.Close()
 }
 

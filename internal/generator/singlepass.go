@@ -114,6 +114,7 @@ func (ctx *singlePassContext) initializeContext(templatePath string) (cleanup fu
 	if err != nil {
 		return nil, fmt.Errorf("failed to open template: %w", err)
 	}
+	ctx.templatePath = templatePath
 	ctx.templateIndex = utils.BuildZipIndex(&ctx.templateReader.Reader)
 	ctx.loadTemplateProfile(templatePath)
 
@@ -129,6 +130,9 @@ func (ctx *singlePassContext) initializeContext(templatePath string) (cleanup fu
 	ctx.outputWriter = zip.NewWriter(ctx.outputFile)
 
 	cleanup = func() {
+		if ctx.tableStyleReader != nil {
+			_ = ctx.tableStyleReader.Close()
+		}
 		_ = ctx.templateReader.Close()
 		if ctx.outputFile != nil {
 			_ = ctx.outputFile.Close()

@@ -1,12 +1,13 @@
 package generator
 
-import "github.com/sebahrens/json2pptx/internal/types"
+import (
+	"fmt"
 
-// templateDefaultSentinel mirrors template.TemplateDefaultSentinel so the
-// resolver can recognise the sentinel without importing the template package
-// (which would otherwise pull in a transitive dependency for callers that only
-// need the in-package default resolver).
-const templateDefaultSentinel = "@template-default"
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
+)
+
+const templateDefaultSentinel = template.TemplateDefaultSentinel
 
 // TableStyleResolver resolves authored table style_id values against a
 // template's declared table styles.  The generator depends on this interface
@@ -39,4 +40,18 @@ func (defaultTableStyleResolver) ResolveTableStyleID(authored string) string {
 		return types.DefaultTableStyleID
 	}
 	return authored
+}
+
+// templateTableStyleResolver reads the same open ZIP used to build the deck,
+// only when a table actually requests @template-default. This prevents a
+// concurrent template replacement from changing the style mid-generation.
+func (ctx *singlePassContext) templateTableStyleResolver() (TableStyleResolver, error) {
+	if ctx.tableStyleReader != nil {
+		return ctx.tableStyleReader, nil
+	}
+	if ctx.templateReader == nil {
+		return nil, fmt.Errorf("template ZIP is not open")
+	}
+	ctx.tableStyleReader = template.BorrowOpenZIP(ctx.templatePath, ctx.templateReader)
+	return ctx.tableStyleReader, nil
 }
