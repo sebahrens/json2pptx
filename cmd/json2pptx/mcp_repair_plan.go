@@ -19,6 +19,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/visualqa"
@@ -151,11 +152,17 @@ type proposeSummary struct {
 type proposeRepairsFinding struct {
 	// Fit-finding shape (embedded ValidationError + extras).
 	Pattern string                  `json:"pattern,omitempty"`
+	ID      string                  `json:"id,omitempty"`
 	Path    string                  `json:"path,omitempty"`
 	Code    string                  `json:"code,omitempty"`
 	Message string                  `json:"message,omitempty"`
 	Fix     *patterns.FixSuggestion `json:"fix,omitempty"`
 	Action  string                  `json:"action,omitempty"`
+	// FindingEnvelope shape emitted by validate_input and repair tools.
+	Evidence    map[string]any           `json:"evidence,omitempty"`
+	Where       *diagnostics.Where       `json:"where,omitempty"`
+	Remediation *diagnostics.Remediation `json:"remediation,omitempty"`
+	envelope    bool
 
 	// Visual QA finding shape.
 	SlideIndex     *int                    `json:"slide_index,omitempty"`
@@ -177,8 +184,9 @@ func mcpProposeRepairsTool() mcp.Tool {
 	return mcp.NewTool("propose_repairs",
 		mcp.WithDescription(`Translate structured findings (fit_report findings, visual QA findings, or validation diagnostics) into a ranked list of repair_slide fix directives. Returns proposed directives grouped by slide and ordered by severity — does NOT mutate the deck.
 
-Accepts two finding shapes (polymorphic, mixed input is fine):
-- Fit findings: {path, code, message, action, fix:{kind,params}, slide_index?} — emitted by generate_presentation(fit_report=true) and validate_input. (repair_slide / repair_slides_batch now return residual findings as a FindingEnvelope under "findings", a different shape — feed propose_repairs from a fit_report or validate_input instead.)
+Accepts three finding shapes (polymorphic, mixed input is fine):
+- Fit findings: {path, code, message, action, fix:{kind,params}, slide_index?} — emitted by generate_presentation(fit_report=true).
+- FindingEnvelope entries: {code, severity, category, where:{slide}, evidence:{path,action}, remediation:{primary:{action,params}}} — emitted by validate_input and repair tools. Pass the inner findings array, not the outer envelope. The concrete repair kind is read from primary.params.kind when present.
 - Visual QA findings: {slide_index, slide_type, severity, category, suggested_fixes:[{kind,params}], description, location, bbox?} — emitted by inspect_slide_images. bbox is {x,y,w,h} as fractions (0–1) of the slide; when present it is hit-tested against the generated shape_grid cell bounds so directives target that cell's path (/slides/N/shape_grid/rows/R/cells/C, also threaded into reduce_cell_text's cell_path) instead of the whole slide.
 
 For each finding the tool:
@@ -293,7 +301,7 @@ func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepa
 
 	for _, f := range findings {
 		slideIdx, ok := resolveSlideIndex(f, slideCount)
-		isVisual := f.Category != ""
+		isVisual := f.Category != "" && !f.envelope
 
 		// Visual QA finding path: prefer caller-supplied suggested_fixes, else
 		// fall back to the canonical category→fix mapping.
@@ -360,7 +368,7 @@ func proposeRepairsWithGeometry(input *PresentationInput, findings []proposeRepa
 			Type:     "fit",
 			Code:     f.Code,
 			Action:   f.Action,
-			Severity: severityFromAction(f.Action),
+			Severity: findingSeverity(f),
 			Path:     f.Path,
 			Message:  f.Message,
 		}
@@ -875,5 +883,59 @@ func extractProposeFindings(request mcp.CallToolRequest) ([]proposeRepairsFindin
 	if err := json.Unmarshal(data, &findings); err != nil {
 		return nil, fmt.Errorf("findings must be an array of finding objects: %w", err)
 	}
+	for i := range findings {
+		adaptEnvelopeFinding(&findings[i])
+	}
 	return findings, nil
+}
+
+// adaptEnvelopeFinding translates the public FindingEnvelope wire fields into
+// the same target/fix fields the legacy fit-finding path already consumes.
+// The primary action is a broad vocabulary (e.g. shorten_text); the concrete
+// repair_slide kind is preserved in params.kind by diagnostics when necessary.
+func adaptEnvelopeFinding(f *proposeRepairsFinding) {
+	if f.ID == "" && f.Where == nil && f.Evidence == nil && f.Remediation == nil && !isDiagnosticCategory(f.Category) {
+		return
+	}
+	f.envelope = true
+	if f.Path == "" {
+		if path, ok := f.Evidence["path"].(string); ok {
+			f.Path = path
+		}
+	}
+	if f.SlideIndex == nil && f.Where != nil {
+		f.SlideIndex = f.Where.Slide
+	}
+	if f.Action == "" {
+		if action, ok := f.Evidence["action"].(string); ok {
+			f.Action = action
+		}
+	}
+	if f.Fix == nil && f.Remediation != nil && f.Remediation.Primary != nil {
+		primary := f.Remediation.Primary
+		params := cloneParams(primary.Params)
+		kind, _ := params["kind"].(string)
+		if kind != "" {
+			delete(params, "kind")
+		} else {
+			kind = primary.Action
+		}
+		f.Fix = &patterns.FixSuggestion{Kind: kind, Params: params}
+	}
+}
+
+func isDiagnosticCategory(category string) bool {
+	for _, namespace := range diagnostics.AllNamespaces() {
+		if category == namespace {
+			return true
+		}
+	}
+	return false
+}
+
+func findingSeverity(f proposeRepairsFinding) string {
+	if f.Action != "" {
+		return severityFromAction(f.Action)
+	}
+	return normalizeSeverity(f.Severity)
 }

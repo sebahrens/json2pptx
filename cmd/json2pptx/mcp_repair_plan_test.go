@@ -17,6 +17,198 @@ func proposeMC(t *testing.T) *mcpConfig {
 	return repairMC(t)
 }
 
+func TestProposeRepairsConsumesRealValidateFindings(t *testing.T) {
+	mc := proposeMC(t)
+	deck := mustParseJSON(minimalDeck(
+		map[string]any{
+			"placeholder_id": "title",
+			"type":           "text",
+			"text_value":     "Revenue expansion in EMEA improved margins through focused pricing and disciplined channel execution this quarter",
+		},
+		map[string]any{
+			"placeholder_id": "body",
+			"type":           "text",
+			"text_value":     "Regional margin gains came from revised pricing and a focused partner program.",
+		},
+	))
+	validated, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{"presentation": deck}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wire map[string]json.RawMessage
+	data, err := json.Marshal(validated.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		t.Fatal(err)
+	}
+	var findings []any
+	if len(wire["findings"]) == 0 {
+		t.Fatalf("validate_input returned no findings envelope: %s", data)
+	}
+	if wire["findings"][0] == '[' {
+		if err := json.Unmarshal(wire["findings"], &findings); err != nil {
+			t.Fatal(err)
+		}
+	} else {
+		var envelope struct {
+			Findings []any `json:"findings"`
+		}
+		if err := json.Unmarshal(wire["findings"], &envelope); err != nil {
+			t.Fatal(err)
+		}
+		findings = envelope.Findings
+	}
+	seenTitleFit := false
+	for _, item := range findings {
+		finding, ok := item.(map[string]any)
+		if ok && finding["code"] == "INPUT.title_wraps" {
+			seenTitleFit = true
+		}
+	}
+	if !seenTitleFit {
+		t.Fatalf("real validation did not emit title fit finding: %s", data)
+	}
+	proposed, err := mc.handleProposeRepairs(context.Background(), makeRequest(map[string]any{
+		"presentation": deck,
+		"findings":     findings,
+	}))
+	if err != nil || proposed.IsError {
+		t.Fatalf("propose_repairs failed: err=%v, result=%s", err, textContent(proposed))
+	}
+	var out proposeRepairsOutput
+	if err := json.Unmarshal([]byte(textContent(proposed)), &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, unmapped := range out.Unmapped {
+		if unmapped.Code == "INPUT.title_wraps" {
+			t.Fatalf("title fit finding from validate_input was unmapped: %+v", unmapped)
+		}
+	}
+	if len(out.Slides) != 1 || out.Slides[0].SlideIndex != 0 {
+		t.Fatalf("title fit finding was not routed to slide 0: %+v", out.Slides)
+	}
+	for _, directive := range out.Slides[0].Directives {
+		if directive.Source.Code == "INPUT.title_wraps" {
+			if directive.Kind != "shorten_title" || directive.ToolCall == nil || directive.ToolCall.Tool != "repair_slide" {
+				t.Fatalf("validate title fit did not produce replayable shorten_title: %+v", directive)
+			}
+			if directive.Source.Path != "/slides/0/content/title" || directive.Source.Action != "shrink_or_split" || directive.Source.Severity != "warning" {
+				t.Fatalf("validation provenance was lost: %+v", directive.Source)
+			}
+			if _, leaked := directive.Params["kind"]; leaked {
+				t.Fatalf("wire-only kind leaked into repair params: %+v", directive.Params)
+			}
+			// Replayability of this particular title-wrap suggestion is tracked
+			// separately in go-slide-creator-ze9es: repair_slide currently
+			// refuses its max_chars budget as semantic_review_required.
+			return
+		}
+	}
+	t.Fatalf("no title fit directive among %+v", out.Slides[0].Directives)
+}
+
+func TestProposeRepairsConsumesValidateRefusalEnvelope(t *testing.T) {
+	mc := proposeMC(t)
+	deck := mustParseJSON(`{"template":"midnight-blue","slides":[{"layout_id":"section","slide_type":"section","content":[{"placeholder_id":"title","type":"text","text_value":"Market context"},{"placeholder_id":"Section Number","type":"text","text_value":"02"}]}]}`)
+	validated, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{"presentation": deck}))
+	if err != nil || !validated.IsError {
+		t.Fatalf("expected validation refusal: err=%v result=%s", err, textContent(validated))
+	}
+	var envelope struct {
+		Findings []any `json:"findings"`
+	}
+	data, err := json.Marshal(validated.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if len(envelope.Findings) == 0 {
+		t.Fatalf("validation refusal returned no findings: %s", data)
+	}
+	proposed, err := mc.handleProposeRepairs(context.Background(), makeRequest(map[string]any{
+		"presentation": deck,
+		"findings":     envelope.Findings,
+	}))
+	if err != nil || proposed.IsError {
+		t.Fatalf("propose_repairs failed: err=%v result=%s", err, textContent(proposed))
+	}
+	var out proposeRepairsOutput
+	if err := json.Unmarshal([]byte(textContent(proposed)), &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, unmapped := range out.Unmapped {
+		if unmapped.Code == "INPUT.SECTION_NUMBER_SEQUENCE_MISMATCH" {
+			t.Fatalf("section mismatch from validate_input was unmapped: %+v", unmapped)
+		}
+	}
+	for _, slide := range out.Slides {
+		for _, directive := range slide.Directives {
+			if directive.Source.Code == "INPUT.SECTION_NUMBER_SEQUENCE_MISMATCH" {
+				if slide.SlideIndex != 0 || directive.Kind != "provide_value" || directive.Source.Action != "refuse" {
+					t.Fatalf("refusal lost target or fix: %+v", directive)
+				}
+				return
+			}
+		}
+	}
+	t.Fatalf("no section-number directive among %+v", out.Slides)
+}
+
+func TestProposeRepairsEnvelopeWhereSlideFallback(t *testing.T) {
+	mc := proposeMC(t)
+	deck := mustParseJSON(minimalDeck(map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Quarterly results"}))
+	result, err := mc.handleProposeRepairs(context.Background(), makeRequest(map[string]any{
+		"presentation": deck,
+		"findings": []any{map[string]any{
+			"id": "input-1", "code": "INPUT.TEST", "category": "INPUT", "severity": "error",
+			"message": "Provide a value", "where": map[string]any{"slide": 0},
+			"remediation": map[string]any{"primary": map[string]any{
+				"action": "replace_value", "params": map[string]any{"kind": "provide_value", "value": "01"},
+			}},
+		}},
+	}))
+	if err != nil || result.IsError {
+		t.Fatalf("propose_repairs failed: err=%v result=%s", err, textContent(result))
+	}
+	var out proposeRepairsOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Slides) != 1 || len(out.Slides[0].Directives) != 1 {
+		t.Fatalf("where.slide did not route finding: %+v", out)
+	}
+	directive := out.Slides[0].Directives[0]
+	if directive.Kind != "provide_value" || directive.Source.Type != "fit" || directive.Source.Severity != "error" {
+		t.Fatalf("envelope finding misclassified: %+v", directive)
+	}
+}
+
+func TestProposeRepairsDiagnosticWithoutRepairIsNotVisualQA(t *testing.T) {
+	mc := proposeMC(t)
+	deck := mustParseJSON(minimalDeck(map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Quarterly results"}))
+	result, err := mc.handleProposeRepairs(context.Background(), makeRequest(map[string]any{
+		"presentation": deck,
+		"findings": []any{map[string]any{
+			"code": "INPUT.TEST", "category": "INPUT", "severity": "info",
+			"slide_index": 0, "message": "Manual review required",
+		}},
+	}))
+	if err != nil || result.IsError {
+		t.Fatalf("propose_repairs failed: err=%v result=%s", err, textContent(result))
+	}
+	var out proposeRepairsOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Unmapped) != 1 || out.Unmapped[0].Reason != "no_fix_attached" || out.Unmapped[0].Code != "INPUT.TEST" {
+		t.Fatalf("diagnostic finding was misrouted as visual QA: %+v", out)
+	}
+}
+
 // TestProposeRepairs_FitFindingProducesRankedDirective verifies that a single
 // fit finding with an attached fix is translated into a directive routed to
 // the correct slide, with the fix kind preserved and a tool_call generated.
