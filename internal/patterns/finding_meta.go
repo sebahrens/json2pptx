@@ -625,13 +625,13 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeBodyTooLong: {
 		Code:        ErrCodeBodyTooLong,
-		Summary:     "A body text block exceeds 80 whitespace-separated words.",
+		Summary:     "Body copy exceeds either the 80-word content limit or a pattern's shape-specific text budget.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight word-counts the body text (or aggregated bullets) and finds >80 words — audiences read at most ~5 lines per slide.",
+		WhenEmitted: "Content lint finds more than 80 whitespace-separated words in one text/bullet block, or a pattern's post-expand check finds text beyond its geometry-specific character, line, or measured-fit budget (for example, a 4x3 card-grid holds about 60 characters per card).",
 		RemediationSteps: []string{
-			"Trim the body to 80 or fewer words.",
-			"Apply the finding's fix verbatim: repair_slide(kind=reduce_text, params={max_words}). The word budget is distributed across bullets in proportion to their length, so every bullet survives (shortened) rather than the list being cut short.",
-			"If the trim would drop a number, unit, negation, or qualifier, it refuses with semantic_review_required — rewrite those lines yourself or split the content across two slides.",
+			"Read the finding's path and message for the actual unit and target; do not assume that every BODY_TOO_LONG finding has an 80-word limit.",
+			"For content-lint findings with fix.params.max_words, trim to that word limit or use repair_slide(kind=reduce_text, params={max_words}); preserve numbers, units, negations, and qualifiers.",
+			"For pattern warnings, shorten the named field to the reported character/line budget, reduce the pattern's item density, or split the content across slides. A pattern warning does not supply max_words.",
 		},
 		RelatedCodes: []string{ErrCodePlaceholderOverflow, ErrCodeBulletNestingDeep},
 	},

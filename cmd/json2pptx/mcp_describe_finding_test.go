@@ -53,6 +53,20 @@ func TestDescribeFinding_ReturnsMetadataForKnownCode(t *testing.T) {
 	}
 }
 
+func TestDescribeFinding_BodyTooLongDistinguishesWordAndPatternBudgets(t *testing.T) {
+	meta := callDescribeFinding(t, patterns.ErrCodeBodyTooLong)
+	if !strings.Contains(meta.WhenEmitted, "80 whitespace-separated words") ||
+		!strings.Contains(meta.WhenEmitted, "4x3 card-grid holds about 60 characters") {
+		t.Errorf("BODY_TOO_LONG when_emitted conflates content and pattern budgets: %q", meta.WhenEmitted)
+	}
+	steps := strings.Join(meta.RemediationSteps, " ")
+	if !strings.Contains(steps, "fix.params.max_words") ||
+		!strings.Contains(steps, "pattern warnings") ||
+		!strings.Contains(steps, "character/line budget") {
+		t.Errorf("BODY_TOO_LONG remediation omits the unit-specific branches: %q", steps)
+	}
+}
+
 func TestDescribeFinding_MissingCodeReturnsError(t *testing.T) {
 	result, err := handleDescribeFinding(context.Background(), mcpRequestWithArgs(map[string]any{}))
 	if err != nil {

@@ -47,7 +47,7 @@ func TestCardGridWarnsWithTheBudgetForItsShape(t *testing.T) {
 		t.Fatal("card-grid does not emit post-expand warnings")
 	}
 
-	long := strings.Repeat("W", 300)
+	long := strings.Repeat("W", 61)
 	dense := &CardGridValues{Columns: 4, Rows: 3}
 	for i := 0; i < 12; i++ {
 		dense.Cells = append(dense.Cells, CardGridCell{Header: "Header", Body: long})
@@ -56,7 +56,7 @@ func TestCardGridWarnsWithTheBudgetForItsShape(t *testing.T) {
 	if len(warnings) != 12 {
 		t.Fatalf("got %d warnings for 12 over-budget cards, want 12: %v", len(warnings), warnings)
 	}
-	for _, want := range []string{ErrCodeBodyTooLong, "cells[0].body is 300 characters", "4x3 grid holds about 60"} {
+	for _, want := range []string{ErrCodeBodyTooLong, "cells[0].body is 61 characters", "4x3 grid holds about 60"} {
 		if !strings.Contains(warnings[0], want) {
 			t.Errorf("warning %q is missing %q", warnings[0], want)
 		}
@@ -65,9 +65,15 @@ func TestCardGridWarnsWithTheBudgetForItsShape(t *testing.T) {
 	// The same body in a small grid is exactly what the schema promises, and
 	// says nothing.
 	small := &CardGridValues{Columns: 2, Rows: 1, Cells: []CardGridCell{
-		{Header: "Header", Body: long}, {Header: "Header", Body: long},
+		{Header: "Header", Body: strings.Repeat("W", 300)}, {Header: "Header", Body: strings.Repeat("W", 300)},
 	}}
 	if got := warner.PostExpandWarnings(ExpandContext{}, small, nil); len(got) != 0 {
 		t.Errorf("a 2x1 grid at the schema maximum warned: %v", got)
+	}
+	for i := range dense.Cells {
+		dense.Cells[i].Body = strings.Repeat("W", 60)
+	}
+	if got := warner.PostExpandWarnings(ExpandContext{}, dense, nil); len(got) != 0 {
+		t.Errorf("4x3 cards at their 60-character budget warned: %v", got)
 	}
 }

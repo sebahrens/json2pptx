@@ -71,8 +71,9 @@ func TestContentLint_HeadlineWithinBudget(t *testing.T) {
 }
 
 func TestContentLint_BodyTooLong(t *testing.T) {
-	// 100 words.
-	words := make([]string, 100)
+	// The content-lint threshold is exactly 80 words; pattern warnings use
+	// their own geometry-specific budgets under the same code.
+	words := make([]string, 81)
 	for i := range words {
 		words[i] = "word"
 	}
@@ -90,14 +91,18 @@ func TestContentLint_BodyTooLong(t *testing.T) {
 	if f == nil {
 		t.Fatalf("expected BODY_TOO_LONG finding for 100-word body, got %+v", findings)
 	}
-	if !strings.Contains(f.Message, "100 words") {
-		t.Errorf("message should report 100 words, got %q", f.Message)
+	if !strings.Contains(f.Message, "81 words") {
+		t.Errorf("message should report 81 words, got %q", f.Message)
 	}
 	if !strings.Contains(f.Message, "80") {
 		t.Errorf("message should mention 80-word budget, got %q", f.Message)
 	}
 	if f.Fix == nil || f.Fix.Kind != "reduce_text" {
 		t.Errorf("fix kind = %v, want reduce_text", f.Fix)
+	}
+	input.Slides[0].Content[0].TextValue = strPtr(strings.Join(words[:80], " "))
+	if got := findFinding(collectContentLintFindings(input, nil), patterns.ErrCodeBodyTooLong); got != nil {
+		t.Errorf("80-word body unexpectedly exceeded the budget: %+v", got)
 	}
 }
 

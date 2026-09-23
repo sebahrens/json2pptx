@@ -968,10 +968,10 @@ Mechanics:
 ### `BODY_TOO_LONG`
 
 **Action:** `review`
-**Pattern:** *(none — content lint)*
-**Fix kind:** `reduce_text`
+**Pattern:** content lint or pattern post-expand warning
+**Fix kind:** `reduce_text` for content lint; pattern warnings may have no fix object
 
-Emitted when a single text block exceeds 80 whitespace-separated words. Applies to `text`, `bullets`, `body_and_bullets`, and `bullet_groups` content items — bullet items are aggregated per content block, so a 10-bullet list of 10-word bullets trips the budget. 80 words is roughly five tight 12pt lines, which is the upper bound an audience reads while still listening.
+Content lint emits this code when a single `text`, `bullets`, `body_and_bullets`, or `bullet_groups` block exceeds 80 whitespace-separated words. Bullet items are aggregated per content block, so a 10-bullet list of 10-word bullets trips the budget. Pattern post-expand checks also emit this code for geometry-specific budgets, which may be measured in characters, lines, or rendered fit. For example, a 4×3 `card-grid` holds about 60 characters per card. Follow the finding's path, message, and unit; do not apply the 80-word limit to a pattern warning.
 
 ```json
 {
@@ -982,6 +982,8 @@ Emitted when a single text block exceeds 80 whitespace-separated words. Applies 
   "action": "review"
 }
 ```
+
+For pattern warnings, shorten the named value to the limit in its message, reduce the pattern's item density, or split the content. These warnings do not necessarily provide `fix.params.max_words`.
 
 ### `BULLET_NESTING_DEEP`
 
