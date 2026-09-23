@@ -5,6 +5,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
@@ -12,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sebahrens/json2pptx/internal/testutil"
 )
@@ -65,14 +67,20 @@ func TestCorpusHeadlessOpen(t *testing.T) {
 		for _, tmpl := range templates {
 			tmpl := tmpl
 			name := base + "/" + tmpl
+			var converterTimedOut bool
 			t.Run(name, func(t *testing.T) {
-				runHeadlessRoundTrip(t, soffice, baseTmp, templatesDir, example, base, tmpl)
+				runHeadlessRoundTrip(t, soffice, baseTmp, templatesDir, example, base, tmpl, &converterTimedOut)
 			})
+			if converterTimedOut {
+				// A stalled LibreOffice process usually affects every subsequent
+				// conversion. Fail this run promptly instead of waiting once per case.
+				return
+			}
 		}
 	}
 }
 
-func runHeadlessRoundTrip(t *testing.T, soffice, baseTmp, templatesDir, examplePath, base, tmpl string) {
+func runHeadlessRoundTrip(t *testing.T, soffice, baseTmp, templatesDir, examplePath, base, tmpl string, converterTimedOut *bool) {
 	t.Helper()
 
 	caseDir := filepath.Join(baseTmp, base+"_"+tmpl)
@@ -126,20 +134,22 @@ func runHeadlessRoundTrip(t *testing.T, soffice, baseTmp, templatesDir, exampleP
 		t.Fatalf("mkdir user profile: %v", err)
 	}
 
-	cmd := exec.Command( //nolint:gosec // arguments are test-controlled
-		soffice,
-		"-env:UserInstallation=file://"+userProfile,
+	args := []string{
+		"-env:UserInstallation=file://" + userProfile,
 		"--headless",
 		"--nologo",
 		"--nofirststartwizard",
 		"--convert-to", "pptx",
 		"--outdir", roundTripDir,
 		generated,
-	)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	}
+	stdout, stderr, timedOut, err := runHeadlessCommand(soffice, args, 60*time.Second)
+	if timedOut {
+		*converterTimedOut = true
+		t.Fatalf("soffice round-trip timed out after 60s for %s × %s (source %s, profile %s); aborting remaining corpus cases because LibreOffice may be stalled\nstdout: %s\nstderr: %s",
+			base, tmpl, generated, userProfile, stdout.String(), stderr.String())
+	}
+	if err != nil {
 		t.Fatalf("soffice round-trip failed for %s: %v\nstdout: %s\nstderr: %s",
 			generated, err, stdout.String(), stderr.String())
 	}
@@ -153,6 +163,44 @@ func runHeadlessRoundTrip(t *testing.T, soffice, baseTmp, templatesDir, exampleP
 	if hits := scanRepairWarnings(stdout.Bytes(), stderr.Bytes()); len(hits) > 0 {
 		t.Fatalf("LibreOffice reported repair/corruption warnings for %s × %s:\n  %s\nfull stdout:\n%s\nfull stderr:\n%s",
 			base, tmpl, strings.Join(hits, "\n  "), stdout.String(), stderr.String())
+	}
+}
+
+func runHeadlessCommand(name string, args []string, timeout time.Duration) (stdout, stderr bytes.Buffer, timedOut bool, err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // test-controlled command and arguments
+	configureHeadlessProcess(cmd)
+	cmd.WaitDelay = 5 * time.Second
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	return stdout, stderr, ctx.Err() == context.DeadlineExceeded, err
+}
+
+func TestCorpusHeadlessCommandTimeout(t *testing.T) {
+	if mode := os.Getenv("JSON2PPTX_HEADLESS_TEST_HELPER"); mode != "" {
+		if mode == "sleep" {
+			time.Sleep(5 * time.Second)
+		}
+		return
+	}
+
+	t.Setenv("JSON2PPTX_HEADLESS_TEST_HELPER", "pass")
+	args := []string{"-test.run=^TestCorpusHeadlessCommandTimeout$"}
+	_, _, timedOut, err := runHeadlessCommand(os.Args[0], args, 2*time.Second)
+	if err != nil || timedOut {
+		t.Fatalf("fast helper: timedOut=%v err=%v", timedOut, err)
+	}
+
+	t.Setenv("JSON2PPTX_HEADLESS_TEST_HELPER", "sleep")
+	start := time.Now()
+	_, _, timedOut, err = runHeadlessCommand(os.Args[0], args, 100*time.Millisecond)
+	if !timedOut || err == nil {
+		t.Fatalf("slow helper: timedOut=%v err=%v", timedOut, err)
+	}
+	if elapsed := time.Since(start); elapsed > 3*time.Second {
+		t.Errorf("timed-out helper took %s to exit", elapsed)
 	}
 }
 
