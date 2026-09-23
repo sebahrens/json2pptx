@@ -65,9 +65,9 @@ Each layout receives classification tags based on its placeholder structure and 
 | `compact-title` | A `title-at-bottom` layout whose title slot only fits a short single-line title (visible title `max_chars` < 35). Keep titles terse here — long section titles overflow. Emitted alongside `title-at-bottom`; read per-layout `max_chars` for the exact budget. |
 | `two-column` | 2+ body placeholders side-by-side (X gap > 10%) |
 | `comparison` | Same as two-column (both tags applied together) |
-| `image-left` | Image placeholder left of body |
-| `image-right` | Image placeholder right of body |
-| `full-image` | Large image (>50% slide area), no body |
+| `image-left` | Image placeholder beside text, on the left (body, subtitle, or title) |
+| `image-right` | Image placeholder beside text, on the right (body, subtitle, or title) |
+| `full-image` | Large image with no side-by-side text area |
 | `chart-capable` | Contains chart placeholder |
 | `blank` | No placeholders |
 
@@ -95,7 +95,7 @@ Use the **canonical ID** in `layout_id` — not the display name:
 | Content | `content` | `title`, `body` |
 | Two-column | `two-column` | `title`, `body`, `body_2` |
 | Section divider | `section` | `title`, `body` |
-| Image slide | `image-left`, `image-right` | `title`, `body` |
+| Image slide | `image-left`, `image-right` when available on the chosen template | Inspect that layout's placeholders; some use `title` + `subtitle` + picture, not `body` |
 | Chart slide | `content` | `title`, `body` (charts render as SVG in body) |
 | Closing | `closing` | `title`, `subtitle` |
 | Blank + Title | `blank-title` | `title` only (body goes in `shape_grid`) |
@@ -103,6 +103,8 @@ Use the **canonical ID** in `layout_id` — not the display name:
 | Blank (legacy alias) | `blank` | resolves to `blank-title`; prefer the explicit IDs above |
 
 > **Two blank roles.** Templates ship two distinct blank layouts: a **Blank + Title** title canvas (target with `blank-title`) and a truly empty **Blank** canvas with no placeholders (target with `blank-canvas`). The legacy `blank` ID resolves to **Blank + Title** for backward compatibility (it falls back to the empty Blank only when no Blank + Title exists). Use `blank-title` or `blank-canvas` to pick a role unambiguously.
+
+Canonical names are a vocabulary, not a guarantee that every template has every layout. Check `list_templates.canonical_layout_availability` (available/unavailable names) before pinning an optional alias such as `image-left`, `image-right`, `quote`, or `agenda`; detailed discovery also supplies `canonical_layout_ids`. An unavailable name yields a validation/generation error with available canonical alternatives.
 
 ## Discovering Templates at Runtime
 

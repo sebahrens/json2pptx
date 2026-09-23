@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -242,6 +243,15 @@ func TestListTemplates_FieldsCompact(t *testing.T) {
 		}
 		if tmpl.TitleFont != "" {
 			t.Errorf("template %q: title_font should be omitted in compact mode, got %q", tmpl.Name, tmpl.TitleFont)
+		}
+		if tmpl.CanonicalLayoutAvailability == nil {
+			t.Errorf("template %q: slim discovery omitted canonical availability", tmpl.Name)
+		}
+		if tmpl.Name == "modern" && tmpl.CanonicalLayoutAvailability != nil {
+			if !slices.Contains(tmpl.CanonicalLayoutAvailability.Available, "image-right") ||
+				!slices.Contains(tmpl.CanonicalLayoutAvailability.Unavailable, "agenda") {
+				t.Errorf("modern availability contradicts its layouts: %+v", tmpl.CanonicalLayoutAvailability)
+			}
 		}
 	}
 }

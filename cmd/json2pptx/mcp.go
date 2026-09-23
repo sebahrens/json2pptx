@@ -129,12 +129,12 @@ func listTemplatesToolDescription() string {
 	}
 	return `List available presentation templates with their layouts, theme colors, and capabilities.
 
-Response shape per template (compact/full modes): name, aspect_ratio, layout_count, sha256 (stable content hash), metadata_version, theme_colors (scheme→hex map), color_roles (primary_fill, secondary_fill, body_fill, body_text, white_text_safe), title_font, body_font, semantic_accents (positive/negative/neutral→accent), surface_tints, data_palette, accent_usage_guide (when authored), canonical_layout_ids (canonical name→layout ID), canonical_coverage (per content-bearing family: present + covering layouts), derivable_layouts ([{name, ready, missing}]), layout_names, layout_summaries ([{id, name, canonical_type, placeholders[{id, type, role, max_chars}]}]), table_styles [{id,name}]. Full mode adds layouts with per-layout canonical_type/canonical_family/canonical_confidence and placeholders carrying role, role_confidence, font_size_pt (font-aware max_chars evidence), exact bounds, and capacity.
+Every projection includes canonical_layout_availability: {available:[canonical names], unavailable:[canonical names]} for the selected template. A valid canonical name is not necessarily available on every template. The detailed compact/full modes additionally include canonical_layout_ids (only available names → concrete layout ID), plus name, aspect_ratio, layout_count, sha256 (stable content hash), metadata_version, theme_colors (scheme→hex map), color_roles (primary_fill, secondary_fill, body_fill, body_text, white_text_safe), title_font, body_font, semantic_accents (positive/negative/neutral→accent), surface_tints, data_palette, accent_usage_guide (when authored), canonical_coverage (per content-bearing family: present + covering layouts), derivable_layouts ([{name, ready, missing}]), layout_names, layout_summaries ([{id, name, canonical_type, placeholders[{id, type, role, max_chars}]}]), table_styles [{id,name}]. Full mode adds layouts with per-layout canonical_type/canonical_family/canonical_confidence, placeholder roles, font size and exact bounds.
 Response also includes supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities) ONLY with fields="full" — it is static per-server data that dwarfed the per-template payload, so the default compact projection omits it. ` + hints + `
 
 Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. The response always includes total_count and page_size; next_cursor is present only when more templates remain.
 
-Projection (token-economy): compact is the DEFAULT — names + aspect_ratio + layout_count + table_styles, with no per-template theme_colors / color_roles / layouts and no supported_types. That is ~2.7 KB against ~108 KB for fields="full", which restores the whole payload. Calling with no fields argument used to return the full payload and then advise you to ask for compact (go-slide-creator-dykl).
+Projection (token-economy): compact is the DEFAULT — names + aspect_ratio + layout_count + table_styles + canonical availability, with no per-template theme_colors / color_roles / layouts and no supported_types. Use fields="full" for concrete canonical_layout_ids and the whole layout payload.
 
 Filtering: pass filter="<substring>" to limit the response to templates whose name contains the substring (case-insensitive). Composes with pagination — filter applies before cursor/page_size.`
 }
@@ -157,7 +157,7 @@ func mcpListTemplatesTool() mcp.Tool {
 			mcp.Enum("list", "compact", "full"),
 		),
 		mcp.WithString("fields",
-			mcp.Description("Field projection: compact (slim — name, aspect_ratio, layout_count, table_styles) or full (current full payload). When omitted, behavior matches mode (or full when neither is set) and a deprecation hint is returned in warnings[]."),
+			mcp.Description("Field projection: compact (slim — name, aspect_ratio, layout_count, table_styles, canonical_layout_availability) or full (including canonical_layout_ids and layout detail). When omitted, behavior matches mode (or full when neither is set) and a deprecation hint is returned in warnings[]."),
 			mcp.Enum(listFieldsCompact, listFieldsFull),
 		),
 		mcp.WithString("filter",

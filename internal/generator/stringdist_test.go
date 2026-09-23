@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -161,6 +163,42 @@ func TestLayoutNotFoundError(t *testing.T) {
 	msg := LayoutNotFoundError("somethingCompletelyDifferent", []string{"slideLayout1"})
 	if strings.Contains(msg, "did you mean") {
 		t.Errorf("should not suggest match for very different string: %q", msg)
+	}
+}
+
+func TestCanonicalLayoutNotFoundError(t *testing.T) {
+	msg := CanonicalLayoutNotFoundError("image-left", []string{"title", "image-right", "content"})
+	for _, want := range []string{`layout_id "image-left"`, "canonical_layout_ids", `did_you_mean: "image-right"`} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("canonical error %q missing %q", msg, want)
+		}
+	}
+	if strings.Contains(msg, "slideLayout") {
+		t.Errorf("canonical error exposed raw template IDs: %q", msg)
+	}
+	if got := SuggestedCanonicalLayout("agenda", []string{"content", "title"}); got != "content" {
+		t.Errorf("agenda suggestion = %q, want content", got)
+	}
+}
+
+func TestGenerateUnavailableCanonicalLayoutUsesCanonicalError(t *testing.T) {
+	_, err := Generate(context.Background(), GenerationRequest{
+		TemplatePath:          "../../templates/modern.pptx",
+		OutputPath:            filepath.Join(t.TempDir(), "unavailable.pptx"),
+		ExcludeTemplateSlides: true,
+		Slides:                []SlideSpec{{LayoutID: "image-left"}},
+	})
+	if err == nil {
+		t.Fatal("modern has image-right, not image-left")
+	}
+	msg := err.Error()
+	for _, want := range []string{"canonical_layout_ids", `did_you_mean: "image-right"`} {
+		if !strings.Contains(msg, want) {
+			t.Errorf("generation error %q missing %q", msg, want)
+		}
+	}
+	if strings.Contains(msg, "available layouts: [slideLayout") {
+		t.Errorf("generation error exposed raw IDs: %q", msg)
 	}
 }
 

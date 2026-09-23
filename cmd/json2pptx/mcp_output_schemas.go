@@ -99,7 +99,13 @@ var outputSchemaListTemplates = json.RawMessage(`{
   "type": "object",
   "properties": {
     "tool":            {"type": "object", "properties": {"name": {"type": "string"}, "version": {"type": "string"}}},
-    "templates":       {"type": "array", "items": {"type": "object"}},
+    "templates":       {"type": "array", "items": {"type": "object", "properties": {
+      "canonical_layout_availability": {"type": "object", "description": "Template-specific canonical aliases in every projection; unavailable names must not be pinned as layout_id.", "properties": {
+        "available": {"type": "array", "items": {"type": "string"}},
+        "unavailable": {"type": "array", "items": {"type": "string"}}
+      }, "required": ["available", "unavailable"]},
+      "canonical_layout_ids": {"type": "object", "description": "Available canonical alias to concrete layout ID in detailed projections."}
+    }}},
     "supported_types": {"type": "object"},
     "input_formats":   {"type": "array", "items": {"type": "string"}},
     "output_formats":  {"type": "array", "items": {"type": "string"}},

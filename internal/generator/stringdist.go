@@ -116,6 +116,42 @@ func LayoutNotFoundError(layoutID string, availableLayouts []string) string {
 	return msg
 }
 
+// SuggestedCanonicalLayout returns an available canonical alternative when
+// one has a sensible meaning for the requested layout, then tries a close
+// spelling match. It never suggests opaque slideLayoutN IDs.
+func SuggestedCanonicalLayout(name string, available []string) string {
+	available = append([]string(nil), available...)
+	sort.Strings(available)
+	preferred := map[string]string{
+		"image-left":  "image-right",
+		"image-right": "image-left",
+		"agenda":      "content",
+	}
+	want := preferred[strings.ToLower(strings.TrimSpace(name))]
+	for _, candidate := range available {
+		if candidate == want {
+			return candidate
+		}
+	}
+	match, _ := ClosestMatch(name, available, 3)
+	return match
+}
+
+// CanonicalLayoutNotFoundError names the template's actually resolvable
+// canonical aliases. Raw slideLayoutN IDs are intentionally omitted: authors
+// using a canonical name should be given the same vocabulary list_templates
+// exposes, not implementation IDs that change between templates.
+func CanonicalLayoutNotFoundError(name string, available []string) string {
+	msg := fmt.Sprintf("layout_id %q is not available in this template; see list_templates.canonical_layout_availability (or canonical_layout_ids in detailed output)", name)
+	if len(available) > 0 {
+		msg += fmt.Sprintf("; available canonical_layout_ids: %s", FormatAvailableIDs(available))
+		if suggestion := SuggestedCanonicalLayout(name, available); suggestion != "" {
+			msg += fmt.Sprintf("; did_you_mean: %q", suggestion)
+		}
+	}
+	return msg
+}
+
 // PlaceholderNotFoundError builds a descriptive error message when a placeholder_id is not found.
 // It lists available placeholders in the layout and suggests the closest match if within distance 3.
 func PlaceholderNotFoundError(placeholderID string, layoutID string, availablePlaceholders []string) string {

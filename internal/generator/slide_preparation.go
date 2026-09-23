@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -185,6 +186,14 @@ func (ctx *singlePassContext) readLayoutFile(layoutID string) ([]byte, error) {
 	}
 	layoutData, err := utils.ReadFileFromZipIndex(ctx.templateIndex, layoutPath)
 	if err != nil {
+		if layout.IsCanonicalName(layoutID) && ctx.profile != nil {
+			canonical := layout.ResolveAllCanonicalLayouts(ctx.profile.Layouts)
+			available := make([]string, 0, len(canonical))
+			for name := range canonical {
+				available = append(available, name)
+			}
+			return nil, fmt.Errorf("%s", CanonicalLayoutNotFoundError(layoutID, available))
+		}
 		available := ctx.availableLayoutIDs()
 		return nil, fmt.Errorf("%s", LayoutNotFoundError(layoutID, available))
 	}

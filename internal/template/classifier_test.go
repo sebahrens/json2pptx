@@ -99,6 +99,27 @@ func TestClassifyLayout(t *testing.T) {
 			wantTags: []string{"content", "image-right"},
 		},
 		{
+			name: "image-right - title and subtitle beside picture without body",
+			layout: types.LayoutMetadata{
+				Placeholders: []types.PlaceholderInfo{
+					{Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 1117600, Y: 762000, Width: 5066250, Height: 2900680}},
+					{Type: types.PlaceholderSubtitle, Bounds: types.BoundingBox{X: 1117600, Y: 4145280, Width: 5066250, Height: 690880}},
+					{Type: types.PlaceholderImage, Bounds: types.BoundingBox{X: 6086167, Y: 0, Width: 6080760, Height: 6902450}},
+				},
+			},
+			wantTags: []string{"image-right"},
+		},
+		{
+			name: "picture below title is not side-by-side",
+			layout: types.LayoutMetadata{
+				Placeholders: []types.PlaceholderInfo{
+					{Type: types.PlaceholderTitle, Bounds: types.BoundingBox{X: 0, Y: 0, Width: 4000000, Height: 800000}},
+					{Type: types.PlaceholderImage, Bounds: types.BoundingBox{X: 4200000, Y: 1500000, Width: 5000000, Height: 4000000}},
+				},
+			},
+			wantTags: []string{"full-image"},
+		},
+		{
 			name: "full-image - large image with minimal text",
 			layout: types.LayoutMetadata{
 				Placeholders: []types.PlaceholderInfo{
@@ -506,59 +527,6 @@ func TestAreSideBySide(t *testing.T) {
 			got := areSideBySide(tt.placeholders, tt.type1, tt.type2)
 			if got != tt.want {
 				t.Errorf("areSideBySide() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestHasImageOnLeft(t *testing.T) {
-	tests := []struct {
-		name         string
-		placeholders []types.PlaceholderInfo
-		want         bool
-	}{
-		{
-			name: "image on left",
-			placeholders: []types.PlaceholderInfo{
-				{Type: types.PlaceholderImage, Bounds: types.BoundingBox{X: 0, Y: 1500000, Width: 3800000, Height: 4000000}},
-				{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 4200000, Y: 1500000, Width: 3800000, Height: 4000000}},
-			},
-			want: true,
-		},
-		{
-			name: "image on right",
-			placeholders: []types.PlaceholderInfo{
-				{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 0, Y: 1500000, Width: 3800000, Height: 4000000}},
-				{Type: types.PlaceholderImage, Bounds: types.BoundingBox{X: 4200000, Y: 1500000, Width: 3800000, Height: 4000000}},
-			},
-			want: false,
-		},
-		{
-			name: "no image placeholder",
-			placeholders: []types.PlaceholderInfo{
-				{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 0, Y: 1500000, Width: 8000000, Height: 4000000}},
-			},
-			want: false,
-		},
-		{
-			name: "no body placeholder",
-			placeholders: []types.PlaceholderInfo{
-				{Type: types.PlaceholderImage, Bounds: types.BoundingBox{X: 0, Y: 1500000, Width: 8000000, Height: 4000000}},
-			},
-			want: false,
-		},
-		{
-			name:         "empty placeholders",
-			placeholders: []types.PlaceholderInfo{},
-			want:         false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := hasImageOnLeft(tt.placeholders)
-			if got != tt.want {
-				t.Errorf("hasImageOnLeft() = %v, want %v", got, tt.want)
 			}
 		})
 	}

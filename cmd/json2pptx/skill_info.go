@@ -267,6 +267,11 @@ type skillTemplateInfo struct {
 	// (preferred_for, max_bullets, max_chars, deprecated). Omitted when unset.
 	LayoutHints        map[string]types.LayoutHint `json:"layout_hints,omitempty"`
 	CanonicalLayoutIDs map[string]string           `json:"canonical_layout_ids,omitempty"` // canonical name → concrete layout ID
+	// Availability is a lightweight decision surface present even in the slim
+	// list_templates projection. CanonicalLayoutIDs provides concrete bindings
+	// in detailed projections; absence from that map must not be mistaken for
+	// a valid alias on every template.
+	CanonicalLayoutAvailability *skillCanonicalLayoutAvailability `json:"canonical_layout_availability,omitempty"`
 	// CanonicalCoverage reports, per content-bearing canonical family
 	// (title-slide, section-divider, one-content, qa-closing), whether the
 	// template provides a layout and which layouts cover it. Present in
@@ -280,6 +285,23 @@ type skillTemplateInfo struct {
 	LayoutSummaries  []skillLayoutSummary   `json:"layout_summaries,omitempty"` // compact+full: id+name+placeholders
 	TableStyles      []skillTableStyle      `json:"table_styles"`
 	Layouts          []skillLayoutInfo      `json:"layouts,omitempty"` // only in full mode
+}
+
+type skillCanonicalLayoutAvailability struct {
+	Available   []string `json:"available"`
+	Unavailable []string `json:"unavailable"`
+}
+
+func canonicalLayoutAvailability(ids map[string]string) *skillCanonicalLayoutAvailability {
+	availability := &skillCanonicalLayoutAvailability{Available: []string{}, Unavailable: []string{}}
+	for _, name := range layout.CanonicalNames() {
+		if _, ok := ids[name]; ok {
+			availability.Available = append(availability.Available, name)
+		} else {
+			availability.Unavailable = append(availability.Unavailable, name)
+		}
+	}
+	return availability
 }
 
 // skillCanonicalCoverage reports whether a canonical layout family is present in
@@ -548,6 +570,8 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 		SlideWidthIn:  emuToInches(analysis.SlideWidth),
 		SlideHeightIn: emuToInches(analysis.SlideHeight),
 	}
+	canonicalIDs := layout.ResolveAllCanonicalLayouts(analysis.Layouts)
+	info.CanonicalLayoutAvailability = canonicalLayoutAvailability(canonicalIDs)
 
 	// Always include table_styles (empty array, never null).
 	reader, err := template.OpenTemplate(templatePath)
@@ -650,7 +674,7 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 		}
 		layoutSummaries[i] = summary
 	}
-	info.CanonicalLayoutIDs = layout.ResolveAllCanonicalLayouts(analysis.Layouts)
+	info.CanonicalLayoutIDs = canonicalIDs
 	info.LayoutNames = layoutNames
 	info.LayoutSummaries = layoutSummaries
 

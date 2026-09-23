@@ -348,6 +348,36 @@ func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
 	})
 }
 
+func TestValidateSlidesAgainstTemplate_UnavailableCanonicalLayout(t *testing.T) {
+	analysis := &types.TemplateAnalysis{Layouts: []types.LayoutMetadata{
+		{ID: "slideLayout1", Name: "Title Slide", Tags: []string{"title-slide"}},
+		{ID: "slideLayout2", Name: "Title + subtitle + picture", Tags: []string{"image-right"}},
+		{ID: "slideLayout3", Name: "One Content", Tags: []string{"content"}},
+	}}
+	output := dryRunOutput{Valid: true}
+	validateSlidesAgainstTemplate(&output, []SlideInput{{LayoutID: "image-left"}}, analysis)
+	if output.Valid {
+		t.Fatal("image-left should be unavailable on this template")
+	}
+	ve := findDiagByCode(output.Diagnostics, patterns.ErrCodeUnknownLayoutID)
+	if ve == nil || ve.Fix == nil {
+		t.Fatalf("missing structured alias error: %+v", output.Diagnostics)
+	}
+	if !strings.Contains(ve.Message, "canonical_layout_ids") || strings.Contains(ve.Message, "slideLayout") {
+		t.Errorf("error should name canonical options without raw IDs: %q", ve.Message)
+	}
+	if ve.Fix.Params["did_you_mean"] != "image-right" || ve.Fix.Params["value"] != "image-right" || ve.Fix.Params["path"] != "layout_id" {
+		t.Errorf("fix cannot be applied by repair_slide: %+v", ve.Fix.Params)
+	}
+
+	output = dryRunOutput{Valid: true}
+	validateSlidesAgainstTemplate(&output, []SlideInput{{LayoutID: "quote"}}, analysis)
+	ve = findDiagByCode(output.Diagnostics, patterns.ErrCodeUnknownLayoutID)
+	if ve == nil || ve.Fix != nil {
+		t.Errorf("quote has no safe alternative; expected error without repair call, got %+v", ve)
+	}
+}
+
 func TestValidateTableStyleID(t *testing.T) {
 	knownGUID := "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}"
 	analysis := &types.TemplateAnalysis{

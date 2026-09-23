@@ -493,17 +493,35 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 		} else if !layoutFound {
 			output.Valid = false
 			path := slidepath.SlideField(i, "layout_id")
-			available := make([]string, 0, len(layoutByID))
-			for id := range layoutByID {
-				available = append(available, id)
-			}
-			msg := fmt.Sprintf("slide %d: %s", i+1, generator.LayoutNotFoundError(slideInput.LayoutID, available))
-			fix := &patterns.FixSuggestion{
-				Kind:   "use_one_of",
-				Params: map[string]any{"available": generator.FormatAvailableIDs(available)},
-			}
-			if match, _ := generator.ClosestMatch(slideInput.LayoutID, available, 3); match != "" {
-				fix.Params["did_you_mean"] = match
+			var msg string
+			fix := &patterns.FixSuggestion{Kind: "use_one_of", Params: map[string]any{"path": "layout_id"}}
+			if layout.IsCanonicalName(slideInput.LayoutID) {
+				availableMap := layout.ResolveAllCanonicalLayouts(analysis.Layouts)
+				available := make([]string, 0, len(availableMap))
+				for name := range availableMap {
+					available = append(available, name)
+				}
+				sort.Strings(available)
+				msg = fmt.Sprintf("slide %d: %s", i+1, generator.CanonicalLayoutNotFoundError(slideInput.LayoutID, available))
+				fix.Params["available"] = available
+				if suggestion := generator.SuggestedCanonicalLayout(slideInput.LayoutID, available); suggestion != "" {
+					fix.Params["did_you_mean"] = suggestion
+					fix.Params["value"] = suggestion
+				} else {
+					// No safe concrete target: the message still lists options, but
+					// repair_slide.use_one_of would reject a missing value.
+					fix = nil
+				}
+			} else {
+				available := make([]string, 0, len(layoutByID))
+				for id := range layoutByID {
+					available = append(available, id)
+				}
+				msg = fmt.Sprintf("slide %d: %s", i+1, generator.LayoutNotFoundError(slideInput.LayoutID, available))
+				fix.Params["available"] = generator.FormatAvailableIDs(available)
+				if match, _ := generator.ClosestMatch(slideInput.LayoutID, available, 3); match != "" {
+					fix.Params["did_you_mean"] = match
+				}
 			}
 			ve := &patterns.ValidationError{
 				Path:    path,

@@ -214,9 +214,13 @@ func ClassifyLayout(layout *types.LayoutMetadata) { //nolint:gocyclo
 		tags = append(tags, "two-column", "comparison")
 	}
 
-	// Image-left or Image-right: Image placeholder with content
-	if counts.image > 0 && counts.body > 0 {
-		if hasImageOnLeft(layout.Placeholders) {
+	// Image-left or Image-right: a picture beside a body, subtitle, or
+	// title. Some real image/text layouts have no body placeholder (modern's
+	// title + subtitle + picture); require horizontal separation so a
+	// full-bleed picture with text overlaid on it is not misclassified.
+	imageOnLeft, imageBesideText := imageBesideText(layout.Placeholders)
+	if imageBesideText {
+		if imageOnLeft {
 			tags = append(tags, "image-left")
 		} else {
 			tags = append(tags, "image-right")
@@ -224,7 +228,7 @@ func ClassifyLayout(layout *types.LayoutMetadata) { //nolint:gocyclo
 	}
 
 	// Full-image: Large image placeholder, minimal text
-	if counts.image > 0 && counts.body == 0 && hasLargeImage(layout.Placeholders) {
+	if counts.image > 0 && counts.body == 0 && !imageBesideText && hasLargeImage(layout.Placeholders) {
 		tags = append(tags, "full-image")
 	}
 
@@ -266,6 +270,35 @@ func ClassifyLayout(layout *types.LayoutMetadata) { //nolint:gocyclo
 	}
 
 	layout.Tags = tags
+}
+
+// imageBesideText reports whether an image occupies a horizontal region beside
+// a text placeholder, and whether it is on the left. Body/content takes
+// priority; subtitle and title support layouts without a separate body slot.
+func imageBesideText(placeholders []types.PlaceholderInfo) (left, found bool) {
+	const overlapTolerance int64 = 180000 // ~0.2in: template geometry may touch slightly
+	for _, image := range placeholders {
+		if image.Type != types.PlaceholderImage || image.Bounds.Width <= 0 {
+			continue
+		}
+		for _, typ := range []types.PlaceholderType{types.PlaceholderBody, types.PlaceholderContent, types.PlaceholderSubtitle, types.PlaceholderTitle} {
+			for _, text := range placeholders {
+				if text.Type != typ || text.Bounds.Width <= 0 || text.Bounds.Height <= 0 || text.Bounds.Y < 0 {
+					continue
+				}
+				if image.Bounds.Y+image.Bounds.Height <= text.Bounds.Y || text.Bounds.Y+text.Bounds.Height <= image.Bounds.Y {
+					continue
+				}
+				if image.Bounds.X+image.Bounds.Width <= text.Bounds.X+overlapTolerance {
+					return true, true
+				}
+				if text.Bounds.X+text.Bounds.Width <= image.Bounds.X+overlapTolerance {
+					return false, true
+				}
+			}
+		}
+	}
+	return false, false
 }
 
 // layoutClassification defines a rule for inferring a semantic tag from layout name keywords.
@@ -427,33 +460,6 @@ func areSideBySide(placeholders []types.PlaceholderInfo, type1, type2 types.Plac
 	xDiff := math.Abs(float64(ph1.Bounds.X - ph2.Bounds.X))
 
 	return yDiff < emuYTolerance && xDiff > emuXMinSeparation
-}
-
-// hasImageOnLeft checks if any image placeholder is positioned on the left side.
-func hasImageOnLeft(placeholders []types.PlaceholderInfo) bool {
-	var imageX int64 = math.MaxInt64
-	var bodyX int64 = math.MaxInt64
-	foundImage := false
-	foundBody := false
-
-	for _, ph := range placeholders {
-		if ph.Type == types.PlaceholderImage && ph.Bounds.X < imageX {
-			imageX = ph.Bounds.X
-			foundImage = true
-		}
-		if (ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent) && ph.Bounds.X < bodyX {
-			bodyX = ph.Bounds.X
-			foundBody = true
-		}
-	}
-
-	// Need both image and body to determine position
-	if !foundImage || !foundBody {
-		return false
-	}
-
-	// Image is on left if its X position is less than body X position
-	return imageX < bodyX
 }
 
 // ClassifyCanonicalRole maps a layout to its canonical role (per

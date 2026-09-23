@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 	"time"
@@ -920,4 +921,35 @@ func TestApplyConceptSearch(t *testing.T) {
 			t.Errorf("unfiltered call should pass through unchanged, got %+v %q %+v %v", flat, via, matches, vocab)
 		}
 	})
+}
+
+func TestTemplateInfoCanonicalLayoutAvailability(t *testing.T) {
+	cache := template.NewMemoryCache(time.Hour)
+	for _, mode := range []string{"list", "compact"} {
+		t.Run(mode, func(t *testing.T) {
+			info, err := analyzeTemplateForSkillInfoOpts("../../templates/modern.pptx", cache, mode, skillInfoOptions{NoPreview: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.CanonicalLayoutAvailability == nil {
+				t.Fatal("list_templates must expose canonical availability even in its slim projection")
+			}
+			available := info.CanonicalLayoutAvailability.Available
+			unavailable := info.CanonicalLayoutAvailability.Unavailable
+			if !slices.Contains(available, "image-right") {
+				t.Errorf("modern's picture beside subtitle should resolve image-right: %v", available)
+			}
+			for _, name := range []string{"image-left", "agenda", "quote"} {
+				if !slices.Contains(unavailable, name) {
+					t.Errorf("%s incorrectly advertised as available: %v", name, unavailable)
+				}
+			}
+			if mode == "compact" && info.CanonicalLayoutIDs["image-right"] != "slideLayout2" {
+				t.Errorf("image-right binding = %q, want slideLayout2", info.CanonicalLayoutIDs["image-right"])
+			}
+			if mode == "list" && len(info.CanonicalLayoutIDs) != 0 {
+				t.Errorf("slim projection should not carry concrete bindings: %v", info.CanonicalLayoutIDs)
+			}
+		})
+	}
 }
