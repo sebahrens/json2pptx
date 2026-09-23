@@ -521,6 +521,9 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				fix.Params["available"] = generator.FormatAvailableIDs(available)
 				if match, _ := generator.ClosestMatch(slideInput.LayoutID, available, 3); match != "" {
 					fix.Params["did_you_mean"] = match
+					fix.Params["value"] = match
+				} else {
+					fix = nil
 				}
 			}
 			ve := &patterns.ValidationError{

@@ -312,6 +312,16 @@ func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
 		if !ok || dym != "content-slide" {
 			t.Errorf("expected did_you_mean='content-slide', got %v", ve.Fix.Params["did_you_mean"])
 		}
+		repairInput := &PresentationInput{Slides: slides}
+		result := applyUseOneOf(repairInput, 0, ve.Fix.Params)
+		if !result.Applied || repairInput.Slides[0].LayoutID != "content-slide" {
+			t.Fatalf("suggested repair did not select content-slide: result=%+v input=%+v", result, repairInput.Slides[0])
+		}
+		repaired := dryRunOutput{Valid: true, Slides: []dryRunSlide{}}
+		validateSlidesAgainstTemplate(&repaired, repairInput.Slides, analysis)
+		if !repaired.Valid {
+			t.Errorf("suggested repair did not pass validation: %+v", repaired.Diagnostics)
+		}
 	})
 
 	t.Run("completely wrong layout_id is error without did_you_mean", func(t *testing.T) {
@@ -326,11 +336,8 @@ func TestValidateSlidesAgainstTemplate_UnknownLayoutID(t *testing.T) {
 		if ve == nil {
 			t.Fatal("expected a diagnostic for unknown layout_id")
 		}
-		if ve.Fix == nil {
-			t.Fatal("expected fix suggestion")
-		}
-		if _, ok := ve.Fix.Params["did_you_mean"]; ok {
-			t.Error("did not expect did_you_mean for completely wrong layout_id")
+		if ve.Fix != nil {
+			t.Errorf("no close match must not offer a non-executable repair call: %+v", ve.Fix)
 		}
 	})
 
