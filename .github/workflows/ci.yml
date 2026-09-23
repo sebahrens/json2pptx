@@ -229,12 +229,15 @@ jobs:
           go-version-file: go.mod
 
       - name: Install govulncheck
-        # v1.8.0 requires Go 1.26; keep this aligned with go.mod (Go 1.25).
+        # v1.8.0 requires Go 1.26; keep this aligned with the patched Go 1.25 baseline.
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
 
-      - name: Run govulncheck
-        run: govulncheck ./... || echo "::warning::govulncheck found vulnerabilities (see above)"
-        continue-on-error: true
+      - name: Scan root module
+        run: govulncheck ./...
+
+      - name: Scan svggen module
+        working-directory: svggen
+        run: govulncheck ./...
 
   palette-parity:
     runs-on: ubuntu-latest

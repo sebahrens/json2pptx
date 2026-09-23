@@ -1,13 +1,13 @@
 module github.com/sebahrens/json2pptx
 
-go 1.25.0
+go 1.25.14
 
 require (
-	github.com/sebahrens/json2pptx/svggen v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.45.0
+	github.com/sebahrens/json2pptx/svggen v0.0.0
 	github.com/tdewolff/canvas v0.0.0-20260109131636-69e1540379c6
-	golang.org/x/image v0.38.0
+	golang.org/x/image v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -24,7 +24,7 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/benoitkugler/textlayout v0.3.1 // indirect
 	github.com/benoitkugler/textprocessing v0.0.3 // indirect
-	github.com/buger/jsonparser v1.1.1 // indirect
+	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/go-fonts/latin-modern v0.3.3 // indirect
 	github.com/go-text/typesetting v0.3.0 // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 // indirect
@@ -38,9 +38,10 @@ require (
 	github.com/tdewolff/parse/v2 v2.8.4 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
-	github.com/yuin/goldmark v1.7.13 // indirect
-	golang.org/x/net v0.46.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	github.com/yuin/goldmark v1.7.17 // indirect
+	golang.org/x/net v0.56.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 	modernc.org/knuth v0.5.5 // indirect
 	modernc.org/token v1.1.0 // indirect
 	star-tex.org/x/tex v0.7.1 // indirect

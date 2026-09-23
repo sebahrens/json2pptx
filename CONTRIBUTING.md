@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Go Slide Creator! This document p
 
 ### Prerequisites
 
-- Go 1.25 or later
+- Go 1.25.14 or later
 - Go toolchain (`make lint` installs the pinned golangci-lint itself, into `bin/`)
 - librsvg or resvg (for SVG-to-PNG chart conversion)
 

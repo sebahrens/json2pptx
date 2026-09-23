@@ -142,7 +142,7 @@ json2pptx ships several install paths. Pick one by what you have and your platfo
 
 ### Prerequisites
 
-- **Go 1.25+** -- [download](https://go.dev/dl/)
+- **Go 1.25.14+** -- [download](https://go.dev/dl/)
 - **Git** -- for cloning and version info
 - **Make** -- build automation (see platform notes below)
 - **librsvg** or **resvg** -- for SVG-to-PNG chart/diagram rendering (optional but recommended)
@@ -880,7 +880,7 @@ JSON Input + Template PPTX
 
 ### Prerequisites
 
-- Go 1.25 or later
+- Go 1.25.14 or later
 - golangci-lint (for linting)
 - librsvg or resvg (for SVG-to-PNG conversion)
 

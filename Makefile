@@ -358,10 +358,16 @@ lint: $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run ./...
 	cd svggen && $(GOLANGCI_LINT) run ./...
 
+# Scan with the declared minimum toolchain, not a newer host Go whose stdlib
+# could hide vulnerabilities affecting released binaries. Match CI's scanner.
+GO_BASELINE := $(shell awk '$$1 == "go" { print $$2; exit }' go.mod)
+GO_SECURITY_TOOLCHAIN := go$(GO_BASELINE)
+GOVULNCHECK_VERSION := v1.7.0
+
 vulncheck:
-	@command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
-	govulncheck ./...
-	cd svggen && govulncheck ./...
+	@test "$$(awk '$$1 == "go" { print $$2; exit }' svggen/go.mod)" = "$(GO_BASELINE)" || { echo "root and svggen Go baselines differ"; exit 1; }
+	GOTOOLCHAIN=$(GO_SECURITY_TOOLCHAIN) go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+	cd svggen && GOTOOLCHAIN=$(GO_SECURITY_TOOLCHAIN) go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 security: vulncheck lint
 

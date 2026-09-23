@@ -106,7 +106,7 @@ specs/               # Design specifications
 
 ## Dependencies
 
-- Go 1.25+
+- Go 1.25.14+
 - librsvg or resvg (for SVG-to-PNG conversion)
 - Optional: Inkscape (for EMF conversion)
 
