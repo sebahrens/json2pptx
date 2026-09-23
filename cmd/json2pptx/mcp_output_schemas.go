@@ -2506,6 +2506,7 @@ var outputSchemaListDeckArchetypes = json.RawMessage(`{
 var outputSchemaListSlideKinds = json.RawMessage(`{
   "type": "object",
   "properties": {
+    "takeaway_budget": {"type": "object", "description": "Measured fit contract for the universal takeaway chrome band; width depends on the template.", "properties": {"font_pt": {"type": "number"}, "max_lines": {"type": "integer"}, "note": {"type": "string"}}, "required": ["font_pt", "max_lines", "note"]},
     "slide_kinds": {
       "type": "array",
       "items": {
@@ -2524,7 +2525,7 @@ var outputSchemaListSlideKinds = json.RawMessage(`{
       }
     }
   },
-  "required": ["slide_kinds"]
+  "required": ["slide_kinds", "takeaway_budget"]
 }`)
 
 // --- purge_render_cache ---

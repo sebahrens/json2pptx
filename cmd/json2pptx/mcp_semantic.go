@@ -749,7 +749,7 @@ type slideKindComposition struct {
 
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
-		mcp.WithDescription(`List the slide kinds the semantic compiler recognizes for DeckSpec.slides[].kind. Returns {slide_kinds:[{kind, summary, required_fields, required_aliases, typical_fields, item_schema, example, compositions}]}: the kind selects a slide's semantic payload shape, required_fields are the payload keys the kind needs to compile, required_aliases maps a required field to interchangeable alias keys (required-one-of — e.g. kpi_snapshot accepts "metrics" in place of "kpis"), typical_fields are common optional keys, item_schema is the closed JSON Schema for one slide of the kind (every field the compiler reads, list-entry and chart shapes included; additionalProperties:false), example is a minimal copy-ready slide that validates clean, and compositions lists the values this kind's optional "pattern" / "layout" override accepts (anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE). Call this when authoring a NEW deck spec to choose each slide's kind and learn which fields it expects. The full enum is also embedded in `+"`json2pptx semantic schema`"+`.`),
+		mcp.WithDescription(`List the slide kinds the semantic compiler recognizes for DeckSpec.slides[].kind. Returns {slide_kinds:[{kind, summary, required_fields, required_aliases, typical_fields, item_schema, example, compositions}], takeaway_budget:{font_pt,max_lines,note}}: the kind selects a slide's semantic payload shape, required_fields are the payload keys the kind needs to compile, required_aliases maps a required field to interchangeable alias keys (required-one-of — e.g. kpi_snapshot accepts "metrics" in place of "kpis"), typical_fields are common optional keys, item_schema is the closed JSON Schema for one slide of the kind (every field the compiler reads, list-entry and chart shapes included; additionalProperties:false), example is a minimal copy-ready slide that validates clean, and compositions lists the values this kind's optional "pattern" / "layout" override accepts (anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE). Takeaways fit one 14pt line in a template-sized band; no universal character limit. Call this when authoring a new deck spec.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListSlideKinds)),
 	)
 }
@@ -788,7 +788,13 @@ func handleListSlideKinds(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Call
 			Compositions:    slideKindCompositions(k),
 		})
 	}
-	mcpResult, err := api.MCPSuccessResult(ctx, map[string]any{"slide_kinds": out})
+	mcpResult, err := api.MCPSuccessResult(ctx, map[string]any{
+		"slide_kinds": out,
+		"takeaway_budget": map[string]any{
+			"font_pt": 14, "max_lines": 1,
+			"note": "Keep takeaway (or chart insight) to one 14pt line in the template's chrome band. Width varies by template; validate_deck_spec reports BODY_TOO_LONG at slides[i].takeaway when measured text wraps.",
+		},
+	})
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal list_slide_kinds response: %v", err)), nil
 	}

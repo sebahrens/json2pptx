@@ -72,6 +72,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// resolved title placeholder and inherited title style.
 	titleFindings, measuredTitles := collectTitleFitFindings(input, layouts)
 	findings = append(findings, titleFindings...)
+	// The injected takeaway is outside shape_grid and placeholder text, so its
+	// fixed chrome band needs an explicit measurement before it can ship.
+	findings = append(findings, collectTakeawayFitFindings(input, layouts, slideWidth, slideHeight)...)
 
 	// 2c. Readability policy: shape_grid text the renderer would shrink below
 	// the viewing_mode floor for its role (TEXT_BELOW_READABLE_MIN).

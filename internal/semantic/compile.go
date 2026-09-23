@@ -17,6 +17,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/semantic/slides"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // CompileOptions tunes the compile pass.
@@ -131,6 +132,11 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 			// back with no semantic_path (go-slide-creator-05wn).
 			if alias := placeholderAliasPath(compiled, l.RawPath, outputIndex); alias != "" {
 				ir.SourceMap.Add(alias, l.SemanticPath, si.SourceIndex)
+			}
+			// Chrome fit findings use JSON Pointer paths, whereas compiler links
+			// use dotted raw paths. Register the takeaway's pointer spelling too.
+			if strings.HasSuffix(l.RawPath, ".takeaway") {
+				ir.SourceMap.Add(slidepath.SlideField(outputIndex, "takeaway"), l.SemanticPath, si.SourceIndex)
 			}
 		}
 		// Universal per-slide fields every kind accepts: speaker notes and a

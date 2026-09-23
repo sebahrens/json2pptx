@@ -267,11 +267,19 @@ func TestSemanticMCP_ListArchetypesAndKinds(t *testing.T) {
 		t.Fatalf("list_slide_kinds returned go error: %v", err)
 	}
 	var kinds struct {
-		SlideKinds []slideKindListEntry `json:"slide_kinds"`
+		SlideKinds     []slideKindListEntry `json:"slide_kinds"`
+		TakeawayBudget struct {
+			FontPt   float64 `json:"font_pt"`
+			MaxLines int     `json:"max_lines"`
+			Note     string  `json:"note"`
+		} `json:"takeaway_budget"`
 	}
 	structuredInto(t, res2.StructuredContent, &kinds)
 	if len(kinds.SlideKinds) == 0 {
 		t.Fatal("list_slide_kinds returned no kinds")
+	}
+	if kinds.TakeawayBudget.FontPt != 14 || kinds.TakeawayBudget.MaxLines != 1 || !strings.Contains(kinds.TakeawayBudget.Note, "BODY_TOO_LONG") {
+		t.Errorf("list_slide_kinds lacks the measured takeaway budget: %+v", kinds.TakeawayBudget)
 	}
 	var sawKPI bool
 	for _, k := range kinds.SlideKinds {
