@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -736,16 +737,62 @@ func TestEnforceShapeGridContrast_ReturnsSwaps(t *testing.T) {
 }
 
 func TestComputeWhiteTextSafeHex(t *testing.T) {
-	tc := consultingThemeColors()
+	tc := []types.ThemeColor{
+		{Name: "accent1", RGB: "#1B2A4A"},
+		{Name: "accent2", RGB: "#8F8F8F"},
+		{Name: "accent3", RGB: "#CBD1D6"},
+	}
 	safe := computeWhiteTextSafeHex(tc)
 
-	// accent1 (#FD5108, dark orange) should be white-text-safe
-	if !safe["#FD5108"] {
-		t.Error("accent1 (#FD5108) should be in whiteTextSafeHex")
+	if !safe["#1B2A4A"] {
+		t.Error("dark accent1 should be safe for white body text")
 	}
-	// accent6 (#CBD1D6, light gray) should NOT be white-text-safe
+	if safe["#8F8F8F"] {
+		t.Error("3.23:1 accent2 is only safe for large white text")
+	}
 	if safe["#CBD1D6"] {
-		t.Error("accent6 (#CBD1D6) should not be in whiteTextSafeHex (low contrast vs white)")
+		t.Error("light accent3 should not be safe for white text")
+	}
+}
+
+func TestWhiteTextSafeAllowlistDoesNotBypassSmallTextContrast(t *testing.T) {
+	theme := []types.ThemeColor{
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "dk1", RGB: "#000000"},
+		{Name: "accent1", RGB: "#8F8F8F"}, // white is 3.23:1, not 4.5:1
+	}
+	safe := computeWhiteTextSafeHex(theme)
+	if safe["#8F8F8F"] {
+		t.Fatal("3.23:1 accent must not bypass contrast enforcement for body text")
+	}
+	for _, tc := range []struct {
+		name         string
+		runSize      int
+		wantAdjusted bool
+	}{
+		{"12pt_body", 1200, true},
+		{"24pt_display", 2400, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			shape := []byte(fmt.Sprintf(`<p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr>`+
+				`<p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="%d">`+
+				`<a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>Text</a:t></a:r></a:p></p:txBody></p:sp>`, tc.runSize))
+			fixed, swaps := enforceShapeGridContrast([][]byte{shape}, theme, safe, 0)
+			if adjusted := len(swaps) > 0; adjusted != tc.wantAdjusted {
+				t.Errorf("adjusted = %t, want %t; swaps: %+v", adjusted, tc.wantAdjusted, swaps)
+			}
+			colors := textColorsIn(shapeTextBody(fixed[0]), theme)
+			if len(colors) != 1 {
+				t.Fatalf("text colors = %v, want one", colors)
+			}
+			threshold := svggen.WCAGAALarge
+			if tc.wantAdjusted {
+				threshold = svggen.WCAGAANormal
+			}
+			if ratio := svggen.MustParseColor(colors[0]).ContrastWith(svggen.MustParseColor("#8F8F8F")); ratio < threshold {
+				t.Errorf("text contrast %.2f below %.1f", ratio, threshold)
+			}
+		})
 	}
 }
 

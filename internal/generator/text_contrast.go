@@ -234,10 +234,10 @@ func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex str
 // =============================================================================
 
 // computeWhiteTextSafeHex derives a set of uppercase hex color strings
-// (e.g., "#4472C4") for all accent colors that pass WCAG AA Large (3:1) contrast
-// against white. When a shape fill matches one of these colors and the text
-// foreground is white/lt1, the contrast auto-fix is skipped — the template
-// metadata already certifies that pairing as safe.
+// (e.g., "#4472C4") for accents that pass WCAG AA normal-text (4.5:1)
+// contrast against white. This conservative allowlist may bypass the contrast
+// fixer for any run size; accents that only clear the large-text 3:1 bar must
+// go through the run-size-aware ratio check instead.
 func computeWhiteTextSafeHex(themeColors []types.ThemeColor) map[string]bool {
 	white := svggen.MustParseColor("#FFFFFF")
 	accentNames := []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"}
@@ -252,7 +252,7 @@ func computeWhiteTextSafeHex(themeColors []types.ThemeColor) map[string]bool {
 		if err != nil {
 			continue
 		}
-		if c.ContrastWith(white) >= svggen.WCAGAALarge {
+		if c.ContrastWith(white) >= svggen.WCAGAANormal {
 			safe[strings.ToUpper(hex)] = true
 		}
 	}
@@ -807,8 +807,8 @@ func fixSrgbColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex st
 
 // fixSchemeColorsForContrast scans an XML fragment for scheme color references
 // inside solidFill elements. For each scheme color that resolves to a color
-// with insufficient contrast against bgColor, the scheme color reference is
-// replaced with an sRGB color that meets WCAG AA normal (4.5:1).
+// below the caller's text-size threshold, the scheme reference is replaced
+// with a high-contrast sRGB color.
 //
 // The replacement color is computed by the existing EnsureContrast algorithm,
 // which darkens or lightens the resolved color just enough to meet the threshold
@@ -846,11 +846,11 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 			return match
 		}
 
-		// Check contrast ratio — use large text threshold (3:1) since
-		// presentation text is almost always >= 18pt or >= 14pt bold.
+		// Use the same size-dependent threshold as the sRGB path. A 12pt
+		// lt1 caption at 3.2:1 is not readable just because it uses a scheme.
 		ratio := fgColor.ContrastWith(bgColor)
-		if ratio >= svggen.WCAGAALarge {
-			return match // Contrast is adequate (large text threshold: 3:1)
+		if ratio >= threshold {
+			return match
 		}
 
 		// Compute a high-contrast replacement color. For pure-neutral scheme

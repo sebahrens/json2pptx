@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,6 +15,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestAnalyzeTemplateForSkillInfo_FiltersOtherPlaceholders(t *testing.T) {
@@ -237,7 +239,7 @@ func TestBuildPatternEntries_ListMode(t *testing.T) {
 func TestBuildColorRoles_WhiteTextSafe(t *testing.T) {
 	colors := []types.ThemeColor{
 		{Name: "accent1", RGB: "#2E5090"}, // dark blue — passes
-		{Name: "accent2", RGB: "#D4463A"}, // red — passes
+		{Name: "accent2", RGB: "#D4463A"}, // red — passes large, not body
 		{Name: "accent3", RGB: "#E8A838"}, // yellow-orange — fails (too light)
 		{Name: "accent4", RGB: "#43A047"}, // green — passes
 		{Name: "accent5", RGB: "#5C6BC0"}, // indigo — passes
@@ -252,8 +254,8 @@ func TestBuildColorRoles_WhiteTextSafe(t *testing.T) {
 	if roles.PrimaryFill != "accent1" {
 		t.Errorf("PrimaryFill = %q, want accent1", roles.PrimaryFill)
 	}
-	if roles.SecondaryFill != "accent2" {
-		t.Errorf("SecondaryFill = %q, want accent2", roles.SecondaryFill)
+	if roles.SecondaryFill != "accent5" {
+		t.Errorf("SecondaryFill = %q, want accent5 (accent2 only passes the large-text bar)", roles.SecondaryFill)
 	}
 	if roles.BodyFill != "lt2" {
 		t.Errorf("BodyFill = %q, want lt2", roles.BodyFill)
@@ -279,6 +281,9 @@ func TestBuildColorRoles_WhiteTextSafe(t *testing.T) {
 	}
 	if !found {
 		t.Error("accent1 should be in white_text_safe")
+	}
+	if !slices.Contains(roles.WhiteTextSafeLarge, "accent2") || slices.Contains(roles.WhiteTextSafeBody, "accent2") {
+		t.Errorf("accent2 should be large-only: body=%v large=%v", roles.WhiteTextSafeBody, roles.WhiteTextSafeLarge)
 	}
 }
 
@@ -322,6 +327,62 @@ func TestBuildColorRoles_SkipsAccent2WhenUnsafe(t *testing.T) {
 	}
 	if roles.SecondaryFill != "accent3" {
 		t.Errorf("SecondaryFill = %q, want accent3 (accent2 is unsafe)", roles.SecondaryFill)
+	}
+}
+
+func TestBuildColorRolesSeparatesBodyAndLargeWhiteTextSafety(t *testing.T) {
+	roles := buildColorRoles([]types.ThemeColor{
+		{Name: "accent1", RGB: "#8F8F8F"}, // 3.23:1: large only
+		{Name: "accent2", RGB: "#1B2A4A"}, // safe for body
+		{Name: "accent3", RGB: "#EEEEEE"}, // unsafe for both
+		{Name: "accent4", RGB: "#333333"}, // safe for body
+	})
+	if !slices.Contains(roles.WhiteTextSafeLarge, "accent1") || slices.Contains(roles.WhiteTextSafeBody, "accent1") {
+		t.Errorf("3.23:1 accent classed incorrectly: body=%v large=%v", roles.WhiteTextSafeBody, roles.WhiteTextSafeLarge)
+	}
+	if !slices.Equal(roles.WhiteTextSafe, roles.WhiteTextSafeBody) {
+		t.Errorf("legacy white_text_safe must alias body-safe accents: %v vs %v", roles.WhiteTextSafe, roles.WhiteTextSafeBody)
+	}
+	if roles.PrimaryFill != "accent2" || roles.SecondaryFill != "accent4" {
+		t.Errorf("primary/secondary fills = %s/%s, want body-safe accent2/accent4", roles.PrimaryFill, roles.SecondaryFill)
+	}
+}
+
+func TestColorRolesSafetyOnLocalTemplateCorpus(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	white := svggen.MustParseColor("#FFFFFF")
+	for _, path := range testutil.TestTemplatePaths() {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			info, err := analyzeTemplateForSkillInfo(path, cache, "compact")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.ColorRoles == nil {
+				t.Fatal("template has no color_roles")
+			}
+			roles := info.ColorRoles
+			for i := 1; i <= 6; i++ {
+				name := fmt.Sprintf("accent%d", i)
+				hex, ok := info.ThemeColors[name]
+				if !ok {
+					continue
+				}
+				color, err := svggen.ParseColor(hex)
+				if err != nil {
+					t.Fatal(err)
+				}
+				ratio := color.ContrastWith(white)
+				if got, want := slices.Contains(roles.WhiteTextSafeBody, name), ratio >= svggen.WCAGAANormal; got != want {
+					t.Errorf("%s at %.2f: body-safe=%t, want %t", name, ratio, got, want)
+				}
+				if got, want := slices.Contains(roles.WhiteTextSafeLarge, name), ratio >= svggen.WCAGAALarge; got != want {
+					t.Errorf("%s at %.2f: large-safe=%t, want %t", name, ratio, got, want)
+				}
+			}
+			if !slices.Equal(roles.WhiteTextSafe, roles.WhiteTextSafeBody) {
+				t.Error("legacy white_text_safe differs from body-safe list")
+			}
+		})
 	}
 }
 

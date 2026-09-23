@@ -404,6 +404,12 @@ func TestListTemplates_FieldsFullCanonicalMetadata(t *testing.T) {
 	if len(tmpl.DerivableLayouts) == 0 {
 		t.Error("fields=full: derivable_layouts missing")
 	}
+	if tmpl.ColorRoles == nil || tmpl.ColorRoles.WhiteTextSafeBody == nil || tmpl.ColorRoles.WhiteTextSafeLarge == nil {
+		t.Fatal("fields=full: both white-text safety classes must be present")
+	}
+	if !slices.Equal(tmpl.ColorRoles.WhiteTextSafe, tmpl.ColorRoles.WhiteTextSafeBody) {
+		t.Error("fields=full: legacy white_text_safe disagrees with body-safe accents")
+	}
 	if len(tmpl.Layouts) == 0 {
 		t.Fatal("fields=full: layouts array missing")
 	}
@@ -412,7 +418,7 @@ func TestListTemplates_FieldsFullCanonicalMetadata(t *testing.T) {
 	for _, expected := range []string{
 		`"canonical_type"`, `"canonical_family"`, `"role"`,
 		`"role_confidence"`, `"font_size_pt"`, `"canonical_coverage"`,
-		`"derivable_layouts"`,
+		`"derivable_layouts"`, `"white_text_safe_body"`, `"white_text_safe_large"`,
 	} {
 		if !strings.Contains(text, expected) {
 			t.Errorf("fields=full response missing %s on the wire", expected)

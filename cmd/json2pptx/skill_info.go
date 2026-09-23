@@ -323,11 +323,13 @@ type skillDerivableLayout struct {
 // skillColorRoles maps design intent to scheme color names for a template.
 // Agents use this to pick safe color pairings without manual WCAG checks.
 type skillColorRoles struct {
-	PrimaryFill   string   `json:"primary_fill"`    // dark accent for headers (white text safe)
-	SecondaryFill string   `json:"secondary_fill"`  // second accent for headers (white text safe)
-	BodyFill      string   `json:"body_fill"`       // light fill for body/card cells
-	BodyText      string   `json:"body_text"`       // dark text on light backgrounds
-	WhiteTextSafe []string `json:"white_text_safe"` // all accents passing WCAG AA (≥3.0) against white
+	PrimaryFill        string   `json:"primary_fill"`          // dark accent for headers (white body text safe when available)
+	SecondaryFill      string   `json:"secondary_fill"`        // second accent for headers (white body text safe when available)
+	BodyFill           string   `json:"body_fill"`             // light fill for body/card cells
+	BodyText           string   `json:"body_text"`             // dark text on light backgrounds
+	WhiteTextSafe      []string `json:"white_text_safe"`       // backward-compatible alias for white_text_safe_body
+	WhiteTextSafeBody  []string `json:"white_text_safe_body"`  // accents passing 4.5:1 against white
+	WhiteTextSafeLarge []string `json:"white_text_safe_large"` // accents passing 3:1 against white
 }
 
 // skillLayoutSummary is a lightweight layout entry included in compact mode
@@ -765,15 +767,16 @@ func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutprevie
 }
 
 // buildColorRoles derives color_roles from a template's theme colors.
-// It identifies which accents pass WCAG AA large-text contrast (≥3.0) against
-// white, then picks the first two as primary/secondary fill.
+// It reports white-on-accent safety separately for body and large text, then
+// prefers body-safe accents for primary/secondary fill roles.
 func buildColorRoles(colors []types.ThemeColor) *skillColorRoles {
 	white := svggen.MustParseColor("#FFFFFF")
 
 	// accentOrder is the order we check accents for white-text safety.
 	accentOrder := []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"}
 
-	var safe []string
+	safeLarge := make([]string, 0, len(accentOrder))
+	safeBody := make([]string, 0, len(accentOrder))
 	for _, name := range accentOrder {
 		hex := findColorHex(colors, name)
 		if hex == "" {
@@ -783,25 +786,31 @@ func buildColorRoles(colors []types.ThemeColor) *skillColorRoles {
 		if err != nil {
 			continue
 		}
-		if c.ContrastWith(white) >= svggen.WCAGAALarge {
-			safe = append(safe, name)
+		ratio := c.ContrastWith(white)
+		if ratio >= svggen.WCAGAALarge {
+			safeLarge = append(safeLarge, name)
+		}
+		if ratio >= svggen.WCAGAANormal {
+			safeBody = append(safeBody, name)
 		}
 	}
 
 	roles := &skillColorRoles{
-		PrimaryFill:   "accent1",
-		SecondaryFill: "accent2",
-		BodyFill:      "lt2",
-		BodyText:      "dk1",
-		WhiteTextSafe: safe,
+		PrimaryFill:        "accent1",
+		SecondaryFill:      "accent2",
+		BodyFill:           "lt2",
+		BodyText:           "dk1",
+		WhiteTextSafe:      safeBody,
+		WhiteTextSafeBody:  safeBody,
+		WhiteTextSafeLarge: safeLarge,
 	}
 
-	// Override primary/secondary with the first two white-text-safe accents.
-	if len(safe) >= 1 {
-		roles.PrimaryFill = safe[0]
+	// Override primary/secondary with the first two body-safe accents.
+	if len(safeBody) >= 1 {
+		roles.PrimaryFill = safeBody[0]
 	}
-	if len(safe) >= 2 {
-		roles.SecondaryFill = safe[1]
+	if len(safeBody) >= 2 {
+		roles.SecondaryFill = safeBody[1]
 	}
 
 	return roles

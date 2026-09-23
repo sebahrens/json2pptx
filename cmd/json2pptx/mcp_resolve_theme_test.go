@@ -85,6 +85,8 @@ func TestResolveTheme_AllColors(t *testing.T) {
 			// Must have color_roles.
 			if resp.ColorRoles == nil {
 				t.Error("expected non-nil color_roles")
+			} else if resp.ColorRoles.WhiteTextSafeBody == nil || resp.ColorRoles.WhiteTextSafeLarge == nil {
+				t.Error("resolve_theme omitted white-text safety classes")
 			}
 
 			// ResolvedFor should be nil/empty when no filter is provided.
