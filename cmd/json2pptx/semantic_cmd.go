@@ -370,14 +370,15 @@ type semanticRenderResult struct {
 // SlideIndex is the semantic slide the finding belongs to, or -1. RecommendedEdit
 // names a semantic edit that should resolve the finding, when one is known.
 type semanticDiagnostic struct {
-	Code            string                 `json:"code"`
-	Severity        string                 `json:"severity,omitempty"`
-	Message         string                 `json:"message"`
-	SemanticPath    string                 `json:"semantic_path,omitempty"`
-	RawPath         string                 `json:"raw_path,omitempty"`
-	SlideIndex      *int                   `json:"slide_index,omitempty"`
-	Action          string                 `json:"action,omitempty"`
-	RecommendedEdit *semantic.SemanticEdit `json:"recommended_edit,omitempty"`
+	Code            string                       `json:"code"`
+	Severity        string                       `json:"severity,omitempty"`
+	Message         string                       `json:"message"`
+	SemanticPath    string                       `json:"semantic_path,omitempty"`
+	RawPath         string                       `json:"raw_path,omitempty"`
+	SlideIndex      *int                         `json:"slide_index,omitempty"`
+	Action          string                       `json:"action,omitempty"`
+	RecommendedEdit *semantic.SemanticEdit       `json:"recommended_edit,omitempty"`
+	NextToolCall    *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 }
 
 // runSemanticRender implements "semantic render": the target one-command flow

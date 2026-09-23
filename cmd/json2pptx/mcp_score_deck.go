@@ -30,16 +30,16 @@ Runs a full generation pass (to a temporary directory) so the score reflects the
 
 Score: per-slide 100 minus finding weights and a deck-wide breadth penalty. Weights: refuse=25, shrink_or_split=15, review=5, info=0. Severe reviews cost 15–20; only confirmed defects block.
 
-Use this after generate_presentation to get structured visual feedback without burning vision tokens. The score will differ from a naive static check when generation-time autofix kicked in.`),
+Use this after generate_presentation or with a DeckSpec deck_id to get structured feedback without vision tokens. Generation-time autofix can change the score.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreDeck)),
 		mcp.WithObject("presentation",
-			mcp.Required(),
 			mcp.Description("Presentation definition. Same schema as generate_presentation."),
 			mcp.Properties(map[string]any{
 				"template": map[string]any{"type": "string", "description": "Template name"},
 				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
+		mcp.WithString("deck_id", mcp.Description("Stored DeckSpec handle from validate_deck_spec or render_deck_spec. Alternative to presentation; compiled for scoring without changing the semantic deck.")),
 		mcp.WithString("template",
 			mcp.Description("Template name override. If omitted, uses the template field from the presentation object."),
 		),
@@ -65,15 +65,9 @@ Use this after generate_presentation to get structured visual feedback without b
 // failure) carry a next_tool_call suggestion so the agent can chain to the
 // recovery tool (get_input_schema, list_templates) without inferring it.
 func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	jsonStr, _, paramErr := mc.presentationForTool("score_deck", request)
 	if paramErr != nil {
 		return paramErr, nil
-	}
-	if jsonStr == "" {
-		return argRequired(request, "score_deck", "presentation", "object", map[string]any{
-			"template": "<template-name>",
-			"slides":   []any{},
-		}, nextCallGetInputSchema()), nil
 	}
 
 	mode := "deterministic"

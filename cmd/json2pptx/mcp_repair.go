@@ -29,9 +29,11 @@ import (
 
 // repairSlideOutput is the top-level response for repair_slide.
 type repairSlideOutput struct {
-	PatchedDeck  json.RawMessage `json:"patched_deck"`
-	AppliedFixes []appliedFix    `json:"applied_fixes"`
-	Revision     string          `json:"revision"`
+	PatchedDeck             json.RawMessage `json:"patched_deck"`
+	SourceDeckID            string          `json:"source_deck_id,omitempty"`
+	SemanticSourceUnchanged bool            `json:"semantic_source_unchanged,omitempty"`
+	AppliedFixes            []appliedFix    `json:"applied_fixes"`
+	Revision                string          `json:"revision"`
 	// Findings is the FindingEnvelope of residual post-patch fit findings for
 	// the repaired slide. It is always present (never omitted) so an agent can
 	// branch on findings.ok deterministically; findings.findings[] is empty
@@ -83,7 +85,7 @@ type repairFixInput struct {
 
 func mcpRepairSlideTool() mcp.Tool {
 	return mcp.NewTool("repair_slide",
-		mcp.WithDescription(`Apply targeted fixes to a single slide without regenerating the entire deck. Accepts the full deck JSON, a slide index (0-based), and a list of fix directives using the same Fix.Kind vocabulary that fit_report emits.
+		mcp.WithDescription(`Apply targeted fixes to one slide without regenerating the deck. Accepts raw presentation JSON or a stored DeckSpec deck_id, a 0-based slide index, and Fix.Kind directives from fit_report. With deck_id, this is a raw escape hatch: the stored semantic spec is unchanged.
 
 Returns the patched deck JSON, a report of which fixes were applied, and post-patch fit findings for the modified slide.
 
@@ -94,7 +96,7 @@ Supported fix kinds (full vocabulary — also enumerated by get_capabilities.voc
 Text / title fits:
 - reduce_text: Truncate bullets/body text. Params: path (string, optional), max_items (int, for bullets), max_length (int, for text).
 - shorten_title: Truncate a title to max_length characters (max_chars is an alias emitted by measured title-fit findings). Params: path (string, optional), max_length or max_chars (int).
-- reduce_cell_text: Truncate a shape_grid cell's text to fit within a character budget. Params: cell_path (string, required, JSON Pointer e.g. "/slides/0/shape_grid/rows/1/cells/2"), max_chars (int, required). Truncates to max_chars-1 visible characters plus a single ellipsis (…). Handles markdown emphasis safely. Agents should prefer pre-generation budget awareness via expand_pattern over post-generation repair.
+- reduce_cell_text: Truncate a shape_grid cell. Params: cell_path (JSON Pointer), max_chars (int). Preserves markdown emphasis and ends with an ellipsis.
 
 Layout / pagination:
 - split_at_row: Split a table across pages using the split_slide envelope. Params: path (string, optional), row (int, rows per page), title_suffix (string, optional), repeat_headers (bool, optional).
@@ -106,20 +108,20 @@ Color / theme:
 - use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, JSON Pointer e.g. "/slides/0/shape_grid/rows/0/cells/0/shape/fill"), value (string, scheme name e.g. "accent1").
 
 Pattern shape:
-- split_pattern: Split a single pattern slide into two slides by row. Params: first (int, optional, number of filled cells to keep on slide 1; defaults to half), title_part_2 (string, optional, suffix appended to slide 2's title; defaults to "(continued)"), path (string, optional: on a pattern slide, split the pattern.values array at this key instead — slide 1 keeps the first "first" items, slide 2 the rest).
+- split_pattern: Split a pattern slide. Params: first (count on slide 1; default half), title_part_2 (suffix), path (optional values-array key).
 - swap_pattern: Replace the slide's pattern with a different one. Params: to (string, required, target pattern name), values (object, optional, new values for the target pattern), overrides (object, optional), cell_overrides (object, optional).
-- reshape_grid: Change the grid shape by adjusting rows/columns. For pattern slides, updates the pattern values; for raw grids, redistributes cells. Params: rows (int, optional), columns (int or []int, optional). At least one is required.
+- reshape_grid: Adjust rows/columns. Params: rows (int), columns (int or []int); at least one required.
 - set_pattern_style: Change the style variant in a pattern's overrides (e.g. timeline-horizontal "dots" to "chevron"). Params: style (string, required).
-- set_max_height_pct: Cap a pattern slide's height budget (slides[i].pattern.max_height_pct) so its boxes shrink to their content instead of stretching. Params: max_height_pct (number, required, 0 < pct <= 100; ~35 for a single sparse row). The mechanical remedy for underfilled / overtall-lane findings.
+- set_max_height_pct: Cap pattern height to avoid overtall lanes. Params: max_height_pct (0 < number <= 100; ~35 for a sparse row).
 
 Pattern values (field-level edits to slide.pattern.values):
 - rename_field: Rename a top-level key in pattern values (or slide-level fields). Params: from (string, required, current key name), to (string, required, new key name).
 - reshape_value: Replace a pattern-values field with a restructured value (e.g. array → object). The field must already exist. Params: path (string, required, key in pattern.values), value (any, required, replacement value in the target shape).
 - provide_value: Set a pattern-values field to an agent-supplied value, creating the key if missing. Params: path (string, required, key in pattern.values), value (any, required).
 - replace_value: Replace an existing pattern-values field with a new value (typically to bring it within valid bounds). The field must already exist. Params: path (string, required, key in pattern.values), value (any, required).
-- reduce_items: Truncate an array field in pattern values to max_items entries. Params: path (string, required, array key in pattern.values), max_items (int, required, > 0), confirm_semantic_change (bool, optional). Refused with code "semantic_review_required" (and a next_tool_call proposing split_pattern) when a dropped item carries a number, unit, negation, or qualifier.
+- reduce_items: Truncate an array. Params: path (array key), max_items (>0), confirm_semantic_change (bool). Fact loss requires confirmation or split_pattern.
 - add_items: Append items to an array field in pattern values (creates the array if missing). Params: path (string, required, array key in pattern.values), items (array, required, items to append).
-- resize_list: Adjust an array field in pattern values to exactly count entries. Truncates if too many; returns applied=false with guidance if too few (agent must supply additional items via add_items). Params: path (string, required, array key in pattern.values), count (int, required, > 0), confirm_semantic_change (bool, optional). Same fact-loss guard as reduce_items.
+- resize_list: Resize an array. Params: path (array key), count (>0), confirm_semantic_change (bool). Too few items requires add_items; fact loss is guarded.
 - remove_key: Remove a key from pattern overrides or pattern values (overrides checked first). Params: key (string, required, key to remove).
 - remove_field: Remove a top-level field from pattern values or slide-level fields. Params: path (string, required, field name to remove).
 
@@ -131,13 +133,13 @@ Two non-applied outcomes, distinguished by code:
 - ADVISORY kinds — the ones findings legitimately emit whose remedy is an authoring decision (add_detail_or_resize, grow_pattern, review, truncation_summary, …; enumerated by get_capabilities.vocabularies.advisory_fix_kinds) — return {applied: false, code: "advisory_fix_kind", message: "<what you have to decide>", alternatives: [...executable kinds that address the same defect...], supported_kinds: [...]}. That is not a caller mistake: act on the guidance or apply one of the alternatives; do not retry the same kind.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRepairSlide)),
 		mcp.WithObject("presentation",
-			mcp.Required(),
 			mcp.Description(`Full presentation definition. Same schema as generate_presentation.`),
 			mcp.Properties(map[string]any{
 				"template": map[string]any{"type": "string", "description": "Template name"},
 				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
+		mcp.WithString("deck_id", mcp.Description("Stored DeckSpec handle, alternative to presentation. Compiles it to raw JSON and returns a patched raw deck; the semantic DeckSpec remains unchanged. For a durable semantic fix use render_deck_spec or validate_deck_spec with deck_id and patch.")),
 		mcp.WithNumber("slide_index",
 			mcp.Description("0-based index of the slide to repair."),
 			mcp.Required(),
@@ -153,15 +155,9 @@ Two non-applied outcomes, distinguished by code:
 // --- Handler ---
 
 func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	jsonStr, sourceDeckID, paramErr := mc.presentationForTool("repair_slide", request)
 	if paramErr != nil {
 		return paramErr, nil
-	}
-	if jsonStr == "" {
-		return argRequired(request, "repair_slide", "presentation", "object", map[string]any{
-			"template": "<template-name>",
-			"slides":   []any{},
-		}, nextCallGetInputSchema()), nil
 	}
 
 	// Parse the deck.
@@ -229,9 +225,11 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 	}
 
 	output := repairSlideOutput{
-		PatchedDeck:  patchedJSON,
-		AppliedFixes: applied,
-		Revision:     presentationRevision(&input),
+		PatchedDeck:             patchedJSON,
+		SourceDeckID:            sourceDeckID,
+		SemanticSourceUnchanged: sourceDeckID != "",
+		AppliedFixes:            applied,
+		Revision:                presentationRevision(&input),
 		Findings: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 			Subcommand:  "repair_slide",
 			Template:    input.Template,

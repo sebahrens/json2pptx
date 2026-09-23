@@ -1165,6 +1165,8 @@ var outputSchemaRepairSlide = json.RawMessage(`{
   "type": "object",
   "properties": {
     "patched_deck": {"type": "object"},
+    "source_deck_id": {"type": "string", "description": "DeckSpec handle used as source, when supplied."},
+    "semantic_source_unchanged": {"type": "boolean", "description": "True when the raw repair left the stored DeckSpec unchanged."},
     "revision": {"type": "string"},
     "applied_fixes": {
       "type": "array",
@@ -2365,6 +2367,8 @@ var outputSchemaValidateDeckSpec = json.RawMessage(`{
     "subcommand":     {"type": "string"},
     "input_sha256":   {"type": "string"},
     "ok":             {"type": "boolean", "description": "True when no finding has error severity."},
+    "deck_id":        {"type": "string", "description": "Stored DeckSpec handle for subsequent semantic patch or analysis calls."},
+    "changed_slides": {"type": "array", "items": {"type": "integer"}},
     "summary":        {"type": "string"},
     "findings": {
       "type": "array",
@@ -2376,7 +2380,8 @@ var outputSchemaValidateDeckSpec = json.RawMessage(`{
           "category": {"type": "string"},
           "severity": {"type": "string", "enum": ["error", "warning", "info"]},
           "message":  {"type": "string"},
-          "path":     {"type": "string", "description": "Semantic source path the finding points at."}
+          "evidence": {"type": "object", "description": "Includes path when the finding maps to a semantic source field."},
+          "next_tool_call": {"type": "object", "description": "Semantic validate_deck_spec patch suggestion, or describe_finding when no safe scalar patch exists.", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]}
         },
         "required": ["id", "code", "category", "severity", "message"]
       }
@@ -2407,7 +2412,8 @@ var outputSchemaCompileDeckSpec = json.RawMessage(`{
         "raw_path":      {"type": "string", "description": "Originating generated pointer, retained as fallback evidence."},
         "slide_index":   {"type": "integer"},
         "action":        {"type": "string"},
-        "recommended_edit": {"type": "object"}
+        "recommended_edit": {"type": "object"},
+        "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]}
       },
       "required": ["code", "message"]
     }
@@ -2419,6 +2425,8 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
   "properties": {
     "ok":              {"type": "boolean"},
     "success":         {"type": "boolean", "description": "True when the .pptx artifact was written (mirrors ok)."},
+    "deck_id":         {"type": "string", "description": "Stored DeckSpec handle for subsequent semantic patch or analysis calls."},
+    "changed_slides":  {"type": "array", "items": {"type": "integer"}},
     "pptx_path":       {"type": "string", "description": "Path to the rendered .pptx artifact. Defaults to a slug of meta.title plus a short digest of the spec; set output_filename to choose it."},
     "overwrote":       {"type": "boolean", "description": "True when a file already existed at pptx_path and this render replaced it."},
     "publishable":     {"type": "boolean", "description": "Whether the written deck is fit to ship: no error-severity or action:refuse diagnostic, and the deterministic quality gate passed. success answers 'was it written', publishable answers 'is it usable' — gate on this one."},
@@ -2445,7 +2453,8 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
         "raw_path":      {"type": "string", "description": "Originating generated pointer, retained as fallback evidence."},
         "slide_index":   {"type": "integer"},
         "action":        {"type": "string"},
-        "recommended_edit": {"type": "object"}
+        "recommended_edit": {"type": "object"},
+        "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"]}
       },
       "required": ["code", "message"]
     }

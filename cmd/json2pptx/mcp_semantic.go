@@ -238,12 +238,14 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 		Subcommand:  "validate_deck_spec",
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
 	}, ds)
+	handleID := mc.rememberDeck(deckID, data, filename, "")
+	semanticizeFindings(&envelope, data, handleID)
 
 	// Hand back a handle so the next call in the loop — a render, or a patched
 	// re-validate — does not have to re-upload the spec (go-slide-creator-voxp).
 	resp := deckSpecEnvelopeResponse{
 		FindingEnvelope: envelope,
-		DeckID:          mc.rememberDeck(deckID, data, filename, ""),
+		DeckID:          handleID,
 		ChangedSlides:   changed,
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
@@ -493,6 +495,16 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	}
 
 	startTime := time.Now()
+	finish := func(res renderDeckSpecResponse) (*mcp.CallToolResult, error) {
+		storedTemplate := res.Template
+		if storedTemplate == "" {
+			storedTemplate = src.Template
+		}
+		res.DeckID = mc.rememberDeck(deckID, data, filename, storedTemplate)
+		res.ChangedSlides = changed
+		semanticizeRenderDiagnostics(res.Diagnostics, data, res.DeckID)
+		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+	}
 
 	// Parse the spec. A parse error is fatal and has no source map yet, so the
 	// findings carry their native semantic paths.
@@ -503,7 +515,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		for _, d := range parseDiags.ToDiagnostics() {
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
 		}
-		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+		return finish(res)
 	}
 
 	// Every render used to land on <output_dir>/output.pptx, so two calls in one
@@ -530,7 +542,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	if err != nil {
 		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck spec compilation failed", map[string]any{"tool": "render_deck_spec"})
 		res := semanticRenderToMCP(buildSemanticRenderFailure(compileResult, err), &explanation)
-		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+		return finish(res)
 	}
 
 	// Constrained mode is enforced before rendering: the raw_json2pptx escape
@@ -540,7 +552,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck render refused by design mode", map[string]any{"tool": "render_deck_spec"})
 		appendCompiledDesignModeDiags(compileResult, input)
 		failure := buildSemanticRenderFailure(compileResult, blockingDesignModeError(designViolations))
-		return semanticSuccessOrInternal(ctx, "render_deck_spec", semanticRenderToMCP(failure, &explanation))
+		return finish(semanticRenderToMCP(failure, &explanation))
 	}
 
 	// Apply the shared pre-render prep a compiled deck still needs (deck defaults
@@ -564,7 +576,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 			mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck template path invalid", map[string]any{"tool": "render_deck_spec"})
 			res := renderDeckSpecResponse{OK: false, Success: false, Error: d.Message}
 			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(*d))
-			return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+			return finish(res)
 		}
 		resolvedTemplatePath = path
 	}
@@ -585,22 +597,18 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	if renderErr != nil {
 		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck render failed", map[string]any{"tool": "render_deck_spec"})
 		res := semanticRenderToMCP(buildSemanticRenderFailure(compileResult, renderErr), &explanation)
-		res.DeckID = mc.rememberDeck(deckID, data, filename, res.Template)
-		res.ChangedSlides = changed
-		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+		return finish(res)
 	}
 
 	res := semanticRenderToMCP(buildSemanticRenderSuccess(input, compileResult, runRes, startTime), &explanation)
 	// Hand back a handle for the rendered spec, and say which slides the patch
 	// that produced this render changed, so the agent re-pulls only those
 	// thumbnails (go-slide-creator-voxp).
-	res.DeckID = mc.rememberDeck(deckID, data, filename, res.Template)
-	res.ChangedSlides = changed
 	mc.logRenderEvent(ctx, mcp.LoggingLevelInfo, "deck render finished", map[string]any{
 		"tool": "render_deck_spec", "slide_count": len(input.Slides), "pptx_path": res.PptxPath,
 		"duration_ms": time.Since(startTime).Milliseconds(),
 	})
-	result, err := semanticSuccessOrInternal(ctx, "render_deck_spec", res)
+	result, err := finish(res)
 	// The deck itself, as a resource a host can read without touching the
 	// server's filesystem (go-slide-creator-fx52).
 	return withDeckResourceLink(result, res.PptxPath), err

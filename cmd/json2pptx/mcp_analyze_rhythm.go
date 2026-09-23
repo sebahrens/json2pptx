@@ -24,13 +24,13 @@ Use this BEFORE calling generate_presentation to detect monotony and inform patt
 Returns per-slide fingerprints, pattern run detection, a density coefficient of variation, accent balance, and actionable recommendations for breaking repetitive runs.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaAnalyzeDeckRhythm)),
 		mcp.WithObject("presentation",
-			mcp.Required(),
 			mcp.Description("Presentation definition. Same schema as generate_presentation."),
 			mcp.Properties(map[string]any{
 				"template": map[string]any{"type": "string", "description": "Template name"},
 				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
+		mcp.WithString("deck_id", mcp.Description("Stored DeckSpec handle from validate_deck_spec or render_deck_spec. Alternative to presentation; compiled for analysis without changing the semantic deck.")),
 	)
 }
 
@@ -64,6 +64,18 @@ func handleAnalyzeDeckRhythm(ctx context.Context, request mcp.CallToolRequest) (
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+func (mc *mcpConfig) handleAnalyzeDeckRhythm(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	jsonStr, _, paramErr := mc.presentationForTool("analyze_deck_rhythm", request)
+	if paramErr != nil {
+		return paramErr, nil
+	}
+	var presentation any
+	if err := json.Unmarshal([]byte(jsonStr), &presentation); err != nil {
+		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nil), nil
+	}
+	return handleAnalyzeDeckRhythm(ctx, mcpRequestWithArgs(map[string]any{"presentation": presentation}))
 }
 
 // --- Adapter: SlideInput DTOs -> internal/rhythm engine ---

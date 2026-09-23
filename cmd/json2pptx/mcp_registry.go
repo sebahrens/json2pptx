@@ -52,7 +52,7 @@ func registerMCPTools(s *server.MCPServer, mc *mcpConfig) {
 	addTool(s, mcpListTemplateSettingsTool(), mc.handleListTemplateSettings)
 	addTool(s, mcpRegisterTemplateSettingTool(), mc.handleRegisterTemplateSetting)
 	addTool(s, mcpDeleteTemplateSettingTool(), mc.handleDeleteTemplateSetting)
-	addTool(s, mcpAnalyzeDeckRhythmTool(), handleAnalyzeDeckRhythm)
+	addTool(s, mcpAnalyzeDeckRhythmTool(), mc.handleAnalyzeDeckRhythm)
 	addTool(s, mcpPlanDeckTool(), mc.handlePlanDeck)
 	addTool(s, mcpGetCapabilitiesTool(), mc.handleGetCapabilities)
 	addTool(s, mcpGetStartedTool(), mc.handleGetStarted)
