@@ -1135,23 +1135,23 @@ Slide selection:
 
 ### `TEXT_EXCEEDS_SHAPE`
 
-**Action:** `review` when predicted, **`shrink_or_split` (blocking) when measured** — see below
+**Action:** `review` for predicted overflow below 2×; **`shrink_or_split` (blocking)** for predicted overflow at least 2× or a measured pattern failure
 **Pattern:** the slide's pattern (empty for raw `shape_grid`)
-**Fix kind:** `reduce_text`
+**Fix kind:** `widen_shape_text_area` (advisory; patch the pattern or grid)
 **Emitted at:** preflight (validate / preview / score), deterministic geometry — and from a pattern's own `PostExpandWarnings`
 
 **Two sources, two confidences (go-slide-creator-rxkt).**
 
 | Source | What it knows | Action |
 |--------|---------------|--------|
-| The deterministic geometry detector (below) | It *estimates* the text box from the authored size and preset geometry. The estimate runs tight: on `examples/process-grid-2row.json` a word measured 15% wider than its box renders on one line, because the renderer shrinks the label further than the estimate models. | `review` — advisory |
+| The deterministic geometry detector (below) | It *estimates* the text box from the authored size and preset geometry. A 15% deficit may render correctly after shrinkage, but a 2× deficit is too large to leave as informational. | `review` below 2×; `shrink_or_split` at 2× or more |
 | A pattern's `PostExpandWarnings` | The pattern has *measured* that the text cannot fit at its own readable floor, after giving up every adjustment it has (`numbered-step-strip` surrenders notch depth first, then type size down to 12pt). The mid-word break is certain. | `shrink_or_split` — **the default quality gate fails** |
 
 That split is what lets the gate block a real defect without failing decks that render correctly. Before it, a deck whose chevrons rendered as "Internationalisatio / n programme" scored 85 with `quality_gate.passed = true`.
 
 A word in a shape_grid shape's text is wider than the text rectangle the shape's preset geometry leaves after text insets, so the renderer breaks it mid-word or the shape outline clips it. The widest whitespace-delimited word of every paragraph (single glyphs such as arrows are ignored) is measured with the template body font at the size the renderer uses (authored size floored to 12pt, default 14pt, bold honoured) and compared with the geometry's text width per ECMA-376 `presetShapeDefinitions`: `chevron` keeps `w − 2·min(w,h)·adj`, `homePlate` `w − min(w,h)·adj/2`, `diamond` / `triangle` / `flowChartDecision` `w/2`, `ellipse` `w·0.707`, `hexagon` / `octagon` their inset rectangles, everything else the full width. Default OOXML insets (0.1" left/right) apply unless the text authors `inset_*`. Charts, tables and images are not measured.
 
-Grids produced by named patterns are expanded first (paths rooted at `/slides/{i}/pattern`), and nested sub-grids are resolved inside their parent cell like the renderer does. One finding is emitted per slide: `path` is the first offending cell, `fix.params.cells` lists every offending cell path, and `word` / `required_pt` / `available_pt` / `geometry` describe the worst case. Typical trigger: `numbered-step-strip` `style: "chevron"` labels, whose notches leave almost no text width.
+Grids produced by named patterns are expanded first (paths rooted at `/slides/{i}/pattern`), and nested sub-grids are resolved inside their parent cell like the renderer does. One finding is emitted per slide: `path` is the first offending cell, `fix.params.cells` lists every offending cell path, and `word` / `required_pt` / `available_pt` / `geometry` describe the highest overflow ratio. If even the narrowest glyph cannot fit, `minimum_glyph_pt` and `patch_path` identify the non-convergent case: lower `pattern.max_height_pct` (or explicit `pattern.bounds.height`, which takes precedence) for pointed shapes, change pointed step types to `step`, or widen/change raw-grid geometry. No `repair_slide` call is offered because its text-reduction directive cannot change this geometry.
 
 ```json
 {
@@ -1159,8 +1159,8 @@ Grids produced by named patterns are expanded first (paths rooted at `/slides/{i
   "path": "/slides/6/pattern/rows/0/cells/0/shape/text",
   "code": "TEXT_EXCEEDS_SHAPE",
   "message": "5 shapes have words wider than their text area (Attract, Convert, Onboard, Retain, Advocate); worst: \"Advocate\" needs 59pt but the chevron shape leaves 0pt of text width after geometry and insets — it will break mid-word or be clipped",
-  "fix": { "kind": "reduce_text", "params": { "cells": ["/slides/6/pattern/rows/0/cells/0/shape/text", "…"], "word": "Advocate", "required_pt": 59.2, "available_pt": 0, "geometry": "chevron", "hint": "shorten the label, lower text size, or use a geometry with a wider text area (rect/homePlate instead of chevron)" } },
-  "action": "review",
+  "fix": { "kind": "widen_shape_text_area", "params": { "cells": ["/slides/6/pattern/rows/0/cells/0/shape/text", "…"], "word": "Advocate", "required_pt": 59.2, "available_pt": 0, "geometry": "chevron", "patch_path": "/slides/6/pattern/max_height_pct", "hint": "even one glyph cannot fit: widen the text area by reducing the height of this pointed shape or changing its geometry; shortening the label alone cannot work" } },
+  "action": "shrink_or_split",
   "measured": { "width_emu": 751840, "height_emu": 0 },
   "allowed": { "width_emu": 0, "height_emu": 0 }
 }

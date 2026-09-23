@@ -4,9 +4,8 @@ import "errors"
 
 // Deterministic geometry finding codes (go-slide-creator-t5gw). Emitted by the
 // preflight fit-report pass from resolved shape_grid geometry — including the
-// grids that named patterns expand to — without rendering. All advisory
-// (action "review"): they flag slides that validate cleanly but look broken or
-// empty once rendered.
+// grids that named patterns expand to — without rendering. Most are advisory;
+// predicted TEXT_EXCEEDS_SHAPE at >=2x width overflow is a warning.
 //
 //   - TextExceedsShape: a word in a shape's text is wider than the text area
 //     the shape's preset geometry leaves after insets (chevrons, diamonds,
@@ -39,11 +38,11 @@ func init() {
 	findingMetaRegistry[ErrCodeTextExceedsShape] = FindingMeta{
 		Code:        ErrCodeTextExceedsShape,
 		Summary:     "A word in a shape's text is wider than the text area left by the shape's geometry and insets.",
-		Severity:    "review",
-		WhenEmitted: "Preflight measures the widest word of each shape_grid text cell (template body font, rendered size) against the preset geometry's text rectangle (e.g. a chevron keeps width - 2 x notch depth) minus text insets.",
+		Severity:    "shrink_or_split",
+		WhenEmitted: "Preflight measures the widest word of each shape_grid text cell (template body font, rendered size) against the preset geometry's text rectangle (e.g. a chevron keeps width - 2 x notch depth) minus text insets. The actual action is review below 2x overflow and shrink_or_split at 2x or more.",
 		RemediationSteps: []string{
-			"Shorten the label (abbreviate or move detail into the description row).",
-			"Lower the text size, or use a geometry with a wider text area (rect / homePlate instead of chevron).",
+			"When even one glyph cannot fit, patch the pattern's max_height_pct downward or change pointed step types to step; for a raw grid, use wider geometry or fewer columns. Shortening alone cannot work.",
+			"For smaller deficits, shorten the label or lower the text size, then rerun fit preflight.",
 			"Give the row more width (fewer columns) so each shape is wider.",
 		},
 		ExampleBefore: `{"geometry":"chevron","text":{"paragraphs":[{"content":"01"},{"content":"Onboarding"}]}}  // notch leaves ~0pt of text width`,

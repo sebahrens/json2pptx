@@ -227,6 +227,12 @@ var fixKindRegistry = map[string]FixKindInfo{
 		Guidance:     "Content was dropped or truncated to fit. Decide what to cut or where to split — accepting silent truncation loses author content.",
 		Alternatives: []string{"split_at_row", "split_pattern", "reduce_text"},
 	},
+	"widen_shape_text_area": {
+		Kind:         "widen_shape_text_area",
+		Class:        FixClassAdvisory,
+		Guidance:     "The shape geometry and insets leave too little width for a word. Patch the pattern's height or step type, or widen/change the raw shape. Truncating content is not a mechanical geometry fix.",
+		Alternatives: []string{"set_max_height_pct", "reshape_grid", "swap_pattern"},
+	},
 }
 
 // FixKind returns the registry entry for a kind.

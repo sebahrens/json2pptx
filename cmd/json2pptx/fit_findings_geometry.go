@@ -128,9 +128,10 @@ func collectGeometryFindings(input *PresentationInput, layouts []types.LayoutMet
 		}
 		acc := &geomAccumulator{m: m, slideArea: slideWidth * slideHeight, slideWidth: slideWidth, slideHeight: slideHeight}
 		acc.walk(grid, result, basePath, 0)
-		findings = append(findings, acc.findings(patternName)...)
+		explicitPatternBounds := slide.Pattern != nil && slide.Pattern.Bounds != nil
+		findings = append(findings, acc.findings(patternName, explicitPatternBounds)...)
 		safe := contentRelativeBoundsBase(geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
-		if f := checkSlideUnderused(acc.ink, safe, &slide, si, patternName); f != nil {
+		if f := checkSlideUnderused(acc.ink, safe, &slide, si, patternName, acc.heightSensitiveOverflow()); f != nil {
 			findings = append(findings, *f)
 		}
 	}
@@ -145,6 +146,7 @@ type textExceedsHit struct {
 	path            string
 	word, geometry  string
 	wordPt, availPt float64
+	minGlyphPt      float64
 }
 
 type sparseFillHit struct {
@@ -223,12 +225,12 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 		availW = cell.Bounds.CY - txt.insetTB() - cell.TextInsets[1] - cell.TextInsets[3]
 	}
 	availPt := math.Max(float64(availW)/emuPerPt, 0)
-	if word, wordPt := a.m.widestWord(txt); word != "" && wordPt > availPt*textExceedsTolerance {
+	if word, wordPt, minGlyphPt := a.m.widestWord(txt); word != "" && wordPt > availPt*textExceedsTolerance {
 		geometry := cell.ShapeSpec.Geometry
 		if geometry == "" {
 			geometry = "rect"
 		}
-		a.exceeds = append(a.exceeds, textExceedsHit{path: cellPath + "/shape/text", word: word, geometry: geometry, wordPt: wordPt, availPt: availPt})
+		a.exceeds = append(a.exceeds, textExceedsHit{path: cellPath + "/shape/text", word: word, geometry: geometry, wordPt: wordPt, availPt: availPt, minGlyphPt: minGlyphPt})
 	}
 	blockW, blockH := a.m.textBlockPt(txt, math.Max(availPt, 1))
 	if txt.rotated() {
@@ -251,7 +253,7 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 
 // findings converts the accumulated hits into (at most) one
 // TEXT_EXCEEDS_SHAPE and one SPARSE_FILL finding for the slide.
-func (a *geomAccumulator) findings(patternName string) []patterns.FitFinding {
+func (a *geomAccumulator) findings(patternName string, explicitPatternBounds bool) []patterns.FitFinding {
 	var out []patterns.FitFinding
 	if len(a.exceeds) > 0 {
 		worst := a.exceeds[0]
@@ -259,8 +261,44 @@ func (a *geomAccumulator) findings(patternName string) []patterns.FitFinding {
 		words := make([]string, len(a.exceeds))
 		for i, h := range a.exceeds {
 			cells[i], words[i] = h.path, h.word
-			if h.wordPt-h.availPt > worst.wordPt-worst.availPt {
+			if geometryOverflowRatio(h) > geometryOverflowRatio(worst) {
 				worst = h
+			}
+		}
+		ratio := geometryOverflowRatio(worst)
+		action := "review"
+		if ratio >= 2 {
+			action = "shrink_or_split"
+		}
+		hint := "shorten the label, lower its text size, or give this cell more width; check the next fit report"
+		if worst.availPt < worst.minGlyphPt {
+			hint = "even one glyph cannot fit: widen the text area or change the shape geometry; shortening the label alone cannot work"
+			if heightSensitiveGeometry(worst.geometry) {
+				hint = "even one glyph cannot fit: widen the text area by reducing the height of this pointed shape or changing its geometry; shortening the label alone cannot work"
+			}
+		}
+		params := map[string]any{
+			"cells": cells, "word": worst.word, "required_pt": round1(worst.wordPt),
+			"available_pt": round1(worst.availPt), "geometry": worst.geometry, "hint": hint,
+		}
+		if worst.availPt < worst.minGlyphPt {
+			params["minimum_glyph_pt"] = round1(worst.minGlyphPt)
+			if patternName != "" && heightSensitiveGeometry(worst.geometry) {
+				patchField := "max_height_pct"
+				if explicitPatternBounds {
+					patchField = "bounds/height"
+				}
+				params["patch_path"] = fmt.Sprintf("/slides/%d/pattern/%s", slidepath.SlideIndex(worst.path), patchField)
+				params["alternative_patch"] = "change the affected pattern geometry or style to one with a wider text area"
+				if patternName == "process-flow" || patternName == "process-flow-compact" {
+					params["alternative_patch"] = "change the affected pattern step type from a pointed geometry to step"
+				}
+			} else if patternName != "" {
+				params["patch_path"] = fmt.Sprintf("/slides/%d/pattern/values", slidepath.SlideIndex(worst.path))
+				params["alternative_patch"] = "give the affected steps more width or use a wider geometry"
+			} else {
+				params["patch_path"] = strings.TrimSuffix(worst.path, "/text") + "/geometry"
+				params["alternative_patch"] = "change the affected shape geometry to rect or use fewer columns"
 			}
 		}
 		msg := fmt.Sprintf("%q needs %.0fpt but the %s shape leaves %.0fpt of text width after geometry and insets — it will break mid-word or be clipped", worst.word, worst.wordPt, worst.geometry, worst.availPt)
@@ -274,21 +312,14 @@ func (a *geomAccumulator) findings(patternName string) []patterns.FitFinding {
 				Code:    patterns.ErrCodeTextExceedsShape,
 				Message: msg,
 				Fix: &patterns.FixSuggestion{
-					Kind: "reduce_text",
-					Params: map[string]any{
-						"cells":        cells,
-						"word":         worst.word,
-						"required_pt":  round1(worst.wordPt),
-						"available_pt": round1(worst.availPt),
-						"geometry":     worst.geometry,
-						"hint":         "shorten the label, lower text size, or use a geometry with a wider text area (rect/homePlate instead of chevron)",
-					},
+					Kind:   "widen_shape_text_area",
+					Params: params,
 				},
 			},
-			Action:        "review",
+			Action:        action,
 			Measured:      &patterns.Extent{WidthEMU: int64(worst.wordPt * emuPerPt)},
 			Allowed:       &patterns.Extent{WidthEMU: int64(worst.availPt * emuPerPt)},
-			OverflowRatio: overflowRatio(worst.wordPt, worst.availPt),
+			OverflowRatio: ratio,
 		})
 	}
 	if len(a.sparse) > 0 {
@@ -319,7 +350,29 @@ func (a *geomAccumulator) findings(patternName string) []patterns.FitFinding {
 	return out
 }
 
-func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string) *patterns.FitFinding {
+func geometryOverflowRatio(h textExceedsHit) float64 {
+	// Zero usable width is the most severe case, not a zero overflow ratio.
+	return overflowRatio(h.wordPt, math.Max(h.availPt, 0.1))
+}
+
+func (a *geomAccumulator) heightSensitiveOverflow() bool {
+	for _, h := range a.exceeds {
+		if heightSensitiveGeometry(h.geometry) {
+			return true
+		}
+	}
+	return false
+}
+
+func heightSensitiveGeometry(geometry string) bool {
+	switch geometry {
+	case "chevron", "homePlate", "hexagon", "octagon":
+		return true
+	}
+	return false
+}
+
+func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, heightSensitiveOverflow bool) *patterns.FitFinding {
 	if len(ink) == 0 || safe.CX <= 0 || safe.CY <= 0 || hasBodyPlaceholderContent(slide) {
 		return nil
 	}
@@ -340,6 +393,9 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 	case "author":
 		threshold = slideUnderusedMaxFrac
 		hint = "raise or remove the bounds / max_height_pct cap on this slide, add a supporting zone, or merge with another slide"
+		if heightSensitiveOverflow {
+			hint = "a taller band would narrow the pointed shape's text area further; widen or replace that shape, add a supporting zone, or merge with another slide"
+		}
 	case "pattern":
 		hint = "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern"
 	}
@@ -591,9 +647,9 @@ func (m *geomMeasurer) widthPt(s string, sizePt float64, bold bool) float64 {
 }
 
 // widestWord returns the widest whitespace-delimited word across paragraphs.
-func (m *geomMeasurer) widestWord(t geomText) (string, float64) {
+func (m *geomMeasurer) widestWord(t geomText) (string, float64, float64) {
 	var best string
-	var bestW float64
+	var bestW, minGlyph float64
 	for _, p := range t.paragraphs {
 		for _, w := range strings.Fields(p.text) {
 			if len([]rune(w)) < 2 {
@@ -601,10 +657,14 @@ func (m *geomMeasurer) widestWord(t geomText) (string, float64) {
 			}
 			if ww := m.widthPt(w, p.sizePt, p.bold); ww > bestW {
 				best, bestW = w, ww
+				minGlyph = math.Inf(1)
+				for _, r := range w {
+					minGlyph = math.Min(minGlyph, m.widthPt(string(r), p.sizePt, p.bold))
+				}
 			}
 		}
 	}
-	return best, bestW
+	return best, bestW, minGlyph
 }
 
 // textBlockPt greedily word-wraps every paragraph at availPt and returns the

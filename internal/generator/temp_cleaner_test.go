@@ -235,18 +235,21 @@ func TestTempFileCleanerPeriodicCleanup(t *testing.T) {
 		t.Skip("skipping periodic cleanup test in short mode")
 	}
 
-	tempDir := os.TempDir()
-
-	// Create an old temp file
-	oldFile := filepath.Join(tempDir, "svg-converted-periodic-test.png")
-	if err := os.WriteFile(oldFile, []byte("old content"), 0644); err != nil {
+	// Use a unique file in the directory the cleaner actually scans. A shared
+	// filename can collide with another test process running the same package.
+	f, err := os.CreateTemp("", "svg-converted-periodic-test-*.png")
+	if err != nil {
 		t.Fatalf("failed to create old file: %v", err)
 	}
+	oldFile := f.Name()
+	if err := f.Close(); err != nil {
+		t.Fatalf("failed to close old file: %v", err)
+	}
+	defer os.Remove(oldFile) // Cleanup in case test fails
 	oldTime := time.Now().Add(-2 * time.Hour)
 	if err := os.Chtimes(oldFile, oldTime, oldTime); err != nil {
 		t.Fatalf("failed to set file time: %v", err)
 	}
-	defer os.Remove(oldFile) // Cleanup in case test fails
 
 	// Use a very short interval for testing
 	cleaner := NewTempFileCleaner(TempFileCleanerConfig{
@@ -257,12 +260,21 @@ func TestTempFileCleanerPeriodicCleanup(t *testing.T) {
 	cleaner.Start()
 	defer cleaner.Stop()
 
-	// Wait for at least one cleanup cycle
-	time.Sleep(100 * time.Millisecond)
-
-	// Verify file was cleaned
-	if _, err := os.Stat(oldFile); !os.IsNotExist(err) {
-		t.Error("old file should have been removed by periodic cleanup")
+	// Wait for the observable result, not exactly two ticker periods: the
+	// scheduler can delay a cleanup pass under full-suite load.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		_, err := os.Stat(oldFile)
+		if os.IsNotExist(err) {
+			break
+		}
+		if err != nil {
+			t.Fatalf("stat old file: %v", err)
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("old file was not removed by periodic cleanup within 2s")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

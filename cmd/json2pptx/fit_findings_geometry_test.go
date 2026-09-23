@@ -58,11 +58,21 @@ func TestGeometry_ChevronTextExceedsShape(t *testing.T) {
 		t.Fatalf("want one aggregated TEXT_EXCEEDS_SHAPE, got %d: %+v", len(fs), fs)
 	}
 	f := fs[0]
-	if !strings.HasPrefix(f.Path, "/slides/0/shape_grid/rows/0/cells/") || f.Action != "review" {
+	if !strings.HasPrefix(f.Path, "/slides/0/shape_grid/rows/0/cells/") || f.Action != "shrink_or_split" {
 		t.Errorf("unexpected path/action: %s %s", f.Path, f.Action)
 	}
-	if f.Fix == nil || f.Fix.Kind != "reduce_text" || f.Fix.Params["geometry"] != "chevron" {
-		t.Errorf("unexpected fix: %+v", f.Fix)
+	if f.Fix == nil || f.Fix.Kind != "widen_shape_text_area" || f.Fix.Params["geometry"] != "chevron" {
+		t.Fatalf("unexpected fix: %+v", f.Fix)
+	}
+	if f.OverflowRatio < 2 || f.Severity() != "warning" || f.Fix.Params["minimum_glyph_pt"] == nil {
+		t.Errorf("a box too narrow for one glyph must warn and request geometry change: %+v", f)
+	}
+	if f.Fix.Params["patch_path"] != "/slides/0/shape_grid/rows/0/cells/0/shape/geometry" {
+		t.Errorf("raw grid needs a shape geometry patch: %+v", f.Fix.Params)
+	}
+	patterns.AttachNextToolCalls(fs, func(string) int { return 0 })
+	if fs[0].NextToolCall != nil {
+		t.Errorf("advisory geometry fix must not offer a non-executable reduce_text call: %+v", fs[0].NextToolCall)
 	}
 	// Tall, narrow chevrons leave (almost) no width between the notches, so
 	// every cell is legitimately flagged; the long labels must be among them.
@@ -85,6 +95,57 @@ func TestGeometry_RectLongWordAndShortLabelOK(t *testing.T) {
 	}
 	if cells, _ := fs[0].Fix.Params["cells"].([]string); len(cells) != 1 {
 		t.Errorf("short labels must not be flagged: %v", cells)
+	}
+}
+
+func TestGeometry_PointyOverflowSuppressesRaiseBandAdvice(t *testing.T) {
+	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"bounds":{"x":0,"y":0,"width":100,"height":35},"columns":8,"rows":[{"cells":[
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Baseline"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Design"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Consult"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Migrate"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Stabilise"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Launch"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Validate"}},
+		{"shape":{"geometry":"chevron","fill":"accent1","text":"Close"}}]}]}}]`)
+	fs := collectGeometryFindings(in, nil, 0, 0, nil)
+	if len(findingsByCode(fs, patterns.ErrCodeTextExceedsShape)) == 0 {
+		t.Fatal("test setup needs a width-constrained chevron")
+	}
+	under := findingsByCode(fs, patterns.ErrCodeSlideUnderused)
+	if len(under) != 1 {
+		t.Fatalf("want one underused finding, got %+v", under)
+	}
+	hint, _ := under[0].Fix.Params["hint"].(string)
+	if strings.Contains(hint, "raise or remove") || !strings.Contains(hint, "taller band would narrow") {
+		t.Errorf("contradictory band advice: %q", hint)
+	}
+}
+
+func TestGeometry_OverflowRatioControlsWorstHitAndPatternPatch(t *testing.T) {
+	if got := geometryOverflowRatio(textExceedsHit{wordPt: 49, availPt: 0}); got < 2 {
+		t.Fatalf("zero usable width must be severe, got ratio %g", got)
+	}
+	acc := &geomAccumulator{exceeds: []textExceedsHit{
+		{path: "/slides/2/pattern/rows/0/cells/0/shape/text", word: "Longer", geometry: "rect", wordPt: 80, availPt: 40, minGlyphPt: 5},
+		{path: "/slides/2/pattern/rows/0/cells/1/shape/text", word: "Baseline", geometry: "chevron", wordPt: 49.4, availPt: 3.3, minGlyphPt: 7},
+	}}
+	fs := acc.findings("process-flow-compact", false)
+	if len(fs) != 1 {
+		t.Fatalf("want one finding, got %+v", fs)
+	}
+	f := fs[0]
+	if f.OverflowRatio < 14 || f.Action != "shrink_or_split" || f.Fix.Params["word"] != "Baseline" {
+		t.Errorf("most severe ratio should win: %+v", f)
+	}
+	if got := f.Fix.Params["patch_path"]; got != "/slides/2/pattern/max_height_pct" {
+		t.Errorf("pattern cap patch path = %v", got)
+	}
+	if hint, _ := f.Fix.Params["hint"].(string); !strings.Contains(hint, "one glyph") {
+		t.Errorf("non-convergent text shortening not explained: %q", hint)
+	}
+	if got := acc.findings("process-flow-compact", true)[0].Fix.Params["patch_path"]; got != "/slides/2/pattern/bounds/height" {
+		t.Errorf("explicit bounds must take priority over max_height_pct: %v", got)
 	}
 }
 
@@ -355,7 +416,7 @@ func TestGeometry_FullAreaPatternBoundsHaveNoCapAdvice(t *testing.T) {
 	full := &GridBoundsInput{X: 0, Y: 0, Width: 100, Height: 100}
 	slide := &SlideInput{Pattern: &PatternInput{Bounds: full}, ShapeGrid: &ShapeGridInput{Bounds: full}}
 	fs := checkSlideUnderused([]pptx.RectEmu{{X: 45, Y: 45, CX: 10, CY: 10}},
-		pptx.RectEmu{X: 0, Y: 0, CX: 100, CY: 100}, slide, 0, "process-flow")
+		pptx.RectEmu{X: 0, Y: 0, CX: 100, CY: 100}, slide, 0, "process-flow", false)
 	if fs == nil {
 		t.Fatal("want SLIDE_UNDERUSED for a sparse full-area pattern")
 	}
