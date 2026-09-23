@@ -29,8 +29,8 @@ var suggestionSubstitutes = map[string]func(args map[string]any) *patterns.ToolC
 		return &patterns.ToolCallSuggestion{
 			Tool: "recommend_visual",
 			ArgsTemplate: map[string]any{
-				"intent": "<one sentence: what this slide should show>",
-				"hints":  hints,
+				"intent":        "<one sentence: what this slide should show>",
+				"content_hints": hints,
 			},
 		}
 	},
