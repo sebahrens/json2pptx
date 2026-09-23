@@ -42,6 +42,23 @@ func TestEffectiveShapeFillColor(t *testing.T) {
 	}
 }
 
+func TestEffectiveShapeFillColorUsesSlideCanvasForAlpha(t *testing.T) {
+	fill := json.RawMessage(`{"color":"accent1","alpha":50}`)
+	for _, tc := range []struct {
+		name, canvas, want string
+	}{
+		{"dark", "#000000", "#172848"},
+		{"light", "#FFFFFF", "#97A8C8"},
+		{"unknown photo", "", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := effectiveShapeFillColor(fill, tintTestTheme, tc.canvas); got != tc.want {
+				t.Errorf("effective fill = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // Dark text on a light accent tint is readable; the contrast preflight must
 // judge the tint, not the untinted accent (which made it predict a bogus
 // auto-replacement to white text).

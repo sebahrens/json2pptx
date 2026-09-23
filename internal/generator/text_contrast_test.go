@@ -490,6 +490,34 @@ func TestTransparentGridPreflightMatchesRender(t *testing.T) {
 	}
 }
 
+func TestAlphaGridFillUsesSlideCanvas(t *testing.T) {
+	shape := []byte(`<p:sp><p:spPr><a:solidFill><a:srgbClr val="2E5090"><a:alpha val="50000"/></a:srgbClr></a:solidFill></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="1200"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Caption</a:t></a:r></a:p></p:txBody></p:sp>`)
+	for _, tc := range []struct {
+		name, canvas, fill string
+		wantSwaps          int
+	}{
+		{"dark", "#000000", "#172848", 1},
+		{"light", "#FFFFFF", "#97A8C8", 0},
+		{"unknown photo", "", "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := extractShapeFillHex(shape, consultingThemeColors(), tc.canvas); got != tc.fill {
+				t.Errorf("extracted fill = %q, want %q", got, tc.fill)
+			}
+			fixed, swaps := enforceShapeGridContrast([][]byte{shape}, consultingThemeColors(), nil, 0, tc.canvas)
+			if len(swaps) != tc.wantSwaps {
+				t.Fatalf("swaps = %+v, want %d", swaps, tc.wantSwaps)
+			}
+			if tc.wantSwaps == 0 && string(fixed[0]) != string(shape) {
+				t.Error("shape changed despite readable or unknown canvas")
+			}
+			if tc.wantSwaps > 0 && (swaps[0].BackgroundColor != tc.fill || string(fixed[0]) == string(shape)) {
+				t.Errorf("swap = %+v, want correction against %s", swaps[0], tc.fill)
+			}
+		})
+	}
+}
+
 func TestEffectiveGridShapeFillHexDoesNotGuessUnsupportedFill(t *testing.T) {
 	for _, tc := range []struct {
 		name, shape, want string

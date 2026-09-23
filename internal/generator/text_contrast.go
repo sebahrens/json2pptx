@@ -520,7 +520,7 @@ var shapeFillSchemeRegexp = regexp.MustCompile(
 
 // extractShapeFillHex extracts the fill color from a shape's spPr section as a
 // hex string (e.g., "#4472C4"). Returns empty string if no solid fill found.
-func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor) string {
+func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor, slideBackground ...string) string {
 	// Isolate the spPr section to avoid matching text colors
 	spPrStart := bytes.Index(shapeXML, []byte("<p:spPr>"))
 	spPrEnd := bytes.Index(shapeXML, []byte("</p:spPr>"))
@@ -536,12 +536,12 @@ func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor) string
 
 	// Try sRGB first
 	if m := shapeFillSrgbRegexp.FindSubmatch(spPr); len(m) >= 2 {
-		return applyShapeFillModifiers("#"+strings.ToUpper(string(m[1])), spPr, themeColors)
+		return applyShapeFillModifiers("#"+strings.ToUpper(string(m[1])), spPr, themeColors, slideBackground...)
 	}
 
 	// Try scheme color
 	if m := shapeFillSchemeRegexp.FindSubmatch(spPr); len(m) >= 2 {
-		return applyShapeFillModifiers(resolveSchemeColorToHex(string(m[1]), themeColors), spPr, themeColors)
+		return applyShapeFillModifiers(resolveSchemeColorToHex(string(m[1]), themeColors), spPr, themeColors, slideBackground...)
 	}
 
 	return ""
@@ -559,7 +559,7 @@ var shapeFillModRegexp = regexp.MustCompile(`<a:(lumMod|lumOff|tint|shade|alpha)
 // shape's solid fill into baseHex so contrast is judged against the colour
 // the viewer actually sees. Without this, a light accent tint is evaluated
 // as the saturated base accent and correct dark text gets "fixed" to white.
-func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.ThemeColor) string {
+func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.ThemeColor, slideBackground ...string) string {
 	if baseHex == "" {
 		return ""
 	}
@@ -595,9 +595,20 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 	if err != nil {
 		return baseHex
 	}
+	bgHex := resolveSchemeColorToHex("lt1", themeColors)
+	if len(slideBackground) > 0 {
+		bgHex = slideBackground[0]
+	}
 	bg := svggen.Color{R: 255, G: 255, B: 255, A: 1}
-	if bgHex := resolveSchemeColorToHex("lt1", themeColors); bgHex != "" {
-		if c, perr := svggen.ParseColor(bgHex); perr == nil {
+	if mods.Alpha > 0 && mods.Alpha < 1 && len(slideBackground) > 0 && bgHex == "" {
+		return "" // A weakly scrimmed photo has no single measurable canvas.
+	}
+	if bgHex != "" {
+		c, perr := svggen.ParseColor(bgHex)
+		if perr != nil && mods.Alpha > 0 && mods.Alpha < 1 {
+			return ""
+		}
+		if perr == nil {
 			bg = c
 		}
 	}
@@ -625,20 +636,16 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 // the original grid row/cell coordinates are not retained on the raw shape XML
 // at render time.
 func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideIndex int, slideBackground ...string) ([][]byte, []ContrastSwap) {
-	backgroundHex := ""
-	if len(slideBackground) > 0 {
-		backgroundHex = slideBackground[0]
-	}
 	// Sibling cells first: a text colour shared by several cells is decided once,
 	// against the worst fill in the group, so a tinted stack does not come out in
 	// three colours (go-slide-creator-tnx3e). Whatever the group settled is
 	// already readable, so the per-shape pass below finds nothing left to do on
 	// those cells.
-	shapes, allSwaps := enforceGridGroupContrast(shapes, themeColors, whiteTextSafeHex, slideIndex, backgroundHex)
+	shapes, allSwaps := enforceGridGroupContrast(shapes, themeColors, whiteTextSafeHex, slideIndex, slideBackground...)
 	gridPath := slidepath.ShapeGrid(slideIndex)
 	for i, shape := range shapes {
 		var swaps []ContrastSwap
-		shapes[i], swaps = fixShapeXMLContrast(shape, themeColors, whiteTextSafeHex, backgroundHex)
+		shapes[i], swaps = fixShapeXMLContrast(shape, themeColors, whiteTextSafeHex, slideBackground...)
 		annotateContrastSwaps(swaps, slideIndex, slidepath.Join(gridPath, fmt.Sprintf("shapes/%d", i)), "shape_grid")
 		allSwaps = append(allSwaps, swaps...)
 	}
@@ -653,11 +660,7 @@ func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, w
 // text foreground is white/lt1, the fix is skipped — the template metadata
 // certifies that pairing as safe.
 func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideBackground ...string) ([]byte, []ContrastSwap) {
-	backgroundHex := ""
-	if len(slideBackground) > 0 {
-		backgroundHex = slideBackground[0]
-	}
-	fillHex := effectiveGridShapeFillHex(shapeXML, themeColors, backgroundHex)
+	fillHex := effectiveGridShapeFillHex(shapeXML, themeColors, slideBackground...)
 	if fillHex == "" {
 		return shapeXML, nil
 	}
@@ -712,11 +715,11 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 // effectiveGridShapeFillHex uses the cell's own solid fill when present, then
 // the effective slide canvas for transparent cells. Unknown gradient/picture
 // fills are not treated as transparent: their visible color is indeterminate.
-func effectiveGridShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor, slideBackground string) string {
-	if fill := extractShapeFillHex(shapeXML, themeColors); fill != "" {
+func effectiveGridShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor, slideBackground ...string) string {
+	if fill := extractShapeFillHex(shapeXML, themeColors, slideBackground...); fill != "" {
 		return fill
 	}
-	if slideBackground == "" {
+	if len(slideBackground) == 0 || slideBackground[0] == "" {
 		return ""
 	}
 	spPrStart := bytes.Index(shapeXML, []byte("<p:spPr>"))
@@ -729,7 +732,7 @@ func effectiveGridShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor, 
 			}
 		}
 	}
-	return slideBackground
+	return slideBackground[0]
 }
 
 // srgbClrInFillRegexp matches <a:solidFill><a:srgbClr val="RRGGBB"/></a:solidFill>

@@ -1534,7 +1534,7 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 				if cell == nil || cell.Shape == nil {
 					continue
 				}
-				fill := effectiveShapeFillColor(cell.Shape.Fill, themeColors)
+				fill := effectiveShapeFillColor(cell.Shape.Fill, themeColors, gridBackground)
 				if fill == "" && transparentShapeFill(cell.Shape.Fill) {
 					fill = gridBackground
 				}

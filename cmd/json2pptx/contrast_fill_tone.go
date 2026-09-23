@@ -13,10 +13,10 @@ import (
 // shape_grid fill: like extractShapeFillColor, but an object-form fill that
 // carries lumMod / lumOff / alpha modifiers (the tints patterns paint behind
 // highlighted rows and callouts) is composed into its effective "#RRGGBB"
-// against the theme. Judging a light tint by its untinted base accent made
+// against the visible slide canvas. Judging a light tint by its untinted base accent made
 // the contrast preflight predict an auto-replacement of perfectly readable
 // dark text.
-func effectiveShapeFillColor(raw json.RawMessage, themeColors []types.ThemeColor) string {
+func effectiveShapeFillColor(raw json.RawMessage, themeColors []types.ThemeColor, slideBackground ...string) string {
 	base := extractShapeFillColor(raw)
 	if base == "" {
 		return ""
@@ -39,13 +39,23 @@ func effectiveShapeFillColor(raw json.RawMessage, themeColors []types.ThemeColor
 	if !ok {
 		return base
 	}
-	bg, bgOK := themeHex("lt1", themeColors)
-	if !bgOK {
-		bg = svggen.Color{R: 255, G: 255, B: 255, A: 1}
-	}
 	alpha := obj.Alpha
 	if alpha > 1 {
-		alpha /= 100 // shape-grid alpha is a 0-100 percentage
+		alpha /= 100
+	}
+	bgHex := "lt1"
+	if len(slideBackground) > 0 {
+		bgHex = slideBackground[0]
+	}
+	if alpha > 0 && alpha < 1 && len(slideBackground) > 0 && bgHex == "" {
+		return "" // The visible photo canvas cannot be reduced to one colour.
+	}
+	bg, bgOK := themeHex(bgHex, themeColors)
+	if !bgOK {
+		if alpha > 0 && alpha < 1 && len(slideBackground) > 0 {
+			return ""
+		}
+		bg = svggen.Color{R: 255, G: 255, B: 255, A: 1}
 	}
 	return patterns.EffectiveColorMods(c, patterns.ColorMods{
 		LumMod: obj.LumMod, LumOff: obj.LumOff,

@@ -83,10 +83,6 @@ var textColorRunRegexp = regexp.MustCompile(`<a:solidFill>\s*<a:(srgbClr|schemeC
 // part; a colour that appears in a single cell forms no group and is left to the
 // per-shape pass.
 func collectGridTextGroups(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideBackground ...string) []gridTextGroup {
-	backgroundHex := ""
-	if len(slideBackground) > 0 {
-		backgroundHex = slideBackground[0]
-	}
 	type acc struct {
 		group gridTextGroup
 		order int
@@ -95,7 +91,7 @@ func collectGridTextGroups(shapes [][]byte, themeColors []types.ThemeColor, whit
 	var order int
 
 	for i, shape := range shapes {
-		fillHex := effectiveGridShapeFillHex(shape, themeColors, backgroundHex)
+		fillHex := effectiveGridShapeFillHex(shape, themeColors, slideBackground...)
 		if fillHex == "" {
 			continue
 		}
@@ -324,12 +320,8 @@ func replaceTextColor(txBody, fromHex, toHex string, themeColors []types.ThemeCo
 // swaps recording them, and the set of (shape index, colour) pairs the per-shape
 // pass must leave alone — they have already been decided as a group.
 func enforceGridGroupContrast(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideIndex int, slideBackground ...string) ([][]byte, []ContrastSwap) {
-	backgroundHex := ""
-	if len(slideBackground) > 0 {
-		backgroundHex = slideBackground[0]
-	}
 	var swaps []ContrastSwap
-	for _, g := range collectGridTextGroups(shapes, themeColors, whiteTextSafeHex, backgroundHex) {
+	for _, g := range collectGridTextGroups(shapes, themeColors, whiteTextSafeHex, slideBackground...) {
 		if len(g.members) < 2 {
 			continue
 		}
