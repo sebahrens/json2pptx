@@ -580,3 +580,51 @@ func TestTimelineHorizontal(t *testing.T) {
 		}
 	})
 }
+
+func TestTimelineChevronBodySize(t *testing.T) {
+	stops := TimelineHorizontalValues{
+		{Label: "Plan", Body: "Discovery work"},
+		{Label: "Build", Body: "Implementation"},
+		{Label: "Launch", Body: "Release"},
+	}
+	for _, tc := range []struct {
+		name      string
+		labelSize float64
+		bodySize  float64
+		wantLabel float64
+		wantBody  float64
+	}{
+		{"defaults", 0, 0, 12, 12},
+		{"derived_from_label", 18, 0, 18, 16},
+		{"explicit_body_override", 18, 15, 18, 15},
+		{"derived_readable_floor", 6, 0, 12, 12},
+		{"explicit_readable_floor", 18, 6, 18, 12},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			grid, err := (&timelineHorizontal{}).Expand(ExpandContext{}, &stops,
+				&TimelineHorizontalOverrides{Style: "chevron", LabelSize: tc.labelSize, BodySize: tc.bodySize}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, cell := range grid.Rows[0].Cells {
+				var content struct {
+					Paragraphs []struct {
+						Size float64 `json:"size"`
+					} `json:"paragraphs"`
+				}
+				if err := json.Unmarshal(cell.Shape.Text, &content); err != nil {
+					t.Fatal(err)
+				}
+				if len(content.Paragraphs) != 2 {
+					t.Fatalf("stop %d has %d paragraphs, want label and body", i, len(content.Paragraphs))
+				}
+				if got := content.Paragraphs[0].Size; got != tc.wantLabel {
+					t.Errorf("stop %d label size = %g, want %g", i, got, tc.wantLabel)
+				}
+				if got := content.Paragraphs[1].Size; got != tc.wantBody {
+					t.Errorf("stop %d body size = %g, want %g", i, got, tc.wantBody)
+				}
+			}
+		})
+	}
+}

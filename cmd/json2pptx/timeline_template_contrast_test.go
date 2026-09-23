@@ -152,6 +152,40 @@ func TestTimelineChevronWarnsBeforeDenseBodyClips(t *testing.T) {
 	}
 }
 
+func TestTimelineChevronBodySizeOverrideChangesFitFinding(t *testing.T) {
+	a := loadTemplateAnalysis(t, "midnight-blue")
+	stops := make([]patterns.TimelineStop, 7)
+	for i := range stops {
+		stops[i] = patterns.TimelineStop{Label: "Wave close"}
+	}
+	stops[4].Body = "Fleet migrated"
+	values, err := json.Marshal(stops)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := &PresentationInput{Slides: []SlideInput{{
+		SlideType: "content",
+		Pattern: &PatternInput{Name: "timeline-horizontal", Values: values,
+			Overrides: json.RawMessage(`{"style":"chevron"}`)},
+	}}}
+	countBodyFindings := func() int {
+		count := 0
+		for _, finding := range collectFitFindings(input, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
+			if finding.Code == patterns.ErrCodeBodyTooLong && strings.Contains(finding.Message, "values[4].body") {
+				count++
+			}
+		}
+		return count
+	}
+	if got := countBodyFindings(); got != 0 {
+		t.Fatalf("default 12pt body should fit, got %d warnings", got)
+	}
+	input.Slides[0].Pattern.Overrides = json.RawMessage(`{"style":"chevron","body_size":30}`)
+	if got := countBodyFindings(); got != 1 {
+		t.Errorf("explicit 30pt body should warn exactly once, got %d", got)
+	}
+}
+
 func TestTimelineChevronKeepsDarkInkInGeneratedDeck(t *testing.T) {
 	stops := make([]patterns.TimelineStop, 7)
 	for i := range stops {

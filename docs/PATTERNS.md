@@ -406,6 +406,7 @@ The same rule applies to the text a pattern paints INSIDE a fill it tints itself
 - Build the fill from a `fillTone` and emit it with `tone.fillJSON()`, so the tone you measured and the fill you paint cannot drift apart.
 - `tint` and `shade` are **linear-light mixes** toward white and black, not the HSL lightness that `lumMod` / `lumOff` act on. `EffectiveColorMods` models all four; both transforms are pinned against measured render pixels in `internal/patterns/timeline_contrast_test.go`. A model that treats a tint as a lumMod is out by 30-50 per channel, which is the difference between "readable" and "invisible".
 - In `timeline-horizontal` chevrons, measure the label and body against the chevron's usable text width and capped row height. Emit `BODY_TOO_LONG` with the available body-line count when the description would clip; a raw character limit misses narrow seven-stop layouts.
+- Chevron `body_size` controls both the emitted paragraph and its fit budget. Sizes below shape-grid's 12pt rendering floor are measured and emitted at 12pt, including the default derived from `label_size`.
 
 ## Composition
 

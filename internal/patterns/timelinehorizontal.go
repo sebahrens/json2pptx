@@ -177,12 +177,7 @@ func timelineChevronBodyCapacity(ctx ExpandContext, stops TimelineHorizontalValu
 	if stop.Body == "" {
 		return 0, 0
 	}
-	labelSize := 12.0
-	if ovr != nil {
-		labelSize = ResolveSize(ovr.LabelSize, labelSize)
-	}
-	bodySize := shapegrid.EffectiveTextSizePt(labelSize - 2)
-	labelSize = shapegrid.EffectiveTextSizePt(labelSize)
+	labelSize, bodySize := timelineChevronTextSizes(ovr)
 	contentW, contentH := contentAreaPt(ctx)
 	textW := math.Max(equalColumnWidthPt(contentW, len(stops), 0)*0.75-2*defaultShapeInsetLRPt, 1)
 	font := ctx.Theme.BodyFont
@@ -195,6 +190,20 @@ func timelineChevronBodyCapacity(ctx ExpandContext, stops TimelineHorizontalValu
 	}
 	capacity = int(math.Floor(availableH / (bodySize * contentLineHeight)))
 	return lines, capacity
+}
+
+// timelineChevronTextSizes matches the sizes the shape-grid renderer emits.
+// A small label cannot pull its body below the renderer's readable 12pt floor;
+// an explicit body_size wins over the derived default.
+func timelineChevronTextSizes(ovr *TimelineHorizontalOverrides) (labelSize, bodySize float64) {
+	labelSize = 12
+	if ovr != nil {
+		labelSize = ResolveSize(ovr.LabelSize, labelSize)
+		bodySize = ResolveSize(ovr.BodySize, labelSize-2)
+	} else {
+		bodySize = labelSize - 2
+	}
+	return shapegrid.EffectiveTextSizePt(labelSize), shapegrid.EffectiveTextSizePt(bodySize)
 }
 
 func (th *timelineHorizontal) Schema() *Schema {
@@ -217,7 +226,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 					"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 					"label_size":      NumberSchema(6, 120).WithDescription("Font size for stop labels in points"),
 					"date_size":       NumberSchema(6, 120).WithDescription("Font size for dates in points"),
-					"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points"),
+					"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points; chevron style honors this override and applies the shape-grid 12pt readable floor"),
 					"style":           EnumSchema("dots", "chevron", "gantt").WithDescription("Visual style: dots (default: horizontal axis with accent dots, dates above, label/body below), chevron (connected arrow shapes with gradient), gantt (horizontal range bars)").WithDefault("dots"),
 				},
 				nil,
@@ -452,7 +461,7 @@ func buildTimelineDotsText(paras []timelineDotsPara, vAlign string) json.RawMess
 // Label inside chevron, date below in a second row.
 func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	labelSize := ResolveSize(ovr.LabelSize, 12.0)
+	labelSize, bodySize := timelineChevronTextSizes(ovr)
 	dateSize := ResolveSize(ovr.DateSize, 9.0)
 
 	n := len(*stops)
@@ -465,7 +474,7 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 
 		// Label (and optionally body) inside the chevron, in whichever text
 		// colour reads on this link's own tint.
-		textContent := buildChevronTextContent(stop, labelSize, timelineGradientTextColor(ctx, tone))
+		textContent := buildChevronTextContent(stop, labelSize, bodySize, timelineGradientTextColor(ctx, tone))
 
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "homePlate",
@@ -650,7 +659,7 @@ func timelineGradientTextColor(ctx ExpandContext, tone fillTone) string {
 
 // buildChevronTextContent creates text for inside a chevron shape (label +
 // optional body, no date), in the given text colour.
-func buildChevronTextContent(stop TimelineStop, labelSize float64, textColor string) json.RawMessage {
+func buildChevronTextContent(stop TimelineStop, labelSize, bodySize float64, textColor string) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -663,7 +672,7 @@ func buildChevronTextContent(stop TimelineStop, labelSize float64, textColor str
 		{Content: stop.Label, Size: labelSize, Bold: true, Color: textColor, Align: "ctr"},
 	}
 	if stop.Body != "" {
-		paras = append(paras, paragraph{Content: stop.Body, Size: labelSize - 2, Color: textColor, Align: "ctr"})
+		paras = append(paras, paragraph{Content: stop.Body, Size: bodySize, Color: textColor, Align: "ctr"})
 	}
 
 	textObj := struct {
