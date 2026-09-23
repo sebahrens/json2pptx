@@ -260,6 +260,23 @@ func TestVisualQA_DisabledByDefault(t *testing.T) {
 // environment so it is deterministic on CI (no render tools) and on dev
 // machines (tools present, no API key → heuristic).
 func TestVisualQA_EnabledReportsRequirementsAndMode(t *testing.T) {
+	withRenderStatus(t, false, []string{"libreoffice/soffice", "magick"})
+	assertVisualQAEnabledReportsRequirementsAndMode(t)
+}
+
+func TestVisualQA_EnabledWithRenderTools(t *testing.T) {
+	if testing.Short() {
+		t.Skip("real visual-QA render integration")
+	}
+	if ok, _ := render.DependencyStatus(); !ok {
+		t.Skip("render tools unavailable")
+	}
+	withRenderStatus(t, true, nil)
+	assertVisualQAEnabledReportsRequirementsAndMode(t)
+}
+
+func assertVisualQAEnabledReportsRequirementsAndMode(t *testing.T) {
+	t.Helper()
 	mc := repairMC(t)
 
 	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
@@ -295,7 +312,7 @@ func TestVisualQA_EnabledReportsRequirementsAndMode(t *testing.T) {
 	if output.QualityMode != output.Quality.Actual {
 		t.Errorf("quality_mode (%q) must alias quality.actual (%q)", output.QualityMode, output.Quality.Actual)
 	}
-	if renderAvail, _ := render.DependencyStatus(); renderAvail {
+	if renderAvail, _ := renderDependencyStatus(); renderAvail {
 		if output.Quality.Actual != qualityModeVisualQA {
 			t.Errorf("quality.actual = %q, want %q when render tools present", output.Quality.Actual, qualityModeVisualQA)
 		}
@@ -336,7 +353,7 @@ func TestVisualQA_EnabledReportsRequirementsAndMode(t *testing.T) {
 		t.Error("requirements.render_dependencies should list libreoffice + magick")
 	}
 
-	avail, _ := render.DependencyStatus()
+	avail, _ := renderDependencyStatus()
 	switch {
 	case !avail:
 		if vqa.InspectionMode != "skipped" {
@@ -396,6 +413,9 @@ func TestVisualQA_EnabledReportsRequirementsAndMode(t *testing.T) {
 // TestVisualQA_AuditPaletteRequested asserts that requesting the palette audit
 // attaches a palette_audit block (available or transparently unavailable).
 func TestVisualQA_AuditPaletteRequested(t *testing.T) {
+	if testing.Short() {
+		t.Skip("real palette-audit render integration")
+	}
 	avail, _ := render.DependencyStatus()
 	if !avail {
 		t.Skip("render tools unavailable; visual_qa phase is skipped so palette audit never runs")

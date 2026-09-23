@@ -65,6 +65,9 @@ func TestGenerateTableUsesTemplateDefaultStyle(t *testing.T) {
 }
 
 func TestTemplateDefaultWithoutDefinitionRendersFilledHeader(t *testing.T) {
+	if testing.Short() {
+		t.Skip("pixel comparison requires LibreOffice")
+	}
 	if ok, missing := render.DependencyStatus(); !ok {
 		t.Skipf("render dependencies unavailable: %v", missing)
 	}

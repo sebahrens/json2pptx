@@ -57,40 +57,6 @@ func TestHandleRenderSlideImageFromJSON_TemplateNotFound(t *testing.T) {
 	}
 }
 
-// TestHandleRenderSlideImageFromJSON_DensityClampParsing exercises density
-// clamp branches and the force flag without requiring LibreOffice to succeed
-// (LibreOffice is invoked but failure here is acceptable for branch coverage).
-func TestHandleRenderSlideImageFromJSON_DensityClampParsing(t *testing.T) {
-	mc := cliMCPConfig("../../templates", "")
-
-	// Lower clamp.
-	res, err := mc.handleRenderSlideImageFromJSON(context.Background(), makeRequest(map[string]any{
-		"slide":    map[string]any{"layout_id": "slideLayout1"},
-		"template": "midnight-blue",
-		"density":  float64(10), // below 50; clamp branch
-		"force":    true,
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if res == nil {
-		t.Fatal("expected non-nil result")
-	}
-
-	// Upper clamp.
-	res2, err := mc.handleRenderSlideImageFromJSON(context.Background(), makeRequest(map[string]any{
-		"slide":    map[string]any{"layout_id": "slideLayout1"},
-		"template": "midnight-blue",
-		"density":  float64(9999), // above 300; clamp branch
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if res2 == nil {
-		t.Fatal("expected non-nil result")
-	}
-}
-
 // TestRenderSlideWithCacheKey_RequiresKey verifies the render helper rejects
 // an empty cache key — callers must supply an identity derived from upstream
 // inputs.

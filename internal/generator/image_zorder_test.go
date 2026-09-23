@@ -69,6 +69,10 @@ func TestModernFullBleedImageLeavesTitleVisible(t *testing.T) {
 		}
 	}
 
+	if testing.Short() {
+		t.Log("pixel check skipped in short mode; OOXML z-order checks passed")
+		return
+	}
 	if ok, missing := render.DependencyStatus(); !ok {
 		t.Logf("pixel check skipped: missing render dependencies %v", missing)
 		return

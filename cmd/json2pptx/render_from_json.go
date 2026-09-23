@@ -90,16 +90,7 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 	}
 
 	// Optional: density (clamped 50-300, default 100).
-	density := 100
-	if v, ok := request.GetArguments()["density"].(float64); ok {
-		d := int(v)
-		if d < 50 {
-			d = 50
-		} else if d > 300 {
-			d = 300
-		}
-		density = d
-	}
+	density := clampedRenderDensity(request.GetArguments(), 100, 50, 300)
 
 	// Optional: force.
 	force := false

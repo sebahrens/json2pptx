@@ -457,7 +457,7 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 				"presentation": fixtureDeck,
 			}))
 		case "render_deck_thumbnails":
-			if os.Getenv("GET_STARTED_RENDER_INTEGRATION") != "1" {
+			if testing.Short() || os.Getenv("GET_STARTED_RENDER_INTEGRATION") != "1" {
 				return generatedPath
 			}
 			if ok, _ := render.DependencyStatus(); !ok {
@@ -465,7 +465,7 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 			}
 			result, err = mc.handleRenderDeckThumbnails(ctx, makeRequest(map[string]any{"pptx_path": generatedPath}))
 		case "inspect_slide_images":
-			if os.Getenv("GET_STARTED_RENDER_INTEGRATION") != "1" {
+			if testing.Short() || os.Getenv("GET_STARTED_RENDER_INTEGRATION") != "1" {
 				return generatedPath
 			}
 			if ok, _ := render.DependencyStatus(); !ok {

@@ -174,6 +174,9 @@ func integrationPPTXPath(t *testing.T) string {
 // TestIntegrationRenderSlide tests actual rendering if dependencies are available.
 // Skipped in CI if libreoffice/magick are not installed.
 func TestIntegrationRenderSlide(t *testing.T) {
+	if testing.Short() {
+		t.Skip("real render integration")
+	}
 	if err := CheckDependencies(); err != nil {
 		t.Skipf("skipping integration test: %v", err)
 	}
@@ -517,6 +520,9 @@ func TestSlideImageFromBytes_SmallInline(t *testing.T) {
 }
 
 func TestIntegrationRenderDeck(t *testing.T) {
+	if testing.Short() {
+		t.Skip("real render integration")
+	}
 	if err := CheckDependencies(); err != nil {
 		t.Skipf("skipping integration test: %v", err)
 	}

@@ -269,7 +269,7 @@ type visualQAPaletteAudit struct {
 // buildVisualQARequirements assembles the precondition/cost summary. It performs
 // no I/O beyond an environment lookup and a PATH probe.
 func buildVisualQARequirements(cfg visualQAConfig) visualQARequirements {
-	renderAvail, renderMissing := render.DependencyStatus()
+	renderAvail, renderMissing := renderDependencyStatus()
 	model := cfg.Model
 	if model == "" {
 		model = visualqa.DefaultModel()

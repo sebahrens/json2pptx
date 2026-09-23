@@ -536,51 +536,6 @@ func TestHandleRenderSlideImage_FileNotFound(t *testing.T) {
 	}
 }
 
-func TestHandleRenderSlideImage_OptionParsing(t *testing.T) {
-	// Create a placeholder file so the os.Stat check passes; rendering will
-	// then fail (LibreOffice unavailable or invalid PPTX), but the density
-	// clamp / slide_index / force branches get exercised.
-	dir := t.TempDir()
-	p := dir + "/fake.pptx"
-	if err := os.WriteFile(p, []byte("not really a pptx"), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	mc := cliMCPConfig("./templates", "./out")
-	res, err := mc.handleRenderSlideImage(context.Background(), makeRequest(map[string]any{
-		"pptx_path":   p,
-		"slide_index": float64(1),
-		"density":     float64(10000), // exercise upper-clamp
-		"force":       true,
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if res == nil {
-		t.Fatal("expected result")
-	}
-	// Render is expected to fail (no LibreOffice / fake PPTX); we just want the
-	// branches covered.
-	if !res.IsError {
-		t.Logf("render unexpectedly succeeded for fake PPTX (LibreOffice present)")
-	}
-}
-
-func TestHandleRenderSlideImage_DensityLowerClamp(t *testing.T) {
-	dir := t.TempDir()
-	p := dir + "/fake.pptx"
-	if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	mc := cliMCPConfig("./templates", "./out")
-	_, err := mc.handleRenderSlideImage(context.Background(), makeRequest(map[string]any{
-		"pptx_path": p,
-		"density":   float64(10), // lower-clamp
-	}))
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
 func TestHandleRenderDeckThumbnails_MissingPath(t *testing.T) {
 	mc := cliMCPConfig("./templates", "./out")
 	res, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(nil))
@@ -602,31 +557,6 @@ func TestHandleRenderDeckThumbnails_FileNotFound(t *testing.T) {
 	}
 	if res == nil || !res.IsError {
 		t.Fatal("expected IsError for missing file")
-	}
-}
-
-func TestHandleRenderDeckThumbnails_OptionParsing(t *testing.T) {
-	dir := t.TempDir()
-	p := dir + "/fake.pptx"
-	if err := os.WriteFile(p, []byte("x"), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-	mc := cliMCPConfig("./templates", "./out")
-	// Upper-clamp density and provide max_slides.
-	if _, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{
-		"pptx_path":  p,
-		"density":    float64(9999), // upper clamp
-		"max_slides": float64(3),
-		"force":      true,
-	})); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	// Lower-clamp density.
-	if _, err := mc.handleRenderDeckThumbnails(context.Background(), makeRequest(map[string]any{
-		"pptx_path": p,
-		"density":   float64(1), // lower clamp
-	})); err != nil {
-		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

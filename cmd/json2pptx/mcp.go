@@ -2486,16 +2486,7 @@ func (mc *mcpConfig) handleRenderSlideImage(ctx context.Context, request mcp.Cal
 		slideIndex = int(v)
 	}
 
-	density := 100
-	if v, ok := request.GetArguments()["density"].(float64); ok {
-		d := int(v)
-		if d < 50 {
-			d = 50
-		} else if d > 300 {
-			d = 300
-		}
-		density = d
-	}
+	density := clampedRenderDensity(request.GetArguments(), 100, 50, 300)
 
 	force := false
 	if v, ok := request.GetArguments()["force"].(bool); ok {
@@ -2542,16 +2533,7 @@ func (mc *mcpConfig) handleRenderDeckThumbnails(ctx context.Context, request mcp
 		return api.MCPSimpleError("FILE_NOT_FOUND", fmt.Sprintf("pptx file not found: %s", pptxPath)), nil
 	}
 
-	density := 50
-	if v, ok := request.GetArguments()["density"].(float64); ok {
-		d := int(v)
-		if d < 25 {
-			d = 25
-		} else if d > 150 {
-			d = 150
-		}
-		density = d
-	}
+	density := clampedRenderDensity(request.GetArguments(), 50, 25, 150)
 
 	maxSlides := 50
 	_, hasMaxSlides := request.GetArguments()["max_slides"]
