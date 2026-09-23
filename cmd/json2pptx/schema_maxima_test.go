@@ -2,9 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
+	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -27,23 +30,109 @@ import (
 // pattern tuned on one palette's geometry can still overflow on another.
 var schemaMaximaTemplates = []string{"midnight-blue", "warm-coral", "forest-green", "modern-template"}
 
+// schemaMaximaTemplateNames includes the ignored local p-style template in
+// geometry-based tests when it is installed; CI works without that file.
+func schemaMaximaTemplateNames(t *testing.T) []string {
+	t.Helper()
+	path := filepath.Join("..", "..", "templates", "p-style.pptx")
+	names, err := schemaMaximaTemplateNamesAt(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return names
+}
+
+func schemaMaximaTemplateNamesAt(path string) ([]string, error) {
+	names := append([]string(nil), schemaMaximaTemplates...)
+	info, err := os.Stat(path)
+	if err == nil {
+		if info.IsDir() {
+			return nil, fmt.Errorf("local p-style template path is a directory: %s", path)
+		}
+		return append(names, "p-style"), nil
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("stat local p-style template: %w", err)
+	}
+	return names, nil
+}
+
+func TestSchemaMaximaTemplateNamesIncludesLocalPStyle(t *testing.T) {
+	missingPath := filepath.Join(t.TempDir(), "missing.pptx")
+	without, err := schemaMaximaTemplateNamesAt(missingPath)
+	if err != nil || len(without) != len(schemaMaximaTemplates) || slices.Contains(without, "p-style") {
+		t.Fatalf("missing local template: names=%v, err=%v", without, err)
+	}
+	presentPath := filepath.Join(t.TempDir(), "p-style.pptx")
+	if err := os.WriteFile(presentPath, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	with, err := schemaMaximaTemplateNamesAt(presentPath)
+	if err != nil || len(with) != len(schemaMaximaTemplates)+1 || !slices.Contains(with, "p-style") {
+		t.Fatalf("present local template: names=%v, err=%v", with, err)
+	}
+
+	path := filepath.Join("..", "..", "templates", "p-style.pptx")
+	_, err = os.Stat(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		t.Fatal(err)
+	}
+	wantLocal := err == nil
+	names := schemaMaximaTemplateNames(t)
+	if got := slices.Contains(names, "p-style"); got != wantLocal {
+		t.Fatalf("p-style in schema-maxima matrix = %v, local file exists = %v; templates: %v", got, wantLocal, names)
+	}
+	wantCount := len(schemaMaximaTemplates)
+	if wantLocal {
+		wantCount++
+	}
+	if len(names) != wantCount {
+		t.Fatalf("schema-maxima template count = %d, want %d: %v", len(names), wantCount, names)
+	}
+}
+
 // TestSchemaMaximaStayReadable measures, for every registered pattern, the
 // smallest text its OWN schema maximum would render at — the same prediction
 // the fit report gives an agent — and pins it. A pattern whose schema permits
 // content that renders below the readable floor is one an agent cannot size its
 // copy against by reading the contract.
 func TestSchemaMaximaStayReadable(t *testing.T) {
+	templateNames := schemaMaximaTemplateNames(t)
+	t.Logf("schema-maxima templates: %v", templateNames)
+	geometries := make([]schemaMaximaGeometry, 0, len(templateNames))
+	for _, name := range templateNames {
+		geometries = append(geometries, loadSchemaMaximaGeometry(t, name))
+	}
 	measured := map[string]float64{}
+	localMeasured := map[string]float64{}
 	for _, pat := range patterns.Default().List() {
+		values, note := schemaMaximumValues(pat)
+		if note != "" {
+			t.Errorf("%s: cannot measure schema maximum on %v: %s", pat.Name(), templateNames, note)
+			measured[pat.Name()] = 0
+			if len(templateNames) > len(schemaMaximaTemplates) {
+				localMeasured[pat.Name()] = 0
+			}
+			continue
+		}
+		encoded, err := json.Marshal(values)
+		if err != nil {
+			t.Errorf("%s: schema maximum does not marshal: %v", pat.Name(), err)
+			measured[pat.Name()] = 0
+			if len(templateNames) > len(schemaMaximaTemplates) {
+				localMeasured[pat.Name()] = 0
+			}
+			continue
+		}
 		// The score is the SMALLEST size any cell would render at across the
 		// bundled templates — the worst case an author can hit — so a lower
 		// number is a worse pattern, and 0 ("no cell drops below the floor")
 		// is the best of all.
 		worst := 0.0
-		for _, tpl := range schemaMaximaTemplates {
-			pt, note := measureSchemaMaximumPt(t, pat, tpl)
-			if note != "" {
-				t.Logf("%s on %s: %s", pat.Name(), tpl, note)
+		for _, geom := range geometries {
+			pt := measureSchemaMaximumEncodedPt(pat.Name(), encoded, geom)
+			if geom.name == "p-style" {
+				localMeasured[pat.Name()] = pt
 				continue
 			}
 			if pt > 0 && (worst == 0 || pt < worst) {
@@ -51,6 +140,12 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 			}
 		}
 		measured[pat.Name()] = worst
+	}
+	if len(localMeasured) > 0 {
+		if len(localMeasured) != len(measured) {
+			t.Errorf("p-style measured %d of %d patterns", len(localMeasured), len(measured))
+		}
+		assertSchemaMaximaPins(t, "p-style", localMeasured, pStyleSchemaMaximaShrinkPt)
 	}
 
 	names := make([]string, 0, len(measured))
@@ -72,19 +167,24 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 	}
 	t.Logf("smallest size a schema-maximum payload renders at, worst first (0 = no cell drops below the floor):\n%s", report.String())
 
+	assertSchemaMaximaPins(t, "bundled templates", measured, schemaMaximaShrinkPt)
+}
+
+func assertSchemaMaximaPins(t *testing.T, scope string, measured, pins map[string]float64) {
+	t.Helper()
 	for name, shrink := range measured {
-		pinned, ok := schemaMaximaShrinkPt[name]
+		pinned, ok := pins[name]
 		if !ok {
-			t.Errorf("pattern %q has no entry in schemaMaximaShrinkPt (measured %.1fpt) — add one, or bring its schema maxima down to what its cells hold", name, shrink)
+			t.Errorf("%s: pattern %q has no schema-maxima pin (measured %.1fpt)", scope, name, shrink)
 			continue
 		}
 		switch {
 		case pinned == 0 && shrink != 0:
-			t.Errorf("%s: schema maxima now render text at %.1fpt; the pin says nothing should drop below the floor", name, shrink)
+			t.Errorf("%s on %s: schema maxima now render text at %.1fpt; the pin says nothing should drop below the floor", name, scope, shrink)
 		case pinned != 0 && shrink != 0 && shrink < pinned-0.05:
-			t.Errorf("%s: schema maxima now render at %.1fpt, SMALLER than the pinned %.1fpt — a field's maxLength grew past what its cell holds", name, shrink, pinned)
+			t.Errorf("%s on %s: schema maxima now render at %.1fpt, SMALLER than the pinned %.1fpt — a field's maxLength grew past what its cell holds", name, scope, shrink, pinned)
 		case pinned != 0 && (shrink == 0 || shrink > pinned+1):
-			t.Errorf("%s: schema maxima now render at %.1fpt, better than the pinned %.1fpt — raise the pin to hold the ground", name, shrink, pinned)
+			t.Errorf("%s on %s: schema maxima now render at %.1fpt, better than the pinned %.1fpt — raise the pin to hold the ground", name, scope, shrink, pinned)
 		}
 	}
 }
@@ -104,23 +204,38 @@ func measureSchemaMaximumPt(t *testing.T, pat patterns.Pattern, templateName str
 		return 0, "values do not marshal: " + err.Error()
 	}
 
+	return measureSchemaMaximumEncodedPt(pat.Name(), encoded, loadSchemaMaximaGeometry(t, templateName)), ""
+}
+
+type schemaMaximaGeometry struct {
+	name          string
+	layouts       []types.LayoutMetadata
+	width, height int64
+}
+
+func loadSchemaMaximaGeometry(t *testing.T, name string) schemaMaximaGeometry {
+	t.Helper()
+	layouts, width, height := schemaMaximaLayouts(t, name)
+	return schemaMaximaGeometry{name: name, layouts: layouts, width: width, height: height}
+}
+
+func measureSchemaMaximumEncodedPt(patternName string, encoded json.RawMessage, geom schemaMaximaGeometry) float64 {
 	input := &PresentationInput{
-		Template: templateName,
+		Template: geom.name,
 		Slides: []SlideInput{{
 			SlideType: "content",
 			LayoutID:  "blank-title",
-			Pattern:   &PatternInput{Name: pat.Name(), Values: encoded},
+			Pattern:   &PatternInput{Name: patternName, Values: encoded},
 		}},
 	}
-	layouts, w, h := schemaMaximaLayouts(t, templateName)
 
 	worst := 0.0
-	for _, f := range collectReadabilityFindings(input, layouts, w, h) {
+	for _, f := range collectReadabilityFindings(input, geom.layouts, geom.width, geom.height) {
 		if pt := readabilityRenderedPt(f.Message); pt > 0 && (worst == 0 || pt < worst) {
 			worst = pt
 		}
 	}
-	return worst, ""
+	return worst
 }
 
 // readabilityRenderedPt reads the predicted size out of a
@@ -251,6 +366,55 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"timeline-horizontal": 5.5,
 	"value-chain":         8.2,
 	"waterfall-bridge":    7.2,
+}
+
+// pStyleSchemaMaximaShrinkPt is pinned separately: the local ignored template
+// has different content geometry, so it must not silently change the bundled
+// four-template baseline. The map is checked only when p-style.pptx is present.
+var pStyleSchemaMaximaShrinkPt = map[string]float64{
+	"agenda":                       9.0,
+	"agenda-with-images":           6.7,
+	"arch-stack":                   0,
+	"before-after":                 0,
+	"before-after-compact":         10.9,
+	"bmc-canvas":                   4.1,
+	"card-grid":                    2.9,
+	"chart-insights-split":         9.4,
+	"comparison-2col":              5.0,
+	"driver-tree":                  4.8,
+	"dual-org-ladder":              7.7,
+	"exec-summary":                 7.9,
+	"hero-detail":                  7.9,
+	"horizontal-bar-with-callouts": 6.7,
+	"icon-row":                     0,
+	"image-text-split":             0,
+	"journey-maturity-model":       9.8,
+	"kpi-2up":                      0,
+	"kpi-3up":                      0,
+	"kpi-4up":                      0,
+	"kpi-5up":                      0,
+	"kpi-6up":                      0,
+	"kpi-inline":                   6.2,
+	"matrix-2x2":                   0,
+	"numbered-step-strip":          8.6,
+	"phase-roadmap":                6.7,
+	"process-flow":                 0,
+	"process-flow-compact":         0,
+	"process-grid-2row":            0,
+	"pull-quote":                   0,
+	"pyramid":                      10.1,
+	"quote-cluster":                7.2,
+	"roadmap-phased":               5.5,
+	"scqa-summary":                 7.9,
+	"stat-hero":                    7.9,
+	"strategy-house":               8.6,
+	"stylish-panels":               8.7,
+	"swimlane":                     6.0,
+	"table-highlight":              7.0,
+	"team-bios":                    6.0,
+	"timeline-horizontal":          6.2,
+	"value-chain":                  9.1,
+	"waterfall-bridge":             7.9,
 }
 
 // coherentMaximum applies the cross-field rules a pattern enforces but its

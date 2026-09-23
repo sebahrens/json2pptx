@@ -7,14 +7,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
-	"github.com/sebahrens/json2pptx/internal/types"
 )
-
-type budgetProbeGeometry struct {
-	name          string
-	layouts       []types.LayoutMetadata
-	width, height int64
-}
 
 func budgetProbeCopy(length int) string {
 	return strings.Repeat("word ", length/5) + strings.Repeat("w", length%5)
@@ -33,10 +26,10 @@ func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload fun
 			t.Fatal(err)
 		}
 	}
-	geometries := make([]budgetProbeGeometry, 0, len(schemaMaximaTemplates))
-	for _, name := range schemaMaximaTemplates {
-		layouts, width, height := schemaMaximaLayouts(t, name)
-		geometries = append(geometries, budgetProbeGeometry{name, layouts, width, height})
+	templateNames := schemaMaximaTemplateNames(t)
+	geometries := make([]schemaMaximaGeometry, 0, len(templateNames))
+	for _, name := range templateNames {
+		geometries = append(geometries, loadSchemaMaximaGeometry(t, name))
 	}
 	clean := func(length int) bool {
 		encoded, err := json.Marshal(payload(length))
@@ -80,7 +73,7 @@ func TestHorizontalBarBudgetProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, templateName := range schemaMaximaTemplates {
+	for _, templateName := range schemaMaximaTemplateNames(t) {
 		layouts, width, height := schemaMaximaLayouts(t, templateName)
 		deck := &PresentationInput{Template: templateName, Slides: []SlideInput{{
 			SlideType: "content", LayoutID: "blank-title",
@@ -1095,7 +1088,7 @@ func TestStatHeroBudgetProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, templateName := range schemaMaximaTemplates {
+	for _, templateName := range schemaMaximaTemplateNames(t) {
 		layouts, width, height := schemaMaximaLayouts(t, templateName)
 		deck := &PresentationInput{Template: templateName, Slides: []SlideInput{{SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "stat-hero", Values: maximumJSON}}}}
 		for _, finding := range collectReadabilityFindings(deck, layouts, width, height) {
@@ -1759,7 +1752,7 @@ func TestPatternBudgetProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range schemaMaximaTemplates {
+	for _, name := range schemaMaximaTemplateNames(t) {
 		layouts, width, height := schemaMaximaLayouts(t, name)
 		input := &PresentationInput{Template: name, Slides: []SlideInput{{
 			SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: pat.Name(), Values: encoded},
@@ -1941,7 +1934,7 @@ func TestKPIInlineBudgetProbe(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, templateName := range schemaMaximaTemplates {
+	for _, templateName := range schemaMaximaTemplateNames(t) {
 		layouts, width, height := schemaMaximaLayouts(t, templateName)
 		input := &PresentationInput{Template: templateName, Slides: []SlideInput{{SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: "kpi-inline", Values: encodedMaximum}}}}
 		for _, finding := range collectReadabilityFindings(input, layouts, width, height) {

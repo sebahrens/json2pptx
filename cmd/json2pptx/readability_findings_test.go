@@ -160,7 +160,7 @@ func TestPullQuoteReadabilityUsesProseFloor(t *testing.T) {
 	if !ok {
 		t.Fatal("pull-quote pattern not registered")
 	}
-	for _, templateName := range schemaMaximaTemplates {
+	for _, templateName := range schemaMaximaTemplateNames(t) {
 		t.Run(templateName, func(t *testing.T) {
 			if pt, note := measureSchemaMaximumPt(t, pat, templateName); note != "" || pt != 0 {
 				t.Fatalf("500-character quote with headshot has below-floor finding at %.1fpt: %s", pt, note)

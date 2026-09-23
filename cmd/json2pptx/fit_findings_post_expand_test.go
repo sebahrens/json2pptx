@@ -26,7 +26,7 @@ func assertPatternFindingAcrossTemplates(t *testing.T, code, pattern string, val
 			t.Fatal(err)
 		}
 	}
-	for _, templateName := range schemaMaximaTemplates {
+	for _, templateName := range schemaMaximaTemplateNames(t) {
 		t.Run(templateName, func(t *testing.T) {
 			layouts, width, height := schemaMaximaLayouts(t, templateName)
 			deck := &PresentationInput{Template: templateName, Slides: []SlideInput{{
