@@ -27,7 +27,7 @@ func RunGuardedLibreOffice(cmd *exec.Cmd) error {
 
 	guard := exec.Command("/bin/sh", "-c", `
 IFS= read -r _ || :
-kill -KILL -- "-$$" 2>/dev/null || :
+/bin/kill -KILL -- "-$$"
 `) //nolint:gosec // constant shell program; kills only the guard's own process group
 	guard.Stdin = readEnd
 	guard.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}

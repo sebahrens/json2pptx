@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -13,6 +14,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/sebahrens/json2pptx/internal/render"
 )
 
 // CommandRunner executes shell commands. This interface allows for mocking in tests.
@@ -26,8 +30,29 @@ type RealCommandRunner struct {
 	Stderr io.Writer
 }
 
+// Kept separate from the mocked CommandRunner contract so tests can use a
+// short deadline without changing every test double.
+var pptx2jpgLibreOfficeTimeout = 90 * time.Second
+
+func isLibreOfficeCommand(name string) bool {
+	base := strings.TrimSuffix(strings.ToLower(filepath.Base(name)), ".exe")
+	return base == "libreoffice" || base == "soffice"
+}
+
 // Run executes the command with the given name and arguments.
 func (r *RealCommandRunner) Run(name string, args ...string) error {
+	if isLibreOfficeCommand(name) {
+		ctx, cancel := context.WithTimeout(context.Background(), pptx2jpgLibreOfficeTimeout)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // executable comes from the resolved LibreOffice toolchain
+		cmd.Stdout, cmd.Stderr = r.Stdout, r.Stderr
+		cmd.WaitDelay = 5 * time.Second
+		err := render.RunGuardedLibreOffice(cmd)
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("LibreOffice timed out after %s: %w", pptx2jpgLibreOfficeTimeout, ctx.Err())
+		}
+		return err
+	}
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = r.Stdout
 	cmd.Stderr = r.Stderr

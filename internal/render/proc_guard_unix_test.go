@@ -5,9 +5,11 @@ package render
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -76,7 +78,7 @@ func TestLibreOfficeGuardSurvivesCallerDeath(t *testing.T) {
 
 	deadline = time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		if errors.Is(syscall.Kill(converterPID, 0), syscall.ESRCH) && errors.Is(syscall.Kill(workerPID, 0), syscall.ESRCH) {
+		if processExited(converterPID) && processExited(workerPID) {
 			if err := syscall.Kill(unrelated.Process.Pid, 0); err != nil {
 				t.Fatalf("guard affected unrelated process %d: %v", unrelated.Process.Pid, err)
 			}
@@ -105,12 +107,39 @@ func TestLibreOfficeGuardCleansWorkerAfterLauncherExits(t *testing.T) {
 	}()
 	deadline := time.Now().Add(5 * time.Second)
 	for time.Now().Before(deadline) {
-		if errors.Is(syscall.Kill(workerPID, 0), syscall.ESRCH) {
+		if processExited(workerPID) {
 			return
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatalf("worker PID %d survived successful launcher exit", workerPID)
+}
+
+// A SIGKILLed orphan may remain as a non-running zombie until the container's
+// PID 1 reaps it. kill(pid, 0) still succeeds for that state, even though the
+// converter cannot execute or hold LibreOffice resources anymore.
+func processExited(pid int) bool {
+	if errors.Is(syscall.Kill(pid, 0), syscall.ESRCH) {
+		return true
+	}
+	if runtime.GOOS != "linux" {
+		return false
+	}
+	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
+	if errors.Is(err, os.ErrNotExist) {
+		return true
+	}
+	if err != nil {
+		return false
+	}
+	// The command name can contain spaces and parentheses; state follows its
+	// LAST closing parenthesis in /proc/<pid>/stat.
+	end := strings.LastIndexByte(string(data), ')')
+	if end < 0 {
+		return false
+	}
+	fields := strings.Fields(string(data[end+1:]))
+	return len(fields) > 0 && fields[0] == "Z"
 }
 
 func readTestPID(t *testing.T, path string) int {
