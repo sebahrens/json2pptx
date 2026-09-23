@@ -460,6 +460,44 @@ func TestWaterfallPublicRenderAcceptsNumericVariantsAndInferredType(t *testing.T
 	}
 }
 
+func TestWaterfallShorthandDoesNotDropUnmatchedBars(t *testing.T) {
+	tests := []struct {
+		name   string
+		labels []any
+		values []any
+		want   string
+	}{
+		{"extra label", []any{"Start", "Cost", "End"}, []any{100, -40}, "3 labels, 2 values"},
+		{"extra value", []any{"Start", "Cost"}, []any{100, -40, 60}, "2 labels, 3 values"},
+		{"empty", []any{}, []any{}, "nonempty"},
+		{"bad value", []any{"Start"}, []any{"100"}, "values must be numbers"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &RequestEnvelope{Type: "waterfall", Data: map[string]any{
+				"labels": tc.labels, "values": tc.values,
+			}, Output: OutputSpec{Width: 800, Height: 600}}
+			_, err := Render(req)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Render error = %v, want %q", err, tc.want)
+			}
+			if _, mutated := req.Data["points"]; mutated {
+				t.Fatal("invalid shorthand was normalized into truncated points")
+			}
+		})
+	}
+	req := &RequestEnvelope{Type: "waterfall", Data: map[string]any{
+		"labels": []any{"Start", "Cost", "End"}, "values": []any{100, -40, 60},
+	}, Output: OutputSpec{Width: 800, Height: 600}}
+	doc, err := Render(req)
+	if err != nil || doc == nil || len(doc.Content) == 0 {
+		t.Fatalf("equal-length shorthand did not render: doc=%v err=%v", doc, err)
+	}
+	if !strings.Contains(string(doc.Content), "End") {
+		t.Fatal("equal-length shorthand dropped the final End bar label")
+	}
+}
+
 func TestWaterfallDiagram_Render(t *testing.T) {
 	diagram := &WaterfallDiagram{NewBaseDiagram("waterfall")}
 

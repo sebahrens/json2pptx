@@ -700,8 +700,11 @@ func (d *WaterfallDiagram) Validate(req *RequestEnvelope) error {
 		return fmt.Errorf("waterfall chart requires data. Expected format: {\"points\": [{\"label\": \"Revenue\", \"value\": 100}, {\"label\": \"Costs\", \"value\": -40}]}")
 	}
 
-	// Accept "labels" + "values" arrays as alternative to "points"
-	normalizeWaterfallData(req)
+	// Accept "labels" + "values" arrays as alternative to "points", but
+	// never silently discard an unmatched category or value.
+	if err := normalizeWaterfallData(req); err != nil {
+		return err
+	}
 
 	// Check for points array
 	pointsRaw, ok := req.Data["points"]
@@ -728,32 +731,35 @@ func (d *WaterfallDiagram) Validate(req *RequestEnvelope) error {
 }
 
 // normalizeWaterfallData converts "labels" + "values" format to "points" format.
-func normalizeWaterfallData(req *RequestEnvelope) {
+func normalizeWaterfallData(req *RequestEnvelope) error {
 	if _, hasPoints := req.Data["points"]; hasPoints {
-		return
+		return nil
 	}
 	labelsRaw, hasLabels := req.Data["labels"]
 	valuesRaw, hasValues := req.Data["values"]
 	if !hasLabels || !hasValues {
-		return
+		return nil
 	}
 	labels, labelsOK := toStringSlice(labelsRaw)
 	values, valuesOK := toFloat64Slice(valuesRaw)
 	if !labelsOK || !valuesOK {
-		return
+		return fmt.Errorf("waterfall chart labels must be strings and values must be numbers")
 	}
-	n := len(labels)
-	if len(values) < n {
-		n = len(values)
+	if len(labels) == 0 || len(values) == 0 {
+		return fmt.Errorf("waterfall chart labels and values must be nonempty")
 	}
-	points := make([]any, n)
-	for i := 0; i < n; i++ {
+	if len(labels) != len(values) {
+		return fmt.Errorf("waterfall chart labels and values must have equal lengths (got %d labels, %d values)", len(labels), len(values))
+	}
+	points := make([]any, len(labels))
+	for i := range labels {
 		points[i] = map[string]any{
 			"label": labels[i],
 			"value": values[i],
 		}
 	}
 	req.Data["points"] = points
+	return nil
 }
 
 // Render generates an SVG document from the request envelope.
