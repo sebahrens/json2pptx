@@ -33,11 +33,13 @@
             "type": "waterfall",
             "title": "Q1 Profit Bridge ($M)",
             "data": {
-              "Revenue": 21.3,
-              "COGS": -6.7,
-              "Gross Profit": 14.6,
-              "OpEx": -10.1,
-              "Net Income": 4.5
+              "points": [
+                {"label": "Revenue", "value": 21.3, "type": "total"},
+                {"label": "COGS", "value": -6.7, "type": "decrease"},
+                {"label": "Gross Profit", "value": 14.6, "type": "subtotal"},
+                {"label": "OpEx", "value": -10.1, "type": "decrease"},
+                {"label": "Net Income", "value": 4.5, "type": "total"}
+              ]
             }
           }
         }

@@ -181,11 +181,14 @@
             "type": "waterfall",
             "title": "Launch Investment ($M)",
             "data": {
-              "Engineering": 2.0,
-              "Marketing": 1.2,
-              "Sales Hiring": 0.5,
-              "Infrastructure": 0.3,
-              "Training": 0.2
+              "points": [
+                {"label": "Engineering", "value": 2.0, "type": "increase"},
+                {"label": "Marketing", "value": 1.2, "type": "increase"},
+                {"label": "Sales Hiring", "value": 0.5, "type": "increase"},
+                {"label": "Infrastructure", "value": 0.3, "type": "increase"},
+                {"label": "Training", "value": 0.2, "type": "increase"},
+                {"label": "Total Investment", "value": 4.2, "type": "total"}
+              ]
             }
           }
         }

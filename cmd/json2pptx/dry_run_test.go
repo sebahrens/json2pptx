@@ -98,9 +98,7 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 		}
 	})
 
-	t.Run("chart with flat waterfall data emits conversion warning", func(t *testing.T) {
-		// Chart type auto-converts flat maps via buildChartData, which should
-		// produce a flat-map conversion warning but not a validation error.
+	t.Run("chart with flat waterfall data is rejected", func(t *testing.T) {
 		output := dryRunOutput{
 			Valid:  true,
 			Slides: []dryRunSlide{},
@@ -120,15 +118,37 @@ func TestValidateSlidesAgainstTemplate_ChartDiagramSvggen(t *testing.T) {
 
 		validateSlidesAgainstTemplate(&output, slides, analysis)
 
-		foundConversion := false
-		for _, w := range diagMessages(output.Diagnostics, diagnostics.SeverityWarning) {
-			if strings.Contains(w, "flat data") {
-				foundConversion = true
+		if output.Valid {
+			t.Fatal("flat waterfall data must make dry-run invalid")
+		}
+		foundRefusal := false
+		for _, d := range output.Diagnostics {
+			if d.Severity == diagnostics.SeverityError && strings.Contains(d.Message, "flat values cannot distinguish changes from totals") {
+				foundRefusal = true
 				break
 			}
 		}
-		if !foundConversion {
-			t.Errorf("expected flat-map conversion warning for waterfall chart, got warnings: %v", diagMessages(output.Diagnostics, diagnostics.SeverityWarning))
+		if !foundRefusal {
+			t.Errorf("expected flat waterfall refusal, got diagnostics: %v", output.Diagnostics)
+		}
+	})
+
+	t.Run("malformed legacy diagram value is rejected", func(t *testing.T) {
+		output := dryRunOutput{Valid: true}
+		slides := []SlideInput{{
+			LayoutID: "content-slide",
+			Content: []ContentInput{{
+				PlaceholderID: "content",
+				Type:          "diagram",
+				Value:         json.RawMessage(`{"type":"waterfall","data":[]}`),
+			}},
+		}}
+		validateSlidesAgainstTemplate(&output, slides, analysis)
+		if output.Valid {
+			t.Fatal("malformed legacy diagram must make dry-run invalid")
+		}
+		if d := findDiagByCode(output.Diagnostics, diagnostics.CodeInvalidParameter); d == nil || d.Path != "/slides/0/content/0/diagram_value" {
+			t.Fatalf("expected diagram_value parse error, got %v", output.Diagnostics)
 		}
 	})
 

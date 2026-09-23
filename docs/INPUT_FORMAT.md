@@ -144,7 +144,7 @@ Pattern field shapes and overrides are documented in `docs/PATTERNS.md`. An expa
 }
 ```
 
-Supported chart types: `bar_chart`, `line_chart`, `pie_chart`, `donut_chart`, `area_chart`, `radar_chart`, `scatter_chart`, `bubble_chart`, `stacked_bar_chart`, `stacked_area_chart`, `grouped_bar_chart`, `waterfall`, `funnel_chart`, `gauge_chart`, `treemap_chart`.
+Supported chart types: `bar_chart`, `line_chart`, `pie_chart`, `donut_chart`, `area_chart`, `radar_chart`, `scatter_chart`, `bubble_chart`, `stacked_bar_chart`, `stacked_area_chart`, `grouped_bar_chart`, `waterfall`, `funnel_chart`, `gauge_chart`, `treemap_chart`. Waterfall charts require `data.points` with an explicit `type` on every point (`increase`, `decrease`, `subtotal`, or `total`). A flat label-to-value map is rejected: its numbers do not say whether a bar changes the running balance or shows an absolute balance. For a profit bridge, use `{"points":[{"label":"Revenue","value":21.3,"type":"total"},{"label":"COGS","value":-6.7,"type":"decrease"},{"label":"Gross Profit","value":14.6,"type":"subtotal"}]}`.
 
 ### Legend defaults: direct labels for 2–4 series
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 )
 
 // ChartSpec defines a chart to be rendered.
@@ -12,15 +13,15 @@ import (
 // Deprecated: Use DiagramSpec instead. ChartSpec requires explicit type mapping.
 // DiagramSpec is more flexible and passes data directly to svggen.
 type ChartSpec struct {
-	Type         ChartType          `json:"type"`                    // Chart type (bar, line, pie, donut)
-	Title        string             `json:"title,omitempty"`         // Chart title
-	Data         map[string]any     `json:"data"`                    // Label to value mapping (flexible: float64 for simple charts, arrays/objects for structured charts)
-	DataOrder    []string           `json:"data_order,omitempty"`    // Preserved input order of data keys
-	Width        int                `json:"width,omitempty"`         // Width in pixels (default: 800)
-	Height       int                `json:"height,omitempty"`        // Height in pixels (default: 600)
-	Scale        float64            `json:"scale,omitempty"`         // Resolution scale (default: calculated dynamically, min 2.0)
-	Style        *ChartStyle        `json:"style,omitempty"`         // Optional styling overrides
-	OutputFormat string             `json:"output_format,omitempty"` // Output format: png (default) or svg
+	Type         ChartType      `json:"type"`                    // Chart type (bar, line, pie, donut)
+	Title        string         `json:"title,omitempty"`         // Chart title
+	Data         map[string]any `json:"data"`                    // Label to value mapping (flexible: float64 for simple charts, arrays/objects for structured charts)
+	DataOrder    []string       `json:"data_order,omitempty"`    // Preserved input order of data keys
+	Width        int            `json:"width,omitempty"`         // Width in pixels (default: 800)
+	Height       int            `json:"height,omitempty"`        // Height in pixels (default: 600)
+	Scale        float64        `json:"scale,omitempty"`         // Resolution scale (default: calculated dynamically, min 2.0)
+	Style        *ChartStyle    `json:"style,omitempty"`         // Optional styling overrides
+	OutputFormat string         `json:"output_format,omitempty"` // Output format: png (default) or svg
 
 	// SeriesLabels provides series names for multi-series chart types
 	// (stacked_bar, grouped_bar, stacked_area). When Data values are arrays,
@@ -121,6 +122,34 @@ func (cs *ChartSpec) UnmarshalJSON(b []byte) error {
 
 	if len(raw.Data) == 0 {
 		return nil
+	}
+	if cs.Type == ChartWaterfall {
+		var waterfallData map[string]json.RawMessage
+		if err := json.Unmarshal(raw.Data, &waterfallData); err != nil {
+			return fmt.Errorf("waterfall data must use an object with a points array and explicit point types: %w", err)
+		}
+		pointsRaw, ok := waterfallData["points"]
+		if !ok {
+			return fmt.Errorf("waterfall data must use points with explicit increase, decrease, subtotal, or total types; flat values cannot distinguish changes from totals")
+		}
+		var points []map[string]json.RawMessage
+		if err := json.Unmarshal(pointsRaw, &points); err != nil {
+			return fmt.Errorf("waterfall points must be an array of objects: %w", err)
+		}
+		if len(points) == 0 {
+			return fmt.Errorf("waterfall points must contain at least one typed point")
+		}
+		for i, point := range points {
+			var pointType string
+			if err := json.Unmarshal(point["type"], &pointType); err != nil {
+				return fmt.Errorf("waterfall point %d must have an explicit type: %w", i+1, err)
+			}
+			switch pointType {
+			case "increase", "decrease", "subtotal", "total":
+			default:
+				return fmt.Errorf("waterfall point %d has unsupported type %q", i+1, pointType)
+			}
+		}
 	}
 
 	// Try parsing data as array of point objects.
@@ -230,16 +259,16 @@ func convertPointArrayToSeriesData(arr []map[string]any) (data map[string]any, o
 type ChartType string
 
 const (
-	ChartBar        ChartType = "bar"         // Vertical bar chart
-	ChartLine       ChartType = "line"        // Line chart with points
-	ChartPie        ChartType = "pie"         // Pie chart
-	ChartDonut      ChartType = "donut"       // Donut chart (pie with hole)
-	ChartFunnel     ChartType = "funnel"      // Funnel chart
-	ChartGauge      ChartType = "gauge"       // Gauge/speedometer chart
-	ChartTreemap    ChartType = "treemap"     // Treemap chart
-	ChartWaterfall  ChartType = "waterfall"   // Waterfall/bridge chart for financial flows
-	ChartArea       ChartType = "area"        // Area chart (filled line chart)
-	ChartRadar      ChartType = "radar"       // Radar/spider chart for multi-dimensional comparison
+	ChartBar         ChartType = "bar"          // Vertical bar chart
+	ChartLine        ChartType = "line"         // Line chart with points
+	ChartPie         ChartType = "pie"          // Pie chart
+	ChartDonut       ChartType = "donut"        // Donut chart (pie with hole)
+	ChartFunnel      ChartType = "funnel"       // Funnel chart
+	ChartGauge       ChartType = "gauge"        // Gauge/speedometer chart
+	ChartTreemap     ChartType = "treemap"      // Treemap chart
+	ChartWaterfall   ChartType = "waterfall"    // Waterfall/bridge chart for financial flows
+	ChartArea        ChartType = "area"         // Area chart (filled line chart)
+	ChartRadar       ChartType = "radar"        // Radar/spider chart for multi-dimensional comparison
 	ChartScatter     ChartType = "scatter"      // Scatter plot for X-Y data
 	ChartStackedBar  ChartType = "stacked_bar"  // Stacked bar chart for part-to-whole comparisons
 	ChartBubble      ChartType = "bubble"       // Bubble chart (scatter with size dimension)
@@ -363,13 +392,13 @@ func CalculateDynamicScale(placeholderWidthEMU EMU, outputWidth int) float64 {
 
 // chartTypeToSvggenType maps ChartType to svggen diagram type strings.
 var chartTypeToSvggenType = map[ChartType]string{
-	ChartBar:        "bar_chart",
-	ChartLine:       "line_chart",
-	ChartPie:        "pie_chart",
-	ChartDonut:      "donut_chart",
-	ChartArea:       "area_chart",
-	ChartRadar:      "radar_chart",
-	ChartScatter:    "scatter_chart",
+	ChartBar:         "bar_chart",
+	ChartLine:        "line_chart",
+	ChartPie:         "pie_chart",
+	ChartDonut:       "donut_chart",
+	ChartArea:        "area_chart",
+	ChartRadar:       "radar_chart",
+	ChartScatter:     "scatter_chart",
 	ChartStackedBar:  "stacked_bar_chart",
 	ChartWaterfall:   "waterfall",
 	ChartFunnel:      "funnel_chart",
@@ -672,18 +701,7 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string, []ChartDiagnosti
 		}, []string{fmt.Sprintf("%s chart received flat data; expected {values: [{label: ..., value: N}]} format", spec.Type)}, diags
 
 	case ChartWaterfall:
-		points := make([]map[string]any, len(keys))
-		for i, k := range keys {
-			pointType := "increase"
-			if values[i] < 0 {
-				pointType = "decrease"
-			}
-			points[i] = map[string]any{
-				"label": k,
-				"value": values[i],
-				"type":  pointType,
-			}
-		}
+		points := buildFlatWaterfallPoints(keys, values, len(order) > 0)
 		diags = append(diags, shapeInferred(`{points: [{label: ..., value: N, type: "increase"|"decrease"|"total"}]}`))
 		return map[string]any{
 			"points": points,
@@ -736,6 +754,38 @@ func buildChartData(spec *ChartSpec) (map[string]any, []string, []ChartDiagnosti
 		copyAxisTitles(result, data)
 		return result, nil, diags
 	}
+}
+
+func buildFlatWaterfallPoints(keys []string, values []float64, ordered bool) []map[string]any {
+	points := make([]map[string]any, len(keys))
+	for i, k := range keys {
+		pointType := "increase"
+		if values[i] < 0 {
+			pointType = "decrease"
+		}
+		if waterfallTotalLabel(k) || (ordered && len(keys) >= 3 && (i == 0 || i == len(keys)-1)) {
+			pointType = "total"
+		}
+		points[i] = map[string]any{
+			"label": k,
+			"value": values[i],
+			"type":  pointType,
+		}
+	}
+	return points
+}
+
+// waterfallTotalLabel identifies balance-like labels in legacy flat data.
+// JSON authors must supply explicit points; this is only a best-effort fallback
+// for ChartSpec values built directly by Go callers.
+func waterfallTotalLabel(label string) bool {
+	label = strings.ToLower(strings.TrimSpace(label))
+	for _, prefix := range []string{"gross", "net", "total", "ebitda", "ebit", "subtotal", "ending", "closing", "opening"} {
+		if label == prefix || strings.HasPrefix(label, prefix+" ") || strings.HasPrefix(label, prefix+"-") || strings.HasPrefix(label, prefix+"_") {
+			return true
+		}
+	}
+	return false
 }
 
 // buildStructuredChartData handles chart data where values are arrays or objects

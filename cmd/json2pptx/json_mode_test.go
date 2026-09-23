@@ -534,30 +534,6 @@ func TestComputeQualityScore_Warnings(t *testing.T) {
 
 // --- chart/diagram data structure checks ---
 
-func TestComputeQualityScore_WaterfallMissingPoints(t *testing.T) {
-	slides := []SlideInput{
-		{
-			LayoutID: "layout1",
-			Content: []ContentInput{
-				{PlaceholderID: "body", Type: "chart", Value: json.RawMessage(`{"type":"waterfall","data":{}}`)},
-			},
-		},
-	}
-	score := computeQualityScore(slides, nil)
-	if score.Score >= 100 {
-		t.Errorf("expected penalty for waterfall without points, got %f", score.Score)
-	}
-	found := false
-	for _, issue := range score.SlideScores[0].Issues {
-		if strings.Contains(issue, "waterfall") && strings.Contains(issue, "points") {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected waterfall 'points' issue, got %v", score.SlideScores[0].Issues)
-	}
-}
-
 func TestComputeQualityScore_WaterfallWithPoints(t *testing.T) {
 	slides := []SlideInput{
 		{
@@ -1943,16 +1919,14 @@ func TestValidateSlidesChartData(t *testing.T) {
 }
 
 func TestValidateJSONContentValue_ChartDiagramData(t *testing.T) {
-	t.Run("chart with flat waterfall data auto-converts (no error)", func(t *testing.T) {
-		// ChartSpec.ToDiagramSpec() runs buildChartData which converts flat maps
-		// to the correct svggen points format, so this should pass validation.
+	t.Run("chart with flat waterfall data is rejected", func(t *testing.T) {
 		item := JSONContentItem{
 			Type:  "chart",
 			Value: json.RawMessage(`{"type":"waterfall","data":{"Revenue":100}}`),
 		}
 		result := validateJSONContentValue(item, 1, 1)
-		if result != "" {
-			t.Errorf("unexpected validation error (flat chart data is auto-converted): %s", result)
+		if !strings.Contains(result, "flat values cannot distinguish changes from totals") {
+			t.Errorf("expected flat waterfall refusal, got %q", result)
 		}
 	})
 
@@ -2012,31 +1986,6 @@ func TestValidateJSONContentValue_ChartDiagramData(t *testing.T) {
 }
 
 func TestValidateSlidesChartData_FlatMapWarnings(t *testing.T) {
-	t.Run("waterfall flat map emits conversion warning", func(t *testing.T) {
-		slides := []SlideInput{
-			{
-				Content: []ContentInput{
-					{
-						PlaceholderID: "content",
-						Type:          "chart",
-						Value:         json.RawMessage(`{"type":"waterfall","data":{"Revenue":100,"Costs":-40}}`),
-					},
-				},
-			},
-		}
-		warnings := validateSlidesChartData(slides)
-		found := false
-		for _, w := range warnings {
-			if strings.Contains(w, "waterfall chart received flat data") {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Errorf("expected flat-map conversion warning for waterfall chart, got: %v", warnings)
-		}
-	})
-
 	t.Run("bar flat map does not emit conversion warning", func(t *testing.T) {
 		slides := []SlideInput{
 			{

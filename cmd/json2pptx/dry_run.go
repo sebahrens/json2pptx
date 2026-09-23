@@ -752,15 +752,33 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 			// Validate content value is parseable using ResolveValue
 			if item.Type != "" {
-				if _, err := item.ResolveValue(); err != nil {
+				_, valueErr := item.ResolveValue()
+				// ResolveValue deliberately leaves legacy chart/diagram "value"
+				// decoding to its callers. Dry-run must still reject malformed
+				// values before optional svggen warnings are collected.
+				if valueErr == nil && len(item.Value) > 0 {
+					switch item.Type {
+					case "chart":
+						if item.ChartValue == nil {
+							var chart types.ChartSpec //nolint:staticcheck // legacy input
+							valueErr = json.Unmarshal(item.Value, &chart)
+						}
+					case "diagram":
+						if item.DiagramValue == nil {
+							var diagram types.DiagramSpec
+							valueErr = json.Unmarshal(item.Value, &diagram)
+						}
+					}
+				}
+				if valueErr != nil {
 					output.Valid = false
-					msg := fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, err)
+					msg := fmt.Sprintf("slide %d, content %d: %v", i+1, j+1, valueErr)
 					output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
 						Code:     diagnostics.CodeInvalidParameter,
 						Path:     slidepath.ContentField(i, j, item.Type+"_value"),
 						Message:  msg,
 						Severity: diagnostics.SeverityError,
-						Details:  map[string]any{"cause": err.Error()},
+						Details:  map[string]any{"cause": valueErr.Error()},
 					})
 				}
 			}

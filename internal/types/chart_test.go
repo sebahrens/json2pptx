@@ -1,18 +1,83 @@
 package types
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
 
+func TestWaterfallChartJSONRequiresExplicitPoints(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    string
+		wantErr string
+	}{
+		{"flat profit bridge", `{"Revenue":21.3,"COGS":-6.7,"Gross Profit":14.6,"Net Income":4.5}`, "flat values cannot distinguish changes from totals"},
+		{"flat unlabeled deltas", `{"Revenue":21.3,"COGS":-6.7}`, "flat values cannot distinguish changes from totals"},
+		{"data array", `[{"label":"Revenue","value":21.3,"type":"total"}]`, "object with a points array"},
+		{"points object", `{"points":{"label":"Revenue"}}`, "points must be an array"},
+		{"empty points", `{"points":[]}`, "at least one typed point"},
+		{"point without type", `{"points":[{"label":"Revenue","value":21.3}]}`, "must have an explicit type"},
+		{"unknown point type", `{"points":[{"label":"Revenue","value":21.3,"type":"banana"}]}`, "unsupported type"},
+		{"typed points", `{"points":[{"label":"Revenue","value":21.3,"type":"total"},{"label":"COGS","value":-6.7,"type":"decrease"}]}`, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var chart ChartSpec
+			err := json.Unmarshal([]byte(`{"type":"waterfall","data":`+tt.data+`}`), &chart)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("UnmarshalJSON error = %v, want containing %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("UnmarshalJSON: %v", err)
+			}
+			if _, ok := chart.ToDiagramSpec().Data["points"]; !ok {
+				t.Fatal("typed waterfall points were not preserved")
+			}
+		})
+	}
+}
+
+func TestWaterfallLegacyFlatChartInfersTotals(t *testing.T) {
+	spec := &ChartSpec{
+		Type:      ChartWaterfall,
+		Data:      map[string]any{"Revenue": 21.3, "COGS": -6.7, "Gross Profit": 14.6, "OpEx": -10.1, "Net Income": 4.5},
+		DataOrder: []string{"Revenue", "COGS", "Gross Profit", "OpEx", "Net Income"},
+	}
+	got := spec.ToDiagramSpec()
+	points, ok := got.Data["points"].([]map[string]any)
+	if !ok {
+		t.Fatalf("points have type %T", got.Data["points"])
+	}
+	want := []string{"total", "decrease", "total", "decrease", "total"}
+	for i, point := range points {
+		if point["type"] != want[i] {
+			t.Errorf("point %d (%s) type = %v, want %s", i, point["label"], point["type"], want[i])
+		}
+	}
+	if waterfallTotalLabel("Network Growth") {
+		t.Fatal("network is not a net total")
+	}
+	// A programmatic map without DataOrder sorts alphabetically; the first and
+	// last keys are not necessarily opening and closing balances.
+	unordered := (&ChartSpec{Type: ChartWaterfall, Data: spec.Data}).ToDiagramSpec()
+	unorderedPoints := unordered.Data["points"].([]map[string]any)
+	if unorderedPoints[0]["label"] != "COGS" || unorderedPoints[0]["type"] != "decrease" {
+		t.Fatalf("alphabetically first delta was inferred as a total: %v", unorderedPoints[0])
+	}
+}
+
 func TestCalculateDynamicScale(t *testing.T) {
 	tests := []struct {
-		name                 string
-		placeholderWidthEMU  EMU
-		outputWidth          int
-		expectedMinScale     float64
-		expectedMaxScale     float64
-		description          string
+		name                string
+		placeholderWidthEMU EMU
+		outputWidth         int
+		expectedMinScale    float64
+		expectedMaxScale    float64
+		description         string
 	}{
 		{
 			name:                "small placeholder uses minimum scale",
@@ -52,8 +117,8 @@ func TestCalculateDynamicScale(t *testing.T) {
 		},
 		{
 			name:                "standard slide width with default chart size",
-			placeholderWidthEMU: 9144000, // 10 inches
-			outputWidth:         DefaultChartWidth,      // 800px
+			placeholderWidthEMU: 9144000,           // 10 inches
+			outputWidth:         DefaultChartWidth, // 800px
 			// 10 inches × 150 DPI = 1500px, 1500/800 = 1.875 → clamped to 2.0
 			expectedMinScale: DefaultMinScale,
 			expectedMaxScale: DefaultMinScale,
@@ -594,10 +659,10 @@ func TestBuildChartData_ScatterAxisTitlesPreserved(t *testing.T) {
 		spec := &ChartSpec{
 			Type: ChartScatter,
 			Data: map[string]any{
-				"A":              10.0,
-				"B":              20.0,
-				"x_axis_title":   "Complexity",
-				"y_axis_title":   "Value",
+				"A":            10.0,
+				"B":            20.0,
+				"x_axis_title": "Complexity",
+				"y_axis_title": "Value",
 			},
 		}
 		ds := spec.ToDiagramSpec()
