@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // matrixCell records the pass/fail outcome of one (pattern, template) cell.
@@ -52,11 +53,10 @@ func TestTemplatePatternMatrix(t *testing.T) {
 	}
 	templatesDir := filepath.Join(projectRoot, "templates")
 
-	tplPaths, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil || len(tplPaths) == 0 {
-		t.Fatalf("no templates found under %s: %v", templatesDir, err)
+	tplPaths := testutil.BuiltinTemplatePaths()
+	if len(tplPaths) == 0 {
+		t.Fatalf("no templates found under %s", templatesDir)
 	}
-	sort.Strings(tplPaths)
 	tplNames := make([]string, 0, len(tplPaths))
 	for _, p := range tplPaths {
 		tplNames = append(tplNames, strings.TrimSuffix(filepath.Base(p), ".pptx"))

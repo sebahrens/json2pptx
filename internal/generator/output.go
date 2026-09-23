@@ -955,7 +955,9 @@ func (ctx *singlePassContext) removeMediaPlaceholders(slide *slideXML, mediaRels
 }
 
 // insertMediaPics inserts p:pic elements for media content (images, charts, infographics).
-// It finds the closing </p:spTree> tag and inserts the p:pic elements before it.
+// Pictures sit below text placeholders so a full-bleed image cannot hide a
+// populated title or subtitle. Raw shape-grid cells are inserted later at the
+// start of the tree, leaving their pictures above the cells as before.
 // Relationship IDs are already assigned during writeNewSlideRelationships.
 func (ctx *singlePassContext) insertMediaPics(slideNum int, slideData []byte, mediaRels []mediaRel) ([]byte, error) {
 	slog.Debug("insertMediaPics: processing media relationships",
@@ -1016,9 +1018,9 @@ func (ctx *singlePassContext) insertMediaPics(slideNum int, slideData []byte, me
 		return slideData, nil
 	}
 
-	// Insert the p:pic elements before </p:spTree>
+	// Insert pictures below native text shapes (earlier in the shape tree).
 	insertion := strings.Join(picsToInsert, "\n")
-	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
+	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtStart)
 }
 
 // removeNativeSVGPlaceholders removes placeholder shapes that are being replaced by native SVG.

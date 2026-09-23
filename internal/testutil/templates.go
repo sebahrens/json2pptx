@@ -2,10 +2,13 @@ package testutil
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/templates"
 )
 
 // TemplateTier classifies how thoroughly a shipped built-in template is
@@ -91,6 +94,18 @@ func AllBuiltinTemplateNames() []string {
 	return names
 }
 
+// BuiltinTemplatePaths returns absolute paths for the classified shipped
+// templates. Corpus tests should use this rather than globbing templates/,
+// which may also hold ignored local templates used for development.
+func BuiltinTemplatePaths() []string {
+	names := AllBuiltinTemplateNames()
+	paths := make([]string, 0, len(names))
+	for _, name := range names {
+		paths = append(paths, filepath.Join(TemplatesDir(), name+".pptx"))
+	}
+	return paths
+}
+
 func templateNamesByTier(tier TemplateTier) []string {
 	var names []string
 	for name, cov := range builtinTemplateCoverage {
@@ -102,24 +117,18 @@ func templateNamesByTier(tier TemplateTier) []string {
 	return names
 }
 
-// DiscoverBuiltinTemplates returns the base names (without the .pptx extension)
-// of every template file actually present under templates/, sorted. It is used
-// by the coverage guard to detect templates that are shipped but unclassified.
-//
-// Inclusion/exclusion rules: only real *.pptx files are returned. Editor and
-// office-suite scratch files are skipped — PowerPoint owner-lock files
-// (~$name.pptx) and dotfile/underscore-prefixed names — so a stray lock file
-// left behind by an open editor never registers as an "unclassified template"
-// or, worse, breaks the corpus. These are the same names go:embed rejects.
+// DiscoverBuiltinTemplates returns the base names of templates embedded in the
+// binary. A local ignored PPTX may be usable through templates-dir, but it is
+// not a shipped built-in and must not alter the built-in test corpus.
 func DiscoverBuiltinTemplates() ([]string, error) {
-	matches, err := filepath.Glob(filepath.Join(TemplatesDir(), "*.pptx"))
+	entries, err := templates.Embedded.ReadDir(".")
 	if err != nil {
 		return nil, err
 	}
-	names := make([]string, 0, len(matches))
-	for _, m := range matches {
-		base := filepath.Base(m)
-		if isScratchFile(base) {
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		base := entry.Name()
+		if entry.IsDir() || !strings.HasSuffix(base, ".pptx") {
 			continue
 		}
 		names = append(names, strings.TrimSuffix(base, ".pptx"))
@@ -128,15 +137,7 @@ func DiscoverBuiltinTemplates() ([]string, error) {
 	return names, nil
 }
 
-// isScratchFile reports whether base looks like an editor/office-suite scratch
-// file rather than a real shipped template.
-func isScratchFile(base string) bool {
-	return strings.HasPrefix(base, "~$") ||
-		strings.HasPrefix(base, ".") ||
-		strings.HasPrefix(base, "_")
-}
-
-// VerifyBuiltinTemplateCoverage checks that the on-disk template corpus and the
+// VerifyBuiltinTemplateCoverage checks that the embedded template corpus and the
 // builtinTemplateCoverage classification agree: every shipped template must be
 // classified, every classified template must exist on disk, and every TierSmoke
 // template must record a non-empty reason for its exclusion from the expensive
@@ -170,8 +171,11 @@ func VerifyBuiltinTemplateCoverage() ([]string, error) {
 	for name, cov := range builtinTemplateCoverage {
 		if !onDisk[name] {
 			problems = append(problems, fmt.Sprintf(
-				"template %q is classified in builtinTemplateCoverage but no templates/%s.pptx exists; remove or rename its entry",
-				name, name))
+				"template %q is classified in builtinTemplateCoverage but is not embedded; add it to templates/embed.go or remove its classification",
+				name))
+		}
+		if _, err := os.Stat(filepath.Join(TemplatesDir(), name+".pptx")); err != nil {
+			problems = append(problems, fmt.Sprintf("template %q is classified but missing on disk: %v", name, err))
 		}
 		if cov.tier == TierSmoke && strings.TrimSpace(cov.reason) == "" {
 			problems = append(problems, fmt.Sprintf(

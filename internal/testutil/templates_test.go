@@ -2,7 +2,11 @@ package testutil
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
+	"sort"
+	"strings"
 	"testing"
 )
 
@@ -18,6 +22,28 @@ func TestBuiltinTemplateCoverage(t *testing.T) {
 	}
 	for _, p := range problems {
 		t.Error(p)
+	}
+}
+
+// The explicit embed manifest must include every tracked PPTX and nothing
+// else. Ignored local templates remain usable by path, but never ship in the
+// binary or become mandatory corpus fixtures.
+func TestTrackedTemplatesMatchEmbeddedBuiltins(t *testing.T) {
+	out, err := exec.Command("git", "-C", RepoRoot(), "ls-files", "--", "templates/*.pptx").Output() //nolint:gosec // fixed local Git command and pathspec; no user input
+	if err != nil {
+		t.Skipf("tracked-template check requires a Git checkout: %v", err)
+	}
+	var tracked []string
+	for _, path := range strings.Fields(string(out)) {
+		tracked = append(tracked, strings.TrimSuffix(filepath.Base(path), ".pptx"))
+	}
+	sort.Strings(tracked)
+	embedded, err := DiscoverBuiltinTemplates()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(tracked, embedded) {
+		t.Errorf("tracked PPTX = %v; embedded built-ins = %v", tracked, embedded)
 	}
 }
 

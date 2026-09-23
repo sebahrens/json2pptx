@@ -2,10 +2,10 @@ package template_test
 
 import (
 	"path/filepath"
-	"sort"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -247,17 +247,13 @@ func TestDerivableLayouts_MissingFindings(t *testing.T) {
 	}
 }
 
-// shippedTemplates returns the sorted list of templates/*.pptx files.
+// shippedTemplates returns only committed built-ins, not ignored local PPTXs.
 func shippedTemplates(t *testing.T) []string {
 	t.Helper()
-	files, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
+	files := testutil.BuiltinTemplatePaths()
 	if len(files) == 0 {
 		t.Fatalf("no templates found under %s", templatesDir)
 	}
-	sort.Strings(files)
 	return files
 }
 

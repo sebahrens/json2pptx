@@ -3,7 +3,6 @@ package template_test
 import (
 	"path/filepath"
 	"slices"
-	"sort"
 	"strings"
 	"testing"
 
@@ -26,14 +25,7 @@ import (
 //   - modern-yellow's Section Divider IS tagged compact-title; roomy section
 //     dividers (title in the upper half with ample capacity) are NOT.
 func TestCompactTitleCorpus(t *testing.T) {
-	files, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
-	if len(files) == 0 {
-		t.Fatalf("no templates found under %s", templatesDir)
-	}
-	sort.Strings(files)
+	files := shippedTemplates(t)
 
 	// compactTitleCeiling mirrors classifier.compactTitleMaxChars. Kept as a
 	// local literal because the constant is unexported; if the classifier ceiling

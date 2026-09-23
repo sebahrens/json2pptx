@@ -110,7 +110,7 @@ func (ctx *singlePassContext) allocateNativeSVGRelIDs() error {
 }
 
 // insertNativeSVGPics inserts p:pic elements for native SVG inserts into slide XML.
-// It finds the closing </p:spTree> tag and inserts the p:pic elements before it.
+// Placeholder-backed media sits below text; free-floating grid icons stay on top.
 // Relationship IDs must already be allocated via allocateNativeSVGRelIDs().
 func (ctx *singlePassContext) insertNativeSVGPics(slideNum int, slideData []byte, nativeSVGs []nativeSVGInsert) ([]byte, error) {
 	// Find the next shape ID using pre-compiled regex (faster than O(n) string scan)
@@ -121,7 +121,7 @@ func (ctx *singlePassContext) insertNativeSVGPics(slideNum int, slideData []byte
 	}
 
 	// Generate p:pic elements for each native SVG
-	var picsToInsert []string
+	var behindText, overlays []string
 	for i := range nativeSVGs {
 		svg := &nativeSVGs[i]
 
@@ -177,16 +177,36 @@ func (ctx *singlePassContext) insertNativeSVGPics(slideNum int, slideData []byte
 			if err != nil {
 				return nil, fmt.Errorf("failed to generate p:grpSp wrapper for SVG: %w", err)
 			}
-			picsToInsert = append(picsToInsert, string(grpXML))
+			if svg.behindText {
+				behindText = append(behindText, string(grpXML))
+			} else {
+				overlays = append(overlays, string(grpXML))
+			}
 			continue
 		}
-		picsToInsert = append(picsToInsert, string(picXML))
+		if svg.behindText {
+			behindText = append(behindText, string(picXML))
+		} else {
+			overlays = append(overlays, string(picXML))
+		}
 	}
 
 	// Store the updated inserts back (with shape IDs)
 	ctx.nativeSVGInserts[slideNum] = nativeSVGs
 
-	// Insert the p:pic elements before </p:spTree>
-	insertion := strings.Join(picsToInsert, "\n")
-	return pptx.InsertIntoSpTree(slideData, []byte(insertion), pptx.InsertAtEnd)
+	if len(behindText) == 0 && len(overlays) == 0 {
+		// Preserve malformed-slide validation even when every SVG has zero bounds.
+		return pptx.InsertIntoSpTree(slideData, nil, pptx.InsertAtEnd)
+	}
+	if len(behindText) > 0 {
+		var err error
+		slideData, err = pptx.InsertIntoSpTree(slideData, []byte(strings.Join(behindText, "\n")), pptx.InsertAtStart)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(overlays) == 0 {
+		return slideData, nil
+	}
+	return pptx.InsertIntoSpTree(slideData, []byte(strings.Join(overlays, "\n")), pptx.InsertAtEnd)
 }

@@ -11,6 +11,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // buildJSON2PPTX builds the binary once for test use.
@@ -483,17 +484,7 @@ func TestExpandCrossTemplate(t *testing.T) {
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
-	entries, err := os.ReadDir(templatesDir)
-	if err != nil {
-		t.Fatalf("failed to read templates dir: %v", err)
-	}
-
-	var templateNames []string
-	for _, e := range entries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".pptx") {
-			templateNames = append(templateNames, strings.TrimSuffix(e.Name(), ".pptx"))
-		}
-	}
+	templateNames := testutil.AllBuiltinTemplateNames()
 	if len(templateNames) < 2 {
 		t.Fatal("need at least 2 templates for cross-template test")
 	}

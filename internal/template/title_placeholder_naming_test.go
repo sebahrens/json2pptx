@@ -2,7 +2,6 @@ package template_test
 
 import (
 	"path/filepath"
-	"sort"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -31,14 +30,7 @@ const canonicalTitleID = "title"
 //
 // Acceptance criteria source: bd go-slide-creator-jtlb.
 func TestTitlePlaceholdersAreCanonicalOnDisk(t *testing.T) {
-	files, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
-	if len(files) == 0 {
-		t.Fatalf("no templates found under %s", templatesDir)
-	}
-	sort.Strings(files)
+	files := shippedTemplates(t)
 
 	for _, file := range files {
 		name := filepath.Base(file)

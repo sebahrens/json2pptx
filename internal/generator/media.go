@@ -608,6 +608,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 			extentCX:       embedW,
 			extentCY:       embedH,
 			placeholderIdx: removeIdx,
+			behindText:     true,
 		})
 	} else {
 		// PNG-only embedding (for LibreOffice compatibility or when SVG unavailable).
@@ -1350,6 +1351,7 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, a
 		extentCX:       scaledBounds.Width,
 		extentCY:       scaledBounds.Height,
 		placeholderIdx: shapeIdx,
+		behindText:     true,
 	})
 }
 
@@ -1482,6 +1484,7 @@ func (ctx *singlePassContext) insertSVGFallbackImageSVG(slideNum int, placeholde
 		extentCX:       placeholderBounds.Width,
 		extentCY:       placeholderBounds.Height,
 		placeholderIdx: shapeIdx,
+		behindText:     true,
 	})
 }
 
@@ -1556,6 +1559,7 @@ func (ctx *singlePassContext) insertDiagramPlaceholderSVG(slideNum int, placehol
 		extentCX:       placeholderBounds.Width,
 		extentCY:       placeholderBounds.Height,
 		placeholderIdx: shapeIdx,
+		behindText:     true,
 	})
 }
 

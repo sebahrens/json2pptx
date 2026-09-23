@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/templates"
 )
 
@@ -18,9 +19,9 @@ import (
 // `make template-previews`.
 func TestPreviewsShipForAllBundledTemplates(t *testing.T) {
 	templatesDir := filepath.Join("..", "..", "templates")
-	paths, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil || len(paths) == 0 {
-		t.Fatalf("no bundled templates: %v", err)
+	paths := testutil.BuiltinTemplatePaths()
+	if len(paths) == 0 {
+		t.Fatal("no bundled templates")
 	}
 	// The tracked bundled set (see .gitignore); user-added templates dropped
 	// into templates/ locally are not required to ship previews.

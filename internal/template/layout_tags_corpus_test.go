@@ -2,7 +2,6 @@ package template_test
 
 import (
 	"path/filepath"
-	"sort"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -20,14 +19,7 @@ import (
 //
 // Acceptance criteria source: bd go-slide-creator-an1n.
 func TestLayoutTagsCorpus_NoShippedTemplateHasUntaggedLayout(t *testing.T) {
-	files, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
-	if len(files) == 0 {
-		t.Fatalf("no templates found under %s", templatesDir)
-	}
-	sort.Strings(files)
+	files := shippedTemplates(t)
 
 	for _, file := range files {
 		file := file

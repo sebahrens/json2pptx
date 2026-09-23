@@ -2,7 +2,6 @@ package template_test
 
 import (
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
@@ -25,14 +24,7 @@ const sectionNumberMaxCharsCeiling = 5
 //
 // Acceptance criteria source: bd go-slide-creator-sjzb.
 func TestSectionNumberMaxCharsCorpus(t *testing.T) {
-	files, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
-	if len(files) == 0 {
-		t.Fatalf("no templates found under %s", templatesDir)
-	}
-	sort.Strings(files)
+	files := shippedTemplates(t)
 
 	totalFound := 0
 	for _, file := range files {

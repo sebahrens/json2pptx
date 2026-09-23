@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // Documented counts drift (go-slide-creator-zi17).
@@ -96,21 +98,13 @@ func TestDocsDoNotHardcodeToolOrTemplateCounts(t *testing.T) {
 	}
 }
 
-// TestBundledTemplatesAreAllDocumented: every .pptx in templates/ is named
+// TestBundledTemplatesAreAllDocumented: every embedded built-in is named
 // where the docs list the bundled set, so an agent cannot be told a template
 // does not exist.
 func TestBundledTemplatesAreAllDocumented(t *testing.T) {
-	entries, err := os.ReadDir(filepath.Join("..", "..", "templates"))
-	if err != nil {
-		t.Fatalf("read templates dir: %v", err)
-	}
 	claude := readRepoFile(t, "CLAUDE.md")
 	readme := readRepoFile(t, "README.md")
-	for _, e := range entries {
-		if filepath.Ext(e.Name()) != ".pptx" {
-			continue
-		}
-		name := strings.TrimSuffix(e.Name(), ".pptx")
+	for _, name := range testutil.AllBuiltinTemplateNames() {
 		if !strings.Contains(claude, "`"+name+"`") {
 			t.Errorf("template %q ships but CLAUDE.md does not name it", name)
 		}

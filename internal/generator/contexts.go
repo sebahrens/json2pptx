@@ -328,6 +328,9 @@ type nativeSVGInsert struct {
 
 	// Placeholder to remove from slide
 	placeholderIdx int
+	// Placeholder-backed images belong below native text. Shape-grid icons and
+	// other explicit overlays remain above their cells.
+	behindText bool
 
 	// When true, the emitted p:pic is wrapped in a p:grpSp so PowerPoint treats
 	// the SVG as a single selection target. Set by callers that want grouping

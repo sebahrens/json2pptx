@@ -325,14 +325,7 @@ func TestThemeCorpus_LayoutContrastMeetsWCAGAALarge(t *testing.T) {
 // and calls fn under a subtest named after the file basename.
 func forEachTemplate(t *testing.T, fn func(t *testing.T, name string, reader *template.Reader)) {
 	t.Helper()
-	files, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
-	if len(files) == 0 {
-		t.Fatalf("no templates found under %s", templatesDir)
-	}
-	sort.Strings(files)
+	files := shippedTemplates(t)
 	for _, f := range files {
 		f := f
 		name := filepath.Base(f)

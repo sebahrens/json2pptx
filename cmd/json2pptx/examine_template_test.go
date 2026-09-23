@@ -14,6 +14,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/examine"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -25,10 +26,7 @@ const examineSchemaPath = "../../docs/api/finding-envelope.schema.json"
 func TestExamineTemplate_BundledTemplatesProduceValidReport(t *testing.T) {
 	schema := loadEnvelopeSchema(t)
 
-	templates, err := filepath.Glob("../../templates/*.pptx")
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
+	templates := testutil.BuiltinTemplatePaths()
 	if len(templates) == 0 {
 		t.Fatal("no bundled templates found")
 	}
@@ -155,10 +153,7 @@ func TestExamineTemplate_SyntheticMissingSectionDivider(t *testing.T) {
 // missing canonical family, mis-named title, or a section divider without a
 // "Section Number" frame) — fix the template, not the gate.
 func TestExamineGate_BundledTemplatesPass(t *testing.T) {
-	templates, err := filepath.Glob("../../templates/*.pptx")
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
+	templates := testutil.BuiltinTemplatePaths()
 	if len(templates) == 0 {
 		t.Fatal("no bundled templates found")
 	}

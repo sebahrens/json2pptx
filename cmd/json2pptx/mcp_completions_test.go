@@ -55,8 +55,8 @@ func TestMCPCompletionTemplates(t *testing.T) {
 	completed := completeRPC(t, s, ref, "template", "")
 	want := listAvailableTemplates("../../templates")
 	sort.Strings(want)
-	if len(want) != 9 || !reflect.DeepEqual(completed.Values, want) || completed.Total != 9 || completed.HasMore {
-		t.Fatalf("template completions = %+v, want all nine installed: %v", completed, want)
+	if !reflect.DeepEqual(completed.Values, want) || completed.Total != len(want) || completed.HasMore {
+		t.Fatalf("template completions = %+v, want all %d available: %v", completed, len(want), want)
 	}
 	filtered := completeRPC(t, s, ref, "template", "MID")
 	if !reflect.DeepEqual(filtered.Values, []string{"midnight-blue"}) {

@@ -84,14 +84,7 @@ func TestCanonicalPlaceholdersCorpus(t *testing.T) {
 		allowed[strings.ToLower(e.SHA256)] = e
 	}
 
-	files, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
-	if len(files) == 0 {
-		t.Fatalf("no templates found under %s", templatesDir)
-	}
-	sort.Strings(files)
+	files := shippedTemplates(t)
 
 	for _, file := range files {
 		file := file
@@ -282,10 +275,7 @@ func TestCanonicalPlaceholdersCorpus_AllowlistEntriesPointAtRealTemplates(t *tes
 		t.Skip("allow-list is empty — nothing to validate")
 	}
 
-	files, err := filepath.Glob(filepath.Join(templatesDir, "*.pptx"))
-	if err != nil {
-		t.Fatalf("glob templates: %v", err)
-	}
+	files := shippedTemplates(t)
 
 	hashes := make(map[string]string, len(files))
 	for _, f := range files {
