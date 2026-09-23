@@ -28,6 +28,40 @@ var SeverityWeight = map[string]int{
 	"info":            0,
 }
 
+// Some review findings describe visibly broken content, not optional polish.
+// Keep the action's default weight for ordinary advisories (for example a
+// wrapped title), but let these specific defects move the quality gate.
+var substantiveReviewWeight = map[string]int{
+	patterns.ErrCodeBodyTooLong:          20,
+	patterns.ErrCodeTextBelowReadableMin: 20,
+	patterns.ErrCodeSlideNearlyEmpty:     20,
+	patterns.ErrCodeLowContrastHighlight: 15,
+}
+
+func findingWeight(f patterns.FitFinding) int {
+	if f.Action == "review" && substantiveReviewWeight[f.Code] > 0 {
+		return substantiveReviewWeight[f.Code]
+	}
+	return SeverityWeight[f.Action]
+}
+
+// IsSubstantiveReview identifies review findings that must block convergence.
+// Predicted autofit can overstate shrinkage on pattern cells, so unreadable
+// text blocks only when its effective size is authored or generated.
+func IsSubstantiveReview(f patterns.FitFinding) bool {
+	if f.Action != "review" || substantiveReviewWeight[f.Code] == 0 {
+		return false
+	}
+	if f.Code != patterns.ErrCodeTextBelowReadableMin {
+		return true
+	}
+	if f.Fix == nil {
+		return false
+	}
+	source, _ := f.Fix.Params["measurement_source"].(string)
+	return source == "authored" || source == "generated"
+}
+
 // ScoreFinding is a single deterministic finding in the score_deck output.
 // It reuses the FitFinding envelope for consistency with the fit-report path.
 type ScoreFinding struct {
@@ -149,10 +183,9 @@ type QualityGateCriteria struct {
 	MinCompositionScore int `json:"min_composition_score"`
 }
 
-// Default thresholds for the score_deck quality gate — the numeric definition
-// of done. Tighter than the auto_repair convergence gate (min_score 75,
-// max_p1 2) because score_deck's gate is the ship-quality check, not the
-// repair-loop continue/stop signal.
+// Default thresholds for the score_deck quality gate. auto_repair uses these
+// same configurable thresholds by default; substantive review defects are
+// fixed blockers for both gates.
 const (
 	DefaultQualityGateMinScore      = 80
 	DefaultQualityGateMaxP0Findings = 0
@@ -190,7 +223,7 @@ func DefaultQualityGateCriteria() QualityGateCriteria {
 
 // EvaluateQualityGate computes a QualityGate verdict against the given score
 // and findings using the supplied criteria. Reason order is deterministic:
-// score → P0 → P1 → takeaway → accent_overload → composition → problem-slide
+// score → P0 → P1 → substantive review → takeaway → accent_overload → composition → problem-slide
 // share, so agents can pattern-match on the leading reason.
 //
 // findings should be the same slice that produced the score (i.e. already
@@ -210,13 +243,16 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 		gate.Reasons = append(gate.Reasons, fmt.Sprintf("score %d < min_score %d", ds.OverallScore, criteria.MinScore))
 	}
 
-	var p0, p1, takeawayMissing, accentOverload int
+	var p0, p1, substantiveReviews, takeawayMissing, accentOverload int
 	for _, f := range findings {
 		switch f.Action {
 		case "refuse":
 			p0++
 		case "shrink_or_split":
 			p1++
+		}
+		if IsSubstantiveReview(f) {
+			substantiveReviews++
 		}
 		switch f.Code {
 		case patterns.ErrCodeTakeawayMissing:
@@ -231,6 +267,9 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 	}
 	if p1 > criteria.MaxP1Findings {
 		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d P1 (shrink_or_split) finding(s) exceeds max_p1_findings %d", p1, criteria.MaxP1Findings))
+	}
+	if substantiveReviews > 0 {
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d substantive review finding(s) remain (readability, empty content, or contrast)", substantiveReviews))
 	}
 	if criteria.RequireTakeawayOnCharts && takeawayMissing > 0 {
 		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d chart/matrix slide(s) missing takeaway", takeawayMissing))
@@ -329,7 +368,7 @@ var breadthExemptCodes = map[string]bool{
 // isBreadthProblem reports whether a finding makes its slide count as a problem
 // slide.
 func isBreadthProblem(f patterns.FitFinding) bool {
-	if SeverityWeight[f.Action] <= 0 {
+	if findingWeight(f) <= 0 {
 		return false
 	}
 	return !breadthExemptCodes[f.Code]
@@ -427,7 +466,7 @@ func ScoreFromFindingsForIndices(findings []patterns.FitFinding, slideCount int,
 		scoreFindings := []ScoreFinding{}
 
 		for _, f := range ffs {
-			w := SeverityWeight[f.Action]
+			w := findingWeight(f)
 			slideScore -= w
 			codeCounts[f.Code]++
 
@@ -505,7 +544,7 @@ func ScoreFromFindings(findings []patterns.FitFinding, slideCount int) *DeckScor
 		scoreFindings := []ScoreFinding{}
 
 		for _, f := range ffs {
-			w := SeverityWeight[f.Action]
+			w := findingWeight(f)
 			slideScore -= w
 			codeCounts[f.Code]++
 

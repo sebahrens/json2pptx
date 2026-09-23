@@ -212,16 +212,19 @@ func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingM
 			continue
 		}
 		ctx := fmt.Sprintf("authored %.0fpt", p.sizePt)
+		measurementSource := "authored"
 		if scale < 1 {
 			ctx = fmt.Sprintf("cell text overflows; autofit shrinks %.0fpt to ~%.1fpt", p.sizePt, effective)
+			measurementSource = "predicted"
 		}
 		f := generator.NewReadabilityFinding(generator.ReadabilityFindingInput{
-			Path:         path,
-			Mode:         mode,
-			Role:         role,
-			EffectiveHPt: int(math.Round(effective * 100)),
-			Paragraphs:   len(paras),
-			Context:      ctx,
+			Path:              path,
+			Mode:              mode,
+			Role:              role,
+			EffectiveHPt:      int(math.Round(effective * 100)),
+			Paragraphs:        len(paras),
+			Context:           ctx,
+			MeasurementSource: measurementSource,
 		})
 		if f != nil {
 			worst, worstRatio = f, ratio

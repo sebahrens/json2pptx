@@ -95,11 +95,22 @@ func TestReadability_KPILongLabelPresentMode(t *testing.T) {
 	if f.Fix.Params["viewing_mode"] != "present" {
 		t.Errorf("viewing_mode = %v", f.Fix.Params["viewing_mode"])
 	}
+	if f.Fix.Params["measurement_source"] != "predicted" {
+		t.Errorf("autofit finding source = %v, want predicted", f.Fix.Params["measurement_source"])
+	}
 
 	// Short labels are fine.
 	short := &PresentationInput{Slides: []SlideInput{kpiSlide(t, "ARR", "+4% vs plan")}}
 	if got := readabilityCodes(collectReadabilityFindings(short, nil, 12192000, 6858000)); len(got) != 0 {
 		t.Errorf("short KPI labels flagged: %v", got[0].Message)
+	}
+}
+
+func TestAuthoredSmallGridTextCarriesExactSource(t *testing.T) {
+	f := worstReadability([]cellParagraph{{text: "Small label", sizePt: 8}}, 1,
+		tokens.ViewingModePresentation, "/slides/0/shape_grid/rows/0/cells/0/shape/text", "")
+	if f == nil || f.Fix == nil || f.Fix.Params["measurement_source"] != "authored" {
+		t.Fatalf("8pt authored text must be marked exact: %+v", f)
 	}
 }
 

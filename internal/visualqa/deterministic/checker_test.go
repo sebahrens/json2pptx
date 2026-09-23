@@ -2,6 +2,7 @@ package deterministic
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -92,6 +93,91 @@ func TestScoreFromFindings_WithFindings(t *testing.T) {
 	// Check top_codes.
 	if len(ds.Summary.TopCodes) == 0 {
 		t.Fatal("top_codes is empty")
+	}
+}
+
+func TestSubstantiveReviewFindingsFailPoorDeckGate(t *testing.T) {
+	findings := []patterns.FitFinding{}
+	for _, item := range []struct {
+		slide int
+		code  string
+	}{
+		{0, patterns.ErrCodeBodyTooLong},
+		{1, patterns.ErrCodeBodyTooLong},
+		{2, patterns.ErrCodeSlideNearlyEmpty},
+		{3, patterns.ErrCodeSlideNearlyEmpty},
+		{4, patterns.ErrCodeTextBelowReadableMin},
+		{5, patterns.ErrCodeLowContrastHighlight},
+	} {
+		findings = append(findings, patterns.FitFinding{
+			ValidationError: patterns.ValidationError{Path: fmt.Sprintf("/slides/%d/content", item.slide), Code: item.code},
+			Action:          "review",
+		})
+	}
+	ds := ScoreFromFindings(findings, 6)
+	if ds.OverallScore >= 70 {
+		t.Fatalf("visibly poor deck scored %d, want below 70", ds.OverallScore)
+	}
+	gate := EvaluateQualityGate(ds, findings, DefaultQualityGateCriteria())
+	if gate.Passed {
+		t.Fatalf("poor deck passed quality gate: %+v", gate)
+	}
+	// One damaged slide in a longer deck must not disappear into the mean.
+	one := ScoreFromFindings(findings[:1], 6)
+	if one.OverallScore < DefaultQualityGateMinScore {
+		t.Fatalf("test needs a score above the numeric threshold, got %d", one.OverallScore)
+	}
+	if isolatedGate := EvaluateQualityGate(one, findings[:1], DefaultQualityGateCriteria()); isolatedGate.Passed {
+		t.Fatalf("single substantive finding was diluted by clean slides: %+v", isolatedGate)
+	}
+	for _, tc := range []struct {
+		name    string
+		finding patterns.FitFinding
+		want    int
+	}{
+		{name: "substantive review", finding: findings[0], want: 20},
+		{name: "optional review", finding: patterns.FitFinding{ValidationError: patterns.ValidationError{Code: patterns.ErrCodeTitleWraps}, Action: "review"}, want: 5},
+		{name: "informational code remains informational", finding: patterns.FitFinding{ValidationError: patterns.ValidationError{Code: patterns.ErrCodeBodyTooLong}, Action: "info"}, want: 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := findingWeight(tc.finding); got != tc.want {
+				t.Errorf("weight = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestPredictedReadabilityPenalizesButDoesNotBlockGate(t *testing.T) {
+	base := patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: "/slides/0/pattern/rows/0/cells/0/shape/text",
+			Code: patterns.ErrCodeTextBelowReadableMin,
+			Fix: &patterns.FixSuggestion{Kind: "reduce_cell_text", Params: map[string]any{
+				"actual_pt": 10.2, "min_pt": 12, "measurement_source": "predicted",
+			}},
+		},
+		Action: "review",
+	}
+	if got := findingWeight(base); got != 20 {
+		t.Fatalf("predicted small text weight = %d, want 20", got)
+	}
+	if IsSubstantiveReview(base) {
+		t.Fatal("predicted autofit must not be a fixed gate blocker")
+	}
+	for _, source := range []string{"authored", "generated"} {
+		t.Run(source, func(t *testing.T) {
+			finding := base
+			finding.Fix = &patterns.FixSuggestion{Kind: "reduce_cell_text", Params: map[string]any{
+				"actual_pt": 8.0, "min_pt": 12, "measurement_source": source,
+			}}
+			if !IsSubstantiveReview(finding) {
+				t.Fatal("confirmed small text did not block the gate")
+			}
+			score := ScoreFromFindings([]patterns.FitFinding{finding}, 6)
+			if gate := EvaluateQualityGate(score, []patterns.FitFinding{finding}, DefaultQualityGateCriteria()); gate.Passed {
+				t.Fatalf("confirmed 8pt text passed a diluted gate: %+v", gate)
+			}
+		})
 	}
 }
 

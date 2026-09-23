@@ -181,11 +181,12 @@ func readabilityPreflightFinding(input TextAutofitPreflightInput, params textfit
 	}
 	check := textfit.CheckReadability(baseHPt, result.FontScale, input.ViewingMode, input.TextRole)
 	return NewReadabilityFinding(ReadabilityFindingInput{
-		Path:         input.Path,
-		Mode:         input.ViewingMode,
-		Role:         input.TextRole,
-		EffectiveHPt: check.EffectiveHPt,
-		Paragraphs:   paraCount,
-		Context:      fmt.Sprintf("predicted autofit %d%% of %.0fpt", result.FontScale/1000, float64(baseHPt)/100.0),
+		Path:              input.Path,
+		Mode:              input.ViewingMode,
+		Role:              input.TextRole,
+		EffectiveHPt:      check.EffectiveHPt,
+		Paragraphs:        paraCount,
+		MeasurementSource: "predicted",
+		Context:           fmt.Sprintf("predicted autofit %d%% of %.0fpt", result.FontScale/1000, float64(baseHPt)/100.0),
 	})
 }

@@ -40,6 +40,9 @@ type ReadabilityFindingInput struct {
 	Paragraphs int
 	// Context is an optional short description (e.g. "autofit 60%").
 	Context string
+	// MeasurementSource distinguishes exact authored/generated sizes from
+	// predicted autofit, which can overstate shrinkage on pattern cells.
+	MeasurementSource string
 }
 
 // NewReadabilityFinding returns a TEXT_BELOW_READABLE_MIN finding when the
@@ -72,11 +75,12 @@ func NewReadabilityFinding(in ReadabilityFindingInput) *patterns.FitFinding {
 			Fix: &patterns.FixSuggestion{
 				Kind: "reduce_text",
 				Params: map[string]any{
-					"strategy":     strategy,
-					"role":         string(role),
-					"actual_pt":    actualPt,
-					"min_pt":       minPt,
-					"viewing_mode": modeName,
+					"strategy":           strategy,
+					"role":               string(role),
+					"actual_pt":          actualPt,
+					"min_pt":             minPt,
+					"viewing_mode":       modeName,
+					"measurement_source": in.MeasurementSource,
 				},
 			},
 		},
@@ -104,12 +108,13 @@ func emitReadabilityFinding(cfg *autofitConfig, params textfit.Params, result te
 	}
 	check := textfit.CheckReadability(baseHPt, result.FontScale, cfg.viewingMode, cfg.textRole)
 	f := NewReadabilityFinding(ReadabilityFindingInput{
-		Path:         cfg.findingPath,
-		Mode:         cfg.viewingMode,
-		Role:         cfg.textRole,
-		EffectiveHPt: check.EffectiveHPt,
-		Paragraphs:   paragraphs,
-		Context:      fmt.Sprintf("autofit %d%% of %.0fpt", result.FontScale/1000, float64(baseHPt)/100.0),
+		Path:              cfg.findingPath,
+		Mode:              cfg.viewingMode,
+		Role:              cfg.textRole,
+		EffectiveHPt:      check.EffectiveHPt,
+		Paragraphs:        paragraphs,
+		Context:           fmt.Sprintf("autofit %d%% of %.0fpt", result.FontScale/1000, float64(baseHPt)/100.0),
+		MeasurementSource: "generated",
 	})
 	if f != nil {
 		*cfg.findings = append(*cfg.findings, *f)

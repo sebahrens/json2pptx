@@ -50,7 +50,10 @@ func renderEvidenceInput(t *testing.T) *PresentationInput {
 	t.Helper()
 	deckJSON := minimalDeck(
 		map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Hello"},
-		map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": []string{"one", "two"}},
+		map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": []string{
+			"The team has completed the first integration milestone.",
+			"The remaining work is scheduled for the next release.",
+		}},
 	)
 	var input PresentationInput
 	if err := strictUnmarshalJSON([]byte(deckJSON), &input); err != nil {

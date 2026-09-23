@@ -52,11 +52,12 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 		}
 		effective := int(float64(smallest) * float64(scaleThousandths) / autofitScaleDenominator)
 		if f := NewReadabilityFinding(ReadabilityFindingInput{
-			Path:         slidepath.Slide(slideIndex),
-			Mode:         ctx.viewingMode,
-			Role:         tokens.TextRoleBody,
-			EffectiveHPt: effective,
-			Paragraphs:   countParagraphs(shape),
+			Path:              slidepath.Slide(slideIndex),
+			Mode:              ctx.viewingMode,
+			Role:              tokens.TextRoleBody,
+			EffectiveHPt:      effective,
+			Paragraphs:        countParagraphs(shape),
+			MeasurementSource: "generated",
 			Context: fmt.Sprintf("autofit %d%% to fit the shape",
 				scaleThousandths*100/int(autofitScaleDenominator)),
 		}); f != nil {

@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 
-	// Ensure all patterns are registered via init().
-	_ "github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 )
 
 // autoRepairDeck builds a midnight-blue deck of `n` slides, each carrying six
@@ -56,10 +57,8 @@ func TestAutoRepair_ConvergesWithinMaxPasses(t *testing.T) {
 
 	deckJSON := autoRepairDeck(3)
 
-	// BODY_TOO_LONG findings have action=review (weight 5). Three of them drop
-	// the score by 15 → 85, which the default gate (min_score 80, the ship gate)
-	// would already pass on pass 1, so raise min_score to 95 to force at least
-	// one repair pass.
+	// BODY_TOO_LONG findings have action=review but count as substantive
+	// defects, so the gate cannot pass before the repair pass.
 	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
 		"presentation": mustParseJSON(deckJSON),
 		"gate": map[string]any{
@@ -140,6 +139,118 @@ func TestAutoRepair_ConvergesWithinMaxPasses(t *testing.T) {
 
 	if len(output.GateReasons) != 0 {
 		t.Errorf("expected gate_reasons to be empty on success, got %v", output.GateReasons)
+	}
+}
+
+func TestAutoRepair_RepairsSubstantiveReviewFindings(t *testing.T) {
+	mc := repairMC(t)
+	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(autoRepairDeck(1)),
+		"gate": map[string]any{
+			"min_score":                  float64(0),
+			"max_p0_findings":            float64(100),
+			"max_p1_findings":            float64(100),
+			"require_takeaway_on_charts": false,
+		},
+		"max_passes":      float64(2),
+		"output_filename": "auto_repair_review_after_gate.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("auto_repair: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("auto_repair tool error: %s", textContent(result))
+	}
+	var output autoRepairOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatalf("decode auto_repair: %v", err)
+	}
+	if len(output.Trace) < 2 {
+		t.Fatalf("gate-passing review defect stopped without a repair pass: %+v", output.Trace)
+	}
+	if output.Trace[0].DirectivesProposed == 0 || output.Trace[0].DirectivesApplied == 0 {
+		t.Fatalf("review finding never became an applied directive: %+v", output.Trace[0])
+	}
+	if !output.GatePassed {
+		t.Fatalf("repaired deck did not converge: reasons=%v trace=%+v", output.GateReasons, output.Trace)
+	}
+}
+
+func TestAutoRepair_DoesNotConvergeWithUnrepairedSubstantiveReview(t *testing.T) {
+	mc := repairMC(t)
+	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(autoRepairDeck(1)),
+		"gate": map[string]any{
+			"min_score":                  float64(0),
+			"max_p0_findings":            float64(100),
+			"max_p1_findings":            float64(100),
+			"require_takeaway_on_charts": false,
+		},
+		"max_passes":      float64(1),
+		"output_filename": "auto_repair_review_budget.pptx",
+	}))
+	if err != nil || result.IsError {
+		t.Fatalf("auto_repair failed: err=%v result=%s", err, textContent(result))
+	}
+	var output autoRepairOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatal(err)
+	}
+	if output.GatePassed || output.NextState.Completion == "converged" {
+		t.Fatalf("unrepaired substantive review defect was declared converged: %+v", output)
+	}
+	if len(output.Trace) != 1 || output.Trace[0].DirectivesProposed == 0 || output.Trace[0].DirectivesApplied != 0 {
+		t.Fatalf("single pass did not expose outstanding review repair: %+v", output.Trace)
+	}
+	if len(output.GateReasons) == 0 {
+		t.Fatal("unrepaired review defect needs an explicit gate reason")
+	}
+}
+
+func TestAutoRepairPassProposesOptionalReviewAfterGatePass(t *testing.T) {
+	var input PresentationInput
+	if err := json.Unmarshal([]byte(autoRepairDeck(1)), &input); err != nil {
+		t.Fatal(err)
+	}
+	title := "Heavy slide"
+	finding := patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: "/slides/0/content/0/text_value", Code: patterns.ErrCodeTitleWraps,
+			Fix: &patterns.FixSuggestion{Kind: "shorten_title"},
+		},
+		Action: "review",
+	}
+	decision := executeAutoRepairPass(&input, []patterns.FitFinding{finding}, nil, 1, 2, autoRepairTraceEntry{Pass: 1})
+	if !decision.stop || !decision.converged || decision.trace.DirectivesProposed == 0 {
+		t.Fatalf("passing gate skipped optional review planning: %+v", decision)
+	}
+	if decision.trace.DirectivesApplied != 0 || *input.Slides[0].Content[0].TextValue != title {
+		t.Fatalf("optional review mutated a gate-passing slide: %+v", decision.trace)
+	}
+}
+
+func TestAutoRepairAndScoreDeckShareSubstantiveReviewBlocker(t *testing.T) {
+	findings := []patterns.FitFinding{{
+		ValidationError: patterns.ValidationError{Path: "/slides/0/content", Code: patterns.ErrCodeSlideNearlyEmpty},
+		Action:          "review",
+	}}
+	score := deterministic.ScoreFromFindings(findings, 6)
+	if score.OverallScore < deterministic.DefaultQualityGateMinScore {
+		t.Fatalf("test needs numeric pass, got %d", score.OverallScore)
+	}
+	ship := deterministic.EvaluateQualityGate(score, findings, deterministic.DefaultQualityGateCriteria())
+	loopReasons := evaluateAutoRepairGate(score, findings, autoRepairGate{
+		MinScore:                deterministic.DefaultQualityGateMinScore,
+		MaxP0Findings:           deterministic.DefaultQualityGateMaxP0Findings,
+		MaxP1Findings:           deterministic.DefaultQualityGateMaxP1Findings,
+		RequireTakeawayOnCharts: true,
+	})
+	if ship.Passed || len(loopReasons) == 0 {
+		t.Fatalf("substantive review must block both gates: ship=%+v loop=%v", ship, loopReasons)
+	}
+	if !strings.Contains(strings.Join(ship.Reasons, "; "), "substantive review") ||
+		!strings.Contains(strings.Join(loopReasons, "; "), "substantive review") {
+		t.Fatalf("gates disagreed on reason: ship=%v loop=%v", ship.Reasons, loopReasons)
 	}
 }
 
@@ -394,9 +505,9 @@ func TestFacadeOutputSchemasAdvertisePublishability(t *testing.T) {
 func TestAutoRepair_GateFailedFacadeSuccessNotPublishable(t *testing.T) {
 	mc := repairMC(t)
 
-	// Three BODY_TOO_LONG findings (action=review, weight 5) → score 85. With
-	// min_score=95 the single scoring pass fails the gate, and max_passes=1 means
-	// no repair is attempted, so the failure is deterministic.
+	// Three BODY_TOO_LONG findings are substantive review defects. With
+	// max_passes=1 the loop can propose repairs but cannot apply them, so the
+	// gate failure is deterministic.
 	deckJSON := autoRepairDeck(3)
 
 	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{

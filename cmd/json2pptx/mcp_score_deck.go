@@ -28,7 +28,7 @@ func mcpScoreDeckTool() mcp.Tool {
 
 Runs a full generation pass (to a temporary directory) so the score reflects the GENERATED deck structure — including pagination, autofit shrink, contrast swaps, and layout synthesis — not just the input JSON. Static analysis alone (without generation) misses these generation-time effects.
 
-Score formula: 100 - sum(severity_weights × findings). Weights: refuse=25, shrink_or_split=15, review=5, info=0.
+Score: per-slide 100 minus finding weights and a deck-wide breadth penalty. Weights: refuse=25, shrink_or_split=15, review=5, info=0. Severe reviews cost 15–20; only confirmed defects block.
 
 Use this after generate_presentation to get structured visual feedback without burning vision tokens. The score will differ from a naive static check when generation-time autofix kicked in.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreDeck)),

@@ -58,6 +58,9 @@ func TestPlaceholderAutofit_ReportsBelowReadableMin(t *testing.T) {
 	if f.Fix.Params["strategy"] != "split" {
 		t.Errorf("6 paragraphs should suggest split, got %v", f.Fix.Params["strategy"])
 	}
+	if f.Fix.Params["measurement_source"] != "generated" {
+		t.Errorf("generated autofit source = %v", f.Fix.Params["measurement_source"])
+	}
 
 	// read mode floor is 10pt: the same shrink is acceptable.
 	findings = nil

@@ -112,6 +112,57 @@ func TestScoreDeckFlagsTitleOnlyContentLayout(t *testing.T) {
 	t.Fatalf("score_deck omitted SLIDE_NEARLY_EMPTY: %+v", score.PerSlide[0].Findings)
 }
 
+func TestScoreDeckRejectsBulletWallsAndTitleOnlyContent(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+	longBullets := bodyTooLongBullets()
+	slides := make([]any, 6)
+	for i := range slides {
+		content := []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Operating model"}}
+		switch {
+		case i < 2:
+			content = append(content, map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": longBullets})
+		case i >= 4:
+			content = append(content, map[string]any{"placeholder_id": "body", "type": "text", "text_value": "Clear ownership and automated handoffs will reduce delays across the close process."})
+		}
+		slides[i] = map[string]any{"layout_id": "content", "content": content}
+	}
+	result, err := mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{
+		"presentation": map[string]any{"template": "midnight-blue", "slides": slides},
+	}))
+	if err != nil || result.IsError {
+		t.Fatalf("score_deck failed: err=%v result=%s", err, textContent(result))
+	}
+	data, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var score deterministic.DeckScore
+	if err := json.Unmarshal(data, &score); err != nil {
+		t.Fatal(err)
+	}
+	if score.OverallScore >= 70 || score.QualityGate == nil || score.QualityGate.Passed {
+		t.Fatalf("visibly poor six-slide deck passed: score=%d gate=%+v", score.OverallScore, score.QualityGate)
+	}
+	walls, empty := 0, 0
+	for _, slide := range score.PerSlide {
+		for _, finding := range slide.Findings {
+			switch finding.Code {
+			case patterns.ErrCodeBodyTooLong:
+				walls++
+			case patterns.ErrCodeSlideNearlyEmpty:
+				empty++
+			}
+		}
+	}
+	if walls < 2 || empty < 2 {
+		t.Fatalf("missing deck defects: walls=%d empty=%d slides=%+v", walls, empty, score.PerSlide)
+	}
+}
+
 // TestScoreDeck_WithHeuristicsModeRejected verifies the contract that
 // 'with_heuristics' is not silently downgraded to deterministic. The handler
 // must return IsError=true with a structured UNSUPPORTED_MODE diagnostic that
@@ -369,6 +420,7 @@ func TestScoreDeck_QualityGateWiredIntoResponse(t *testing.T) {
 				"layout_id": "slideLayout2",
 				"content": []any{
 					map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Hello"},
+					map[string]any{"placeholder_id": "body", "type": "text", "text_value": "The launch plan connects owners, milestones, and decisions across teams."},
 				},
 			},
 		},
