@@ -106,12 +106,12 @@ func TestGeneratePatternUsesTemplateContentHeight(t *testing.T) {
 	if diff := float64(maxHeight)/12700 - preflightHeight; diff < -1 || diff > 1 {
 		t.Errorf("preflight KPI height %.1fpt disagrees with generated shape %.1fpt", preflightHeight, float64(maxHeight)/12700)
 	}
-	if float64(maxHeight) > 0.46*float64(content.CY) {
-		t.Errorf("KPI row height %.1fpt exceeds 46%% of template content height %.1fpt", float64(maxHeight)/12700, float64(content.CY)/12700)
+	if float64(maxHeight) < 0.59*float64(content.CY) || float64(maxHeight) > 0.61*float64(content.CY) {
+		t.Errorf("KPI row height %.1fpt should use about 60%% of template content height %.1fpt", float64(maxHeight)/12700, float64(content.CY)/12700)
 	}
 
 	// A deck rhythm grid can make the real render frame narrower still. Its
-	// 3913340 EMU frame must yield the 139pt KPI base seen in the original bug.
+	// 3913340 EMU frame must yield the 60%% KPI base on the tighter frame.
 	rhythm := &resolvedGrid{TitleBaselineY: 1600000, ContentBottomY: 5741940, LeftMarginX: 838200, RightEdgeX: 11353800, SlideWidth: sw, SlideHeight: sh}
 	_, tight := patternExpansionGeometry(slide, layouts, sw, sh, rhythm)
 	if tight.CY != 3913340 {
@@ -133,8 +133,8 @@ func TestGeneratePatternUsesTemplateContentHeight(t *testing.T) {
 			}
 		}
 	}
-	if got := float64(tightMax) / 12700; got < 138 || got > 140 {
-		t.Errorf("KPI card height = %.1fpt with 308.1pt render frame, want about 139pt", got)
+	if got := float64(tightMax) / 12700; got < 184 || got > 186 {
+		t.Errorf("KPI card height = %.1fpt with 308.1pt render frame, want about 185pt", got)
 	}
 }
 
@@ -183,25 +183,60 @@ func assertCentred(t *testing.T, name string, cells []shapegrid.ResolvedCell) {
 	}
 }
 
-// TestKPI3up_CardHeightCappedAndCentred covers go-slide-creator-7km8.
-func TestKPI3up_CardHeightCappedAndCentred(t *testing.T) {
+func TestFullPatternsOccupyContentZone(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		min  float64
+	}{
+		{"kpi-4up", 0.59},
+		{"process-flow", 0.44},
+		{"before-after", 0.59},
+		{"agenda", 0.59},
+		{"exec-summary", 0.61},
+		{"card-grid", 0.59},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pat, ok := patterns.Default().Get(tc.name)
+			if !ok {
+				t.Fatal("pattern not registered")
+			}
+			ex, ok := pat.(patterns.Exemplar)
+			if !ok {
+				t.Fatal("pattern has no exemplar")
+			}
+			values, err := json.Marshal(ex.ExemplarValues())
+			if err != nil {
+				t.Fatal(err)
+			}
+			res, _ := resolvePatternForTest(t, tc.name, string(values))
+			top, bottom := blockExtent(res.Cells)
+			if got := float64(bottom-top) / float64(contentRect.CY); got < tc.min {
+				t.Errorf("block fills %.1f%% of content zone, want at least %.1f%%", got*100, tc.min*100)
+			}
+			assertCentred(t, tc.name, res.Cells)
+		})
+	}
+}
+
+// TestKPI3up_CardFillsZoneAndCentred covers the full-size occupancy policy.
+func TestKPI3up_CardFillsZoneAndCentred(t *testing.T) {
 	res, grid := resolvePatternForTest(t, "kpi-3up", `[{"big":"$4.2M","small":"ARR added in H1","icon":"currency-dollar"},{"big":"127%","small":"Net revenue retention"},{"big":"12 days","small":"Median sales cycle"}]`)
 	if grid.VerticalAlign != "center" {
 		t.Errorf("pattern grid vertical_align = %q, want center", grid.VerticalAlign)
 	}
 	for _, c := range res.Cells {
-		if float64(c.CellBounds.CY) > 0.45*float64(contentRect.CY)+12700 {
-			t.Errorf("KPI card height %d > 45%% of content height %d", c.CellBounds.CY, contentRect.CY)
+		if float64(c.CellBounds.CY) < 0.59*float64(contentRect.CY) {
+			t.Errorf("KPI card height %d < 60%% of content height %d", c.CellBounds.CY, contentRect.CY)
 		}
 	}
 	assertCentred(t, "kpi-3up", res.Cells)
 }
 
-func TestProcessFlow_StepsCappedAndCentred(t *testing.T) {
+func TestProcessFlow_StepsFillZoneAndCentred(t *testing.T) {
 	res, _ := resolvePatternForTest(t, "process-flow", `{"steps":[{"label":"Intake"},{"label":"Triage"},{"label":"Approve?","type":"decision"},{"label":"Close"}]}`)
 	for _, c := range res.Cells {
-		if float64(c.CellBounds.CY) > 0.35*float64(contentRect.CY)+12700 {
-			t.Errorf("process step height %d > 35%% of content height", c.CellBounds.CY)
+		if float64(c.CellBounds.CY) < 0.44*float64(contentRect.CY) {
+			t.Errorf("process step height %d < 45%% of content height", c.CellBounds.CY)
 		}
 	}
 	assertCentred(t, "process-flow", res.Cells)

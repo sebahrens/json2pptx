@@ -231,7 +231,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"phase-roadmap":                6.2,
 	// Layout-aware standalone readability measurement exposed a schema-legal
 	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
-	"process-flow":         9.1,
+	"process-flow":         0,
 	"process-flow-compact": 9.1,
 	"process-grid-2row":    0.0,
 	// A long italic quote is prose, not a KPI value. With the 12pt prose floor,

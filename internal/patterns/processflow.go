@@ -248,7 +248,7 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	bodySize := ResolveSize(ovr.BodySize, processFlowDefaultFontPt(len(vals.Steps)))
+	bodySize := ResolveSize(ovr.BodySize, processFlowFullFontPt(vals.Steps))
 	cellAccentMode := ovr.CellAccentMode
 
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
@@ -327,7 +327,27 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 // processFlowMaxHeightFrac caps process-flow steps at this share of the
 // content height.
-const processFlowMaxHeightFrac = 0.35
+const processFlowMaxHeightFrac = 0.45
+
+// processFlowFullFontPt uses the taller full-size row to promote short labels.
+// Dense labels keep the conservative scale; compact flows retain their own
+// 9–12pt scale via processFlowDefaultFontPt.
+func processFlowFullFontPt(steps []ProcessFlowStep) float64 {
+	base := processFlowDefaultFontPt(len(steps))
+	for _, step := range steps {
+		if runeLen(step.Label) > 22 {
+			return base
+		}
+	}
+	switch {
+	case len(steps) <= 4:
+		return 16
+	case len(steps) <= 6:
+		return 13
+	default:
+		return base
+	}
+}
 
 // processFlowGapPt is the gap between steps, in points. The notch calculation
 // reads it, so the two cannot drift.

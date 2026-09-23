@@ -249,7 +249,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	beforeBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"lt1"`),
+			Fill:     json.RawMessage(`"lt2"`),
 			Text:     beforeBody,
 		},
 	}
@@ -259,7 +259,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	afterBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"lt1"`),
+			Fill:     json.RawMessage(`"lt2"`),
 			Text:     afterBody,
 		},
 	}
@@ -291,6 +291,12 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 				},
 			},
 		},
+	}
+	fillCappedRows(ctx, grid.Rows, grid.Gap, 0.60, func(i int) bool { return i == 1 })
+	// The larger panels are now intentionally visible. Centre a sparse list in
+	// its panel so the extra height reads as breathing room, not a blank tail.
+	for _, cell := range []*jsonschema.GridCellInput{beforeBodyCell, afterBodyCell} {
+		cell.Shape.Text = withVerticalAlign(cell.Shape.Text, "ctr")
 	}
 
 	return grid, nil

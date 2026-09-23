@@ -3,6 +3,8 @@ package patterns
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
 
 // TestBeforeAfter_HeaderTextVerticalAnchorCenter is a regression for
@@ -53,6 +55,27 @@ func TestBeforeAfter_ExpandBasic(t *testing.T) {
 	// Header row has 3 cells (before, chevron, after)
 	if len(grid.Rows[0].Cells) != 3 {
 		t.Errorf("expected 3 header cells, got %d", len(grid.Rows[0].Cells))
+	}
+}
+
+func TestBeforeAfterFullPanelsUseSurplusHeight(t *testing.T) {
+	pat := &beforeAfter{}
+	vals := &BeforeAfterValues{
+		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual", "Slow"}},
+		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated", "Fast"}},
+	}
+	grid, err := pat.Expand(fullThemeCtx(), vals, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, zoneH := sizingAreaPt(fullThemeCtx())
+	if got := grid.Rows[0].MaxHeight + grid.Rows[1].MaxHeight + grid.Gap; got < zoneH*0.59 {
+		t.Errorf("full block %.1fpt uses less than 60%% of %.1fpt zone", got, zoneH)
+	}
+	for _, cell := range []*jsonschema.GridCellInput{grid.Rows[1].Cells[0], grid.Rows[1].Cells[2]} {
+		if string(cell.Shape.Fill) != `"lt2"` || !strings.Contains(string(cell.Shape.Text), `"vertical_align":"ctr"`) {
+			t.Errorf("expanded body panel should be visible and centered: %+v", cell.Shape)
+		}
 	}
 }
 

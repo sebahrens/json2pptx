@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -180,10 +181,25 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	numberSize := ResolveSize(ovr.NumberSize, 20.0)
-	titleSize := ResolveSize(ovr.TitleSize, 14.0)
+	numberDefault, titleDefault := 20.0, 14.0
+	if len(v.Items) <= 5 {
+		short := true
+		for _, title := range v.Items {
+			if runeLen(title) > 36 {
+				short = false
+				break
+			}
+		}
+		if short {
+			numberDefault, titleDefault = 24, 18
+		}
+	}
+	numberSize := ResolveSize(ovr.NumberSize, numberDefault)
+	titleSize := ResolveSize(ovr.TitleSize, titleDefault)
 
 	rows := make([]jsonschema.GridRowInput, len(v.Items))
+	_, areaH := sizingAreaPt(ctx)
+	minRowPt := math.Max(0, (areaH*0.60-8*float64(len(v.Items)-1))/float64(len(v.Items)))
 	for i, title := range v.Items {
 		num := fmt.Sprintf("%02d", i+1)
 		isHighlighted := ovr.Highlight > 0 && ovr.Highlight == i+1
@@ -239,6 +255,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 
 		rows[i] = jsonschema.GridRowInput{
 			AutoHeight: true,
+			MinHeight:  minRowPt,
 			Cells:      []*jsonschema.GridCellInput{numberCell, titleCell},
 		}
 	}

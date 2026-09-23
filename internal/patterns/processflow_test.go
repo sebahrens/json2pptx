@@ -40,10 +40,10 @@ func processFlowStepFont(t *testing.T, n int, ovr any) float64 {
 }
 
 func TestProcessFlow_DefaultFontScalesDownWithCount(t *testing.T) {
-	// n<=4 keeps the historical 12pt so size-metric goldens stay stable.
+	// The full variant promotes short labels in its taller row.
 	for _, n := range []int{3, 4} {
-		if got := processFlowStepFont(t, n, nil); got != 12 {
-			t.Errorf("n=%d default font = %g, want 12", n, got)
+		if got := processFlowStepFont(t, n, nil); got != 16 {
+			t.Errorf("n=%d default font = %g, want 16", n, got)
 		}
 	}
 	// Larger counts shrink so short labels fit narrower boxes without wrapping.
@@ -51,8 +51,8 @@ func TestProcessFlow_DefaultFontScalesDownWithCount(t *testing.T) {
 		t.Errorf("8-step font (%g) should be smaller than 4-step font (%g)",
 			processFlowStepFont(t, 8, nil), processFlowStepFont(t, 4, nil))
 	}
-	if got := processFlowStepFont(t, 5, nil); got != 11 {
-		t.Errorf("n=5 default font = %g, want 11", got)
+	if got := processFlowStepFont(t, 5, nil); got != 13 {
+		t.Errorf("n=5 default font = %g, want 13", got)
 	}
 }
 
@@ -60,6 +60,16 @@ func TestProcessFlow_BodySizeOverrideWinsOverScaling(t *testing.T) {
 	ovr := &ProcessFlowOverrides{BodySize: 18}
 	if got := processFlowStepFont(t, 8, ovr); got != 18 {
 		t.Errorf("with body_size=18 override, 8-step font = %g, want 18", got)
+	}
+}
+
+func TestProcessFlowDenseLabelsKeepConservativeScale(t *testing.T) {
+	steps := []ProcessFlowStep{{Label: "A detailed handoff requiring review"}, {Label: "Approve"}, {Label: "Close"}}
+	if got := processFlowFullFontPt(steps); got != 12 {
+		t.Errorf("dense full flow font = %g, want 12", got)
+	}
+	if got := processFlowDefaultFontPt(3); got != 12 {
+		t.Errorf("compact flow font = %g, want 12", got)
 	}
 }
 

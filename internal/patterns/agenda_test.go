@@ -1,6 +1,7 @@
 package patterns
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -28,6 +29,42 @@ func TestAgendaDenseUnbrokenTitleWarning(t *testing.T) {
 	v.Items[2] = strings.Repeat("W", 100)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("seven-row schema maximum should fit: %v", got)
+	}
+}
+
+func TestAgendaSparseTitlesGrowWithoutChangingDenseOrOverrides(t *testing.T) {
+	p := &agenda{}
+	for _, tc := range []struct {
+		name  string
+		items []string
+		ovr   *AgendaOverrides
+		want  float64
+	}{
+		{"short", []string{"Intro", "Analysis", "Decision"}, nil, 18},
+		{"long title", []string{"Introduction to the regional operating model", "Analysis", "Decision"}, nil, 14},
+		{"override", []string{"Intro", "Analysis", "Decision"}, &AgendaOverrides{TitleSize: 13}, 13},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var overrides any
+			if tc.ovr != nil {
+				overrides = tc.ovr
+			}
+			grid, err := p.Expand(ExpandContext{}, &AgendaValues{Items: tc.items}, overrides, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var body struct {
+				Paragraphs []struct {
+					Size float64 `json:"size"`
+				} `json:"paragraphs"`
+			}
+			if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Text, &body); err != nil {
+				t.Fatal(err)
+			}
+			if len(body.Paragraphs) != 1 || body.Paragraphs[0].Size != tc.want {
+				t.Errorf("title size = %+v, want %g", body.Paragraphs, tc.want)
+			}
+		})
 	}
 }
 

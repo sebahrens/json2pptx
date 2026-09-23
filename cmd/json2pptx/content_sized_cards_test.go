@@ -37,10 +37,9 @@ func TestBeforeAfter_HeaderBandAndContentBody(t *testing.T) {
 	if h := maxCellHeight(rowCells(res.Cells, 0)); h > 50*pt {
 		t.Errorf("header band %.0fpt, want <= 50pt", float64(h)/pt)
 	}
-	// Four 14pt bullets per side hug their text (~4-6 lines), far below the
-	// ~75% of the content area the flex body used to take.
-	if h := maxCellHeight(rowCells(res.Cells, 1)); float64(h) > 0.45*float64(contentRect.CY) {
-		t.Errorf("body row %.0fpt exceeds 45%% of the content height", float64(h)/pt)
+	// The header stays compact while the full variant uses the available zone.
+	if top, bottom := blockExtent(res.Cells); float64(bottom-top) < 0.59*float64(contentRect.CY) {
+		t.Errorf("before-after block %.0fpt uses less than 60%% of the content height", float64(bottom-top)/pt)
 	}
 	assertCentred(t, "before-after", res.Cells)
 }

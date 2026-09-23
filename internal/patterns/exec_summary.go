@@ -24,12 +24,9 @@ import (
 //   [ 2 ]  …                                  …
 //   ▌Bottom line: optional tinted conclusion bar spanning the full width
 //
-// Rows are content-sized: each row's height comes from the measured wrapped
-// height of its lead and support text, so short summaries do not stretch into
-// full-height blocks. Every row is pinned in points (min_height = max_height),
-// so the block keeps its size and the pattern vertical_align default centres
-// it; short summaries are padded (never past 1.6× their natural height) so
-// the slide does not read as mostly empty.
+// Rows start at their measured text height and short summaries distribute
+// surplus content-zone height into the point rows. Dividers and the bottom
+// line retain their own heights.
 
 func init() {
 	Default().Register(&execSummary{})
@@ -60,8 +57,7 @@ const (
 	// execSummaryFlagGapPt is the gap between the flag's point and the statement
 	// box — small, so the two read as one callout.
 	execSummaryFlagGapPt  = 4.0
-	execSummaryMinFillPct = 62.0 // pad rows until the grid covers this share of the content height
-	execSummaryMaxPad     = 1.6  // … but never beyond this multiple of a row's natural height
+	execSummaryMinFillPct = 62.0
 )
 
 func (e *execSummary) Name() string { return "exec-summary" }
@@ -275,17 +271,7 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	leadSize, supportSize, numSize := lay.leadSize, lay.supportSize, lay.numSize
 	rowPt, bottomPt := lay.rowPt, lay.bottomPt
 	rowCount := lay.rowCount()
-	fixedPt := lay.fixedPt()
 
-	// Pad point rows (whitespace only — they are unfilled) so a short
-	// summary does not read as a thin strip in the middle of the slide.
-	if target := areaH * execSummaryMinFillPct / 100; lay.natural() < target {
-		pointsPt := lay.natural() - fixedPt
-		scale := math.Min((target-fixedPt)/pointsPt, execSummaryMaxPad)
-		for i := range rowPt {
-			rowPt[i] *= scale
-		}
-	}
 	ruleFill := fillTone{Color: "dk1", Alpha: 30}.fillJSON()
 	rows := make([]jsonschema.GridRowInput, 0, rowCount)
 	for i, p := range vals.Points {
@@ -361,6 +347,9 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		RowGap:  execSummaryRowGapPt,
 		Rows:    rows,
 	}
+	fillCappedRows(ctx, grid.Rows, grid.RowGap, execSummaryMinFillPct/100, func(i int) bool {
+		return i < 2*n-1 && i%2 == 0
+	})
 	return grid, nil
 }
 

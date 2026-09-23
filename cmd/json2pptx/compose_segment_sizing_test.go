@@ -97,8 +97,8 @@ func TestComposeHorizontalKeepsCompactCardBesideFullHeightHero(t *testing.T) {
 		t.Fatalf("expected three KPI cards and hero, got %d shapes", len(shapes))
 	}
 	card, full := shapes[0], shapes[3]
-	if card.CY >= full.CY/2 {
-		t.Errorf("KPI card height %.1fpt is not compact beside %.1fpt hero", float64(card.CY)/12700, float64(full.CY)/12700)
+	if float64(card.CY) < 0.59*float64(full.CY) {
+		t.Errorf("full KPI card height %.1fpt occupies less than 60%% of %.1fpt segment", float64(card.CY)/12700, float64(full.CY)/12700)
 	}
 	if card.Y <= full.Y || card.Y+card.CY >= full.Y+full.CY {
 		t.Errorf("KPI card is not centered within its segment: card=%+v hero=%+v", card, full)
