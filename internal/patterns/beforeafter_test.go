@@ -4,6 +4,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -81,6 +83,31 @@ func TestBeforeAfterFullPanelsUseSurplusHeight(t *testing.T) {
 	for _, cell := range grid.Rows[1].Cells {
 		if string(cell.Shape.Fill) != `{"color":"accent1","tint":12000}` || !strings.Contains(string(cell.Shape.Text), `"vertical_align":"ctr"`) {
 			t.Errorf("expanded body panel should be visible and centered: %+v", cell.Shape)
+		}
+	}
+}
+
+func TestBeforeAfterFullPanelsHaveHalfCentimeterTextMargins(t *testing.T) {
+	vals := &BeforeAfterValues{
+		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual handoffs"}},
+		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated routing"}},
+	}
+	grid, err := (&beforeAfter{}).Expand(fullThemeCtx(), vals, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cell := range []*jsonschema.GridCellInput{
+		grid.Rows[0].Cells[0], grid.Rows[0].Cells[2],
+		grid.Rows[1].Cells[0], grid.Rows[1].Cells[1],
+	} {
+		body, err := shapegrid.ResolveTextInput(cell.Shape.Text)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for side, got := range body.Insets {
+			if got < 180000 || got > 180010 {
+				t.Errorf("panel inset side %d = %d EMU, want 0.5 cm (180000 EMU)", side, got)
+			}
 		}
 	}
 }

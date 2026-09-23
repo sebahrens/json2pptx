@@ -21,6 +21,10 @@ func init() {
 
 type beforeAfter struct{}
 
+// The full-size panel's text must stay at least 0.5 cm from every edge.
+// Points are the shape-grid text-inset unit; 1 cm = 72/2.54 pt.
+const beforeAfterPanelInsetPt = 0.5 * 72 / 2.54
+
 func (b *beforeAfter) Name() string        { return "before-after" }
 func (b *beforeAfter) Description() string { return "Two-column before/after with transition chevron" }
 func (b *beforeAfter) UseWhen() string {
@@ -200,7 +204,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	headerSize := ResolveSize(ovr.HeaderSize, 16.0)
-	bodySize := ResolveSize(ovr.BodySize, 14.0)
+	bodySize := ResolveSize(ovr.BodySize, 12.0)
 	cellAccentMode := ovr.CellAccentMode
 
 	beforeAccent := ResolveCellAccent(baseAccent, 0, cellAccentMode)
@@ -209,8 +213,8 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	cellIdx := 0
 
 	// Header row: Before header | full-height chevron | After header.
-	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr")
-	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr")
+	beforeHeader := withBeforeAfterPanelInsets(buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr"))
+	afterHeader := withBeforeAfterPanelInsets(buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr"))
 
 	beforeHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -244,8 +248,8 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	// Body row: before items | after items. The chevron reserves the middle
 	// column through its row span, so no separate spacer is needed.
-	beforeBody := buildBeforeAfterBulletContent(vals.Before.Items, bodySize)
-	afterBody := buildBeforeAfterBulletContent(vals.After.Items, bodySize)
+	beforeBody := withBeforeAfterPanelInsets(buildBeforeAfterBulletContent(vals.Before.Items, bodySize))
+	afterBody := withBeforeAfterPanelInsets(buildBeforeAfterBulletContent(vals.After.Items, bodySize))
 
 	beforeBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -272,7 +276,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// Content-sized rows (go-slide-creator-3i7c): the header band is ~1.2x
 	// the header line height (not 25% of the slide) and the body row hugs the
 	// longest bullet list; the grid centres the block vertically.
-	headerPt, bodyPt := beforeAfterRowHeights(ctx, vals, headerSize, bodySize, 8)
+	headerPt, bodyPt := beforeAfterFullRowHeights(ctx, beforeHeader, afterHeader, beforeBody, afterBody, 8)
 	grid := &jsonschema.ShapeGridInput{
 		Columns:       colsJSON,
 		Gap:           8,
@@ -297,6 +301,35 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	return grid, nil
+}
+
+func withBeforeAfterPanelInsets(text json.RawMessage) json.RawMessage {
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(text, &obj); err != nil {
+		return text
+	}
+	inset, _ := json.Marshal(beforeAfterPanelInsetPt)
+	for _, side := range []string{"left", "right", "top", "bottom"} {
+		obj["inset_"+side] = inset
+	}
+	out, err := json.Marshal(obj)
+	if err != nil {
+		return text
+	}
+	return out
+}
+
+// Size the full panels against their actual 0.5 cm text insets. The compact
+// variant deliberately retains its smaller default insets and sizing.
+func beforeAfterFullRowHeights(ctx ExpandContext, beforeHeader, afterHeader, beforeBody, afterBody json.RawMessage, gapPt float64) (headerPt, bodyPt float64) {
+	font := ctx.Theme.BodyFont
+	w, _ := contentAreaPt(ctx)
+	textW := (w-2*gapPt)*0.45 - 2*beforeAfterPanelInsetPt
+	header := math.Max(shapeTextHeightPt(font, beforeHeader, textW), shapeTextHeightPt(font, afterHeader, textW))
+	body := math.Max(shapeTextHeightPt(font, beforeBody, textW), shapeTextHeightPt(font, afterBody, textW))
+	headerPt = math.Round(header + 2*beforeAfterPanelInsetPt)
+	bodyPt = math.Round(body + 2*beforeAfterPanelInsetPt + cardPadPt)
+	return headerPt, bodyPt
 }
 
 // Keep only a trace of the accent in the panel fill. The shape-grid renderer
