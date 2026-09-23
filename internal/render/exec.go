@@ -123,7 +123,9 @@ func runBounded(ctx context.Context, tool, path string, timeout time.Duration, n
 	defer cancel()
 
 	cmd := exec.CommandContext(cctx, name, args...) //nolint:gosec // callers pass clamped ints / internal temp paths; tool name is a package constant
-	setProcessGroup(cmd)                            // platform-specific: own process group + group-kill on cancel
+	if tool != toolLibreOffice {
+		setProcessGroup(cmd) // ImageMagick keeps the existing context-cancel group kill.
+	}
 	cmd.WaitDelay = 5 * time.Second
 
 	var outBuf, errBuf capWriter
@@ -133,7 +135,12 @@ func runBounded(ctx context.Context, tool, path string, timeout time.Duration, n
 	cmd.Stderr = &errBuf
 
 	start := time.Now()
-	runErr := cmd.Run()
+	var runErr error
+	if tool == toolLibreOffice {
+		runErr = RunGuardedLibreOffice(cmd)
+	} else {
+		runErr = cmd.Run()
+	}
 	elapsed := time.Since(start)
 
 	if cctx.Err() == context.DeadlineExceeded {

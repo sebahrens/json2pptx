@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
@@ -170,11 +171,10 @@ func runHeadlessCommand(name string, args []string, timeout time.Duration) (stdo
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // test-controlled command and arguments
-	configureHeadlessProcess(cmd)
 	cmd.WaitDelay = 5 * time.Second
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	err = cmd.Run()
+	err = render.RunGuardedLibreOffice(cmd)
 	return stdout, stderr, ctx.Err() == context.DeadlineExceeded, err
 }
 
