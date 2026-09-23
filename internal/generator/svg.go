@@ -154,6 +154,10 @@ func (c *SVGConverter) IsPNGAvailable() bool {
 	return c.rsvgConvertPath != "" || c.resvgPath != ""
 }
 
+// GridDiagramConverterMissingMessage is shared by preflight and the raster
+// fallback so both paths give the same actionable dependency diagnostic.
+const GridDiagramConverterMissingMessage = "grid-cell diagram fallback PNG requires rsvg-convert or resvg in PATH; install either converter and retry"
+
 // RasterizeBytesToPNG renders an in-memory SVG at a bounded pixel size while
 // preserving text. The in-process canvas rasterizer used for tiny icons ignores
 // svggen's CSS font shorthand on charts, so chart/diagram fallbacks must use a
@@ -224,7 +228,7 @@ func (c *SVGConverter) RasterizeBytesToPNG(ctx context.Context, svgData []byte, 
 		lastErr = fmt.Errorf("%s: %s: %w", converter.name, strings.TrimSpace(stderr.String()), err)
 	}
 	if lastErr == nil {
-		return nil, fmt.Errorf("no PNG converter found (need rsvg-convert or resvg)")
+		return nil, fmt.Errorf("%s", GridDiagramConverterMissingMessage)
 	}
 	return nil, lastErr
 }

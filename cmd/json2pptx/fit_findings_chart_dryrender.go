@@ -40,6 +40,19 @@ func collectChartDryRenderFindings(
 	bodyFont string,
 	strictFit string,
 ) []patterns.FitFinding {
+	return collectChartDryRenderFindingsWithConverter(input, themeColors, bodyFont, strictFit,
+		generator.NewSVGConverter().IsPNGAvailable())
+}
+
+// The explicit availability argument keeps dependency-state tests independent
+// of the host PATH while production still probes the actual converter tools.
+func collectChartDryRenderFindingsWithConverter(
+	input *PresentationInput,
+	themeColors []types.ThemeColor,
+	bodyFont string,
+	strictFit string,
+	converterAvailable bool,
+) []patterns.FitFinding {
 	if input == nil || len(input.Slides) == 0 {
 		return nil
 	}
@@ -74,14 +87,14 @@ func collectChartDryRenderFindings(
 		// finding for the same cell agree on the cell identity.
 		if slide.ShapeGrid != nil {
 			findings = append(findings, collectGridDryRenderFindings(
-				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, bodyFont, strictFit)...)
+				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, bodyFont, strictFit, converterAvailable)...)
 		} else if pg := expandSlidePatternGrid(&slide, slideIdx, 0, 0, nil); pg != nil {
 			// Named patterns that embed charts (chart-insights-split, ...)
 			// are only expanded at generate time; expand them here so their
 			// charts get the same dry-render as raw shape_grid diagrams
 			// (go-slide-creator-yzbo). Paths are rooted at the pattern.
 			findings = append(findings, collectGridDryRenderFindings(
-				pg, slidepath.SlideField(slideIdx, "pattern"), themeColors, bodyFont, strictFit)...)
+				pg, slidepath.SlideField(slideIdx, "pattern"), themeColors, bodyFont, strictFit, converterAvailable)...)
 		}
 	}
 	return findings
@@ -104,6 +117,7 @@ func collectGridDryRenderFindings(
 	themeColors []types.ThemeColor,
 	bodyFont string,
 	strictFit string,
+	converterAvailable bool,
 ) []patterns.FitFinding {
 	if grid == nil {
 		return nil
@@ -117,15 +131,15 @@ func collectGridDryRenderFindings(
 			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, ri, ci)
 			if cell.Diagram != nil {
 				findings = append(findings, dryRenderGridSpecToFindings(
-					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram")...)
+					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram", converterAvailable)...)
 			}
 			if cell.Composite != nil && cell.Composite.SubDiagram != nil {
 				findings = append(findings, dryRenderGridSpecToFindings(
-					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram")...)
+					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram", converterAvailable)...)
 			}
 			if cell.Grid != nil {
 				findings = append(findings, collectGridDryRenderFindings(
-					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit)...)
+					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit, converterAvailable)...)
 			}
 		}
 	}
@@ -176,8 +190,25 @@ func dryRenderGridSpecToFindings(
 	bodyFont string,
 	strictFit string,
 	path string,
+	converterAvailable bool,
 ) []patterns.FitFinding {
-	return dryRenderSpec(spec, themeColors, bodyFont, strictFit, path, true)
+	findings := dryRenderSpec(spec, themeColors, bodyFont, strictFit, path, true)
+	if converterAvailable || spec == nil || spec.Type == "" || generator.IsNativeDiagramType(spec) {
+		return findings
+	}
+	return append(findings, patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: spec.Type,
+			Path:    path,
+			Code:    patterns.ErrCodeDiagramRenderFailed,
+			Message: generator.GridDiagramConverterMissingMessage,
+			Fix: &patterns.FixSuggestion{
+				Kind:   "review",
+				Params: map[string]any{"reason": generator.GridDiagramConverterMissingMessage},
+			},
+		},
+		Action: "refuse",
+	})
 }
 
 func dryRenderSpec(

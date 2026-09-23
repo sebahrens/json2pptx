@@ -322,8 +322,22 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 
 	// Validate slides against template
 	validateSlidesAgainstTemplate(&output, input.Slides, templateAnalysis)
+	appendGridConverterPreflight(&output, &input, generator.NewSVGConverter().IsPNGAvailable())
 
 	return writeDryRunOutput(output)
+}
+
+// CLI generate --dry-run does not run the broader fit-report collector. Keep
+// its existing scope while surfacing the grid raster dependency that would
+// otherwise make the subsequent generation fail.
+func appendGridConverterPreflight(output *dryRunOutput, input *PresentationInput, converterAvailable bool) {
+	for _, finding := range collectChartDryRenderFindingsWithConverter(input, nil, "", "warn", converterAvailable) {
+		if finding.Message != generator.GridDiagramConverterMissingMessage {
+			continue
+		}
+		output.FitFindings = append(output.FitFindings, finding)
+		output.Valid = false
+	}
 }
 
 // validateJSONContentValue checks that a JSON content item's value can be

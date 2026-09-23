@@ -58,8 +58,8 @@ func TestSVGConverter_RasterizeBytesToPNGPreservesText(t *testing.T) {
 func TestSVGConverter_RasterizeBytesToPNGWithoutConverter(t *testing.T) {
 	converter := NewSVGConverter()
 	markToolsFound(converter)
-	if _, err := converter.RasterizeBytesToPNG(context.Background(), []byte(`<svg/>`), 600); err == nil {
-		t.Fatal("diagram fallback must not silently use a text-dropping renderer")
+	if _, err := converter.RasterizeBytesToPNG(context.Background(), []byte(`<svg/>`), 600); err == nil || err.Error() != GridDiagramConverterMissingMessage {
+		t.Fatalf("missing converter error = %v, want actionable preflight message", err)
 	}
 	if _, err := converter.RasterizeBytesToPNG(context.Background(), nil, 600); err == nil {
 		t.Fatal("empty diagram SVG must fail")

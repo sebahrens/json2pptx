@@ -5,10 +5,76 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+func TestGridDiagramConverterPreflight(t *testing.T) {
+	input := &PresentationInput{Slides: []SlideInput{{
+		ShapeGrid: &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{
+			{Diagram: crowdedNominalDiagram()},
+			{Composite: &jsonschema.CompositeInput{SubDiagram: crowdedNominalDiagram()}},
+			{Grid: &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{
+				{Diagram: crowdedNominalDiagram()},
+			}}}}},
+			{Diagram: &types.DiagramSpec{Type: "process_flow"}},
+		}}},
+		}}}}
+	wantPaths := map[string]bool{
+		"/slides/0/shape_grid/rows/0/cells/0/diagram":                     false,
+		"/slides/0/shape_grid/rows/0/cells/1/composite/sub_diagram":       false,
+		"/slides/0/shape_grid/rows/0/cells/2/grid/rows/0/cells/0/diagram": false,
+	}
+	for _, available := range []bool{false, true} {
+		t.Run(fmt.Sprintf("converter_available=%t", available), func(t *testing.T) {
+			seen := make(map[string]bool)
+			for _, finding := range collectChartDryRenderFindingsWithConverter(input, nil, "", "warn", available) {
+				if finding.Message != generator.GridDiagramConverterMissingMessage {
+					continue
+				}
+				if finding.Code != patterns.ErrCodeDiagramRenderFailed || finding.Action != "refuse" {
+					t.Errorf("dependency finding is not blocking: %+v", finding)
+				}
+				seen[finding.Path] = true
+			}
+			if available && len(seen) != 0 {
+				t.Fatalf("converter present: unexpected dependency findings %v", seen)
+			}
+			if !available {
+				for path := range wantPaths {
+					if !seen[path] {
+						t.Errorf("converter absent: missing finding at %s; got %v", path, seen)
+					}
+				}
+				if len(seen) != len(wantPaths) {
+					t.Errorf("converter absent: got dependency findings at %v", seen)
+				}
+			}
+		})
+	}
+}
+
+func TestGridDiagramConverterCLIDryRun(t *testing.T) {
+	input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: &ShapeGridInput{
+		Rows: []GridRowInput{{Cells: []*GridCellInput{{Diagram: crowdedNominalDiagram()}}}},
+	}}}}
+	for _, available := range []bool{false, true} {
+		output := &dryRunOutput{Valid: true}
+		appendGridConverterPreflight(output, input, available)
+		if output.Valid != available {
+			t.Errorf("converter available=%t: dry-run valid=%t", available, output.Valid)
+		}
+		want := 1
+		if available {
+			want = 0
+		}
+		if len(output.FitFindings) != want {
+			t.Errorf("converter available=%t: dependency findings=%d", available, len(output.FitFindings))
+		}
+	}
+}
 
 // crowdedNominalDiagram builds a 40-category bar chart at a render width
 // where every named category cannot fit even vertically. Shared by the

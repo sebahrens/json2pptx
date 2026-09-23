@@ -940,6 +940,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		WhenEmitted: "The render-time svggen call returns an error (an unregistered type, a rejected optional key, or data the type cannot accept) and the engine substitutes a slide-sized placeholder image rather than failing the deck. The visual is lost, so this blocks rather than warns.",
 		RemediationSteps: []string{
 			"Read the finding's fix.params.reason — for an unrecognised type it names the closest registered type and lists every allowed one.",
+			"If the reason names the grid-cell PNG fallback, install rsvg-convert or resvg and retry validation and generation.",
 			"Fix the type or the data shape; check it against get_diagram_capabilities or svggen-mcp.validate_diagram, which surfaces the underlying error without a full render.",
 			"If the visual you want has no registered type (a combo chart, a sankey, a choropleth), pick a supported type that carries the same argument, or supply the visual as an image.",
 		},
