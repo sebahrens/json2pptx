@@ -268,14 +268,14 @@ func fixSVGMatrixRotations(svgContent []byte) []byte {
 //   - font: 700 24px Arial     -> font: 700 24px Arial, Helvetica, sans-serif
 //   - font: italic 12px MyFont -> font: italic 12px MyFont, Helvetica, sans-serif
 //
-// The regex captures everything up to and including "Npx " and the family name,
-// stopping at ";" or end of style attribute ("). It avoids matching families that
-// already contain a comma (i.e., already have fallbacks).
+// The regex captures the optional style/weight, pixel size, and family list,
+// stopping at ";" or end of style attribute ("). Families that already have
+// fallbacks still need discrete size and weight declarations for LibreOffice.
 //
 // Family names may contain spaces ("Poppins Light", "Segoe UI Semibold"); the
 // canvas library emits them unquoted, so the family group captures everything
 // up to the terminator and the replacement quotes multi-word names.
-var fontFamilyInStyleRe = regexp.MustCompile(`(font:\s*(?:\w+\s+)*[\d.]+px\s+)([^;",<>]+?)\s*([;"])`)
+var fontFamilyInStyleRe = regexp.MustCompile(`(font:\s*((?:[\w-]+\s+)*)([\d.]+px)\s+)([^;"<>]+?)\s*([;"])`)
 
 // cssFontFamilyName returns family formatted for a CSS font-family list:
 // names containing whitespace are single-quoted (the style attribute itself is
@@ -295,44 +295,60 @@ func cssFontFamilyName(family string) string {
 }
 
 // fixSVGFontFamilyFallbacks rewrites CSS font shorthand declarations in SVG
-// text elements so they (a) include generic font-family fallbacks and (b) also
-// emit an explicit `font-family` declaration alongside the shorthand.
+// text elements so they include generic font-family fallbacks and discrete
+// font-size, font-weight, and font-family declarations alongside the shorthand.
 //
-// The explicit declaration is required because LibreOffice's SVG renderer and
+// The explicit declarations are required because LibreOffice's SVG renderer and
 // some PowerPoint SVG handlers do not reliably parse the CSS `font` shorthand
-// inside a `style` attribute: they ignore the embedded family name and fall
-// back to the renderer's default font (typically Times New Roman on macOS
-// LibreOffice). The result is that chart axis tick labels, category labels,
-// and chart titles render in a serif font even though the slide template is
-// sans-serif. Emitting `font-family:` as a discrete declaration is parsed
-// reliably across renderers and wins via CSS cascade for those that also
-// parse the shorthand.
+// inside a `style` attribute: family, size, and weight can all fall back to
+// renderer defaults. Discrete declarations are parsed reliably and win via
+// CSS cascade for renderers that also parse the shorthand.
 //
 // Before: font: 13.33px Arial;fill:#212529
-// After:  font: 13.33px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#212529
+// After:  font: 13.33px Arial, Helvetica, sans-serif;font-size:13.33px;font-weight:normal;font-family:Arial, Helvetica, sans-serif;fill:#212529
 func fixSVGFontFamilyFallbacks(svgContent []byte) []byte {
 	return fontFamilyInStyleRe.ReplaceAllFunc(svgContent, func(match []byte) []byte {
 		parts := fontFamilyInStyleRe.FindSubmatch(match)
-		if len(parts) < 4 {
+		if len(parts) < 6 {
 			return match
 		}
-		prefix := parts[1]                                    // "font: [weight] Npx "
-		family := []byte(cssFontFamilyName(string(parts[2]))) // "Arial" or "'Poppins Light'"
-		terminator := parts[3]                                // ";" or "\""
+		prefix := parts[1] // "font: [weight] Npx "
+		size := parts[3]   // "Npx"
+		family := strings.TrimSpace(string(parts[4]))
+		terminator := parts[5] // ";" or "\""
+		weight := "normal"
+		for _, token := range strings.Fields(string(parts[2])) {
+			if isCSSFontWeight(token) {
+				weight = token
+			}
+		}
+		if !strings.Contains(family, ",") {
+			family = cssFontFamilyName(family) + ", Helvetica, sans-serif"
+		}
 
-		// Build replacement: shorthand with fallbacks + explicit font-family
-		// declaration so LibreOffice/PowerPoint (which ignore the shorthand)
-		// still render the correct sans-serif family.
+		// Keep the shorthand for renderers that understand it, and emit
+		// standalone declarations for renderers that ignore it.
 		var buf bytes.Buffer
 		buf.Write(prefix)
-		buf.Write(family)
-		buf.WriteString(", Helvetica, sans-serif")
+		buf.WriteString(family)
+		buf.WriteString(";font-size:")
+		buf.Write(size)
+		buf.WriteString(";font-weight:")
+		buf.WriteString(weight)
 		buf.WriteString(";font-family:")
-		buf.Write(family)
-		buf.WriteString(", Helvetica, sans-serif")
+		buf.WriteString(family)
 		buf.Write(terminator)
 		return buf.Bytes()
 	})
+}
+
+func isCSSFontWeight(token string) bool {
+	switch token {
+	case "normal", "bold", "bolder", "lighter", "100", "200", "300", "400", "500", "600", "700", "800", "900":
+		return true
+	default:
+		return false
+	}
 }
 
 // textElementRe matches EVERY <text ...><tspan x="..."> the canvas library

@@ -885,12 +885,12 @@ func TestSVGDocument(t *testing.T) {
 // would be in points, causing wrong scale when embedding.
 func TestSVGDocumentDimensionsMatchViewBox(t *testing.T) {
 	tests := []struct {
-		name           string
-		widthPt        float64
-		heightPt       float64
-		wantWidthPx    float64
-		wantHeightPx   float64
-		wantViewBox    string
+		name         string
+		widthPt      float64
+		heightPt     float64
+		wantWidthPx  float64
+		wantHeightPx float64
+		wantViewBox  string
 	}{
 		{
 			name:         "800x600pt standard",
@@ -1012,27 +1012,27 @@ func TestFixSVGFontFamilyFallbacks(t *testing.T) {
 		{
 			name:     "basic font declaration",
 			input:    `<text style="font: 13.33px Arial;fill:#212529">`,
-			expected: `<text style="font: 13.33px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#212529">`,
+			expected: `<text style="font: 13.33px Arial, Helvetica, sans-serif;font-size:13.33px;font-weight:normal;font-family:Arial, Helvetica, sans-serif;fill:#212529">`,
 		},
 		{
 			name:     "font with weight",
 			input:    `<text style="font: 700 24px Arial;fill:#212529">`,
-			expected: `<text style="font: 700 24px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#212529">`,
+			expected: `<text style="font: 700 24px Arial, Helvetica, sans-serif;font-size:24px;font-weight:700;font-family:Arial, Helvetica, sans-serif;fill:#212529">`,
 		},
 		{
 			name:     "font at end of style (no semicolon)",
 			input:    `<text style="font: 10px Arial">`,
-			expected: `<text style="font: 10px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif">`,
+			expected: `<text style="font: 10px Arial, Helvetica, sans-serif;font-size:10px;font-weight:normal;font-family:Arial, Helvetica, sans-serif">`,
 		},
 		{
 			name:     "multiple text elements",
 			input:    `<text style="font: 12px Arial;fill:#000"><tspan>A</tspan></text><text style="font: 700 18px Arial;fill:#333"><tspan>B</tspan></text>`,
-			expected: `<text style="font: 12px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#000"><tspan>A</tspan></text><text style="font: 700 18px Arial, Helvetica, sans-serif;font-family:Arial, Helvetica, sans-serif;fill:#333"><tspan>B</tspan></text>`,
+			expected: `<text style="font: 12px Arial, Helvetica, sans-serif;font-size:12px;font-weight:normal;font-family:Arial, Helvetica, sans-serif;fill:#000"><tspan>A</tspan></text><text style="font: 700 18px Arial, Helvetica, sans-serif;font-size:18px;font-weight:700;font-family:Arial, Helvetica, sans-serif;fill:#333"><tspan>B</tspan></text>`,
 		},
 		{
 			name:     "non-Arial font gets fallbacks too",
 			input:    `<text style="font: 14px Roboto;fill:#000">`,
-			expected: `<text style="font: 14px Roboto, Helvetica, sans-serif;font-family:Roboto, Helvetica, sans-serif;fill:#000">`,
+			expected: `<text style="font: 14px Roboto, Helvetica, sans-serif;font-size:14px;font-weight:normal;font-family:Roboto, Helvetica, sans-serif;fill:#000">`,
 		},
 		{
 			name:     "does not affect @font-face",
@@ -1047,27 +1047,32 @@ func TestFixSVGFontFamilyFallbacks(t *testing.T) {
 		{
 			name:     "multi-word family is quoted and gets fallbacks",
 			input:    `<text style="font: 12px Poppins Light;fill:#000">`,
-			expected: `<text style="font: 12px 'Poppins Light', Helvetica, sans-serif;font-family:'Poppins Light', Helvetica, sans-serif;fill:#000">`,
+			expected: `<text style="font: 12px 'Poppins Light', Helvetica, sans-serif;font-size:12px;font-weight:normal;font-family:'Poppins Light', Helvetica, sans-serif;fill:#000">`,
 		},
 		{
 			name:     "multi-word family with weight at end of style",
 			input:    `<text style="font: 700 18px Segoe UI Semibold">`,
-			expected: `<text style="font: 700 18px 'Segoe UI Semibold', Helvetica, sans-serif;font-family:'Segoe UI Semibold', Helvetica, sans-serif">`,
+			expected: `<text style="font: 700 18px 'Segoe UI Semibold', Helvetica, sans-serif;font-size:18px;font-weight:700;font-family:'Segoe UI Semibold', Helvetica, sans-serif">`,
 		},
 		{
 			name:     "already-quoted multi-word family is not double-quoted",
 			input:    `<text style="font: 12px 'Poppins Light';fill:#000">`,
-			expected: `<text style="font: 12px 'Poppins Light', Helvetica, sans-serif;font-family:'Poppins Light', Helvetica, sans-serif;fill:#000">`,
+			expected: `<text style="font: 12px 'Poppins Light', Helvetica, sans-serif;font-size:12px;font-weight:normal;font-family:'Poppins Light', Helvetica, sans-serif;fill:#000">`,
 		},
 		{
-			name:     "family list with existing fallbacks is left alone",
+			name:     "family list with existing fallbacks gets discrete declarations",
 			input:    `<text style="font: 12px 'Poppins Light', sans-serif;fill:#000">`,
-			expected: `<text style="font: 12px 'Poppins Light', sans-serif;fill:#000">`,
+			expected: `<text style="font: 12px 'Poppins Light', sans-serif;font-size:12px;font-weight:normal;font-family:'Poppins Light', sans-serif;fill:#000">`,
 		},
 		{
 			name:     "decimal font size with weight",
 			input:    `<text style="font: 500 9.5px DejaVu-Sans;fill:#000">`,
-			expected: `<text style="font: 500 9.5px DejaVu-Sans, Helvetica, sans-serif;font-family:DejaVu-Sans, Helvetica, sans-serif;fill:#000">`,
+			expected: `<text style="font: 500 9.5px DejaVu-Sans, Helvetica, sans-serif;font-size:9.5px;font-weight:500;font-family:DejaVu-Sans, Helvetica, sans-serif;fill:#000">`,
+		},
+		{
+			name:     "italic bold shorthand keeps weight",
+			input:    `<text style="font: italic bold 18px Arial;fill:#000">`,
+			expected: `<text style="font: italic bold 18px Arial, Helvetica, sans-serif;font-size:18px;font-weight:bold;font-family:Arial, Helvetica, sans-serif;fill:#000">`,
 		},
 	}
 
@@ -1104,6 +1109,11 @@ func TestRenderSVGFontFamilyFallbacks(t *testing.T) {
 	// shorthand so axis tick labels render in the requested sans-serif.
 	if !strings.Contains(svgStr, "font-family:") {
 		t.Errorf("SVG output must contain explicit font-family: declaration (LibreOffice ignores CSS `font:` shorthand):\n%s", svgStr[:min(len(svgStr), 500)])
+	}
+	for _, declaration := range []string{"font-size:", "font-weight:"} {
+		if !strings.Contains(svgStr, declaration) {
+			t.Errorf("SVG output must contain explicit %s declaration for LibreOffice:\n%s", declaration, svgStr[:min(len(svgStr), 500)])
+		}
 	}
 }
 
