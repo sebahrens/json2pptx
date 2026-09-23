@@ -1,6 +1,8 @@
 package svggen
 
 import (
+	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 )
@@ -398,6 +400,63 @@ func TestWaterfallDiagram_Validate(t *testing.T) {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func TestWaterfallPublicRenderRejectsMalformedPoints(t *testing.T) {
+	tests := []struct {
+		name  string
+		point any
+		want  string
+	}{
+		{"missing value", map[string]any{"label": "Cost"}, "finite numeric value"},
+		{"string value", map[string]any{"label": "Cost", "value": "-40"}, "finite numeric value"},
+		{"blank label", map[string]any{"label": " ", "value": 40}, "nonempty string label"},
+		{"missing label", map[string]any{"value": 40}, "nonempty string label"},
+		{"invalid type", map[string]any{"label": "Cost", "value": -40, "type": "banana"}, "invalid type"},
+		{"nonnumeric type", map[string]any{"label": "Cost", "value": -40, "type": 5}, "type must be a string"},
+		{"not an object", "Cost", "must be an object"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &RequestEnvelope{Type: "waterfall", Data: map[string]any{
+				"points": []any{map[string]any{"label": "Start", "value": 100}, tc.point},
+			}, Output: OutputSpec{Width: 800, Height: 600}}
+			_, err := Render(req)
+			if err == nil || !strings.Contains(err.Error(), "point 1") || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Render error = %v, want point 1 %q", err, tc.want)
+			}
+		})
+	}
+	// The registry deliberately clamps nonfinite numbers before dispatch for
+	// all diagram types. Direct diagram validation still rejects them.
+	diagram := &WaterfallDiagram{NewBaseDiagram("waterfall")}
+	if err := diagram.Validate(&RequestEnvelope{Type: "waterfall", Data: map[string]any{
+		"points": []any{map[string]any{"label": "Cost", "value": math.Inf(1)}},
+	}}); err == nil || !strings.Contains(err.Error(), "finite numeric value") {
+		t.Fatalf("direct Validate did not reject nonfinite value: %v", err)
+	}
+	// Direct diagram rendering bypasses registry Validate, so the parser must
+	// also refuse malformed values instead of drawing a zero-height bar.
+	if _, err := diagram.Render(&RequestEnvelope{Type: "waterfall", Data: map[string]any{
+		"points": []any{map[string]any{"label": "Cost", "value": "-40"}},
+	}, Output: OutputSpec{Width: 800, Height: 600}}); err == nil || !strings.Contains(err.Error(), "finite numeric value") {
+		t.Fatalf("direct Render did not reject string value: %v", err)
+	}
+}
+
+func TestWaterfallPublicRenderAcceptsNumericVariantsAndInferredType(t *testing.T) {
+	req := &RequestEnvelope{Type: "waterfall", Data: map[string]any{
+		"points": []any{
+			map[string]any{"label": "Start", "value": json.Number("100")},
+			map[string]any{"label": "Flat", "value": 0},
+			map[string]any{"label": "Cost", "value": int64(-40), "type": "NEGATIVE"},
+			map[string]any{"label": "End", "value": float32(60), "type": "total"},
+		},
+	}, Output: OutputSpec{Width: 800, Height: 600}}
+	doc, err := Render(req)
+	if err != nil || doc == nil || len(doc.Content) == 0 {
+		t.Fatalf("valid numeric waterfall did not render: doc=%v err=%v", doc, err)
 	}
 }
 

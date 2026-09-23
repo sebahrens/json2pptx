@@ -1,6 +1,7 @@
 package svggen
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"strings"
@@ -722,8 +723,8 @@ func (d *WaterfallDiagram) Validate(req *RequestEnvelope) error {
 	if pointsLen == 0 {
 		return fmt.Errorf("waterfall chart requires at least one point, e.g. {\"points\": [{\"label\": \"Revenue\", \"value\": 100}]}")
 	}
-
-	return nil
+	_, err := parseWaterfallData(req)
+	return err
 }
 
 // normalizeWaterfallData converts "labels" + "values" format to "points" format.
@@ -841,25 +842,38 @@ func parseWaterfallData(req *RequestEnvelope) (WaterfallData, error) {
 
 	data.Points = make([]WaterfallDataPoint, 0, len(points))
 
-	for _, pRaw := range points {
+	for i, pRaw := range points {
 		point := WaterfallDataPoint{}
 
 		// Note: map[string]any and map[string]interface{} are the same type
 		p, ok := pRaw.(map[string]any)
 		if !ok {
-			return data, fmt.Errorf("invalid point format")
+			return data, fmt.Errorf("waterfall point %d must be an object", i)
 		}
 
-		if label, ok := p["label"].(string); ok {
-			point.Label = label
+		label, ok := p["label"].(string)
+		if !ok || strings.TrimSpace(label) == "" {
+			return data, fmt.Errorf("waterfall point %d requires a nonempty string label", i)
 		}
-		if value, ok := p["value"].(float64); ok {
-			point.Value = value
-		} else if value, ok := p["value"].(int); ok {
-			point.Value = float64(value)
+		point.Label = label
+		value, ok := waterfallNumericValue(p["value"])
+		if !ok || math.IsNaN(value) || math.IsInf(value, 0) {
+			return data, fmt.Errorf("waterfall point %d (%q) requires a finite numeric value", i, label)
 		}
-		if typ, ok := p["type"].(string); ok {
-			point.Type = WaterfallChartType(strings.ToLower(typ))
+		point.Value = value
+		if rawType, exists := p["type"]; exists {
+			typ, ok := rawType.(string)
+			if !ok {
+				return data, fmt.Errorf("waterfall point %d (%q) type must be a string", i, label)
+			}
+			point.Type = WaterfallChartType(strings.ToLower(strings.TrimSpace(typ)))
+			switch point.Type {
+			case WaterfallTypeIncrease, WaterfallTypeDecrease, WaterfallTypeTotal, WaterfallTypeSubtotal, "":
+			case "negative": // Backward-compatible spelling in the public example.
+				point.Type = WaterfallTypeDecrease
+			default:
+				return data, fmt.Errorf("waterfall point %d (%q) has invalid type %q; use increase, decrease, total, or subtotal", i, label, typ)
+			}
 		}
 		if colorStr, ok := p["color"].(string); ok {
 			if c, err := ParseColor(colorStr); err == nil {
@@ -890,6 +904,24 @@ func parseWaterfallData(req *RequestEnvelope) (WaterfallData, error) {
 	}
 
 	return data, nil
+}
+
+func waterfallNumericValue(raw any) (float64, bool) {
+	switch n := raw.(type) {
+	case float64:
+		return n, true
+	case float32:
+		return float64(n), true
+	case int:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case json.Number:
+		v, err := n.Float64()
+		return v, err == nil
+	default:
+		return 0, false
+	}
 }
 
 // =============================================================================
