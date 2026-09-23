@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // TestBeforeAfter_HeaderTextVerticalAnchorCenter is a regression for
@@ -72,9 +72,56 @@ func TestBeforeAfterFullPanelsUseSurplusHeight(t *testing.T) {
 	if got := grid.Rows[0].MaxHeight + grid.Rows[1].MaxHeight + grid.Gap; got < zoneH*0.59 {
 		t.Errorf("full block %.1fpt uses less than 60%% of %.1fpt zone", got, zoneH)
 	}
-	for _, cell := range []*jsonschema.GridCellInput{grid.Rows[1].Cells[0], grid.Rows[1].Cells[2]} {
-		if string(cell.Shape.Fill) != `"lt2"` || !strings.Contains(string(cell.Shape.Text), `"vertical_align":"ctr"`) {
+	if got := grid.Rows[0].Cells[1]; got.RowSpan != 2 || got.Shape.Geometry != "chevron" || len(got.Shape.Text) != 0 {
+		t.Errorf("separator should be a full-height chevron without a redundant arrow: %+v", got)
+	}
+	if len(grid.Rows[1].Cells) != 2 {
+		t.Fatalf("body should contain two panels, with center reserved by chevron: %+v", grid.Rows[1].Cells)
+	}
+	for _, cell := range grid.Rows[1].Cells {
+		if string(cell.Shape.Fill) != `{"color":"accent1","tint":12000}` || !strings.Contains(string(cell.Shape.Text), `"vertical_align":"ctr"`) {
 			t.Errorf("expanded body panel should be visible and centered: %+v", cell.Shape)
+		}
+	}
+}
+
+func TestBeforeAfterPanelToneHexOverride(t *testing.T) {
+	pat := &beforeAfter{}
+	vals := &BeforeAfterValues{
+		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual"}},
+		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated"}},
+	}
+	grid, err := pat.Expand(fullThemeCtx(), vals, &BeforeAfterOverrides{Accent: "#2E5090"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tone := beforeAfterPanelTone("#2E5090")
+	if tone.Tint != 0 || !isHexColor(tone.Color) {
+		t.Fatalf("hex accent should be pre-mixed into a solid fill, got %+v", tone)
+	}
+	for _, cell := range grid.Rows[1].Cells {
+		if string(cell.Shape.Fill) != `"`+tone.Color+`"` {
+			t.Errorf("body panel fill %s does not use tinted hex accent %s", cell.Shape.Fill, tone.Color)
+		}
+	}
+	c := svggen.MustParseColor(tone.Color)
+	if c.Luminance() < 0.85 || c.Hex() == "#FFFFFF" {
+		t.Errorf("panel should be super-light but visibly accent-derived, got %s", c.Hex())
+	}
+}
+
+func TestBeforeAfterPanelsFollowPerCellAccents(t *testing.T) {
+	vals := &BeforeAfterValues{
+		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual"}},
+		After:  BeforeAfterColumn{Header: "Target", Items: []string{"Automated"}},
+	}
+	grid, err := (&beforeAfter{}).Expand(fullThemeCtx(), vals, &BeforeAfterOverrides{CellAccentMode: "alternate"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, want := range []string{`{"color":"accent1","tint":12000}`, `{"color":"accent2","tint":12000}`} {
+		if got := string(grid.Rows[1].Cells[i].Shape.Fill); got != want {
+			t.Errorf("panel %d fill = %s, want %s", i, got, want)
 		}
 	}
 }

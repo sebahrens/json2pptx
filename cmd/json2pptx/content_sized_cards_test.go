@@ -34,8 +34,15 @@ func maxCellHeight(cells []shapegrid.ResolvedCell) int64 {
 func TestBeforeAfter_HeaderBandAndContentBody(t *testing.T) {
 	res, _ := resolvePatternForTest(t, "before-after", `{"before":{"header":"Current State (FY25)","items":["Manual reconciliation across 14 regional ledgers","5-day month-end close with frequent restatements","Spreadsheet-based forecasting owned by individuals","Limited audit trail; 23 control deficiencies flagged"]},"after":{"header":"Target State (FY27)","items":["Single global ledger with automated intercompany matching","2-day close with continuous accounting","Driver-based rolling forecast in a shared planning tool","End-to-end audit trail; controls embedded in workflow"]}}`)
 	// 16pt header: ~1.2x line height + insets + padding, never 25% of the area.
-	if h := maxCellHeight(rowCells(res.Cells, 0)); h > 50*pt {
+	headers := rowCells(res.Cells, 0)
+	if len(headers) != 3 {
+		t.Fatalf("expected two headers and a chevron, got %d cells", len(headers))
+	}
+	if h := maxCellHeight([]shapegrid.ResolvedCell{headers[0], headers[2]}); h > 50*pt {
 		t.Errorf("header band %.0fpt, want <= 50pt", float64(h)/pt)
+	}
+	if bodies := rowCells(res.Cells, 1); len(bodies) != 2 || headers[1].CellBounds.CY <= bodies[0].CellBounds.CY {
+		t.Errorf("chevron should span the header and both body panels; headers=%+v bodies=%+v", headers, bodies)
 	}
 	// The header stays compact while the full variant uses the available zone.
 	if top, bottom := blockExtent(res.Cells); float64(bottom-top) < 0.59*float64(contentRect.CY) {

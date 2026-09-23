@@ -8,10 +8,11 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
-// before-after pattern — two-column From → To with chevron separator
+// before-after pattern — two-column From → To with full-height chevron separator
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -207,10 +208,9 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	cellIdx := 0
 
-	// Header row: Before header | chevron | After header
+	// Header row: Before header | full-height chevron | After header.
 	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr")
 	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr")
-	chevronText := buildBeforeAfterTextContent("→", 24.0, true, "lt1", "ctr")
 
 	beforeHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -223,10 +223,10 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	cellIdx++
 
 	chevronCell := &jsonschema.GridCellInput{
+		RowSpan: 2,
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "chevron",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
-			Text:     chevronText,
 		},
 	}
 	applyBeforeAfterCellOverride(chevronCell, cellOverrides, cellIdx, baseAccent)
@@ -242,14 +242,15 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	applyBeforeAfterCellOverride(afterHeaderCell, cellOverrides, cellIdx, afterAccent)
 	cellIdx++
 
-	// Body row: before items | spacer | after items
+	// Body row: before items | after items. The chevron reserves the middle
+	// column through its row span, so no separate spacer is needed.
 	beforeBody := buildBeforeAfterBulletContent(vals.Before.Items, bodySize)
 	afterBody := buildBeforeAfterBulletContent(vals.After.Items, bodySize)
 
 	beforeBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"lt2"`),
+			Fill:     beforeAfterPanelTone(beforeAccent).fillJSON(),
 			Text:     beforeBody,
 		},
 	}
@@ -259,7 +260,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	afterBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"lt2"`),
+			Fill:     beforeAfterPanelTone(afterAccent).fillJSON(),
 			Text:     afterBody,
 		},
 	}
@@ -284,11 +285,7 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			},
 			{
 				MaxHeight: bodyPt,
-				Cells: []*jsonschema.GridCellInput{
-					beforeBodyCell,
-					{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`)}},
-					afterBodyCell,
-				},
+				Cells:     []*jsonschema.GridCellInput{beforeBodyCell, afterBodyCell},
 			},
 		},
 	}
@@ -300,6 +297,17 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	return grid, nil
+}
+
+// Keep only a trace of the accent in the panel fill. The shape-grid renderer
+// only emits tint modifiers for scheme colours, so pre-mix explicit hex
+// overrides with white instead.
+func beforeAfterPanelTone(accent string) fillTone {
+	if isHexColor(accent) {
+		c := svggen.MustParseColor(accent)
+		return fillTone{Color: applyLinearMix(c, 0.12, svggen.Color{R: 255, G: 255, B: 255, A: 1}).Hex()}
+	}
+	return fillTone{Color: accent, Tint: 12000}
 }
 
 // beforeAfterRowHeights returns the fixed header-band height and the body
