@@ -127,7 +127,7 @@ examples/         # Example JSON input files (19 decks)
 
 ## Templates
 
-`templates/` ships these templates, all embedded in the binary: `abstract`, `blue-corporate`, `business-template`, `forest-green`, `midnight-blue`, `modern`, `modern-template`, `modern-yellow`, `p-style`, `warm-coral`. The five with full cross-template test coverage are `forest-green`, `midnight-blue`, `modern-template`, `p-style`, and `warm-coral`; the others receive smoke and portability coverage. Each has its own theme colors, fonts, and slide layouts. Use `json2pptx validate-template` to inspect.
+`templates/` ships these templates, all embedded in the binary: `abstract`, `blue-corporate`, `business-template`, `forest-green`, `midnight-blue`, `modern`, `modern-template`, `modern-yellow`, `warm-coral`. The four with full cross-template test coverage are `forest-green`, `midnight-blue`, `modern-template`, and `warm-coral`; the others receive smoke and portability coverage. A local gitignored `templates/p-style.pptx` joins cross-template tests when present but is never embedded. Each has its own theme colors, fonts, and slide layouts. Use `json2pptx validate-template` to inspect.
 
 Template rules are documented in two canonical docs — link to them rather than restating their detail here:
 

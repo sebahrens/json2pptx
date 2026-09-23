@@ -11,5 +11,5 @@ import "embed"
 // silently become part of the shipped binary or change built-in discovery.
 // TestBuiltinTemplateCoverage checks it against tracked template files.
 //
-//go:embed abstract.pptx blue-corporate.pptx business-template.pptx forest-green.pptx midnight-blue.pptx modern-template.pptx modern-yellow.pptx modern.pptx p-style.pptx warm-coral.pptx previews
+//go:embed abstract.pptx blue-corporate.pptx business-template.pptx forest-green.pptx midnight-blue.pptx modern-template.pptx modern-yellow.pptx modern.pptx warm-coral.pptx previews/abstract previews/blue-corporate previews/business-template previews/forest-green previews/midnight-blue previews/modern-template previews/modern-yellow previews/modern previews/warm-coral
 var Embedded embed.FS

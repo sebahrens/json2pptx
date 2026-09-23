@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/templates"
 )
 
 // TestBuiltinTemplateCoverage is the guard that keeps the shared template
@@ -54,8 +56,9 @@ func TestCoreTemplateNames(t *testing.T) {
 	if len(core) == 0 {
 		t.Fatal("CoreTemplateNames() returned no templates")
 	}
-	if !slices.Contains(core, "p-style") {
-		t.Error("p-style must remain in the full cross-template test corpus")
+	local := localTestTemplateNames(TemplatesDir())
+	if slices.Contains(core, "p-style") != slices.Contains(local, "p-style") {
+		t.Error("p-style must be core when present locally and absent when not")
 	}
 	for _, name := range core {
 		path := filepath.Join(TemplatesDir(), name+".pptx")
@@ -65,16 +68,32 @@ func TestCoreTemplateNames(t *testing.T) {
 	}
 }
 
-// TestAllBuiltinTemplateNamesSupersetOfCore asserts every core template is also
-// part of the full corpus, so smoke coverage never omits a fully-exercised one.
-func TestAllBuiltinTemplateNamesSupersetOfCore(t *testing.T) {
+// TestAllTestTemplateNamesSupersetOfCore asserts every core template is also
+// part of the local test corpus.
+func TestAllTestTemplateNamesSupersetOfCore(t *testing.T) {
 	all := make(map[string]bool)
-	for _, name := range AllBuiltinTemplateNames() {
+	for _, name := range AllTestTemplateNames() {
 		all[name] = true
 	}
 	for _, name := range CoreTemplateNames() {
 		if !all[name] {
-			t.Errorf("core template %q missing from AllBuiltinTemplateNames()", name)
+			t.Errorf("core template %q missing from AllTestTemplateNames()", name)
 		}
+	}
+}
+
+func TestLocalPStyleAvailability(t *testing.T) {
+	if got := localTestTemplateNames(t.TempDir()); len(got) != 0 {
+		t.Errorf("empty directory unexpectedly has local templates: %v", got)
+	}
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "p-style.pptx"), []byte("fixture"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := localTestTemplateNames(dir); !slices.Equal(got, []string{"p-style"}) {
+		t.Errorf("p-style fixture not discovered: %v", got)
+	}
+	if _, err := templates.Embedded.ReadFile("p-style.pptx"); err == nil {
+		t.Error("local p-style must not be embedded in the shipped binary")
 	}
 }

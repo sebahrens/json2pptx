@@ -484,7 +484,7 @@ func TestExpandCrossTemplate(t *testing.T) {
 	}
 
 	templatesDir := filepath.Join("..", "..", "templates")
-	templateNames := testutil.AllBuiltinTemplateNames()
+	templateNames := testutil.AllTestTemplateNames()
 	if len(templateNames) < 2 {
 		t.Fatal("need at least 2 templates for cross-template test")
 	}

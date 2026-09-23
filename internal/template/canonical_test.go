@@ -250,7 +250,7 @@ func TestDerivableLayouts_MissingFindings(t *testing.T) {
 // shippedTemplates returns only committed built-ins, not ignored local PPTXs.
 func shippedTemplates(t *testing.T) []string {
 	t.Helper()
-	files := testutil.BuiltinTemplatePaths()
+	files := testutil.TestTemplatePaths()
 	if len(files) == 0 {
 		t.Fatalf("no templates found under %s", templatesDir)
 	}

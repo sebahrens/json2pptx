@@ -53,7 +53,7 @@ func TestTemplatePatternMatrix(t *testing.T) {
 	}
 	templatesDir := filepath.Join(projectRoot, "templates")
 
-	tplPaths := testutil.BuiltinTemplatePaths()
+	tplPaths := testutil.TestTemplatePaths()
 	if len(tplPaths) == 0 {
 		t.Fatalf("no templates found under %s", templatesDir)
 	}

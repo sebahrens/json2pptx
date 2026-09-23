@@ -13,15 +13,18 @@ import (
 	"github.com/sebahrens/json2pptx/templates"
 )
 
-// TestPreviewsShipForAllBundledTemplates verifies every layout of every
-// bundled template has a committed (and embedded) thumbnail of the expected
-// width, and that no stale thumbnail outlives its layout. Regenerate with
-// `make template-previews`.
+// TestPreviewsShipForAllBundledTemplates verifies shipped previews are embedded
+// and optional local test-template previews are valid on disk when available.
+// Regenerate with `make template-previews`.
 func TestPreviewsShipForAllBundledTemplates(t *testing.T) {
 	templatesDir := filepath.Join("..", "..", "templates")
-	paths := testutil.BuiltinTemplatePaths()
+	paths := testutil.TestTemplatePaths()
 	if len(paths) == 0 {
 		t.Fatal("no bundled templates")
+	}
+	builtin := make(map[string]bool)
+	for _, name := range testutil.AllBuiltinTemplateNames() {
+		builtin[name] = true
 	}
 	for _, tplPath := range paths {
 		name := strings.TrimSuffix(filepath.Base(tplPath), ".pptx")
@@ -48,8 +51,12 @@ func TestPreviewsShipForAllBundledTemplates(t *testing.T) {
 			if err != nil || cfg.Width != DefaultWidth {
 				t.Errorf("%s/%s: preview width %d (err %v), want %d", name, l.ID, cfg.Width, err, DefaultWidth)
 			}
-			if _, err := templates.Embedded.ReadFile(filepath.ToSlash(rel)); err != nil {
-				t.Errorf("%s/%s: preview not embedded: %v", name, l.ID, err)
+			if builtin[name] {
+				if _, err := templates.Embedded.ReadFile(filepath.ToSlash(rel)); err != nil {
+					t.Errorf("%s/%s: preview not embedded: %v", name, l.ID, err)
+				}
+			} else if _, err := templates.Embedded.ReadFile(filepath.ToSlash(rel)); err == nil {
+				t.Errorf("%s/%s: local preview must not be embedded", name, l.ID)
 			}
 			if got := Resolve(tplPath, l.ID); got == "" || !filepath.IsAbs(got) {
 				t.Errorf("%s/%s: Resolve = %q, want absolute path", name, l.ID, got)

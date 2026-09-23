@@ -341,7 +341,7 @@ func TestAnalyzeTemplateForSkillInfo_ColorRolesInCompactMode(t *testing.T) {
 }
 
 func TestAnalyzeTemplateForSkillInfo_TableStylesAllTemplates(t *testing.T) {
-	templates := testutil.BuiltinTemplatePaths()
+	templates := testutil.TestTemplatePaths()
 
 	cache := template.NewMemoryCache(24 * time.Hour)
 

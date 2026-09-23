@@ -245,7 +245,7 @@ All bundled designer templates now pass `template-check` with zero FAIL findings
 Templates fall into two categories:
 
 - **Programmable** (regenerable from `cmd/mktemplate`): `forest-green`, `midnight-blue`, `warm-coral`.
-- **Designer-owned** (must be repaired in place — `mktemplate` cannot reproduce embedded decorative assets, custom layout shapes, or intentional theme polarities): `abstract`, `blue-corporate`, `business-template`, `modern`, `modern-template`, `modern-yellow`, `p-style`.
+- **Designer-owned** (must be repaired in place — `mktemplate` cannot reproduce embedded decorative assets, custom layout shapes, or intentional theme polarities): `abstract`, `blue-corporate`, `business-template`, `modern`, `modern-template`, `modern-yellow`.
 
 See [TEMPLATE_ANALYSIS.md](TEMPLATE_ANALYSIS.md) for the full per-template matrix, current conformance status, and the in-place repair workflow for designer templates.
 

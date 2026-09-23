@@ -13,8 +13,8 @@ import (
 )
 
 // determinismTemplates is the canonical set of core templates that the engine
-// guarantees byte-stable output for. Most designer templates are excluded
-// until go-slide-creator-vqad lands; p-style is intentionally included.
+// guarantees byte-stable output for. The ignored p-style template is tested
+// locally when present, but has no shipped golden hash.
 var determinismTemplates = []string{
 	"forest-green",
 	"midnight-blue",
@@ -73,6 +73,13 @@ func TestDeterministicCorpus(t *testing.T) {
 	for _, tmpl := range determinismTemplates {
 		tmpl := tmpl
 		t.Run(tmpl, func(t *testing.T) {
+			if tmpl == "p-style" {
+				if _, err := os.Stat(filepath.Join(templatesDir, tmpl+".pptx")); os.IsNotExist(err) {
+					t.Skip("local p-style template is not present")
+				} else if err != nil {
+					t.Fatal(err)
+				}
+			}
 			a := renderForDeterminism(t, templatesDir, examplePath, tmpl, "a")
 			b := renderForDeterminism(t, templatesDir, examplePath, tmpl, "b")
 

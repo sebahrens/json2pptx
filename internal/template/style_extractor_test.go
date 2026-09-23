@@ -380,9 +380,9 @@ func TestTableStyleIndex_AllBundledTemplates(t *testing.T) {
 	// excluded from the expensive cross-template matrices — at least baseline
 	// coverage. The corpus comes from the shared discovery helper so the list
 	// stays in sync with templates/ (see internal/testutil/templates.go).
-	templates := testutil.AllBuiltinTemplateNames()
+	templates := testutil.AllTestTemplateNames()
 	if len(templates) == 0 {
-		t.Fatal("AllBuiltinTemplateNames() returned no templates")
+		t.Fatal("AllTestTemplateNames() returned no templates")
 	}
 	for _, tmpl := range templates {
 		t.Run(tmpl, func(t *testing.T) {
@@ -465,7 +465,7 @@ func TestTableStyleIndex_DeclaredDefault_ModernTemplate(t *testing.T) {
 func TestTableStyleIndex_DeclaredDefault_AllBundled(t *testing.T) {
 	// All bundled templates should either have a declared default or gracefully
 	// return false — never panic.
-	templates := testutil.AllBuiltinTemplateNames()
+	templates := testutil.AllTestTemplateNames()
 	for _, tmpl := range templates {
 		t.Run(tmpl, func(t *testing.T) {
 			reader, err := OpenTemplate(filepath.Join("..", "..", "templates", tmpl+".pptx"))

@@ -48,7 +48,7 @@ func TestTextFitCorpus(t *testing.T) {
 	}
 	tmplDir := filepath.Join(projectRoot, "templates")
 
-	files := testutil.BuiltinTemplatePaths()
+	files := testutil.TestTemplatePaths()
 	if len(files) == 0 {
 		t.Fatalf("no templates found under %s", tmplDir)
 	}
@@ -138,7 +138,7 @@ func TestTextFitCorpus_AllowlistEntriesPointAtRealTemplates(t *testing.T) {
 		t.Skip("text-fit allow-list is empty — nothing to validate")
 	}
 
-	files := testutil.BuiltinTemplatePaths()
+	files := testutil.TestTemplatePaths()
 
 	hashes := make(map[string]string, len(files))
 	for _, f := range files {
@@ -436,7 +436,7 @@ func TestIsStatementLayoutReadsTheTag(t *testing.T) {
 // re-checking against the new template rather than being assumed to hold.
 func TestStatementLayoutsAreStillRare(t *testing.T) {
 	tmplDir := filepath.Join("..", "..", "templates")
-	files := testutil.BuiltinTemplatePaths()
+	files := testutil.TestTemplatePaths()
 	if len(files) == 0 {
 		t.Fatalf("no templates under %s", tmplDir)
 	}

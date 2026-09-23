@@ -20,7 +20,7 @@ func TestValueChainHighlightOnRealTemplates(t *testing.T) {
 		t.Fatal("value-chain is not registered")
 	}
 
-	for _, name := range testutil.AllBuiltinTemplateNames() {
+	for _, name := range testutil.AllTestTemplateNames() {
 		t.Run(name, func(t *testing.T) {
 			reader, err := template.OpenTemplate("../../templates/" + name + ".pptx")
 			if err != nil {
