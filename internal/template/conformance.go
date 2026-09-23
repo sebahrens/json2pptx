@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ConformanceStatus indicates the outcome of an individual conformance check.
@@ -554,8 +555,34 @@ func checkTheme(theme types.ThemeInfo) []ConformanceCheck {
 	}
 
 	checks = append(checks, checkColorPolarity(colorMap)...)
+	checks = append(checks, checkAccentVisibility(colorMap)...)
 
 	return checks
+}
+
+// checkAccentVisibility warns when the first chart/data accent nearly
+// disappears on the template's light canvas. It is a warning rather than a
+// failure because accent1 can still be used intentionally on dark surfaces.
+func checkAccentVisibility(colorMap map[string]string) []ConformanceCheck {
+	const checkName = "Theme: accent1 visible on lt1 (contrast >= 2:1)"
+	accentHex, accentOK := colorMap["accent1"]
+	backgroundHex, backgroundOK := colorMap["lt1"]
+	if !accentOK || !backgroundOK {
+		return nil // missing scheme slots are reported by checkTheme
+	}
+	accent, accentErr := svggen.ParseColor(accentHex)
+	background, backgroundErr := svggen.ParseColor(backgroundHex)
+	if accentErr != nil || backgroundErr != nil {
+		return nil
+	}
+	ratio := accent.ContrastWith(background)
+	if ratio < 2 {
+		return []ConformanceCheck{{
+			Category: "theme", Check: checkName, Status: ConformanceStatusWarn,
+			Detail: fmt.Sprintf("accent1 %s has only %.2f:1 contrast on lt1 %s; chart series and fills may be hard to see", accentHex, ratio, backgroundHex),
+		}}
+	}
+	return []ConformanceCheck{{Category: "theme", Check: checkName, Status: ConformanceStatusPass}}
 }
 
 // checkColorPolarity verifies dark colors are dark and light colors are light.

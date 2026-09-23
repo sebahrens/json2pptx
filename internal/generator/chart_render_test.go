@@ -1,11 +1,106 @@
 package generator
 
 import (
+	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
+
+func TestAbstractChartPaletteSkipsNearBackgroundAccents(t *testing.T) {
+	reader, err := template.OpenTemplate("../../templates/abstract.pptx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = reader.Close() }()
+	theme := template.ParseTheme(reader).Colors
+	spec := &types.DiagramSpec{Type: "bar_chart", Data: map[string]any{
+		"categories": []string{"A"},
+		"series":     []map[string]any{{"name": "Data", "values": []float64{1}}},
+	}}
+	req := diagramSpecToSVGGen(spec, theme, 0, "")
+	guide := svggen.StyleGuideFromSpec(req.Style)
+	background := svggen.MustParseColor(req.Style.Background)
+	for i, color := range guide.Palette.AccentColors() {
+		if ratio := color.ContrastWith(background); ratio < 2 {
+			t.Errorf("automatic chart series %d uses near-background %s at %.2f:1", i+1, color.Hex(), ratio)
+		}
+	}
+	if got := guide.Palette.Accent1.Hex(); got != "#ED7D31" {
+		t.Errorf("first chart color = %s, want first visible theme accent #ED7D31", got)
+	}
+	rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svg := strings.ToUpper(string(rendered.SVG))
+	if !strings.Contains(svg, "#ED7D31") {
+		t.Error("rendered chart does not use the first visible accent")
+	}
+	if strings.Contains(svg, "#E9E6DF") {
+		t.Error("rendered chart still contains near-background abstract accent1")
+	}
+}
+
+func TestExplicitChartColorsRemainAuthorControlled(t *testing.T) {
+	theme := []types.ThemeColor{
+		{Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent1", RGB: "#E9E6DF"},
+		{Name: "accent2", RGB: "#44546A"},
+	}
+	spec := &types.DiagramSpec{Type: "bar_chart", Style: &types.DiagramStyle{
+		Colors: []string{"#E9E6DF", "#44546A"},
+	}}
+	req := diagramSpecToSVGGen(spec, theme, 0, "")
+	if got := svggen.StyleGuideFromSpec(req.Style).Palette.Accent1.Hex(); got != "#E9E6DF" {
+		t.Errorf("explicit chart color rewritten to %s", got)
+	}
+}
+
+func TestVisibleChartPaletteDarkAndDegenerateThemes(t *testing.T) {
+	tests := []struct {
+		name       string
+		theme      []svggen.ThemeColorInput
+		background string
+		wantFirst  string
+	}{
+		{
+			name: "dark canvas uses light theme slot",
+			theme: []svggen.ThemeColorInput{
+				{Name: "accent1", RGB: "#101010"},
+				{Name: "dk1", RGB: "#000000"},
+				{Name: "lt1", RGB: "#FFFFFF"},
+			},
+			background: "#000000", wantFirst: "#FFFFFF",
+		},
+		{
+			name:       "malformed theme falls back to distinct chart colors",
+			theme:      []svggen.ThemeColorInput{{Name: "accent1", RGB: "not-a-color"}},
+			background: "#FFFFFF", wantFirst: svggen.DefaultPalette().Accent1.Hex(),
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := visibleChartPalette(tc.theme, nil, tc.background)
+			if len(got) != 6 || got[0] != tc.wantFirst {
+				t.Errorf("palette = %v, want six visible colors led by %s", got, tc.wantFirst)
+			}
+			seen := map[string]bool{}
+			background := svggen.MustParseColor(tc.background)
+			for i, hex := range got {
+				if seen[hex] {
+					t.Errorf("color %d repeats %s despite fallback palette", i, hex)
+				}
+				seen[hex] = true
+				if ratio := svggen.MustParseColor(hex).ContrastWith(background); ratio < 2 {
+					t.Errorf("color %d = %s has %.2f:1 contrast", i, hex, ratio)
+				}
+			}
+		})
+	}
+}
 
 func TestDiagramSpecToSVGGen(t *testing.T) {
 	tests := []struct {
@@ -289,10 +384,9 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 
 // TestDiagramSpecToSVGGen_RawPalette verifies that the embedded PPTX bridge
 // opts out of svggen's accent-contrast enforcement whenever it routes theme
-// colors, so diagram accents render with the same raw schemeClr hex as native
-// shape_grid fills (go-slide-creator-gmv5). It also confirms standalone-style
-// usage (no theme colors) leaves the default in place and that data_palette
-// ordering survives the raw path.
+// colors. The theme source stays raw for diagram/native parity, while chart
+// series skip theme colors that nearly disappear on the background. It also
+// confirms explicit colors and data_palette ordering survive that filter.
 func TestDiagramSpecToSVGGen_RawPalette(t *testing.T) {
 	// Warm, low-contrast accent set: known to be mutated by EnforceAccentContrast
 	// (mirrors svggen TestStyleGuideFromSpec_DisablePaletteEnforcement fixture).
@@ -306,8 +400,6 @@ func TestDiagramSpecToSVGGen_RawPalette(t *testing.T) {
 		{Name: "accent5", RGB: "#B5BCC4"},
 		{Name: "accent6", RGB: "#CBD1D6"},
 	}
-	rawAccents := []string{"#FD5108", "#FE7C39", "#FFAA72", "#A1A8B3", "#B5BCC4", "#CBD1D6"}
-
 	accentHexes := func(p *svggen.Palette) []string {
 		return []string{
 			p.Accent1.Hex(), p.Accent2.Hex(), p.Accent3.Hex(),
@@ -315,9 +407,9 @@ func TestDiagramSpecToSVGGen_RawPalette(t *testing.T) {
 		}
 	}
 
-	// Caller-supplied template theme colors must flip on raw-theme parity, and
-	// the resulting palette must preserve every accent hex verbatim.
-	t.Run("caller_theme_colors_preserve_raw_accents", func(t *testing.T) {
+	// The raw theme inputs stay intact, but chart series skip near-background
+	// accents and preserve the order of the visible ones.
+	t.Run("caller_theme_colors_filter_invisible_chart_accents", func(t *testing.T) {
 		spec := &types.DiagramSpec{
 			Type: "bar_chart",
 			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
@@ -327,20 +419,23 @@ func TestDiagramSpecToSVGGen_RawPalette(t *testing.T) {
 			t.Fatal("DisablePaletteEnforcement = false, want true for embedded theme-color path")
 		}
 
-		// Precondition: with enforcement re-enabled, the same fixture is mutated,
-		// proving the flag does real work rather than passing trivially.
-		enforced := result.Style
-		enforced.DisablePaletteEnforcement = false
-		enforcedGuide := svggen.StyleGuideFromSpec(enforced)
-		if equalStringSlices(accentHexes(enforcedGuide.Palette), rawAccents) {
-			t.Fatal("test precondition failed: enforcement left fixture unchanged; pick a more aggressive palette")
+		for i, name := range []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6"} {
+			if result.Style.ThemeColors[i+2].Name != name || result.Style.ThemeColors[i+2].RGB != lowContrastTheme[i+2].RGB {
+				t.Fatalf("source theme %s was changed", name)
+			}
 		}
-
 		rawGuide := svggen.StyleGuideFromSpec(result.Style)
 		got := accentHexes(rawGuide.Palette)
-		for i, want := range rawAccents {
+		want := []string{"#FD5108", "#FE7C39", "#A1A8B3", "#000000"}
+		for i, want := range want {
 			if got[i] != want {
-				t.Errorf("Accent%d = %s, want raw %s (must match native schemeClr hex)", i+1, got[i], want)
+				t.Errorf("chart Accent%d = %s, want visible %s", i+1, got[i], want)
+			}
+		}
+		background := svggen.MustParseColor("#FFFFFF")
+		for i, hex := range got {
+			if ratio := svggen.MustParseColor(hex).ContrastWith(background); ratio < 2 {
+				t.Errorf("chart Accent%d is only %.2f:1 on white", i+1, ratio)
 			}
 		}
 	})
@@ -401,18 +496,6 @@ func TestDiagramSpecToSVGGen_RawPalette(t *testing.T) {
 			t.Error("DisablePaletteEnforcement = true, want false when no theme colors are routed")
 		}
 	})
-}
-
-func equalStringSlices(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func TestRenderDiagramSpec(t *testing.T) {

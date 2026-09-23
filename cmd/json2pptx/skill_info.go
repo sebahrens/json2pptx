@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -323,13 +324,14 @@ type skillDerivableLayout struct {
 // skillColorRoles maps design intent to scheme color names for a template.
 // Agents use this to pick safe color pairings without manual WCAG checks.
 type skillColorRoles struct {
-	PrimaryFill        string   `json:"primary_fill"`          // dark accent for headers (white body text safe when available)
-	SecondaryFill      string   `json:"secondary_fill"`        // second accent for headers (white body text safe when available)
-	BodyFill           string   `json:"body_fill"`             // light fill for body/card cells
-	BodyText           string   `json:"body_text"`             // dark text on light backgrounds
-	WhiteTextSafe      []string `json:"white_text_safe"`       // backward-compatible alias for white_text_safe_body
-	WhiteTextSafeBody  []string `json:"white_text_safe_body"`  // accents passing 4.5:1 against white
-	WhiteTextSafeLarge []string `json:"white_text_safe_large"` // accents passing 3:1 against white
+	PrimaryFill           string   `json:"primary_fill"`            // dark accent for headers (white body text safe when available)
+	SecondaryFill         string   `json:"secondary_fill"`          // second accent for headers (white body text safe when available)
+	BodyFill              string   `json:"body_fill"`               // light fill for body/card cells
+	BodyText              string   `json:"body_text"`               // dark text on light backgrounds
+	WhiteTextSafe         []string `json:"white_text_safe"`         // backward-compatible alias for white_text_safe_body
+	WhiteTextSafeBody     []string `json:"white_text_safe_body"`    // accents passing 4.5:1 against white
+	WhiteTextSafeLarge    []string `json:"white_text_safe_large"`   // accents passing 3:1 against white
+	NearBackgroundAccents []string `json:"near_background_accents"` // accents below 2:1 against lt1
 }
 
 // skillLayoutSummary is a lightweight layout entry included in compact mode
@@ -777,6 +779,9 @@ func buildColorRoles(colors []types.ThemeColor) *skillColorRoles {
 
 	safeLarge := make([]string, 0, len(accentOrder))
 	safeBody := make([]string, 0, len(accentOrder))
+	nearBackground := make([]string, 0, len(accentOrder))
+	backgroundHex := findColorHex(colors, "lt1")
+	background, bgErr := svggen.ParseColor(backgroundHex)
 	for _, name := range accentOrder {
 		hex := findColorHex(colors, name)
 		if hex == "" {
@@ -793,24 +798,44 @@ func buildColorRoles(colors []types.ThemeColor) *skillColorRoles {
 		if ratio >= svggen.WCAGAANormal {
 			safeBody = append(safeBody, name)
 		}
+		if bgErr == nil && c.ContrastWith(background) < 2 {
+			nearBackground = append(nearBackground, name)
+		}
 	}
 
 	roles := &skillColorRoles{
-		PrimaryFill:        "accent1",
-		SecondaryFill:      "accent2",
-		BodyFill:           "lt2",
-		BodyText:           "dk1",
-		WhiteTextSafe:      safeBody,
-		WhiteTextSafeBody:  safeBody,
-		WhiteTextSafeLarge: safeLarge,
+		PrimaryFill:           "accent1",
+		SecondaryFill:         "accent2",
+		BodyFill:              "lt2",
+		BodyText:              "dk1",
+		WhiteTextSafe:         safeBody,
+		WhiteTextSafeBody:     safeBody,
+		WhiteTextSafeLarge:    safeLarge,
+		NearBackgroundAccents: nearBackground,
 	}
 
-	// Override primary/secondary with the first two body-safe accents.
-	if len(safeBody) >= 1 {
-		roles.PrimaryFill = safeBody[0]
+	// Prefer body-safe accents, then large-text-safe accents. A theme with no
+	// qualifying accent must not recommend a near-background fill for white
+	// text; use a qualifying dark theme slot instead.
+	candidates := append([]string{}, safeBody...)
+	for _, name := range safeLarge {
+		if !slices.Contains(candidates, name) {
+			candidates = append(candidates, name)
+		}
 	}
-	if len(safeBody) >= 2 {
-		roles.SecondaryFill = safeBody[1]
+	for _, name := range []string{"dk2", "dk1"} {
+		hex := findColorHex(colors, name)
+		if c, err := svggen.ParseColor(hex); err == nil && c.ContrastWith(white) >= svggen.WCAGAALarge {
+			candidates = append(candidates, name)
+		}
+	}
+	roles.PrimaryFill, roles.SecondaryFill = "", ""
+	if len(candidates) > 0 {
+		roles.PrimaryFill = candidates[0]
+		roles.SecondaryFill = candidates[0]
+	}
+	if len(candidates) > 1 {
+		roles.SecondaryFill = candidates[1]
 	}
 
 	return roles

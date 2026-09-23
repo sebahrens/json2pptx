@@ -298,15 +298,47 @@ func TestBuildColorRoles_NoSafeAccents(t *testing.T) {
 
 	roles := buildColorRoles(colors)
 
-	// Falls back to accent1/accent2 defaults even though they aren't safe
-	if roles.PrimaryFill != "accent1" {
-		t.Errorf("PrimaryFill = %q, want accent1 (fallback)", roles.PrimaryFill)
+	// No unsafe accent may be recommended as a white-text fill.
+	if roles.PrimaryFill != "dk1" {
+		t.Errorf("PrimaryFill = %q, want dk1 (safe fallback)", roles.PrimaryFill)
 	}
-	if roles.SecondaryFill != "accent2" {
-		t.Errorf("SecondaryFill = %q, want accent2 (fallback)", roles.SecondaryFill)
+	if roles.SecondaryFill != "dk1" {
+		t.Errorf("SecondaryFill = %q, want dk1 (safe fallback)", roles.SecondaryFill)
 	}
 	if len(roles.WhiteTextSafe) != 0 {
 		t.Errorf("WhiteTextSafe = %v, want empty", roles.WhiteTextSafe)
+	}
+}
+
+func TestBuildColorRoles_AbstractThemeAvoidsInvisiblePrimary(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	info, err := analyzeTemplateForSkillInfo("../../templates/abstract.pptx", cache, "compact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	roles := info.ColorRoles
+	if roles.PrimaryFill != "dk2" {
+		t.Errorf("abstract primary_fill = %q, want the 7.71:1 dark theme fallback dk2", roles.PrimaryFill)
+	}
+	if slices.Contains(roles.WhiteTextSafeBody, roles.PrimaryFill) {
+		t.Errorf("abstract %s must not be advertised as body-text safe", roles.PrimaryFill)
+	}
+	if roles.SecondaryFill == "accent1" {
+		t.Error("abstract near-background accent1 must not be a secondary header fill")
+	}
+	if !slices.Equal(roles.NearBackgroundAccents, []string{"accent1", "accent4"}) {
+		t.Errorf("abstract near_background_accents = %v, want accent1/accent4", roles.NearBackgroundAccents)
+	}
+}
+
+func TestBuildColorRolesUsesLargeSafeAccentBeforeDarkFallback(t *testing.T) {
+	roles := buildColorRoles([]types.ThemeColor{
+		{Name: "accent1", RGB: "#EEEEEE"},
+		{Name: "accent2", RGB: "#8F8F8F"}, // 3.23:1, large-text safe only
+		{Name: "dk2", RGB: "#44546A"},
+	})
+	if roles.PrimaryFill != "accent2" || roles.SecondaryFill != "dk2" {
+		t.Errorf("primary/secondary = %s/%s, want accent2/dk2", roles.PrimaryFill, roles.SecondaryFill)
 	}
 }
 
@@ -377,6 +409,15 @@ func TestColorRolesSafetyOnLocalTemplateCorpus(t *testing.T) {
 				}
 				if got, want := slices.Contains(roles.WhiteTextSafeLarge, name), ratio >= svggen.WCAGAALarge; got != want {
 					t.Errorf("%s at %.2f: large-safe=%t, want %t", name, ratio, got, want)
+				}
+				if backgroundHex, ok := info.ThemeColors["lt1"]; ok {
+					background, err := svggen.ParseColor(backgroundHex)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if got, want := slices.Contains(roles.NearBackgroundAccents, name), color.ContrastWith(background) < 2; got != want {
+						t.Errorf("%s near-background=%t, want %t", name, got, want)
+					}
 				}
 			}
 			if !slices.Equal(roles.WhiteTextSafe, roles.WhiteTextSafeBody) {

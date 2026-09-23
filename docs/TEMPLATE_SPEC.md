@@ -189,7 +189,7 @@ An ordered list of scheme color names controlling chart series coloring. `svggen
 
 The list should contain 6 entries (one per accent slot). The ordering determines which accent is used for the first, second, third (etc.) chart series. Templates can reorder to put their most visually distinct accents first.
 
-When `data_palette` is absent, `svggen` falls back to the fixed order `accent1`–`accent6`.
+When `data_palette` is absent, charts start from the fixed order `accent1`–`accent6`. At render time, automatic chart colors with less than 2:1 contrast on the effective chart background are skipped; visible theme colors and dark/light theme slots fill the six series positions. Explicit author-supplied chart colors are preserved. `list_templates` keeps the authored `data_palette` ordering and reports near-background accents separately in `color_roles.near_background_accents`.
 
 ### Template Conformance Check
 
@@ -219,6 +219,7 @@ The checker verifies:
 6. Dark/light color luminance polarity is correct
 7. **Layout names match canonical roles** — emits WARN when a layout is structurally a canonical role (Title Slide, One Content, Two Content, Section Divider, Blank, Blank + Title, Closing) but uses a non-canonical name (e.g. "Cover Slide" → "Title Slide"). The repair pipeline must rename in place; do not author a new duplicate layout.
 8. **No duplicate layout signatures** — emits WARN when two or more layouts map to the **same canonical role** AND share the **same structural signature**. Layouts that share only a signature but have different canonical roles (e.g. a Closing layout and a Title Slide both with `subtitle+title`) are not flagged.
+9. **First accent visible on the light canvas** — emits WARN when `accent1` has less than 2:1 contrast against `lt1`; such a color can still be intentional on a dark surface, but should not lead charts on the light canvas.
 
 Exit codes:
 - **0**: All checks pass (WARN findings do not fail the check)
@@ -226,7 +227,7 @@ Exit codes:
 
 ### Known Exceptions
 
-All bundled designer templates now pass `template-check` with zero FAIL findings. The conformance, canonical-placeholder, and text-fit allow-lists are empty.
+Bundled designer templates pass the mandatory `template-check` checks with zero FAIL findings. The conformance allow-list tracks intentional WARN findings on `abstract` (near-background accent1) and `blue-corporate` (incomplete footer placeholders) until their source templates are repaired.
 
 `modern-template.pptx` previously lacked `Two Content`, `Blank`, and `Blank + Title`. Those layouts were authored into the template directly via OOXML edits (preserving all embedded media byte-for-byte) and `modern-template` is no longer allow-listed.
 

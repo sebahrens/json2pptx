@@ -4,6 +4,7 @@ package generator
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -261,6 +262,15 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		}
 	}
 
+	// A chart's first series must not disappear merely because a template's
+	// accent1 is nearly the canvas color. Preserve explicit author colors, but
+	// filter automatic theme/data-palette choices below 2:1 on the effective
+	// chart background. Diagrams retain their native theme-accent mapping.
+	if len(style.ThemeColors) > 0 && isSVGChartType(spec.Type) &&
+		(spec.Style == nil || len(spec.Style.Colors) == 0) {
+		style.DataPalette = visibleChartPalette(style.ThemeColors, style.DataPalette, style.Background)
+	}
+
 	// Forward per-slide chart_style token overrides (vertical gridlines,
 	// single-series legend, etc.) into the svggen StyleSpec. The two structs
 	// are field-for-field copies — see internal/types.ChartStyleOverrides
@@ -307,6 +317,86 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		Output:   output,
 		Style:    style,
 	}
+}
+
+func isSVGChartType(name string) bool {
+	for _, capability := range svggen.ChartCapabilities() {
+		if capability.Type == name {
+			return true
+		}
+		for _, alias := range capability.Aliases {
+			if alias == name {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// visibleChartPalette retains preferred chart order while removing colors
+// with less than 2:1 contrast on the chart canvas. Dark theme slots provide
+// distinct fallbacks when a template has fewer than six visible accents.
+func visibleChartPalette(theme []svggen.ThemeColorInput, preferred []string, backgroundHex string) []string {
+	background, err := svggen.ParseColor(backgroundHex)
+	if err != nil {
+		background = svggen.MustParseColor("#FFFFFF")
+	}
+	ordered := append([]string{}, preferred...)
+	for i := 1; i <= 6; i++ {
+		name := fmt.Sprintf("accent%d", i)
+		for _, tc := range theme {
+			if tc.Name == name {
+				ordered = append(ordered, tc.RGB)
+				break
+			}
+		}
+	}
+	for _, name := range []string{"dk2", "dk1", "lt2", "lt1"} {
+		for _, tc := range theme {
+			if tc.Name == name {
+				ordered = append(ordered, tc.RGB)
+				break
+			}
+		}
+	}
+	// A malformed or monochrome theme may have fewer than six usable slots.
+	// Borrow distinct default chart colors only after exhausting its own
+	// palette, so multiple data series do not become identical.
+	for _, color := range svggen.DefaultPalette().AccentColors() {
+		ordered = append(ordered, color.Hex())
+	}
+	ordered = append(ordered, "#000000", "#FFFFFF")
+	visible := make([]string, 0, 6)
+	seen := make(map[string]bool, len(ordered))
+	for _, hex := range ordered {
+		color, err := svggen.ParseColor(hex)
+		if err != nil || color.ContrastWith(background) < 2 {
+			continue
+		}
+		key := strings.ToUpper(color.Hex())
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		visible = append(visible, key)
+		if len(visible) == 6 {
+			return visible
+		}
+	}
+	if len(visible) == 0 {
+		black := svggen.MustParseColor("#000000")
+		white := svggen.MustParseColor("#FFFFFF")
+		if white.ContrastWith(background) > black.ContrastWith(background) {
+			visible = append(visible, white.Hex())
+		} else {
+			visible = append(visible, black.Hex())
+		}
+	}
+	baseCount := len(visible)
+	for len(visible) < 6 {
+		visible = append(visible, visible[len(visible)%baseCount])
+	}
+	return visible
 }
 
 // lookupBackgroundAndSurface returns the hex values for the theme's lt1 (slide
