@@ -1236,9 +1236,9 @@ func (gc *GanttChart) getCategoryColors(data GanttData, style *StyleGuide) map[s
 		}
 	}
 
-	// Use accent colors from the theme palette. Palette.AccentColors() always
-	// returns 6 entries (Accent1..Accent6); rows beyond 6 wrap via modulo so
-	// gantt never embeds a non-theme 7th color.
+	// Use the theme's six accents by default. An explicitly authored data
+	// palette may extend the series colors beyond six; only then do later
+	// categories use those additional colors.
 	accents := style.Palette.AccentColors()
 
 	result := make(map[string]Color)

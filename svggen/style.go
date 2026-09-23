@@ -103,6 +103,9 @@ type Palette struct {
 	Accent4 Color
 	Accent5 Color
 	Accent6 Color
+	// ExtraAccents preserves explicitly authored series colors beyond the six
+	// theme slots. Theme-derived palettes leave it empty.
+	ExtraAccents []Color
 
 	// Semantic colors.
 	Success Color
@@ -233,7 +236,8 @@ func MustParseColor(hex string) Color {
 
 // AccentColors returns the accent colors as a slice.
 func (p *Palette) AccentColors() []Color {
-	return []Color{p.Accent1, p.Accent2, p.Accent3, p.Accent4, p.Accent5, p.Accent6}
+	colors := []Color{p.Accent1, p.Accent2, p.Accent3, p.Accent4, p.Accent5, p.Accent6}
+	return append(colors, p.ExtraAccents...)
 }
 
 // AccentColor returns the accent color at the specified index (wrapping if needed).
@@ -248,6 +252,7 @@ func (p *Palette) Clone() *Palette {
 		return nil
 	}
 	cp := *p
+	cp.ExtraAccents = append([]Color(nil), p.ExtraAccents...)
 	return &cp
 }
 
@@ -1023,6 +1028,10 @@ func applyRoleMapSpec(dst *RoleMap, spec RoleMapSpec) {
 // provided data palette ordering. This ensures chart series colors follow
 // the template's preferred sequence for maximum visual distinctness.
 func applyDataPalette(p *Palette, colors []Color) {
+	p.ExtraAccents = nil
+	if len(colors) > 6 {
+		p.ExtraAccents = append([]Color(nil), colors[6:]...)
+	}
 	if len(colors) >= 1 {
 		p.Accent1 = colors[0]
 		p.Primary = colors[0]
@@ -1050,6 +1059,9 @@ func applyDataPalette(p *Palette, colors []Color) {
 func CustomPalette(colors []Color) *Palette {
 	p := DefaultPalette()
 	p.Name = "custom"
+	if len(colors) > 6 {
+		p.ExtraAccents = append([]Color(nil), colors[6:]...)
+	}
 
 	// Assign colors to accent slots
 	for i, c := range colors {

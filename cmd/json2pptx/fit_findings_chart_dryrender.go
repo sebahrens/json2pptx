@@ -228,9 +228,6 @@ func dryRenderSpec(
 			effectiveTheme = spec.Style.ThemeColors
 		}
 		for i, value := range spec.Style.Colors {
-			if i >= 6 {
-				break
-			}
 			color, ok := generator.ResolveDiagramStyleColor(value, effectiveTheme)
 			if !ok {
 				color = generator.ChartAccentFallback(i, effectiveTheme)

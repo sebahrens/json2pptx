@@ -122,6 +122,46 @@ func TestChartStyleUnresolvedColorsFallBackWithFindings(t *testing.T) {
 	}
 }
 
+func TestChartStyleSevenSeriesColorsSurviveThemeBridge(t *testing.T) {
+	colors := []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "#BADA55"}
+	theme := []types.ThemeColor{
+		{Name: "accent1", RGB: "#110000"}, {Name: "accent2", RGB: "#220000"},
+		{Name: "accent3", RGB: "#330000"}, {Name: "accent4", RGB: "#440000"},
+		{Name: "accent5", RGB: "#550000"}, {Name: "accent6", RGB: "#660000"},
+		{Name: "lt1", RGB: "#FFFFFF"}, {Name: "lt2", RGB: "#EEEEEE"},
+	}
+	series := make([]map[string]any, len(colors))
+	for i := range series {
+		series[i] = map[string]any{"name": "Series " + string(rune('A'+i)), "values": []float64{float64(i + 1)}}
+	}
+	spec := &types.DiagramSpec{Type: "bar_chart", Style: &types.DiagramStyle{Colors: colors},
+		Data: map[string]any{"categories": []string{"A"}, "series": series}}
+	req := diagramSpecToSVGGen(spec, theme, 0, "")
+	accents := svggen.StyleGuideFromSpec(req.Style).Palette.AccentColors()
+	if len(accents) != 7 {
+		t.Fatalf("accent count = %d, want 7", len(accents))
+	}
+	if got := accents[6].Hex(); got != "#BADA55" {
+		t.Errorf("seventh series accent = %s, want #BADA55", got)
+	}
+	rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(strings.ToUpper(string(rendered.SVG)), "#BADA55") {
+		t.Error("rendered chart lost the seventh authored series color")
+	}
+	if got := DiagramStyleColorFindings(spec, theme); len(got) != 0 {
+		t.Errorf("seven valid colors should not be dropped: %+v", got)
+	}
+	// An unresolved seventh entry must be reported, not silently cycled.
+	spec.Style.Colors[6] = "accent9"
+	findings := DiagramStyleColorFindings(spec, theme)
+	if len(findings) != 1 || findings[0].Field != "style.colors[6]" {
+		t.Errorf("unresolved seventh color findings = %+v", findings)
+	}
+}
+
 func TestDiagramBridgePreservesTemplateSemanticAccents(t *testing.T) {
 	theme := []types.ThemeColor{
 		{Name: "accent1", RGB: "#C00000"},

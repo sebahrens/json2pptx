@@ -64,6 +64,19 @@ func TestDryRenderChartStyleUnresolvedColorFinding(t *testing.T) {
 			t.Errorf("valid template color reported dropped: %+v", finding)
 		}
 	}
+	spec.Style.Colors = []string{"accent1", "accent1", "accent1", "accent1", "accent1", "accent1", "accent9"}
+	var seventhFound bool
+	for _, finding := range dryRenderSpecToFindings(spec, theme, "", "warn", "seven") {
+		if finding.Code == "CUSTOM_COLOR_DROPPED" {
+			if finding.Path != "seven.style.colors[6]" {
+				t.Errorf("unexpected seventh-color finding path: %+v", finding)
+			}
+			seventhFound = true
+		}
+	}
+	if !seventhFound {
+		t.Error("missing unresolved seventh-color finding")
+	}
 }
 
 // TestCollectChartDryRenderFindings_CrowdedNominal verifies that a 40-category

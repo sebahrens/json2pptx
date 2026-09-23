@@ -159,9 +159,8 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 	// pulled from spec.Style.Colors plus dk/lt slots from the effective theme,
 	// and route through the ThemeColors branch.
 	if spec.Style != nil && len(spec.Style.Colors) > 0 {
-		// Cap synthesized accent names at 6 (the slots svggen recognizes).
-		// Additional authored colors are not representable by the current
-		// six-slot palette; see go-slide-creator-30j2u.
+		// Theme slot names stop at accent6. Keep later authored colors in
+		// DataPalette below so chart series retain their full ordered palette.
 		accentLimit := len(spec.Style.Colors)
 		if accentLimit > 6 {
 			accentLimit = 6
@@ -184,6 +183,16 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 			}
 		}
 		style.ThemeColors = inputs
+		if len(spec.Style.Colors) > 6 {
+			style.DataPalette = make([]string, len(spec.Style.Colors))
+			for i, value := range spec.Style.Colors {
+				color, ok := ResolveDiagramStyleColor(value, effectiveTheme)
+				if !ok {
+					color = ChartAccentFallback(i, effectiveTheme)
+				}
+				style.DataPalette[i] = color
+			}
+		}
 	} else if spec.Style != nil && len(spec.Style.ThemeColors) > 0 {
 		// Pass full theme colors so StyleGuideFromSpec can build a complete
 		// palette with semantic colors (Success, Warning, Error, text colors, etc.)
@@ -251,7 +260,7 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 				style.Background = color
 			}
 		}
-		if len(spec.Style.DataPalette) > 0 {
+		if len(spec.Style.DataPalette) > 0 && len(spec.Style.Colors) == 0 {
 			style.DataPalette = spec.Style.DataPalette
 		}
 		// One number format for the whole chart: the value axis, the data labels
@@ -373,9 +382,6 @@ func DiagramStyleColorFindings(spec *types.DiagramSpec, themeColors []types.Them
 		})
 	}
 	for i, color := range spec.Style.Colors {
-		if i >= 6 {
-			break
-		}
 		check(color, fmt.Sprintf("style.colors[%d]", i))
 	}
 	if spec.Style.Background != "" {

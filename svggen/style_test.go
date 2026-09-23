@@ -28,6 +28,33 @@ func TestSemanticAccentsResolveBeforeDataPaletteReordering(t *testing.T) {
 	}
 }
 
+func TestDataPalettePreservesColorsBeyondThemeSlots(t *testing.T) {
+	colors := []string{"#110000", "#220000", "#330000", "#440000", "#550000", "#660000", "#770000", "#880000"}
+	guide := StyleGuideFromSpec(StyleSpec{DataPalette: colors})
+	accents := guide.Palette.AccentColors()
+	if len(accents) != len(colors) {
+		t.Fatalf("accent count = %d, want %d", len(accents), len(colors))
+	}
+	for i, want := range colors {
+		if got := accents[i].Hex(); got != want {
+			t.Errorf("series %d color = %s, want %s", i+1, got, want)
+		}
+	}
+	clone := guide.Palette.Clone()
+	clone.ExtraAccents[0] = MustParseColor("#FFFFFF")
+	if got := guide.Palette.AccentColors()[6].Hex(); got != colors[6] {
+		t.Errorf("clone changed original seventh accent to %s", got)
+	}
+	custom := CustomPalette([]Color{
+		MustParseColor(colors[0]), MustParseColor(colors[1]), MustParseColor(colors[2]),
+		MustParseColor(colors[3]), MustParseColor(colors[4]), MustParseColor(colors[5]),
+		MustParseColor(colors[6]),
+	})
+	if got := custom.AccentColors()[6].Hex(); got != colors[6] {
+		t.Errorf("custom palette seventh accent = %s, want %s", got, colors[6])
+	}
+}
+
 func TestSemanticAccentsFallBackByHueNotSlot(t *testing.T) {
 	theme := []ThemeColorInput{
 		{Name: "accent1", RGB: "#008000"},
