@@ -1,5 +1,12 @@
 {
   "$schema_version": 1,
   "comment": "Allow-list for internal/template/conformance_corpus_test.go. Templates whose sha256 appears in 'exceptions' are exempt from the zero-FAIL / zero-WARN gate. Each entry MUST cite a tracking issue and SHOULD be removed once the template is repaired (the sha256 will then no longer match, restoring the gate). Use `json2pptx template-check --json <file>` to read the sha256. The list MUST be empty once go-slide-creator-vqad and its children land.",
-  "exceptions": []
+  "exceptions": [
+    {
+      "template": "blue-corporate.pptx",
+      "sha256": "64009a3479ab8896da936dd308322ec77496bdde001b927e00731a81c4935b7b",
+      "tracking_issue": "go-slide-creator-qh4su",
+      "reason": "Master has ftr and sldNum but no dt; generator now synthesizes the left-footer anchor, while template-check warns about the incomplete source chrome."
+    }
+  ]
 }

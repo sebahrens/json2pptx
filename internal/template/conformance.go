@@ -137,6 +137,7 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 	checks = append(checks, checkLayoutNameMismatches(layouts)...)
 	checks = append(checks, checkDuplicateLayoutSignatures(layouts)...)
 	checks = append(checks, checkSectionNumber(layouts)...)
+	checks = append(checks, checkFooterChromeCompleteness(layouts))
 	checks = append(checks, checkTheme(theme)...)
 
 	pass := true
@@ -153,6 +154,41 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 		Pass:     pass,
 		Checks:   checks,
 	}, nil
+}
+
+// checkFooterChromeCompleteness catches templates whose partial utility
+// placeholder set would otherwise make footer rendering depend on a fallback.
+// A layout with no footer slots is intentional and is not flagged.
+func checkFooterChromeCompleteness(layouts []types.LayoutMetadata) ConformanceCheck {
+	var incomplete []string
+	for _, layout := range layouts {
+		present := make(map[string]bool, len(layout.FooterRegions))
+		for _, region := range layout.FooterRegions {
+			present[region.Type] = true
+		}
+		if len(present) == 0 {
+			continue
+		}
+		var missing []string
+		for _, typ := range footerChromeTypes {
+			if !present[typ] {
+				missing = append(missing, typ)
+			}
+		}
+		if len(missing) > 0 {
+			incomplete = append(incomplete, fmt.Sprintf("%s missing %s", layout.Name, strings.Join(missing, ", ")))
+		}
+	}
+	if len(incomplete) > 0 {
+		return ConformanceCheck{
+			Category: "chrome", Check: "Footer placeholder set complete or absent", Status: ConformanceStatusWarn,
+			Detail: strings.Join(incomplete, "; "),
+		}
+	}
+	return ConformanceCheck{
+		Category: "chrome", Check: "Footer placeholder set complete or absent", Status: ConformanceStatusPass,
+		Detail: "Every layout either has all dt/ftr/sldNum footer slots or none",
+	}
 }
 
 // checkMandatoryLayouts verifies all mandatory layouts are present with

@@ -1,6 +1,10 @@
 package generator
 
 import (
+	"archive/zip"
+	"context"
+	"io"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -222,6 +226,9 @@ func TestResolveFooterPositions_MinSldNumWidth(t *testing.T) {
 	positions := resolveFooterPositions(masterPositions, defaultSlideHeightEMU)
 
 	pos := positions["type:sldNum"]
+	if dt := positions["type:dt"]; dt == nil || dt.Offset.X != computeDefaultFooterPositions(defaultSlideHeightEMU)["type:dt"].Offset.X {
+		t.Errorf("sldNum-only master needs default left-footer anchor, got %+v", dt)
+	}
 	if pos.Extent.CX != minSldNumWidth {
 		t.Errorf("expected sldNum CX=%d, got %d", minSldNumWidth, pos.Extent.CX)
 	}
@@ -252,6 +259,68 @@ func TestResolveFooterPositions_DefaultFallback(t *testing.T) {
 	if positions["type:dt"].Offset.X != computeDefaultFooterPositions(0)["type:dt"].Offset.X {
 		t.Error("expected default dt position")
 	}
+}
+
+func TestResolveFooterPositions_PartialChrome(t *testing.T) {
+	ftr := &transformXML{Offset: offsetXML{X: 432000, Y: 6365893}, Extent: extentXML{CX: 4114800, CY: 226714}}
+	sldNum := &transformXML{Offset: offsetXML{X: 10917936, Y: 6385422}, Extent: extentXML{CX: 843264, CY: 288000}}
+	wantNumX := sldNum.Offset.X
+	positions := resolveFooterPositions(map[string]*transformXML{"type:ftr": ftr, "type:sldNum": sldNum}, defaultSlideHeightEMU)
+	dt := positions["type:dt"]
+	if dt == nil {
+		t.Fatal("partial template chrome must synthesize a date/left-footer anchor")
+	}
+	if dt.Offset.X != ftr.Offset.X || dt.Extent.CX != ftr.Extent.CX {
+		t.Errorf("synthetic dt should reuse the template's footer box, got %+v", dt)
+	}
+	if positions["type:sldNum"].Offset.X != wantNumX {
+		t.Errorf("page number geometry changed: %+v", positions["type:sldNum"])
+	}
+	if box := leftFooterBox(positions); box == nil || box.Offset.X+box.Extent.CX > positions["type:sldNum"].Offset.X {
+		t.Errorf("left footer missing or overlaps page number: %+v", box)
+	}
+}
+
+func TestBlueCorporateGeneratesLeftFooter(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "blue-corporate-footer.pptx")
+	_, err := Generate(context.Background(), GenerationRequest{
+		TemplatePath:          "../../templates/blue-corporate.pptx",
+		OutputPath:            output,
+		ExcludeTemplateSlides: true,
+		Slides: []SlideSpec{{LayoutID: "slideLayout2", Content: []ContentItem{
+			{PlaceholderID: "title", Type: ContentText, Value: "Footer check"},
+		}}},
+		Footer: &FooterConfig{Enabled: true, LeftText: "Confidential - 22 Sep 2026"},
+	})
+	if err != nil {
+		t.Fatalf("generate blue-corporate: %v", err)
+	}
+	zr, err := zip.OpenReader(output)
+	if err != nil {
+		t.Fatalf("open output: %v", err)
+	}
+	defer zr.Close()
+	for _, f := range zr.File {
+		if f.Name != "ppt/slides/slide1.xml" {
+			continue
+		}
+		r, err := f.Open()
+		if err != nil {
+			t.Fatalf("open slide XML: %v", err)
+		}
+		data, err := io.ReadAll(r)
+		r.Close()
+		if err != nil {
+			t.Fatalf("read slide XML: %v", err)
+		}
+		for _, want := range []string{"Footer Left", "Confidential - 22 Sep 2026", "Footer Right"} {
+			if !strings.Contains(string(data), want) {
+				t.Errorf("generated slide missing %q", want)
+			}
+		}
+		return
+	}
+	t.Fatal("generated presentation has no slide1.xml")
 }
 
 func TestResolveFooterPositions_NilMap(t *testing.T) {

@@ -547,7 +547,8 @@ func removeDuplicateFooterBrandMark(slide *slideXML, leftText string, slideHeigh
 
 // resolveFooterPositions extracts footer placeholder positions from a master positions map.
 // Returns positions for keys "type:dt", "type:ftr", "type:sldNum".
-// If the master doesn't define these, returns default positions.
+// If the master does not define a date anchor, synthesize one from its footer
+// slot (or the default band). A partial set must not silently drop LeftText.
 // Positions are clamped to ensure they remain within the visible slide area.
 // slideHeight is the actual slide height in EMU (0 = use 16:9 default).
 func resolveFooterPositions(masterPositions map[string]*transformXML, slideHeight int64) map[string]*transformXML {
@@ -563,10 +564,20 @@ func resolveFooterPositions(masterPositions map[string]*transformXML, slideHeigh
 		}
 	}
 
-	// If no footer positions found in master/layout, compute defaults from slide height
+	// If no footer positions found in master/layout, compute defaults from slide height.
 	if len(positions) == 0 {
 		for k, v := range computeDefaultFooterPositions(slideHeight) {
 			positions[k] = v
+		}
+	} else if positions["type:dt"] == nil {
+		// Some templates (blue-corporate) declare ftr and sldNum but no dt.
+		// LeftText is anchored at dt, so a partial set used to suppress it.
+		// Reuse the authored footer box before falling back to generic geometry.
+		if ftr := positions["type:ftr"]; ftr != nil {
+			copy := *ftr
+			positions["type:dt"] = &copy
+		} else {
+			positions["type:dt"] = computeDefaultFooterPositions(slideHeight)["type:dt"]
 		}
 	}
 
