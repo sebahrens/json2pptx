@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 )
@@ -33,6 +35,50 @@ func TestRepairGateDefaultsAreTheShipGate(t *testing.T) {
 	}
 	if !defaultAutoRepairRequireTakeawayOnCharts || !ship.RequireTakeawayOnCharts {
 		t.Error("both gates should require a takeaway on charts")
+	}
+}
+
+func TestAutoRepairGatePreservesShipOnlyCriteria(t *testing.T) {
+	defaults := autoRepairGate{
+		MinScore:                defaultAutoRepairMinScore,
+		MaxP0Findings:           defaultAutoRepairMaxP0Findings,
+		MaxP1Findings:           defaultAutoRepairMaxP1Findings,
+		RequireTakeawayOnCharts: defaultAutoRepairRequireTakeawayOnCharts,
+	}
+	cases := []struct {
+		name, reason string
+		score        *deterministic.DeckScore
+		findings     []patterns.FitFinding
+	}{
+		{
+			name: "composition", reason: "composition",
+			score: &deterministic.DeckScore{OverallScore: 100, Composition: &deterministic.CompositionResult{Score: 55}},
+		},
+		{
+			name: "accent overload", reason: "accent_overload",
+			score:    &deterministic.DeckScore{OverallScore: 95},
+			findings: []patterns.FitFinding{{ValidationError: patterns.ValidationError{Code: patterns.ErrCodeAccentOverload}, Action: "review"}},
+		},
+		{
+			name: "problem slide share", reason: "max_problem_slides_pct",
+			score: &deterministic.DeckScore{
+				OverallScore: 90,
+				PerSlide:     make([]deterministic.SlideScore, 6),
+				Summary:      deterministic.DeckSummary{ProblemSlidesCount: 3},
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ship := deterministic.EvaluateQualityGate(tc.score, tc.findings, deterministic.DefaultQualityGateCriteria())
+			loopReasons := evaluateAutoRepairGate(tc.score, tc.findings, defaults)
+			if ship.Passed || len(loopReasons) == 0 || !strings.Contains(strings.Join(loopReasons, "; "), tc.reason) {
+				t.Fatalf("default loop omitted ship-only gate %q: ship=%v loop=%v", tc.reason, ship.Reasons, loopReasons)
+			}
+			if strings.Join(ship.Reasons, "; ") != strings.Join(loopReasons, "; ") {
+				t.Fatalf("same score/findings produced different reasons: ship=%v loop=%v", ship.Reasons, loopReasons)
+			}
+		})
 	}
 }
 
@@ -103,5 +149,44 @@ func TestRepairGateAgreesWithScoreDeck(t *testing.T) {
 	if repair.FinalScore == score.OverallScore && repair.GatePassed != score.QualityGate.Passed {
 		t.Errorf("same deck, same score %d, but auto_repair says gate_passed=%v and score_deck says passed=%v",
 			repair.FinalScore, repair.GatePassed, score.QualityGate.Passed)
+	}
+}
+
+func TestAutoRepairDoesNotConvergeOnLowComposition(t *testing.T) {
+	if testing.Short() {
+		t.Skip("renders a deck")
+	}
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+	slides := make([]any, 8)
+	for i := range slides {
+		slides[i] = map[string]any{
+			"layout_id": "slideLayout2",
+			"content": []any{
+				map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Operating priority " + string(rune('A'+i))},
+				map[string]any{"placeholder_id": "body", "type": "text", "text_value": "The team will align ownership, automate handoffs, and improve weekly operational reporting."},
+			},
+		}
+	}
+	result, err := mc.handleAutoRepair(context.Background(), makeRequest(map[string]any{
+		"presentation": map[string]any{"template": "midnight-blue", "slides": slides},
+		"gate": map[string]any{
+			"min_score": float64(0), "max_p0_findings": float64(100),
+			"max_p1_findings": float64(100), "require_takeaway_on_charts": false,
+		},
+		"max_passes": float64(1), "output_filename": "composition_gate.pptx",
+	}))
+	if err != nil || result.IsError {
+		t.Fatalf("auto_repair failed: %v %s", err, textContent(result))
+	}
+	var output autoRepairOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatal(err)
+	}
+	if output.GatePassed || !strings.Contains(strings.Join(output.GateReasons, "; "), "composition") {
+		t.Fatalf("low-composition deck converged: score=%d reasons=%v", output.FinalScore, output.GateReasons)
 	}
 }

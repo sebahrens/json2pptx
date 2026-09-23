@@ -77,8 +77,8 @@ type autoRepairOutput struct {
 	// "structural": score_deck rules over the generated deck, no pixels).
 	ScoreBasis string `json:"score_basis"`
 	GatePassed bool   `json:"gate_passed"`
-	// Gate echoes the criteria gate_passed was judged against. score_deck has
-	// always returned its criteria block; without the same echo here an agent
+	// Gate echoes the four configurable thresholds. Accent, composition, and
+	// problem-slide share remain fixed. Without this echo an agent
 	// could not tell a default verdict (the ship gate) from one a caller
 	// relaxed, which is the difference between "ready to ship" and "the loop
 	// stopped" (go-slide-creator-ie9v).
@@ -291,7 +291,7 @@ Gate fields (all optional, all defaulted) — these govern the DETERMINISTIC loo
 - max_p0_findings (default 0): max count of refuse-action findings tolerated.
 - max_p1_findings (default 0): max count of shrink_or_split-action findings tolerated.
 - require_takeaway_on_charts (default true): no takeaway_missing finding may remain.
-Substantive reviews (overlong body, empty content, contrast, confirmed unreadable text) block convergence. Other reviews are proposed but not auto-applied after a numeric pass.
+Fixed blockers: substantive reviews, accent overload, composition below 65, and problem-slide share above 40%. Other reviews are proposed but not auto-applied after a pass.
 
 Response shape: {path, final_score, gate_passed, passes, trace[], gate_reasons[], quality_mode, final_presentation, next_state, artifact_status, content_status, uses_exemplar_content, validation_status, deterministic_ready, publishable, manual_review_required, blocking_reasons[], deterministic_blocking_reasons[], evidence_complete, output_validation, render_evidence?, visual_qa?}. trace[i] = {pass, score, findings_count, directives_proposed, directives_advisory, directives_applied, directives_failed[{kind, slide_index, code?, reason}], repairs_applied[]} records the full repair funnel per pass, so "nothing was wrong" is distinguishable from "every directive was rejected": directives_advisory counts findings whose remedy is an authoring decision (see get_capabilities.vocabularies.advisory_fix_kinds), and directives_failed names each refused directive with the reason it gave. A pass applies at most one repair per TARGET (cell_path / path), so a slide with many overfull cells converges in one pass; a structural repair that changes the slide count ends the pass so the next one re-derives findings. final_presentation is the full repaired deck JSON (always present, including zero-repair runs; reflects any visual_qa repairs too) — feed it straight back into validate_input / generate_presentation / repair_slide to keep editing without rebuilding state from the trace. visual_qa is present only when the mode was requested.
 
@@ -634,6 +634,8 @@ func (mc *mcpConfig) runAutoRepairLoop(
 		lastRenderEvidence = renderEvidence
 
 		ds := deterministic.ScoreFromFindings(findings, len(input.Slides))
+		// The loop and score_deck must judge the same deck-level rhythm.
+		ds.Composition = compositionAxis(input.Slides)
 		gateReasons := evaluateAutoRepairGate(ds, findings, gate)
 
 		entry := autoRepairTraceEntry{
@@ -943,58 +945,16 @@ func reviewFindings(findings []patterns.FitFinding) []patterns.FitFinding {
 	return out
 }
 
-// evaluateAutoRepairGate returns a list of unmet criteria. Empty result means
-// the deck satisfies the gate. Order is deterministic: score → P0 → P1 →
-// substantive review → takeaway, so agents can pattern-match on the leading reason.
+// evaluateAutoRepairGate applies the score_deck ship gate with only the four
+// exposed loop thresholds overridden. Accent, composition, and problem-slide
+// criteria remain fixed, so a default loop pass cannot fail score_deck later.
 func evaluateAutoRepairGate(ds *deterministic.DeckScore, findings []patterns.FitFinding, gate autoRepairGate) []string {
-	var reasons []string
-	if ds.OverallScore < gate.MinScore {
-		reasons = append(reasons, fmt.Sprintf("score %d < min_score %d", ds.OverallScore, gate.MinScore))
-	}
-	p0 := countFindingsByAction(findings, "refuse")
-	if p0 > gate.MaxP0Findings {
-		reasons = append(reasons, fmt.Sprintf("%d P0 (refuse) findings exceeds max_p0_findings %d", p0, gate.MaxP0Findings))
-	}
-	p1 := countFindingsByAction(findings, "shrink_or_split")
-	if p1 > gate.MaxP1Findings {
-		reasons = append(reasons, fmt.Sprintf("%d P1 (shrink_or_split) findings exceeds max_p1_findings %d", p1, gate.MaxP1Findings))
-	}
-	substantive := 0
-	for _, finding := range findings {
-		if deterministic.IsSubstantiveReview(finding) {
-			substantive++
-		}
-	}
-	if substantive > 0 {
-		reasons = append(reasons, fmt.Sprintf("%d substantive review finding(s) remain (readability, empty content, or contrast)", substantive))
-	}
-	if gate.RequireTakeawayOnCharts {
-		missing := countFindingsByCode(findings, patterns.ErrCodeTakeawayMissing)
-		if missing > 0 {
-			reasons = append(reasons, fmt.Sprintf("%d chart/matrix slide(s) missing takeaway", missing))
-		}
-	}
-	return reasons
-}
-
-func countFindingsByAction(findings []patterns.FitFinding, action string) int {
-	n := 0
-	for _, f := range findings {
-		if f.Action == action {
-			n++
-		}
-	}
-	return n
-}
-
-func countFindingsByCode(findings []patterns.FitFinding, code string) int {
-	n := 0
-	for _, f := range findings {
-		if f.Code == code {
-			n++
-		}
-	}
-	return n
+	criteria := deterministic.DefaultQualityGateCriteria()
+	criteria.MinScore = gate.MinScore
+	criteria.MaxP0Findings = gate.MaxP0Findings
+	criteria.MaxP1Findings = gate.MaxP1Findings
+	criteria.RequireTakeawayOnCharts = gate.RequireTakeawayOnCharts
+	return deterministic.EvaluateQualityGate(ds, findings, criteria).Reasons
 }
 
 // --- Helpers ---
