@@ -1,7 +1,10 @@
 package main
 
 import (
+	"archive/zip"
 	"context"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,6 +15,57 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+func TestRunPresentation_BlankSlideTitleSurvives(t *testing.T) {
+	text := "Blank canvas heading"
+	input := &PresentationInput{
+		Template: "midnight-blue", OutputFilename: "blank-title.pptx",
+		Slides: []SlideInput{
+			{SlideType: "blank", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &text}}},
+			{SlideType: "blank", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &text}}},
+			{SlideType: "content", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Middle")}}},
+			{SlideType: "blank", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &text}}},
+		},
+	}
+	applyDefaults(input)
+	res, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
+		OutputDir: t.TempDir(), TemplatesDir: runnerTestTemplatesDir(t), StrictFit: "warn", OutputValidation: "strict",
+	})
+	defer cleanup()
+	if err != nil {
+		t.Fatal(err)
+	}
+	archive, err := zip.OpenReader(res.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = archive.Close() }()
+	for _, slideNo := range []int{1, 2, 4} {
+		path := fmt.Sprintf("ppt/slides/slide%d.xml", slideNo)
+		found := false
+		for _, file := range archive.File {
+			if file.Name != path {
+				continue
+			}
+			found = true
+			reader, openErr := file.Open()
+			if openErr != nil {
+				t.Fatal(openErr)
+			}
+			data, readErr := io.ReadAll(reader)
+			_ = reader.Close()
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if !strings.Contains(string(data), text) {
+				t.Errorf("%s dropped the authored blank-slide title", path)
+			}
+		}
+		if !found {
+			t.Errorf("generated deck has no %s", path)
+		}
+	}
+}
 
 // runnerTestTemplatesDir returns the repo's templates/ directory relative to
 // this test file. resolveTemplatePath also falls back to embedded templates,

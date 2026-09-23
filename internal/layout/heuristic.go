@@ -514,6 +514,12 @@ func needsFullContentArea(slide types.SlideDefinition) bool {
 
 // scoreTypeMatch checks if layout tags match slide type and position.
 func scoreTypeMatch(layout types.LayoutMetadata, slide types.SlideDefinition, ctx SelectionContext) float64 {
+	// Blank is an explicit canvas request, not an invitation to use the deck's
+	// cover or closing chrome. Those position bonuses can otherwise outrank the
+	// only layout that preserves a blank slide's authored title.
+	if slide.Type == types.SlideTypeBlank {
+		return scoreBlankSlide(layout, slide)
+	}
 	// Position-based bonus for first slide
 	if ctx.Position == 0 && isTitleSlideLayout(layout) {
 		return scorePerfectMatch
@@ -570,7 +576,7 @@ func scoreSlideTypeMatch(layout types.LayoutMetadata, slide types.SlideDefinitio
 	case types.SlideTypeContent:
 		return scoreContentSlide(layout, slide)
 	case types.SlideTypeBlank:
-		return scoreBlankSlide(layout)
+		return scoreBlankSlide(layout, slide)
 	case types.SlideTypeSection:
 		return scoreSectionSlide(layout)
 	default:
@@ -772,7 +778,13 @@ func scoreContentSlide(layout types.LayoutMetadata, slide types.SlideDefinition)
 	return scoreNoMatch
 }
 
-func scoreBlankSlide(layout types.LayoutMetadata) float64 {
+func scoreBlankSlide(layout types.LayoutMetadata, slide types.SlideDefinition) float64 {
+	if slide.Title != "" {
+		if hasTag(layout.Tags, "blank-title") {
+			return scorePerfectMatch
+		}
+		return scorePartialMatch
+	}
 	if hasTag(layout.Tags, "blank") {
 		return scorePerfectMatch
 	}
@@ -1016,6 +1028,9 @@ func calculateConfidence(topScore float64, scored []scoredLayout, secondIdx int)
 
 // isLayoutSuitable checks if layout can handle required content types.
 func isLayoutSuitable(layout types.LayoutMetadata, slide types.SlideDefinition) bool { //nolint:gocyclo
+	if slide.Type == types.SlideTypeBlank && slide.Title != "" && findPlaceholder(layout, types.PlaceholderTitle) == nil {
+		return false
+	}
 	// Reject layouts with non-standard title positioning when slide has a title.
 	// These layouts have title placeholders positioned either:
 	// - Off-screen (negative Y) - "title-hidden" tag

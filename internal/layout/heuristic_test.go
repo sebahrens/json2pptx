@@ -1,6 +1,7 @@
 package layout
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -175,6 +176,43 @@ func TestSelectLayout_TitleSlide_CanonicalFamilyOverBlank(t *testing.T) {
 	if result.LayoutID != "slideLayout1" {
 		t.Errorf("expected slideLayout1 (Title Slide), got %s", result.LayoutID)
 	}
+}
+
+func TestSelectLayout_BlankWithTitleKeepsTitleAtEveryPosition(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{ID: "cover", Tags: []string{"title-slide"}, Placeholders: []types.PlaceholderInfo{{ID: "title", Type: types.PlaceholderTitle}}},
+		{ID: "bare", Tags: []string{"blank"}},
+		{ID: "blank-title", Tags: []string{"blank-title", "title-slide"}, Placeholders: []types.PlaceholderInfo{{ID: "title", Type: types.PlaceholderTitle}}},
+		{ID: "closing", Tags: []string{"closing"}, Placeholders: []types.PlaceholderInfo{{ID: "title", Type: types.PlaceholderTitle}}},
+	}
+	for _, position := range []int{0, 2, 3} {
+		t.Run(fmt.Sprintf("position_%d", position), func(t *testing.T) {
+			result, err := SelectLayout(SelectionRequest{
+				Slide:   types.SlideDefinition{Type: types.SlideTypeBlank, Title: "Authored title"},
+				Layouts: layouts,
+				Context: SelectionContext{Position: position, TotalSlides: 4},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.LayoutID != "blank-title" {
+				t.Errorf("blank slide with title selected %q, want blank-title", result.LayoutID)
+			}
+		})
+	}
+	t.Run("untitled blank stays bare", func(t *testing.T) {
+		result, err := SelectLayout(SelectionRequest{
+			Slide:   types.SlideDefinition{Type: types.SlideTypeBlank},
+			Layouts: layouts,
+			Context: SelectionContext{Position: 3, TotalSlides: 4},
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if result.LayoutID != "bare" {
+			t.Errorf("untitled blank selected %q, want bare", result.LayoutID)
+		}
+	})
 }
 
 // Regression for go-slide-creator-07ap: the "blank-title" utility layout also
