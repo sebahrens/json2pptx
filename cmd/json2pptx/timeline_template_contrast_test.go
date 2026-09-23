@@ -186,7 +186,44 @@ func TestTimelineChevronBodySizeOverrideChangesFitFinding(t *testing.T) {
 	}
 }
 
-func TestTimelineChevronKeepsDarkInkInGeneratedDeck(t *testing.T) {
+func TestTimelineChevronDateWrapFindingOnLocalTemplateCorpus(t *testing.T) {
+	stops := make([]patterns.TimelineStop, 7)
+	for i := range stops {
+		stops[i] = patterns.TimelineStop{Label: "Wave close", Date: "Q1"}
+	}
+	for _, path := range testutil.TestTemplatePaths() {
+		name := strings.TrimSuffix(filepath.Base(path), ".pptx")
+		t.Run(name, func(t *testing.T) {
+			a := loadTemplateAnalysis(t, name)
+			for _, tc := range []struct {
+				date string
+				want int
+			}{{"Q1", 0}, {strings.Repeat("D", 30), 1}} {
+				stops[4].Date = tc.date
+				values, err := json.Marshal(stops)
+				if err != nil {
+					t.Fatal(err)
+				}
+				input := &PresentationInput{Template: name, Slides: []SlideInput{{
+					SlideType: "content",
+					Pattern: &PatternInput{Name: "timeline-horizontal", Values: values,
+						Overrides: json.RawMessage(`{"style":"chevron"}`)},
+				}}}
+				count := 0
+				for _, finding := range collectFitFindings(input, a.Layouts, a.SlideWidth, a.SlideHeight, &a.Theme) {
+					if finding.Code == patterns.ErrCodeBodyTooLong && strings.Contains(finding.Message, "values[4].date") {
+						count++
+					}
+				}
+				if count != tc.want {
+					t.Errorf("date %q: %d wrap findings, want %d", tc.date, count, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func TestTimelineChevronGeneratedDeckText(t *testing.T) {
 	stops := make([]patterns.TimelineStop, 7)
 	for i := range stops {
 		stops[i] = patterns.TimelineStop{Label: fmt.Sprintf("Stop %d", i+1), Body: "Milestone detail", Date: "Q1"}
@@ -242,6 +279,7 @@ func TestTimelineChevronKeepsDarkInkInGeneratedDeck(t *testing.T) {
 	}
 	decoder := xml.NewDecoder(strings.NewReader(string(slideXML)))
 	seen := make(map[string]bool)
+	dateRuns := 0
 	for {
 		token, err := decoder.Token()
 		if err == io.EOF {
@@ -257,6 +295,7 @@ func TestTimelineChevronKeepsDarkInkInGeneratedDeck(t *testing.T) {
 		var run struct {
 			Text  string `xml:"t"`
 			Props struct {
+				Size int `xml:"sz,attr"`
 				Fill struct {
 					Scheme struct {
 						Value string `xml:"val,attr"`
@@ -269,6 +308,12 @@ func TestTimelineChevronKeepsDarkInkInGeneratedDeck(t *testing.T) {
 		}
 		if err := decoder.DecodeElement(&run, &start); err != nil {
 			t.Fatal(err)
+		}
+		if run.Text == "Q1" {
+			dateRuns++
+			if run.Props.Size != 1200 {
+				t.Errorf("chevron date run has %d hundredths of a point, want 1200", run.Props.Size)
+			}
 		}
 		if run.Text == "Stop 5" || run.Text == "Stop 6" || run.Text == "Stop 7" {
 			seen[run.Text] = true
@@ -291,5 +336,8 @@ func TestTimelineChevronKeepsDarkInkInGeneratedDeck(t *testing.T) {
 	}
 	if len(seen) != 3 {
 		t.Errorf("found dark-color evidence for %d of 3 tinted stops", len(seen))
+	}
+	if dateRuns != 7 {
+		t.Errorf("found %d of 7 chevron date runs", dateRuns)
 	}
 }

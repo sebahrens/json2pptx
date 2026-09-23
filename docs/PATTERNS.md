@@ -407,6 +407,7 @@ The same rule applies to the text a pattern paints INSIDE a fill it tints itself
 - `tint` and `shade` are **linear-light mixes** toward white and black, not the HSL lightness that `lumMod` / `lumOff` act on. `EffectiveColorMods` models all four; both transforms are pinned against measured render pixels in `internal/patterns/timeline_contrast_test.go`. A model that treats a tint as a lumMod is out by 30-50 per channel, which is the difference between "readable" and "invisible".
 - In `timeline-horizontal` chevrons, measure the label and body against the chevron's usable text width and capped row height. Emit `BODY_TOO_LONG` with the available body-line count when the description would clip; a raw character limit misses narrow seven-stop layouts.
 - Chevron `body_size` controls both the emitted paragraph and its fit budget. Sizes below shape-grid's 12pt rendering floor are measured and emitted at 12pt, including the default derived from `label_size`.
+- Chevron dates use that same 12pt rendering floor for their one-line row height. A date that wraps at the effective font size and template width receives a `BODY_TOO_LONG` fit finding instead of relying on a fixed character count.
 
 ## Composition
 

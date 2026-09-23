@@ -628,3 +628,42 @@ func TestTimelineChevronBodySize(t *testing.T) {
 		})
 	}
 }
+
+func TestTimelineChevronDateRowUsesRenderedFontSize(t *testing.T) {
+	stops := TimelineHorizontalValues{{Label: "Plan", Date: "Q1"}, {Label: "Build", Date: "Q2"}, {Label: "Launch", Date: "Q3"}}
+	for _, tc := range []struct {
+		name       string
+		dateSize   float64
+		wantSize   float64
+		wantHeight float64
+	}{
+		{"default", 0, 12, 26},
+		{"below_floor", 6, 12, 26},
+		{"larger_override", 18, 18, 33},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			grid, err := (&timelineHorizontal{}).Expand(ExpandContext{}, &stops,
+				&TimelineHorizontalOverrides{Style: "chevron", DateSize: tc.dateSize}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			row := grid.Rows[1]
+			if row.MinHeight != tc.wantHeight || row.MaxHeight != tc.wantHeight {
+				t.Errorf("date row height = %g..%g, want %g", row.MinHeight, row.MaxHeight, tc.wantHeight)
+			}
+			for i, cell := range row.Cells {
+				var content struct {
+					Paragraphs []struct {
+						Size float64 `json:"size"`
+					} `json:"paragraphs"`
+				}
+				if err := json.Unmarshal(cell.Shape.Text, &content); err != nil {
+					t.Fatal(err)
+				}
+				if len(content.Paragraphs) != 1 || content.Paragraphs[0].Size != tc.wantSize {
+					t.Errorf("date %d paragraphs = %+v, want one at %gpt", i, content.Paragraphs, tc.wantSize)
+				}
+			}
+		})
+	}
+}

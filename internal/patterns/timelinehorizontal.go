@@ -116,19 +116,6 @@ func timelineBodyBudget(style string, stops, labelChars int) int {
 	return 200
 }
 
-func timelineChevronDateBudget(stops int) int {
-	switch stops {
-	case 5:
-		return 27
-	case 6:
-		return 22
-	case 7:
-		return 18
-	default:
-		return 30
-	}
-}
-
 func (th *timelineHorizontal) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*TimelineHorizontalValues)
 	if !ok || v == nil {
@@ -142,6 +129,9 @@ func (th *timelineHorizontal) PostExpandWarnings(ctx ExpandContext, values, over
 			style = o.Style
 		}
 	}
+	dateSize := timelineChevronDateSize(ovr)
+	contentW, _ := contentAreaPt(ctx)
+	dateTextW := math.Max(equalColumnWidthPt(contentW, len(*v), 0)-2*defaultShapeInsetLRPt, 1)
 	var warnings []string
 	for i, stop := range *v {
 		if style == "gantt" {
@@ -160,13 +150,19 @@ func (th *timelineHorizontal) PostExpandWarnings(ctx ExpandContext, values, over
 			}
 		}
 		if style == "chevron" {
-			budget := timelineChevronDateBudget(len(*v))
-			if n := runeLen(stop.Date); n > budget {
-				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].date is %d characters; %d-stop chevron style holds about %d readable date characters — shorten the date or use fewer stops", ErrCodeBodyTooLong, i, n, len(*v), budget))
+			if lines := measuredLines(stop.Date, ctx.Theme.BodyFont, false, dateSize, dateTextW); lines > 1 {
+				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].date needs %d lines at %gpt but this %d-stop chevron date row holds 1 — shorten the date or use fewer stops", ErrCodeBodyTooLong, i, lines, dateSize, len(*v)))
 			}
 		}
 	}
 	return warnings
+}
+
+func timelineChevronDateSize(ovr *TimelineHorizontalOverrides) float64 {
+	if ovr == nil {
+		return shapegrid.MinTextSizePt
+	}
+	return shapegrid.EffectiveTextSizePt(ResolveSize(ovr.DateSize, 9))
 }
 
 // timelineChevronBodyCapacity measures the actual line budget beneath one
@@ -210,7 +206,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 	stopSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\")"),
-			"date":     StringSchema(30).WithDescription("Optional date or time annotation. Chevron style holds about 30 characters at 3-4 stops, 27 at 5, 22 at 6, or 18 at 7; dots and gantt retain 30"),
+			"date":     StringSchema(30).WithDescription("Optional date or time annotation. Chevron dates have a one-line row at the effective font size (12pt minimum); BODY_TOO_LONG reports wrapping for the chosen template width. Dots and gantt retain the 30-character schema limit."),
 			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date)"),
 			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Dots readable chars for short/long labels by stop count: 3-4: 200/200, 5: 200/151, 6: 181/101, 7: 136/76. Chevron body capacity is measured from its actual width, height, label wrapping, and font sizes; BODY_TOO_LONG reports the line limit for the chosen layout. Shorten descriptions or use fewer stops when warned."),
 		},
@@ -225,7 +221,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 					"accent":          StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
 					"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 					"label_size":      NumberSchema(6, 120).WithDescription("Font size for stop labels in points"),
-					"date_size":       NumberSchema(6, 120).WithDescription("Font size for dates in points"),
+					"date_size":       NumberSchema(6, 120).WithDescription("Font size for dates in points; chevron style uses the shape-grid 12pt rendering floor for row height and wrap warnings"),
 					"body_size":       NumberSchema(6, 120).WithDescription("Font size for body text in points; chevron style honors this override and applies the shape-grid 12pt readable floor"),
 					"style":           EnumSchema("dots", "chevron", "gantt").WithDescription("Visual style: dots (default: horizontal axis with accent dots, dates above, label/body below), chevron (connected arrow shapes with gradient), gantt (horizontal range bars)").WithDefault("dots"),
 				},
@@ -462,7 +458,7 @@ func buildTimelineDotsText(paras []timelineDotsPara, vAlign string) json.RawMess
 func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHorizontalValues, ovr *TimelineHorizontalOverrides, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	labelSize, bodySize := timelineChevronTextSizes(ovr)
-	dateSize := ResolveSize(ovr.DateSize, 9.0)
+	dateSize := timelineChevronDateSize(ovr)
 
 	n := len(*stops)
 
