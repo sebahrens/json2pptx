@@ -36,3 +36,13 @@ func (r *Reader) ResolveTableStyleID(authored string) string {
 	// unknown values — they may still render correctly in PowerPoint.
 	return authored
 }
+
+// HasTableStyleDefinition reports whether a GUID has a non-empty tblStyle
+// body in this template. A def attribute or empty portability stub alone
+// cannot style a rendered table.
+func (r *Reader) HasTableStyleDefinition(id string) bool {
+	if r.tblStyles == nil {
+		r.tblStyles = newTableStyleIndex(r)
+	}
+	return r.tblStyles.hasDefinition(id)
+}

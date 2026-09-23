@@ -234,6 +234,24 @@ func PopulateTableInShape(
 		resolver = defaultTableStyleResolver{}
 	}
 	style.StyleID = resolver.ResolveTableStyleID(style.StyleID)
+	// Some templates declare a default GUID but ship no formatting rule for it.
+	// Keep the resolved GUID for OOXML compatibility while rendering the header
+	// explicitly so it remains visible in PowerPoint and LibreOffice.
+	if style.UseTableStyle {
+		defined := true
+		switch checker := resolver.(type) {
+		case TableStyleDefinitionChecker:
+			defined = checker.HasTableStyleDefinition(style.StyleID)
+		case defaultTableStyleResolver:
+			defined = false // standalone rendering has no template style rules
+		}
+		if !defined {
+			style.UseTableStyle = false
+			if style.HeaderBackground == "" {
+				style.HeaderBackground = defaultHeaderFill
+			}
+		}
+	}
 
 	// Build render config from placeholder bounds
 	config := TableRenderConfig{

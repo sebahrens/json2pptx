@@ -25,6 +25,13 @@ type TableStyleResolver interface {
 	ResolveTableStyleID(authored string) string
 }
 
+// TableStyleDefinitionChecker is an optional resolver capability. A GUID
+// without formatting rules needs explicit cell styling even when the table
+// requests use_table_style.
+type TableStyleDefinitionChecker interface {
+	HasTableStyleDefinition(id string) bool
+}
+
 // defaultTableStyleResolver is a no-op resolver that always returns the
 // engine-default GUID.  Used when no template-aware resolver is available.
 //
@@ -43,8 +50,8 @@ func (defaultTableStyleResolver) ResolveTableStyleID(authored string) string {
 }
 
 // templateTableStyleResolver reads the same open ZIP used to build the deck,
-// only when a table actually requests @template-default. This prevents a
-// concurrent template replacement from changing the style mid-generation.
+// only when a table needs template style resolution or definition lookup.
+// This prevents a concurrent template replacement from changing its style.
 func (ctx *singlePassContext) templateTableStyleResolver() (TableStyleResolver, error) {
 	if ctx.tableStyleReader != nil {
 		return ctx.tableStyleReader, nil

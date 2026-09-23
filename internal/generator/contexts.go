@@ -22,8 +22,8 @@ type ZipContext struct {
 	templateReader *zip.ReadCloser
 	templateIndex  utils.ZipIndex // O(1) filename lookups into templateReader
 	templatePath   string
-	// Borrowed lazily from templateReader only when a table requests
-	// @template-default; both reads use the same ZIP snapshot.
+	// Borrowed lazily from templateReader when a table needs template style
+	// resolution or definition lookup; both reads use the same ZIP snapshot.
 	tableStyleReader *template.Reader
 	outputWriter     *zip.Writer
 	outputFile       *os.File

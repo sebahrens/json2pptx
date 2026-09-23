@@ -262,7 +262,8 @@ func (ctx *singlePassContext) prepareImages() error {
 				ctx.processImageContent(slideNum, item, shape, shapeIdx)
 			case ContentTable:
 				var tableStyleResolver TableStyleResolver
-				if tableSpec, ok := item.Value.(*types.TableSpec); ok && tableSpec.Style.StyleID == template.TemplateDefaultSentinel {
+				if tableSpec, ok := item.Value.(*types.TableSpec); ok && tableSpec != nil &&
+					(tableSpec.Style.StyleID == template.TemplateDefaultSentinel || tableSpec.Style.UseTableStyle) {
 					var err error
 					tableStyleResolver, err = ctx.templateTableStyleResolver()
 					if err != nil {

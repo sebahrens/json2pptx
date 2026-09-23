@@ -109,6 +109,22 @@ type stubResolver struct {
 	resolved string
 }
 
+func TestPopulateTableInShapeUnknownResolverPreservesStyleControl(t *testing.T) {
+	const guid = "{ABCDEF01-1234-5678-9ABC-DEF012345678}"
+	table := &types.TableSpec{
+		Headers: []string{"Region"},
+		Style:   types.TableStyle{UseTableStyle: true, StyleID: guid},
+	}
+	placeholder := types.PlaceholderInfo{Bounds: types.BoundingBox{Width: 5486400, Height: 3657600}}
+	result, err := PopulateTableInShape(table, placeholder, nil, stubResolver{resolved: guid})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(result.XML, `<a:solidFill><a:schemeClr val="accent1"/>`) || strings.Contains(result.XML, `b="1"`) {
+		t.Error("resolver without definition metadata unexpectedly triggered explicit fallback")
+	}
+}
+
 func (s stubResolver) ResolveTableStyleID(_ string) string { return s.resolved }
 
 func TestPopulateTableInShape_WithResolver(t *testing.T) {

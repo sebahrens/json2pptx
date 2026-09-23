@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -339,6 +340,7 @@ type tableStyleIndex struct {
 	reader       *Reader
 	once         sync.Once
 	styles       map[string]string // styleId → styleName
+	definitions  map[string]bool   // styleId → has non-empty formatting rules
 	defaultStyle string            // def attribute from tblStyleLst (template's declared default)
 }
 
@@ -355,6 +357,11 @@ func (idx *tableStyleIndex) lookup(id string) (name string, ok bool) {
 	idx.once.Do(idx.parse)
 	name, ok = idx.styles[id]
 	return
+}
+
+func (idx *tableStyleIndex) hasDefinition(id string) bool {
+	idx.once.Do(idx.parse)
+	return idx.definitions[id]
 }
 
 // TableStyleEntry is an {ID, Name} pair from ppt/tableStyles.xml.
@@ -394,6 +401,7 @@ func (idx *tableStyleIndex) declaredDefault() (string, bool) {
 // log — never a load failure.
 func (idx *tableStyleIndex) parse() {
 	idx.styles = make(map[string]string)
+	idx.definitions = make(map[string]bool)
 
 	data, err := idx.reader.ReadFile("ppt/tableStyles.xml")
 	if err != nil {
@@ -414,6 +422,7 @@ func (idx *tableStyleIndex) parse() {
 	for _, s := range lst.Styles {
 		if s.StyleID != "" {
 			idx.styles[s.StyleID] = s.StyleName
+			idx.definitions[s.StyleID] = idx.definitions[s.StyleID] || strings.TrimSpace(s.InnerXML) != ""
 		}
 	}
 }
@@ -425,12 +434,12 @@ type tblStyleLstXML struct {
 	Styles  []tblStyleXML `xml:"tblStyle"`
 }
 
-// tblStyleXML represents a single <a:tblStyle> entry.  We only need the ID and
-// name — the full style definition (bands, fills, borders) is opaque to this
-// index.
+// tblStyleXML represents a single <a:tblStyle> entry. The body is kept only
+// to distinguish a real definition from an empty styleId/styleName stub.
 type tblStyleXML struct {
 	StyleID   string `xml:"styleId,attr"`
 	StyleName string `xml:"styleName,attr"`
+	InnerXML  string `xml:",innerxml"`
 }
 
 // XML structure definitions for style extraction (more detailed than layout parsing)
