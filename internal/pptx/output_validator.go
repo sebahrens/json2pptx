@@ -248,6 +248,7 @@ func (ov *OutputValidator) Validate() *Report {
 			Scope:      scope,
 		})
 	}
+	report.Findings = append(report.Findings, ov.fallbackDPIFindings()...)
 
 	return report
 }

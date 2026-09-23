@@ -1201,8 +1201,7 @@ func cloneDiagramSpecForCell(spec *types.DiagramSpec) *types.DiagramSpec {
 }
 
 // generateDiagramCellInserts renders a diagram cell via svggen and returns IconInserts
-// for native SVG embedding. The diagram is rendered as SVG only (no rasterization
-// needed — the singlepass generator uses a 1x1 transparent PNG fallback for native SVG).
+// for native SVG embedding with a frame-sized PNG fallback for SVG-unaware viewers.
 //
 // diagCtx provides template theme colors and data palette so grid-cell diagrams
 // inherit the same color scheme as placeholder-based diagrams.
@@ -1271,7 +1270,8 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 	}
 
 	return []generator.IconInsert{{
-		SVGData: result.SVG,
+		SVGData:        result.SVG,
+		FallbackSizePx: diagramFallbackSizePx(cell.Bounds.CX, cell.Bounds.CY),
 		// An authored alt wins; the derived fallback describes the diagram's
 		// contents rather than naming its type (go-slide-creator-6e8h).
 		Alt:      generator.DiagramAltTextFor(diagramSpec),
@@ -1285,6 +1285,22 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 		// behavior of grouped native shape cells (go-slide-creator-zg8q.10).
 		Group: cell.Group,
 	}}, warnings, nil
+}
+
+// diagramFallbackSizePx gives the raster fallback at least 150 pixels per
+// displayed inch on its longer side. The generator caps the final raster at
+// 2500px; normal slide-sized cells never approach that limit.
+func diagramFallbackSizePx(widthEMU, heightEMU int64) int {
+	const emuPerInch int64 = 914400
+	const targetDPI int64 = 150
+	longer := max(widthEMU, heightEMU)
+	if longer <= 0 {
+		return 128 // still use the text-capable diagram renderer
+	}
+	if longer >= 2500*emuPerInch/targetDPI {
+		return 2500
+	}
+	return int((longer*targetDPI + emuPerInch - 1) / emuPerInch)
 }
 
 // resolveColumnsDTO parses the JSON columns field and returns percentage widths.

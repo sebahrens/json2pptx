@@ -734,10 +734,13 @@ A blocking finding means PowerPoint or Keynote would show the "we found a proble
 |-------|-----------|--------------|
 | `opc` | `structural` | `OPC_MISSING_PART`, `OPC_DANGLING_REL`, `OPC_DUPLICATE_REL_ID`, `OPC_MISSING_ELEMENT`, `OPC_MALFORMED_XML`, `OPC_MISSING_CONTENT_TYPE`, `OPC_MISSING_CONTENT_TYPE_OVERRIDE` |
 | `ooxml` | `ooxml_content` | `OOXML_INVALID_COLOR`, `OOXML_INVALID_SCHEME`, `OOXML_DUPLICATE_ID`, `OOXML_INVALID_TABLE`, `OOXML_ZERO_EXTENT`, `OOXML_ILLEGAL_XML_CHAR`, `OOXML_SLIDE_COUNT_MISMATCH`, `OOXML_EMPTY_REQUIRED_ATTR` |
+| `ooxml` | `raster_fallback` | `OOXML_LOW_FALLBACK_DPI` (SVG picture's paired PNG is below 96 DPI at its displayed size; advisory for SVG-unaware viewers) |
 
 `OPC_*` and the structural-corruption `OOXML_*` codes (`OOXML_ILLEGAL_XML_CHAR`, `OOXML_SLIDE_COUNT_MISMATCH`, `OOXML_INVALID_TABLE`) are always promoted to `severity: "blocking"`. Other `OOXML_*` codes are advisory `warning`s and do not fail strict mode unless the validator escalates them.
 
 `OOXML_INVALID_TABLE` fires when a table row's `<a:tc>` count does not match the table's `<a:gridCol>` count. It blocks because readers align cells positionally: the row's remaining cells shift left and a merged cell's text is dropped outright (LibreOffice paints it as an empty block). Author merges with `col_span` / `row_span` on the origin cell only — the engine materialises the `hMerge` / `vMerge` continuation cells ECMA-376 requires, so you never write them yourself.
+
+Grid-cell charts and diagrams ship text-preserving, frame-sized PNG fallbacks alongside their SVGs. Their generation requires `rsvg-convert` or `resvg`; without either converter, generation fails instead of silently shipping an unlabeled raster. Small SVG icons still use the lightweight icon fallback path.
 
 ### Dropped content also fails strict mode
 

@@ -1,9 +1,61 @@
 package pptx
 
 import (
+	"bytes"
+	"image"
+	"image/png"
 	"strings"
 	"testing"
 )
+
+func TestOutputValidator_SVGFallbackDPI(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		px     int
+		target string
+		svg    bool
+		warn   bool
+	}{
+		{"undersampled 128px fallback", 128, "../media/fallback.png", true, true},
+		{"absolute relationship target", 128, "/ppt/media/fallback.png", true, true},
+		{"frame-sized fallback", 1050, "../media/fallback.png", true, false},
+		{"ordinary PNG is not an SVG fallback", 128, "../media/fallback.png", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := validPPTXFiles()
+			files["[Content_Types].xml"] = `<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="svg" ContentType="image/svg+xml"/></Types>`
+			files["ppt/slides/slide1.xml"] = `<?xml version="1.0"?><p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:cSld><p:spTree><p:pic><p:blipFill><a:blip r:embed="rId1"><a:extLst><a:ext uri="svg"><asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="rId2"/></a:ext></a:extLst></a:blip></p:blipFill><p:spPr><a:xfrm><a:ext cx="6400800" cy="6400800"/></a:xfrm></p:spPr></p:pic></p:spTree></p:cSld></p:sld>`
+			if !tc.svg {
+				files["ppt/slides/slide1.xml"] = strings.Replace(files["ppt/slides/slide1.xml"], `<asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="rId2"/>`, "", 1)
+			}
+			files["ppt/slides/_rels/slide1.xml.rels"] = `<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/fallback.png"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image.svg"/></Relationships>`
+			files["ppt/slides/_rels/slide1.xml.rels"] = strings.Replace(files["ppt/slides/_rels/slide1.xml.rels"], "../media/fallback.png", tc.target, 1)
+			var buf bytes.Buffer
+			if err := png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, tc.px, tc.px))); err != nil {
+				t.Fatal(err)
+			}
+			files["ppt/media/fallback.png"] = buf.String()
+			files["ppt/media/image.svg"] = `<svg xmlns="http://www.w3.org/2000/svg"/>`
+			report, err := ValidateOutputBytes(createValidatorTestZIP(files))
+			if err != nil {
+				t.Fatal(err)
+			}
+			found := false
+			for _, finding := range report.Findings {
+				if finding.Code != "OOXML_LOW_FALLBACK_DPI" {
+					continue
+				}
+				found = true
+				if finding.Severity != SeverityWarning || finding.SlideIndex != 0 || finding.Scope != RepairScopeGenerator {
+					t.Errorf("wrong fallback warning provenance: %+v", finding)
+				}
+			}
+			if found != tc.warn {
+				t.Errorf("fallback warning present = %v, want %v; report = %+v", found, tc.warn, report.Findings)
+			}
+		})
+	}
+}
 
 // validPPTXFiles returns a file map for a structurally valid minimal PPTX.
 func validPPTXFiles() map[string]string {

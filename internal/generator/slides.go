@@ -117,17 +117,20 @@ type SlideSpec struct {
 	ImageInserts    []ImageInsert // Image files from shape_grid (require media registration)
 }
 
-// IconInsert describes an SVG icon to embed in a slide as a p:pic element.
+// IconInsert describes an SVG icon or grid-cell diagram embedded as p:pic.
 // The generator registers the SVG + PNG fallback as media files and creates
 // the necessary relationships.
 type IconInsert struct {
-	SVGData  []byte // Raw SVG content
-	Alt      string // Alt text for accessibility
-	OffsetX  int64  // X position in EMU
-	OffsetY  int64  // Y position in EMU
-	ExtentCX int64  // Width in EMU
-	ExtentCY int64  // Height in EMU
-	Group    bool   // When true, wrap the emitted p:pic in a p:grpSp so PowerPoint treats it as a single selection target.
+	SVGData []byte // Raw SVG content
+	Alt     string // Alt text for accessibility
+	// FallbackSizePx is the target longer side for the PNG paired with the SVG.
+	// Zero keeps the small-icon default; diagrams set this from their frame size.
+	FallbackSizePx int
+	OffsetX        int64 // X position in EMU
+	OffsetY        int64 // Y position in EMU
+	ExtentCX       int64 // Width in EMU
+	ExtentCY       int64 // Height in EMU
+	Group          bool  // When true, wrap the emitted p:pic in a p:grpSp so PowerPoint treats it as a single selection target.
 }
 
 // ImageInsert describes an image file to embed in a slide as a p:pic element.

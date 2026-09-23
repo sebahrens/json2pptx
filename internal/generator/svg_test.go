@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"image/png"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,6 +13,58 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
+
+func TestSVGConverter_RasterizeBytesToPNGPreservesText(t *testing.T) {
+	converter := NewSVGConverter()
+	if !converter.IsPNGAvailable() {
+		t.Skip("rsvg-convert or resvg not installed")
+	}
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"><text x="20" y="60" style="font: 30px Arial, sans-serif;font-family:Arial, sans-serif" fill="#000000">TEXT</text></svg>`)
+	for _, preference := range []string{PNGConverterAuto, PNGConverterRsvg, PNGConverterResvg} {
+		t.Run(preference, func(t *testing.T) {
+			converter.PreferredPNGConverter = preference
+			if preference == PNGConverterRsvg && !converter.IsRsvgConvertAvailable() ||
+				preference == PNGConverterResvg && !converter.IsResvgAvailable() {
+				t.Skipf("%s not installed", preference)
+			}
+			pngData, err := converter.RasterizeBytesToPNG(context.Background(), svg, 600)
+			if err != nil {
+				t.Fatal(err)
+			}
+			image, err := png.Decode(bytes.NewReader(pngData))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if image.Bounds().Dx() != 600 || image.Bounds().Dy() != 300 {
+				t.Fatalf("fallback dimensions = %v, want 600x300", image.Bounds())
+			}
+			visible := false
+			for y := 0; y < image.Bounds().Dy() && !visible; y++ {
+				for x := 0; x < image.Bounds().Dx(); x++ {
+					_, _, _, alpha := image.At(x, y).RGBA()
+					if alpha > 0 {
+						visible = true
+						break
+					}
+				}
+			}
+			if !visible {
+				t.Fatal("raster fallback dropped the SVG text")
+			}
+		})
+	}
+}
+
+func TestSVGConverter_RasterizeBytesToPNGWithoutConverter(t *testing.T) {
+	converter := NewSVGConverter()
+	markToolsFound(converter)
+	if _, err := converter.RasterizeBytesToPNG(context.Background(), []byte(`<svg/>`), 600); err == nil {
+		t.Fatal("diagram fallback must not silently use a text-dropping renderer")
+	}
+	if _, err := converter.RasterizeBytesToPNG(context.Background(), nil, 600); err == nil {
+		t.Fatal("empty diagram SVG must fail")
+	}
+}
 
 // pngSignature is the 8-byte magic header that prefixes every valid PNG file.
 var pngSignature = []byte{0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'}

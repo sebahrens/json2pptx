@@ -359,9 +359,9 @@ const iconFallbackPNGSizePx = 128
 
 // iconFallbackPNG rasterizes a (small) icon SVG into a real PNG fallback for
 // the a:blip reference, so viewers that ignore the asvg:svgBlip extension
-// still show the icon. Icons are tiny, so rasterizing them is cheap (unlike
-// full diagrams, which keep the 1x1 stub). Falls back to transparentPNG1x1
-// when the SVG cannot be parsed or rasterized.
+// still show the icon. Diagram cells use SVGConverter.RasterizeBytesToPNG
+// instead because this in-process renderer drops svggen chart text. Falls
+// back to transparentPNG1x1 when the icon cannot be parsed or rasterized.
 func iconFallbackPNG(svgData []byte) []byte {
 	if len(svgData) == 0 {
 		return transparentPNG1x1

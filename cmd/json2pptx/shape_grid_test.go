@@ -2939,6 +2939,29 @@ func TestResolveShapeGrid_DiagramCell(t *testing.T) {
 	if result.IconInserts[0].ExtentCX == 0 || result.IconInserts[0].ExtentCY == 0 {
 		t.Error("diagram icon insert has zero dimensions")
 	}
+	ins := result.IconInserts[0]
+	if ins.FallbackSizePx < diagramFallbackSizePx(ins.ExtentCX, ins.ExtentCY) || ins.FallbackSizePx <= 128 {
+		t.Errorf("diagram fallback target %dpx is too small for %dx%d EMU frame", ins.FallbackSizePx, ins.ExtentCX, ins.ExtentCY)
+	}
+}
+
+func TestDiagramFallbackSizePx(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		width, height int64
+		want          int
+	}{
+		{"seven inches", 7 * 914400, 4 * 914400, 1050},
+		{"round up fractional pixel", 914400 + 1, 914400, 151},
+		{"unknown bounds", 0, 0, 128},
+		{"extreme bounds stay capped", 1 << 62, 914400, 2500},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := diagramFallbackSizePx(tc.width, tc.height); got != tc.want {
+				t.Errorf("diagramFallbackSizePx(%d, %d) = %d, want %d", tc.width, tc.height, got, tc.want)
+			}
+		})
+	}
 }
 
 func TestIconAltText(t *testing.T) {

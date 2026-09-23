@@ -398,9 +398,19 @@ func (ctx *singlePassContext) scanTemplate() error { //nolint:gocognit,gocyclo
 		for iconIdx, icon := range slide.IconInserts {
 			sourceID := fmt.Sprintf("icon-s%d-i%d", slideNum, iconIdx)
 			svgMediaFile, pngMediaFile := ctx.allocSVGPNGPair(sourceID)
+			var pngData []byte
+			if icon.FallbackSizePx > 0 {
+				var err error
+				pngData, err = ctx.svgConverter.RasterizeBytesToPNG(ctx.ctx, icon.SVGData, icon.FallbackSizePx)
+				if err != nil {
+					return fmt.Errorf("slide %d diagram fallback PNG: %w", slideNum, err)
+				}
+			} else {
+				pngData = iconFallbackPNG(icon.SVGData)
+			}
 			ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
 				svgData:        icon.SVGData,
-				pngData:        iconFallbackPNG(icon.SVGData),
+				pngData:        pngData,
 				svgMediaFile:   svgMediaFile,
 				pngMediaFile:   pngMediaFile,
 				description:    icon.Alt,

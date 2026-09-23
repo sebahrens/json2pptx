@@ -3,9 +3,12 @@ package main
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"fmt"
+	"image/png"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,6 +18,82 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+func TestRunPresentation_ChartPatternFallbackResolution(t *testing.T) {
+	if _, err := exec.LookPath("rsvg-convert"); err != nil {
+		if _, err := exec.LookPath("resvg"); err != nil {
+			t.Skip("chart PNG fallback requires rsvg-convert or resvg")
+		}
+	}
+	data, err := os.ReadFile("../../examples/chart-insights-split.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var input PresentationInput
+	if err := json.Unmarshal(data, &input); err != nil {
+		t.Fatal(err)
+	}
+	applyDefaults(&input)
+	res, cleanup, err := RunPresentation(context.Background(), &input, RenderOptions{
+		OutputDir: t.TempDir(), TemplatesDir: runnerTestTemplatesDir(t), StrictFit: "warn", OutputValidation: "strict",
+	})
+	defer cleanup()
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := pptx.ValidateOutputFile(res.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range report.Findings {
+		if finding.Code == "OOXML_LOW_FALLBACK_DPI" {
+			t.Errorf("chart pattern still ships a low-resolution fallback: %+v", finding)
+		}
+	}
+	archive, err := zip.OpenReader(res.OutputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = archive.Close() }()
+	chartPNGs := 0
+	for _, file := range archive.File {
+		if !strings.HasPrefix(file.Name, "ppt/media/") || !strings.HasSuffix(file.Name, ".png") {
+			continue
+		}
+		reader, err := file.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		chartImage, decodeErr := png.Decode(reader)
+		_ = reader.Close()
+		if decodeErr != nil {
+			t.Fatal(decodeErr)
+		}
+		bounds := chartImage.Bounds()
+		if bounds.Dx() < 1000 || bounds.Dy() < 500 {
+			continue
+		}
+		chartPNGs++
+		// The chart fixture places category labels below the axis, in the
+		// bottom 8% of its SVG. The old canvas rasterizer produced a large
+		// fallback but dropped every <text> element, leaving this band blank.
+		dark := 0
+		for y := bounds.Min.Y + bounds.Dy()*92/100; y < bounds.Max.Y; y++ {
+			for x := bounds.Min.X + bounds.Dx()/10; x < bounds.Max.X; x++ {
+				r, g, b, _ := chartImage.At(x, y).RGBA()
+				if r < 45000 && g < 45000 && b < 45000 {
+					dark++
+				}
+			}
+		}
+		if dark < 20 {
+			t.Errorf("%s has no visible category labels in the PNG fallback", file.Name)
+		}
+	}
+	if chartPNGs != 2 {
+		t.Errorf("high-resolution chart fallbacks = %d, want 2", chartPNGs)
+	}
+}
 
 func TestRunPresentation_BlankSlideTitleSurvives(t *testing.T) {
 	text := "Blank canvas heading"

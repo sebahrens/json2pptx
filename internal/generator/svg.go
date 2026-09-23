@@ -2,11 +2,14 @@
 package generator
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -149,6 +152,81 @@ func (c *SVGConverter) IsNativeAvailable() bool {
 func (c *SVGConverter) IsPNGAvailable() bool {
 	c.findTools()
 	return c.rsvgConvertPath != "" || c.resvgPath != ""
+}
+
+// RasterizeBytesToPNG renders an in-memory SVG at a bounded pixel size while
+// preserving text. The in-process canvas rasterizer used for tiny icons ignores
+// svggen's CSS font shorthand on charts, so chart/diagram fallbacks must use a
+// full SVG renderer just like visual QA does.
+func (c *SVGConverter) RasterizeBytesToPNG(ctx context.Context, svgData []byte, targetSizePx int) ([]byte, error) {
+	const maxRasterFallbackPNGSizePx = 2500
+	if len(svgData) == 0 {
+		return nil, fmt.Errorf("cannot rasterize an empty SVG")
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	c.findTools()
+	if targetSizePx < iconFallbackPNGSizePx {
+		targetSizePx = iconFallbackPNGSizePx
+	}
+	if targetSizePx > maxRasterFallbackPNGSizePx {
+		targetSizePx = maxRasterFallbackPNGSizePx
+	}
+	preference := c.PreferredPNGConverter
+	if preference == "" {
+		preference = PNGConverterAuto
+	}
+	var converters []struct {
+		name string
+		path string
+		args []string
+	}
+	px := strconv.Itoa(targetSizePx)
+	rsvg := struct {
+		name, path string
+		args       []string
+	}{"rsvg-convert", c.rsvgConvertPath, []string{"-w", px, "-h", px, "-a"}}
+	resvg := struct {
+		name, path string
+		args       []string
+	}{"resvg", c.resvgPath, []string{"-w", px, "-h", px, "-", "-c"}}
+	switch preference {
+	case PNGConverterRsvg:
+		converters = append(converters, rsvg)
+	case PNGConverterResvg:
+		converters = append(converters, resvg)
+	default:
+		converters = append(converters, rsvg, resvg)
+	}
+	var lastErr error
+	for _, converter := range converters {
+		if converter.path == "" {
+			continue
+		}
+		callCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		cmd := exec.CommandContext(callCtx, converter.path, converter.args...) //nolint:gosec // converter path is discovered from PATH; args are fixed except bounded integer size
+		cmd.Stdin = bytes.NewReader(svgData)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err := cmd.Run()
+		cancel()
+		if err == nil && stdout.Len() > 0 {
+			if _, decodeErr := png.DecodeConfig(bytes.NewReader(stdout.Bytes())); decodeErr == nil {
+				return stdout.Bytes(), nil
+			} else {
+				err = fmt.Errorf("invalid PNG output: %w", decodeErr)
+			}
+		}
+		if err == nil {
+			err = fmt.Errorf("empty PNG output")
+		}
+		lastErr = fmt.Errorf("%s: %s: %w", converter.name, strings.TrimSpace(stderr.String()), err)
+	}
+	if lastErr == nil {
+		return nil, fmt.Errorf("no PNG converter found (need rsvg-convert or resvg)")
+	}
+	return nil, lastErr
 }
 
 // IsResvgAvailable checks if resvg is available.
