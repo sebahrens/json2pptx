@@ -4,14 +4,14 @@
   "accent_strategy": "primary",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Value Driver Tree"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Root metric decomposed into branches and leaf items"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Net Benefits decomposition (with annotations)"}
       ],
@@ -48,7 +48,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Three branches, no annotations"}
       ],

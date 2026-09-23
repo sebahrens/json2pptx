@@ -4,14 +4,14 @@
   "accent_strategy": "primary",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Vendor Scorecard"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Ranked horizontal bars with per-bar insight callouts"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Vendor evaluation scores (5 vendors, 100-pt scale)"}
       ],
@@ -35,7 +35,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Opportunity sizing (3 horizontal bars, dollar unit)"}
       ],
@@ -52,7 +52,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Top growth drivers (8 ranked levers, custom accent)"}
       ],

@@ -12,7 +12,7 @@
     {
       "type": "split_slide",
       "base": {
-        "layout_id": "slideLayout2",
+        "layout_id": "content",
         "content": [
           {"placeholder_id": "title", "type": "text", "text_value": "Vendor Matrix"},
           {

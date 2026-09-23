@@ -4,14 +4,14 @@
   "accent_strategy": "primary",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Chart + Insights"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Showcase of the chart-insights-split pattern"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Quarterly Revenue Trajectory"}
       ],
@@ -38,7 +38,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Custom Ratio (70/30)"}
       ],
@@ -66,7 +66,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Insights-Only Fallback"}
       ],

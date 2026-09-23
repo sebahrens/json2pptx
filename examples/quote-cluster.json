@@ -3,14 +3,14 @@
   "output_filename": "quote-cluster.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Voice of the Customer"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Six months after the platform launch"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "What stakeholders are telling us"}
       ],
@@ -29,7 +29,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Where there is still friction"}
       ],

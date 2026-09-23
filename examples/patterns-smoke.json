@@ -3,7 +3,7 @@
   "output_filename": "patterns-smoke.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "KPI 3-Up"}
       ],
@@ -17,7 +17,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "KPI 4-Up"}
       ],
@@ -33,7 +33,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Business Model Canvas"}
       ],
@@ -53,7 +53,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Priority Matrix"}
       ],
@@ -70,7 +70,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Product Roadmap"}
       ],
@@ -86,7 +86,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Service Tiers"}
       ],
@@ -107,7 +107,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Service Tiers (with cell_overrides)"}
       ],
@@ -129,7 +129,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Our Values"}
       ],
@@ -144,7 +144,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Before vs After"}
       ],
@@ -163,7 +163,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Modernization Roadmap"}
       ],
@@ -180,7 +180,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Quarterly Revenue Trajectory"}
       ],
@@ -207,7 +207,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "FY26 Strategy: Executive Summary"}
       ],
@@ -231,7 +231,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Industrial Value Chain"}
       ],
@@ -250,7 +250,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Today's Agenda"}
       ],
@@ -268,7 +268,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Our Engagement Team"}
       ],
@@ -285,7 +285,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "What stakeholders are telling us"}
       ],
@@ -304,7 +304,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Digital Maturity Model"}
       ],
@@ -322,7 +322,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Joint Engagement Team"}
       ],
@@ -341,7 +341,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"}
       ],
@@ -358,7 +358,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Option Evaluation"}
       ],
@@ -377,7 +377,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Case Study"}
       ],

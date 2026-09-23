@@ -3,14 +3,14 @@
   "output_filename": "scqa-summary.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Cloud Cost Crisis: An Executive Brief"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "SCQA framing for the FY26 strategy review"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Why we are recommending a FinOps reset"}
       ],
@@ -40,7 +40,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "All-string minimal form"}
       ],

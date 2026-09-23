@@ -4,14 +4,14 @@
   "accent_strategy": "primary",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Cloud Migration Programme"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Four phases, single track, with key milestones"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Programme Roadmap (4 phases, active = Build)"}
       ],
@@ -51,7 +51,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Minimal 3-phase form (no milestones)"}
       ],
@@ -67,7 +67,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Max 6-phase form with accent override"}
       ],

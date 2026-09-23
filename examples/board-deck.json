@@ -3,14 +3,14 @@
   "output_filename": "board-deck.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Board of Directors Update"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Q1 2026 — Confidential"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Revenue Highlight"}
       ],
@@ -24,7 +24,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Operating Metrics"}
       ],
@@ -39,7 +39,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Strategic Priorities"}
       ],
@@ -56,7 +56,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Customer Voice"}
       ],
@@ -70,7 +70,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Platform Architecture"}
       ],
@@ -88,7 +88,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Operational Transformation"}
       ],
@@ -107,7 +107,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Efficiency Gains"}
       ],
@@ -120,7 +120,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Deal Approval Workflow"}
       ],
@@ -136,7 +136,7 @@
       }
     },
     {
-      "layout_id": "slideLayout5",
+      "layout_id": "closing",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Thank You"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Questions & Discussion"}

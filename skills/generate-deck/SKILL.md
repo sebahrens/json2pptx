@@ -1188,8 +1188,8 @@ Two opt-in top-level fields raise the deck from a flat slide list to a structure
 ```json
 {
   "structure": {
-    "cover":   {"layout_id": "slideLayout1", "content": [...]},
-    "closing": {"layout_id": "slideLayout1", "content": [...]},
+    "cover":   {"layout_id": "title", "content": [...]},
+    "closing": {"layout_id": "closing", "content": [...]},
     "auto_agenda": true,
     "sections": [
       {"title": "Situation",     "slides": [...]},
@@ -1198,6 +1198,10 @@ Two opt-in top-level fields raise the deck from a flat slide list to a structure
   }
 }
 ```
+
+Use canonical layout IDs in reusable decks. A pinned ID such as
+`"layout_id": "slideLayout2"` is appropriate only when targeting a specific
+template whose layout has been inspected; it is not portable across templates.
 
 - `structure` is **mutually exclusive** with a top-level `slides` — pick one.
 - `auto_agenda: true` inserts an agenda slide listing every section title after the cover (requires ≥ 2 sections).

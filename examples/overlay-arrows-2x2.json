@@ -3,7 +3,7 @@
   "output_filename": "overlay-arrows-2x2.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {
           "placeholder_id": "title",

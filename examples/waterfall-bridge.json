@@ -4,14 +4,14 @@
   "accent_strategy": "primary",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Waterfall Bridge"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "P&L walks, cost drivers, and gap-to-target views"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "FY26 EBITDA bridge ($m, 5 columns with subtotal)"}
       ],
@@ -30,7 +30,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Cost driver decomposition (7 columns, two subtotals)"}
       ],
@@ -51,7 +51,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Gap to plan (4 columns, single delta dominates)"}
       ],

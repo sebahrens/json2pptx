@@ -4,14 +4,14 @@
   "accent_strategy": "primary",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Industrial Value Chain"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Equal-width steps with bold labels and short descriptions"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "End-to-end mining and metals chain (6 steps, manufacturing highlighted)"}
       ],
@@ -34,7 +34,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Minimal 4-step form (no highlight)"}
       ],
@@ -51,7 +51,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "10-step closed-loop chain with custom highlight color"}
       ],

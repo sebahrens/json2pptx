@@ -4,7 +4,7 @@
   "output_filename": "shape-grid-panels.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {
           "placeholder_id": "title",
@@ -516,7 +516,7 @@
       }
     },
     {
-      "layout_id": "slideLayout5",
+      "layout_id": "closing",
       "content": [
         {
           "placeholder_id": "title",

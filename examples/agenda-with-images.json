@@ -3,14 +3,14 @@
   "output_filename": "agenda-with-images.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Q3 Strategy Review"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Visual agenda preview"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Today's Agenda"}
       ],

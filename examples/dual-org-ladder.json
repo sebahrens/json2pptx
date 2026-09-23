@@ -3,14 +3,14 @@
   "output_filename": "dual-org-ladder.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Joint Engagement Team"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Acme Industries × Strategy Partners LLP"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Engagement Team — Paired Roles"}
       ],
@@ -29,7 +29,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Minimal pair (2 rows, connectors off)"}
       ],
@@ -47,7 +47,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Six-row ladder with accent overrides"}
       ],

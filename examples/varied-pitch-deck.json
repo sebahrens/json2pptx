@@ -3,14 +3,14 @@
   "output_filename": "varied-pitch-deck.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Acme Analytics Platform"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Series B Investor Pitch — Q2 2026"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Today's Agenda"}
       ],
@@ -26,7 +26,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "The Opportunity"}
       ],
@@ -40,7 +40,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Key Metrics"}
       ],
@@ -54,7 +54,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Why We Win"}
       ],
@@ -73,7 +73,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "How It Works"}
       ],
@@ -91,7 +91,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Product Suite"}
       ],
@@ -109,7 +109,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Product Roadmap"}
       ],
@@ -124,7 +124,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Our Moat"}
       ],
@@ -136,7 +136,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Competitive Landscape"}
       ],
@@ -155,7 +155,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "What Our Customers Say"}
       ],
@@ -169,7 +169,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Growth at a Glance"}
       ],
@@ -201,7 +201,7 @@
       }
     },
     {
-      "layout_id": "slideLayout5",
+      "layout_id": "closing",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "The Ask: $25M Series B"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "contact@acme-analytics.com"}

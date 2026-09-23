@@ -3,14 +3,14 @@
   "output_filename": "team-bios.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout1",
+      "layout_id": "title",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Meet The Team"},
         {"placeholder_id": "subtitle", "type": "text", "text_value": "Engagement leads for the transformation programme"}
       ]
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Core Engagement Team"}
       ],
@@ -27,7 +27,7 @@
       }
     },
     {
-      "layout_id": "slideLayout2",
+      "layout_id": "content",
       "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Extended Leadership Bench"}
       ],
