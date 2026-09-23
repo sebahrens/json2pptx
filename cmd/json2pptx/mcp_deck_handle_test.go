@@ -104,6 +104,111 @@ func TestDeckHandleRoundTrip(t *testing.T) {
 	}
 }
 
+func unpinnedHandleSpec() string {
+	return strings.Replace(renderSpecWithTitle("Template continuity"), "  template: midnight-blue\n", "", 1)
+}
+
+func TestDeckHandleValidateThenRenderKeepsChosenTemplate(t *testing.T) {
+	mc := handleTestConfig(t)
+	first := renderDeckSpec(t, mc, map[string]any{"spec": unpinnedHandleSpec(), "template": "midnight-blue"})
+	if first.DeckID == "" || first.Template != "midnight-blue" {
+		t.Fatalf("initial render handle/template = %q/%q", first.DeckID, first.Template)
+	}
+	if first.Explanation == nil || first.Explanation.Template != "midnight-blue" {
+		t.Errorf("initial render explanation uses template %+v", first.Explanation)
+	}
+	validated := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{
+		"deck_id": first.DeckID,
+		"patch":   []any{map[string]any{"op": "replace", "path": "/slides/1/title", "value": "Next steps"}},
+	}))
+	if !validated.OK || !equalInts(validated.ChangedSlides, []int{1}) {
+		t.Fatalf("patched validation = ok:%v changed:%v findings:%+v", validated.OK, validated.ChangedSlides, validated.Findings)
+	}
+	explainedResult := mustCall(t, mc.handleExplainDeckSpec, map[string]any{"deck_id": first.DeckID})
+	if explainedResult.IsError {
+		t.Fatalf("explain failed: %+v", explainedResult.Content)
+	}
+	var explained explainDeckSpecResponse
+	structuredInto(t, explainedResult.StructuredContent, &explained)
+	if explained.Template != "midnight-blue" {
+		t.Errorf("explain changed the template to %q", explained.Template)
+	}
+	second := renderDeckSpec(t, mc, map[string]any{"deck_id": first.DeckID})
+	if second.Template != "midnight-blue" {
+		t.Errorf("validate then render changed the template to %q", second.Template)
+	}
+	if second.DeckID != first.DeckID {
+		t.Errorf("deck handle changed from %q to %q", first.DeckID, second.DeckID)
+	}
+}
+
+func TestDeckHandleUpdatePreservesOmittedMetadata(t *testing.T) {
+	mc := handleTestConfig(t)
+	id := mc.rememberDeck("", []byte(unpinnedHandleSpec()), "authored.yaml", "midnight-blue")
+	if id == "" {
+		t.Fatal("no deck handle")
+	}
+	mc.rememberDeck(id, []byte(unpinnedHandleSpec()), "", "")
+	h, ok := mc.deckHandles.Load(id)
+	if !ok {
+		t.Fatal("updated handle missing")
+	}
+	if h.Template != "midnight-blue" || h.Filename != "authored.json" {
+		t.Errorf("omitted metadata was lost: template=%q filename=%q", h.Template, h.Filename)
+	}
+	mc.rememberDeck(id, []byte(unpinnedHandleSpec()), "renamed.yaml", "forest-green")
+	h, ok = mc.deckHandles.Load(id)
+	if !ok || h.Template != "forest-green" || h.Filename != "renamed.json" {
+		t.Errorf("explicit metadata did not replace the old values: handle=%+v loaded=%v", h, ok)
+	}
+}
+
+func TestValidateDeckHandleUsesRememberedTemplateForDiagnostics(t *testing.T) {
+	mc := handleTestConfig(t)
+	id := mc.rememberDeck("", []byte(unpinnedHandleSpec()), "authored.yaml", "definitely-not-a-template")
+	res := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"deck_id": id}))
+	if res.OK {
+		t.Fatalf("validation ignored the handle's unavailable template: %+v", res.Findings)
+	}
+	found := false
+	for _, f := range res.Findings {
+		if strings.Contains(f.Code, "TEMPLATE_NOT_FOUND") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("missing template diagnostic for handle template: %+v", res.Findings)
+	}
+}
+
+func TestPinnedTemplateOverridesRememberedOrRequestedTemplate(t *testing.T) {
+	mc := handleTestConfig(t)
+	pinned := renderDeckSpec(t, mc, map[string]any{
+		"spec":     renderSpecWithTitle("Pinned template"),
+		"template": "forest-green",
+	})
+	if pinned.Template != "midnight-blue" || pinned.Explanation == nil || pinned.Explanation.Template != "midnight-blue" {
+		t.Errorf("spec pin did not win: template=%q explanation=%+v", pinned.Template, pinned.Explanation)
+	}
+	explainedResult := mustCall(t, mc.handleExplainDeckSpec, map[string]any{"deck_id": pinned.DeckID})
+	if explainedResult.IsError {
+		t.Fatalf("explain failed: %+v", explainedResult.Content)
+	}
+	var explained explainDeckSpecResponse
+	structuredInto(t, explainedResult.StructuredContent, &explained)
+	if explained.Template != "midnight-blue" {
+		t.Errorf("explanation ignored spec pin: %q", explained.Template)
+	}
+
+	// A stale remembered default must not cause a false missing-template
+	// diagnostic when the spec itself pins a valid template.
+	id := mc.rememberDeck("", []byte(renderSpecWithTitle("Pinned template")), "pinned.yaml", "definitely-not-a-template")
+	validated := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"deck_id": id}))
+	if !validated.OK {
+		t.Errorf("validation used stale remembered template instead of pin: %+v", validated.Findings)
+	}
+}
+
 // TestDeckHandleExpiry pins the TTL contract: a handle older than the TTL is
 // gone, and using it is a diagnosed error naming spec as the way back — not a
 // silent render of a stale deck.

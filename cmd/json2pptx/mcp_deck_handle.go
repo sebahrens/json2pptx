@@ -101,8 +101,19 @@ func (s *deckHandleStore) Update(id string, h *deckHandle) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.entries[id]; !ok {
+	entry, ok := s.entries[id]
+	if !ok {
 		return
+	}
+	// Validation and explanation refresh the spec but do not choose a new
+	// template or filename. Keep the last render's metadata unless the caller
+	// supplied a replacement. Do this under the store lock so updates cannot
+	// briefly expose a handle with an empty template.
+	if h.Template == "" {
+		h.Template = entry.handle.Template
+	}
+	if h.Filename == "" {
+		h.Filename = entry.handle.Filename
 	}
 	s.entries[id] = deckHandleEntry{handle: h, expiresAt: s.now().Add(s.ttl)}
 }
@@ -564,6 +575,11 @@ func newDeckHandleFor(spec []byte, filename, template string) *deckHandle {
 func (mc *mcpConfig) rememberDeck(existingID string, spec []byte, filename, template string) string {
 	h := newDeckHandleFor(spec, filename, template)
 	if existingID != "" {
+		if filename == "" {
+			// newDeckHandleFor gives an unnamed new deck a default filename;
+			// for an existing deck omission instead means retain its name.
+			h.Filename = ""
+		}
 		mc.deckHandles.Update(existingID, h)
 		return existingID
 	}

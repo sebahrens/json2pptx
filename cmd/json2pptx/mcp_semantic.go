@@ -233,7 +233,7 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 	// 100-word bullet walls, placeholder copy — live in the COMPILED deck, so
 	// compile it and run the same collectors validate_input runs
 	// (go-slide-creator-05wn).
-	ds = append(ds, mc.compiledSpecFindings(filename, data, strictness)...)
+	ds = append(ds, mc.compiledSpecFindings(filename, data, strictness, src.Template)...)
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "validate_deck_spec",
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
@@ -519,7 +519,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 
 	// The explanation is a pure projection of the plan and works even when the
 	// spec still carries advisory findings, so compute it up front.
-	explanation := semantic.ExplainSpec(spec)
+	explanation := explainSpecWithTemplate(spec, templateName)
 
 	// Validate + compile to a raw PresentationInput. Blocking findings abort the
 	// render with the diagnostics surfaced on the result.
@@ -630,7 +630,7 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 		return api.MCPDiagnosticsError(parseDiags.ToDiagnostics()), nil
 	}
 
-	explanation := semantic.ExplainSpec(spec)
+	explanation := explainSpecWithTemplate(spec, src.Template)
 	if explanation.Template == "" {
 		resp := explainDeckSpecResponse{
 			DeckExplanation: explanation,
@@ -658,6 +658,17 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal explain_deck_spec response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+// explainSpecWithTemplate applies the same template precedence as Compile:
+// a spec pin wins, then the caller's selected or remembered template, then
+// the archetype default already supplied by ExplainSpec.
+func explainSpecWithTemplate(spec *semantic.DeckSpec, defaultTemplate string) semantic.DeckExplanation {
+	explanation := semantic.ExplainSpec(spec)
+	if spec.Meta.Template == "" && defaultTemplate != "" {
+		explanation.Template = defaultTemplate
+	}
+	return explanation
 }
 
 // explainDeckSpecResponse is the explanation plus the deck handle fields.
@@ -804,12 +815,12 @@ func semanticSuccessOrInternal(ctx context.Context, tool string, v any) (*mcp.Ca
 // the compiled deck, returning the findings as diagnostics carrying their
 // semantic paths. A spec that does not compile returns nothing: its blocking
 // errors are already reported by Check.
-func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictness semantic.Strictness) []diagnostics.Diagnostic {
+func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictness semantic.Strictness, defaultTemplate string) []diagnostics.Diagnostic {
 	spec, parseDiags := semantic.Parse(filename, data)
 	if spec == nil || parseDiags.HasErrors() {
 		return nil
 	}
-	input, compileResult, err := semantic.Compile(spec, semantic.CompileOptions{Strict: strictness})
+	input, compileResult, err := semantic.Compile(spec, semantic.CompileOptions{Strict: strictness, DefaultTemplate: defaultTemplate})
 	if err != nil || input == nil {
 		return nil
 	}
