@@ -93,7 +93,7 @@ Supported fix kinds (full vocabulary — also enumerated by get_capabilities.voc
 
 Text / title fits:
 - reduce_text: Truncate bullets/body text. Params: path (string, optional), max_items (int, for bullets), max_length (int, for text).
-- shorten_title: Truncate a title to max_length characters. Params: path (string, optional), max_length (int).
+- shorten_title: Truncate a title to max_length characters (max_chars is an alias emitted by measured title-fit findings). Params: path (string, optional), max_length or max_chars (int).
 - reduce_cell_text: Truncate a shape_grid cell's text to fit within a character budget. Params: cell_path (string, required, JSON Pointer e.g. "/slides/0/shape_grid/rows/1/cells/2"), max_chars (int, required). Truncates to max_chars-1 visible characters plus a single ellipsis (…). Handles markdown emphasis safely. Agents should prefer pre-generation budget awareness via expand_pattern over post-generation repair.
 
 Layout / pagination:
@@ -763,11 +763,15 @@ func applyShortenTitle(input *PresentationInput, slideIdx int, params map[string
 
 	// The finding that suggests this fix (HEADLINE_TOO_LONG) describes the
 	// problem in WORDS, while repair_slide's own description documents
-	// max_length in characters. Accept both so an agent replaying the finding's
-	// next_tool_call verbatim and an agent constructing the call from the tool
-	// description get the same behaviour (go-slide-creator-28zf).
+	// max_length in characters. Measured title-fit findings instead emit
+	// max_chars, so accept that alias as well; otherwise a replayed 90-character
+	// budget silently falls back to 50 and needlessly trips the fragment guard
+	// (go-slide-creator-ze9es).
 	maxWords := intParam(params, "max_words", 0)
 	maxLength := intParam(params, "max_length", 0)
+	if maxLength <= 0 {
+		maxLength = intParam(params, "max_chars", 0)
+	}
 	if maxWords <= 0 && maxLength <= 0 {
 		maxLength = 50 // historical default
 	}

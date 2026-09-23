@@ -100,9 +100,25 @@ func TestProposeRepairsConsumesRealValidateFindings(t *testing.T) {
 			if _, leaked := directive.Params["kind"]; leaked {
 				t.Fatalf("wire-only kind leaked into repair params: %+v", directive.Params)
 			}
-			// Replayability of this particular title-wrap suggestion is tracked
-			// separately in go-slide-creator-ze9es: repair_slide currently
-			// refuses its max_chars budget as semantic_review_required.
+			repaired, err := mc.handleRepairSlide(context.Background(), makeRequest(directive.ToolCall.ArgsTemplate))
+			if err != nil || repaired.IsError {
+				t.Fatalf("repair_slide rejected validation-derived directive: err=%v result=%s", err, textContent(repaired))
+			}
+			var repairOut repairSlideOutput
+			if err := json.Unmarshal([]byte(textContent(repaired)), &repairOut); err != nil {
+				t.Fatal(err)
+			}
+			if len(repairOut.AppliedFixes) != 1 || !repairOut.AppliedFixes[0].Applied {
+				t.Fatalf("validation-derived fix was not applied: %+v", repairOut.AppliedFixes)
+			}
+			var patched PresentationInput
+			if err := json.Unmarshal(repairOut.PatchedDeck, &patched); err != nil {
+				t.Fatal(err)
+			}
+			got := patched.Slides[0].Content[0].TextValue
+			if got == nil || len([]rune(*got)) > 90 || len([]rune(*got)) <= 50 || len(strings.Fields(*got)) < 8 {
+				t.Fatalf("measured title trim did not honor the 90-char budget without falling back to 50: %v", got)
+			}
 			return
 		}
 	}
