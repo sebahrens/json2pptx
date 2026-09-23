@@ -899,6 +899,14 @@ Mechanics:
 }
 ```
 
+### `CHROME_COLLISION`
+
+**Action:** `review`
+**Pattern:** `template`
+**Fix kind:** none
+
+Emitted at preflight when authored content targets a body/media placeholder that substantially overlaps opaque, non-placeholder artwork inherited from its layout or master. Side artwork that occupies less than 40% of slide width is checked; full-slide background panels and tiny intersections are ignored. The generator reserves tall side artwork in both placeholder and shape-grid content zones, so this finding flags a defective or cramped template rather than claiming the final content still overlaps. Repair the template's placeholder/art geometry or choose a different layout.
+
 ### `chrome_band_no_fit`
 
 **Action:** `review`
@@ -907,7 +915,7 @@ Mechanics:
 
 Emitted by `validate_input`, the CLI dry-run / `validate -fit-report`, and every other preflight surface that runs the structural detectors when a slide carries a `takeaway` or `source` whose band cannot be placed on the slide's layout. The band stack is derived from the template profile (`template.ResolveChromeFrame`), not slide-size percentages:
 
-- **Horizontal extent** = the union of the layout's body / content / picture / chart / table placeholders (`x .. x+cx`); layouts without one borrow the One Content layout's column.
+- **Horizontal extent** = the union of the layout's body / content / picture / chart / table placeholders (`x .. x+cx`), narrowed around tall opaque master/layout side artwork; layouts without a content placeholder borrow the One Content layout's column.
 - **Bottom** = the top of the layout's footer chrome (min Y of the visible `dt` / `ftr` / `sldNum` placeholders, layout first, else slide master) minus a gap. Without footer placeholders the bottom margin line is used.
 - The source note sits at the bottom, the takeaway above it; body/chart/table placeholders on the slide are shrunk so they stop above the band.
 

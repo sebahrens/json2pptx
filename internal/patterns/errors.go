@@ -52,6 +52,7 @@ const (
 	ErrCodeCellUnderfilled     = "cell_underfilled"
 	ErrCodeTakeawayMissing     = "takeaway_missing"
 	ErrCodeChromeBandNoFit     = "chrome_band_no_fit"
+	ErrCodeChromeCollision     = "CHROME_COLLISION"
 	ErrCodeAccentOverload      = "accent_overload"
 
 	// Layout-guard code — emitted when a single-row sequence pattern
@@ -228,6 +229,7 @@ var (
 	ErrCellUnderfilled      = errors.New("cell content is well below capacity")
 	ErrTakeawayMissing      = errors.New("slide is missing a takeaway / so-what headline")
 	ErrChromeBandNoFit      = errors.New("takeaway/source band does not fit the layout")
+	ErrChromeCollision      = errors.New("authored content intersects opaque template artwork")
 	ErrAccentOverload       = errors.New("slide uses more than two distinct accent hues")
 	ErrSparseSingleRowFlow  = errors.New("single-row flow pattern stretched to fill slide with sparse per-cell text")
 	ErrOvertallFlowLane     = errors.New("single-row flow lane occupies more than half the content height with short labels")
@@ -300,6 +302,7 @@ var codeSentinel = map[string]error{
 	ErrCodeCellUnderfilled:         ErrCellUnderfilled,
 	ErrCodeTakeawayMissing:         ErrTakeawayMissing,
 	ErrCodeChromeBandNoFit:         ErrChromeBandNoFit,
+	ErrCodeChromeCollision:         ErrChromeCollision,
 	ErrCodeAccentOverload:          ErrAccentOverload,
 	ErrCodeSparseSingleRowFlow:     ErrSparseSingleRowFlow,
 	ErrCodeOvertallFlowLane:        ErrOvertallFlowLane,

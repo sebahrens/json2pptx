@@ -126,10 +126,13 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 
 	// Reserve the takeaway/source band stack: content placeholders stop above
 	// the band derived from the layout's own geometry.
-	if input.slideSpec.Takeaway != "" || input.slideSpec.SourceNote != "" {
-		frame := ctx.chromeFrameForLayout(input.slideSpec.LayoutID, input.slideSpec.Takeaway != "", input.slideSpec.SourceNote != "")
-		clampContentPlaceholdersToChrome(slide, frame)
+	frame := ctx.chromeFrameForLayout(input.slideSpec.LayoutID, input.slideSpec.Takeaway != "", input.slideSpec.SourceNote != "")
+	if input.slideSpec.Takeaway == "" && input.slideSpec.SourceNote == "" {
+		// Side art still needs horizontal reservation, but an unrequested
+		// band must not newly shorten the template's body placeholder.
+		frame.Fits = false
 	}
+	clampContentPlaceholdersToChrome(slide, frame)
 
 	var warnings []string
 	if len(input.slideSpec.Content) > 0 {

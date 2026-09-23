@@ -129,6 +129,21 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 		frame.Takeaway = ChromeRect{X: left, Y: y, CX: right - left, CY: takeawayH}
 		y -= gap
 	}
+	// Tall, filled master/layout artwork at a side of the body column is
+	// reserved as chrome. Narrow rules and large background panels do not
+	// consume a whole column. The same horizontal reservation applies to the
+	// content and to both optional bands.
+	decorLayout := layout
+	if decorLayout == nil {
+		decorLayout = reference
+	}
+	left, right = excludeSideDecor(decorLayout, left, right, top, y, w, h)
+	if hasTakeaway {
+		frame.Takeaway.X, frame.Takeaway.CX = left, right-left
+	}
+	if hasSource {
+		frame.Source.X, frame.Source.CX = left, right-left
+	}
 	if y < top {
 		frame.Content = ChromeRect{X: left, Y: top, CX: right - left, CY: 0}
 	} else {
@@ -146,6 +161,29 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 		}
 	}
 	return frame
+}
+
+func excludeSideDecor(layout *types.LayoutMetadata, left, right, top, bottom, slideWidth, slideHeight int64) (int64, int64) {
+	if layout == nil || bottom <= top {
+		return left, right
+	}
+	padding := min(slideWidth, slideHeight) * 26 / 1000 // about 0.2 in on 16:9
+	for _, decor := range layout.DecorRegions {
+		if decor.Width <= 0 || decor.Height <= 0 || decor.Width*5 >= slideWidth*2 {
+			continue // no-fill/invalid or broad background panel
+		}
+		overlap := min(bottom, decor.Y+decor.Height) - max(top, decor.Y)
+		if overlap*2 < bottom-top {
+			continue // a short title/footer accent is not a side exclusion
+		}
+		end := decor.X + decor.Width
+		if decor.X <= left && end > left && end+padding < right {
+			left = end + padding
+		} else if decor.X < right && end >= right && decor.X-padding > left {
+			right = decor.X - padding
+		}
+	}
+	return left, right
 }
 
 // FooterTop returns the top edge of the visible footer chrome on layout: the

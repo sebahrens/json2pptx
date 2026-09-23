@@ -363,6 +363,17 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{ErrCodeSlideBoundsOverflow},
 	},
+	ErrCodeChromeCollision: {
+		Code:        ErrCodeChromeCollision,
+		Summary:     "Authored content overlaps opaque artwork inherited from the template.",
+		Severity:    "review",
+		WhenEmitted: "Pre-flight finds a populated content placeholder inside a filled master or layout decoration; rendering reserves tall side artwork but may narrow the content area.",
+		RemediationSteps: []string{
+			"Choose a layout whose content placeholder clears the artwork.",
+			"Or repair the template so its body placeholder does not overlap its own decorative shapes.",
+		},
+		RelatedCodes: []string{ErrCodeFooterCollision},
+	},
 	ErrCodeTitleWraps: {
 		Code:        ErrCodeTitleWraps,
 		Summary:     "Title text wraps to multiple lines inside its placeholder.",

@@ -157,6 +157,19 @@ type LayoutMetadata struct {
 	// are populated by ParseLayouts and feed the takeaway/source band and
 	// footer geometry (template.ResolveChromeFrame).
 	FooterRegions []ChromeRegion
+	// DecorRegions are filled, non-placeholder shapes inherited from the layout
+	// and its master. They are potential exclusions from authored content.
+	DecorRegions []DecorRegion
+}
+
+// DecorRegion is the bounding box of visible template artwork.
+type DecorRegion struct {
+	Source string `json:"source"` // "layout" or "master"
+	Name   string `json:"name"`
+	X      int64  `json:"x_emu"`
+	Y      int64  `json:"y_emu"`
+	Width  int64  `json:"w_emu"`
+	Height int64  `json:"h_emu"`
 }
 
 // BackgroundColorModifiers are OOXML background-fill transforms in 1/100000

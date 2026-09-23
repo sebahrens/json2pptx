@@ -69,6 +69,44 @@ func TestChromeFrameGoldenGeometryBundledTemplates(t *testing.T) {
 	}
 }
 
+func TestModernYellowMasterDiscExcludedFromContent(t *testing.T) {
+	r, err := OpenTemplate(filepath.Join("..", "..", "templates", "modern-yellow.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = r.Close() }()
+	p, err := BuildProfile(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, role := range []types.CanonicalLayoutType{types.CanonicalLayoutOneContent, types.CanonicalLayoutTwoContent} {
+		id := p.RoleBindings[role]
+		layout := p.Layout(id)
+		if layout == nil {
+			t.Fatalf("missing layout for %s", role)
+		}
+		var disc *types.DecorRegion
+		for i := range layout.DecorRegions {
+			if layout.DecorRegions[i].Source == "master" && layout.DecorRegions[i].Name == "Freeform 3" {
+				disc = &layout.DecorRegions[i]
+				break
+			}
+		}
+		if disc == nil {
+			t.Fatalf("%s missing master disc", role)
+		}
+		for _, bands := range []bool{false, true} {
+			frame := p.ChromeFrame(id, bands, bands)
+			if frame.Content.X < disc.X+disc.Width {
+				t.Errorf("%s bands=%v: content starts %d inside disc ending %d", role, bands, frame.Content.X, disc.X+disc.Width)
+			}
+			if bands && frame.Takeaway.X < disc.X+disc.Width {
+				t.Errorf("%s takeaway starts inside disc", role)
+			}
+		}
+	}
+}
+
 func TestResolveChromeFrameAcrossAspectRatios(t *testing.T) {
 	for _, tc := range []struct {
 		name string

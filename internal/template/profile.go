@@ -16,7 +16,8 @@ import (
 // profile shape or derivation changes so cached profiles are rebuilt.
 // v2: resolved footer regions + per-layout chrome geometry.
 // v3: effective solid layout/master background for contrast preflight.
-const ProfileParserVersion = "3"
+// v4: master/layout decorative regions and side-art chrome exclusions.
+const ProfileParserVersion = "4"
 
 type ProfileDiagnostic struct {
 	Code     string `json:"code"`
@@ -265,6 +266,9 @@ func cloneProfile(in *TemplateProfile) *TemplateProfile {
 	}
 	out := *in
 	out.Layouts = append([]types.LayoutMetadata(nil), in.Layouts...)
+	for i := range out.Layouts {
+		out.Layouts[i].DecorRegions = append([]types.DecorRegion(nil), in.Layouts[i].DecorRegions...)
+	}
 	out.RoleBindings = make(map[types.CanonicalLayoutType]string, len(in.RoleBindings))
 	for k, v := range in.RoleBindings {
 		out.RoleBindings[k] = v

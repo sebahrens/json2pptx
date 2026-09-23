@@ -51,7 +51,11 @@ func (ctx *singlePassContext) chromeFrameForSlide(slideNum int) template.ChromeF
 // are generated after placeholder population and can resolve an inherited
 // layout transform even when the slide-level placeholder was already clamped.
 func clampBoundsToChrome(bounds types.BoundingBox, frame template.ChromeFrame) types.BoundingBox {
-	if !frame.Fits || bounds.Height <= 0 {
+	if bounds.Height <= 0 {
+		return bounds
+	}
+	bounds.X, bounds.Width = clampHorizontalToFrame(bounds.X, bounds.Width, frame.Content)
+	if !frame.Fits {
 		return bounds
 	}
 	limit := frame.Content.Bottom()
@@ -61,14 +65,13 @@ func clampBoundsToChrome(bounds types.BoundingBox, frame template.ChromeFrame) t
 	return bounds
 }
 
-// clampContentPlaceholdersToChrome shrinks content placeholders (body,
-// generic content, picture, chart, table) whose bottom edge would run into the
-// takeaway/source band stack, so body text, charts, and tables stop above the
-// band instead of rendering underneath it. Title, subtitle, and footer chrome
-// placeholders are left untouched. A frame that does not fit is ignored: the
-// band is not emitted in that case, so there is nothing to reserve.
+// clampContentPlaceholdersToChrome clips content placeholders (body, generic
+// content, picture, chart, table) horizontally around side artwork and, when
+// the band fits, vertically above the takeaway/source stack. Title, subtitle,
+// and footer chrome placeholders are left untouched. A frame that does not
+// fit still reserves side artwork but does not shorten content vertically.
 func clampContentPlaceholdersToChrome(slide *slideXML, frame template.ChromeFrame) {
-	if slide == nil || !frame.Fits {
+	if slide == nil {
 		return
 	}
 	limit := frame.Content.Bottom()
@@ -83,9 +86,31 @@ func clampContentPlaceholdersToChrome(slide *slideXML, frame template.ChromeFram
 		case "title", "ctrTitle", "subTitle", "dt", "ftr", "sldNum", "hdr":
 			continue
 		}
+		xfrm.Offset.X, xfrm.Extent.CX = clampHorizontalToFrame(xfrm.Offset.X, xfrm.Extent.CX, frame.Content)
+		if !frame.Fits {
+			continue
+		}
 		if xfrm.Offset.Y+xfrm.Extent.CY <= limit || xfrm.Offset.Y >= limit {
 			continue
 		}
 		xfrm.Extent.CY = limit - xfrm.Offset.Y
 	}
+}
+
+func clampHorizontalToFrame(x, width int64, content template.ChromeRect) (int64, int64) {
+	if width <= 0 || content.CX <= 0 {
+		return x, width
+	}
+	right := x + width
+	if x < content.X && right > content.X {
+		x = content.X
+	}
+	limit := content.X + content.CX
+	if right > limit && x < limit {
+		right = limit
+	}
+	if right <= x {
+		return x, width
+	}
+	return x, right - x
 }

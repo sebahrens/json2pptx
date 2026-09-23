@@ -21,6 +21,10 @@ type ContentZone struct {
 	RightEdge   int64 // X of right content edge
 	SlideWidth  int64
 	SlideHeight int64
+	// SideDecor is true when the template profile narrowed the horizontal zone
+	// to avoid opaque master/layout artwork. Explicit slide-relative bounds
+	// must then be clipped horizontally as well as vertically.
+	SideDecor bool
 }
 
 // DefaultBoundsFromZone derives grid bounds from a ContentZone, applying a gap (in points)

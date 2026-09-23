@@ -67,6 +67,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// 2. Structural findings using template layout data.
 	findings = append(findings,
 		collectStructuralFindings(input, layouts, slideWidth, slideHeight)...)
+	findings = append(findings, collectChromeCollisionFindings(input, layouts, slideWidth)...)
 
 	// 2b. Measured title fit (TITLE_OVERFLOW / title_wraps) against the
 	// resolved title placeholder and inherited title style.

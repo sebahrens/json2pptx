@@ -109,6 +109,21 @@ func parseLayoutFile(reader *Reader, filename string, index int, masterResolver 
 		BackgroundRef:  ResolveLayoutBackgroundRef(data),
 		BackgroundMods: ResolveLayoutBackgroundModifiers(data),
 	}
+	layoutMeta.DecorRegions, err = parseDecorRegions(data, "layout")
+	if err != nil {
+		return types.LayoutMetadata{}, err
+	}
+	if masterPath, _, relErr := resolveLayoutRelationships(reader, layoutID); relErr == nil && masterPath != "" && xmlLayout.ShowMasterShapes != "0" && !strings.EqualFold(xmlLayout.ShowMasterShapes, "false") {
+		masterData, readErr := reader.ReadFile(masterPath)
+		if readErr == nil {
+			masterDecor, decorErr := parseDecorRegions(masterData, "master")
+			if decorErr == nil {
+				layoutMeta.DecorRegions = append(layoutMeta.DecorRegions, masterDecor...)
+			} else {
+				slog.Debug("decorative master unavailable", slog.String("master", masterPath), slog.String("error", decorErr.Error()))
+			}
+		}
+	}
 	if layoutMeta.BackgroundRef == "" {
 		if masterPath, _, err := resolveLayoutRelationships(reader, layoutID); err == nil && masterPath != "" {
 			if masterData, readErr := reader.ReadFile(masterPath); readErr == nil {
@@ -504,9 +519,10 @@ func parseLayoutBounds(f *zip.File) (map[string]types.BoundingBox, error) {
 // XML structure definitions for parsing PPTX slide layouts
 
 type slideLayoutXML struct {
-	XMLName         xml.Name           `xml:"sldLayout"`
-	Type            string             `xml:"type,attr"`
-	CommonSlideData commonSlideDataXML `xml:"cSld"`
+	XMLName          xml.Name           `xml:"sldLayout"`
+	Type             string             `xml:"type,attr"`
+	ShowMasterShapes string             `xml:"showMasterSp,attr"`
+	CommonSlideData  commonSlideDataXML `xml:"cSld"`
 }
 
 type commonSlideDataXML struct {

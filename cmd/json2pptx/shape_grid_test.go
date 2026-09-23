@@ -13,6 +13,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -548,6 +549,43 @@ func TestResolveGridBounds_MaxHeightPctUsesContentArea(t *testing.T) {
 	}
 	if got.CY <= 0 {
 		t.Fatal("max_height_pct should resolve to a positive content-area height")
+	}
+}
+
+func TestModernYellowGridGeometryAvoidsMasterDisc(t *testing.T) {
+	r, err := template.OpenTemplate(filepath.Join("..", "..", "templates", "modern-yellow.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = r.Close() }()
+	p, err := template.BuildProfile(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var discRight int64
+	for _, decor := range p.ReferenceLayout().DecorRegions {
+		if decor.Source == "master" && decor.Name == "Freeform 3" {
+			discRight = decor.X + decor.Width
+		}
+	}
+	if discRight == 0 {
+		t.Fatal("missing master disc")
+	}
+	for _, slide := range []SlideInput{
+		{ShapeGrid: &ShapeGridInput{}, SlideType: "blank"},
+		{ShapeGrid: &ShapeGridInput{Bounds: &GridBoundsInput{X: 7, Y: 21, Width: 86, Height: 68}}, LayoutID: "blank"},
+		{ShapeGrid: &ShapeGridInput{}, LayoutID: p.RoleBindings[types.CanonicalLayoutOneContent]},
+	} {
+		g := resolveGridGeometry(slide, p.Layouts, p.SlideWidth, p.SlideHeight)
+		if g.Zone == nil || g.Zone.LeftMargin < discRight {
+			t.Errorf("layout %q grid zone starts inside disc: %+v", slide.LayoutID, g.Zone)
+		}
+		if g.OverrideBounds != nil && g.OverrideBounds.X < discRight {
+			t.Errorf("layout %q virtual bounds start inside disc: %+v", slide.LayoutID, g.OverrideBounds)
+		}
+		if bounds := resolveGridBounds(slide.ShapeGrid, g.OverrideBounds, g.Zone, p.SlideWidth, p.SlideHeight); bounds.X < discRight {
+			t.Errorf("layout %q resolved grid bounds start inside disc: %+v", slide.LayoutID, bounds)
+		}
 	}
 }
 

@@ -46,6 +46,14 @@ func TestClampContentPlaceholdersToChrome(t *testing.T) {
 	if slide.CommonSlideData.ShapeTree.Shapes[0].ShapeProperties.Transform.Extent.CY != 4351338 {
 		t.Error("non-fitting frame must not clamp")
 	}
+	// Side-art exclusion is independent of the optional band stack: even
+	// without a fitting band, the left edge must clear the template artwork.
+	sideFrame := template.ChromeFrame{Content: template.ChromeRect{X: 2400000, Y: frame.Content.Y, CX: 8900000, CY: frame.Content.CY}, Fits: false}
+	clampContentPlaceholdersToChrome(slide, sideFrame)
+	got := slide.CommonSlideData.ShapeTree.Shapes[0].ShapeProperties.Transform
+	if got.Offset.X != sideFrame.Content.X || got.Offset.X+got.Extent.CX != sideFrame.Content.X+sideFrame.Content.CX || got.Extent.CY != 4351338 {
+		t.Errorf("no-band side-art clamp = %+v", got)
+	}
 }
 
 func TestClampBoundsToChromeReservesLateTableInsertion(t *testing.T) {

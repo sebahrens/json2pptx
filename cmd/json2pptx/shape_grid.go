@@ -367,6 +367,7 @@ func patternExpansionGeometry(slide SlideInput, layouts []types.LayoutMetadata, 
 		}
 		geom.Zone = reserveTakeawayBand(GridGeometry{Zone: gridToContentZone(rhythmGrid), LayoutID: layoutID}, probe, layouts).Zone
 		geom.OverrideBounds = nil
+		geom = reserveGridSideDecor(geom, probe, layouts, slideWidth, slideHeight)
 	}
 	geom = reserveCanvasHeadline(geom, probe, layouts, slideWidth, slideHeight)
 	bounds := resolveGridBounds(&ShapeGridInput{}, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
@@ -412,7 +413,61 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 		}
 	}
 	g = reserveTakeawayBand(g, slide, layouts)
-	return reserveCanvasHeadline(g, slide, layouts, slideWidth, slideHeight)
+	g = reserveCanvasHeadline(g, slide, layouts, slideWidth, slideHeight)
+	return reserveGridSideDecor(g, slide, layouts, slideWidth, slideHeight)
+}
+
+// reserveGridSideDecor applies the same master/layout side-art exclusion as
+// placeholder content. Explicit bounds are subsequently clamped to this zone
+// by resolveShapeGrid, while virtual-layout defaults need clipping here too.
+func reserveGridSideDecor(g GridGeometry, slide SlideInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64) GridGeometry {
+	if g.Zone == nil {
+		return g
+	}
+	id := g.LayoutID
+	if id == "" {
+		id = slide.LayoutID
+	}
+	layout := template.FindLayout(layouts, id)
+	ref := template.ChromeReferenceLayout(layouts)
+	frame := template.ResolveChromeFrame(layout, ref, slideWidth, slideHeight, false, false)
+	bareLayout, bareRef := layout, ref
+	if layout != nil {
+		copy := *layout
+		copy.DecorRegions = nil
+		bareLayout = &copy
+	}
+	if ref != nil {
+		copy := *ref
+		copy.DecorRegions = nil
+		bareRef = &copy
+	}
+	bare := template.ResolveChromeFrame(bareLayout, bareRef, slideWidth, slideHeight, false, false)
+	if frame.Content.X == bare.Content.X && frame.Content.CX == bare.Content.CX {
+		return g
+	}
+	g.Zone.SideDecor = true
+	left, right := frame.Content.X, frame.Content.X+frame.Content.CX
+	if left > g.Zone.LeftMargin {
+		g.Zone.LeftMargin = left
+	}
+	if right < g.Zone.RightEdge {
+		g.Zone.RightEdge = right
+	}
+	if g.OverrideBounds != nil {
+		b := *g.OverrideBounds
+		if b.X < g.Zone.LeftMargin && b.X+b.CX > g.Zone.LeftMargin {
+			b.CX -= g.Zone.LeftMargin - b.X
+			b.X = g.Zone.LeftMargin
+		}
+		if limit := g.Zone.RightEdge; b.X+b.CX > limit && b.X < limit {
+			b.CX = limit - b.X
+		}
+		if b.CX > 0 {
+			g.OverrideBounds = &b
+		}
+	}
+	return g
 }
 
 // canvasHeadlineBounds returns the theme-aware headline band used on a true
@@ -561,6 +616,18 @@ func resolveGridBounds(input *ShapeGridInput, overrideBounds *pptx.RectEmu, zone
 		// Clamp explicit bounds against ContentZone to prevent overlapping chrome.
 		if zone != nil {
 			bounds = shapegrid.ClampBoundsToZone(bounds, *zone)
+			if zone.SideDecor {
+				if bounds.X < zone.LeftMargin {
+					bounds.CX -= zone.LeftMargin - bounds.X
+					bounds.X = zone.LeftMargin
+				}
+				if bounds.X+bounds.CX > zone.RightEdge {
+					bounds.CX = zone.RightEdge - bounds.X
+				}
+				if bounds.CX < 0 {
+					bounds.CX = 0
+				}
+			}
 		}
 		return bounds
 	case overrideBounds != nil:
