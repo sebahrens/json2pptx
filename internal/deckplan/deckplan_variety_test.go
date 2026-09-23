@@ -34,6 +34,72 @@ func TestPlanPlacesAKPISlideForAMetricBrief(t *testing.T) {
 	}
 }
 
+func TestPlanEvidenceFollowsFactsWithoutMetricKeywords(t *testing.T) {
+	brief := "Operations review. On-time delivery 94.2%; cost per order $12.40; warehouse utilisation 87%; headcount 812; North 41%, South 33%, West 26%; returns 2.1%."
+	res := BuildDeckPlan(patterns.Default(), Params{Brief: brief, SlideBudget: 10}, nil)
+	var numericSlides, chartSlides int
+	for _, slide := range res.Slides {
+		if slide.NarrativeRole != "evidence" {
+			continue
+		}
+		if patternFamily(slide.RecommendedPattern) == "kpi" || slide.RecommendedPattern == "stat-hero" {
+			numericSlides++
+		}
+		if slide.RecommendedPattern == "chart-insights-split" {
+			chartSlides++
+			for _, fact := range []string{"North 41%", "South 33%", "West 26%"} {
+				if !containsStr(slide.Facts, fact) {
+					t.Errorf("regional split scattered instead of reaching chart: missing %q from %v", fact, slide.Facts)
+				}
+			}
+		}
+	}
+	if numericSlides == 0 || chartSlides == 0 {
+		t.Fatalf("keyword-free quantities got no KPI + chart evidence: %v", planPatterns(res))
+	}
+}
+
+func TestPlanEvidenceDoesNotUseRolePhraseAsKeywords(t *testing.T) {
+	res := BuildDeckPlan(patterns.Default(), Params{Brief: "We sell widgets to bakeries.", SlideBudget: 10}, nil)
+	for _, slide := range res.Slides {
+		if slide.NarrativeRole != "evidence" {
+			continue
+		}
+		switch slide.RecommendedPattern {
+		case "before-after-compact", "process-flow-compact", "hero-detail":
+			t.Fatalf("content-free brief inherited evidence-role keyword pattern %q: %v", slide.RecommendedPattern, planPatterns(res))
+		}
+	}
+}
+
+func TestPlanPhaseSequenceTakesPrecedenceOverIncidentalNumbers(t *testing.T) {
+	brief := "Implementation plan. Phase 1 covers three hubs by October; phase 2 adds 12 routes by December; phase 3 reaches 40 teams next year."
+	res := BuildDeckPlan(patterns.Default(), Params{Brief: brief, SlideBudget: 10}, nil)
+	for _, slide := range res.Slides {
+		if slide.NarrativeRole == "evidence" {
+			if slide.RecommendedPattern != "phase-roadmap" {
+				t.Fatalf("dated phase sequence was misread as generic numbers: %v", planPatterns(res))
+			}
+			return
+		}
+	}
+	t.Fatal("plan has no evidence slot")
+}
+
+func TestPlanComparisonMatrixUsesTableEvidence(t *testing.T) {
+	brief := "We must compare three vendor options on five criteria: cost, reach, resilience, timeline, and integration."
+	res := BuildDeckPlan(patterns.Default(), Params{Brief: brief, SlideBudget: 10}, nil)
+	for _, slide := range res.Slides {
+		if slide.NarrativeRole == "evidence" {
+			if slide.RecommendedPattern != "table-highlight" {
+				t.Fatalf("multi-option criteria need table evidence: %v", planPatterns(res))
+			}
+			return
+		}
+	}
+	t.Fatal("plan has no evidence slot")
+}
+
 // One pattern family used four times is a deck that reads as one idea
 // repeated. Tightened for go-slide-creator-whp97: a 20-slide plan used to be
 // allowed to repeat as long as rhythm_check reported it, because the role

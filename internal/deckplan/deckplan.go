@@ -480,6 +480,8 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 	slides := make([]Slide, len(roleSlots))
 	usedPatterns := make([]string, 0, len(roleSlots))
 	mustIncludeUsed := make(map[string]bool)
+	signals := collectEvidenceSignals(brief, roleSlots)
+	evidenceSeen := 0
 
 	// Build a pattern-to-roles index from taxonomy.
 	allPatterns := reg.List()
@@ -489,6 +491,11 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 	}
 
 	for i, role := range roleSlots {
+		evidenceIndex := -1
+		if role == "evidence" {
+			evidenceIndex = evidenceSeen
+			evidenceSeen++
+		}
 		slides[i].SlideIndex = i
 		slides[i].NarrativeRole = role
 		slides[i].Layout = layoutForRole(role)
@@ -517,21 +524,18 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 			usedPatterns = append(usedPatterns, slides[i].RecommendedPattern)
 			continue
 		}
+		if role == "evidence" {
+			if pat := factDrivenEvidencePattern(signals, evidenceIndex); pat != "" {
+				slides[i].RecommendedPattern = pat
+				slides[i].Rationale = "evidence pattern selected from the brief's facts and content shape"
+				usedPatterns = append(usedPatterns, pat)
+				continue
+			}
+		}
 
 		// Use recommend_pattern with variety awareness.
-		intent := buildIntent(role, brief, audience)
-		opts := &patterns.RecommendOptions{
-			RecentPatterns: usedPatterns,
-			PreferVariety:  true,
-			SlideIndex:     i,
-		}
-		rec := patterns.Recommend(reg, intent, nil, 1, opts)
-
-		if len(rec.Candidates) > 0 {
-			c := rec.Candidates[0]
-			slides[i].RecommendedPattern = c.PatternName
-			slides[i].Rationale = c.Rationale
-		} else {
+		slides[i].RecommendedPattern, slides[i].Rationale = recommendForRole(reg, patternList, role, buildIntent(role, brief, audience), usedPatterns, i)
+		if slides[i].RecommendedPattern == "" {
 			// Fallback: pick from taxonomy.
 			slides[i].RecommendedPattern = fallbackPattern(role, patternList, usedPatterns)
 			slides[i].Rationale = "fallback selection for " + role
@@ -539,7 +543,12 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 		usedPatterns = append(usedPatterns, slides[i].RecommendedPattern)
 	}
 
-	// Place any remaining must_include patterns that weren't used.
+	placeRemainingMustInclude(slides, mustInclude, mustIncludeUsed)
+
+	return slides
+}
+
+func placeRemainingMustInclude(slides []Slide, mustInclude []string, mustIncludeUsed map[string]bool) {
 	for _, mi := range mustInclude {
 		if mustIncludeUsed[mi] {
 			continue
@@ -568,7 +577,78 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 		}
 	}
 
-	return slides
+}
+
+type evidenceSignals struct {
+	numericFacts     int
+	percentSplit     bool
+	phaseSequence    bool
+	comparisonMatrix bool
+	slots            int
+}
+
+func collectEvidenceSignals(brief string, roleSlots []string) evidenceSignals {
+	var signals evidenceSignals
+	for _, fact := range extractBriefFacts(brief) {
+		if fact.numeric {
+			signals.numericFacts++
+		}
+	}
+	signals.percentSplit = len(percentSplitFacts(brief)) == 3
+	signals.phaseSequence = briefHasPhaseSequence(brief)
+	signals.comparisonMatrix = briefHasComparisonMatrix(brief)
+	for _, role := range roleSlots {
+		if role == "evidence" {
+			signals.slots++
+		}
+	}
+	return signals
+}
+
+func factDrivenEvidencePattern(signals evidenceSignals, index int) string {
+	if signals.phaseSequence && index == 0 {
+		return "phase-roadmap"
+	}
+	if signals.numericFacts < 3 {
+		if signals.comparisonMatrix && index == 0 {
+			return "table-highlight"
+		}
+		return ""
+	}
+	if signals.percentSplit && (index == 1 || signals.slots == 1) {
+		return "chart-insights-split"
+	}
+	if index == 0 || (signals.phaseSequence && index == 1) {
+		return "kpi-3up"
+	}
+	if index == 1 && signals.numericFacts >= 6 {
+		return "kpi-4up"
+	}
+	if signals.comparisonMatrix && index == 1 {
+		return "table-highlight"
+	}
+	return ""
+}
+
+func recommendForRole(reg *patterns.Registry, patternList []patInfo, role, intent string, usedPatterns []string, slideIndex int) (string, string) {
+	opts := &patterns.RecommendOptions{RecentPatterns: usedPatterns, PreferVariety: true, SlideIndex: slideIndex}
+	rec := patterns.Recommend(reg, intent, nil, len(patternList), opts)
+	for _, c := range rec.Candidates {
+		if role == "evidence" && !patternSupportsNarrativeRole(patternList, c.PatternName, "evidence") {
+			continue
+		}
+		return c.PatternName, c.Rationale
+	}
+	return "", ""
+}
+
+func patternSupportsNarrativeRole(patternList []patInfo, name, role string) bool {
+	for _, pattern := range patternList {
+		if pattern.name == name {
+			return containsStr(pattern.taxonomy.NarrativeRole, role)
+		}
+	}
+	return false
 }
 
 // pickComparisonPattern chooses a comparison-family pattern for a comparison
@@ -638,6 +718,11 @@ type patInfo struct {
 
 // buildIntent constructs a recommend_pattern intent string from the role and brief.
 func buildIntent(role, brief, audience string) string {
+	if role == "evidence" {
+		// Role words like "supporting" and "details" are recommender keywords;
+		// they must not masquerade as evidence in the author's brief.
+		return brief
+	}
 	var parts []string
 
 	switch role {

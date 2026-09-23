@@ -73,6 +73,46 @@ func balanceFactBrackets(s string) string {
 // optionally signed and currency-prefixed.
 var factQuantity = regexp.MustCompile(`(?:^|[^\p{L}\d])[+\-−±]?[$€£¥]?\d`)
 
+// namedPercentSplit matches a contiguous three-category percentage breakdown
+// ("North 41%, South 33%, West 26%"). Keeping this as one chart signal and
+// one fact group prevents the planner from scattering its slices across slides.
+var namedPercentSplit = regexp.MustCompile(`(?i)[\p{L}][\p{L}\-]*\s+\d+(?:\.\d+)?\s*%\s*,\s*[\p{L}][\p{L}\-]*\s+\d+(?:\.\d+)?\s*%\s*,\s*[\p{L}][\p{L}\-]*\s+\d+(?:\.\d+)?\s*%`)
+
+func percentSplitFacts(brief string) []string {
+	match := namedPercentSplit.FindString(brief)
+	if match == "" {
+		return nil
+	}
+	parts := strings.Split(match, ",")
+	for i := range parts {
+		parts[i] = strings.TrimSpace(parts[i])
+	}
+	return parts
+}
+
+func briefHasPhaseSequence(brief string) bool {
+	lower := strings.ToLower(brief)
+	for _, cue := range []string{"phases", "phase 1", "phase one", "roadmap", "milestones", "workstreams", "implementation plan"} {
+		if strings.Contains(lower, cue) {
+			return true
+		}
+	}
+	return false
+}
+
+func briefHasComparisonMatrix(brief string) bool {
+	lower := strings.ToLower(brief)
+	if !strings.Contains(lower, "criteria") {
+		return false
+	}
+	for _, cue := range []string{"vendor", "option", "alternative"} {
+		if strings.Contains(lower, cue) {
+			return true
+		}
+	}
+	return false
+}
+
 // factAcronym matches an all-caps token such as "EU", "APAC", "ARR".
 var factAcronym = regexp.MustCompile(`\b[A-Z]{2,6}s?\b`)
 
@@ -151,6 +191,8 @@ var numericFriendlyPatterns = map[string]bool{
 // two otherwise.
 func factCapacity(pattern string) int {
 	switch pattern {
+	case "chart-insights-split":
+		return 3 // one named three-category split stays together
 	case "kpi-2up":
 		return 2
 	case "kpi-3up", "kpi-inline":
@@ -189,10 +231,14 @@ func assignBriefFacts(slides []Slide, brief string) []string {
 		s := slides[i]
 		return s.RecommendedPattern != "" && s.NarrativeRole != "opening" && s.NarrativeRole != "closing"
 	}
+	placedGroup := placePercentSplitFacts(slides, facts, percentSplitFacts(brief))
 
 	// Phase 1: quantities to numeric-friendly patterns, in slide order.
 	var leftover []briefFact
-	for _, f := range facts {
+	for fi, f := range facts {
+		if placedGroup[fi] {
+			continue
+		}
 		placed := false
 		if f.numeric {
 			for i := range slides {
@@ -246,4 +292,43 @@ func assignBriefFacts(slides []Slide, brief string) []string {
 		}
 	}
 	return unplaced
+}
+
+func placePercentSplitFacts(slides []Slide, facts []briefFact, group []string) map[int]bool {
+	placed := make(map[int]bool)
+	if len(group) != 3 {
+		return placed
+	}
+	for si := range slides {
+		if slides[si].NarrativeRole == "opening" || slides[si].NarrativeRole == "closing" || slides[si].RecommendedPattern != "chart-insights-split" || factCapacity(slides[si].RecommendedPattern)-len(slides[si].Facts) < len(group) {
+			continue
+		}
+		indices := make([]int, 0, len(group))
+		for _, text := range group {
+			for fi, fact := range facts {
+				if !containsInt(indices, fi) && strings.EqualFold(fact.text, text) {
+					indices = append(indices, fi)
+					break
+				}
+			}
+		}
+		if len(indices) != len(group) {
+			return placed
+		}
+		for _, fi := range indices {
+			slides[si].Facts = append(slides[si].Facts, facts[fi].text)
+			placed[fi] = true
+		}
+		break
+	}
+	return placed
+}
+
+func containsInt(values []int, needle int) bool {
+	for _, value := range values {
+		if value == needle {
+			return true
+		}
+	}
+	return false
 }
