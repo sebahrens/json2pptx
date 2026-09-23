@@ -11,15 +11,16 @@ package semantic
 // decisions: the semantic kind, narrative role, visual family, density, and the
 // concrete pattern/layout the slide will compile into.
 type SlideExplanation struct {
-	Index        int           `json:"index"`
-	Kind         SlideKind     `json:"kind"`
-	Role         NarrativeRole `json:"role"`
-	VisualFamily VisualFamily  `json:"visual_family"`
-	Density      Density       `json:"density"`
-	Title        string        `json:"title,omitempty"`
-	Takeaway     string        `json:"takeaway,omitempty"`
-	Pattern      string        `json:"pattern,omitempty"`
-	Layout       string        `json:"layout,omitempty"`
+	Index        int                    `json:"index"`
+	Kind         SlideKind              `json:"kind"`
+	Role         NarrativeRole          `json:"role"`
+	VisualFamily VisualFamily           `json:"visual_family"`
+	Density      Density                `json:"density"`
+	Title        string                 `json:"title,omitempty"`
+	Takeaway     string                 `json:"takeaway,omitempty"`
+	Pattern      string                 `json:"pattern,omitempty"`
+	Layout       string                 `json:"layout,omitempty"`
+	Alternatives []CompositionCandidate `json:"alternatives,omitempty"`
 }
 
 // DeckExplanation is the deck-level account: the deck title and archetype, the
@@ -65,6 +66,7 @@ func (ir *DeckIR) Explain() DeckExplanation {
 			Takeaway:     s.Takeaway,
 			Pattern:      s.Visual.Pattern,
 			Layout:       s.Visual.Layout,
+			Alternatives: s.Visual.Alternatives,
 		})
 	}
 	return out

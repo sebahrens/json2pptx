@@ -2,6 +2,7 @@ package semantic
 
 import (
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -159,6 +160,7 @@ func TestExplainCompileParity(t *testing.T) {
 	spec := everyKindSpec()
 
 	exp := ExplainSpec(spec)
+	plan := Normalize(spec)
 	input, _, err := Compile(spec, CompileOptions{})
 	if err != nil {
 		t.Fatalf("compile every-kind deck: %v", err)
@@ -168,6 +170,9 @@ func TestExplainCompileParity(t *testing.T) {
 	}
 
 	for i := range exp.Slides {
+		if !reflect.DeepEqual(exp.Slides[i].Alternatives, plan.Slides[i].Visual.Alternatives) {
+			t.Errorf("slide %d (%s): explain alternatives diverge from planner: got %+v, want %+v", i, exp.Slides[i].Kind, exp.Slides[i].Alternatives, plan.Slides[i].Visual.Alternatives)
+		}
 		wantPattern := exp.Slides[i].Pattern
 		gotPattern := ""
 		if p := input.Slides[i].Pattern; p != nil {

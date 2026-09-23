@@ -2483,7 +2483,8 @@ var outputSchemaExplainDeckSpec = json.RawMessage(`{
           "title":         {"type": "string"},
           "takeaway":      {"type": "string"},
           "pattern":       {"type": "string"},
-          "layout":        {"type": "string"}
+          "layout":        {"type": "string"},
+          "alternatives":  {"type": "array", "description": "Supported compositions for this slide's actual payload, with reasons; pattern/layout overrides must match one of these.", "items": {"type": "object", "properties": {"pattern": {"type": "string"}, "layout": {"type": "string"}, "reason": {"type": "string"}}, "required": ["layout", "reason"]}}
         },
         "required": ["index", "kind"]
       }

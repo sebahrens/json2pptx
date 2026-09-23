@@ -211,8 +211,12 @@ func TestSemanticMCP_ExplainDeckSpec(t *testing.T) {
 	var explain struct {
 		Template string `json:"template"`
 		Slides   []struct {
-			Index int    `json:"index"`
-			Kind  string `json:"kind"`
+			Index        int    `json:"index"`
+			Kind         string `json:"kind"`
+			Alternatives []struct {
+				Layout string `json:"layout"`
+				Reason string `json:"reason"`
+			} `json:"alternatives"`
 		} `json:"slides"`
 	}
 	structuredInto(t, res.StructuredContent, &explain)
@@ -221,6 +225,12 @@ func TestSemanticMCP_ExplainDeckSpec(t *testing.T) {
 	}
 	if len(explain.Slides) > 0 && explain.Slides[0].Kind != "title" {
 		t.Errorf("first slide kind = %q, want title", explain.Slides[0].Kind)
+	}
+	if len(explain.Slides) > 0 {
+		alts := explain.Slides[0].Alternatives
+		if len(alts) == 0 || alts[0].Layout != "title" || alts[0].Reason == "" {
+			t.Errorf("title slide must explain its supported composition: %+v", alts)
+		}
 	}
 
 	// Unparseable spec → structured tool error.
