@@ -130,11 +130,18 @@ func effectiveSlideBackgroundHex(bg *BackgroundImage, themeColors []types.ThemeC
 // actually sits on. A photograph without a sufficiently opaque scrim has no
 // single measurable color, so the contrast pass must leave it unguessed.
 func effectiveGridSlideBackgroundHex(bg *BackgroundImage, layoutXML, masterXML []byte, themeColors []types.ThemeColor) string {
-	inherited := extractLayoutBackgroundColor(layoutXML, themeColors)
-	if inherited == "" {
-		inherited = extractLayoutBackgroundColor(masterXML, themeColors)
-	}
+	inherited := inheritedTemplateBackgroundHex(layoutXML, masterXML, themeColors)
 	return EffectiveGridBackgroundHex(bg, inherited, themeColors)
+}
+
+// inheritedTemplateBackgroundHex resolves a layout's solid background or, when
+// absent, its master's. Text and transparent grid cells must measure against
+// the same visible canvas.
+func inheritedTemplateBackgroundHex(layoutXML, masterXML []byte, themeColors []types.ThemeColor) string {
+	if hex := extractLayoutBackgroundColor(layoutXML, themeColors); hex != "" {
+		return hex
+	}
+	return extractLayoutBackgroundColor(masterXML, themeColors)
 }
 
 // EffectiveGridBackgroundHex is shared by generate and validate for

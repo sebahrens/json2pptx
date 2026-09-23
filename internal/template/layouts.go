@@ -99,23 +99,25 @@ func parseLayoutFile(reader *Reader, filename string, index int, masterResolver 
 	capacity := estimateCapacity(placeholders)
 
 	layoutMeta := types.LayoutMetadata{
-		ID:            layoutID,
-		Name:          name,
-		Index:         index,
-		Placeholders:  placeholders,
-		Capacity:      capacity,
-		Tags:          []string{},
-		FooterRegions: resolveFooterRegions(xmlLayout.CommonSlideData.ShapeTree.Shapes, masterPositions, name),
-		BackgroundRef: ResolveLayoutBackgroundRef(data),
+		ID:             layoutID,
+		Name:           name,
+		Index:          index,
+		Placeholders:   placeholders,
+		Capacity:       capacity,
+		Tags:           []string{},
+		FooterRegions:  resolveFooterRegions(xmlLayout.CommonSlideData.ShapeTree.Shapes, masterPositions, name),
+		BackgroundRef:  ResolveLayoutBackgroundRef(data),
+		BackgroundMods: ResolveLayoutBackgroundModifiers(data),
 	}
 	if layoutMeta.BackgroundRef == "" {
 		if masterPath, _, err := resolveLayoutRelationships(reader, layoutID); err == nil && masterPath != "" {
 			if masterData, readErr := reader.ReadFile(masterPath); readErr == nil {
 				layoutMeta.BackgroundRef = ResolveLayoutBackgroundRef(masterData)
+				layoutMeta.BackgroundMods = ResolveLayoutBackgroundModifiers(masterData)
 			}
 		}
 	}
-	layoutMeta.BackgroundHex = ResolveBackgroundRefHex(layoutMeta.BackgroundRef, themeColors)
+	layoutMeta.BackgroundHex = ResolveBackgroundRefHexWithMods(layoutMeta.BackgroundRef, layoutMeta.BackgroundMods, themeColors)
 
 	// Classify layout to populate tags
 	ClassifyLayout(&layoutMeta)

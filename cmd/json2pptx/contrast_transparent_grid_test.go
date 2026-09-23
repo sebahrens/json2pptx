@@ -110,6 +110,30 @@ func TestTransparentGridPreflightReResolvesLayoutBackgroundAfterThemeOverride(t 
 	}
 }
 
+func TestTransparentGridPreflightAppliesLayoutLumModAfterThemeOverride(t *testing.T) {
+	slide := transparentGridSlide(nil, `"none"`, "#000000")
+	slide.LayoutID = "slideLayout1"
+	in := &PresentationInput{Slides: []SlideInput{slide}}
+	layouts := []types.LayoutMetadata{{
+		ID: "slideLayout1", BackgroundRef: "accent6", BackgroundHex: "#60A2F5",
+		BackgroundMods: types.BackgroundColorModifiers{LumMod: 50000, HasLumMod: true},
+	}}
+	theme := []types.ThemeColor{
+		{Name: "dk1", RGB: "#000000"}, {Name: "lt1", RGB: "#FFFFFF"},
+		{Name: "accent6", RGB: "#60A2F5"},
+	}
+	findings := contrastPredictions(collectContrastPreflightFindings(in, layouts, theme))
+	if len(findings) != 1 {
+		t.Fatalf("tinted-layout predictions = %+v, want one black-text correction", findings)
+	}
+	if got := findings[0].Fix.Params["background_color"]; got == "#60A2F5" || got == "" {
+		t.Errorf("preflight used unmodified layout background: %v", got)
+	}
+	if got := findings[0].Fix.Params["predicted_replacement"]; got != "#FFFFFF" {
+		t.Errorf("predicted replacement = %v, want white", got)
+	}
+}
+
 func TestRunPresentationTransparentGridContrastMatchesPreflight(t *testing.T) {
 	for _, tc := range []struct{ name, background, textColor string }{
 		{"light", "#FFFFFF", "#FFFFFF"},

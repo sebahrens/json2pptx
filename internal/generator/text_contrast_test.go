@@ -86,6 +86,45 @@ func TestExtractLayoutBackgroundColor(t *testing.T) {
 	}
 }
 
+func TestTintedLayoutBackgroundKeepsReadableWhiteText(t *testing.T) {
+	theme := []types.ThemeColor{{Name: "accent6", RGB: "#60A2F5"}, {Name: "lt1", RGB: "#FFFFFF"}}
+	layout := []byte(`<p:sldLayout><p:cSld><p:bg><p:bgPr><a:solidFill><a:schemeClr val="accent6"><a:lumMod val="50000"/></a:schemeClr></a:solidFill></p:bgPr></p:cSld></p:sldLayout>`)
+	bgHex := extractLayoutBackgroundColor(layout, theme)
+	if bgHex == "#60A2F5" || bgHex == "" {
+		t.Fatalf("contrast pass background = %q, want visible darkened accent", bgHex)
+	}
+	slide := &slideXML{CommonSlideData: commonSlideDataXML{ShapeTree: shapeTreeXML{Shapes: []shapeXML{{
+		TextBody: &textBodyXML{
+			ListStyle:  &listStyleXML{Inner: `<a:lvl1pPr><a:defRPr sz="3200" b="1"><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></a:defRPr></a:lvl1pPr>`},
+			Paragraphs: []paragraphXML{{Runs: []runXML{{Text: "Thank You"}}}},
+		},
+	}}}}}
+	swaps := enforceTextContrastInSlide(slide, bgHex, theme, 0, nil, false)
+	if len(swaps) != 0 {
+		t.Errorf("readable white text was wrongly recolored on dark layout background: %+v", swaps)
+	}
+	if got := slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.ListStyle.Inner; !strings.Contains(got, `schemeClr val="bg1"`) {
+		t.Errorf("white text lost its scheme color: %s", got)
+	}
+}
+
+func TestInheritedTemplateBackgroundFallsBackToTintedMaster(t *testing.T) {
+	theme := []types.ThemeColor{{Name: "accent6", RGB: "#60A2F5"}, {Name: "lt1", RGB: "#FFFFFF"}}
+	layout := []byte(`<p:sldLayout><p:cSld><p:spTree/></p:cSld></p:sldLayout>`)
+	master := []byte(`<p:sldMaster><p:cSld><p:bg><p:bgPr><a:solidFill><a:schemeClr val="accent6"><a:lumMod val="50000"/></a:schemeClr></a:solidFill></p:bgPr></p:bg></p:cSld></p:sldMaster>`)
+	bg := inheritedTemplateBackgroundHex(layout, master, theme)
+	if bg == "" || bg == "#60A2F5" {
+		t.Fatalf("inherited background = %q, want darkened master accent", bg)
+	}
+	if ratio := svggen.MustParseColor(bg).ContrastWith(svggen.MustParseColor("#FFFFFF")); ratio < 4.5 {
+		t.Errorf("white text on inherited master background %s only reaches %.2f:1", bg, ratio)
+	}
+	withOwnBackground := []byte(`<p:sldLayout><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></p:bgPr></p:bg></p:cSld></p:sldLayout>`)
+	if got := inheritedTemplateBackgroundHex(withOwnBackground, master, theme); got != "#FFFFFF" {
+		t.Errorf("layout background lost precedence over master: %s", got)
+	}
+}
+
 func TestResolveSchemeColorToHex(t *testing.T) {
 	tc := consultingThemeColors()
 

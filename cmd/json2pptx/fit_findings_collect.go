@@ -1523,7 +1523,8 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 		if predictedLayouts[si] != nil {
 			inheritedBackground = predictedLayouts[si].BackgroundHex
 			if predictedLayouts[si].BackgroundRef != "" {
-				inheritedBackground = template.ResolveBackgroundRefHex(predictedLayouts[si].BackgroundRef, themeColors)
+				inheritedBackground = template.ResolveBackgroundRefHexWithMods(
+					predictedLayouts[si].BackgroundRef, predictedLayouts[si].BackgroundMods, themeColors)
 			}
 		}
 		gridBackground := generator.EffectiveGridBackgroundHex(backgroundSpecFor(&slide), inheritedBackground, themeColors)

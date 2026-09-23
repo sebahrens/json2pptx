@@ -146,13 +146,14 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 		// is underneath it and no longer what the audience sees
 		// (go-slide-creator-uy5s).
 		bgHex := effectiveSlideBackgroundHex(input.slideSpec.Background, ctx.themeColors)
+		masterData := ctx.masterXMLForLayout(input.slideSpec.LayoutID)
 		// Provenance decides how the contrast pass repairs text: a background the
 		// author introduced is not the one the template's text colour was chosen
 		// against, so there is no hue to preserve and the fix snaps to the
 		// palette rather than lerping to the WCAG floor (go-slide-creator-s7wmh).
 		authorBackground := bgHex != ""
 		if bgHex == "" {
-			bgHex = extractLayoutBackgroundColor(layoutData, ctx.themeColors)
+			bgHex = inheritedTemplateBackgroundHex(layoutData, masterData, ctx.themeColors)
 		}
 		if bgHex != "" {
 			// The layout's color map override applies to the slide's own scheme
@@ -166,7 +167,7 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 			// section divider drew no fix and no finding. Resolve what the
 			// placeholder INHERITS and fix that too (go-slide-creator-ucmgr).
 			ctx.contrastSwaps = append(ctx.contrastSwaps, enforceInheritedTextContrast(
-				slide, layoutData, ctx.masterXMLForLayout(input.slideSpec.LayoutID),
+				slide, layoutData, masterData,
 				bgHex, ctx.themeColors, input.slideIndex, override,
 			)...)
 		}

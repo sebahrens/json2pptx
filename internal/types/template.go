@@ -147,6 +147,9 @@ type LayoutMetadata struct {
 	// BackgroundRef preserves its literal hex or mapped theme scheme slot so
 	// contrast preflight can re-resolve it after theme_override.
 	BackgroundRef string
+	// BackgroundMods records OOXML color transforms on the inherited solid
+	// background so theme overrides can re-resolve its visible color.
+	BackgroundMods BackgroundColorModifiers `json:"-"`
 
 	// FooterRegions are the resolved date / footer / slide-number chrome
 	// rectangles a slide on this layout carries: the layout's own dt/ftr/sldNum
@@ -154,6 +157,13 @@ type LayoutMetadata struct {
 	// are populated by ParseLayouts and feed the takeaway/source band and
 	// footer geometry (template.ResolveChromeFrame).
 	FooterRegions []ChromeRegion
+}
+
+// BackgroundColorModifiers are OOXML background-fill transforms in 1/100000
+// units. Presence flags distinguish an absent transform from an explicit zero.
+type BackgroundColorModifiers struct {
+	LumMod, LumOff, Tint, Shade, Alpha int
+	HasLumMod, HasAlpha                bool
 }
 
 // ChromeRegion is one resolved chrome rectangle of a layout (e.g. the "ftr"
