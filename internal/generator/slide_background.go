@@ -126,6 +126,45 @@ func effectiveSlideBackgroundHex(bg *BackgroundImage, themeColors []types.ThemeC
 	return resolveBackgroundHex(bg.Color, themeColors)
 }
 
+// effectiveGridSlideBackgroundHex resolves what a transparent shape-grid cell
+// actually sits on. A photograph without a sufficiently opaque scrim has no
+// single measurable color, so the contrast pass must leave it unguessed.
+func effectiveGridSlideBackgroundHex(bg *BackgroundImage, layoutXML, masterXML []byte, themeColors []types.ThemeColor) string {
+	inherited := extractLayoutBackgroundColor(layoutXML, themeColors)
+	if inherited == "" {
+		inherited = extractLayoutBackgroundColor(masterXML, themeColors)
+	}
+	return EffectiveGridBackgroundHex(bg, inherited, themeColors)
+}
+
+// EffectiveGridBackgroundHex is shared by generate and validate for
+// transparent shape-grid cells. inheritedHex is the selected layout/master
+// background when known; a weakly scrimmed photo remains indeterminate.
+func EffectiveGridBackgroundHex(bg *BackgroundImage, inheritedHex string, themeColors []types.ThemeColor) string {
+	if bg != nil && bg.Path != "" {
+		if bg.Overlay == nil {
+			return ""
+		}
+		alpha := bg.Overlay.Alpha
+		if alpha <= 0 {
+			alpha = defaultOverlayAlpha
+		}
+		if alpha < scrimOpaqueEnough {
+			return ""
+		}
+	}
+	if hex := effectiveSlideBackgroundHex(bg, themeColors); hex != "" {
+		return hex
+	}
+	if inheritedHex != "" {
+		return inheritedHex
+	}
+	if hex := resolveSchemeColorToHex("lt1", themeColors); hex != "" {
+		return hex
+	}
+	return "#FFFFFF"
+}
+
 // scrimOpaqueEnough is the alpha above which the scrim, not the image, decides
 // the text's background. Below it the photo still shows through enough that a
 // contrast verdict computed from the scrim colour would be a guess.

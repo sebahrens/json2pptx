@@ -52,6 +52,7 @@ type SlideContext struct {
 	newSlideData            map[int][]byte                      // newly created slides
 	slideSpecs              []SlideSpec                         // specs for new slides
 	slideContentMap         map[int]SlideSpec                   // slideNum -> content
+	shapeGridBackgrounds    map[int]string                      // slideNum -> effective canvas for transparent grid cells
 	slideRelIDs             map[int]string                      // slideNum -> relationship ID (e.g., "rId15")
 	masterBulletLevelCache  map[string]int                      // masterPath -> first bullet level (cached)
 	slideNotes              map[int]string                      // slideNum -> speaker notes text (only for slides with notes)
@@ -242,6 +243,7 @@ func newSinglePassContext(outputPath string, slides []SlideSpec, allowedPaths []
 			templateSlideData:      make(map[int]*slideXML),
 			newSlideData:           make(map[int][]byte),
 			slideContentMap:        make(map[int]SlideSpec),
+			shapeGridBackgrounds:   make(map[int]string),
 			slideRelIDs:            make(map[int]string),
 			masterBulletLevelCache: make(map[string]int),
 			slideNotes:             make(map[int]string),

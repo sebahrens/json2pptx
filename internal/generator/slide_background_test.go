@@ -22,6 +22,32 @@ func bgThemeColors() []types.ThemeColor {
 	}
 }
 
+func TestEffectiveGridSlideBackgroundHex(t *testing.T) {
+	layout := []byte(`<p:sldLayout><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="EEEEEE"/></a:solidFill></p:bgPr></p:bg></p:cSld></p:sldLayout>`)
+	master := []byte(`<p:sldMaster><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="222222"/></a:solidFill></p:bgPr></p:bg></p:cSld></p:sldMaster>`)
+	tests := []struct {
+		name           string
+		bg             *BackgroundImage
+		layout, master []byte
+		want           string
+	}{
+		{"authored dark", &BackgroundImage{Color: "dk2"}, layout, master, "#1B2A4A"},
+		{"layout", nil, layout, master, "#EEEEEE"},
+		{"master", nil, nil, master, "#222222"},
+		{"theme fallback", nil, nil, nil, "#FFFFFF"},
+		{"photo unknown", &BackgroundImage{Path: "photo.png"}, layout, master, ""},
+		{"weak photo scrim unknown", &BackgroundImage{Path: "photo.png", Overlay: &BackgroundOverlay{Color: "dk2", Alpha: 0.1}}, layout, master, ""},
+		{"opaque photo scrim", &BackgroundImage{Path: "photo.png", Overlay: &BackgroundOverlay{Color: "dk2", Alpha: 0.8}}, layout, master, "#1B2A4A"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := effectiveGridSlideBackgroundHex(tc.bg, tc.layout, tc.master, bgThemeColors()); got != tc.want {
+				t.Errorf("background = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestBackgroundSolidFillXML(t *testing.T) {
 	// A scheme name stays a scheme reference so it follows the template theme.
 	got := backgroundSolidFillXML("dk2")

@@ -15,7 +15,8 @@ import (
 // ProfileParserVersion is part of the profile cache key; bump it whenever the
 // profile shape or derivation changes so cached profiles are rebuilt.
 // v2: resolved footer regions + per-layout chrome geometry.
-const ProfileParserVersion = "2"
+// v3: effective solid layout/master background for contrast preflight.
+const ProfileParserVersion = "3"
 
 type ProfileDiagnostic struct {
 	Code     string `json:"code"`

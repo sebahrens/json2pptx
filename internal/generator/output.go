@@ -758,7 +758,7 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 			// contrast swap finding paths align with the rest of the fit report.
 			slideIndex := slideNum - ctx.calculateStartingSlideNum()
 			var gridSwaps []ContrastSwap
-			shapes, gridSwaps = enforceShapeGridContrast(shapes, ctx.themeColors, ctx.whiteTextSafeHex, slideIndex)
+			shapes, gridSwaps = enforceShapeGridContrast(shapes, ctx.themeColors, ctx.whiteTextSafeHex, slideIndex, ctx.shapeGridBackgrounds[slideNum])
 			ctx.contrastSwaps = append(ctx.contrastSwaps, gridSwaps...)
 		}
 		slideData, err = insertRawShapes(slideData, shapes)

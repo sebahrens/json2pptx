@@ -421,6 +421,53 @@ func TestEnforceShapeGridContrast_FixesHexFill(t *testing.T) {
 	}
 }
 
+func TestTransparentGridPreflightMatchesRender(t *testing.T) {
+	for _, tc := range []struct {
+		name, background, foreground string
+	}{
+		{"light", "#FFFFFF", "FFFFFF"},
+		{"dark", "#000000", "000000"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			shape := []byte(`<p:sp><p:spPr><a:noFill/></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="1200"><a:solidFill><a:srgbClr val="` + tc.foreground + `"/></a:solidFill></a:rPr><a:t>Caption</a:t></a:r></a:p></p:txBody></p:sp>`)
+			fixed, swaps := enforceShapeGridContrast([][]byte{shape}, consultingThemeColors(), nil, 0, tc.background)
+			findings := DetectContrastPreflight([]ContrastPreflightPair{{
+				Foreground: "#" + tc.foreground, Background: tc.background,
+				TextPt: 12, Source: "shape_grid",
+			}}, consultingThemeColors())
+			if len(swaps) != 1 || len(findings) != 1 {
+				t.Fatalf("render swaps=%d preflight findings=%d, want one each", len(swaps), len(findings))
+			}
+			if swaps[0].BackgroundColor != tc.background || swaps[0].RatioAfter < svggen.WCAGAANormal {
+				t.Errorf("swap = %+v, want effective background and >=4.5:1", swaps[0])
+			}
+			if string(fixed[0]) == string(shape) {
+				t.Error("low-contrast transparent cell was not fixed")
+			}
+			if predicted := findings[0].Fix.Params["predicted_replacement"]; predicted != swaps[0].ReplacedColor {
+				t.Errorf("preflight predicted %v, render used %s", predicted, swaps[0].ReplacedColor)
+			}
+		})
+	}
+}
+
+func TestEffectiveGridShapeFillHexDoesNotGuessUnsupportedFill(t *testing.T) {
+	for _, tc := range []struct {
+		name, shape, want string
+	}{
+		{"transparent", `<p:sp><p:spPr><a:noFill/></p:spPr></p:sp>`, "#FFFFFF"},
+		{"solid", `<p:sp><p:spPr><a:solidFill><a:srgbClr val="112233"/></a:solidFill></p:spPr></p:sp>`, "#112233"},
+		{"gradient", `<p:sp><p:spPr><a:gradFill/></p:spPr></p:sp>`, ""},
+		{"picture", `<p:sp><p:spPr><a:blipFill/></p:spPr></p:sp>`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := effectiveGridShapeFillHex([]byte(tc.shape), consultingThemeColors(), "#FFFFFF"); got != tc.want {
+				t.Errorf("effective fill = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestFixShapeXMLContrast_SemanticFill(t *testing.T) {
 	// Use a theme where accent1 is light pink — white text has very low contrast
 	tc := []types.ThemeColor{

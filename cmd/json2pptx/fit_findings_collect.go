@@ -1511,16 +1511,28 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 	}
 
 	pairs := authorBackgroundContrastPairs(input, layouts, themeColors)
+	predictedLayouts := predictSlideLayouts(input, layouts)
 	for si, slide := range input.Slides {
-		if slide.ShapeGrid == nil {
+		if slide.ShapeGrid == nil || (slide.ContrastCheck != nil && !*slide.ContrastCheck) {
 			continue
 		}
+		inheritedBackground := ""
+		if predictedLayouts[si] != nil {
+			inheritedBackground = predictedLayouts[si].BackgroundHex
+			if predictedLayouts[si].BackgroundRef != "" {
+				inheritedBackground = template.ResolveBackgroundRefHex(predictedLayouts[si].BackgroundRef, themeColors)
+			}
+		}
+		gridBackground := generator.EffectiveGridBackgroundHex(backgroundSpecFor(&slide), inheritedBackground, themeColors)
 		for ri, row := range slide.ShapeGrid.Rows {
 			for ci, cell := range row.Cells {
 				if cell == nil || cell.Shape == nil {
 					continue
 				}
 				fill := effectiveShapeFillColor(cell.Shape.Fill, themeColors)
+				if fill == "" && transparentShapeFill(cell.Shape.Fill) {
+					fill = gridBackground
+				}
 				if fill == "" {
 					continue
 				}
@@ -1539,6 +1551,25 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 	}
 
 	return generator.DetectContrastPreflight(pairs, themeColors)
+}
+
+// transparentShapeFill distinguishes a true no-fill cell from an unsupported
+// fill specification whose visible color cannot be inferred.
+func transparentShapeFill(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return true
+	}
+	var value string
+	if err := json.Unmarshal(raw, &value); err == nil {
+		return strings.TrimSpace(value) == "" || strings.EqualFold(strings.TrimSpace(value), "none")
+	}
+	var object struct {
+		Color string `json:"color"`
+	}
+	if err := json.Unmarshal(raw, &object); err == nil {
+		return strings.EqualFold(strings.TrimSpace(object.Color), "none")
+	}
+	return false
 }
 
 // authorBackgroundContrastPairs pairs the text colour each populated

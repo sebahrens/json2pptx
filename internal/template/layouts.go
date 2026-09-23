@@ -38,7 +38,7 @@ func ParseLayouts(reader *Reader) ([]types.LayoutMetadata, error) {
 
 	var layouts []types.LayoutMetadata
 	for i, layoutFile := range layoutFiles {
-		layout, err := parseLayoutFile(reader, layoutFile, i, masterResolver, fontResolver)
+		layout, err := parseLayoutFile(reader, layoutFile, i, masterResolver, fontResolver, theme.Colors)
 		if err != nil {
 			// Log warning but continue - lenient parsing
 			slog.Debug("failed to parse layout file",
@@ -60,7 +60,7 @@ func ParseLayouts(reader *Reader) ([]types.LayoutMetadata, error) {
 // parseLayoutFile parses a single slideLayout XML file.
 // masterResolver is used to resolve placeholder transforms inherited from slide masters.
 // fontResolver is used to resolve placeholder fonts inherited from slide masters.
-func parseLayoutFile(reader *Reader, filename string, index int, masterResolver *MasterPositionResolver, fontResolver *MasterFontResolver) (types.LayoutMetadata, error) {
+func parseLayoutFile(reader *Reader, filename string, index int, masterResolver *MasterPositionResolver, fontResolver *MasterFontResolver, themeColors []types.ThemeColor) (types.LayoutMetadata, error) {
 	data, err := reader.ReadFile(filename)
 	if err != nil {
 		return types.LayoutMetadata{}, fmt.Errorf("failed to read %s: %w", filename, err)
@@ -106,7 +106,16 @@ func parseLayoutFile(reader *Reader, filename string, index int, masterResolver 
 		Capacity:      capacity,
 		Tags:          []string{},
 		FooterRegions: resolveFooterRegions(xmlLayout.CommonSlideData.ShapeTree.Shapes, masterPositions, name),
+		BackgroundRef: ResolveLayoutBackgroundRef(data),
 	}
+	if layoutMeta.BackgroundRef == "" {
+		if masterPath, _, err := resolveLayoutRelationships(reader, layoutID); err == nil && masterPath != "" {
+			if masterData, readErr := reader.ReadFile(masterPath); readErr == nil {
+				layoutMeta.BackgroundRef = ResolveLayoutBackgroundRef(masterData)
+			}
+		}
+	}
+	layoutMeta.BackgroundHex = ResolveBackgroundRefHex(layoutMeta.BackgroundRef, themeColors)
 
 	// Classify layout to populate tags
 	ClassifyLayout(&layoutMeta)

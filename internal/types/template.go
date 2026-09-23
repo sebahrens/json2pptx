@@ -141,6 +141,12 @@ type LayoutMetadata struct {
 	MasterPath string
 	ThemePath  string
 	Theme      ThemeInfo
+	// BackgroundHex is the visible solid background inherited from this
+	// layout or its master. Empty means it cannot be resolved to one color.
+	BackgroundHex string
+	// BackgroundRef preserves its literal hex or mapped theme scheme slot so
+	// contrast preflight can re-resolve it after theme_override.
+	BackgroundRef string
 
 	// FooterRegions are the resolved date / footer / slide-number chrome
 	// rectangles a slide on this layout carries: the layout's own dt/ftr/sldNum

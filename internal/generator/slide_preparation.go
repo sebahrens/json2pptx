@@ -113,6 +113,9 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	if err != nil {
 		return slidePreparationResult{}, err
 	}
+	ctx.shapeGridBackgrounds[input.slideNum] = effectiveGridSlideBackgroundHex(
+		input.slideSpec.Background, layoutData, ctx.masterXMLForLayout(input.slideSpec.LayoutID), ctx.themeColors,
+	)
 
 	// Two content items that fall back onto the same physical placeholder would
 	// silently bury one another (e.g. body_2 bullets resolving onto the body

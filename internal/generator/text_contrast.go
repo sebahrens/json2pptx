@@ -12,6 +12,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -55,49 +56,11 @@ func annotateContrastSwaps(swaps []ContrastSwap, slideIndex int, path, source st
 // Layout Background Extraction
 // =============================================================================
 
-// layoutBgSolidFillRegexp matches a solid fill sRGB color inside a <p:bg>/<p:bgPr>
-// element in a slide layout. Captures the 6-hex-digit color value.
-//
-// Matches patterns like:
-//
-//	<p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFE8D4"/></a:solidFill>...
-var layoutBgSolidFillRegexp = regexp.MustCompile(
-	`<p:bg\b[^>]*>` + // <p:bg>
-		`\s*<p:bgPr\b[^>]*>` + // <p:bgPr>
-		`\s*<a:solidFill\b[^>]*>` + // <a:solidFill>
-		`\s*<a:srgbClr\s+val="([0-9A-Fa-f]{6})"`, // capture hex color
-)
-
-// layoutBgSchemeClrRegexp matches a scheme color reference inside a layout background.
-var layoutBgSchemeClrRegexp = regexp.MustCompile(
-	`<p:bg\b[^>]*>` +
-		`\s*<p:bgPr\b[^>]*>` +
-		`\s*<a:solidFill\b[^>]*>` +
-		`\s*<a:schemeClr\s+val="([^"]+)"`,
-)
-
 // extractLayoutBackgroundColor parses the raw layout XML and extracts the
 // background solid fill color as a hex string (e.g., "#FFE8D4").
 // Returns empty string if no background or non-solid fill.
 func extractLayoutBackgroundColor(layoutXML []byte, themeColors []types.ThemeColor) string {
-	xmlStr := string(layoutXML)
-
-	// Try sRGB color first (most common for custom backgrounds)
-	if m := layoutBgSolidFillRegexp.FindStringSubmatch(xmlStr); len(m) >= 2 {
-		return "#" + strings.ToUpper(m[1])
-	}
-
-	// Try scheme color reference, resolved through the layout's own color map
-	// override. modern-template's section divider fills with schemeClr tx1 under
-	// <a:overrideClrMapping tx1="lt1">: read literally that is dk1 (near-black),
-	// but the slide renders white (go-slide-creator-hln7).
-	if m := layoutBgSchemeClrRegexp.FindStringSubmatch(xmlStr); len(m) >= 2 {
-		if rgb := resolveSchemeColorMapped(m[1], parseLayoutColorMapOverride(layoutXML), themeColors); rgb != "" {
-			return rgb
-		}
-	}
-
-	return ""
+	return template.ResolveLayoutBackgroundHex(layoutXML, themeColors)
 }
 
 // =============================================================================
@@ -661,17 +624,21 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 // point back to the specific rendered cell. The flat shape index is used because
 // the original grid row/cell coordinates are not retained on the raw shape XML
 // at render time.
-func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideIndex int) ([][]byte, []ContrastSwap) {
+func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideIndex int, slideBackground ...string) ([][]byte, []ContrastSwap) {
+	backgroundHex := ""
+	if len(slideBackground) > 0 {
+		backgroundHex = slideBackground[0]
+	}
 	// Sibling cells first: a text colour shared by several cells is decided once,
 	// against the worst fill in the group, so a tinted stack does not come out in
 	// three colours (go-slide-creator-tnx3e). Whatever the group settled is
 	// already readable, so the per-shape pass below finds nothing left to do on
 	// those cells.
-	shapes, allSwaps := enforceGridGroupContrast(shapes, themeColors, whiteTextSafeHex, slideIndex)
+	shapes, allSwaps := enforceGridGroupContrast(shapes, themeColors, whiteTextSafeHex, slideIndex, backgroundHex)
 	gridPath := slidepath.ShapeGrid(slideIndex)
 	for i, shape := range shapes {
 		var swaps []ContrastSwap
-		shapes[i], swaps = fixShapeXMLContrast(shape, themeColors, whiteTextSafeHex)
+		shapes[i], swaps = fixShapeXMLContrast(shape, themeColors, whiteTextSafeHex, backgroundHex)
 		annotateContrastSwaps(swaps, slideIndex, slidepath.Join(gridPath, fmt.Sprintf("shapes/%d", i)), "shape_grid")
 		allSwaps = append(allSwaps, swaps...)
 	}
@@ -685,8 +652,12 @@ func enforceShapeGridContrast(shapes [][]byte, themeColors []types.ThemeColor, w
 // When the fill matches a white-text-safe accent (per whiteTextSafeHex) and the
 // text foreground is white/lt1, the fix is skipped — the template metadata
 // certifies that pairing as safe.
-func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool) ([]byte, []ContrastSwap) {
-	fillHex := extractShapeFillHex(shapeXML, themeColors)
+func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteTextSafeHex map[string]bool, slideBackground ...string) ([]byte, []ContrastSwap) {
+	backgroundHex := ""
+	if len(slideBackground) > 0 {
+		backgroundHex = slideBackground[0]
+	}
+	fillHex := effectiveGridShapeFillHex(shapeXML, themeColors, backgroundHex)
 	if fillHex == "" {
 		return shapeXML, nil
 	}
@@ -736,6 +707,29 @@ func fixShapeXMLContrast(shapeXML []byte, themeColors []types.ThemeColor, whiteT
 	result = append(result, []byte(fixed)...)
 	result = append(result, shapeXML[txEnd:]...)
 	return result, swaps
+}
+
+// effectiveGridShapeFillHex uses the cell's own solid fill when present, then
+// the effective slide canvas for transparent cells. Unknown gradient/picture
+// fills are not treated as transparent: their visible color is indeterminate.
+func effectiveGridShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor, slideBackground string) string {
+	if fill := extractShapeFillHex(shapeXML, themeColors); fill != "" {
+		return fill
+	}
+	if slideBackground == "" {
+		return ""
+	}
+	spPrStart := bytes.Index(shapeXML, []byte("<p:spPr>"))
+	spPrEnd := bytes.Index(shapeXML, []byte("</p:spPr>"))
+	if spPrStart >= 0 && spPrEnd > spPrStart {
+		spPr := shapeXML[spPrStart:spPrEnd]
+		for _, unsupported := range [][]byte{[]byte("<a:solidFill"), []byte("<a:gradFill"), []byte("<a:blipFill"), []byte("<a:pattFill")} {
+			if bytes.Contains(spPr, unsupported) {
+				return ""
+			}
+		}
+	}
+	return slideBackground
 }
 
 // srgbClrInFillRegexp matches <a:solidFill><a:srgbClr val="RRGGBB"/></a:solidFill>
