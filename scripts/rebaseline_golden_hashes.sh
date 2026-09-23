@@ -31,7 +31,7 @@ EXAMPLE="examples/basic-deck.json"
 TEMPLATES_DIR="templates"
 
 # Must mirror determinismTemplates in cmd/json2pptx/determinism_corpus_test.go.
-TEMPLATES=(forest-green midnight-blue modern-template warm-coral)
+TEMPLATES=(forest-green midnight-blue modern-template p-style warm-coral)
 
 SCRATCH="$(mktemp -d)"
 trap 'rm -rf "$SCRATCH"' EXIT

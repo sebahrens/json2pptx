@@ -54,6 +54,9 @@ func TestCoreTemplateNames(t *testing.T) {
 	if len(core) == 0 {
 		t.Fatal("CoreTemplateNames() returned no templates")
 	}
+	if !slices.Contains(core, "p-style") {
+		t.Error("p-style must remain in the full cross-template test corpus")
+	}
 	for _, name := range core {
 		path := filepath.Join(TemplatesDir(), name+".pptx")
 		if _, err := os.Stat(path); err != nil {

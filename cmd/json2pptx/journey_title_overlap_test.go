@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // Regression test for go-slide-creator-40to: the journey-maturity-model pattern
@@ -40,7 +42,7 @@ func TestJourneyMaturityModelTitleNoOverlap(t *testing.T) {
 	}
 	templatesDir := filepath.Join(projectRoot, "templates")
 
-	templates := []string{"midnight-blue", "forest-green", "warm-coral", "modern-template"}
+	templates := testutil.CoreTemplateNames()
 	for _, tmpl := range templates {
 		tmpl := tmpl // capture for parallel subtest
 		t.Run(tmpl, func(t *testing.T) {

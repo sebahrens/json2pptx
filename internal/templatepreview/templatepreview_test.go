@@ -23,20 +23,8 @@ func TestPreviewsShipForAllBundledTemplates(t *testing.T) {
 	if len(paths) == 0 {
 		t.Fatal("no bundled templates")
 	}
-	// The tracked bundled set (see .gitignore); user-added templates dropped
-	// into templates/ locally are not required to ship previews.
-	bundled := map[string]bool{
-		"abstract": true, "blue-corporate": true, "business-template": true,
-		"forest-green": true, "midnight-blue": true, "modern": true,
-		"modern-template": true, "modern-yellow": true, "warm-coral": true,
-	}
-	checked := 0
 	for _, tplPath := range paths {
 		name := strings.TrimSuffix(filepath.Base(tplPath), ".pptx")
-		if !bundled[name] {
-			continue
-		}
-		checked++
 		r, err := template.OpenTemplate(tplPath)
 		if err != nil {
 			t.Fatalf("%s: %v", name, err)
@@ -73,9 +61,6 @@ func TestPreviewsShipForAllBundledTemplates(t *testing.T) {
 				t.Errorf("%s: stale preview %s has no layout", name, e.Name())
 			}
 		}
-	}
-	if checked != len(bundled) {
-		t.Errorf("checked %d bundled templates, want %d", checked, len(bundled))
 	}
 }
 

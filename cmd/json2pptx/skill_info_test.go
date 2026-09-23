@@ -12,6 +12,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -340,12 +341,7 @@ func TestAnalyzeTemplateForSkillInfo_ColorRolesInCompactMode(t *testing.T) {
 }
 
 func TestAnalyzeTemplateForSkillInfo_TableStylesAllTemplates(t *testing.T) {
-	templates := []string{
-		"../../templates/forest-green.pptx",
-		"../../templates/midnight-blue.pptx",
-		"../../templates/modern-template.pptx",
-		"../../templates/warm-coral.pptx",
-	}
+	templates := testutil.BuiltinTemplatePaths()
 
 	cache := template.NewMemoryCache(24 * time.Hour)
 

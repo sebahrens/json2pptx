@@ -12,14 +12,14 @@ import (
 	"testing"
 )
 
-// determinismTemplates is the canonical set of bundled templates that the
-// engine guarantees byte-stable output for. Designer templates (abstract,
-// blue-corporate, business-template, modern, modern-yellow) are intentionally
-// excluded until go-slide-creator-vqad lands.
+// determinismTemplates is the canonical set of core templates that the engine
+// guarantees byte-stable output for. Most designer templates are excluded
+// until go-slide-creator-vqad lands; p-style is intentionally included.
 var determinismTemplates = []string{
 	"forest-green",
 	"midnight-blue",
 	"modern-template",
+	"p-style",
 	"warm-coral",
 }
 

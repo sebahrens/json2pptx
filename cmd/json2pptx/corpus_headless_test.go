@@ -12,10 +12,12 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // TestCorpusHeadlessOpen exercises the full "zero needs repair" guarantee:
-// every examples/*.json is generated against every bundled template, then the
+// every examples/*.json is generated against every core template, then the
 // resulting PPTX is round-tripped through headless LibreOffice. The test fails
 // if LibreOffice prints anything that looks like a repair / corruption /
 // invalid-structure warning.
@@ -49,11 +51,11 @@ func TestCorpusHeadlessOpen(t *testing.T) {
 		t.Fatalf("no examples/*.json files found at %s", examplesDir)
 	}
 
-	templates := []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
+	templates := testutil.CoreTemplateNames()
 
 	// LibreOffice complains loudly when two concurrent invocations share a user
 	// profile, so give each subtest its own --user-profile and keep the suite
-	// sequential. Worst case ~92 round-trips × a few seconds each — acceptable
+	// sequential. The full matrix takes several minutes — acceptable
 	// for an integration-tagged job.
 	baseTmp := t.TempDir()
 

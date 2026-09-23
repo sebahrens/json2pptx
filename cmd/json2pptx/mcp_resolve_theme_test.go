@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 func newResolveThemeMC(t *testing.T) *mcpConfig {
@@ -31,7 +32,7 @@ func resolveThemeRequest(args map[string]any) mcp.CallToolRequest {
 
 func TestResolveTheme_AllColors(t *testing.T) {
 	mc := newResolveThemeMC(t)
-	templates := []string{"midnight-blue", "forest-green", "warm-coral", "modern-template"}
+	templates := testutil.CoreTemplateNames()
 
 	for _, tmpl := range templates {
 		t.Run(tmpl, func(t *testing.T) {
@@ -96,7 +97,7 @@ func TestResolveTheme_AllColors(t *testing.T) {
 
 func TestResolveTheme_DistinctPalettes(t *testing.T) {
 	mc := newResolveThemeMC(t)
-	templates := []string{"midnight-blue", "forest-green", "warm-coral", "modern-template"}
+	templates := testutil.CoreTemplateNames()
 
 	palettes := make(map[string]string) // template -> accent1
 	for _, tmpl := range templates {
@@ -113,13 +114,13 @@ func TestResolveTheme_DistinctPalettes(t *testing.T) {
 		palettes[tmpl] = resp.Colors["accent1"]
 	}
 
-	// At least 3 of 4 templates should have distinct accent1 values.
+	// At least three core templates should have distinct accent1 values.
 	unique := make(map[string]bool)
 	for _, hex := range palettes {
 		unique[hex] = true
 	}
 	if len(unique) < 3 {
-		t.Errorf("expected at least 3 distinct accent1 values across 4 templates, got %d: %v", len(unique), palettes)
+		t.Errorf("expected at least 3 distinct accent1 values across core templates, got %d: %v", len(unique), palettes)
 	}
 }
 

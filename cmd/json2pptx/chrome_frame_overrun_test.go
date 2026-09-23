@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -44,7 +45,7 @@ func TestPatternBlockStaysAboveChrome(t *testing.T) {
 		{"label": "Review", "body": "Post-implementation review against the business case."},
 	}
 
-	for _, tpl := range []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"} {
+	for _, tpl := range testutil.CoreTemplateNames() {
 		for _, style := range []string{"stacked-box", "chevron", "toc"} {
 			for _, bands := range []string{"none", "takeaway", "takeaway+source"} {
 				name := fmt.Sprintf("%s/%s/%s", tpl, style, bands)

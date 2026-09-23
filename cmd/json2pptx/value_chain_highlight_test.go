@@ -6,10 +6,8 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
-
-// bundledTemplateNames are the four templates shipped with the engine.
-var bundledTemplateNames = []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
 
 // TestValueChainHighlightOnRealTemplates runs the highlight rule against the
 // actual theme files rather than a fixture, so a template whose palette moves
@@ -22,7 +20,7 @@ func TestValueChainHighlightOnRealTemplates(t *testing.T) {
 		t.Fatal("value-chain is not registered")
 	}
 
-	for _, name := range bundledTemplateNames {
+	for _, name := range testutil.AllBuiltinTemplateNames() {
 		t.Run(name, func(t *testing.T) {
 			reader, err := template.OpenTemplate("../../templates/" + name + ".pptx")
 			if err != nil {

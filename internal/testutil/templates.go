@@ -48,6 +48,7 @@ var builtinTemplateCoverage = map[string]templateCoverage{
 	"forest-green":    {tier: TierCore},
 	"midnight-blue":   {tier: TierCore},
 	"modern-template": {tier: TierCore},
+	"p-style":         {tier: TierCore},
 	"warm-coral":      {tier: TierCore},
 
 	"abstract":          {tier: TierSmoke, reason: "designer-owned built-in; covered by template load/smoke tests, excluded from expensive fixture matrices to bound CI runtime (go-slide-creator-0oi3)"},

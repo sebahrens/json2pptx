@@ -92,7 +92,7 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 ## Features
 
 - **JSON-to-PPTX conversion** -- structured slide definitions become polished PowerPoint files
-- **Bundled templates** -- 9 ship embedded in the binary; `forest-green`, `midnight-blue`, `modern-template` and `warm-coral` are the reference set the docs use, alongside `abstract`, `blue-corporate`, `business-template`, `modern` and `modern-yellow`. Call `list_templates` (or `json2pptx skill-info`) for the live list; any `.pptx` works as a template
+- **Bundled templates** -- `forest-green`, `midnight-blue`, `modern-template`, `p-style` and `warm-coral` receive full cross-template test coverage, alongside `abstract`, `blue-corporate`, `business-template`, `modern` and `modern-yellow`. Call `list_templates` (or `json2pptx skill-info`) for the live list; any `.pptx` works as a template
 - **Template-aware layout selection** -- picks the right layout based on your content; synthesizes missing standard layouts
 - **15 chart types** -- bar, grouped_bar, stacked_bar, line, area, stacked_area, pie, donut, scatter, bubble, radar, waterfall, funnel, gauge, treemap
 - **21 diagram types** -- SWOT, timeline, process flow, pyramid, venn, org chart, Gantt, KPI dashboard, heatmap, fishbone, PESTEL, Porter's Five Forces, value chain, Business Model Canvas, nine box talent, house diagram, panel layout, icon columns/rows, stat cards, matrix 2x2
@@ -555,6 +555,7 @@ The content types, chart types, diagram types, and named patterns are summarized
 | `forest-green` | Clean green corporate theme |
 | `midnight-blue` | Professional dark blue theme |
 | `modern-template` | Modern layout with contemporary styling |
+| `p-style` | Georgia-and-Arial presentation style |
 | `warm-coral` | Warm coral accent theme |
 
 Each template provides standard layouts: Title Slide, One Content, Two Content, Section Divider, Closing, and Blank. Missing standard layouts are synthesized at load time.

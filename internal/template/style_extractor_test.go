@@ -465,7 +465,7 @@ func TestTableStyleIndex_DeclaredDefault_ModernTemplate(t *testing.T) {
 func TestTableStyleIndex_DeclaredDefault_AllBundled(t *testing.T) {
 	// All bundled templates should either have a declared default or gracefully
 	// return false — never panic.
-	templates := []string{"forest-green", "midnight-blue", "modern-template", "warm-coral"}
+	templates := testutil.AllBuiltinTemplateNames()
 	for _, tmpl := range templates {
 		t.Run(tmpl, func(t *testing.T) {
 			reader, err := OpenTemplate(filepath.Join("..", "..", "templates", tmpl+".pptx"))
