@@ -82,6 +82,36 @@ func TestScoreDeckResponseShape(t *testing.T) {
 	}
 }
 
+func TestScoreDeckFlagsTitleOnlyContentLayout(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates",
+		outputDir:    t.TempDir(),
+		cache:        template.NewMemoryCache(24 * time.Hour),
+	}
+	deck := mustParseJSON(`{"template":"midnight-blue","slides":[{"layout_id":"content","content":[{"placeholder_id":"title","type":"text","text_value":"Market context"}]}]}`)
+	result, err := mc.handleScoreDeck(context.Background(), makeRequest(map[string]any{"presentation": deck}))
+	if err != nil || result.IsError {
+		t.Fatalf("score_deck failed: err=%v result=%s", err, textContent(result))
+	}
+	data, err := json.Marshal(result.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var score deterministic.DeckScore
+	if err := json.Unmarshal(data, &score); err != nil {
+		t.Fatal(err)
+	}
+	if score.OverallScore >= 100 || len(score.PerSlide) != 1 {
+		t.Fatalf("title-only content slide scored as clean: %+v", score)
+	}
+	for _, finding := range score.PerSlide[0].Findings {
+		if finding.Code == patterns.ErrCodeSlideNearlyEmpty {
+			return
+		}
+	}
+	t.Fatalf("score_deck omitted SLIDE_NEARLY_EMPTY: %+v", score.PerSlide[0].Findings)
+}
+
 // TestScoreDeck_WithHeuristicsModeRejected verifies the contract that
 // 'with_heuristics' is not silently downgraded to deterministic. The handler
 // must return IsError=true with a structured UNSUPPORTED_MODE diagnostic that

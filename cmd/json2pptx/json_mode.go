@@ -908,7 +908,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 	}
 
-	contentItems, err := convertPresentationContent(slide.Content, i+1, inferSlideType(slide))
+	contentItems, err := convertPresentationContent(slide.Content, i+1, inferSlideType(slide, layouts...))
 	if err != nil {
 		return generator.SlideSpec{}, nil, nil, err
 	}
@@ -1886,6 +1886,12 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 	for i, slide := range slides {
 		slideScore := 1.0
 		var issues []string
+		if slideCarriesArgument(slide, layouts...) && !hasNonTextContent(slide) {
+			if words := slideBodyWordCount(slide); words < minSlideWords {
+				slideScore -= 0.2
+				issues = append(issues, fmt.Sprintf("content slide has %d body words (minimum %d)", words, minSlideWords))
+			}
+		}
 
 		// Check for empty slide (no content items AND no shape_grid/pattern)
 		if len(slide.Content) == 0 && slide.ShapeGrid == nil && slide.Pattern == nil && slide.Compose == nil {
@@ -2242,7 +2248,7 @@ func writeJSONOutput(path string, output JSONOutput) error {
 }
 
 // inferSlideType determines the SlideType from an explicit hint or content analysis.
-func inferSlideType(slide SlideInput) types.SlideType {
+func inferSlideType(slide SlideInput, layouts ...types.LayoutMetadata) types.SlideType {
 	if slide.SlideType != "" {
 		return types.SlideType(slide.SlideType)
 	}
@@ -2295,11 +2301,32 @@ func inferSlideType(slide SlideInput) types.SlideType {
 	}
 	// A slide with only title/subtitle text (no body text, no bullets) is a
 	// title-type slide — this covers both opening and closing slides (e.g.,
-	// "Thank You" + "Questions?" on slideLayout5).
+	// "Thank You" + "Questions?" on slideLayout5). An explicitly chosen
+	// content layout is different: a lone title there is a nearly empty
+	// argument slide, not an opener or closer.
 	if bodyTextCount == 0 && !hasBullets {
+		if explicitContentLayout(slide.LayoutID, layouts) {
+			return types.SlideTypeContent
+		}
 		return types.SlideTypeTitle
 	}
 	return types.SlideTypeContent
+}
+
+func explicitContentLayout(layoutID string, layouts []types.LayoutMetadata) bool {
+	if strings.EqualFold(layoutID, "content") {
+		return true
+	}
+	for i := range layouts {
+		if layouts[i].ID != layoutID {
+			continue
+		}
+		if template.EffectiveCanonicalType(&layouts[i]).Family() == types.LayoutFamilyOneContent {
+			return true
+		}
+		return hasLayoutTag(layouts[i].Tags, "content") || hasLayoutTag(layouts[i].Tags, "two-column")
+	}
+	return false
 }
 
 func isSectionSlideInput(slide SlideInput, layouts []types.LayoutMetadata) bool {

@@ -14,6 +14,48 @@ func sectionTextContent(id, value string) ContentInput {
 	return ContentInput{PlaceholderID: id, Type: "text", TextValue: &value}
 }
 
+func TestTitleOnlyContentLayoutIsNearlyEmpty(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{ID: "content-layout", Tags: []string{"content"}, CanonicalType: types.CanonicalLayoutOneContent},
+		{ID: "title-layout", Tags: []string{"title-slide"}, CanonicalType: types.CanonicalLayoutTitleSlide},
+	}
+	cases := []struct {
+		name, layout, body string
+		wantNearlyEmpty    bool
+	}{
+		{name: "canonical content alias", layout: "content", wantNearlyEmpty: true},
+		{name: "concrete content layout", layout: "content-layout", wantNearlyEmpty: true},
+		{name: "title layout", layout: "title-layout"},
+		{name: "unspecified layout"},
+		{name: "substantive content", layout: "content-layout", body: "One two three four five six seven eight."},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := SlideInput{LayoutID: tc.layout, Content: []ContentInput{sectionTextContent("title", "Market context")}}
+			if tc.body != "" {
+				slide.Content = append(slide.Content, sectionTextContent("body", tc.body))
+			}
+			findings := collectSlideSubstanceFindings(&PresentationInput{Slides: []SlideInput{slide}}, layouts...)
+			found := false
+			for _, finding := range findings {
+				if finding.Code == patterns.ErrCodeSlideNearlyEmpty {
+					found = true
+				}
+			}
+			if found != tc.wantNearlyEmpty {
+				t.Fatalf("SLIDE_NEARLY_EMPTY=%t, want %t: %+v", found, tc.wantNearlyEmpty, findings)
+			}
+			score := computeQualityScoreWithLayouts([]SlideInput{slide}, nil, layouts).Score
+			if tc.wantNearlyEmpty && score >= 100 {
+				t.Fatalf("nearly empty content slide scored %.0f, want below 100", score)
+			}
+			if !tc.wantNearlyEmpty && score != 100 {
+				t.Fatalf("nonempty or title slide scored %.0f, want 100", score)
+			}
+		})
+	}
+}
+
 func TestSectionNumberSequenceFindings(t *testing.T) {
 	layouts := []types.LayoutMetadata{{
 		ID:            "section-layout",

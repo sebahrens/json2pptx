@@ -331,7 +331,7 @@ func collectSlideSubstanceFindings(input *PresentationInput, layouts ...types.La
 			})
 			continue
 		}
-		if !slideCarriesArgument(slide) {
+		if !slideCarriesArgument(slide, layouts...) {
 			continue
 		}
 		headlineRenders := strings.TrimSpace(slide.Headline) != "" && isBlankCanvasLayout(slide.LayoutID, layouts)
@@ -399,7 +399,7 @@ func isContentFreeSlide(slide SlideInput) bool {
 
 // slideCarriesArgument reports whether a slide is expected to make a point.
 // Title, section and blank slides are chrome, not argument.
-func slideCarriesArgument(slide SlideInput) bool {
+func slideCarriesArgument(slide SlideInput, layouts ...types.LayoutMetadata) bool {
 	switch types.SlideType(slide.SlideType) {
 	case types.SlideTypeTitle, types.SlideTypeSection:
 		return false
@@ -407,7 +407,7 @@ func slideCarriesArgument(slide SlideInput) bool {
 		return hasArgumentContent(slide)
 	}
 	if slide.SlideType == "" {
-		switch inferSlideType(slide) {
+		switch inferSlideType(slide, layouts...) {
 		case types.SlideTypeTitle, types.SlideTypeSection:
 			return false
 		case types.SlideTypeBlank:
