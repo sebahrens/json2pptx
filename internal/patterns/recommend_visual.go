@@ -157,7 +157,7 @@ type placeholderRule struct {
 
 var chartRules = []chartRule{
 	// Trend / time-series
-	{chartType: "line", keywords: []string{"trend", "time series", "over time", "monthly", "quarterly", "yearly", "growth", "decline", "trajectory"}, baseScore: 0.90, rationale: "Line chart for showing trends over time"},
+	{chartType: "line", keywords: []string{"trend", "time series", "over time", "monthly", "quarterly", "yearly", "growth", "decline", "trajectory", "evolves", "evolution"}, baseScore: 0.90, rationale: "Line chart for showing trends over time"},
 	{chartType: "area", keywords: []string{"area", "cumulative", "volume over time", "stacked area"}, baseScore: 0.85, rationale: "Area chart for cumulative or volume trends"},
 	{chartType: "stacked_area", keywords: []string{"stacked area", "composition over time", "mix over time"}, baseScore: 0.88, rationale: "Stacked area for showing composition changes over time"},
 
@@ -177,7 +177,7 @@ var chartRules = []chartRule{
 
 	// Specialized
 	{chartType: "radar", keywords: []string{"radar", "spider", "capability", "competency", "multi-dimension", "assessment"}, baseScore: 0.90, rationale: "Radar/spider chart for multi-dimensional comparison"},
-	{chartType: "waterfall", keywords: []string{"waterfall", "bridge", "variance", "change breakdown", "incremental"}, baseScore: 0.92, rationale: "Waterfall chart for showing incremental changes"},
+	{chartType: "waterfall", keywords: []string{"waterfall", "bridge", "variance", "change breakdown", "incremental", "moved from", "reconcile", "walk", "drivers"}, baseScore: 0.92, rationale: "Waterfall chart for showing incremental changes"},
 	{chartType: "funnel", keywords: []string{"funnel", "conversion", "pipeline", "stages", "attrition", "drop-off"}, baseScore: 0.92, rationale: "Funnel chart for conversion pipeline visualization"},
 	{chartType: "gauge", keywords: []string{"gauge", "meter", "speedometer", "target", "threshold", "progress toward"}, baseScore: 0.90, rationale: "Gauge for single-value progress or target tracking"},
 }
@@ -262,6 +262,10 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 
 	// 2. Score named patterns (reuse existing Recommend logic).
 	patternCandidates := scorePatterns(reg, intentLower, &hints.ContentHints, recencyCount, applyVariety)
+	for i := range patternCandidates {
+		patternCandidates[i].Score = roundScore(adjustVisualPatternScore(patternCandidates[i].Name, patternCandidates[i].Score, hints))
+		patternCandidates[i].ConfidenceBand = confidenceBand(patternCandidates[i].Score)
+	}
 	all = append(all, patternCandidates...)
 
 	// 3. Score chart types.
@@ -454,6 +458,7 @@ func scoreVisualCandidate( //nolint:gocognit,gocyclo
 					bestScore = 0
 				}
 			}
+			bestScore = adjustVisualPatternScore(name, bestScore, hints)
 			return VisualCandidate{
 				Category:       VisualCategoryPattern,
 				Name:           name,
@@ -467,19 +472,7 @@ func scoreVisualCandidate( //nolint:gocognit,gocyclo
 	// 3. Chart types (ready ones only — non-ready charts can't render).
 	if readyCharts[name] {
 		if cr, ok := chartByType[name]; ok {
-			s := scoreKeywords(cr.keywords, intentLower, cr.baseScore)
-			if cr.needsMultiSeries && hints.SeriesCount > 1 {
-				s += 0.05
-			}
-			if cr.needsSingleSeries && hints.SeriesCount > 1 {
-				s -= 0.2
-			}
-			if s > 1.0 {
-				s = 1.0
-			}
-			if s < 0 {
-				s = 0
-			}
+			s := scoreChartRule(cr, intentLower, hints)
 			return VisualCandidate{
 				Category:       VisualCategoryChart,
 				Name:           name,
@@ -523,6 +516,13 @@ func scoreVisualCandidate( //nolint:gocognit,gocyclo
 		Rationale:      "Unknown candidate name; not found in placeholder, pattern, chart, or diagram catalogs.",
 		ConfidenceBand: confidenceBand(0),
 	}
+}
+
+func adjustVisualPatternScore(name string, score float64, hints *VisualHints) float64 {
+	if name == "stat-hero" && (hints.DataPoints > 1 || hints.SeriesCount > 1) {
+		return math.Max(0, score-0.30)
+	}
+	return score
 }
 
 // scorePlaceholders evaluates placeholder layout rules.
@@ -637,22 +637,9 @@ func scoreCharts(intentLower string, hints *VisualHints) []VisualCandidate {
 		if !readyCharts[r.chartType] {
 			continue
 		}
-		score := scoreKeywords(r.keywords, intentLower, r.baseScore)
+		score := scoreChartRule(r, intentLower, hints)
 		if score < 0.3 {
 			continue
-		}
-		// Adjust for series count hints.
-		if r.needsMultiSeries && hints.SeriesCount > 0 && hints.SeriesCount > 1 {
-			score += 0.05
-		}
-		if r.needsSingleSeries && hints.SeriesCount > 1 {
-			score -= 0.2
-		}
-		if score > 1.0 {
-			score = 1.0
-		}
-		if score < 0.0 {
-			score = 0.0
 		}
 		candidates = append(candidates, VisualCandidate{
 			Category:       VisualCategoryChart,
@@ -663,6 +650,42 @@ func scoreCharts(intentLower string, hints *VisualHints) []VisualCandidate {
 		})
 	}
 	return dedupByName(candidates)
+}
+
+func scoreChartRule(r chartRule, intentLower string, hints *VisualHints) float64 {
+	score := scoreKeywords(r.keywords, intentLower, r.baseScore)
+	if score == 0 {
+		return 0
+	}
+	if r.needsMultiSeries && hints.SeriesCount > 1 {
+		score += 0.05
+	}
+	if r.needsSingleSeries && hints.SeriesCount > 1 {
+		score -= 0.2
+	}
+	if (r.chartType == "pie" || r.chartType == "donut") && hints.DataPoints > 6 {
+		score -= 0.45 // overloaded slice labels: drop from normal recommendations
+	}
+	if r.chartType == "pie" && hints.DataPoints > 0 && hints.DataPoints <= 6 && intentContainsPhrase(intentWords(intentLower), []string{"allocation"}) {
+		score += 0.06
+	}
+	if r.chartType == "gauge" && (hints.DataPoints > 1 || hints.SeriesCount > 1 || hasTimeSeriesIntent(intentLower)) {
+		score -= 0.25
+	}
+	if r.chartType == "line" && hints.DataPoints >= 6 {
+		score += 0.05
+	}
+	return math.Max(0, math.Min(1, score))
+}
+
+func hasTimeSeriesIntent(intentLower string) bool {
+	words := intentWords(intentLower)
+	for _, temporal := range []string{"monthly", "month", "quarterly", "quarters", "yearly", "years", "trend", "time series"} {
+		if intentContainsPhrase(words, intentWords(temporal)) {
+			return true
+		}
+	}
+	return false
 }
 
 // scoreDiagrams evaluates diagram type rules.
@@ -695,22 +718,15 @@ func scoreDiagrams(intentLower string) []VisualCandidate {
 
 // scoreKeywords computes a score based on keyword matches against intent.
 func scoreKeywords(keywords []string, intentLower string, baseScore float64) float64 {
-	matched := false
-	matchCount := 0
-	for _, kw := range keywords {
-		if strings.Contains(intentLower, kw) {
-			matched = true
-			matchCount++
-		}
-	}
-	if !matched {
+	matchCount, longest := matchIntentKeywords(keywords, intentLower)
+	if matchCount == 0 {
 		return 0
 	}
-	score := baseScore
+	score := baseScore + keywordSpecificityBonus(longest)
 	if matchCount > 1 {
 		score += 0.05 * float64(min(matchCount-1, 3))
 	}
-	return score
+	return math.Min(score, 1)
 }
 
 // dedupByName keeps the highest-scoring candidate for each name.

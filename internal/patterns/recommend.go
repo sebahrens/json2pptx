@@ -95,7 +95,7 @@ var rules = []rule{
 	// KPI patterns — metrics/numbers (parametric: kpi-2up through kpi-6up)
 	{
 		pattern:      "kpi-2up",
-		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
+		keywords:     []string{"kpi", "metric", "number", "stats", "statistic", "scorecard", "dashboard"},
 		baseScore:    0.85,
 		rationale:    "Best for exactly 2 big-number KPIs with short captions",
 		itemMin:      1,
@@ -104,7 +104,7 @@ var rules = []rule{
 	},
 	{
 		pattern:      "kpi-3up",
-		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
+		keywords:     []string{"kpi", "metric", "number", "stats", "statistic", "scorecard", "dashboard"},
 		baseScore:    0.90,
 		rationale:    "Best for exactly 3 big-number KPIs with short captions",
 		itemMin:      3,
@@ -113,7 +113,7 @@ var rules = []rule{
 	},
 	{
 		pattern:      "kpi-4up",
-		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
+		keywords:     []string{"kpi", "metric", "number", "stats", "statistic", "scorecard", "dashboard"},
 		baseScore:    0.90,
 		rationale:    "Best for exactly 4 big-number KPIs with short captions",
 		itemMin:      4,
@@ -122,7 +122,7 @@ var rules = []rule{
 	},
 	{
 		pattern:      "kpi-5up",
-		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
+		keywords:     []string{"kpi", "metric", "number", "stats", "statistic", "scorecard", "dashboard"},
 		baseScore:    0.85,
 		rationale:    "Best for exactly 5 big-number KPIs with short captions",
 		itemMin:      5,
@@ -131,7 +131,7 @@ var rules = []rule{
 	},
 	{
 		pattern:      "kpi-6up",
-		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard"},
+		keywords:     []string{"kpi", "metric", "number", "stats", "statistic", "scorecard", "dashboard"},
 		baseScore:    0.80,
 		rationale:    "Best for exactly 6 big-number KPIs with short captions",
 		itemMin:      6,
@@ -155,7 +155,7 @@ var rules = []rule{
 	// KPI inline — compact horizontal bar for supporting context
 	{
 		pattern:      "kpi-inline",
-		keywords:     []string{"kpi", "metric", "number", "stat", "scorecard", "dashboard", "inline", "compact", "supporting"},
+		keywords:     []string{"kpi", "metric", "number", "stats", "statistic", "scorecard", "dashboard", "inline", "compact", "supporting"},
 		baseScore:    0.80,
 		rationale:    "Compact horizontal KPI bar (2-6 metrics) for supporting context, not hero content",
 		itemMin:      2,
@@ -206,7 +206,7 @@ var rules = []rule{
 	{
 		pattern:   "icon-row",
 		keywords:  []string{"icon", "feature", "pillar", "capability", "benefit", "value", "service", "offering", "step"},
-		baseScore: 0.80,
+		baseScore: 0.85,
 		rationale: "Horizontal row of icon + caption pairs, good for 3-6 features or capabilities",
 		itemMin:   2,
 		itemMax:   8,
@@ -265,14 +265,14 @@ var rules = []rule{
 	// Before/After
 	{
 		pattern:   "before-after",
-		keywords:  []string{"before", "after", "current state", "future state", "from-to", "transformation", "as-is", "to-be"},
+		keywords:  []string{"before", "after", "current state", "future state", "from-to", "as-is", "to-be"},
 		baseScore: 0.90,
 		rationale: "Two-column before/after with transition chevron, ideal for state transformations",
 		needsCols: 2,
 	},
 	{
 		pattern:   "before-after",
-		keywords:  []string{"before", "after", "transformation"},
+		keywords:  []string{"before", "after"},
 		baseScore: 0.80,
 		rationale: "Before/after comparison layout",
 	},
@@ -280,7 +280,7 @@ var rules = []rule{
 	// Before/After compact
 	{
 		pattern:   "before-after-compact",
-		keywords:  []string{"before", "after", "compact", "brief", "small", "supporting", "transformation"},
+		keywords:  []string{"before", "after", "compact", "brief", "small", "supporting"},
 		baseScore: 0.80,
 		rationale: "Compact before/after at ~60% height for brief transformations alongside other content",
 		needsCols: 2,
@@ -482,7 +482,7 @@ var rules = []rule{
 	// Roadmap phased
 	{
 		pattern:   "roadmap-phased",
-		keywords:  []string{"phased", "quarter", "quarterly", "release plan", "workstream", "multi-phase", "gantt"},
+		keywords:  []string{"phased", "release plan", "workstream", "multi-phase", "gantt"},
 		baseScore: 0.92,
 		rationale: "Phased roadmap with workstreams across time periods, ideal for quarterly planning",
 	},
@@ -530,7 +530,7 @@ var rules = []rule{
 	// Stat hero — single big number emphasis
 	{
 		pattern:      "stat-hero",
-		keywords:     []string{"hero", "big number", "headline", "stat", "single metric", "tam", "revenue", "total", "highlight"},
+		keywords:     []string{"hero", "big number", "headline", "stats", "statistic", "metric", "single metric", "tam", "revenue", "total", "highlight"},
 		baseScore:    0.90,
 		rationale:    "Full-bleed single oversized number with one-line context, for maximum emphasis",
 		itemMax:      1,
@@ -1232,20 +1232,12 @@ func suggestDisambiguatingQuestions(hints *ContentHints, intent string, candidat
 
 // scoreRule computes a 0–1 score for a single rule against the intent and hints.
 func scoreRule(r rule, intentLower string, hints *ContentHints) float64 {
-	// Keyword match — at least one keyword must appear.
-	matched := false
-	matchCount := 0
-	for _, kw := range r.keywords {
-		if strings.Contains(intentLower, kw) {
-			matched = true
-			matchCount++
-		}
-	}
-	if !matched {
+	matchCount, longest := matchIntentKeywords(r.keywords, intentLower)
+	if matchCount == 0 {
 		return 0
 	}
 
-	score := r.baseScore
+	score := r.baseScore + keywordSpecificityBonus(longest)
 
 	// Bonus for multiple keyword hits.
 	if matchCount > 1 {
@@ -1279,6 +1271,7 @@ func scoreRule(r rule, intentLower string, hints *ContentHints) float64 {
 	if hints.HasMetrics && r.needsMetrics {
 		score += 0.05
 	}
+	score += scoreRuleContextBonus(r.pattern, intentLower, hints)
 
 	// Clamp.
 	if score > 1.0 {
@@ -1289,6 +1282,25 @@ func scoreRule(r rule, intentLower string, hints *ContentHints) float64 {
 	}
 
 	return score
+}
+
+func scoreRuleContextBonus(pattern, intentLower string, hints *ContentHints) float64 {
+	switch pattern {
+	case "stat-hero":
+		if hints.ItemCount == 1 {
+			return 0.06
+		}
+	case "table-highlight":
+		words := intentWords(intentLower)
+		if intentContainsPhrase(words, []string{"options"}) && intentContainsPhrase(words, []string{"criteria"}) {
+			return 0.15
+		}
+	case "arch-stack":
+		if intentContainsPhrase(intentWords(intentLower), []string{"architecture"}) {
+			return 0.11
+		}
+	}
+	return 0
 }
 
 // SuggestSwap finds registered patterns whose item-count constraints accept
