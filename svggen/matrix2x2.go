@@ -68,14 +68,8 @@ type Matrix2x2Config struct {
 
 // DefaultMatrix2x2Config returns default matrix 2x2 configuration.
 func DefaultMatrix2x2Config(width, height float64) Matrix2x2Config {
-	return Matrix2x2Config{
+	config := Matrix2x2Config{
 		ChartConfig: DefaultChartConfig(width, height),
-		QuadrantLabels: [4]string{
-			"High Value / Low Effort",  // top-left
-			"High Value / High Effort", // top-right
-			"Low Value / Low Effort",   // bottom-left
-			"Low Value / High Effort",  // bottom-right
-		},
 		QuadrantColors: [4]Color{
 			MustParseColor(DefaultThemeAccent5Hex).WithAlpha(0.30), // Green tint
 			MustParseColor(DefaultThemeAccent6Hex).WithAlpha(0.30), // Yellow tint
@@ -97,6 +91,25 @@ func DefaultMatrix2x2Config(width, height float64) Matrix2x2Config {
 		PointShape:      MarkerCircle,
 		ShowPointLabels: true,
 		LabelOffset:     16,
+	}
+	config.QuadrantLabels = defaultMatrixQuadrantLabels(config.XAxisLabel, config.YAxisLabel)
+	return config
+}
+
+func defaultMatrixQuadrantLabels(xAxis, yAxis string) [4]string {
+	xAxis = strings.TrimSpace(xAxis)
+	yAxis = strings.TrimSpace(yAxis)
+	if xAxis == "" {
+		xAxis = "Effort"
+	}
+	if yAxis == "" {
+		yAxis = "Value"
+	}
+	return [4]string{
+		"High " + yAxis + " / Low " + xAxis,
+		"High " + yAxis + " / High " + xAxis,
+		"Low " + yAxis + " / Low " + xAxis,
+		"Low " + yAxis + " / High " + xAxis,
 	}
 }
 
@@ -970,6 +983,7 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 				config.YAxisLabel = label
 			}
 		}
+		config.QuadrantLabels = defaultMatrixQuadrantLabels(config.XAxisLabel, config.YAxisLabel)
 
 		// Apply custom quadrant labels from quadrant_labels array
 		if labels, ok := req.Data["quadrant_labels"].([]any); ok {

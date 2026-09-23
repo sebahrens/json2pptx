@@ -437,6 +437,66 @@ func TestMatrix2x2Diagram_RenderWithQuadrantLabels(t *testing.T) {
 	}
 }
 
+func TestMatrix2x2Diagram_DefaultQuadrantsFollowAxes(t *testing.T) {
+	tests := []struct {
+		name   string
+		data   map[string]any
+		want   [4]string
+		absent string
+	}{
+		{
+			name:   "custom axis labels",
+			data:   map[string]any{"x_axis_label": "Ease", "y_axis_label": "Impact"},
+			want:   [4]string{"High Impact / Low Ease", "High Impact / High Ease", "Low Impact / Low Ease", "Low Impact / High Ease"},
+			absent: "High Value / Low Effort",
+		},
+		{
+			name:   "blank axis names fall back to defaults",
+			data:   map[string]any{"x_axis_label": " ", "y_axis_label": ""},
+			want:   [4]string{"High Value / Low Effort", "High Value / High Effort", "Low Value / Low Effort", "Low Value / High Effort"},
+			absent: "High  / Low  ",
+		},
+		{
+			name: "axis aliases with explicit quadrant override",
+			data: map[string]any{
+				"x_label": "Cost", "y_label": "Benefit",
+				"quadrant_labels": []any{"Quick wins"},
+			},
+			want:   [4]string{"Quick wins", "High Benefit / High Cost", "Low Benefit / Low Cost", "Low Benefit / High Cost"},
+			absent: "High Benefit / Low Cost",
+		},
+		{
+			name: "axis maps with named quadrant",
+			data: map[string]any{
+				"x_axis":    map[string]any{"label": "Complexity"},
+				"y_axis":    map[string]any{"label": "Impact"},
+				"quadrants": []any{map[string]any{"position": "top_right", "title": "Strategic bets"}},
+			},
+			want:   [4]string{"High Impact / Low Complexity", "Strategic bets", "Low Impact / Low Complexity", "Low Impact / High Complexity"},
+			absent: "High Impact / High Complexity",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.data["points"] = []any{}
+			req := &RequestEnvelope{Type: "matrix_2x2", Data: tt.data, Output: OutputSpec{Width: 1104, Height: 700}}
+			doc, err := (&Matrix2x2Diagram{NewBaseDiagram("matrix_2x2")}).Render(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			svg := doc.String()
+			for _, label := range tt.want {
+				if !strings.Contains(svg, label) {
+					t.Errorf("missing quadrant label %q", label)
+				}
+			}
+			if strings.Contains(svg, tt.absent) {
+				t.Errorf("obsolete quadrant label %q remains", tt.absent)
+			}
+		})
+	}
+}
+
 func TestMatrix2x2Diagram_RenderWithAxisMapFormat(t *testing.T) {
 	// Test the x_axis/y_axis map format used in golden tests
 	diagram := &Matrix2x2Diagram{NewBaseDiagram("matrix_2x2")}
