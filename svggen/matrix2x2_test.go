@@ -973,9 +973,9 @@ func TestMatrix2x2Chart_DenseData_NoLabelCollision(t *testing.T) {
 	}
 }
 
-func TestMatrix2x2Chart_LongLabelsTruncated(t *testing.T) {
-	// Long labels should be truncated with an ellipsis to prevent them from
-	// dominating the chart and colliding excessively.
+func TestMatrix2x2Chart_LongLabelsNotBlindlyTruncated(t *testing.T) {
+	// A character count is not a fit test: preserve a long label when the
+	// measured text fits or can wrap inside the plot.
 	builder := NewSVGBuilder(800, 600)
 
 	config := DefaultMatrix2x2Config(800, 600)
@@ -1002,19 +1002,71 @@ func TestMatrix2x2Chart_LongLabelsTruncated(t *testing.T) {
 
 	content := svg.String()
 
-	// The full long label should NOT appear (it's truncated).
-	if strings.Contains(content, longLabel) {
-		t.Error("Expected long label to be truncated, but full label appeared in SVG")
+	if !strings.Contains(content, longLabel) {
+		t.Error("long label was discarded despite available space")
 	}
-
-	// A truncated version with ellipsis should appear.
-	if !strings.Contains(content, "…") {
-		t.Error("Expected truncated label with ellipsis (…) in SVG")
+	if strings.Contains(content, "…") {
+		t.Error("long label was truncated by a character cap")
 	}
 
 	// Short label should appear unchanged.
 	if !strings.Contains(content, "Short") {
 		t.Error("Expected short label to appear unchanged")
+	}
+}
+
+func TestMatrix2x2PointLabelsFlipInsidePlot(t *testing.T) {
+	const label = "International operations team"
+	plot := Rect{X: 200, Y: 100, W: 400, H: 300}
+	for _, tc := range []struct {
+		name       string
+		x          float64
+		wantAnchor string
+	}{
+		{"left edge", plot.X + 8, "-"},
+		{"right edge", plot.X + plot.W - 8, "end"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			builder := NewSVGBuilder(800, 600)
+			chart := NewMatrix2x2Chart(builder, DefaultMatrix2x2Config(800, 600))
+			fontSize := builder.StyleGuide().Typography.SizeSmall
+			builder.SetFontSize(fontSize)
+			width, _ := builder.MeasureText(label)
+			if width*1.2 >= plot.W-40 {
+				t.Fatalf("test label %.1fpx is too wide for plot", width)
+			}
+			box := chart.drawPointLabelAvoiding(tc.x, 250, 12, label, plot, nil, fontSize, 16)
+			if box.x < plot.X || box.x+box.w > plot.X+plot.W {
+				t.Errorf("point label box %+v escapes plot %+v", box, plot)
+			}
+			doc, err := builder.Render()
+			if err != nil {
+				t.Fatal(err)
+			}
+			svg := doc.String()
+			if !strings.Contains(svg, label) || strings.Contains(svg, "…") {
+				t.Errorf("fitting label was truncated: %s", svg)
+			}
+			anchor, _, found := textElementAttrs(svg, label)
+			if !found || anchor != tc.wantAnchor {
+				t.Errorf("label anchor = %q, found=%t; want %q", anchor, found, tc.wantAnchor)
+			}
+		})
+	}
+}
+
+func TestMatrix2x2WrappedLabelCollisionBoxStaysInPlot(t *testing.T) {
+	plot := Rect{X: 200, Y: 100, W: 180, H: 300}
+	label := strings.Repeat("Long portfolio initiative ", 5)
+	builder := NewSVGBuilder(800, 600)
+	chart := NewMatrix2x2Chart(builder, DefaultMatrix2x2Config(800, 600))
+	box := chart.drawPointLabelAvoiding(plot.X+plot.W/2, 250, 12, label, plot, nil,
+		builder.StyleGuide().Typography.SizeSmall, 16)
+	if box.x < plot.X || box.x+box.w > plot.X+plot.W {
+		t.Errorf("wrapped label collision box %+v escapes plot %+v", box, plot)
+	}
+	if box.h <= builder.StyleGuide().Typography.SizeSmall*1.3 {
+		t.Errorf("long label was not wrapped: %+v", box)
 	}
 }
 

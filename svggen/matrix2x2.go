@@ -535,11 +535,6 @@ func (a placedLabel) overlaps(b placedLabel) bool {
 	return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y
 }
 
-// maxLabelChars is the maximum character length for a data-point label before
-// it is truncated with an ellipsis. This prevents excessively long labels from
-// dominating the chart and colliding with everything.
-const maxLabelChars = 24
-
 // drawPoints draws the data points.
 func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect) {
 	b := mc.builder
@@ -610,12 +605,7 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect) {
 
 		// Draw label with collision avoidance
 		if mc.config.ShowPointLabels && point.Label != "" {
-			// Truncate long labels with ellipsis
-			label := point.Label
-			if len([]rune(label)) > maxLabelChars {
-				label = string([]rune(label)[:maxLabelChars-1]) + "…"
-			}
-			lbl := mc.drawPointLabelAvoiding(x, y, size, label, plotArea, placed, labelFontSize, labelOffset)
+			lbl := mc.drawPointLabelAvoiding(x, y, size, point.Label, plotArea, placed, labelFontSize, labelOffset)
 			placed = append(placed, lbl)
 		}
 	}
@@ -790,29 +780,30 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 		return false
 	}
 
-	// Check whether a label at (lx, al) would be clipped by the SVG edge.
-	// Uses clipW (inflated for LibreOffice rendering) instead of labelW
-	// to prevent viewport clipping of labels near SVG edges.
-	svgW := b.Width()
-	wouldClip := func(lx float64, al TextAlign) bool {
+	// Labels must stay inside the plot, not merely inside the SVG canvas:
+	// axis titles and margins occupy the space around the plot.
+	plotRight := plotArea.X + plotArea.W
+	availableRun := func(lx float64, al TextAlign) float64 {
 		var availW float64
 		switch al {
 		case TextAlignLeft:
-			availW = svgW - lx
+			availW = plotRight - lx
 		case TextAlignRight:
-			availW = lx
+			availW = lx - plotArea.X
 		case TextAlignCenter:
-			availW = math.Min(lx, svgW-lx) * 2
+			availW = math.Min(lx-plotArea.X, plotRight-lx) * 2
 		}
-		return availW > 0 && clipW > availW
+		return availW
+	}
+	wouldClip := func(lx float64, al TextAlign) bool {
+		availW := availableRun(lx, al)
+		return availW <= 0 || clipW > availW
 	}
 
 	// Try each direction without vertical shifting first.
-	// Two-pass: first prefer directions that are collision-free AND unclipped,
-	// then fall back to collision-free even if clipped (SVG edge truncation
-	// is less harmful than label overlap). This prevents labels near the SVG
-	// edge from being truncated when an opposite direction has ample space
-	// (bug go-slide-creator-gy1j3: narrow two-column matrix labels).
+	// Two-pass: prefer a collision-free direction with a full-width run, then
+	// the widest available run for wrapping. This keeps labels inside the plot
+	// and preserves complete names when the opposite side has room.
 	var bestCandidate placedLabel
 	var bestLabelX float64
 	var bestAlign TextAlign
@@ -830,16 +821,18 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 		}
 	}
 
-	// Pass 2: collision-free (even if clipped)
+	// Pass 2: choose the widest positive run among collision-free options.
+	// A candidate beyond the plot edge cannot be rescued by wrapping.
 	if !found {
+		bestRun := 0.0
 		for _, dir := range directions {
 			c, lx, al := buildCandidate(dir)
-			if !collidesWith(c) {
+			if run := availableRun(lx, al); !collidesWith(c) && run > bestRun {
 				bestCandidate = c
 				bestLabelX = lx
 				bestAlign = al
+				bestRun = run
 				found = true
-				break
 			}
 		}
 	}
@@ -847,7 +840,15 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 	// If no clean direction found, fall back to the preferred direction
 	// (first in list) and shift vertically until clear.
 	if !found {
-		c, lx, al := buildCandidate(directions[0])
+		fallback := directions[0]
+		for _, dir := range directions[1:] {
+			_, lx, al := buildCandidate(dir)
+			_, bestX, bestAl := buildCandidate(fallback)
+			if availableRun(lx, al) > availableRun(bestX, bestAl) {
+				fallback = dir
+			}
+		}
+		c, lx, al := buildCandidate(fallback)
 		bestCandidate = c
 		bestLabelX = lx
 		bestAlign = al
@@ -874,16 +875,8 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 	b.SetFontSize(fontSize)
 	b.SetFontWeight(style.Typography.WeightNormal)
 
-	// Constrain label to SVG bounds to prevent edge clipping.
-	var availW float64
-	switch bestAlign {
-	case TextAlignLeft:
-		availW = svgW - bestLabelX
-	case TextAlignRight:
-		availW = bestLabelX
-	case TextAlignCenter:
-		availW = math.Min(bestLabelX, svgW-bestLabelX) * 2
-	}
+	// Wrap only when measured text exceeds its available run in the plot.
+	availW := availableRun(bestLabelX, bestAlign)
 
 	if availW > 0 && clipW > availW {
 		// Wrap the label into a multi-line bounding box instead of truncating.
@@ -906,7 +899,10 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 			wrapAlign = AlignTopCenter
 		}
 		b.DrawWrappedText(label, wrapRect, wrapAlign)
-		// Update collision bounding box to reflect wrapped height.
+		// A wrapped label occupies its actual run, not its old one-line width;
+		// otherwise subsequent points are pushed away from empty space.
+		bestCandidate.x = wrapRect.X
+		bestCandidate.w = wrapRect.W
 		bestCandidate.h = wrapH
 	} else {
 		b.DrawText(label, bestLabelX, resolvedY, bestAlign, TextBaselineMiddle)
