@@ -28,6 +28,10 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — `audit-palette` argument order (`go-slide-creator-zrskf`).**
+  CLI options now work before or after the PPTX path, as the usage text
+  advertises. Extra positional paths are rejected instead of silently ignored.
+
 - **2026-09-24 — Theme-reference palette audit (`go-slide-creator-kdlod`).**
   `audit-palette` and MCP `audit_palette` now compare each picture's material
   chromatic colors with `theme1.xml` accents and standard 20/40/60/80% tints

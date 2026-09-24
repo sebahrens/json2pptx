@@ -49,12 +49,15 @@ func runAuditPalette() error {
 		printDoubleDashUsage(fs)
 	}
 
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	if err := parseAuditPaletteArgs(fs, os.Args[1:]); err != nil {
 		return err
 	}
-	if fs.NArg() < 1 {
+	if fs.NArg() != 1 {
 		fs.Usage()
-		return errors.New("missing required positional argument: <pptx>")
+		if fs.NArg() == 0 {
+			return errors.New("missing required positional argument: <pptx>")
+		}
+		return fmt.Errorf("expected one <pptx> path, got %d positional arguments", fs.NArg())
 	}
 	pptxPath := fs.Arg(0)
 
@@ -89,6 +92,39 @@ func runAuditPalette() error {
 		return fmt.Errorf("palette audit: %d color comparison(s) exceeded ΔE threshold", report.Violations)
 	}
 	return nil
+}
+
+// flag.FlagSet stops at the first positional argument. The audit command
+// advertises <pptx> [options], so collect recognized options on either side
+// of the path before handing them to the standard parser. A literal -- ends
+// option scanning and protects paths that begin with a dash.
+func parseAuditPaletteArgs(fs *flag.FlagSet, args []string) error {
+	flags, positional := make([]string, 0, len(args)), make([]string, 0, 1)
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "--" {
+			positional = append(positional, args[i+1:]...)
+			break
+		}
+		if arg == "-" || !strings.HasPrefix(arg, "-") {
+			positional = append(positional, arg)
+			continue
+		}
+		flags = append(flags, arg)
+		name, _, hasValue := strings.Cut(strings.TrimLeft(arg, "-"), "=")
+		field := fs.Lookup(name)
+		if field == nil || hasValue {
+			continue // let FlagSet report unknown flags itself
+		}
+		if boolean, ok := field.Value.(interface{ IsBoolFlag() bool }); ok && boolean.IsBoolFlag() {
+			continue
+		}
+		if i+1 < len(args) {
+			i++
+			flags = append(flags, args[i])
+		}
+	}
+	return fs.Parse(append(append(flags, "--"), positional...))
 }
 
 func uint8Overflows(v int) bool { return v < 0 || v > 255 }

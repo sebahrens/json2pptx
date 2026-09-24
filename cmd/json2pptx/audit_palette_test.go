@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"image"
 	"image/color"
 	"math"
@@ -11,6 +12,50 @@ import (
 	"strings"
 	"testing"
 )
+
+func TestParseAuditPaletteArgsAllowsOptionsAfterPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		args     []string
+		wantMode string
+		wantKeep bool
+		wantPath string
+		wantErr  bool
+	}{
+		{name: "after path", args: []string{"deck.pptx", "-mode", "both", "-keep"}, wantMode: "both", wantKeep: true, wantPath: "deck.pptx"},
+		{name: "before path", args: []string{"--mode=pair", "-keep", "deck.pptx"}, wantMode: "pair", wantKeep: true, wantPath: "deck.pptx"},
+		{name: "mixed", args: []string{"-mode", "pair", "deck.pptx", "-keep=false"}, wantMode: "pair", wantPath: "deck.pptx"},
+		{name: "dash path", args: []string{"-mode", "pair", "--", "-deck.pptx"}, wantMode: "pair", wantPath: "-deck.pptx"},
+		{name: "unknown option", args: []string{"deck.pptx", "-unknown"}, wantErr: true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			fs := flag.NewFlagSet("audit-palette", flag.ContinueOnError)
+			mode := fs.String("mode", "theme", "")
+			keep := fs.Bool("keep", false, "")
+			err := parseAuditPaletteArgs(fs, tc.args)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("parse error = %v, wantErr %t", err, tc.wantErr)
+			}
+			if tc.wantErr {
+				return
+			}
+			if *mode != tc.wantMode || *keep != tc.wantKeep || fs.NArg() != 1 || fs.Arg(0) != tc.wantPath {
+				t.Fatalf("mode=%q keep=%t args=%v, want mode=%q keep=%t path=%q", *mode, *keep, fs.Args(), tc.wantMode, tc.wantKeep, tc.wantPath)
+			}
+		})
+	}
+}
+
+func TestRunAuditPaletteRejectsExtraPathsBeforeRendering(t *testing.T) {
+	previous := os.Args
+	os.Args = []string{"audit-palette", "first.pptx", "second.pptx", "-mode", "pair"}
+	t.Cleanup(func() { os.Args = previous })
+	err := runAuditPalette()
+	if err == nil || !strings.Contains(err.Error(), "expected one <pptx> path, got 2") {
+		t.Fatalf("extra paths must be rejected before rendering, got %v", err)
+	}
+}
 
 // TestExtractPaletteRegions_PicAndSolidFillShape covers the slide XML parser:
 // it must find <p:pic> with explicit xfrm and <p:sp> with both xfrm + solidFill,
