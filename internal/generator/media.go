@@ -13,6 +13,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // complexDiagramTypes lists diagram types that are inherently complex and
@@ -1346,10 +1347,10 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, a
 	}
 	ctx.svgCleanupFuncs = append(ctx.svgCleanupFuncs, cleanup)
 
-	// Scale using PNG dimensions
-	scaledBounds, err := scaleImageToFit(pngPath, placeholderBounds)
-	if err != nil {
-		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to scale image %s: %v", imagePath, err))
+	// Crop the native SVG and its PNG fallback to the same placeholder frame.
+	crop, ok := utils.CoverCropForFile(pngPath, placeholderBounds.Width, placeholderBounds.Height)
+	if !ok {
+		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to read SVG fallback dimensions for %s", imagePath))
 		return
 	}
 
@@ -1363,10 +1364,11 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, a
 		svgMediaFile:   svgMediaFile,
 		pngMediaFile:   pngMediaFile,
 		description:    alt,
-		offsetX:        scaledBounds.X,
-		offsetY:        scaledBounds.Y,
-		extentCX:       scaledBounds.Width,
-		extentCY:       scaledBounds.Height,
+		offsetX:        placeholderBounds.X,
+		offsetY:        placeholderBounds.Y,
+		extentCX:       placeholderBounds.Width,
+		extentCY:       placeholderBounds.Height,
+		crop:           imageCoverCrop(crop),
 		placeholderIdx: shapeIdx,
 		behindText:     true,
 	})
@@ -1399,9 +1401,9 @@ func (ctx *singlePassContext) convertSVGToRaster(imagePath string, placeholderBo
 
 // processRegularImage handles non-SVG images (PNG, JPG, etc.) or converted SVGs.
 func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int) {
-	scaledBounds, err := scaleImageToFit(imagePath, placeholderBounds)
-	if err != nil {
-		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to scale image %s: %v", imagePath, err))
+	crop, ok := utils.CoverCropForFile(imagePath, placeholderBounds.Width, placeholderBounds.Height)
+	if !ok {
+		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to read image dimensions for %s", imagePath))
 		return
 	}
 
@@ -1414,11 +1416,12 @@ func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string
 		imagePath:      imagePath,
 		mediaFileName:  mediaFileName,
 		description:    alt,
-		offsetX:        scaledBounds.X,
-		offsetY:        scaledBounds.Y,
-		extentCX:       scaledBounds.Width,
-		extentCY:       scaledBounds.Height,
+		offsetX:        placeholderBounds.X,
+		offsetY:        placeholderBounds.Y,
+		extentCX:       placeholderBounds.Width,
+		extentCY:       placeholderBounds.Height,
 		placeholderIdx: shapeIdx,
+		crop:           imageCoverCrop(crop),
 	})
 }
 

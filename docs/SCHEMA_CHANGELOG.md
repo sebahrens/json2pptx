@@ -28,6 +28,11 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Image placeholder cover crop (`go-slide-creator-x44hh`).**
+  Raster images and native SVG images placed in a slide placeholder now fill
+  its entire frame with a centered OOXML source crop instead of being
+  contained with white bars.
+
 - **2026-09-24 — Team-bios headshot frames (`go-slide-creator-ba6x8`).**
   Real headshots and initials tiles now use centered square frames instead of
   filling a wide photo row and cropping faces into a letterbox.

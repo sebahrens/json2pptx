@@ -12,7 +12,14 @@ import (
 // frame or its size cannot be read (the plain stretch is then kept).
 func gridImageCoverCrop(img ImageInsert) *pptx.SrcRect {
 	c, ok := utils.CoverCropForFile(img.Path, img.ExtentCX, img.ExtentCY)
-	if !ok || c.IsZero() {
+	if !ok {
+		return nil
+	}
+	return imageCoverCrop(c)
+}
+
+func imageCoverCrop(c utils.CropRect) *pptx.SrcRect {
+	if c.IsZero() {
 		return nil
 	}
 	return &pptx.SrcRect{L: c.L, T: c.T, R: c.R, B: c.B}

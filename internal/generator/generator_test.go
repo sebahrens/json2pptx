@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -718,7 +719,7 @@ func generateSingleImageDeck(t *testing.T, outputName, alt string) string {
 // TestGenerate_ImageScaling_AC6 tests AC6: Image Scaling
 // Given image larger than placeholder
 // When generated
-// Then image is scaled to fit (maintaining aspect ratio)
+// Then image cover-fills the placeholder without distortion.
 func TestGenerate_ImageScaling_AC6(t *testing.T) {
 	templatePath := "../template/testdata/standard.pptx"
 	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
@@ -734,8 +735,9 @@ func TestGenerate_ImageScaling_AC6(t *testing.T) {
 	outputPath := filepath.Join(tmpDir, "image_scaled.pptx")
 
 	req := GenerationRequest{
-		TemplatePath: templatePath,
-		OutputPath:   outputPath,
+		TemplatePath:          templatePath,
+		OutputPath:            outputPath,
+		ExcludeTemplateSlides: true,
 		Slides: []SlideSpec{
 			{
 				LayoutID: "slideLayout9",
@@ -762,7 +764,7 @@ func TestGenerate_ImageScaling_AC6(t *testing.T) {
 		t.Errorf("SlideCount = %d, want 1", result.SlideCount)
 	}
 
-	// AC6: Image should be scaled - verify file was created successfully
+	// AC6: Image should fill the frame with a source crop, not letterbox.
 	info, err := os.Stat(outputPath)
 	if err != nil {
 		t.Fatalf("Output file not found: %v", err)
@@ -791,8 +793,11 @@ func TestGenerate_ImageScaling_AC6(t *testing.T) {
 	if !foundMedia {
 		t.Error("AC6: Scaled image not found in output")
 	}
+	if slide := string(zipSlideXML(t, &r.Reader, 1)); !strings.Contains(slide, "<a:srcRect ") {
+		t.Error("AC6: non-matching image ratio did not emit a source crop")
+	}
 
-	t.Logf("AC6 test complete: large image scaled and embedded")
+	t.Logf("AC6 test complete: large image cover-cropped and embedded")
 }
 
 // TestGenerate_RelationshipLinkage_AC_NEW2 tests AC-NEW2: Relationship Linkage
@@ -1288,8 +1293,9 @@ func TestGenerate_SVGImageEmbedding(t *testing.T) {
 	outputPath := filepath.Join(tmpDir, "svg_embed.pptx")
 
 	req := GenerationRequest{
-		TemplatePath: templatePath,
-		OutputPath:   outputPath,
+		TemplatePath:          templatePath,
+		OutputPath:            outputPath,
+		ExcludeTemplateSlides: true,
 		Slides: []SlideSpec{
 			{
 				LayoutID: "slideLayout9",
@@ -1341,6 +1347,9 @@ func TestGenerate_SVGImageEmbedding(t *testing.T) {
 	}
 	if !foundSVG {
 		t.Error("Expected SVG image in media folder (native SVG embedding)")
+	}
+	if slide := string(zipSlideXML(t, &r.Reader, 1)); !strings.Contains(slide, "<a:srcRect ") {
+		t.Error("SVG image did not cover-crop its non-square placeholder")
 	}
 
 	t.Logf("SVG embedding test complete: SVG + PNG fallback embedded (native strategy)")

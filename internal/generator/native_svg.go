@@ -150,6 +150,7 @@ func (ctx *singlePassContext) insertNativeSVGPics(slideNum int, slideData []byte
 			OffsetY:        svg.offsetY,
 			ExtentCX:       svg.extentCX,
 			ExtentCY:       svg.extentCY,
+			SrcRect:        svg.crop,
 			OmitNamespaces: true,
 		})
 		if err != nil {

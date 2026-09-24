@@ -298,8 +298,8 @@ type mediaRel struct {
 	// Placeholder index to remove from slide (required for p:pic insertion)
 	placeholderIdx int
 
-	// crop optionally cover-crops the picture into its frame (shape_grid
-	// image cells) instead of stretching it. Nil = stretch.
+	// crop optionally cover-crops the picture into its frame instead of
+	// stretching it. Nil means no crop was needed or could be computed.
 	crop *pptx.SrcRect
 }
 
@@ -328,6 +328,7 @@ type nativeSVGInsert struct {
 	// Shape position/size (from placeholder)
 	offsetX, offsetY   int64
 	extentCX, extentCY int64
+	crop               *pptx.SrcRect
 
 	// Shape ID (allocated during writeOutput)
 	shapeID uint32
