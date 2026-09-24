@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
@@ -60,7 +61,8 @@ type SlideInfo struct {
 	cellCount                int    // internal: total cells in shape_grid (not serialized)
 }
 
-// PatternRun describes a consecutive run of the same pattern.
+// PatternRun describes a consecutive run of one visual family. Name is the
+// canonical family name (and remains the pattern name for ungrouped patterns).
 type PatternRun struct {
 	Name  string `json:"name"`
 	Start int    `json:"start"`
@@ -141,7 +143,7 @@ func Analyze(slides []Slide) *Result {
 		},
 	}
 
-	result.Recommendations = generateRecommendations(perSlide, runs, dd)
+	result.Recommendations = generateRecommendations(slides, perSlide, runs, dd)
 	if result.Recommendations == nil {
 		result.Recommendations = []Recommendation{}
 	}
@@ -294,23 +296,41 @@ func countDistinctAccents(s Slide) int {
 	return len(seen)
 }
 
-// detectPatternRuns finds consecutive runs of the same pattern.
+// visualFamily groups variants that present the same visual idea. Raw grids
+// retain their structural fingerprint so distinct layouts do not form a run.
+func visualFamily(name string) string {
+	if strings.HasPrefix(name, "kpi-") {
+		return "kpi"
+	}
+	base := strings.TrimSuffix(name, "-compact")
+	switch base {
+	case "card-grid", "stylish-panels", "icon-row", "team-bios":
+		return "card-grid"
+	case "process-flow", "process-grid-2row", "numbered-step-strip", "swimlane", "value-chain":
+		return "process-flow"
+	default:
+		return base
+	}
+}
+
+// detectPatternRuns finds consecutive runs of the same visual family.
 func detectPatternRuns(slides []SlideInfo) []PatternRun {
 	if len(slides) == 0 {
 		return nil
 	}
 
 	var runs []PatternRun
-	current := PatternRun{Name: slides[0].Pattern, Start: 0, Len: 1}
+	current := PatternRun{Name: visualFamily(slides[0].Pattern), Start: 0, Len: 1}
 
 	for i := 1; i < len(slides); i++ {
-		if slides[i].Pattern == current.Name {
+		family := visualFamily(slides[i].Pattern)
+		if family == current.Name {
 			current.Len++
 		} else {
 			if current.Len >= 2 {
 				runs = append(runs, current)
 			}
-			current = PatternRun{Name: slides[i].Pattern, Start: i, Len: 1}
+			current = PatternRun{Name: family, Start: i, Len: 1}
 		}
 	}
 	if current.Len >= 2 {
@@ -320,8 +340,8 @@ func detectPatternRuns(slides []SlideInfo) []PatternRun {
 	return runs
 }
 
-// computeRepetitionIndex measures how repetitive the pattern sequence is.
-// 0.0 = all unique patterns, 1.0 = all the same pattern.
+// computeRepetitionIndex measures how repetitive the visual-family sequence is.
+// 0.0 = all unique families, approaching 1.0 as one family dominates.
 func computeRepetitionIndex(slides []SlideInfo) float64 {
 	if len(slides) <= 1 {
 		return 0.0
@@ -329,7 +349,7 @@ func computeRepetitionIndex(slides []SlideInfo) float64 {
 
 	unique := map[string]bool{}
 	for _, s := range slides {
-		unique[s.Pattern] = true
+		unique[visualFamily(s.Pattern)] = true
 	}
 
 	// repetition_index = 1 - (unique_count / total_count)
@@ -428,7 +448,7 @@ func computeDensityDistribution(slides []Slide) DensityDistribution {
 
 // generateRecommendations produces actionable suggestions for runs of 3+,
 // low accent variety, and density distribution imbalance.
-func generateRecommendations(slides []SlideInfo, runs []PatternRun, dd DensityDistribution) []Recommendation {
+func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternRun, dd DensityDistribution) []Recommendation {
 	var recs []Recommendation
 
 	for _, run := range runs {
@@ -437,14 +457,12 @@ func generateRecommendations(slides []SlideInfo, runs []PatternRun, dd DensityDi
 		}
 
 		// Recommend break points at every 3rd slide in the run.
-		breakPatterns := suggestBreakPatterns(run.Name)
-
 		for offset := 2; offset < run.Len; offset += 3 {
 			insertIdx := run.Start + offset
 			recs = append(recs, Recommendation{
 				SlideIndex:       insertIdx,
 				Message:          fmt.Sprintf("break a %s run (length %d); consider inserting a different pattern at slide %d", run.Name, run.Len, insertIdx),
-				RecommendedBreak: breakPatterns,
+				RecommendedBreak: suggestBreakPatterns(run.Name, inputs[insertIdx]),
 			})
 		}
 	}
@@ -476,54 +494,85 @@ func generateRecommendations(slides []SlideInfo, runs []PatternRun, dd DensityDi
 	return recs
 }
 
-// suggestBreakPatterns returns patterns that contrast well with the given pattern.
-func suggestBreakPatterns(current string) []string {
-	// Categorize patterns into visual "families" and recommend from other families.
-	gridFamily := map[string]bool{
-		"card-grid": true, "kpi-3up": true, "kpi-4up": true, "icon-row": true,
-	}
-	narrativeFamily := map[string]bool{
-		"stat-hero": true, "pull-quote": true,
-	}
-	structureFamily := map[string]bool{
-		"timeline-horizontal": true, "process-flow": true, "roadmap-phased": true,
-		"swimlane": true, "agenda": true,
-	}
-	matrixFamily := map[string]bool{
-		"bmc-canvas": true, "matrix-2x2": true, "comparison-2col": true,
-		"arch-stack": true, "pyramid": true, "before-after": true,
-		"strategy-house": true,
-	}
-
-	families := []map[string]bool{gridFamily, narrativeFamily, structureFamily, matrixFamily}
-
-	// Find which family the current pattern belongs to.
-	currentFamily := -1
-	for i, fam := range families {
-		if fam[current] {
-			currentFamily = i
-			break
+// suggestBreakPatterns ranks the full registered catalog, excluding the run's
+// visual family. A slide's content kinds take precedence over the run's usual
+// topic so chart/table slides receive relevant alternatives.
+func suggestBreakPatterns(runFamily string, slide Slide) []string {
+	intent := runFamily
+	priority := map[string]int{"chart": 4, "table": 3, "diagram": 2, "image": 1}
+	for _, kind := range slide.ContentKinds {
+		if priority[kind] > priority[intent] {
+			intent = kind
 		}
 	}
+	if intent == runFamily && slide.SlideType == "comparison" {
+		intent = "comparison"
+	}
+	preferences := breakPreferences(intent)
+	preferenceRank := make(map[string]int, len(preferences))
+	for i, name := range preferences {
+		preferenceRank[name] = len(preferences) - i
+	}
 
-	// Collect candidates from other families.
-	var candidates []string
-	for i, fam := range families {
-		if i == currentFamily {
+	registry := patterns.Default()
+	pairs := map[string]bool{}
+	if current, ok := registry.Get(slide.PatternName); ok {
+		for _, name := range current.Taxonomy().PairsWith {
+			pairs[name] = true
+		}
+	}
+	type ranked struct {
+		name  string
+		score int
+	}
+	var candidates []ranked
+	for _, pat := range registry.List() {
+		name := pat.Name()
+		if visualFamily(name) == runFamily {
 			continue
 		}
-		for p := range fam {
-			candidates = append(candidates, p)
+		score := preferenceRank[name] * 10
+		if pairs[name] {
+			score += 3
 		}
+		if pat.Taxonomy().Category == "narrative" {
+			score++
+		}
+		candidates = append(candidates, ranked{name: name, score: score})
 	}
-
-	sort.Strings(candidates)
-
-	// Return up to 3 suggestions.
-	if len(candidates) > 3 {
-		candidates = candidates[:3]
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].score != candidates[j].score {
+			return candidates[i].score > candidates[j].score
+		}
+		return candidates[i].name < candidates[j].name
+	})
+	result := make([]string, 0, 3)
+	for _, candidate := range candidates {
+		if len(result) == 3 {
+			break
+		}
+		result = append(result, candidate.name)
 	}
-	return candidates
+	return result
+}
+
+func breakPreferences(intent string) []string {
+	switch intent {
+	case "chart":
+		return []string{"chart-insights-split", "horizontal-bar-callouts", "waterfall-bridge", "stat-hero"}
+	case "table":
+		return []string{"table-highlight", "comparison-2col", "matrix-2x2", "chart-insights-split"}
+	case "diagram", "process-flow":
+		return []string{"timeline-horizontal", "phase-roadmap", "journey-maturity", "before-after"}
+	case "image":
+		return []string{"image-text-split", "agenda-with-images", "quote-cluster", "pull-quote"}
+	case "kpi":
+		return []string{"stat-hero", "horizontal-bar-callouts", "chart-insights-split", "table-highlight"}
+	case "card-grid", "comparison":
+		return []string{"comparison-2col", "before-after", "matrix-2x2", "process-flow"}
+	default:
+		return []string{"stat-hero", "comparison-2col", "timeline-horizontal", "pull-quote"}
+	}
 }
 
 // computeCompositionScore produces a 0–100 score reflecting deck composition quality.

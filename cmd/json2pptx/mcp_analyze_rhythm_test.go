@@ -60,6 +60,24 @@ func TestAnalyzeDeckRhythm_BasicRun(t *testing.T) {
 	}
 }
 
+func TestAnalyzeDeckRhythm_ProjectsContentKindsIntoBreakAdvice(t *testing.T) {
+	slides := []SlideInput{
+		{Pattern: &PatternInput{Name: "kpi-3up"}},
+		{Pattern: &PatternInput{Name: "kpi-4up"}},
+		{Pattern: &PatternInput{Name: "kpi-3up"}, Content: []ContentInput{{Type: "chart"}}},
+	}
+	result := analyzeDeckRhythm(slides)
+	if result.Aggregates.LongestRun != 3 {
+		t.Errorf("MCP adapter missed visual family run: %+v", result.Aggregates.PatternRuns)
+	}
+	if len(result.Recommendations) == 0 || len(result.Recommendations[0].RecommendedBreak) == 0 {
+		t.Fatalf("MCP adapter yielded no actionable break: %+v", result.Recommendations)
+	}
+	if got := result.Recommendations[0].RecommendedBreak[0]; got != "chart-insights-split" {
+		t.Errorf("chart content kind was not used to rank break advice: got %q", got)
+	}
+}
+
 func TestAnalyzeDeckRhythm_MixedPatterns(t *testing.T) {
 	slides := []SlideInput{
 		{Pattern: &PatternInput{Name: "kpi-3up"}},

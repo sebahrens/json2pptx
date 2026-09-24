@@ -200,7 +200,7 @@ Guidelines:
 
 - **Category**: group by primary function — data patterns show metrics, narrative patterns tell stories, structural patterns frame methodology, hero patterns emphasize one thing
 - **NarrativeRole**: where in a deck arc this pattern fits. A pattern can serve multiple roles (e.g. `kpi-3up` is "evidence", `agenda` is "open" + "frame")
-- **PairsWith**: 2–4 sibling patterns that create good rhythm when sequenced **after** this one (next-slide adjacency). Used by `recommend_pattern` diversity scoring and `analyze_deck_rhythm` run detection
+- **PairsWith**: 2–4 sibling patterns that create good rhythm when sequenced **after** this one (next-slide adjacency). Used by `recommend_pattern` diversity scoring and to rank `analyze_deck_rhythm` break suggestions; run detection groups visual families independently.
 - **ComposesWith**: sibling patterns that can **share a slide** with this one through a compose envelope (D18). Distinct from `PairsWith`, which is purely about next-slide sequencing. Populate when the pattern naturally combines (e.g. `stylish-panels` + `pull-quote` for a pillars+callout layout). Leave empty for patterns that should always occupy the whole slide.
 - **RoleOnSlide**: which slot(s) this pattern occupies in a compose envelope. Patterns can fill more than one role (e.g. `kpi-3up` works as either `banner` or `foundation`). Leave empty for patterns not intended for compose-envelope use.
 - **DensityClass**: visual density — affects rhythm analysis and variety recommendations

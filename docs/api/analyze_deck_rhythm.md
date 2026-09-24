@@ -48,7 +48,7 @@ Typical workflow:
     {
       "slide_index": 4,
       "message": "break a content run (length 3); consider inserting a different pattern at slide 4",
-      "recommended_break_patterns": ["arch-stack", "bmc-canvas", "stat-hero"]
+      "recommended_break_patterns": ["stat-hero", "comparison-2col", "timeline-horizontal"]
     }
   ],
   "composition_score": 75
@@ -69,9 +69,9 @@ Typical workflow:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `pattern_runs` | array | Consecutive runs of 2+ slides with the same pattern |
+| `pattern_runs` | array | Consecutive runs of 2+ slides from the same visual family (for example, `kpi-3up` and `kpi-4up` form a `kpi` run) |
 | `longest_run` | int | Length of the longest consecutive pattern run |
-| `repetition_index` | float | 0.0 (all unique) to 1.0 (all same pattern) |
+| `repetition_index` | float | 0.0 (all visually distinct families), approaching 1.0 as one family dominates |
 | `accent_balance` | object | Fraction of accented slides using each accent color (sums to 1.0) |
 | `density_cv` | float | Coefficient of variation of density scores (higher = more varied density) |
 
@@ -80,7 +80,7 @@ Typical workflow:
 Generated when pattern runs reach 3+ slides. Each recommendation suggests:
 - Which slide to change (`slide_index`)
 - What the problem is (`message`)
-- Alternative patterns from a different visual family (`recommended_break_patterns`)
+- Alternative registered patterns from a different visual family, ranked for the slide's content kind and current pattern (`recommended_break_patterns`)
 
 ### Composition Score
 

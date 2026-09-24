@@ -85,7 +85,7 @@ analyze_deck_rhythm(presentation: {template: "...", slides: [...]})
 Returns:
 - `per_slide` — visual fingerprint per slide (pattern, density_class, accent_role, dominant_visual, within_slide_accent_variety)
 - `per_slide[].within_slide_accent_variety` — count of distinct accent slots used across the slide's shape_grid cells (0 for non-grid slides)
-- `aggregates.longest_run` — longest consecutive run of one pattern (target: ≤2)
+- `aggregates.longest_run` — longest consecutive run of one visual family, including variants such as `kpi-3up`/`kpi-4up` (target: ≤2)
 - `aggregates.repetition_index` — 0.0 (all unique) to 1.0 (all same) (target: <0.5)
 - `aggregates.accent_balance` — fraction of slides per accent (target: no single accent >80%)
 - `aggregates.density_cv` — density variation coefficient (target: >0.1 for decks >3 slides)

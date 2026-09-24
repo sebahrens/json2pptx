@@ -56,6 +56,109 @@ func TestAnalyze_BasicRun(t *testing.T) {
 	}
 }
 
+func TestAnalyze_AlternatingKPIsAreOneVisualRun(t *testing.T) {
+	slides := make([]rhythm.Slide, 8)
+	for i := range slides {
+		name := "kpi-3up"
+		if i%2 == 1 {
+			name = "kpi-4up"
+		}
+		slides[i] = rhythm.Slide{HasPattern: true, PatternName: name}
+	}
+	result := rhythm.Analyze(slides)
+	if len(result.Aggregates.PatternRuns) != 1 || result.Aggregates.PatternRuns[0].Len != 8 {
+		t.Fatalf("alternating KPIs should form one 8-slide run, got %+v", result.Aggregates.PatternRuns)
+	}
+	if result.Aggregates.RepetitionIndex != 0.88 {
+		t.Errorf("family repetition index = %v, want 0.88", result.Aggregates.RepetitionIndex)
+	}
+	if result.CompositionScore >= 60 {
+		t.Errorf("8-slide KPI rut scored %d, want below 60", result.CompositionScore)
+	}
+	if len(result.Recommendations) == 0 || len(result.Recommendations[0].RecommendedBreak) == 0 {
+		t.Fatalf("KPI run has no break recommendations: %+v", result.Recommendations)
+	}
+	if result.Recommendations[0].RecommendedBreak[0] == "kpi-3up" || result.Recommendations[0].RecommendedBreak[0] == "kpi-4up" {
+		t.Errorf("KPI break should use another family: %+v", result.Recommendations[0])
+	}
+}
+
+func TestAnalyze_BreakSuggestionsUseContentHints(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		pattern   string
+		kind      string
+		slideType string
+		want      string
+	}{
+		{"chart", "kpi-3up", "chart", "", "chart-insights-split"},
+		{"table", "kpi-3up", "table", "", "table-highlight"},
+		{"diagram", "kpi-3up", "diagram", "", "timeline-horizontal"},
+		{"image", "kpi-3up", "image", "", "image-text-split"},
+		{"process", "process-flow", "", "", "timeline-horizontal"},
+		{"cards", "card-grid", "", "", "comparison-2col"},
+		{"comparison", "pull-quote", "", "comparison", "comparison-2col"},
+		{"fallback", "pull-quote", "", "", "stat-hero"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			second := tt.pattern
+			if tt.pattern == "kpi-3up" {
+				second = "kpi-4up"
+			}
+			slides := []rhythm.Slide{
+				{HasPattern: true, PatternName: tt.pattern},
+				{HasPattern: true, PatternName: second},
+				{HasPattern: true, PatternName: tt.pattern, ContentKinds: []string{tt.kind}, SlideType: tt.slideType},
+			}
+			result := rhythm.Analyze(slides)
+			if len(result.Recommendations) == 0 || len(result.Recommendations[0].RecommendedBreak) == 0 {
+				t.Fatalf("no break recommendation: %+v", result.Recommendations)
+			}
+			if got := result.Recommendations[0].RecommendedBreak[0]; got != tt.want {
+				t.Errorf("first %s break = %q, want %q", tt.kind, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAnalyze_BreakSuggestionsIgnoreContentOrder(t *testing.T) {
+	for _, kinds := range [][]string{{"table", "chart"}, {"chart", "table"}} {
+		slides := []rhythm.Slide{
+			{HasPattern: true, PatternName: "kpi-3up"},
+			{HasPattern: true, PatternName: "kpi-4up"},
+			{HasPattern: true, PatternName: "kpi-3up", ContentKinds: kinds},
+		}
+		result := rhythm.Analyze(slides)
+		if got := result.Recommendations[0].RecommendedBreak[0]; got != "chart-insights-split" {
+			t.Errorf("content kinds %v: first break = %q, want chart-insights-split", kinds, got)
+		}
+	}
+}
+
+func TestAnalyze_VisualFamiliesAndBoundaries(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		patterns []string
+		wantRun  int
+	}{
+		{"compact variant", []string{"process-flow", "process-flow-compact", "process-flow"}, 3},
+		{"process steps", []string{"process-flow", "numbered-step-strip", "process-grid-2row"}, 3},
+		{"card panels", []string{"card-grid", "stylish-panels", "icon-row"}, 3},
+		{"different families", []string{"kpi-3up", "process-flow", "stat-hero"}, 0},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			slides := make([]rhythm.Slide, len(tt.patterns))
+			for i, name := range tt.patterns {
+				slides[i] = rhythm.Slide{HasPattern: true, PatternName: name}
+			}
+			result := rhythm.Analyze(slides)
+			if result.Aggregates.LongestRun != tt.wantRun {
+				t.Errorf("longest run = %d, want %d", result.Aggregates.LongestRun, tt.wantRun)
+			}
+		})
+	}
+}
+
 func TestAnalyze_MixedPatterns(t *testing.T) {
 	slides := []rhythm.Slide{
 		{HasPattern: true, PatternName: "kpi-3up"},

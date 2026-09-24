@@ -182,7 +182,7 @@ Slide 5: matrix-2x2    — "Competitor Positioning"
 Slide 6: icon-row      — "Team Strengths"
 ```
 
-Rules: no pattern should appear 3+ times consecutively. Insert a narrative-break pattern (stat-hero, pull-quote) every ~5 slides. Use `analyze_deck_rhythm` to detect violations before generating.
+Rules: no visual pattern family should appear 3+ times consecutively (alternating `kpi-3up` and `kpi-4up` is still one KPI run). Insert a narrative-break pattern (stat-hero, pull-quote) every ~5 slides. Use `analyze_deck_rhythm` to detect violations before generating.
 
 ### Accent monotony
 
