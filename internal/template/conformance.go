@@ -139,6 +139,7 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 	checks = append(checks, checkDuplicateLayoutSignatures(layouts)...)
 	checks = append(checks, checkSectionNumber(layouts)...)
 	checks = append(checks, checkFooterChromeCompleteness(layouts))
+	checks = append(checks, checkContentTitleBodyHierarchy(layouts)...)
 	checks = append(checks, checkTheme(theme)...)
 
 	pass := true
@@ -155,6 +156,45 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 		Pass:     pass,
 		Checks:   checks,
 	}, nil
+}
+
+// checkContentTitleBodyHierarchy flags content layouts where the first-level
+// body type is at least as large as the title. Unknown font sizes are not
+// evidence of an inversion, and utility/divider layouts are out of scope.
+func checkContentTitleBodyHierarchy(layouts []types.LayoutMetadata) []ConformanceCheck {
+	var checks []ConformanceCheck
+	for i := range layouts {
+		layout := &layouts[i]
+		role, _, _ := ClassifyCanonicalRole(layout)
+		if role != CanonicalRoleOneContent && role != CanonicalRoleTwoContent {
+			continue
+		}
+		var titleSize, bodySize int
+		for _, ph := range layout.Placeholders {
+			if ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
+				continue
+			}
+			switch ph.Type {
+			case types.PlaceholderTitle:
+				if ph.FontSize > 0 && (titleSize == 0 || ph.FontSize < titleSize) {
+					titleSize = ph.FontSize
+				}
+			case types.PlaceholderBody, types.PlaceholderContent:
+				if ph.FontSize > bodySize {
+					bodySize = ph.FontSize
+				}
+			}
+		}
+		if titleSize == 0 || bodySize == 0 || bodySize < titleSize {
+			continue
+		}
+		checks = append(checks, ConformanceCheck{
+			Category: "typography", Check: "Content title larger than body", Status: ConformanceStatusWarn,
+			Detail: fmt.Sprintf("Layout %q (%s): title %.0fpt, body %.0fpt; increase title size or reduce first-level body size",
+				layout.Name, layout.ID, float64(titleSize)/100, float64(bodySize)/100),
+		})
+	}
+	return checks
 }
 
 // checkFooterChromeCompleteness catches templates whose partial utility

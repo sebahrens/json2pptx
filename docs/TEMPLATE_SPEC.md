@@ -201,6 +201,8 @@ json2pptx template-check templates/midnight-blue.pptx
 
 The checker validates that `surface_tints` defines all four roles and `data_palette` contains valid scheme color names.
 
+On One Content and Two Content layouts, the visible title font must be larger than the first-level body font. `template-check` reports a typography warning when the body is the same size or larger; layouts with unresolved font sizes are not judged by this check.
+
 ## Conformance Checking
 
 Run the conformance checker against any template:
