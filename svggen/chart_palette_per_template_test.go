@@ -22,8 +22,8 @@ type chartPaletteFixture struct {
 	// chartType is the diagram registry type ID (e.g., "bar_chart").
 	chartType string
 
-	// seriesN is the number of series (or slices, for pie) to render. For
-	// gauge_chart this is the number of primary fills we expect (1).
+	// seriesN is the number of series (or slices, for pie) to render. The
+	// gauge has one value arc, whose fill follows the primary-fill role.
 	seriesN int
 
 	// buildData returns the chart request payload with the right shape for
@@ -31,9 +31,8 @@ type chartPaletteFixture struct {
 	buildData func(n int) map[string]any
 }
 
-// chartPaletteFixtures lists every chart type covered by the test. The test
-// renders one chart per type per template and asserts the rendered series
-// colors match the template's resolved DataPalette ordering.
+// chartPaletteFixtures lists every chart type covered by the test. Series
+// charts follow DataPalette; the gauge value arc follows color_roles.primary_fill.
 var chartPaletteFixtures = []chartPaletteFixture{
 	{chartType: "bar_chart", seriesN: 6, buildData: buildChartPaletteCategoricalData},
 	{chartType: "stacked_bar_chart", seriesN: 6, buildData: buildChartPaletteCategoricalData},
@@ -42,8 +41,8 @@ var chartPaletteFixtures = []chartPaletteFixture{
 	{chartType: "gauge_chart", seriesN: 1, buildData: buildChartPaletteGaugeData},
 }
 
-// TestChartPalette_PerTemplate asserts that every bundled template's resolved
-// DataPalette ordering shows up as chart series colors in rendered SVG output.
+// TestChartPalette_PerTemplate asserts that each chart uses its promised color
+// source in rendered SVG: DataPalette for series, primary_fill for gauge.
 //
 // For each templates/*.pptx whose metadata declares a data_palette:
 //  1. Parse theme1.xml to read accent1..6 hex values.
@@ -52,10 +51,10 @@ var chartPaletteFixtures = []chartPaletteFixture{
 //  3. Resolve the scheme names to hex via the theme.
 //  4. For each chart type, render via the diagram registry with a StyleSpec
 //     carrying ThemeColors and the resolved DataPalette.
-//  5. Extract series colors from the SVG (fill="..." attribute for bar /
-//     stacked_bar / pie / gauge, style="stroke:..." for line) and assert
-//     that — filtered to the expected palette set — the in-document-order
-//     sequence equals DataPalette[0..N-1].
+//  5. Extract chart colors from the SVG (fill="..." for bar / stacked_bar /
+//     pie / gauge, style="stroke:..." for line) and compare to the correct
+//     source. Gauge deliberately uses the primary-fill role, which can differ
+//     from DataPalette[0] when the template's first series color is too light.
 //
 // Templates without metadata are skipped, so unstamped designer templates
 // (abstract.pptx, modern.pptx, ...) don't break the corpus before they have
@@ -119,10 +118,13 @@ func TestChartPalette_PerTemplate(t *testing.T) {
 					}
 
 					svg := string(result.SVG.Content)
-					seriesColors := extractChartPaletteSeriesColors(svg, fx.chartType, palette)
-
 					expected := palette[:n]
 					expectedNames := paletteNames[:n]
+					if fx.chartType == "gauge_chart" {
+						expected = []string{StyleGuideFromSpec(req.Style).Palette.Roles.PrimaryFill.Hex()}
+						expectedNames = []string{"color_roles.primary_fill"}
+					}
+					seriesColors := extractChartPaletteSeriesColors(svg, fx.chartType, expected)
 
 					for i, want := range expected {
 						if i >= len(seriesColors) {
@@ -348,8 +350,7 @@ func buildChartPalettePieData(n int) map[string]any {
 }
 
 // buildChartPaletteGaugeData returns minimal gauge data. The gauge paints its
-// primary value arc with palette accent1 (= DataPalette[0]); the test asserts
-// that single fill matches the resolved DataPalette[0].
+// value arc with the role-mapped primary fill, not necessarily DataPalette[0].
 func buildChartPaletteGaugeData(_ int) map[string]any {
 	return map[string]any{
 		"value": 73.0,
