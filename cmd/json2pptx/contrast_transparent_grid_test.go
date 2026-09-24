@@ -23,6 +23,30 @@ func transparentGridSlide(background *BackgroundInput, fill, textColor string) S
 	}
 }
 
+func TestParagraphFormContrastIgnoresUnusedOuterColor(t *testing.T) {
+	theme := []types.ThemeColor{{Name: "lt1", RGB: "#FFFFFF"}}
+	for _, tc := range []struct {
+		name           string
+		paragraphColor string
+		wantFindings   int
+	}{
+		{"readable paragraph", "#111111", 0},
+		{"unreadable paragraph", "#FFFFFF", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := transparentGridSlide(nil, `"#FFFFFF"`, "#FFFFFF")
+			slide.ShapeGrid.Rows[0].Cells[0].Shape.Text = json.RawMessage(`{"color":"#FFFFFF","paragraphs":[{"content":"Visible","color":"` + tc.paragraphColor + `","size":12}]}`)
+			findings := contrastPredictions(collectContrastPreflightFindings(&PresentationInput{Slides: []SlideInput{slide}}, nil, theme))
+			if len(findings) != tc.wantFindings {
+				t.Fatalf("got %d contrast predictions, want %d: %+v", len(findings), tc.wantFindings, findings)
+			}
+			if len(findings) == 1 && findings[0].Fix.Params["from"] != tc.paragraphColor {
+				t.Errorf("prediction targets non-rendered outer color: %+v", findings[0].Fix)
+			}
+		})
+	}
+}
+
 func TestTransparentGridContrastPreflightUsesEffectiveBackground(t *testing.T) {
 	theme := []types.ThemeColor{
 		{Name: "dk1", RGB: "#000000"},

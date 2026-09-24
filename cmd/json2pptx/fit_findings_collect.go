@@ -1653,7 +1653,9 @@ func extractShapeTextColors(raw json.RawMessage) []shapeTextColor {
 		return nil
 	}
 	var colors []shapeTextColor
-	if obj.Color != "" {
+	// ResolveTextInput ignores the outer color whenever paragraph-form text is
+	// present. Predicting contrast for it would warn about a run never drawn.
+	if len(obj.Paragraphs) == 0 && obj.Color != "" {
 		colors = append(colors, shapeTextColor{Color: obj.Color, SizePt: obj.Size, Bold: obj.Bold})
 	}
 	for _, p := range obj.Paragraphs {
