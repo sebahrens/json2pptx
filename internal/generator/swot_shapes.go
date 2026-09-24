@@ -214,7 +214,7 @@ func generateSWOTHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sch
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: swotCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
@@ -247,7 +247,7 @@ func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, scheme
 	paras := panelBulletsParagraphs(body, swotBodyFontSize)
 
 	// Use the same accent color for bullets but with full strength
-	bulletColor := pptx.SchemeFill(schemeColor)
+	bulletColor := pptx.ResolveColorString(schemeColor)
 
 	// Override bullet color in parsed paragraphs
 	for i := range paras {
@@ -264,7 +264,7 @@ func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, scheme
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: swotCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",

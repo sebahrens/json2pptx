@@ -22,7 +22,8 @@ import (
 // The command renders a PPTX to PNG (through internal/render, which resolves
 // libreoffice or soffice and rasterises with ImageMagick) and, for each
 // slide, samples dominant chromatic colors inside every <p:pic> region and
-// compares them against theme accents and their standard tints. The legacy
+// compares them against theme accents and their standard tints. It also checks
+// brightened native accent fills, including shapes nested in groups. The legacy
 // (pic, shape) comparison remains available as an opt-in mode.
 //
 // Acceptance: AC1 emits ΔE per pair; AC2 — see .github/workflows/ci.yml
@@ -41,7 +42,7 @@ func runAuditPalette() error {
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx audit-palette <pptx> [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Render a PPTX to PNG and compare picture chromas with theme accents/tints.\n")
+		fmt.Fprintf(os.Stderr, "Render a PPTX to PNG and compare picture and native-shape colors with theme accents/tints.\n")
 		fmt.Fprintf(os.Stderr, "Use -mode pair for the legacy picture-to-shape comparison.\n\n")
 		fmt.Fprintf(os.Stderr, "Requires the render toolchain: `libreoffice` or `soffice`, plus `magick`.\n\n")
 		fmt.Fprintf(os.Stderr, "Exit code is non-zero when any selected comparison exceeds its threshold.\n\n")
@@ -247,9 +248,10 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 	}
 
 	type slideRegions struct {
-		index  int // 1-based
-		pics   []paletteShape
-		shapes []paletteShape
+		index   int // 1-based
+		pics    []paletteShape
+		shapes  []paletteShape
+		accents []auditAccentMod
 	}
 	var allSlides []slideRegions
 	for _, info := range enum.Slides() {
@@ -261,7 +263,14 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", info.PartPath, err)
 		}
-		allSlides = append(allSlides, slideRegions{index: info.Index + 1, pics: pics, shapes: shapes})
+		var accents []auditAccentMod
+		if mode != "pair" {
+			accents, err = extractAuditAccentMods(data)
+			if err != nil {
+				return nil, fmt.Errorf("parse accent fills in %s: %w", info.PartPath, err)
+			}
+		}
+		allSlides = append(allSlides, slideRegions{index: info.Index + 1, pics: pics, shapes: shapes, accents: accents})
 	}
 
 	// Render the PPTX to one PNG per slide.
@@ -328,6 +337,9 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 		shapeRegions := samplePaletteRegions(img, sr.shapes, slideCX, slideCY, imgW, imgH, opts.ChromaMin, "shape")
 
 		slide, pairViolations, themeViolations := scoreAuditSlide(img, sr.index, picRegions, shapeRegions, themeColors, opts)
+		if mode != "pair" {
+			themeViolations += scoreAuditAccentMods(&slide, sr.index, sr.accents, themeColors, opts.MaxThemeDeltaE)
+		}
 		slide.RenderImage = pngs[i]
 		report.PairViolations += pairViolations
 		report.ThemeViolations += themeViolations
@@ -425,7 +437,11 @@ func formatAuditText(r *auditReport) string {
 			if !m.Pass {
 				mark = "✗"
 			}
-			fmt.Fprintf(&b, "    %s ΔE=%.3f  pic[%s]=#%s  nearest=%s tint=%d #%s\n", mark, m.DeltaE, m.Pic.Name, m.Hex, m.NearestSchemeColor, m.NearestTint, m.NearestHex)
+			kind := m.Pic.Kind
+			if kind == "" {
+				kind = "pic"
+			}
+			fmt.Fprintf(&b, "    %s ΔE=%.3f  %s[%s]=#%s  nearest=%s tint=%d #%s\n", mark, m.DeltaE, kind, m.Pic.Name, m.Hex, m.NearestSchemeColor, m.NearestTint, m.NearestHex)
 		}
 		for _, p := range s.Pairs {
 			mark := "✓"
@@ -549,8 +565,9 @@ type auditCommonSld struct {
 }
 
 type auditSpTree struct {
-	Shapes []auditSp  `xml:"sp"`
-	Pics   []auditPic `xml:"pic"`
+	Shapes []auditSp     `xml:"sp"`
+	Pics   []auditPic    `xml:"pic"`
+	Groups []auditSpTree `xml:"grpSp"`
 }
 
 type auditSp struct {
@@ -605,7 +622,13 @@ type auditSRGB struct {
 }
 
 type auditScheme struct {
-	Val string `xml:"val,attr"`
+	Val    string         `xml:"val,attr"`
+	LumMod *auditColorVal `xml:"lumMod"`
+	LumOff *auditColorVal `xml:"lumOff"`
+}
+
+type auditColorVal struct {
+	Val int `xml:"val,attr"`
 }
 
 // --- Rendering --------------------------------------------------------------

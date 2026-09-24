@@ -408,7 +408,7 @@ func generateVCSupportBarXML(panel nativePanelData, x, y, cx, cy int64, shapeID 
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: vcCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
@@ -480,7 +480,7 @@ func generateVCPrimaryChevronXML(panel nativePanelData, x, y, cx, cy int64, shap
 		Bounds:      pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
 		Geometry:    geom,
 		Adjustments: adjustments,
-		Fill:        pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill:        diagramTintFill(schemeColor, lumMod, lumOff),
 		Line:        pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
@@ -508,7 +508,7 @@ func generateVCMarginXML(label string, x, y, cx, cy int64, shapeID uint32) strin
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: vcCornerRadius},
 		},
-		Fill: pptx.SchemeFill("accent6", pptx.LumMod(30000), pptx.LumOff(70000)),
+		Fill: diagramTintFill("accent6", 30000, 70000),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",

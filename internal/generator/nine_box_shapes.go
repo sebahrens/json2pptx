@@ -426,7 +426,7 @@ func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint3
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: nineBoxCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
@@ -459,7 +459,7 @@ func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32,
 	paras := panelBulletsParagraphs(body, nineBoxItemFontSize)
 
 	// Use the same accent color for bullets but with full strength.
-	bulletColor := pptx.SchemeFill(schemeColor)
+	bulletColor := pptx.ResolveColorString(schemeColor)
 	for i := range paras {
 		if paras[i].Bullet != nil {
 			paras[i].Bullet.Color = bulletColor
@@ -474,7 +474,7 @@ func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32,
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: nineBoxCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",

@@ -337,10 +337,10 @@ func pyramidTrapezoidAdj(levelIndex, numLevels int, currentWidthRatio float64) i
 }
 
 // pyramidLevelFill returns a scheme-based fill for a pyramid level.
-// Gradient goes from full accent1 saturation (apex, dark) to light tint (base).
+// Gradient goes from full accent1 (apex, dark) to an RGB tint (base).
 //
-// Level 0 (apex): lumMod=100000, lumOff=0 (full color)
-// Level n-1 (base): lumMod=20000, lumOff=80000 (light tint)
+// Level 0 (apex): 100% accent, 0% white.
+// Level n-1 (base): 20% accent, 80% white.
 func pyramidLevelFill(levelIndex, numLevels int) pptx.Fill {
 	if numLevels <= 1 {
 		return pptx.SchemeFill("accent1")
@@ -349,14 +349,14 @@ func pyramidLevelFill(levelIndex, numLevels int) pptx.Fill {
 	// t goes from 0.0 (apex) to 1.0 (base)
 	t := float64(levelIndex) / float64(numLevels-1)
 
-	// lumMod ranges from 100000 (full color at apex) to 20000 (light tint at base).
+	// The retained accent fraction ranges from 100000 to 20000.
 	lumMod := 100000 - int(t*80000)
 	lumOff := 100000 - lumMod
 
 	if lumOff <= 0 {
 		return pptx.SchemeFill("accent1")
 	}
-	return pptx.SchemeFill("accent1", pptx.LumMod(lumMod), pptx.LumOff(lumOff))
+	return diagramTintFill("accent1", lumMod, lumOff)
 }
 
 // pyramidLevelTextColor returns the text fill for a pyramid level.

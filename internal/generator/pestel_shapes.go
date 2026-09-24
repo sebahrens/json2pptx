@@ -279,7 +279,7 @@ func generatePESTELHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, s
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: pestelCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
@@ -312,7 +312,7 @@ func generatePESTELBodyXML(body string, x, y, cx, cy int64, shapeID uint32, sche
 	paras := panelBulletsParagraphs(body, pestelBodyFontSize)
 
 	// Use the same accent color for bullets but with full strength
-	bulletColor := pptx.SchemeFill(schemeColor)
+	bulletColor := pptx.ResolveColorString(schemeColor)
 	for i := range paras {
 		if paras[i].Bullet != nil {
 			paras[i].Bullet.Color = bulletColor
@@ -327,7 +327,7 @@ func generatePESTELBodyXML(body string, x, y, cx, cy int64, shapeID uint32, sche
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: pestelCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",

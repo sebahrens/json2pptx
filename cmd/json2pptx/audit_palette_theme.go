@@ -110,6 +110,74 @@ func nearestAuditThemeColor(slide int, pic auditRegion, chroma auditChroma, colo
 	return match
 }
 
+// auditAccentMod captures a native shape fill brightened in HSL. In a
+// saturated template this can drift far from the accent's RGB tints.
+type auditAccentMod struct {
+	Name   string
+	Scheme string
+	Mod    int
+	Off    int
+}
+
+func extractAuditAccentMods(slideXML []byte) ([]auditAccentMod, error) {
+	var slide auditSlideXML
+	if err := xml.Unmarshal(slideXML, &slide); err != nil {
+		return nil, err
+	}
+	var out []auditAccentMod
+	var walk func(auditSpTree)
+	walk = func(tree auditSpTree) {
+		for _, shape := range tree.Shapes {
+			fill := shape.SpPr.SolidFill
+			if fill == nil || fill.Scheme == nil || !strings.HasPrefix(fill.Scheme.Val, "accent") || fill.Scheme.LumOff == nil || fill.Scheme.LumOff.Val <= 0 {
+				continue
+			}
+			mod := 100000
+			if fill.Scheme.LumMod != nil {
+				mod = fill.Scheme.LumMod.Val
+			}
+			out = append(out, auditAccentMod{Name: shape.NvSpPr.CNvPr.Name, Scheme: fill.Scheme.Val, Mod: mod, Off: fill.Scheme.LumOff.Val})
+		}
+		for _, group := range tree.Groups {
+			walk(group)
+		}
+	}
+	walk(slide.CSld.SpTree)
+	return out, nil
+}
+
+func scoreAuditAccentMods(slide *auditSlide, index int, mods []auditAccentMod, colors []auditThemeColor, threshold float64) int {
+	violations := 0
+	for _, m := range mods {
+		var base svggen.Color
+		found := false
+		var schemeColors []auditThemeColor
+		for _, c := range colors {
+			if c.Scheme == m.Scheme {
+				schemeColors = append(schemeColors, c)
+				if c.Tint == 0 {
+					base, found = c.Color, true
+				}
+			}
+		}
+		if !found {
+			continue
+		}
+		actual := patterns.EffectiveColorMods(base, patterns.ColorMods{LumMod: m.Mod, LumOff: m.Off}, svggen.Color{R: 255, G: 255, B: 255, A: 1})
+		shape := auditRegion{Kind: "shape", Name: m.Name, DeclaredHex: m.Scheme}
+		match := nearestAuditThemeColor(index, shape, auditChroma{R: actual.R, G: actual.G, B: actual.B}, schemeColors, threshold)
+		slide.ThemeMatches = append(slide.ThemeMatches, match)
+		if !match.Pass {
+			violations++
+		}
+		if match.DeltaE > slide.MaxThemeDeltaE {
+			slide.MaxThemeDeltaE = match.DeltaE
+		}
+	}
+	slide.ThemeMatchCount = len(slide.ThemeMatches)
+	return violations
+}
+
 // dominantChromasPx returns distinct, material color clusters rather than an
 // average of every colored pixel. The latter blends two legitimate series into
 // a fictitious third color and can hide a minority off-brand series.

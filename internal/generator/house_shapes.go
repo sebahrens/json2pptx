@@ -564,8 +564,8 @@ func generateHouseSingleFloorShape(id uint32, panel nativePanelData, x, y, w, h 
 		Name:     fmt.Sprintf("Floor %s", panel.title),
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: w, CY: h},
 		Geometry: pptx.GeomRect,
-		Fill:     pptx.SchemeFill("accent1", pptx.LumMod(20000), pptx.LumOff(80000)),
-		Line:     pptx.Line{Width: 6350, Fill: pptx.SchemeFill("accent1", pptx.LumMod(40000), pptx.LumOff(60000))},
+		Fill:     diagramTintFill("accent1", 20000, 80000),
+		Line:     pptx.Line{Width: 6350, Fill: diagramTintFill("accent1", 40000, 60000)},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
@@ -585,8 +585,8 @@ func generateHouseSingleFloorShape(id uint32, panel nativePanelData, x, y, w, h 
 func generateHousePillarShape(id uint32, panel nativePanelData, x, y, w, h int64, accentIdx, labelFont, itemFont int) []byte {
 	// Cycle through accent1..accent6 with light tint fills.
 	accentName := fmt.Sprintf("accent%d", (accentIdx%6)+1)
-	fill := pptx.SchemeFill(accentName, pptx.LumMod(20000), pptx.LumOff(80000))
-	lineFill := pptx.SchemeFill(accentName, pptx.LumMod(50000), pptx.LumOff(50000))
+	fill := diagramTintFill(accentName, 20000, 80000)
+	lineFill := diagramTintFill(accentName, 50000, 50000)
 	textColor := pptx.SchemeFill("dk1")
 
 	var paras []pptx.Paragraph

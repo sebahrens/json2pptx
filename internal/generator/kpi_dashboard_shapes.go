@@ -282,7 +282,7 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: kpiCornerRadius},
 		},
-		Fill: pptx.SchemeFill(panelHeaderFillSchemeColor, pptx.LumMod(panelHeaderFillLumMod), pptx.LumOff(panelHeaderFillLumOff)),
+		Fill: diagramTintFill(panelHeaderFillSchemeColor, panelHeaderFillLumMod, panelHeaderFillLumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",

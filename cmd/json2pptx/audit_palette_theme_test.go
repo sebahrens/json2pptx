@@ -114,3 +114,48 @@ func TestThemeMatchDiagnosticsWithNoPairs(t *testing.T) {
 		t.Fatalf("theme match missing from text output: %s", text)
 	}
 }
+
+func TestAuditThemeCatchesNeonGroupedNativeShape(t *testing.T) {
+	theme := strings.Replace(auditThemeFixture, `val="9A69B1"`, `val="0097A7"`, 1)
+	// An unrelated accent matching the neon result must not make the shape
+	// appear on-brand: the fill explicitly refers to accent4.
+	theme = strings.Replace(theme, `val="D9A441"`, `val="76F2FF"`, 1)
+	colors, err := parseAuditThemeColors([]byte(theme))
+	if err != nil {
+		t.Fatal(err)
+	}
+	slideXML := `<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:grpSp><p:sp><p:nvSpPr><p:cNvPr name="Neon panel"/></p:nvSpPr><p:spPr><a:solidFill><a:schemeClr val="accent4"><a:lumMod val="20000"/><a:lumOff val="80000"/></a:schemeClr></a:solidFill></p:spPr></p:sp><p:sp><p:nvSpPr><p:cNvPr name="Tinted panel"/></p:nvSpPr><p:spPr><a:solidFill><a:schemeClr val="accent4"><a:tint val="20000"/></a:schemeClr></a:solidFill></p:spPr></p:sp></p:grpSp></p:spTree></p:cSld></p:sld>`
+	mods, err := extractAuditAccentMods([]byte(slideXML))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mods) != 1 || mods[0].Name != "Neon panel" {
+		t.Fatalf("grouped HSL accent detection = %+v", mods)
+	}
+	slide := &auditSlide{Index: 1}
+	if violations := scoreAuditAccentMods(slide, 1, mods, colors, 15); violations != 1 {
+		t.Fatalf("violations = %d, want 1; match = %+v", violations, slide.ThemeMatches)
+	}
+	if slide.ThemeMatchCount != 1 || slide.ThemeMatches[0].Pic.Kind != "shape" || slide.ThemeMatches[0].DeltaE <= 15 {
+		t.Fatalf("neon accent should be reported as off-theme native shape: %+v", slide)
+	}
+	report := &auditReport{Slides: []auditSlide{*slide}, Violations: 1}
+	if !strings.Contains(formatAuditText(report), "shape[Neon panel]") {
+		t.Fatalf("text report omits the native shape identity: %s", formatAuditText(report))
+	}
+}
+
+func TestAuditAccentModsIgnoresUnmodifiedAndMalformedShapes(t *testing.T) {
+	if _, err := extractAuditAccentMods([]byte(`<p:sld`)); err == nil {
+		t.Fatal("malformed slide XML should fail")
+	}
+	slideXML := `<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><p:cSld><p:spTree><p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></p:spPr></p:sp><p:sp><p:spPr><a:solidFill><a:srgbClr val="0097A7"/></a:solidFill></p:spPr></p:sp><p:sp><p:spPr><a:solidFill><a:schemeClr val="accent1"><a:lumMod val="75000"/></a:schemeClr></a:solidFill></p:spPr></p:sp></p:spTree></p:cSld></p:sld>`
+	mods, err := extractAuditAccentMods([]byte(slideXML))
+	if err != nil || len(mods) != 0 {
+		t.Fatalf("unmodified, authored, or darkened fills should not trigger: mods=%+v err=%v", mods, err)
+	}
+	unknown := []auditAccentMod{{Name: "Unknown", Scheme: "accent7", Mod: 20000, Off: 80000}}
+	if got := scoreAuditAccentMods(&auditSlide{}, 1, unknown, nil, 15); got != 0 {
+		t.Fatalf("unknown theme accent should not be scored without a reference, got %d", got)
+	}
+}

@@ -377,7 +377,7 @@ func generateBMCCellHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, 
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: bmcCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
@@ -410,7 +410,7 @@ func generateBMCCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, sch
 	paras := panelBulletsParagraphs(body, bmcBodyFontSize)
 
 	// Use the accent color (full strength) for bullets
-	bulletColor := pptx.SchemeFill(schemeColor)
+	bulletColor := pptx.ResolveColorString(schemeColor)
 	for i := range paras {
 		if paras[i].Bullet != nil {
 			paras[i].Bullet.Color = bulletColor
@@ -425,7 +425,7 @@ func generateBMCCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, sch
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: bmcCornerRadius},
 		},
-		Fill: pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",

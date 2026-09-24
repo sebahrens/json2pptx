@@ -126,10 +126,10 @@ func generateStylishPanelsGroupXML(panels []nativePanelData, bounds types.Boundi
 			Name:     "Panel Body",
 			Bounds:   pptx.RectEmu{X: panelX, Y: bodyY, CX: panelWidth, CY: bodyCY},
 			Geometry: pptx.GeomRect,
-			Fill:     pptx.SchemeFill(stylishBodyFillSchemeColor, pptx.LumMod(stylishBodyFillLumMod), pptx.LumOff(stylishBodyFillLumOff)),
+			Fill:     diagramTintFill(stylishBodyFillSchemeColor, stylishBodyFillLumMod, stylishBodyFillLumOff),
 			Line: pptx.Line{
 				Width: 0,
-				Fill:  pptx.SchemeFill(stylishBodyFillSchemeColor, pptx.LumMod(stylishBodyFillLumMod), pptx.LumOff(stylishBodyFillLumOff)),
+				Fill:  diagramTintFill(stylishBodyFillSchemeColor, stylishBodyFillLumMod, stylishBodyFillLumOff),
 			},
 			Text: &pptx.TextBody{
 				Wrap:       "square",

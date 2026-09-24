@@ -21,8 +21,9 @@ import (
 // where the framework encodes a genuine contrast (SWOT's positive/negative
 // halves), which earns the second accent.
 
-// taxonomyTint is one cell's fill: a scheme colour plus its lumMod/lumOff
-// tint, the same triple the shape builders already take.
+// taxonomyTint is one cell's fill: a theme color plus its retained-color and
+// white-blend percentages. The legacy field names are kept for the existing
+// shape-builder call signatures; diagramTintFill emits an RGB tint.
 type taxonomyTint struct {
 	scheme string
 	lumMod int

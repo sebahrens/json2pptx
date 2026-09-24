@@ -113,15 +113,16 @@ func TestGeneratePanelHeaderXML(t *testing.T) {
 		t.Error("should end with </p:sp>")
 	}
 
-	// Should contain scheme color fill with lumMod/lumOff
+	// A light panel fill must blend the accent toward white without pushing a
+	// saturated theme color into fluorescent HSL territory.
 	if !strings.Contains(result, `schemeClr val="accent1"`) {
 		t.Error("header fill should use schemeClr")
 	}
-	if !strings.Contains(result, `lumMod val="15000"`) {
-		t.Error("header fill should have lumMod")
+	if !strings.Contains(result, `tint val="15000"`) {
+		t.Error("header fill should have RGB tint")
 	}
-	if !strings.Contains(result, `lumOff val="85000"`) {
-		t.Error("header fill should have lumOff")
+	if strings.Contains(result, "lumMod") || strings.Contains(result, "lumOff") {
+		t.Error("header fill must not brighten accent with HSL modifiers")
 	}
 
 	// Should NOT contain srgbClr

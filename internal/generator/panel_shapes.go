@@ -455,7 +455,7 @@ func generatePanelHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sc
 		Name:     "Panel Header",
 		Bounds:   pptx.RectEmu{X: x, Y: y, CX: cx, CY: cy},
 		Geometry: pptx.GeomRect,
-		Fill:     pptx.SchemeFill(schemeColor, pptx.LumMod(lumMod), pptx.LumOff(lumOff)),
+		Fill:     diagramTintFill(schemeColor, lumMod, lumOff),
 		Line:     pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:    "square",
@@ -889,7 +889,7 @@ func generateStatCardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: 5000}, // subtle rounding
 		},
-		Fill: pptx.SchemeFill(panelHeaderFillSchemeColor, pptx.LumMod(panelHeaderFillLumMod), pptx.LumOff(panelHeaderFillLumOff)),
+		Fill: diagramTintFill(panelHeaderFillSchemeColor, panelHeaderFillLumMod, panelHeaderFillLumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
 		Text: &pptx.TextBody{
 			Wrap:       "square",
