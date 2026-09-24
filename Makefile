@@ -419,7 +419,9 @@ release-check:
 
 release: release-check ensure-templates build-cross
 
-ci: fmt-check lint test vulncheck template-check
+# test already executes TestConformanceCorpus; keep template-check as a
+# standalone/pre-commit gate without rerunning the same corpus in make ci.
+ci: fmt-check lint test vulncheck
 
 # ─── Help ─────────────────────────────────────────────────────────────
 
