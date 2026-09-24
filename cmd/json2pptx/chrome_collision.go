@@ -21,7 +21,7 @@ func collectChromeCollisionFindings(input *PresentationInput, layouts []types.La
 		if layout == nil {
 			continue
 		}
-		for _, content := range slide.Content {
+		for ci, content := range slide.Content {
 			ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
 			if ph == nil || (ph.Type != types.PlaceholderBody && ph.Type != types.PlaceholderContent && ph.Type != types.PlaceholderImage && ph.Type != types.PlaceholderChart && ph.Type != types.PlaceholderTable) {
 				continue
@@ -32,7 +32,7 @@ func collectChromeCollisionFindings(input *PresentationInput, layouts []types.La
 				}
 				findings = append(findings, patterns.FitFinding{
 					ValidationError: patterns.ValidationError{
-						Pattern: "template", Path: slidepath.Content(si, content.PlaceholderID), Code: patterns.ErrCodeChromeCollision,
+						Pattern: "template", Path: slidepath.ContentIndex(si, ci), Code: patterns.ErrCodeChromeCollision,
 						Message: fmt.Sprintf("layout %q %s placeholder intersects %s artwork %q; review the template geometry (tall side artwork is reserved at render)", layout.Name, content.PlaceholderID, decor.Source, decor.Name),
 					},
 					Action: "review",

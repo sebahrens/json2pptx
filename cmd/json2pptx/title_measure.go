@@ -119,8 +119,8 @@ func (m titleMeasurement) fitFinding(path string) *patterns.FitFinding {
 // entry in the findings envelope instead of reporting one wrapped title twice
 // under two codes (max_length and title_wraps) — go-slide-creator-jcph.
 // Returns nil when the title was not measurable or fits comfortably.
-func (m titleMeasurement) diagnostic(slideIdx int, placeholderID string) *diagnostics.Diagnostic {
-	f := m.fitFinding(slidepath.Content(slideIdx, placeholderID))
+func (m titleMeasurement) diagnostic(slideIdx, contentIdx int) *diagnostics.Diagnostic {
+	f := m.fitFinding(slidepath.ContentIndex(slideIdx, contentIdx))
 	if f == nil {
 		return nil
 	}
@@ -218,7 +218,7 @@ func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMet
 			if title == "" {
 				continue
 			}
-			path := slidepath.Content(si, content.PlaceholderID)
+			path := slidepath.ContentIndex(si, ci)
 			m := measureTitleInPlaceholder(title, ph)
 			if m.OK {
 				measured[measuredTitleKey{slide: si, placeholder: content.PlaceholderID}] = true

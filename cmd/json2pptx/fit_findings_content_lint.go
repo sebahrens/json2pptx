@@ -45,73 +45,71 @@ func collectContentLintFindings(input *PresentationInput, measuredTitles measure
 	return findings
 }
 
-// lintContentItem dispatches the content lint checks for one content item by
-// its type. The contentIdx is unused in path construction (paths target the
-// placeholder ID, which is more stable across slide rearrangements) but is
-// accepted so future authors can switch to indexed paths if needed.
-func lintContentItem(slideIdx, _ int, content *ContentInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
+// lintContentItem dispatches the content lint checks for one authored item.
+func lintContentItem(slideIdx, contentIdx int, content *ContentInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
+	path := slidepath.ContentIndex(slideIdx, contentIdx)
 	switch content.Type {
 	case "text":
-		return lintText(slideIdx, content, measuredTitles)
+		return lintText(slideIdx, path, content, measuredTitles)
 	case "bullets":
-		return lintBullets(slideIdx, content)
+		return lintBullets(slideIdx, path, content)
 	case "body_and_bullets":
-		return lintBodyAndBullets(slideIdx, content)
+		return lintBodyAndBullets(slideIdx, path, content)
 	case "bullet_groups":
-		return lintBulletGroups(slideIdx, content)
+		return lintBulletGroups(slideIdx, path, content)
 	}
 	return nil
 }
 
 // lintText applies the word budget, which differs for a headline placeholder.
-func lintText(slideIdx int, content *ContentInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
+func lintText(slideIdx int, path string, content *ContentInput, measuredTitles measuredTitleSet) []patterns.FitFinding {
 	if content.TextValue == nil {
 		return nil
 	}
 	wc := countWords(*content.TextValue)
 	if isHeadlinePlaceholderID(content.PlaceholderID) {
 		if wc > maxHeadlineWords && !measuredTitles.has(slideIdx, content.PlaceholderID) {
-			return []patterns.FitFinding{makeHeadlineFinding(slideIdx, content.PlaceholderID, wc)}
+			return []patterns.FitFinding{makeHeadlineFinding(slideIdx, path, wc)}
 		}
 		return nil
 	}
 	if wc > maxBodyWords {
-		return []patterns.FitFinding{makeBodyFinding(slideIdx, content.PlaceholderID, wc)}
+		return []patterns.FitFinding{makeBodyFinding(slideIdx, path, wc)}
 	}
 	return nil
 }
 
 // lintBullets applies the nesting, word and ordered-list checks to a plain
 // bullets list.
-func lintBullets(slideIdx int, content *ContentInput) []patterns.FitFinding {
+func lintBullets(slideIdx int, path string, content *ContentInput) []patterns.FitFinding {
 	if content.BulletsValue == nil {
 		return nil
 	}
-	return lintBulletList(slideIdx, content.PlaceholderID, *content.BulletsValue, countBulletWords(*content.BulletsValue), 1)
+	return lintBulletList(slideIdx, path, *content.BulletsValue, countBulletWords(*content.BulletsValue), 1)
 }
 
 // lintBodyAndBullets budgets the body, lead-out and bullets together.
-func lintBodyAndBullets(slideIdx int, content *ContentInput) []patterns.FitFinding {
+func lintBodyAndBullets(slideIdx int, path string, content *ContentInput) []patterns.FitFinding {
 	v := content.BodyAndBulletsValue
 	if v == nil {
 		return nil
 	}
 	words := countWords(v.Body) + countBulletWords(v.Bullets) + countWords(v.TrailingBody)
-	return lintBulletList(slideIdx, content.PlaceholderID, v.Bullets, words, 1)
+	return lintBulletList(slideIdx, path, v.Bullets, words, 1)
 }
 
 // lintBulletList is the shared body of the bullet-bearing content types: the
 // word budget counts everything on the placeholder, while nesting and ordered
 // numbering are judged on the bullets themselves.
-func lintBulletList(slideIdx int, phID string, bullets []string, words, baseDepth int) []patterns.FitFinding {
+func lintBulletList(slideIdx int, path string, bullets []string, words, baseDepth int) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 	if d := maxBulletDepth(bullets, baseDepth); d > maxBulletNestingDepth {
-		findings = append(findings, makeBulletDepthFinding(slideIdx, phID, d))
+		findings = append(findings, makeBulletDepthFinding(slideIdx, path, d))
 	}
 	if words > maxBodyWords {
-		findings = append(findings, makeBodyFinding(slideIdx, phID, words))
+		findings = append(findings, makeBodyFinding(slideIdx, path, words))
 	}
-	if f := numberedListFinding(slideIdx, phID, bullets); f != nil {
+	if f := numberedListFinding(slideIdx, path, bullets); f != nil {
 		findings = append(findings, *f)
 	}
 	return findings
@@ -120,7 +118,7 @@ func lintBulletList(slideIdx int, phID string, bullets []string, words, baseDept
 // lintBulletGroups budgets every group's label, header, body and bullets
 // together. In bullet_groups the header occupies level 1 and bullets render at
 // level 2 by default, so indent inside a bullet string pushes it deeper.
-func lintBulletGroups(slideIdx int, content *ContentInput) []patterns.FitFinding {
+func lintBulletGroups(slideIdx int, path string, content *ContentInput) []patterns.FitFinding {
 	v := content.BulletGroupsValue
 	if v == nil {
 		return nil
@@ -137,10 +135,10 @@ func lintBulletGroups(slideIdx int, content *ContentInput) []patterns.FitFinding
 
 	var findings []patterns.FitFinding
 	if words > maxBodyWords {
-		findings = append(findings, makeBodyFinding(slideIdx, content.PlaceholderID, words))
+		findings = append(findings, makeBodyFinding(slideIdx, path, words))
 	}
 	if maxDepth > maxBulletNestingDepth {
-		findings = append(findings, makeBulletDepthFinding(slideIdx, content.PlaceholderID, maxDepth))
+		findings = append(findings, makeBulletDepthFinding(slideIdx, path, maxDepth))
 	}
 	return findings
 }
@@ -153,7 +151,7 @@ func lintBulletGroups(slideIdx int, content *ContentInput) []patterns.FitFinding
 // A complete list numbered from 1 is auto-numbered and its prefixes removed, so
 // it draws nothing here. A single line that merely opens with a number is
 // prose, not a list, and is left alone.
-func numberedListFinding(slideIdx int, phID string, bullets []string) *patterns.FitFinding {
+func numberedListFinding(slideIdx int, path string, bullets []string) *patterns.FitFinding {
 	if _, numbered := generator.NumberedList(bullets); numbered {
 		return nil
 	}
@@ -168,7 +166,7 @@ func numberedListFinding(slideIdx int, phID string, bullets []string) *patterns.
 	}
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
-			Path: slidepath.Content(slideIdx, phID),
+			Path: path,
 			Code: patterns.ErrCodeNumberedListNotApplied,
 			Message: fmt.Sprintf(
 				"slide %d: %d of %d bullets start with a typed \"N. \" but the list is not numbered 1..%d, so the numbers print beside the layout's bullet glyph as a double marker — number every bullet from 1 (the engine then supplies the numbers) or drop the prefixes",
@@ -176,7 +174,7 @@ func numberedListFinding(slideIdx int, phID string, bullets []string) *patterns.
 			Fix: &patterns.FixSuggestion{
 				Kind: "renumber_bullets",
 				Params: map[string]any{
-					"path":            slidepath.Content(slideIdx, phID),
+					"path":            path,
 					"prefixed":        prefixed,
 					"total":           len(bullets),
 					"expected_format": "1. , 2. , 3. …",
@@ -237,8 +235,7 @@ func maxBulletDepth(bullets []string, baseLevel int) int {
 	return maxDepth
 }
 
-func makeHeadlineFinding(slideIdx int, phID string, words int) patterns.FitFinding {
-	path := slidepath.Content(slideIdx, phID)
+func makeHeadlineFinding(slideIdx int, path string, words int) patterns.FitFinding {
 
 	// Truncation is only a sane remedy for a mild overrun. Cutting a headline
 	// in half turns a long-but-meaningful line into a fragment while making the
@@ -292,8 +289,7 @@ func headlineCharBudget(maxWords int) int {
 	return maxWords * avgWordChars
 }
 
-func makeBodyFinding(slideIdx int, phID string, words int) patterns.FitFinding {
-	path := slidepath.Content(slideIdx, phID)
+func makeBodyFinding(slideIdx int, path string, words int) patterns.FitFinding {
 	return patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Path: path,
@@ -313,8 +309,7 @@ func makeBodyFinding(slideIdx int, phID string, words int) patterns.FitFinding {
 	}
 }
 
-func makeBulletDepthFinding(slideIdx int, phID string, depth int) patterns.FitFinding {
-	path := slidepath.Content(slideIdx, phID)
+func makeBulletDepthFinding(slideIdx int, path string, depth int) patterns.FitFinding {
 	return patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Path: path,

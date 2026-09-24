@@ -34,7 +34,7 @@ func TestDuplicateTitle_FlagsRepeatedTitlesOnContentSlides(t *testing.T) {
 	if len(findings) != 2 {
 		t.Fatalf("expected 2 DUPLICATE_TITLE findings (slides 4 and 5), got %d: %+v", len(findings), findings)
 	}
-	for _, f := range findings {
+	for i, f := range findings {
 		if f.Code != patterns.ErrCodeDuplicateTitle {
 			t.Errorf("finding.code = %q, want DUPLICATE_TITLE", f.Code)
 		}
@@ -50,6 +50,14 @@ func TestDuplicateTitle_FlagsRepeatedTitlesOnContentSlides(t *testing.T) {
 		if f.Fix.Params["duplicate_count"] != 3 {
 			t.Errorf("fix.params.duplicate_count = %v, want 3", f.Fix.Params["duplicate_count"])
 		}
+		want := "/slides/3/content/0"
+		if i == 1 {
+			want = "/slides/4/content/0"
+		}
+		if f.Path != want {
+			t.Errorf("duplicate title path = %q, want %q", f.Path, want)
+		}
+		assertFindingPointerReplaceable(t, input, f.Path)
 	}
 
 	// First slide of the duplicate group (slide index 1, path .../1/...) must not carry the finding.
@@ -58,6 +66,18 @@ func TestDuplicateTitle_FlagsRepeatedTitlesOnContentSlides(t *testing.T) {
 			t.Errorf("first occurrence (slide 2) should not be annotated, got finding at %s", f.Path)
 		}
 	}
+}
+
+func TestDuplicateTitleTargetsPopulatedTitleAfterEmptyTitle(t *testing.T) {
+	first := contentSlideWithTitle("Repeated claim")
+	second := contentSlideWithTitle("Repeated claim")
+	second.Content = append([]ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("")}}, second.Content...)
+	input := &PresentationInput{Slides: []SlideInput{first, second}}
+	findings := collectDuplicateTitleFindings(input)
+	if len(findings) != 1 || findings[0].Path != "/slides/1/content/1" {
+		t.Fatalf("duplicate finding should target the populated second title: %+v", findings)
+	}
+	assertFindingPointerReplaceable(t, input, findings[0].Path)
 }
 
 func TestDuplicateTitle_TitleAndSectionSlidesAreExempt(t *testing.T) {

@@ -533,7 +533,7 @@ func checkChromeBandFit(slide *SlideInput, si int, layouts []types.LayoutMetadat
 // wraps, body overflow, and (for diagram content) intrinsic aspect conflicts.
 func checkPlaceholderFindings(slide *SlideInput, si int, layout *types.LayoutMetadata) []patterns.FitFinding {
 	var findings []patterns.FitFinding
-	for _, content := range slide.Content {
+	for ci, content := range slide.Content {
 		ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
 		if ph == nil || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
 			continue
@@ -544,7 +544,7 @@ func checkPlaceholderFindings(slide *SlideInput, si int, layout *types.LayoutMet
 			continue
 		}
 
-		path := slidepath.Content(si, content.PlaceholderID)
+		path := slidepath.ContentIndex(si, ci)
 
 		// Titles are measured by collectTitleFitFindings (title_measure.go).
 		if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
@@ -1493,7 +1493,7 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 		if layout == nil {
 			continue
 		}
-		for _, content := range slide.Content {
+		for ci, content := range slide.Content {
 			ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
 			if ph == nil || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
 				continue
@@ -1505,7 +1505,7 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 			if len(paragraphs) == 0 {
 				continue
 			}
-			path := slidepath.Content(si, content.PlaceholderID)
+			path := slidepath.ContentIndex(si, ci)
 			findings = append(findings, generator.DetectTextAutofitPreflight(generator.TextAutofitPreflightInput{
 				Path:        path,
 				Paragraphs:  paragraphs,
@@ -1658,7 +1658,7 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 				continue
 			}
 			pairs = append(pairs, generator.ContrastPreflightPair{
-				Path:       slidepath.Content(si, content.PlaceholderID),
+				Path:       slidepath.ContentIndex(si, ci),
 				Foreground: fg,
 				Background: bgHex,
 				Source:     "slide_background",

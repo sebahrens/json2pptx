@@ -125,11 +125,14 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		outputIndex := len(input.Slides)
 		for _, l := range links {
 			ir.SourceMap.Add(l.RawPath, l.SemanticPath, si.SourceIndex)
-			// Fit findings address content by PLACEHOLDER ("/slides/0/content/body"),
-			// while the compiler's links address it by index
-			// ("slides[0].content[1].bullets_value"). Register the placeholder
-			// spelling too, or every finding the shared collectors produce comes
-			// back with no semantic_path (go-slide-creator-05wn).
+			// Validation findings now address authored content by array index.
+			// Keep an item-level pointer alias so a finding can map back to the
+			// semantic field that produced it.
+			if alias := indexedContentAliasPath(compiled, l.RawPath, outputIndex); alias != "" {
+				ir.SourceMap.Add(alias, l.SemanticPath, si.SourceIndex)
+			}
+			// Preserve the legacy placeholder-name alias for older findings and
+			// repair_slide selectors. Compiler links use indexed dotted paths.
 			if alias := placeholderAliasPath(compiled, l.RawPath, outputIndex); alias != "" {
 				ir.SourceMap.Add(alias, l.SemanticPath, si.SourceIndex)
 			}
@@ -350,26 +353,11 @@ func bodyString(body map[string]any, keys ...string) string {
 	return ""
 }
 
-// placeholderAliasPath converts a compiler link path that addresses a content
-// item by index into the placeholder-addressed pointer form the fit collectors
-// emit. Returns "" when the link is not a content-item path or the index has no
-// placeholder ID.
+// placeholderAliasPath preserves the legacy placeholder-name selector for
+// existing source-map clients. New findings use indexedContentAliasPath.
 func placeholderAliasPath(compiled *deckinput.SlideInput, rawPath string, outputIndex int) string {
-	if compiled == nil {
-		return ""
-	}
-	const marker = ".content["
-	i := strings.Index(rawPath, marker)
-	if i < 0 {
-		return ""
-	}
-	rest := rawPath[i+len(marker):]
-	end := strings.IndexByte(rest, ']')
-	if end <= 0 {
-		return ""
-	}
-	idx, err := strconv.Atoi(rest[:end])
-	if err != nil || idx < 0 || idx >= len(compiled.Content) {
+	idx := linkedContentIndex(compiled, rawPath)
+	if idx < 0 {
 		return ""
 	}
 	ph := compiled.Content[idx].PlaceholderID
@@ -377,4 +365,33 @@ func placeholderAliasPath(compiled *deckinput.SlideInput, rawPath string, output
 		return ""
 	}
 	return fmt.Sprintf("/slides/%d/content/%s", outputIndex, ph)
+}
+
+func indexedContentAliasPath(compiled *deckinput.SlideInput, rawPath string, outputIndex int) string {
+	idx := linkedContentIndex(compiled, rawPath)
+	if idx < 0 {
+		return ""
+	}
+	return slidepath.ContentIndex(outputIndex, idx)
+}
+
+func linkedContentIndex(compiled *deckinput.SlideInput, rawPath string) int {
+	if compiled == nil {
+		return -1
+	}
+	const marker = ".content["
+	i := strings.Index(rawPath, marker)
+	if i < 0 {
+		return -1
+	}
+	rest := rawPath[i+len(marker):]
+	end := strings.IndexByte(rest, ']')
+	if end <= 0 {
+		return -1
+	}
+	idx, err := strconv.Atoi(rest[:end])
+	if err != nil || idx < 0 || idx >= len(compiled.Content) {
+		return -1
+	}
+	return idx
 }

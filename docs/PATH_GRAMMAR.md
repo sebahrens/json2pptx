@@ -59,7 +59,7 @@ Every path starts with `/slides/{index}` and descends through the JSON structure
 
 ## Use in Fit Findings
 
-Every `FitFinding` emits a `path` field. Render-time chart, diagram, and table findings use authored-content JSON Pointers; older placeholder findings may still use a by-name selector. The path identifies the offending element so that agents can:
+Every `FitFinding` emits a `path` field. Placeholder, chart, diagram, table, and text-fit findings use authored-content JSON Pointers; the by-name form above remains an accepted `repair_slide` selector for older callers. The path identifies the offending element so that agents can:
 
 1. Map a finding back to the JSON input element
 2. Pass the path to `repair_slide` as the `path` parameter for disambiguation
@@ -68,8 +68,8 @@ Examples from finding codes:
 
 | Finding Code | Example Path |
 |---|---|
-| `placeholder_overflow` | `/slides/0/content/body` |
-| `title_wraps` | `/slides/1/content/title` |
+| `placeholder_overflow` | `/slides/0/content/1` |
+| `title_wraps` | `/slides/1/content/0` |
 | `slide_bounds_overflow` | `/slides/2/shape_grid/rows/1/cells/0` |
 | `footer_collision` | `/slides/3/shape_grid/rows/2/cells/0` |
 | `sparse_layout` | `/slides/1/shape_grid` |
@@ -85,7 +85,7 @@ All `repair_slide` fix kinds accept an optional `path` parameter (JSON Pointer) 
 {
   "kind": "reduce_text",
   "params": {
-    "path": "/slides/0/content/body",
+    "path": "/slides/0/content/1",
     "max_items": 5
   }
 }
@@ -94,9 +94,9 @@ All `repair_slide` fix kinds accept an optional `path` parameter (JSON Pointer) 
 The `path` can be copied directly from a fit finding's `path` field for round-trip usage:
 
 ```
-fit finding: { "path": "/slides/0/content/body", "code": "placeholder_overflow", "fix": {"kind": "reduce_text"} }
+fit finding: { "path": "/slides/0/content/1", "code": "placeholder_overflow", "fix": {"kind": "reduce_text"} }
                                                                                           |
-repair_slide fix: { "kind": "reduce_text", "params": { "path": "/slides/0/content/body", "max_items": 5 } }
+repair_slide fix: { "kind": "reduce_text", "params": { "path": "/slides/0/content/1", "max_items": 5 } }
 ```
 
 ### Path matching rules

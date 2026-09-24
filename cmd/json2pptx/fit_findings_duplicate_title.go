@@ -21,8 +21,9 @@ func collectDuplicateTitleFindings(input *PresentationInput) []patterns.FitFindi
 		return nil
 	}
 	type occurrence struct {
-		slideIdx int
-		phID     string
+		slideIdx   int
+		contentIdx int
+		phID       string
 	}
 	groups := make(map[string][]occurrence)
 	order := make([]string, 0)
@@ -30,7 +31,7 @@ func collectDuplicateTitleFindings(input *PresentationInput) []patterns.FitFindi
 		if !slideQualifiesForDuplicateTitleCheck(slide) {
 			continue
 		}
-		phID, text := extractTitleText(slide)
+		phID, text, contentIdx := extractTitleTextAt(slide)
 		if text == "" {
 			continue
 		}
@@ -41,7 +42,7 @@ func collectDuplicateTitleFindings(input *PresentationInput) []patterns.FitFindi
 		if _, seen := groups[norm]; !seen {
 			order = append(order, norm)
 		}
-		groups[norm] = append(groups[norm], occurrence{slideIdx: si, phID: phID})
+		groups[norm] = append(groups[norm], occurrence{slideIdx: si, contentIdx: contentIdx, phID: phID})
 	}
 	var findings []patterns.FitFinding
 	for _, norm := range order {
@@ -56,7 +57,7 @@ func collectDuplicateTitleFindings(input *PresentationInput) []patterns.FitFindi
 		}
 		sort.Ints(dupSlideNumbers)
 		for _, occ := range occs[1:] {
-			findings = append(findings, makeDuplicateTitleFinding(occ.slideIdx, occ.phID, firstSlide, dupSlideNumbers, len(occs)))
+			findings = append(findings, makeDuplicateTitleFinding(occ.slideIdx, occ.contentIdx, occ.phID, firstSlide, dupSlideNumbers, len(occs)))
 		}
 	}
 	return findings
@@ -91,6 +92,14 @@ func slideQualifiesForDuplicateTitleCheck(slide SlideInput) bool {
 // slide, along with the placeholder ID that carried it. Returns empty strings
 // when no title text is present.
 func extractTitleText(slide SlideInput) (string, string) {
+	id, text, _ := extractTitleTextAt(slide)
+	return id, text
+}
+
+// extractTitleTextAt also returns the exact authored content index. This
+// matters when a slide has multiple title-like placeholders or an empty title
+// preceding the populated one.
+func extractTitleTextAt(slide SlideInput) (string, string, int) {
 	for i := range slide.Content {
 		item := &slide.Content[i]
 		if item.Type != "text" {
@@ -101,19 +110,19 @@ func extractTitleText(slide SlideInput) (string, string) {
 		}
 		if item.TextValue != nil {
 			if trimmed := strings.TrimSpace(*item.TextValue); trimmed != "" {
-				return item.PlaceholderID, trimmed
+				return item.PlaceholderID, trimmed, i
 			}
 			continue
 		}
 		if resolved, err := item.ResolveValue(); err == nil {
 			if s, ok := resolved.(string); ok {
 				if trimmed := strings.TrimSpace(s); trimmed != "" {
-					return item.PlaceholderID, trimmed
+					return item.PlaceholderID, trimmed, i
 				}
 			}
 		}
 	}
-	return "", ""
+	return "", "", -1
 }
 
 // normalizeTitleText lower-cases the input, collapses runs of whitespace to a
@@ -127,11 +136,11 @@ func normalizeTitleText(s string) string {
 // the given slide. firstSlide is the 0-based index of the canonical (earliest)
 // occurrence; dupSlideNumbers is the 1-based slide numbers of every slide in
 // the duplicate group, including this one; total is the size of the group.
-func makeDuplicateTitleFinding(slideIdx int, phID string, firstSlide int, dupSlideNumbers []int, total int) patterns.FitFinding {
+func makeDuplicateTitleFinding(slideIdx, contentIdx int, phID string, firstSlide int, dupSlideNumbers []int, total int) patterns.FitFinding {
 	if phID == "" {
 		phID = "title"
 	}
-	path := slidepath.Content(slideIdx, phID)
+	path := slidepath.ContentIndex(slideIdx, contentIdx)
 	dupList := joinSlideNumbers(dupSlideNumbers)
 	msg := fmt.Sprintf(
 		"slide %d: title duplicates slide %d (%d slides share this title: %s); rename so each headline announces a distinct point",

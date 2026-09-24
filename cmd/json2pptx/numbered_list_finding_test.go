@@ -48,6 +48,13 @@ func TestNumberedListFindingFires(t *testing.T) {
 	if !strings.Contains(f.Message, "2 of 3") {
 		t.Errorf("message should count the prefixed bullets, got %q", f.Message)
 	}
+	if f.Path != "/slides/0/content/0" || f.Fix.Params["path"] != f.Path {
+		t.Errorf("finding and repair path should target authored bullets: %+v", f)
+	}
+	assertFindingPointerReplaceable(t, in, f.Path)
+	if result := applyRenumberBullets(in, 0, f.Fix.Params); !result.Applied {
+		t.Errorf("indexed finding path did not replay through repair_slide: %s", result.Message)
+	}
 }
 
 // A list the renderer DOES number is correct authoring and must stay silent,

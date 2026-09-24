@@ -94,7 +94,7 @@ func TestProposeRepairsConsumesRealValidateFindings(t *testing.T) {
 			if directive.Kind != "shorten_title" || directive.ToolCall == nil || directive.ToolCall.Tool != "repair_slide" {
 				t.Fatalf("validate title fit did not produce replayable shorten_title: %+v", directive)
 			}
-			if directive.Source.Path != "/slides/0/content/title" || directive.Source.Action != "shrink_or_split" || directive.Source.Severity != "warning" {
+			if directive.Source.Path != "/slides/0/content/0" || directive.Source.Action != "shrink_or_split" || directive.Source.Severity != "warning" {
 				t.Fatalf("validation provenance was lost: %+v", directive.Source)
 			}
 			if _, leaked := directive.Params["kind"]; leaked {

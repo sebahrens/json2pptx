@@ -213,7 +213,7 @@ func TestContentLint_BulletIndentDepth(t *testing.T) {
 	}
 }
 
-func TestContentLint_BodyAndBullets_PathTargetsPlaceholder(t *testing.T) {
+func TestContentLint_BodyAndBullets_PathTargetsAuthoredItem(t *testing.T) {
 	bab := BodyAndBulletsInput{
 		Body:    strings.Repeat("word ", 50),
 		Bullets: []string{strings.Repeat("word ", 40)},
@@ -230,9 +230,10 @@ func TestContentLint_BodyAndBullets_PathTargetsPlaceholder(t *testing.T) {
 	if f == nil {
 		t.Fatalf("expected BODY_TOO_LONG, got %+v", findings)
 	}
-	if f.Path != "/slides/0/content/body" {
-		t.Errorf("path = %q, want /slides/0/content/body", f.Path)
+	if f.Path != "/slides/0/content/0" {
+		t.Errorf("path = %q, want /slides/0/content/0", f.Path)
 	}
+	assertFindingPointerReplaceable(t, input, f.Path)
 }
 
 func TestContentLint_NilInputSafe(t *testing.T) {

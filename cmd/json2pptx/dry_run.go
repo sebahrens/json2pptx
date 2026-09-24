@@ -625,7 +625,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 							m := measureTitleInPlaceholder(text, &phInfo)
 							if m.OK {
 								titleMeasured = true
-								if d := m.diagnostic(i, item.PlaceholderID); d != nil {
+								if d := m.diagnostic(i, j); d != nil {
 									output.Diagnostics = append(output.Diagnostics, *d)
 								}
 							}
@@ -669,7 +669,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						if capacity := generator.TitlePlaceholderCapacityChars(phInfo); capacity > 0 {
 							ph.MaxChars = capacity
 						}
-						if d := m.diagnostic(i, item.PlaceholderID); d != nil {
+						if d := m.diagnostic(i, j); d != nil {
 							output.Diagnostics = append(output.Diagnostics, *d)
 						}
 					}

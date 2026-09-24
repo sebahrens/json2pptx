@@ -54,9 +54,16 @@ func TestAutofitPreflightRunsWithoutAnExplicitLayoutID(t *testing.T) {
 	}
 
 	withLayout := &PresentationInput{Slides: []SlideInput{denseBulletsSlide(named, 14)}}
-	pinned := autofitCodes(collectTextAutofitPreflightFindings(withLayout, layouts))
+	pinnedFindings := collectTextAutofitPreflightFindings(withLayout, layouts)
+	pinned := autofitCodes(pinnedFindings)
 	if len(pinned) == 0 {
 		t.Fatal("no autofit prediction for a slide that names its layout — the fixture is not dense enough")
+	}
+	for _, finding := range pinnedFindings {
+		if finding.Path != "/slides/0/content/1" {
+			t.Errorf("autofit finding path = %q, want authored body item", finding.Path)
+		}
+		assertFindingPointerReplaceable(t, withLayout, finding.Path)
 	}
 
 	auto := &PresentationInput{Slides: []SlideInput{denseBulletsSlide("", 14)}}

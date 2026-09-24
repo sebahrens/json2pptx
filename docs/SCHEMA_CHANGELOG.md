@@ -28,6 +28,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Validation finding pointers (`go-slide-creator-zrhtv`).**
+  Placeholder-based validation findings now address authored content indices;
+  findings about unpopulated template placeholders target the slide. Semantic
+  source maps retain the indexed finding-to-authoring mapping, while
+  `repair_slide` still accepts legacy placeholder-name selectors.
+
 - **2026-09-24 — Text autofit finding pointers (`go-slide-creator-iulg0`).**
   Render-time text autofit findings now target authored content array entries.
 

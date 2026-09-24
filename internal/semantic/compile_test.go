@@ -12,6 +12,29 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
+func TestIndexedContentAliasPath(t *testing.T) {
+	slide := &deckinput.SlideInput{Content: []deckinput.ContentInput{{PlaceholderID: "title"}, {PlaceholderID: "body"}}}
+	for _, tc := range []struct {
+		name  string
+		slide *deckinput.SlideInput
+		raw   string
+		want  string
+	}{
+		{"body", slide, "slides[0].content[1].bullets_value", "/slides/2/content/1"},
+		{"first", slide, "slides[0].content[0].text_value", "/slides/2/content/0"},
+		{"non-content link", slide, "slides[0].takeaway", ""},
+		{"out of range", slide, "slides[0].content[2].text_value", ""},
+		{"malformed", slide, "slides[0].content[x].text_value", ""},
+		{"nil slide", nil, "slides[0].content[0].text_value", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := indexedContentAliasPath(tc.slide, tc.raw, 2); got != tc.want {
+				t.Errorf("indexedContentAliasPath(%q) = %q, want %q", tc.raw, got, tc.want)
+			}
+		})
+	}
+}
+
 // updateGolden regenerates the golden compiled-JSON fixtures when set.
 var updateGolden = flag.Bool("update-golden", false, "rewrite golden compiled-JSON fixtures")
 

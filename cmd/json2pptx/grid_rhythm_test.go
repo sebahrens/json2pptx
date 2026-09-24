@@ -395,7 +395,7 @@ func TestGridViolationIsFitFinding(t *testing.T) {
 		},
 	}
 
-	slides := []SlideInput{{LayoutID: "layout1"}}
+	slides := []SlideInput{{LayoutID: "layout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text"}}}}
 	findings := detectGridViolations(rg, layouts, slides)
 
 	if len(findings) == 0 {
@@ -406,6 +406,10 @@ func TestGridViolationIsFitFinding(t *testing.T) {
 	if f.Code != "grid_violation" {
 		t.Errorf("Code = %q, want %q", f.Code, "grid_violation")
 	}
+	if f.Path != "/slides/0/content/0" {
+		t.Errorf("populated title path = %q, want /slides/0/content/0", f.Path)
+	}
+	assertFindingPointerReplaceable(t, &PresentationInput{Slides: slides}, f.Path)
 	if f.Action != "review" {
 		t.Errorf("Action = %q, want %q", f.Action, "review")
 	}
@@ -418,6 +422,14 @@ func TestGridViolationIsFitFinding(t *testing.T) {
 
 	// Verify it converts cleanly to a Diagnostic.
 	_ = patterns.FitFinding(f)
+}
+
+func TestGridViolationWithoutAuthoredContentTargetsSlide(t *testing.T) {
+	slide := SlideInput{LayoutID: "layout1"}
+	if got := gridPlaceholderAuthoredPath(0, &slide, "title"); got != "/slides/0" {
+		t.Errorf("unpopulated placeholder path = %q, want slide root", got)
+	}
+	assertFindingPointerReplaceable(t, &PresentationInput{Slides: []SlideInput{slide}}, "/slides/0")
 }
 
 func TestMedianInt64_EvenAverage(t *testing.T) {

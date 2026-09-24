@@ -100,6 +100,30 @@ func TestTitleChecksUnifiedOnMeasuredFit(t *testing.T) {
 	}
 }
 
+func TestMeasuredTitleFindingsUseAuthoredContentIndex(t *testing.T) {
+	a := loadTemplateAnalysis(t, "modern-template")
+	slide := titleSlide(vjwnLongTitle)
+	slide.Content = append([]ContentInput{{PlaceholderID: "body", Type: "text", TextValue: strPtr("intro")}}, slide.Content...)
+	input := &PresentationInput{Slides: []SlideInput{slide}}
+	findings, _ := collectTitleFitFindings(input, a.Layouts)
+	if len(findings) == 0 {
+		t.Fatal("expected a measured long-title finding")
+	}
+	for _, finding := range findings {
+		if finding.Path != "/slides/0/content/1" {
+			t.Errorf("title finding path = %q, want authored title index 1", finding.Path)
+		}
+		assertFindingPointerReplaceable(t, input, finding.Path)
+	}
+	var output dryRunOutput
+	validateSlidesAgainstTemplate(&output, input.Slides, a)
+	for _, diagnostic := range output.Diagnostics {
+		if isTitleLengthCode(diagnostic.Code) && diagnostic.Path != "/slides/0/content/1" {
+			t.Errorf("validate title path = %q, want authored title index 1", diagnostic.Path)
+		}
+	}
+}
+
 func TestMeasureTitleFlaggedCarriesMaxChars(t *testing.T) {
 	a := loadTemplateAnalysis(t, "modern-template")
 	s := titleSlide(vjwnLongTitle)

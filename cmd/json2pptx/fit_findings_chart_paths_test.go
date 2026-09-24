@@ -33,7 +33,7 @@ func TestChartFindingPathsResolveAgainstAuthoredInput(t *testing.T) {
 		if finding.Path != want[i] {
 			t.Errorf("finding %d path = %q, want %q", i, finding.Path, want[i])
 		}
-		assertChartFindingPointerReplaceable(t, input, finding.Path)
+		assertFindingPointerReplaceable(t, input, finding.Path)
 	}
 }
 
@@ -59,11 +59,11 @@ func TestEmittedChartFindingPathsAreReplaceable(t *testing.T) {
 		t.Fatal("stress deck emitted no chart findings")
 	}
 	for _, finding := range findings {
-		assertChartFindingPointerReplaceable(t, input, finding.Path)
+		assertFindingPointerReplaceable(t, input, finding.Path)
 	}
 }
 
-func assertChartFindingPointerReplaceable(t *testing.T, input *PresentationInput, path string) {
+func assertFindingPointerReplaceable(t *testing.T, input *PresentationInput, path string) {
 	t.Helper()
 	data, err := json.Marshal(input)
 	if err != nil {

@@ -22,12 +22,13 @@ func TestModernYellowPopulatedBodyReportsChromeCollision(t *testing.T) {
 	id := p.RoleBindings[types.CanonicalLayoutOneContent]
 	input := &PresentationInput{Slides: []SlideInput{{LayoutID: id, Content: []ContentInput{{PlaceholderID: "title", Type: "text"}, {PlaceholderID: "body", Type: "text"}}}}}
 	findings := collectChromeCollisionFindings(input, p.Layouts, p.SlideWidth)
-	if len(findings) != 1 || findings[0].Code != patterns.ErrCodeChromeCollision || findings[0].Path != "/slides/0/content/body" {
+	if len(findings) != 1 || findings[0].Code != patterns.ErrCodeChromeCollision || findings[0].Path != "/slides/0/content/1" {
 		t.Fatalf("findings = %+v, want one body CHROME_COLLISION", findings)
 	}
+	assertFindingPointerReplaceable(t, input, findings[0].Path)
 	var inReport bool
 	for _, f := range collectFitFindings(input, p.Layouts, p.SlideWidth, p.SlideHeight, nil) {
-		if f.Code == patterns.ErrCodeChromeCollision && f.Path == "/slides/0/content/body" {
+		if f.Code == patterns.ErrCodeChromeCollision && f.Path == "/slides/0/content/1" {
 			inReport = true
 		}
 	}

@@ -335,6 +335,7 @@ func detectGridViolations(rg *resolvedGrid, layouts []types.LayoutMetadata, slid
 		}
 
 		for _, ph := range layout.Placeholders {
+			path := gridPlaceholderAuthoredPath(si, &slide, ph.ID)
 			switch ph.Type {
 			case types.PlaceholderTitle:
 				titleBottom := ph.Bounds.Y + ph.Bounds.Height
@@ -343,7 +344,7 @@ func detectGridViolations(rg *resolvedGrid, layouts []types.LayoutMetadata, slid
 					findings = append(findings, patterns.FitFinding{
 						ValidationError: patterns.ValidationError{
 							Code: "grid_violation",
-							Path: slidepath.Content(si, "title"),
+							Path: path,
 							Message: fmt.Sprintf(
 								"title bottom (%.1f%%) deviates from grid title_baseline (%.1f%%) by %.2f%%",
 								emuToPct(titleBottom, rg.SlideHeight),
@@ -372,7 +373,7 @@ func detectGridViolations(rg *resolvedGrid, layouts []types.LayoutMetadata, slid
 					findings = append(findings, patterns.FitFinding{
 						ValidationError: patterns.ValidationError{
 							Code: "grid_violation",
-							Path: slidepath.Content(si, ph.ID),
+							Path: path,
 							Message: fmt.Sprintf(
 								"content top (%.1f%%) deviates from grid content_top (%.1f%%) by %.2f%%",
 								emuToPct(ph.Bounds.Y, rg.SlideHeight),
@@ -400,7 +401,7 @@ func detectGridViolations(rg *resolvedGrid, layouts []types.LayoutMetadata, slid
 					findings = append(findings, patterns.FitFinding{
 						ValidationError: patterns.ValidationError{
 							Code: "grid_violation",
-							Path: slidepath.Content(si, ph.ID),
+							Path: path,
 							Message: fmt.Sprintf(
 								"content left (%.1f%%) deviates from grid left_margin (%.1f%%) by %.2f%%",
 								emuToPct(ph.Bounds.X, rg.SlideWidth),
@@ -426,6 +427,18 @@ func detectGridViolations(rg *resolvedGrid, layouts []types.LayoutMetadata, slid
 	}
 
 	return findings
+}
+
+// gridPlaceholderAuthoredPath targets the matching authored item when one
+// exists. Grid violations can also concern an unpopulated template placeholder;
+// in that case the slide is the nearest addressable part of the authored deck.
+func gridPlaceholderAuthoredPath(slideIdx int, slide *SlideInput, placeholderID string) string {
+	for contentIdx := range slide.Content {
+		if slide.Content[contentIdx].PlaceholderID == placeholderID {
+			return slidepath.ContentIndex(slideIdx, contentIdx)
+		}
+	}
+	return slidepath.Slide(slideIdx)
 }
 
 // emuToPct converts an EMU value to a percentage of a reference dimension.
