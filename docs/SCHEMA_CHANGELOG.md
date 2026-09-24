@@ -28,6 +28,17 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Measured pattern ink occupancy (`go-slide-creator-b23g7`).**
+  `expand_pattern` and `expand_patterns` now report `occupancy.ink_height_pct`
+  alongside slot-based `filled_pct`. Text uses wrapped paragraph height and
+  non-text visuals use their drawn height. Sparse multi-cell patterns emit an
+  `underfilled_ink` capacity warning; `validate_pattern` exposes it as a
+  `GRID.pattern_underfilled` advisory with a suggested height cap.
+
+- **2026-09-24 — Span-safe cell budgets (`go-slide-creator-sjv0q`).**
+  Expansion budgets and capacity warnings now map composite children and
+  spanning cells back to their authored cell indices.
+
 - **2026-09-24 — Consistent card-grid body budgets (`go-slide-creator-g25k8`).**
   `expand_pattern` now reports a pre-authoring body capacity at the authored
   body font size within the selected template's content area. Its body-only

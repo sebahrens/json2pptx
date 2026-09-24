@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -127,6 +128,94 @@ func TestComputeCellBudgets_NilGrid(t *testing.T) {
 	}
 	if warnings != nil {
 		t.Errorf("expected nil warnings for nil grid, got %d", len(warnings))
+	}
+}
+
+func TestComputeCellBudgets_CompositeChildrenMapToAuthoredCells(t *testing.T) {
+	pat, ok := patterns.Default().Get("card-grid")
+	if !ok {
+		t.Fatal("card-grid pattern not registered")
+	}
+	ctx := patterns.ExpandContext{
+		SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: patterns.LayoutBounds{X: 457200, Y: 1371600, Width: 11277600, Height: 5029200},
+	}
+	values := &patterns.CardGridValues{Columns: 2, Rows: 1, Cells: []patterns.CardGridCell{
+		{Header: "First", Body: "Text with chart", Secondary: &patterns.SecondaryChart{Type: "sparkline", Values: []float64{1, 2}}},
+		{Header: "Second", Body: "Plain text card"},
+	}}
+	grid, err := pat.Expand(ctx, values, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	budgets, _ := computeCellBudgets(grid, ctx)
+	if len(budgets) != 2 {
+		t.Fatalf("budgets = %+v, want one per authored card", budgets)
+	}
+	for i, b := range budgets {
+		if b.CellIndex != i || b.Col != i || b.ActualChars == 0 || b.MaxChars == 0 {
+			t.Errorf("authored card %d mapped to wrong resolved child: %+v", i, b)
+		}
+	}
+}
+
+func TestComputeCellBudgets_ColumnSpanMapsToAuthoredCell(t *testing.T) {
+	grid := &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`3`),
+		Rows: []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{
+			{ColSpan: 2, Shape: &jsonschema.ShapeSpecInput{Text: json.RawMessage(`"Wide header"`)}},
+			{Shape: &jsonschema.ShapeSpecInput{Text: json.RawMessage(`"Trailing body"`)}},
+		}}},
+	}
+	ctx := patterns.ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: patterns.LayoutBounds{X: 457200, Y: 1371600, Width: 11277600, Height: 5029200}}
+	budgets, _ := computeCellBudgets(grid, ctx)
+	if len(budgets) != 2 || budgets[0].ActualChars != len("Wide header") || budgets[1].ActualChars != len("Trailing body") {
+		t.Fatalf("physical column shifted authored budget: %+v", budgets)
+	}
+}
+
+func TestGridOccupancy_MeasuredInkDistinguishesSparseFullGrid(t *testing.T) {
+	pat, ok := patterns.Default().Get("card-grid")
+	if !ok {
+		t.Fatal("card-grid pattern not registered")
+	}
+	ctx := patterns.ExpandContext{
+		SlideWidth: 12192000, SlideHeight: 6858000,
+		LayoutBounds: patterns.LayoutBounds{X: 457200, Y: 1371600, Width: 11277600, Height: 5029200},
+	}
+	makeGrid := func(body string) *jsonschema.ShapeGridInput {
+		t.Helper()
+		values := &patterns.CardGridValues{Columns: 2, Rows: 2}
+		for i := 0; i < 4; i++ {
+			values.Cells = append(values.Cells, patterns.CardGridCell{Header: "Card", Body: body})
+		}
+		grid, err := pat.Expand(ctx, values, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return grid
+	}
+	shortGrid := makeGrid("Brief")
+	longGrid := makeGrid("A detailed explanation covering the operation, owner, timing, outcome, and next actions.")
+	short := computeGridOccupancy(shortGrid, ctx)
+	long := computeGridOccupancy(longGrid, ctx)
+	if short.FilledPct != 100 || long.FilledPct != 100 {
+		t.Fatalf("slot occupancy changed: short=%+v long=%+v", short, long)
+	}
+	if short.InkHeightPct <= 0 || long.InkHeightPct <= short.InkHeightPct {
+		t.Fatalf("ink height does not distinguish sparse from fuller text: short=%+v long=%+v", short, long)
+	}
+	if short.InkHeightPct >= 40 {
+		t.Fatalf("short grid should be visually sparse: %+v", short)
+	}
+	budgets, _ := computeCellBudgets(shortGrid, ctx)
+	warn := inkUnderfillWarning(short, budgets, pat, &PatternInput{Name: "card-grid"})
+	if warn == nil || warn.Status != "underfilled_ink" || warn.NextToolCall == nil {
+		t.Fatalf("missing measured-ink underfill warning: %+v", warn)
+	}
+	if got := inkUnderfillWarning(short, budgets, pat, &PatternInput{Name: "card-grid", MaxHeightPct: 50}); got != nil {
+		t.Fatalf("explicit height cap should suppress advisory: %+v", got)
 	}
 }
 

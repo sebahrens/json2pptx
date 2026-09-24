@@ -74,6 +74,9 @@ func buildPatternExpansionResult(
 	if sparseWarn := sparseLayoutWarning(cellBudgets, pat, pi.Name, pi); sparseWarn != nil {
 		capacityWarnings = append(capacityWarnings, *sparseWarn)
 	}
+	if inkWarn := inkUnderfillWarning(occupancy, cellBudgets, pat, pi); inkWarn != nil {
+		capacityWarnings = append(capacityWarnings, *inkWarn)
+	}
 	if dcWarn := densityClassWarning(cellBudgets, pat, pi.Name, pi, reg); dcWarn != nil {
 		capacityWarnings = append(capacityWarnings, *dcWarn)
 	}

@@ -175,15 +175,23 @@ func patternExpansionDiagnostics(name string, result patternExpansionResult) []d
 			code = patterns.ErrCodeSparseLayout
 		case "density_class_divergence":
 			code = patterns.ErrCodePatternUnderfilled
+		case "underfilled_ink":
+			code = patterns.ErrCodePatternUnderfilled
 		}
 		var nextToolCall *patterns.ToolCallSuggestion
 		if warning.NextToolCall != nil {
 			nextToolCall = warning.NextToolCall
 		}
+		message := fmt.Sprintf("cell %d is %s (%d characters, budget %d)", warning.CellIndex, warning.Status, warning.Actual, warning.Budget)
+		details := map[string]any{"pattern": name, "cell_index": warning.CellIndex, "cell_field": warning.Field, "status": warning.Status, "actual_chars": warning.Actual, "budget_chars": warning.Budget}
+		if warning.Status == "underfilled_ink" {
+			message = fmt.Sprintf("pattern ink fills %d%% of its height (review below %d%%)", warning.Actual, warning.Budget)
+			details = map[string]any{"pattern": name, "status": warning.Status, "ink_height_pct": warning.Actual, "threshold_pct": warning.Budget}
+		}
 		ds = append(ds, diagnostics.Diagnostic{
-			Code: code, Message: fmt.Sprintf("cell %d is %s (%d characters, budget %d)", warning.CellIndex, warning.Status, warning.Actual, warning.Budget),
+			Code: code, Message: message,
 			Path: "/values", Severity: severity, NextToolCall: nextToolCall,
-			Details: map[string]any{"pattern": name, "cell_index": warning.CellIndex, "cell_field": warning.Field, "status": warning.Status, "actual_chars": warning.Actual, "budget_chars": warning.Budget},
+			Details: details,
 		})
 	}
 	return ds

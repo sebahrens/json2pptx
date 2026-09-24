@@ -291,11 +291,12 @@ var outputSchemaExpandPattern = json.RawMessage(`{
       "type": "object",
       "properties": {
         "filled_pct":       {"type": "number"},
+        "ink_height_pct":   {"type": "number"},
         "rows_used":        {"type": "integer"},
         "rows_empty":       {"type": "integer"},
         "bounds_height_pct": {"type": "number"}
       },
-      "required": ["filled_pct", "rows_used", "rows_empty", "bounds_height_pct"]
+      "required": ["filled_pct", "ink_height_pct", "rows_used", "rows_empty", "bounds_height_pct"]
     },
     "density_warnings":  {
       "type": "array",

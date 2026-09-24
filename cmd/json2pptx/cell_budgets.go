@@ -41,14 +41,100 @@ type cellDensityWarning struct {
 // Returns nil slices (not errors) when the grid cannot be resolved — this keeps
 // the expand response valid even when budget computation fails.
 func computeCellBudgets(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext) ([]cellBudgetEntry, []cellDensityWarning) {
-	if grid == nil || len(grid.Rows) == 0 {
+	result, _ := resolveCapacityGrid(grid, ctx)
+	if result == nil {
 		return nil, nil
+	}
+
+	// Compute densities
+	densities := textcapacity.ForResolvedGrid(result)
+	if len(densities) == 0 {
+		return nil, nil
+	}
+
+	// Map resolved cells back to row/col positions
+	budgets := make([]cellBudgetEntry, 0, len(densities))
+	var warnings []cellDensityWarning
+	type measuredCell struct {
+		density textcapacity.Density
+		cell    shapegrid.ResolvedCell
+	}
+	measured := make(map[[2]int]measuredCell, len(result.Cells))
+	for i, cell := range result.Cells {
+		// Resolved ColIdx is a physical grid column. A preceding col_span or
+		// row_span can make it differ from the authored cells[] index.
+		authored := gridCellAtResolved(grid, cell.RowIdx, cell.ColIdx)
+		if authored == nil {
+			continue
+		}
+		colIdx := -1
+		for j, candidate := range grid.Rows[cell.RowIdx].Cells {
+			if candidate == authored {
+				colIdx = j
+				break
+			}
+		}
+		if colIdx < 0 {
+			continue
+		}
+		key := [2]int{cell.RowIdx, colIdx}
+		previous, exists := measured[key]
+		// A composite resolves to text and diagram children at the same source
+		// coordinate. Its text child owns the authored cell's character budget.
+		if !exists || cell.ShapeSpec != nil && previous.cell.ShapeSpec == nil {
+			measured[key] = measuredCell{density: densities[i], cell: cell}
+		}
+	}
+
+	cellIdx := 0
+	for rowIdx, row := range grid.Rows {
+		for colIdx := range row.Cells {
+			m, exists := measured[[2]int{rowIdx, colIdx}]
+			if !exists {
+				m.density.Status = textcapacity.StatusUnderfilled
+			}
+			d := m.density
+			budgets = append(budgets, cellBudgetEntry{
+				CellIndex:   cellIdx,
+				Row:         rowIdx,
+				Col:         colIdx,
+				MaxChars:    d.MaxChars,
+				ActualChars: d.ActualChars,
+				DensityPct:  d.DensityPct,
+				Status:      string(d.Status),
+				FontSizePt:  d.FontPt,
+			})
+
+			// Emit warning for non-optimal cells that have content
+			if d.Status != textcapacity.StatusOptimal && d.ActualChars > 0 {
+				field := "body"
+				if m.cell.ShapeSpec != nil {
+					field = inferCellField(m.cell.ShapeSpec.Text)
+				}
+				warnings = append(warnings, cellDensityWarning{
+					CellIndex: cellIdx,
+					Field:     field,
+					Actual:    d.ActualChars,
+					Budget:    d.MaxChars,
+					Status:    string(d.Status),
+				})
+			}
+			cellIdx++
+		}
+	}
+
+	return budgets, warnings
+}
+
+func resolveCapacityGrid(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext) (*shapegrid.ResolveResult, pptx.RectEmu) {
+	if grid == nil || len(grid.Rows) == 0 {
+		return nil, pptx.RectEmu{}
 	}
 
 	// Convert DTO columns to []float64
 	colWidths, err := resolveColumnsDTO(grid.Columns, grid.Rows)
 	if err != nil {
-		return nil, nil
+		return nil, pptx.RectEmu{}
 	}
 
 	// Resolve gaps
@@ -93,63 +179,81 @@ func computeCellBudgets(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCont
 
 	// Validate before resolving
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
-		return nil, nil
+		return nil, bounds
 	}
 
 	// Resolve with a dummy allocator (we only need cell bounds, not shape IDs)
 	alloc := pptx.NewShapeIDAllocator(nil)
 	result, err := shapegrid.Resolve(sgGrid, alloc)
 	if err != nil || result == nil {
-		return nil, nil
+		return nil, bounds
 	}
+	return result, bounds
+}
 
-	// Compute densities
-	densities := textcapacity.ForResolvedGrid(result)
-	if len(densities) == 0 {
-		return nil, nil
+// gridInkHeightPct measures visible content vertically rather than counting
+// occupied slots. Parallel cells share a row, so their heights are maxed; rows
+// stack. Non-text visuals count as their drawn height, not as empty text.
+func gridInkHeightPct(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext) float64 {
+	resolved, bounds := resolveCapacityGrid(grid, ctx)
+	if resolved == nil || bounds.CY <= 0 {
+		return 0
 	}
+	densities := textcapacity.ForResolvedGrid(resolved)
+	rowInkPt := make([]float64, len(grid.Rows))
+	for i, cell := range resolved.Cells {
+		if cell.RowIdx < 0 || cell.RowIdx >= len(rowInkPt) {
+			continue
+		}
+		inkPt := densities[i].RequiredHeightPt
+		if cell.Kind != shapegrid.CellKindShape && cell.Kind != shapegrid.CellKindSubGrid {
+			inkPt = float64(cell.Bounds.CY) / 12700
+		}
+		if cell.IconBounds.CY > 0 {
+			inkPt = math.Max(inkPt, float64(cell.IconBounds.CY)/12700)
+		}
+		rowInkPt[cell.RowIdx] = math.Max(rowInkPt[cell.RowIdx], inkPt)
+	}
+	var totalInkPt float64
+	for _, h := range rowInkPt {
+		totalInkPt += h
+	}
+	return math.Round(math.Min(100, totalInkPt/(float64(bounds.CY)/12700)*100)*10) / 10
+}
 
-	// Map resolved cells back to row/col positions
-	budgets := make([]cellBudgetEntry, 0, len(densities))
-	var warnings []cellDensityWarning
-
-	cellIdx := 0
-	for rowIdx, row := range grid.Rows {
-		for colIdx := range row.Cells {
-			if cellIdx >= len(densities) {
-				break
-			}
-			d := densities[cellIdx]
-			budgets = append(budgets, cellBudgetEntry{
-				CellIndex:   cellIdx,
-				Row:         rowIdx,
-				Col:         colIdx,
-				MaxChars:    d.MaxChars,
-				ActualChars: d.ActualChars,
-				DensityPct:  d.DensityPct,
-				Status:      string(d.Status),
-				FontSizePt:  d.FontPt,
-			})
-
-			// Emit warning for non-optimal cells that have content
-			if d.Status != textcapacity.StatusOptimal && d.ActualChars > 0 {
-				field := "body"
-				if cellIdx < len(result.Cells) && result.Cells[cellIdx].ShapeSpec != nil {
-					field = inferCellField(result.Cells[cellIdx].ShapeSpec.Text)
-				}
-				warnings = append(warnings, cellDensityWarning{
-					CellIndex: cellIdx,
-					Field:     field,
-					Actual:    d.ActualChars,
-					Budget:    d.MaxChars,
-					Status:    string(d.Status),
-				})
-			}
-			cellIdx++
+// inkUnderfillWarning is a grid-level advisory. Low-density patterns are
+// intentionally airy, so a low ink ratio is actionable only for multi-cell
+// text patterns that have not already been height-constrained by the caller.
+func inkUnderfillWarning(occupancy gridOccupancy, budgets []cellBudgetEntry, pat patterns.Pattern, pi *PatternInput) *cellDensityWarning {
+	const threshold = 40
+	if pi == nil || pi.Bounds != nil || pi.MaxHeightPct > 0 || pat.Taxonomy().DensityClass == "low" || occupancy.InkHeightPct <= 0 || occupancy.InkHeightPct >= threshold {
+		return nil
+	}
+	contentCells := 0
+	for _, b := range budgets {
+		if b.ActualChars > 0 {
+			contentCells++
 		}
 	}
-
-	return budgets, warnings
+	if contentCells < 3 {
+		return nil
+	}
+	suggestedPct := int(math.Ceil(occupancy.InkHeightPct / 0.7))
+	suggestedPct = max(20, min(90, suggestedPct))
+	return &cellDensityWarning{
+		CellIndex: -1,
+		Field:     "layout",
+		Actual:    int(math.Round(occupancy.InkHeightPct)),
+		Budget:    threshold,
+		Status:    "underfilled_ink",
+		NextToolCall: &patterns.ToolCallSuggestion{
+			Tool: "expand_pattern",
+			ArgsTemplate: map[string]any{
+				"name":           pi.Name,
+				"max_height_pct": suggestedPct,
+			},
+		},
+	}
 }
 
 // computePatternCellBudgets keeps card-grid's body-only, pre-authoring budget

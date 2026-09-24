@@ -2132,6 +2132,7 @@ func (mc *mcpConfig) handleExpandPattern(ctx context.Context, request mcp.CallTo
 // gridOccupancy reports how much of the layout a pattern fills.
 type gridOccupancy struct {
 	FilledPct       float64 `json:"filled_pct"`
+	InkHeightPct    float64 `json:"ink_height_pct"`
 	RowsUsed        int     `json:"rows_used"`
 	RowsEmpty       int     `json:"rows_empty"`
 	BoundsHeightPct float64 `json:"bounds_height_pct"`
@@ -2197,6 +2198,7 @@ func computeGridOccupancy(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCo
 
 	return gridOccupancy{
 		FilledPct:       filledPct,
+		InkHeightPct:    gridInkHeightPct(grid, ctx),
 		RowsUsed:        rowsUsed,
 		RowsEmpty:       rowsEmpty,
 		BoundsHeightPct: boundsHeightPct,

@@ -75,6 +75,7 @@ func TestPatternExpansionDiagnosticsCapacityStatus(t *testing.T) {
 		{"underfilled", patterns.ErrCodeCellUnderfilled, diagnostics.SeverityInfo},
 		{"sparse_layout", patterns.ErrCodeSparseLayout, diagnostics.SeverityInfo},
 		{"density_class_divergence", patterns.ErrCodePatternUnderfilled, diagnostics.SeverityInfo},
+		{"underfilled_ink", patterns.ErrCodePatternUnderfilled, diagnostics.SeverityInfo},
 	}
 	for _, tt := range tests {
 		t.Run(tt.status, func(t *testing.T) {
@@ -89,4 +90,52 @@ func TestPatternExpansionDiagnosticsCapacityStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestExpandAndValidatePatternReportMeasuredInkUnderfill(t *testing.T) {
+	cells := make([]any, 4)
+	for i := range cells {
+		cells[i] = map[string]any{"header": fmt.Sprintf("Card %d", i+1), "body": "Brief"}
+	}
+	args := map[string]any{
+		"name":           "card-grid",
+		"values":         map[string]any{"columns": 2, "rows": 2, "cells": cells},
+		"theme_template": "midnight-blue",
+	}
+	mc := &mcpConfig{templatesDir: "../../templates"}
+	expanded, err := mc.handleExpandPattern(context.Background(), makeRequest(args))
+	if err != nil || expanded.IsError {
+		t.Fatalf("expand_pattern failed: err=%v result=%+v", err, expanded)
+	}
+	result, ok := expanded.StructuredContent.(patternExpansionResult)
+	if !ok {
+		t.Fatalf("expand_pattern returned %T", expanded.StructuredContent)
+	}
+	if result.Occupancy.FilledPct != 100 || result.Occupancy.InkHeightPct <= 0 || result.Occupancy.InkHeightPct >= 40 {
+		t.Fatalf("unexpected occupancy: %+v", result.Occupancy)
+	}
+	underfill := false
+	for _, warning := range result.CapacityWarnings {
+		underfill = underfill || warning.Status == "underfilled_ink"
+	}
+	if !underfill {
+		t.Fatalf("expand_pattern omitted measured-ink warning: %+v", result.CapacityWarnings)
+	}
+	validated, err := mc.handleValidatePattern(context.Background(), makeRequest(args))
+	if err != nil || validated.IsError {
+		t.Fatalf("validate_pattern failed: err=%v result=%+v", err, validated)
+	}
+	env := patternValidationEnvelope(t, validated)
+	for _, finding := range env.Findings {
+		if finding.Code == "GRID."+patterns.ErrCodePatternUnderfilled && strings.Contains(finding.Message, "ink fills") {
+			if _, ok := finding.Evidence["ink_height_pct"]; !ok {
+				t.Fatalf("ink finding missing percentage evidence: %+v", finding)
+			}
+			if _, ok := finding.Evidence["actual_chars"]; ok {
+				t.Fatalf("ink finding mislabeled percentage as characters: %+v", finding)
+			}
+			return
+		}
+	}
+	t.Fatalf("validate_pattern omitted measured-ink finding: %+v", env.Findings)
 }
