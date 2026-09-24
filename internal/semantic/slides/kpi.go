@@ -173,6 +173,28 @@ func kpiCells(body map[string]any) ([]kpiCell, string) {
 		big := firstNonEmpty(strField(o, "big"), strField(o, "value"))
 		small := firstNonEmpty(strField(o, "small"), strField(o, "label"), strField(o, "caption"))
 		sub := firstNonEmpty(strField(o, "sub"), strField(o, "delta"), strField(o, "trend"), strField(o, "change"))
+		// delta and trend are usually aliases, but authors may supply both a
+		// direction and a magnitude. Keep both rather than silently dropping
+		// the direction. If the combined annotation exceeds the pattern's
+		// 12-character budget, kpiPatternPlan safely degrades to bullets.
+		if strField(o, "sub") == "" {
+			delta, trend := strField(o, "delta"), strField(o, "trend")
+			if delta != "" && trend != "" && delta != trend {
+				switch strings.ToLower(trend) {
+				case "up", "rising", "increasing":
+					trend = "↑"
+				case "down", "falling", "decreasing":
+					trend = "↓"
+				case "flat", "stable", "unchanged":
+					trend = "→"
+				}
+				if len([]rune(trend)) == 1 {
+					sub = trend + " " + delta
+				} else {
+					sub = trend + " / " + delta
+				}
+			}
+		}
 		if big == "" && small == "" {
 			continue
 		}

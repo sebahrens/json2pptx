@@ -351,6 +351,46 @@ func TestCompileKPISnapshot_DeltaInFallbackBullet(t *testing.T) {
 	}
 }
 
+func TestCompileKPISnapshot_DeltaAndTrendPreserved(t *testing.T) {
+	in := Input{Body: map[string]any{"kpis": []any{
+		map[string]any{"value": "$50M", "label": "Revenue", "delta": "+5%", "trend": "up"},
+		map[string]any{"value": "2.1%", "label": "Churn", "delta": "-0.4%", "trend": "down"},
+	}}}
+	slide, _, err := CompileKPISnapshot(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Pattern == nil {
+		t.Fatal("expected KPI pattern")
+	}
+	var cells []map[string]string
+	if err := json.Unmarshal(slide.Pattern.Values, &cells); err != nil {
+		t.Fatal(err)
+	}
+	for i, want := range []string{"↑ +5%", "↓ -0.4%"} {
+		if got := cells[i]["sub"]; got != want {
+			t.Errorf("cells[%d].sub = %q, want %q", i, got, want)
+		}
+	}
+}
+
+func TestCompileKPISnapshot_DeltaAndTrendFallback(t *testing.T) {
+	in := Input{Body: map[string]any{"kpis": []any{
+		map[string]any{"value": "99", "label": "Solo", "delta": "+1%", "trend": "up"},
+	}}}
+	slide, _, err := CompileKPISnapshot(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Pattern != nil {
+		t.Fatal("one KPI should use the bullet fallback")
+	}
+	body := slide.Content[len(slide.Content)-1]
+	if body.BulletsValue == nil || (*body.BulletsValue)[0] != "99 (↑ +1%) — Solo" {
+		t.Errorf("fallback bullet = %+v", body.BulletsValue)
+	}
+}
+
 func TestCompileChartInsight_PatternWithChart(t *testing.T) {
 	in := Input{
 		Title: "Trend",
