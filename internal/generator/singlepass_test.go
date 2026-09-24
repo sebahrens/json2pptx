@@ -3,11 +3,13 @@ package generator
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -2129,7 +2131,7 @@ func TestProcessDiagramContent_PreservesPosition(t *testing.T) {
 		},
 	}
 
-	ctx.processDiagramContent(1, item, shape, 0, newPlaceholderResolver([]shapeXML{*shape}))
+	ctx.processDiagramContent(1, 0, item, shape, 0, newPlaceholderResolver([]shapeXML{*shape}))
 
 	// With native SVG strategy, diagrams embed as native SVG + PNG fallback
 	if len(ctx.nativeSVGInserts[1]) != 1 {
@@ -2188,7 +2190,7 @@ func TestProcessDiagramContent_TracksPositionForPicInsertion(t *testing.T) {
 		},
 	}
 
-	ctx.processDiagramContent(1, item, shape, 0, newPlaceholderResolver([]shapeXML{*shape}))
+	ctx.processDiagramContent(1, 0, item, shape, 0, newPlaceholderResolver([]shapeXML{*shape}))
 
 	// With native SVG strategy, diagrams embed as native SVG + PNG fallback
 	if len(ctx.nativeSVGInserts[1]) != 1 {
@@ -2663,7 +2665,7 @@ func TestProcessChartContent_FailedRendering(t *testing.T) {
 		Value:         &types.DiagramSpec{Type: "bar_chart"}, // Minimal spec should fail
 	}
 
-	ctx.processDiagramContent(1, item, shape, 0, newPlaceholderResolver([]shapeXML{*shape}))
+	ctx.processDiagramContent(1, 0, item, shape, 0, newPlaceholderResolver([]shapeXML{*shape}))
 
 	// Should have a warning about failed chart rendering
 	if len(ctx.warnings) == 0 {
@@ -2682,6 +2684,64 @@ func TestProcessChartContent_FailedRendering(t *testing.T) {
 			t.Error("placeholder image data should not be empty")
 		}
 	}
+}
+
+func TestRenderFindingPathsResolveAgainstAuthoredContent(t *testing.T) {
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	shape := &shapeXML{
+		NonVisualProperties: nonVisualPropertiesXML{
+			NvPr: nvPrXML{Placeholder: &placeholderXML{Type: "chart"}},
+		},
+		ShapeProperties: shapePropertiesXML{Transform: &transformXML{
+			Extent: extentXML{CX: 1, CY: 1},
+		}},
+		TextBody: &textBodyXML{},
+	}
+	item := ContentItem{PlaceholderID: "body", Type: ContentDiagram,
+		Value: &types.DiagramSpec{Type: "bar_chart"}}
+	ctx.processDiagramContent(1, 1, item, shape, 0, newPlaceholderResolver([]shapeXML{*shape}))
+	if len(ctx.fitFindings) == 0 {
+		t.Fatal("expected render-time findings")
+	}
+	var authored any
+	if err := json.Unmarshal([]byte(`{"slides":[{"content":[{"type":"text"},{"type":"diagram","placeholder_id":"body"}]}]}`), &authored); err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range ctx.fitFindings {
+		if finding.Path != "/slides/0/content/1" {
+			t.Errorf("render finding path = %q, want authored content index", finding.Path)
+		}
+		if _, err := resolveTestJSONPointer(authored, finding.Path); err != nil {
+			t.Errorf("render finding path %q does not resolve: %v", finding.Path, err)
+		}
+	}
+}
+
+func resolveTestJSONPointer(document any, pointer string) (any, error) {
+	if !strings.HasPrefix(pointer, "/") {
+		return nil, fmt.Errorf("not a JSON Pointer: %q", pointer)
+	}
+	current := document
+	for _, token := range strings.Split(pointer[1:], "/") {
+		token = strings.ReplaceAll(strings.ReplaceAll(token, "~1", "/"), "~0", "~")
+		switch node := current.(type) {
+		case map[string]any:
+			value, ok := node[token]
+			if !ok {
+				return nil, fmt.Errorf("object key %q missing", token)
+			}
+			current = value
+		case []any:
+			index, err := strconv.Atoi(token)
+			if err != nil || index < 0 || index >= len(node) {
+				return nil, fmt.Errorf("array index %q missing", token)
+			}
+			current = node[index]
+		default:
+			return nil, fmt.Errorf("cannot descend into %T", current)
+		}
+	}
+	return current, nil
 }
 
 // TestWriteByteBasedMedia_Deduplication tests that duplicate media files are not written twice

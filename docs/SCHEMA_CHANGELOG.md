@@ -28,6 +28,10 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Render-time content finding pointers (`go-slide-creator-jmb4j`).**
+  Diagram, chart, table, KPI, and heatmap render findings now target authored
+  `/slides/{i}/content/{j}` array entries instead of placeholder-name selectors.
+
 - **2026-09-24 — Chart finding path grammar (`go-slide-creator-v24b9`).**
   Chart and diagram dry-render findings now use JSON Pointer paths that
   resolve against the authored deck; renderer-derived fields and expanded

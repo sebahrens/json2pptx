@@ -257,7 +257,7 @@ func (ctx *singlePassContext) prepareImages() error {
 
 			switch item.Type {
 			case ContentDiagram:
-				ctx.processDiagramContent(slideNum, item, shape, shapeIdx, resolver)
+				ctx.processDiagramContent(slideNum, contentIdx, item, shape, shapeIdx, resolver)
 			case ContentImage:
 				ctx.processImageContent(slideNum, item, shape, shapeIdx)
 			case ContentTable:
@@ -270,7 +270,7 @@ func (ctx *singlePassContext) prepareImages() error {
 						return fmt.Errorf("slide %d table style resolution: %w", slideNum, err)
 					}
 				}
-				ctx.processTableContent(slideNum, item, shape, shapeIdx, tableStyleResolver)
+				ctx.processTableContent(slideNum, contentIdx, item, shape, shapeIdx, tableStyleResolver)
 			}
 		}
 	}
@@ -281,7 +281,7 @@ func (ctx *singlePassContext) prepareImages() error {
 // processTableContent handles standalone table content items.
 // It generates the OOXML graphicFrame XML for the table and tracks it
 // for placeholder replacement during slide writing.
-func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem, shape *shapeXML, shapeIdx int, styleResolver TableStyleResolver) {
+func (ctx *singlePassContext) processTableContent(slideNum, contentIdx int, item ContentItem, shape *shapeXML, shapeIdx int, styleResolver TableStyleResolver) {
 	tableSpec, ok := item.Value.(*types.TableSpec)
 	if !ok {
 		reason := fmt.Sprintf("invalid table value for placeholder %s", item.PlaceholderID)
@@ -324,7 +324,7 @@ func (ctx *singlePassContext) processTableContent(slideNum int, item ContentItem
 
 	// Collect table render-time findings.
 	for i := range result.Findings {
-		result.Findings[i].Path = slidepath.Content(slideNum-1, item.PlaceholderID)
+		result.Findings[i].Path = slidepath.ContentIndex(slideNum-1, contentIdx)
 		ctx.fitFindings = append(ctx.fitFindings, result.Findings[i])
 	}
 
@@ -354,7 +354,8 @@ const minDiagramHeightEMU int64 = 1828800
 
 // processDiagramContent handles unified diagram content (charts and infographics).
 // This is the preferred code path for all visual diagrams.
-func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentItem, shape *shapeXML, shapeIdx int, resolver *placeholderResolver) { //nolint:gocognit,gocyclo
+func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, item ContentItem, shape *shapeXML, shapeIdx int, resolver *placeholderResolver) { //nolint:gocognit,gocyclo
+	contentPath := slidepath.ContentIndex(slideNum-1, contentIdx)
 	// Native panel shapes: intercept panel_layout (columns/rows/stat_cards) before SVG rendering.
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isPanelNativeLayout(diagramSpec) {
 		ctx.processPanelNativeShapes(slideNum, item, shapeIdx)
@@ -387,7 +388,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 
 	// Native KPI Dashboard shapes: intercept kpi_dashboard diagrams before SVG rendering.
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isKPIDashboardDiagram(diagramSpec) {
-		ctx.processKPIDashboardNativeShapes(slideNum, item, shapeIdx)
+		ctx.processKPIDashboardNativeShapes(slideNum, contentIdx, item, shapeIdx)
 		return
 	}
 
@@ -411,7 +412,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 
 	// Native Heatmap shapes: intercept heatmap diagrams before SVG rendering.
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isHeatmapDiagram(diagramSpec) {
-		ctx.processHeatmapNativeShapes(slideNum, item, shapeIdx)
+		ctx.processHeatmapNativeShapes(slideNum, contentIdx, item, shapeIdx)
 		return
 	}
 
@@ -447,7 +448,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 		// Site 7: emit warning when diagram placeholder width is clamped.
 		ctx.emitFitFinding(patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
-				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
+				Path:    contentPath,
 				Code:    patterns.ErrCodeDiagramClamped,
 				Message: fmt.Sprintf("diagram placeholder width clamped: %d EMU → %d EMU minimum", placeholderBounds.Width, minDiagramWidthEMU),
 				Fix:     &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "width", "original_emu": placeholderBounds.Width, "clamped_emu": minDiagramWidthEMU}},
@@ -464,7 +465,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 		// Site 7: emit warning when diagram placeholder height is clamped.
 		ctx.emitFitFinding(patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
-				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
+				Path:    contentPath,
 				Code:    patterns.ErrCodeDiagramClamped,
 				Message: fmt.Sprintf("diagram placeholder height clamped: %d EMU → %d EMU minimum", placeholderBounds.Height, minDiagramHeightEMU),
 				Fix:     &patterns.FixSuggestion{Kind: "swap_layout", Params: map[string]any{"dimension": "height", "original_emu": placeholderBounds.Height, "clamped_emu": minDiagramHeightEMU}},
@@ -509,7 +510,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 		// deterministic auto-fix — the author must correct the type or the data.
 		ctx.emitFitFinding(patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
-				Path:    slidepath.Content(slideNum-1, item.PlaceholderID),
+				Path:    contentPath,
 				Code:    patterns.ErrCodeDiagramRenderFailed,
 				Message: fmt.Sprintf("diagram render failed — the slide shows a \"Data unavailable\" placeholder instead of the chart: %s", reason),
 				Fix: &patterns.FixSuggestion{
@@ -528,7 +529,10 @@ func (ctx *singlePassContext) processDiagramContent(slideNum int, item ContentIt
 	// to give up never reached the fit report (go-slide-creator-p142).
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok {
 		for _, f := range SvggenFindingsToFit(renderResult.Findings, diagramSpec.Type,
-			slidepath.Content(slideNum-1, item.PlaceholderID)) {
+			contentPath) {
+			// Renderer fields can be derived from layout rather than authored
+			// data. Keep the target at the authored content item for JSON Patch.
+			f.Path = contentPath
 			ctx.emitFitFinding(f)
 		}
 	}

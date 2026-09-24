@@ -102,7 +102,7 @@ func TestProcessKPIDashboard_EnforcesMaxMetrics(t *testing.T) {
 		Type:          ContentDiagram,
 		Value:         &types.DiagramSpec{Type: "kpi_dashboard", Data: map[string]any{"metrics": metricsData}},
 	}
-	ctx.processKPIDashboardNativeShapes(1, item, 0)
+	ctx.processKPIDashboardNativeShapes(1, 1, item, 0)
 
 	var dropped *patterns.FitFinding
 	for i := range ctx.fitFindings {
@@ -113,6 +113,9 @@ func TestProcessKPIDashboard_EnforcesMaxMetrics(t *testing.T) {
 	}
 	if dropped == nil {
 		t.Fatalf("14 metrics against a max of %d must emit CONTENT_DROPPED, got %+v", kpiMaxMetrics, ctx.fitFindings)
+	}
+	if dropped.Path != "/slides/0/content/1" {
+		t.Errorf("dropped metric path = %q, want authored content index", dropped.Path)
 	}
 	if !strings.Contains(dropped.Message, "2 of 14") {
 		t.Errorf("finding should name how many were dropped, got %q", dropped.Message)
@@ -126,7 +129,7 @@ func TestProcessKPIDashboard_EnforcesMaxMetrics(t *testing.T) {
 		Type:          ContentDiagram,
 		Value:         &types.DiagramSpec{Type: "kpi_dashboard", Data: map[string]any{"metrics": metricsData[:kpiMaxMetrics]}},
 	}
-	quiet.processKPIDashboardNativeShapes(1, exact, 0)
+	quiet.processKPIDashboardNativeShapes(1, 0, exact, 0)
 	for _, f := range quiet.fitFindings {
 		if f.Code == patterns.ErrCodeContentDropped {
 			t.Errorf("exactly %d metrics must not report a drop: %+v", kpiMaxMetrics, f)

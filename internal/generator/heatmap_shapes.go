@@ -95,7 +95,7 @@ type heatmapParsedData struct {
 
 // processHeatmapNativeShapes parses heatmap data from a DiagramSpec and
 // registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processHeatmapNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
+func (ctx *singlePassContext) processHeatmapNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
 	diagramSpec, ok := item.Value.(*types.DiagramSpec)
 	if !ok {
 		slog.Warn("heatmap native shapes: invalid diagram spec", "slide", slideNum)
@@ -124,7 +124,7 @@ func (ctx *singlePassContext) processHeatmapNativeShapes(slideNum int, item Cont
 	placeholderBounds := getPlaceholderBounds(shape, nil)
 
 	if shortened := fitHeatmapLabels(&parsed, placeholderBounds); shortened > 0 {
-		if f := heatmapLabelFinding(numRows, numCols, shortened, slidepath.Content(slideNum-1, item.PlaceholderID)); f != nil {
+		if f := heatmapLabelFinding(numRows, numCols, shortened, slidepath.ContentIndex(slideNum-1, contentIdx)); f != nil {
 			ctx.fitFindings = append(ctx.fitFindings, *f)
 		}
 		slog.Warn("native heatmap shapes: labels shortened to fit",

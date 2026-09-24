@@ -99,7 +99,7 @@ func isKPIDashboardDiagram(spec *types.DiagramSpec) bool {
 
 // processKPIDashboardNativeShapes parses KPI dashboard data from a DiagramSpec and
 // registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
+func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
 	diagramSpec, ok := item.Value.(*types.DiagramSpec)
 	if !ok {
 		slog.Warn("kpi dashboard native shapes: invalid diagram spec", "slide", slideNum)
@@ -121,7 +121,7 @@ func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum int, item
 			"kpi_dashboard holds at most %d metrics (declared max_nodes); %d of %d were dropped — split across two slides",
 			kpiMaxMetrics, dropped, len(metrics))
 		ctx.emitFitFinding(patterns.ContentDropped(
-			slidepath.Content(slideNum-1, item.PlaceholderID),
+			slidepath.ContentIndex(slideNum-1, contentIdx),
 			fmt.Sprintf("%d kpi_dashboard metrics", dropped), reason))
 		ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: %s", slideNum, reason))
 		metrics = metrics[:kpiMaxMetrics]

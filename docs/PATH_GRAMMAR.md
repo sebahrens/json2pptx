@@ -1,6 +1,6 @@
 # Path Grammar
 
-All paths in fit findings, validation errors, and `repair_slide` targeting use **JSON Pointer** (RFC 6901) notation with `/` as the separator and numeric array indices.
+Authored-content paths use **JSON Pointer** (RFC 6901) notation with `/` as the separator and numeric array indices. `repair_slide` also accepts an older placeholder-name selector; that selector is not a JSON Pointer into the authored deck.
 
 ## Format
 
@@ -12,7 +12,7 @@ Every path starts with `/slides/{index}` and descends through the JSON structure
 
 ## Path Examples
 
-### Placeholder content (by name)
+### Placeholder content (by name, `repair_slide` selector only)
 
 ```
 /slides/0/content/body
@@ -25,6 +25,7 @@ Every path starts with `/slides/{index}` and descends through the JSON structure
 ```
 /slides/0/content/0
 /slides/0/content/1/placeholder_id
+/slides/0/content/1/diagram_value
 ```
 
 ### Slide-level fields
@@ -58,7 +59,7 @@ Every path starts with `/slides/{index}` and descends through the JSON structure
 
 ## Use in Fit Findings
 
-Every `FitFinding` emits a `path` field using this grammar. The path identifies the offending element so that agents can:
+Every `FitFinding` emits a `path` field. Render-time chart, diagram, and table findings use authored-content JSON Pointers; older placeholder findings may still use a by-name selector. The path identifies the offending element so that agents can:
 
 1. Map a finding back to the JSON input element
 2. Pass the path to `repair_slide` as the `path` parameter for disambiguation
@@ -123,7 +124,7 @@ All path construction is centralized in `internal/slidepath/`. Available builder
 | Function | Output |
 |---|---|
 | `Slide(idx)` | `/slides/{idx}` |
-| `Content(si, phID)` | `/slides/{si}/content/{phID}` |
+| `Content(si, phID)` | `/slides/{si}/content/{phID}` (legacy by-name selector, not an authored JSON Pointer) |
 | `ContentIndex(si, ci)` | `/slides/{si}/content/{ci}` |
 | `ContentField(si, ci, f)` | `/slides/{si}/content/{ci}/{f}` |
 | `SlideField(si, f)` | `/slides/{si}/{f}` |
