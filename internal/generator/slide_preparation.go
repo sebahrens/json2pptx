@@ -543,7 +543,7 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 		}
 
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-		findingPath := slidepath.Content(slideIndex, item.PlaceholderID)
+		findingPath := slidepath.ContentIndex(slideIndex, j)
 		autofitOpts := []autofitOption{withFindingsCollector(&ctx.fitFindings, findingPath)}
 		if isTitleShape(shape) {
 			autofitOpts = append(autofitOpts, ctx.titleAutofitOptions(layoutID)...)

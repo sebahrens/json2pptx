@@ -28,6 +28,9 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Text autofit finding pointers (`go-slide-creator-iulg0`).**
+  Render-time text autofit findings now target authored content array entries.
+
 - **2026-09-24 — Render-time content finding pointers (`go-slide-creator-jmb4j`).**
   Diagram, chart, table, KPI, and heatmap render findings now target authored
   `/slides/{i}/content/{j}` array entries instead of placeholder-name selectors.
