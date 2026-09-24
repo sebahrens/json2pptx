@@ -17,7 +17,7 @@ func runGenerate() error {
 	configPath := fs.String("config", "", "Path to config file (optional)")
 	verbose := fs.Bool("verbose", false, "Enable verbose output")
 	jsonInput := fs.String("json", "", "Path to JSON input file (use - for stdin)")
-	jsonOutputReport := fs.String("json-output-report", "", "Path for the JSON result report (success, warnings, quality score) in headless mode")
+	jsonOutputReport := fs.String("json-output-report", "", "Path for the JSON result report (success, review findings, warnings, quality score) in headless mode")
 	jsonOutput := fs.String("json-output", "", "DEPRECATED: alias for --json-output-report")
 	chartPNG := fs.Bool("chart-png", false, "DEPRECATED: Use PNG instead of native SVG for charts. Native SVG is now the default and recommended strategy.")
 	dryRun := fs.Bool("dry-run", false, "Validate input and show layout selections without generating output")

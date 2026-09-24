@@ -614,6 +614,13 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// Build success output
 	// Collect fit findings: synthesis + render-time + contrast.
 	var allFitFindings []patterns.FitFinding
+	if jsonOutputPath != "" {
+		// Headless consumers need the same review-class preflight findings MCP
+		// exposes with fit_report=true (substance, contrast predictions, chrome,
+		// accessibility, and geometry), not only render-time warnings.
+		allFitFindings = append(allFitFindings, collectFitFindings(input, templateLayouts,
+			runRes.SlideWidth, runRes.SlideHeight, &runRes.TemplateTheme)...)
+	}
 	allFitFindings = append(allFitFindings, synthesisFindings...)
 	allFitFindings = append(allFitFindings, result.FitFindings...)
 	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
@@ -627,10 +634,15 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	// bio, CHART_PLACEHOLDER_EMPTY on a chart panel with no chart) are part of
 	// what generate saw; without them the JSON report called a degraded deck
 	// clean (go-slide-creator-wn4v).
-	allFitFindings = append(allFitFindings, collectPatternPostExpandFindings(input, runRes.SlideWidth, runRes.SlideHeight, &runRes.TemplateTheme)...)
+	if jsonOutputPath == "" {
+		// The full headless preflight above already includes these warnings.
+		allFitFindings = append(allFitFindings, collectPatternPostExpandFindings(input, runRes.SlideWidth, runRes.SlideHeight, &runRes.TemplateTheme)...)
+	}
 	// An icon name that does not resolve drops the icon from its panel while
 	// the siblings keep theirs; generation only logged it (go-slide-creator-puki).
-	allFitFindings = append(allFitFindings, collectDiagramIconFindings(input)...)
+	if jsonOutputPath == "" {
+		allFitFindings = append(allFitFindings, collectDiagramIconFindings(input)...)
+	}
 	allFitFindings = dedupFitFindings(allFitFindings)
 
 	// Build per-slide resolution summary
