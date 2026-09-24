@@ -123,21 +123,20 @@ func clampPorterIntensity(v float64) float64 {
 // own light neutral, which asserts nothing.
 const porterNeutralScheme = "lt2"
 
-// porterIntensityColor maps intensity to scheme color + tint.
-// High = accent1, Medium = accent3, Low = accent5. An unstated intensity takes
-// the neutral surface: colour-coding a force nobody scored asserts a reading
-// the author never made.
+// porterIntensityColor maps ordinal intensity to three lightness steps of the
+// same template accent. An unstated intensity takes the neutral surface:
+// colour-coding a force nobody scored asserts a reading the author never made.
 func porterIntensityColor(intensity *float64) (scheme string, lumMod, lumOff int) {
 	if intensity == nil {
 		return porterNeutralScheme, 0, 0
 	}
 	switch {
 	case *intensity >= 0.67:
-		return "accent1", 40000, 60000 // accent1 tint
+		return "accent1", 60000, 40000 // strongest tint
 	case *intensity >= 0.34:
-		return "accent3", 40000, 60000 // accent3 tint
+		return "accent1", 40000, 60000 // middle tint
 	default:
-		return "accent5", 40000, 60000 // accent5 tint
+		return "accent1", 20000, 80000 // lightest tint
 	}
 }
 
@@ -601,7 +600,7 @@ func porterOutlineScheme(fillScheme string) string {
 func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint32, isCenter bool, themeColors []types.ThemeColor) string {
 	scheme, lumMod, lumOff := porterIntensityColor(f.intensity)
 	// The intensity line used to be painted in the box's own scheme colour on
-	// the box's own tint of it: "Medium (50%)" measured 1.55:1 on the accent3
+	// the box's own tint of it: "Medium (50%)" measured 1.55:1 on the old accent3
 	// tile. Pick it against the fill the reader actually sees, the same way the
 	// heatmap picks its value colour (go-slide-creator-ceodq).
 	intensityColor := porterIntensityTextColor(scheme, lumMod, lumOff, themeColors)

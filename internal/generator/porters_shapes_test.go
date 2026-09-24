@@ -8,9 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestIsPortersFiveForcesDiagram(t *testing.T) {
@@ -239,10 +240,13 @@ func TestGeneratePortersFiveGroupXML_Basic(t *testing.T) {
 		}
 	}
 
-	// Should use scheme colors (accent1, accent3, accent5 for intensity mapping)
-	for _, accent := range []string{"accent1", "accent3", "accent5"} {
-		if !strings.Contains(result, accent) {
-			t.Errorf("should contain scheme color %q", accent)
+	// Scored forces use one accent with ordered lightness, not categorical hues.
+	if !strings.Contains(result, `val="accent1"`) {
+		t.Error("should contain accent1 fill")
+	}
+	for _, tint := range []string{`lumMod val="60000"`, `lumMod val="40000"`, `lumMod val="20000"`} {
+		if !strings.Contains(result, tint) {
+			t.Errorf("should contain intensity tint %q", tint)
 		}
 	}
 
@@ -340,23 +344,54 @@ func TestGeneratePortersFiveGroupXML_NoFactors(t *testing.T) {
 
 func TestPorterIntensityColor(t *testing.T) {
 	tests := []struct {
-		intensity  float64
-		wantScheme string
+		intensity float64
+		wantMod   int
+		wantOff   int
 	}{
-		{0.0, "accent5"},  // Low
-		{0.33, "accent5"}, // Low boundary
-		{0.34, "accent3"}, // Medium
-		{0.50, "accent3"}, // Medium
-		{0.66, "accent3"}, // Medium boundary
-		{0.67, "accent1"}, // High
-		{1.0, "accent1"},  // High
+		{0.0, 20000, 80000},  // Low
+		{0.33, 20000, 80000}, // Low boundary
+		{0.34, 40000, 60000}, // Medium
+		{0.50, 40000, 60000}, // Medium
+		{0.66, 40000, 60000}, // Medium boundary
+		{0.67, 60000, 40000}, // High
+		{1.0, 60000, 40000},  // High
 	}
 
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("intensity_%.2f", tt.intensity), func(t *testing.T) {
-			scheme, _, _ := porterIntensityColor(&tt.intensity)
-			if scheme != tt.wantScheme {
-				t.Errorf("porterIntensityColor(%f) scheme = %q, want %q", tt.intensity, scheme, tt.wantScheme)
+			scheme, mod, off := porterIntensityColor(&tt.intensity)
+			if scheme != "accent1" || mod != tt.wantMod || off != tt.wantOff {
+				t.Errorf("porterIntensityColor(%f) = (%q, %d, %d), want (accent1, %d, %d)", tt.intensity, scheme, mod, off, tt.wantMod, tt.wantOff)
+			}
+		})
+	}
+	if scheme, mod, off := porterIntensityColor(nil); scheme != porterNeutralScheme || mod != 0 || off != 0 {
+		t.Errorf("unstated intensity = (%q, %d, %d), want (%q, 0, 0)", scheme, mod, off, porterNeutralScheme)
+	}
+}
+
+func TestPorterIntensityColor_ThemeLightnessOrdering(t *testing.T) {
+	white := svggen.MustParseColor("#FFFFFF")
+	black := svggen.MustParseColor("#000000")
+	for name, hex := range map[string]string{
+		"forest-green": "#2E7D32", "midnight-blue": "#2E5090",
+		"modern-template": "#B5485A", "warm-coral": "#E64A19",
+	} {
+		t.Run(name, func(t *testing.T) {
+			base := svggen.MustParseColor(hex)
+			lightness := make([]svggen.Color, 3)
+			for i, intensity := range []float64{0.9, 0.5, 0.1} {
+				_, mod, off := porterIntensityColor(&intensity)
+				lightness[i] = patterns.EffectiveColor(base, mod, off, 1, white)
+			}
+			if !(lightness[0].Luminance() < lightness[1].Luminance() && lightness[1].Luminance() < lightness[2].Luminance()) {
+				t.Errorf("intensity lightness not ordered high→medium→low: %s, %s, %s", lightness[0].Hex(), lightness[1].Hex(), lightness[2].Hex())
+			}
+			if contrast := lightness[0].ContrastWith(lightness[2]); contrast < 1.5 {
+				t.Errorf("high and low tints too similar: %.2f:1", contrast)
+			}
+			if contrast := black.ContrastWith(lightness[0]); contrast < 4.5 {
+				t.Errorf("high-intensity box loses dark-text contrast: %.2f:1", contrast)
 			}
 		})
 	}
