@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-24 — Schema 4.121.0: template-aware DeckSpec validation (`go-slide-creator-wttox`).**
+  `validate_deck_spec` accepts the same optional `template` default as
+  `render_deck_spec` (spec pin > caller selection > archetype default), retains
+  the resolved choice on its `deck_id`, and predicts pattern contrast using
+  the rendered slide/section accent rotation. A follow-up render using only
+  the handle keeps the validated template and reports it in
+  `explanation_summary.template`.
+
 - **2026-09-24 — Schema 4.120.0: explicit bar value-axis scale (`go-slide-creator-gpjwj`).**
   Bar and grouped-bar `style.scale` now accepts `linear` (default) or `log`.
   A wide positive range no longer auto-switches to log: bar lengths remain

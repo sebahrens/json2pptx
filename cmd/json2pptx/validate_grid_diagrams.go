@@ -43,6 +43,10 @@ func expandSlidePatternGridWithWarnings(slide *SlideInput, slideIdx int, slideWi
 }
 
 func expandSlidePatternGridWithWarningsAtBounds(slide *SlideInput, slideIdx int, slideWidth, slideHeight int64, theme *types.ThemeInfo, bounds patterns.LayoutBounds, zone *shapegrid.ContentZone) (*ShapeGridInput, []string) {
+	return expandSlidePatternGridWithWarningsForDeck(slide, slideIdx, slideWidth, slideHeight, theme, bounds, zone, "", 0)
+}
+
+func expandSlidePatternGridWithWarningsForDeck(slide *SlideInput, slideIdx int, slideWidth, slideHeight int64, theme *types.ThemeInfo, bounds patterns.LayoutBounds, zone *shapegrid.ContentZone, strategy patterns.AccentStrategy, sectionIndex int) (*ShapeGridInput, []string) {
 	if slide == nil || slide.Pattern == nil || slide.ShapeGrid != nil {
 		return nil, nil
 	}
@@ -50,11 +54,13 @@ func expandSlidePatternGridWithWarningsAtBounds(slide *SlideInput, slideIdx int,
 		slideWidth, slideHeight = validationDefaultSlideWidthEMU, validationDefaultSlideHeightEMU
 	}
 	ctx := patterns.ExpandContext{
-		SlideWidth:   slideWidth,
-		SlideHeight:  slideHeight,
-		LayoutBounds: bounds,
-		ContentZone:  zone,
-		SlideIndex:   slideIdx,
+		SlideWidth:     slideWidth,
+		SlideHeight:    slideHeight,
+		LayoutBounds:   bounds,
+		ContentZone:    zone,
+		SlideIndex:     slideIdx,
+		SectionIndex:   sectionIndex,
+		AccentStrategy: strategy,
 	}
 	if theme != nil {
 		ctx.Theme = *theme

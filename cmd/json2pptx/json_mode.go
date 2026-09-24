@@ -756,16 +756,7 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	// Build per-slide section index for accent-strategy=section-keyed.
 	// Section indices start at 0 and increment each time a "section" slide is seen.
 	// Slides before the first section divider get index 0.
-	sectionIndices := make([]int, len(slides))
-	{
-		secIdx := 0
-		for i := range slides {
-			if i > 0 && isSectionSlideInput(slides[i], layouts) {
-				secIdx++
-			}
-			sectionIndices[i] = secIdx
-		}
-	}
+	sectionIndices := slideSectionIndices(slides, layouts)
 
 	for i, slide := range slides {
 		spec, slideWarnings, slideFindings, err := convertSinglePresentationSlide(
@@ -794,6 +785,20 @@ func convertPresentationSlides(slides []SlideInput, layouts []types.LayoutMetada
 	}
 
 	return specs, gridWarnings, gridFitFindings, nil
+}
+
+// slideSectionIndices is shared by rendering and preflight pattern expansion;
+// section-keyed accents must not depend on which path asks for the slide.
+func slideSectionIndices(slides []SlideInput, layouts []types.LayoutMetadata) []int {
+	indices := make([]int, len(slides))
+	section := 0
+	for i := range slides {
+		if i > 0 && isSectionSlideInput(slides[i], layouts) {
+			section++
+		}
+		indices[i] = section
+	}
+	return indices
 }
 
 // convertSinglePresentationSlide converts a single slide input into a generator SlideSpec.

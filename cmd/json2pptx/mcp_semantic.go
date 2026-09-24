@@ -214,6 +214,9 @@ func mcpValidateDeckSpecTool() mcp.Tool {
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict. Controls whether rhythm/density advisories are info, warnings, or errors."),
 		),
+		mcp.WithString("template",
+			mcp.Description("Default template when meta.template is absent; retained on the deck_id for rendering."),
+		),
 	)
 }
 
@@ -227,18 +230,26 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 	if errRes != nil {
 		return errRes, nil
 	}
+	templateName, _, errRes := semanticOptionalString("validate_deck_spec", "template", request)
+	if errRes != nil {
+		return errRes, nil
+	}
+	if templateName == "" {
+		templateName = src.Template
+	}
 
 	ds := semantic.Check(filename, data, strictness)
 	// Check() sees only the spec. The defects an agent ships — wrapped titles,
 	// 100-word bullet walls, placeholder copy — live in the COMPILED deck, so
 	// compile it and run the same collectors validate_input runs
 	// (go-slide-creator-05wn).
-	ds = append(ds, mc.compiledSpecFindings(filename, data, strictness, src.Template)...)
+	compiledFindings, resolvedTemplate := mc.compiledSpecFindings(filename, data, strictness, templateName)
+	ds = append(ds, compiledFindings...)
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "validate_deck_spec",
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
 	}, ds)
-	handleID := mc.rememberDeck(deckID, data, filename, "")
+	handleID := mc.rememberDeck(deckID, data, filename, resolvedTemplate)
 	semanticizeFindings(&envelope, data, handleID)
 
 	// Hand back a handle so the next call in the loop — a render, or a patched
@@ -826,18 +837,20 @@ func semanticSuccessOrInternal(ctx context.Context, tool string, v any) (*mcp.Ca
 }
 
 // compiledSpecFindings compiles a spec and runs the shared fit collectors over
-// the compiled deck, returning the findings as diagnostics carrying their
-// semantic paths. A spec that does not compile returns nothing: its blocking
-// errors are already reported by Check.
-func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictness semantic.Strictness, defaultTemplate string) []diagnostics.Diagnostic {
+// the compiled deck, returning semantic-path diagnostics and the resolved
+// template for the stored handle. A spec that does not compile returns no
+// compiled findings: its blocking errors are already reported by Check.
+func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictness semantic.Strictness, defaultTemplate string) ([]diagnostics.Diagnostic, string) {
 	spec, parseDiags := semantic.Parse(filename, data)
 	if spec == nil || parseDiags.HasErrors() {
-		return nil
+		return nil, defaultTemplate
 	}
+	resolvedTemplate := explainSpecWithTemplate(spec, defaultTemplate).Template
 	input, compileResult, err := semantic.Compile(spec, semantic.CompileOptions{Strict: strictness, DefaultTemplate: defaultTemplate})
 	if err != nil || input == nil {
-		return nil
+		return nil, resolvedTemplate
 	}
+	resolvedTemplate = input.Template
 	applyDefaults(input)
 	resolveInputNamedSettingsForDir(mc.templatesDir, input)
 
@@ -879,7 +892,7 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 		out := make([]diagnostics.Diagnostic, 0, len(designViolations)+len(templateDiagnostics))
 		out = append(out, designViolations...)
 		out = append(out, templateDiagnostics...)
-		return out
+		return out, resolvedTemplate
 	}
 	findings := collectFitFindings(input, layouts, slideWidth, slideHeight, theme)
 	out := make([]diagnostics.Diagnostic, 0, len(findings)+len(designViolations)+len(templateCoverage)+len(templateDiagnostics))
@@ -900,7 +913,7 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 		}
 		out = append(out, d)
 	}
-	return out
+	return out, resolvedTemplate
 }
 
 // specValidateAiriness are the geometry advisories validate_deck_spec does not

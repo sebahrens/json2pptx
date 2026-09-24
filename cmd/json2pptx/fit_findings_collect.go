@@ -1898,6 +1898,7 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 	expanded.Slides = make([]SlideInput, len(input.Slides))
 	copy(expanded.Slides, input.Slides)
 	rhythm := resolvedValidRhythmGrid(input, layoutSets, slideWidth, slideHeight)
+	sectionIndices := slideSectionIndices(input.Slides, layoutSets)
 
 	for i := range expanded.Slides {
 		s := &expanded.Slides[i]
@@ -1905,9 +1906,11 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 			continue
 		}
 		ctx := patterns.ExpandContext{
-			SlideWidth:  slideWidth,
-			SlideHeight: slideHeight,
-			SlideIndex:  i,
+			SlideWidth:     slideWidth,
+			SlideHeight:    slideHeight,
+			SlideIndex:     i,
+			SectionIndex:   sectionIndices[i],
+			AccentStrategy: patterns.AccentStrategy(input.AccentStrategy),
 		}
 		if len(layoutSets) > 0 {
 			geom, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)

@@ -78,6 +78,87 @@ func TestSemanticMCP_ValidateDeckSpec(t *testing.T) {
 	}
 }
 
+func TestSemanticMCP_ValidateTemplateMatchesRenderAndHandle(t *testing.T) {
+	mc := handleTestConfig(t)
+	spec := strings.Replace(validSemanticSpec, "  template: midnight-blue\n", "  archetype: strategy_proposal\n", 1)
+	validated := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{
+		"spec": spec, "template": "midnight-blue",
+	}))
+	if !validated.OK {
+		t.Fatalf("selected-template validation failed: %+v", validated.Findings)
+	}
+	handle, ok := mc.deckHandles.Load(validated.DeckID)
+	if !ok || handle.Template != "midnight-blue" {
+		t.Fatalf("validated deck handle template = %+v, want midnight-blue", handle)
+	}
+	patched := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{
+		"deck_id": validated.DeckID,
+		"patch":   []any{map[string]any{"op": "replace", "path": "/slides/0/title", "value": "Revised Review"}},
+	}))
+	if !patched.OK || patched.DeckID != validated.DeckID {
+		t.Fatalf("patched validation lost the deck handle: %+v", patched)
+	}
+	if handle, ok = mc.deckHandles.Load(patched.DeckID); !ok || handle.Template != "midnight-blue" {
+		t.Fatalf("patched validation lost selected template: %+v", handle)
+	}
+	var render renderDeckSpecResponse
+	structuredInto(t, mustCall(t, mc.handleRenderDeckSpec, map[string]any{"deck_id": patched.DeckID}).StructuredContent, &render)
+	if !render.Success || render.Template != "midnight-blue" || render.Explanation == nil || render.Explanation.Template != "midnight-blue" {
+		t.Fatalf("render template/explanation drifted from validation: %+v", render)
+	}
+
+	pinned := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{
+		"spec": validSemanticSpec, "template": "warm-coral",
+	}))
+	if got, ok := mc.deckHandles.Load(pinned.DeckID); !ok || got.Template != "midnight-blue" {
+		t.Errorf("spec-pinned template should win: %+v", got)
+	}
+	bad := mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec, "template": 42})
+	if !bad.IsError {
+		t.Error("validate_deck_spec accepted a non-string template argument")
+	}
+	missing := deckSpecEnvelope(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{
+		"spec": spec, "template": "definitely-not-a-template",
+	}))
+	if missing.OK {
+		t.Fatalf("validate_deck_spec accepted a missing selected template: %+v", missing.Findings)
+	}
+	foundMissing := false
+	for _, finding := range missing.Findings {
+		foundMissing = foundMissing || strings.HasSuffix(finding.Code, string(diagnostics.CodeTemplateNotFound))
+	}
+	if !foundMissing {
+		t.Errorf("missing selected template was not diagnosed: %+v", missing.Findings)
+	}
+}
+
+func TestSemanticMCP_ValidateSelectedTemplateUsesRotatedAccent(t *testing.T) {
+	mc := handleTestConfig(t)
+	const spec = `{"meta":{"title":"Review","archetype":"strategy_proposal","accent_strategy":"section-keyed"},"slides":[{"kind":"title","title":"Review"},{"kind":"section","title":"Results"},{"kind":"kpi_snapshot","title":"Results at a glance","kpis":[{"value":"42%","label":"Growth"},{"value":"1.2M","label":"ARR"}]}]}`
+	var forest deckSpecEnvelopeResponse
+	structuredInto(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{
+		"spec": spec, "template": "forest-green",
+	}).StructuredContent, &forest)
+	var midnight deckSpecEnvelopeResponse
+	structuredInto(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{
+		"spec": spec, "template": "midnight-blue",
+	}).StructuredContent, &midnight)
+	forestAccent := false
+	for _, finding := range forest.Findings {
+		if strings.Contains(finding.Message, "#FF8F00") && strings.HasSuffix(finding.Code, "contrast_predicted") {
+			forestAccent = true
+		}
+	}
+	if !forestAccent {
+		t.Fatalf("forest-green validation did not predict contrast on rotated accent2 #FF8F00: %+v", forest.Findings)
+	}
+	for _, finding := range midnight.Findings {
+		if strings.Contains(finding.Message, "#FF8F00") {
+			t.Fatalf("midnight-blue validation leaked forest-green accent: %+v", finding)
+		}
+	}
+}
+
 func TestSemanticMCP_ValidateAndExplainRejectUnknownTemplate(t *testing.T) {
 	ctx := context.Background()
 	mc := semanticTestConfig(t)

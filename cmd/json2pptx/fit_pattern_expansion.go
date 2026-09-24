@@ -48,6 +48,7 @@ func expandPatternsForFit(input *PresentationInput, slideWidth, slideHeight int6
 
 	fromPattern := make(map[int]bool)
 	rhythm := resolvedValidRhythmGrid(input, layoutSets, slideWidth, slideHeight)
+	sectionIndices := slideSectionIndices(input.Slides, layoutSets)
 	for i := range expanded.Slides {
 		s := &expanded.Slides[i]
 		if s.Pattern == nil || s.ShapeGrid != nil {
@@ -60,7 +61,7 @@ func expandPatternsForFit(input *PresentationInput, slideWidth, slideHeight int6
 			bounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
 			zone = geom.Zone
 		}
-		grid, _ := expandSlidePatternGridWithWarningsAtBounds(s, i, slideWidth, slideHeight, theme, bounds, zone)
+		grid, _ := expandSlidePatternGridWithWarningsForDeck(s, i, slideWidth, slideHeight, theme, bounds, zone, patterns.AccentStrategy(input.AccentStrategy), sectionIndices[i])
 		if grid == nil {
 			// Invalid pattern values: the pattern validator reports those.
 			continue
@@ -92,6 +93,7 @@ func collectPatternPostExpandFindings(input *PresentationInput, slideWidth, slid
 	}
 	var out []patterns.FitFinding
 	rhythm := resolvedValidRhythmGrid(input, layoutSets, slideWidth, slideHeight)
+	sectionIndices := slideSectionIndices(input.Slides, layoutSets)
 	for i := range input.Slides {
 		p := input.Slides[i].Pattern
 		if p == nil {
@@ -105,7 +107,7 @@ func collectPatternPostExpandFindings(input *PresentationInput, slideWidth, slid
 			bounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
 			zone = geom.Zone
 		}
-		_, warnings := expandSlidePatternGridWithWarningsAtBounds(&probe, i, slideWidth, slideHeight, theme, bounds, zone)
+		_, warnings := expandSlidePatternGridWithWarningsForDeck(&probe, i, slideWidth, slideHeight, theme, bounds, zone, patterns.AccentStrategy(input.AccentStrategy), sectionIndices[i])
 		for _, w := range warnings {
 			if f := patternWarningAsFinding(i, p.Name, w); f != nil {
 				out = append(out, *f)
