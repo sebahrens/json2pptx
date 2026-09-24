@@ -33,6 +33,40 @@ func TestSourceMapParentLookup(t *testing.T) {
 	}
 }
 
+func TestSourceMapJSONPointerParentLookup(t *testing.T) {
+	m := NewSourceMap()
+	m.Add("/slides/0/content/1", "slides[0].points", 0)
+	for _, path := range []string{
+		"/slides/0/content/1/bullets_value",
+		"/slides/0/content/1/data/a~1b/label",
+	} {
+		semanticPath, slideIndex, ok := m.ResolveSemantic(path)
+		if !ok || semanticPath != "slides[0].points" || slideIndex != 0 {
+			t.Errorf("ResolveSemantic(%q) = %q, %d, %v; want points on slide 0", path, semanticPath, slideIndex, ok)
+		}
+	}
+}
+
+func TestSourceMapJSONPointerMissRecoversSlideIndex(t *testing.T) {
+	m := NewSourceMap()
+	for _, tc := range []struct {
+		path string
+		want int
+	}{
+		{"/slides/7/content/0", 7},
+		{"/slides/0", 0},
+		{"/slides/-1/content/0", -1},
+		{"/slides/nope/content/0", -1},
+		{"/other/7", -1},
+		{"slides[4].content[0]", 4},
+	} {
+		_, slideIndex, mapped := m.ResolveSemantic(tc.path)
+		if mapped || slideIndex != tc.want {
+			t.Errorf("ResolveSemantic(%q) slide = %d, mapped = %v; want %d, false", tc.path, slideIndex, mapped, tc.want)
+		}
+	}
+}
+
 func TestSourceMapExactBeatsParent(t *testing.T) {
 	m := NewSourceMap()
 	m.Add("slides[2].shape_grid", "slides[2].kpis", 2)

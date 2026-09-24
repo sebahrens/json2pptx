@@ -3,6 +3,8 @@ package semantic
 import (
 	"strconv"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 )
 
 // SourceMap records the correspondence between raw json2pptx JSON paths in the
@@ -93,11 +95,16 @@ func (m *SourceMap) ResolveSemantic(rawPath string) (semanticPath string, slideI
 	return "", slideIndexFromRawPath(rawPath), false
 }
 
-// slideIndexFromRawPath extracts N from a path beginning with "slides[N]" (after
-// normalization), returning -1 when the path is not slide-scoped or N is not a
-// non-negative integer.
+// slideIndexFromRawPath extracts N from either "slides[N]" or "/slides/N",
+// returning -1 when the path is not slide-scoped or N is negative or invalid.
 func slideIndexFromRawPath(p string) int {
 	p = normalizePath(p)
+	if strings.HasPrefix(p, "/") {
+		if index := slidepath.SlideIndex(p); index >= 0 {
+			return index
+		}
+		return -1
+	}
 	const prefix = "slides["
 	if !strings.HasPrefix(p, prefix) {
 		return -1
@@ -134,11 +141,16 @@ func normalizePath(p string) string {
 }
 
 // parentPath returns the path one segment up from p, stripping a trailing
-// ".field" or "[index]" segment. It returns "" once the root is reached; a path
-// with no further segments returns itself unchanged, which Lookup uses as its
-// termination signal.
+// ".field", "[index]", or JSON Pointer "/token" segment. It returns "" once
+// the root is reached, which Lookup uses as its termination signal.
 func parentPath(p string) string {
 	if p == "" {
+		return ""
+	}
+	if strings.HasPrefix(p, "/") {
+		if i := strings.LastIndexByte(p, '/'); i > 0 {
+			return p[:i]
+		}
 		return ""
 	}
 	i := strings.LastIndexAny(p, ".[")

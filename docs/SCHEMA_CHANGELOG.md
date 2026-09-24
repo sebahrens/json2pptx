@@ -28,6 +28,10 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Semantic pointer ancestry (`go-slide-creator-1sz3c`).**
+  Semantic source maps now resolve nested JSON Pointer findings through their
+  nearest indexed-content ancestor and recover slide indices on unmapped paths.
+
 - **2026-09-24 — Validation finding pointers (`go-slide-creator-zrhtv`).**
   Placeholder-based validation findings now address authored content indices;
   findings about unpopulated template placeholders target the slide. Semantic
