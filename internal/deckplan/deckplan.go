@@ -633,13 +633,25 @@ func factDrivenEvidencePattern(signals evidenceSignals, index int) string {
 func recommendForRole(reg *patterns.Registry, patternList []patInfo, role, intent string, usedPatterns []string, slideIndex int) (string, string) {
 	opts := &patterns.RecommendOptions{RecentPatterns: usedPatterns, PreferVariety: true, SlideIndex: slideIndex}
 	rec := patterns.Recommend(reg, intent, nil, len(patternList), opts)
-	for _, c := range rec.Candidates {
+	for _, c := range substantiveCandidates(rec) {
 		if role == "evidence" && !patternSupportsNarrativeRole(patternList, c.PatternName, "evidence") {
 			continue
 		}
 		return c.PatternName, c.Rationale
 	}
 	return "", ""
+}
+
+// A generic recommender fallback helps an interactive user refine an intent,
+// but it must not be treated as a content match by automatic deck planning.
+func substantiveCandidates(rec patterns.RecommendResult) []patterns.Candidate {
+	out := make([]patterns.Candidate, 0, len(rec.Candidates))
+	for _, candidate := range rec.Candidates {
+		if !candidate.Fallback {
+			out = append(out, candidate)
+		}
+	}
+	return out
 }
 
 func patternSupportsNarrativeRole(patternList []patInfo, name, role string) bool {
@@ -969,7 +981,7 @@ func findRepeatReplacement(reg *patterns.Registry, slides []Slide, idx int, seen
 		return inRole(name) && (emphasisRoom || !emphasisPatterns[name])
 	}
 	names := make([]string, 0, len(rec.Candidates))
-	for _, c := range rec.Candidates {
+	for _, c := range substantiveCandidates(rec) {
 		names = append(names, c.PatternName)
 	}
 	// The recommender ranks by intent and can still leave whole families out of
@@ -1075,7 +1087,7 @@ func nonEmphasisReplacement(reg *patterns.Registry, slides []Slide, idx int) str
 		PreferVariety:  true,
 		SlideIndex:     idx,
 	})
-	for _, c := range rec.Candidates {
+	for _, c := range substantiveCandidates(rec) {
 		if ok(c.PatternName) {
 			return c.PatternName
 		}
@@ -1147,7 +1159,7 @@ func findBreakPattern(reg *patterns.Registry, slides []Slide, idx int) string {
 	intent := buildIntent(role, "", "")
 	rec := patterns.Recommend(reg, intent, nil, 3, opts)
 
-	for _, c := range rec.Candidates {
+	for _, c := range substantiveCandidates(rec) {
 		if c.PatternName != current {
 			return c.PatternName
 		}
@@ -1430,7 +1442,7 @@ func computeAlternativesForSlot(reg *patterns.Registry, slides []Slide, idx int,
 
 	out := make([]Alternative, 0, MaxAlternatives)
 	seen := map[string]bool{current: true}
-	for _, c := range rec.Candidates {
+	for _, c := range substantiveCandidates(rec) {
 		if seen[c.PatternName] {
 			continue
 		}

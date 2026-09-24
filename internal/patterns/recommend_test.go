@@ -96,8 +96,73 @@ func TestRecommend_NoMatch(t *testing.T) {
 	}
 
 	result := Recommend(reg, "explain quantum computing theory", nil, 3)
-	if len(result.Candidates) != 0 {
-		t.Errorf("expected empty candidates for unrelated intent, got %v", result.Candidates)
+	if len(result.Candidates) != 1 || result.Candidates[0].PatternName != "card-grid" || result.Candidates[0].ConfidenceBand != "low" || !result.Candidates[0].Fallback {
+		t.Errorf("expected low-confidence generic fallback, got %v", result.Candidates)
+	}
+}
+
+func TestRecommend_CommonConsultingIntents(t *testing.T) {
+	for _, tc := range []struct {
+		intent string
+		hints  *ContentHints
+		want   []string
+	}{
+		{"key risks and mitigations", &ContentHints{ItemCount: 4}, []string{"card-grid", "comparison-2col", "table-highlight"}},
+		{"the three strategic priorities", &ContentHints{ItemCount: 3}, []string{"stylish-panels", "card-grid", "strategy-house"}},
+		{"show the process steps", &ContentHints{ItemCount: 4}, []string{"numbered-step-strip", "icon-row", "process-flow"}},
+	} {
+		t.Run(tc.intent, func(t *testing.T) {
+			result := Recommend(Default(), tc.intent, tc.hints, 3)
+			if len(result.Candidates) != len(tc.want) {
+				t.Fatalf("%q: candidates = %+v, want %v", tc.intent, result.Candidates, tc.want)
+			}
+			for i, want := range tc.want {
+				if result.Candidates[i].PatternName != want {
+					t.Errorf("%q: candidate %d = %q, want %q", tc.intent, i, result.Candidates[i].PatternName, want)
+				}
+				if result.Candidates[i].Fallback {
+					t.Errorf("%q: candidate %d unexpectedly marked generic fallback", tc.intent, i)
+				}
+			}
+		})
+	}
+}
+
+func TestRecommend_NoMatchFallbackUsesCountAndDensity(t *testing.T) {
+	for _, tc := range []struct {
+		hints ContentHints
+		want  string
+	}{
+		{ContentHints{ItemCount: 1, HasMetrics: true}, "stat-hero"},
+		{ContentHints{ItemCount: 2}, "comparison-2col"},
+		{ContentHints{ItemCount: 4, DensityHint: "high"}, "stylish-panels"},
+		{ContentHints{ItemCount: 7}, "card-grid"},
+	} {
+		result := Recommend(Default(), "unstructured content request", &tc.hints, 3)
+		if len(result.Candidates) != 1 || result.Candidates[0].PatternName != tc.want || result.Candidates[0].ConfidenceBand != "low" {
+			t.Errorf("hints=%+v: candidates=%+v, want low-confidence %s", tc.hints, result.Candidates, tc.want)
+		}
+	}
+}
+
+func TestRecommend_FallbackRespectsAvailablePatternsAndFeasibleVariety(t *testing.T) {
+	reg := NewRegistry()
+	reg.Register(&stubPattern{name: "card-grid", desc: "cards", useWhen: "cards", version: 1})
+	reg.Register(&stubPattern{name: "comparison-2col", desc: "compare", useWhen: "compare", version: 1})
+
+	missingHero := Recommend(reg, "unstructured content request", &ContentHints{ItemCount: 1, HasMetrics: true}, 3)
+	if len(missingHero.Candidates) != 1 || missingHero.Candidates[0].PatternName != "card-grid" || !missingHero.Candidates[0].Fallback {
+		t.Fatalf("unavailable hero fallback = %+v, want generic cards", missingHero.Candidates)
+	}
+
+	opts := &RecommendOptions{RecentPatterns: []string{"card-grid", "card-grid", "card-grid"}, PreferVariety: true}
+	unknownCount := Recommend(reg, "unstructured content request", nil, 3, opts)
+	if len(unknownCount.Candidates) != 1 || unknownCount.Candidates[0].PatternName != "comparison-2col" {
+		t.Fatalf("variety fallback = %+v, want unused available alternative", unknownCount.Candidates)
+	}
+	manyItems := Recommend(reg, "unstructured content request", &ContentHints{ItemCount: 7}, 3, opts)
+	if len(manyItems.Candidates) != 1 || manyItems.Candidates[0].PatternName != "card-grid" {
+		t.Fatalf("seven-item fallback = %+v, want feasible cards despite recency", manyItems.Candidates)
 	}
 }
 

@@ -8,6 +8,20 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
+func TestSubstantiveCandidatesSkipsGenericPromptFallback(t *testing.T) {
+	rec := patterns.RecommendResult{Candidates: []patterns.Candidate{
+		{PatternName: "card-grid", Fallback: true},
+		{PatternName: "numbered-step-strip", Score: 0.9},
+	}}
+	got := substantiveCandidates(rec)
+	if len(got) != 1 || got[0].PatternName != "numbered-step-strip" {
+		t.Fatalf("substantive candidates = %+v, want only the scored match", got)
+	}
+	if name, _ := recommendForRole(patterns.Default(), nil, "exposition", "unstructured content request", nil, 0); name != "" {
+		t.Errorf("automatic planning selected generic fallback %q", name)
+	}
+}
+
 func TestDistributeRoles(t *testing.T) {
 	tests := []struct {
 		budget    int

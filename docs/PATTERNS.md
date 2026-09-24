@@ -178,6 +178,8 @@ holds; the regression is locked by `TestRecommend_RefinedConsultingBias` in
 `recommend_test.go`. `card-grid` is reserved for genuinely flat catalog content (titled tiles
 with no ranking, decomposition, sequence, or hierarchy).
 
+The scorer also recognizes risk/mitigation pairs, strategic priorities, and ordered process steps explicitly. If no intent rule clears the threshold, `recommend_pattern` returns one low-confidence, item-count/density-based starting layout instead of an empty list, and asks for clarification. This generic fallback is not a semantic match and is ignored by automatic deck planning; an explicitly unsupported visual such as Sankey still returns `unsupported_visual` with no pattern candidate.
+
 ## Taxonomy fields
 
 Every pattern must implement `Taxonomy() PatternTaxonomy` returning classification metadata used by `recommend_pattern` and `analyze_deck_rhythm`:

@@ -44,6 +44,7 @@ type Candidate struct {
 	Rationale      string  `json:"rationale"`
 	ConfidenceBand string  `json:"confidence_band,omitempty"` // high, medium, low
 	DiversityBonus bool    `json:"diversity_bonus,omitempty"` // true if boosted for variety
+	Fallback       bool    `json:"-"`                         // internal: generic fallback is not a semantic match
 }
 
 // NearMiss describes a candidate that nearly qualified but was edged out.
@@ -183,6 +184,12 @@ var rules = []rule{
 		baseScore: 0.80,
 		rationale: "Two-column comparison layout",
 	},
+	{
+		pattern:   "comparison-2col",
+		keywords:  []string{"risks and mitigations", "risk and mitigation", "risk mitigation"},
+		baseScore: 0.78,
+		rationale: "Pair each risk with its mitigation in two aligned columns",
+	},
 
 	// BMC
 	{
@@ -236,6 +243,18 @@ var rules = []rule{
 		keywords:  []string{"overview", "summary", "categories"},
 		baseScore: 0.60,
 		rationale: "Card grid can organize categories or summary items",
+	},
+	{
+		pattern:   "card-grid",
+		keywords:  []string{"risks and mitigations", "risk and mitigation", "risk mitigation"},
+		baseScore: 0.86,
+		rationale: "One card per risk with its mitigation kept together",
+	},
+	{
+		pattern:   "card-grid",
+		keywords:  []string{"strategic priorities", "strategy priorities", "key priorities"},
+		baseScore: 0.82,
+		rationale: "Parallel priority cards when each priority has a short description",
 	},
 
 	// Timeline
@@ -329,7 +348,7 @@ var rules = []rule{
 	// process-flow (which implies a flowchart with decision diamonds).
 	{
 		pattern:   "numbered-step-strip",
-		keywords:  []string{"numbered steps", "ordered steps", "step strip", "key steps", "stages", "how it works", "three steps", "four steps", "five steps", "phases without dates", "our approach", "the process in steps"},
+		keywords:  []string{"numbered steps", "ordered steps", "process steps", "step strip", "key steps", "stages", "how it works", "three steps", "four steps", "five steps", "phases without dates", "our approach", "the process in steps"},
 		baseScore: 0.93,
 		rationale: "Ordered numbered steps (3-6) without decision diamonds, with an optional per-step detail zone (chevron / stacked-box / toc styles)",
 		itemMin:   3,
@@ -665,7 +684,7 @@ var rules = []rule{
 	// Stylish panels — pillars, capabilities, workstreams
 	{
 		pattern:   "stylish-panels",
-		keywords:  []string{"pillar", "capability", "workstream", "service", "department", "panel", "stylish"},
+		keywords:  []string{"pillar", "capability", "workstream", "service", "department", "panel", "stylish", "strategic priorities", "strategy priorities", "key priorities"},
 		baseScore: 0.85,
 		rationale: "Accent-banded panels with ribbon headers, ideal for 3-5 pillars, capabilities, or workstreams with bullet details",
 		itemMin:   3,
@@ -696,6 +715,14 @@ var rules = []rule{
 		keywords:  []string{"strategy", "foundation", "objective", "pillar", "pillars", "house"},
 		baseScore: 0.82,
 		rationale: "Strategy-house pattern when content has an objective above pillars above a foundation",
+		itemMin:   3,
+		itemMax:   5,
+	},
+	{
+		pattern:   "strategy-house",
+		keywords:  []string{"strategic priorities", "strategy priorities"},
+		baseScore: 0.76,
+		rationale: "Use a strategy house if the priorities share an objective and a foundation",
 		itemMin:   3,
 		itemMax:   5,
 	},
@@ -747,6 +774,14 @@ var rules = []rule{
 		keywords:  []string{"evaluate options", "assess options", "criteria", "shortlist", "scorecard", "status by workstream"},
 		baseScore: 0.8,
 		rationale: "table-highlight when several options are rated on shared criteria (not a two-option prose comparison)",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "table-highlight",
+		keywords:  []string{"risks and mitigations", "risk and mitigation", "risk mitigation"},
+		baseScore: 0.72,
+		rationale: "Risk matrix when risks also have comparable severity or status scores",
 		itemMin:   2,
 		itemMax:   6,
 	},
@@ -882,6 +917,9 @@ func Recommend(reg *Registry, intent string, hints *ContentHints, maxCandidates 
 
 	// Inject diversity bonus if not already present.
 	injectDiversityBonus(&result, diversityCandidate)
+	if len(result.Candidates) == 0 {
+		result.Candidates = append(result.Candidates, fallbackCandidate(reg, hints, recencyCount, applyVariety))
+	}
 
 	if len(nearMisses) > 2 {
 		nearMisses = nearMisses[:2]
@@ -910,6 +948,52 @@ func unsupportedVisualIntent(intentLower string) string {
 		}
 	}
 	return ""
+}
+
+// fallbackCandidate gives an underspecified but supported request a starting
+// layout rather than an empty answer. It is intentionally low-confidence:
+// item count and density alone cannot establish the content's structure.
+func fallbackCandidate(reg *Registry, hints *ContentHints, recencyCount map[string]int, preferVariety bool) Candidate {
+	name := "card-grid"
+	reason := "Flexible titled cards for an unspecified set of items; clarify the content structure for a stronger match"
+	switch {
+	case hints.HasMetrics && hints.ItemCount == 1:
+		name, reason = "stat-hero", "One numeric item can be a hero statistic; clarify the metric and context"
+	case hints.ItemCount == 2:
+		name, reason = "comparison-2col", "Two items can be shown side by side; clarify whether they are alternatives"
+	case hints.ItemCount >= 3 && hints.ItemCount <= 5 && hints.DensityHint == "high":
+		name, reason = "stylish-panels", "Detailed items can use titled panels; clarify whether each has supporting bullets"
+	}
+	if reg != nil {
+		if _, ok := reg.Get(name); !ok {
+			name = "card-grid"
+			reason = "Flexible titled cards for an unspecified set of items; clarify the content structure for a stronger match"
+		}
+	}
+	if preferVariety && recencyCount[name] > 0 {
+		for _, alternative := range []string{"stylish-panels", "comparison-2col", "card-grid"} {
+			if recencyCount[alternative] > 0 || alternative == name {
+				continue
+			}
+			if hints.ItemCount > 0 {
+				if alternative == "stylish-panels" && (hints.ItemCount < 3 || hints.ItemCount > 5) {
+					continue
+				}
+				if alternative == "comparison-2col" && hints.ItemCount != 2 {
+					continue
+				}
+			}
+			if reg != nil {
+				if _, ok := reg.Get(alternative); !ok {
+					continue
+				}
+			}
+			name = alternative
+			reason = "Low-confidence alternative to a recently repeated layout; clarify the content structure"
+			break
+		}
+	}
+	return Candidate{PatternName: name, Score: 0.5, Rationale: reason, ConfidenceBand: confidenceLow, Fallback: true}
 }
 
 // recommendOnlyCandidates ranks an explicit list of pattern names against the
@@ -1030,6 +1114,7 @@ func scoreAndDedup(intentLower string, hints *ContentHints) []scored {
 // no competing flowchart term) demotes the process-flow family.
 var orderedStepsIntentKeywords = []string{
 	"ordered steps", "ordered step", "numbered steps", "numbered step",
+	"process steps",
 	"step selection", "selection process", "selection logic", "selection criteria",
 	"criteria steps", "ranked criteria", "approval path", "approval steps",
 	"approval process", "decision thresholds", "decision criteria",
