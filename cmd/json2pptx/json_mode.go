@@ -2257,7 +2257,7 @@ func inferSlideType(slide SlideInput, layouts ...types.LayoutMetadata) types.Sli
 	if slide.SlideType != "" {
 		return types.SlideType(slide.SlideType)
 	}
-	if strings.EqualFold(slide.LayoutID, "section") {
+	if isSectionSlideInput(slide, layouts) {
 		return types.SlideTypeSection
 	}
 

@@ -122,7 +122,7 @@ func collectSubstanceFindings(input *PresentationInput, layouts ...types.LayoutM
 	var findings []patterns.FitFinding
 	findings = append(findings, collectPlaceholderContentFindings(input)...)
 	findings = append(findings, collectSlideSubstanceFindings(input, layouts...)...)
-	findings = append(findings, collectMonotonyFindings(input)...)
+	findings = append(findings, collectMonotonyFindings(input, layouts...)...)
 	findings = append(findings, collectChartLegibilityFindings(input)...)
 	return findings
 }
@@ -511,7 +511,7 @@ const (
 // collectMonotonyFindings reports runs of consecutive slides built the same way.
 // The composition analysis already computed this signal; the score threw it
 // away, so eight identical KPI slides scored 100 (go-slide-creator-q7ar).
-func collectMonotonyFindings(input *PresentationInput) []patterns.FitFinding {
+func collectMonotonyFindings(input *PresentationInput, layouts ...types.LayoutMetadata) []patterns.FitFinding {
 	var out []patterns.FitFinding
 	runStart, runShape := -1, ""
 	flush := func(end int) {
@@ -545,7 +545,7 @@ func collectMonotonyFindings(input *PresentationInput) []patterns.FitFinding {
 		})
 	}
 	for i, slide := range input.Slides {
-		shape := slideShapeKey(slide)
+		shape := slideShapeKey(slide, layouts...)
 		if shape != runShape {
 			flush(i)
 			runStart, runShape = i, shape
@@ -557,8 +557,8 @@ func collectMonotonyFindings(input *PresentationInput) []patterns.FitFinding {
 
 // slideShapeKey describes how a slide is built — the pattern name, else the
 // content types it carries. Chrome slides return "" so they never form a run.
-func slideShapeKey(slide SlideInput) string {
-	if !slideCarriesArgument(slide) {
+func slideShapeKey(slide SlideInput, layouts ...types.LayoutMetadata) string {
+	if !slideCarriesArgument(slide, layouts...) {
 		return ""
 	}
 	if slide.Pattern != nil && slide.Pattern.Name != "" {

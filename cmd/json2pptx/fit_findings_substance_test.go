@@ -14,6 +14,47 @@ func sectionTextContent(id, value string) ContentInput {
 	return ContentInput{PlaceholderID: id, Type: "text", TextValue: &value}
 }
 
+func TestResolvedSectionLayoutIsChromeForSubstanceAndMonotony(t *testing.T) {
+	layouts := []types.LayoutMetadata{{
+		ID:            "slideLayout7",
+		CanonicalType: types.CanonicalLayoutSectionDivider,
+		Tags:          []string{"section-header"},
+	}}
+	section := SlideInput{
+		LayoutID: "slideLayout7",
+		Content: []ContentInput{
+			sectionTextContent("title", "Market context"),
+			sectionTextContent("Section Number", "01"),
+		},
+	}
+	if got := inferSlideType(section, layouts...); got != types.SlideTypeSection {
+		t.Fatalf("resolved section inferred as %q", got)
+	}
+	if slideCarriesArgument(section, layouts...) || slideShapeKey(section, layouts...) != "" {
+		t.Fatal("resolved section divider should not carry an argument or monotony shape")
+	}
+	sectionNoTitle := SlideInput{LayoutID: "slideLayout7", Content: []ContentInput{sectionTextContent("Section Number", "01")}}
+	deck := &PresentationInput{Slides: []SlideInput{sectionNoTitle, sectionNoTitle, sectionNoTitle, sectionNoTitle}}
+	for _, finding := range collectSubstanceFindings(deck, layouts...) {
+		switch finding.Code {
+		case patterns.ErrCodeSlideNearlyEmpty, patterns.ErrCodeMissingTitle, patterns.ErrCodeDeckMonotony:
+			t.Errorf("section divider got content-slide finding: %+v", finding)
+		}
+	}
+	// The same short body on a real content layout must still be detected.
+	content := section
+	content.LayoutID = "content-layout"
+	layouts = append(layouts, types.LayoutMetadata{ID: "content-layout", CanonicalType: types.CanonicalLayoutOneContent})
+	findings := collectSubstanceFindings(&PresentationInput{Slides: []SlideInput{content}}, layouts...)
+	found := false
+	for _, finding := range findings {
+		found = found || finding.Code == patterns.ErrCodeSlideNearlyEmpty
+	}
+	if !found {
+		t.Fatalf("short content slide missed nearly-empty finding: %+v", findings)
+	}
+}
+
 func TestTitleOnlyContentLayoutIsNearlyEmpty(t *testing.T) {
 	layouts := []types.LayoutMetadata{
 		{ID: "content-layout", Tags: []string{"content"}, CanonicalType: types.CanonicalLayoutOneContent},
