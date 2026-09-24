@@ -197,3 +197,24 @@ func TestOptionMatrixItemSchemaDocumentsDetailBudget(t *testing.T) {
 		}
 	}
 }
+
+func TestStatReportsAllBudgetViolationsInOnePass(t *testing.T) {
+	const value = "123456789012345678901"
+	body := map[string]any{
+		"title": "The prize", "number": value,
+		"suffix": strings.Repeat("U", 11), "description": strings.Repeat("C", 121),
+	}
+	ds := Validate(&DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: KindStat, Body: body}}}, StrictnessWarn)
+	findings := findingsWithCode(ds, diagnostics.CodeSemanticPatternDegraded)
+	if len(findings) != 3 {
+		t.Fatalf("degrade findings = %+v, want one for each over-budget field", findings)
+	}
+	for i, want := range []string{"slides[0].number", "slides[0].suffix", "slides[0].description"} {
+		if findings[i].Path != want {
+			t.Errorf("finding %d path = %q, want %q", i, findings[i].Path, want)
+		}
+		if findings[i].Fix == nil || findings[i].Fix.Params["reason"] != degradeBudgetExceeded {
+			t.Errorf("finding %d is not an actionable budget cause: %+v", i, findings[i])
+		}
+	}
+}

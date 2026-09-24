@@ -712,9 +712,9 @@ func validateTeam(path string, slide SlideSpec, s *semDiags) {
 // required-field gate's business (value, with its stat / number / metric
 // aliases), so this rule speaks only to budgets (go-slide-creator-2hkc).
 func validateStat(path string, slide SlideSpec, s *semDiags) {
-	if over := slides.StatOverBudget(slide.Body); over != "" {
-		s.degrade(path+".value",
-			fmt.Sprintf("stat %s (otherwise it degrades to a content slide)", over),
+	for _, issue := range slides.StatBudgetIssues(slide.Body) {
+		s.degrade(path+"."+issue.Field,
+			fmt.Sprintf("stat %s (otherwise it degrades to a content slide)", issue.Message),
 			"stat-hero", degradeToContent, degradeBudgetExceeded)
 	}
 }

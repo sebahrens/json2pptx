@@ -182,6 +182,28 @@ func TestStatWithNoValueReportsNoBudgetProblem(t *testing.T) {
 	}
 }
 
+func TestStatBudgetIssuesReportsEveryAuthoredField(t *testing.T) {
+	body := map[string]any{
+		"title":       "The prize",
+		"value":       "", // empty preferred alias must not mask the populated one
+		"number":      strings.Repeat("1", 21),
+		"suffix":      strings.Repeat("U", 11),
+		"description": strings.Repeat("C", 121),
+	}
+	issues := StatBudgetIssues(body)
+	if len(issues) != 3 {
+		t.Fatalf("budget issues = %+v, want value, unit and context", issues)
+	}
+	for i, want := range []string{"number", "suffix", "description"} {
+		if issues[i].Field != want {
+			t.Errorf("issue %d field = %q, want %q", i, issues[i].Field, want)
+		}
+	}
+	if got := StatOverBudget(body); got != issues[0].Message {
+		t.Errorf("first budget cause = %q, want %q", got, issues[0].Message)
+	}
+}
+
 // The spellings an author reaches for all resolve to the same field.
 func TestStatFieldAliases(t *testing.T) {
 	for _, key := range []string{"value", "stat", "number", "metric"} {

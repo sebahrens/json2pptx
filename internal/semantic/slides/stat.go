@@ -128,25 +128,60 @@ func statValueField(body map[string]any) string {
 // "" when it fits. An empty value is the required-field gate's business, not the
 // budget's, so it reports nothing.
 func StatOverBudget(body map[string]any) string {
-	v := statValues(body)
-	if v.Value == "" {
-		return ""
-	}
-	switch {
-	case v.Label == "":
-		return "has no label; a number with no words beneath it is not a slide"
-	case runeLen(v.Value) > statValueMax:
-		return fmt.Sprintf("value is %d characters; the display number holds %d", runeLen(v.Value), statValueMax)
-	case runeLen(v.Unit) > statUnitMax:
-		return fmt.Sprintf("unit is %d characters; the suffix holds %d", runeLen(v.Unit), statUnitMax)
-	case runeLen(v.Label) > statLabelMax:
-		return fmt.Sprintf("label is %d characters; the line beneath the number holds %d", runeLen(v.Label), statLabelMax)
-	case runeLen(v.Context) > statContextMax:
-		return fmt.Sprintf("context is %d characters; the subtext line holds %d", runeLen(v.Context), statContextMax)
-	case runeLen(v.Source) > statSourceMax:
-		return fmt.Sprintf("source is %d characters; the footnote holds %d", runeLen(v.Source), statSourceMax)
+	issues := StatBudgetIssues(body)
+	if len(issues) > 0 {
+		return issues[0].Message
 	}
 	return ""
+}
+
+// StatBudgetIssue locates one reason the stat-hero pattern would reject the
+// payload. Field is the authored alias selected by statValues.
+type StatBudgetIssue struct {
+	Field   string
+	Message string
+}
+
+// StatBudgetIssues returns every independent stat-hero budget violation so an
+// author can repair the slide in one validation round trip.
+func StatBudgetIssues(body map[string]any) []StatBudgetIssue {
+	v := statValues(body)
+	if v.Value == "" {
+		return nil
+	}
+	var issues []StatBudgetIssue
+	if v.Label == "" {
+		issues = append(issues, StatBudgetIssue{"label", "has no label; a number with no words beneath it is not a slide"})
+	}
+	for _, field := range []struct {
+		value, name string
+		max         int
+		message     string
+		aliases     []string
+	}{
+		{v.Value, "value", statValueMax, "the display number", []string{"value", "stat", "number", "metric"}},
+		{v.Unit, "unit", statUnitMax, "the suffix", []string{"unit", "suffix"}},
+		{v.Label, "label", statLabelMax, "the line beneath the number", []string{"label", "caption", "subtitle", "title"}},
+		{v.Context, "context", statContextMax, "the subtext line", []string{"context", "detail", "description"}},
+		{v.Source, "source", statSourceMax, "the footnote", []string{"source"}},
+	} {
+		if n := runeLen(field.value); n > field.max {
+			issues = append(issues, StatBudgetIssue{
+				Field:   firstStatPopulatedField(body, field.aliases...),
+				Message: fmt.Sprintf("%s is %d characters; %s holds %d", field.name, n, field.message, field.max),
+			})
+		}
+	}
+	return issues
+}
+
+func firstStatPopulatedField(body map[string]any, fields ...string) string {
+	for _, field := range fields {
+		if strField(body, field) != "" {
+			return field
+		}
+	}
+	return fields[0]
 }
 
 // StatPattern returns the pattern a stat payload compiles to, or "" when it
