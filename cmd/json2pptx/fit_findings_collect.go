@@ -141,7 +141,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 		chartBodyFont = theme.BodyFont
 	}
 	findings = append(findings,
-		collectChartDryRenderFindings(input, chartThemeColors, chartBodyFont, "warn")...)
+		collectChartDryRenderFindingsInFrames(input, chartThemeColors, chartBodyFont, "warn", layouts, slideWidth, slideHeight)...)
 
 	// 8. Content lint: headline word count, body word count, bullet nesting
 	// depth. Advisory findings that flag verbose / over-nested authoring

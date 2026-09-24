@@ -43,8 +43,8 @@ func TestVenn_DroppedItemsAreReported(t *testing.T) {
 	if dropped == nil {
 		t.Fatalf("12 items per circle must report %s, got %+v", FindingDiagramItemsDropped, findings)
 	}
-	if dropped.Severity != "warning" {
-		t.Errorf("severity = %q, want warning", dropped.Severity)
+	if dropped.Severity != "refuse" {
+		t.Errorf("severity = %q, want refuse for lost authored content", dropped.Severity)
 	}
 	if dropped.Fix == nil || dropped.Fix.Kind != FixKindReduceItems {
 		t.Fatalf("fix = %+v, want kind %q", dropped.Fix, FixKindReduceItems)

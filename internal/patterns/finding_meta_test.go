@@ -26,6 +26,16 @@ func TestFindingMetaCoversAllSentinelCodes(t *testing.T) {
 	}
 }
 
+func TestDroppedDiagramItemsDescribeFinding(t *testing.T) {
+	meta, ok := GetFindingMeta("diagram.items_dropped")
+	if !ok {
+		t.Fatal("describe_finding must recognize diagram.items_dropped")
+	}
+	if meta.Severity != "refuse" || len(meta.RemediationSteps) == 0 {
+		t.Errorf("lost-content metadata must refuse with a repair path: %+v", meta)
+	}
+}
+
 // TestFindingMetaWellFormed asserts each entry has the required fields and a
 // recognized severity. This catches typos in severity strings that would
 // otherwise pass the schema check at runtime.

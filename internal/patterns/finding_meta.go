@@ -1195,6 +1195,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Or reduce data/series count so the chart fits.",
 		},
 	},
+	"diagram.items_dropped": {
+		Code:        "diagram.items_dropped",
+		Summary:     "Authored diagram items did not fit and were omitted from the rendered visual.",
+		Severity:    "refuse",
+		WhenEmitted: "A Venn circle's item list exceeds the space available in its resolved template or grid-cell frame.",
+		RemediationSteps: []string{
+			"Reduce or shorten the items in the affected circle.",
+			"Widen or heighten the diagram frame, or move the detail to a text column beside it.",
+		},
+	},
 
 	// ---- Template-validation codes (emitted by validate-template; TPL.* namespace) ----
 

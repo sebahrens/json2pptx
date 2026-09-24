@@ -222,7 +222,7 @@ func (vc *VennChart) layout3Circles(area Rect, colors []Color) []circleLayout {
 	triCenterY := centerY
 
 	return []circleLayout{
-		{cx: centerX, cy: triCenterY - offset, radius: radius, color: colors[0]},                                           // top
+		{cx: centerX, cy: triCenterY - offset, radius: radius, color: colors[0]},                                                  // top
 		{cx: centerX - offset*math.Cos(math.Pi/6), cy: triCenterY + offset*math.Sin(math.Pi/6), radius: radius, color: colors[1]}, // bottom-left
 		{cx: centerX + offset*math.Cos(math.Pi/6), cy: triCenterY + offset*math.Sin(math.Pi/6), radius: radius, color: colors[2]}, // bottom-right
 	}
@@ -254,8 +254,8 @@ func (vc *VennChart) drawCircleStroke(cl circleLayout) {
 const vennLoScale = 1.0
 
 func vennFontSizes(style *StyleGuide) (labelSize, itemSize float64) {
-	labelSize = style.Typography.SizeSmall   // bold circle/intersection labels
-	itemSize = style.Typography.SizeCaption  // item text
+	labelSize = style.Typography.SizeSmall  // bold circle/intersection labels
+	itemSize = style.Typography.SizeCaption // item text
 	return
 }
 
@@ -773,7 +773,7 @@ func (vc *VennChart) reportDroppedItems(total, drawn int, circleLabel string) {
 		Message: fmt.Sprintf(
 			"venn: %d of %d item(s) in %s did not fit and were not rendered — shorten the items, list fewer of them, or move the detail to a text column beside the diagram",
 			dropped, total, where),
-		Severity: "warning",
+		Severity: "refuse",
 		Fix: &FixSuggestion{
 			Kind: FixKindReduceItems,
 			Params: map[string]any{
@@ -946,4 +946,3 @@ func parseVennData(req *RequestEnvelope) (VennData, error) {
 
 	return data, nil
 }
-

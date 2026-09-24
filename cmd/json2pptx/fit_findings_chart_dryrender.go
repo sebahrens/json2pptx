@@ -5,6 +5,8 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -53,15 +55,44 @@ func collectChartDryRenderFindingsWithConverter(
 	strictFit string,
 	converterAvailable bool,
 ) []patterns.FitFinding {
+	return collectChartDryRenderFindingsResolved(input, themeColors, bodyFont, strictFit, converterAvailable, nil, 0, 0)
+}
+
+// collectChartDryRenderFindingsInFrames asks svggen about the frame generation
+// will actually render into, not svggen's 800x600 default. A template's layout
+// and post-fit grid cell can both materially change what labels fit.
+func collectChartDryRenderFindingsInFrames(
+	input *PresentationInput,
+	themeColors []types.ThemeColor,
+	bodyFont, strictFit string,
+	layouts []types.LayoutMetadata,
+	slideWidth, slideHeight int64,
+) []patterns.FitFinding {
+	return collectChartDryRenderFindingsResolved(input, themeColors, bodyFont, strictFit,
+		generator.NewSVGConverter().IsPNGAvailable(), layouts, slideWidth, slideHeight)
+}
+
+func collectChartDryRenderFindingsResolved(
+	input *PresentationInput,
+	themeColors []types.ThemeColor,
+	bodyFont, strictFit string,
+	converterAvailable bool,
+	layouts []types.LayoutMetadata,
+	slideWidth, slideHeight int64,
+) []patterns.FitFinding {
 	if input == nil || len(input.Slides) == 0 {
 		return nil
 	}
 	var findings []patterns.FitFinding
+	predictedLayouts := predictSlideLayouts(input, layouts)
+	rhythmGrid := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	for slideIdx, slide := range input.Slides {
+		layout := predictedLayouts[slideIdx]
 		// Placeholder content charts/diagrams. Paths use the legacy bracket
 		// notation these findings have always emitted (preserved for callers
 		// and tests that key off it).
 		for contentIdx, item := range slide.Content {
+			bounds := tablePlaceholderBounds(item.PlaceholderID, layout)
 			switch item.Type {
 			case "chart":
 				if item.ChartValue == nil {
@@ -70,14 +101,14 @@ func collectChartDryRenderFindingsWithConverter(
 				spec := chartValueToDiagramSpec(item.ChartValue)
 				path := fmt.Sprintf("slides[%d].content[%d].chart_value", slideIdx, contentIdx)
 				findings = append(findings,
-					dryRenderSpecToFindings(spec, themeColors, bodyFont, strictFit, path)...)
+					dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, false, bounds)...)
 			case "diagram":
 				if item.DiagramValue == nil {
 					continue
 				}
 				path := fmt.Sprintf("slides[%d].content[%d].diagram_value", slideIdx, contentIdx)
 				findings = append(findings,
-					dryRenderSpecToFindings(item.DiagramValue, themeColors, bodyFont, strictFit, path)...)
+					dryRenderSpecInBounds(item.DiagramValue, themeColors, bodyFont, strictFit, path, false, bounds)...)
 			}
 		}
 
@@ -86,15 +117,26 @@ func collectChartDryRenderFindingsWithConverter(
 		// checkGridDiagramPreflight), so a dry-render finding and a structural
 		// finding for the same cell agree on the cell identity.
 		if slide.ShapeGrid != nil {
-			findings = append(findings, collectGridDryRenderFindings(
-				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, bodyFont, strictFit, converterAvailable)...)
-		} else if pg := expandSlidePatternGrid(&slide, slideIdx, 0, 0, nil); pg != nil {
+			geom, _ := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythmGrid)
+			result := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+			findings = append(findings, collectGridDryRenderFindingsResolved(
+				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, bodyFont, strictFit,
+				converterAvailable, result, slideWidth, slideHeight)...)
+		} else if slide.Pattern != nil {
 			// Named patterns that embed charts (chart-insights-split, ...)
 			// are only expanded at generate time; expand them here so their
 			// charts get the same dry-render as raw shape_grid diagrams
 			// (go-slide-creator-yzbo). Paths are rooted at the pattern.
-			findings = append(findings, collectGridDryRenderFindings(
-				pg, slidepath.SlideField(slideIdx, "pattern"), themeColors, bodyFont, strictFit, converterAvailable)...)
+			geom, frame := patternExpansionGeometry(slide, layouts, slideWidth, slideHeight, rhythmGrid)
+			pg, _ := expandSlidePatternGridWithWarningsAtBounds(&slide, slideIdx, slideWidth, slideHeight, nil,
+				patterns.LayoutBounds{X: frame.X, Y: frame.Y, Width: frame.CX, Height: frame.CY}, geom.Zone)
+			if pg == nil {
+				continue
+			}
+			result := resolveGridForStructural(pg, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+			findings = append(findings, collectGridDryRenderFindingsResolved(
+				pg, slidepath.SlideField(slideIdx, "pattern"), themeColors, bodyFont, strictFit,
+				converterAvailable, result, slideWidth, slideHeight)...)
 		}
 	}
 	return findings
@@ -111,13 +153,14 @@ func collectChartDryRenderFindingsWithConverter(
 // owning cell and subfield. For a top-level cell diagram this yields exactly
 // slidepath.GridCellField(slideIdx, ri, ci, "diagram"), matching the path the
 // structural diagram detectors emit.
-func collectGridDryRenderFindings(
+func collectGridDryRenderFindingsResolved(
 	grid *ShapeGridInput,
 	basePath string,
 	themeColors []types.ThemeColor,
-	bodyFont string,
-	strictFit string,
+	bodyFont, strictFit string,
 	converterAvailable bool,
+	result *shapegrid.ResolveResult,
+	slideWidth, slideHeight int64,
 ) []patterns.FitFinding {
 	if grid == nil {
 		return nil
@@ -129,21 +172,44 @@ func collectGridDryRenderFindings(
 				continue
 			}
 			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", basePath, ri, ci)
+			diagramBounds := resolvedGridCellBounds(result, ri, ci, shapegrid.CellKindDiagram)
 			if cell.Diagram != nil {
-				findings = append(findings, dryRenderGridSpecToFindings(
-					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram", converterAvailable)...)
+				findings = append(findings, dryRenderGridSpecInBounds(
+					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram", converterAvailable, diagramBounds)...)
 			}
 			if cell.Composite != nil && cell.Composite.SubDiagram != nil {
-				findings = append(findings, dryRenderGridSpecToFindings(
-					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram", converterAvailable)...)
+				findings = append(findings, dryRenderGridSpecInBounds(
+					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram", converterAvailable, diagramBounds)...)
 			}
 			if cell.Grid != nil {
-				findings = append(findings, collectGridDryRenderFindings(
-					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit, converterAvailable)...)
+				var nested *shapegrid.ResolveResult
+				if parent := resolvedGridCellBounds(result, ri, ci, shapegrid.CellKindSubGrid); parent.Width > 0 && parent.Height > 0 {
+					inset := pptx.RectEmu{X: parent.X + subGridInsetEMU, Y: parent.Y + subGridInsetEMU,
+						CX: parent.Width - 2*subGridInsetEMU, CY: parent.Height - 2*subGridInsetEMU}
+					if inset.CX <= 0 || inset.CY <= 0 {
+						inset = pptx.RectEmu{X: parent.X, Y: parent.Y, CX: parent.Width, CY: parent.Height}
+					}
+					nested = resolveGridForStructural(cell.Grid, &inset, nil, slideWidth, slideHeight)
+				}
+				findings = append(findings, collectGridDryRenderFindingsResolved(
+					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit,
+					converterAvailable, nested, slideWidth, slideHeight)...)
 			}
 		}
 	}
 	return findings
+}
+
+func resolvedGridCellBounds(result *shapegrid.ResolveResult, row, col int, kind shapegrid.CellKind) types.BoundingBox {
+	if result == nil {
+		return types.BoundingBox{}
+	}
+	for _, cell := range result.Cells {
+		if cell.RowIdx == row && cell.ColIdx == col && cell.Kind == kind {
+			return types.BoundingBox{X: cell.Bounds.X, Y: cell.Bounds.Y, Width: cell.Bounds.CX, Height: cell.Bounds.CY}
+		}
+	}
+	return types.BoundingBox{}
 }
 
 // chartValueToDiagramSpec adapts the authored ChartSpec into the DiagramSpec
@@ -179,20 +245,19 @@ func dryRenderSpecToFindings(
 	return dryRenderSpec(spec, themeColors, bodyFont, strictFit, path, false)
 }
 
-// dryRenderGridSpecToFindings is dryRenderSpecToFindings for shape_grid
+// dryRenderGridSpecInBounds is dryRenderSpecToFindings for shape_grid
 // (and pattern-expanded) diagram cells. Generate aborts the deck when such a
 // cell fails to render, so a dry-render error is surfaced as a
 // diagram_render_failed finding with action "refuse" instead of being
 // dropped (go-slide-creator-yzbo).
-func dryRenderGridSpecToFindings(
+func dryRenderGridSpecInBounds(
 	spec *types.DiagramSpec,
 	themeColors []types.ThemeColor,
-	bodyFont string,
-	strictFit string,
-	path string,
+	bodyFont, strictFit, path string,
 	converterAvailable bool,
+	bounds types.BoundingBox,
 ) []patterns.FitFinding {
-	findings := dryRenderSpec(spec, themeColors, bodyFont, strictFit, path, true)
+	findings := dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, true, bounds)
 	if converterAvailable || spec == nil || spec.Type == "" || generator.IsNativeDiagramType(spec) {
 		return findings
 	}
@@ -218,6 +283,16 @@ func dryRenderSpec(
 	strictFit string,
 	path string,
 	gridSurface bool,
+) []patterns.FitFinding {
+	return dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, gridSurface, types.BoundingBox{})
+}
+
+func dryRenderSpecInBounds(
+	spec *types.DiagramSpec,
+	themeColors []types.ThemeColor,
+	bodyFont, strictFit, path string,
+	gridSurface bool,
+	bounds types.BoundingBox,
 ) []patterns.FitFinding {
 	if spec == nil || spec.Type == "" {
 		return nil
@@ -245,12 +320,7 @@ func dryRenderSpec(
 		Subtitle: spec.Subtitle,
 		Data:     spec.Data,
 	}
-	if spec.Width > 0 {
-		req.Output.Width = spec.Width
-	}
-	if spec.Height > 0 {
-		req.Output.Height = spec.Height
-	}
+	req.Output.Width, req.Output.Height, _ = generator.ResolveDiagramRenderDimensions(spec, bounds)
 	req.Output.StrictFit = strictFit
 	// Forward resolved colors so dry-render palette behavior matches generation.
 	if spec.Style != nil && len(spec.Style.Colors) > 0 {

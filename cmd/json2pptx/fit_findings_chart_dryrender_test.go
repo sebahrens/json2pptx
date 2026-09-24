@@ -260,6 +260,133 @@ func TestCollectChartDryRenderFindings_EmptyInput(t *testing.T) {
 
 func ptr[T any](v T) *T { return &v }
 
+func vennFrameFixture() *types.DiagramSpec {
+	circles := []any{
+		map[string]any{"label": "Customer needs", "items": []any{"Faster onboarding", "Transparent pricing"}},
+		map[string]any{"label": "Our capabilities", "items": []any{"Platform APIs", "Global support"}},
+		map[string]any{"label": "Competitor gaps", "items": []any{"No self-service", "Slow releases"}},
+	}
+	return &types.DiagramSpec{Type: "venn", Data: map[string]any{"circles": circles}}
+}
+
+func TestChartDryRenderUsesResolvedPlaceholderFrame(t *testing.T) {
+	spec := vennFrameFixture()
+	input := &PresentationInput{Slides: []SlideInput{{
+		LayoutID: "slideLayout1",
+		Content:  []ContentInput{{Type: "diagram", PlaceholderID: "body", DiagramValue: spec}},
+	}}}
+	layout := types.LayoutMetadata{ID: "slideLayout1", Name: "One Content", Placeholders: []types.PlaceholderInfo{{
+		ID: "body", Type: types.PlaceholderBody,
+		Bounds: types.BoundingBox{Width: 747 * int64(types.EMUPerPoint), Height: 220 * int64(types.EMUPerPoint)},
+	}}}
+	narrow := collectChartDryRenderFindingsResolved(input, nil, "", "warn", true, []types.LayoutMetadata{layout}, 0, 0)
+	var dropped bool
+	for _, f := range narrow {
+		if f.Code == "diagram.items_dropped" {
+			dropped = true
+			if f.Action != "refuse" {
+				t.Errorf("lost Venn items action = %q, want refuse", f.Action)
+			}
+			if !strings.Contains(f.Path, "slides[0].content[0].diagram_value") {
+				t.Errorf("dropped-items path = %q", f.Path)
+			}
+		}
+	}
+	if !dropped {
+		t.Fatalf("narrow template frame must reveal dropped Venn items: %+v", narrow)
+	}
+	layout.Placeholders[0].Bounds = types.BoundingBox{Width: 828 * int64(types.EMUPerPoint), Height: 342 * int64(types.EMUPerPoint)}
+	wide := collectChartDryRenderFindingsResolved(input, nil, "", "warn", true, []types.LayoutMetadata{layout}, 0, 0)
+	for _, f := range wide {
+		if f.Code == "diagram.items_dropped" {
+			t.Errorf("wider frame unexpectedly drops Venn items: %+v", f)
+		}
+	}
+}
+
+func TestChartDryRenderUsesResolvedGridCellFrame(t *testing.T) {
+	spec := vennFrameFixture()
+	input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: &ShapeGridInput{
+		Bounds: &jsonschema.GridBoundsInput{X: 0, Y: 0, Width: 75, Height: 40},
+		Rows:   []GridRowInput{{Cells: []*GridCellInput{{Diagram: spec}}}},
+	}}}}
+	findings := collectChartDryRenderFindingsResolved(input, nil, "", "warn", true, nil,
+		960*int64(types.EMUPerPoint), 540*int64(types.EMUPerPoint))
+	for _, f := range findings {
+		if f.Code == "diagram.items_dropped" && strings.Contains(f.Path, "/shape_grid/rows/0/cells/0/diagram") {
+			return
+		}
+	}
+	t.Fatalf("narrow resolved grid cell must reveal dropped Venn items: %+v", findings)
+}
+
+func TestVennDroppedItemsDependsOnBundledTemplateFrame(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		layoutID    string
+		wantDropped bool
+	}{
+		{name: "modern-yellow", layoutID: "slideLayout4", wantDropped: true},
+		{name: "midnight-blue", layoutID: "slideLayout2", wantDropped: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			layouts, theme, slideWidth, slideHeight := fitReportGeometry(tc.name, "../../templates")
+			if len(layouts) == 0 || theme == nil {
+				t.Fatalf("could not resolve %s template geometry", tc.name)
+			}
+			input := &PresentationInput{Slides: []SlideInput{{
+				LayoutID: tc.layoutID,
+				Content:  []ContentInput{{Type: "diagram", PlaceholderID: "body", DiagramValue: vennFrameFixture()}},
+			}}}
+			var dropped bool
+			for _, f := range collectFitFindings(input, layouts, slideWidth, slideHeight, theme) {
+				if f.Code == "diagram.items_dropped" {
+					dropped = true
+					if f.Action != "refuse" {
+						t.Errorf("lost Venn items action = %q, want refuse", f.Action)
+					}
+				}
+			}
+			if dropped != tc.wantDropped {
+				t.Errorf("%s dropped items = %t, want %t", tc.name, dropped, tc.wantDropped)
+			}
+		})
+	}
+}
+
+func TestChartDryRenderUsesCompositeAndNestedGridFrames(t *testing.T) {
+	input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: &ShapeGridInput{
+		Bounds: &jsonschema.GridBoundsInput{X: 0, Y: 0, Width: 75, Height: 40},
+		Rows: []GridRowInput{{Cells: []*GridCellInput{
+			{Composite: &jsonschema.CompositeInput{
+				Text: &jsonschema.ShapeSpecInput{Geometry: "rect"}, SubDiagram: vennFrameFixture(),
+			}},
+			{Grid: &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{{Diagram: vennFrameFixture()}}}}}},
+		}}},
+	}}}}
+	findings := collectChartDryRenderFindingsResolved(input, nil, "", "warn", true, nil,
+		960*int64(types.EMUPerPoint), 540*int64(types.EMUPerPoint))
+	wantPaths := map[string]bool{
+		"/shape_grid/rows/0/cells/0/composite/sub_diagram":       false,
+		"/shape_grid/rows/0/cells/1/grid/rows/0/cells/0/diagram": false,
+	}
+	for _, f := range findings {
+		if f.Code != "diagram.items_dropped" {
+			continue
+		}
+		for path := range wantPaths {
+			if strings.Contains(f.Path, path) {
+				wantPaths[path] = true
+			}
+		}
+	}
+	for path, found := range wantPaths {
+		if !found {
+			t.Errorf("missing dropped-item finding at %s: %+v", path, findings)
+		}
+	}
+}
+
 // TestCollectChartDryRenderFindings_ShapeGridDiagram verifies that a diagram
 // embedded directly in a top-level shape_grid cell is dry-rendered and that the
 // finding path identifies the owning cell using the slidepath convention
