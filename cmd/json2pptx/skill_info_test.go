@@ -447,6 +447,7 @@ func TestAnalyzeTemplateForSkillInfo_TableStylesAllTemplates(t *testing.T) {
 
 	for _, tmpl := range templates {
 		t.Run(tmpl, func(t *testing.T) {
+			t.Parallel() // Each template is immutable; MemoryCache is synchronized.
 			for _, mode := range []string{"list", "compact", "full"} {
 				info, err := analyzeTemplateForSkillInfo(tmpl, cache, mode)
 				if err != nil {
