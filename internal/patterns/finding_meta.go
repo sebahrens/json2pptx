@@ -1205,6 +1205,15 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Widen or heighten the diagram frame, or move the detail to a text column beside it.",
 		},
 	},
+	"diagram.quadrant_position_defaulted": {
+		Code:        "diagram.quadrant_position_defaulted",
+		Summary:     "A matrix quadrant had no valid position and was placed by its list index.",
+		Severity:    "review",
+		WhenEmitted: "A matrix_2x2 quadrant omits position or provides a value other than top-left, top-right, bottom-left, or bottom-right (underscore aliases are accepted).",
+		RemediationSteps: []string{
+			"Set data.quadrants[i].position explicitly to the intended quadrant name.",
+		},
+	},
 
 	// ---- Template-validation codes (emitted by validate-template; TPL.* namespace) ----
 

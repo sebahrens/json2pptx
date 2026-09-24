@@ -941,9 +941,12 @@ func (d *Matrix2x2Diagram) Render(req *RequestEnvelope) (*SVGDocument, error) {
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVGDocument, error) {
 	return RenderWithHelper(req, func(builder *SVGBuilder, req *RequestEnvelope) error {
-		data, err := parseMatrix2x2Data(req)
+		data, findings, err := parseMatrix2x2Data(req)
 		if err != nil {
 			return err
+		}
+		for _, finding := range findings {
+			builder.AddFinding(finding)
 		}
 
 		width, height := builder.Width(), builder.Height()
@@ -994,18 +997,12 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 
 		// Apply quadrant labels from quadrants array (title or label field)
 		if quadrants, ok := req.Data["quadrants"].([]any); ok {
-			for _, q := range quadrants {
+			for i, q := range quadrants {
 				qMap, ok := q.(map[string]any)
 				if !ok {
 					continue
 				}
-				position, _ := qMap["position"].(string)
-				// Normalize position: support both hyphens and underscores
-				position = strings.ReplaceAll(position, "_", "-")
-				idx := quadrantPositionIndex(position)
-				if idx < 0 {
-					continue
-				}
+				idx, _ := resolvedQuadrantIndex(qMap, i)
 				// Prefer "title", fall back to "label"
 				if title, ok := qMap["title"].(string); ok {
 					config.QuadrantLabels[idx] = title
@@ -1077,11 +1074,12 @@ func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 // parseMatrix2x2Data parses the request data into Matrix2x2Data.
 //
 //nolint:gocognit,gocyclo // complex chart rendering logic
-func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, error) {
+func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, []Finding, error) {
 	data := Matrix2x2Data{
 		Title:    req.Title,
 		Subtitle: req.Subtitle,
 	}
+	var findings []Finding
 
 	// Parse points
 	if pointsRaw, ok := req.Data["points"].([]any); ok {
@@ -1127,7 +1125,7 @@ func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, error) {
 	// coordinates, so it is kept as lists rather than converted into invented
 	// scatter positions (go-slide-creator-s27x).
 	if quadrants, ok := req.Data["quadrants"].([]any); ok && len(data.Points) == 0 {
-		data.QuadrantItems = parseQuadrantItemLists(quadrants)
+		data.QuadrantItems, findings = parseQuadrantItemLists(quadrants)
 	}
 
 	// Parse footnote
@@ -1135,7 +1133,7 @@ func parseMatrix2x2Data(req *RequestEnvelope) (Matrix2x2Data, error) {
 		data.Footnote = footnote
 	}
 
-	return data, nil
+	return data, findings, nil
 }
 
 // maybeScaleNormalizedPoints detects matrix points provided on a normalized
@@ -1201,18 +1199,26 @@ func quadrantPositionIndex(position string) int {
 // quadrant centre plus a small spread — and with two items per quadrant their
 // labels already collided with each other and with the quadrant caption
 // (go-slide-creator-s27x).
-func parseQuadrantItemLists(quadrants []any) [4][]string {
+func parseQuadrantItemLists(quadrants []any) ([4][]string, []Finding) {
 	var out [4][]string
-	for _, q := range quadrants {
+	var findings []Finding
+	for qi, q := range quadrants {
 		qMap, ok := q.(map[string]any)
 		if !ok {
 			continue
 		}
-		position, _ := qMap["position"].(string)
-		// Normalize: support both hyphens and underscores.
-		idx := quadrantPositionIndex(strings.ReplaceAll(position, "_", "-"))
-		if idx < 0 {
-			continue
+		idx, defaulted := resolvedQuadrantIndex(qMap, qi)
+		if defaulted {
+			field := fmt.Sprintf("data.quadrants[%d].position", qi)
+			findings = append(findings, Finding{
+				Field:    field,
+				Code:     FindingQuadrantPositionDefaulted,
+				Message:  fmt.Sprintf("matrix_2x2: quadrant %d has no valid position; placed at %s by list order", qi+1, matrixQuadrantPositions[idx]),
+				Severity: "warning",
+				Fix: &FixSuggestion{Kind: FixKindReplaceValue, Params: map[string]any{
+					"field": field, "value": matrixQuadrantPositions[idx],
+				}},
+			})
 		}
 		items, ok := qMap["items"].([]any)
 		if !ok {
@@ -1231,7 +1237,18 @@ func parseQuadrantItemLists(quadrants []any) [4][]string {
 			}
 		}
 	}
-	return out
+	return out, findings
+}
+
+var matrixQuadrantPositions = [4]string{"top-left", "top-right", "bottom-left", "bottom-right"}
+
+func resolvedQuadrantIndex(quadrant map[string]any, listIndex int) (index int, defaulted bool) {
+	position, _ := quadrant["position"].(string)
+	index = quadrantPositionIndex(strings.ReplaceAll(strings.TrimSpace(position), "_", "-"))
+	if index >= 0 {
+		return index, false
+	}
+	return listIndex % len(matrixQuadrantPositions), true
 }
 
 // =============================================================================

@@ -153,27 +153,28 @@ const (
 	MaxSVGScale           = core.MaxSVGScale
 
 	// Finding codes (re-exported from core/finding_codes.go).
-	FindingInvalidNumeric          = core.FindingInvalidNumeric
-	FindingZeroSumPie              = core.FindingZeroSumPie
-	FindingNegativeOnLog           = core.FindingNegativeOnLog
-	FindingAllZeroSeries           = core.FindingAllZeroSeries
-	FindingCapacityExceeded        = core.FindingCapacityExceeded
-	FindingInvalidTimeFormat       = core.FindingInvalidTimeFormat
-	FindingAutoLogScaleApplied     = core.FindingAutoLogScaleApplied
-	FindingTickThinned             = core.FindingTickThinned
-	FindingScatterLabelSkipped     = core.FindingScatterLabelSkipped
-	FindingLabelTruncated          = core.FindingLabelTruncated
-	FindingLabelEllipsized         = core.FindingLabelEllipsized
-	FindingLabelClipped            = core.FindingLabelClipped
-	FindingLegendOverflowDropped   = core.FindingLegendOverflowDropped
-	FindingOverflowSuppressed      = core.FindingOverflowSuppressed
-	FindingDiagramItemsDropped     = core.FindingDiagramItemsDropped
-	FindingDiagramTextOverlap      = core.FindingDiagramTextOverlap
-	FindingOrgChartDepthPruned     = core.FindingOrgChartDepthPruned
-	FindingPlotAreaCollapsed       = core.FindingPlotAreaCollapsed
-	FindingPointOutOfRange         = core.FindingPointOutOfRange
-	FindingPercentScaleAmbiguous   = core.FindingPercentScaleAmbiguous
-	FindingCurrencyPrefixDefaulted = core.FindingCurrencyPrefixDefaulted
+	FindingInvalidNumeric            = core.FindingInvalidNumeric
+	FindingZeroSumPie                = core.FindingZeroSumPie
+	FindingNegativeOnLog             = core.FindingNegativeOnLog
+	FindingAllZeroSeries             = core.FindingAllZeroSeries
+	FindingCapacityExceeded          = core.FindingCapacityExceeded
+	FindingInvalidTimeFormat         = core.FindingInvalidTimeFormat
+	FindingAutoLogScaleApplied       = core.FindingAutoLogScaleApplied
+	FindingTickThinned               = core.FindingTickThinned
+	FindingScatterLabelSkipped       = core.FindingScatterLabelSkipped
+	FindingLabelTruncated            = core.FindingLabelTruncated
+	FindingLabelEllipsized           = core.FindingLabelEllipsized
+	FindingLabelClipped              = core.FindingLabelClipped
+	FindingLegendOverflowDropped     = core.FindingLegendOverflowDropped
+	FindingOverflowSuppressed        = core.FindingOverflowSuppressed
+	FindingDiagramItemsDropped       = core.FindingDiagramItemsDropped
+	FindingDiagramTextOverlap        = core.FindingDiagramTextOverlap
+	FindingOrgChartDepthPruned       = core.FindingOrgChartDepthPruned
+	FindingQuadrantPositionDefaulted = core.FindingQuadrantPositionDefaulted
+	FindingPlotAreaCollapsed         = core.FindingPlotAreaCollapsed
+	FindingPointOutOfRange           = core.FindingPointOutOfRange
+	FindingPercentScaleAmbiguous     = core.FindingPercentScaleAmbiguous
+	FindingCurrencyPrefixDefaulted   = core.FindingCurrencyPrefixDefaulted
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries

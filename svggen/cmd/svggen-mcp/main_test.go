@@ -1231,14 +1231,18 @@ func TestGetCapabilities(t *testing.T) {
 		if len(resp.Vocabularies.FindingCodes) == 0 {
 			t.Error("expected non-empty vocabularies.finding_codes")
 		}
-		// Every finding code must start with the chart.* prefix used by
-		// svggen's renderer.
+		// The renderer emits both chart.* and diagram.* findings.
 		for _, code := range resp.Vocabularies.FindingCodes {
-			if !strings.HasPrefix(code, "chart.") {
-				t.Errorf("finding_code %q does not start with %q prefix", code, "chart.")
+			if !strings.HasPrefix(code, "chart.") && !strings.HasPrefix(code, "diagram.") {
+				t.Errorf("finding_code %q has neither chart. nor diagram. prefix", code)
 			}
 		}
-		for _, code := range []string{svggen.FindingPercentScaleAmbiguous, svggen.FindingCurrencyPrefixDefaulted} {
+		for _, code := range []string{
+			svggen.FindingPercentScaleAmbiguous, svggen.FindingCurrencyPrefixDefaulted,
+			svggen.FindingDiagramItemsDropped, svggen.FindingDiagramTextOverlap,
+			svggen.FindingOrgChartDepthPruned, svggen.FindingQuadrantPositionDefaulted,
+			svggen.FindingPlotAreaCollapsed, svggen.FindingPointOutOfRange,
+		} {
 			if !slices.Contains(resp.Vocabularies.FindingCodes, code) {
 				t.Errorf("vocabularies.finding_codes missing %q", code)
 			}

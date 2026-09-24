@@ -866,7 +866,10 @@ func TestParseQuadrantItemLists(t *testing.T) {
 		},
 	}
 
-	got := parseQuadrantItemLists(quadrants)
+	got, findings := parseQuadrantItemLists(quadrants)
+	if len(findings) != 0 {
+		t.Fatalf("valid quadrant positions emitted findings: %+v", findings)
+	}
 
 	want := [4][]string{
 		{"Item A", "Item B"}, // top-left
@@ -888,18 +891,57 @@ func TestParseQuadrantItemLists(t *testing.T) {
 
 func TestParseQuadrantItemLists_InvalidPositions(t *testing.T) {
 	quadrants := []any{
-		map[string]any{"position": "invalid", "items": []any{"Should Skip"}},
+		map[string]any{"position": "invalid", "items": []any{"Should Survive"}},
 		map[string]any{"position": "top-left", "items": []any{"Valid Item"}},
 	}
 
-	got := parseQuadrantItemLists(quadrants)
+	got, findings := parseQuadrantItemLists(quadrants)
 
-	if len(got[0]) != 1 || got[0][0] != "Valid Item" {
-		t.Errorf("top-left = %v, want [Valid Item]", got[0])
+	if len(got[0]) != 2 || got[0][0] != "Should Survive" || got[0][1] != "Valid Item" {
+		t.Errorf("top-left = %v, want both authored items", got[0])
+	}
+	if len(findings) != 1 || findings[0].Code != FindingQuadrantPositionDefaulted || findings[0].Field != "data.quadrants[0].position" {
+		t.Fatalf("invalid position findings = %+v, want one actionable warning", findings)
+	}
+	if findings[0].Fix == nil || findings[0].Fix.Params["value"] != "top-left" {
+		t.Errorf("invalid position fix = %+v, want top-left", findings[0].Fix)
 	}
 	for i := 1; i < 4; i++ {
 		if len(got[i]) != 0 {
 			t.Errorf("quadrant %d should be empty, got %v", i, got[i])
+		}
+	}
+}
+
+func TestMatrix2x2Diagram_DefaultedQuadrantPositionsKeepItemsAndCaptions(t *testing.T) {
+	req := &RequestEnvelope{
+		Type: "matrix_2x2", Output: OutputSpec{Width: 800, Height: 600},
+		Data: map[string]any{"quadrants": []any{
+			map[string]any{"label": "Quick wins", "items": []any{"Workflow status"}},
+			map[string]any{"position": "diagonal", "label": "Strategic bets", "items": []any{"Platform API"}},
+			map[string]any{"position": "bottom_left", "label": "Fill-ins", "items": []any{"Template cleanup"}},
+		}},
+	}
+	diagram := &Matrix2x2Diagram{NewBaseDiagram("matrix_2x2")}
+	builder, svg, err := diagram.RenderWithBuilder(req)
+	if err != nil {
+		t.Fatalf("RenderWithBuilder: %v", err)
+	}
+	for _, label := range []string{"Quick wins", "Workflow status", "Strategic bets", "Platform API", "Fill-ins", "Template cleanup"} {
+		if !strings.Contains(svg.String(), label) {
+			t.Errorf("rendered matrix lost %q", label)
+		}
+	}
+	findings := builder.Findings()
+	if len(findings) != 2 {
+		t.Fatalf("findings = %+v, want two position-defaulted warnings", findings)
+	}
+	for i, wantPosition := range []string{"top-left", "top-right"} {
+		if findings[i].Code != FindingQuadrantPositionDefaulted || findings[i].Field != fmt.Sprintf("data.quadrants[%d].position", i) || findings[i].Severity != "warning" {
+			t.Errorf("finding[%d] = %+v, want position-defaulted warning", i, findings[i])
+		}
+		if findings[i].Fix == nil || findings[i].Fix.Params["value"] != wantPosition {
+			t.Errorf("finding[%d] fix = %+v, want %s", i, findings[i].Fix, wantPosition)
 		}
 	}
 }
@@ -911,7 +953,10 @@ func TestParseQuadrantItemLists_EmptyItems(t *testing.T) {
 		map[string]any{"position": "top-right", "items": []any{"", "   "}},
 	}
 
-	got := parseQuadrantItemLists(quadrants)
+	got, findings := parseQuadrantItemLists(quadrants)
+	if len(findings) != 0 {
+		t.Fatalf("valid empty quadrants emitted findings: %+v", findings)
+	}
 
 	for i, items := range got {
 		if len(items) != 0 {

@@ -1169,13 +1169,13 @@ func emitErrorResult(diags ...diagnostic) (*mcp.CallToolResult, error) {
 // diagnostic is a single machine-readable issue matching the
 // internal/diagnostics.Diagnostic JSON shape.
 type diagnostic struct {
-	Code         string          `json:"code"`                    // SCREAMING_SNAKE_CASE code, e.g. "REQUIRED"
-	Message      string          `json:"message"`                 // human-readable description
-	Path         string          `json:"path,omitempty"`          // JSON path, e.g. "data.series[0].values"
-	Severity     string          `json:"severity"`                // "error", "warning", "info"
-	Fix          *fix            `json:"fix,omitempty"`           // optional structured remediation
-	NextToolCall *toolCallSugg   `json:"next_tool_call,omitempty"` // machine-readable next MCP tool call
-	Details      map[string]any  `json:"details,omitempty"`       // additional context (pattern, value, etc.)
+	Code         string         `json:"code"`                     // SCREAMING_SNAKE_CASE code, e.g. "REQUIRED"
+	Message      string         `json:"message"`                  // human-readable description
+	Path         string         `json:"path,omitempty"`           // JSON path, e.g. "data.series[0].values"
+	Severity     string         `json:"severity"`                 // "error", "warning", "info"
+	Fix          *fix           `json:"fix,omitempty"`            // optional structured remediation
+	NextToolCall *toolCallSugg  `json:"next_tool_call,omitempty"` // machine-readable next MCP tool call
+	Details      map[string]any `json:"details,omitempty"`        // additional context (pattern, value, etc.)
 }
 
 // Canonical SCREAMING_SNAKE_CASE diagnostic codes emitted by svggen-mcp.
@@ -1222,7 +1222,7 @@ var legacyCodeAliases = []struct {
 
 // fix matches internal/diagnostics.Fix / patterns.FixSuggestion JSON shape.
 type fix struct {
-	Kind   string         `json:"kind"`            // e.g. "provide_value", "align_series"
+	Kind   string         `json:"kind"` // e.g. "provide_value", "align_series"
 	Params map[string]any `json:"params,omitempty"`
 }
 
@@ -1419,10 +1419,10 @@ type capabilitiesFeatures struct {
 // code should read registry.charts and registry.diagrams which carry the
 // same content under the standardized field names.
 type capabilitiesResponse struct {
-	SchemaVersion string                    `json:"schema_version"`
-	ToolList      []capabilitiesToolEntry   `json:"tool_list"`
-	ChartTypes    []string                  `json:"chart_types"`
-	DiagramTypes  []string                  `json:"diagram_types"`
+	SchemaVersion string                  `json:"schema_version"`
+	ToolList      []capabilitiesToolEntry `json:"tool_list"`
+	ChartTypes    []string                `json:"chart_types"`
+	DiagramTypes  []string                `json:"diagram_types"`
 	// ChartCapabilities and DiagramCapabilities expose per-type limits
 	// (max_series, max_points, max_categories, max_nodes, max_depth),
 	// overflow/density behavior, label strategy, required/optional fields, and
@@ -1437,14 +1437,14 @@ type capabilitiesResponse struct {
 	// empty because svggen-mcp owns chart/diagram rendering, not pattern
 	// composition — keeping the key present means agents can read the same
 	// shape from both servers.
-	Registry      capabilitiesRegistry      `json:"registry"`
+	Registry capabilitiesRegistry `json:"registry"`
 	// Vocabularies mirrors json2pptx-mcp's vocabularies block. fix_kinds
 	// enumerates the chart-finding remediation enum that validate_diagram and
-	// render_diagram emit; finding_codes enumerates the chart.* finding codes
-	// the renderer can surface.
-	Vocabularies  capabilitiesVocabularies  `json:"vocabularies"`
-	Deprecations  []capabilitiesDeprecation `json:"deprecations"`
-	Features      capabilitiesFeatures      `json:"features"`
+	// render_diagram emit; finding_codes enumerates the chart.* and diagram.*
+	// findings the renderer can surface.
+	Vocabularies capabilitiesVocabularies  `json:"vocabularies"`
+	Deprecations []capabilitiesDeprecation `json:"deprecations"`
+	Features     capabilitiesFeatures      `json:"features"`
 }
 
 // capabilitiesRegistry mirrors json2pptx-mcp's registry block so agents can
@@ -1510,6 +1510,9 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingAutoLogScaleApplied,
 		svggen.FindingCapacityExceeded,
 		svggen.FindingCurrencyPrefixDefaulted,
+		svggen.FindingDiagramItemsDropped,
+		svggen.FindingDiagramTextOverlap,
+		svggen.FindingQuadrantPositionDefaulted,
 		svggen.FindingInvalidNumeric,
 		svggen.FindingInvalidTimeFormat,
 		svggen.FindingLabelClipped,
@@ -1517,8 +1520,11 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingLabelTruncated,
 		svggen.FindingLegendOverflowDropped,
 		svggen.FindingNegativeOnLog,
+		svggen.FindingOrgChartDepthPruned,
 		svggen.FindingOverflowSuppressed,
 		svggen.FindingPercentScaleAmbiguous,
+		svggen.FindingPlotAreaCollapsed,
+		svggen.FindingPointOutOfRange,
 		svggen.FindingScatterLabelSkipped,
 		svggen.FindingTickThinned,
 		svggen.FindingZeroSumPie,

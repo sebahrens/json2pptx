@@ -151,10 +151,10 @@
               {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Work intake</b>\nManual requests, duplicate triage, unclear ownership.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9}}},
               {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Release rhythm</b>\nQuarterly batches with late risk discovery.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9}}},
               {"col_span": 2, "row_span": 2, "diagram": {"type": "matrix_2x2", "title": "svggen sequencing matrix", "width": 900, "height": 300, "fit_mode": "contain", "data": {"x_label": "Implementation effort", "y_label": "Business value", "quadrant_labels": ["Quick wins", "Strategic bets", "Fill-ins", "Defer"], "quadrant_opacity": 0.16, "quadrants": [
-                {"label": "Quick wins", "items": ["Workflow status", "SLO alerts"]},
-                {"label": "Strategic bets", "items": ["Platform API", "Data product spine"]},
-                {"label": "Fill-ins", "items": ["Template cleanup"]},
-                {"label": "Defer", "items": ["Legacy import edge cases"]}
+                {"position": "top-left", "label": "Quick wins", "items": ["Workflow status", "SLO alerts"]},
+                {"position": "top-right", "label": "Strategic bets", "items": ["Platform API", "Data product spine"]},
+                {"position": "bottom-left", "label": "Fill-ins", "items": ["Template cleanup"]},
+                {"position": "bottom-right", "label": "Defer", "items": ["Legacy import edge cases"]}
               ]}}}
             ]
           },
