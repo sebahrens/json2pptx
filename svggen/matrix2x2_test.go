@@ -1076,6 +1076,70 @@ func TestMatrix2x2Chart_DenseData_NoLabelCollision(t *testing.T) {
 	}
 }
 
+func TestMatrix2x2CaptionBandProtectsHeadingFromHighPoint(t *testing.T) {
+	builder := NewSVGBuilder(1104, 456)
+	config := DefaultMatrix2x2Config(1104, 456)
+	config.QuadrantLabels = [4]string{"Quick wins", "Strategic bets", "Fill-ins", "Deprioritise"}
+	data := Matrix2x2Data{Points: []Matrix2x2Point{{Label: "Depot consolidation", X: 95, Y: 98}}}
+	if err := NewMatrix2x2Chart(builder, config).Draw(data); err != nil {
+		t.Fatal(err)
+	}
+	doc, err := builder.Render()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(doc.String(), "Strategic bets") || !strings.Contains(doc.String(), "Depot consolidation") {
+		t.Fatal("caption or point label disappeared")
+	}
+	foundMove := false
+	for _, finding := range builder.Findings() {
+		if finding.Code == FindingDiagramTextOverlap && strings.Contains(finding.Message, "Depot consolidation") {
+			foundMove = true
+		}
+	}
+	if !foundMove {
+		t.Error("moving a numeric point away from the caption was not disclosed")
+	}
+	for _, finding := range builder.textOverlapFindings() {
+		if strings.Contains(finding.Message, "Strategic bets") {
+			t.Errorf("caption still overlaps point text: %+v", finding)
+		}
+	}
+}
+
+func TestReserveMatrixCaptionBandDoesNotMoveUnrelatedPoints(t *testing.T) {
+	plot := Rect{X: 0, Y: 0, W: 400, H: 300}
+	bands := [4]placedLabel{{}, {x: 300, y: 20, w: 100, h: 35}}
+	for _, tt := range []struct {
+		name       string
+		x, y       float64
+		wantStatus captionBandStatus
+	}{
+		{"under top-right caption", 350, 20, captionBandMoved},
+		{"left of caption", 250, 20, captionBandClear},
+		{"above caption", 350, 5, captionBandClear},
+		{"below caption", 350, 100, captionBandClear},
+		{"bottom-right quadrant", 350, 180, captionBandClear},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			got, status := reserveMatrixCaptionBand(tt.x, tt.y, 12, plot, bands, 4)
+			if status != tt.wantStatus {
+				t.Errorf("status=%d, want %d", status, tt.wantStatus)
+			}
+			if status == captionBandMoved && got-6 < 59 {
+				t.Errorf("marker at y=%.1f still covers the caption band", got)
+			}
+			if status == captionBandClear && got != tt.y {
+				t.Errorf("unrelated point moved from %.1f to %.1f", tt.y, got)
+			}
+		})
+	}
+	if got, status := reserveMatrixCaptionBand(350, 2, 18, Rect{X: 0, Y: 0, W: 400, H: 70},
+		[4]placedLabel{{}, {x: 300, y: 0, w: 100, h: 30}}, 4); status != captionBandNoRoom || got != 2 {
+		t.Errorf("tiny quadrant must report no room without moving point across divider: y=%.1f status=%d", got, status)
+	}
+}
+
 func TestMatrix2x2Chart_LongLabelsNotBlindlyTruncated(t *testing.T) {
 	// A character count is not a fit test: preserve a long label when the
 	// measured text fits or can wrap inside the plot.

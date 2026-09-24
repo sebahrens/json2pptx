@@ -238,10 +238,10 @@ func (mc *Matrix2x2Chart) Draw(data Matrix2x2Data) error {
 		mc.drawQuadrantLists(data, plotArea)
 	} else {
 		// Draw quadrant labels
-		mc.drawQuadrantLabels(plotArea)
+		captionBands := mc.drawQuadrantLabels(plotArea)
 
 		// Draw data points
-		mc.drawPoints(data.Points, plotArea)
+		mc.drawPoints(data.Points, plotArea, captionBands)
 	}
 
 	// Draw title
@@ -353,14 +353,21 @@ func (mc *Matrix2x2Chart) drawAxisLabels(plotArea Rect) {
 	b.Pop()
 }
 
-// drawQuadrantLabels draws the labels for each quadrant.
-func (mc *Matrix2x2Chart) drawQuadrantLabels(plotArea Rect) {
+// drawQuadrantLabels draws the labels and returns the occupied header bands so
+// point markers and point labels can stay out of them.
+func (mc *Matrix2x2Chart) drawQuadrantLabels(plotArea Rect) [4]placedLabel {
 	b := mc.builder
 	style := b.StyleGuide()
 
 	halfW := plotArea.W / 2
 	halfH := plotArea.H / 2
 	pad := style.Spacing.MD
+	labels := mc.config.QuadrantLabels
+	if halfW < 150 && labels == defaultMatrixQuadrantLabels(mc.config.XAxisLabel, mc.config.YAxisLabel) {
+		// The axis names already spell out what High/Low refer to. On a tiny
+		// plot, repeating them in every quadrant consumes the entire point area.
+		labels = [4]string{"High / Low", "High / High", "Low / Low", "Low / High"}
+	}
 	// Each quadrant label gets a bounded rectangle within its quadrant.
 	// Labels are centered in each quadrant for clean consulting-style layout.
 	rects := []Rect{
@@ -403,7 +410,7 @@ func (mc *Matrix2x2Chart) drawQuadrantLabels(plotArea Rect) {
 	}
 	// Find the longest quadrant label to determine font scaling.
 	longestLabel := ""
-	for _, label := range mc.config.QuadrantLabels {
+	for _, label := range labels {
 		if len([]rune(label)) > len([]rune(longestLabel)) {
 			longestLabel = label
 		}
@@ -418,14 +425,32 @@ func (mc *Matrix2x2Chart) drawQuadrantLabels(plotArea Rect) {
 	b.SetFontSize(fontSize)
 	b.SetFontWeight(style.Typography.WeightBold)
 
-	for i, label := range mc.config.QuadrantLabels {
+	var bands [4]placedLabel
+	for i, label := range labels {
 		if label == "" {
 			continue
 		}
-		b.DrawWrappedText(label, rects[i], aligns[i])
+		// A caption is a top band, not free space for plotted data. Use the
+		// actual wrapped block height, leaving at least 38% of each quadrant for
+		// points even when the heading is long.
+		block := b.WrapText(label, rects[i].W)
+		blockH := block.TotalHeight
+		bandH := math.Min(halfH*0.62, math.Max(fontSize*1.3, blockH)+2*pad)
+		// Match the conservative LibreOffice width allowance used for point
+		// labels; otherwise a marker can still strike the first glyph.
+		bandW := math.Min(halfW, block.TotalWidth*1.20+2*pad)
+		bandX := rects[i].X - pad
+		if aligns[i].Horizontal == HorizontalAlignRight {
+			bandX = rects[i].X + rects[i].W + pad - bandW
+		}
+		bands[i] = placedLabel{x: bandX, y: rects[i].Y - pad, w: bandW, h: bandH}
+		labelRect := rects[i]
+		labelRect.H = math.Max(1, bandH-2*pad)
+		b.DrawWrappedText(label, labelRect, aligns[i])
 	}
 
 	b.Pop()
+	return bands
 }
 
 // drawQuadrantLists renders the coordinate-free form: each quadrant is a
@@ -536,7 +561,7 @@ func (a placedLabel) overlaps(b placedLabel) bool {
 }
 
 // drawPoints draws the data points.
-func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect) {
+func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect, captionBands [4]placedLabel) {
 	b := mc.builder
 	style := b.StyleGuide()
 	palette := style.Palette
@@ -572,8 +597,15 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect) {
 		labelOffset = labelOffset * (labelFontSize / style.Typography.SizeSmall)
 	}
 
-	// Collect placed label bounding boxes for collision avoidance.
-	var placed []placedLabel
+	// Quadrant captions occupy the first collision boxes. The old pass only
+	// compared point labels with earlier point labels, letting them print over
+	// headings such as "Strategic bets".
+	placed := make([]placedLabel, 0, len(captionBands)+len(points))
+	for _, band := range captionBands {
+		if band.w > 0 && band.h > 0 {
+			placed = append(placed, band)
+		}
+	}
 
 	for i, point := range points {
 		// A coordinate outside the axis range used to be plotted wherever the
@@ -588,6 +620,20 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect) {
 		size := point.Size
 		if size == 0 {
 			size = mc.config.PointSize
+		}
+		var bandStatus captionBandStatus
+		y, bandStatus = reserveMatrixCaptionBand(x, y, size, plotArea, captionBands, style.Spacing.XS)
+		if bandStatus != captionBandClear {
+			message := fmt.Sprintf("matrix_2x2: point %q would cover a quadrant heading; its marker was moved just below the heading band — use a less extreme y value or a labelled quadrant list if exact coordinates are not required", point.Label)
+			if bandStatus == captionBandNoRoom {
+				message = fmt.Sprintf("matrix_2x2: point %q overlaps a quadrant heading and there is not enough room to move it within its quadrant — enlarge the diagram, shorten the heading, or use a labelled quadrant list", point.Label)
+			}
+			b.AddFinding(Finding{
+				Code:     FindingDiagramTextOverlap,
+				Message:  message,
+				Severity: "warning",
+				Fix:      &FixSuggestion{Kind: FixKindShortenLabels},
+			})
 		}
 
 		color := palette.AccentColor(i)
@@ -609,6 +655,41 @@ func (mc *Matrix2x2Chart) drawPoints(points []Matrix2x2Point, plotArea Rect) {
 			placed = append(placed, lbl)
 		}
 	}
+}
+
+type captionBandStatus uint8
+
+const (
+	captionBandClear captionBandStatus = iota
+	captionBandMoved
+	captionBandNoRoom
+)
+
+// reserveMatrixCaptionBand moves only markers that would cover a heading. The
+// numeric scale is otherwise untouched; each adjustment is disclosed as a
+// finding because its rendered position no longer exactly encodes the value.
+func reserveMatrixCaptionBand(x, y, size float64, plot Rect, bands [4]placedLabel, pad float64) (float64, captionBandStatus) {
+	q := 0
+	if x >= plot.X+plot.W/2 {
+		q++
+	}
+	if y >= plot.Y+plot.H/2 {
+		q += 2
+	}
+	band := bands[q]
+	if band.h <= 0 || x+size/2 < band.x-pad || x-size/2 > band.x+band.w+pad ||
+		y+size/2 < band.y-pad || y-size/2 >= band.y+band.h+pad {
+		return y, captionBandClear
+	}
+	target := band.y + band.h + pad + size/2
+	quadrantBottom := plot.Y + plot.H
+	if q < 2 {
+		quadrantBottom = plot.Y + plot.H/2
+	}
+	if target+size/2+pad > quadrantBottom {
+		return y, captionBandNoRoom
+	}
+	return target, captionBandMoved
 }
 
 // clampPointToAxes brings a point's coordinates back inside the configured axis
@@ -866,6 +947,14 @@ func (mc *Matrix2x2Chart) drawPointLabelAvoiding(x, y, pointSize float64, label 
 				bestCandidate.y = baseY - off
 			}
 		}
+	}
+	if collidesWith(bestCandidate) {
+		b.AddFinding(Finding{
+			Code:     FindingDiagramTextOverlap,
+			Message:  fmt.Sprintf("matrix_2x2: point label %q could not be placed clear of a quadrant heading or another label — move the point, shorten the label, or enlarge the diagram", label),
+			Severity: "warning",
+			Fix:      &FixSuggestion{Kind: FixKindShortenLabels},
+		})
 	}
 
 	// Draw at the resolved position

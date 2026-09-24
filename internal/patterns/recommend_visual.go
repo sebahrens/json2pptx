@@ -275,6 +275,7 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 
 	// 4. Score diagram types.
 	all = append(all, scoreDiagrams(intentLower)...)
+	preferNativeLabelledMatrix(all, intentLower)
 
 	// 5. Score compose envelopes — emitted when the intent suggests combining
 	// multiple patterns on one slide OR when the top pattern candidates have
@@ -370,6 +371,7 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 			placeholderByType, chartByType, diagramByType, readyCharts, readyDiagrams,
 			recencyCount, applyVariety))
 	}
+	preferNativeLabelledMatrix(out, intentLower)
 
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Score != out[j].Score {
@@ -382,6 +384,35 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 		Candidates:              out,
 		QueryUnderstood:         summarizeVisualIntent(intentLower, hints),
 		DisambiguatingQuestions: suggestVisualQuestions(hints, intentLower, out),
+	}
+}
+
+// preferNativeLabelledMatrix steers qualitative, named-quadrant work to the
+// editable PowerPoint pattern. The SVG diagram remains available for actual
+// numeric x/y scatter plots, where moving points would distort the evidence.
+func preferNativeLabelledMatrix(candidates []VisualCandidate, intent string) {
+	matrix := strings.Contains(intent, "matrix") || strings.Contains(intent, "quadrant") || strings.Contains(intent, "2x2")
+	labelled := strings.Contains(intent, "labelled") || strings.Contains(intent, "labeled") ||
+		strings.Contains(intent, "named") || strings.Contains(intent, "initiative") ||
+		strings.Contains(intent, "quadrant labels")
+	scatter := strings.Contains(intent, "scatter") || strings.Contains(intent, "coordinates") ||
+		strings.Contains(intent, "x/y") || strings.Contains(intent, "plot points")
+	if !matrix || !labelled || scatter {
+		return
+	}
+	for i := range candidates {
+		c := &candidates[i]
+		switch {
+		case c.Category == VisualCategoryPattern && c.Name == "matrix-2x2":
+			c.Score = roundScore(math.Min(1, c.Score+0.12))
+			c.Rationale += "; native editable quadrant labels keep named items clear of points"
+		case c.Category == VisualCategoryDiagram && c.Name == "matrix_2x2":
+			c.Score = roundScore(math.Max(0, c.Score-0.12))
+			c.Rationale += "; use for numeric x/y positions, not a labelled quadrant list"
+		default:
+			continue
+		}
+		c.ConfidenceBand = confidenceBand(c.Score)
 	}
 }
 

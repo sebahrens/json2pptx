@@ -46,6 +46,45 @@ func TestRecommendVisual_MatrixForVendorComparison(t *testing.T) {
 	}
 }
 
+func TestRecommendVisual_PrefersNativeForLabelledMatrix(t *testing.T) {
+	reg := newTestRegistry("matrix-2x2")
+	for _, tt := range []struct {
+		intent  string
+		options *RecommendOptions
+	}{
+		{"labelled 2x2 matrix of strategic initiatives", nil},
+		{"initiative positioning in a 2x2 matrix", &RecommendOptions{Candidates: []string{"matrix_2x2", "matrix-2x2"}}},
+	} {
+		result := RecommendVisual(reg, tt.intent, nil, 8, tt.options)
+		patternRank, diagramRank := -1, -1
+		for i, candidate := range result.Candidates {
+			switch candidate.Name {
+			case "matrix-2x2":
+				patternRank = i
+				if !strings.Contains(candidate.Rationale, "native editable") {
+					t.Errorf("native pattern lacks guidance: %+v", candidate)
+				}
+			case "matrix_2x2":
+				diagramRank = i
+			}
+		}
+		if patternRank < 0 || diagramRank < 0 || patternRank >= diagramRank {
+			t.Errorf("labelled matrix not routed to native pattern: %+v", result.Candidates)
+		}
+	}
+}
+
+func TestRecommendVisual_NumericScatterNotRerouted(t *testing.T) {
+	reg := newTestRegistry("matrix-2x2")
+	result := RecommendVisual(reg, "scatter plot of labelled x/y coordinates in a 2x2 matrix", nil, 8,
+		&RecommendOptions{Candidates: []string{"matrix_2x2", "matrix-2x2"}})
+	for _, candidate := range result.Candidates {
+		if strings.Contains(candidate.Rationale, "native editable") || strings.Contains(candidate.Rationale, "not a labelled quadrant list") {
+			t.Errorf("numeric scatter was rerouted: %+v", candidate)
+		}
+	}
+}
+
 func TestRecommendVisual_PlaceholderForTitleSlide(t *testing.T) {
 	reg := newTestRegistry()
 	result := RecommendVisual(reg, "create a title slide for the presentation", nil, 5)

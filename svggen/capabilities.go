@@ -382,7 +382,7 @@ func DiagramCapabilities() []DiagramCapability {
 			Type:             "matrix_2x2",
 			MaxNodes:         intPtr(4),
 			MaxDepth:         intPtr(1),
-			OverflowBehavior: strPtr("fixed 2x2 grid; body text truncated at 200 chars"),
+			OverflowBehavior: strPtr("fixed 2x2 grid; body text truncated at 200 chars. In numeric points mode, quadrant captions reserve collision space; a point that would cover one is moved just below it with diagram.text_overlap warning, so check exact y-position evidence. For named items without numeric coordinates, use the native matrix-2x2 pattern or quadrant lists."),
 			RequiredFields:   nil,
 			OptionalFields:   []string{"x_axis_label", "y_axis_label", "top_left", "top_right", "bottom_left", "bottom_right"},
 			Status:           "ready",
