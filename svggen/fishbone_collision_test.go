@@ -45,6 +45,29 @@ func makeFishboneCategories(n, causesPerCat int) []any {
 	return cats
 }
 
+func TestFishboneCategoryConnectorStopsAtResolvedChipEdge(t *testing.T) {
+	// Collision resolution may shift the chip independently of the original
+	// branch endpoint. Both orientations must follow its actual rectangle.
+	for _, tc := range []struct {
+		name string
+		top  bool
+		want Point
+	}{
+		{name: "above spine", top: true, want: Point{X: 145, Y: 72}},
+		{name: "below spine", top: false, want: Point{X: 145, Y: 40}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			lay := fishboneBranchLayout{
+				isTop: tc.top, endX: 999, endY: 999,
+				boxRect: Rect{X: 100, Y: 40, W: 90, H: 32},
+			}
+			if got := lay.categoryConnectorEnd(); got != tc.want {
+				t.Errorf("connector end = %+v, want chip edge %+v", got, tc.want)
+			}
+		})
+	}
+}
+
 // TestFishbone_SixCategories verifies that a fishbone with 6 categories
 // renders without overlapping category labels. Six is the boundary where
 // the classic alternating top/bottom layout starts to get crowded.

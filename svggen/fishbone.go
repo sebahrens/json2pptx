@@ -45,6 +45,16 @@ type fishboneBranchLayout struct {
 	catWrapped bool    // true if label should be drawn with text wrapping
 }
 
+// categoryConnectorEnd stops the branch at the edge facing the spine, using
+// the resolved box position rather than the pre-collision branch endpoint.
+func (lay fishboneBranchLayout) categoryConnectorEnd() Point {
+	y := lay.boxRect.Y
+	if lay.isTop {
+		y += lay.boxRect.H
+	}
+	return Point{X: lay.boxRect.X + lay.boxRect.W/2, Y: y}
+}
+
 // DefaultFishboneConfig returns default fishbone configuration.
 // causeLabelMinWidthPt is the narrowest strip beside a bone worth hanging a
 // cause label in. Below it the label falls back to the old centred placement,
@@ -95,6 +105,7 @@ func NewFishboneChart(builder *SVGBuilder, config FishboneConfig) *FishboneChart
 }
 
 // Draw renders the fishbone diagram.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (fc *FishboneChart) Draw(data FishboneData) error {
 	if data.Effect == "" {
@@ -528,16 +539,17 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 		cat := visibleCats[lay.catIndex]
 		color := accentColors[lay.catIndex%len(accentColors)]
 
-		// Draw branch line from spine to resolved endpoint
+		// Stop at the category chip; a line through its label is distracting.
 		b.Push()
 		b.SetStrokeColor(color)
 		b.SetStrokeWidth(branchWidth)
-		b.DrawLine(lay.branchX, spineY, lay.endX, lay.endY)
+		connectorEnd := lay.categoryConnectorEnd()
+		b.DrawLine(lay.branchX, spineY, connectorEnd.X, connectorEnd.Y)
 		b.Pop()
 
-		// Draw category label box
+		// Composite the tint before drawing, so no stroke shows through the chip.
 		b.Push()
-		b.SetFillColor(color.WithAlpha(0.2))
+		b.SetFillColor(blendOver(color.WithAlpha(0.2), style.Palette.Background))
 		b.SetStrokeColor(color)
 		b.SetStrokeWidth(1.5)
 		b.DrawRoundedRect(lay.boxRect, fc.config.CornerRadius)
@@ -550,7 +562,7 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 			innerRect := lay.boxRect.Inset(style.Spacing.XS*widthScale, style.Spacing.XS*widthScale, style.Spacing.XS*widthScale, style.Spacing.XS*widthScale)
 			b.DrawWrappedText(lay.catName, innerRect, AlignCenter)
 		} else {
-			b.DrawText(lay.catName, lay.boxRect.X+lay.boxRect.W/2, lay.endY, TextAlignCenter, TextBaselineMiddle)
+			b.DrawText(lay.catName, lay.boxRect.X+lay.boxRect.W/2, lay.boxRect.Y+lay.boxRect.H/2, TextAlignCenter, TextBaselineMiddle)
 		}
 		b.Pop()
 
@@ -782,6 +794,7 @@ func (fc *FishboneChart) Draw(data FishboneData) error {
 //  1. Spread X positions further apart along the spine.
 //  2. If still overlapping, reduce label font size (down to a floor).
 //  3. Re-measure and re-position after each adjustment.
+//
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (fc *FishboneChart) resolveCollisions(
 	layouts []fishboneBranchLayout,
@@ -1004,4 +1017,3 @@ func extractFishboneData(req *RequestEnvelope) (FishboneData, error) {
 
 	return fbData, nil
 }
-
