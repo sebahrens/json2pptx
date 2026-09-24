@@ -3,6 +3,7 @@ package generator
 import (
 	"archive/zip"
 	"context"
+	"encoding/xml"
 	"io"
 	"path/filepath"
 	"strings"
@@ -317,6 +318,26 @@ func TestBlueCorporateGeneratesLeftFooter(t *testing.T) {
 			if !strings.Contains(string(data), want) {
 				t.Errorf("generated slide missing %q", want)
 			}
+		}
+		var slide slideXML
+		if err := xml.Unmarshal(data, &slide); err != nil {
+			t.Fatalf("parse generated slide: %v", err)
+		}
+		var left, right *transformXML
+		for i := range slide.CommonSlideData.ShapeTree.Shapes {
+			shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
+			switch shape.NonVisualProperties.ConnectionNonVisual.Name {
+			case "Footer Left":
+				left = shape.ShapeProperties.Transform
+			case "Footer Right":
+				right = shape.ShapeProperties.Transform
+			}
+		}
+		if left == nil || right == nil {
+			t.Fatalf("generated footer geometry missing: left=%+v right=%+v", left, right)
+		}
+		if left.Offset.X != 432000 || left.Offset.X+left.Extent.CX > right.Offset.X {
+			t.Errorf("left footer no longer starts at brand alignment or overlaps page number: left=%+v right=%+v", left, right)
 		}
 		return
 	}

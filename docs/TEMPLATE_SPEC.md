@@ -227,7 +227,7 @@ Exit codes:
 
 ### Known Exceptions
 
-Bundled designer templates pass the mandatory `template-check` checks with zero FAIL findings. The conformance allow-list tracks the remaining intentional WARN on `blue-corporate` (incomplete footer placeholders) until its source template is repaired. `abstract` accent1 was deepened from `#E9E6DF` to warm neutral `#8E8172` so it is visible on the white canvas; it no longer needs an exception.
+Bundled designer templates pass `template-check` with zero FAIL and zero WARN findings; the conformance allow-list is now empty. `abstract` accent1 was deepened from `#E9E6DF` to warm neutral `#8E8172` so it is visible on the white canvas. `blue-corporate` now has a native date placeholder alongside its footer and page-number placeholders.
 
 `modern-template.pptx` previously lacked `Two Content`, `Blank`, and `Blank + Title`. Those layouts were authored into the template directly via OOXML edits (preserving all embedded media byte-for-byte) and `modern-template` is no longer allow-listed.
 

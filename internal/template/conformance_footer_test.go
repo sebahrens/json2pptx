@@ -34,18 +34,51 @@ func TestCheckFooterChromeCompleteness(t *testing.T) {
 	}
 }
 
-func TestBlueCorporateTemplateCheckWarnsOnPartialFooter(t *testing.T) {
+func TestBlueCorporateTemplateHasCompleteNonOverlappingFooter(t *testing.T) {
 	report, err := CheckConformance("../../templates/blue-corporate.pptx")
 	if err != nil {
 		t.Fatalf("check blue-corporate: %v", err)
 	}
+	if report.WarnCount() != 0 {
+		t.Errorf("blue-corporate has %d conformance warnings, want zero", report.WarnCount())
+	}
+	foundChromeCheck := false
 	for _, check := range report.Checks {
 		if check.Category == "chrome" && check.Check == "Footer placeholder set complete or absent" {
-			if check.Status != ConformanceStatusWarn || !strings.Contains(check.Detail, "missing dt") {
+			foundChromeCheck = true
+			if check.Status != ConformanceStatusPass {
 				t.Errorf("blue-corporate footer check = %+v", check)
 			}
-			return
+			break
 		}
 	}
-	t.Fatal("template-check did not report footer chrome completeness")
+	if !foundChromeCheck {
+		t.Fatal("template-check did not report footer chrome completeness")
+	}
+	reader, err := OpenTemplate("../../templates/blue-corporate.pptx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = reader.Close() }()
+	master, err := reader.ReadFile("ppt/slideMasters/slideMaster1.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	positions, err := ParseSlideMasterPositions(master)
+	if err != nil {
+		t.Fatal(err)
+	}
+	date, footer, number := positions["type:dt"], positions["type:ftr"], positions["type:sldNum"]
+	if date == nil || footer == nil || number == nil {
+		t.Fatalf("master chrome incomplete: date=%+v footer=%+v number=%+v", date, footer, number)
+	}
+	if date.OffsetX+date.ExtentCX > footer.OffsetX || footer.OffsetX+footer.ExtentCX > number.OffsetX {
+		t.Errorf("master chrome overlaps: date=%+v footer=%+v number=%+v", date, footer, number)
+	}
+	if date.OffsetX != 432000 {
+		t.Errorf("date anchor moved from existing left-footer alignment: x=%d", date.OffsetX)
+	}
+	if positions["type:dt:idx:20"] != date || positions["idx:2"] == date {
+		t.Error("date placeholder must use reserved idx 20, not a content-layout idx")
+	}
 }
