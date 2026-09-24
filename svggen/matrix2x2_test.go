@@ -347,6 +347,11 @@ func TestMatrix2x2Diagram_Validate(t *testing.T) {
 		wantErr bool
 	}{
 		{
+			name:    "nil request",
+			req:     nil,
+			wantErr: true,
+		},
+		{
 			name:    "nil data",
 			req:     &RequestEnvelope{Type: "matrix_2x2", Data: nil},
 			wantErr: true,
@@ -967,6 +972,59 @@ func TestParseQuadrantItemLists_EmptyItems(t *testing.T) {
 	data.QuadrantItems = got
 	if data.HasQuadrantItems() {
 		t.Error("empty quadrants must not select the list renderer")
+	}
+}
+
+func TestMatrix2x2Diagram_ValidateQuadrantShapes(t *testing.T) {
+	diagram := &Matrix2x2Diagram{NewBaseDiagram("matrix_2x2")}
+	tests := []struct {
+		name      string
+		quadrants any
+		wantField string
+	}{
+		{"quadrants is not an array", "not-an-array", "data.quadrants"},
+		{"quadrant is not an object", []any{"not-an-object"}, "data.quadrants[0]"},
+		{"items is not an array", []any{map[string]any{"items": "not-an-array"}}, "data.quadrants[0].items"},
+		{"item is not supported", []any{map[string]any{"items": []any{42}}}, "data.quadrants[0].items[0]"},
+		{"item object has no label", []any{map[string]any{"items": []any{map[string]any{"text": "Lost"}}}}, "data.quadrants[0].items[0].label"},
+		{"item object has non-string label", []any{map[string]any{"items": []any{map[string]any{"label": 42}}}}, "data.quadrants[0].items[0].label"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &RequestEnvelope{Type: "matrix_2x2", Output: OutputSpec{Width: 800, Height: 600}, Data: map[string]any{"quadrants": tt.quadrants}}
+			for name, validate := range map[string]func(*RequestEnvelope) error{
+				"Validate": diagram.Validate,
+				"RenderWithBuilder": func(req *RequestEnvelope) error {
+					_, _, err := diagram.RenderWithBuilder(req)
+					return err
+				},
+			} {
+				t.Run(name, func(t *testing.T) {
+					got := GetValidationErrors(validate(req))
+					if len(got) != 1 || got[0].Field != tt.wantField || got[0].Code != ErrCodeInvalidType {
+						t.Errorf("validation errors = %+v, want one INVALID_TYPE at %s", got, tt.wantField)
+					}
+				})
+			}
+		})
+	}
+
+	for _, tt := range []struct {
+		name      string
+		quadrants []any
+	}{
+		{"omitted items", []any{map[string]any{"position": "top-left"}}},
+		{"empty items", []any{map[string]any{"position": "top-left", "items": []any{}}}},
+		{"valid strings and labeled objects", []any{map[string]any{"position": "top-left", "items": []any{"Task", map[string]any{"label": "Other"}}}}},
+		{"missing position uses fallback", []any{map[string]any{"items": []any{"Task"}}}},
+		{"invalid position uses fallback", []any{map[string]any{"position": "diagonal", "items": []any{"Task"}}}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &RequestEnvelope{Data: map[string]any{"quadrants": tt.quadrants}}
+			if err := diagram.Validate(req); err != nil {
+				t.Fatalf("valid quadrants rejected: %v", err)
+			}
+		})
 	}
 }
 

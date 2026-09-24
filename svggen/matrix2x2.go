@@ -922,8 +922,42 @@ type Matrix2x2Diagram struct{ BaseDiagram }
 
 // Validate checks that the request data is valid for matrix 2x2 charts.
 func (d *Matrix2x2Diagram) Validate(req *RequestEnvelope) error {
-	if req.Data == nil {
+	if req == nil || req.Data == nil {
 		return fmt.Errorf("matrix_2x2 chart requires data. x/y use a 0-100 scale by default (origin bottom-left, quadrant split at 50). Expected format: {\"x_axis_label\": \"Impact\", \"y_axis_label\": \"Effort\", \"points\": [{\"label\": \"Task A\", \"x\": 80, \"y\": 60}]}")
+	}
+
+	if raw, exists := req.Data["quadrants"]; exists {
+		quadrants, ok := raw.([]any)
+		if !ok {
+			return &ValidationError{Field: "data.quadrants", Code: ErrCodeInvalidType, Message: "quadrants must be an array", Value: raw}
+		}
+		for i, rawQuadrant := range quadrants {
+			field := fmt.Sprintf("data.quadrants[%d]", i)
+			quadrant, ok := rawQuadrant.(map[string]any)
+			if !ok {
+				return &ValidationError{Field: field, Code: ErrCodeInvalidType, Message: "quadrant must be an object", Value: rawQuadrant}
+			}
+			rawItems, exists := quadrant["items"]
+			if !exists {
+				continue
+			}
+			items, ok := rawItems.([]any)
+			if !ok {
+				return &ValidationError{Field: field + ".items", Code: ErrCodeInvalidType, Message: "items must be an array", Value: rawItems}
+			}
+			for j, item := range items {
+				itemField := fmt.Sprintf("%s.items[%d]", field, j)
+				switch value := item.(type) {
+				case string:
+				case map[string]any:
+					if _, ok := value["label"].(string); !ok {
+						return &ValidationError{Field: itemField + ".label", Code: ErrCodeInvalidType, Message: "item label must be a string", Value: value["label"]}
+					}
+				default:
+					return &ValidationError{Field: itemField, Code: ErrCodeInvalidType, Message: "item must be a string or an object with a string label", Value: item}
+				}
+			}
+		}
 	}
 
 	// Points are optional - can show empty matrix
@@ -940,6 +974,9 @@ func (d *Matrix2x2Diagram) Render(req *RequestEnvelope) (*SVGDocument, error) {
 //
 //nolint:gocognit,gocyclo // complex chart rendering logic
 func (d *Matrix2x2Diagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVGDocument, error) {
+	if err := d.Validate(req); err != nil {
+		return nil, nil, err
+	}
 	return RenderWithHelper(req, func(builder *SVGBuilder, req *RequestEnvelope) error {
 		data, findings, err := parseMatrix2x2Data(req)
 		if err != nil {
