@@ -66,3 +66,14 @@ func TestEffectiveColor(t *testing.T) {
 		t.Errorf("grey round-trip = %s", g.Hex())
 	}
 }
+
+func TestEffectiveColorModsExplicitZeroAlpha(t *testing.T) {
+	base := svggen.MustParseColor("#2E5090")
+	canvas := svggen.MustParseColor("#F5F5F5")
+	if got := EffectiveColorMods(base, ColorMods{Alpha: 0, HasAlpha: true}, canvas).Hex(); got != canvas.Hex() {
+		t.Errorf("explicit zero alpha = %s, want canvas %s", got, canvas.Hex())
+	}
+	if got := EffectiveColorMods(base, ColorMods{}, canvas).Hex(); got != base.Hex() {
+		t.Errorf("omitted alpha = %s, want opaque base %s", got, base.Hex())
+	}
+}

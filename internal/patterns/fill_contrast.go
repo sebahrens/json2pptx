@@ -150,14 +150,15 @@ func EffectiveColor(base svggen.Color, lumMod, lumOff int, alpha float64, bg svg
 }
 
 // ColorMods are the OOXML colour modifiers a fill may carry. LumMod, LumOff,
-// Tint and Shade are thousandths of a percent; Alpha is 0-1 (values <= 0 or
-// >= 1 mean opaque).
+// Tint and Shade are thousandths of a percent; Alpha is 0-1. HasAlpha
+// distinguishes an explicitly transparent zero from an omitted alpha.
 type ColorMods struct {
-	LumMod int
-	LumOff int
-	Tint   int
-	Shade  int
-	Alpha  float64
+	LumMod   int
+	LumOff   int
+	Tint     int
+	Shade    int
+	Alpha    float64
+	HasAlpha bool
 }
 
 // EffectiveColorMods returns the opaque colour a viewer sees for base under
@@ -183,7 +184,7 @@ func EffectiveColorMods(base svggen.Color, mods ColorMods, bg svggen.Color) svgg
 	if mods.Tint > 0 {
 		c = applyLinearMix(c, float64(mods.Tint)/100000, svggen.Color{R: 255, G: 255, B: 255, A: 1})
 	}
-	if mods.Alpha > 0 && mods.Alpha < 1 {
+	if (mods.HasAlpha && mods.Alpha == 0) || (mods.Alpha > 0 && mods.Alpha < 1) {
 		c = svggen.Color{
 			R: uint8(math.Round(float64(c.R)*mods.Alpha + float64(bg.R)*(1-mods.Alpha))),
 			G: uint8(math.Round(float64(c.G)*mods.Alpha + float64(bg.G)*(1-mods.Alpha))),

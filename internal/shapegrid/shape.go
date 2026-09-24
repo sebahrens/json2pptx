@@ -134,15 +134,18 @@ func ResolveFillInput(raw json.RawMessage) (pptx.Fill, error) {
 
 	// Object form
 	var obj struct {
-		Color  string  `json:"color"`
-		Alpha  float64 `json:"alpha,omitempty"`
-		LumMod int     `json:"lumMod,omitempty"`
-		LumOff int     `json:"lumOff,omitempty"`
-		Tint   int     `json:"tint,omitempty"`
-		Shade  int     `json:"shade,omitempty"`
+		Color  string   `json:"color"`
+		Alpha  *float64 `json:"alpha,omitempty"`
+		LumMod int      `json:"lumMod,omitempty"`
+		LumOff int      `json:"lumOff,omitempty"`
+		Tint   int      `json:"tint,omitempty"`
+		Shade  int      `json:"shade,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return pptx.Fill{}, fmt.Errorf("fill must be a color string (e.g. \"#FF0000\", \"accent1\", \"none\") or object {\"color\": \"...\", \"alpha\": 50}: %w", err)
+	}
+	if obj.Alpha != nil && (*obj.Alpha < 0 || *obj.Alpha > 100) {
+		return pptx.Fill{}, fmt.Errorf("fill alpha must be between 0 and 100, got %g", *obj.Alpha)
 	}
 
 	// Validate color modifier ranges [0, 100000]
@@ -162,10 +165,10 @@ func ResolveFillInput(raw json.RawMessage) (pptx.Fill, error) {
 
 	// Build color modifiers
 	var mods []pptx.ColorMod
-	if obj.Alpha > 0 {
+	if obj.Alpha != nil {
 		// Normalize alpha to OOXML thousandths-of-percent (100000 = fully opaque).
 		// Accept both fractional (0-1) and percentage (1-100) conventions.
-		alphaVal := obj.Alpha
+		alphaVal := *obj.Alpha
 		if alphaVal <= 1 {
 			alphaVal *= 100000 // 0.3 → 30000
 		} else {
@@ -191,8 +194,8 @@ func ResolveFillInput(raw json.RawMessage) (pptx.Fill, error) {
 			return pptx.SchemeFill(obj.Color, mods...), nil
 		}
 		// For hex colors, only alpha is supported via SolidFillWithAlpha
-		if obj.Alpha > 0 {
-			alphaVal := obj.Alpha
+		if obj.Alpha != nil {
+			alphaVal := *obj.Alpha
 			if alphaVal <= 1 {
 				alphaVal *= 100000
 			} else {

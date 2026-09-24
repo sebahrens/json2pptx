@@ -422,18 +422,32 @@ func TestResolveFillInput_SchemeAlpha_XML(t *testing.T) {
 	}
 }
 
-func TestResolveFillInput_AlphaZero_NoMod(t *testing.T) {
-	// alpha: 0 should be treated as "not set" (no alpha modifier)
-	raw := json.RawMessage(`{"color":"accent1","alpha":0}`)
-	fill, err := ResolveFillInput(raw)
-	if err != nil {
-		t.Fatal(err)
+func TestResolveFillInput_AlphaZeroDiffersFromOmitted(t *testing.T) {
+	for _, tc := range []struct{ raw, expected string }{
+		{`{"color":"accent1","alpha":0}`, `<a:solidFill><a:schemeClr val="accent1"><a:alpha val="0"/></a:schemeClr></a:solidFill>`},
+		{`{"color":"#2E5090","alpha":0}`, `<a:solidFill><a:srgbClr val="2E5090"><a:alpha val="0"/></a:srgbClr></a:solidFill>`},
+		{`{"color":"accent1"}`, `<a:solidFill><a:schemeClr val="accent1"/></a:solidFill>`},
+	} {
+		fill, err := ResolveFillInput(json.RawMessage(tc.raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var buf bytes.Buffer
+		fill.WriteTo(&buf)
+		if got := buf.String(); got != tc.expected {
+			t.Errorf("%s: XML = %s, want %s", tc.raw, got, tc.expected)
+		}
 	}
-	var buf bytes.Buffer
-	fill.WriteTo(&buf)
-	expected := `<a:solidFill><a:schemeClr val="accent1"/></a:solidFill>`
-	if buf.String() != expected {
-		t.Errorf("AlphaZero XML:\ngot:  %s\nwant: %s", buf.String(), expected)
+}
+
+func TestResolveFillInput_RejectsOutOfRangeAlpha(t *testing.T) {
+	for _, raw := range []string{
+		`{"color":"accent1","alpha":-1}`,
+		`{"color":"#2E5090","alpha":101}`,
+	} {
+		if _, err := ResolveFillInput(json.RawMessage(raw)); err == nil || !strings.Contains(err.Error(), "fill alpha must be between 0 and 100") {
+			t.Errorf("%s: error = %v, want alpha range error", raw, err)
+		}
 	}
 }
 

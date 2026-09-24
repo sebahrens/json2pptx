@@ -25,21 +25,24 @@ func effectiveShapeFillColor(raw json.RawMessage, themeColors []types.ThemeColor
 	// gradient chains are built from them, and ignoring them judged a
 	// near-white bar by its untinted accent (go-slide-creator-5qotm).
 	var obj struct {
-		Alpha  float64 `json:"alpha"`
-		LumMod int     `json:"lumMod"`
-		LumOff int     `json:"lumOff"`
-		Tint   int     `json:"tint"`
-		Shade  int     `json:"shade"`
+		Alpha  *float64 `json:"alpha"`
+		LumMod int      `json:"lumMod"`
+		LumOff int      `json:"lumOff"`
+		Tint   int      `json:"tint"`
+		Shade  int      `json:"shade"`
 	}
 	if json.Unmarshal(raw, &obj) != nil ||
-		(obj.Alpha == 0 && obj.LumMod == 0 && obj.LumOff == 0 && obj.Tint == 0 && obj.Shade == 0) {
+		(obj.Alpha == nil && obj.LumMod == 0 && obj.LumOff == 0 && obj.Tint == 0 && obj.Shade == 0) {
 		return base
 	}
 	c, ok := themeHex(base, themeColors)
 	if !ok {
 		return base
 	}
-	alpha := obj.Alpha
+	alpha := 1.0
+	if obj.Alpha != nil {
+		alpha = *obj.Alpha
+	}
 	if alpha > 1 {
 		alpha /= 100
 	}
@@ -47,19 +50,19 @@ func effectiveShapeFillColor(raw json.RawMessage, themeColors []types.ThemeColor
 	if len(slideBackground) > 0 {
 		bgHex = slideBackground[0]
 	}
-	if alpha > 0 && alpha < 1 && len(slideBackground) > 0 && bgHex == "" {
+	if alpha < 1 && len(slideBackground) > 0 && bgHex == "" {
 		return "" // The visible photo canvas cannot be reduced to one colour.
 	}
 	bg, bgOK := themeHex(bgHex, themeColors)
 	if !bgOK {
-		if alpha > 0 && alpha < 1 && len(slideBackground) > 0 {
+		if alpha < 1 && len(slideBackground) > 0 {
 			return ""
 		}
 		bg = svggen.Color{R: 255, G: 255, B: 255, A: 1}
 	}
 	return patterns.EffectiveColorMods(c, patterns.ColorMods{
 		LumMod: obj.LumMod, LumOff: obj.LumOff,
-		Tint: obj.Tint, Shade: obj.Shade, Alpha: alpha,
+		Tint: obj.Tint, Shade: obj.Shade, Alpha: alpha, HasAlpha: obj.Alpha != nil,
 	}, bg).Hex()
 }
 

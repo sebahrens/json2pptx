@@ -66,19 +66,22 @@ func TestTransparentGridContrastPreflightUsesEffectiveBackground(t *testing.T) {
 
 func TestAlphaGridContrastPreflightUsesEffectiveBackground(t *testing.T) {
 	for _, tc := range []struct {
-		name, background, wantFill string
-		wantPrediction             bool
+		name, background, fill, wantFill string
+		wantPrediction                   bool
 	}{
-		{"dark", "#000000", "#172848", true},
-		{"light", "#FFFFFF", "#97A8C8", false},
-		{"unknown photo", "", "", false},
+		{"half-dark", "#000000", `{"color":"accent1","alpha":50}`, "#172848", true},
+		{"half-light", "#FFFFFF", `{"color":"accent1","alpha":50}`, "#97A8C8", false},
+		{"half-photo", "", `{"color":"accent1","alpha":50}`, "", false},
+		{"zero-dark", "#000000", `{"color":"accent1","alpha":0}`, "#000000", true},
+		{"zero-light", "#FFFFFF", `{"color":"accent1","alpha":0}`, "#FFFFFF", false},
+		{"zero-photo", "", `{"color":"accent1","alpha":0}`, "", false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			background := &BackgroundInput{Color: tc.background}
-			if tc.name == "unknown photo" {
+			if tc.background == "" {
 				background = &BackgroundInput{Image: "photo.png"}
 			}
-			slide := transparentGridSlide(background, `{"color":"accent1","alpha":50}`, "#000000")
+			slide := transparentGridSlide(background, tc.fill, "#000000")
 			findings := contrastPredictions(collectContrastPreflightFindings(
 				&PresentationInput{Slides: []SlideInput{slide}}, nil, tintTestTheme))
 			if !tc.wantPrediction {
@@ -213,33 +216,42 @@ func TestRunPresentationTransparentGridContrastMatchesPreflight(t *testing.T) {
 }
 
 func TestRunPresentationAlphaGridContrastMatchesPreflight(t *testing.T) {
-	slide := transparentGridSlide(&BackgroundInput{Color: "#000000"}, `{"color":"#2E5090","alpha":50}`, "#000000")
-	slide.SlideType = "blank"
-	input := &PresentationInput{
-		Template: "midnight-blue", OutputFilename: "alpha-grid.pptx",
-		Slides: []SlideInput{slide},
+	for _, tc := range []struct {
+		name, fill, wantBackground string
+	}{
+		{"half", `{"color":"#2E5090","alpha":50}`, "#172848"},
+		{"zero", `{"color":"#2E5090","alpha":0}`, "#000000"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := transparentGridSlide(&BackgroundInput{Color: "#000000"}, tc.fill, "#000000")
+			slide.SlideType = "blank"
+			input := &PresentationInput{
+				Template: "midnight-blue", OutputFilename: "alpha-grid.pptx",
+				Slides: []SlideInput{slide},
+			}
+			applyDefaults(input)
+			predictions := contrastPredictions(collectContrastPreflightFindings(input, nil, tintTestTheme))
+			if len(predictions) != 1 || predictions[0].Fix.Params["background_color"] != tc.wantBackground {
+				t.Fatalf("preflight predictions = %+v, want one against %s", predictions, tc.wantBackground)
+			}
+			result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
+				OutputDir: t.TempDir(), TemplatesDir: testutil.TemplatesDir(), StrictFit: "off", OutputValidation: "strict",
+			})
+			if cleanup != nil {
+				defer cleanup()
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, swap := range result.GenResult.ContrastSwaps {
+				if swap.Source == "shape_grid" && swap.BackgroundColor == tc.wantBackground &&
+					swap.ReplacedColor == predictions[0].Fix.Params["predicted_replacement"] {
+					return
+				}
+			}
+			t.Errorf("render swaps %+v do not match preflight %+v", result.GenResult.ContrastSwaps, predictions[0])
+		})
 	}
-	applyDefaults(input)
-	predictions := contrastPredictions(collectContrastPreflightFindings(input, nil, tintTestTheme))
-	if len(predictions) != 1 {
-		t.Fatalf("preflight predictions = %+v, want one", predictions)
-	}
-	result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
-		OutputDir: t.TempDir(), TemplatesDir: testutil.TemplatesDir(), StrictFit: "off", OutputValidation: "strict",
-	})
-	if cleanup != nil {
-		defer cleanup()
-	}
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, swap := range result.GenResult.ContrastSwaps {
-		if swap.Source == "shape_grid" && swap.BackgroundColor == predictions[0].Fix.Params["background_color"] &&
-			swap.ReplacedColor == predictions[0].Fix.Params["predicted_replacement"] {
-			return
-		}
-	}
-	t.Errorf("render swaps %+v do not match preflight %+v", result.GenResult.ContrastSwaps, predictions[0])
 }
 
 func TestRunPresentationGridContrastOptOutHasNoSwap(t *testing.T) {

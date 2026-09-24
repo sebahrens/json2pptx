@@ -43,16 +43,19 @@ func TestEffectiveShapeFillColor(t *testing.T) {
 }
 
 func TestEffectiveShapeFillColorUsesSlideCanvasForAlpha(t *testing.T) {
-	fill := json.RawMessage(`{"color":"accent1","alpha":50}`)
 	for _, tc := range []struct {
-		name, canvas, want string
+		name, fill, canvas, want string
 	}{
-		{"dark", "#000000", "#172848"},
-		{"light", "#FFFFFF", "#97A8C8"},
-		{"unknown photo", "", ""},
+		{"half-dark", `{"color":"accent1","alpha":50}`, "#000000", "#172848"},
+		{"half-light", `{"color":"accent1","alpha":50}`, "#FFFFFF", "#97A8C8"},
+		{"half-photo", `{"color":"accent1","alpha":50}`, "", ""},
+		{"zero-dark", `{"color":"accent1","alpha":0}`, "#000000", "#000000"},
+		{"zero-light", `{"color":"accent1","alpha":0}`, "#FFFFFF", "#FFFFFF"},
+		{"zero-photo", `{"color":"accent1","alpha":0}`, "", ""},
+		{"omitted-alpha", `{"color":"accent1"}`, "#000000", "accent1"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := effectiveShapeFillColor(fill, tintTestTheme, tc.canvas); got != tc.want {
+			if got := effectiveShapeFillColor(json.RawMessage(tc.fill), tintTestTheme, tc.canvas); got != tc.want {
 				t.Errorf("effective fill = %q, want %q", got, tc.want)
 			}
 		})

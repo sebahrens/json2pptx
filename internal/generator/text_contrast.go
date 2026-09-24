@@ -586,6 +586,7 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 			mods.Shade = v
 		case "alpha":
 			mods.Alpha = float64(v) / 100000
+			mods.HasAlpha = true
 		}
 	}
 	if !found {
@@ -600,12 +601,12 @@ func applyShapeFillModifiers(baseHex string, spPr []byte, themeColors []types.Th
 		bgHex = slideBackground[0]
 	}
 	bg := svggen.Color{R: 255, G: 255, B: 255, A: 1}
-	if mods.Alpha > 0 && mods.Alpha < 1 && len(slideBackground) > 0 && bgHex == "" {
+	if mods.Alpha < 1 && len(slideBackground) > 0 && bgHex == "" {
 		return "" // A weakly scrimmed photo has no single measurable canvas.
 	}
 	if bgHex != "" {
 		c, perr := svggen.ParseColor(bgHex)
-		if perr != nil && mods.Alpha > 0 && mods.Alpha < 1 {
+		if perr != nil && mods.Alpha < 1 {
 			return ""
 		}
 		if perr == nil {
