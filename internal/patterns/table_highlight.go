@@ -293,7 +293,7 @@ func (p *tableHighlight) Schema() *Schema {
 	).WithDescription("Criterion column: label string or {label, scale}")
 
 	score := OneOfSchema(NumberSchema(0, 4), StringSchema(thTextCellMax)).
-		WithDescription("harvey: 0-4 (or none/quarter/half/three-quarter/full); rag: red/amber/green (r/a/g); text: ≤24 chars; any scale: \"-\" or \"n/a\" for not applicable")
+		WithDescription("harvey: 0-4 (or none/quarter/half/three-quarter/full); rag: red/amber/green (r/a/g); text: ≤24 chars; any scale: \"-\" or \"n/a\" for not applicable").WithDefault(0)
 
 	option := ObjectSchema(map[string]*Schema{
 		"name":   StringSchema(thNameMax).WithDescription("Option name (≤40 chars); dense paired name/detail targets depend on matrix shape"),

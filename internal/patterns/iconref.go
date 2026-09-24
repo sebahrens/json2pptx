@@ -215,5 +215,5 @@ func IconRefSchema(description string) *Schema {
 		},
 		nil,
 	).WithAdditionalProperties(false)
-	return OneOfSchema(StringSchema(0), objectSchema).WithDescription(description)
+	return OneOfSchema(StringSchema(0), objectSchema).WithDescription(description).WithDefault("rocket")
 }

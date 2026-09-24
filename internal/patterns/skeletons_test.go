@@ -190,3 +190,86 @@ func TestSkeletonForPattern_AllRegisteredPatterns(t *testing.T) {
 		})
 	}
 }
+
+func TestSkeletonForPattern_TypedFieldsStayValid(t *testing.T) {
+	reg := Default()
+	for _, name := range []string{
+		"process-flow", "process-flow-compact", "numbered-step-strip",
+		"waterfall-bridge", "table-highlight", "icon-row", "kpi-3up", "kpi-4up",
+	} {
+		t.Run(name, func(t *testing.T) {
+			raw, err := SkeletonForPattern(reg, name, "evidence")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var slide struct {
+				Pattern struct {
+					Values json.RawMessage `json:"values"`
+				} `json:"pattern"`
+			}
+			if err := json.Unmarshal(raw, &slide); err != nil {
+				t.Fatal(err)
+			}
+			pat, _ := reg.Get(name)
+			values := pat.NewValues()
+			if err := json.Unmarshal(slide.Pattern.Values, values); err != nil {
+				t.Fatalf("skeleton values do not decode: %v", err)
+			}
+			if err := pat.Validate(values, nil, nil); err != nil {
+				t.Errorf("skeleton values refuse validation: %v", err)
+			}
+			var notes struct {
+				SpeakerNotes string `json:"speaker_notes"`
+			}
+			if err := json.Unmarshal(raw, &notes); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(notes.SpeakerNotes, "__CHOOSE__:") || !strings.Contains(notes.SpeakerNotes, FillPlaceholder) {
+				t.Errorf("typed defaults need a draft-only choice reminder, got %q", notes.SpeakerNotes)
+			}
+		})
+	}
+}
+
+func TestSkeletonForPattern_TypedDefaults(t *testing.T) {
+	reg := Default()
+	for _, tt := range []struct {
+		name string
+		path []any
+		want any
+	}{
+		{"process-flow", []any{"steps", 0, "type"}, "step"},
+		{"numbered-step-strip", []any{"style"}, "chevron"},
+		{"waterfall-bridge", []any{"columns", 0, "type"}, "total"},
+		{"table-highlight", []any{"options", 0, "scores", 0}, float64(0)},
+		{"icon-row", []any{0, "icon"}, "rocket"},
+		{"kpi-3up", []any{0, "icon"}, "rocket"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			raw, err := SkeletonForPattern(reg, tt.name, "evidence")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var slide struct {
+				Pattern struct {
+					Values any `json:"values"`
+				} `json:"pattern"`
+			}
+			if err := json.Unmarshal(raw, &slide); err != nil {
+				t.Fatal(err)
+			}
+			value := slide.Pattern.Values
+			for _, part := range tt.path {
+				switch key := part.(type) {
+				case string:
+					value = value.(map[string]any)[key]
+				case int:
+					value = value.([]any)[key]
+				}
+			}
+			if value != tt.want {
+				t.Errorf("%v = %v, want %v", tt.path, value, tt.want)
+			}
+		})
+	}
+}

@@ -3,24 +3,22 @@ package patterns
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 )
 
 // FillPlaceholder is the sentinel token used in plan_deck skeleton output for
-// agent-supplied content. String leaves in a skeleton's pattern values and in
-// the slide-level title placeholder are replaced with this token so an agent
-// can do a literal find-and-replace pass instead of re-deriving the slide
-// structure from prose.
+// agent-supplied content. Free-text leaves in pattern values and the slide
+// title are replaced with this token; schema-constrained strings retain valid
+// defaults and are flagged for review in speaker notes.
 const FillPlaceholder = "__FILL__"
 
 // SkeletonForPattern returns a fillable slide-JSON object for the named
-// pattern. The returned bytes parse as a valid SlideInput shape (layout_id,
-// content[], pattern{name, values}) with every string leaf replaced by
-// FillPlaceholder. The agent's job is to overwrite each FillPlaceholder
-// occurrence with real content.
+// pattern. Free-text leaves become FillPlaceholder, while schema-constrained
+// leaves keep valid defaults. speaker_notes lists the choices that need review.
 //
 // Numeric and boolean leaves are preserved so structural defaults (grid
-// dimensions, flags) survive the round-trip and the skeleton remains
-// structurally valid for validate_input as-is — FillPlaceholder is a non-empty
+// dimensions, flags) survive the round-trip. FillPlaceholder is a non-empty
 // string and satisfies required-string checks. The unresolved-placeholder scan
 // (internal/policy/placeholder) still reports any FillPlaceholder left in place
 // as an advisory finding, so callers must replace every token before publishable
@@ -52,7 +50,9 @@ func SkeletonForPattern(reg *Registry, patternName, narrativeRole string) (json.
 	if err := json.Unmarshal(valuesJSON, &decoded); err != nil {
 		return nil, fmt.Errorf("decode exemplar values: %w", err)
 	}
-	filledValues := replaceStringLeaves(decoded, FillPlaceholder)
+	schema := pat.Schema()
+	var choices []string
+	filledValues := fillSkeletonValues(decoded, schema.Property("values"), schema, "values", &choices)
 
 	slide := map[string]any{
 		"layout_id": layoutIDForNarrativeRole(narrativeRole),
@@ -67,6 +67,9 @@ func SkeletonForPattern(reg *Registry, patternName, narrativeRole string) (json.
 			"name":   pat.Name(),
 			"values": filledValues,
 		},
+	}
+	if len(choices) > 0 {
+		slide["speaker_notes"] = FillPlaceholder + " __CHOOSE__: Review these schema-constrained defaults before publishing: " + strings.Join(choices, ", ")
 	}
 
 	out, err := json.Marshal(slide)
@@ -94,29 +97,81 @@ func layoutIDForNarrativeRole(role string) string {
 	}
 }
 
-// replaceStringLeaves walks v, replacing every string leaf with placeholder.
-// Numbers, booleans, nulls, and structural keys are preserved. Maps and slices
-// are mutated in place; the (possibly mutated) value is also returned for
-// convenience.
-func replaceStringLeaves(v any, placeholder string) any {
+// fillSkeletonValues preserves typed schema defaults instead of placing a text
+// sentinel in enums, icon references, or numeric-or-text scores.
+func fillSkeletonValues(v any, schema, root *Schema, path string, choices *[]string) any {
+	schema = schema.Deref(root)
+	if schema != nil {
+		if len(schema.raw.Enum) > 0 {
+			*choices = append(*choices, path)
+			return schema.raw.Enum[0]
+		}
+		if schema.raw.Default != nil {
+			var def any
+			if json.Unmarshal(*schema.raw.Default, &def) == nil {
+				*choices = append(*choices, path)
+				return def
+			}
+		}
+		for _, branch := range schema.OneOfBranches() {
+			branch = branch.Deref(root)
+			if skeletonBranchMatches(v, branch) {
+				schema = branch
+				break
+			}
+		}
+	}
 	switch x := v.(type) {
 	case string:
 		// Preserve empty strings — they signal "omit field" in many patterns.
 		if x == "" {
 			return ""
 		}
-		return placeholder
+		return FillPlaceholder
 	case []any:
 		for i := range x {
-			x[i] = replaceStringLeaves(x[i], placeholder)
+			var item *Schema
+			if schema != nil {
+				item = schema.ItemSchema()
+			}
+			x[i] = fillSkeletonValues(x[i], item, root, fmt.Sprintf("%s[%d]", path, i), choices)
 		}
 		return x
 	case map[string]any:
-		for k, val := range x {
-			x[k] = replaceStringLeaves(val, placeholder)
+		keys := make([]string, 0, len(x))
+		for k := range x {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			var property *Schema
+			if schema != nil {
+				property = schema.Property(k)
+			}
+			x[k] = fillSkeletonValues(x[k], property, root, path+"."+k, choices)
 		}
 		return x
 	default:
 		return v
+	}
+}
+
+func skeletonBranchMatches(v any, branch *Schema) bool {
+	if branch == nil {
+		return false
+	}
+	switch v.(type) {
+	case string:
+		return branch.TypeName() == TypeString
+	case map[string]any:
+		return branch.TypeName() == TypeObject
+	case []any:
+		return branch.TypeName() == TypeArray
+	case float64:
+		return branch.TypeName() == TypeNumber || branch.TypeName() == TypeInteger
+	case bool:
+		return branch.TypeName() == TypeBoolean
+	default:
+		return false
 	}
 }

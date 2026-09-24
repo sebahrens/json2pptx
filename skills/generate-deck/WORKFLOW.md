@@ -68,7 +68,7 @@ Each `slides[]` entry in the `plan_deck` response carries three fillable-skeleto
 
 - `suggested_pattern` — first-choice pattern name (mirrors `recommended_pattern`).
 - `suggested_pattern_fallback` — second-choice pattern when the suggested pattern's content shape does not fit (drawn from `alternatives[0]`).
-- `skeleton` — a partial `SlideInput` JSON object with `__FILL__` tokens for every agent-supplied string. Copy the skeleton verbatim and replace each `__FILL__` with real content rather than authoring the slide from scratch. The skeleton already encodes the layout_id (canonical), title placeholder, and pattern envelope with the correct value shape; numeric structural defaults (grid dimensions, flags) are preserved.
+- `skeleton` — a partial `SlideInput` JSON object with `__FILL__` tokens for free-form copy and schema-valid defaults for typed fields (enums, icons, scores). Copy the skeleton, replace each `__FILL__` with real content, review the typed choices listed in its `__CHOOSE__` speaker note, and remove that draft note. The skeleton already encodes the layout_id (canonical), title placeholder, and pattern envelope with the correct value shape; numeric structural defaults (grid dimensions, flags) are preserved.
 
   **Replace every `__FILL__` before publishable generation.** Skeletons stay structurally valid (`valid: true`) because `__FILL__` is a non-empty string, but `validate_input` and `generate_presentation` now scan for leftover tokens and report each one as an `unresolved_placeholder` warning carrying its JSON path. This is intentional for draft scaffolding; for a finished deck, pass `placeholder_policy: "strict"` (the publishable/gated mode) so any remaining `__FILL__` becomes a blocking error instead of a warning.
 
