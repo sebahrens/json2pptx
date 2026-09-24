@@ -397,7 +397,10 @@ required. `examine-template` reports `canonical_coverage` keyed by family
 can synthesise or overlay from the base layouts (`two-content`, `comparison`,
 `full-image`, `blank-title`, `stat-grid`, `timeline`, `journey`,
 `panel-layout`), each with `ready: true|false` and `missing[]` naming the absent
-prerequisite. It is produced by `template.DerivableLayouts`.
+prerequisite. `ready` means the engine can produce the capability, **not** that
+its name is a valid `layout_id`. Use `addressable_as` as `layout_id` when it is a
+string; when it is `null`, use the `request_via` surface (`type:image` or
+`shape_grid_or_pattern`). It is produced by `template.DerivableLayouts`.
 
 ## 6. `preflight` — the single static-check pass
 

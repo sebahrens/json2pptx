@@ -1,6 +1,7 @@
 package examine
 
 import (
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -9,6 +10,33 @@ import (
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+func TestBuildDerivableReportsRequestSurfaceAndNullAddress(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{ID: "slideLayout1", CanonicalType: types.CanonicalLayoutOneContent, Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderTitle}, {Type: types.PlaceholderBody, MaxChars: 100},
+		}},
+		{ID: "slideLayout2", Tags: []string{"two-column"}, CanonicalType: types.CanonicalLayoutTwoContent},
+	}
+	entries := buildDerivable(layouts)
+	byName := make(map[string]DerivableLayoutReport, len(entries))
+	for _, entry := range entries {
+		byName[entry.Name] = entry
+	}
+	if got := byName["two-content"]; got.AddressableAs == nil || *got.AddressableAs != "two-column" || got.RequestVia != "layout_id" {
+		t.Errorf("two-content discovery = %+v", got)
+	}
+	if got := byName["stat-grid"]; got.AddressableAs != nil || got.RequestVia != "shape_grid_or_pattern" {
+		t.Errorf("stat-grid discovery = %+v", got)
+	}
+	encoded, err := json.Marshal(byName["stat-grid"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(encoded), `"addressable_as":null`) {
+		t.Errorf("non-addressable capability must serialize explicit null: %s", encoded)
+	}
+}
 
 func itoa(n int) string { return strconv.Itoa(n) }
 

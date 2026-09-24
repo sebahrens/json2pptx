@@ -278,9 +278,8 @@ type skillTemplateInfo struct {
 	// template provides a layout and which layouts cover it. Present in
 	// compact+full so agents can vet a template before authoring against it.
 	CanonicalCoverage map[string]skillCanonicalCoverage `json:"canonical_coverage,omitempty"`
-	// DerivableLayouts reports which higher-level layouts the engine can produce
-	// from the template's base layouts (two-content, full-image, grid patterns),
-	// and what is missing when it cannot. Present in compact+full.
+	// DerivableLayouts reports higher-level capabilities, their request surfaces,
+	// and what is missing when unavailable. Present in compact+full.
 	DerivableLayouts []skillDerivableLayout `json:"derivable_layouts,omitempty"`
 	LayoutNames      []string               `json:"layout_names,omitempty"`
 	LayoutSummaries  []skillLayoutSummary   `json:"layout_summaries,omitempty"` // compact+full: id+name+placeholders
@@ -313,12 +312,14 @@ type skillCanonicalCoverage struct {
 	Layouts []string `json:"layouts,omitempty"`
 }
 
-// skillDerivableLayout reports whether a higher-level layout can be derived from
-// a template's base layouts, and what is missing when it cannot.
+// skillDerivableLayout distinguishes a producible capability from a directly
+// addressable layout_id.
 type skillDerivableLayout struct {
-	Name    string   `json:"name"`
-	Ready   bool     `json:"ready"`
-	Missing []string `json:"missing,omitempty"`
+	Name          string   `json:"name"`
+	Ready         bool     `json:"ready"`
+	Missing       []string `json:"missing,omitempty"`
+	AddressableAs *string  `json:"addressable_as"`
+	RequestVia    string   `json:"request_via"`
 }
 
 // skillColorRoles maps design intent to scheme color names for a template.
@@ -889,7 +890,10 @@ func buildSkillDerivableLayouts(layouts []types.LayoutMetadata) []skillDerivable
 	dls := template.DerivableLayouts(layouts)
 	out := make([]skillDerivableLayout, len(dls))
 	for i, d := range dls {
-		out[i] = skillDerivableLayout{Name: d.Name, Ready: d.Ready, Missing: d.Missing}
+		out[i] = skillDerivableLayout{Name: d.Name, Ready: d.Ready, Missing: d.Missing, RequestVia: d.RequestVia}
+		if d.AddressableAs != "" {
+			out[i].AddressableAs = &d.AddressableAs
+		}
 	}
 	return out
 }

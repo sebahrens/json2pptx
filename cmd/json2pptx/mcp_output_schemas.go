@@ -979,9 +979,11 @@ var outputSchemaExamineTemplate = json.RawMessage(`{
         "properties": {
           "name":    {"type": "string"},
           "ready":   {"type": "boolean"},
-          "missing": {"type": "array", "items": {"type": "string"}}
+          "missing": {"type": "array", "items": {"type": "string"}},
+          "addressable_as": {"anyOf": [{"type": "string"}, {"type": "null"}], "description": "Exact layout_id to use when this capability is directly addressable; null when it requires a different authoring surface."},
+          "request_via": {"type": "string", "description": "Authoring surface: layout_id, type:two-column, type:comparison, type:image, shape_grid, or shape_grid_or_pattern."}
         },
-        "required": ["name", "ready"]
+        "required": ["name", "ready", "addressable_as", "request_via"]
       }
     },
     "layouts": {

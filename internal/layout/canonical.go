@@ -56,6 +56,7 @@ var canonicalNames = map[string]canonicalRule{
 	"two-column-narrow-wide": {requireTags: []string{"two-column"}, nameHint: "50"},
 	"image-left":             {requireTags: []string{"image-left"}},
 	"image-right":            {requireTags: []string{"image-right"}},
+	"full-image":             {requireTags: []string{"full-image"}},
 	"quote":                  {requireTags: []string{"quote", "statement"}},
 	"agenda":                 {requireTags: []string{"agenda"}},
 }

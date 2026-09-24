@@ -135,9 +135,11 @@ type CanonicalCoverage struct {
 
 // DerivableLayoutReport mirrors template.DerivableLayout for serialization.
 type DerivableLayoutReport struct {
-	Name    string   `json:"name"`
-	Ready   bool     `json:"ready"`
-	Missing []string `json:"missing,omitempty"`
+	Name          string   `json:"name"`
+	Ready         bool     `json:"ready"`
+	Missing       []string `json:"missing,omitempty"`
+	AddressableAs *string  `json:"addressable_as"`
+	RequestVia    string   `json:"request_via"`
 }
 
 // LayoutReport describes a single layout: its canonical classification, the
@@ -503,7 +505,10 @@ func buildDerivable(layouts []types.LayoutMetadata) []DerivableLayoutReport {
 	dls := template.DerivableLayouts(layouts)
 	out := make([]DerivableLayoutReport, len(dls))
 	for i, d := range dls {
-		out[i] = DerivableLayoutReport{Name: d.Name, Ready: d.Ready, Missing: d.Missing}
+		out[i] = DerivableLayoutReport{Name: d.Name, Ready: d.Ready, Missing: d.Missing, RequestVia: d.RequestVia}
+		if d.AddressableAs != "" {
+			out[i].AddressableAs = &d.AddressableAs
+		}
 	}
 	return out
 }

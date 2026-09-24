@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -219,6 +220,13 @@ func TestDerivableLayoutsCorpus(t *testing.T) {
 		for _, d := range template.DerivableLayouts(layouts) {
 			if d.Ready {
 				readyCount[d.Name]++
+				if d.AddressableAs != "" {
+					if _, ok := layout.ResolveCanonicalLayoutID(d.AddressableAs, layouts); !ok {
+						t.Errorf("%s: ready %s advertises unresolvable layout_id %q", filepath.Base(file), d.Name, d.AddressableAs)
+					}
+				} else if d.RequestVia == "" {
+					t.Errorf("%s: ready %s has neither layout_id nor request surface", filepath.Base(file), d.Name)
+				}
 			}
 		}
 	}
@@ -243,6 +251,66 @@ func TestDerivableLayouts_MissingFindings(t *testing.T) {
 		}
 		if len(d.Missing) == 0 {
 			t.Errorf("derivable %q not ready but emitted no specific missing finding", d.Name)
+		}
+		if d.AddressableAs != "" || d.RequestVia == "" {
+			t.Errorf("unready derivable %q has address %q or no request surface %q", d.Name, d.AddressableAs, d.RequestVia)
+		}
+	}
+}
+
+func TestDerivableLayoutsAddressing(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{ID: "slideLayout1", Name: "One Content", Tags: []string{"content"}, Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderTitle}, {Type: types.PlaceholderBody, MaxChars: 100},
+		}},
+		{ID: "slideLayout2", Name: "Photo", Tags: []string{"full-image"}, Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderImage, Bounds: types.BoundingBox{Width: 6000000, Height: 5000000}},
+		}},
+	}
+	want := map[string]struct{ address, via string }{
+		"two-content":  {"", "type:two-column"},
+		"comparison":   {"", "type:comparison"},
+		"full-image":   {"full-image", "type:image"},
+		"blank-title":  {"", "shape_grid"},
+		"stat-grid":    {"", "shape_grid_or_pattern"},
+		"timeline":     {"", "shape_grid_or_pattern"},
+		"journey":      {"", "shape_grid_or_pattern"},
+		"panel-layout": {"", "shape_grid_or_pattern"},
+	}
+	for _, d := range template.DerivableLayouts(layouts) {
+		expected, ok := want[d.Name]
+		if !ok {
+			t.Errorf("unexpected capability %q", d.Name)
+			continue
+		}
+		if !d.Ready || d.AddressableAs != expected.address || d.RequestVia != expected.via {
+			t.Errorf("%s = %+v, want ready and address/via %+v", d.Name, d, expected)
+		}
+		if d.AddressableAs != "" {
+			if _, ok := layout.ResolveCanonicalLayoutID(d.AddressableAs, layouts); !ok {
+				t.Errorf("%s advertises unresolvable layout_id %q", d.Name, d.AddressableAs)
+			}
+		}
+	}
+}
+
+func TestDerivableLayoutsDoNotAdvertiseNonNativeImageAsLayoutID(t *testing.T) {
+	layouts := []types.LayoutMetadata{
+		{ID: "slideLayout1", Name: "Image Right", Tags: []string{"image-right"}, Placeholders: []types.PlaceholderInfo{
+			{Type: types.PlaceholderImage, Bounds: types.BoundingBox{Width: 6000000, Height: 5000000}},
+		}},
+		{ID: "slideLayout2", Name: "Blank + Title", Tags: []string{"blank-title"}, CanonicalType: types.CanonicalLayoutBlankTitle},
+	}
+	for _, d := range template.DerivableLayouts(layouts) {
+		switch d.Name {
+		case "full-image":
+			if !d.Ready || d.AddressableAs != "" || d.RequestVia != "type:image" {
+				t.Errorf("image capability without native full-image layout = %+v", d)
+			}
+		case "blank-title":
+			if !d.Ready || d.AddressableAs != "blank-title" || d.RequestVia != "layout_id" {
+				t.Errorf("native blank-title = %+v", d)
+			}
 		}
 	}
 }

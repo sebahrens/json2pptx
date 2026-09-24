@@ -68,6 +68,16 @@ func TestResolveCanonicalLayoutID_Passthrough(t *testing.T) {
 	}
 }
 
+func TestResolveCanonicalLayoutID_FullImageRequiresNativeTag(t *testing.T) {
+	withImage := []types.LayoutMetadata{{ID: "slideLayout8", Tags: []string{"full-image"}}}
+	if got, ok := ResolveCanonicalLayoutID("full-image", withImage); !ok || got != "slideLayout8" {
+		t.Fatalf("native full-image = (%q, %v), want (slideLayout8, true)", got, ok)
+	}
+	if got, ok := ResolveCanonicalLayoutID("full-image", consultingLayouts); ok || got != "full-image" {
+		t.Fatalf("no native full-image = (%q, %v), want (full-image, false)", got, ok)
+	}
+}
+
 func TestResolveCanonicalLayoutID_Aliases(t *testing.T) {
 	// Layout aliases resolve to generated IDs (no template layouts needed)
 	id, ok := ResolveCanonicalLayoutID("2-col", nil)

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -779,6 +780,12 @@ func TestAnalyzeTemplateForSkillInfo_CanonicalMetadataFull(t *testing.T) {
 	for _, d := range info.DerivableLayouts {
 		if d.Name == "two-content" {
 			sawTwoContent = true
+			if !d.Ready || d.AddressableAs == nil || *d.AddressableAs != "two-column" || d.RequestVia != "layout_id" {
+				t.Errorf("two-content must report an actionable layout_id: %+v", d)
+			}
+		}
+		if d.Name == "stat-grid" && (d.AddressableAs != nil || d.RequestVia != "shape_grid_or_pattern") {
+			t.Errorf("stat-grid must not masquerade as a layout_id: %+v", d)
 		}
 	}
 	if !sawTwoContent {
@@ -811,6 +818,33 @@ func TestAnalyzeTemplateForSkillInfo_CanonicalMetadataFull(t *testing.T) {
 	}
 	if !sawFontPt {
 		t.Error("no placeholder exposed font_size_pt in full mode")
+	}
+}
+
+func TestDerivableLayoutAddressesExistInLocalCorpus(t *testing.T) {
+	cache := template.NewMemoryCache(24 * time.Hour)
+	for _, file := range testutil.TestTemplatePaths() {
+		t.Run(filepath.Base(file), func(t *testing.T) {
+			info, err := analyzeTemplateForSkillInfo(file, cache, "full")
+			if err != nil {
+				t.Fatal(err)
+			}
+			layouts := make([]types.LayoutMetadata, len(info.Layouts))
+			ids := make(map[string]bool, len(info.Layouts))
+			for i, item := range info.Layouts {
+				layouts[i] = types.LayoutMetadata{ID: item.ID, Tags: item.Tags}
+				ids[item.ID] = true
+			}
+			for _, d := range info.DerivableLayouts {
+				if !d.Ready || d.AddressableAs == nil {
+					continue
+				}
+				resolved, ok := layout.ResolveCanonicalLayoutID(*d.AddressableAs, layouts)
+				if !ok || !ids[resolved] {
+					t.Errorf("%s advertises layout_id %q, but it resolves to missing %q", d.Name, *d.AddressableAs, resolved)
+				}
+			}
+		})
 	}
 }
 

@@ -39,16 +39,20 @@ func (r *Report) Markdown() string {
 	}
 	b.WriteString("\n")
 
-	// Derivable layouts matrix.
-	b.WriteString("## Derivable layouts\n\n")
-	b.WriteString("| Layout | Ready | Missing |\n")
-	b.WriteString("| --- | --- | --- |\n")
+	// Derivable capabilities matrix.
+	b.WriteString("## Derivable capabilities\n\n")
+	b.WriteString("| Capability | Ready | Layout ID | Request via | Missing |\n")
+	b.WriteString("| --- | --- | --- | --- | --- |\n")
 	for _, d := range r.DerivableLayouts {
 		mark := "no"
 		if d.Ready {
 			mark = "yes"
 		}
-		fmt.Fprintf(&b, "| %s | %s | %s |\n", d.Name, mark, emptyDash(strings.Join(d.Missing, "; ")))
+		address := "—"
+		if d.AddressableAs != nil {
+			address = *d.AddressableAs
+		}
+		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |\n", d.Name, mark, address, d.RequestVia, emptyDash(strings.Join(d.Missing, "; ")))
 	}
 	b.WriteString("\n")
 

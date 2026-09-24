@@ -28,6 +28,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Derivable capability request paths (`go-slide-creator-syqke`,
+  schema 4.117.0).** Template discovery now includes `addressable_as` (an exact
+  `layout_id`, or `null`) and `request_via` for each `derivable_layouts[]`
+  capability. A ready grid or image capability is no longer presented as if its
+  name were necessarily a layout ID; native `full-image` layouts can now be
+  resolved by that name.
+
 - **2026-09-22 — Uncapped grid attribution (`go-slide-creator-nf8ad`,
   `go-slide-creator-gt3ao`).** `SLIDE_UNDERUSED` now treats full-area explicit
   bounds as non-restrictive and uses `band_capped_by:"none"` for uncapped raw

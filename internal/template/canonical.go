@@ -151,12 +151,14 @@ func CanonicalFamilyCoverage(layouts []types.LayoutMetadata) map[types.Canonical
 	return coverage
 }
 
-// DerivableLayout describes whether a higher-level layout can be derived from a
-// template's base layouts, and what is missing when it cannot.
+// DerivableLayout describes whether a higher-level capability can be derived
+// from a template and how an author can request it.
 type DerivableLayout struct {
-	Name    string   // derivable layout name (e.g. "two-content")
-	Ready   bool     // true when the template can produce this layout
-	Missing []string // specific prerequisites that are absent (empty when Ready)
+	Name          string   // derivable capability name (e.g. "two-content")
+	Ready         bool     // true when the template can produce this capability
+	Missing       []string // specific prerequisites that are absent (empty when Ready)
+	AddressableAs string   // layout_id to request it, if one exists; otherwise empty
+	RequestVia    string   // authoring surface for this capability
 }
 
 // layoutCapabilities is a one-pass summary of the base capabilities a template's
@@ -204,10 +206,12 @@ func scanCapabilities(layouts []types.LayoutMetadata) layoutCapabilities {
 	return c
 }
 
-// DerivableLayouts evaluates which higher-level layouts the template can produce
-// from its base layouts, returning a deterministically-ordered list. A layout is
-// "ready" when the engine can either select a native layout or synthesise/overlay
-// one from existing placeholders; otherwise Missing names the absent prerequisite.
+// DerivableLayouts evaluates which higher-level capabilities the template can
+// produce from its base layouts, returning a deterministically-ordered list.
+// Ready means the engine can select a native layout or synthesise/overlay the
+// capability, not that its name itself is a valid layout_id. AddressableAs is
+// set only when an exact layout_id is available; otherwise RequestVia tells
+// authors which slide field to use.
 func DerivableLayouts(layouts []types.LayoutMetadata) []DerivableLayout {
 	c := scanCapabilities(layouts)
 
@@ -232,6 +236,36 @@ func DerivableLayouts(layouts []types.LayoutMetadata) []DerivableLayout {
 		gridPattern("journey", gridBaseReady, gridBaseMissing()),
 		gridPattern("panel-layout", gridBaseReady, gridBaseMissing()),
 	}
+	for i := range results {
+		if !results[i].Ready {
+			continue
+		}
+		switch results[i].Name {
+		case "two-content", "comparison":
+			for _, layout := range layouts {
+				if hasTag(layout.Tags, "two-column") || layout.ID == "content-2-50-50" {
+					results[i].AddressableAs = "two-column"
+					results[i].RequestVia = "layout_id"
+					break
+				}
+			}
+		case "full-image":
+			for _, layout := range layouts {
+				if hasTag(layout.Tags, "full-image") {
+					results[i].AddressableAs = "full-image"
+					break
+				}
+			}
+		case "blank-title":
+			for _, layout := range layouts {
+				if hasTag(layout.Tags, "blank-title") {
+					results[i].AddressableAs = "blank-title"
+					results[i].RequestVia = "layout_id"
+					break
+				}
+			}
+		}
+	}
 
 	sort.SliceStable(results, func(i, j int) bool { return results[i].Name < results[j].Name })
 	return results
@@ -240,12 +274,17 @@ func DerivableLayouts(layouts []types.LayoutMetadata) []DerivableLayout {
 // derivableTwoContent evaluates two-content / comparison: a native Two Content
 // layout, or a One Content layout the synthesiser can split.
 func derivableTwoContent(name string, c layoutCapabilities) DerivableLayout {
+	via := "type:two-column"
+	if name == "comparison" {
+		via = "type:comparison"
+	}
 	if c.hasTwoContent || c.hasOneContent {
-		return DerivableLayout{Name: name, Ready: true}
+		return DerivableLayout{Name: name, Ready: true, RequestVia: via}
 	}
 	return DerivableLayout{
-		Name:    name,
-		Missing: []string{"no Two Content layout and no One Content layout to split into two columns"},
+		Name:       name,
+		Missing:    []string{"no Two Content layout and no One Content layout to split into two columns"},
+		RequestVia: via,
 	}
 }
 
@@ -253,11 +292,12 @@ func derivableTwoContent(name string, c layoutCapabilities) DerivableLayout {
 // canvas onto which a full-bleed picture can be placed.
 func derivableFullImage(c layoutCapabilities) DerivableLayout {
 	if c.hasLargeImage || c.hasBlank || c.hasBlankTitle {
-		return DerivableLayout{Name: "full-image", Ready: true}
+		return DerivableLayout{Name: "full-image", Ready: true, RequestVia: "type:image"}
 	}
 	return DerivableLayout{
-		Name:    "full-image",
-		Missing: []string{"no large image placeholder and no blank canvas for a full-bleed image"},
+		Name:       "full-image",
+		Missing:    []string{"no large image placeholder and no blank canvas for a full-bleed image"},
+		RequestVia: "type:image",
 	}
 }
 
@@ -265,16 +305,26 @@ func derivableFullImage(c layoutCapabilities) DerivableLayout {
 // layout carrying a title placeholder that can be cleared to a title-only canvas.
 func derivableBlankTitle(c layoutCapabilities) DerivableLayout {
 	if c.hasBlankTitle || c.hasTitleHolder {
-		return DerivableLayout{Name: "blank-title", Ready: true}
+		return DerivableLayout{Name: "blank-title", Ready: true, RequestVia: "shape_grid"}
 	}
 	return DerivableLayout{
-		Name:    "blank-title",
-		Missing: []string{"no blank-title layout and no layout with a title placeholder"},
+		Name:       "blank-title",
+		Missing:    []string{"no blank-title layout and no layout with a title placeholder"},
+		RequestVia: "layout_id",
 	}
 }
 
 // gridPattern builds a DerivableLayout for an SVG/shape-grid pattern that shares
 // the grid-base prerequisite.
 func gridPattern(name string, ready bool, missing []string) DerivableLayout {
-	return DerivableLayout{Name: name, Ready: ready, Missing: missing}
+	return DerivableLayout{Name: name, Ready: ready, Missing: missing, RequestVia: "shape_grid_or_pattern"}
+}
+
+func hasTag(tags []string, wanted string) bool {
+	for _, tag := range tags {
+		if tag == wanted {
+			return true
+		}
+	}
+	return false
 }
