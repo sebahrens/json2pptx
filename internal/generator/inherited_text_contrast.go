@@ -277,6 +277,15 @@ func enforceInheritedTextContrast(slide *slideXML, layoutXML, masterXML []byte, 
 			continue
 		}
 		hex, _ := inheritedColorFromFragment(fragment, override, themeColors)
+		if hex == "" && source == inheritedSourceLayout {
+			// A layout can override only the font size or weight. Its colorless
+			// lvl1 fragment must not mask the color supplied by master txStyles.
+			masterFragment := masterTextStyleLevel(masterXML, masterStyleForPlaceholder(ph.Type))
+			hex, _ = inheritedColorFromFragment(masterFragment, override, themeColors)
+			if hex != "" {
+				source = inheritedSourceMaster
+			}
+		}
 		if hex == "" {
 			continue
 		}

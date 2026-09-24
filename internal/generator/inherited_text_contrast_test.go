@@ -182,6 +182,29 @@ func TestInheritedTextContrast_LayoutStyleWins(t *testing.T) {
 	}
 }
 
+func TestInheritedTextContrast_ColorlessLayoutInheritsMasterColor(t *testing.T) {
+	layout := []byte(`<p:sldLayout><p:cSld><p:spTree>
+		<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+		<p:txBody><a:lstStyle><a:lvl1pPr><a:defRPr sz="1200"/></a:lvl1pPr></a:lstStyle></p:txBody></p:sp>
+		</p:spTree></p:cSld><p:clrMapOvr><a:overrideClrMapping tx1="lt1"/></p:clrMapOvr></p:sldLayout>`)
+	slide := bodySlide("Inherited white text")
+	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", modernLikeTheme(), 0,
+		parseLayoutColorMapOverride(layout))
+	if len(swaps) != 1 {
+		t.Fatalf("got %d swaps, want one master-color repair: %+v", len(swaps), swaps)
+	}
+	if swaps[0].Source != inheritedSourceMaster || swaps[0].OriginalColor != "#FFFFFF" || swaps[0].RatioAfter < 4.5 {
+		t.Errorf("master color was not repaired at the layout's 12pt threshold: %+v", swaps[0])
+	}
+	if !strings.Contains(slideRunFills(slide)[0], strings.TrimPrefix(swaps[0].ReplacedColor, "#")) {
+		t.Errorf("repair was not pinned onto the slide's run: %q", slideRunFills(slide)[0])
+	}
+	withoutMaster := bodySlide("Unknown inherited color")
+	if missing := enforceInheritedTextContrast(withoutMaster, layout, nil, "#FFFFFF", modernLikeTheme(), 0, nil); len(missing) != 0 {
+		t.Errorf("colorless layout without master cannot justify a swap: %+v", missing)
+	}
+}
+
 // TestInheritedTextContrast_SkipsStatedColors pins the division of labour: a
 // shape that names a color anywhere belongs to the existing pass, and fixing it
 // here too would record two swaps for one change.
