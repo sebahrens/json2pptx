@@ -6,6 +6,11 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+// paperSurfaceHairline keeps lt1-backed cards visible when paper is the page
+// color. A half-point rule blended 80% toward the light side is deliberately
+// quieter than an accent border while still separating the card from canvas.
+const paperSurfaceHairline = `{"color":"dk1","width":0.5,"lumMod":20000,"lumOff":80000}`
+
 // TextOverrides contains pattern-level overrides common to patterns with
 // header/body text: accent color, header font size, and body font size.
 // Patterns with identical override shapes (card-grid, comparison-2col)

@@ -28,6 +28,29 @@ func TestSwimlane_ExpandBasic(t *testing.T) {
 	if len(grid.Rows[0].Cells) != 4 {
 		t.Errorf("expected 4 cells per row, got %d", len(grid.Rows[0].Cells))
 	}
+	for ci := 1; ci < len(grid.Rows[0].Cells); ci++ {
+		if got := string(grid.Rows[0].Cells[ci].Shape.Line); got != paperSurfaceHairline {
+			t.Errorf("page-colored lane cell %d line = %s, want hairline", ci, got)
+		}
+		if got := string(grid.Rows[1].Cells[ci].Shape.Line); got != "" {
+			t.Errorf("tinted lane cell %d unexpectedly has hairline %s", ci, got)
+		}
+	}
+}
+
+func TestSwimlane_EmptyPaperStepHasOutline(t *testing.T) {
+	p, _ := Default().Get("swimlane")
+	vals := &SwimlaneValues{Lanes: []SwimlaneLane{
+		{Actor: "A", Steps: []string{""}},
+		{Actor: "B", Steps: []string{"Done"}},
+	}}
+	grid, err := p.Expand(ExpandContext{}, vals, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(grid.Rows[0].Cells[1].Shape.Line); got != paperSurfaceHairline {
+		t.Errorf("empty paper step line = %s, want hairline", got)
+	}
 }
 
 func TestSwimlane_ValidateMismatchedSteps(t *testing.T) {

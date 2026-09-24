@@ -397,10 +397,14 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// Body rows — apply inline markdown emphasis (**bold**, *italic*)
 	for bi, row := range vals.Rows {
 		rowFill := uniformFill
+		var rowLine json.RawMessage
 		if striped {
 			rowFill = stripeFillA
 			if bi%2 == 1 {
 				rowFill = stripeFillB
+			}
+			if rowFill == "lt1" {
+				rowLine = json.RawMessage(paperSurfaceHairline)
 			}
 		}
 		rowFillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, rowFill))
@@ -412,6 +416,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     rowFillJSON,
+				Line:     rowLine,
 				Text:     leftText,
 			},
 		}
@@ -422,6 +427,7 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     rowFillJSON,
+				Line:     rowLine,
 				Text:     rightText,
 			},
 		}

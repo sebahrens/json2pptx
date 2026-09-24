@@ -610,10 +610,15 @@ func (c *cardGrid) expandTinted(ctx ExpandContext, cell CardGridCell, idx int, a
 	if idx%2 == 1 {
 		fill = ctx.ResolveSurface("paper", "lt2")
 	}
+	var line json.RawMessage
+	if fill == "lt1" {
+		line = json.RawMessage(paperSurfaceHairline)
+	}
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
+			Line:     line,
 			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
 		},
 	}

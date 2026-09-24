@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestComparison2colRowUnmarshalJSON(t *testing.T) {
@@ -512,15 +514,16 @@ func TestComparison2col(t *testing.T) {
 				{Left: "A3", Right: "B3"},
 			},
 		}
-		grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		ctx := ExpandContext{Metadata: &types.TemplateMetadata{SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1"}}}
+		grid, err := p.Expand(ctx, &vals, nil, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
 		if len(grid.Rows) != 3 {
 			t.Fatalf("expected 3 body rows, got %d", len(grid.Rows))
 		}
-		// Empty metadata -> ResolveSurface falls back to lt1/lt2.
-		wantFills := []string{"lt1", "lt2", "lt1"}
+		// Shipped metadata uses a tinted subtle fill and page-colored paper.
+		wantFills := []string{"lt2", "lt1", "lt2"}
 		for i, row := range grid.Rows {
 			for j, cell := range row.Cells {
 				var fill string
@@ -529,6 +532,13 @@ func TestComparison2col(t *testing.T) {
 				}
 				if fill != wantFills[i] {
 					t.Errorf("row[%d].cell[%d] fill = %q, want %q (zebra striping)", i, j, fill, wantFills[i])
+				}
+				wantLine := ""
+				if i%2 == 1 {
+					wantLine = paperSurfaceHairline
+				}
+				if got := string(cell.Shape.Line); got != wantLine {
+					t.Errorf("row[%d].cell[%d] line = %s, want %s", i, j, got, wantLine)
 				}
 			}
 		}

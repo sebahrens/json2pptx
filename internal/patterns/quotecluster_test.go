@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestQuoteCluster_Registration(t *testing.T) {
@@ -221,19 +223,26 @@ func TestQuoteCluster_Expand_FourQuotes_SecondRowSingleQuote(t *testing.T) {
 func TestQuoteCluster_Expand_AlternatingFills(t *testing.T) {
 	p, _ := Default().Get("quote-cluster")
 	v := validQuoteClusterValues(6)
-	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	ctx := ExpandContext{Metadata: &types.TemplateMetadata{SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1"}}}
+	grid, err := p.Expand(ctx, v, nil, nil)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
-	// Even-indexed quotes use lt1 (subtle), odd-indexed use lt2 (paper). Verify
-	// the fills alternate across the first row.
-	row := grid.Rows[0]
-	var fills []string
-	for _, cell := range row.Cells {
-		fills = append(fills, string(cell.Shape.Fill))
-	}
-	if fills[0] == fills[1] {
-		t.Errorf("expected alternating fills, got: %v", fills)
+	for ri, row := range grid.Rows {
+		wantFill := `"lt2"`
+		wantLine := ""
+		if ri%2 == 1 {
+			wantFill = `"lt1"`
+			wantLine = paperSurfaceHairline
+		}
+		for ci, cell := range row.Cells {
+			if got := string(cell.Shape.Fill); got != wantFill {
+				t.Errorf("row %d col %d fill = %s, want %s", ri, ci, got, wantFill)
+			}
+			if got := string(cell.Shape.Line); got != wantLine {
+				t.Errorf("row %d col %d line = %s, want %s", ri, ci, got, wantLine)
+			}
+		}
 	}
 }
 

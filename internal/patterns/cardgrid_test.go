@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 func TestCardGridCellUnmarshalJSON(t *testing.T) {
@@ -697,7 +699,15 @@ func TestCardGridStyles(t *testing.T) {
 
 	t.Run("tinted", func(t *testing.T) {
 		ovr := &CardGridOverrides{Style: "tinted"}
-		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
+		fallback, err := p.Expand(ExpandContext{}, vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand without surface metadata: %v", err)
+		}
+		if got := string(fallback.Rows[0].Cells[0].Shape.Line); got != paperSurfaceHairline {
+			t.Errorf("fallback page-colored card line = %s, want hairline", got)
+		}
+		ctx := ExpandContext{Metadata: &types.TemplateMetadata{SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1"}}}
+		grid, err := p.Expand(ctx, vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
@@ -708,11 +718,25 @@ func TestCardGridStyles(t *testing.T) {
 		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Fill, &fill1); err != nil {
 			t.Fatalf("fill unmarshal: %v", err)
 		}
-		if fill0 != "lt1" {
-			t.Errorf("tinted: cell 0 fill = %q, want %q", fill0, "lt1")
+		if fill0 != "lt2" {
+			t.Errorf("tinted: cell 0 fill = %q, want %q", fill0, "lt2")
 		}
-		if fill1 != "lt2" {
-			t.Errorf("tinted: cell 1 fill = %q, want %q", fill1, "lt2")
+		if fill1 != "lt1" {
+			t.Errorf("tinted: cell 1 fill = %q, want %q", fill1, "lt1")
+		}
+		if got := string(grid.Rows[0].Cells[0].Shape.Line); got != "" {
+			t.Errorf("tinted non-page card line = %s, want no line", got)
+		}
+		if got := string(grid.Rows[0].Cells[1].Shape.Line); got != paperSurfaceHairline {
+			t.Errorf("tinted paper card line = %s, want hairline", got)
+		}
+		ovr.Border = "none"
+		grid, err = p.Expand(ctx, vals, ovr, nil)
+		if err != nil {
+			t.Fatalf("Expand with explicit border override: %v", err)
+		}
+		if got := string(grid.Rows[0].Cells[1].Shape.Line); got != `"none"` {
+			t.Errorf("tinted paper card explicit border = %s, want none", got)
 		}
 	})
 

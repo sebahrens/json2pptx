@@ -263,13 +263,18 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 			}
 			qt := v.Quotes[idx]
 			fill := ctx.ResolveSurface("subtle", "lt1")
-			if idx%2 == 1 {
+			var line json.RawMessage
+			if r%2 == 1 {
 				fill = ctx.ResolveSurface("paper", "lt2")
+			}
+			if fill == "lt1" {
+				line = json.RawMessage(paperSurfaceHairline)
 			}
 			cell := &jsonschema.GridCellInput{
 				Shape: &jsonschema.ShapeSpecInput{
 					Geometry: "roundRect",
 					Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
+					Line:     line,
 					Text:     buildQuoteClusterBubbleText(qt, quoteSize, nameSize, titleSize, accent),
 				},
 			}

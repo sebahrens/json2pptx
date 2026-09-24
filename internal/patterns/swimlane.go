@@ -247,8 +247,11 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 	for i, lane := range vals.Lanes {
 		// Alternate lane background
 		laneFill := `"lt1"`
+		var laneLine json.RawMessage
 		if i%2 == 1 {
 			laneFill = `{"color":"lt2","alpha":50}`
+		} else {
+			laneLine = json.RawMessage(paperSurfaceHairline)
 		}
 
 		cells := make([]*jsonschema.GridCellInput, numCols)
@@ -273,6 +276,7 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "rect",
 						Fill:     json.RawMessage(laneFill),
+						Line:     laneLine,
 					},
 				}
 			} else {
@@ -281,6 +285,7 @@ func (s *swimlane) Expand(ctx ExpandContext, values, overrides any, cellOverride
 					Shape: &jsonschema.ShapeSpecInput{
 						Geometry: "roundRect",
 						Fill:     json.RawMessage(laneFill),
+						Line:     laneLine,
 						Text:     stepText,
 					},
 				}
