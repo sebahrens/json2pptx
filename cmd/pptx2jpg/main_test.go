@@ -35,16 +35,10 @@ func TestRealCommandRunner_Run(t *testing.T) {
 		Stderr: os.Stderr,
 	}
 
-	// Test a simple command that should succeed
-	err := runner.Run("echo", "hello")
-	if err != nil {
-		t.Errorf("expected echo to succeed, got: %v", err)
-	}
-
-	// Test a command that should fail
-	err = runner.Run("nonexistent-command-12345")
-	if err == nil {
-		t.Error("expected nonexistent command to fail")
+	for _, name := range []string{"echo", "nonexistent-command-12345"} {
+		if err := runner.Run(name, "hello"); err == nil || !strings.Contains(err.Error(), "unsupported conversion executable") {
+			t.Errorf("Run(%q) = %v, want unsupported executable error", name, err)
+		}
 	}
 }
 

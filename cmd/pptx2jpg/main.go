@@ -71,10 +71,7 @@ func (r *RealCommandRunner) Run(name string, args ...string) error {
 		}
 		return err
 	}
-	cmd := exec.Command(name, args...)
-	cmd.Stdout = r.Stdout
-	cmd.Stderr = r.Stderr
-	return cmd.Run()
+	return fmt.Errorf("unsupported conversion executable %q", name)
 }
 
 // defaultRunner is the default command runner for production use.
