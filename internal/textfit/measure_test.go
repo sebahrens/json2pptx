@@ -13,6 +13,30 @@ func mustMeasure(t *testing.T, text, fontName string, fontPt float64, widthEMU i
 	return m
 }
 
+func TestMeasureLineWidth(t *testing.T) {
+	short, err := MeasureLineWidth("Q1", "Arial", 18)
+	if err != nil {
+		t.Fatal(err)
+	}
+	long, err := MeasureLineWidth("Q1 2026", "Arial", 18)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if short <= 0 || long <= short {
+		t.Errorf("widths short=%d long=%d; longer text should measure wider", short, long)
+	}
+	multiline, err := MeasureLineWidth("Q1\nQ1 2026", "Arial", 18)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if multiline != long {
+		t.Errorf("multiline width=%d, want longest line width=%d", multiline, long)
+	}
+	if empty, err := MeasureLineWidth("", "Arial", 18); err != nil || empty != 0 {
+		t.Errorf("empty width=%d, err=%v; want zero", empty, err)
+	}
+}
+
 func TestMeasureRun_ShortTextFitsOneLine(t *testing.T) {
 	m := mustMeasure(t, "Hello", "Arial", 18.0, 5*914400, 10)
 	if !m.Fits {

@@ -78,6 +78,19 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		config.DefaultFont = defaultFontFamily
 	}
 	applyDefaultTableStyling(table, &config)
+	if financialTableColumns(numCols, table.Rows) {
+		alignments := make([]string, numCols)
+		copy(alignments, config.ColumnAlignments)
+		for i := 1; i < numCols; i++ {
+			if i < len(config.Style.ColumnTypes) && config.Style.ColumnTypes[i] != "" {
+				continue
+			}
+			if alignments[i] == "" {
+				alignments[i] = "right"
+			}
+		}
+		config.ColumnAlignments = alignments
+	}
 
 	// Strict-fit path: measure every cell at the user-specified font size
 	// BEFORE the shrink chain. If any cell overflows, return a ValidationError
@@ -457,6 +470,11 @@ func calculateColumnWidthsWithDiag(numCols int, availableWidth int64, headers []
 	if fontSize <= 0 {
 		fontSize = defaultFontSize
 	}
+	if financialTableColumns(numCols, rows) {
+		if widths, deficit, ok := financialTableWidths(numCols, availableWidth, headers, rows, fontSize); ok {
+			return widths, deficit
+		}
+	}
 
 	// Measure max content length per column (header + all data cells).
 	// Headers are rendered at 1.1× bold, so weight them ~20% heavier
@@ -617,6 +635,122 @@ func calculateColumnWidthsWithDiag(numCols int, availableWidth int64, headers []
 	}
 
 	return widths, floorFallback
+}
+
+// financialTableColumns identifies a label column followed by numeric values.
+// It is deliberately strict: mixed or sparse numeric columns retain the
+// general-purpose allocator instead of being silently treated as financials.
+func financialTableColumns(numCols int, rows [][]types.TableCell) bool {
+	if numCols < 2 || len(rows) == 0 {
+		return false
+	}
+	labelSeen := false
+	seen := make([]bool, numCols)
+	for _, row := range rows {
+		if len(row) > 0 && strings.TrimSpace(row[0].Content) != "" {
+			if numericTableCell(row[0].Content) {
+				return false
+			}
+			labelSeen = true
+		}
+		for i := 1; i < numCols && i < len(row); i++ {
+			value := strings.TrimSpace(row[i].Content)
+			if value == "" {
+				continue
+			}
+			if row[i].IsMerged || !numericTableCell(value) {
+				return false
+			}
+			seen[i] = true
+		}
+	}
+	if !labelSeen {
+		return false
+	}
+	for i := 1; i < numCols; i++ {
+		if !seen[i] {
+			return false
+		}
+	}
+	return true
+}
+
+var numericTableCellRe = regexp.MustCompile(`(?i)^\(?[+-]?\s*(?:(?:[$€£]|EUR|USD|CHF)\s*)?\d[\d,]*(?:\.\d+)?\s*(?:[%xkmb])?\)?$`)
+
+func numericTableCell(value string) bool {
+	return numericTableCellRe.MatchString(strings.TrimSpace(value))
+}
+
+// financialTableWidths measures actual text widths at the rendering size,
+// leaves just enough room for the label column, then gives every numeric
+// column an equal share. A 1.4-inch numeric floor on a full-width table keeps
+// quarter headers intact; narrow placeholders scale that floor to their size.
+func financialTableWidths(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int) ([]int64, bool, bool) {
+	if availableWidth <= int64(numCols) {
+		return nil, false, false
+	}
+	measure := func(value string, size int) (int64, bool) {
+		width, err := textfit.MeasureLineWidth(value, defaultFontFamily, float64(size)/100)
+		return width + 2*cellMargin, err == nil
+	}
+	var labelWidth, numericWidth int64
+	for i, header := range headers {
+		if i >= numCols {
+			break
+		}
+		width, ok := measure(header, fontSize*11/10)
+		if !ok {
+			return nil, false, false
+		}
+		if i == 0 && width > labelWidth {
+			labelWidth = width
+		} else if i > 0 && width > numericWidth {
+			numericWidth = width
+		}
+	}
+	for _, row := range rows {
+		for i, cell := range row {
+			if i >= numCols || cell.IsMerged {
+				continue
+			}
+			width, ok := measure(cell.Content, fontSize)
+			if !ok {
+				return nil, false, false
+			}
+			if i == 0 && width > labelWidth {
+				labelWidth = width
+			} else if i > 0 && width > numericWidth {
+				numericWidth = width
+			}
+		}
+	}
+	equalShare := availableWidth / int64(numCols)
+	numericFloor := equalShare * 8 / 10
+	if numericFloor > 14*914400/10 {
+		numericFloor = 14 * 914400 / 10
+	}
+	if numericWidth > numericFloor {
+		numericFloor = numericWidth
+	}
+	maxLabel := availableWidth - int64(numCols-1)*numericFloor
+	if maxLabel <= 0 {
+		return equalColumnWidths(numCols, availableWidth), true, true
+	}
+	if labelWidth < equalShare {
+		labelWidth = equalShare
+	}
+	deficit := labelWidth > maxLabel
+	if deficit {
+		labelWidth = maxLabel
+	}
+	remaining := availableWidth - labelWidth
+	widths := make([]int64, numCols)
+	widths[0] = labelWidth
+	for i := 1; i < numCols; i++ {
+		widths[i] = remaining / int64(numCols-1)
+	}
+	widths[numCols-1] += remaining % int64(numCols-1)
+	return widths, deficit, true
 }
 
 // equalColumnWidths distributes width evenly across columns (fallback).

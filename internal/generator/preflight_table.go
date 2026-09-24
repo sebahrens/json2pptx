@@ -179,60 +179,12 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 	return findings
 }
 
-// hasColumnWidthDeficit mirrors the content-aware floor check in
-// calculateColumnWidthsWithDiag. It returns true when the sum of per-column
-// content-aware minimum widths exceeds the available width, in which case
-// the renderer falls back to the global floor.
+// hasColumnWidthDeficit uses the renderer's allocator so preflight and render
+// cannot disagree when table content or the allocation policy changes.
 func hasColumnWidthDeficit(numCols int, availableWidth int64, headers []string, rows [][]types.TableCell, fontSize int) bool {
 	if numCols == 0 || availableWidth <= 0 {
 		return false
 	}
-	if fontSize <= 0 {
-		fontSize = defaultFontSize
-	}
-
-	// Character width estimate (Calibri): em height in EMU * 0.6.
-	emHeight := int64(fontSize) * 127
-	charWidthEst := emHeight * 6 / 10
-
-	// Per-column longest non-breakable token estimate.
-	longestToken := make([]int, numCols)
-	for i, h := range headers {
-		if i >= numCols {
-			break
-		}
-		if l := longestWordLen(h); l > longestToken[i] {
-			longestToken[i] = l
-		}
-	}
-	for _, row := range rows {
-		for i, cell := range row {
-			if i >= numCols {
-				break
-			}
-			if l := longestWordLen(cell.Content); l > longestToken[i] {
-				longestToken[i] = l
-			}
-		}
-	}
-
-	const cellMarginEMU = int64(45720) // matches generator/table.go cellMargin
-	var totalMin int64
-	for _, tok := range longestToken {
-		min := int64(tok)*charWidthEst + 2*cellMarginEMU
-		totalMin += min
-	}
-
-	return totalMin > availableWidth
-}
-
-// longestWordLen returns the length of the longest whitespace-delimited token.
-func longestWordLen(s string) int {
-	longest := 0
-	for _, field := range strings.Fields(s) {
-		if len(field) > longest {
-			longest = len(field)
-		}
-	}
-	return longest
+	_, deficit := calculateColumnWidthsWithDiag(numCols, availableWidth, headers, rows, fontSize)
+	return deficit
 }

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -1352,6 +1353,76 @@ func TestCalculateColumnWidths_NarrowPlaceholderProportional(t *testing.T) {
 	}
 	if sum != availableWidth {
 		t.Errorf("column widths sum %d should equal available width %d", sum, availableWidth)
+	}
+}
+
+func TestFinancialTableWidthsAndAlignment(t *testing.T) {
+	table := &types.TableSpec{
+		Headers: []string{"EUR millions", "Q1 2026", "Q2 2026", "Q3 2026", "Q4 2026"},
+		Rows: [][]types.TableCell{
+			{{Content: "Partner and enablement cost"}, {Content: "2.9"}, {Content: "3.5"}, {Content: "4.1"}, {Content: "4.8"}},
+			{{Content: "Cumulative cash"}, {Content: "-2.4"}, {Content: "-2.1"}, {Content: "3.0"}, {Content: "14.3"}},
+		},
+	}
+	const available = int64(8229600)
+	widths := calculateColumnWidths(len(table.Headers), available, table.Headers, table.Rows, defaultFontSize)
+	if widths[0] >= available*45/100 {
+		t.Errorf("label column occupies %.1f%%, want below 45%%", 100*float64(widths[0])/float64(available))
+	}
+	for i := 1; i < len(widths); i++ {
+		if widths[i] < 14*914400/10 {
+			t.Errorf("numeric column %d is %.2fin, want at least 1.4in", i, float64(widths[i])/914400)
+		}
+		if widths[i]-widths[1] > 1 || widths[1]-widths[i] > 1 {
+			t.Errorf("numeric columns not equal: %v", widths)
+		}
+	}
+	result, err := GenerateTableXML(table, TableRenderConfig{Bounds: types.BoundingBox{Width: available, Height: 4000000}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Five columns trigger the renderer's 18pt -> 14.4pt density scaling.
+	renderedWidths := calculateColumnWidths(len(table.Headers), available, table.Headers, table.Rows, 1440)
+	if renderedWidths[0] >= available*45/100 {
+		t.Errorf("rendered label column occupies %.1f%%, want below 45%%", 100*float64(renderedWidths[0])/float64(available))
+	}
+	for _, width := range renderedWidths {
+		if !strings.Contains(result.XML, fmt.Sprintf(`<a:gridCol w="%d"/>`, width)) {
+			t.Errorf("rendered grid does not contain width %d", width)
+		}
+	}
+	for i := 1; i < len(table.Headers); i++ {
+		measurement, err := textfit.MeasureRun(table.Headers[i], defaultFontFamily, 15.84, renderedWidths[i], 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !measurement.Fits {
+			t.Errorf("header %q wraps in rendered column %d", table.Headers[i], i)
+		}
+	}
+	rowXML := regexp.MustCompile(`(?s)<a:tr h="[^"]+">.*?</a:tr>`).FindAllString(result.XML, -1)
+	if len(rowXML) != 3 {
+		t.Fatalf("got %d rendered rows, want 3", len(rowXML))
+	}
+	for i, row := range rowXML {
+		if got := strings.Count(row, `algn="r"`); got != 4 {
+			t.Errorf("row %d has %d right-aligned numeric cells, want 4", i, got)
+		}
+	}
+}
+
+func TestFinancialTableRecognitionRequiresNumericValues(t *testing.T) {
+	rows := [][]types.TableCell{{{Content: "North"}, {Content: "12"}, {Content: "N/A"}}}
+	if financialTableColumns(3, rows) {
+		t.Fatal("a mixed text/numeric table must use the general allocator")
+	}
+	rows[0][2].Content = "$12.5M"
+	if !financialTableColumns(3, rows) {
+		t.Fatal("currency values should identify a financial table")
+	}
+	rows[0][0].Content = "42"
+	if financialTableColumns(3, rows) {
+		t.Fatal("an all-numeric table has no label column")
 	}
 }
 

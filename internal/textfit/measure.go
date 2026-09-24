@@ -161,6 +161,26 @@ func MeasureRun(text string, fontName string, fontPt float64, widthEMU int64, ma
 	}, nil
 }
 
+// MeasureLineWidth returns the width of the longest explicit line at fontPt.
+// It does not add text-box insets; callers can add their actual cell margins.
+func MeasureLineWidth(text, fontName string, fontPt float64) (int64, error) {
+	if text == "" || fontPt <= 0 {
+		return 0, nil
+	}
+	ff, _, _ := fontcache.Resolve(fontName, "Arial")
+	if ff == nil {
+		return 0, ErrNoFontCache
+	}
+	face := newFace(ff, fontPt, canvas.FontRegular)
+	var widest float64
+	for _, line := range strings.Split(text, "\n") {
+		if width := canvas.NewTextLine(face, line, canvas.Left).Bounds().W(); width > widest {
+			widest = width
+		}
+	}
+	return int64(math.Ceil(widest / ptToMM * float64(emuPerPoint))), nil
+}
+
 // estimateOverflowChars approximates how many characters don't fit within
 // maxLines of the given width. It walks words forward, consuming the first
 // maxLines worth of space, then counts remaining runes.
