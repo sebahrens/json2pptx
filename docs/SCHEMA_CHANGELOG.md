@@ -28,6 +28,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Title eyebrow typography (`go-slide-creator-5w8ft`).**
+  A title-slide eyebrow now follows its title placeholder's alignment instead
+  of forcing left alignment. Its size tracks the subtitle at 70%, bounded to
+  12–18pt; templates without a dedicated subtitle use 12pt. No input-schema
+  version change.
+
 - **2026-09-24 — Blank-canvas content-zone parity (`go-slide-creator-j9k68`).**
   True Blank layouts now use the same title-free, 5%-margin content rectangle in
   template discovery and shape-grid/pattern rendering. A deck rhythm grid no

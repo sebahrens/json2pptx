@@ -561,12 +561,37 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 
 		// Inject eyebrow paragraph above title text
 		if eyebrow != "" && isTitlePlaceholder(item.PlaceholderID) {
-			prependEyebrowParagraph(shape, eyebrow)
+			prependEyebrowParagraph(shape, eyebrow, eyebrowFontSize(slide))
 		}
 	}
 	alignSiblingBodyColumns(slide, content, layoutID)
 
 	return warnings
+}
+
+// eyebrowFontSize keeps the eyebrow subordinate to the title-slide subtitle
+// while never letting it fall below the 12pt readable floor. Title layouts
+// without a dedicated subtitle use the floor rather than an unrelated body.
+func eyebrowFontSize(slide *slideXML) int {
+	if slide == nil {
+		return 1200
+	}
+	for i := range slide.CommonSlideData.ShapeTree.Shapes {
+		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
+		ph := shape.NonVisualProperties.NvPr.Placeholder
+		if ph == nil || ph.Type != "subTitle" {
+			continue
+		}
+		size := extractFontSizeFromShape(shape) * 7 / 10
+		if size > 1800 {
+			return 1800
+		}
+		if size > 1200 {
+			return size
+		}
+		break
+	}
+	return 1200
 }
 
 // alignSiblingBodyColumns keeps two populated, side-by-side body placeholders

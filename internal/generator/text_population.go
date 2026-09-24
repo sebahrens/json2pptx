@@ -931,18 +931,28 @@ func buildGroupParagraphs(group BulletGroup, denseGroups bool, headerSpcBefVal s
 }
 
 // prependEyebrowParagraph inserts a small-caps eyebrow paragraph before the
-// existing title text in a shape. The eyebrow renders as 10pt small-caps
-// in the theme minor font (+mn-lt) with tight spacing below to visually couple it with the title.
-func prependEyebrowParagraph(shape *shapeXML, eyebrow string) {
+// existing title text in a shape. Its alignment and horizontal offsets follow
+// the title paragraph (including a template lstStyle when values are omitted).
+func prependEyebrowParagraph(shape *shapeXML, eyebrow string, fontSizeHPt int) {
 	if shape.TextBody == nil || len(shape.TextBody.Paragraphs) == 0 {
 		return
+	}
+	if fontSizeHPt < 1200 {
+		fontSizeHPt = 1200
+	}
+	alignment := ""
+	var marginLeft, indent *int
+	if props := shape.TextBody.Paragraphs[0].Properties; props != nil {
+		alignment = props.Algn
+		marginLeft = props.MarL
+		indent = props.Indent
 	}
 
 	eyebrowRun := runXML{
 		Text: eyebrow,
 		RunProperties: &runPropertiesXML{
 			Lang:     "en-US",
-			FontSize: "1000", // 10pt
+			FontSize: fmt.Sprintf("%d", fontSizeHPt),
 			Caps:     "small",
 			// Theme minor (body) font: the eyebrow sits inside a title
 			// placeholder whose default is the major font.
@@ -950,13 +960,11 @@ func prependEyebrowParagraph(shape *shapeXML, eyebrow string) {
 		},
 	}
 
-	zeroMarL := 0
-	zeroIndent := 0
 	eyebrowPara := paragraphXML{
 		Properties: &paragraphPropertiesXML{
-			MarL:   &zeroMarL,
-			Indent: &zeroIndent,
-			Algn:   "l",
+			MarL:   marginLeft,
+			Indent: indent,
+			Algn:   alignment,
 			Inner:  `<a:buNone/><a:spcAft><a:spcPts val="200"/></a:spcAft>`,
 		},
 		Runs: []runXML{eyebrowRun},
