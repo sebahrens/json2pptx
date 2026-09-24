@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"bytes"
+	"image/png"
 	"strings"
 	"testing"
 
@@ -8,6 +10,54 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
+
+func TestChartBackgroundTransparentUnlessAuthored(t *testing.T) {
+	theme := []types.ThemeColor{
+		{Name: "lt1", RGB: "#DDEEFF"},
+		{Name: "lt2", RGB: "#EDF4FA"},
+		{Name: "dk1", RGB: "#172536"},
+		{Name: "accent1", RGB: "#355F95"},
+	}
+	spec := &types.DiagramSpec{Type: "bar_chart", Width: 320, Height: 220, Data: map[string]any{
+		"categories": []string{"A"},
+		"series":     []map[string]any{{"name": "Data", "values": []float64{1}}},
+	}}
+	for _, tc := range []struct {
+		name, authoredBackground string
+		wantAlpha                uint32
+	}{
+		{name: "theme contrast without fill", wantAlpha: 0},
+		{name: "authored background", authoredBackground: "#DDEEFF", wantAlpha: 0xFFFF},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.authoredBackground != "" {
+				spec.Style = &types.DiagramStyle{Background: tc.authoredBackground}
+			} else {
+				spec.Style = nil
+			}
+			rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			img, err := png.Decode(bytes.NewReader(rendered.PNG))
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, _, _, alpha := img.At(img.Bounds().Min.X+10, img.Bounds().Min.Y+10).RGBA()
+			if alpha != tc.wantAlpha {
+				t.Errorf("chart corner alpha = %d, want %d", alpha, tc.wantAlpha)
+			}
+		})
+	}
+}
+
+func TestNonChartDiagramKeepsThemeBackground(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "venn"}
+	theme := []types.ThemeColor{{Name: "lt1", RGB: "#DDEEFF"}, {Name: "accent1", RGB: "#355F95"}}
+	if got := diagramSpecToSVGGen(spec, theme, 0, "").Style.Background; got != "#DDEEFF" {
+		t.Errorf("non-chart diagram background = %q, want theme lt1", got)
+	}
+}
 
 func TestAbstractChartPaletteUsesVisibleFirstAccent(t *testing.T) {
 	reader, err := template.OpenTemplate("../../templates/abstract.pptx")
@@ -22,7 +72,10 @@ func TestAbstractChartPaletteUsesVisibleFirstAccent(t *testing.T) {
 	}}
 	req := diagramSpecToSVGGen(spec, theme, 0, "")
 	guide := svggen.StyleGuideFromSpec(req.Style)
-	background := svggen.MustParseColor(req.Style.Background)
+	if req.Style.Background != "transparent" {
+		t.Errorf("unfilled chart background = %q, want transparent", req.Style.Background)
+	}
+	background := guide.Palette.Background
 	for i, color := range guide.Palette.AccentColors() {
 		if ratio := color.ContrastWith(background); ratio < 2 {
 			t.Errorf("automatic chart series %d uses near-background %s at %.2f:1", i+1, color.Hex(), ratio)
@@ -86,8 +139,8 @@ func TestChartStyleUnresolvedColorsFallBackWithFindings(t *testing.T) {
 	if got := svggen.StyleGuideFromSpec(req.Style).Palette.Accent1.Hex(); got != "#123456" {
 		t.Errorf("unresolved accent fallback = %s, want template accent1", got)
 	}
-	if got := req.Style.Background; got != "#FFFFFF" {
-		t.Errorf("unresolved background fallback = %s, want template lt1", got)
+	if got := req.Style.Background; got != "transparent" {
+		t.Errorf("unresolved background fallback = %s, want transparent", got)
 	}
 	findings := DiagramStyleColorFindings(spec, theme)
 	if len(findings) != 2 || findings[0].Field != "style.colors[0]" || findings[1].Field != "style.background" {
@@ -373,9 +426,7 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 		})
 	}
 
-	// Verify lt1 (Background) and lt2 (Surface) are forwarded to StyleSpec
-	// so svggen's contrast pipeline matches native enforceTextContrastInSlide
-	// on tinted-surface templates (wbc7.6).
+	// Theme lt1 remains the contrast reference, not a painted chart backdrop.
 	t.Run("background_and_surface_forwarded_from_theme", func(t *testing.T) {
 		spec := &types.DiagramSpec{
 			Type: "bar_chart",
@@ -388,8 +439,11 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 			{Name: "accent1", RGB: "#336699"},
 		}
 		result := diagramSpecToSVGGen(spec, theme, 0, "")
-		if result.Style.Background != "#FFFFFF" {
-			t.Errorf("Background = %q, want %q (lt1)", result.Style.Background, "#FFFFFF")
+		if result.Style.Background != "transparent" {
+			t.Errorf("Background = %q, want transparent", result.Style.Background)
+		}
+		if got := svggen.StyleGuideFromSpec(result.Style).Palette.Background.Hex(); got != "#FFFFFF" {
+			t.Errorf("contrast background = %q, want lt1", got)
 		}
 		if result.Style.Surface != "#F5EFE0" {
 			t.Errorf("Surface = %q, want %q (lt2)", result.Style.Surface, "#F5EFE0")
@@ -425,6 +479,7 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 			Data: map[string]any{"categories": []string{"A"}, "values": []float64{1}},
 			Style: &types.DiagramStyle{
 				ThemeColors: []types.ThemeColor{
+					{Name: "accent1", RGB: "#4575A0"},
 					{Name: "lt1", RGB: "#101010"},
 					{Name: "lt2", RGB: "#202020"},
 				},
@@ -435,8 +490,11 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 			{Name: "lt2", RGB: "#EEEEEE"},
 		}
 		result := diagramSpecToSVGGen(spec, caller, 0, "")
-		if result.Style.Background != "#101010" {
-			t.Errorf("Background = %q, want %q (spec lt1)", result.Style.Background, "#101010")
+		if result.Style.Background != "transparent" {
+			t.Errorf("Background = %q, want transparent", result.Style.Background)
+		}
+		if got := svggen.StyleGuideFromSpec(result.Style).Palette.Background.Hex(); got != "#101010" {
+			t.Errorf("contrast background = %q, want spec lt1", got)
 		}
 		if result.Style.Surface != "#202020" {
 			t.Errorf("Surface = %q, want %q (spec lt2)", result.Style.Surface, "#202020")
@@ -486,10 +544,13 @@ func TestDiagramSpecToSVGGen(t *testing.T) {
 				t.Errorf("ThemeColors missing %s (must be forwarded from effective theme)", name)
 			}
 		}
-		// And the dedicated Background/Surface fields must still be set by
-		// the lookupBackgroundAndSurface pass so contrast calculations match.
-		if result.Style.Background != "#FAFAFA" {
-			t.Errorf("Background = %q, want %q (lt1)", result.Style.Background, "#FAFAFA")
+		// ThemeColors still supplies the lt1 contrast reference even though the
+		// actual chart canvas remains transparent.
+		if result.Style.Background != "transparent" {
+			t.Errorf("Background = %q, want transparent", result.Style.Background)
+		}
+		if got := svggen.StyleGuideFromSpec(result.Style).Palette.Background.Hex(); got != "#FAFAFA" {
+			t.Errorf("contrast background = %q, want lt1", got)
 		}
 		if result.Style.Surface != "#EFEFEF" {
 			t.Errorf("Surface = %q, want %q (lt2)", result.Style.Surface, "#EFEFEF")

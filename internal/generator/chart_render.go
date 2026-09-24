@@ -230,15 +230,19 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		style.DisablePaletteEnforcement = true
 	}
 
-	// Forward lt1 (background) and lt2 (surface) from the effective theme so
-	// svggen's contrast calculations match native enforceTextContrastInSlide
-	// on templates whose visible slide surface is tinted (not pure white).
+	// Forward lt1 and lt2 from the effective theme for contrast calculations.
+	// For charts, lt1 must not also paint an opaque rectangle over a tinted
+	// slide/card: ThemeColors supplies the contrast reference, while an explicit
+	// transparent background prevents PNG's white default from painting it.
 	// Per-spec ThemeColors take priority over caller-supplied themeColors.
 	bg, surface := lookupBackgroundAndSurface(effectiveTheme)
+	contrastBackground := bg
 	if surface != "" {
 		style.Surface = surface
 	}
-	if bg != "" {
+	if isSVGChartType(spec.Type) {
+		style.Background = "transparent"
+	} else if bg != "" {
 		style.Background = bg
 	}
 
@@ -255,9 +259,10 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 			style.FontFamily = spec.Style.FontFamily
 		}
 		if spec.Style.Background != "" {
-			// Explicit per-spec background wins over theme lt1.
+			// An explicit per-spec background wins over transparency/theme lt1.
 			if color, ok := ResolveDiagramStyleColor(spec.Style.Background, effectiveTheme); ok {
 				style.Background = color
+				contrastBackground = color
 			}
 		}
 		if len(spec.Style.DataPalette) > 0 && len(spec.Style.Colors) == 0 {
@@ -282,7 +287,7 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 	// chart background. Diagrams retain their native theme-accent mapping.
 	if len(style.ThemeColors) > 0 && isSVGChartType(spec.Type) &&
 		(spec.Style == nil || len(spec.Style.Colors) == 0) {
-		style.DataPalette = visibleChartPalette(style.ThemeColors, style.DataPalette, style.Background)
+		style.DataPalette = visibleChartPalette(style.ThemeColors, style.DataPalette, contrastBackground)
 	}
 
 	// Forward per-slide chart_style token overrides (vertical gridlines,
