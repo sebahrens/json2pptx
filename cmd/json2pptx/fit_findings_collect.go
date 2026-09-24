@@ -1501,6 +1501,7 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 
 	pairs := authorBackgroundContrastPairs(input, layouts, themeColors)
 	predictedLayouts := predictSlideLayouts(input, layouts)
+	findings := generator.DetectContrastPreflight(pairs, themeColors)
 	for si, slide := range input.Slides {
 		if slide.ShapeGrid == nil || (slide.ContrastCheck != nil && !*slide.ContrastCheck) {
 			continue
@@ -1515,33 +1516,83 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 		}
 		gridBackground := generator.EffectiveGridBackgroundHex(backgroundSpecFor(&slide), inheritedBackground, themeColors)
 		source := contrastGridSource(slide)
-		for ri, row := range slide.ShapeGrid.Rows {
-			for ci, cell := range row.Cells {
-				if cell == nil || cell.Shape == nil {
-					continue
-				}
-				fill := effectiveShapeFillColor(cell.Shape.Fill, themeColors, gridBackground)
-				if fill == "" && transparentShapeFill(cell.Shape.Fill) {
-					fill = gridBackground
-				}
-				if fill == "" {
-					continue
-				}
-				for _, tc := range extractShapeTextColors(cell.Shape.Text) {
-					pairs = append(pairs, generator.ContrastPreflightPair{
-						Path:       slidepath.GridCellField(si, ri, ci, "shape/text"),
-						Foreground: tc.Color,
-						Background: fill,
-						Source:     source,
-						TextPt:     tc.SizePt,
-						Bold:       tc.Bold,
-					})
+		cells := compiledGridContrastCells(slide.ShapeGrid, slidepath.ShapeGrid(si), 0)
+		shapes := make([][]byte, len(cells))
+		for i := range cells {
+			shapes[i] = cells[i].xml
+		}
+		for _, swap := range generator.PredictCompiledGridContrast(shapes, themeColors, si, gridBackground) {
+			path := swap.Path
+			authoredColor := ""
+			if swap.Cells < 2 {
+				indexText := strings.TrimPrefix(swap.Path, slidepath.ShapeGrid(si)+"/shapes/")
+				if idx, err := strconv.Atoi(indexText); err == nil && idx >= 0 && idx < len(cells) {
+					path = cells[idx].path
+					for _, tc := range extractShapeTextColors(cells[idx].text) {
+						resolved, ok := themeHex(tc.Color, themeColors)
+						if ok && strings.EqualFold(resolved.Hex(), swap.OriginalColor) {
+							authoredColor = tc.Color
+							break
+						}
+					}
 				}
 			}
+			findings = append(findings, generator.CompiledGridSwapFinding(swap, path, authoredColor, source, themeColors))
 		}
 	}
 
-	return generator.DetectContrastPreflight(pairs, themeColors)
+	return findings
+}
+
+type compiledGridContrastCell struct {
+	xml  []byte
+	path string
+	text json.RawMessage
+}
+
+// Compile the text-bearing grid shapes with the same shape XML writer that
+// generation uses. Bounds affect placement, not text colors or run sizes. The
+// resulting shape order also preserves sibling-group decisions.
+func compiledGridContrastCells(grid *ShapeGridInput, base string, depth int) []compiledGridContrastCell {
+	if grid == nil || depth > maxGeomNestingDepth {
+		return nil
+	}
+	var cells []compiledGridContrastCell
+	var nested []compiledGridContrastCell
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := slidepath.Join(base, fmt.Sprintf("rows/%d/cells/%d", ri, ci))
+			shape, field := cell.Shape, "shape/text"
+			if cell.Composite != nil && cell.Composite.Text != nil {
+				shape, field = cell.Composite.Text, "composite/text/text"
+			}
+			if shape != nil {
+				spec := convertGridCell(&GridCellInput{Shape: shape}).Shape
+				xml, err := shapegrid.GenerateShapeXML(spec, 1, pptx.RectEmu{CX: 1000000, CY: 500000})
+				if err == nil {
+					cells = append(cells, compiledGridContrastCell{xml: xml, path: slidepath.Join(cellPath, field), text: shape.Text})
+				}
+			}
+			if cell.Image != nil && cell.Image.Text != nil {
+				label := cell.Image.Text
+				spec := &shapegrid.ImageText{
+					Content: label.Content, Size: label.Size, Bold: label.Bold,
+					Color: label.Color, Align: label.Align, VerticalAlign: label.VerticalAlign, Font: label.Font,
+				}
+				xml, err := shapegrid.GenerateImageTextXML(spec, 1, pptx.RectEmu{CX: 1000000, CY: 500000})
+				if err == nil {
+					cells = append(cells, compiledGridContrastCell{xml: xml, path: slidepath.Join(cellPath, "image/text")})
+				}
+			}
+			if cell.Grid != nil {
+				nested = append(nested, compiledGridContrastCells(cell.Grid, slidepath.Join(cellPath, "grid"), depth+1)...)
+			}
+		}
+	}
+	return append(cells, nested...)
 }
 
 func contrastGridSource(slide SlideInput) string {
@@ -1700,13 +1751,9 @@ func extractShapeTextColors(raw json.RawMessage) []shapeTextColor {
 	}
 	// Object / paragraphs-array form.
 	var obj struct {
-		Color      string  `json:"color"`
-		Size       float64 `json:"size"`
-		Bold       bool    `json:"bold"`
+		Color      string `json:"color"`
 		Paragraphs []struct {
-			Color string  `json:"color"`
-			Size  float64 `json:"size"`
-			Bold  bool    `json:"bold"`
+			Color string `json:"color"`
 		} `json:"paragraphs"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
@@ -1716,32 +1763,21 @@ func extractShapeTextColors(raw json.RawMessage) []shapeTextColor {
 	// ResolveTextInput ignores the outer color whenever paragraph-form text is
 	// present. Predicting contrast for it would warn about a run never drawn.
 	if len(obj.Paragraphs) == 0 && obj.Color != "" {
-		colors = append(colors, shapeTextColor{Color: obj.Color, SizePt: obj.Size, Bold: obj.Bold})
+		colors = append(colors, shapeTextColor{Color: obj.Color})
 	}
 	for _, p := range obj.Paragraphs {
 		if p.Color == "" {
 			continue
 		}
-		// A paragraph without its own size inherits the shape's.
-		size, bold := p.Size, p.Bold
-		if size == 0 {
-			size = obj.Size
-		}
-		if !bold {
-			bold = obj.Bold
-		}
-		colors = append(colors, shapeTextColor{Color: p.Color, SizePt: size, Bold: bold})
+		colors = append(colors, shapeTextColor{Color: p.Color})
 	}
 	return colors
 }
 
-// shapeTextColor is an authored text color together with the size and weight it
-// is drawn at. The size decides which WCAG AA ratio the contrast check must
-// require — 3:1 only for genuinely large text (go-slide-creator-9ux4).
+// shapeTextColor records the authored spelling of a rendered text color so a
+// prediction can offer a repair against the correct JSON field.
 type shapeTextColor struct {
-	Color  string
-	SizePt float64
-	Bold   bool
+	Color string
 }
 
 // expandComposeForPreflight returns a shallow copy of input where each slide

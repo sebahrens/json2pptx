@@ -45,6 +45,69 @@ type ContrastPreflightPair struct {
 	AuthorBackground bool
 }
 
+// PredictCompiledGridContrast runs the same contrast pass used by generation on
+// already compiled shape XML. Copying the slice keeps group rewrites from
+// changing the caller's shapes; the XML bytes themselves are replaced, not
+// edited in place, by the pass.
+func PredictCompiledGridContrast(shapes [][]byte, themeColors []types.ThemeColor, slideIndex int, slideBackground string) []ContrastSwap {
+	if len(shapes) == 0 {
+		return nil
+	}
+	input := append([][]byte(nil), shapes...)
+	_, swaps := enforceShapeGridContrast(input, themeColors, computeWhiteTextSafeHex(themeColors), slideIndex, slideBackground)
+	return swaps
+}
+
+// CompiledGridSwapFinding reports a render-time decision at validate time.
+// A grouped decision cannot be repaired by changing one authored cell, so it
+// deliberately has no single-cell fix suggestion.
+func CompiledGridSwapFinding(swap ContrastSwap, path, authoredColor, source string, themeColors []types.ThemeColor) patterns.FitFinding {
+	if path == "" {
+		path = swap.Path
+	}
+	if source == "" {
+		source = swap.Source
+	}
+	var fix *patterns.FixSuggestion
+	if authoredColor != "" && swap.Cells < 2 && source == "shape_grid" {
+		mode := ""
+		fg, fgErr := svggen.ParseColor(swap.OriginalColor)
+		bg, bgErr := svggen.ParseColor(swap.BackgroundColor)
+		if fgErr == nil && bgErr == nil {
+			_, mode = contrastReplacement(authoredColor, fg, bg, themeColors, svggen.WCAGAANormal, false)
+		}
+		fix = &patterns.FixSuggestion{
+			Kind: "replace_color",
+			Params: map[string]any{
+				"from":                  authoredColor,
+				"to":                    swap.ReplacedColor,
+				"target":                "text",
+				"path":                  path,
+				"original_color":        swap.OriginalColor,
+				"predicted_replacement": swap.ReplacedColor,
+				"replacement_color":     swap.ReplacedColor,
+				"background_color":      swap.BackgroundColor,
+				"contrast_ratio_before": math.Round(swap.RatioBefore*100) / 100,
+				"contrast_ratio_after":  math.Round(swap.RatioAfter*100) / 100,
+				"replacement_mode":      mode,
+				"source":                source,
+			},
+		}
+	}
+	message := fmt.Sprintf("predicted: low-contrast text will be auto-replaced — %s → %s (on %s, ratio %.1f → %.1f)",
+		swap.OriginalColor, swap.ReplacedColor, swap.BackgroundColor,
+		math.Round(swap.RatioBefore*100)/100, math.Round(swap.RatioAfter*100)/100)
+	if swap.Cells > 1 {
+		message = fmt.Sprintf("%s; shared across %d cells", message, swap.Cells)
+	}
+	return patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: path, Code: patterns.ErrCodeContrastPredicted, Message: message, Fix: fix,
+		},
+		Action: "info",
+	}
+}
+
 // DetectContrastPreflight predicts whether the renderer's contrast pass
 // would auto-replace the foreground color in each pair. It emits a
 // contrast_predicted finding for any pair below the WCAG AA ratio that pair's
