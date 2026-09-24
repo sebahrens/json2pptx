@@ -35,6 +35,7 @@ func CompileExecutiveSummary(in Input) (*deckinput.SlideInput, []SourceLink, err
 	if !ok {
 		return compileExecutiveSummaryFallback(in)
 	}
+	values.BottomLine = FoldConclusion(values.BottomLine, firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway")))
 
 	encoded, err := json.Marshal(values)
 	if err != nil {
@@ -67,13 +68,22 @@ func CompileExecutiveSummary(in Input) (*deckinput.SlideInput, []SourceLink, err
 		})
 	}
 	if values.BottomLine != "" {
+		field := "bottom_line"
+		if strField(in.Body, field) == "" {
+			if strField(in.Body, "recommendation") != "" {
+				field = "recommendation"
+			} else {
+				field = "takeaway"
+			}
+		}
 		links = append(links, SourceLink{
 			RawPath:      in.rawSlide() + ".pattern.values.bottom_line",
-			SemanticPath: in.semSlide() + ".bottom_line",
+			SemanticPath: in.semSlide() + "." + field,
 		})
 	}
 
-	links = append(links, applyTakeaway(slide, in)...)
+	// The pattern's bottom-line element is already the conclusion band. A
+	// separate generator takeaway would put a second band directly below it.
 	return slide, links, nil
 }
 
@@ -97,6 +107,7 @@ func ExecSummaryPatternFeasible(body map[string]any) bool {
 	if !ok {
 		return false
 	}
+	values.BottomLine = FoldConclusion(values.BottomLine, strField(body, "takeaway"))
 	encoded, err := json.Marshal(values)
 	if err != nil {
 		return false

@@ -80,6 +80,37 @@ func TestCompileDecisionGivesTheAskAVisual(t *testing.T) {
 	})
 }
 
+func TestDecisionUsesOneConclusionBand(t *testing.T) {
+	body := decisionBody(option("Build", "Full control."), option("Buy", "Fast launch."))
+	body["takeaway"] = "Begin vendor diligence next week."
+	slide, _, err := CompileDecision(Input{Body: body, Takeaway: body["takeaway"].(string)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Takeaway != "" {
+		t.Fatalf("duplicate takeaway band = %q", slide.Takeaway)
+	}
+	if want := body["recommendation"].(string) + " — " + body["takeaway"].(string); slide.Pattern.Callout.Text != want {
+		t.Errorf("callout = %q, want %q", slide.Pattern.Callout.Text, want)
+	}
+}
+
+func TestDecisionTakeawayWithoutRecommendationUsesCallout(t *testing.T) {
+	body := decisionBody(option("Build", "Full control."), option("Buy", "Fast launch."))
+	delete(body, "recommendation")
+	body["takeaway"] = "Begin vendor diligence next week."
+	slide, links, err := CompileDecision(Input{Body: body, Takeaway: body["takeaway"].(string)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Pattern == nil || slide.Pattern.Callout == nil || slide.Pattern.Callout.Text != body["takeaway"] || slide.Takeaway != "" {
+		t.Fatalf("takeaway should occupy one callout: %+v", slide)
+	}
+	if got := links[len(links)-1].SemanticPath; !strings.HasSuffix(got, ".takeaway") {
+		t.Errorf("callout source = %q, want takeaway", got)
+	}
+}
+
 // Outside the visuals' bounds it keeps the content slide it has always
 // produced, and the finding says why.
 func TestDecisionDegradesWithAReason(t *testing.T) {

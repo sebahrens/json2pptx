@@ -44,10 +44,10 @@
             {
               "lead": "The raw data already exists; nothing turns it into a decision."
             }
-          ]
+          ],
+          "bottom_line": "Your teams are data-rich but decision-poor — and the gap is widening."
         }
-      },
-      "takeaway": "Your teams are data-rich but decision-poor — and the gap is widening."
+      }
     },
     {
       "layout_id": "blank-title",

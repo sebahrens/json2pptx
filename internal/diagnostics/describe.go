@@ -1198,6 +1198,15 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"kind": "section", "title": "Financial Review"}`,
 		RelatedCodes:  []string{CodeSemanticRequired},
 	},
+	CodeSemanticDuplicateCallout: {
+		Code:        CodeSemanticDuplicateCallout,
+		Summary:     "The takeaway repeats this slide's conclusion.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "An executive_summary takeaway repeats bottom_line or a decision takeaway repeats recommendation. The compiler renders the conclusion once instead of stacking identical callouts.",
+		RemediationSteps: []string{
+			"Remove the redundant takeaway, or rewrite it to add a distinct action or implication.",
+		},
+	},
 	CodeSemanticFieldType: {
 		Code:        CodeSemanticFieldType,
 		Summary:     "A payload field is present but has the wrong JSON type for its slide kind.",

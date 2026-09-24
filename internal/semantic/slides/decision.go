@@ -130,14 +130,18 @@ func decisionPatternSlide(in Input, pattern string, values, overrides json.RawMe
 		RawPath:      in.rawSlide() + ".pattern.values",
 		SemanticPath: in.semSlide() + ".options",
 	})
-	if rec := strField(in.Body, "recommendation"); rec != "" {
+	if rec := FoldConclusion(strField(in.Body, "recommendation"), firstNonEmpty(in.Takeaway, strField(in.Body, "takeaway"))); rec != "" {
 		slide.Pattern.Callout = &patterns.PatternCallout{Text: rec, Emphasis: "bold"}
+		field := "recommendation"
+		if strField(in.Body, field) == "" {
+			field = "takeaway"
+		}
 		links = append(links, SourceLink{
 			RawPath:      in.rawSlide() + ".pattern.callout.text",
-			SemanticPath: in.semSlide() + ".recommendation",
+			SemanticPath: in.semSlide() + "." + field,
 		})
 	}
-	links = append(links, applyTakeaway(slide, in)...)
+	// The pattern callout owns the takeaway too; do not stack a second band.
 	return slide, links, nil
 }
 

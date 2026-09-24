@@ -59,6 +59,34 @@ func TestDecisionRequiresOneUsableRecommendedOption(t *testing.T) {
 	}
 }
 
+func TestDuplicateConclusionDiagnostic(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		kind SlideKind
+		body map[string]any
+	}{
+		{"decision", KindDecision, map[string]any{
+			"title": "Choose", "options": []any{map[string]any{"label": "A", "recommended": true}, "B"},
+			"recommendation": "Fund the retention pod in Q3.", "takeaway": "FUND THE RETENTION POD IN Q3!",
+		}},
+		{"executive summary", KindExecutiveSummary, map[string]any{
+			"title": "Summary", "points": []any{"A", "B", "C"},
+			"bottom_line": "Fund the retention pod in Q3.", "takeaway": "Fund the retention pod in Q3!",
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := &DeckSpec{Meta: DeckMeta{Title: "Board update"}, Slides: []SlideSpec{{Kind: tc.kind, Body: tc.body}}}
+			if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticDuplicateCallout, "slides[0].takeaway"); !ok {
+				t.Fatal("missing duplicate-callout advisory")
+			}
+			tc.body["takeaway"] = "Begin hiring next month."
+			if _, ok := findAt(Validate(spec, StrictnessWarn), diagnostics.CodeSemanticDuplicateCallout, "slides[0].takeaway"); ok {
+				t.Fatal("distinct takeaway incorrectly flagged as duplicate")
+			}
+		})
+	}
+}
+
 func TestValidateCleanFixtureHasNoErrors(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("testdata", "board_update.yaml"))
 	if err != nil {

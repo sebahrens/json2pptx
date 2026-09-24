@@ -798,6 +798,7 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 // advisory says which visual is lost rather than blocking
 // (go-slide-creator-4ndv).
 func validateDecision(path string, slide SlideSpec, s *semDiags) {
+	validateDuplicateConclusion(path, slide.String("recommendation"), slide.String("takeaway"), "recommendation", s)
 	for _, field := range []string{"options", "choices", "alternatives"} {
 		raw, ok := slide.Body[field].([]any)
 		if !ok {
@@ -845,6 +846,13 @@ func validateDecision(path string, slide SlideSpec, s *semDiags) {
 		s.degrade(path+".options",
 			fmt.Sprintf("decision %s (otherwise it degrades to a content slide)", over),
 			"", degradeToContent, degradeBudgetExceeded)
+	}
+}
+
+func validateDuplicateConclusion(path, conclusion, takeaway, label string, s *semDiags) {
+	if slides.DuplicateConclusion(conclusion, takeaway) {
+		s.advisory(path+".takeaway", diagnostics.CodeSemanticDuplicateCallout,
+			"takeaway repeats "+label+"; the conclusion band shows it once")
 	}
 }
 
@@ -1496,6 +1504,11 @@ func validateTable(path string, slide SlideSpec, s *semDiags) {
 // else degrades to a bullet list. Say which one the author is getting rather
 // than only that the count is off (go-slide-creator-ku6t).
 func validateExecutiveSummary(path string, slide SlideSpec, s *semDiags) {
+	conclusion := slide.String("bottom_line")
+	if conclusion == "" {
+		conclusion = slide.String("recommendation")
+	}
+	validateDuplicateConclusion(path, conclusion, slide.String("takeaway"), "the executive-summary bottom line", s)
 	n, ok := execSummaryPointCount(slide.Body)
 	if !ok {
 		return
@@ -1509,7 +1522,7 @@ func validateExecutiveSummary(path string, slide SlideSpec, s *semDiags) {
 	}
 	if !slides.ExecSummaryPatternFeasible(slide.Body) {
 		s.degrade(pointsPath,
-			"executive summary points exceed the exec-summary text budgets (lead ≤90 chars, support ≤200); shorten them or the slide degrades to a bullet list",
+			"executive summary exceeds an exec-summary text budget (lead ≤90, support ≤200, combined bottom line and takeaway ≤160 characters); shorten it or the slide degrades to a bullet list",
 			"exec-summary", degradeToBullets, degradeBudgetExceeded)
 	}
 }

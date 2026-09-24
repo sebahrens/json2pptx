@@ -54,6 +54,56 @@ func TestExecutiveSummaryCompilesToPattern(t *testing.T) {
 	}
 }
 
+func TestExecutiveSummaryUsesOneConclusionBand(t *testing.T) {
+	base := map[string]any{
+		"points":      []any{"Revenue rose", "Churn fell", "Cycle shortened"},
+		"bottom_line": "Fund the retention pod in Q3.",
+		"takeaway":    "Begin hiring next month.",
+	}
+	slide, _, err := CompileExecutiveSummary(Input{Body: base, Takeaway: base["takeaway"].(string)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Takeaway != "" {
+		t.Fatalf("duplicate takeaway band = %q", slide.Takeaway)
+	}
+	var values execSummaryValues
+	if err := json.Unmarshal(slide.Pattern.Values, &values); err != nil {
+		t.Fatal(err)
+	}
+	if want := "Fund the retention pod in Q3. — Begin hiring next month."; values.BottomLine != want {
+		t.Errorf("bottom_line = %q, want %q", values.BottomLine, want)
+	}
+	if !ExecSummaryPatternFeasible(base) {
+		t.Fatal("feasibility disagrees with compiler")
+	}
+}
+
+func TestExecutiveSummaryOverfullConclusionDegradesWithoutDroppingText(t *testing.T) {
+	body := map[string]any{
+		"points":      []any{"Revenue rose", "Churn fell", "Cycle shortened"},
+		"bottom_line": strings.Repeat("Action ", 15),
+		"takeaway":    strings.Repeat("Implication ", 10),
+	}
+	if ExecSummaryPatternFeasible(body) {
+		t.Fatal("overfull conclusion should not fit the pattern")
+	}
+	slide, _, err := CompileExecutiveSummary(Input{Body: body, Takeaway: body["takeaway"].(string)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Pattern != nil || slide.Takeaway != body["takeaway"] {
+		t.Fatalf("fallback lost takeaway: pattern=%v takeaway=%q", slide.Pattern, slide.Takeaway)
+	}
+	if len(slide.Content) == 0 || slide.Content[0].BulletsValue == nil {
+		t.Fatalf("fallback lost bottom line: %+v", slide.Content)
+	}
+	bullets := *slide.Content[0].BulletsValue
+	if bullets[len(bullets)-1] != strings.TrimSpace(body["bottom_line"].(string)) {
+		t.Errorf("last bullet = %q, want bottom line", bullets[len(bullets)-1])
+	}
+}
+
 // A string point is the conclusion with no evidence line — the shape every
 // existing spec uses, which must keep working and still get the visual.
 func TestExecutiveSummaryStringPointsBecomeLeads(t *testing.T) {

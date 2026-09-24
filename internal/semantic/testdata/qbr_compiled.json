@@ -44,10 +44,10 @@
             {
               "lead": "Sales cycle shortened to 41 days after the onboarding redesign."
             }
-          ]
+          ],
+          "bottom_line": "Strong top-line growth, but retention needs deliberate investment in H2."
         }
-      },
-      "takeaway": "Strong top-line growth, but retention needs deliberate investment in H2."
+      }
     },
     {
       "layout_id": "blank-title",
@@ -158,11 +158,10 @@
           ]
         },
         "callout": {
-          "text": "Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.",
+          "text": "Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds. — Fund a dedicated SMB success pod now to protect net retention.",
           "emphasis": "bold"
         }
-      },
-      "takeaway": "Fund a dedicated SMB success pod now to protect net retention."
+      }
     },
     {
       "layout_id": "title",

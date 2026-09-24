@@ -133,6 +133,9 @@ const (
 	CodeSemanticTakeawayRequired Code = "SEMANTIC_TAKEAWAY_REQUIRED"
 	CodeSemanticDensity          Code = "SEMANTIC_DENSITY"
 	CodeSemanticWeakContent      Code = "SEMANTIC_WEAK_CONTENT"
+	// CodeSemanticDuplicateCallout warns when the authored takeaway repeats the
+	// kind's own conclusion, which the compiler renders only once.
+	CodeSemanticDuplicateCallout Code = "SEMANTIC_DUPLICATE_CALLOUT"
 	// CodeSemanticPatternDegraded flags a slide whose content will not fit the
 	// visual its kind promised, so the compiler renders it as bullets or a plain
 	// content slide instead. Split out of SEMANTIC_DENSITY, which was a misnomer
@@ -264,6 +267,7 @@ func AllCodes() []Code {
 		CodeSemanticDensity,
 		CodeSemanticPatternDegraded,
 		CodeSemanticWeakContent,
+		CodeSemanticDuplicateCallout,
 		CodeSemanticFieldType,
 		CodeChartSeriesLengthMismatch,
 		CodeChartValueNotNumeric,
