@@ -4,11 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"unicode"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/textcapacity"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // ---------------------------------------------------------------------------
@@ -42,30 +45,108 @@ func (c *cardGrid) Taxonomy() PatternTaxonomy {
 }
 func (c *cardGrid) SupportsCallout() bool { return true }
 
-// cardGridBodyBudget is the largest body, in characters, whose card still
-// renders above the readable floor at a given grid shape. The numbers are
-// MEASURED — a payload at each shape run through the same readability
-// prediction the fit report gives an agent, on the bundled templates — not
-// chosen: 300 characters is readable in a 1x1 and renders at 2.6pt in a 5x5,
-// and a single maxLength cannot say both (go-slide-creator-0g6p).
-func cardGridBodyBudget(columns, rows int) int {
-	cells := columns * rows
-	switch {
-	case cells <= 4:
-		return 300
-	case cells <= 6:
-		return 220
-	case cells <= 8:
-		return 160
-	case cells <= 9:
-		return 100
-	case cells <= 12:
-		return 60
-	case cells <= 15:
-		return 40
-	default:
-		return 20
+// CardGridBodyBudgets measures each card's pre-authoring body capacity at its
+// authored font size. It divides the available content area into equal rows
+// before looking at the supplied body text, so adding copy cannot raise the
+// reported budget by making a content-sized row taller. The header and card
+// padding are reserved before measuring the body; budgets are capped at the
+// schema's 300-character hard limit.
+func CardGridBodyBudgets(ctx ExpandContext, v *CardGridValues, o *CardGridOverrides) []int {
+	if v == nil || v.Columns <= 0 || v.Rows <= 0 {
+		return nil
 	}
+	if o == nil {
+		o = &CardGridOverrides{}
+	}
+	areaW, areaH := sizingAreaPt(ctx)
+	cardW := equalColumnWidthPt(areaW, v.Columns, contentSizedRowGapPt)
+	textW := cardW - 2*defaultShapeInsetLRPt
+	rowH := (areaH - float64(v.Rows-1)*contentSizedRowGapPt) / float64(v.Rows)
+	if textW <= 0 || rowH <= 0 {
+		return make([]int, len(v.Cells))
+	}
+
+	headerSize := ResolveSize(o.HeaderSize, 16)
+	bodySize := ResolveSize(o.BodySize, 12)
+	budgets := make([]int, len(v.Cells))
+	headerHeights := make([]float64, len(v.Cells))
+	rowHeaderHeights := make([]float64, v.Rows)
+	cellWidths := make([]float64, len(v.Cells))
+	cellHeights := make([]float64, len(v.Cells))
+	for i, cell := range v.Cells {
+		cellW, cellH := cardGridTextSpace(cardW, textW, rowH, cell)
+		cellWidths[i], cellHeights[i] = cellW, cellH
+		headerH := cardGridHeaderHeight(ctx.Theme.BodyFont, cellW, headerSize, o.Style, cell.Header, i)
+		headerHeights[i] = headerH
+		row := i / v.Columns
+		if row < len(rowHeaderHeights) && headerH > rowHeaderHeights[row] {
+			rowHeaderHeights[row] = headerH
+		}
+	}
+	for i := range v.Cells {
+		headerH := headerHeights[i]
+		if row := i / v.Columns; row < len(rowHeaderHeights) && rowHeaderHeights[row] > headerH {
+			headerH = rowHeaderHeights[row]
+		}
+		bodyH := cellHeights[i] - headerH
+		if bodyH <= 0 || cellWidths[i] <= 0 {
+			continue
+		}
+		budget := textcapacity.ForPlaceholder(types.PlaceholderInfo{
+			Bounds:   types.BoundingBox{Width: int64(cellWidths[i] * 12700), Height: int64(bodyH * 12700)},
+			FontSize: int(bodySize * 100),
+		}, "").MaxChars
+		if budget > 300 {
+			budget = 300
+		}
+		budgets[i] = budget
+	}
+	return budgets
+}
+
+func cardGridTextSpace(cardW, textW, rowH float64, cell CardGridCell) (float64, float64) {
+	shapeH := rowH
+	if cell.Secondary != nil {
+		shapeH *= 0.6 // lower 40% is the secondary chart
+	}
+	cellH := shapeH - 2*defaultShapeInsetTBPt - cardPadPt
+	if cell.Icon == nil {
+		return textW, cellH
+	}
+	icon := cell.Icon.Resolve("", "top")
+	if icon == nil {
+		return textW, cellH
+	}
+	scale := 0.6
+	explicitScale := icon.Scale > 0 && icon.Scale <= 1
+	if explicitScale {
+		scale = icon.Scale
+	}
+	iconSize := math.Min(cardW, shapeH) * scale
+	switch icon.Position {
+	case "left":
+		return textW - math.Min(iconSize, cardW*0.25) - 6, cellH
+	case "top":
+		if !explicitScale && cardW > shapeH*1.2 {
+			iconSize = math.Min(iconSize, shapeH*0.4)
+		}
+		return textW, cellH - iconSize - 6
+	default:
+		return textW, cellH
+	}
+}
+
+func cardGridHeaderHeight(font string, textW, headerSize float64, style, header string, cellIndex int) float64 {
+	if style == "numbered-badge" {
+		_, header = extractNumberPrefix(header, cellIndex+1)
+	}
+	height := textBlockHeightPt(font, math.Max(textW, 1),
+		textParagraph{text: header, size: headerSize, bold: true})
+	if style == "numbered-badge" {
+		badgeSize := math.Min(headerSize*1.5, 36)
+		height += badgeSize * contentLineHeight
+	}
+	return height
 }
 
 // PostExpandWarnings reports a card body past the budget for its own grid
@@ -73,18 +154,23 @@ func cardGridBodyBudget(columns, rows int) int {
 // an agent sizing its copy by the schema alone fills a dense grid with text
 // that renders at a few points; this says how much the shape actually holds
 // (go-slide-creator-0g6p).
-func (c *cardGrid) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+func (c *cardGrid) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	v, ok := values.(*CardGridValues)
 	if !ok || v == nil {
 		return nil
 	}
-	budget := cardGridBodyBudget(v.Columns, v.Rows)
+	o, _ := overrides.(*CardGridOverrides)
+	if o == nil {
+		o = &CardGridOverrides{}
+	}
+	budgets := CardGridBodyBudgets(ctx, v, o)
 	var warnings []string
 	for i, cell := range v.Cells {
+		budget := budgets[i]
 		if n := runeLen(cell.Body); n > budget {
 			warnings = append(warnings, fmt.Sprintf(
-				"%s: card-grid cells[%d].body is %d characters; a %dx%d grid holds about %d per card before the text shrinks below the readable minimum — trim it, or use fewer cards",
-				ErrCodeBodyTooLong, i, n, v.Columns, v.Rows, budget))
+				"%s: card-grid cells[%d].body is %d characters; this card holds about %d at %.0fpt in the selected content area — trim it, or use fewer cards",
+				ErrCodeBodyTooLong, i, n, budget, ResolveSize(o.BodySize, 12)))
 		}
 	}
 	return warnings
@@ -232,7 +318,7 @@ func (c *cardGrid) Schema() *Schema {
 		ObjectSchema(
 			map[string]*Schema{
 				"header":    StringSchema(80).WithDescription("Card header/title"),
-				"body":      StringSchema(300).WithDescription("Card body content. 300 characters is the budget of a SMALL grid (up to 2x2); a denser grid holds proportionally less — 3x2 ~220, 4x2 ~160, 3x3 ~100, 4x3 ~60, 5x3 ~40, 4x4 ~20. Past the budget for its own shape a card emits BODY_TOO_LONG with the number it has to hit."),
+				"body":      StringSchema(300).WithDescription("Card body content. 300 characters is a hard maximum, not a fit guarantee; a denser grid holds less. expand_pattern reports a template- and font-aware pre-authoring budget for each card and emits BODY_TOO_LONG above it."),
 				"icon":      IconRefSchema("Optional icon: bundled name string (e.g. \"rocket\") or {name|path|url|svg_data, fill?, alt?, position?} object. Used with icon-card style; also rendered as overlay when set with other styles."),
 				"secondary": SecondaryChartSchema(),
 			},

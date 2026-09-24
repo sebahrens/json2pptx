@@ -68,7 +68,7 @@ func buildPatternExpansionResult(
 	attachNextToolCallsToValidationErrors(densityWarnings, pi.Name)
 
 	occupancy := computeGridOccupancy(grid, expandCtx)
-	cellBudgets, capacityWarnings := computeCellBudgets(grid, expandCtx)
+	cellBudgets, capacityWarnings := computePatternCellBudgets(grid, expandCtx, pi)
 	attachBoundsHintToCapacityWarnings(capacityWarnings, pi.Name, pi)
 
 	if sparseWarn := sparseLayoutWarning(cellBudgets, pat, pi.Name, pi); sparseWarn != nil {

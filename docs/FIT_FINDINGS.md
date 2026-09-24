@@ -997,7 +997,7 @@ Mechanics:
 **Pattern:** content lint or pattern post-expand warning
 **Fix kind:** `reduce_text` for content lint; pattern warnings may have no fix object
 
-Content lint emits this code when a single `text`, `bullets`, `body_and_bullets`, or `bullet_groups` block exceeds 80 whitespace-separated words. Bullet items are aggregated per content block, so a 10-bullet list of 10-word bullets trips the budget. Pattern post-expand checks also emit this code for geometry-specific budgets, which may be measured in characters, lines, or rendered fit. For example, a 4×3 `card-grid` holds about 60 characters per card. Follow the finding's path, message, and unit; do not apply the 80-word limit to a pattern warning.
+Content lint emits this code when a single `text`, `bullets`, `body_and_bullets`, or `bullet_groups` block exceeds 80 whitespace-separated words. Bullet items are aggregated per content block, so a 10-bullet list of 10-word bullets trips the budget. Pattern post-expand checks also emit this code for geometry-specific budgets, which may be measured in characters, lines, or rendered fit. For `card-grid`, the character limit is the same template- and font-aware body-only number shown in `expand_pattern.cell_budgets[].max_chars`. Follow the finding's path, message, and unit; do not apply the 80-word limit to a pattern warning.
 
 ```json
 {

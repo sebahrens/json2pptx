@@ -28,6 +28,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Consistent card-grid body budgets (`go-slide-creator-g25k8`).**
+  `expand_pattern` now reports a pre-authoring body capacity at the authored
+  body font size within the selected template's content area. Its body-only
+  character count, density status, capacity warning, and `BODY_TOO_LONG`
+  warning use the same per-cell limit.
+
 - **2026-09-24 — Image placeholder cover crop (`go-slide-creator-x44hh`).**
   Raster images and native SVG images placed in a slide placeholder now fill
   its entire frame with a centered OOXML source crop instead of being

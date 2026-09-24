@@ -56,7 +56,7 @@ func TestDescribeFinding_ReturnsMetadataForKnownCode(t *testing.T) {
 func TestDescribeFinding_BodyTooLongDistinguishesWordAndPatternBudgets(t *testing.T) {
 	meta := callDescribeFinding(t, patterns.ErrCodeBodyTooLong)
 	if !strings.Contains(meta.WhenEmitted, "80 whitespace-separated words") ||
-		!strings.Contains(meta.WhenEmitted, "4x3 card-grid holds about 60 characters") {
+		!strings.Contains(meta.WhenEmitted, "card-grid reports its body-only limit per cell") {
 		t.Errorf("BODY_TOO_LONG when_emitted conflates content and pattern budgets: %q", meta.WhenEmitted)
 	}
 	steps := strings.Join(meta.RemediationSteps, " ")

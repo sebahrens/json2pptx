@@ -388,7 +388,7 @@ func runPatternsExpand() error {
 	}
 
 	// Compute cell budgets and density warnings from the resolved grid
-	cellBudgets, densityWarnings := computeCellBudgets(grid, expandCtx)
+	cellBudgets, densityWarnings := computePatternCellBudgets(grid, expandCtx, pi)
 
 	// Suggest alternative layouts when density is consistently suboptimal
 	layoutSuggestions := suggestAlternativeLayouts(pat.Name(), cellBudgets, reg)

@@ -393,10 +393,9 @@ A chevron, a right arrow and a home plate all draw their point INSIDE the boundi
 
 A pattern's JSON schema is the contract an agent sizes its copy against, and a per-field `maxLength` can only state one number. For a pattern whose cell count varies, that number is necessarily the budget of the *smallest* grid: card-grid's 300-character body is readable in a 1x1 and renders at **2.6pt in a 5x5**. Content that respects the schema in every particular is still a wall of unreadable text, and the schema cannot say so (go-slide-creator-0g6p).
 
-- Keep the `maxLength` at the small-shape budget (it is a real bound: past it even one card overflows) and say in the field's description that denser shapes hold less, with the numbers.
-- Emit the shape-scaled budget as a `BODY_TOO_LONG` warning from `PostExpandWarnings`, naming the shape and the number the author has to hit — "a 4x3 grid holds about 60 per card". `TEXT_BELOW_READABLE_MIN` already says the text will shrink; it does not say how much is affordable.
+- Keep `maxLength=300` as a hard input bound, not a promise that 300 characters fit every card. The field description directs authors to the per-card budget in `expand_pattern`.
+- Emit a `BODY_TOO_LONG` warning above that same per-card budget. Both `cell_budgets[].max_chars` and the warning account for the selected content area, body font size, card header, icon/chart reservations, and grid dimensions; `actual_chars` counts the body alone. The budget is computed before the supplied body copy sizes a row, so it cannot rise as an author adds text.
 - Derive the budget by MEASUREMENT, not by arithmetic: run the payload at each shape through the same readability prediction the fit report gives an agent. `cmd/json2pptx.TestSchemaMaximaStayReadable` does this for every registered pattern on all four bundled templates and pins the result, so a schema maximum cannot quietly get worse and an improvement cannot be given back.
-- card-grid's measured table: 1x1–2x2 → 300, 3x2 → 220, 4x2 → 160, 3x3 → 100, 4x3 → 60, 5x3 → 40, 4x4 and denser → 20.
 
 ## Text on a tinted fill must be chosen by measurement too
 

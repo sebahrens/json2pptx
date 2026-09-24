@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"math"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -148,6 +150,107 @@ func computeCellBudgets(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCont
 	}
 
 	return budgets, warnings
+}
+
+// computePatternCellBudgets keeps card-grid's body-only, pre-authoring budget
+// in sync with its BODY_TOO_LONG warning. The generic resolved-grid budget is
+// a whole-cell, post-content height estimate; using it for a content-sized card
+// can make the "maximum" rise as its body grows.
+func computePatternCellBudgets(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext, pi *PatternInput) ([]cellBudgetEntry, []cellDensityWarning) {
+	budgets, warnings := computeCellBudgets(grid, ctx)
+	if pi == nil || pi.Name != "card-grid" {
+		return budgets, warnings
+	}
+	var values patterns.CardGridValues
+	if err := json.Unmarshal(pi.Values, &values); err != nil {
+		return budgets, warnings
+	}
+	var overrides patterns.CardGridOverrides
+	if len(pi.Overrides) > 0 {
+		if err := json.Unmarshal(pi.Overrides, &overrides); err != nil {
+			return budgets, warnings
+		}
+	}
+	budgetCtx := ctx
+	if b, relative := resolvePatternBounds(pi); b != nil {
+		budgetCtx.LayoutBounds = patternExpansionBounds(ctx, b, relative)
+	}
+	budgetCtx = cardGridBudgetContext(budgetCtx, pi.Callout)
+	bodyBudgets := patterns.CardGridBodyBudgets(budgetCtx, &values, &overrides)
+	if len(budgets) == 0 {
+		// A severely overfull content-sized grid may not resolve at all. The
+		// pre-authoring budget still exists and must not disappear with it.
+		budgets = make([]cellBudgetEntry, len(bodyBudgets))
+		for i := range budgets {
+			budgets[i] = cellBudgetEntry{CellIndex: i, Row: i / values.Columns, Col: i % values.Columns}
+		}
+	}
+	limit := min(len(budgets), len(bodyBudgets))
+	kept := warnings[:0]
+	for _, w := range warnings {
+		if w.CellIndex >= limit {
+			kept = append(kept, w)
+		}
+	}
+	warnings = kept
+	for i := 0; i < limit; i++ {
+		b := &budgets[i]
+		b.MaxChars = bodyBudgets[i]
+		b.ActualChars = len([]rune(values.Cells[i].Body))
+		b.FontSizePt = patterns.ResolveSize(overrides.BodySize, 12)
+		b.DensityPct = 0
+		if b.MaxChars > 0 {
+			b.DensityPct = int(float64(b.ActualChars)/float64(b.MaxChars)*100 + 0.5)
+		} else if b.ActualChars > 0 {
+			// Zero capacity is overfull, not an empty card. Saturate the
+			// percentage so downstream ranking cannot mistake it for sparse.
+			b.DensityPct = 1000
+		}
+		switch {
+		case b.ActualChars > b.MaxChars:
+			b.Status = string(textcapacity.StatusOverflow)
+		case b.DensityPct < textcapacity.UnderfilledPct:
+			b.Status = string(textcapacity.StatusUnderfilled)
+		default:
+			b.Status = string(textcapacity.StatusOptimal)
+		}
+		if b.ActualChars > 0 && b.Status != string(textcapacity.StatusOptimal) {
+			warnings = append(warnings, cellDensityWarning{
+				CellIndex: b.CellIndex,
+				Field:     "body",
+				Actual:    b.ActualChars,
+				Budget:    b.MaxChars,
+				Status:    b.Status,
+			})
+		}
+	}
+	return budgets, warnings
+}
+
+// cardGridBudgetContext reserves the callout's auto-height row before sizing
+// card bodies. The shape-grid resolver gives an auto row at least 8% of the
+// grid; its text estimate is 1.2 line heights plus the default 7.2pt vertical
+// inset, and the extra row introduces one 10pt gap.
+func cardGridBudgetContext(ctx patterns.ExpandContext, callout *patterns.PatternCallout) patterns.ExpandContext {
+	if callout == nil || ctx.LayoutBounds.Height <= 0 {
+		return ctx
+	}
+	areaH := float64(ctx.LayoutBounds.Height) / 12700
+	lines := strings.Count(callout.Text, "\n") + 1
+	reserved := math.Max(areaH*0.08, float64(lines)*14*1.2+7.2) + 10
+	remaining := ctx.LayoutBounds.Height - int64(reserved*12700)
+	if remaining < 1 {
+		remaining = 1
+	}
+	ctx.LayoutBounds.Height = remaining
+	return ctx
+}
+
+func postExpandWarningContext(ctx patterns.ExpandContext, pi *PatternInput) patterns.ExpandContext {
+	if pi != nil && pi.Name == "card-grid" {
+		return cardGridBudgetContext(ctx, pi.Callout)
+	}
+	return ctx
 }
 
 // sparseLayoutWarning checks whether the average cell density across all

@@ -138,7 +138,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// parse the leading "<CODE>: " prefix into FitFindings.
 	var warnings []string
 	if warner, ok := pat.(patterns.PostExpandWarner); ok {
-		warnings = warner.PostExpandWarnings(expandCtx, values, overrides)
+		warnings = warner.PostExpandWarnings(postExpandWarningContext(expandCtx, p), values, overrides)
 	}
 
 	// Stamp the grid with its provenance. It is what lets an agent feed an

@@ -647,7 +647,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeBodyTooLong,
 		Summary:     "Body copy exceeds either the 80-word content limit or a pattern's shape-specific text budget.",
 		Severity:    "review",
-		WhenEmitted: "Content lint finds more than 80 whitespace-separated words in one text/bullet block, or a pattern's post-expand check finds text beyond its geometry-specific character, line, or measured-fit budget (for example, a 4x3 card-grid holds about 60 characters per card).",
+		WhenEmitted: "Content lint finds more than 80 whitespace-separated words in one text/bullet block, or a pattern's post-expand check finds text beyond its geometry-specific character, line, or measured-fit budget (card-grid reports its body-only limit per cell).",
 		RemediationSteps: []string{
 			"Read the finding's path and message for the actual unit and target; do not assume that every BODY_TOO_LONG finding has an 80-word limit.",
 			"For content-lint findings with fix.params.max_words, trim to that word limit or use repair_slide(kind=reduce_text, params={max_words}); preserve numbers, units, negations, and qualifiers.",
