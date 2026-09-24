@@ -46,6 +46,17 @@ func Describe(code string) (*patterns.FindingMeta, bool) {
 		out := m
 		return &out, true
 	}
+	// Callers often copy a code from a screenshot or type it in a different
+	// case. Preserve the canonical spelling in the returned metadata.
+	for _, canonical := range AllDescribableCodes() {
+		if strings.EqualFold(legacy, canonical) {
+			if m, ok := patterns.GetFindingMeta(canonical); ok {
+				return m, true
+			}
+			out := codeMetaRegistry[canonical]
+			return &out, true
+		}
+	}
 	return nil, false
 }
 
@@ -74,11 +85,18 @@ func AllDescribableCodes() []string {
 // intact so they reach the patterns registry verbatim.
 func stripNamespacePrefix(code string) string {
 	for _, ns := range AllNamespaces() {
-		if strings.HasPrefix(code, ns+".") {
+		if len(code) > len(ns) && strings.EqualFold(code[:len(ns)+1], ns+".") {
 			return code[len(ns)+1:]
 		}
 	}
 	return code
+}
+
+func briefMeta(code, summary, when, remedy, severity string) patterns.FindingMeta {
+	return patterns.FindingMeta{
+		Code: code, Summary: summary, Severity: severity,
+		WhenEmitted: when, RemediationSteps: []string{remedy},
+	}
 }
 
 // codeMetaRegistry documents every diagnostics.AllCodes() code that the
@@ -86,6 +104,53 @@ func stripNamespacePrefix(code string) string {
 // TestDescribeCoversAllDiagnosticCodes fails the build when a declared code has
 // no entry here or in the patterns registry.
 var codeMetaRegistry = map[string]patterns.FindingMeta{
+	"RENDER_EVIDENCE_INCOMPLETE":      briefMeta("RENDER_EVIDENCE_INCOMPLETE", "Render-time scoring evidence is incomplete.", "The score, repair, or make-deck render pass fails; only static findings are available.", "Inspect render_evidence.stage and detail, fix the render failure, and rerun the score before trusting the quality gate.", describeSeverityRefuse),
+	"palette_drift":                   briefMeta("palette_drift", "Rendered colors drift from the template theme palette.", "The palette audit finds a rendered color outside its allowed theme-color tolerance.", "Inspect the reported color pair and replace the drifting color with the nearest intended theme color.", describeSeverityReview),
+	"UNSUPPORTED_INLINE_MARKUP":       briefMeta("UNSUPPORTED_INLINE_MARKUP", "A text field contains inline markup the renderer does not support.", "Input validation encounters unsupported markup in authored text.", "Remove or convert the markup to supported plain text or rich-text fields.", describeSeverityRefuse),
+	"OOXML_ZERO_EXTENT":               briefMeta("OOXML_ZERO_EXTENT", "An output shape has zero width or height.", "Structural output validation finds a zero-sized DrawingML extent.", "Give the affected shape positive width and height, then regenerate and validate the PPTX.", describeSeverityRefuse),
+	"RESUME_TOKEN_MISMATCH":           briefMeta("RESUME_TOKEN_MISMATCH", "The resume token does not match the current deck or loop state.", "An auto-repair or make-deck continuation receives a stale or unrelated token.", "Restart the loop with the current deck and its matching resume token.", describeSeverityRefuse),
+	"MULTIPLE_CURRENT_STAGES":         briefMeta("MULTIPLE_CURRENT_STAGES", "More than one journey stage is marked current.", "A journey-maturity pattern has multiple stages with current=true.", "Mark exactly one stage current so the progress marker is unambiguous.", describeSeverityReview),
+	"COMPOSE_HORIZONTAL_TRUNCATION":   briefMeta("COMPOSE_HORIZONTAL_TRUNCATION", "A compose segment lost cells beyond its allocated width.", "Horizontal compose merging encounters a row wider than the segment's column allocation.", "Reduce the row's cells or increase that segment's size_pct, then preview again.", describeSeverityReview),
+	"COMPOSE_SEGMENT_BOUNDS_IGNORED":  briefMeta("COMPOSE_SEGMENT_BOUNDS_IGNORED", "A compose segment's own bounds are ignored.", "A segment sets bounds or max_height_pct although compose direction and size_pct govern placement.", "Remove the segment-level bounds and control its space with compose.size_pct.", describeSeverityReview),
+	"diagram.text_overlap":            briefMeta("diagram.text_overlap", "Rendered diagram labels overlap.", "Diagram preflight or SVG generation detects intersecting text bounds.", "Shorten the labels, reduce item count, or give the diagram more room.", describeSeverityReview),
+	"diagram.text_below_readable_min": briefMeta("diagram.text_below_readable_min", "Diagram text is below the readable size floor.", "Native diagram preflight predicts text too small to read at presentation size.", "Shorten labels, reduce diagram density, or increase its bounds.", describeSeverityReview),
+	"diagram.label_truncated":         briefMeta("diagram.label_truncated", "A diagram label was shortened to fit.", "The diagram renderer truncates a label in its assigned box.", "Shorten the source label or give that diagram item more space.", describeSeverityReview),
+	"diagram.org_chart_depth_pruned":  briefMeta("diagram.org_chart_depth_pruned", "Org-chart levels were omitted to fit.", "The diagram renderer prunes hierarchy depth to preserve readable remaining boxes.", "Split the organization chart or reduce its depth so all required levels render.", describeSeverityReview),
+	"chart.plot_area_collapsed":       briefMeta("chart.plot_area_collapsed", "Axis labels leave too little room for the chart plot.", "Long or dense category labels consume most of the chart canvas.", "Shorten category labels or split the chart across slides.", describeSeverityReview),
+	"chart.point_out_of_range":        briefMeta("chart.point_out_of_range", "A plotted value lies outside the configured axis range.", "Chart rendering clamps a point beyond the axis minimum or maximum.", "Correct the value or extend the explicit axis range to include it.", describeSeverityReview),
+	"ACCENT_OVERLOAD":                 briefMeta("ACCENT_OVERLOAD", "Too many accent hues are visible on one slide.", "Visual QA finds more than two distinct accent hues in the rendered slide.", "Limit accent fills to the one or two hues that carry the slide's argument.", describeSeverityReview),
+	"BASELINE_MISALIGN":               briefMeta("BASELINE_MISALIGN", "Sibling panel text baselines do not align.", "Visual QA finds adjacent cards or KPI bodies starting at different visual baselines.", "Align text boxes and use consistent top insets across sibling panels.", describeSeverityReview),
+	"MISSING_TAKEAWAY":                briefMeta("MISSING_TAKEAWAY", "The rendered chart or matrix lacks a visible takeaway.", "Visual QA finds no distinct so-what band on an evidence slide.", "Add or make visible a concise takeaway band that states the slide's conclusion.", "info"),
+	"CHART_BORDER":                    briefMeta("CHART_BORDER", "The chart plot has an unnecessary outer border.", "Visual QA sees a visible enclosing chart border.", "Remove the plot or chart-area outline.", describeSeverityReview),
+	"CHART_VERTICAL_GRIDLINES":        briefMeta("CHART_VERTICAL_GRIDLINES", "The chart has distracting vertical gridlines.", "Visual QA sees vertical gridlines on a bar or line chart.", "Remove vertical gridlines unless they materially aid reading values.", describeSeverityReview),
+	"REDUNDANT_LEGEND":                briefMeta("REDUNDANT_LEGEND", "A single-series chart has a redundant legend.", "Visual QA sees a one-entry legend that repeats the title or axis label.", "Hide the legend and label the series directly if needed.", describeSeverityReview),
+	"NON_TABULAR_NUMS":                briefMeta("NON_TABULAR_NUMS", "Numeric labels do not align consistently.", "Visual QA sees ragged figures in KPI cards, labels, or table columns.", "Right-align numeric columns and use tabular figures.", describeSeverityReview),
+	"EYEBROW_NO_CAPS":                 briefMeta("EYEBROW_NO_CAPS", "An eyebrow label looks like body text.", "Visual QA sees an eyebrow without caps or another clear typographic distinction.", "Use an all-caps or otherwise distinct eyebrow style.", "info"),
+	"AMBIGUOUS_CANONICAL_ROLE":        briefMeta("AMBIGUOUS_CANONICAL_ROLE", "Two template layouts tie for a canonical role.", "Template profiling assigns equal confidence to multiple layouts for one role.", "Inspect the competing layouts and set an explicit canonical role binding.", describeSeverityReview),
+	"LAYOUT_RELATIONSHIP_INVALID":     briefMeta("LAYOUT_RELATIONSHIP_INVALID", "A template layout has an invalid master or theme relationship.", "Template profiling cannot resolve a layout's relationships.", "Repair the layout's OOXML relationship targets or use a conforming template.", describeSeverityRefuse),
+	"UNUSABLE_GEOMETRY":               briefMeta("UNUSABLE_GEOMETRY", "A template body placeholder has no usable bounds.", "Template profiling resolves zero or negative body-placeholder dimensions.", "Give the body placeholder positive dimensions in the template.", describeSeverityRefuse),
+	"OOXML_LOW_FALLBACK_DPI":          briefMeta("OOXML_LOW_FALLBACK_DPI", "An SVG fallback image is below 96 DPI at display size.", "Output validation measures a low-resolution PNG fallback for an SVG picture.", "Regenerate the fallback PNG at 96 DPI or higher for its displayed size.", describeSeverityReview),
+	"invalid_color":                   briefMeta("invalid_color", "A pattern override has an invalid color.", "Pattern validation rejects a fill or line color value.", "Use a six-digit hex color or a supported theme scheme color name.", describeSeverityRefuse),
+	"invalid_enum":                    briefMeta("invalid_enum", "A pattern field has an unsupported enum value.", "Pattern validation finds an unknown style, border, accent mode, or chart type.", "Use one of the allowed values named in the finding's message.", describeSeverityRefuse),
+	"layout_synthesized":              briefMeta("layout_synthesized", "A missing template layout was synthesized.", "Template analysis creates a fallback layout from a base layout.", "Review the generated slide for brand fidelity or add the missing native layout to the template.", describeSeverityReview),
+	"length_mismatch":                 briefMeta("length_mismatch", "Chart categories and values have different lengths.", "Pattern validation finds a secondary chart whose category count differs from its value count.", "Supply one category for each value or omit categories.", describeSeverityRefuse),
+	"INVALID_ARG":                     briefMeta("INVALID_ARG", "A tool argument is missing or invalid.", "An MCP argument-error path receives no more specific diagnostic code.", "Correct the field named in the finding and retry with the expected type or value.", describeSeverityRefuse),
+	"INVALID_COLOR":                   briefMeta("INVALID_COLOR", "An OOXML color value is invalid.", "OOXML validation finds a malformed direct color value.", "Use a valid six-digit RGB color or a supported theme color.", describeSeverityRefuse),
+	"MISSING_PART":                    briefMeta("MISSING_PART", "A required PPTX package part is missing.", "OPC validation cannot find a referenced package part.", "Regenerate the deck or restore the missing part and its relationship.", describeSeverityRefuse),
+	"DANGLING_REL":                    briefMeta("DANGLING_REL", "A PPTX relationship points to a missing part.", "OPC validation resolves a relationship target that does not exist.", "Repair the relationship target or regenerate the affected slide.", describeSeverityRefuse),
+	"DUPLICATE_REL_ID":                briefMeta("DUPLICATE_REL_ID", "A PPTX relationships file reuses an ID.", "OPC validation finds two relationships with the same identifier.", "Assign unique relationship IDs or regenerate the package.", describeSeverityRefuse),
+	"MISSING_ELEMENT":                 briefMeta("MISSING_ELEMENT", "A required OOXML element is absent.", "PPTX package validation cannot find a mandatory XML element.", "Regenerate the affected part with the required element.", describeSeverityRefuse),
+	"MALFORMED_XML":                   briefMeta("MALFORMED_XML", "A PPTX XML part is malformed.", "OPC validation cannot parse a package XML part.", "Regenerate or repair the malformed XML part.", describeSeverityRefuse),
+	"MISSING_CONTENT_TYPE":            briefMeta("MISSING_CONTENT_TYPE", "A PPTX part has no content type.", "OPC validation finds a part without a matching content-type declaration.", "Add the correct content-type declaration or regenerate the package.", describeSeverityRefuse),
+	"MISSING_CONTENT_TYPE_OVERRIDE":   briefMeta("MISSING_CONTENT_TYPE_OVERRIDE", "A required PPTX content-type override is absent.", "OPC validation finds a part that needs an explicit override.", "Add the missing override to [Content_Types].xml or regenerate the package.", describeSeverityRefuse),
+	"DUPLICATE_ID":                    briefMeta("DUPLICATE_ID", "A slide repeats a shape identifier.", "OOXML validation finds duplicate non-visual property IDs.", "Assign unique shape IDs or regenerate the slide.", describeSeverityRefuse),
+	"EMPTY_REQUIRED_ATTR":             briefMeta("EMPTY_REQUIRED_ATTR", "A required OOXML attribute is empty.", "OOXML validation finds a mandatory attribute with no value.", "Supply the required value or regenerate the affected shape.", describeSeverityRefuse),
+	"ILLEGAL_XML_CHAR":                briefMeta("ILLEGAL_XML_CHAR", "Slide text contains an illegal XML character.", "OOXML validation finds a character forbidden by XML 1.0.", "Remove or replace the control character in the source text.", describeSeverityRefuse),
+	"INVALID_SCHEME":                  briefMeta("INVALID_SCHEME", "A color references an invalid theme scheme slot.", "OOXML validation finds an unknown scheme color name.", "Use a valid theme scheme color such as accent1 or dk1.", describeSeverityRefuse),
+	"INVALID_TABLE":                   briefMeta("INVALID_TABLE", "A table has invalid OOXML structure.", "OOXML validation finds a malformed table grid, row, or cell.", "Correct table dimensions or regenerate the table.", describeSeverityRefuse),
+	"SLIDE_COUNT_MISMATCH":            briefMeta("SLIDE_COUNT_MISMATCH", "Slide references and slide files disagree in count.", "OOXML validation compares presentation slide IDs with package slide parts.", "Regenerate the presentation or repair the slide list and relationships.", describeSeverityRefuse),
+	"ZERO_EXTENT":                     briefMeta("ZERO_EXTENT", "A shape has zero width or height.", "OOXML validation finds a zero-sized shape extent.", "Give the shape positive dimensions.", describeSeverityRefuse),
+	"title_collision":                 briefMeta("title_collision", "Authored content overlaps the title area.", "Fit analysis finds a shape-grid element intruding into the title zone.", "Move or resize the content to clear the title area.", describeSeverityReview),
 	// ---- Codes emitted as bare string literals by cmd/json2pptx ----
 	//
 	// These used to be absent from the catalogue, so describe_finding — the
@@ -1289,4 +1354,25 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 			"If it persists, report the failure with the input_sha256 for correlation.",
 		},
 	},
+}
+
+// Output validation exposes stable OPC_/OOXML_ codes while the low-level
+// validators retain their short codes. Both forms can appear in diagnostics.
+func init() {
+	for _, family := range []struct {
+		prefix string
+		codes  []string
+	}{
+		{"OPC_", []string{"MISSING_PART", "DANGLING_REL", "DUPLICATE_REL_ID", "MISSING_ELEMENT", "MALFORMED_XML", "MISSING_CONTENT_TYPE", "MISSING_CONTENT_TYPE_OVERRIDE"}},
+		{"OOXML_", []string{"INVALID_COLOR", "INVALID_SCHEME", "DUPLICATE_ID", "INVALID_TABLE", "ZERO_EXTENT", "ILLEGAL_XML_CHAR", "SLIDE_COUNT_MISMATCH", "EMPTY_REQUIRED_ATTR"}},
+	} {
+		for _, base := range family.codes {
+			meta, ok := codeMetaRegistry[base]
+			if !ok {
+				continue
+			}
+			meta.Code = family.prefix + base
+			codeMetaRegistry[meta.Code] = meta
+		}
+	}
 }

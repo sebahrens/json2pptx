@@ -107,6 +107,42 @@ func TestDescribeChartDottedCodePreserved(t *testing.T) {
 	}
 }
 
+func TestDescribeAdditionalEmittedCodes(t *testing.T) {
+	for _, code := range []string{
+		"RENDER_EVIDENCE_INCOMPLETE", "RENDER.palette_drift", "RENDER.diagram.text_overlap",
+		"UNSUPPORTED_INLINE_MARKUP", "OOXML_ZERO_EXTENT", "RESUME_TOKEN_MISMATCH",
+		"MULTIPLE_CURRENT_STAGES", "COMPOSE_HORIZONTAL_TRUNCATION",
+		"COMPOSE_SEGMENT_BOUNDS_IGNORED", "COMPOSE_SEGMENT_EXPAND_FAILED",
+		"chart.label_truncated", "diagram.label_truncated", "diagram.text_below_readable_min",
+		"diagram.org_chart_depth_pruned", "chart.plot_area_collapsed", "chart.point_out_of_range",
+		"ACCENT_OVERLOAD", "BASELINE_MISALIGN", "MISSING_TAKEAWAY",
+		"CHART_BORDER", "CHART_VERTICAL_GRIDLINES", "REDUNDANT_LEGEND",
+		"NON_TABULAR_NUMS", "EYEBROW_NO_CAPS",
+	} {
+		t.Run(code, func(t *testing.T) {
+			meta, ok := Describe(code)
+			if !ok || meta == nil || meta.Summary == "" || len(meta.RemediationSteps) == 0 {
+				t.Fatalf("Describe(%q) lacks actionable metadata: %+v, %v", code, meta, ok)
+			}
+		})
+	}
+}
+
+func TestDescribeCaseInsensitive(t *testing.T) {
+	for _, tc := range []struct{ input, canonical string }{
+		{"ACCENT_OVERLOAD", "ACCENT_OVERLOAD"},
+		{"accent_overload", "accent_overload"},
+		{"AcCeNt_OvErLoAd", "ACCENT_OVERLOAD"},
+		{"render.PALETTE_DRIFT", "palette_drift"},
+		{"fit.PLACEHOLDER_OVERFLOW", patterns.ErrCodePlaceholderOverflow},
+	} {
+		meta, ok := Describe(tc.input)
+		if !ok || meta.Code != tc.canonical {
+			t.Errorf("Describe(%q) = %+v, %v; want %q", tc.input, meta, ok, tc.canonical)
+		}
+	}
+}
+
 // TestAllDescribableCodesSorted documents that the helper returns codes in
 // sorted order and includes both registries.
 func TestAllDescribableCodesSorted(t *testing.T) {

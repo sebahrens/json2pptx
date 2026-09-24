@@ -19,9 +19,9 @@ import (
 // machine-readable record an agent needs to resolve the underlying problem
 // without reading docs/FIT_FINDINGS.md or the SKILL.md tables.
 //
-// Sourced from patterns.FindingMeta — a single registry whose entries are
-// asserted to cover every emitted code by TestFindingMetaCoversAllCodes,
-// so the data cannot silently drift from the engine.
+// Sourced from diagnostics.Describe, which unifies the pattern registry with
+// pipeline, output-validation, and visual-QA code metadata. Source-scan tests
+// guard against new emitted codes silently drifting from the catalogue.
 // ---------------------------------------------------------------------------
 
 func mcpDescribeFindingTool() mcp.Tool {

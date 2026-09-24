@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -18,25 +19,42 @@ import (
 // catalogue. This test closes that class of gap: every code STRING LITERAL
 // assigned to a Code field under cmd/ must be describable.
 func TestDescribeFindingCoversCodesEmittedInCmd(t *testing.T) {
-	// Matches `Code: "some_code"` and `Code:    "SOME_CODE"` in Go source.
-	codeLiteral := regexp.MustCompile(`\bCode:\s*"([A-Za-z][A-Za-z0-9_.]*)"`)
-
-	entries, err := os.ReadDir(".")
-	if err != nil {
-		t.Fatalf("read package dir: %v", err)
+	// Cover direct finding fields, named code constants, and the legacy
+	// "CODE: detail" warning strings that are parsed into findings later.
+	codeLiterals := []*regexp.Regexp{
+		regexp.MustCompile(`\bCode:\s*"([A-Za-z][A-Za-z0-9_.]*)"`),
+		regexp.MustCompile(`\b(?:ErrCode[A-Za-z0-9_]*|[A-Za-z0-9_]*Code)\s*=\s*"([A-Za-z][A-Za-z0-9_.]*)"`),
+		regexp.MustCompile(`"([A-Z][A-Z0-9]*_[A-Z0-9_]+):`),
+		regexp.MustCompile(`"((?:OPC|OOXML)_[A-Z0-9_]+)"`),
 	}
 
 	found := map[string][]string{} // code -> files
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") || strings.HasSuffix(e.Name(), "_test.go") {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Clean(e.Name()))
+	for _, root := range []string{"../../cmd", "../../internal"} {
+		rootDir, err := os.OpenRoot(root)
 		if err != nil {
-			t.Fatalf("read %s: %v", e.Name(), err)
+			t.Fatalf("open %s: %v", root, err)
 		}
-		for _, m := range codeLiteral.FindAllStringSubmatch(string(data), -1) {
-			found[m[1]] = append(found[m[1]], e.Name())
+		err = fs.WalkDir(rootDir.FS(), ".", func(path string, e fs.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if e.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+				return nil
+			}
+			data, err := rootDir.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			for _, re := range codeLiterals {
+				for _, m := range re.FindAllStringSubmatch(string(data), -1) {
+					found[m[1]] = append(found[m[1]], filepath.Join(root, path))
+				}
+			}
+			return nil
+		})
+		rootDir.Close()
+		if err != nil {
+			t.Fatalf("scan %s: %v", root, err)
 		}
 	}
 	if len(found) == 0 {

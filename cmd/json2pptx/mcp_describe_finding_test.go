@@ -53,6 +53,19 @@ func TestDescribeFinding_ReturnsMetadataForKnownCode(t *testing.T) {
 	}
 }
 
+func TestDescribeFinding_CaseInsensitiveCode(t *testing.T) {
+	for _, tc := range []struct{ input, canonical string }{
+		{"ACCENT_OVERLOAD", "ACCENT_OVERLOAD"},
+		{"render.PALETTE_DRIFT", "palette_drift"},
+		{"fit.PLACEHOLDER_OVERFLOW", patterns.ErrCodePlaceholderOverflow},
+	} {
+		meta := callDescribeFinding(t, tc.input)
+		if meta.Code != tc.canonical {
+			t.Errorf("describe_finding(%q).code = %q, want %q", tc.input, meta.Code, tc.canonical)
+		}
+	}
+}
+
 func TestDescribeFinding_BodyTooLongDistinguishesWordAndPatternBudgets(t *testing.T) {
 	meta := callDescribeFinding(t, patterns.ErrCodeBodyTooLong)
 	if !strings.Contains(meta.WhenEmitted, "80 whitespace-separated words") ||
