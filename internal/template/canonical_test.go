@@ -270,7 +270,7 @@ func TestDerivableLayoutsAddressing(t *testing.T) {
 	want := map[string]struct{ address, via string }{
 		"two-content":  {"", "type:two-column"},
 		"comparison":   {"", "type:comparison"},
-		"full-image":   {"full-image", "type:image"},
+		"full-image":   {"slideLayout2", "type:image"},
 		"blank-title":  {"", "shape_grid"},
 		"stat-grid":    {"", "shape_grid_or_pattern"},
 		"timeline":     {"", "shape_grid_or_pattern"},

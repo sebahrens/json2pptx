@@ -466,7 +466,7 @@ var outputSchemaRecommendVisual = json.RawMessage(`{
       "properties": {
         "status":          {"type": "string", "enum": ["supported", "risky", "unsupported"], "description": "supported = the template natively covers the needed layout/capability; risky = producible only via a synthesised/derived layout or close to a capacity/content-zone limit; unsupported = requires an absent canonical/derivable layout."},
         "reasons":         {"type": "array", "items": {"type": "string"}, "description": "Why the status applies: which layouts cover the candidate, what is synthesised, which capacity/content-zone constraint bites, or what is missing."},
-        "required_layout": {"type": "string", "description": "The canonical layout or derivable capability the candidate needs (e.g. \"Title Slide\", \"Two Content\", \"full-image\", \"grid base\"). Omitted when the candidate has no specific layout requirement."}
+        "required_layout": {"type": "string", "description": "Feasibility label naming the canonical layout or derivable capability the candidate needs (e.g. \"Title Slide\", \"Two Content\", \"full-image\", \"grid base\"). Not necessarily a valid slide.layout_id or semantic meta.required_layouts value. Omitted when no specific requirement exists."}
       },
       "required": ["status"]
     },
@@ -2046,7 +2046,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
       "properties": {
         "status":          {"type": "string", "enum": ["supported", "risky", "unsupported"], "description": "supported = the template natively covers the needed layout/capability; risky = producible only via a synthesised/derived layout or close to a capacity/content-zone limit; unsupported = requires an absent canonical/derivable layout."},
         "reasons":         {"type": "array", "items": {"type": "string"}, "description": "Why the status applies: which layouts cover the candidate, what is synthesised, which capacity/content-zone constraint bites, or what is missing."},
-        "required_layout": {"type": "string", "description": "The canonical layout or derivable capability the pattern needs (e.g. \"grid base\"). Omitted when there is no specific layout requirement."}
+        "required_layout": {"type": "string", "description": "Feasibility label for the canonical layout or derivable capability the pattern needs (e.g. \"grid base\"); not necessarily a valid slide.layout_id or semantic meta.required_layouts value. Omitted when there is no specific requirement."}
       },
       "required": ["status"]
     }

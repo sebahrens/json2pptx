@@ -94,7 +94,9 @@ and the closing slide. Set `meta.chrome.section_crumb: true` to show the current
 slides. Divider numbers come from the engine; never write numeric divider labels yourself.
 
 When a request explicitly requires native layout coverage, list canonical IDs in
-`meta.required_layouts`. `semantic explain` reports `layout_coverage.{requested,assigned,missing}`
+`meta.required_layouts`. Do not copy `recommend_visual.template_support.required_layout`
+here: that is a feasibility label and may name a non-layout capability such as
+`full-image` or `grid base`. `semantic explain` reports `layout_coverage.{requested,assigned,missing}`
 and assigns compatible narrative slides after planning. Missing coverage is blocking: add an
 appropriate semantic slide. Do not replace the story with one generated slide per required layout.
 
@@ -910,7 +912,7 @@ When building a slide and unsure which visual approach to use, follow this decis
    - `status: "risky"` — producible only via a synthesised/derived layout (e.g. a two-column built by splitting a One Content layout), or close to a body-capacity / content-zone limit. Read `reasons[]` for the caveat.
    - `status: "unsupported"` — the candidate needs a canonical or derivable layout the template cannot provide (`reasons[]` names what is missing).
 
-   The engine **demotes** risky/unsupported candidates in the ranking, so the top candidate is feasible for the template whenever any feasible option exists. The displayed `score` is left untouched (it stays the intent-match score); only ordering changes. `required_layout` names the canonical layout or derivable capability the candidate needs (`"Title Slide"`, `"Two Content"`, `"full-image"`, `"grid base"`, …); it is **not** necessarily a valid `layout_id`. In `list_templates`, `skill-info`, or `examine_template`, use `derivable_layouts[].addressable_as` when non-null for an exact `layout_id`, otherwise follow `request_via` (for example, use slide type `image` for `full-image`, or a `shape_grid`/pattern for `stat-grid`). The same support logic also powers `plan_deck` template-awareness. Without `template`, candidates carry no `template_support` (template-agnostic ranking, unchanged behaviour).
+   The engine **demotes** risky/unsupported candidates in the ranking, so the top candidate is feasible for the template whenever any feasible option exists. The displayed `score` is left untouched (it stays the intent-match score); only ordering changes. `required_layout` names the canonical layout or derivable capability the candidate needs (`"Title Slide"`, `"Two Content"`, `"full-image"`, `"grid base"`, …); it is **not** necessarily a valid `layout_id` and must not be copied into semantic `meta.required_layouts`. In `list_templates`, `skill-info`, or `examine_template`, use `derivable_layouts[].addressable_as` when non-null for an exact `layout_id`, otherwise follow `request_via` (for example, use slide type `image` for `full-image`, or a `shape_grid`/pattern for `stat-grid`). The same support logic also powers `plan_deck` template-awareness. Without `template`, candidates carry no `template_support` (template-agnostic ranking, unchanged behaviour).
 
    Compose envelopes accept 2 to **N** top-level segments — the enforced cap is published as `get_capabilities().features.compose.max_segments` (default 8) along with the supported `directions` and `supports_smart_compose` flag. For arrangements that exceed the cap, nest a compose envelope inside a segment instead of flattening: a `SegmentInput` may set `compose` (XOR with `pattern`) to host a child envelope. Nesting depth and total leaf count caps are published under the same `compose` feature block.
 

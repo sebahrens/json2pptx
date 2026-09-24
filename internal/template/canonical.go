@@ -252,7 +252,7 @@ func DerivableLayouts(layouts []types.LayoutMetadata) []DerivableLayout {
 		case "full-image":
 			for _, layout := range layouts {
 				if hasTag(layout.Tags, "full-image") {
-					results[i].AddressableAs = "full-image"
+					results[i].AddressableAs = layout.ID
 					break
 				}
 			}

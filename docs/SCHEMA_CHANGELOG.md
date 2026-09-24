@@ -28,12 +28,20 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Concrete full-image addresses and requirement guidance
+  (`go-slide-creator-1tgzw`, `go-slide-creator-xc5bh`, schema 4.118.0).** A
+  native `full-image` capability now reports its concrete `slideLayoutN` ID in
+  `addressable_as`, preserving the semantic compiler's narrower canonical-name
+  vocabulary. Recommendation `required_layout` is explicitly a feasibility
+  label, not a value to copy into `slide.layout_id` or
+  `meta.required_layouts`.
+
 - **2026-09-24 — Derivable capability request paths (`go-slide-creator-syqke`,
   schema 4.117.0).** Template discovery now includes `addressable_as` (an exact
   `layout_id`, or `null`) and `request_via` for each `derivable_layouts[]`
   capability. A ready grid or image capability is no longer presented as if its
-  name were necessarily a layout ID; native `full-image` layouts can now be
-  resolved by that name.
+  name were necessarily a layout ID; a native `full-image` layout is exposed by
+  its concrete `slideLayoutN` ID without expanding the semantic canonical names.
 
 - **2026-09-22 — Uncapped grid attribution (`go-slide-creator-nf8ad`,
   `go-slide-creator-gt3ao`).** `SLIDE_UNDERUSED` now treats full-area explicit

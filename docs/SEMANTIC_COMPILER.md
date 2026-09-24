@@ -137,7 +137,10 @@ structure:
 Structured expansion inserts section dividers and carries source paths and
 section crumbs into the compiled deck. `meta.required_layouts` is applied after
 narrative planning; `semantic explain` exposes
-`layout_coverage.{requested,assigned,missing}`.
+`layout_coverage.{requested,assigned,missing}`. These are assignable canonical
+layout names, not the broader feasibility labels in
+`recommend_visual.template_support.required_layout` (such as `full-image` or
+`grid base`).
 
 Pass `--spec -` to read the spec from stdin (e.g. `… --spec - < deck.yaml`), portable across platforms. Each subcommand's `-h`/`--help` prints usage and exits **0**, so automated probes can introspect the surface without treating help as a failure.
 

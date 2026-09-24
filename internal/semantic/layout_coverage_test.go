@@ -70,6 +70,17 @@ func TestRequiredLayoutValidationUnknownDuplicateAndMissing(t *testing.T) {
 	}
 }
 
+func TestRequiredLayoutsRejectDerivableCapabilityName(t *testing.T) {
+	spec := coverageSpec()
+	spec.Meta.RequiredLayouts = []string{"full-image"}
+	for _, d := range Validate(spec, StrictnessWarn) {
+		if d.Path == "meta.required_layouts[0]" && d.Code == string(diagnostics.CodeSemanticRequiredLayoutUnknown) {
+			return
+		}
+	}
+	t.Fatal("full-image capability must not be accepted as a semantic canonical layout requirement")
+}
+
 func TestNoRequiredLayoutsLeavesPlanningUnchanged(t *testing.T) {
 	spec := coverageSpec()
 	spec.Meta.RequiredLayouts = nil

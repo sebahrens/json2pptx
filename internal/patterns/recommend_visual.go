@@ -69,7 +69,9 @@ type TemplateSupport struct {
 	Reasons []string `json:"reasons,omitempty"`
 	// RequiredLayout names the canonical layout or derivable capability the
 	// candidate needs (e.g. "Title Slide", "Two Content", "full-image",
-	// "grid base"). Empty for candidates with no specific layout requirement.
+	// "grid base"). It is a feasibility label, not a value to copy into
+	// semantic meta.required_layouts or raw slide.layout_id.
+	// Empty for candidates with no specific layout requirement.
 	RequiredLayout string `json:"required_layout,omitempty"`
 }
 

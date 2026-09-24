@@ -68,13 +68,12 @@ func TestResolveCanonicalLayoutID_Passthrough(t *testing.T) {
 	}
 }
 
-func TestResolveCanonicalLayoutID_FullImageRequiresNativeTag(t *testing.T) {
-	withImage := []types.LayoutMetadata{{ID: "slideLayout8", Tags: []string{"full-image"}}}
-	if got, ok := ResolveCanonicalLayoutID("full-image", withImage); !ok || got != "slideLayout8" {
-		t.Fatalf("native full-image = (%q, %v), want (slideLayout8, true)", got, ok)
+func TestFullImageCapabilityDoesNotBecomeCanonicalLayoutName(t *testing.T) {
+	if IsCanonicalName("full-image") {
+		t.Fatal("full-image is a capability, not a semantic canonical layout name")
 	}
 	if got, ok := ResolveCanonicalLayoutID("full-image", consultingLayouts); ok || got != "full-image" {
-		t.Fatalf("no native full-image = (%q, %v), want (full-image, false)", got, ok)
+		t.Fatalf("capability name = (%q, %v), want (full-image, false)", got, ok)
 	}
 }
 
