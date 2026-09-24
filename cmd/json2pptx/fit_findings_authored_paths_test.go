@@ -26,7 +26,7 @@ func TestPlaceholderAndContrastPreflightPathsResolveAgainstAuthoredDeck(t *testi
 		assertFindingPointerReplaceable(t, input, finding.Path)
 	}
 
-	pairs := authorBackgroundContrastPairs(input, []types.LayoutMetadata{layout}, nil)
+	pairs := placeholderContrastPairs(input, []types.LayoutMetadata{layout}, nil)
 	if len(pairs) == 0 {
 		t.Fatal("author background did not produce a contrast preflight pair")
 	}

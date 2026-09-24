@@ -151,6 +151,12 @@ type LayoutMetadata struct {
 	// BackgroundMods records OOXML color transforms on the inherited solid
 	// background so theme overrides can re-resolve its visible color.
 	BackgroundMods BackgroundColorModifiers `json:"-"`
+	// Chrome uses the layout's own background, not the master fallback used by
+	// placeholder contrast. Keep that source and tx1 color-map override so
+	// preflight can predict footer/page-number repairs after theme_override.
+	ChromeBackgroundRef  string                   `json:"-"`
+	ChromeBackgroundMods BackgroundColorModifiers `json:"-"`
+	ChromeTextRef        string                   `json:"-"`
 
 	// FooterRegions are the resolved date / footer / slide-number chrome
 	// rectangles a slide on this layout carries: the layout's own dt/ftr/sldNum

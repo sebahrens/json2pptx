@@ -1521,16 +1521,16 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 // collectContrastPreflightFindings walks shape_grid cells that author both a
 // fill color and a text color, and emits contrast_predicted findings where
 // the renderer would auto-replace the text color. It also covers placeholder
-// text on a background the slide itself sets, where the text colour is the
-// template's and only the background is the author's.
+// text on authored or template backgrounds and footer/page-number chrome.
 func collectContrastPreflightFindings(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
 	if len(themeColors) == 0 {
 		return nil
 	}
 
-	pairs := authorBackgroundContrastPairs(input, layouts, themeColors)
+	pairs := placeholderContrastPairs(input, layouts, themeColors)
 	predictedLayouts := predictSlideLayouts(input, layouts)
 	findings := generator.DetectContrastPreflight(pairs, themeColors)
+	findings = append(findings, collectChromeContrastFindings(input, layouts, predictedLayouts, themeColors)...)
 	for si, slide := range input.Slides {
 		if slide.ShapeGrid == nil || (slide.ContrastCheck != nil && !*slide.ContrastCheck) {
 			continue
@@ -1571,6 +1571,33 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 	}
 
 	return findings
+}
+
+func collectChromeContrastFindings(input *PresentationInput, layouts []types.LayoutMetadata, predictedLayouts []*types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
+	if footer := footerConfigForInput(input, len(input.Slides)); footer != nil && footer.Enabled {
+		specs := make([]generator.SlideSpec, len(input.Slides))
+		var findings []patterns.FitFinding
+		for si, layout := range predictedLayouts {
+			if layout != nil {
+				specs[si].LayoutID = layout.ID
+			}
+		}
+		if input.Chrome != nil {
+			applyChromeSkip(specs, input.Chrome, input.Slides, layouts)
+		}
+		for si, layout := range predictedLayouts {
+			if layout == nil || specs[si].SkipFooter || layout.ChromeBackgroundRef == "" {
+				continue
+			}
+			bg := template.ResolveBackgroundRefHexWithMods(layout.ChromeBackgroundRef, layout.ChromeBackgroundMods, themeColors)
+			fg := template.ResolveBackgroundRefHex(layout.ChromeTextRef, themeColors)
+			if swap := generator.PredictChromeContrast(bg, fg, themeColors, si); swap != nil {
+				findings = append(findings, generator.CompiledGridSwapFinding(*swap, swap.Path, "", "chrome", themeColors))
+			}
+		}
+		return findings
+	}
+	return nil
 }
 
 type compiledGridContrastCell struct {
@@ -1652,17 +1679,13 @@ func transparentShapeFill(raw json.RawMessage) bool {
 	return false
 }
 
-// authorBackgroundContrastPairs pairs the text colour each populated
-// placeholder inherits from its layout with the background the SLIDE sets.
+// placeholderContrastPairs pairs the text colour each populated placeholder
+// inherits with the background the renderer checks, authored or inherited.
 //
-// This is the half of the contrast prediction the shape_grid walk above cannot
-// see: nothing in the JSON names the title's colour, it comes from the
-// template, and the author only changed what sits behind it. Without these
-// pairs a dark statement slide validated clean and then reported a
-// contrast_autofixed swap at generate time (go-slide-creator-s7wmh). The pairs
-// carry AuthorBackground so the predicted replacement is the palette colour the
-// renderer snaps to, not the lerp it uses on a template background.
-func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []generator.ContrastPreflightPair {
+// This is the half the shape_grid walk cannot see: the JSON names no text
+// colour for template placeholders. AuthorBackground preserves the renderer's
+// snap-to-palette vs template-background hue-preserving replacement choice.
+func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []generator.ContrastPreflightPair {
 	if input == nil || len(layouts) == 0 {
 		return nil
 	}
@@ -1688,9 +1711,13 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 		if layout == nil {
 			continue
 		}
-		bgHex := generator.EffectiveSlideBackgroundHex(backgroundSpecFor(slide), themeColors)
+		bgHex, authorBackground := effectivePlaceholderBackground(slide, layout, themeColors)
 		if bgHex == "" {
 			continue
+		}
+		source := "template_background"
+		if authorBackground {
+			source = "slide_background"
 		}
 		contents := injectSectionNumber(slide.Content, layout, sectionNumbers[si])
 		for ci := range contents {
@@ -1726,15 +1753,25 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 				Foreground:     fg,
 				ForegroundMods: mods,
 				Background:     bgHex,
-				Source:         "slide_background",
+				Source:         source,
 				// Bold is unknown from placeholder metadata; false is the
 				// conservative reading, matching the unknown-size rule.
 				TextPt:           float64(ph.FontSize) / 100.0,
-				AuthorBackground: true,
+				AuthorBackground: authorBackground,
 			})
 		}
 	}
 	return pairs
+}
+
+func effectivePlaceholderBackground(slide *SlideInput, layout *types.LayoutMetadata, themeColors []types.ThemeColor) (string, bool) {
+	if bg := generator.EffectiveSlideBackgroundHex(backgroundSpecFor(slide), themeColors); bg != "" {
+		return bg, true
+	}
+	if layout.BackgroundRef != "" {
+		return template.ResolveBackgroundRefHexWithMods(layout.BackgroundRef, layout.BackgroundMods, themeColors), false
+	}
+	return layout.BackgroundHex, false
 }
 
 // backgroundSpecFor converts a slide's authored background into the renderer's

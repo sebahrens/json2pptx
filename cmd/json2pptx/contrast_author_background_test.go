@@ -81,15 +81,59 @@ func TestContrastPreflight_AuthorBackgroundPredicted(t *testing.T) {
 	}
 }
 
-// TestContrastPreflight_LayoutBackgroundNotPredicted pins the bead's
-// no-change clause: a deck whose background comes from its layout is not the
-// author's doing, and validate must stay silent about it here — the template
-// chose that pairing.
-func TestContrastPreflight_LayoutBackgroundNotPredicted(t *testing.T) {
+// An unresolved template background gives preflight no measurable canvas.
+func TestContrastPreflight_UnresolvedLayoutBackgroundNotPredicted(t *testing.T) {
 	in := &PresentationInput{Slides: []SlideInput{s7wmhSlide("")}}
 	if f := contrastPredictions(collectContrastPreflightFindings(in, s7wmhLayouts, s7wmhCmdTheme)); len(f) != 0 {
-		t.Errorf("a slide with no background of its own should draw no prediction, got %+v", f)
+		t.Errorf("a slide with no resolvable background should draw no prediction, got %+v", f)
 	}
+}
+
+func TestContrastPreflight_TemplateBackgroundMatchesRendererReplacement(t *testing.T) {
+	layouts := []types.LayoutMetadata{{
+		ID: "slideLayout1", BackgroundRef: "#FFE8D4",
+		Placeholders: []types.PlaceholderInfo{{ID: "title", Type: types.PlaceholderTitle,
+			FontColor: "#FD5108", FontSize: 2400}},
+	}}
+	input := &PresentationInput{Slides: []SlideInput{{LayoutID: "slideLayout1",
+		Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Readable title")}},
+	}}}
+	findings := contrastPredictions(collectContrastPreflightFindings(input, layouts, s7wmhCmdTheme))
+	if len(findings) != 1 || !strings.Contains(findings[0].Message, "#FD5108 → #F34E08 (on #FFE8D4") {
+		t.Fatalf("template-background prediction = %+v, want visible 3:1 repair", findings)
+	}
+	if findings[0].Fix != nil {
+		t.Errorf("template-owned text has no authored replace_color target: %+v", findings[0].Fix)
+	}
+}
+
+func TestContrastPreflight_ChromeRespectsLayoutSourceAndSkip(t *testing.T) {
+	layouts := []types.LayoutMetadata{{
+		ID: "slideLayout1", CanonicalType: types.CanonicalLayoutOneContent,
+		ChromeBackgroundRef: "#000000", ChromeTextRef: "tx1",
+	}}
+	input := &PresentationInput{Chrome: &ChromeInput{}, Slides: []SlideInput{{LayoutID: "slideLayout1"}}}
+	check := func(want int) {
+		t.Helper()
+		got := contrastPredictions(collectContrastPreflightFindings(input, layouts, s7wmhCmdTheme))
+		if len(got) != want {
+			t.Fatalf("chrome predictions = %+v, want %d", got, want)
+		}
+		if want > 0 && (got[0].Path != "/slides/0/chrome" || got[0].Fix != nil ||
+			!strings.Contains(got[0].Message, "#000000 → #FFFFFF (on #000000")) {
+			t.Errorf("chrome prediction = %+v", got[0])
+		}
+	}
+	check(1)
+	input.Chrome.PageNumbers = &PageNumbersInput{Skip: []string{"content"}}
+	layouts[0].Tags = []string{"content"}
+	check(0)
+	input.Chrome = nil
+	check(0)
+	input.Footer = &JSONFooter{Enabled: true}
+	check(1)
+	layouts[0].ChromeBackgroundRef = ""
+	check(0)
 }
 
 // TestContrastPreflight_ContrastCheckOptOutSilences guards against predicting a

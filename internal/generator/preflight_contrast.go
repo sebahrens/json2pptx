@@ -175,7 +175,7 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		}
 
 		var fix *patterns.FixSuggestion
-		if source != "slide_background" && source != "derived_shape_grid" {
+		if source != "slide_background" && source != "template_background" && source != "derived_shape_grid" {
 			fix = &patterns.FixSuggestion{
 				Kind: "replace_color",
 				Params: map[string]any{

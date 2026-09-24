@@ -99,15 +99,18 @@ func parseLayoutFile(reader *Reader, filename string, index int, masterResolver 
 	capacity := estimateCapacity(placeholders)
 
 	layoutMeta := types.LayoutMetadata{
-		ID:             layoutID,
-		Name:           name,
-		Index:          index,
-		Placeholders:   placeholders,
-		Capacity:       capacity,
-		Tags:           []string{},
-		FooterRegions:  resolveFooterRegions(xmlLayout.CommonSlideData.ShapeTree.Shapes, masterPositions, name),
-		BackgroundRef:  ResolveLayoutBackgroundRef(data),
-		BackgroundMods: ResolveLayoutBackgroundModifiers(data),
+		ID:                   layoutID,
+		Name:                 name,
+		Index:                index,
+		Placeholders:         placeholders,
+		Capacity:             capacity,
+		Tags:                 []string{},
+		FooterRegions:        resolveFooterRegions(xmlLayout.CommonSlideData.ShapeTree.Shapes, masterPositions, name),
+		BackgroundRef:        ResolveLayoutBackgroundRef(data),
+		BackgroundMods:       ResolveLayoutBackgroundModifiers(data),
+		ChromeBackgroundRef:  ResolveLayoutBackgroundRef(data),
+		ChromeBackgroundMods: ResolveLayoutBackgroundModifiers(data),
+		ChromeTextRef:        applyColorMapOverride("tx1", parseLayoutColorMapOverride(data)),
 	}
 	layoutMeta.DecorRegions, err = parseDecorRegions(data, "layout")
 	if err != nil {

@@ -105,6 +105,17 @@ type chromeVerdict struct {
 // so chrome keeps inheriting the template's palette.
 func chromeTextColor(layoutXML []byte, themeColors []types.ThemeColor, slideIndex int) chromeVerdict {
 	bgHex := extractLayoutBackgroundColor(layoutXML, themeColors)
+	defaultHex := resolveSchemeColorMapped(chromeDefaultScheme, parseLayoutColorMapOverride(layoutXML), themeColors)
+	return chromeColorVerdict(bgHex, defaultHex, themeColors, slideIndex)
+}
+
+// PredictChromeContrast exposes the renderer's exact chrome decision to
+// preflight. Empty backgrounds or unresolved colors make no prediction.
+func PredictChromeContrast(backgroundHex, defaultHex string, themeColors []types.ThemeColor, slideIndex int) *ContrastSwap {
+	return chromeColorVerdict(backgroundHex, defaultHex, themeColors, slideIndex).swap
+}
+
+func chromeColorVerdict(bgHex, defaultHex string, themeColors []types.ThemeColor, slideIndex int) chromeVerdict {
 	if bgHex == "" {
 		return chromeVerdict{} // unknown background: leave chrome alone rather than guess
 	}
@@ -113,8 +124,6 @@ func chromeTextColor(layoutXML []byte, themeColors []types.ThemeColor, slideInde
 		return chromeVerdict{}
 	}
 
-	override := parseLayoutColorMapOverride(layoutXML)
-	defaultHex := resolveSchemeColorMapped(chromeDefaultScheme, override, themeColors)
 	if defaultHex == "" {
 		return chromeVerdict{}
 	}
