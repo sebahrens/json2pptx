@@ -27,6 +27,62 @@ func consultingThemeColors() []types.ThemeColor {
 	}
 }
 
+func TestEnforceTextContrastInShapeSkipsEmptyTemplateText(t *testing.T) {
+	for _, tc := range []struct {
+		name, value string
+		wantSwaps   int
+	}{
+		{"empty", "", 0},
+		{"whitespace", "   ", 0},
+		{"populated", "Visible", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := bodySlide(tc.value)
+			shape := &slide.CommonSlideData.ShapeTree.Shapes[0]
+			const style = `<a:lvl1pPr><a:defRPr sz="1200"><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:defRPr></a:lvl1pPr>`
+			shape.TextBody.ListStyle.Inner = style
+			swaps := enforceTextContrastInShape(shape, svggen.MustParseColor("#FFFFFF"), "#FFFFFF", modernLikeTheme(), 0, nil, true)
+			if len(swaps) != tc.wantSwaps {
+				t.Fatalf("got %d swaps, want %d: %+v", len(swaps), tc.wantSwaps, swaps)
+			}
+			if tc.wantSwaps == 0 && shape.TextBody.ListStyle.Inner != style {
+				t.Errorf("empty shape style was rewritten: %q", shape.TextBody.ListStyle.Inner)
+			}
+		})
+	}
+}
+
+func TestEnforceTextContrastInShapeResolvesModifiedSchemeColor(t *testing.T) {
+	for _, tc := range []struct {
+		name, modifier string
+		wantSwap       bool
+	}{
+		{"light modifier needs repair", "95000", true},
+		{"dark modifier already reads", "40000", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := bodySlide("Visible")
+			shape := &slide.CommonSlideData.ShapeTree.Shapes[0]
+			shape.TextBody.ListStyle.Inner = `<a:lvl1pPr><a:defRPr sz="1200"><a:solidFill><a:schemeClr val="bg1"><a:lumMod val="` + tc.modifier + `"/></a:schemeClr></a:solidFill></a:defRPr></a:lvl1pPr>`
+			before := shape.TextBody.ListStyle.Inner
+			swaps := enforceTextContrastInShape(shape, svggen.MustParseColor("#FFFFFF"), "#FFFFFF", modernLikeTheme(), 0, nil, true)
+			if (len(swaps) == 1) != tc.wantSwap {
+				t.Fatalf("swaps = %+v, wantSwap=%t", swaps, tc.wantSwap)
+			}
+			if tc.wantSwap {
+				if swaps[0].RatioBefore >= 4.5 || swaps[0].RatioAfter < 4.5 {
+					t.Errorf("modified foreground was not repaired to AA: %+v", swaps[0])
+				}
+				if strings.Contains(shape.TextBody.ListStyle.Inner, "lumMod") || !strings.Contains(shape.TextBody.ListStyle.Inner, "<a:srgbClr") {
+					t.Errorf("old modifier survived the replacement: %q", shape.TextBody.ListStyle.Inner)
+				}
+			} else if shape.TextBody.ListStyle.Inner != before {
+				t.Errorf("readable modified color was rewritten: %q", shape.TextBody.ListStyle.Inner)
+			}
+		})
+	}
+}
+
 func TestExtractLayoutBackgroundColor(t *testing.T) {
 	tests := []struct {
 		name string
@@ -706,7 +762,7 @@ func TestContrastCheckOptOut(t *testing.T) {
 								ListStyle: &listStyleXML{
 									Inner: `<a:lvl1pPr><a:defRPr><a:solidFill><a:schemeClr val="accent2"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
 								},
-								Paragraphs: []paragraphXML{},
+								Paragraphs: []paragraphXML{{Runs: []runXML{{Text: "Visible"}}}},
 							},
 						},
 					},
@@ -809,7 +865,7 @@ func TestEnforceTextContrastInSlide_ReturnsSwaps(t *testing.T) {
 								// accent1 (#FD5108) on #FFE8D4 has low contrast
 								Inner: `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
 							},
-							Paragraphs: []paragraphXML{},
+							Paragraphs: []paragraphXML{{Runs: []runXML{{Text: "Visible"}}}},
 						},
 					},
 				},
@@ -1146,7 +1202,7 @@ func TestEnforceTextContrastInSlide_RecordsSwapLocation(t *testing.T) {
 							ListStyle: &listStyleXML{
 								Inner: `<a:lvl1pPr><a:defRPr sz="2400"><a:solidFill><a:schemeClr val="accent3"/></a:solidFill></a:defRPr></a:lvl1pPr>`,
 							},
-							Paragraphs: []paragraphXML{},
+							Paragraphs: []paragraphXML{{Runs: []runXML{{Text: "Visible"}}}},
 						},
 					},
 				},

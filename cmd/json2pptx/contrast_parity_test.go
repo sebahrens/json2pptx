@@ -177,3 +177,45 @@ func TestCompositeAndNestedGridShareContrastDecision(t *testing.T) {
 		t.Errorf("shared contrast decision cannot be repaired in one cell: %+v", findings[0].Fix)
 	}
 }
+
+func TestTemplatePlaceholderContrastRepairsOnlyVisibleText(t *testing.T) {
+	for _, tc := range []struct {
+		template, layoutID, background, original string
+		wantSwaps                                int
+	}{
+		{"blue-corporate", "slideLayout3", "#FFFFFF", "#F2F2F2", 2},
+		{"business-template", "slideLayout1", "#000000", "#000000", 1},
+	} {
+		t.Run(tc.template, func(t *testing.T) {
+			input := &PresentationInput{Template: tc.template, OutputFilename: "placeholder-contrast.pptx",
+				Slides: []SlideInput{{SlideType: "title", LayoutID: tc.layoutID,
+					Background: &BackgroundInput{Color: tc.background},
+					Content:    []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Contrast test")}},
+				}}}
+			applyDefaults(input)
+			result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
+				OutputDir: t.TempDir(), TemplatesDir: testutil.TemplatesDir(), StrictFit: "off", OutputValidation: "strict",
+			})
+			if cleanup != nil {
+				defer cleanup()
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var actual []generator.ContrastSwap
+			for _, swap := range result.GenResult.ContrastSwaps {
+				if swap.Source == "lstStyle" || swap.Source == "master-txStyles" {
+					actual = append(actual, swap)
+				}
+			}
+			if len(actual) != tc.wantSwaps {
+				t.Fatalf("visible placeholder repairs = %+v, want %d", actual, tc.wantSwaps)
+			}
+			for _, swap := range actual {
+				if swap.OriginalColor != tc.original || swap.RatioAfter < 4.5 {
+					t.Errorf("wrong modified foreground or unreadable repair: %+v", swap)
+				}
+			}
+		})
+	}
+}

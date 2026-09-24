@@ -109,11 +109,11 @@ func resolveSchemeColorToHex(schemeName string, themeColors []types.ThemeColor) 
 // Text Contrast Enforcement
 // =============================================================================
 
-// schemeClrInFillRegexp matches <a:schemeClr val="..."/> inside <a:solidFill>.
-// It captures both the full solidFill element and the scheme color name.
-// This handles both self-closing and paired tags.
+// schemeClrInFillRegexp matches a text solidFill carrying a scheme color,
+// including nested OOXML color modifiers such as lumMod and tint. The full
+// fill is replaced when adjusted so old modifiers cannot dim the new color.
 var schemeClrInFillRegexp = regexp.MustCompile(
-	`(<a:solidFill\b[^>]*>\s*<a:schemeClr\s+val=")([^"]+)("\s*(?:/>|>[^<]*</a:schemeClr>)\s*</a:solidFill>)`,
+	`(?s)<a:solidFill\b[^>]*>\s*<a:schemeClr\s+val="([^"]+)"(?:\s*/>|\s*>.*?</a:schemeClr>)\s*</a:solidFill>`,
 )
 
 // enforceTextContrastInSlide checks all text shapes in a slide for poor contrast
@@ -153,7 +153,7 @@ func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []typ
 // Recorded swaps are stamped with slideIndex and the slide-level JSON path; the
 // source label distinguishes lstStyle-inherited from run-level replacements.
 func enforceTextContrastInShape(shape *shapeXML, bgColor svggen.Color, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool) []ContrastSwap {
-	if shape.TextBody == nil {
+	if shape.TextBody == nil || !shapeHasText(shape) {
 		return nil
 	}
 
@@ -819,13 +819,13 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 	return schemeClrInFillRegexp.ReplaceAllStringFunc(xmlFragment, func(match string) string {
 		// Extract the scheme color name from the match
 		submatches := schemeClrInFillRegexp.FindStringSubmatch(match)
-		if len(submatches) < 4 {
+		if len(submatches) < 2 {
 			return match
 		}
-		schemeName := submatches[2]
+		schemeName := submatches[1]
 
 		// Skip fix for white/lt1 text on white-text-safe fills
-		if fillSafe && isWhiteOrLt1(schemeName) {
+		if fillSafe && isWhiteOrLt1(schemeName) && !shapeFillModRegexp.MatchString(match) {
 			return match
 		}
 
@@ -836,6 +836,12 @@ func fixSchemeColorsForContrast(xmlFragment string, bgColor svggen.Color, bgHex 
 		hexColor := resolveSchemeColorMapped(schemeName, override, themeColors)
 		if hexColor == "" {
 			return match // Cannot resolve, leave as-is
+		}
+		// A scheme's lumMod/lumOff/tint/shade/alpha changes the visible text
+		// color. Judge the modified color, not the unmodified theme slot.
+		hexColor = applyShapeFillModifiers(hexColor, []byte(match), themeColors, bgHex)
+		if hexColor == "" {
+			return match
 		}
 
 		// Parse the resolved color
