@@ -217,6 +217,22 @@ func TestGridOccupancy_MeasuredInkDistinguishesSparseFullGrid(t *testing.T) {
 	if got := inkUnderfillWarning(short, budgets, pat, &PatternInput{Name: "card-grid", MaxHeightPct: 50}); got != nil {
 		t.Fatalf("explicit height cap should suppress advisory: %+v", got)
 	}
+	visualValues := &patterns.CardGridValues{Columns: 2, Rows: 2}
+	for i := 0; i < 4; i++ {
+		cell := patterns.CardGridCell{Header: "Card", Body: "Brief"}
+		if i == 0 {
+			cell.Secondary = &patterns.SecondaryChart{Type: "sparkline", Values: []float64{1, 2, 3}}
+		}
+		visualValues.Cells = append(visualValues.Cells, cell)
+	}
+	visualGrid, err := pat.Expand(ctx, visualValues, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	visual := computeGridOccupancy(visualGrid, ctx)
+	if visual.InkHeightPct <= short.InkHeightPct {
+		t.Fatalf("chart height was not counted as visual ink: short=%+v visual=%+v", short, visual)
+	}
 }
 
 func TestComputeCellBudgets_EmptyGrid(t *testing.T) {

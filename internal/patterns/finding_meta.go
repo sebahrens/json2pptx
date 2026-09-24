@@ -401,12 +401,12 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodePatternUnderfilled: {
 		Code:        ErrCodePatternUnderfilled,
-		Summary:     "A pattern grid has less than 50% of its slots populated.",
+		Summary:     "A pattern grid has too few populated slots or too little measured content height.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight finds the pattern's grid populated below 50% of total slots (e.g., 1 of 3 KPIs).",
+		WhenEmitted: "Pre-flight finds the pattern's grid populated below 50% of total slots (e.g., 1 of 3 KPIs), or validate_pattern finds text and visuals filling under 40% of the available height in a multi-cell pattern.",
 		RemediationSteps: []string{
-			"Add items to reach at least 50% fill.",
-			"Or swap to a smaller pattern via recommend_pattern.",
+			"Add items or detail to make better use of the available space.",
+			"Or reduce the pattern height with max_height_pct, or swap to a smaller pattern via recommend_pattern.",
 		},
 		RelatedCodes: []string{ErrCodeSparseLayout, ErrCodeCellUnderfilled},
 	},
