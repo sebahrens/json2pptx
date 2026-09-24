@@ -279,3 +279,46 @@ func TestRunPresentationGridContrastOptOutHasNoSwap(t *testing.T) {
 		}
 	}
 }
+
+func TestTeamBiosTransparentRoleContrastMatchesPreflight(t *testing.T) {
+	input := &PresentationInput{
+		Template: "modern-template", OutputFilename: "team-bios-contrast.pptx",
+		Slides: []SlideInput{{
+			SlideType: "blank",
+			Pattern: &PatternInput{
+				Name:      "team-bios",
+				Values:    json.RawMessage(`{"members":[{"name":"Ada Lovelace","role":"Lead analyst","bio":"Data strategy"}]}`),
+				Overrides: json.RawMessage(`{"accent":"accent5"}`),
+			},
+		}},
+	}
+	applyDefaults(input)
+	layouts, theme, width, height := fitReportGeometry(input.Template, testutil.TemplatesDir())
+	if theme == nil {
+		t.Fatal("modern-template theme not loaded")
+	}
+	var predicted bool
+	for _, finding := range contrastPredictions(collectFitFindings(input, layouts, width, height, theme)) {
+		if finding.Fix != nil && finding.Fix.Params["original_color"] == "#C06B3F" && finding.Fix.Params["background_color"] == "#FFFFFF" {
+			predicted = true
+		}
+	}
+	if !predicted {
+		t.Error("fit preflight did not flag accent5 role text on the transparent card")
+	}
+	result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
+		OutputDir: t.TempDir(), TemplatesDir: testutil.TemplatesDir(), StrictFit: "off", OutputValidation: "strict",
+	})
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, swap := range result.GenResult.ContrastSwaps {
+		if swap.Source == "shape_grid" && swap.OriginalColor == "#C06B3F" && swap.BackgroundColor == "#FFFFFF" {
+			return
+		}
+	}
+	t.Errorf("render did not correct accent5 role text on the transparent card: %+v", result.GenResult.ContrastSwaps)
+}
