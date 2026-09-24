@@ -45,6 +45,22 @@ func TestValidateTemplateOverrideInHumanAndJSONModes(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsOutOfRangeShapeFillAlpha(t *testing.T) {
+	for _, alpha := range []string{"-1", "101"} {
+		t.Run(alpha, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "alpha.json")
+			deck := `{"template":"midnight-blue","slides":[{"slide_type":"blank","shape_grid":{"columns":1,"rows":[{"cells":[{"shape":{"geometry":"rect","fill":{"color":"accent1","alpha":` + alpha + `},"text":"Test"}}]}]}}]}`
+			if err := os.WriteFile(path, []byte(deck), 0644); err != nil {
+				t.Fatal(err)
+			}
+			result := validateJSONFile(path, testTemplatesDir, "", false, "warn")
+			if result.Valid || !anyContains(result.Errors, "fill alpha must be between 0 and 100") {
+				t.Errorf("alpha %s: validation = %+v, want range error", alpha, result)
+			}
+		})
+	}
+}
+
 func TestValidateJSONFile_ShapeGridValid(t *testing.T) {
 	input := `{
   "template": "midnight-blue",

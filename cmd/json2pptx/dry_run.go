@@ -1135,6 +1135,7 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 					errors = append(errors, fmt.Sprintf("slide %d: shape_grid row %d cell %d: unknown geometry %q", slideNum, rowIdx+1, cellIdx+1, cell.Shape.Geometry))
 				}
 				// Validate fill color
+				errors = appendShapeFillInputError(errors, cell.Shape.Fill, slideNum, rowIdx+1, cellIdx+1)
 				vw := validateShapeFillColor(cell.Shape.Fill, slideNum, rowIdx+1, cellIdx+1, &warnings)
 				valWarnings = append(valWarnings, vw...)
 			}
@@ -1156,6 +1157,16 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 	}
 
 	return
+}
+
+func appendShapeFillInputError(errors []string, raw json.RawMessage, slideNum, row, cell int) []string {
+	if len(raw) == 0 {
+		return errors
+	}
+	if _, err := shapegrid.ResolveFillInput(raw); err != nil {
+		return append(errors, fmt.Sprintf("slide %d: shape_grid row %d cell %d: %v", slideNum, row, cell, err))
+	}
+	return errors
 }
 
 // validateShapeFillColor checks that a shape fill value has a valid color format.
