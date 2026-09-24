@@ -28,6 +28,10 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Team-bios headshot frames (`go-slide-creator-ba6x8`).**
+  Real headshots and initials tiles now use centered square frames instead of
+  filling a wide photo row and cropping faces into a letterbox.
+
 - **2026-09-24 — Semantic pointer ancestry (`go-slide-creator-1sz3c`).**
   Semantic source maps now resolve nested JSON Pointer findings through their
   nearest indexed-content ancestor and recover slide indices on unmapped paths.

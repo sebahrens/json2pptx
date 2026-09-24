@@ -142,7 +142,7 @@ func (t *teamBios) Schema() *Schema {
 			"name":        StringSchema(teamBiosNameMaxChars).WithDescription("Person's full name (rendered bold)"),
 			"role":        StringSchema(teamBiosRoleMaxChars).WithDescription("Role or title (rendered in accent color)"),
 			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio. Approximate readable limit: 220 characters with 1-4 members, 141 with 5-8; longer bios emit BODY_TOO_LONG."),
-			"photo":       PhotoSchema("Headshot, cover-cropped to the photo frame; omit it to draw the initials placeholder (alt defaults to the member's name and role)", teamBiosPhotoAltMaxChars),
+			"photo":       PhotoSchema("Headshot, cover-cropped to a centered square photo frame; omit it to draw a square initials tile (alt defaults to the member's name and role)", teamBiosPhotoAltMaxChars),
 			"photo_label": StringSchema(teamBiosPhotoMaxChars).WithDescription("Label centred in the initials placeholder when no photo is given; defaults to initials derived from name"),
 		},
 		[]string{"name", "role"},
@@ -343,6 +343,10 @@ func buildTeamBiosPhotoCell(m TeamBiosMember, accent string, photoLabelSize floa
 	// cover-crops to the frame; the initials tile is the fallback, not the only
 	// option it used to be (go-slide-creator-hdpq).
 	if cell := patternPhotoCell(m.Photo, teamBiosPhotoAlt(m)); cell != nil {
+		// Images normally cover-crop the full grid cell. A headshot needs a
+		// square frame inside its wide card column so faces are not cut into
+		// letterboxes; explicit contain also bypasses default-fill expansion.
+		cell.Fit = "contain"
 		return cell
 	}
 	label := strings.TrimSpace(m.PhotoLabel)
@@ -350,6 +354,7 @@ func buildTeamBiosPhotoCell(m TeamBiosMember, accent string, photoLabelSize floa
 		label = deriveInitials(m.Name)
 	}
 	return &jsonschema.GridCellInput{
+		Fit: "contain",
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
 			Fill:     json.RawMessage(`"lt2"`),
