@@ -230,11 +230,13 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 		var fontFamily string
 		var fontSize int
 		var fontColor string
+		var fontColorMods types.BackgroundColorModifiers
 		if fontResolver != nil {
 			if fontStyle := fontResolver.ResolvePlaceholderFonts(&shape, phType, masterFonts); fontStyle != nil {
 				fontFamily = fontStyle.FontFamily
 				fontSize = fontStyle.FontSize
 				fontColor = fontStyle.FontColor
+				fontColorMods = fontStyle.ColorMods
 			}
 		}
 
@@ -251,22 +253,28 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 		}
 
 		info := types.PlaceholderInfo{
-			ID:         shape.NonVisualProperties.ConnectionNonVisual.Name,
-			Type:       phType,
-			Index:      idx,
-			Bounds:     bounds,
-			MaxChars:   maxChars,
-			FontFamily: fontFamily,
-			FontSize:   fontSize,
-			FontColor:  fontColor,
+			ID:            shape.NonVisualProperties.ConnectionNonVisual.Name,
+			Type:          phType,
+			Index:         idx,
+			Bounds:        bounds,
+			MaxChars:      maxChars,
+			FontFamily:    fontFamily,
+			FontSize:      fontSize,
+			FontColor:     fontColor,
+			FontColorMods: fontColorMods,
 		}
 		switch phType {
 		case types.PlaceholderTitle:
 			applyInheritedTitleText(&info, &shape, masterFonts)
 			info.InheritedFontColor = inheritedTitleColor(&shape, masterFonts, clrMapOvr)
+			info.InheritedFontColorMods = inheritedTitleColorMods(&shape, masterFonts)
 		case types.PlaceholderBody, types.PlaceholderContent:
 			applyInheritedBodyText(&info, &shape, masterFonts)
 			info.InheritedFontColor = inheritedBodyColor(&shape, masterFonts, clrMapOvr)
+			info.InheritedFontColorMods = inheritedBodyColorMods(&shape, masterFonts)
+		case types.PlaceholderSubtitle:
+			info.InheritedFontColor = inheritedBodyColor(&shape, masterFonts, clrMapOvr)
+			info.InheritedFontColorMods = inheritedBodyColorMods(&shape, masterFonts)
 		}
 		placeholders = append(placeholders, info)
 	}
@@ -575,6 +583,7 @@ type latinFontXML struct {
 type solidFillXML struct {
 	SRGBColor   *srgbColorXML   `xml:"srgbClr"`
 	SchemeColor *schemeColorXML `xml:"schemeClr"`
+	InnerXML    []byte          `xml:",innerxml"`
 }
 
 // srgbColorXML represents an sRGB color value.

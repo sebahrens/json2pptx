@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -59,6 +60,34 @@ func TestDetectContrastPreflight_SchemeColorResolution(t *testing.T) {
 
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 finding for low-contrast scheme pair, got %d", len(findings))
+	}
+}
+
+func TestDetectContrastPreflight_ModifiedTemplateForeground(t *testing.T) {
+	theme := []types.ThemeColor{{Name: "lt1", RGB: "#FFFFFF"}, {Name: "dk2", RGB: "#44546A"}}
+	for _, tc := range []struct {
+		name, foreground string
+		mods             types.BackgroundColorModifiers
+		wantOriginal     string
+		wantFinding      bool
+	}{
+		{"light scheme modifier", "bg1", types.BackgroundColorModifiers{LumMod: 95000, HasLumMod: true}, "#F2F2F2", true},
+		{"dark scheme modifier", "bg1", types.BackgroundColorModifiers{LumMod: 40000, HasLumMod: true}, "", false},
+		{"zero luminance becomes black", "bg1", types.BackgroundColorModifiers{LumMod: 0, HasLumMod: true}, "", false},
+		{"transparent text", "bg1", types.BackgroundColorModifiers{Alpha: 0, HasAlpha: true}, "#FFFFFF", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			findings := DetectContrastPreflight([]ContrastPreflightPair{{
+				Path: "/slides/0/content/0", Foreground: tc.foreground, ForegroundMods: tc.mods,
+				Background: "#FFFFFF", Source: "slide_background", AuthorBackground: true,
+			}}, theme)
+			if (len(findings) == 1) != tc.wantFinding {
+				t.Fatalf("findings = %+v, want finding = %t", findings, tc.wantFinding)
+			}
+			if tc.wantFinding && !strings.Contains(findings[0].Message, tc.wantOriginal+" → ") {
+				t.Errorf("visible foreground missing from finding: %q", findings[0].Message)
+			}
+		})
 	}
 }
 

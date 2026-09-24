@@ -3,6 +3,8 @@ package template
 import (
 	"regexp"
 	"strings"
+
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // Inherited placeholder text colour (go-slide-creator-j4364)
@@ -98,6 +100,35 @@ func inheritedBodyColor(shape *shapeXML, masterFonts *MasterFontStyles, clrMapOv
 		}
 	}
 	return ""
+}
+
+func inheritedTitleColorMods(shape *shapeXML, masterFonts *MasterFontStyles) types.BackgroundColorModifiers {
+	if layoutLevel1Color(shape) != "" {
+		return layoutLevel1ColorMods(shape)
+	}
+	if masterFonts != nil && masterFonts.TitleStyle != nil {
+		return masterFonts.TitleStyle.ColorMods
+	}
+	return types.BackgroundColorModifiers{}
+}
+
+func inheritedBodyColorMods(shape *shapeXML, masterFonts *MasterFontStyles) types.BackgroundColorModifiers {
+	if layoutLevel1Color(shape) != "" {
+		return layoutLevel1ColorMods(shape)
+	}
+	if masterFonts != nil {
+		if style := masterFonts.BodyStyle[0]; style != nil {
+			return style.ColorMods
+		}
+	}
+	return types.BackgroundColorModifiers{}
+}
+
+func layoutLevel1ColorMods(shape *shapeXML) types.BackgroundColorModifiers {
+	if shape == nil || shape.TextBody == nil || shape.TextBody.ListStyle == nil || shape.TextBody.ListStyle.Lvl1pPr == nil || shape.TextBody.ListStyle.Lvl1pPr.DefRPr == nil {
+		return types.BackgroundColorModifiers{}
+	}
+	return colorModifiersFromSolidFill(shape.TextBody.ListStyle.Lvl1pPr.DefRPr.SolidFill)
 }
 
 // layoutLevel1Color reads a colour the layout placeholder states in its own

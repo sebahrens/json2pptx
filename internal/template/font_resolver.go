@@ -34,9 +34,10 @@ type MasterFontStyles struct {
 
 // FontStyle represents resolved font properties.
 type FontStyle struct {
-	FontFamily string // Resolved font family name
-	FontSize   int    // Font size in hundredths of a point (e.g., 1400 = 14pt)
-	FontColor  string // Font color as hex string (e.g., "#000000")
+	FontFamily string                         // Resolved font family name
+	FontSize   int                            // Font size in hundredths of a point (e.g., 1400 = 14pt)
+	FontColor  string                         // Font color as hex string (e.g., "#000000")
+	ColorMods  types.BackgroundColorModifiers // OOXML transforms on FontColor
 }
 
 // NewMasterFontResolver creates a resolver for font properties.
@@ -187,6 +188,7 @@ func (r *MasterFontResolver) parseDefaultRunProps(defRPr *defaultRunPropsXML) *F
 
 	// Extract font color
 	style.FontColor = r.extractColor(defRPr)
+	style.ColorMods = colorModifiersFromSolidFill(defRPr.SolidFill)
 
 	return style
 }

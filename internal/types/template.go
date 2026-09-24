@@ -202,8 +202,12 @@ type PlaceholderInfo struct {
 	FontFamily string // Font family name (e.g., "Arial", "Calibri")
 	FontSize   int    // Font size in hundredths of a point (e.g., 1400 = 14pt)
 	FontColor  string // Font color as hex string (e.g., "#000000")
-	// InheritedFontColor is the colour this placeholder RENDERS at when the
-	// layout states none of its own: the slide master's txStyles colour,
+	// FontColorMods and InheritedFontColorMods retain text-color transforms so
+	// preflight can judge the visible color against an authored background.
+	// These are internal analysis metadata, not an author-facing color change.
+	FontColorMods          BackgroundColorModifiers `json:"-"`
+	InheritedFontColorMods BackgroundColorModifiers `json:"-"`
+	// InheritedFontColor is the effective layout/master text-color reference,
 	// mapped through the layout's clrMapOvr. FontColor keeps its narrower
 	// meaning — "the layout declared this" — because examine_template reports
 	// it to agents as the template's own declaration.

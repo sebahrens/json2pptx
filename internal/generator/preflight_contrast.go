@@ -26,6 +26,9 @@ type ContrastPreflightPair struct {
 	Path string
 	// Foreground is the text color (hex or scheme name).
 	Foreground string
+	// ForegroundMods are OOXML transforms on inherited template text color.
+	// The source reference remains in Foreground for replacement-mode parity.
+	ForegroundMods types.BackgroundColorModifiers
 	// Background is the fill / layout background color (hex or scheme name).
 	Background string
 	// Source is a short tag for the message (e.g. "shape_grid", "layout").
@@ -135,6 +138,21 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		bg, err := svggen.ParseColor(bgHex)
 		if err != nil {
 			continue
+		}
+		if p.ForegroundMods != (types.BackgroundColorModifiers{}) {
+			mods := p.ForegroundMods
+			if mods.HasLumMod && mods.LumMod == 0 && mods.LumOff == 0 {
+				fg = svggen.MustParseColor("#000000")
+			}
+			alpha := 1.0
+			if mods.HasAlpha {
+				alpha = float64(mods.Alpha) / 100000
+			}
+			fg = patterns.EffectiveColorMods(fg, patterns.ColorMods{
+				LumMod: mods.LumMod, LumOff: mods.LumOff, Tint: mods.Tint,
+				Shade: mods.Shade, Alpha: alpha, HasAlpha: mods.HasAlpha,
+			}, bg)
+			fgHex = strings.ToUpper(fg.Hex())
 		}
 
 		threshold := contrastThresholdFor(p.TextPt, p.Bold)

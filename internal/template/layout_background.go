@@ -27,12 +27,23 @@ func ResolveLayoutBackgroundHex(layoutXML []byte, colors []types.ThemeColor) str
 // ResolveLayoutBackgroundModifiers reads only the background's solid fill,
 // never similarly named transforms on text or shapes later in the layout.
 func ResolveLayoutBackgroundModifiers(layoutXML []byte) types.BackgroundColorModifiers {
-	var mods types.BackgroundColorModifiers
 	fill := layoutBackgroundFill.FindSubmatch(layoutXML)
 	if len(fill) != 2 {
-		return mods
+		return types.BackgroundColorModifiers{}
 	}
-	for _, match := range layoutBackgroundMod.FindAllSubmatch(fill[1], -1) {
+	return parseColorModifiers(fill[1])
+}
+
+func colorModifiersFromSolidFill(fill *solidFillXML) types.BackgroundColorModifiers {
+	if fill == nil {
+		return types.BackgroundColorModifiers{}
+	}
+	return parseColorModifiers(fill.InnerXML)
+}
+
+func parseColorModifiers(xml []byte) types.BackgroundColorModifiers {
+	var mods types.BackgroundColorModifiers
+	for _, match := range layoutBackgroundMod.FindAllSubmatch(xml, -1) {
 		value, err := strconv.Atoi(string(match[2]))
 		if err != nil {
 			continue

@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
@@ -1006,6 +1007,34 @@ func findPlaceholderByID(id string, phs []types.PlaceholderInfo) *types.Placehol
 	return nil
 }
 
+func findContrastPlaceholderByID(id string, layout *types.LayoutMetadata) *types.PlaceholderInfo {
+	if placeholderrole.IsSectionNumberAlias(id) {
+		// Match the generator's section-number resolver: a named frame wins
+		// even when another shape has an exact alias name.
+		for i := range layout.Placeholders {
+			if strings.EqualFold(layout.Placeholders[i].ID, "Section Number") {
+				return &layout.Placeholders[i]
+			}
+		}
+		for i := range layout.Placeholders {
+			if layout.Placeholders[i].Index == 1 && (layout.Placeholders[i].Type == types.PlaceholderBody || layout.Placeholders[i].Type == types.PlaceholderContent) {
+				return &layout.Placeholders[i]
+			}
+		}
+	}
+	if ph := findPlaceholderByID(id, layout.Placeholders); ph != nil {
+		return ph
+	}
+	if placeholderrole.IsSectionNumberAlias(id) {
+		for i := range layout.Placeholders {
+			if layout.Placeholders[i].Role == types.PlaceholderRoleSectionNumber {
+				return &layout.Placeholders[i]
+			}
+		}
+	}
+	return nil
+}
+
 // extractContentParagraphs extracts text paragraphs from a content input.
 func extractContentParagraphs(c *ContentInput) []string {
 	switch c.Type {
@@ -1638,6 +1667,14 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 		return nil
 	}
 	predicted := predictSlideLayouts(input, layouts)
+	sectionNumbers := make([]string, len(input.Slides))
+	sectionNum := 0
+	for si, slide := range input.Slides {
+		if isSectionSlideInput(slide, layouts) {
+			sectionNum++
+			sectionNumbers[si] = fmt.Sprintf("%02d", sectionNum)
+		}
+	}
 
 	var pairs []generator.ContrastPreflightPair
 	for si := range input.Slides {
@@ -1655,9 +1692,10 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 		if bgHex == "" {
 			continue
 		}
-		for ci := range slide.Content {
-			content := &slide.Content[ci]
-			ph := findPlaceholderByID(content.PlaceholderID, layout.Placeholders)
+		contents := injectSectionNumber(slide.Content, layout, sectionNumbers[si])
+		for ci := range contents {
+			content := &contents[ci]
+			ph := findContrastPlaceholderByID(content.PlaceholderID, layout)
 			if ph == nil {
 				continue
 			}
@@ -1667,9 +1705,11 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 			// nothing (go-slide-creator-j4364). InheritedFontColor is what the
 			// placeholder actually renders at, resolved through the layout's
 			// clrMapOvr the same way the render-time pass resolves it.
-			fg := ph.FontColor
+			fg := ph.InheritedFontColor
+			mods := ph.InheritedFontColorMods
 			if fg == "" {
-				fg = ph.InheritedFontColor
+				fg = ph.FontColor
+				mods = ph.FontColorMods
 			}
 			if fg == "" {
 				continue
@@ -1677,11 +1717,16 @@ func authorBackgroundContrastPairs(input *PresentationInput, layouts []types.Lay
 			if len(extractContentParagraphs(content)) == 0 {
 				continue
 			}
+			path := slidepath.ContentIndex(si, ci)
+			if ci >= len(slide.Content) {
+				path = slidepath.Content(si, ph.ID)
+			}
 			pairs = append(pairs, generator.ContrastPreflightPair{
-				Path:       slidepath.ContentIndex(si, ci),
-				Foreground: fg,
-				Background: bgHex,
-				Source:     "slide_background",
+				Path:           path,
+				Foreground:     fg,
+				ForegroundMods: mods,
+				Background:     bgHex,
+				Source:         "slide_background",
 				// Bold is unknown from placeholder metadata; false is the
 				// conservative reading, matching the unknown-size rule.
 				TextPt:           float64(ph.FontSize) / 100.0,

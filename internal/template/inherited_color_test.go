@@ -21,6 +21,21 @@ func TestInheritedFontColorIsResolvedForAMasterStyledPlaceholder(t *testing.T) {
 	}
 }
 
+func TestLayoutTextColorKeepsLuminanceModifierForPreflight(t *testing.T) {
+	layouts := parseBundledLayouts(t, "blue-corporate.pptx")
+	title := placeholderOn(t, layouts, "slideLayout3", "title")
+	if title.FontColor != "bg1" {
+		t.Fatalf("blue-corporate title color = %q, want bg1", title.FontColor)
+	}
+	if !title.FontColorMods.HasLumMod || title.FontColorMods.LumMod != 95000 {
+		t.Fatalf("blue-corporate title lost its 95%% luminance modifier: %+v", title.FontColorMods)
+	}
+	number := placeholderOn(t, layouts, "slideLayout3", "Section Number")
+	if !number.FontColorMods.HasLumMod || number.FontColorMods.LumMod != 95000 {
+		t.Fatalf("section number lost its modified color: %+v", number)
+	}
+}
+
 // FontColor keeps its narrower meaning — examine_template reports it to agents
 // as what the template itself declares.
 func TestFontColorStillMeansTheLayoutDeclaredIt(t *testing.T) {
@@ -59,6 +74,40 @@ func TestColorMapOverrideIsApplied(t *testing.T) {
 	// No override at all is the common case and must not change anything.
 	if got := inheritedPlaceholderColor("tx1", nil); got != "tx1" {
 		t.Errorf("with no override, tx1 resolved to %q", got)
+	}
+}
+
+func TestLayoutColorModifierSurvivesSchemeSlotOverride(t *testing.T) {
+	shape := &shapeXML{TextBody: &textBodyXML{ListStyle: &listStyleXML{Lvl1pPr: &levelParagraphPropsXML{
+		DefRPr: &defaultRunPropsXML{SolidFill: &solidFillXML{
+			SchemeColor: &schemeColorXML{Val: "tx1"},
+			InnerXML:    []byte(`<a:schemeClr val="tx1"><a:lumMod val="95000"/></a:schemeClr>`),
+		}},
+	}}}}
+	if color := inheritedTitleColor(shape, nil, map[string]string{"tx1": "lt1"}); color != "lt1" {
+		t.Errorf("mapped title color = %q, want lt1", color)
+	}
+	mods := inheritedTitleColorMods(shape, nil)
+	if !mods.HasLumMod || mods.LumMod != 95000 {
+		t.Errorf("mapped title lost luminance modifier: %+v", mods)
+	}
+}
+
+func TestSubtitleInheritsMasterBodyColorAndModifiers(t *testing.T) {
+	master := &MasterFontStyles{BodyStyle: map[int]*FontStyle{0: {
+		FontColor: "tx1", ColorMods: types.BackgroundColorModifiers{LumMod: 85000, HasLumMod: true},
+	}}}
+	shape := shapeXML{NonVisualProperties: nonVisualPropertiesXML{
+		ConnectionNonVisual: connectionNonVisualXML{Name: "subtitle"},
+		Placeholder:         &placeholderXML{Type: "subTitle"},
+	}}
+	placeholders := extractPlaceholders([]shapeXML{shape}, "test", nil, master, nil, map[string]string{"tx1": "lt1"})
+	if len(placeholders) != 1 || placeholders[0].InheritedFontColor != "lt1" {
+		t.Fatalf("subtitle inherited color = %+v, want lt1", placeholders)
+	}
+	mods := placeholders[0].InheritedFontColorMods
+	if !mods.HasLumMod || mods.LumMod != 85000 {
+		t.Errorf("subtitle lost master modifiers: %+v", mods)
 	}
 }
 
