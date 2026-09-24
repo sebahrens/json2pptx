@@ -37,6 +37,10 @@ func TestDetectContrastPreflight_HexPair(t *testing.T) {
 	if _, ok := f.Fix.Params["predicted_replacement"]; !ok {
 		t.Errorf("fix params should include predicted_replacement")
 	}
+	if f.Fix.Params["from"] != "#FFFFFF" || f.Fix.Params["to"] != f.Fix.Params["predicted_replacement"] ||
+		f.Fix.Params["target"] != "text" || f.Fix.Params["path"] != pairs[0].Path {
+		t.Errorf("fix must be directly executable against authored text: %+v", f.Fix.Params)
+	}
 }
 
 func TestDetectContrastPreflight_SchemeColorResolution(t *testing.T) {
@@ -55,6 +59,18 @@ func TestDetectContrastPreflight_SchemeColorResolution(t *testing.T) {
 
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 finding for low-contrast scheme pair, got %d", len(findings))
+	}
+}
+
+func TestDetectContrastPreflight_DerivedGridHasNoUnreachableRepair(t *testing.T) {
+	findings := DetectContrastPreflight([]ContrastPreflightPair{{
+		Path:       "/slides/0/pattern/rows/0/cells/0/shape/text",
+		Foreground: "#FFFFFF",
+		Background: "#FFE8D4",
+		Source:     "derived_shape_grid",
+	}}, nil)
+	if len(findings) != 1 || findings[0].Fix != nil {
+		t.Fatalf("derived pattern grid must predict contrast without an unexecutable repair: %+v", findings)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/types"
 
 	// Ensure all patterns are registered via init().
 	_ "github.com/sebahrens/json2pptx/internal/patterns"
@@ -755,6 +756,101 @@ func TestRepairSlide_ReplaceColor_ContrastAutoFixedParams(t *testing.T) {
 	applyShapeGridRepair(t, shapeGridDeck("#FFE8D4"), "replace_color", map[string]any{
 		"original_color": "#FFE8D4", "replacement_color": "#333333",
 	})
+}
+
+func TestRepairSlide_ReplaceColor_ContrastPredictionConverges(t *testing.T) {
+	theme := []types.ThemeColor{{Name: "lt1", RGB: "#FFFFFF"}}
+	for _, tc := range []struct {
+		name string
+		text any
+	}{
+		{"object", map[string]any{"content": "Heading", "color": "#FFFFFF", "size": 12}},
+		{"scheme", map[string]any{"content": "Heading", "color": "lt1", "size": 12}},
+		{"paragraphs", map[string]any{"paragraphs": []any{
+			map[string]any{"content": "Heading", "color": "#FFFFFF", "size": 12},
+			map[string]any{"content": "Already dark", "color": "#111111", "size": 12},
+		}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			deck := map[string]any{"template": "midnight-blue", "slides": []any{map[string]any{
+				"layout_id": "slideLayout5", "shape_grid": map[string]any{"rows": []any{map[string]any{
+					"cells": []any{
+						map[string]any{"shape": map[string]any{"geometry": "rect", "fill": "#FFE8D4", "text": tc.text}},
+						map[string]any{"shape": map[string]any{"geometry": "rect", "fill": "#000000", "text": map[string]any{"content": "Other", "color": "#FFFFFF"}}},
+					},
+				}}},
+			}}}
+			deckJSON, err := json.Marshal(deck)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var original PresentationInput
+			if err := json.Unmarshal(deckJSON, &original); err != nil {
+				t.Fatal(err)
+			}
+			original.Slides[0].Pattern = &PatternInput{}
+			derived := contrastPredictions(collectContrastPreflightFindings(&original, nil, theme))
+			if len(derived) != 1 || derived[0].Fix != nil {
+				t.Fatalf("expanded pattern cell must not offer an uneditable shape_grid repair: %+v", derived)
+			}
+			original.Slides[0].Pattern = nil
+			findings := contrastPredictions(collectContrastPreflightFindings(&original, nil, theme))
+			if len(findings) != 1 || findings[0].Fix == nil {
+				t.Fatalf("want one executable contrast prediction, got %+v", findings)
+			}
+			params := findings[0].Fix.Params
+			if params["target"] != "text" || params["path"] != "/slides/0/shape_grid/rows/0/cells/0/shape/text" {
+				t.Fatalf("fix does not target the offending text cell: %+v", params)
+			}
+			output := applyShapeGridRepair(t, string(deckJSON), findings[0].Fix.Kind, params)
+			var patched PresentationInput
+			if err := json.Unmarshal(output.PatchedDeck, &patched); err != nil {
+				t.Fatal(err)
+			}
+			if after := contrastPredictions(collectContrastPreflightFindings(&patched, nil, theme)); len(after) != 0 {
+				t.Errorf("contrast repair did not converge: %+v", after)
+			}
+			cell := patched.Slides[0].ShapeGrid.Rows[0].Cells[0].Shape
+			var fill string
+			if err := json.Unmarshal(cell.Fill, &fill); err != nil || fill != "#FFE8D4" {
+				t.Errorf("text repair changed fill: %q, %v", fill, err)
+			}
+			var untouched map[string]any
+			if err := json.Unmarshal(patched.Slides[0].ShapeGrid.Rows[0].Cells[1].Shape.Text, &untouched); err != nil || untouched["color"] != "#FFFFFF" {
+				t.Errorf("text repair changed another cell: %+v, %v", untouched, err)
+			}
+			var fixed map[string]any
+			if err := json.Unmarshal(cell.Text, &fixed); err != nil {
+				t.Fatal(err)
+			}
+			if tc.name != "paragraphs" {
+				if fixed["color"] != params["to"] || fixed["content"] != "Heading" {
+					t.Errorf("object text not precisely repaired: %+v", fixed)
+				}
+			} else {
+				paragraphs := fixed["paragraphs"].([]any)
+				if paragraphs[0].(map[string]any)["color"] != params["to"] || paragraphs[1].(map[string]any)["color"] != "#111111" {
+					t.Errorf("paragraph text repair changed the wrong color: %+v", paragraphs)
+				}
+			}
+		})
+	}
+}
+
+func TestReplaceColor_TextTargetRejectsWrongPathAndStringText(t *testing.T) {
+	var input PresentationInput
+	if err := json.Unmarshal([]byte(shapeGridDeck("#FFE8D4")), &input); err != nil {
+		t.Fatal(err)
+	}
+	for _, params := range []map[string]any{
+		{"from": "#FFE8D4", "to": "#000000", "target": "unknown"},
+		{"from": "#FFE8D4", "to": "#000000", "target": "text", "path": "/slides/1/shape_grid/rows/0/cells/0/shape/text"},
+		{"from": "#FFE8D4", "to": "#000000", "target": "text", "path": "/slides/0/shape_grid/rows/0/cells/0/shape/text"},
+	} {
+		if result := applyReplaceColor(&input, 0, params); result.Applied {
+			t.Errorf("invalid or absent text target unexpectedly applied: %+v", result)
+		}
+	}
 }
 
 func TestRepairSlide_ReplaceColor_NotFound(t *testing.T) {

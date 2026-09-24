@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -128,10 +129,10 @@ func TestAuthorBackgroundPreflightMatchesRender(t *testing.T) {
 	if len(findings) != 1 {
 		t.Fatalf("expected 1 preflight finding, got %d", len(findings))
 	}
-	if predicted := findings[0].Fix.Params["predicted_replacement"]; predicted != swaps[0].ReplacedColor {
-		t.Errorf("predicted %v != render-time swap %q", predicted, swaps[0].ReplacedColor)
+	if findings[0].Fix != nil {
+		t.Errorf("inherited placeholder text has no executable source-level replacement: %+v", findings[0].Fix)
 	}
-	if mode := findings[0].Fix.Params["replacement_mode"]; mode != contrastModeFlip {
-		t.Errorf("replacement_mode = %v, want %q", mode, contrastModeFlip)
+	if !strings.Contains(findings[0].Message, swaps[0].ReplacedColor) {
+		t.Errorf("prediction %q does not name render-time replacement %q", findings[0].Message, swaps[0].ReplacedColor)
 	}
 }

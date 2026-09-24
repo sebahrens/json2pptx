@@ -93,6 +93,26 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 			source = "preflight"
 		}
 
+		var fix *patterns.FixSuggestion
+		if source != "slide_background" && source != "derived_shape_grid" {
+			fix = &patterns.FixSuggestion{
+				Kind: "replace_color",
+				Params: map[string]any{
+					"from":                  p.Foreground,
+					"to":                    replacement.Hex(),
+					"target":                "text",
+					"path":                  p.Path,
+					"original_color":        strings.ToUpper(fgHex),
+					"predicted_replacement": replacement.Hex(),
+					"replacement_color":     replacement.Hex(),
+					"background_color":      strings.ToUpper(bgHex),
+					"contrast_ratio_before": math.Round(ratio*100) / 100,
+					"contrast_ratio_after":  math.Round(newRatio*100) / 100,
+					"replacement_mode":      mode,
+					"source":                source,
+				},
+			}
+		}
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path: p.Path,
@@ -102,18 +122,7 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 					strings.ToUpper(fgHex), replacement.Hex(), strings.ToUpper(bgHex),
 					math.Round(ratio*100)/100, math.Round(newRatio*100)/100,
 				),
-				Fix: &patterns.FixSuggestion{
-					Kind: "replace_color",
-					Params: map[string]any{
-						"original_color":        strings.ToUpper(fgHex),
-						"predicted_replacement": replacement.Hex(),
-						"background_color":      strings.ToUpper(bgHex),
-						"contrast_ratio_before": math.Round(ratio*100) / 100,
-						"contrast_ratio_after":  math.Round(newRatio*100) / 100,
-						"replacement_mode":      mode,
-						"source":                source,
-					},
-				},
+				Fix: fix,
 			},
 			Action: "info",
 		})

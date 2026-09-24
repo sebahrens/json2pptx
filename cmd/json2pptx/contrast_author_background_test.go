@@ -70,14 +70,11 @@ func TestContrastPreflight_AuthorBackgroundPredicted(t *testing.T) {
 		t.Fatalf("expected 1 contrast_predicted finding, got %d (%+v)", len(findings), findings)
 	}
 	f := findings[0]
-	if got := f.Fix.Params["predicted_replacement"]; got != "#FFFFFF" {
-		t.Errorf("predicted_replacement = %v, want the template's lt1 #FFFFFF", got)
+	if f.Fix != nil {
+		t.Errorf("inherited placeholder text cannot be repaired by editing shape_grid: %+v", f.Fix)
 	}
-	if got := f.Fix.Params["background_color"]; got != "#000000" {
-		t.Errorf("background_color = %v, want the author's dk1 #000000", got)
-	}
-	if got := f.Fix.Params["source"]; got != "slide_background" {
-		t.Errorf("source = %v, want slide_background", got)
+	if !strings.Contains(f.Message, "#1B2A4A → #FFFFFF (on #000000") {
+		t.Errorf("prediction lost original/replacement/background colors: %q", f.Message)
 	}
 	if !strings.Contains(f.Path, "/slides/0") {
 		t.Errorf("path = %q, want the slide's title content", f.Path)

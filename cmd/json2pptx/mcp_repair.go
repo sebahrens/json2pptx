@@ -106,7 +106,7 @@ Layout / pagination:
 
 Color / theme:
 - use_one_of: Replace a field value with a valid option. Params: path (string), value (string).
-- replace_color: Replace one color with another in shape_grid fills. Params: from (string, color to find), to (string, replacement color). Also accepts original_color/replacement_color from contrast_autofixed findings.
+- replace_color: Replace one color with another in shape_grid fills or text. Params: from (string, color to find), to (string, replacement color), target ("fill" default or "text"), path (optional grid-cell JSON Pointer to limit scope). Also accepts original_color/replacement_color from contrast findings.
 - use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, JSON Pointer e.g. "/slides/0/shape_grid/rows/0/cells/0/shape/fill"), value (string, scheme name e.g. "accent1").
 
 Pattern shape:
@@ -996,7 +996,9 @@ func applyUseOneOf(input *PresentationInput, slideIdx int, params map[string]any
 	}
 }
 
-// applyReplaceColor replaces occurrences of a specific color in shape_grid fills.
+// applyReplaceColor replaces occurrences of a specific color in shape_grid
+// fills or authored text colors. The default target remains fill for existing
+// repair directives; contrast findings explicitly target text.
 // Accepts params from contrast_autofixed findings (original_color/replacement_color)
 // or the canonical form (from/to).
 func applyReplaceColor(input *PresentationInput, slideIdx int, params map[string]any) appliedFix {
@@ -1010,6 +1012,10 @@ func applyReplaceColor(input *PresentationInput, slideIdx int, params map[string
 	if to == "" {
 		to = stringParam(params, "replacement_color", "")
 	}
+	if to == "" {
+		to = stringParam(params, "predicted_replacement", "")
+	}
+	target := stringParam(params, "target", "fill")
 
 	if from == "" || to == "" {
 		return appliedFix{Kind: "replace_color", Applied: false, Message: "from/to (or original_color/replacement_color) parameters are required"}
@@ -1020,11 +1026,31 @@ func applyReplaceColor(input *PresentationInput, slideIdx int, params map[string
 		return appliedFix{Kind: "replace_color", Applied: false, Message: "slide has no shape_grid"}
 	}
 
-	modified := replaceColorInShapeGrid(slide.ShapeGrid, from, to)
+	if target != "fill" && target != "text" {
+		return appliedFix{Kind: "replace_color", Applied: false, Message: "target must be fill or text"}
+	}
+	grid := slide.ShapeGrid
+	path := stringParam(params, "path", "")
+	if path != "" {
+		pathSlide, row, cell, ok := slidepath.ParseGridCell(path)
+		if !ok || pathSlide != slideIdx || row < 0 || row >= len(grid.Rows) || cell < 0 || cell >= len(grid.Rows[row].Cells) {
+			return appliedFix{Kind: "replace_color", Applied: false, Message: fmt.Sprintf("invalid shape_grid cell path %q", path)}
+		}
+		selected := grid.Rows[row].Cells[cell]
+		if selected == nil || selected.Shape == nil {
+			return appliedFix{Kind: "replace_color", Applied: false, Message: fmt.Sprintf("no shape at %q", path)}
+		}
+		modified := replaceShapeColor(selected.Shape, from, to, target)
+		if modified {
+			return appliedFix{Kind: "replace_color", Applied: true}
+		}
+		return appliedFix{Kind: "replace_color", Applied: false, Message: fmt.Sprintf("color %q not found in shape_grid %s at %q", from, target, path)}
+	}
+	modified := replaceColorInShapeGrid(grid, from, to, target)
 	if modified {
 		return appliedFix{Kind: "replace_color", Applied: true}
 	}
-	return appliedFix{Kind: "replace_color", Applied: false, Message: fmt.Sprintf("color %q not found in shape_grid fills", from)}
+	return appliedFix{Kind: "replace_color", Applied: false, Message: fmt.Sprintf("color %q not found in shape_grid %s", from, target)}
 }
 
 // applyUseSemanticColor replaces a hex fill at a specific path with a semantic
@@ -1058,23 +1084,68 @@ func applyUseSemanticColor(input *PresentationInput, slideIdx int, params map[st
 	return appliedFix{Kind: "use_semantic_color", Applied: false, Message: "no hex fills found in shape_grid"}
 }
 
-// replaceColorInShapeGrid walks all cells in a shape grid and replaces fill
-// colors matching `from` with `to`.
-func replaceColorInShapeGrid(grid *ShapeGridInput, from, to string) bool {
+// replaceColorInShapeGrid walks all cells and rewrites the requested surface.
+func replaceColorInShapeGrid(grid *ShapeGridInput, from, to, target string) bool {
 	modified := false
-	fromNorm := normalizeColor(from)
 	for ri := range grid.Rows {
 		for ci := range grid.Rows[ri].Cells {
 			cell := grid.Rows[ri].Cells[ci]
 			if cell == nil || cell.Shape == nil {
 				continue
 			}
-			if replaceFillColor(cell.Shape, fromNorm, to) {
+			if replaceShapeColor(cell.Shape, from, to, target) {
 				modified = true
 			}
 		}
 	}
 	return modified
+}
+
+func replaceShapeColor(shape *ShapeSpecInput, from, to, target string) bool {
+	if target == "text" {
+		return replaceShapeTextColor(shape, from, to)
+	}
+	return replaceFillColor(shape, normalizeColor(from), to)
+}
+
+// replaceShapeTextColor preserves every text field except matching authored
+// color values. Both single-object and individually styled paragraph forms
+// are supported; string shorthand has no authored color to replace.
+func replaceShapeTextColor(shape *ShapeSpecInput, from, to string) bool {
+	if len(shape.Text) == 0 {
+		return false
+	}
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(shape.Text, &obj); err != nil || obj == nil {
+		return false
+	}
+	changed := false
+	var paragraphs []map[string]json.RawMessage
+	if err := json.Unmarshal(obj["paragraphs"], &paragraphs); err == nil && len(paragraphs) > 0 {
+		for _, paragraph := range paragraphs {
+			if replaceRawColor(paragraph, "color", from, to) {
+				changed = true
+			}
+		}
+		if changed {
+			obj["paragraphs"], _ = json.Marshal(paragraphs)
+		}
+	} else {
+		changed = replaceRawColor(obj, "color", from, to)
+	}
+	if changed {
+		shape.Text, _ = json.Marshal(obj)
+	}
+	return changed
+}
+
+func replaceRawColor(obj map[string]json.RawMessage, key, from, to string) bool {
+	var current string
+	if err := json.Unmarshal(obj[key], &current); err != nil || normalizeColor(current) != normalizeColor(from) {
+		return false
+	}
+	obj[key], _ = json.Marshal(to)
+	return true
 }
 
 // replaceFillColor replaces a fill color on a shape spec if it matches fromNorm.

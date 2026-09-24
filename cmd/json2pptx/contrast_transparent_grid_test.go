@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/testutil"
@@ -299,7 +300,10 @@ func TestTeamBiosTransparentRoleContrastMatchesPreflight(t *testing.T) {
 	}
 	var predicted bool
 	for _, finding := range contrastPredictions(collectFitFindings(input, layouts, width, height, theme)) {
-		if finding.Fix != nil && finding.Fix.Params["original_color"] == "#C06B3F" && finding.Fix.Params["background_color"] == "#FFFFFF" {
+		if strings.Contains(finding.Message, "#C06B3F") && strings.Contains(finding.Message, "on #FFFFFF") {
+			if finding.Fix != nil {
+				t.Errorf("derived team-bios grid must not offer a raw shape_grid repair: %+v", finding.Fix)
+			}
 			predicted = true
 		}
 	}

@@ -1454,6 +1454,7 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 			}
 		}
 		gridBackground := generator.EffectiveGridBackgroundHex(backgroundSpecFor(&slide), inheritedBackground, themeColors)
+		source := contrastGridSource(slide)
 		for ri, row := range slide.ShapeGrid.Rows {
 			for ci, cell := range row.Cells {
 				if cell == nil || cell.Shape == nil {
@@ -1471,7 +1472,7 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 						Path:       slidepath.GridCellField(si, ri, ci, "shape/text"),
 						Foreground: tc.Color,
 						Background: fill,
-						Source:     "shape_grid",
+						Source:     source,
 						TextPt:     tc.SizePt,
 						Bold:       tc.Bold,
 					})
@@ -1481,6 +1482,15 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 	}
 
 	return generator.DetectContrastPreflight(pairs, themeColors)
+}
+
+func contrastGridSource(slide SlideInput) string {
+	// These cells were expanded for measurement; repair_slide receives the
+	// authored pattern/compose, not an editable shape_grid.
+	if slide.Pattern != nil || slide.Compose != nil {
+		return "derived_shape_grid"
+	}
+	return "shape_grid"
 }
 
 // transparentShapeFill distinguishes a true no-fill cell from an unsupported
