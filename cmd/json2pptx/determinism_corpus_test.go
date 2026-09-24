@@ -96,7 +96,11 @@ func TestDeterministicCorpus(t *testing.T) {
 			expected, ok := goldens[tmpl]
 			switch {
 			case !ok:
-				t.Logf("no golden hash recorded for %s — current: %s. Run scripts/rebaseline_golden_hashes.sh to seed.", tmpl, hashA)
+				if tmpl == "p-style" {
+					t.Logf("local ignored p-style template is deterministic: %s (no shipped golden hash)", hashA)
+				} else {
+					t.Logf("no golden hash recorded for %s — current: %s. Run scripts/rebaseline_golden_hashes.sh to seed.", tmpl, hashA)
+				}
 			case expected != hashA:
 				msg := fmt.Sprintf("golden hash drift for template %s:\n  expected: %s\n  actual:   %s\n"+
 					"diff hint: ./pptx2jpg <golden.pptx> %s to inspect; rerun scripts/rebaseline_golden_hashes.sh after confirming the change is intentional",
