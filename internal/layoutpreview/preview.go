@@ -244,13 +244,26 @@ func imageMagickBin() string {
 // renders visible text in each placeholder region rather than a blank slide.
 func sampleContent(layout types.LayoutMetadata) []generator.ContentItem {
 	var items []generator.ContentItem
+	isSectionDivider := layout.CanonicalType == types.CanonicalLayoutSectionDivider
 	for _, ph := range layout.Placeholders {
-		switch ph.Type {
-		case types.PlaceholderTitle:
+		if ph.Role == types.PlaceholderRoleSectionNumber || types.IsAutoFilledPlaceholder(ph.ID) {
 			items = append(items, generator.ContentItem{
 				PlaceholderID: ph.ID,
 				Type:          generator.ContentText,
-				Value:         layout.Name,
+				Value:         "01",
+			})
+			continue
+		}
+		switch ph.Type {
+		case types.PlaceholderTitle:
+			value := layout.Name
+			if isSectionDivider {
+				value = "Section"
+			}
+			items = append(items, generator.ContentItem{
+				PlaceholderID: ph.ID,
+				Type:          generator.ContentText,
+				Value:         value,
 			})
 		case types.PlaceholderSubtitle:
 			items = append(items, generator.ContentItem{
@@ -259,6 +272,14 @@ func sampleContent(layout types.LayoutMetadata) []generator.ContentItem {
 				Value:         "Subtitle placeholder",
 			})
 		case types.PlaceholderBody, types.PlaceholderContent:
+			if isSectionDivider {
+				items = append(items, generator.ContentItem{
+					PlaceholderID: ph.ID,
+					Type:          generator.ContentText,
+					Value:         "Overview",
+				})
+				continue
+			}
 			items = append(items, generator.ContentItem{
 				PlaceholderID: ph.ID,
 				Type:          generator.ContentBullets,

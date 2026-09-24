@@ -3,11 +3,38 @@ package layoutpreview
 import (
 	"os"
 	"os/exec"
+	"reflect"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+func TestSampleContentKeepsSectionDividerPreviewCompact(t *testing.T) {
+	layout := types.LayoutMetadata{
+		Name:          "Section Divider",
+		CanonicalType: types.CanonicalLayoutSectionDivider,
+		Placeholders: []types.PlaceholderInfo{
+			{ID: "title", Type: types.PlaceholderTitle},
+			{ID: "Section Number", Type: types.PlaceholderBody, Role: types.PlaceholderRoleSectionNumber},
+			{ID: "body", Type: types.PlaceholderBody},
+		},
+	}
+	want := []generator.ContentItem{
+		{PlaceholderID: "title", Type: generator.ContentText, Value: "Section"},
+		{PlaceholderID: "Section Number", Type: generator.ContentText, Value: "01"},
+		{PlaceholderID: "body", Type: generator.ContentText, Value: "Overview"},
+	}
+	if got := sampleContent(layout); !reflect.DeepEqual(got, want) {
+		t.Errorf("section preview content = %#v, want %#v", got, want)
+	}
+	ordinary := types.LayoutMetadata{Name: "One Content", Placeholders: []types.PlaceholderInfo{{ID: "body", Type: types.PlaceholderBody}}}
+	got := sampleContent(ordinary)
+	if len(got) != 1 || got[0].Type != generator.ContentBullets {
+		t.Errorf("ordinary content preview lost sample bullets: %#v", got)
+	}
+}
 
 func TestGenerate(t *testing.T) {
 	templatePath := "../../templates/midnight-blue.pptx"
