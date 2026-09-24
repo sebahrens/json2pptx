@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
@@ -1095,7 +1096,9 @@ func formatCodeCounts(counts map[string]int) []string {
 
 // contrastSwapsToFindings converts generator ContrastSwap records into
 // patterns.FitFinding values with action "info" and code "contrast_autofixed".
-func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFinding {
+// An executable fix is offered only when the rendered shape index maps
+// unambiguously to an authored raw grid cell with the original text color.
+func contrastSwapsToFindings(swaps []generator.ContrastSwap, input *PresentationInput, themeColors []types.ThemeColor) []patterns.FitFinding {
 	if len(swaps) == 0 {
 		return nil
 	}
@@ -1123,24 +1126,81 @@ func contrastSwapsToFindings(swaps []generator.ContrastSwap) []patterns.FitFindi
 			params["cells"] = s.Cells
 			scope = fmt.Sprintf(" across %d sibling cells", s.Cells)
 		}
+		var fix *patterns.FixSuggestion
+		if path, from, ok := authoredContrastSwapCell(s, input, themeColors); ok {
+			params["from"] = from
+			params["to"] = s.ReplacedColor
+			params["target"] = "text"
+			params["path"] = path
+			fix = &patterns.FixSuggestion{Kind: "replace_color", Params: params}
+		}
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Path: s.Path,
 				Code: "contrast_autofixed",
 				Message: fmt.Sprintf(
-					"auto-fixed low-contrast text%s: %s → %s (on %s, ratio %.1f → %.1f)",
-					scope, s.OriginalColor, s.ReplacedColor, s.BackgroundColor,
+					"auto-fixed low-contrast text%s on %s: %s → %s (on %s, ratio %.1f → %.1f)",
+					scope, s.Source, s.OriginalColor, s.ReplacedColor, s.BackgroundColor,
 					s.RatioBefore, s.RatioAfter,
 				),
-				Fix: &patterns.FixSuggestion{
-					Kind:   "replace_color",
-					Params: params,
-				},
+				Fix: fix,
 			},
 			Action: "info",
 		})
 	}
 	return findings
+}
+
+// authoredContrastSwapCell accepts the generator's /shape_grid/shapes/I path
+// only for a simple raw grid where each authored cell emits exactly one XML
+// shape in row-major order. Connectors, spans, groups, nested grids, and other
+// cell kinds break that index mapping and therefore cannot receive a safe fix.
+func authoredContrastSwapCell(s generator.ContrastSwap, input *PresentationInput, themeColors []types.ThemeColor) (string, string, bool) {
+	if input == nil || s.Source != "shape_grid" || s.Cells > 1 || s.SlideIndex < 0 || s.SlideIndex >= len(input.Slides) {
+		return "", "", false
+	}
+	slide := &input.Slides[s.SlideIndex]
+	if slide.ShapeGrid == nil || slide.Pattern != nil || slide.Compose != nil {
+		return "", "", false
+	}
+	prefix := slidepath.ShapeGrid(s.SlideIndex) + "/shapes/"
+	if !strings.HasPrefix(s.Path, prefix) {
+		return "", "", false
+	}
+	shapeIndex, err := strconv.Atoi(strings.TrimPrefix(s.Path, prefix))
+	if err != nil || shapeIndex < 0 {
+		return "", "", false
+	}
+	index := 0
+	var targetPath, authoredColor string
+	for ri, row := range slide.ShapeGrid.Rows {
+		if row.Connector != nil {
+			return "", "", false
+		}
+		for ci, cell := range row.Cells {
+			if !simpleContrastGridCell(cell) {
+				return "", "", false
+			}
+			if index == shapeIndex {
+				for _, color := range extractShapeTextColors(cell.Shape.Text) {
+					resolved, ok := themeHex(color.Color, themeColors)
+					if ok && normalizeColor(resolved.Hex()) == normalizeColor(s.OriginalColor) {
+						targetPath = slidepath.GridCellField(s.SlideIndex, ri, ci, "shape/text")
+						authoredColor = color.Color
+						break
+					}
+				}
+			}
+			index++
+		}
+	}
+	return targetPath, authoredColor, targetPath != ""
+}
+
+func simpleContrastGridCell(cell *GridCellInput) bool {
+	return cell != nil && cell.Shape != nil && !cell.Group && cell.ColSpan <= 1 && cell.RowSpan <= 1 &&
+		cell.Table == nil && cell.Icon == nil && cell.Image == nil && cell.Diagram == nil &&
+		cell.Composite == nil && len(cell.Pattern) == 0 && cell.Grid == nil && cell.AccentBar == nil
 }
 
 // patternRecommendedMax maps known patterns to their recommended maximum cell

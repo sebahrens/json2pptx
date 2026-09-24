@@ -591,7 +591,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	fitFindings = append(fitFindings, chartDiagFindings...)
 
 	// Append contrast auto-fix findings (always emitted, not gated by fit_report).
-	fitFindings = append(fitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
+	fitFindings = append(fitFindings, contrastSwapsToFindings(result.ContrastSwaps, &input, analysis.Theme.Colors)...)
 
 	// Append grid visual findings (diagram narrow-cell, etc.) — always emitted.
 	fitFindings = append(fitFindings, gridVisualFindings...)

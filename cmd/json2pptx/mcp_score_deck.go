@@ -316,7 +316,9 @@ func (mc *mcpConfig) collectRenderFindings(
 
 	var renderFindings []patterns.FitFinding
 	renderFindings = append(renderFindings, result.FitFindings...)
-	renderFindings = append(renderFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
+	// Score-deck can render a slide subset, so generated shape indices do not
+	// map safely back to the caller's raw deck here. Keep swaps informational.
+	renderFindings = append(renderFindings, contrastSwapsToFindings(result.ContrastSwaps, nil, nil)...)
 	return renderFindings, deterministic.RenderEvidence{Complete: true}
 }
 

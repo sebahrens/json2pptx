@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -131,7 +132,7 @@ func TestContrastSwapsToFindings(t *testing.T) {
 		},
 	}
 
-	findings := contrastSwapsToFindings(swaps)
+	findings := contrastSwapsToFindings(swaps, nil, nil)
 
 	if len(findings) != 2 {
 		t.Fatalf("expected 2 findings, got %d", len(findings))
@@ -144,31 +145,115 @@ func TestContrastSwapsToFindings(t *testing.T) {
 		if f.Action != "info" {
 			t.Errorf("finding[%d].Action = %q, want %q", i, f.Action, "info")
 		}
-		if f.Fix == nil {
-			t.Fatalf("finding[%d].Fix is nil", i)
-		}
-		if f.Fix.Kind != "replace_color" {
-			t.Errorf("finding[%d].Fix.Kind = %q, want %q", i, f.Fix.Kind, "replace_color")
+		if f.Fix != nil {
+			t.Errorf("finding[%d] advertised an unverified source-level repair: %+v", i, f.Fix)
 		}
 		if !strings.Contains(f.Message, swaps[i].OriginalColor) {
 			t.Errorf("finding[%d].Message should contain original color %q, got %q", i, swaps[i].OriginalColor, f.Message)
+		}
+		if !strings.Contains(f.Message, swaps[i].Source) {
+			t.Errorf("finding[%d].Message lost source %q: %q", i, swaps[i].Source, f.Message)
 		}
 		// Location provenance must propagate to the finding so agents can map
 		// the swap back to the offending slide / cell / text.
 		if f.Path != swaps[i].Path {
 			t.Errorf("finding[%d].Path = %q, want %q", i, f.Path, swaps[i].Path)
 		}
-		if got := f.Fix.Params["source"]; got != swaps[i].Source {
-			t.Errorf("finding[%d].Fix.Params[source] = %v, want %q", i, got, swaps[i].Source)
-		}
 	}
 }
 
 func TestContrastSwapsToFindings_Empty(t *testing.T) {
-	findings := contrastSwapsToFindings(nil)
+	findings := contrastSwapsToFindings(nil, nil, nil)
 	if findings != nil {
 		t.Errorf("expected nil for empty swaps, got %v", findings)
 	}
+}
+
+func TestContrastSwapsToFindings_RepairsOnlyPreciselyMappedRawText(t *testing.T) {
+	input := &PresentationInput{Slides: []SlideInput{{ShapeGrid: &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{
+		{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"#FFFFFF"`), Text: json.RawMessage(`{"content":"Readable","color":"#000000"}`)}},
+		{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"#FFE8D4"`), Text: json.RawMessage(`{"content":"Low contrast","color":"lt1"}`)}},
+	}}}}}}}
+	theme := []types.ThemeColor{{Name: "lt1", RGB: "#FFFFFF"}}
+	swap := generator.ContrastSwap{
+		OriginalColor: "#FFFFFF", ReplacedColor: "#333333", BackgroundColor: "#FFE8D4",
+		SlideIndex: 0, Path: "/slides/0/shape_grid/shapes/1", Source: "shape_grid",
+	}
+	findings := contrastSwapsToFindings([]generator.ContrastSwap{swap}, input, theme)
+	if len(findings) != 1 || findings[0].Fix == nil {
+		t.Fatalf("authored cell should have an executable repair: %+v", findings)
+	}
+	params := findings[0].Fix.Params
+	if params["target"] != "text" || params["from"] != "lt1" || params["to"] != "#333333" ||
+		params["path"] != "/slides/0/shape_grid/rows/0/cells/1/shape/text" {
+		t.Fatalf("wrong raw-cell repair: %+v", params)
+	}
+	for _, tc := range []struct {
+		name string
+		edit func(*PresentationInput, *generator.ContrastSwap)
+	}{
+		{"grouped swap", func(_ *PresentationInput, s *generator.ContrastSwap) { s.Cells = 2 }},
+		{"inherited run", func(_ *PresentationInput, s *generator.ContrastSwap) { s.Source = "run" }},
+		{"pattern grid", func(in *PresentationInput, _ *generator.ContrastSwap) { in.Slides[0].Pattern = &PatternInput{} }},
+		{"later connector shifts shape indices", func(in *PresentationInput, _ *generator.ContrastSwap) {
+			in.Slides[0].ShapeGrid.Rows = append(in.Slides[0].ShapeGrid.Rows, GridRowInput{Connector: &ConnectorSpecInput{}})
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			copyInput := *input
+			copyInput.Slides = append([]SlideInput(nil), input.Slides...)
+			grid := *input.Slides[0].ShapeGrid
+			grid.Rows = append([]GridRowInput(nil), grid.Rows...)
+			copyInput.Slides[0].ShapeGrid = &grid
+			copySwap := swap
+			tc.edit(&copyInput, &copySwap)
+			got := contrastSwapsToFindings([]generator.ContrastSwap{copySwap}, &copyInput, theme)
+			if len(got) != 1 || got[0].Fix != nil {
+				t.Errorf("unmapped swap offered a repair: %+v", got)
+			}
+		})
+	}
+	if result := applyReplaceColor(input, 0, params); !result.Applied {
+		t.Fatalf("render-time finding's fix did not apply: %+v", result)
+	}
+	if after := contrastPredictions(collectContrastPreflightFindings(input, nil, theme)); len(after) != 0 {
+		t.Errorf("source repair did not converge: %+v", after)
+	}
+	var untouched map[string]any
+	if err := json.Unmarshal(input.Slides[0].ShapeGrid.Rows[0].Cells[0].Shape.Text, &untouched); err != nil || untouched["color"] != "#000000" {
+		t.Errorf("repair changed another cell: %+v, %v", untouched, err)
+	}
+}
+
+func TestRenderedContrastSwapMapsToAuthoredGridCell(t *testing.T) {
+	input := &PresentationInput{Template: "midnight-blue", OutputFilename: "contrast-cell.pptx", Slides: []SlideInput{{
+		SlideType: "blank", ShapeGrid: &ShapeGridInput{Rows: []GridRowInput{{Cells: []*GridCellInput{
+			{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"#000000"`), Text: json.RawMessage(`{"content":"Readable","color":"#FFFFFF","size":12}`)}},
+			{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"#FFE8D4"`), Text: json.RawMessage(`{"content":"Needs repair","color":"lt1","size":12}`)}},
+		}}},
+		}}}}
+	applyDefaults(input)
+	result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
+		OutputDir: t.TempDir(), TemplatesDir: "../../templates", StrictFit: "off", OutputValidation: "strict",
+	})
+	if cleanup != nil {
+		defer cleanup()
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := contrastSwapsToFindings(result.GenResult.ContrastSwaps, input, s7wmhCmdTheme)
+	for _, finding := range findings {
+		if finding.Fix == nil {
+			continue
+		}
+		if finding.Fix.Params["path"] != "/slides/0/shape_grid/rows/0/cells/1/shape/text" ||
+			finding.Fix.Params["from"] != "lt1" || finding.Fix.Params["target"] != "text" {
+			t.Fatalf("rendered shape mapped to wrong authored cell: %+v", finding.Fix)
+		}
+		return
+	}
+	t.Fatalf("no rendered contrast swap mapped to the authored text cell: swaps=%+v findings=%+v", result.GenResult.ContrastSwaps, findings)
 }
 
 // --- BudgetFitFindings tests ---

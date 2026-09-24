@@ -623,7 +623,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 	}
 	allFitFindings = append(allFitFindings, synthesisFindings...)
 	allFitFindings = append(allFitFindings, result.FitFindings...)
-	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps)...)
+	allFitFindings = append(allFitFindings, contrastSwapsToFindings(result.ContrastSwaps, input, runRes.TemplateTheme.Colors)...)
 	allFitFindings = append(allFitFindings, chartDiagFindings...)
 	allFitFindings = append(allFitFindings, gridVisualFindings...)
 	allFitFindings = append(allFitFindings, droppedColorFindings...)

@@ -1024,9 +1024,10 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        "contrast_autofixed",
 		Summary:     "Render-time text color was auto-replaced to meet WCAG AA contrast.",
 		Severity:    "info",
-		WhenEmitted: "Generator's contrast pass detects low-contrast text against the resolved background and swaps the color; a background the author set (background.color or an opaque scrim) snaps to a template text color, a template background is lerped. The finding records the before/after colors and ratios, the text surface (fix.params.source: shape_grid, lstStyle, run, chrome, layout-lstStyle or master-txStyles — the last two are text that stated no color at all and inherited an unreadable one), and a path locating the swap (/slides/{i}/shape_grid/shapes/{n} for grid cells, /slides/{i} for layout/run/inherited text).",
+		WhenEmitted: "Generator's contrast pass detects low-contrast text against the resolved background and swaps the color; a background the author set (background.color or an opaque scrim) snaps to a template text color, a template background is lerped. The finding records before/after colors, ratios, and the rendered path. A replace_color fix with target=text is offered only when a simple raw shape-grid cell can be mapped exactly to authored text; inherited placeholder, pattern, grouped-grid, and ambiguous render surfaces have no executable source-level fix.",
 		RemediationSteps: []string{
-			"Author the replacement color directly upstream to make the swap explicit.",
+			"When the finding carries a replace_color fix, apply its target=text and cell path to author the replacement color upstream.",
+			"For inherited or generated text without a fix, adjust the source template, pattern values, or background as appropriate.",
 			"Or accept the swap — it is informational and the deck rendered correctly.",
 		},
 		RelatedCodes: []string{ErrCodeContrastPredicted},
