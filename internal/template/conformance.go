@@ -140,6 +140,11 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 	checks = append(checks, checkSectionNumber(layouts)...)
 	checks = append(checks, checkFooterChromeCompleteness(layouts))
 	checks = append(checks, checkContentTitleBodyHierarchy(layouts)...)
+	staticText, err := checkLayoutStaticText(reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check layout text: %w", err)
+	}
+	checks = append(checks, staticText...)
 	checks = append(checks, checkTheme(theme)...)
 
 	pass := true
