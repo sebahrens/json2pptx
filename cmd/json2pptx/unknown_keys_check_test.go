@@ -14,7 +14,7 @@ func TestUnknownKeys_ChartStyleBlocks(t *testing.T) {
 	raw := json.RawMessage(`{"template":"t","slides":[{"slide_type":"chart","content":[
 		{"placeholder_id":"body","type":"chart","chart_value":{"type":"bar",
 			"data":{"categories":["Q1"],"series":[{"name":"Rev","values":[1]}]},
-			"style":{"show_values":true,"palette":"vibrant","font_size":18,"show_grid":false},
+			"style":{"show_values":true,"scale":"log","palette":"vibrant","font_size":18,"show_grid":false},
 			"chart_style":{"show_single_series_legend":true,"show_gridlines":true}}}]}]}`)
 
 	got := map[string]bool{}
@@ -34,6 +34,7 @@ func TestUnknownKeys_ChartStyleBlocks(t *testing.T) {
 	// The keys that work must not be reported.
 	for _, ok := range []string{
 		"/slides/0/content/0/chart_value/style/show_values",
+		"/slides/0/content/0/chart_value/style/scale",
 		"/slides/0/content/0/chart_value/chart_style/show_single_series_legend",
 	} {
 		if got[ok] {

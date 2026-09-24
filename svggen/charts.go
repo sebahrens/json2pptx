@@ -185,6 +185,9 @@ type ChartConfig struct {
 	// ShowValues enables value labels on data points.
 	ShowValues bool
 
+	// Scale is "linear" (the default) or an explicit "log" for bar charts.
+	Scale string
+
 	// ValueFormat is the printf-style format for values.
 	ValueFormat string
 
@@ -309,7 +312,7 @@ func DefaultBarChartConfig(width, height float64) BarChartConfig {
 type BarChart struct {
 	builder  *SVGBuilder
 	config   BarChartConfig
-	logScale *LogScale // non-nil when auto-log-scale is active
+	logScale *LogScale // non-nil only for an explicitly requested log axis
 
 	// xDisplayLabels holds wrapped x-axis tick text from AdaptXLabels
 	// (nil when labels are drawn verbatim).
@@ -333,6 +336,17 @@ func NewBarChart(builder *SVGBuilder, config BarChartConfig) *BarChart {
 func (bc *BarChart) Draw(data ChartData) error {
 	if len(data.Series) == 0 || len(data.Categories) == 0 {
 		return fmt.Errorf("bar chart requires at least one series and categories")
+	}
+	// Scale preparation can reserve an axis gutter or enable value labels for
+	// this render. Do not leak either override into a later Draw on the same
+	// chart instance (for example, a wide-range chart followed by a narrow one).
+	showValues, marginLeft := bc.config.ShowValues, bc.config.MarginLeft
+	defer func() {
+		bc.config.ShowValues = showValues
+		bc.config.MarginLeft = marginLeft
+	}()
+	if err := bc.prepareValueScale(data); err != nil {
+		return err
 	}
 
 	b := bc.builder
@@ -406,27 +420,22 @@ func (bc *BarChart) Draw(data ChartData) error {
 	displayData := data
 	displayData.Categories = categories
 
-	// ── Auto-detect extreme value ranges for log scale ──
-	// When positive values span 3+ orders of magnitude (e.g. 0.001 to 1,000,000)
-	// linear scale compresses small bars to invisible slivers. Switch to log10
-	// scale automatically so every bar gets proportional visual weight.
-	// Log scale is only used for non-stacked charts with all-positive data.
+	// Bar length encodes value on a linear axis by default. A wide range can
+	// obscure small bars, so label the actual values and surface the tradeoff.
+	// A logarithmic axis must be requested explicitly.
 	bc.logScale = nil
-	if !bc.config.Stacked && bc.needsLogScale(data) {
+	if bc.config.Scale == "log" {
+		minPositive, maxPositive := bc.positiveDomainBounds(data)
+		if minPositive <= 0 || maxPositive <= 0 {
+			return fmt.Errorf("log scale requires at least one positive bar value")
+		}
 		logMin, logMax := bc.logDomainBounds(data)
+		if logMin == logMax {
+			logMin /= 10
+			logMax *= 10
+		}
 		bc.logScale = NewLogScale(logMin, logMax)
 		bc.logScale.SetRangeLog(plotArea.H, 0)
-
-		b.AddFinding(Finding{
-			Field:    "data.series",
-			Code:     FindingAutoLogScaleApplied,
-			Message:  fmt.Sprintf("auto-switched to log scale — values span %.0fx (%.4g to %.4g)", logMax/logMin, logMin, logMax),
-			Severity: "warning",
-			Fix: &FixSuggestion{
-				Kind:   FixKindExplicitScale,
-				Params: map[string]any{"scale": "log", "domain_min": logMin, "domain_max": logMax},
-			},
-		})
 
 		// Draw grid and axes using log scale
 		if bc.config.ShowGrid {
@@ -508,6 +517,32 @@ func (bc *BarChart) Draw(data ChartData) error {
 		})
 	}
 
+	return nil
+}
+
+func (bc *BarChart) prepareValueScale(data ChartData) error {
+	if bc.config.Scale != "" && bc.config.Scale != "linear" && bc.config.Scale != "log" {
+		return fmt.Errorf("bar chart scale must be linear or log, got %q", bc.config.Scale)
+	}
+	if bc.config.Scale == "log" && bc.config.Stacked {
+		return fmt.Errorf("log scale is not supported for stacked bar charts")
+	}
+	if bc.config.Scale == "log" && bc.config.YAxisTitle == "" {
+		// Reserve the same label gutter as a caller-provided axis title.
+		bc.config.MarginLeft += 20
+	}
+	if bc.config.Scale != "log" && !bc.config.Stacked && bc.needsLogScale(data) {
+		bc.config.ShowValues = true
+		minVal, maxVal := bc.positiveDomainBounds(data)
+		bc.builder.AddFinding(Finding{
+			Field: "data.series", Code: FindingWideRangeLinear,
+			Message:  fmt.Sprintf("bar values span %.0fx (%.4g to %.4g); kept linear lengths and enabled value labels", maxVal/minVal, minVal, maxVal),
+			Severity: "warning",
+			Fix: &FixSuggestion{Kind: FixKindExplicitScale, Params: map[string]any{
+				"options": []string{"style.show_values=true", "split_chart", "style.scale=log"},
+			}},
+		})
+	}
 	return nil
 }
 
@@ -787,37 +822,40 @@ func withBarTopHeadroom(yMax float64) float64 {
 	return yMax
 }
 
-// needsLogScale returns true when the chart data spans enough orders of
-// magnitude that a log scale would be more readable than linear.
-// Requires all values to be positive (or zero).
+// needsLogScale identifies wide positive ranges for a linear-axis warning.
 func (bc *BarChart) needsLogScale(data ChartData) bool {
-	var minPos float64
-	var maxVal float64
+	minPos, maxVal := bc.positiveDomainBounds(data)
 	hasNeg := false
-	first := true
 
 	for _, s := range data.Series {
 		for _, v := range s.Values {
 			if v < 0 {
 				hasNeg = true
 			}
-			if v > 0 {
-				if first || v < minPos {
-					minPos = v
-				}
-				first = false
-			}
-			if v > maxVal {
-				maxVal = v
-			}
 		}
 	}
-
-	// Log scale needs all-positive data with a wide range
-	if hasNeg || first || minPos <= 0 || maxVal <= 0 {
+	if hasNeg || minPos <= 0 || maxVal <= 0 {
 		return false
 	}
 	return maxVal/minPos >= 1000
+}
+
+func (bc *BarChart) positiveDomainBounds(data ChartData) (min, max float64) {
+	min = math.Inf(1)
+	for _, s := range data.Series {
+		for _, v := range s.Values {
+			if v > 0 && v < min {
+				min = v
+			}
+			if v > max {
+				max = v
+			}
+		}
+	}
+	if math.IsInf(min, 1) {
+		min = 0
+	}
+	return min, max
 }
 
 // logDomainBounds returns the min/max positive values across all series,
@@ -885,7 +923,10 @@ func (bc *BarChart) drawLogAxes(plotArea Rect, xScale *CategoricalScale, axisFon
 
 	// Y axis — use log scale labels
 	yAxisConfig := DefaultAxisConfig(AxisPositionLeft)
-	yAxisConfig.Title = bc.config.YAxisTitle
+	yAxisConfig.Title = "Log scale"
+	if bc.config.YAxisTitle != "" {
+		yAxisConfig.Title = bc.config.YAxisTitle + " (log scale)"
+	}
 	yAxis := NewAxis(b, yAxisConfig)
 	yAxis.DrawLogAxis(bc.logScale, plotArea.X, plotArea.Y)
 }

@@ -1,5 +1,12 @@
 # Schema Changelog
 
+- **2026-09-24 — Schema 4.120.0: explicit bar value-axis scale (`go-slide-creator-gpjwj`).**
+  Bar and grouped-bar `style.scale` now accepts `linear` (default) or `log`.
+  A wide positive range no longer auto-switches to log: bar lengths remain
+  linear, value labels are enabled, and `chart.wide_range_linear` warns with
+  split-chart or explicit-log options. An explicit log axis prints “log scale”
+  beside its title; stacked bars reject log scale.
+
 - **2026-09-24 — Schema 4.119.0: decision option recommendation (`go-slide-creator-m9crb`).**
   `kind: decision` accepts `recommended: true` on an option object. Exactly one
   usable option must be marked when options are supplied; missing or multiple

@@ -262,6 +262,7 @@ type DiagramStyle struct {
 	FontFamily      string            `json:"font_family,omitempty" yaml:"font_family,omitempty"` // Font for labels and text
 	ShowLegend      bool              `json:"show_legend,omitempty" yaml:"show_legend,omitempty"` // Display legend
 	ShowValues      bool              `json:"show_values,omitempty" yaml:"show_values,omitempty"` // Display values on elements
+	Scale           string            `json:"scale,omitempty" yaml:"scale,omitempty"`             // Bar/grouped-bar value axis: linear (default) or log
 	Background      string            `json:"background,omitempty" yaml:"background,omitempty"`   // Background color
 	// ValueFormat is one number format for the diagram's values — axis ticks,
 	// data labels and in-mark labels alike (go-slide-creator-e2ck9).

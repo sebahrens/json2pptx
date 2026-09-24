@@ -162,15 +162,12 @@ func TestPieAndDonutValueFormatLabelsAndFindings(t *testing.T) {
 	}
 }
 
-// TestBarChart_NegativeOnLogFinding verifies that a bar chart with zero
-// values on an auto-log scale emits a chart.negative_on_log finding.
-// Auto-log triggers when all-positive data spans 3+ orders of magnitude;
-// zero values are then clamped to the baseline.
+// TestBarChart_NegativeOnLogFinding verifies that a requested log axis
+// reports zero values clamped to its baseline.
 func TestBarChart_NegativeOnLogFinding(t *testing.T) {
-	// Data spans 0.001–10000 (7 orders), triggering auto-log-scale.
-	// The zero value at index 2 will be clamped to the log baseline.
 	req := &RequestEnvelope{
-		Type: "bar_chart",
+		Type:  "bar_chart",
+		Style: StyleSpec{Scale: "log"},
 		Data: map[string]any{
 			"categories": []any{"A", "B", "C", "D"},
 			"series": []any{
@@ -267,9 +264,9 @@ func TestPieChart_NonZeroSum_NoFinding(t *testing.T) {
 	}
 }
 
-// TestBarChart_AutoLogScaleFinding verifies that a bar chart spanning 3+
-// orders of magnitude emits a chart.auto_log_scale_applied finding.
-func TestBarChart_AutoLogScaleFinding(t *testing.T) {
+// TestBarChart_WideRangeLinearFinding verifies that wide-range bars retain
+// their linear encoding, show values, and offer explicit remedies.
+func TestBarChart_WideRangeLinearFinding(t *testing.T) {
 	req := &RequestEnvelope{
 		Type: "bar_chart",
 		Data: map[string]any{
@@ -292,9 +289,9 @@ func TestBarChart_AutoLogScaleFinding(t *testing.T) {
 		t.Fatal("expected SVG output")
 	}
 
-	found := findFindingByCode(output.Findings, FindingAutoLogScaleApplied)
+	found := findFindingByCode(output.Findings, FindingWideRangeLinear)
 	if found == nil {
-		t.Fatalf("expected finding with code %q, got findings: %v", FindingAutoLogScaleApplied, output.Findings)
+		t.Fatalf("expected finding with code %q, got findings: %v", FindingWideRangeLinear, output.Findings)
 	}
 	if found.Severity != "warning" {
 		t.Errorf("severity = %q, want %q", found.Severity, "warning")
@@ -303,6 +300,79 @@ func TestBarChart_AutoLogScaleFinding(t *testing.T) {
 		t.Error("expected Fix to be non-nil")
 	} else if found.Fix.Kind != FixKindExplicitScale {
 		t.Errorf("Fix.Kind = %q, want %q", found.Fix.Kind, FixKindExplicitScale)
+	}
+	if findFindingByCode(output.Findings, FindingAutoLogScaleApplied) != nil {
+		t.Error("wide-range linear chart unexpectedly auto-switched to log scale")
+	}
+	if !strings.Contains(string(output.SVG.Bytes()), "10K") {
+		t.Error("wide-range linear chart did not enable visible value labels")
+	}
+}
+
+func TestBarChart_ExplicitLogAxisIsLabelled(t *testing.T) {
+	for _, tc := range []struct {
+		name, axisTitle, want string
+	}{
+		{name: "default axis", want: "Log scale"},
+		{name: "named axis", axisTitle: "Revenue", want: "Revenue (log scale)"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &RequestEnvelope{
+				Type: "bar_chart", Style: StyleSpec{Scale: "log"},
+				Data: map[string]any{
+					"categories":   []any{"A", "B"},
+					"series":       []any{map[string]any{"name": "S", "values": []any{1.0, 10000.0}}},
+					"y_axis_title": tc.axisTitle,
+				},
+				Output: OutputSpec{Width: 800, Height: 600},
+			}
+			output, err := RenderMultiFormatWithFindings(req, "svg")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(string(output.SVG.Bytes()), tc.want) {
+				t.Errorf("SVG does not label explicit log axis %q", tc.want)
+			}
+			if findFindingByCode(output.Findings, FindingWideRangeLinear) != nil {
+				t.Error("explicit log scale should not trigger a linear-axis warning")
+			}
+		})
+	}
+}
+
+func TestBarChart_ExplicitLogEdgeCases(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		values     []any
+		wantError  string
+		wantMarked bool
+	}{
+		{name: "equal positives", values: []any{10.0, 10.0}, wantMarked: true},
+		{name: "zeros only", values: []any{0.0, 0.0}, wantError: "positive"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &RequestEnvelope{
+				Type: "bar_chart", Style: StyleSpec{Scale: "log"},
+				Data: map[string]any{
+					"categories": []any{"A", "B"},
+					"series":     []any{map[string]any{"name": "S", "values": tc.values}},
+				},
+				Output: OutputSpec{Width: 800, Height: 600},
+			}
+			out, err := RenderMultiFormatWithFindings(req, "svg")
+			if tc.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("error = %v, want %q", err, tc.wantError)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.wantMarked && (out.SVG == nil || !strings.Contains(string(out.SVG.Bytes()), "Log scale")) {
+				t.Error("valid explicit log axis was not labelled")
+			}
+		})
 	}
 }
 
@@ -328,9 +398,9 @@ func TestBarChart_NoAutoLogScale_NoFinding(t *testing.T) {
 		t.Fatalf("RenderMultiFormatWithFindings() error = %v", err)
 	}
 
-	found := findFindingByCode(output.Findings, FindingAutoLogScaleApplied)
+	found := findFindingByCode(output.Findings, FindingWideRangeLinear)
 	if found != nil {
-		t.Errorf("did not expect %q finding for narrow-range bar chart, got: %v", FindingAutoLogScaleApplied, found)
+		t.Errorf("did not expect %q finding for narrow-range bar chart, got: %v", FindingWideRangeLinear, found)
 	}
 }
 

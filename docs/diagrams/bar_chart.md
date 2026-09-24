@@ -57,8 +57,15 @@ Compare values across categories with vertical bars.
 |--------|------|---------|-------------|
 | `show_legend` | `bool` | `false` | Display legend |
 | `show_values` | `bool` | `false` | Show value labels on bars |
+| `scale` | `"linear"\|"log"` | `"linear"` | Explicit value-axis scale. A log axis is labelled and should only be chosen intentionally. |
 | `show_grid` | `bool` | `false` | Display background grid |
 | `palette` | `string\|string[]` | `corporate` | Color scheme |
+
+Bar lengths remain linear even when positive values span 1000× or more. In that
+case svggen enables value labels and emits `chart.wide_range_linear` (warning).
+Keep the labels, split the data into separate charts, or opt in to
+`"style": {"scale": "log"}`. A log axis is visibly labelled and zero or
+negative values are placed at its baseline with `chart.negative_on_log`.
 
 ## Examples
 

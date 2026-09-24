@@ -894,6 +894,7 @@ func TestChartSpecValueFormatReachesTheDiagramSpec(t *testing.T) {
 		Data: map[string]any{"A": 1.0},
 		Style: &types.ChartStyle{
 			ShowValues:  true,
+			Scale:       "log",
 			ValueFormat: &types.ValueFormatSpec{Style: "currency", Prefix: "$"},
 		},
 	}
@@ -903,5 +904,29 @@ func TestChartSpecValueFormatReachesTheDiagramSpec(t *testing.T) {
 	}
 	if ds.Style.ValueFormat.Style != "currency" || ds.Style.ValueFormat.Prefix != "$" {
 		t.Errorf("value_format = %+v", ds.Style.ValueFormat)
+	}
+	if ds.Style.Scale != "log" {
+		t.Errorf("scale = %q, want log", ds.Style.Scale)
+	}
+}
+
+func TestChartScaleReachesSVGGen(t *testing.T) {
+	chart := &types.ChartSpec{
+		Type: "bar", Style: &types.ChartStyle{Scale: "log"},
+		Data: map[string]any{
+			"categories": []any{"A", "B"},
+			"series":     []any{map[string]any{"name": "S", "values": []any{1.0, 10000.0}}},
+		},
+	}
+	req := diagramSpecToSVGGen(chart.ToDiagramSpec(), nil, 0, "")
+	if req.Style.Scale != "log" {
+		t.Fatalf("SVG request scale = %q, want log", req.Style.Scale)
+	}
+	out, err := svggen.RenderMultiFormatWithFindings(req, "svg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.SVG == nil || !strings.Contains(string(out.SVG.Bytes()), "Log scale") {
+		t.Error("deck chart did not render a visibly labelled log axis")
 	}
 }

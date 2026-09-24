@@ -51,7 +51,24 @@ type BarChartDiagram struct{ BaseDiagram }
 
 // Validate checks that the request data is valid for a bar chart.
 func (d *BarChartDiagram) Validate(req *RequestEnvelope) error {
+	if err := validateBarScale(req, false); err != nil {
+		return err
+	}
 	return validateCategoriesAndSeries(req.Data, "bar_chart", true, 1)
+}
+
+func validateBarScale(req *RequestEnvelope, stacked bool) error {
+	switch req.Style.Scale {
+	case "", "linear":
+		return nil
+	case "log":
+		if stacked {
+			return &ValidationError{Field: "style.scale", Code: ErrCodeInvalidValue, Message: "log scale is not supported for stacked bar charts"}
+		}
+		return nil
+	default:
+		return &ValidationError{Field: "style.scale", Code: ErrCodeInvalidValue, Message: "bar chart scale must be 'linear' or 'log'", Value: req.Style.Scale}
+	}
 }
 
 // Render generates an SVG document for the bar chart.
@@ -80,6 +97,7 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		// path (which would otherwise replace the legend with inline labels).
 		config.PreferDirectLabels = !req.Style.ShowLegend
 		config.ShowValues = req.Style.ShowValues
+		config.Scale = req.Style.Scale
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		// Only disable if the request explicitly sets show_grid (Go zero-value means unset).
 
@@ -691,6 +709,9 @@ type StackedBarChartDiagram struct{ BaseDiagram }
 
 // Validate checks that the request data is valid for a stacked bar chart.
 func (d *StackedBarChartDiagram) Validate(req *RequestEnvelope) error {
+	if err := validateBarScale(req, true); err != nil {
+		return err
+	}
 	return validateCategoriesAndSeries(req.Data, "stacked_bar_chart", true, 1)
 }
 
@@ -1720,6 +1741,9 @@ type GroupedBarChartDiagram struct{ BaseDiagram }
 
 // Validate checks that the request data is valid for a grouped bar chart.
 func (d *GroupedBarChartDiagram) Validate(req *RequestEnvelope) error {
+	if err := validateBarScale(req, false); err != nil {
+		return err
+	}
 	return validateCategoriesAndSeries(req.Data, "grouped_bar_chart", true, 2)
 }
 
@@ -1744,6 +1768,7 @@ func (d *GroupedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		// direct-label path.
 		config.PreferDirectLabels = !req.Style.ShowLegend
 		config.ShowValues = req.Style.ShowValues
+		config.Scale = req.Style.Scale
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 		config.Stacked = false // Explicit: side-by-side bars
 

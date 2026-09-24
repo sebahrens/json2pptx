@@ -317,7 +317,8 @@ Charts and diagrams emit structured findings at render time, following the same 
 
 | Code | When emitted | Fix kind |
 |------|-------------|----------|
-| `chart.auto_log_scale_applied` | Auto-switched to log scale based on data range | `explicit_scale` |
+| `chart.wide_range_linear` | Bar values span ≥1000×; a linear axis preserves bar-length encoding and value labels are enabled. Split the chart or explicitly set `style.scale: "log"` if appropriate | `explicit_scale` |
+| `chart.auto_log_scale_applied` | Legacy code from older svggen runs; no longer emitted | `explicit_scale` |
 | `chart.tick_thinned` | Time/numeric axis tick labels thinned to prevent overlap; nominal categories are never thinned | `reduce_items` |
 | `chart.scatter_label_skipped` | Scatter label skipped due to collision | `increase_canvas` |
 | `chart.label_truncated` | Label truncated to fit available space | `increase_canvas` |

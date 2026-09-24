@@ -502,7 +502,7 @@ func TestGolden_AllDiagramTypes(t *testing.T) {
 					},
 				},
 				Output: OutputSpec{Width: 800, Height: 600},
-				Style:  StyleSpec{ShowLegend: true, ShowGrid: true, ShowValues: true},
+				Style:  StyleSpec{ShowLegend: true, ShowGrid: true, ShowValues: true, Scale: "log"},
 			},
 		},
 		{

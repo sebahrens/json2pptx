@@ -60,6 +60,7 @@ Compare multiple series side-by-side within each category using grouped bars.
 |--------|------|---------|-------------|
 | `show_legend` | `bool` | `false` | Display legend |
 | `show_values` | `bool` | `false` | Show value labels on bars |
+| `scale` | `"linear"\|"log"` | `"linear"` | Explicit value-axis scale; a log axis is visibly labelled. |
 | `show_grid` | `bool` | `false` | Display background grid |
 | `palette` | `string\|string[]` | `corporate` | Color scheme |
 

@@ -210,6 +210,10 @@ type StyleSpec struct {
 	// ShowValues enables value labels on data points.
 	ShowValues bool `json:"show_values,omitempty" yaml:"show_values,omitempty"`
 
+	// Scale controls the value axis of bar and grouped_bar charts. Empty and
+	// "linear" preserve bar lengths; "log" is an explicit opt-in.
+	Scale string `json:"scale,omitempty" yaml:"scale,omitempty"`
+
 	// ShowGrid enables background grid lines.
 	ShowGrid bool `json:"show_grid,omitempty" yaml:"show_grid,omitempty"`
 

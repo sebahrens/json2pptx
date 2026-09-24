@@ -1507,7 +1507,7 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 	sort.Strings(fixKinds)
 	findingCodes := []string{
 		svggen.FindingAllZeroSeries,
-		svggen.FindingAutoLogScaleApplied,
+		svggen.FindingWideRangeLinear,
 		svggen.FindingCapacityExceeded,
 		svggen.FindingCurrencyPrefixDefaulted,
 		svggen.FindingDiagramItemsDropped,

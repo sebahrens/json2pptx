@@ -94,6 +94,47 @@ func TestBarChartDiagram(t *testing.T) {
 	})
 }
 
+func TestBarChartScaleValidation(t *testing.T) {
+	data := map[string]any{
+		"categories": []any{"A", "B"},
+		"series": []any{
+			map[string]any{"name": "First", "values": []any{1.0, 1000.0}},
+			map[string]any{"name": "Second", "values": []any{2.0, 2000.0}},
+		},
+	}
+	for _, tc := range []struct {
+		name, chartType, scale string
+		wantError              bool
+	}{
+		{name: "default bar", chartType: "bar_chart"},
+		{name: "linear bar", chartType: "bar_chart", scale: "linear"},
+		{name: "log bar", chartType: "bar_chart", scale: "log"},
+		{name: "bad bar", chartType: "bar_chart", scale: "auto", wantError: true},
+		{name: "log grouped", chartType: "grouped_bar_chart", scale: "log"},
+		{name: "bad grouped", chartType: "grouped_bar_chart", scale: "auto", wantError: true},
+		{name: "log stacked", chartType: "stacked_bar_chart", scale: "log", wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			req := &RequestEnvelope{Type: tc.chartType, Data: data, Style: StyleSpec{Scale: tc.scale}}
+			var err error
+			switch tc.chartType {
+			case "bar_chart":
+				err = (&BarChartDiagram{}).Validate(req)
+			case "grouped_bar_chart":
+				err = (&GroupedBarChartDiagram{}).Validate(req)
+			case "stacked_bar_chart":
+				err = (&StackedBarChartDiagram{}).Validate(req)
+			}
+			if (err != nil) != tc.wantError {
+				t.Fatalf("Validate() error = %v, wantError %v", err, tc.wantError)
+			}
+			if tc.wantError && !strings.Contains(err.Error(), "scale") {
+				t.Errorf("error %q should identify scale", err)
+			}
+		})
+	}
+}
+
 func TestBubbleChartPreservesLabelsAndRejectsInvalidCoordinates(t *testing.T) {
 	req := &RequestEnvelope{Type: "bubble_chart", Data: map[string]any{"series": []any{map[string]any{
 		"name": "Revenue", "points": []any{

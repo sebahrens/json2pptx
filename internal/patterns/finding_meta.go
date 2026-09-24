@@ -1125,12 +1125,22 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	"chart.auto_log_scale_applied": {
 		Code:        "chart.auto_log_scale_applied",
-		Summary:     "svggen auto-applied a log scale because the value range spans multiple orders of magnitude.",
+		Summary:     "Legacy svggen finding for an automatically applied log scale (no longer emitted).",
 		Severity:    "info",
-		WhenEmitted: "svggen dry-render detects an extreme value range and switches to a logarithmic axis automatically.",
+		WhenEmitted: "Only in reports generated before the bar-chart linear-default change.",
 		RemediationSteps: []string{
-			"Accept the log scale — it preserves readability.",
-			"Or set scale='linear' in the chart style if a linear axis is required.",
+			"Regenerate the chart: current svggen keeps bar lengths linear unless style.scale is explicitly log.",
+		},
+	},
+	"chart.wide_range_linear": {
+		Code:        "chart.wide_range_linear",
+		Summary:     "A bar chart has a wide value range; the linear axis preserves bar-length encoding and value labels are enabled.",
+		Severity:    "review",
+		WhenEmitted: "Positive values in a non-stacked bar chart span at least 1000x and style.scale is not log.",
+		RemediationSteps: []string{
+			"Keep the linear axis and visible value labels if exact magnitudes matter.",
+			"Split the data into separate charts when the small bars need to be compared visually.",
+			"Set style.scale to log only if a logarithmic comparison is intentional; the axis will be labelled.",
 		},
 	},
 	"chart.tick_thinned": {

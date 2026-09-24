@@ -296,6 +296,8 @@ type ChartStyle struct {
 	ShowLegend bool `json:"show_legend,omitempty"`
 	// ShowValues draws the value on each data point / bar / slice.
 	ShowValues bool `json:"show_values,omitempty"`
+	// Scale selects a bar/grouped-bar value axis: linear (default) or log.
+	Scale string `json:"scale,omitempty"`
 	// ValueFormat is ONE number format for the chart: the value axis ticks, the
 	// data labels and any in-mark label all render through it. Without it the
 	// axis and the labels were formatted by different code with different rules,
@@ -437,6 +439,7 @@ func (cs *ChartSpec) ToDiagramSpec() *DiagramSpec {
 			FontFamily:  cs.Style.FontFamily,
 			ShowLegend:  cs.Style.ShowLegend,
 			ShowValues:  cs.Style.ShowValues,
+			Scale:       cs.Style.Scale,
 			Background:  cs.Style.Background,
 			ValueFormat: cs.Style.ValueFormat,
 		}

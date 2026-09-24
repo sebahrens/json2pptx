@@ -1191,10 +1191,10 @@ func TestBarChartNegativeValues(t *testing.T) {
 // =============================================================================
 
 func TestBarChartLogScale_ExtremeRange(t *testing.T) {
-	// Values spanning 6 orders of magnitude should trigger log scale
+	// Wide-range bar charts keep a linear scale unless explicitly overridden.
 	b := NewSVGBuilder(800, 600)
 	config := DefaultBarChartConfig(800, 600)
-	config.ShowValues = true
+	config.ShowValues = false
 	chart := NewBarChart(b, config)
 
 	data := ChartData{
@@ -1210,11 +1210,9 @@ func TestBarChartLogScale_ExtremeRange(t *testing.T) {
 		t.Fatalf("Failed to draw extreme-range bar chart: %v", err)
 	}
 
-	// Verify log scale was activated
-	if chart.logScale == nil {
-		t.Error("Expected log scale to be activated for 4-order-of-magnitude range")
+	if chart.logScale != nil {
+		t.Error("Unexpected implicit log scale for wide-range bars")
 	}
-
 	doc, err := b.Render()
 	if err != nil {
 		t.Fatalf("Failed to render: %v", err)
@@ -1223,6 +1221,12 @@ func TestBarChartLogScale_ExtremeRange(t *testing.T) {
 	svg := doc.String()
 	if !strings.Contains(svg, "<svg") {
 		t.Error("Expected valid SVG output")
+	}
+	if !strings.Contains(svg, "500K") {
+		t.Error("Expected value labels for wide-range linear bars")
+	}
+	if chart.config.ShowValues {
+		t.Error("Wide-range label override leaked into chart config")
 	}
 }
 
@@ -1303,6 +1307,7 @@ func TestBarChartLogScale_WithZeroValues(t *testing.T) {
 	b := NewSVGBuilder(800, 600)
 	config := DefaultBarChartConfig(800, 600)
 	config.ShowValues = true
+	config.Scale = "log"
 	chart := NewBarChart(b, config)
 
 	data := ChartData{
@@ -1327,6 +1332,7 @@ func TestBarChartLogScale_MultipleSeries(t *testing.T) {
 	b := NewSVGBuilder(800, 600)
 	config := DefaultBarChartConfig(800, 600)
 	config.ShowValues = true
+	config.Scale = "log"
 	chart := NewBarChart(b, config)
 
 	data := ChartData{

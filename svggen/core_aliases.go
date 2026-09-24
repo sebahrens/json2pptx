@@ -160,6 +160,7 @@ const (
 	FindingCapacityExceeded          = core.FindingCapacityExceeded
 	FindingInvalidTimeFormat         = core.FindingInvalidTimeFormat
 	FindingAutoLogScaleApplied       = core.FindingAutoLogScaleApplied
+	FindingWideRangeLinear           = core.FindingWideRangeLinear
 	FindingTickThinned               = core.FindingTickThinned
 	FindingScatterLabelSkipped       = core.FindingScatterLabelSkipped
 	FindingLabelTruncated            = core.FindingLabelTruncated

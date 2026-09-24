@@ -255,6 +255,7 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		}
 		style.ShowLegend = spec.Style.ShowLegend
 		style.ShowValues = spec.Style.ShowValues
+		style.Scale = spec.Style.Scale
 		if spec.Style.FontFamily != "" {
 			style.FontFamily = spec.Style.FontFamily
 		}

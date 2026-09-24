@@ -30,9 +30,13 @@ const (
 	// be parsed as a valid time value.
 	FindingInvalidTimeFormat = "chart.invalid_time_format"
 
-	// FindingAutoLogScaleApplied is emitted when the renderer automatically
-	// switches to log scale based on data range.
+	// FindingAutoLogScaleApplied is retained as a legacy code for clients that
+	// recognize it. The renderer no longer auto-switches bar scales.
 	FindingAutoLogScaleApplied = "chart.auto_log_scale_applied"
+
+	// FindingWideRangeLinear warns that small bars may be hard to compare on
+	// the deliberately linear default axis; value labels are enabled.
+	FindingWideRangeLinear = "chart.wide_range_linear"
 
 	// FindingTickThinned is emitted when axis tick labels are thinned
 	// (skipped) to prevent overlap.
@@ -188,7 +192,7 @@ var promotionTable = map[string]promotionRule{
 	FindingAllZeroSeries:     {strictLevel: SeverityRefuse},
 
 	// Advisory codes are intentionally absent — they keep original severity.
-	// FindingAutoLogScaleApplied, FindingTickThinned, FindingScatterLabelSkipped,
+	// FindingWideRangeLinear, FindingTickThinned, FindingScatterLabelSkipped,
 	// FindingLabelTruncated, FindingLabelEllipsized, FindingLabelClipped
 }
 
