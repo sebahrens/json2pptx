@@ -336,10 +336,39 @@ func TestBlueCorporateGeneratesLeftFooter(t *testing.T) {
 		if left == nil || right == nil {
 			t.Fatalf("generated footer geometry missing: left=%+v right=%+v", left, right)
 		}
-		if left.Offset.X != 432000 || left.Offset.X+left.Extent.CX > right.Offset.X {
-			t.Errorf("left footer no longer starts at brand alignment or overlaps page number: left=%+v right=%+v", left, right)
+		if left.Offset.X+left.Extent.CX > right.Offset.X {
+			t.Errorf("left footer overlaps page number: left=%+v right=%+v", left, right)
 		}
-		return
+		layoutZip, err := zip.OpenReader("../../templates/blue-corporate.pptx")
+		if err != nil {
+			t.Fatalf("open template: %v", err)
+		}
+		defer layoutZip.Close()
+		for _, part := range layoutZip.File {
+			if part.Name != "ppt/slideLayouts/slideLayout2.xml" {
+				continue
+			}
+			entry, err := part.Open()
+			if err != nil {
+				t.Fatal(err)
+			}
+			layoutData, readErr := io.ReadAll(entry)
+			_ = entry.Close()
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			obstacles, err := parseFooterObstacles(layoutData, 12192000, 6858000)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, obstacle := range obstacles {
+				if footerBoxesOverlap(*left, obstacle.box) || footerBoxesOverlap(*right, obstacle.box) {
+					t.Errorf("footer overlaps inherited artwork %q: left=%+v right=%+v art=%+v", obstacle.name, left, right, obstacle.box)
+				}
+			}
+			return
+		}
+		t.Fatal("template has no slideLayout2.xml")
 	}
 	t.Fatal("generated presentation has no slide1.xml")
 }

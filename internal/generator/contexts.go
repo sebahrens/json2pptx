@@ -63,6 +63,7 @@ type SlideContext struct {
 	logoZones               map[string]*LogoZone                // per-layout logo zones (key = layout basename, e.g. "slideLayout1"); nil if no logos detected
 	footerConfig            *FooterConfig                       // Footer configuration (nil = disabled)
 	footerPositionsByLayout map[string]map[string]*transformXML // layoutID -> ("dt"/"ftr"/"sldNum" -> position)
+	footerObstaclesByLayout map[string][]footerObstacle         // layoutID -> inherited visible artwork
 	slideBgMedia            map[int]mediaRel                    // slideNum -> background image media relationship
 	themeFontName           string                              // Theme body font (e.g. "Franklin Gothic Book") for text fitting
 	profile                 *template.TemplateProfile           // Template profile (per-layout chrome geometry); nil when the template could not be profiled

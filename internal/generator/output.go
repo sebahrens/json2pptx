@@ -852,7 +852,8 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		// background the slide will actually show.
 		slideIndex := slideNum - ctx.calculateStartingSlideNum()
 		colorHex := ctx.chromeTextColorForLayout(layoutID, slideIndex)
-		slideData, err = insertFooters(slideData, ctx.footerConfig, footerPositions, ctx.themeFontName, colorHex, slideIndex)
+		obstacles := ctx.footerObstaclesForLayout(layoutID)
+		slideData, err = insertFootersAvoiding(slideData, ctx.footerConfig, footerPositions, ctx.themeFontName, colorHex, slideIndex, obstacles, ctx.slideWidth)
 		if err != nil {
 			ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to insert footer for slide %d: %v", slideNum, err))
 		}

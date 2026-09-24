@@ -200,20 +200,36 @@ func generateFooterShapeSized(shapeID uint32, name string, xfrm *transformXML, t
 // text shrinks, then ellipsizes, to fit that width. fontName is the theme
 // body font used for measurement.
 func generateFooterShapes(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName, colorHex string, slideIndex int) string {
+	return generateFooterShapesAvoiding(positions, config, nextID, fontName, colorHex, slideIndex, nil, 0)
+}
+
+func generateFooterShapesAvoiding(positions map[string]*transformXML, config *FooterConfig, nextID uint32, fontName, colorHex string, slideIndex int, obstacles []footerObstacle, slideWidth int64) string {
 	var shapes []string
 
 	// Size the page-number box first: it grows leftward from a fixed right edge,
 	// so the left footer has to be laid out against the widened box or the two
 	// overlap (go-slide-creator-pss1z).
 	pageNum := resolvePageNumberSizing(positions, config.PageNumberFormat, config.TotalSlides, fontName)
+	if pageNum != nil && len(obstacles) > 0 {
+		pageNum.box = clearPageNumberBox(pageNum.box, obstacles, pageNumberLeftLimit(positions), slideWidth)
+		if pageNum.box == nil {
+			pageNum = nil
+		}
+	}
 	layout := positions
 	if pageNum != nil {
 		layout = withSldNum(positions, pageNum.box)
+	} else if len(obstacles) > 0 {
+		layout = withSldNum(positions, nil)
 	}
 
 	// Left footer (dt position, widened across ftr): configurable text, which may
 	// vary per slide when a section crumb is enabled.
-	if box := leftFooterBox(layout); box != nil && config.LeftTextFor(slideIndex) != "" {
+	box := leftFooterBox(layout)
+	if len(obstacles) > 0 {
+		box = clearLeftFooterBox(box, obstacles)
+	}
+	if box != nil && config.LeftTextFor(slideIndex) != "" {
 		text, size := fitFooterText(config.LeftTextFor(slideIndex), box.Extent.CX, fontName)
 		shapes = append(shapes, generateFooterShapeSized(nextID, "Footer Left", box, text, "l", size, colorHex))
 		nextID++
@@ -377,6 +393,10 @@ func buildPageNumberRuns(format string, totalSlides, fontSize int, colorHex stri
 // insertFooters inserts footer shapes into slide XML before </p:spTree>.
 // fontName is the theme body font used to fit the left footer text on one line.
 func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName, colorHex string, slideIndex int) ([]byte, error) {
+	return insertFootersAvoiding(slideData, footerConfig, positions, fontName, colorHex, slideIndex, nil, 0)
+}
+
+func insertFootersAvoiding(slideData []byte, footerConfig *FooterConfig, positions map[string]*transformXML, fontName, colorHex string, slideIndex int, obstacles []footerObstacle, slideWidth int64) ([]byte, error) {
 	if footerConfig == nil || !footerConfig.Enabled {
 		return slideData, nil
 	}
@@ -387,7 +407,7 @@ func insertFooters(slideData []byte, footerConfig *FooterConfig, positions map[s
 
 	// Allocate slide-unique IDs above any existing shape (including the
 	// takeaway/source-note shapes injected earlier on this slide).
-	footerXML := generateFooterShapes(positions, footerConfig, findMaxShapeID(slideData)+1, fontName, colorHex, slideIndex)
+	footerXML := generateFooterShapesAvoiding(positions, footerConfig, findMaxShapeID(slideData)+1, fontName, colorHex, slideIndex, obstacles, slideWidth)
 	if footerXML == "" {
 		return slideData, nil
 	}
