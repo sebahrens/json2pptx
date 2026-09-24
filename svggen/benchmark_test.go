@@ -317,7 +317,6 @@ func BenchmarkPortersFiveForces(b *testing.B) {
 	}
 }
 
-
 func BenchmarkTimeline(b *testing.B) {
 	req := benchmarkTimelineRequest()
 	b.ReportAllocs()

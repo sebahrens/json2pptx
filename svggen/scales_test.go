@@ -890,12 +890,12 @@ func TestTimeScale_Domain(t *testing.T) {
 
 func TestTimeScale_Ticks(t *testing.T) {
 	tests := []struct {
-		name      string
-		start     int64
-		end       int64
-		count     int
-		minTicks  int
-		maxTicks  int
+		name     string
+		start    int64
+		end      int64
+		count    int
+		minTicks int
+		maxTicks int
 	}{
 		{
 			name:     "1 day span",
@@ -915,7 +915,7 @@ func TestTimeScale_Ticks(t *testing.T) {
 		},
 		{
 			name:     "1 year span",
-			start:    1704067200,           // 2024-01-01
+			start:    1704067200,            // 2024-01-01
 			end:      1704067200 + 31536000, // + 365 days
 			count:    5,
 			minTicks: 3,
@@ -965,8 +965,8 @@ func TestTimeScale_WasThinned(t *testing.T) {
 
 func TestTimeScale_TicksWithLabels(t *testing.T) {
 	// Create a scale for a 1-week period
-	start := int64(1704067200)          // 2024-01-01
-	end := int64(1704067200 + 604800)   // + 7 days
+	start := int64(1704067200)        // 2024-01-01
+	end := int64(1704067200 + 604800) // + 7 days
 
 	scale := NewTimeScale(start, end)
 	ticks, labels := scale.TicksWithLabels(5)

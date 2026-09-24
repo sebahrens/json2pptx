@@ -127,7 +127,6 @@ func ParseNumberedPrefix(line string) (int, string, bool) {
 	return num, line[dotIdx+2:], true
 }
 
-
 // DefaultBulletChar and DefaultBulletFont are the bullet glyph and the buFont
 // it must be resolved in. A <a:buChar> without a <a:buFont> is looked up in the
 // theme font, which may not carry U+2022 at all — renderers then substitute a

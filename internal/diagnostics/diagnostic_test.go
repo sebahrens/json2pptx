@@ -57,8 +57,8 @@ func TestFromValidationError_NoFix(t *testing.T) {
 
 func TestFromFitFinding(t *testing.T) {
 	tests := []struct {
-		action   string
-		wantSev  Severity
+		action  string
+		wantSev Severity
 	}{
 		{"refuse", SeverityError},
 		{"shrink_or_split", SeverityWarning},

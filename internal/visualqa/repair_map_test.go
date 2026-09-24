@@ -14,10 +14,10 @@ func TestSuggestedFixesForCategory(t *testing.T) {
 		{"spacing", 1, "reshape_grid"},
 		{"font_size", 2, "reduce_text"},
 		{"missing_content", 1, "provide_value"},
-		{"image_quality", 0, ""},  // review-only, no mapping
-		{"aspect_ratio", 0, ""},   // review-only, no mapping
-		{"border_style", 0, ""},   // review-only, no mapping
-		{"unknown_cat", 0, ""},    // unknown category
+		{"image_quality", 0, ""}, // review-only, no mapping
+		{"aspect_ratio", 0, ""},  // review-only, no mapping
+		{"border_style", 0, ""},  // review-only, no mapping
+		{"unknown_cat", 0, ""},   // unknown category
 	}
 
 	for _, tt := range tests {

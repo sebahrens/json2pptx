@@ -416,8 +416,8 @@ func TestRouteBetween_HomePlateOffset(t *testing.T) {
 	}
 
 	// Source right edge is 2100. With 15% tip offset (300 EMU), connector starts at 2400.
-	srcRightEdge := int64(100 + 2000)        // 2100
-	tipOffset := int64(2000 * 15 / 100)      // 300
+	srcRightEdge := int64(100 + 2000)          // 2100
+	tipOffset := int64(2000 * 15 / 100)        // 300
 	expectedStartX := srcRightEdge + tipOffset // 2400
 	if bounds.X != expectedStartX {
 		t.Errorf("bounds.X = %d, want %d (right edge + tip offset)", bounds.X, expectedStartX)

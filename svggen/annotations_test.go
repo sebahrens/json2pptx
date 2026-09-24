@@ -8,9 +8,9 @@ import (
 
 func TestLinearRegression(t *testing.T) {
 	tests := []struct {
-		name      string
-		values    []float64
-		wantSlope float64
+		name          string
+		values        []float64
+		wantSlope     float64
 		wantIntercept float64
 	}{
 		{

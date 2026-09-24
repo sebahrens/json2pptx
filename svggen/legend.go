@@ -756,7 +756,7 @@ func legendRowCapacity(heightPt, rowHeight, rowGap float64) int {
 	if heightPt <= 0 || rowHeight <= 0 {
 		return 0
 	}
-	n := int(math.Floor((heightPt+rowGap+0.5)/(rowHeight+rowGap))) //nolint:gomnd // 0.5 is the float tolerance used throughout this file
+	n := int(math.Floor((heightPt + rowGap + 0.5) / (rowHeight + rowGap))) //nolint:gomnd // 0.5 is the float tolerance used throughout this file
 	if n < 0 {
 		return 0
 	}

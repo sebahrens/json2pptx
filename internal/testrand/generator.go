@@ -64,16 +64,16 @@ type SlideInput struct {
 
 // ContentInput mirrors ContentInput with typed value fields.
 type ContentInput struct {
-	PlaceholderID string          `json:"placeholder_id"`
-	Type          string          `json:"type"`
-	TextValue     *string         `json:"text_value,omitempty"`
-	BulletsValue  *[]string       `json:"bullets_value,omitempty"`
-	BABValue      *BABInput       `json:"body_and_bullets_value,omitempty"`
-	BGValue       *BGInput        `json:"bullet_groups_value,omitempty"`
-	TableValue    *TableInput     `json:"table_value,omitempty"`
-	ChartValue    *ChartInput     `json:"chart_value,omitempty"`
-	DiagramValue  *DiagramInput   `json:"diagram_value,omitempty"`
-	ImageValue    *ImageInput     `json:"image_value,omitempty"`
+	PlaceholderID string        `json:"placeholder_id"`
+	Type          string        `json:"type"`
+	TextValue     *string       `json:"text_value,omitempty"`
+	BulletsValue  *[]string     `json:"bullets_value,omitempty"`
+	BABValue      *BABInput     `json:"body_and_bullets_value,omitempty"`
+	BGValue       *BGInput      `json:"bullet_groups_value,omitempty"`
+	TableValue    *TableInput   `json:"table_value,omitempty"`
+	ChartValue    *ChartInput   `json:"chart_value,omitempty"`
+	DiagramValue  *DiagramInput `json:"diagram_value,omitempty"`
+	ImageValue    *ImageInput   `json:"image_value,omitempty"`
 }
 
 // BABInput = body_and_bullets.
@@ -85,9 +85,9 @@ type BABInput struct {
 
 // BGInput = bullet_groups.
 type BGInput struct {
-	Body         string        `json:"body,omitempty"`
-	Groups       []GroupInput  `json:"groups"`
-	TrailingBody string        `json:"trailing_body,omitempty"`
+	Body         string       `json:"body,omitempty"`
+	Groups       []GroupInput `json:"groups"`
+	TrailingBody string       `json:"trailing_body,omitempty"`
 }
 
 // GroupInput is a single bullet group.
@@ -121,11 +121,11 @@ type TableCellObj struct {
 
 // ChartInput mirrors ChartSpec (subset).
 type ChartInput struct {
-	Type         string         `json:"type"`
-	Title        string         `json:"title,omitempty"`
-	Data         map[string]any `json:"data"`
-	DataOrder    []string       `json:"data_order,omitempty"`
-	SeriesLabels []string       `json:"series_labels,omitempty"`
+	Type         string           `json:"type"`
+	Title        string           `json:"title,omitempty"`
+	Data         map[string]any   `json:"data"`
+	DataOrder    []string         `json:"data_order,omitempty"`
+	SeriesLabels []string         `json:"series_labels,omitempty"`
 	Style        *ChartStyleInput `json:"style,omitempty"`
 }
 
@@ -139,9 +139,9 @@ type ChartStyleInput struct {
 
 // DiagramInput mirrors DiagramSpec (subset).
 type DiagramInput struct {
-	Type  string            `json:"type"`
-	Title string            `json:"title,omitempty"`
-	Data  map[string]any    `json:"data"`
+	Type  string             `json:"type"`
+	Title string             `json:"title,omitempty"`
+	Data  map[string]any     `json:"data"`
 	Style *DiagramStyleInput `json:"style,omitempty"`
 }
 
@@ -930,25 +930,25 @@ func (g *Generator) diagramData(diagType string) map[string]any { //nolint:gocog
 
 	case "pestel":
 		return map[string]any{
-			"political":      []string{g.randomBullet(), g.randomBullet()},
-			"economic":       []string{g.randomBullet(), g.randomBullet()},
-			"social":         []string{g.randomBullet(), g.randomBullet()},
-			"technological":  []string{g.randomBullet(), g.randomBullet()},
-			"environmental":  []string{g.randomBullet(), g.randomBullet()},
-			"legal":          []string{g.randomBullet(), g.randomBullet()},
+			"political":     []string{g.randomBullet(), g.randomBullet()},
+			"economic":      []string{g.randomBullet(), g.randomBullet()},
+			"social":        []string{g.randomBullet(), g.randomBullet()},
+			"technological": []string{g.randomBullet(), g.randomBullet()},
+			"environmental": []string{g.randomBullet(), g.randomBullet()},
+			"legal":         []string{g.randomBullet(), g.randomBullet()},
 		}
 
 	case "business_model_canvas":
 		return map[string]any{
-			"key_partners":    []string{g.randomBullet()},
-			"key_activities":  []string{g.randomBullet()},
-			"key_resources":   []string{g.randomBullet()},
-			"value_propositions": []string{g.randomBullet()},
+			"key_partners":           []string{g.randomBullet()},
+			"key_activities":         []string{g.randomBullet()},
+			"key_resources":          []string{g.randomBullet()},
+			"value_propositions":     []string{g.randomBullet()},
 			"customer_relationships": []string{g.randomBullet()},
-			"channels":        []string{g.randomBullet()},
-			"customer_segments": []string{g.randomBullet()},
-			"cost_structure":  []string{g.randomBullet()},
-			"revenue_streams": []string{g.randomBullet()},
+			"channels":               []string{g.randomBullet()},
+			"customer_segments":      []string{g.randomBullet()},
+			"cost_structure":         []string{g.randomBullet()},
+			"revenue_streams":        []string{g.randomBullet()},
 		}
 
 	case "value_chain":

@@ -32,14 +32,14 @@ import (
 
 // ValidationResult holds the validation outcome.
 type ValidationResult struct {
-	FilePath    string           `json:"file_path"`
-	IsValid     bool             `json:"is_valid"`
-	SlideCount  int              `json:"slide_count"`
-	MediaStats  pptx.MediaStats  `json:"media_stats"`
-	Findings    []pptx.Finding   `json:"findings,omitempty"`
-	Errors      []string         `json:"errors,omitempty"`
-	Warnings    []string         `json:"warnings,omitempty"`
-	PassMessage string           `json:"pass_message,omitempty"`
+	FilePath    string          `json:"file_path"`
+	IsValid     bool            `json:"is_valid"`
+	SlideCount  int             `json:"slide_count"`
+	MediaStats  pptx.MediaStats `json:"media_stats"`
+	Findings    []pptx.Finding  `json:"findings,omitempty"`
+	Errors      []string        `json:"errors,omitempty"`
+	Warnings    []string        `json:"warnings,omitempty"`
+	PassMessage string          `json:"pass_message,omitempty"`
 }
 
 func main() {

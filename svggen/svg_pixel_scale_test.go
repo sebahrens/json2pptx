@@ -284,9 +284,9 @@ func TestScalePathData_EmptyString(t *testing.T) {
 
 func TestScaleCoordAttributes(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		checkFn  func(t *testing.T, result string)
+		name    string
+		input   string
+		checkFn func(t *testing.T, result string)
 	}{
 		{
 			name:  "single x attribute",
@@ -716,10 +716,10 @@ func TestFormatScaledNum(t *testing.T) {
 
 func TestSplitSVGContentAndStyle(t *testing.T) {
 	tests := []struct {
-		name           string
-		input          string
-		expectContent  string
-		expectSuffix   string
+		name          string
+		input         string
+		expectContent string
+		expectSuffix  string
 	}{
 		{
 			name:          "SVG with style tag",

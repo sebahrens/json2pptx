@@ -17,8 +17,8 @@ func TestNarrowWidthCharts(t *testing.T) {
 		{
 			name: "bar_chart_with_labels_alias",
 			req: &svggen.RequestEnvelope{
-				Type:  "bar_chart",
-				Title: "Revenue by Region",
+				Type:   "bar_chart",
+				Title:  "Revenue by Region",
 				Output: svggen.OutputSpec{Width: 480, Height: 360},
 				Data: map[string]any{
 					"labels": []any{"North America", "EMEA", "APAC", "Latin America", "Middle East", "Africa"},
@@ -33,8 +33,8 @@ func TestNarrowWidthCharts(t *testing.T) {
 		{
 			name: "line_chart_with_labels_alias",
 			req: &svggen.RequestEnvelope{
-				Type:  "line_chart",
-				Title: "Monthly Trend",
+				Type:   "line_chart",
+				Title:  "Monthly Trend",
 				Output: svggen.OutputSpec{Width: 480, Height: 360},
 				Data: map[string]any{
 					"labels": []any{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"},
@@ -48,8 +48,8 @@ func TestNarrowWidthCharts(t *testing.T) {
 		{
 			name: "stacked_bar_with_labels_alias",
 			req: &svggen.RequestEnvelope{
-				Type:  "stacked_bar_chart",
-				Title: "Revenue Breakdown",
+				Type:   "stacked_bar_chart",
+				Title:  "Revenue Breakdown",
 				Output: svggen.OutputSpec{Width: 480, Height: 360},
 				Data: map[string]any{
 					"labels": []any{"Q1", "Q2", "Q3", "Q4"},
@@ -64,8 +64,8 @@ func TestNarrowWidthCharts(t *testing.T) {
 		{
 			name: "grouped_bar_with_labels_alias",
 			req: &svggen.RequestEnvelope{
-				Type:  "grouped_bar_chart",
-				Title: "Regional Comparison",
+				Type:   "grouped_bar_chart",
+				Title:  "Regional Comparison",
 				Output: svggen.OutputSpec{Width: 480, Height: 360},
 				Data: map[string]any{
 					"labels": []any{"North America", "Europe", "APAC", "LATAM"},
@@ -80,8 +80,8 @@ func TestNarrowWidthCharts(t *testing.T) {
 		{
 			name: "org_chart_flat_nodes_with_parent",
 			req: &svggen.RequestEnvelope{
-				Type:  "org_chart",
-				Title: "Team Structure",
+				Type:   "org_chart",
+				Title:  "Team Structure",
 				Output: svggen.OutputSpec{Width: 480, Height: 360},
 				Data: map[string]any{
 					"nodes": []any{
@@ -97,8 +97,8 @@ func TestNarrowWidthCharts(t *testing.T) {
 		{
 			name: "org_chart_flat_nodes_10_deep",
 			req: &svggen.RequestEnvelope{
-				Type:  "org_chart",
-				Title: "Large Organization",
+				Type:   "org_chart",
+				Title:  "Large Organization",
 				Output: svggen.OutputSpec{Width: 480, Height: 360},
 				Data: map[string]any{
 					"nodes": []any{
@@ -119,8 +119,8 @@ func TestNarrowWidthCharts(t *testing.T) {
 		{
 			name: "bar_chart_with_categories_still_works",
 			req: &svggen.RequestEnvelope{
-				Type:  "bar_chart",
-				Title: "Standard Format",
+				Type:   "bar_chart",
+				Title:  "Standard Format",
 				Output: svggen.OutputSpec{Width: 480, Height: 360},
 				Data: map[string]any{
 					"categories": []any{"A", "B", "C"},

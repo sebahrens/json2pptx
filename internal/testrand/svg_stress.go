@@ -46,24 +46,24 @@ func AllVariants() []Variant {
 
 // SVGStressResult holds results from a single test case.
 type SVGStressResult struct {
-	DiagramType string  `json:"diagram_type"`
-	Variant     string  `json:"variant"`
-	Passed      bool    `json:"passed"`
-	Error       string  `json:"error,omitempty"`
-	SVGBytes    int     `json:"svg_bytes"`
-	HasViewBox  bool    `json:"has_viewbox"`
-	PNGBytes    int     `json:"png_bytes,omitempty"`
-	ValidXML    bool    `json:"valid_xml"`
+	DiagramType string `json:"diagram_type"`
+	Variant     string `json:"variant"`
+	Passed      bool   `json:"passed"`
+	Error       string `json:"error,omitempty"`
+	SVGBytes    int    `json:"svg_bytes"`
+	HasViewBox  bool   `json:"has_viewbox"`
+	PNGBytes    int    `json:"png_bytes,omitempty"`
+	ValidXML    bool   `json:"valid_xml"`
 }
 
 // SVGStressReport holds the full stress test report.
 type SVGStressReport struct {
-	Seed       uint64             `json:"seed"`
-	Total      int                `json:"total"`
-	Passed     int                `json:"passed"`
-	Failed     int                `json:"failed"`
-	Results    []SVGStressResult  `json:"results"`
-	Failures   []SVGStressResult  `json:"failures,omitempty"`
+	Seed     uint64            `json:"seed"`
+	Total    int               `json:"total"`
+	Passed   int               `json:"passed"`
+	Failed   int               `json:"failed"`
+	Results  []SVGStressResult `json:"results"`
+	Failures []SVGStressResult `json:"failures,omitempty"`
 }
 
 // SVGStressRunner runs SVG stress tests across all diagram types.
@@ -91,40 +91,40 @@ func DiagramTypes() []string {
 func AliasMap() map[string]string {
 	// We test alias resolution by trying to render with alias names.
 	return map[string]string{
-		"funnel":       "funnel_chart",
-		"gauge":        "gauge_chart",
-		"treemap":      "treemap_chart",
-		"bar":          "bar_chart",
-		"line":         "line_chart",
-		"pie":          "pie_chart",
-		"donut":        "donut_chart",
-		"area":         "area_chart",
-		"radar":        "radar_chart",
-		"scatter":      "scatter_chart",
-		"bubble":       "bubble_chart",
-		"stacked_bar":  "stacked_bar_chart",
-		"stacked_area": "stacked_area_chart",
-		"grouped_bar":  "grouped_bar_chart",
-		"bar-stacked":  "stacked_bar_chart",
-		"process":      "process_flow",
-		"flow":         "process_flow",
-		"flowchart":    "process_flow",
-		"orgchart":     "org_chart",
-		"org":          "org_chart",
-		"nine-box":     "nine_box_talent",
-		"nine_box":     "nine_box_talent",
-		"bmc":          "business_model_canvas",
-		"canvas":       "business_model_canvas",
-		"porter":       "porters_five_forces",
-		"matrix":       "matrix_2x2",
-		"porters":      "porters_five_forces",
-		"icon_columns": "panel_layout",
-		"icon_rows":    "panel_layout",
-		"stat_cards":   "panel_layout",
-		"panel":        "panel_layout",
-		"icon_panel":   "panel_layout",
-		"number_tiles": "panel_layout",
-		"callout_cards":"panel_layout",
+		"funnel":        "funnel_chart",
+		"gauge":         "gauge_chart",
+		"treemap":       "treemap_chart",
+		"bar":           "bar_chart",
+		"line":          "line_chart",
+		"pie":           "pie_chart",
+		"donut":         "donut_chart",
+		"area":          "area_chart",
+		"radar":         "radar_chart",
+		"scatter":       "scatter_chart",
+		"bubble":        "bubble_chart",
+		"stacked_bar":   "stacked_bar_chart",
+		"stacked_area":  "stacked_area_chart",
+		"grouped_bar":   "grouped_bar_chart",
+		"bar-stacked":   "stacked_bar_chart",
+		"process":       "process_flow",
+		"flow":          "process_flow",
+		"flowchart":     "process_flow",
+		"orgchart":      "org_chart",
+		"org":           "org_chart",
+		"nine-box":      "nine_box_talent",
+		"nine_box":      "nine_box_talent",
+		"bmc":           "business_model_canvas",
+		"canvas":        "business_model_canvas",
+		"porter":        "porters_five_forces",
+		"matrix":        "matrix_2x2",
+		"porters":       "porters_five_forces",
+		"icon_columns":  "panel_layout",
+		"icon_rows":     "panel_layout",
+		"stat_cards":    "panel_layout",
+		"panel":         "panel_layout",
+		"icon_panel":    "panel_layout",
+		"number_tiles":  "panel_layout",
+		"callout_cards": "panel_layout",
 	}
 }
 
@@ -910,10 +910,10 @@ func (r *SVGStressRunner) edgeData(typ string) map[string]any { //nolint:gocyclo
 			"key_activities":         el(edgeLabels[2:4]),
 			"value_propositions":     el(edgeLabels[4:6]),
 			"customer_segments":      el(edgeLabels[:2]),
-			"channels":              el(edgeLabels[2:4]),
-			"revenue_streams":       el(edgeLabels[4:6]),
-			"key_resources":         el(edgeLabels[:2]),
-			"cost_structure":        el(edgeLabels[2:4]),
+			"channels":               el(edgeLabels[2:4]),
+			"revenue_streams":        el(edgeLabels[4:6]),
+			"key_resources":          el(edgeLabels[:2]),
+			"cost_structure":         el(edgeLabels[2:4]),
 			"customer_relationships": el(edgeLabels[:2]),
 		}
 

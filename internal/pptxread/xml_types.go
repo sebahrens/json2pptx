@@ -4,13 +4,13 @@ import "encoding/xml"
 
 // slideDocument is a minimal representation of a slide XML file for reading.
 type slideDocument struct {
-	XMLName xml.Name       `xml:"sld"`
+	XMLName xml.Name        `xml:"sld"`
 	CSld    commonSlideData `xml:"cSld"`
 }
 
 // notesDocument is a minimal representation of a notes slide XML file.
 type notesDocument struct {
-	XMLName xml.Name       `xml:"notes"`
+	XMLName xml.Name        `xml:"notes"`
 	CSld    commonSlideData `xml:"cSld"`
 }
 
@@ -25,14 +25,14 @@ type shapeTree struct {
 
 // shapeElement represents a <p:sp> element.
 type shapeElement struct {
-	NvSpPr nvSpPr         `xml:"nvSpPr"`
+	NvSpPr nvSpPr          `xml:"nvSpPr"`
 	SpPr   shapeProperties `xml:"spPr"`
 	TxBody *textBody       `xml:"txBody"`
 }
 
 type nvSpPr struct {
-	CNvPr cnvPr  `xml:"cNvPr"`
-	NvPr  nvPr   `xml:"nvPr"`
+	CNvPr cnvPr `xml:"cNvPr"`
+	NvPr  nvPr  `xml:"nvPr"`
 }
 
 type cnvPr struct {

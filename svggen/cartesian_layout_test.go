@@ -203,9 +203,9 @@ func TestComputeLabelStep(t *testing.T) {
 		{14, 1},
 		{15, 2},
 		{19, 2},
-		{20, 2},  // (20+9)/10 = 2
-		{25, 4},  // (25+7)/8 = 4
-		{50, 7},  // (50+7)/8 = 7
+		{20, 2},   // (20+9)/10 = 2
+		{25, 4},   // (25+7)/8 = 4
+		{50, 7},   // (50+7)/8 = 7
 		{100, 13}, // (100+7)/8 = 13
 	}
 
@@ -235,7 +235,7 @@ func TestAdaptXLabels_WaterfallHalfWidth(t *testing.T) {
 	// Approximate plotWidth for this chart size (width minus margins)
 	plotWidth := 410.0
 	baseFontSize := 9.0 // SizeSmall at floor after scaling
-	isNarrow := true     // 480 < 500
+	isNarrow := true    // 480 < 500
 
 	layout := AdaptXLabels(b, categories, plotWidth, baseFontSize, isNarrow)
 

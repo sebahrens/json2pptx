@@ -10,13 +10,13 @@ func TestIsPrivateIP(t *testing.T) {
 		ip      string
 		private bool
 	}{
-		{"0.0.0.1", true},        // "this" network
+		{"0.0.0.1", true}, // "this" network
 		{"127.0.0.1", true},
 		{"10.0.0.1", true},
 		{"172.16.0.1", true},
 		{"192.168.1.1", true},
 		{"169.254.0.1", true},
-		{"100.64.0.1", true},     // CGN / shared address space
+		{"100.64.0.1", true},      // CGN / shared address space
 		{"100.127.255.254", true}, // CGN upper bound
 		{"::1", true},
 		{"::ffff:127.0.0.1", true}, // IPv4-mapped IPv6

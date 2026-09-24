@@ -11,8 +11,8 @@ import (
 
 // TextBudgetGuide is the top-level text_budget_guide block emitted by show_pattern.
 type TextBudgetGuide struct {
-	TargetDensity  TargetDensity          `json:"target_density"`
-	Configurations []BudgetConfiguration  `json:"configurations"`
+	TargetDensity  TargetDensity         `json:"target_density"`
+	Configurations []BudgetConfiguration `json:"configurations"`
 }
 
 // TargetDensity documents the global density thresholds.
@@ -24,9 +24,9 @@ type TargetDensity struct {
 
 // BudgetConfiguration is a single grid size with computed character budgets.
 type BudgetConfiguration struct {
-	Columns       int `json:"columns"`
-	Rows          int `json:"rows"`
-	BodyMaxChars  int `json:"body_max_chars"`
+	Columns        int `json:"columns"`
+	Rows           int `json:"rows"`
+	BodyMaxChars   int `json:"body_max_chars"`
 	HeaderMaxChars int `json:"header_max_chars"`
 }
 

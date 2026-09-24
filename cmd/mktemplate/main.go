@@ -25,8 +25,8 @@ type templateDef struct {
 	Description string
 	// Theme colors (RRGGBB without #)
 	Dark1, Light1, Dark2, Light2 string
-	Accent1, Accent2, Accent3   string
-	Accent4, Accent5, Accent6   string
+	Accent1, Accent2, Accent3    string
+	Accent4, Accent5, Accent6    string
 	Hlink, FolHlink              string
 	// Fonts
 	MajorFont string // Headings
@@ -47,50 +47,50 @@ type templateDef struct {
 
 var templates = []templateDef{
 	{
-		Name:         "midnight-blue",
-		DisplayName:  "Midnight Blue",
-		Description:  "Formal enterprise template with navy blue theme and conservative styling",
-		Dark1:        "000000", Light1: "FFFFFF",
-		Dark2:        "1B2A4A", Light2: "E8ECF1",
-		Accent1:      "2E5090", Accent2: "D4463A",
-		Accent3:      "E8A838", Accent4: "43A047",
-		Accent5:      "5C6BC0", Accent6: "26A69A",
-		Hlink:        "2E5090", FolHlink: "7986CB",
-		MajorFont:    "Calibri", MinorFont: "Calibri",
-		BarSchemeClr: "accent1",
-		BulletChar:   "\u25A0",
+		Name:        "midnight-blue",
+		DisplayName: "Midnight Blue",
+		Description: "Formal enterprise template with navy blue theme and conservative styling",
+		Dark1:       "000000", Light1: "FFFFFF",
+		Dark2: "1B2A4A", Light2: "E8ECF1",
+		Accent1: "2E5090", Accent2: "D4463A",
+		Accent3: "E8A838", Accent4: "43A047",
+		Accent5: "5C6BC0", Accent6: "26A69A",
+		Hlink: "2E5090", FolHlink: "7986CB",
+		MajorFont: "Calibri", MinorFont: "Calibri",
+		BarSchemeClr:      "accent1",
+		BulletChar:        "\u25A0",
 		SurfaceTints:      map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
 		DataPalette:       []string{"accent1", "accent2", "accent3", "accent4", "accent6", "accent5"},
 		HideChromeOnTitle: true,
 	},
 	{
-		Name:         "forest-green",
-		DisplayName:  "Forest Green",
-		Description:  "Clean analytical template with green accent, suited for data-heavy presentations",
-		Dark1:        "000000", Light1: "FFFFFF",
-		Dark2:        "1A3C34", Light2: "EDF5F0",
-		Accent1:      "2E7D32", Accent2: "FF8F00",
-		Accent3:      "1565C0", Accent4: "6A1B9A",
-		Accent5:      "00838F", Accent6: "C62828",
-		Hlink:        "1565C0", FolHlink: "7986CB",
-		MajorFont:    "Calibri", MinorFont: "Calibri",
-		BarSchemeClr: "accent1",
-		BulletChar:   "\u2022",
+		Name:        "forest-green",
+		DisplayName: "Forest Green",
+		Description: "Clean analytical template with green accent, suited for data-heavy presentations",
+		Dark1:       "000000", Light1: "FFFFFF",
+		Dark2: "1A3C34", Light2: "EDF5F0",
+		Accent1: "2E7D32", Accent2: "FF8F00",
+		Accent3: "1565C0", Accent4: "6A1B9A",
+		Accent5: "00838F", Accent6: "C62828",
+		Hlink: "1565C0", FolHlink: "7986CB",
+		MajorFont: "Calibri", MinorFont: "Calibri",
+		BarSchemeClr:      "accent1",
+		BulletChar:        "\u2022",
 		SurfaceTints:      map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
 		DataPalette:       []string{"accent1", "accent3", "accent2", "accent5", "accent4", "accent6"},
 		HideChromeOnTitle: true,
 	},
 	{
-		Name:         "warm-coral",
-		DisplayName:  "Warm Coral",
-		Description:  "Modern creative template with warm coral tones for engaging visual presentations",
-		Dark1:        "000000", Light1: "FFFFFF",
-		Dark2:        "3E2723", Light2: "FBE9E7",
-		Accent1:      "E64A19", Accent2: "5D4037",
-		Accent3:      "FF8A65", Accent4: "0097A7",
-		Accent5:      "7B1FA2", Accent6: "689F38",
-		Hlink:        "0097A7", FolHlink: "7986CB",
-		MajorFont:    "Gill Sans", MinorFont: "Calibri",
+		Name:        "warm-coral",
+		DisplayName: "Warm Coral",
+		Description: "Modern creative template with warm coral tones for engaging visual presentations",
+		Dark1:       "000000", Light1: "FFFFFF",
+		Dark2: "3E2723", Light2: "FBE9E7",
+		Accent1: "E64A19", Accent2: "5D4037",
+		Accent3: "FF8A65", Accent4: "0097A7",
+		Accent5: "7B1FA2", Accent6: "689F38",
+		Hlink: "0097A7", FolHlink: "7986CB",
+		MajorFont: "Gill Sans", MinorFont: "Calibri",
 		BarSchemeClr: "accent1",
 		BulletChar:   "\u2013",
 		SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1", "elevated": "lt2", "inverse": "dk2"},
@@ -287,11 +287,11 @@ func generateTemplate(def templateDef, outPath string) error {
 // templateMetadataJSON generates the go-slide-creator metadata JSON for embedding.
 func templateMetadataJSON(def templateDef) string {
 	meta := struct {
-		Version        string            `json:"version"`
-		Name           string            `json:"name"`
-		Description    string            `json:"description,omitempty"`
-		SurfaceTints   map[string]string `json:"surface_tints,omitempty"`
-		DataPalette    []string          `json:"data_palette,omitempty"`
+		Version         string            `json:"version"`
+		Name            string            `json:"name"`
+		Description     string            `json:"description,omitempty"`
+		SurfaceTints    map[string]string `json:"surface_tints,omitempty"`
+		DataPalette     []string          `json:"data_palette,omitempty"`
 		SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
 	}{
 		Version:      "1.0",
@@ -624,10 +624,10 @@ func forestGreenChrome() string {
 // layouts (all of which place their title at or below y=365125).
 func warmCoralChrome() string {
 	const (
-		slideW   = 12192000           // 16:9 slide width
-		titleTop = 365125             // master title placeholder y-offset
-		gap      = 12700              // 1pt clear space between bar and title
-		barH     = titleTop - gap     // 352425 EMU (~0.385")
+		slideW   = 12192000       // 16:9 slide width
+		titleTop = 365125         // master title placeholder y-offset
+		gap      = 12700          // 1pt clear space between bar and title
+		barH     = titleTop - gap // 352425 EMU (~0.385")
 	)
 	return fmt.Sprintf(
 		`<p:sp><p:nvSpPr><p:cNvPr id="7" name="Top Bar"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>`+
@@ -653,10 +653,10 @@ func midnightBlueChrome() string {
 	const (
 		slideH    = 6858000 // full 16:9 slide height
 		blueX     = 0
-		blueW     = 144000 // ~0.4cm
-		gapW      = 180000 // 0.5cm clear of slide background
+		blueW     = 144000               // ~0.4cm
+		gapW      = 180000               // 0.5cm clear of slide background
 		yellowX   = blueX + blueW + gapW // 324000
-		yellowW   = 72000  // ~0.2cm
+		yellowW   = 72000                // ~0.2cm
 		yellowHex = "F4C430"
 	)
 	var b strings.Builder

@@ -11,8 +11,8 @@ func TestShadow_WriteEffectXML(t *testing.T) {
 	t.Parallel()
 
 	s := Shadow{
-		BlurRadius: 50800,  // 4pt
-		Distance:   38100,  // 3pt
+		BlurRadius: 50800,   // 4pt
+		Distance:   38100,   // 3pt
 		Direction:  2700000, // 45°
 		Color:      SolidFill("000000"),
 		Alignment:  "bl",

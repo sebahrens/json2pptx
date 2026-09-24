@@ -123,7 +123,8 @@ func TestRealCommandRunnerLibreOfficeTimeoutKillsWorker(t *testing.T) {
 	office := fakeSofficeWithWorker(t)
 	workerFile := filepath.Join(t.TempDir(), "worker.pid")
 	prior := pptx2jpgLibreOfficeTimeout
-	pptx2jpgLibreOfficeTimeout = 100 * time.Millisecond
+	// Allow the shell to launch and record its child even on loaded CI hosts.
+	pptx2jpgLibreOfficeTimeout = time.Second
 	t.Cleanup(func() { pptx2jpgLibreOfficeTimeout = prior })
 	runner := &RealCommandRunner{Stdout: io.Discard, Stderr: io.Discard}
 	err := runner.Run(office, workerFile)
@@ -172,7 +173,8 @@ func TestRealCommandRunnerLibreOfficeCallerDeath(t *testing.T) {
 
 func TestRealCommandRunnerRasterizerTimeoutKillsWorker(t *testing.T) {
 	prior := pptx2jpgRasterizerTimeout
-	pptx2jpgRasterizerTimeout = 100 * time.Millisecond
+	// The timeout must outlast process startup so cleanup checks a real child.
+	pptx2jpgRasterizerTimeout = time.Second
 	t.Cleanup(func() { pptx2jpgRasterizerTimeout = prior })
 	for _, binary := range []string{"pdftoppm", "magick", "convert"} {
 		t.Run(binary, func(t *testing.T) {

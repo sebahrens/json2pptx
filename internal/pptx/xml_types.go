@@ -165,8 +165,8 @@ type PresentationXML struct {
 
 // SlideSizeXML represents the <p:sldSz> element with slide dimensions in EMU.
 type SlideSizeXML struct {
-	CX int64  `xml:"cx,attr"`
-	CY int64  `xml:"cy,attr"`
+	CX int64 `xml:"cx,attr"`
+	CY int64 `xml:"cy,attr"`
 }
 
 // SlideIDListXML represents the list of slide IDs.
@@ -216,5 +216,3 @@ func (s SlideIDXML) MarshalXML(e *xml.Encoder, start xml.StartElement) error {
 	}
 	return e.EncodeToken(start.End())
 }
-
-

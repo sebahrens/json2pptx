@@ -25,9 +25,9 @@ func TestTokensPublishedInRulesMD(t *testing.T) {
 	rules := string(data)
 
 	cases := []struct {
-		role    string
-		minHPt  int
-		maxHPt  int
+		role   string
+		minHPt int
+		maxHPt int
 	}{
 		{"Grid header/banner", GridHeaderMinHPt, GridHeaderMaxHPt},
 		{"Card title", CardTitleMinHPt, CardTitleMaxHPt},

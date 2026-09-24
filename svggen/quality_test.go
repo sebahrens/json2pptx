@@ -340,7 +340,7 @@ func checkRectOverlap(svg string) []svgQualityIssue {
 	// Parse groups and their child rects
 	type rectBounds struct {
 		x, y, w, h float64
-		raw         string
+		raw        string
 	}
 
 	// Simple regex-based group extraction. Find <g ...>...</g> blocks and
@@ -617,10 +617,10 @@ func TestExtractAttrFloat(t *testing.T) {
 
 func TestRectOverlapArea(t *testing.T) {
 	tests := []struct {
-		name string
+		name           string
 		x1, y1, w1, h1 float64
 		x2, y2, w2, h2 float64
-		want            float64
+		want           float64
 	}{
 		{"no overlap", 0, 0, 10, 10, 20, 20, 10, 10, 0},
 		{"full overlap", 0, 0, 10, 10, 0, 0, 10, 10, 100},

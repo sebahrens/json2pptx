@@ -14,16 +14,16 @@ var privateRanges []*net.IPNet
 
 func init() {
 	for _, cidr := range []string{
-		"0.0.0.0/8",          // "this" network (localhost on Linux)
-		"127.0.0.0/8",        // IPv4 loopback
-		"10.0.0.0/8",         // RFC1918
-		"172.16.0.0/12",      // RFC1918
-		"192.168.0.0/16",     // RFC1918
-		"169.254.0.0/16",     // link-local
-		"100.64.0.0/10",      // CGN / shared address space (RFC6598)
-		"::1/128",            // IPv6 loopback
-		"fc00::/7",           // IPv6 unique local
-		"fe80::/10",          // IPv6 link-local
+		"0.0.0.0/8",      // "this" network (localhost on Linux)
+		"127.0.0.0/8",    // IPv4 loopback
+		"10.0.0.0/8",     // RFC1918
+		"172.16.0.0/12",  // RFC1918
+		"192.168.0.0/16", // RFC1918
+		"169.254.0.0/16", // link-local
+		"100.64.0.0/10",  // CGN / shared address space (RFC6598)
+		"::1/128",        // IPv6 loopback
+		"fc00::/7",       // IPv6 unique local
+		"fe80::/10",      // IPv6 link-local
 	} {
 		_, block, _ := net.ParseCIDR(cidr)
 		privateRanges = append(privateRanges, block)

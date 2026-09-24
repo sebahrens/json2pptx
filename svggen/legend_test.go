@@ -1069,7 +1069,7 @@ func TestLegendRowCapacity(t *testing.T) {
 // being replaced.
 func TestLegendItemsToShow(t *testing.T) {
 	tests := []struct{ total, capacity, want int }{
-		{5, 10, 5},  // everything fits
+		{5, 10, 5},   // everything fits
 		{10, 10, 10}, // exactly fits
 		{15, 10, 9},  // 9 items + the marker row
 		{15, 1, 0},   // only the marker fits

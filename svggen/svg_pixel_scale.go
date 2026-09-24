@@ -41,7 +41,7 @@ func scalePathData(d string) string {
 	i := 0
 	var cmd byte
 	paramIdx := 0     // parameter index within current command
-	paramsPerCmd := 0  // total params per command instance
+	paramsPerCmd := 0 // total params per command instance
 
 	for i < len(d) {
 		ch := d[i]

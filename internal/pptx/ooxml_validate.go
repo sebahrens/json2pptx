@@ -16,14 +16,14 @@ type OOXMLValidator struct {
 
 // OOXML validation error codes.
 const (
-	ErrCodeInvalidColor       = "INVALID_COLOR"
-	ErrCodeInvalidScheme      = "INVALID_SCHEME"
-	ErrCodeDuplicateID        = "DUPLICATE_ID"
-	ErrCodeInvalidTable       = "INVALID_TABLE"
-	ErrCodeZeroExtent         = "ZERO_EXTENT"
-	ErrCodeIllegalXMLChar     = "ILLEGAL_XML_CHAR"      // XML 1.0 illegal control chars → Office repair prompt
-	ErrCodeSlideMismatch      = "SLIDE_COUNT_MISMATCH"  // sldIdLst count ≠ slide file count
-	ErrCodeEmptyRequiredAttr  = "EMPTY_REQUIRED_ATTR"   // required attr present with empty value → Office repair prompt
+	ErrCodeInvalidColor      = "INVALID_COLOR"
+	ErrCodeInvalidScheme     = "INVALID_SCHEME"
+	ErrCodeDuplicateID       = "DUPLICATE_ID"
+	ErrCodeInvalidTable      = "INVALID_TABLE"
+	ErrCodeZeroExtent        = "ZERO_EXTENT"
+	ErrCodeIllegalXMLChar    = "ILLEGAL_XML_CHAR"     // XML 1.0 illegal control chars → Office repair prompt
+	ErrCodeSlideMismatch     = "SLIDE_COUNT_MISMATCH" // sldIdLst count ≠ slide file count
+	ErrCodeEmptyRequiredAttr = "EMPTY_REQUIRED_ATTR"  // required attr present with empty value → Office repair prompt
 )
 
 // validSchemeColors is the set of valid DrawingML scheme color names.
@@ -64,10 +64,10 @@ var (
 
 	// Empty-required-attribute regexes. PowerPoint's loader treats these as
 	// malformed and shows the repair prompt on open.
-	emptySchemeClrRegex      = regexp.MustCompile(`<a:schemeClr\s+val=""`)
-	emptySrgbClrRegex        = regexp.MustCompile(`<a:srgbClr\s+val=""`)
-	emptyBlipEmbedRegex      = regexp.MustCompile(`<a:blip\s[^>]*\br:embed=""`)
-	emptyCNvPrIDRegex        = regexp.MustCompile(`<p:cNvPr\s[^>]*\bid=""`)
+	emptySchemeClrRegex = regexp.MustCompile(`<a:schemeClr\s+val=""`)
+	emptySrgbClrRegex   = regexp.MustCompile(`<a:srgbClr\s+val=""`)
+	emptyBlipEmbedRegex = regexp.MustCompile(`<a:blip\s[^>]*\br:embed=""`)
+	emptyCNvPrIDRegex   = regexp.MustCompile(`<p:cNvPr\s[^>]*\bid=""`)
 	// blipFill appears in either DrawingML (a:) for fills or PresentationML (p:)
 	// inside <p:pic>; both forms require an <a:blip> child.
 	blipFillSelfClosingRegex = regexp.MustCompile(`<[ap]:blipFill\b[^>]*/>`)

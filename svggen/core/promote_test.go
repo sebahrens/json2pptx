@@ -29,9 +29,9 @@ func TestPromoteFindings_Warn(t *testing.T) {
 		{Code: FindingCapacityExceeded, Severity: SeverityWarning},
 		{Code: FindingLegendOverflowDropped, Severity: SeverityWarning},
 		{Code: FindingOverflowSuppressed, Severity: SeverityWarning},
-		{Code: FindingInvalidNumeric, Severity: SeverityWarning},      // not promoted under warn
-		{Code: FindingAutoLogScaleApplied, Severity: SeverityInfo},     // advisory, stays
-		{Code: FindingLabelTruncated, Severity: SeverityInfo},          // advisory, stays
+		{Code: FindingInvalidNumeric, Severity: SeverityWarning},   // not promoted under warn
+		{Code: FindingAutoLogScaleApplied, Severity: SeverityInfo}, // advisory, stays
+		{Code: FindingLabelTruncated, Severity: SeverityInfo},      // advisory, stays
 	}
 
 	got := PromoteFindings(findings, "warn")
@@ -40,9 +40,9 @@ func TestPromoteFindings_Warn(t *testing.T) {
 		FindingCapacityExceeded:      SeverityShrinkOrSplit,
 		FindingLegendOverflowDropped: SeverityShrinkOrSplit,
 		FindingOverflowSuppressed:    SeverityShrinkOrSplit,
-		FindingInvalidNumeric:        SeverityWarning,       // no warn-level rule
-		FindingAutoLogScaleApplied:   SeverityInfo,          // advisory
-		FindingLabelTruncated:        SeverityInfo,          // advisory
+		FindingInvalidNumeric:        SeverityWarning, // no warn-level rule
+		FindingAutoLogScaleApplied:   SeverityInfo,    // advisory
+		FindingLabelTruncated:        SeverityInfo,    // advisory
 	}
 
 	for _, f := range got {
@@ -62,9 +62,9 @@ func TestPromoteFindings_Strict(t *testing.T) {
 		{Code: FindingAllZeroSeries, Severity: SeverityWarning},
 		{Code: FindingLegendOverflowDropped, Severity: SeverityWarning},
 		{Code: FindingOverflowSuppressed, Severity: SeverityWarning},
-		{Code: FindingTickThinned, Severity: SeverityInfo},             // advisory
-		{Code: FindingAutoLogScaleApplied, Severity: SeverityInfo},     // advisory
-		{Code: FindingLabelEllipsized, Severity: SeverityInfo},         // advisory
+		{Code: FindingTickThinned, Severity: SeverityInfo},         // advisory
+		{Code: FindingAutoLogScaleApplied, Severity: SeverityInfo}, // advisory
+		{Code: FindingLabelEllipsized, Severity: SeverityInfo},     // advisory
 	}
 
 	got := PromoteFindings(findings, "strict")
@@ -78,9 +78,9 @@ func TestPromoteFindings_Strict(t *testing.T) {
 		FindingAllZeroSeries:         SeverityRefuse,
 		FindingLegendOverflowDropped: SeverityShrinkOrSplit,
 		FindingOverflowSuppressed:    SeverityShrinkOrSplit,
-		FindingTickThinned:           SeverityInfo,           // advisory
-		FindingAutoLogScaleApplied:   SeverityInfo,           // advisory
-		FindingLabelEllipsized:       SeverityInfo,           // advisory
+		FindingTickThinned:           SeverityInfo, // advisory
+		FindingAutoLogScaleApplied:   SeverityInfo, // advisory
+		FindingLabelEllipsized:       SeverityInfo, // advisory
 	}
 
 	for _, f := range got {

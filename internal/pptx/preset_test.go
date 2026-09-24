@@ -304,8 +304,8 @@ func TestDefaultAdjustHandles(t *testing.T) {
 		geom  PresetGeometry
 		names []string
 	}{
-		{GeomRect, nil},          // no handles
-		{GeomEllipse, nil},       // no handles
+		{GeomRect, nil},    // no handles
+		{GeomEllipse, nil}, // no handles
 		{GeomRoundRect, []string{"adj"}},
 		{GeomDonut, []string{"adj"}},
 		{GeomRightArrow, []string{"adj1", "adj2"}},

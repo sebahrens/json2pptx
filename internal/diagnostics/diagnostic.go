@@ -69,7 +69,7 @@ type Diagnostic struct {
 
 // Fix is a structured remediation suggestion.
 type Fix struct {
-	Kind   string         `json:"kind"`            // e.g. "split_at_row", "shrink_text", "provide_value"
+	Kind   string         `json:"kind"`             // e.g. "split_at_row", "shrink_text", "provide_value"
 	Params map[string]any `json:"params,omitempty"` // kind-specific parameters
 }
 
@@ -232,7 +232,6 @@ func SeverityForFinding(code, action string) Severity {
 	}
 	return SeverityForAction(action)
 }
-
 
 // HasErrors returns true if any diagnostic has error severity.
 func HasErrors(ds []Diagnostic) bool {

@@ -372,10 +372,11 @@ vulncheck:
 security: vulncheck lint
 
 fmt:
-	gofmt -w .
+	git ls-files -z --cached --others --exclude-standard -- '*.go' | xargs -0 gofmt -w
 
 fmt-check:
-	@test -z "$$(gofmt -l .)" || (echo "Please run 'make fmt'" && gofmt -l . && exit 1)
+	@unformatted="$$(git ls-files -z --cached --others --exclude-standard -- '*.go' | xargs -0 gofmt -l)"; \
+		test -z "$$unformatted" || { echo "Please run 'make fmt'"; printf '%s\n' "$$unformatted"; exit 1; }
 
 # ─── Pattern Previews ─────────────────────────────────────────────────
 

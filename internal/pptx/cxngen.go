@@ -253,7 +253,6 @@ func geometryHasTipLeft(geom PresetGeometry) bool {
 	}
 }
 
-
 // ConnectionSide names a side of a shape's bounding box for connector routing.
 type ConnectionSide int
 

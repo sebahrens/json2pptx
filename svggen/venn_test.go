@@ -405,8 +405,8 @@ func TestVennDiagram_Render_AllExclusiveItems(t *testing.T) {
 	diagram := &VennDiagram{NewBaseDiagram("venn")}
 
 	sizes := []struct {
-		w, h      int
-		checkAll  bool // whether to check all items (very small canvases may omit items for readability)
+		w, h     int
+		checkAll bool // whether to check all items (very small canvases may omit items for readability)
 	}{
 		{800, 600, true},
 		// 400x300 is too small with the 9pt minimum font floor to guarantee all
@@ -505,7 +505,7 @@ func TestVennDiagram_IntersectionLabel_NoMidWordBreak(t *testing.T) {
 	hasProduct := strings.Contains(svg, "Product")
 	hasDevelopment := strings.Contains(svg, "Development")
 	if !hasProduct && !hasDevelopment {
-		t.Errorf("intersection label appears to break words mid-character; "+
+		t.Errorf("intersection label appears to break words mid-character; " +
 			"neither 'Product' nor 'Development' found as whole words in SVG output")
 	}
 }

@@ -27,12 +27,12 @@ func generateRequestID() string {
 
 // Server represents the HTTP API server.
 type Server struct {
-	mux              *http.ServeMux
-	convertService   *ConvertService
-	templateService  *TemplateService
-	healthHandler    *HealthHandler
-	patternsHandler  *PatternsHandler
-	logger           *slog.Logger
+	mux             *http.ServeMux
+	convertService  *ConvertService
+	templateService *TemplateService
+	healthHandler   *HealthHandler
+	patternsHandler *PatternsHandler
+	logger          *slog.Logger
 }
 
 // ServerConfig holds configuration for creating a server.
@@ -69,12 +69,12 @@ func NewServer(cfg ServerConfig) *Server {
 	patternsHandler := NewPatternsHandler(patterns.Default())
 
 	s := &Server{
-		mux:              http.NewServeMux(),
-		convertService:   convertService,
-		templateService:  templateService,
-		healthHandler:    healthHandler,
-		patternsHandler:  patternsHandler,
-		logger:           cfg.Logger,
+		mux:             http.NewServeMux(),
+		convertService:  convertService,
+		templateService: templateService,
+		healthHandler:   healthHandler,
+		patternsHandler: patternsHandler,
+		logger:          cfg.Logger,
 	}
 
 	s.setupRoutes()

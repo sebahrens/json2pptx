@@ -180,7 +180,7 @@ func gateCheckErrorFindings(report *Report) []GateViolation {
 		f := &report.Findings.Findings[i]
 		if f.Severity == diagnostics.SeverityError {
 			v = append(v, GateViolation{
-				Code: GateCodeErrorFinding,
+				Code:    GateCodeErrorFinding,
 				Message: fmt.Sprintf("examination emitted an error finding [%s]: %s", f.Code, f.Message),
 			})
 		}

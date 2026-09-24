@@ -43,10 +43,10 @@ func TestTimeline_StartOnlyActivities_DateRangeNotCollapsed(t *testing.T) {
 // and the caller's slice is not mutated.
 func TestTimeline_StartOnlyBecomesMilestone(t *testing.T) {
 	orig := []TimelineActivity{
-		{Type: TimelineActivityTypeActivity, StartDate: date(2026, 1, 1)},                          // start only
+		{Type: TimelineActivityTypeActivity, StartDate: date(2026, 1, 1)},                            // start only
 		{Type: TimelineActivityTypeActivity, StartDate: date(2026, 6, 1), EndDate: date(2026, 9, 1)}, // real activity
-		{Type: TimelineActivityTypeMilestone, Date: date(2026, 12, 1)},                             // already a milestone
-		{Type: TimelineActivityTypePhase, StartDate: date(2026, 1, 1)},                             // phase, leave alone
+		{Type: TimelineActivityTypeMilestone, Date: date(2026, 12, 1)},                               // already a milestone
+		{Type: TimelineActivityTypePhase, StartDate: date(2026, 1, 1)},                               // phase, leave alone
 	}
 
 	got := normalizeTimelineActivities(orig)

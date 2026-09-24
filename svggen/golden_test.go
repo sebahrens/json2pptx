@@ -638,8 +638,7 @@ func TestGolden_EdgeCases(t *testing.T) {
 	testCases := []struct {
 		name string
 		req  *RequestEnvelope
-	}{
-	}
+	}{}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

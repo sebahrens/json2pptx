@@ -528,7 +528,7 @@ type LogScale struct {
 
 	// Tick thinning state — set by Ticks() when generated ticks exceed the
 	// requested count and are decimated.
-	ticksThinned                     bool
+	ticksThinned                       bool
 	ticksOriginalCount, ticksKeptCount int
 }
 
@@ -882,7 +882,7 @@ type TimeScale struct {
 	forceInterval *TimeInterval
 
 	// Tick thinning state — set by generateAlignedTicks when ticks are decimated.
-	ticksThinned                     bool
+	ticksThinned                       bool
 	ticksOriginalCount, ticksKeptCount int
 }
 

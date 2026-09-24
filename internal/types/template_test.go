@@ -464,10 +464,10 @@ func TestThemeInfo_Values(t *testing.T) {
 
 func TestThemeColor_Values(t *testing.T) {
 	tests := []struct {
-		name      string
-		color     ThemeColor
-		wantName  string
-		wantRGB   string
+		name     string
+		color    ThemeColor
+		wantName string
+		wantRGB  string
 	}{
 		{
 			name:     "accent color",
@@ -766,4 +766,3 @@ func TestApplyOverride_FontWarningMessage(t *testing.T) {
 		t.Errorf("warning should mention field path, got: %s", w)
 	}
 }
-

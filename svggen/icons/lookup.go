@@ -201,7 +201,6 @@ func levenshteinDist(a, b string) int {
 	return prev[la]
 }
 
-
 // conceptSuggestions returns the icons a business concept maps to, filtered to
 // those that actually exist in the relevant set and capped at maxResults.
 // It returns nil when the name is not a known concept.

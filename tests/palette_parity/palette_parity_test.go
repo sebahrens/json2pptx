@@ -35,7 +35,7 @@ import (
 // All coordinates are fractions of the image's width/height so the region is
 // resolution-independent.
 type region struct {
-	name                   string
+	name           string
 	x0, y0, x1, y1 float64
 }
 
@@ -260,7 +260,7 @@ func TestPaletteParity_CrossEngine(t *testing.T) {
 	const chromaMin uint8 = 25
 
 	type sample struct {
-		region region
+		region  region
 		r, g, b uint32
 		count   int
 	}

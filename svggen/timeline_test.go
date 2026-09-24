@@ -508,15 +508,15 @@ func TestParseDate(t *testing.T) {
 		{"January 15, 2024", false},
 		{"2024/01/15", false},
 		{"15-Jan-2024", false},
-		{"2026 Q1", false},  // Quarter format
-		{"Q2 2026", false},  // Quarter format (reversed)
-		{"2026Q3", false},   // Quarter format (no space)
-		{"Q1", false},       // Bare quarter format (current year)
-		{"Q4", false},       // Bare quarter format (current year)
-		{"2026 H1", false},  // Half-year format
-		{"H2 2026", false},  // Half-year format (reversed)
-		{"2026H1", false},   // Half-year format (no space)
-		{"Mar 2026", false}, // Month-year (abbreviated)
+		{"2026 Q1", false},    // Quarter format
+		{"Q2 2026", false},    // Quarter format (reversed)
+		{"2026Q3", false},     // Quarter format (no space)
+		{"Q1", false},         // Bare quarter format (current year)
+		{"Q4", false},         // Bare quarter format (current year)
+		{"2026 H1", false},    // Half-year format
+		{"H2 2026", false},    // Half-year format (reversed)
+		{"2026H1", false},     // Half-year format (no space)
+		{"Mar 2026", false},   // Month-year (abbreviated)
 		{"March 2026", false}, // Month-year (full)
 		{"Dec 2025", false},   // Month-year (abbreviated)
 		{"invalid date", true},

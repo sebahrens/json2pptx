@@ -31,23 +31,23 @@ func ValidSeverity(s Severity) bool {
 
 // allowedCategories is the set of allowed finding category strings.
 var allowedCategories = map[string]bool{
-	"text_overflow":      true,
-	"text_truncation":    true,
-	"contrast":           true,
-	"alignment":          true,
-	"spacing":            true,
-	"overlap":            true,
-	"missing_content":    true,
-	"font_size":          true,
-	"visual_hierarchy":   true,
-	"chart_readability":  true,
-	"table_readability":  true,
-	"image_quality":      true,
-	"layout_balance":     true,
-	"color_consistency":  true,
-	"border_style":       true,
-	"footer_clearance":   true,
-	"aspect_ratio":       true,
+	"text_overflow":     true,
+	"text_truncation":   true,
+	"contrast":          true,
+	"alignment":         true,
+	"spacing":           true,
+	"overlap":           true,
+	"missing_content":   true,
+	"font_size":         true,
+	"visual_hierarchy":  true,
+	"chart_readability": true,
+	"table_readability": true,
+	"image_quality":     true,
+	"layout_balance":    true,
+	"color_consistency": true,
+	"border_style":      true,
+	"footer_clearance":  true,
+	"aspect_ratio":      true,
 }
 
 // ValidCategory reports whether cat is an allowed finding category.
@@ -84,9 +84,9 @@ type Finding struct {
 	SlideIndex     int            `json:"slide_index"`
 	SlideType      string         `json:"slide_type"`
 	Severity       Severity       `json:"severity"`
-	Category       string         `json:"category"`    // e.g. "text_overflow", "contrast", "alignment"
-	Description    string         `json:"description"` // Human-readable description
-	Location       string         `json:"location"`    // Where on the slide (e.g. "bottom-left", "title area")
+	Category       string         `json:"category"`                  // e.g. "text_overflow", "contrast", "alignment"
+	Description    string         `json:"description"`               // Human-readable description
+	Location       string         `json:"location"`                  // Where on the slide (e.g. "bottom-left", "title area")
 	Source         string         `json:"source,omitempty"`          // "vision" (default), "deterministic", or "heuristic"
 	SuggestedFixes []SuggestedFix `json:"suggested_fixes,omitempty"` // Mapped repair_slide fix kinds
 	// BBox is the optional defect region in normalized slide coordinates.

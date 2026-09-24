@@ -48,11 +48,11 @@ const (
 
 	// CardBody* frame the body text of a card cell. Regular weight.
 	// 11pt suits 3-4 cols, 10pt suits 5+ cols, 9pt is the floor.
-	CardBodyMinHPt      = 900  // 9pt
-	CardBodyMaxHPt      = 1100 // 11pt
-	CardBodyDefaultHPt  = 1000 // 10pt
-	CardBodyDenseHPt    = 900  // 9pt — for 5+ cols
-	CardBodyRoomyHPt    = 1100 // 11pt — for 3-4 cols
+	CardBodyMinHPt     = 900  // 9pt
+	CardBodyMaxHPt     = 1100 // 11pt
+	CardBodyDefaultHPt = 1000 // 10pt
+	CardBodyDenseHPt   = 900  // 9pt — for 5+ cols
+	CardBodyRoomyHPt   = 1100 // 11pt — for 3-4 cols
 
 	// StepNumber* frame a step or sequence numeral rendered in a narrow
 	// accent column (e.g. roadmap, process-flow). Bold, white text.

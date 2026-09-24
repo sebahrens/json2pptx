@@ -53,7 +53,7 @@ func makeHeaders(n int) []string {
 
 func TestLogicalRowCount(t *testing.T) {
 	tests := []struct {
-		name string
+		name  string
 		table *TableInput
 		want  int
 	}{

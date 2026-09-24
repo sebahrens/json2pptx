@@ -7,45 +7,45 @@ type PresetGeometry string
 // Phase 1 preset geometries: layout-essential shapes commonly used in
 // presentation templates and slide content.
 const (
-	GeomRect          PresetGeometry = "rect"
-	GeomRoundRect     PresetGeometry = "roundRect"
-	GeomRound1Rect    PresetGeometry = "round1Rect"
+	GeomRect           PresetGeometry = "rect"
+	GeomRoundRect      PresetGeometry = "roundRect"
+	GeomRound1Rect     PresetGeometry = "round1Rect"
 	GeomRound2SameRect PresetGeometry = "round2SameRect"
-	GeomEllipse       PresetGeometry = "ellipse"
-	GeomTriangle      PresetGeometry = "triangle"
-	GeomDiamond       PresetGeometry = "diamond"
-	GeomParallelogram PresetGeometry = "parallelogram"
-	GeomTrapezoid     PresetGeometry = "trapezoid"
-	GeomHexagon       PresetGeometry = "hexagon"
-	GeomOctagon       PresetGeometry = "octagon"
-	GeomChevron       PresetGeometry = "chevron"
-	GeomHomePlate     PresetGeometry = "homePlate"
-	GeomPentagon      PresetGeometry = "pentagon"
-	GeomPlus          PresetGeometry = "plus"
-	GeomRightArrow    PresetGeometry = "rightArrow"
-	GeomLeftArrow     PresetGeometry = "leftArrow"
-	GeomUpArrow       PresetGeometry = "upArrow"
-	GeomDownArrow     PresetGeometry = "downArrow"
-	GeomDonut         PresetGeometry = "donut"
+	GeomEllipse        PresetGeometry = "ellipse"
+	GeomTriangle       PresetGeometry = "triangle"
+	GeomDiamond        PresetGeometry = "diamond"
+	GeomParallelogram  PresetGeometry = "parallelogram"
+	GeomTrapezoid      PresetGeometry = "trapezoid"
+	GeomHexagon        PresetGeometry = "hexagon"
+	GeomOctagon        PresetGeometry = "octagon"
+	GeomChevron        PresetGeometry = "chevron"
+	GeomHomePlate      PresetGeometry = "homePlate"
+	GeomPentagon       PresetGeometry = "pentagon"
+	GeomPlus           PresetGeometry = "plus"
+	GeomRightArrow     PresetGeometry = "rightArrow"
+	GeomLeftArrow      PresetGeometry = "leftArrow"
+	GeomUpArrow        PresetGeometry = "upArrow"
+	GeomDownArrow      PresetGeometry = "downArrow"
+	GeomDonut          PresetGeometry = "donut"
 )
 
 // Phase 2 preset geometries: flowchart shapes and additional arrows.
 const (
 	// Flowchart shapes
-	GeomFlowChartProcess            PresetGeometry = "flowChartProcess"
-	GeomFlowChartDecision           PresetGeometry = "flowChartDecision"
-	GeomFlowChartTerminator         PresetGeometry = "flowChartTerminator"
-	GeomFlowChartDocument           PresetGeometry = "flowChartDocument"
-	GeomFlowChartMultidocument      PresetGeometry = "flowChartMultidocument"
-	GeomFlowChartInputOutput        PresetGeometry = "flowChartInputOutput"
-	GeomFlowChartPredefinedProcess  PresetGeometry = "flowChartPredefinedProcess"
-	GeomFlowChartInternalStorage    PresetGeometry = "flowChartInternalStorage"
-	GeomFlowChartPreparation        PresetGeometry = "flowChartPreparation"
-	GeomFlowChartManualInput        PresetGeometry = "flowChartManualInput"
-	GeomFlowChartManualOperation    PresetGeometry = "flowChartManualOperation"
-	GeomFlowChartConnector          PresetGeometry = "flowChartConnector"
-	GeomFlowChartOffpageConnector   PresetGeometry = "flowChartOffpageConnector"
-	GeomFlowChartAlternateProcess   PresetGeometry = "flowChartAlternateProcess"
+	GeomFlowChartProcess           PresetGeometry = "flowChartProcess"
+	GeomFlowChartDecision          PresetGeometry = "flowChartDecision"
+	GeomFlowChartTerminator        PresetGeometry = "flowChartTerminator"
+	GeomFlowChartDocument          PresetGeometry = "flowChartDocument"
+	GeomFlowChartMultidocument     PresetGeometry = "flowChartMultidocument"
+	GeomFlowChartInputOutput       PresetGeometry = "flowChartInputOutput"
+	GeomFlowChartPredefinedProcess PresetGeometry = "flowChartPredefinedProcess"
+	GeomFlowChartInternalStorage   PresetGeometry = "flowChartInternalStorage"
+	GeomFlowChartPreparation       PresetGeometry = "flowChartPreparation"
+	GeomFlowChartManualInput       PresetGeometry = "flowChartManualInput"
+	GeomFlowChartManualOperation   PresetGeometry = "flowChartManualOperation"
+	GeomFlowChartConnector         PresetGeometry = "flowChartConnector"
+	GeomFlowChartOffpageConnector  PresetGeometry = "flowChartOffpageConnector"
+	GeomFlowChartAlternateProcess  PresetGeometry = "flowChartAlternateProcess"
 
 	// Additional arrow shapes
 	GeomLeftRightArrow    PresetGeometry = "leftRightArrow"
@@ -153,16 +153,16 @@ const (
 	GeomStar32 PresetGeometry = "star32"
 
 	// Additional arrow shapes
-	GeomLeftUpArrow              PresetGeometry = "leftUpArrow"
-	GeomLeftRightUpArrow         PresetGeometry = "leftRightUpArrow"
-	GeomQuadArrow                PresetGeometry = "quadArrow"
-	GeomCurvedUpArrow            PresetGeometry = "curvedUpArrow"
-	GeomCurvedDownArrow          PresetGeometry = "curvedDownArrow"
-	GeomUturnArrow               PresetGeometry = "uturnArrow"
-	GeomCircularArrow            PresetGeometry = "circularArrow"
-	GeomLeftCircularArrow        PresetGeometry = "leftCircularArrow"
-	GeomLeftRightCircularArrow   PresetGeometry = "leftRightCircularArrow"
-	GeomSwooshArrow              PresetGeometry = "swooshArrow"
+	GeomLeftUpArrow            PresetGeometry = "leftUpArrow"
+	GeomLeftRightUpArrow       PresetGeometry = "leftRightUpArrow"
+	GeomQuadArrow              PresetGeometry = "quadArrow"
+	GeomCurvedUpArrow          PresetGeometry = "curvedUpArrow"
+	GeomCurvedDownArrow        PresetGeometry = "curvedDownArrow"
+	GeomUturnArrow             PresetGeometry = "uturnArrow"
+	GeomCircularArrow          PresetGeometry = "circularArrow"
+	GeomLeftCircularArrow      PresetGeometry = "leftCircularArrow"
+	GeomLeftRightCircularArrow PresetGeometry = "leftRightCircularArrow"
+	GeomSwooshArrow            PresetGeometry = "swooshArrow"
 
 	// Arrow callout shapes
 	GeomRightArrowCallout     PresetGeometry = "rightArrowCallout"
@@ -190,21 +190,21 @@ const (
 	GeomMathNotEqual PresetGeometry = "mathNotEqual"
 
 	// Additional flowchart shapes
-	GeomFlowChartCollate          PresetGeometry = "flowChartCollate"
-	GeomFlowChartSort             PresetGeometry = "flowChartSort"
-	GeomFlowChartExtract          PresetGeometry = "flowChartExtract"
-	GeomFlowChartMerge            PresetGeometry = "flowChartMerge"
-	GeomFlowChartOnlineStorage    PresetGeometry = "flowChartOnlineStorage"
-	GeomFlowChartOfflineStorage   PresetGeometry = "flowChartOfflineStorage"
-	GeomFlowChartMagneticTape     PresetGeometry = "flowChartMagneticTape"
-	GeomFlowChartMagneticDisk     PresetGeometry = "flowChartMagneticDisk"
-	GeomFlowChartMagneticDrum     PresetGeometry = "flowChartMagneticDrum"
-	GeomFlowChartDisplay          PresetGeometry = "flowChartDisplay"
-	GeomFlowChartDelay            PresetGeometry = "flowChartDelay"
-	GeomFlowChartPunchedCard      PresetGeometry = "flowChartPunchedCard"
-	GeomFlowChartPunchedTape      PresetGeometry = "flowChartPunchedTape"
-	GeomFlowChartSummingJunction  PresetGeometry = "flowChartSummingJunction"
-	GeomFlowChartOr               PresetGeometry = "flowChartOr"
+	GeomFlowChartCollate         PresetGeometry = "flowChartCollate"
+	GeomFlowChartSort            PresetGeometry = "flowChartSort"
+	GeomFlowChartExtract         PresetGeometry = "flowChartExtract"
+	GeomFlowChartMerge           PresetGeometry = "flowChartMerge"
+	GeomFlowChartOnlineStorage   PresetGeometry = "flowChartOnlineStorage"
+	GeomFlowChartOfflineStorage  PresetGeometry = "flowChartOfflineStorage"
+	GeomFlowChartMagneticTape    PresetGeometry = "flowChartMagneticTape"
+	GeomFlowChartMagneticDisk    PresetGeometry = "flowChartMagneticDisk"
+	GeomFlowChartMagneticDrum    PresetGeometry = "flowChartMagneticDrum"
+	GeomFlowChartDisplay         PresetGeometry = "flowChartDisplay"
+	GeomFlowChartDelay           PresetGeometry = "flowChartDelay"
+	GeomFlowChartPunchedCard     PresetGeometry = "flowChartPunchedCard"
+	GeomFlowChartPunchedTape     PresetGeometry = "flowChartPunchedTape"
+	GeomFlowChartSummingJunction PresetGeometry = "flowChartSummingJunction"
+	GeomFlowChartOr              PresetGeometry = "flowChartOr"
 
 	// Action button shapes
 	GeomActionButtonBlank        PresetGeometry = "actionButtonBlank"
@@ -221,18 +221,17 @@ const (
 	GeomActionButtonMovie        PresetGeometry = "actionButtonMovie"
 
 	// Chart and tab shapes
-	GeomChartX      PresetGeometry = "chartX"
-	GeomChartStar   PresetGeometry = "chartStar"
-	GeomChartPlus   PresetGeometry = "chartPlus"
-	GeomCornerTabs  PresetGeometry = "cornerTabs"
-	GeomSquareTabs  PresetGeometry = "squareTabs"
-	GeomPlaqueTabs  PresetGeometry = "plaqueTabs"
+	GeomChartX     PresetGeometry = "chartX"
+	GeomChartStar  PresetGeometry = "chartStar"
+	GeomChartPlus  PresetGeometry = "chartPlus"
+	GeomCornerTabs PresetGeometry = "cornerTabs"
+	GeomSquareTabs PresetGeometry = "squareTabs"
+	GeomPlaqueTabs PresetGeometry = "plaqueTabs"
 
 	// Gears and funnel
 	GeomGear6  PresetGeometry = "gear6"
 	GeomGear9  PresetGeometry = "gear9"
 	GeomFunnel PresetGeometry = "funnel"
-
 )
 
 // AdjustValue represents a named adjustment handle value for a preset geometry.
@@ -387,7 +386,6 @@ var defaultAdjustHandles = map[PresetGeometry][]string{
 	// Phase 5: gears
 	GeomGear6: {"adj1", "adj2"},
 	GeomGear9: {"adj1", "adj2"},
-
 }
 
 // DefaultAdjustHandles returns the default adjustment handle names for a

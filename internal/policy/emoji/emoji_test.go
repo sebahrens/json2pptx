@@ -11,11 +11,11 @@ func TestIsEmoji(t *testing.T) {
 		{'z', false},
 		{' ', false},
 		{'日', false},
-		{'📊', true},   // U+1F4CA Bar Chart
-		{'🎯', true},   // U+1F3AF Direct Hit
-		{'✅', true},   // U+2705 Check Mark
-		{'📈', true},   // U+1F4C8 Chart Increasing
-		{'🚀', true},   // U+1F680 Rocket
+		{'📊', true},    // U+1F4CA Bar Chart
+		{'🎯', true},    // U+1F3AF Direct Hit
+		{'✅', true},    // U+2705 Check Mark
+		{'📈', true},    // U+1F4C8 Chart Increasing
+		{'🚀', true},    // U+1F680 Rocket
 		{0xFE0F, true}, // Variation Selector-16
 		{0x200D, true}, // Zero Width Joiner
 	}

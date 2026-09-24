@@ -129,8 +129,8 @@ func TestEnrichTitleSlides(t *testing.T) {
 			},
 			wantBody: map[int]string{
 				0: "Overview",
-				2: "Q&A",       // Not overwritten
-				3: "Overview",  // Enriched
+				2: "Q&A",      // Not overwritten
+				3: "Overview", // Enriched
 			},
 		},
 		{

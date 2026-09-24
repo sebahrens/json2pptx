@@ -31,7 +31,7 @@ func TestScatterChartContentCoverage(t *testing.T) {
 				Data: map[string]any{
 					"series": []any{
 						map[string]any{
-							"name":   "Initiatives",
+							"name": "Initiatives",
 							"points": []any{
 								map[string]any{"x": 9.0, "y": 4.6, "label": "Legacy Migration"},
 								map[string]any{"x": 8.0, "y": 5.7, "label": "Reporting"},
@@ -101,7 +101,7 @@ func TestScatterAxisTicksAlignWithGrid(t *testing.T) {
 		Data: map[string]any{
 			"series": []any{
 				map[string]any{
-					"name":   "A",
+					"name": "A",
 					"points": []any{
 						map[string]any{"x": 10.0, "y": 25.0},
 						map[string]any{"x": 30.0, "y": 75.0},

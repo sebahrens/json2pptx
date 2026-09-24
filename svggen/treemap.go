@@ -708,7 +708,6 @@ func parseTreemapNodes(raw []any) []*TreemapNode {
 	return nodes
 }
 
-
 // treemapValues flattens every node's total, which is what the treemap's number
 // format is derived from.
 func treemapValues(nodes []*TreemapNode) []float64 {

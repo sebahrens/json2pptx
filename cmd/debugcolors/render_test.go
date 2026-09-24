@@ -7,18 +7,18 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestThemeColorsReachChart(t *testing.T) {
 	templates := []struct {
-		name       string
-		path       string
-		expectHex  string // First accent color hex that should appear in SVG
+		name      string
+		path      string
+		expectHex string // First accent color hex that should appear in SVG
 	}{
-		{"warm-coral", "../../testdata/templates/warm-coral.pptx", "E64A19"}, // warm-coral red-orange
+		{"warm-coral", "../../testdata/templates/warm-coral.pptx", "E64A19"},     // warm-coral red-orange
 		{"forest-green", "../../testdata/templates/forest-green.pptx", "2E7D32"}, // forest-green green
 	}
 

@@ -358,9 +358,9 @@ func TestCalculate_MinFontScalePctUsedInLnSpcReductionPath(t *testing.T) {
 	}
 
 	result, err := Calculate(Params{
-		WidthEMU:        3 * 914400,  // 3 inches
-		HeightEMU:       2 * 914400,  // 2 inches
-		FontSizeHPt:     2000,        // 20pt
+		WidthEMU:        3 * 914400, // 3 inches
+		HeightEMU:       2 * 914400, // 2 inches
+		FontSizeHPt:     2000,       // 20pt
 		FontName:        "Arial",
 		Paragraphs:      paragraphs,
 		MinFontScalePct: 45,
@@ -401,9 +401,9 @@ func TestCalculate_AbsoluteMinFontFloor(t *testing.T) {
 	}
 
 	result, err := Calculate(Params{
-		WidthEMU:        2 * 914400,  // 2 inches (narrow)
-		HeightEMU:       1 * 914400,  // 1 inch (short)
-		FontSizeHPt:     1400,        // 14pt base
+		WidthEMU:        2 * 914400, // 2 inches (narrow)
+		HeightEMU:       1 * 914400, // 1 inch (short)
+		FontSizeHPt:     1400,       // 14pt base
 		FontName:        "Arial",
 		Paragraphs:      paragraphs,
 		MinFontScalePct: 45, // Would be 6.3pt — must be clamped

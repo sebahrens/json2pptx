@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 type jsonPalette struct {

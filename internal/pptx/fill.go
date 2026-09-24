@@ -10,7 +10,7 @@ import (
 type fillType int
 
 const (
-	fillNone    fillType = iota
+	fillNone fillType = iota
 	fillSolid
 	fillScheme
 	fillGradient
@@ -60,7 +60,7 @@ type GradientStop struct {
 
 // Fill represents a DrawingML fill specification.
 type Fill struct {
-	set    bool       // true if explicitly constructed (not zero value)
+	set    bool // true if explicitly constructed (not zero value)
 	typ    fillType
 	color  string     // hex color (without #) for solid fills
 	scheme string     // scheme color name for scheme fills (e.g. "accent1", "dk1")

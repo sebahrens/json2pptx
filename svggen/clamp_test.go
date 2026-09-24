@@ -36,12 +36,12 @@ func TestClampFloat64(t *testing.T) {
 
 func TestClampDataValues(t *testing.T) {
 	data := map[string]any{
-		"normal":    42.0,
-		"huge":      math.MaxFloat64,
-		"neg_huge":  -math.MaxFloat64,
-		"string":    "hello",
-		"int_val":   123,
-		"nil_val":   nil,
+		"normal":   42.0,
+		"huge":     math.MaxFloat64,
+		"neg_huge": -math.MaxFloat64,
+		"string":   "hello",
+		"int_val":  123,
+		"nil_val":  nil,
 		"nested": map[string]any{
 			"deep_huge": 2e16,
 			"deep_ok":   7.0,

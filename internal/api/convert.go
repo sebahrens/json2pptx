@@ -467,14 +467,14 @@ type ConvertRequest struct {
 
 // APISlide describes a single slide in the JSON input.
 type APISlide struct {
-	Type            string     `json:"type"`                        // Slide type: content, title, section, two-column, image, chart, diagram, comparison, blank
-	Title           string     `json:"title,omitempty"`             // Slide title
-	Content         APIContent `json:"content,omitempty"`           // Slide content
-	SpeakerNotes    string     `json:"speaker_notes,omitempty"`     // Speaker notes
-	Source          string     `json:"source,omitempty"`            // Source attribution
-	Transition      string     `json:"transition,omitempty"`        // Slide transition type
-	TransitionSpeed string     `json:"transition_speed,omitempty"`  // Transition speed
-	Build           string     `json:"build,omitempty"`             // Build animation
+	Type            string     `json:"type"`                       // Slide type: content, title, section, two-column, image, chart, diagram, comparison, blank
+	Title           string     `json:"title,omitempty"`            // Slide title
+	Content         APIContent `json:"content,omitempty"`          // Slide content
+	SpeakerNotes    string     `json:"speaker_notes,omitempty"`    // Speaker notes
+	Source          string     `json:"source,omitempty"`           // Source attribution
+	Transition      string     `json:"transition,omitempty"`       // Slide transition type
+	TransitionSpeed string     `json:"transition_speed,omitempty"` // Transition speed
+	Build           string     `json:"build,omitempty"`            // Build animation
 }
 
 // APIContent holds the content fields for a slide.

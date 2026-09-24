@@ -30,43 +30,43 @@ func gridWithFills(fills ...string) *jsonschema.ShapeGridInput {
 
 func TestDetectAccentOverload(t *testing.T) {
 	cases := []struct {
-		name       string
-		fills      []string
+		name        string
+		fills       []string
 		wantFinding bool
 	}{
 		{
-			name:       "one accent — no finding",
-			fills:      []string{"accent1", "accent1", "accent1"},
+			name:        "one accent — no finding",
+			fills:       []string{"accent1", "accent1", "accent1"},
 			wantFinding: false,
 		},
 		{
-			name:       "two accents — no finding (paired comparison ok)",
-			fills:      []string{"accent1", "accent2", "accent1"},
+			name:        "two accents — no finding (paired comparison ok)",
+			fills:       []string{"accent1", "accent2", "accent1"},
 			wantFinding: false,
 		},
 		{
-			name:       "three distinct accents — finding",
-			fills:      []string{"accent1", "accent2", "accent3"},
+			name:        "three distinct accents — finding",
+			fills:       []string{"accent1", "accent2", "accent3"},
 			wantFinding: true,
 		},
 		{
-			name:       "four distinct accents — finding",
-			fills:      []string{"accent1", "accent2", "accent3", "accent4"},
+			name:        "four distinct accents — finding",
+			fills:       []string{"accent1", "accent2", "accent3", "accent4"},
 			wantFinding: true,
 		},
 		{
-			name:       "accent + neutrals — no finding",
-			fills:      []string{"accent1", "lt2", "dk1"},
+			name:        "accent + neutrals — no finding",
+			fills:       []string{"accent1", "lt2", "dk1"},
 			wantFinding: false,
 		},
 		{
-			name:       "hex fills ignored — no finding",
-			fills:      []string{"#FF0000", "#00FF00", "#0000FF"},
+			name:        "hex fills ignored — no finding",
+			fills:       []string{"#FF0000", "#00FF00", "#0000FF"},
 			wantFinding: false,
 		},
 		{
-			name:       "mixed accent + hex — only accent hues count",
-			fills:      []string{"accent1", "#FF0000", "accent2"},
+			name:        "mixed accent + hex — only accent hues count",
+			fills:       []string{"accent1", "#FF0000", "accent2"},
 			wantFinding: false,
 		},
 	}

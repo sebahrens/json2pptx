@@ -1133,12 +1133,12 @@ func TestResolve_FitContain(t *testing.T) {
 // default remains FitStretch so the chart fills the full cell.
 func TestResolve_DiagramRespectsExplicitFit(t *testing.T) {
 	tests := []struct {
-		name        string
-		fit         FitMode
-		wantCX      int64
-		wantCY      int64
-		wantX       int64
-		wantY       int64
+		name   string
+		fit    FitMode
+		wantCX int64
+		wantCY int64
+		wantX  int64
+		wantY  int64
 	}{
 		{name: "default stretch", fit: FitStretch, wantCX: 4000, wantCY: 2000, wantX: 0, wantY: 0},
 		{name: "explicit contain", fit: FitContain, wantCX: 2000, wantCY: 2000, wantX: 1000, wantY: 0},
@@ -1612,8 +1612,8 @@ func TestResolve_ImageWithRowSpan(t *testing.T) {
 			{Cells: []Cell{
 				{Shape: &ShapeSpec{Geometry: "rect"}},
 				{RowSpan: 2, Image: &ImageSpec{
-					Path: "/tmp/hero.jpg",
-					Alt:  "Full-height dramatic photo",
+					Path:    "/tmp/hero.jpg",
+					Alt:     "Full-height dramatic photo",
 					Overlay: &OverlaySpec{Color: "000000", Alpha: 0.3},
 					Text:    &ImageText{Content: "Caption", Size: 16, Bold: true, Color: "FFFFFF"},
 				}},
@@ -2183,9 +2183,9 @@ func TestResolve_CardRowGeometry(t *testing.T) {
 //   - Outer-edge difference between any two rows is 0 EMU.
 func TestResolve_BannerRowOuterEdgeAlignment(t *testing.T) {
 	cases := []struct {
-		name    string
-		columns []float64
-		gapPt   float64
+		name      string
+		columns   []float64
+		gapPt     float64
 		extraRows int // additional equal-column rows after the banner
 	}{
 		{name: "5-col equal banner+1 row, gap 16", columns: []float64{20, 20, 20, 20, 20}, gapPt: 16, extraRows: 1},

@@ -90,4 +90,3 @@ func TestDebugTimelineRender(t *testing.T) {
 	os.WriteFile(tmpDir+"/timeline_multirow.svg", svgDoc2.Bytes(), 0644)
 	t.Logf("wrote %s/timeline_multirow.png and %s/timeline_multirow.svg", tmpDir, tmpDir)
 }
-

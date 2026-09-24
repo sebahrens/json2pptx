@@ -405,12 +405,12 @@ func (v *Validator) CountPNG() int {
 
 // MediaStats returns counts of media files by type.
 type MediaStats struct {
-	Total     int
-	SVG       int
-	PNG       int
-	Other     int
-	SVGFiles  []string
-	PNGFiles  []string
+	Total    int
+	SVG      int
+	PNG      int
+	Other    int
+	SVGFiles []string
+	PNGFiles []string
 }
 
 // MediaStats returns detailed media file statistics.
@@ -615,4 +615,3 @@ func (v *Validator) DumpStructure() string {
 
 	return b.String()
 }
-
