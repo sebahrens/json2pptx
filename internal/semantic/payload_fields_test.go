@@ -92,6 +92,38 @@ func TestValidateUnknownFields_KPIPayload(t *testing.T) {
 	}
 }
 
+func TestSectionSubtitleIsDiagnosedInsteadOfDropped(t *testing.T) {
+	spec := &DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{
+		Kind: KindSection, Body: map[string]any{"title": "Next chapter", "subtitle": "Supporting copy"},
+	}}}
+	ds := Validate(spec, StrictnessWarn)
+	d, ok := findAt(ds, diagnostics.CodeSemanticUnknownField, "slides[0].subtitle")
+	if !ok || d.Severity != diagnostics.SeverityWarning {
+		t.Fatalf("unsupported section subtitle silently dropped: %+v", ds)
+	}
+	if d.Fix != nil || !strings.Contains(d.Message, "decorative numbers") || !strings.Contains(d.Message, "shape_grid") {
+		t.Fatalf("section subtitle guidance is misleading: %+v", d)
+	}
+	strict, ok := findAt(Validate(spec, StrictnessStrict), diagnostics.CodeSemanticUnknownField, "slides[0].subtitle")
+	if !ok || strict.Severity != diagnostics.SeverityError {
+		t.Fatalf("strict mode did not reject section.subtitle: %+v", strict)
+	}
+	info, ok := LookupKind(KindSection)
+	if !ok {
+		t.Fatal("section kind not registered")
+	}
+	for _, field := range info.TypicalFields {
+		if field == "subtitle" {
+			t.Fatalf("section still advertises unsupported subtitle: %+v", info)
+		}
+	}
+	for _, field := range PayloadFieldNames(KindSection) {
+		if field == "subtitle" {
+			t.Fatalf("section schema still accepts unsupported subtitle: %v", PayloadFieldNames(KindSection))
+		}
+	}
+}
+
 // Every kind's example must validate with zero findings — list_slide_kinds
 // publishes these as copy-ready payloads.
 func TestKindExamplesValidateClean(t *testing.T) {

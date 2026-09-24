@@ -125,11 +125,6 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 	},
 	KindSection: {
 		"title": {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},
-		"subtitle": {
-			inject:   func(s string) map[string]any { return map[string]any{"title": "Filler", "subtitle": s} },
-			rendered: false,
-			why:      "section dividers reserve body placeholders for decorative section numbers; CompileSection (slides/structural.go) intentionally does not emit subtitle",
-		},
 	},
 	KindExecutiveSummary: {
 		"title":     {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},

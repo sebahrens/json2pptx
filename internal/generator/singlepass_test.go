@@ -15,6 +15,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
@@ -4866,6 +4867,58 @@ func TestPopulateTextInSlide_PlaceholderNotFound_ContentDroppedOnlyWhenNonEmpty(
 			// The structured placeholder_not_found error is emitted either way.
 			if len(ctx.validationErrors) != 1 {
 				t.Errorf("expected 1 placeholder_not_found validation error, got %d", len(ctx.validationErrors))
+			}
+		})
+	}
+}
+
+func TestPopulateTextInSlide_SectionSubtitleNeverOverwritesNumber(t *testing.T) {
+	for _, tc := range []struct {
+		name             string
+		actualSubtitle   bool
+		withoutProfile   bool
+		wantMissingError bool
+	}{
+		{name: "decorative number only", wantMissingError: true},
+		{name: "decorative number without profile", withoutProfile: true, wantMissingError: true},
+		{name: "dedicated subtitle", actualSubtitle: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			idx := 1
+			shapes := []shapeXML{
+				makeShape("Title", "title", nil, 100000, 100000, 4000000, 900000),
+				makeShape("Section Number", "body", &idx, 6000000, 100000, 2000000, 2000000),
+			}
+			if tc.actualSubtitle {
+				shapes = append(shapes, makeShape("Subtitle", "subTitle", nil, 100000, 1200000, 4000000, 700000))
+			}
+			slide := &slideXML{CommonSlideData: commonSlideDataXML{ShapeTree: shapeTreeXML{Shapes: shapes}}}
+			ctx := newSinglePassContext("", nil, nil, false, nil)
+			if !tc.withoutProfile {
+				ctx.profile = &template.TemplateProfile{Layouts: []types.LayoutMetadata{{ID: "slideLayout3", CanonicalType: types.CanonicalLayoutSectionDivider}}}
+			}
+			ctx.populateTextInSlide(slide, []ContentItem{{PlaceholderID: "subtitle", Type: ContentText, Value: "Supporting copy"}}, "slideLayout3", 0, "")
+			if got := len(ctx.validationErrors) > 0; got != tc.wantMissingError {
+				t.Fatalf("missing-slot validation error = %v, want %v: %+v", got, tc.wantMissingError, ctx.validationErrors)
+			}
+			if tc.wantMissingError && ctx.validationErrors[0].Fix != nil && ctx.validationErrors[0].Fix.Params["did_you_mean"] != nil {
+				t.Fatalf("missing subtitle suggested an unsafe replacement: %+v", ctx.validationErrors[0].Fix)
+			}
+			body := slide.CommonSlideData.ShapeTree.Shapes[1].TextBody
+			if body != nil {
+				for _, paragraph := range body.Paragraphs {
+					for _, run := range paragraph.Runs {
+						if strings.Contains(run.Text, "Supporting copy") {
+							t.Fatal("section subtitle overwrote decorative number slot")
+						}
+					}
+				}
+			}
+			if tc.actualSubtitle {
+				paragraphs := slide.CommonSlideData.ShapeTree.Shapes[2].TextBody.Paragraphs
+				if len(paragraphs) == 0 || len(paragraphs[0].Runs) == 0 || paragraphs[0].Runs[0].Text != "Supporting copy" {
+					t.Fatalf("dedicated subtitle was not populated: %+v", paragraphs)
+				}
 			}
 		})
 	}

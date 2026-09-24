@@ -870,7 +870,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodePlaceholderRemapped,
 		Summary:     "A placeholder_id was implicitly remapped to a different layout placeholder.",
 		Severity:    "info",
-		WhenEmitted: "Generation resolves an input placeholder_id that the layout does not declare to a fallback placeholder (e.g., subtitle → body on a section layout).",
+		WhenEmitted: "Generation resolves an input placeholder_id that the layout does not declare to a usable fallback placeholder. Section subtitles with no real subtitle slot are rejected instead: body slots may hold decorative numbers.",
 		RemediationSteps: []string{
 			"Author the resolved placeholder_id directly (see fix.params.to) to avoid the implicit remap.",
 			"Or swap to a layout that declares the original placeholder_id.",

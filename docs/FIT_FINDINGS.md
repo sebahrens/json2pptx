@@ -1477,7 +1477,7 @@ Chrome is injected as `schemeClr tx1`, so a layout that inverts its color map (`
 **Pattern:** `placeholder`
 **Fix kind:** `remap_placeholder`
 
-A content placeholder ID from the input was resolved to a different placeholder on the layout. This happens when the chosen layout does not declare the requested placeholder (e.g. a `section` layout has no `subtitle` placeholder, so `subtitle` content is remapped onto `body`). The remapping is non-destructive — the content still renders — but agents should consider authoring the resolved ID directly to avoid the implicit rewrite.
+A content placeholder ID from the input was resolved to a different usable placeholder on the layout. The remapping is non-destructive — the content still renders — but agents should consider authoring the resolved ID directly to avoid the implicit rewrite. Section dividers are not a safe example: their body slots may contain decorative section numbers, so a `subtitle` without a real subtitle placeholder is rejected rather than remapped.
 
 Emitted both pre-flight (from `preview_presentation_plan` / `generate_presentation` with `fit_report: true`) and at render time. The pre-flight emission walks every placeholder whose `resolved_id` differs from its `input_id`; the render-time emission fires when the generator's semantic-tier fallback resolves a virtual placeholder ID (today: `subtitle` → body-class placeholder).
 
@@ -1486,12 +1486,12 @@ Emitted both pre-flight (from `preview_presentation_plan` / `generate_presentati
   "pattern": "placeholder",
   "path": "/slides/2/content/0/placeholder_id",
   "code": "placeholder_remapped",
-  "message": "slide 3: placeholder \"subtitle\" remapped to \"body\" for layout \"section\"",
+  "message": "slide 3: placeholder \"subtitle\" remapped to \"body_2\" for layout \"two-column\"",
   "fix": {
     "kind": "remap_placeholder",
     "params": {
       "from": "subtitle",
-      "to": "body"
+      "to": "body_2"
     }
   },
   "action": "info"

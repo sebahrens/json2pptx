@@ -14,6 +14,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/tokens"
+	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
@@ -498,6 +499,11 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 		}
 
 		shapeIdx, tier, found := resolver.ResolveWithFallback(item.PlaceholderID)
+		if item.PlaceholderID == "subtitle" && ctx.sectionWithoutSubtitle(layoutID, slide) {
+			// Section body placeholders often hold decorative numbers. Bypassing
+			// validate_input must not allow semantic fallback to overwrite one.
+			found = false
+		}
 		if !found {
 			available := resolver.Keys()
 			slog.Warn("placeholder not found in layout",
@@ -567,6 +573,23 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 	alignSiblingBodyColumns(slide, content, layoutID)
 
 	return warnings
+}
+
+func (ctx *singlePassContext) sectionWithoutSubtitle(layoutID string, slide *slideXML) bool {
+	layout := ctx.profile.Layout(layoutID)
+	isSection := template.EffectiveCanonicalType(layout) == types.CanonicalLayoutSectionDivider || strings.EqualFold(layoutID, "section")
+	for i := range slide.CommonSlideData.ShapeTree.Shapes {
+		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
+		// A direct generator call may have no profile; the decorative number
+		// shape still identifies the unsafe body fallback.
+		if strings.EqualFold(shape.NonVisualProperties.ConnectionNonVisual.Name, "Section Number") {
+			isSection = true
+		}
+		if classifyShapeRole(shape) == RoleSubtitle {
+			return false
+		}
+	}
+	return isSection
 }
 
 // eyebrowFontSize keeps the eyebrow subordinate to the title-slide subtitle
@@ -775,7 +798,7 @@ func (ctx *singlePassContext) emitPlaceholderNotFound(placeholderID, layoutID st
 		Kind:   "use_one_of",
 		Params: map[string]any{"available": FormatAvailableIDs(available)},
 	}
-	if match, _ := ClosestMatch(placeholderID, available, 3); match != "" {
+	if match, _ := ClosestMatch(placeholderID, available, 3); match != "" && placeholderID != "subtitle" {
 		fix.Params["did_you_mean"] = match
 	}
 

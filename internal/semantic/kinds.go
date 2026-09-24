@@ -96,7 +96,6 @@ var slideKindRegistry = map[SlideKind]KindInfo{
 		Kind:           KindSection,
 		Summary:        "Section divider introducing the next group of slides.",
 		RequiredFields: []string{"title"},
-		TypicalFields:  []string{"subtitle"},
 	},
 	KindExecutiveSummary: {
 		Kind:           KindExecutiveSummary,

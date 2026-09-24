@@ -232,6 +232,13 @@ func TestPlaceholderNotFoundError(t *testing.T) {
 				"available placeholders:",
 			},
 		},
+		{
+			name:          "missing subtitle has actionable explanation",
+			placeholderID: "subtitle",
+			layoutID:      "section",
+			available:     []string{"title", "Section Number"},
+			wantContain:   []string{"no exact subtitle slot", "shape_grid", "decorative numbers"},
+		},
 	}
 
 	for _, tt := range tests {

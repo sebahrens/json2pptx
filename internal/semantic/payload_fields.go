@@ -173,8 +173,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"eyebrow":  strField("Small kicker text above the title."),
 	}, universalFields()),
 	KindSection: withFields(map[string]payloadField{
-		"title":    strField("Section name."),
-		"subtitle": strField("Optional subtitle (not rendered on shipped section layouts)."),
+		"title": strField("Section name. For supporting copy, use a content slide: section layouts reserve body slots for decorative numbering."),
 	}, universalFields()),
 	KindExecutiveSummary: withFields(map[string]payloadField{
 		"title": strField("Slide title."),
@@ -480,8 +479,7 @@ func validateUnknownFields(path string, slide SlideSpec, s *semDiags) {
 	for _, key := range sortedKeys(slide.Body) {
 		f, ok := fields[key]
 		if !ok {
-			s.unknownField(path+"."+key, key, known,
-				fmt.Sprintf("%s slide", slide.Kind))
+			s.unknownSlideField(path, slide.Kind, key, known)
 			continue
 		}
 		v := slide.Body[key]
@@ -510,6 +508,21 @@ func validateUnknownFields(path string, slide SlideSpec, s *semDiags) {
 			}
 		}
 	}
+}
+
+func (s *semDiags) unknownSlideField(path string, kind SlideKind, key string, known []string) {
+	if kind == KindSection && key == "subtitle" {
+		sev := diagnostics.SeverityWarning
+		if s.strict == StrictnessStrict {
+			sev = diagnostics.SeverityError
+		}
+		s.out = append(s.out, diagnostics.Diagnostic{
+			Code: diagnostics.CodeSemanticUnknownField, Path: path + ".subtitle", Severity: sev,
+			Message: "section.subtitle is unsupported and its content is DROPPED: section body slots may hold decorative numbers; use a content slide or a raw shape_grid text box",
+		})
+		return
+	}
+	s.unknownField(path+"."+key, key, known, fmt.Sprintf("%s slide", kind))
 }
 
 // unknownField appends a SEMANTIC_UNKNOWN_FIELD finding for a key the compiler

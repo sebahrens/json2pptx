@@ -156,6 +156,9 @@ func CanonicalLayoutNotFoundError(name string, available []string) string {
 // It lists available placeholders in the layout and suggests the closest match if within distance 3.
 func PlaceholderNotFoundError(placeholderID string, layoutID string, availablePlaceholders []string) string {
 	msg := fmt.Sprintf("placeholder_id %q not found in layout %q", placeholderID, layoutID)
+	if placeholderID == "subtitle" {
+		return msg + "; no exact subtitle slot is available; use a layout with a subtitle or place supporting text in shape_grid (section body slots may hold decorative numbers)"
+	}
 
 	if len(availablePlaceholders) > 0 {
 		msg += fmt.Sprintf("; available placeholders: %s", FormatAvailableIDs(availablePlaceholders))

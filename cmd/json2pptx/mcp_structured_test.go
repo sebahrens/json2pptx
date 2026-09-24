@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -734,6 +735,7 @@ func TestHandleValidate_SlideLevelDiagnostics(t *testing.T) {
 		deck     string
 		wantCode string
 		wantPath string
+		wantText string
 	}{
 		{
 			name:     "unknown_layout_id",
@@ -746,6 +748,13 @@ func TestHandleValidate_SlideLevelDiagnostics(t *testing.T) {
 			deck:     `{"template":"midnight-blue","slides":[{"layout_id":"slideLayout2","content":[{"placeholder_id":"definitely_not_here","type":"text","text_value":"Hi"}]}]}`,
 			wantCode: "placeholder_not_found",
 			wantPath: "/slides/0/content/0/placeholder_id",
+		},
+		{
+			name:     "section_subtitle_has_no_slot",
+			deck:     `{"template":"midnight-blue","slides":[{"layout_id":"section","slide_type":"section","content":[{"placeholder_id":"subtitle","type":"text","text_value":"Supporting copy"}]}]}`,
+			wantCode: "placeholder_not_found",
+			wantPath: "/slides/0/content/0/placeholder_id",
+			wantText: "shape_grid",
 		},
 		{
 			name:     "missing_layout_id_and_slide_type",
@@ -795,6 +804,14 @@ func TestHandleValidate_SlideLevelDiagnostics(t *testing.T) {
 			}
 			if d.Severity != diagnostics.SeverityError {
 				t.Errorf("diagnostic severity: got %q, want error", d.Severity)
+			}
+			if tc.wantText != "" && !strings.Contains(d.Message, tc.wantText) {
+				t.Errorf("diagnostic message %q missing %q", d.Message, tc.wantText)
+			}
+			if tc.name == "section_subtitle_has_no_slot" {
+				if strings.Contains(d.Message, "did you mean") || d.Fix != nil && d.Fix.Params["did_you_mean"] != nil {
+					t.Errorf("section subtitle has misleading replacement: %+v", d)
+				}
 			}
 		})
 	}

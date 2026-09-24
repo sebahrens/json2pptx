@@ -28,6 +28,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Honest section subtitle contract (`go-slide-creator-v8udd`,
+  `go-slide-creator-8dmo0`).** Section dividers expose only `title` as authored
+  placeholder text; their body slots may be decorative section numbers.
+  `section.subtitle` is no longer advertised by the semantic schema or
+  `list_slide_kinds` and now produces `SEMANTIC_UNKNOWN_FIELD` instead of being
+  silently dropped. Raw slides targeting a missing `subtitle` get an actionable
+  `placeholder_not_found` explanation without a misleading `title` suggestion.
+
 - **2026-09-24 — Measured pattern ink occupancy (`go-slide-creator-b23g7`).**
   `expand_pattern` and `expand_patterns` now report `occupancy.ink_height_pct`
   alongside slot-based `filled_pct`. Text uses wrapped paragraph height and

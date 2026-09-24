@@ -598,7 +598,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 						Kind:   "use_one_of",
 						Params: map[string]any{"available": generator.FormatAvailableIDs(available)},
 					}
-					if match, _ := generator.ClosestMatch(item.PlaceholderID, available, 3); match != "" {
+					if match, _ := generator.ClosestMatch(item.PlaceholderID, available, 3); match != "" && item.PlaceholderID != "subtitle" {
 						fix.Params["did_you_mean"] = match
 					}
 					ve := &patterns.ValidationError{
