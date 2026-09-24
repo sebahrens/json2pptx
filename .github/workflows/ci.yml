@@ -279,24 +279,23 @@ jobs:
 
       - name: Run audit-palette smoke check
         run: |
-          # Threshold matches the parity test: drift between adjacent native
-          # shapes and embedded svggen pics should be near-zero on a freshly
-          # rendered deck. ΔE ≤ 2 is the same bar the parity test enforces.
-          ./bin/json2pptx audit-palette -format text -max-delta-e 2.0 ./smoke/*.pptx
-
-      - name: Run audit-palette JSON output sanity check
-        run: |
-          # Capture machine-readable output and assert at least one (pic, shape)
-          # pair was scored. Empty pair lists would silently hide drift.
-          ./bin/json2pptx audit-palette -format json -max-delta-e 2.0 \
+          # Score both the legacy pair check and the theme-reference check in
+          # one render. A zero-match report is not evidence of palette parity.
+          ./bin/json2pptx audit-palette -mode both -format json -max-delta-e 2.0 -max-theme-delta-e 15.0 \
             -output ./smoke/audit.json ./smoke/*.pptx > /dev/null
           PAIRS=$(jq '[.slides[].pair_count] | add' ./smoke/audit.json)
+          MATCHES=$(jq '[.slides[].theme_match_count] | add' ./smoke/audit.json)
           if [ "$PAIRS" -lt 1 ]; then
             echo "::error::audit-palette produced 0 (pic, shape) pairs — smoke deck regressed"
             cat ./smoke/audit.json
             exit 1
           fi
-          echo "audit-palette: $PAIRS pair(s) scored, all within ΔE threshold"
+          if [ "$MATCHES" -lt 1 ]; then
+            echo "::error::audit-palette produced 0 theme matches — smoke deck regressed"
+            cat ./smoke/audit.json
+            exit 1
+          fi
+          echo "audit-palette: $PAIRS pair(s), $MATCHES theme color(s) scored within ΔE thresholds"
 
       - name: Upload artifacts on failure
         if: failure()

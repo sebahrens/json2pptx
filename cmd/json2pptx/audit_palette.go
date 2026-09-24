@@ -21,21 +21,18 @@ import (
 //
 // The command renders a PPTX to PNG (through internal/render, which resolves
 // libreoffice or soffice and rasterises with ImageMagick) and, for each
-// slide, samples the dominant non-background color inside every <p:pic> region
-// (typically svggen-rendered chart/diagram bitmaps) and every <p:sp> region
-// whose <p:spPr> declares an explicit <a:solidFill>. It then computes the
-// CIE76 ΔE between every (pic, shape) pair on the slide.
-//
-// This is the deterministic palette-diff that the Visual-QA agent cannot do:
-// it catches silent drift where a native shape fill diverges from a chart
-// embedded next to it, even when both came from the "same" template palette.
+// slide, samples dominant chromatic colors inside every <p:pic> region and
+// compares them against theme accents and their standard tints. The legacy
+// (pic, shape) comparison remains available as an opt-in mode.
 //
 // Acceptance: AC1 emits ΔE per pair; AC2 — see .github/workflows/ci.yml
 // `palette-parity` job, which now also runs this command against a smoke deck.
 func runAuditPalette() error {
 	fs := flag.NewFlagSet("audit-palette", flag.ContinueOnError)
 	format := fs.String("format", "json", "Output format: json|text")
+	mode := fs.String("mode", "theme", "Palette comparison: theme|pair|both (default theme)")
 	maxDelta := fs.Float64("max-delta-e", 5.0, "Maximum allowed CIE76 ΔE for a (pic, shape) pair before the command exits non-zero")
+	maxThemeDelta := fs.Float64("max-theme-delta-e", defaultThemeDeltaE, "Maximum allowed CIE76 ΔE from the nearest theme accent/tint")
 	chromaMin := fs.Int("chroma-min", 25, "Minimum chroma (max-min channel) for a pixel to count toward the dominant color; filters white/black/gray chrome")
 	density := fs.Int("density", 150, "DPI for rasterization")
 	outputPath := fs.String("output", "", "Write JSON/text report to this file in addition to stdout")
@@ -44,10 +41,10 @@ func runAuditPalette() error {
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx audit-palette <pptx> [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Render a PPTX to PNG and report CIE76 ΔE between every embedded\n")
-		fmt.Fprintf(os.Stderr, "chart/picture region and every native solid-filled shape region per slide.\n\n")
+		fmt.Fprintf(os.Stderr, "Render a PPTX to PNG and compare picture chromas with theme accents/tints.\n")
+		fmt.Fprintf(os.Stderr, "Use -mode pair for the legacy picture-to-shape comparison.\n\n")
 		fmt.Fprintf(os.Stderr, "Requires the render toolchain: `libreoffice` or `soffice`, plus `magick`.\n\n")
-		fmt.Fprintf(os.Stderr, "Exit code is non-zero when any pair exceeds --max-delta-e.\n\n")
+		fmt.Fprintf(os.Stderr, "Exit code is non-zero when any selected comparison exceeds its threshold.\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		printDoubleDashUsage(fs)
 	}
@@ -64,13 +61,21 @@ func runAuditPalette() error {
 	if uint8Overflows(*chromaMin) {
 		return fmt.Errorf("chroma-min must be in 0..255 (got %d)", *chromaMin)
 	}
+	if !validAuditMode(*mode) {
+		return fmt.Errorf("mode must be theme, pair, or both (got %q)", *mode)
+	}
+	if *maxThemeDelta < 0 || math.IsNaN(*maxThemeDelta) || math.IsInf(*maxThemeDelta, 0) {
+		return fmt.Errorf("max-theme-delta-e must be finite and non-negative")
+	}
 
 	report, err := auditPalettePPTX(pptxPath, auditOptions{
-		MaxDeltaE: *maxDelta,
-		ChromaMin: uint8(*chromaMin),
-		Density:   *density,
-		TmpDir:    *tmpDirFlag,
-		Keep:      *keep,
+		Mode:           *mode,
+		MaxDeltaE:      *maxDelta,
+		MaxThemeDeltaE: *maxThemeDelta,
+		ChromaMin:      uint8(*chromaMin),
+		Density:        *density,
+		TmpDir:         *tmpDirFlag,
+		Keep:           *keep,
 	})
 	if err != nil {
 		return err
@@ -81,7 +86,7 @@ func runAuditPalette() error {
 	}
 
 	if report.Violations > 0 {
-		return fmt.Errorf("palette audit: %d pair(s) exceeded ΔE threshold %.3f", report.Violations, *maxDelta)
+		return fmt.Errorf("palette audit: %d color comparison(s) exceeded ΔE threshold", report.Violations)
 	}
 	return nil
 }
@@ -91,11 +96,13 @@ func uint8Overflows(v int) bool { return v < 0 || v > 255 }
 // --- Report shape -----------------------------------------------------------
 
 type auditOptions struct {
-	MaxDeltaE float64
-	ChromaMin uint8
-	Density   int
-	TmpDir    string
-	Keep      bool
+	Mode           string
+	MaxDeltaE      float64
+	MaxThemeDeltaE float64
+	ChromaMin      uint8
+	Density        int
+	TmpDir         string
+	Keep           bool
 }
 
 type auditRegion struct {
@@ -122,28 +129,46 @@ type auditPair struct {
 }
 
 type auditSlide struct {
-	Index       int         `json:"index"` // 1-based
-	PicCount    int         `json:"pic_count"`
-	ShapeCount  int         `json:"shape_count"`
-	PairCount   int         `json:"pair_count"`
-	MaxDeltaE   float64     `json:"max_delta_e"`
-	Pairs       []auditPair `json:"pairs"`
-	RenderImage string      `json:"render_image,omitempty"`
+	Index           int               `json:"index"` // 1-based
+	PicCount        int               `json:"pic_count"`
+	ShapeCount      int               `json:"shape_count"`
+	PairCount       int               `json:"pair_count"`
+	MaxDeltaE       float64           `json:"max_delta_e"`
+	Pairs           []auditPair       `json:"pairs"`
+	ThemeMatches    []auditThemeMatch `json:"theme_matches"`
+	ThemeMatchCount int               `json:"theme_match_count"`
+	MaxThemeDeltaE  float64           `json:"max_theme_delta_e"`
+	RenderImage     string            `json:"render_image,omitempty"`
 }
 
 type auditReport struct {
-	PPTX             string       `json:"pptx"`
-	SlideCount       int          `json:"slide_count"`
-	MaxDeltaEAllowed float64      `json:"max_delta_e_allowed"`
-	ChromaMin        uint8        `json:"chroma_min"`
-	Density          int          `json:"density"`
-	Slides           []auditSlide `json:"slides"`
-	Violations       int          `json:"violations"`
+	PPTX                  string       `json:"pptx"`
+	Mode                  string       `json:"mode"`
+	SlideCount            int          `json:"slide_count"`
+	MaxDeltaEAllowed      float64      `json:"max_delta_e_allowed"`
+	MaxThemeDeltaEAllowed float64      `json:"max_theme_delta_e_allowed"`
+	ChromaMin             uint8        `json:"chroma_min"`
+	Density               int          `json:"density"`
+	Slides                []auditSlide `json:"slides"`
+	Violations            int          `json:"violations"`
+	PairViolations        int          `json:"pair_violations"`
+	ThemeViolations       int          `json:"theme_violations"`
 }
 
 // --- Top-level driver -------------------------------------------------------
 
 func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) { //nolint:gocognit,gocyclo
+	mode := opts.Mode
+	if mode == "" {
+		mode = "theme"
+	}
+	if !validAuditMode(mode) {
+		return nil, fmt.Errorf("invalid palette audit mode %q", mode)
+	}
+	opts.Mode = mode
+	if opts.MaxThemeDeltaE < 0 || math.IsNaN(opts.MaxThemeDeltaE) || math.IsInf(opts.MaxThemeDeltaE, 0) {
+		return nil, fmt.Errorf("max-theme-delta-e must be finite and non-negative")
+	}
 	abs, err := filepath.Abs(pptxPath)
 	if err != nil {
 		return nil, fmt.Errorf("resolve pptx path: %w", err)
@@ -167,6 +192,13 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 		return nil, fmt.Errorf("open pptx: %w", err)
 	}
 	defer closer.Close()
+	var themeColors []auditThemeColor
+	if mode != "pair" {
+		themeColors, err = readAuditThemeColors(pkg)
+		if err != nil {
+			return nil, fmt.Errorf("theme reference: %w", err)
+		}
+	}
 
 	slideCX, slideCY, err := readSlideDimensionsEMU(pkg)
 	if err != nil {
@@ -235,11 +267,13 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 	}
 
 	report := &auditReport{
-		PPTX:             abs,
-		SlideCount:       len(allSlides),
-		MaxDeltaEAllowed: opts.MaxDeltaE,
-		ChromaMin:        opts.ChromaMin,
-		Density:          opts.Density,
+		PPTX:                  abs,
+		Mode:                  mode,
+		SlideCount:            len(allSlides),
+		MaxDeltaEAllowed:      opts.MaxDeltaE,
+		MaxThemeDeltaEAllowed: opts.MaxThemeDeltaE,
+		ChromaMin:             opts.ChromaMin,
+		Density:               opts.Density,
 	}
 
 	for i, sr := range allSlides {
@@ -257,40 +291,55 @@ func auditPalettePPTX(pptxPath string, opts auditOptions) (*auditReport, error) 
 		picRegions := samplePaletteRegions(img, sr.pics, slideCX, slideCY, imgW, imgH, opts.ChromaMin, "pic")
 		shapeRegions := samplePaletteRegions(img, sr.shapes, slideCX, slideCY, imgW, imgH, opts.ChromaMin, "shape")
 
-		slide := auditSlide{
-			Index:       sr.index,
-			PicCount:    len(picRegions),
-			ShapeCount:  len(shapeRegions),
-			RenderImage: pngs[i],
-		}
+		slide, pairViolations, themeViolations := scoreAuditSlide(img, sr.index, picRegions, shapeRegions, themeColors, opts)
+		slide.RenderImage = pngs[i]
+		report.PairViolations += pairViolations
+		report.ThemeViolations += themeViolations
+		report.Violations += pairViolations + themeViolations
+		report.Slides = append(report.Slides, slide)
+	}
 
-		for _, p := range picRegions {
-			for _, s := range shapeRegions {
+	return report, nil
+}
+
+func scoreAuditSlide(img image.Image, index int, pics, shapes []auditRegion, themeColors []auditThemeColor, opts auditOptions) (auditSlide, int, int) {
+	slide := auditSlide{Index: index, PicCount: len(pics), ShapeCount: len(shapes)}
+	pairViolations, themeViolations := 0, 0
+	if opts.Mode != "pair" {
+		for _, p := range pics {
+			for _, chroma := range dominantChromasPx(img, p.BoundsPx, opts.ChromaMin) {
+				match := nearestAuditThemeColor(index, p, chroma, themeColors, opts.MaxThemeDeltaE)
+				slide.ThemeMatches = append(slide.ThemeMatches, match)
+				if !match.Pass {
+					themeViolations++
+				}
+				if match.DeltaE > slide.MaxThemeDeltaE {
+					slide.MaxThemeDeltaE = match.DeltaE
+				}
+			}
+		}
+	}
+	slide.ThemeMatchCount = len(slide.ThemeMatches)
+	if opts.Mode != "theme" {
+		for _, p := range pics {
+			for _, s := range shapes {
 				if p.PixelCount == 0 || s.PixelCount == 0 {
 					continue
 				}
 				dE := deltaE76Hex(p.R, p.G, p.B, s.R, s.G, s.B)
 				pass := dE <= opts.MaxDeltaE
-				slide.Pairs = append(slide.Pairs, auditPair{
-					Slide:  sr.index,
-					Pic:    p,
-					Shape:  s,
-					DeltaE: dE,
-					Pass:   pass,
-				})
+				slide.Pairs = append(slide.Pairs, auditPair{Slide: index, Pic: p, Shape: s, DeltaE: dE, Pass: pass})
 				if !pass {
-					report.Violations++
+					pairViolations++
 				}
 				if dE > slide.MaxDeltaE {
 					slide.MaxDeltaE = dE
 				}
 			}
 		}
-		slide.PairCount = len(slide.Pairs)
-		report.Slides = append(report.Slides, slide)
 	}
-
-	return report, nil
+	slide.PairCount = len(slide.Pairs)
+	return slide, pairViolations, themeViolations
 }
 
 // --- Output emission --------------------------------------------------------
@@ -323,18 +372,25 @@ func emitAuditReport(report *auditReport, format, outputPath string) error {
 func formatAuditText(r *auditReport) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Palette audit: %s\n", r.PPTX)
-	fmt.Fprintf(&b, "Slides: %d  threshold ΔE=%.3f  chroma-min=%d  density=%d\n", r.SlideCount, r.MaxDeltaEAllowed, r.ChromaMin, r.Density)
+	fmt.Fprintf(&b, "Slides: %d  mode=%s  pair threshold ΔE=%.3f  theme threshold ΔE=%.3f  chroma-min=%d  density=%d\n", r.SlideCount, r.Mode, r.MaxDeltaEAllowed, r.MaxThemeDeltaEAllowed, r.ChromaMin, r.Density)
 	if r.Violations == 0 {
 		fmt.Fprintln(&b, "Result: PASS")
 	} else {
 		fmt.Fprintf(&b, "Result: FAIL (%d violations)\n", r.Violations)
 	}
 	for _, s := range r.Slides {
-		fmt.Fprintf(&b, "  slide %d: %d pic / %d shape / %d pair", s.Index, s.PicCount, s.ShapeCount, s.PairCount)
+		fmt.Fprintf(&b, "  slide %d: %d pic / %d shape / %d pair / %d theme match", s.Index, s.PicCount, s.ShapeCount, s.PairCount, s.ThemeMatchCount)
 		if s.PairCount > 0 {
 			fmt.Fprintf(&b, "  maxΔE=%.3f", s.MaxDeltaE)
 		}
 		fmt.Fprintln(&b)
+		for _, m := range s.ThemeMatches {
+			mark := "✓"
+			if !m.Pass {
+				mark = "✗"
+			}
+			fmt.Fprintf(&b, "    %s ΔE=%.3f  pic[%s]=#%s  nearest=%s tint=%d #%s\n", mark, m.DeltaE, m.Pic.Name, m.Hex, m.NearestSchemeColor, m.NearestTint, m.NearestHex)
+		}
 		for _, p := range s.Pairs {
 			mark := "✓"
 			if !p.Pass {

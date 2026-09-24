@@ -28,6 +28,14 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Theme-reference palette audit (`go-slide-creator-kdlod`).**
+  `audit-palette` and MCP `audit_palette` now compare each picture's material
+  chromatic colors with `theme1.xml` accents and standard 20/40/60/80% tints
+  by default. Reports include `theme_matches`, `nearest_scheme_color`, tint,
+  ΔE, and separate theme/pair violation counts. The former picture-to-shape
+  check remains available with `mode=pair`; `mode=both` runs both in one render.
+  The theme threshold defaults to ΔE 15. No input-schema version change.
+
 - **2026-09-24 — Title eyebrow typography (`go-slide-creator-5w8ft`).**
   A title-slide eyebrow now follows its title placeholder's alignment instead
   of forcing left alignment. Its size tracks the subtitle at 70%, bounded to

@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
@@ -60,6 +63,40 @@ func TestHandleAuditPalette_BadChromaMin(t *testing.T) {
 	}
 	if res == nil || !res.IsError {
 		t.Fatal("expected IsError for chroma_min out of range")
+	}
+}
+
+func TestHandleAuditPalette_BadMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "deck.pptx")
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	res, err := handleAuditPalette(context.Background(), makeRequest(map[string]any{
+		"pptx_path": path,
+		"mode":      "shapes-only",
+	}))
+	if err != nil || res == nil || !res.IsError {
+		t.Fatalf("invalid mode must return a structured error: result=%+v err=%v", res, err)
+	}
+	if body := res.Content[0].(mcpgo.TextContent).Text; !strings.Contains(body, "mode must be theme, pair, or both") {
+		t.Fatalf("wrong error for invalid mode: %s", body)
+	}
+}
+
+func TestHandleAuditPalette_BadThemeThreshold(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "deck.pptx")
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	res, err := handleAuditPalette(context.Background(), makeRequest(map[string]any{
+		"pptx_path":         path,
+		"max_theme_delta_e": float64(-1),
+	}))
+	if err != nil || res == nil || !res.IsError {
+		t.Fatalf("negative theme threshold must return a structured error: result=%+v err=%v", res, err)
+	}
+	if body := res.Content[0].(mcpgo.TextContent).Text; !strings.Contains(body, "max_theme_delta_e must be between 0 and 1000") {
+		t.Fatalf("wrong error for invalid threshold: %s", body)
 	}
 }
 
@@ -123,6 +160,10 @@ func TestAuditPaletteTool_OutputSchemaValid(t *testing.T) {
 	schema := successSchemaBranch(t, tool.RawOutputSchema)
 	if schema["type"] != "object" {
 		t.Errorf("schema type = %v, want object", schema["type"])
+	}
+	properties, ok := schema["properties"].(map[string]any)
+	if !ok || properties["mode"] == nil || properties["theme_violations"] == nil {
+		t.Fatalf("schema must expose theme-reference mode and violation count: %+v", properties)
 	}
 }
 

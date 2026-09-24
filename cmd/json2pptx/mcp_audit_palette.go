@@ -25,19 +25,26 @@ import (
 
 func mcpAuditPaletteTool() mcp.Tool {
 	return mcp.NewTool("audit_palette",
-		mcp.WithDescription(`Render a PPTX to PNG and report the CIE76 ΔE between every embedded chart/picture region and every native solid-filled shape region on each slide. This is the deterministic palette-diff the vision QA agent cannot do: it catches silent drift where a native shape fill diverges from a chart embedded next to it, even when both came from the "same" template palette.
+		mcp.WithDescription(`Render a PPTX to PNG and compare every embedded chart/picture's dominant chromas with theme1.xml accents and standard tints (default mode). Pair mode compares chart/picture regions with native solid-filled shapes and is opt-in; both runs both comparisons.
 
-Requires libreoffice + pdftoppm on PATH; returns AUDIT_FAILED when either is missing. Render artifacts are written only to an auto-removed temp directory — there is no parameter to redirect output to disk.
+Requires libreoffice/soffice and ImageMagick on PATH. Render artifacts are written only to an auto-removed temp directory — there is no parameter to redirect output to disk.
 
-Response shape: the full audit report (pptx, slide_count, violations, per-slide pic/shape regions and (pic, shape) pairs with delta_e + pass) promoted to the top level, plus a "findings" FindingEnvelope where each pair that exceeds max_delta_e becomes one RENDER.palette_drift error finding. Branch on findings.ok: it is false (and violations > 0) when any pair drifts past the threshold.`),
+Response shape: the full audit report (pptx, slide_count, violations, per-slide theme_matches and optional pairs with delta_e + pass) promoted to the top level, plus a "findings" FindingEnvelope where each failed comparison becomes one RENDER.palette_drift error finding. Branch on findings.ok: it is false when violations > 0.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaAuditPalette)),
 		mcp.WithString("pptx_path",
 			mcp.Required(),
 			mcp.Description("Path to the PPTX file to audit. Must be an absolute or relative .pptx path with no traversal segments."),
 		),
+		mcp.WithString("mode",
+			mcp.Description("Comparison mode: theme (default), pair, or both."),
+		),
 		mcp.WithNumber("max_delta_e",
 			mcp.Description("Maximum allowed CIE76 ΔE for a (pic, shape) pair before it is counted as a violation. Default: 5.0."),
 			mcp.DefaultNumber(5.0),
+		),
+		mcp.WithNumber("max_theme_delta_e",
+			mcp.Description("Maximum allowed CIE76 ΔE from the nearest theme accent/tint. Default: 15.0."),
+			mcp.DefaultNumber(defaultThemeDeltaE),
 		),
 		mcp.WithNumber("chroma_min",
 			mcp.Description("Minimum chroma (max-min channel, 0..255) for a pixel to count toward the dominant color; filters white/black/gray chrome. Default: 25."),
@@ -81,6 +88,22 @@ func handleAuditPalette(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 	if v, ok := request.GetArguments()["max_delta_e"].(float64); ok {
 		maxDelta = v
 	}
+	mode := "theme"
+	if v, ok := request.GetArguments()["mode"].(string); ok {
+		mode = v
+	}
+	if !validAuditMode(mode) {
+		return argInvalidValue("audit_palette", "INVALID_PARAMETER", "mode",
+			fmt.Sprintf("mode must be theme, pair, or both (got %q)", mode), "string", "theme", nil), nil
+	}
+	maxThemeDelta := defaultThemeDeltaE
+	if v, ok := request.GetArguments()["max_theme_delta_e"].(float64); ok {
+		maxThemeDelta = v
+	}
+	if maxThemeDelta < 0 || maxThemeDelta > 1000 {
+		return argInvalidValue("audit_palette", "INVALID_PARAMETER", "max_theme_delta_e",
+			"max_theme_delta_e must be between 0 and 1000", "number", defaultThemeDeltaE, nil), nil
+	}
 	chromaMin := 25
 	if v, ok := request.GetArguments()["chroma_min"].(float64); ok {
 		chromaMin = int(v)
@@ -102,11 +125,13 @@ func handleAuditPalette(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 	// remove it (and every render artifact) before returning — the MCP tool
 	// never writes to an agent-controlled path.
 	report, auditErr := auditPalettePPTX(pptxPath, auditOptions{
-		MaxDeltaE: maxDelta,
-		ChromaMin: uint8(chromaMin),
-		Density:   density,
-		TmpDir:    "",
-		Keep:      false,
+		Mode:           mode,
+		MaxDeltaE:      maxDelta,
+		MaxThemeDeltaE: maxThemeDelta,
+		ChromaMin:      uint8(chromaMin),
+		Density:        density,
+		TmpDir:         "",
+		Keep:           false,
 	})
 	if auditErr != nil {
 		// The audit's failure modes — missing libreoffice/pdftoppm, PPTX open,
@@ -145,6 +170,23 @@ func diagnosticsFromAuditReport(report *auditReport) []diagnostics.Diagnostic {
 	}
 	var ds []diagnostics.Diagnostic
 	for _, s := range report.Slides {
+		for _, m := range s.ThemeMatches {
+			if m.Pass {
+				continue
+			}
+			ds = append(ds, diagnostics.Diagnostic{
+				Code:     diagnostics.DottedCode(diagnostics.NamespaceRender, "palette_drift"),
+				Severity: diagnostics.SeverityError,
+				Path:     fmt.Sprintf("slides[%d]", m.Slide-1),
+				Message: fmt.Sprintf("palette drift on slide %d: pic %q color #%s is ΔE=%.3f from nearest theme %s tint %d (#%s), exceeding %.3f",
+					m.Slide, m.Pic.Name, m.Hex, m.DeltaE, m.NearestSchemeColor, m.NearestTint, m.NearestHex, report.MaxThemeDeltaEAllowed),
+				Details: map[string]any{
+					"slide": m.Slide, "delta_e": m.DeltaE, "threshold": report.MaxThemeDeltaEAllowed,
+					"pic_name": m.Pic.Name, "pic_hex": m.Hex, "pixel_count": m.PixelCount,
+					"nearest_scheme_color": m.NearestSchemeColor, "nearest_tint": m.NearestTint, "nearest_hex": m.NearestHex,
+				},
+			})
+		}
 		for _, p := range s.Pairs {
 			if p.Pass {
 				continue

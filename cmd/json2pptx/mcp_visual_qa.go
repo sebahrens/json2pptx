@@ -521,11 +521,12 @@ func (mc *mcpConfig) inspectVisualQA(ctx context.Context, images []visualqa.Slid
 // tooling is missing.
 func runVisualQAPaletteAudit(outputPath string) *visualQAPaletteAudit {
 	report, err := auditPalettePPTX(outputPath, auditOptions{
-		MaxDeltaE: 5.0,
-		ChromaMin: 25,
-		Density:   150,
-		TmpDir:    "",
-		Keep:      false,
+		MaxDeltaE:      5.0,
+		MaxThemeDeltaE: defaultThemeDeltaE,
+		ChromaMin:      25,
+		Density:        150,
+		TmpDir:         "",
+		Keep:           false,
 	})
 	if err != nil {
 		return &visualQAPaletteAudit{

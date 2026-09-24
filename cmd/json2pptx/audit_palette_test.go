@@ -192,6 +192,7 @@ func TestRunAuditPalette_EndToEnd(t *testing.T) {
 	}
 
 	report, err := auditPalettePPTX(matches[0], auditOptions{
+		Mode:      "pair",
 		MaxDeltaE: 5.0,
 		ChromaMin: 25,
 		Density:   150,

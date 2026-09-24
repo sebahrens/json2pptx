@@ -2294,18 +2294,23 @@ var outputSchemaProposeRepairs = json.RawMessage(`{
 }`)
 
 // --- audit_palette ---
-// region describes one sampled pic/shape rectangle; pair is a (pic, shape) ΔE
-// comparison. findings projects every threshold violation into the shared
+// region describes one sampled pic/shape rectangle; theme_matches compare
+// material picture chromas against theme accents and tints. Pair comparison is
+// opt-in. findings projects every threshold violation into the shared
 // FindingEnvelope so agents can branch on findings.ok.
 var outputSchemaAuditPalette = json.RawMessage(`{
   "type": "object",
   "properties": {
     "pptx":                {"type": "string"},
+    "mode":                {"type": "string", "enum": ["theme", "pair", "both"]},
     "slide_count":         {"type": "integer"},
     "max_delta_e_allowed": {"type": "number", "description": "ΔE threshold a (pic, shape) pair must not exceed."},
+    "max_theme_delta_e_allowed": {"type": "number", "description": "ΔE threshold a picture chroma must not exceed from its nearest theme accent or tint."},
     "chroma_min":          {"type": "integer"},
     "density":             {"type": "integer"},
-    "violations":          {"type": "integer", "description": "Number of (pic, shape) pairs whose ΔE exceeded the threshold across all slides."},
+    "violations":          {"type": "integer", "description": "Number of selected comparisons whose ΔE exceeded their threshold across all slides."},
+    "pair_violations":     {"type": "integer"},
+    "theme_violations":    {"type": "integer"},
     "slides": {
       "type": "array",
       "items": {
@@ -2316,6 +2321,26 @@ var outputSchemaAuditPalette = json.RawMessage(`{
           "shape_count": {"type": "integer"},
           "pair_count":  {"type": "integer"},
           "max_delta_e": {"type": "number", "description": "Largest ΔE among this slide's pairs."},
+          "theme_match_count": {"type": "integer"},
+          "max_theme_delta_e": {"type": "number"},
+          "theme_matches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slide": {"type": "integer"},
+                "pic": {"$ref": "#/$defs/audit_region"},
+                "hex": {"type": "string"},
+                "pixel_count": {"type": "integer"},
+                "nearest_scheme_color": {"type": "string"},
+                "nearest_tint": {"type": "integer"},
+                "nearest_hex": {"type": "string"},
+                "delta_e": {"type": "number"},
+                "pass": {"type": "boolean"}
+              },
+              "required": ["slide", "pic", "hex", "pixel_count", "nearest_scheme_color", "nearest_tint", "nearest_hex", "delta_e", "pass"]
+            }
+          },
           "pairs": {
             "type": "array",
             "items": {
