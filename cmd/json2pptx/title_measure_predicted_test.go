@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -69,6 +70,31 @@ func TestTitleFitMeasuredWithoutLayoutID(t *testing.T) {
 	if strings.Join(byID, ",") != strings.Join(byType, ",") {
 		t.Errorf("layout_id gives %v but slide_type gives %v — the two paths disagree", byID, byType)
 	}
+}
+
+func TestCollectTitleFitFindingsIgnoresComfortableTwoLineTitle(t *testing.T) {
+	const width = int64(7772400)
+	layouts := []types.LayoutMetadata{{ID: "slideLayout1", Name: "Title Slide", Placeholders: []types.PlaceholderInfo{{
+		ID: "title", Type: types.PlaceholderTitle, FontSize: 3600, FontFamily: "Arial",
+		Bounds: types.BoundingBox{Width: width, Height: 2 * 914400},
+	}}}}
+	for n := 1; n <= 30; n++ {
+		title := strings.Repeat("Revenue growth and margin expansion ", n)
+		measurement, err := textfit.MeasureRun(title, "Arial", 36, width, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if measurement.Lines != 2 {
+			continue
+		}
+		slide := SlideInput{LayoutID: "slideLayout1", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: &title}}}
+		findings, _ := collectTitleFitFindings(&PresentationInput{Slides: []SlideInput{slide}}, layouts)
+		if len(findings) != 0 {
+			t.Errorf("comfortable two-line title produced %+v", findings)
+		}
+		return
+	}
+	t.Fatal("test fixture could not produce a two-line title")
 }
 
 // TestQualityScoreUsesTheMeasuredTitleWithoutLayoutID pins the score half: the

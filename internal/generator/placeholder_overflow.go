@@ -134,11 +134,10 @@ type TitleWrapsInput struct {
 	MaxLines int
 }
 
-// DetectTitleWraps checks whether a title text wraps to more than one line
-// within its placeholder. Mild wrapping (2–MaxLines lines) uses action
-// "review" (informational). When the title exceeds MaxLines, the generator
-// will destructively truncate it, so the finding escalates to action
-// "shrink_or_split" with fix kind "shorten_title".
+// DetectTitleWraps reports three or more lines, or two lines in a one-line
+// title box. Two lines in a box tall enough for them are normal and produce no
+// finding. Wrapping beyond MaxLines escalates to "shrink_or_split" because the
+// generator will destructively truncate it.
 //
 // Returns nil when the title fits on a single line or when measurement
 // is not possible.
@@ -183,9 +182,17 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 	if measuredEMU <= singleLineEMU {
 		return nil
 	}
+	// A two-line action title in a roomy title box is intentional, not a fit
+	// warning. Keep it when MaxLines explicitly limits the title to one line.
+	if mErr == nil && m.Lines == 2 && measuredEMU <= 2*singleLineEMU && maxLines >= 2 && input.HeightEMU >= 2*singleLineEMU {
+		return nil
+	}
 
 	// Determine whether the title merely wraps or exceeds the truncation cap.
-	action := "review"
+	action := "info"
+	if input.HeightEMU < measuredEMU {
+		action = "review"
+	}
 	fixKind := "shorten_title"
 	msg := fmt.Sprintf(
 		"title wraps to multiple lines (%.0fpt font, %.1f\" wide placeholder)",

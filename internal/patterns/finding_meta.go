@@ -376,9 +376,9 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeTitleWraps: {
 		Code:        ErrCodeTitleWraps,
-		Summary:     "Title text wraps to multiple lines inside its placeholder.",
-		Severity:    "review",
-		WhenEmitted: "Pre-flight measures the title's rendered height and finds it exceeds a single line at the resolved font size.",
+		Summary:     "Title needs more lines than the layout comfortably expects.",
+		Severity:    "info",
+		WhenEmitted: "Pre-flight finds three or more title lines, two lines in a one-line title box, or a measured title that needs a reduced comfort size. Two lines in a roomy box are silent.",
 		RemediationSteps: []string{
 			"Apply repair_slide(kind=shorten_title) to trim the title to fit one line.",
 			"Or accept the wrap if the title genuinely needs the additional words.",

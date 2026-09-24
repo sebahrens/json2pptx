@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // Placeholder dimensions for tests: 7.5" × 4.5" body placeholder.
@@ -229,6 +230,61 @@ func TestDetectTitleWraps_MultiLine(t *testing.T) {
 	}
 	if finding.Allowed == nil {
 		t.Error("Allowed extent should be non-nil")
+	}
+}
+
+func TestDetectTitleWraps_NormalTwoLineTitleIsSilent(t *testing.T) {
+	const width = int64(7772400)
+	var title string
+	for n := 1; n <= 30; n++ {
+		candidate := strings.Repeat("Revenue growth and margin expansion ", n)
+		measurement, err := textfit.MeasureRun(candidate, "Arial", 36, width, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if measurement.Lines == 2 {
+			title = candidate
+			break
+		}
+	}
+	if title == "" {
+		t.Fatal("test fixture could not produce a two-line title")
+	}
+	input := TitleWrapsInput{Title: title, WidthEMU: width, HeightEMU: 2 * testTitleHeightEMU, FontSizeHPt: 3600, FontName: "Arial"}
+	if finding := DetectTitleWraps(input); finding != nil {
+		t.Errorf("two lines in a two-line box are normal, got %+v", finding)
+	}
+	input.HeightEMU = testTitleHeightEMU
+	if finding := DetectTitleWraps(input); finding == nil || finding.Action != "review" {
+		t.Errorf("two lines in a one-line box require review, got %+v", finding)
+	}
+	input.HeightEMU = 2 * testTitleHeightEMU
+	input.MaxLines = 1
+	if finding := DetectTitleWraps(input); finding == nil || finding.Action != "shrink_or_split" {
+		t.Errorf("explicit one-line cap must still escalate, got %+v", finding)
+	}
+}
+
+func TestDetectTitleWraps_ThreeLinesRemainInformational(t *testing.T) {
+	const width = int64(7772400)
+	var title string
+	for n := 1; n <= 30; n++ {
+		candidate := strings.Repeat("Revenue growth and margin expansion ", n)
+		measurement, err := textfit.MeasureRun(candidate, "Arial", 36, width, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if measurement.Lines == 3 {
+			title = candidate
+			break
+		}
+	}
+	if title == "" {
+		t.Fatal("test fixture could not produce a three-line title")
+	}
+	finding := DetectTitleWraps(TitleWrapsInput{Title: title, WidthEMU: width, HeightEMU: 3 * testTitleHeightEMU, FontSizeHPt: 3600, FontName: "Arial"})
+	if finding == nil || finding.Action != "info" {
+		t.Errorf("three lines in a roomy title box should be informational, got %+v", finding)
 	}
 }
 
