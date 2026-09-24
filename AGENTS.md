@@ -16,6 +16,9 @@ make build-race
 # Run all tests
 go test ./... -v
 
+# CI-equivalent race suite (cmd/json2pptx can exceed Go's default 10m timeout)
+go test ./... -short -race -timeout=15m
+
 # Run tests with coverage
 go test ./... -cover -coverprofile=coverage.out -covermode=atomic
 
