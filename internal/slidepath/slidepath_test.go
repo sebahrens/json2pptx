@@ -81,3 +81,18 @@ func TestParseGridCell(t *testing.T) {
 		t.Error("ParseGridCell should return ok=false for non-grid-cell path")
 	}
 }
+
+func TestField(t *testing.T) {
+	base := "/slides/0/content/1/diagram_value"
+	for _, tc := range []struct{ field, want string }{
+		{"", base},
+		{"data.series[2].values", base + "/data/series/2/values"},
+		{"data.series[].values", base + "/data/series"},
+		{"data.a~b/c", base + "/data/a~0b~1c"},
+		{"data.series[bad].values", base + "/data/series"},
+	} {
+		if got := Field(base, tc.field); got != tc.want {
+			t.Errorf("Field(%q) = %q, want %q", tc.field, got, tc.want)
+		}
+	}
+}

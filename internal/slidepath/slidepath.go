@@ -83,6 +83,42 @@ func Join(prefix, suffix string) string {
 	return prefix + "/" + suffix
 }
 
+// Field appends an svggen-style dotted/bracket field reference as JSON Pointer
+// segments. An unindexed array wildcard (series[]) identifies only the array,
+// so the result stops there rather than inventing an unaddressable element.
+func Field(prefix, field string) string {
+	if field == "" {
+		return prefix
+	}
+	path := prefix
+	for i := 0; i < len(field); {
+		if field[i] == '.' {
+			i++
+			continue
+		}
+		if field[i] == '[' {
+			end := strings.IndexByte(field[i:], ']')
+			if end <= 1 {
+				return path
+			}
+			index := field[i+1 : i+end]
+			if _, err := strconv.Atoi(index); err != nil {
+				return path
+			}
+			path += "/" + index
+			i += end + 1
+			continue
+		}
+		start := i
+		for i < len(field) && field[i] != '.' && field[i] != '[' {
+			i++
+		}
+		token := strings.ReplaceAll(strings.ReplaceAll(field[start:i], "~", "~0"), "/", "~1")
+		path += "/" + token
+	}
+	return path
+}
+
 // SlideIndex extracts the slide index from a JSON Pointer path.
 // Returns -1 if the path doesn't start with "/slides/{N}".
 func SlideIndex(path string) int {

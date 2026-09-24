@@ -1,7 +1,10 @@
 package generator
 
 import (
+	"strings"
+
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -19,16 +22,18 @@ func SvggenFindingsToFit(findings []svggen.Finding, diagramType, path string) []
 		return nil
 	}
 	out := make([]patterns.FitFinding, 0, len(findings))
+	chartType := isSVGChartType(diagramType)
 	for _, f := range findings {
-		fieldPath := path
-		if f.Field != "" {
-			fieldPath = path + "." + f.Field
+		fieldPath := slidepath.Field(path, f.Field)
+		code := f.Code
+		if strings.HasPrefix(code, "chart.") && !chartType {
+			code = "diagram." + strings.TrimPrefix(code, "chart.")
 		}
 		out = append(out, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
 				Pattern: diagramType,
 				Path:    fieldPath,
-				Code:    f.Code,
+				Code:    code,
 				Message: f.Message,
 				Fix:     svggenFixToFit(f.Fix),
 			},

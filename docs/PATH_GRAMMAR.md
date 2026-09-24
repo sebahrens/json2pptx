@@ -135,3 +135,4 @@ All path construction is centralized in `internal/slidepath/`. Available builder
 | `TableHeader(prefix, hi)` | `{prefix}/headers/{hi}` |
 | `TableCell(prefix, ri, ci)` | `{prefix}/rows/{ri}/{ci}` |
 | `Join(prefix, suffix)` | `{prefix}/{suffix}` |
+| `Field(prefix, field)` | Converts dotted/indexed svggen fields (e.g. `data.series[0].values`) into escaped JSON Pointer segments; an unindexed wildcard stops at its array |

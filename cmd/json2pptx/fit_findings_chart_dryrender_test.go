@@ -109,7 +109,7 @@ func TestDryRenderChartStyleUnresolvedColorFinding(t *testing.T) {
 		},
 	}
 	theme := []types.ThemeColor{{Name: "accent1", RGB: "#123456"}, {Name: "lt1", RGB: "#FFFFFF"}}
-	findings := dryRenderSpecToFindings(spec, theme, "", "warn", "slides[0].content[0].diagram_value")
+	findings := dryRenderSpecToFindings(spec, theme, "", "warn", "/slides/0/content/0/diagram_value")
 	var dropped []string
 	for _, finding := range findings {
 		if finding.Code == "CUSTOM_COLOR_DROPPED" {
@@ -119,22 +119,22 @@ func TestDryRenderChartStyleUnresolvedColorFinding(t *testing.T) {
 			dropped = append(dropped, finding.Path)
 		}
 	}
-	if len(dropped) != 2 || dropped[0] != "slides[0].content[0].diagram_value.style.colors[0]" || dropped[1] != "slides[0].content[0].diagram_value.style.background" {
+	if len(dropped) != 2 || dropped[0] != "/slides/0/content/0/diagram_value/style/colors/0" || dropped[1] != "/slides/0/content/0/diagram_value/style/background" {
 		t.Errorf("dropped color paths = %v", dropped)
 	}
 
 	spec.Style.Colors = []string{"accent1"}
 	spec.Style.Background = "lt1"
-	for _, finding := range dryRenderSpecToFindings(spec, theme, "", "warn", "valid") {
+	for _, finding := range dryRenderSpecToFindings(spec, theme, "", "warn", "/valid") {
 		if finding.Code == "CUSTOM_COLOR_DROPPED" {
 			t.Errorf("valid template color reported dropped: %+v", finding)
 		}
 	}
 	spec.Style.Colors = []string{"accent1", "accent1", "accent1", "accent1", "accent1", "accent1", "accent9"}
 	var seventhFound bool
-	for _, finding := range dryRenderSpecToFindings(spec, theme, "", "warn", "seven") {
+	for _, finding := range dryRenderSpecToFindings(spec, theme, "", "warn", "/seven") {
 		if finding.Code == "CUSTOM_COLOR_DROPPED" {
-			if finding.Path != "seven.style.colors[6]" {
+			if finding.Path != "/seven/style/colors/6" {
 				t.Errorf("unexpected seventh-color finding path: %+v", finding)
 			}
 			seventhFound = true
@@ -189,13 +189,13 @@ func TestCollectChartDryRenderFindings_CrowdedNominal(t *testing.T) {
 
 	var sawCrowding bool
 	for _, f := range findings {
-		if f.Code == "chart.tick_thinned" && strings.Contains(f.Path, "x_axis.labels") {
+		if f.Code == "chart.tick_thinned" && strings.Contains(f.Path, "/x_axis/labels") {
 			t.Errorf("nominal categories must not be thinned: %+v", f)
 		}
 		if f.Code == "chart.capacity_exceeded" {
 			sawCrowding = true
-			if !strings.Contains(f.Path, "slides[0].content[0].diagram_value") {
-				t.Errorf("capacity_exceeded path = %q; want prefix slides[0].content[0].diagram_value", f.Path)
+			if !strings.HasPrefix(f.Path, "/slides/0/content/0/diagram_value") {
+				t.Errorf("capacity_exceeded path = %q; want prefix /slides/0/content/0/diagram_value", f.Path)
 			}
 			if f.Action != "shrink_or_split" {
 				t.Errorf("capacity_exceeded action = %q, want shrink_or_split", f.Action)
@@ -287,7 +287,7 @@ func TestChartDryRenderUsesResolvedPlaceholderFrame(t *testing.T) {
 			if f.Action != "refuse" {
 				t.Errorf("lost Venn items action = %q, want refuse", f.Action)
 			}
-			if !strings.Contains(f.Path, "slides[0].content[0].diagram_value") {
+			if !strings.HasPrefix(f.Path, "/slides/0/content/0/diagram_value") {
 				t.Errorf("dropped-items path = %q", f.Path)
 			}
 		}
@@ -519,8 +519,8 @@ func TestDryRender_NativeDiagramGeometryFindings(t *testing.T) {
 	spec := &types.DiagramSpec{Type: "business_model_canvas", Data: map[string]any{
 		"key_partners": items, "key_activities": items, "value_propositions": items,
 	}}
-	got := dryRenderSpecToFindings(spec, nil, "Arial", "warn", "slides[0].content[0].diagram_value")
-	if len(got) == 0 || got[0].Code != "diagram.text_overlap" || !strings.Contains(got[0].Path, "data.key_partners") {
+	got := dryRenderSpecToFindings(spec, nil, "Arial", "warn", "/slides/0/content/0/diagram_value")
+	if len(got) == 0 || got[0].Code != "diagram.text_overlap" || !strings.Contains(got[0].Path, "/data/key_partners") {
 		t.Fatalf("native BMC findings = %+v", got)
 	}
 }

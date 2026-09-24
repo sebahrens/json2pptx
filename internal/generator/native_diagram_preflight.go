@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -80,7 +81,7 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 			required += measureNativeText(step.description, font, float64(pfDescFontSize)/100, usableW)
 		}
 		if required > availableH {
-			out = append(out, nativeTextCollisionFinding(spec.Type, fmt.Sprintf("%s.data.steps[%d]", path, i), step.label, step.description, required, availableH))
+			out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, fmt.Sprintf("data.steps[%d]", i)), step.label, step.description, required, availableH))
 		}
 	}
 
@@ -104,7 +105,7 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 				out = append(out, patterns.FitFinding{
 					ValidationError: patterns.ValidationError{
 						Pattern: spec.Type,
-						Path:    fmt.Sprintf("%s.data.connections[%d].label", path, i),
+						Path:    slidepath.Field(path, fmt.Sprintf("data.connections[%d].label", i)),
 						Code:    "diagram.text_overlap",
 						Message: fmt.Sprintf("process-flow connection label %q overlaps a step box; enlarge the diagram, shorten the flow, or remove the label", connection.label),
 						Fix:     &patterns.FixSuggestion{Kind: "reduce_items"},
@@ -154,7 +155,7 @@ func nativeDiagramDensityPreflight(spec *types.DiagramSpec, path string) []patte
 	return []patterns.FitFinding{{
 		ValidationError: patterns.ValidationError{
 			Pattern: spec.Type,
-			Path:    path + ".data",
+			Path:    slidepath.Field(path, "data"),
 			Code:    "diagram.text_overlap",
 			Message: fmt.Sprintf("native %s has %d characters across %d labels; its measured shape boxes hold about %d before text overlaps (longest label %q) — shorten labels, reduce items, or enlarge the diagram", spec.Type, total, len(labels), budget, longest),
 			Fix:     &patterns.FixSuggestion{Kind: "reduce_items"},
@@ -225,7 +226,7 @@ func nativeBMCPreflight(spec *types.DiagramSpec, font, path string, width, heigh
 		bodyH := cellH - headerH
 		required := measureNativeText(body, font, float64(bmcBodyFontSize)/100, cellW-2*bmcBodyInset)
 		if body != "" && required > bodyH {
-			out = append(out, nativeTextCollisionFinding(spec.Type, path+".data."+string(key), title, body, required, bodyH))
+			out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, "data."+string(key)), title, body, required, bodyH))
 		}
 	}
 	return out
@@ -252,7 +253,7 @@ func nativePanelPreflight(spec *types.DiagramSpec, font, path string, width, hei
 			out = append(out, patterns.FitFinding{
 				ValidationError: patterns.ValidationError{
 					Pattern: spec.Type,
-					Path:    fmt.Sprintf("%s.data.panels[%d]", path, i),
+					Path:    slidepath.Field(path, fmt.Sprintf("data.panels[%d]", i)),
 					Code:    "diagram.text_below_readable_min",
 					Message: fmt.Sprintf("stat card value %q and caption %q exceed the measured four-card width; PowerPoint autofit would shrink the caption below the readable floor — shorten the caption/value or use fewer cards", hero, title),
 					Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
@@ -262,7 +263,7 @@ func nativePanelPreflight(spec *types.DiagramSpec, font, path string, width, hei
 		}
 		required := measureNativeText(title, font, 16, cellW) + measureNativeText(body, font, 14, cellW)
 		if required > cellH {
-			out = append(out, nativeTextCollisionFinding(spec.Type, fmt.Sprintf("%s.data.panels[%d]", path, i), title, body, required, cellH))
+			out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, fmt.Sprintf("data.panels[%d]", i)), title, body, required, cellH))
 		}
 	}
 	return out
@@ -277,7 +278,7 @@ func nativeValueChainPreflight(spec *types.DiagramSpec, font, path string, width
 	for i, panel := range panels {
 		required := measureNativeText(panel.title, font, 12, cellW) + measureNativeText(panel.body, font, 10, cellW)
 		if required > cellH {
-			out = append(out, nativeTextCollisionFinding(spec.Type, fmt.Sprintf("%s.data.activities[%d]", path, i), panel.title, panel.body, required, cellH))
+			out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, fmt.Sprintf("data.activities[%d]", i)), panel.title, panel.body, required, cellH))
 		}
 	}
 	return out

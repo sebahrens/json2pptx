@@ -88,9 +88,8 @@ func collectChartDryRenderFindingsResolved(
 	rhythmGrid := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	for slideIdx, slide := range input.Slides {
 		layout := predictedLayouts[slideIdx]
-		// Placeholder content charts/diagrams. Paths use the legacy bracket
-		// notation these findings have always emitted (preserved for callers
-		// and tests that key off it).
+		// Placeholder content charts/diagrams use the same JSON Pointer
+		// grammar as shape-grid findings and repair_slide.
 		for contentIdx, item := range slide.Content {
 			bounds := tablePlaceholderBounds(item.PlaceholderID, layout)
 			switch item.Type {
@@ -99,14 +98,14 @@ func collectChartDryRenderFindingsResolved(
 					continue
 				}
 				spec := chartValueToDiagramSpec(item.ChartValue)
-				path := fmt.Sprintf("slides[%d].content[%d].chart_value", slideIdx, contentIdx)
+				path := slidepath.ContentField(slideIdx, contentIdx, "chart_value")
 				findings = append(findings,
 					dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, false, bounds)...)
 			case "diagram":
 				if item.DiagramValue == nil {
 					continue
 				}
-				path := fmt.Sprintf("slides[%d].content[%d].diagram_value", slideIdx, contentIdx)
+				path := slidepath.ContentField(slideIdx, contentIdx, "diagram_value")
 				findings = append(findings,
 					dryRenderSpecInBounds(item.DiagramValue, themeColors, bodyFont, strictFit, path, false, bounds)...)
 			}
@@ -139,7 +138,7 @@ func collectChartDryRenderFindingsResolved(
 				converterAvailable, result, slideWidth, slideHeight)...)
 		}
 	}
-	return findings
+	return chartFindingsAtAuthoredPaths(input, findings)
 }
 
 // collectGridDryRenderFindings recursively walks a shape grid's rows and cells,

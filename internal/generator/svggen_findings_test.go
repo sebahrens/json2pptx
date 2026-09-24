@@ -3,6 +3,7 @@ package generator
 import (
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
@@ -40,9 +41,23 @@ func TestSvggenFindingsToFit(t *testing.T) {
 	if got[0].Pattern != "pie_chart" {
 		t.Errorf("pattern = %q, want the diagram type", got[0].Pattern)
 	}
-	// A field-scoped finding appends the field to the path.
-	if got[1].Path != "/slides/0/content/body.data.categories" {
+	// A field-scoped finding uses JSON Pointer segments.
+	if got[1].Path != "/slides/0/content/body/data/categories" {
 		t.Errorf("field path = %q, want the field appended", got[1].Path)
+	}
+	if diagram := SvggenFindingsToFit([]svggen.Finding{{Code: "chart.label_truncated", Field: "data.items[2].label"}},
+		"timeline", "/slides/0/content/0/diagram_value"); len(diagram) != 1 ||
+		diagram[0].Code != "diagram.label_truncated" || diagram[0].Path != "/slides/0/content/0/diagram_value/data/items/2/label" {
+		t.Fatalf("diagram finding namespace/path = %+v", diagram)
+	} else {
+		envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{Subcommand: "validate"}, diagnostics.FromFitFindings(diagram))
+		if len(envelope.Findings) != 1 || envelope.Findings[0].Code != "RENDER.diagram.label_truncated" {
+			t.Fatalf("diagram transport code = %+v", envelope.Findings)
+		}
+	}
+	if chart := SvggenFindingsToFit([]svggen.Finding{{Code: "chart.label_truncated"}},
+		"bar", "/slides/0/content/0/chart_value"); len(chart) != 1 || chart[0].Code != "chart.label_truncated" {
+		t.Fatalf("chart alias must retain chart namespace: %+v", chart)
 	}
 
 	if SvggenFindingsToFit(nil, "pie_chart", "/p") != nil {

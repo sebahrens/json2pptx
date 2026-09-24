@@ -289,9 +289,9 @@ An **unknown** kind — one in neither vocabulary — is a caller mistake and ke
 
 ## Chart Finding Codes
 
-Charts and diagrams emit structured findings at render time, following the same `{path, code, message, fix}` envelope as native layout findings. Codes use the `chart.*` prefix.
+Charts and diagrams emit structured findings at render time, following the same `{path, code, message, fix}` envelope as native layout findings. Codes use `chart.*` for charts and `diagram.*` for non-chart diagrams.
 
-**Dry-render parity:** `validate_input` (with `fit_report: true`) and `preview_presentation_plan` now invoke svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item and merge the resulting `chart.*` findings into `fit_findings`. Agents see `chart.capacity_exceeded`, `chart.label_ellipsized`, `chart.tick_thinned` (time/numeric axes only), and other chart findings BEFORE calling `generate_presentation` — no full render required. The same strict-fit severity ladder applies. For ad-hoc per-diagram dry-runs use the svggen-mcp `render_diagram` tool with `dry_run: true`.
+**Dry-render parity:** `validate_input` (with `fit_report: true`) and `preview_presentation_plan` now invoke svggen's layout/labeling pass for every `chart_value` / `diagram_value` content item and merge the resulting `chart.*` or `diagram.*` findings into `fit_findings`. Agents see `chart.capacity_exceeded`, `chart.label_ellipsized`, `chart.tick_thinned` (time/numeric axes only), and other chart findings BEFORE calling `generate_presentation` — no full render required. Paths are JSON Pointers into the authored deck (for example `/slides/0/content/1/chart_value/data/series`); renderer-derived or expanded-pattern fields fall back to the nearest authored ancestor. The same strict-fit severity ladder applies. For ad-hoc per-diagram dry-runs use the svggen-mcp `render_diagram` tool with `dry_run: true`.
 
 ### Data-integrity codes — indicate bad input data
 

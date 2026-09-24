@@ -28,6 +28,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Chart finding path grammar (`go-slide-creator-v24b9`).**
+  Chart and diagram dry-render findings now use JSON Pointer paths that
+  resolve against the authored deck; renderer-derived fields and expanded
+  pattern cells fall back to the nearest authored ancestor. Shared svggen
+  labeling codes use `diagram.*` for non-chart diagram types.
+
 - **2026-09-24 — `audit-palette` argument order (`go-slide-creator-zrskf`).**
   CLI options now work before or after the PPTX path, as the usage text
   advertises. Extra positional paths are rejected instead of silently ignored.
