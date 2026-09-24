@@ -27,7 +27,7 @@ Use this BEFORE generate_presentation to get a structured plan. The output inclu
 
 Facts in the brief (clauses with numbers such as "+23% revenue", "churn 4%", or named entities such as "EU expansion") are routed verbatim into slide content seeds and each slide's facts[] — quantities to KPI / stat / chart slides first. Facts no slide had room for are listed in unplaced_facts.
 
-The output is directly consumable as the slides array in generate_presentation — just fill in the content values.`),
+The plan's slides[] are advisory records, NOT SlideInput objects. To build a raw presentation, copy each slides[i].skeleton (when present) into presentation.slides[], replace its __FILL__ tokens with real content, and validate_input before generate_presentation. If a slide has no skeleton, author its SlideInput from the recommended pattern's show_pattern schema. For a semantic deck, use the DeckSpec path instead.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPlanDeck)),
 		mcp.WithString("brief",
 			mcp.Required(),

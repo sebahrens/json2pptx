@@ -1976,7 +1976,7 @@ var outputSchemaPlanDeck = json.RawMessage(`{
           "rationale":            {"type": "string"},
           "suggested_pattern":    {"type": "string", "description": "First-choice pattern (same value as recommended_pattern; kept as a separate field for the suggested_pattern / suggested_pattern_fallback / skeleton agent-facing triplet)."},
           "suggested_pattern_fallback": {"type": "string", "description": "Second-choice pattern when the suggested pattern's content shape does not fit. Drawn from alternatives[0] when available."},
-          "skeleton":             {"type": "object", "description": "Partial SlideInput JSON with __FILL__ tokens for every agent-supplied string. Copy and replace tokens rather than authoring the slide structure from scratch. Validates as-is with validate_input (stays valid=true), but any __FILL__ left unreplaced is reported as an unresolved_placeholder warning — replace every token before publishable generation, or pass placeholder_policy=strict to block on it."},
+          "skeleton":             {"type": "object", "description": "Partial SlideInput JSON, when available. Copy this field (not the enclosing plan record) into presentation.slides[], replace __FILL__ tokens and validate_input before generation. Some pattern fields have non-text constraints, so an unfilled skeleton is not promised to validate."},
           "predicted_cell_budgets": {
             "type": "array",
             "items": {

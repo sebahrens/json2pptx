@@ -46,4 +46,10 @@ func TestMCPDescriptionsMatchRuntimeContracts(t *testing.T) {
 			t.Errorf("%s.pptx_path omits an artifact field name: %q", tool.Name, desc)
 		}
 	}
+	if desc := mcpPlanDeckTool().Description; !strings.Contains(desc, "slides[i].skeleton") || !strings.Contains(desc, "NOT SlideInput objects") || strings.Contains(desc, "directly consumable as the slides array") {
+		t.Errorf("plan_deck description misstates the consumable slide field: %q", desc)
+	}
+	if schema := string(outputSchemaPlanDeck); !strings.Contains(schema, "Copy this field (not the enclosing plan record)") || strings.Contains(schema, "Validates as-is with validate_input") {
+		t.Error("plan_deck output schema still promises the advisory record or unfilled skeleton is directly valid")
+	}
 }
