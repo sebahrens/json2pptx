@@ -44,6 +44,8 @@ The raw schema is generated from the Go input structs in `internal/deckinput` (a
 
 A presentation is a top-level object with a `template` and a non-empty `slides` array. Each slide pins a layout via `layout_id` (canonical id, e.g. `title`, `content`, `two-column`, `section`, `blank`) or hints `slide_type` (`title`, `content`, `chart`, `section`, `two-column`, `diagram`, `image`, `comparison`, `blank`). At least one of the two must be set. `template` is a registered template NAME (a `.pptx` in the templates directory or the embedded set, without the extension) and never takes a path; `template_path` is the bring-your-own form — `{"template_path": "./client-brand.pptx", "slides": [...]}` — for a `.pptx` the engine has not registered. Set exactly one. On the CLI a relative `template_path` resolves against the deck JSON's own directory; over MCP against the call's `base_dir` (server CWD when omitted), and it must stay inside it after `~`/`$VAR` and symlink expansion — an escape is refused with `INVALID_PATH`. `examine_template`, `list_templates`, `validate_input`, `preview_presentation_plan`, `generate_presentation` and `render_deck_spec` all accept it; `get_started(task:"onboard-template")` walks the vetting sequence. Copying the file into the templates directory registers it live, no restart, as a normal `template`.
 
+To preview the same input against another registered template without editing the deck, pass `json2pptx validate --template NAME --fit-report` (also works with `--json` / `--json-output`) or the top-level `template` argument to MCP `validate_input`. The override takes precedence over the presentation's `template` or `template_path` for that validation call only.
+
 ## A typical content slide
 
 ```json

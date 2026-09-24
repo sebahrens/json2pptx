@@ -201,6 +201,9 @@ Example: {"template":"my-template","slides":[{"layout_id":"slideLayout1","conten
 				"slides":        map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
+		mcp.WithString("template",
+			mcp.Description("Override presentation.template with a registered template name for this validation only. Also overrides presentation.template_path; the presentation object is not changed."),
+		),
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, run per-cell text overflow measurement and include NDJSON-style fit findings in the result. Default: true."),
 			mcp.DefaultBool(true),
@@ -953,6 +956,13 @@ func handleGetDiagramCapabilities(ctx context.Context, request mcp.CallToolReque
 	return mcpResult, nil
 }
 
+func applyValidationTemplateOverride(input *PresentationInput, request mcp.CallToolRequest) {
+	if override, err := request.RequireString("template"); err == nil && override != "" {
+		input.Template = override
+		input.TemplatePath = ""
+	}
+}
+
 func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
 	if paramErr != nil {
@@ -970,6 +980,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if err := strictUnmarshalJSON([]byte(jsonStr), &input); err != nil {
 		return argInvalidJSON("presentation", fmt.Sprintf("invalid JSON: %v", err), "object", nil, nextCallGetInputSchema()), nil
 	}
+	applyValidationTemplateOverride(&input, request)
 
 	// Apply deck-level defaults before validation.
 	applyDefaults(&input)

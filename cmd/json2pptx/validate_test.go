@@ -15,6 +15,36 @@ import (
 // matching the MCP-side test setup so CLI and MCP exercise the same files.
 const testTemplatesDir = "../../templates"
 
+func TestValidateTemplateOverrideInHumanAndJSONModes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "override.json")
+	deck := `{"template":"not-a-template","slides":[{"slide_type":"title","content":[{"placeholder_id":"title","type":"text","text_value":"Override"}]}]}`
+	if err := os.WriteFile(path, []byte(deck), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if result := validateJSONFile(path, testTemplatesDir, "", false, "warn"); result.Valid {
+		t.Fatal("invalid embedded template unexpectedly validated without override")
+	}
+	if result := validateJSONFile(path, testTemplatesDir, "", false, "warn", "midnight-blue"); !result.Valid {
+		t.Fatalf("human validation ignored template override: %+v", result)
+	}
+
+	outputPath := filepath.Join(t.TempDir(), "result.json")
+	if err := runValidateMCPFormat([]string{path}, testTemplatesDir, "", true, false, "json", false, "warn", outputPath, "midnight-blue"); err != nil {
+		t.Fatalf("structured validation ignored template override: %v", err)
+	}
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var output dryRunOutput
+	if err := json.Unmarshal(data, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !output.Valid || output.Findings.Template != "midnight-blue" {
+		t.Errorf("JSON validation = valid:%t template:%q, want true/midnight-blue", output.Valid, output.Findings.Template)
+	}
+}
+
 func TestValidateJSONFile_ShapeGridValid(t *testing.T) {
 	input := `{
   "template": "midnight-blue",

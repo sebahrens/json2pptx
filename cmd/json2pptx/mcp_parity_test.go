@@ -52,6 +52,33 @@ func testMCPConfig(t *testing.T) *mcpConfig {
 	}
 }
 
+func TestMCPValidateTemplateOverrideSelectsRegisteredTemplate(t *testing.T) {
+	mc := testMCPConfig(t)
+	presentation := map[string]any{
+		"template_path": "missing.pptx",
+		"slides": []any{map[string]any{
+			"slide_type": "title",
+			"content":    []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Override"}},
+		}},
+	}
+	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
+		"presentation": presentation, "template": "midnight-blue", "fit_report": false,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.IsError {
+		t.Fatalf("override rejected: %s", textContent(result))
+	}
+	var output dryRunOutput
+	if err := json.Unmarshal([]byte(textContent(result)), &output); err != nil {
+		t.Fatal(err)
+	}
+	if !output.Valid || output.Findings.Template != "midnight-blue" {
+		t.Errorf("override result = valid:%t template:%q", output.Valid, output.Findings.Template)
+	}
+}
+
 func TestMCPValidateFitReport(t *testing.T) {
 	mc := testMCPConfig(t)
 

@@ -89,17 +89,14 @@ func runValidate() error { //nolint:gocognit
 	}
 
 	if effectiveFormat == "json" || effectiveFormat == "ndjson" {
-		return runValidateMCPFormat(args, *templatesDir, *baseDir, *fitReport, *verboseFit, effectiveFormat, *strictUnknownKeys, *placeholderPolicy, effectiveJSONPath)
+		return runValidateMCPFormat(args, *templatesDir, *baseDir, *fitReport, *verboseFit, effectiveFormat, *strictUnknownKeys, *placeholderPolicy, effectiveJSONPath, *templateName)
 	}
-
-	// Suppress unused warnings for flags consumed below.
-	_ = templateName
 
 	hasErrors := false
 	var results []validateResult
 
 	for _, filePath := range args {
-		result := validateJSONFile(filePath, *templatesDir, *baseDir, *strictUnknownKeys, *placeholderPolicy)
+		result := validateJSONFile(filePath, *templatesDir, *baseDir, *strictUnknownKeys, *placeholderPolicy, *templateName)
 		results = append(results, result)
 		if !result.Valid {
 			hasErrors = true
@@ -258,7 +255,7 @@ type validateResult struct {
 // references resolve against validateBaseDir(filePath, baseDirOverride): the
 // file's own directory by default, mirroring `generate`'s
 // filepath.Dir(jsonPath) behavior, or the override when supplied.
-func validateJSONFile(filePath, templatesDir, baseDirOverride string, strictUnknownKeys bool, placeholderPolicy string) validateResult {
+func validateJSONFile(filePath, templatesDir, baseDirOverride string, strictUnknownKeys bool, placeholderPolicy string, templateOverride ...string) validateResult {
 	result := validateResult{
 		File:     filePath,
 		Valid:    true,
@@ -290,9 +287,11 @@ func validateJSONFile(filePath, templatesDir, baseDirOverride string, strictUnkn
 	}
 
 	mc := cliMCPConfig(templatesDir, "")
-	mcpResult, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(
-		mcpHumanValidateArgs(presentation, validateBaseDir(filePath, baseDirOverride), strictUnknownKeys, placeholderPolicy),
-	))
+	mcpArgs := mcpHumanValidateArgs(presentation, validateBaseDir(filePath, baseDirOverride), strictUnknownKeys, placeholderPolicy)
+	if len(templateOverride) > 0 && templateOverride[0] != "" {
+		mcpArgs["template"] = templateOverride[0]
+	}
+	mcpResult, err := mc.handleValidate(context.Background(), mcpRequestWithArgs(mcpArgs))
 	if err != nil {
 		result.Valid = false
 		result.Errors = append(result.Errors, fmt.Sprintf("validate %s: %v", filePath, err))
@@ -515,7 +514,7 @@ func legacyFindingCode(code string) string {
 // per line. For --format=json each file's response is pretty-printed; when
 // multiple files are validated, their pretty-printed objects are concatenated
 // (matching the prior --format=json behavior).
-func runValidateMCPFormat(files []string, templatesDir, baseDirOverride string, fitReport, verboseFit bool, format string, strictUnknownKeys bool, placeholderPolicy string, outputPath string) error {
+func runValidateMCPFormat(files []string, templatesDir, baseDirOverride string, fitReport, verboseFit bool, format string, strictUnknownKeys bool, placeholderPolicy string, outputPath, templateOverride string) error {
 	mc := cliMCPConfig(templatesDir, "")
 	hasErrors := false
 
@@ -546,6 +545,9 @@ func runValidateMCPFormat(files []string, templatesDir, baseDirOverride string, 
 			"verbose_fit":         verboseFit,
 			"strict_unknown_keys": strictUnknownKeys,
 			"placeholder_policy":  placeholderPolicy,
+		}
+		if templateOverride != "" {
+			args["template"] = templateOverride
 		}
 		// Resolve relative assets from the input file's directory (or --base-dir
 		// override). stdin keeps the CWD fallback: validateBaseDir returns "" and
