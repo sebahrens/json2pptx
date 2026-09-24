@@ -44,9 +44,11 @@ func TestPatternRendersSource(t *testing.T) {
 func TestChartInsightSourceRenderedOnce(t *testing.T) {
 	const src = "Source: Company filings FY2026"
 	chart := map[string]any{
-		"type":       "bar",
-		"categories": []any{"Q1", "Q2"},
-		"series":     []any{map[string]any{"name": "Rev", "values": []any{1, 2}}},
+		"type": "bar",
+		"data": map[string]any{
+			"categories": []any{"Q1", "Q2"},
+			"series":     []any{map[string]any{"name": "Rev", "values": []any{1, 2}}},
+		},
 	}
 	mk := func(n int) *DeckSpec {
 		insights := make([]any, n)
@@ -72,9 +74,9 @@ func TestChartInsightSourceRenderedOnce(t *testing.T) {
 	}
 
 	for _, n := range []int{6, 8} {
-		input, _, err := Compile(mk(n), CompileOptions{Strict: StrictnessOff})
+		input, result, err := Compile(mk(n), CompileOptions{Strict: StrictnessOff})
 		if err != nil {
-			t.Fatalf("%d insights: compile: %v", n, err)
+			t.Fatalf("%d insights: compile: %v; diagnostics: %+v", n, err, result.Diagnostics)
 		}
 		slide := input.Slides[1]
 

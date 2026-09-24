@@ -522,12 +522,8 @@ func validateUnknownFields(path string, slide SlideSpec, s *semDiags) {
 
 func (s *semDiags) unknownSlideField(path string, kind SlideKind, key string, known []string) {
 	if kind == KindSection && key == "subtitle" {
-		sev := diagnostics.SeverityWarning
-		if s.strict == StrictnessStrict {
-			sev = diagnostics.SeverityError
-		}
 		s.out = append(s.out, diagnostics.Diagnostic{
-			Code: diagnostics.CodeSemanticUnknownField, Path: path + ".subtitle", Severity: sev,
+			Code: diagnostics.CodeSemanticUnknownField, Path: path + ".subtitle", Severity: diagnostics.SeverityError,
 			Message: "section.subtitle is unsupported and its content is DROPPED: section body slots may hold decorative numbers; use a content slide or a raw shape_grid text box",
 		})
 		return
@@ -537,17 +533,13 @@ func (s *semDiags) unknownSlideField(path string, kind SlideKind, key string, kn
 
 // unknownField appends a SEMANTIC_UNKNOWN_FIELD finding for a key the compiler
 // drops. It is never suppressed (dropping content silently is exactly what it
-// guards against): a warning under off/warn, an error under strict. A close
+// guards against): an error under every advisory strictness. A close
 // known key yields a rename_field fix with did_you_mean.
 func (s *semDiags) unknownField(path, key string, known []string, where string) {
-	sev := diagnostics.SeverityWarning
-	if s.strict == StrictnessStrict {
-		sev = diagnostics.SeverityError
-	}
 	d := diagnostics.Diagnostic{
 		Code:     diagnostics.CodeSemanticUnknownField,
 		Path:     path,
-		Severity: sev,
+		Severity: diagnostics.SeverityError,
 		Message: fmt.Sprintf("unknown field %q on %s is ignored by the compiler and its content is DROPPED; expected one of %s",
 			key, where, joinQuoted(known)),
 	}

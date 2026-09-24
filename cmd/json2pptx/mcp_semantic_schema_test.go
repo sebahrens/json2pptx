@@ -139,6 +139,9 @@ func TestSemanticMCP_UnknownKPIFieldDiagnostic(t *testing.T) {
 	}
 	var env diagnostics.FindingEnvelope
 	structuredInto(t, res.StructuredContent, &env)
+	if env.OK {
+		t.Error("validate_deck_spec must not return ok=true when a field's content is dropped")
+	}
 	found := false
 	for _, f := range env.Findings {
 		if f.Evidence["path"] == "slides[0].kpis[1].lable" && strings.HasSuffix(f.Code, diagnostics.CodeSemanticUnknownField) {
@@ -223,6 +226,13 @@ func TestSpecOutlineToolsStillRejectUnknownFields(t *testing.T) {
 			if !strings.Contains(resultText(res), "SEMANTIC_UNKNOWN_FIELD") {
 				t.Errorf("%s did not report the unknown field:\n%s", tc.name, resultText(res))
 			}
+			var verdict struct {
+				OK bool `json:"ok"`
+			}
+			structuredInto(t, res.StructuredContent, &verdict)
+			if verdict.OK {
+				t.Errorf("%s accepted a spec whose field content was dropped", tc.name)
+			}
 		})
 	}
 }
@@ -250,5 +260,10 @@ func TestSpecOutlineRenderRejectsUnknownFields(t *testing.T) {
 	}
 	if !strings.Contains(resultText(res), "SEMANTIC_UNKNOWN_FIELD") {
 		t.Errorf("render_deck_spec did not report the unknown field:\n%s", resultText(res))
+	}
+	var verdict renderDeckSpecResponse
+	structuredInto(t, res.StructuredContent, &verdict)
+	if verdict.Success || (verdict.Publishable != nil && *verdict.Publishable) {
+		t.Errorf("render_deck_spec accepted dropped content: %+v", verdict)
 	}
 }

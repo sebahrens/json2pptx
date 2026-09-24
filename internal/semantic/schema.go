@@ -22,7 +22,7 @@ const schemaDialect = "https://json-schema.org/draft/2020-12/schema"
 // reads (canonical names plus accepted aliases, see kindPayloadFields), with
 // additionalProperties:false and closed list-entry / chart object schemas. An
 // unknown key is therefore schema-invalid; the validator reports the same key
-// as a SEMANTIC_UNKNOWN_FIELD warning instead of silently dropping it.
+// as a blocking SEMANTIC_UNKNOWN_FIELD error instead of silently dropping it.
 func Schema() map[string]any {
 	defs := map[string]any{
 		"DeckMeta":      deckMetaSchema(),

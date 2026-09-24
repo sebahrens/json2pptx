@@ -72,7 +72,7 @@ func TestValidateUnknownFields_KPIPayload(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected SEMANTIC_UNKNOWN_FIELD at slides[0].takeawy, got %v", ds)
 	}
-	if top.Severity != diagnostics.SeverityWarning || top.Fix == nil || top.Fix.Params["did_you_mean"] != "takeaway" {
+	if top.Severity != diagnostics.SeverityError || top.Fix == nil || top.Fix.Params["did_you_mean"] != "takeaway" {
 		t.Errorf("unexpected top-level finding: %+v", top)
 	}
 	item, ok := findAt(ds, diagnostics.CodeSemanticUnknownField, "slides[0].kpis[1].valeu")
@@ -82,13 +82,12 @@ func TestValidateUnknownFields_KPIPayload(t *testing.T) {
 	if item.Fix == nil || item.Fix.Params["did_you_mean"] != "value" {
 		t.Errorf("expected did_you_mean value, got %+v", item.Fix)
 	}
-	// Never suppressed (a silent drop is what it guards against); error under strict.
-	if _, ok := findAt(Validate(spec, StrictnessOff), diagnostics.CodeSemanticUnknownField, "slides[0].takeawy"); !ok {
-		t.Error("unknown-field finding must not be suppressed under off")
-	}
-	d, _ := findAt(Validate(spec, StrictnessStrict), diagnostics.CodeSemanticUnknownField, "slides[0].takeawy")
-	if d.Severity != diagnostics.SeverityError {
-		t.Errorf("strict severity = %q, want error", d.Severity)
+	// A dropped field is structural, not advisory: every strictness blocks it.
+	for _, mode := range []Strictness{StrictnessOff, StrictnessWarn, StrictnessStrict} {
+		d, ok := findAt(Validate(spec, mode), diagnostics.CodeSemanticUnknownField, "slides[0].takeawy")
+		if !ok || d.Severity != diagnostics.SeverityError {
+			t.Errorf("%s must refuse the dropped field: %+v", mode, d)
+		}
 	}
 }
 
@@ -98,15 +97,15 @@ func TestSectionSubtitleIsDiagnosedInsteadOfDropped(t *testing.T) {
 	}}}
 	ds := Validate(spec, StrictnessWarn)
 	d, ok := findAt(ds, diagnostics.CodeSemanticUnknownField, "slides[0].subtitle")
-	if !ok || d.Severity != diagnostics.SeverityWarning {
+	if !ok || d.Severity != diagnostics.SeverityError {
 		t.Fatalf("unsupported section subtitle silently dropped: %+v", ds)
 	}
 	if d.Fix != nil || !strings.Contains(d.Message, "decorative numbers") || !strings.Contains(d.Message, "shape_grid") {
 		t.Fatalf("section subtitle guidance is misleading: %+v", d)
 	}
-	strict, ok := findAt(Validate(spec, StrictnessStrict), diagnostics.CodeSemanticUnknownField, "slides[0].subtitle")
-	if !ok || strict.Severity != diagnostics.SeverityError {
-		t.Fatalf("strict mode did not reject section.subtitle: %+v", strict)
+	off, ok := findAt(Validate(spec, StrictnessOff), diagnostics.CodeSemanticUnknownField, "slides[0].subtitle")
+	if !ok || off.Severity != diagnostics.SeverityError {
+		t.Fatalf("off mode did not reject dropped section.subtitle: %+v", off)
 	}
 	info, ok := LookupKind(KindSection)
 	if !ok {
