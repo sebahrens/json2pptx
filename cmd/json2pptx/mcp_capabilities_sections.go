@@ -105,8 +105,8 @@ func sectionSet(names []string) capabilitySections {
 }
 
 // applyCapabilitySections blanks every section the caller did not ask for.
-// schema_version, tool_version, schema_fingerprint and changelog_url always
-// survive: drift detection must work in the smallest projection.
+// schema_version, tool_version and changelog_url always survive. The runtime
+// section includes schema_fingerprint when requested (and by default).
 func applyCapabilitySections(resp *capabilitiesResponse, sections capabilitySections) {
 	if !sections.has(capSectionTools) {
 		resp.ToolList = nil

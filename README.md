@@ -380,8 +380,10 @@ Start manually for debugging:
 json2pptx mcp --templates-dir ~/.json2pptx/templates --output ./output
 ```
 
-By default the server runs the `core` tool profile: `tools/list` advertises ~20
-core tools without `outputSchema` (~45KB instead of ~215KB of context). Pass
+By default the server runs the `core` tool profile: `tools/list` advertises a
+smaller, output-schema-free tool set. Run
+`go test ./cmd/json2pptx -run TestCoreToolProfileBudget -v` for current core/all
+tool counts and wire bytes. Pass
 `--tools all` (or set `JSON2PPTX_MCP_TOOLS=all`) to list the full catalogue
 below; non-core tools stay callable by name either way.
 

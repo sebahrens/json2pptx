@@ -17,6 +17,7 @@ import (
 const (
 	listFieldsCompact = "compact"
 	listFieldsFull    = "full"
+	listFieldsOmitted = "When fields is omitted, compact is used without a warning."
 )
 
 // listFieldsParam parses the optional "fields" argument. It returns the

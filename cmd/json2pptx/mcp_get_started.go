@@ -391,10 +391,7 @@ func mcpGetStartedTool() mcp.Tool {
 // built on tools absent from tools/list is what made the whole "revise" path
 // uncallable in core mode (go-slide-creator-mvny).
 func getStartedToolDescription() string {
-	reviseFastPath := "auto_repair"
-	if !toolIsAdvertised("auto_repair") {
-		reviseFastPath = "repair_slide (per-slide repair driven by you; this profile advertises no one-call repair facade)"
-	}
+	reviseFastPath := "render_deck_spec (deck_id + patch for DeckSpec revisions)"
 	makeDeckNote := " make_deck is a skeleton/wireframe only (exemplar placeholder copy; gate always fails)."
 	if !toolIsAdvertised("make_deck") {
 		makeDeckNote = ""

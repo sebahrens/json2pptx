@@ -57,6 +57,9 @@ func TestCoreToolProfileBudget(t *testing.T) {
 		t.Errorf("core tools/list is %d bytes, want < %d", len(raw), coreToolListByteBudget)
 	}
 	t.Logf("core profile: %d tools, %d bytes", len(tools), len(raw))
+	allServer := newJSON2PPTXMCPServer(profileTestConfig(t), toolProfileAll)
+	allRaw, allTools := listToolsOverWire(t, allServer)
+	t.Logf("all profile: %d tools, %d bytes", len(allTools), len(allRaw))
 	if len(tools) != len(coreToolNames) {
 		t.Errorf("core profile advertised %d tools but coreToolNames has %d — a core name is not registered", len(tools), len(coreToolNames))
 	}
