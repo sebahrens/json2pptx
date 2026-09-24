@@ -32,16 +32,14 @@ type matrixCell struct {
 //
 //   - runJSONMode returns nil and reports success.
 //   - The resulting .pptx file is on disk and SlideCount >= 1.
-//   - No fit findings carry action="refuse" (the equivalent of severity >=
-//     error in the fit-finding model).
+//   - No structural fit findings carry action="refuse". WEAK_CONTENT is
+//     expected because every matrix cell uses a pattern exemplar, not authored
+//     publication copy; report-level tests cover that content refusal.
 //   - The title placeholder is populated on the resolved slide.
 //
-// Output validation runs in "warn" mode so blocking OOXML findings surface in
-// the result JSON (and the matrix can be filtered/extended to track them)
-// without forcing the cell red. The "PPTX opens" guarantee is enforced by
-// the separate integration-tagged corpus-headless suite that round-trips
-// every output through headless LibreOffice; we keep this matrix runnable
-// in the default `go test ./...` invocation.
+// Output validation runs in "strict" mode, so blocking OOXML findings turn a
+// cell red. The "PPTX opens" guarantee is also exercised by the separate
+// headless corpus suite. This matrix remains runnable in `go test ./...`.
 func TestTemplatePatternMatrix(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping template × pattern matrix in -short mode")
@@ -207,7 +205,7 @@ func TestTemplatePatternMatrix(t *testing.T) {
 				}
 
 				for _, f := range out.FitFindings {
-					if f.Action == "refuse" {
+					if matrixBlockingFitFinding(f) {
 						results[pat.Name()][tplName] = matrixCell{ok: false, reason: "fit:" + f.Code}
 						t.Errorf("refuse-level fit finding %s: %s", f.Code, f.Message)
 						return
@@ -229,6 +227,28 @@ func TestTemplatePatternMatrix(t *testing.T) {
 				results[pat.Name()][tplName] = matrixCell{ok: true}
 			})
 		}
+	}
+}
+
+func matrixBlockingFitFinding(f patterns.FitFinding) bool {
+	return f.Action == "refuse" && f.Code != "WEAK_CONTENT"
+}
+
+func TestMatrixBlockingFitFinding(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		f      patterns.FitFinding
+		blocks bool
+	}{
+		{name: "exemplar is expected", f: patterns.FitFinding{ValidationError: patterns.ValidationError{Code: "WEAK_CONTENT"}, Action: "refuse"}},
+		{name: "geometry still blocks", f: patterns.FitFinding{ValidationError: patterns.ValidationError{Code: "BODY_TOO_LONG"}, Action: "refuse"}, blocks: true},
+		{name: "review remains advisory", f: patterns.FitFinding{ValidationError: patterns.ValidationError{Code: "SLIDE_NEARLY_EMPTY"}, Action: "review"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := matrixBlockingFitFinding(tc.f); got != tc.blocks {
+				t.Errorf("matrixBlockingFitFinding(%+v) = %v, want %v", tc.f, got, tc.blocks)
+			}
+		})
 	}
 }
 
