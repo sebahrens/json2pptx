@@ -8,6 +8,56 @@ How to pick a named pattern, size content for its cells, and read the pre-flight
 
 For BMC, KPI grids, 2x2 matrices, timelines, card grids, icon rows, two-column comparisons, accent-banded panels (`stylish-panels`), strategy-house frameworks (`strategy-house` — objective banner + 3-5 pillars + foundation, with optional roof badges), executive SCQA summaries (`scqa-summary` — 4-row Situation / Complication / Questions / Answer narrative arc), value / cost driver trees (`driver-tree` — root metric → 2-4 branches → 1-4 leaves each, with optional per-branch annotations; for people/role hierarchies use the svggen `org_chart` diagram type instead), Porter-style value chains (`value-chain` — 4-10 step columns with per-step description and optional highlight), double-track process grids (`process-grid-2row` — two parallel rows of 3-6 phase columns sharing the same N columns, with a dk2 row-label column on the left and per-row accent fill), ordered numbered steps without branching (`numbered-step-strip` — 3-6 steps in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone; never emits decision diamonds — use `process-flow` when the sequence has decision points), maturity ladders (`journey-maturity-model` — 3-6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker), visual deck previews (`agenda-with-images` — 3-6 numbered agenda rows each with title/subtitle and an image or quote placeholder; `image_label` is a caption, not a switch — a row without one still gets its placeholder, and only a deck with no labels at all drops the column), joint-venture / engagement-team paired-role slides (`dual-org-ladder` — 2–6 paired role rows across two parallel org columns, each column with its own org-name header, optional thin connector line between paired cards), answer-first key-message summaries (`exec-summary` — 3–5 bold lead-ins, each with one supporting sentence, plus an optional bottom-line bar), options × criteria evaluation matrices (`table-highlight` — 2–6 options × 2–6 criteria scored with Harvey balls, RAG dots or short text, with a highlighted recommended row; `legend_labels` reads **[HIGH, MID, LOW]** — full ball first, empty ball last — and the RAG scale takes its own `legend_labels_rag` in the same order), and photo / case-study slides (`image-text-split` — one cover-cropped image or placeholder beside eyebrow + heading + body/bullets and 0–3 result metrics), use json2pptx's named patterns. Named patterns expand to validated `shape_grid` structures at generation time, replacing ~600 tokens of boilerplate with ~100 tokens.
 
+### Registered Pattern Index
+
+The short index stays in sync with the runtime registry; use `show_pattern` for the current schema and examples. `hero-detail` is the asymmetric KPI layout: one dominant metric with 2–4 supporting detail bullets.
+
+| Pattern |
+|---------|
+| `agenda` |
+| `agenda-with-images` |
+| `arch-stack` |
+| `before-after` |
+| `before-after-compact` |
+| `bmc-canvas` |
+| `card-grid` |
+| `chart-insights-split` |
+| `comparison-2col` |
+| `driver-tree` |
+| `dual-org-ladder` |
+| `exec-summary` |
+| `hero-detail` |
+| `horizontal-bar-with-callouts` |
+| `icon-row` |
+| `image-text-split` |
+| `journey-maturity-model` |
+| `kpi-2up` |
+| `kpi-3up` |
+| `kpi-4up` |
+| `kpi-5up` |
+| `kpi-6up` |
+| `kpi-inline` |
+| `matrix-2x2` |
+| `numbered-step-strip` |
+| `phase-roadmap` |
+| `process-flow` |
+| `process-flow-compact` |
+| `process-grid-2row` |
+| `pull-quote` |
+| `pyramid` |
+| `quote-cluster` |
+| `roadmap-phased` |
+| `scqa-summary` |
+| `stat-hero` |
+| `strategy-house` |
+| `stylish-panels` |
+| `swimlane` |
+| `table-highlight` |
+| `team-bios` |
+| `timeline-horizontal` |
+| `value-chain` |
+| `waterfall-bridge` |
+
 - **Browse the catalog:** `list_patterns` (MCP) or `json2pptx patterns list` (CLI)
 - **View a pattern's value schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI). Grid-shaped patterns include a `text_budget_guide` block with per-configuration `body_max_chars` and `header_max_chars` — use these to size content before calling `expand_pattern`. The response also includes `example_values` — canonical example values showing the expected shape and realistic content for the `values` parameter. Use these as a template when populating pattern values.
 - **Validate before generating:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI) checks values and content fit. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) to check against the intended template; CLI `--json` returns the standard findings envelope and exits non-zero for blocking findings.

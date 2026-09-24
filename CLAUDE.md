@@ -158,6 +158,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
 | `dual-org-ladder` | Two parallel org columns with 2–6 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
 | `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |
+| `hero-detail` | One dominant metric with 2–4 supporting detail bullets; use `stat-hero` for the metric alone or `kpi-3up` for equally weighted metrics |
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right; callouts are optional and the column is dropped when none are given |
 | `icon-row` | Horizontal row of icon+caption pairs |
 | `image-text-split` | One photo / screenshot beside a text column (eyebrow, heading, body, up to 5 bullets) with 0–3 result metrics; real images are cover-cropped, otherwise a dashed placeholder (case study / customer story slides) |
