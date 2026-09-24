@@ -310,24 +310,21 @@ func TestBuildColorRoles_NoSafeAccents(t *testing.T) {
 	}
 }
 
-func TestBuildColorRoles_AbstractThemeAvoidsInvisiblePrimary(t *testing.T) {
+func TestBuildColorRoles_AbstractThemeUsesVisibleFirstAccent(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
 	info, err := analyzeTemplateForSkillInfo("../../templates/abstract.pptx", cache, "compact")
 	if err != nil {
 		t.Fatal(err)
 	}
 	roles := info.ColorRoles
-	if roles.PrimaryFill != "dk2" {
-		t.Errorf("abstract primary_fill = %q, want the 7.71:1 dark theme fallback dk2", roles.PrimaryFill)
+	if roles.PrimaryFill != "accent1" {
+		t.Errorf("abstract primary_fill = %q, want its visible first accent", roles.PrimaryFill)
 	}
 	if slices.Contains(roles.WhiteTextSafeBody, roles.PrimaryFill) {
 		t.Errorf("abstract %s must not be advertised as body-text safe", roles.PrimaryFill)
 	}
-	if roles.SecondaryFill == "accent1" {
-		t.Error("abstract near-background accent1 must not be a secondary header fill")
-	}
-	if !slices.Equal(roles.NearBackgroundAccents, []string{"accent1", "accent4"}) {
-		t.Errorf("abstract near_background_accents = %v, want accent1/accent4", roles.NearBackgroundAccents)
+	if !slices.Equal(roles.NearBackgroundAccents, []string{"accent4"}) {
+		t.Errorf("abstract near_background_accents = %v, want only accent4", roles.NearBackgroundAccents)
 	}
 }
 

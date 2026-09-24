@@ -9,7 +9,7 @@ import (
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
-func TestAbstractChartPaletteSkipsNearBackgroundAccents(t *testing.T) {
+func TestAbstractChartPaletteUsesVisibleFirstAccent(t *testing.T) {
 	reader, err := template.OpenTemplate("../../templates/abstract.pptx")
 	if err != nil {
 		t.Fatal(err)
@@ -28,16 +28,16 @@ func TestAbstractChartPaletteSkipsNearBackgroundAccents(t *testing.T) {
 			t.Errorf("automatic chart series %d uses near-background %s at %.2f:1", i+1, color.Hex(), ratio)
 		}
 	}
-	if got := guide.Palette.Accent1.Hex(); got != "#ED7D31" {
-		t.Errorf("first chart color = %s, want first visible theme accent #ED7D31", got)
+	if got := guide.Palette.Accent1.Hex(); got != "#8E8172" {
+		t.Errorf("first chart color = %s, want abstract theme accent1 #8E8172", got)
 	}
 	rendered, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	svg := strings.ToUpper(string(rendered.SVG))
-	if !strings.Contains(svg, "#ED7D31") {
-		t.Error("rendered chart does not use the first visible accent")
+	if !strings.Contains(svg, "#8E8172") {
+		t.Error("rendered chart does not use abstract accent1")
 	}
 	if strings.Contains(svg, "#E9E6DF") {
 		t.Error("rendered chart still contains near-background abstract accent1")

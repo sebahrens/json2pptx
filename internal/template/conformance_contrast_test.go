@@ -35,15 +35,18 @@ func TestCheckThemeWarnsOnNearBackgroundAccent1(t *testing.T) {
 	}
 }
 
-func TestAbstractTemplateReportsNearBackgroundAccent(t *testing.T) {
+func TestAbstractTemplateAccentIsVisibleOnLightCanvas(t *testing.T) {
 	report, err := CheckConformance("../../templates/abstract.pptx")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, check := range report.Checks {
-		if check.Category == "theme" && strings.Contains(check.Check, "accent1 visible") && check.Status == ConformanceStatusWarn {
+		if check.Category == "theme" && strings.Contains(check.Check, "accent1 visible") {
+			if check.Status != ConformanceStatusPass {
+				t.Errorf("abstract accent1 check = %s, want PASS: %s", check.Status, check.Detail)
+			}
 			return
 		}
 	}
-	t.Fatal("abstract template should warn about its near-background accent1")
+	t.Fatal("abstract template has no accent1 visibility check")
 }
