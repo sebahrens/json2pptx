@@ -168,6 +168,7 @@ func TestStrictFitRefusesEveryCorpusValidationRefusal(t *testing.T) {
 	}
 	for _, path := range paths {
 		t.Run(filepath.Base(path), func(t *testing.T) {
+			t.Parallel() // Corpus files and input instances are independent.
 			data, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatal(err)

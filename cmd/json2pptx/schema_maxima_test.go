@@ -7,9 +7,11 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -105,41 +107,63 @@ func TestSchemaMaximaStayReadable(t *testing.T) {
 	}
 	measured := map[string]float64{}
 	localMeasured := map[string]float64{}
-	for _, pat := range patterns.Default().List() {
-		values, note := schemaMaximumValues(pat)
-		if note != "" {
-			t.Errorf("%s: cannot measure schema maximum on %v: %s", pat.Name(), templateNames, note)
-			measured[pat.Name()] = 0
-			if len(templateNames) > len(schemaMaximaTemplates) {
-				localMeasured[pat.Name()] = 0
+	patternList := patterns.Default().List()
+	type measurement struct {
+		worst, local float64
+		note         string
+		err          error
+	}
+	results := make([]measurement, len(patternList))
+	// Text shaping dominates this test under -race. Each pattern probe is
+	// independent; bound concurrency to avoid multiplying its font-cache memory.
+	semaphore := make(chan struct{}, min(runtime.GOMAXPROCS(0), 4))
+	var wg sync.WaitGroup
+	for i, pat := range patternList {
+		semaphore <- struct{}{}
+		wg.Add(1)
+		go func(i int, pat patterns.Pattern) {
+			defer wg.Done()
+			defer func() { <-semaphore }()
+			values, note := schemaMaximumValues(pat)
+			if note != "" {
+				results[i].note = note
+				return
 			}
-			continue
+			encoded, err := json.Marshal(values)
+			if err != nil {
+				results[i].err = err
+				return
+			}
+			// The score is the SMALLEST size any cell would render at across the
+			// bundled templates — the worst case an author can hit — so a lower
+			// number is a worse pattern, and 0 ("no cell drops below the floor")
+			// is the best of all.
+			worst := 0.0
+			for _, geom := range geometries {
+				pt := measureSchemaMaximumEncodedPt(pat.Name(), encoded, geom)
+				if geom.name == "p-style" {
+					results[i].local = pt
+					continue
+				}
+				if pt > 0 && (worst == 0 || pt < worst) {
+					worst = pt
+				}
+			}
+			results[i].worst = worst
+		}(i, pat)
+	}
+	wg.Wait()
+	for i, pat := range patternList {
+		result := results[i]
+		if result.note != "" {
+			t.Errorf("%s: cannot measure schema maximum on %v: %s", pat.Name(), templateNames, result.note)
+		} else if result.err != nil {
+			t.Errorf("%s: schema maximum does not marshal: %v", pat.Name(), result.err)
 		}
-		encoded, err := json.Marshal(values)
-		if err != nil {
-			t.Errorf("%s: schema maximum does not marshal: %v", pat.Name(), err)
-			measured[pat.Name()] = 0
-			if len(templateNames) > len(schemaMaximaTemplates) {
-				localMeasured[pat.Name()] = 0
-			}
-			continue
+		measured[pat.Name()] = result.worst
+		if len(templateNames) > len(schemaMaximaTemplates) {
+			localMeasured[pat.Name()] = result.local
 		}
-		// The score is the SMALLEST size any cell would render at across the
-		// bundled templates — the worst case an author can hit — so a lower
-		// number is a worse pattern, and 0 ("no cell drops below the floor")
-		// is the best of all.
-		worst := 0.0
-		for _, geom := range geometries {
-			pt := measureSchemaMaximumEncodedPt(pat.Name(), encoded, geom)
-			if geom.name == "p-style" {
-				localMeasured[pat.Name()] = pt
-				continue
-			}
-			if pt > 0 && (worst == 0 || pt < worst) {
-				worst = pt
-			}
-		}
-		measured[pat.Name()] = worst
 	}
 	if len(localMeasured) > 0 {
 		if len(localMeasured) != len(measured) {
