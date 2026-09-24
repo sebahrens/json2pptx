@@ -93,6 +93,13 @@ func TestGetCapabilitiesSectionsProjection(t *testing.T) {
 	if len(tools.Features.StrictFit) != 0 {
 		t.Error("sections=[tools] carried features")
 	}
+	vocab, _ := capabilitiesFor(t, map[string]any{"sections": []any{"vocabularies"}})
+	if strings.Join(vocab.Vocabularies.RepairFixKinds, ",") != strings.Join(repairFixKinds(), ",") {
+		t.Errorf("sections=[vocabularies] repair_fix_kinds = %v, want %v", vocab.Vocabularies.RepairFixKinds, repairFixKinds())
+	}
+	if len(vocab.ToolList) != 0 || len(vocab.Features.StrictFit) != 0 {
+		t.Error("sections=[vocabularies] carried unrequested sections")
+	}
 
 	all, allSize := capabilitiesFor(t, map[string]any{"sections": []any{"all"}})
 	for _, check := range []struct {

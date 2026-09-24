@@ -17,6 +17,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -62,11 +63,8 @@ type appliedFix struct {
 	// "advisory_fix_kind" (go-slide-creator-ui4c).
 	Alternatives []string `json:"alternatives,omitempty"`
 
-	// DidYouMean names the fix kind that can reach the target when this one
-	// cannot — e.g. reduce_text aimed at a shape_grid cell, whose text only
-	// reduce_cell_text can edit. Populated with Code == "wrong_kind_for_target",
-	// alongside a next_tool_call carrying the corrected directive
-	// (go-slide-creator-9zof).
+	// DidYouMean names a close registered kind for an unknown spelling, or the
+	// kind that can reach a target when this one cannot (wrong_kind_for_target).
 	DidYouMean string `json:"did_you_mean,omitempty"`
 
 	// NextToolCall is a machine-readable suggestion for the agent to recover
@@ -85,18 +83,22 @@ type repairFixInput struct {
 
 func mcpRepairSlideTool() mcp.Tool {
 	return mcp.NewTool("repair_slide",
-		mcp.WithDescription(`Apply targeted fixes to one slide without regenerating the deck. Accepts raw presentation JSON or a stored DeckSpec deck_id, a 0-based slide index, and Fix.Kind directives from fit_report. With deck_id, this is a raw escape hatch: the stored semantic spec is unchanged.
+		mcp.WithDescription(`Apply Fix.Kind directives to one 0-based slide in a raw presentation or stored deck_id. A deck_id repair changes only the returned raw deck, not the stored DeckSpec.
 
-Returns the patched deck JSON, a report of which fixes were applied, and post-patch fit findings for the modified slide.
+Returns patched_deck, applied_fixes, and post-patch findings.
 
-All fix kinds accept an optional "path" parameter (JSON Pointer, RFC 6901) to disambiguate which content element to target. When omitted, the fix applies to the first matching element on the slide.
+Fixes accept optional path (RFC 6901 JSON Pointer) to target an element; otherwise the first match is used.
 
-Supported fix kinds (full vocabulary — also enumerated by get_capabilities.vocabularies.repair_fix_kinds):
+Executable kinds (registry; also get_capabilities sections:["vocabularies"]):
+`+strings.Join(repairFixKinds(), ", ")+`
+
+Parameters by kind:
 
 Text / title fits:
 - reduce_text: Truncate bullets/body text. Params: path (string, optional), max_items (int, for bullets), max_length (int, for text).
 - shorten_title: Truncate a title to max_length characters (max_chars is an alias emitted by measured title-fit findings). Params: path (string, optional), max_length or max_chars (int).
 - reduce_cell_text: Truncate a shape_grid cell. Params: cell_path (JSON Pointer), max_chars (int). Preserves markdown emphasis and ends with an ellipsis.
+- renumber_bullets: Number bullets sequentially, or remove typed numbers with strip:true. Params: path (string, optional), strip (bool, optional).
 
 Layout / pagination:
 - split_at_row: Split a table across pages using the split_slide envelope. Params: path (string, optional), row (int, rows per page), title_suffix (string, optional), repeat_headers (bool, optional).
@@ -128,9 +130,9 @@ Pattern values (field-level edits to slide.pattern.values):
 Heuristic:
 - autofix_visual: Apply a heuristic fix based on a visual QA finding category. Params: category (string, required, the visual QA finding category e.g. "text_overflow", "contrast"). Tries each candidate fix kind for the category in order until one succeeds. Additional params are forwarded to the underlying fix handler.
 
-Two non-applied outcomes, distinguished by code:
-- Unknown kinds return {applied: false, code: "kind_not_supported", message: "kind_not_supported", supported_kinds: [...executable vocabulary...], next_tool_call: {tool: "get_capabilities", args_template: {}}}.
-- ADVISORY kinds — the ones findings legitimately emit whose remedy is an authoring decision (add_detail_or_resize, grow_pattern, review, truncation_summary, …; enumerated by get_capabilities.vocabularies.advisory_fix_kinds) — return {applied: false, code: "advisory_fix_kind", message: "<what you have to decide>", alternatives: [...executable kinds that address the same defect...], supported_kinds: [...]}. That is not a caller mistake: act on the guidance or apply one of the alternatives; do not retry the same kind.`),
+Non-applied outcomes:
+- Unknown kind: code kind_not_supported, optional did_you_mean, supported_kinds, and next_tool_call get_capabilities{sections:["vocabularies"]}.
+- Registered advisory kind: code advisory_fix_kind, authoring guidance in message, executable alternatives, and supported_kinds. Follow the guidance or an alternative; do not retry the same kind.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRepairSlide)),
 		mcp.WithObject("presentation",
 			mcp.Description(`Full presentation definition. Same schema as generate_presentation.`),
@@ -312,17 +314,20 @@ func unappliedFix(kind string) appliedFix {
 		Kind:           kind,
 		Applied:        false,
 		Code:           "kind_not_supported",
-		Message:        "kind_not_supported",
+		Message:        fmt.Sprintf("fix kind %q is not supported", kind),
 		SupportedKinds: repairFixKinds(),
 		NextToolCall: &patterns.ToolCallSuggestion{
 			Tool:         "get_capabilities",
-			ArgsTemplate: map[string]any{},
+			ArgsTemplate: map[string]any{"sections": []string{"vocabularies"}},
 		},
 	}
 	if info, ok := patterns.FixKind(kind); ok && info.Class == patterns.FixClassAdvisory {
 		out.Code = "advisory_fix_kind"
 		out.Message = info.Guidance
 		out.Alternatives = info.Alternatives
+	} else if match, _ := generator.ClosestMatch(strings.ToLower(kind), patterns.AllFixKinds(), 4); match != "" {
+		out.DidYouMean = match
+		out.Message += fmt.Sprintf("; did you mean %q?", match)
 	}
 	return out
 }

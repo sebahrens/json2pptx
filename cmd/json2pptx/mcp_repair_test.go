@@ -294,6 +294,9 @@ func TestRepairSlide_UnsupportedKind(t *testing.T) {
 	if output.AppliedFixes[0].Code != "advisory_fix_kind" {
 		t.Errorf("expected code 'advisory_fix_kind', got %q", output.AppliedFixes[0].Code)
 	}
+	if output.AppliedFixes[0].DidYouMean != "" {
+		t.Errorf("registered advisory kind should not get a typo suggestion: %q", output.AppliedFixes[0].DidYouMean)
+	}
 	if output.AppliedFixes[0].Message == "" || output.AppliedFixes[0].Message == "kind_not_supported" {
 		t.Errorf("advisory answer must carry guidance, got %q", output.AppliedFixes[0].Message)
 	}
@@ -363,6 +366,9 @@ func TestRepairSlide_UnsupportedKind_MadeUp(t *testing.T) {
 	if fix["code"] != "kind_not_supported" {
 		t.Errorf("expected code='kind_not_supported', got %v", fix["code"])
 	}
+	if _, ok := fix["did_you_mean"]; ok {
+		t.Errorf("distant unknown kind should not get an arbitrary suggestion: %v", fix["did_you_mean"])
+	}
 
 	supported, ok := fix["supported_kinds"].([]any)
 	if !ok {
@@ -385,8 +391,37 @@ func TestRepairSlide_UnsupportedKind_MadeUp(t *testing.T) {
 	if ntc["tool"] != "get_capabilities" {
 		t.Errorf("next_tool_call.tool=%v, want 'get_capabilities'", ntc["tool"])
 	}
-	if _, ok := ntc["args_template"].(map[string]any); !ok {
+	args, ok := ntc["args_template"].(map[string]any)
+	if !ok {
 		t.Errorf("next_tool_call.args_template missing or not an object: %v", ntc["args_template"])
+	} else if sections, ok := args["sections"].([]any); !ok || len(sections) != 1 || sections[0] != "vocabularies" {
+		t.Errorf("next_tool_call.args_template.sections = %v, want [vocabularies]", args["sections"])
+	}
+}
+
+func TestRepairSlide_UnsupportedKind_SuggestsClosestRegisteredKind(t *testing.T) {
+	mc := repairMC(t)
+	deck := minimalDeck(map[string]any{
+		"placeholder_id": "title", "type": "text", "text_value": "Hello",
+	})
+	result, err := mc.handleRepairSlide(context.Background(), makeRequest(map[string]any{
+		"presentation": mustParseJSON(deck),
+		"slide_index":  float64(0),
+		"fixes":        []any{map[string]any{"kind": "renumber_bullet"}},
+	}))
+	if err != nil || result.IsError {
+		t.Fatalf("repair_slide error: %v, %+v", err, result)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal([]byte(textContent(result)), &raw); err != nil {
+		t.Fatal(err)
+	}
+	fix := raw["applied_fixes"].([]any)[0].(map[string]any)
+	if fix["code"] != "kind_not_supported" || fix["did_you_mean"] != "renumber_bullets" {
+		t.Errorf("unknown-kind recovery = %+v", fix)
+	}
+	if msg, _ := fix["message"].(string); !strings.Contains(msg, "renumber_bullets") {
+		t.Errorf("message does not explain closest kind: %q", msg)
 	}
 }
 

@@ -121,6 +121,15 @@ func TestRepairFixKindsMatchApplySwitch(t *testing.T) {
 			t.Errorf("advisory kind %q is also advertised as executable", kind)
 		}
 	}
+	// The tool description's canonical list is generated from the same
+	// registry, so a newly executable kind cannot disappear from discovery.
+	description := mcpRepairSlideTool().Description
+	if !strings.Contains(description, strings.Join(advertised, ", ")) {
+		t.Error("repair_slide description does not contain the registry-derived executable vocabulary")
+	}
+	if !strings.Contains(description, "- renumber_bullets:") {
+		t.Error("repair_slide description omits renumber_bullets parameter guidance")
+	}
 }
 
 // emittedFixKinds scans the module's non-test Go sources for fix literals,
