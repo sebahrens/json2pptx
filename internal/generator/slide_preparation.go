@@ -134,6 +134,11 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 		frame.Fits = false
 	}
 	clampContentPlaceholdersToChrome(slide, frame)
+	if input.slideSpec.ColumnLeftPercent != 0 {
+		if err := deriveTwoColumnGeometry(slide, input.slideSpec.ColumnLeftPercent); err != nil {
+			return slidePreparationResult{}, fmt.Errorf("slide %d: layout %q: %w", input.slideIndex+1, input.slideSpec.LayoutID, err)
+		}
+	}
 
 	var warnings []string
 	if len(input.slideSpec.Content) > 0 {

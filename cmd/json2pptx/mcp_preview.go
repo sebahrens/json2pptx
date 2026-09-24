@@ -346,6 +346,13 @@ func loadPreviewTemplate(templatePath string) (*previewTemplateContext, error) {
 		Layouts:      layouts,
 	}
 	_ = template.SynthesizeIfNeeded(reader, analysis)
+	// Preview must use the same canonical placeholder names as generation.
+	// Otherwise a user-authored body/body_2 resolves during render but preview
+	// cannot attach its bounds when the source layout says "Content Placeholder".
+	if _, err := template.NormalizeLayoutFiles(reader, analysis.Layouts); err != nil {
+		_ = reader.Close()
+		return nil, fmt.Errorf("normalize preview layouts: %w", err)
+	}
 
 	layoutByID := make(map[string]types.LayoutMetadata, len(analysis.Layouts))
 	for _, l := range analysis.Layouts {
@@ -425,7 +432,9 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 	resolveSlideLayout(i, slide, input, tctx, usedLayouts, output, &rs)
 
 	// Placeholder resolution.
-	resolveSlidePlaceholders(slide, tctx, &rs)
+	if err := resolveSlidePlaceholders(slide, tctx, &rs); err != nil {
+		output.Errors = append(output.Errors, fmt.Sprintf("slide %d: %v", i+1, err))
+	}
 	// Keep the original layout_id through placeholder mapping: an auto-selected
 	// slide must still map virtual placeholder names. Subsequent grid geometry
 	// must use the concrete layout generation selected.
@@ -539,7 +548,7 @@ func resolveSlideLayout(i int, slide *SlideInput, input *PresentationInput, tctx
 }
 
 // resolveSlidePlaceholders resolves virtual placeholder IDs and attaches geometry.
-func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, rs *resolvedSlide) {
+func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, rs *resolvedSlide) error {
 	resolvedContent := make([]ContentInput, len(slide.Content))
 	copy(resolvedContent, slide.Content)
 
@@ -551,6 +560,14 @@ func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, r
 		}
 	}
 
+	selectedLayout, hasLayout := tctx.layoutByID[rs.LayoutID]
+	if hasLayout && derivedColumnLeftPercent(*slide) != 0 {
+		var err error
+		selectedLayout, err = deriveLayoutMetadata(*slide, selectedLayout, tctx.layouts, tctx.slideWidth, tctx.slideHeight)
+		if err != nil {
+			return err
+		}
+	}
 	for j, ci := range resolvedContent {
 		rp := resolvedPlaceholder{
 			InputID:    slide.Content[j].PlaceholderID,
@@ -560,8 +577,8 @@ func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, r
 		}
 
 		// Attach geometry from template layout.
-		if lm, ok := tctx.layoutByID[rs.LayoutID]; ok {
-			for _, ph := range lm.Placeholders {
+		if hasLayout {
+			for _, ph := range selectedLayout.Placeholders {
 				if ph.ID == ci.PlaceholderID {
 					rp.Geometry = boundingBoxToGeom(ph.Bounds)
 					break
@@ -571,6 +588,7 @@ func resolveSlidePlaceholders(slide *SlideInput, tctx *previewTemplateContext, r
 
 		rs.Placeholders = append(rs.Placeholders, rp)
 	}
+	return nil
 }
 
 // resolveSlidePattern expands a pattern and updates the slide's shape_grid.

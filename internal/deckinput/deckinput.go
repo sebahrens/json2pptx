@@ -237,24 +237,31 @@ func (t *ThemeInput) ToThemeOverride() *types.ThemeOverride {
 
 // SlideInput maps to generator.SlideSpec with full metadata.
 type SlideInput struct {
-	LayoutID        string               `json:"layout_id,omitempty"`
-	SlideType       string               `json:"slide_type,omitempty"` // Optional hint: content, title, section, chart, two-column, diagram, image, comparison, blank
-	Eyebrow         string               `json:"eyebrow,omitempty"`    // Small-caps label above title (e.g., "STRATEGY — Market Expansion")
-	Headline        string               `json:"headline,omitempty"`   // Visible slide headline for blank-canvas compositions; rendered in a reserved title band.
-	Background      *BackgroundInput     `json:"background,omitempty"`
-	Content         []ContentInput       `json:"content"`
-	ShapeGrid       *ShapeGridInput      `json:"shape_grid,omitempty"`
-	Pattern         *PatternInput        `json:"pattern,omitempty"`
-	Compose         *ComposeInput        `json:"compose,omitempty"`
-	Overlays        []*OverlayShapeInput `json:"overlays,omitempty"` // Free-floating shapes (arrows, lines, badges) rendered on top of the grid. See OverlayShapeInput for positioning.
-	SpeakerNotes    string               `json:"speaker_notes,omitempty"`
-	Source          string               `json:"source,omitempty"`
-	SourceLink      *LinkInput           `json:"source_link,omitempty"`
-	Takeaway        string               `json:"takeaway,omitempty"` // Headline answer / "so what" line rendered above the source note. Strongly recommended on chart and matrix slides.
-	Transition      string               `json:"transition,omitempty"`
-	TransitionSpeed string               `json:"transition_speed,omitempty"`
-	Build           string               `json:"build,omitempty"`
-	ContrastCheck   *bool                `json:"contrast_check,omitempty"`
+	LayoutID string `json:"layout_id,omitempty"`
+	// ColumnLeftPercent preserves the requested asymmetric two-column variant
+	// after layout_id is resolved to a concrete template layout. It is internal
+	// and must not become a second author-facing way to specify geometry.
+	ColumnLeftPercent int `json:"-"`
+	// ColumnBaseLayoutID lets repeated resolution distinguish the concrete
+	// layout this split belongs to from a later edited layout_id.
+	ColumnBaseLayoutID string               `json:"-"`
+	SlideType          string               `json:"slide_type,omitempty"` // Optional hint: content, title, section, chart, two-column, diagram, image, comparison, blank
+	Eyebrow            string               `json:"eyebrow,omitempty"`    // Small-caps label above title (e.g., "STRATEGY — Market Expansion")
+	Headline           string               `json:"headline,omitempty"`   // Visible slide headline for blank-canvas compositions; rendered in a reserved title band.
+	Background         *BackgroundInput     `json:"background,omitempty"`
+	Content            []ContentInput       `json:"content"`
+	ShapeGrid          *ShapeGridInput      `json:"shape_grid,omitempty"`
+	Pattern            *PatternInput        `json:"pattern,omitempty"`
+	Compose            *ComposeInput        `json:"compose,omitempty"`
+	Overlays           []*OverlayShapeInput `json:"overlays,omitempty"` // Free-floating shapes (arrows, lines, badges) rendered on top of the grid. See OverlayShapeInput for positioning.
+	SpeakerNotes       string               `json:"speaker_notes,omitempty"`
+	Source             string               `json:"source,omitempty"`
+	SourceLink         *LinkInput           `json:"source_link,omitempty"`
+	Takeaway           string               `json:"takeaway,omitempty"` // Headline answer / "so what" line rendered above the source note. Strongly recommended on chart and matrix slides.
+	Transition         string               `json:"transition,omitempty"`
+	TransitionSpeed    string               `json:"transition_speed,omitempty"`
+	Build              string               `json:"build,omitempty"`
+	ContrastCheck      *bool                `json:"contrast_check,omitempty"`
 
 	// SectionTitle is the title of the structure.sections[] entry this slide was
 	// expanded from. It is set by the engine, never by the author — hence

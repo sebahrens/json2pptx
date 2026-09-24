@@ -32,6 +32,14 @@ const DefaultFindingBudget = 5
 // those (callers that don't have a parsed template theme).
 func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata, slideWidth, slideHeight int64, theme *types.ThemeInfo) []patterns.FitFinding {
 	var findings []patterns.FitFinding
+	for i, slide := range input.Slides {
+		if finding, ok := derivedColumnLayoutFinding(slide, i); ok {
+			findings = append(findings, finding)
+		}
+	}
+	var geometryErrors []patterns.FitFinding
+	input, layouts, geometryErrors = withDerivedFitLayouts(input, layouts, slideWidth, slideHeight)
+	findings = append(findings, geometryErrors...)
 
 	// Expand compose envelopes into ShapeGrid so downstream detectors evaluate
 	// against post-merge cell geometry. Without this step, a diagram placed in

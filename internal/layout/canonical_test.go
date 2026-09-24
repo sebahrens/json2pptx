@@ -94,8 +94,8 @@ func TestResolveCanonicalLayoutID_ConsultingTemplate(t *testing.T) {
 		{"closing", "closing", "slideLayout5", true},
 		{"blank", "blank", "slideLayout4", true},
 		{"two-column", "two-column", "content-2-50-50", true},
-		{"two-column-wide-narrow", "two-column-wide-narrow", "content-2-60-40", true},
-		{"two-column-narrow-wide", "two-column-narrow-wide", "content-2-40-60", true},
+		{"two-column-wide-narrow", "two-column-wide-narrow", "content-2-50-50", true},
+		{"two-column-narrow-wide", "two-column-narrow-wide", "content-2-50-50", true},
 	}
 
 	for _, tt := range tests {

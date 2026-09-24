@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -243,6 +244,15 @@ func placeholderID(shapeName string, ph *placeholderRef) string {
 		case "subTitle":
 			return "subtitle"
 		case "body":
+			// Generated two-column slides keep distinct canonical shape names
+			// even though both placeholders carry the OOXML type="body".
+			// Preserve that distinction for read-back and round trips.
+			name := strings.ToLower(strings.TrimSpace(shapeName))
+			if suffix, ok := strings.CutPrefix(name, "body_"); ok {
+				if n, err := strconv.Atoi(suffix); err == nil && n >= 2 {
+					return name
+				}
+			}
 			return "body"
 		case "dt":
 			return "date"

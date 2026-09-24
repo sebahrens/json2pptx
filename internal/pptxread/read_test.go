@@ -38,15 +38,18 @@ func TestReadPackage_NonExistent(t *testing.T) {
 
 func TestPlaceholderID(t *testing.T) {
 	tests := []struct {
-		name     string
-		phType   string
+		name      string
+		phType    string
 		shapeName string
-		want     string
+		want      string
 	}{
 		{"ctrTitle", "ctrTitle", "Title 1", "title"},
 		{"title", "title", "Title 1", "title"},
 		{"subTitle", "subTitle", "Subtitle 2", "subtitle"},
 		{"body", "body", "Content Placeholder 3", "body"},
+		{"canonical second body", "body", "body_2", "body_2"},
+		{"canonical later body", "body", "body_10", "body_10"},
+		{"malformed body suffix", "body", "body_two", "body"},
 		{"footer", "ftr", "Footer 4", "footer"},
 		{"date", "dt", "Date Placeholder 5", "date"},
 		{"slideNum", "sldNum", "Slide Number 6", "slide_number"},

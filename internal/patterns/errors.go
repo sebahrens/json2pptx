@@ -142,6 +142,9 @@ const (
 	// host a slide's declared slide_type. Pattern / shape_grid / compose slides
 	// then fall back to the template's blank canvas; other slides refuse.
 	ErrCodeLayoutUnresolvable = "LAYOUT_UNRESOLVABLE"
+	// ErrCodeLayoutDerived reports that an asymmetric two-column variant was
+	// derived from the template's native Two Content layout.
+	ErrCodeLayoutDerived = "LAYOUT_DERIVED"
 
 	// ErrCodeUnsupportedInlineMarkup is emitted when authored text carries an
 	// inline tag the run builder does not render, which therefore prints

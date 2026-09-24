@@ -724,6 +724,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 		RelatedCodes:  []string{ErrCodePlaceholderRemapped, ErrCodeTextTrimmed, ErrCodeTableRowsTruncated},
 	},
 
+	ErrCodeLayoutDerived: {
+		Code:        ErrCodeLayoutDerived,
+		Summary:     "An asymmetric two-column slide was derived from a template layout.",
+		Severity:    "info",
+		WhenEmitted: "A slide requests two-column-wide-narrow or two-column-narrow-wide. Generation keeps the native Two Content layout's styling and outer bounds but resizes its body columns to 65/35 or 35/65 with at least a 0.3-inch gutter.",
+		RemediationSteps: []string{
+			"No action is needed if the derived geometry fits the content.",
+			"Use two-column for the template's native balanced column widths.",
+		},
+	},
 	ErrCodeLayoutUnresolvable: {
 		Code:        ErrCodeLayoutUnresolvable,
 		Summary:     "No layout in this template can host the slide's declared slide_type.",

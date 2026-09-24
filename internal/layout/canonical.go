@@ -52,8 +52,8 @@ var canonicalNames = map[string]canonicalRule{
 	"blank+title":            {requireTags: []string{"blank-title"}},
 	"blank-canvas":           {requireTags: []string{"blank"}},
 	"two-column":             {requireTags: []string{"two-column"}, nameHint: "50"},
-	"two-column-wide-narrow": {requireTags: []string{"two-column"}, nameHint: "60"},
-	"two-column-narrow-wide": {requireTags: []string{"two-column"}, nameHint: "40/60"},
+	"two-column-wide-narrow": {requireTags: []string{"two-column"}, nameHint: "50"},
+	"two-column-narrow-wide": {requireTags: []string{"two-column"}, nameHint: "50"},
 	"image-left":             {requireTags: []string{"image-left"}},
 	"image-right":            {requireTags: []string{"image-right"}},
 	"quote":                  {requireTags: []string{"quote", "statement"}},
@@ -68,6 +68,19 @@ var canonicalNames = map[string]canonicalRule{
 func IsCanonicalName(name string) bool {
 	_, ok := canonicalNames[strings.ToLower(strings.TrimSpace(name))]
 	return ok
+}
+
+// DerivedColumnLeftPercent returns the left column's requested share for the
+// two asymmetric canonical names. Zero means use the template's native split.
+func DerivedColumnLeftPercent(name string) int {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "two-column-wide-narrow":
+		return 65
+	case "two-column-narrow-wide":
+		return 35
+	default:
+		return 0
+	}
 }
 
 // CanonicalNames returns every canonical layout name, sorted.

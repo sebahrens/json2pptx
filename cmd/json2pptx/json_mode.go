@@ -805,6 +805,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	var slideFitFindings []patterns.FitFinding
 	hasComposition := hasPatternContent(slide)
 	explicitLayout := slide.LayoutID != ""
+	slide.ColumnLeftPercent = derivedColumnLeftPercent(slide)
 
 	if slide.LayoutID != "" && len(layouts) > 0 {
 		if resolved, ok := layout.ResolveCanonicalLayoutID(slide.LayoutID, layouts); ok {
@@ -914,17 +915,21 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	}
 
 	spec := generator.SlideSpec{
-		LayoutID:        slide.LayoutID,
-		Content:         contentItems,
-		Eyebrow:         slide.Eyebrow,
-		SpeakerNotes:    slide.SpeakerNotes,
-		SourceNote:      slide.Source,
-		SourceLink:      toGeneratorLink(slide.SourceLink),
-		Takeaway:        slide.Takeaway,
-		Transition:      slide.Transition,
-		TransitionSpeed: slide.TransitionSpeed,
-		Build:           slide.Build,
-		ContrastCheck:   slide.ContrastCheck,
+		LayoutID:          slide.LayoutID,
+		ColumnLeftPercent: slide.ColumnLeftPercent,
+		Content:           contentItems,
+		Eyebrow:           slide.Eyebrow,
+		SpeakerNotes:      slide.SpeakerNotes,
+		SourceNote:        slide.Source,
+		SourceLink:        toGeneratorLink(slide.SourceLink),
+		Takeaway:          slide.Takeaway,
+		Transition:        slide.Transition,
+		TransitionSpeed:   slide.TransitionSpeed,
+		Build:             slide.Build,
+		ContrastCheck:     slide.ContrastCheck,
+	}
+	if finding, ok := derivedColumnLayoutFinding(slide, i); ok {
+		slideFitFindings = append(slideFitFindings, finding)
 	}
 	if strings.TrimSpace(slide.Headline) != "" && isBlankCanvasLayout(slide.LayoutID, layouts) {
 		headlineXML, headlineErr := generateCanvasHeadline(slide.Headline, canvasHeadlineBounds(slideWidth, slideHeight), diagCtx)

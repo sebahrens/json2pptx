@@ -2,12 +2,16 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/pptxread"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // Preview must make the same automatic canvas choice and place the same cells
@@ -97,6 +101,88 @@ func TestPreviewAutoCompositionMatchesGeneration(t *testing.T) {
 				for i := range resolved.Shapes {
 					if !bytes.Equal(resolved.Shapes[i], specs[0].RawShapeXML[i]) {
 						t.Errorf("rendered shape %d differs between preview expansion and generation", i)
+					}
+				}
+			})
+		}
+	}
+}
+
+func TestPreviewNormalizesRealTemplatePlaceholderNames(t *testing.T) {
+	tctx, err := loadPreviewTemplate(filepath.Join("..", "..", "internal", "template", "testdata", "standard.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tctx.reader.Close() }()
+	layoutID, ok := layout.ResolveCanonicalLayoutID("two-column", tctx.layouts)
+	if !ok {
+		t.Fatal("standard template has no two-column layout")
+	}
+	input := &PresentationInput{Slides: []SlideInput{{LayoutID: layoutID, Content: []ContentInput{
+		{PlaceholderID: "body", Type: "text", Value: json.RawMessage(`"Left"`)},
+		{PlaceholderID: "body_2", Type: "text", Value: json.RawMessage(`"Right"`)},
+	}}}}
+	preview := resolvePreviewSlides(input, tctx)
+	if len(preview.Errors) > 0 || len(preview.ResolvedSlides) != 1 {
+		t.Fatalf("preview = %+v", preview)
+	}
+	placeholders := preview.ResolvedSlides[0].Placeholders
+	if len(placeholders) != 2 {
+		t.Fatalf("placeholders = %+v, want two", placeholders)
+	}
+	for i, ph := range placeholders {
+		if ph.Geometry == nil || ph.Geometry.Width <= 0 || ph.Geometry.Height <= 0 {
+			t.Errorf("placeholder %d lost geometry after normalization: %+v", i, ph)
+		}
+	}
+}
+
+func TestPreviewDerivedColumnsMatchGeneratedPPTX(t *testing.T) {
+	for _, templateName := range []string{"abstract", "modern-yellow"} {
+		for _, alias := range []string{"two-column-wide-narrow", "two-column-narrow-wide"} {
+			t.Run(templateName+"/"+alias, func(t *testing.T) {
+				templatePath := filepath.Join(testutil.TemplatesDir(), templateName+".pptx")
+				tctx, err := loadPreviewTemplate(templatePath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() { _ = tctx.reader.Close() }()
+				slides := []SlideInput{{LayoutID: alias, Content: []ContentInput{
+					{PlaceholderID: "body", Type: "text", Value: json.RawMessage(`"Left"`)},
+					{PlaceholderID: "body_2", Type: "text", Value: json.RawMessage(`"Right"`)},
+				}}}
+				resolveCanonicalLayoutIDs(slides, tctx.layouts)
+				input := &PresentationInput{Slides: slides}
+				preview := resolvePreviewSlides(input, tctx)
+				if len(preview.Errors) > 0 || len(preview.ResolvedSlides) != 1 {
+					t.Fatalf("preview = %+v", preview)
+				}
+				specs, _, _, err := convertPresentationSlides(slides, tctx.layouts, tctx.slideWidth, tctx.slideHeight, tctx.metadata, nil, "", nil, false)
+				if err != nil {
+					t.Fatal(err)
+				}
+				output := filepath.Join(t.TempDir(), "derived.pptx")
+				if _, err := generator.Generate(context.Background(), generator.GenerationRequest{
+					TemplatePath: templatePath, OutputPath: output, ExcludeTemplateSlides: true, Slides: specs,
+				}); err != nil {
+					t.Fatal(err)
+				}
+				deck, err := pptxread.ReadFile(output)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if len(deck.Slides) != 1 {
+					t.Fatalf("generated %d slides, want one", len(deck.Slides))
+				}
+				actual := make(map[string]*pptxread.Rect)
+				for _, ph := range deck.Slides[0].Placeholders {
+					actual[ph.ID] = ph.Bounds
+				}
+				for _, ph := range preview.ResolvedSlides[0].Placeholders {
+					got := actual[ph.ResolvedID]
+					want := ph.Geometry
+					if got == nil || want == nil || got.X != want.X || got.Y != want.Y || got.Width != want.Width || got.Height != want.Height {
+						t.Errorf("%s preview bounds = %+v, generated = %+v", ph.ResolvedID, want, got)
 					}
 				}
 			})

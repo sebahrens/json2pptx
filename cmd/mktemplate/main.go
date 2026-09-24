@@ -810,7 +810,7 @@ func twoColumnLayout(def templateDef) string {
 		// Left content (idx=1)
 		`<p:sp><p:nvSpPr><p:cNvPr id="3" name="body"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>` +
 		`<p:nvPr><p:ph type="body" sz="half" idx="1"/></p:nvPr></p:nvSpPr>` +
-		`<p:spPr><a:xfrm><a:off x="838200" y="1825625"/><a:ext cx="5181600" cy="4351338"/></a:xfrm></p:spPr>` +
+		`<p:spPr><a:xfrm><a:off x="838200" y="1825625"/><a:ext cx="5120640" cy="4351338"/></a:xfrm></p:spPr>` +
 		`<p:txBody><a:bodyPr/><a:lstStyle/>` +
 		`<a:p><a:pPr lvl="0"/><a:r><a:rPr lang="en-US"/><a:t>Click to edit Master text styles</a:t></a:r></a:p>` +
 		`<a:p><a:pPr lvl="1"/><a:r><a:rPr lang="en-US"/><a:t>Second level</a:t></a:r></a:p>` +
@@ -818,7 +818,7 @@ func twoColumnLayout(def templateDef) string {
 		// Right content (idx=2)
 		`<p:sp><p:nvSpPr><p:cNvPr id="4" name="body_2"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>` +
 		`<p:nvPr><p:ph type="body" sz="half" idx="2"/></p:nvPr></p:nvSpPr>` +
-		`<p:spPr><a:xfrm><a:off x="6172200" y="1825625"/><a:ext cx="5181600" cy="4351338"/></a:xfrm></p:spPr>` +
+		`<p:spPr><a:xfrm><a:off x="6233160" y="1825625"/><a:ext cx="5120640" cy="4351338"/></a:xfrm></p:spPr>` +
 		`<p:txBody><a:bodyPr/><a:lstStyle/>` +
 		`<a:p><a:pPr lvl="0"/><a:r><a:rPr lang="en-US"/><a:t>Click to edit Master text styles</a:t></a:r></a:p>` +
 		`<a:p><a:pPr lvl="1"/><a:r><a:rPr lang="en-US"/><a:t>Second level</a:t></a:r></a:p>` +

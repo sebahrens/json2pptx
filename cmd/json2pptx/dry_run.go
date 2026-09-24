@@ -431,8 +431,20 @@ func resolveCanonicalLayoutIDs(slides []SlideInput, layouts []types.LayoutMetada
 	}
 	for i := range slides {
 		if slides[i].LayoutID != "" {
+			requested := slides[i].LayoutID
+			percent := layout.DerivedColumnLeftPercent(requested)
+			if percent != 0 {
+				slides[i].ColumnLeftPercent = percent
+			} else if layout.IsCanonicalName(requested) ||
+				(slides[i].ColumnBaseLayoutID != "" && requested != slides[i].ColumnBaseLayoutID) {
+				slides[i].ColumnLeftPercent = 0
+				slides[i].ColumnBaseLayoutID = ""
+			}
 			if resolved, ok := layout.ResolveCanonicalLayoutID(slides[i].LayoutID, layouts); ok {
 				slides[i].LayoutID = resolved
+				if percent != 0 {
+					slides[i].ColumnBaseLayoutID = resolved
+				}
 			}
 		}
 	}

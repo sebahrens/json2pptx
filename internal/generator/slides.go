@@ -91,20 +91,21 @@ type BackgroundOverlay struct {
 
 // SlideSpec defines a single slide to create.
 type SlideSpec struct {
-	LayoutID        string           // Layout to use (e.g., "slideLayout1")
-	Content         []ContentItem    // Content items to populate
-	Eyebrow         string           // Small-caps label prepended to title placeholder
-	Background      *BackgroundImage // Slide background image (nil = no background image)
-	SpeakerNotes    string           // Speaker notes text (written to notesSlide XML)
-	SourceNote      string           // Source attribution text (rendered as small text at slide bottom)
-	SourceLink      *LinkSpec        // Optional hyperlink on source attribution
-	Takeaway        string           // Headline answer / "so what" line (rendered as bold text above the source note)
-	Transition      string           // Slide transition type: "fade", "push", "wipe", "cover", "uncover", "cut", "dissolve"
-	TransitionSpeed string           // Transition speed: "slow", "med", "fast" (default: "med")
-	Build           string           // Build animation: "bullets" for one-by-one bullet reveal
-	ContrastCheck   *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
-	SkipFooter      bool             // When true, footer/chrome is suppressed on this slide
-	RawShapeXML     [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
+	LayoutID          string           // Layout to use (e.g., "slideLayout1")
+	ColumnLeftPercent int              // Derived two-column split; 0 keeps template geometry
+	Content           []ContentItem    // Content items to populate
+	Eyebrow           string           // Small-caps label prepended to title placeholder
+	Background        *BackgroundImage // Slide background image (nil = no background image)
+	SpeakerNotes      string           // Speaker notes text (written to notesSlide XML)
+	SourceNote        string           // Source attribution text (rendered as small text at slide bottom)
+	SourceLink        *LinkSpec        // Optional hyperlink on source attribution
+	Takeaway          string           // Headline answer / "so what" line (rendered as bold text above the source note)
+	Transition        string           // Slide transition type: "fade", "push", "wipe", "cover", "uncover", "cut", "dissolve"
+	TransitionSpeed   string           // Transition speed: "slow", "med", "fast" (default: "med")
+	Build             string           // Build animation: "bullets" for one-by-one bullet reveal
+	ContrastCheck     *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
+	SkipFooter        bool             // When true, footer/chrome is suppressed on this slide
+	RawShapeXML       [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
 	// OverlayShapeXML holds free-floating shapes (badges, arrows, lines) that
 	// must paint ON TOP of everything else on the slide. They are kept separate
 	// from RawShapeXML because raw grid shapes go in at the START of the spTree
