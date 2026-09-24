@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -558,8 +559,102 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 			prependEyebrowParagraph(shape, eyebrow)
 		}
 	}
+	alignSiblingBodyColumns(slide, content, layoutID)
 
 	return warnings
+}
+
+// alignSiblingBodyColumns keeps two populated, side-by-side body placeholders
+// on the same top baseline when one column is taller or contains a visual.
+// Balanced sparse text columns may retain their intentional centering.
+func alignSiblingBodyColumns(slide *slideXML, content []ContentItem, layoutID string) {
+	shapes := slide.CommonSlideData.ShapeTree.Shapes
+	indices := buildPlaceholderMap(shapes)
+	leftIdx, hasLeft := indices["body"]
+	rightIdx, hasRight := indices["body_2"]
+	if !hasLeft || !hasRight || !sideBySideBodies(&shapes[leftIdx], &shapes[rightIdx]) {
+		return
+	}
+
+	populated, visual := populatedSiblingBodyColumns(shapes, content, layoutID, leftIdx, rightIdx)
+	if !populated[0] || !populated[1] {
+		return
+	}
+
+	left, right := &shapes[leftIdx], &shapes[rightIdx]
+	leftParas, rightParas := bodyParagraphCount(left), bodyParagraphCount(right)
+	leftChars, rightChars := bodyTextLength(left), bodyTextLength(right)
+	balancedText := leftChars <= rightChars+rightChars/2 && rightChars <= leftChars+leftChars/2
+	if !visual[0] && !visual[1] && leftParas == rightParas && balancedText &&
+		bodyAnchor(left) == "ctr" && bodyAnchor(right) == "ctr" {
+		return
+	}
+	for column, idx := range []int{leftIdx, rightIdx} {
+		if visual[column] {
+			continue
+		}
+		if shape := &shapes[idx]; shape.TextBody != nil && shape.TextBody.BodyProperties != nil && bodyAnchor(shape) == "ctr" {
+			shape.TextBody.BodyProperties.Anchor = "t"
+		}
+	}
+}
+
+func populatedSiblingBodyColumns(shapes []shapeXML, content []ContentItem, layoutID string, leftIdx, rightIdx int) ([2]bool, [2]bool) {
+	resolver := newPlaceholderResolver(shapes, layoutID)
+	var populated, visual [2]bool
+	for _, item := range content {
+		idx, _, found := resolver.ResolveWithFallback(item.PlaceholderID)
+		if !found {
+			continue
+		}
+		isVisual := item.Type == ContentImage || item.Type == ContentDiagram || item.Type == ContentTable
+		if idx == leftIdx {
+			populated[0], visual[0] = true, visual[0] || isVisual
+		} else if idx == rightIdx {
+			populated[1], visual[1] = true, visual[1] || isVisual
+		}
+	}
+	return populated, visual
+}
+
+func sideBySideBodies(left, right *shapeXML) bool {
+	a, b := left.ShapeProperties.Transform, right.ShapeProperties.Transform
+	if a == nil || b == nil || a.Extent.CX <= 0 || b.Extent.CX <= 0 || a.Extent.CY <= 0 || b.Extent.CY <= 0 {
+		return false
+	}
+	if a.Offset.X+a.Extent.CX > b.Offset.X && b.Offset.X+b.Extent.CX > a.Offset.X {
+		return false
+	}
+	top := max(a.Offset.Y, b.Offset.Y)
+	bottom := min(a.Offset.Y+a.Extent.CY, b.Offset.Y+b.Extent.CY)
+	return bottom-top >= min(a.Extent.CY, b.Extent.CY)/2
+}
+
+func bodyParagraphCount(shape *shapeXML) int {
+	if shape.TextBody == nil {
+		return 0
+	}
+	return len(shape.TextBody.Paragraphs)
+}
+
+func bodyTextLength(shape *shapeXML) int {
+	if shape.TextBody == nil {
+		return 0
+	}
+	chars := 0
+	for _, paragraph := range shape.TextBody.Paragraphs {
+		for _, run := range paragraph.Runs {
+			chars += utf8.RuneCountInString(run.Text)
+		}
+	}
+	return chars
+}
+
+func bodyAnchor(shape *shapeXML) string {
+	if shape.TextBody == nil || shape.TextBody.BodyProperties == nil {
+		return ""
+	}
+	return shape.TextBody.BodyProperties.Anchor
 }
 
 // clearUnmappedPlaceholders removes template sample text from placeholder shapes

@@ -561,6 +561,75 @@ func TestSinglePassContext_PopulateTextInSlide(t *testing.T) {
 	}
 }
 
+func TestPopulateTextInSlide_SiblingColumnAlignment(t *testing.T) {
+	bullets := func(n int) []string {
+		items := make([]string, n)
+		for i := range items {
+			items[i] = fmt.Sprintf("Point %d", i+1)
+		}
+		return items
+	}
+	makeSlide := func(stacked bool) *slideXML {
+		rightX, rightY := int64(4000000), int64(1000000)
+		if stacked {
+			rightX, rightY = 0, 5500000
+		}
+		makeBody := func(name string, x, y int64) shapeXML {
+			return shapeXML{
+				NonVisualProperties: nonVisualPropertiesXML{
+					ConnectionNonVisual: connectionNonVisualXML{Name: name},
+					NvPr:                nvPrXML{Placeholder: &placeholderXML{Type: "body"}},
+				},
+				ShapeProperties: shapePropertiesXML{Transform: &transformXML{
+					Offset: offsetXML{X: x, Y: y}, Extent: extentXML{CX: 3500000, CY: 4000000},
+				}},
+				TextBody: &textBodyXML{BodyProperties: &bodyPropertiesXML{Anchor: "t"}},
+			}
+		}
+		return &slideXML{CommonSlideData: commonSlideDataXML{ShapeTree: shapeTreeXML{Shapes: []shapeXML{
+			makeBody("body", 0, 1000000), makeBody("body_2", rightX, rightY),
+		}}}}
+	}
+	tests := []struct {
+		name        string
+		left, right ContentItem
+		stacked     bool
+		wantLeft    string
+		wantRight   string
+	}{
+		{"five_vs_one_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(5)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(1)}, false, "t", "t"},
+		{"balanced_sparse_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(2)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(2)}, false, "ctr", "ctr"},
+		{"unequal_single_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: []string{"A succinct point"}}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: []string{"A much longer point that wraps several times in this same-width column and must not float below its sibling"}}, false, "t", "t"},
+		{"dense_left_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(9)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(1)}, false, "t", "t"},
+		{"chart_sibling", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(1)}, ContentItem{PlaceholderID: "body_2", Type: ContentDiagram}, false, "t", "ctr"},
+		{"table_sibling", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(1)}, ContentItem{PlaceholderID: "body_2", Type: ContentTable}, false, "t", "ctr"},
+		{"stacked_bodies_unchanged", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(5)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(1)}, true, "ctr", "ctr"},
+		{"unpopulated_sibling", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(1)}, ContentItem{}, false, "ctr", "t"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			slide := makeSlide(tt.stacked)
+			if tt.right.Type == ContentDiagram || tt.right.Type == ContentTable {
+				slide.CommonSlideData.ShapeTree.Shapes[1].TextBody.BodyProperties.Anchor = "ctr"
+			}
+			ctx := &singlePassContext{}
+			content := []ContentItem{tt.left}
+			if tt.right.Type != "" {
+				content = append(content, tt.right)
+			}
+			if warnings := ctx.populateTextInSlide(slide, content, "slideLayout3", 0, ""); len(warnings) != 0 {
+				t.Fatalf("unexpected warnings: %v", warnings)
+			}
+			for i, want := range []string{tt.wantLeft, tt.wantRight} {
+				got := slide.CommonSlideData.ShapeTree.Shapes[i].TextBody.BodyProperties.Anchor
+				if got != want {
+					t.Errorf("column %d anchor = %q, want %q", i, got, want)
+				}
+			}
+		})
+	}
+}
+
 // intPtr is a helper to create *int for tests
 func intPtr(i int) *int {
 	return &i
