@@ -71,10 +71,12 @@ type validateTemplateCapacityEstimate struct {
 
 // validateTemplateCapabilites summarizes what the template can do.
 type validateTemplateCapabilites struct {
-	ChartCapable bool `json:"chart_capable"`
-	ImageCapable bool `json:"image_capable"`
-	TwoColumn    bool `json:"two-column"`
-	Synthesized  bool `json:"synthesized"`
+	ChartCapable        bool `json:"chart_capable"`
+	ImageCapable        bool `json:"image_capable"`
+	HasChartPlaceholder bool `json:"has_chart_placeholder"`
+	HasImagePlaceholder bool `json:"has_image_placeholder"`
+	TwoColumn           bool `json:"two-column"`
+	Synthesized         bool `json:"synthesized"`
 }
 
 // runValidateTemplate implements the validate-template subcommand.
@@ -179,16 +181,18 @@ func runValidateTemplate() error {
 
 // detectCapabilities scans layouts for known capability tags.
 func detectCapabilities(layouts []types.LayoutMetadata, synthesis *types.SynthesisManifest) validateTemplateCapabilites {
-	caps := validateTemplateCapabilites{}
+	// The renderer can place charts and images in ordinary content/grid regions;
+	// dedicated placeholder types only describe convenient authored slots.
+	caps := validateTemplateCapabilites{ChartCapable: len(layouts) > 0, ImageCapable: len(layouts) > 0}
 	synthesized := synthesis != nil && len(synthesis.SyntheticFiles) > 0
 
 	for _, layout := range layouts {
 		for _, ph := range layout.Placeholders {
 			if ph.Type == types.PlaceholderChart {
-				caps.ChartCapable = true
+				caps.HasChartPlaceholder = true
 			}
 			if ph.Type == types.PlaceholderImage {
-				caps.ImageCapable = true
+				caps.HasImagePlaceholder = true
 			}
 		}
 		for _, tag := range layout.Tags {
@@ -330,7 +334,9 @@ func outputText(result validateTemplateResult, verbose bool) {
 	fmt.Println()
 	fmt.Println("Capabilities:")
 	fmt.Printf("  Chart-capable: %s\n", boolYesNo(result.Capabilities.ChartCapable))
+	fmt.Printf("  Dedicated chart placeholder: %s\n", boolYesNo(result.Capabilities.HasChartPlaceholder))
 	fmt.Printf("  Image-capable: %s\n", boolYesNo(result.Capabilities.ImageCapable))
+	fmt.Printf("  Dedicated image placeholder: %s\n", boolYesNo(result.Capabilities.HasImagePlaceholder))
 	twoCol := boolYesNo(result.Capabilities.TwoColumn)
 	if result.Capabilities.TwoColumn && result.Capabilities.Synthesized {
 		twoCol += " (synthesized)"

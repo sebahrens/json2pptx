@@ -7,6 +7,26 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
+func TestDetectCapabilitiesDistinguishesRenderingFromDedicatedSlots(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		layouts []types.LayoutMetadata
+		want    validateTemplateCapabilites
+	}{
+		{"no layouts", nil, validateTemplateCapabilites{}},
+		{"generic body", []types.LayoutMetadata{{Placeholders: []types.PlaceholderInfo{{Type: types.PlaceholderBody}}}},
+			validateTemplateCapabilites{ChartCapable: true, ImageCapable: true}},
+		{"dedicated slots", []types.LayoutMetadata{{Placeholders: []types.PlaceholderInfo{{Type: types.PlaceholderChart}, {Type: types.PlaceholderImage}}}},
+			validateTemplateCapabilites{ChartCapable: true, ImageCapable: true, HasChartPlaceholder: true, HasImagePlaceholder: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := detectCapabilities(tc.layouts, nil); got != tc.want {
+				t.Errorf("capabilities = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestCheckSectionNumberNaming_NoWarningForCorrectName(t *testing.T) {
 	layouts := []types.LayoutMetadata{
 		{
