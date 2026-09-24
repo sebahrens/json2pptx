@@ -301,14 +301,9 @@ func (mc *mcpConfig) collectRenderFindings(
 	}
 
 	// Wire footer/chrome configuration.
+	genReq.Footer = footerConfigForInput(input, len(slideSpecs))
 	if input.Chrome != nil {
-		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs), input.Slides)
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, layouts)
-	} else if input.Footer != nil && input.Footer.Enabled {
-		genReq.Footer = &generator.FooterConfig{
-			Enabled:  true,
-			LeftText: input.Footer.LeftText,
-		}
 	}
 	if input.ThemeOverride != nil {
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()

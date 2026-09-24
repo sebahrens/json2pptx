@@ -284,15 +284,10 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		ViewingMode:           input.ViewingMode,
 	}
 
-	// Wire footer/chrome configuration. Chrome supersedes footer.
+	// Wire the same merged footer/chrome configuration used by every render path.
+	genReq.Footer = footerConfigForInput(input, len(slideSpecs))
 	if input.Chrome != nil {
-		genReq.Footer = chromeToFooterConfig(input.Chrome, len(slideSpecs), input.Slides)
 		applyChromeSkip(slideSpecs, input.Chrome, input.Slides, templateLayouts)
-	} else if input.Footer != nil && input.Footer.Enabled {
-		genReq.Footer = &generator.FooterConfig{
-			Enabled:  true,
-			LeftText: input.Footer.LeftText,
-		}
 	}
 
 	// Wire theme override.

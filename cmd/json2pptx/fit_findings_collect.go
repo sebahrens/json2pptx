@@ -434,7 +434,19 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 	var findings []patterns.FitFinding
 	rhythm := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 
-	footerEnabled := input.Footer != nil && input.Footer.Enabled
+	footerEnabled := footerConfigForInput(input, len(input.Slides)) != nil
+	var skipFooterByLayout map[string]bool
+	if input.Chrome != nil {
+		specs := make([]generator.SlideSpec, len(layouts))
+		for i := range layouts {
+			specs[i].LayoutID = layouts[i].ID
+		}
+		applyChromeSkip(specs, input.Chrome, input.Slides, layouts)
+		skipFooterByLayout = make(map[string]bool, len(layouts))
+		for i := range specs {
+			skipFooterByLayout[specs[i].LayoutID] = specs[i].SkipFooter
+		}
+	}
 
 	for si, slide := range input.Slides {
 		layout := findLayoutForSlide(&slide, layouts)
@@ -468,7 +480,8 @@ func collectStructuralFindings(input *PresentationInput, layouts []types.LayoutM
 				patternName = slide.Pattern.Name
 			}
 			findings = append(findings,
-				checkShapeGridStructural(slide.ShapeGrid, si, slideWidth, slideHeight, footerLayout, geom, footerEnabled, patternName)...)
+				checkShapeGridStructural(slide.ShapeGrid, si, slideWidth, slideHeight, footerLayout, geom,
+					footerEnabled && (footerLayout == nil || !skipFooterByLayout[footerLayout.ID]), patternName)...)
 		}
 	}
 
@@ -571,6 +584,11 @@ func resolveGridContext(grid *ShapeGridInput, layout *types.LayoutMetadata, slid
 	}
 
 	if layout != nil {
+		if top, ok := template.FooterTop(layout, slideHeight); ok {
+			ctx.footerY = top
+			ctx.footerCY = slideHeight - top
+			ctx.layoutDeclaresFooter = true
+		}
 		for _, ph := range layout.Placeholders {
 			if ph.Type == types.PlaceholderOther && ph.Bounds.Height > 0 && !ctx.layoutDeclaresFooter {
 				ctx.footerY = ph.Bounds.Y

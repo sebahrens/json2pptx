@@ -2880,6 +2880,44 @@ func chromeToFooterConfig(chrome *ChromeInput, totalSlides int, slides []SlideIn
 	return cfg
 }
 
+// footerConfigForInput merges the legacy footer line with chrome instead of
+// discarding it whenever chrome configures an unrelated feature (such as page
+// numbering). Chrome's structured line is retained, with distinct legacy text
+// appended; section crumbs are then derived from the final merged line.
+func footerConfigForInput(input *PresentationInput, totalSlides int) *generator.FooterConfig {
+	if input == nil {
+		return nil
+	}
+	legacyText := ""
+	legacyEnabled := input.Footer != nil && input.Footer.Enabled
+	if legacyEnabled {
+		legacyText = input.Footer.LeftText
+	}
+	if input.Chrome == nil {
+		if !legacyEnabled {
+			return nil
+		}
+		return &generator.FooterConfig{Enabled: true, LeftText: legacyText}
+	}
+	cfg := chromeToFooterConfig(input.Chrome, totalSlides, input.Slides)
+	if legacyText != "" && legacyText != cfg.LeftText && !chromeContainsFooterText(input.Chrome, legacyText) {
+		if cfg.LeftText == "" {
+			cfg.LeftText = legacyText
+		} else {
+			cfg.LeftText += " | " + legacyText
+		}
+		if input.Chrome.SectionCrumb {
+			cfg.LeftTextBySlide = sectionCrumbFooterLines(cfg.LeftText, input.Slides)
+		}
+	}
+	return cfg
+}
+
+func chromeContainsFooterText(chrome *ChromeInput, text string) bool {
+	return text == chrome.Confidentiality || text == chrome.ClientName ||
+		text == chrome.FooterDate || (chrome.ProjectCode != "" && text == "Project "+chrome.ProjectCode)
+}
+
 // composeChromeLine builds the left footer text from chrome fields.
 // Non-empty fields are joined with " | " separators.
 // Example: "Strictly confidential — Project Aurora | Acme Corp | May 2026"
