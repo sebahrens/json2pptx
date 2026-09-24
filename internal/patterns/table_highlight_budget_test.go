@@ -56,8 +56,36 @@ func TestTableHighlightDensePairedCopyWarning(t *testing.T) {
 	}
 	option := pat.Schema().raw.Properties["values"].raw.Properties["options"].raw.Items
 	if option.raw.Properties["detail"].raw.MaxLength == nil ||
-		*option.raw.Properties["detail"].raw.MaxLength != 60 ||
+		*option.raw.Properties["detail"].raw.MaxLength != 80 ||
 		!strings.Contains(option.raw.Description, "35/33/30") {
 		t.Fatalf("schema loses sparse maximum or dense guidance: %+v", option.raw)
+	}
+}
+
+func TestTableHighlightLongDetailUsesSparseWidth(t *testing.T) {
+	pat := &tableHighlight{}
+	sparse := tableHighlightBudgetValues(3, 3, 12, 62)
+	if err := pat.Validate(sparse, nil, nil); err != nil {
+		t.Fatalf("62-character detail should keep a 3×3 table: %v", err)
+	}
+	layout := newTHLayout(testThemeCtx(), sparse, &TableHighlightOverrides{})
+	if got := layout.cols[0]; got != 36 {
+		t.Errorf("long-detail option column = %.0f%%, want 36%%", got)
+	}
+	layout.fit()
+	if layout.total() > layout.areaH {
+		t.Errorf("long-detail matrix needs %.1fpt but only %.1fpt is available", layout.total(), layout.areaH)
+	}
+	short := tableHighlightBudgetValues(3, 3, 12, 60)
+	if got := newTHLayout(testThemeCtx(), short, &TableHighlightOverrides{}).cols[0]; got != 30 {
+		t.Errorf("ordinary option column = %.0f%%, want 30%%", got)
+	}
+	sparse.Options[0].Detail = strings.Repeat("D", 81)
+	if err := pat.Validate(sparse, nil, nil); err == nil || !strings.Contains(err.Error(), "options[0].detail exceeds maxLength 80") {
+		t.Errorf("81-character sparse detail should report its 80-character limit: %v", err)
+	}
+	dense := tableHighlightBudgetValues(5, 5, 12, 62)
+	if err := pat.Validate(dense, nil, nil); err == nil || !strings.Contains(err.Error(), "options[0].detail exceeds maxLength 60") {
+		t.Errorf("dense matrix detail should retain its 60-character limit: %v", err)
 	}
 }

@@ -436,6 +436,23 @@ func coherentMaximum(pattern string, v any) any {
 				m["cells"] = cells[:m["columns"].(int)*m["rows"].(int)]
 			}
 		}
+	case "table-highlight":
+		// The 80-character detail maximum applies only to sparse matrices.
+		// Maximal arrays produce a dense matrix, whose conditional limit is 60.
+		if m, ok := v.(map[string]any); ok {
+			options, _ := m["options"].([]any)
+			criteria, _ := m["criteria"].([]any)
+			limit := patterns.TableHighlightDetailLimit(len(options), len(criteria))
+			for _, raw := range options {
+				option, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				if detail, ok := option["detail"].(string); ok && len([]rune(detail)) > limit {
+					option["detail"] = string([]rune(detail)[:limit])
+				}
+			}
+		}
 	case "timeline-horizontal":
 		// end_date is only legal in gantt style, which lives in overrides.
 		if steps, ok := v.([]any); ok {

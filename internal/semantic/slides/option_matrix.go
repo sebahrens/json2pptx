@@ -49,7 +49,6 @@ const (
 	optionMatrixMaxOptions   = 6
 	optionMatrixCriterionMax = 30
 	optionMatrixNameMax      = 40
-	optionMatrixDetailMax    = 60
 )
 
 // CompileOptionMatrix compiles an options × criteria evaluation to the
@@ -107,6 +106,34 @@ func OptionMatrixPatternFeasible(body map[string]any) bool {
 // entries.
 func UsableOptionMatrixCounts(body map[string]any) (criteria, options int) {
 	return len(optionMatrixCriteria(body)), len(optionMatrixOptions(body, 0))
+}
+
+// OptionMatrixDetailBudgetIssue identifies the first descriptor that would
+// exceed table-highlight's shape-dependent budget. The index is from the raw
+// authored list so validation can point to the field the user actually set.
+func OptionMatrixDetailBudgetIssue(body map[string]any) (index int, field string, actual, limit int, exceeded bool) {
+	criteria := len(optionMatrixCriteria(body))
+	optionCount := len(optionMatrixOptions(body, criteria))
+	limit = patterns.TableHighlightDetailLimit(optionCount, criteria)
+	listField := firstPopulatedList(body, "options", "rows")
+	raw, _ := body[listField].([]any)
+	for i, item := range raw {
+		option, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		for _, key := range []string{"detail", "description", "summary"} {
+			value := strField(option, key)
+			if strings.TrimSpace(value) == "" {
+				continue
+			}
+			if n := runeLen(value); n > limit {
+				return i, key, n, limit, true
+			}
+			break // only the first populated alias reaches the pattern
+		}
+	}
+	return 0, "", 0, limit, false
 }
 
 // optionMatrixValuesFrom builds the pattern payload, reporting false when the

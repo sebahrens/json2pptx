@@ -140,3 +140,60 @@ func TestPatternDegradedIsDescribable(t *testing.T) {
 		t.Error("remediation steps should point the agent at fix.params")
 	}
 }
+
+func TestOptionMatrixDetailBudgetReportsActualField(t *testing.T) {
+	for _, tc := range []struct {
+		name, list, detail              string
+		chars, options, criteria, limit int
+	}{
+		{"sparse canonical", "options", "detail", 81, 3, 3, 80},
+		{"dense alias", "rows", "description", 61, 5, 5, 60},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			criteria := make([]any, tc.criteria)
+			for i := range criteria {
+				criteria[i] = "Quality"
+			}
+			options := make([]any, tc.options)
+			for i := range options {
+				scores := make([]any, tc.criteria)
+				for j := range scores {
+					scores[j] = 3
+				}
+				option := map[string]any{"name": "Option", "scores": scores}
+				if i == 0 {
+					option[tc.detail] = strings.Repeat("D", tc.chars)
+				}
+				options[i] = option
+			}
+			body := map[string]any{"title": "Options", "takeaway": "Recommendation", "criteria": criteria, tc.list: options}
+			ds := Validate(&DeckSpec{Meta: DeckMeta{Title: "Deck"}, Slides: []SlideSpec{{Kind: KindOptionMatrix, Body: body}}}, StrictnessWarn)
+			found := findingsWithCode(ds, diagnostics.CodeSemanticPatternDegraded)
+			if len(found) != 1 {
+				t.Fatalf("pattern degrade findings = %v", found)
+			}
+			d := found[0]
+			wantPath := "slides[0]." + tc.list + "[0]." + tc.detail
+			if d.Path != wantPath || !strings.Contains(d.Message, "descriptor") || strings.Contains(d.Message, "score is not readable") {
+				t.Errorf("detail budget finding = %+v, want path %q and descriptor cause", d, wantPath)
+			}
+			if d.Fix == nil || d.Fix.Params["reason"] != degradeBudgetExceeded || d.Fix.Params["max_chars"] != tc.limit || d.Fix.Params["actual_chars"] != tc.chars {
+				t.Errorf("structured detail budget = %+v", d.Fix)
+			}
+		})
+	}
+}
+
+func TestOptionMatrixItemSchemaDocumentsDetailBudget(t *testing.T) {
+	props := KindItemSchema(KindOptionMatrix)["properties"].(map[string]any)
+	for _, list := range []string{"options", "rows"} {
+		item := props[list].(map[string]any)["items"].(map[string]any)
+		fields := item["properties"].(map[string]any)
+		for _, key := range []string{"detail", "description", "summary"} {
+			field := fields[key].(map[string]any)
+			if field["maxLength"] != 80 || !strings.Contains(field["description"].(string), "≤60") {
+				t.Errorf("%s[].%s schema = %v, want sparse 80/dense 60 budgets", list, key, field)
+			}
+		}
+	}
+}

@@ -1358,10 +1358,19 @@ func validateOptionMatrix(path string, slide SlideSpec, s *semDiags) {
 	// A matrix inside every bound can still fail on a score the scale does not
 	// read (a harvey column given "yes", a RAG column given 7). The compiler asks
 	// the pattern; so does this, so validate and compile agree.
-	if criteria >= 2 && criteria <= 6 && options >= 2 && options <= 6 && !slides.OptionMatrixPatternFeasible(slide.Body) {
-		s.degrade(path+"."+optionsField,
-			"a score is not readable on this matrix's scale (harvey: 0–4 or none/quarter/half/three-quarter/full; rag: red/amber/green; text: ≤24 chars; \"-\" for n/a) — this slide degrades to a scored bullet list",
-			"table-highlight", degradeToBullets, degradeScoreUnreadable)
+	if criteria >= 2 && criteria <= 6 && options >= 2 && options <= 6 {
+		if i, field, actual, limit, exceeded := slides.OptionMatrixDetailBudgetIssue(slide.Body); exceeded {
+			s.degradeFix(fmt.Sprintf("%s.%s[%d].%s", path, optionsField, i, field),
+				fmt.Sprintf("option %d %s is %d characters, above the %d-character budget for this matrix; shorten the descriptor or split the matrix (otherwise it degrades to scored bullets)", i+1, field, actual, limit),
+				&diagnostics.Fix{Kind: "restore_visual", Params: map[string]any{"actual_chars": actual, "max_chars": limit}},
+				"table-highlight", degradeToBullets, degradeBudgetExceeded)
+			return
+		}
+		if !slides.OptionMatrixPatternFeasible(slide.Body) {
+			s.degrade(path+"."+optionsField,
+				"a score is not readable on this matrix's scale (harvey: 0–4 or none/quarter/half/three-quarter/full; rag: red/amber/green; text: ≤24 chars; \"-\" for n/a) — this slide degrades to a scored bullet list",
+				"table-highlight", degradeToBullets, degradeScoreUnreadable)
+		}
 	}
 }
 

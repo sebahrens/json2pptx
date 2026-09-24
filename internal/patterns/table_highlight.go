@@ -41,16 +41,17 @@ type tableHighlight struct{}
 
 // Pattern budgets.
 const (
-	thMinOptions   = 2
-	thMaxOptions   = 6
-	thMinCriteria  = 2
-	thMaxCriteria  = 6
-	thNameMax      = 40
-	thDetailMax    = 60
-	thCriterionMax = 30
-	thTextCellMax  = 24
-	thLabelMax     = 24
-	thLegendMax    = 20
+	thMinOptions     = 2
+	thMaxOptions     = 6
+	thMinCriteria    = 2
+	thMaxCriteria    = 6
+	thNameMax        = 40
+	thDetailMax      = 80
+	thDenseDetailMax = 60
+	thCriterionMax   = 30
+	thTextCellMax    = 24
+	thLabelMax       = 24
+	thLegendMax      = 20
 
 	thColGapPt    = 3.0
 	thRowGapPt    = 3.0
@@ -241,6 +242,15 @@ func tableHighlightPairedCopyBudget(options, criteria int) int {
 	return 35
 }
 
+// TableHighlightDetailLimit permits a longer descriptor only when the matrix
+// has enough space to widen the option column without crowding score columns.
+func TableHighlightDetailLimit(options, criteria int) int {
+	if options <= 4 && criteria <= 4 {
+		return thDetailMax
+	}
+	return thDenseDetailMax
+}
+
 func (p *tableHighlight) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*TableHighlightValues)
 	if !ok || v == nil {
@@ -287,7 +297,7 @@ func (p *tableHighlight) Schema() *Schema {
 
 	option := ObjectSchema(map[string]*Schema{
 		"name":   StringSchema(thNameMax).WithDescription("Option name (≤40 chars); dense paired name/detail targets depend on matrix shape"),
-		"detail": StringSchema(thDetailMax).WithDescription("Optional descriptor under the name (≤60 chars); shorten paired copy in dense matrices"),
+		"detail": StringSchema(thDetailMax).WithDescription("Optional descriptor under the name (≤80 chars for up to 4 options × 4 criteria; ≤60 in denser matrices)"),
 		"scores": ArraySchema(score, thMinCriteria, thMaxCriteria).WithDescription("One score per criterion, in criteria order"),
 	}, []string{"name", "scores"}).WithAdditionalProperties(false).
 		WithDescription("Paired name/detail readable characters by option rows x criteria: 2-4 rows about 40 each; 5 rows with 5-6 criteria about 37; 6 rows with 2-3/4/5-6 criteria about 35/33/30. Sparse rows can use field maxima; fit reports flag copy beyond dense paired targets")
@@ -471,8 +481,8 @@ func thValidateOptions(v *TableHighlightValues) []error {
 		} else if runeLen(o.Name) > thNameMax {
 			errs = append(errs, errMaxLength(thName, path+".name", thNameMax, runeLen(o.Name)))
 		}
-		if runeLen(o.Detail) > thDetailMax {
-			errs = append(errs, errMaxLength(thName, path+".detail", thDetailMax, runeLen(o.Detail)))
+		if limit := TableHighlightDetailLimit(len(v.Options), len(v.Criteria)); runeLen(o.Detail) > limit {
+			errs = append(errs, errMaxLength(thName, path+".detail", limit, runeLen(o.Detail)))
 		}
 		if len(o.Scores) != len(v.Criteria) {
 			errs = append(errs, errCountMismatch(thName, path+".scores", len(v.Criteria), len(o.Scores), "(one score per criterion)"))
@@ -598,6 +608,20 @@ func newTHLayout(ctx ExpandContext, v *TableHighlightValues, ovr *TableHighlight
 		nameColPct = 26
 	case nCrit == 4:
 		nameColPct = 28
+	}
+	if len(v.Options) <= 4 {
+		for _, option := range v.Options {
+			if runeLen(option.Detail) <= thDenseDetailMax {
+				continue
+			}
+			switch {
+			case nCrit <= 3:
+				nameColPct = 36
+			case nCrit == 4:
+				nameColPct = 32
+			}
+			break
+		}
 	}
 	l.cols = append(l.cols, nameColPct)
 	for i := 0; i < nCrit; i++ {

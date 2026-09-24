@@ -65,6 +65,14 @@ var optionMatrixCriterionKeys = []string{"label", "name", "title", "criterion", 
 
 var optionMatrixOptionKeys = []string{"name", "option", "label", "title", "detail", "description", "summary", "scores", "values"}
 
+func optionMatrixDetailKeySchemas() map[string]any {
+	field := func() map[string]any {
+		return map[string]any{"type": "string", "maxLength": 80,
+			"description": "Descriptor under the option name: ≤80 chars in a matrix up to 4×4; ≤60 in a denser matrix."}
+	}
+	return map[string]any{"detail": field(), "description": field(), "summary": field()}
+}
+
 // comparisonColumnKeys are the keys a comparison column object is read by.
 var comparisonColumnKeys = []string{"header", "title", "label", "name", "items", "pros", "cons"}
 
@@ -219,11 +227,11 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 			desc: "Alias for criteria.",
 		},
 		"options": {
-			typ: "array", itemKeys: optionMatrixOptionKeys,
-			desc: "2–6 options (table rows): {name, detail?, scores[]} with exactly one score per criterion.",
+			typ: "array", itemKeys: optionMatrixOptionKeys, itemKeySchemas: optionMatrixDetailKeySchemas(),
+			desc: "2–6 options (table rows): {name, detail?, scores[]} with one score per criterion. detail/description/summary ≤80 chars for up to 4 options × 4 criteria, ≤60 in denser matrices.",
 		},
 		"rows": {
-			typ: "array", itemKeys: optionMatrixOptionKeys,
+			typ: "array", itemKeys: optionMatrixOptionKeys, itemKeySchemas: optionMatrixDetailKeySchemas(),
 			desc: "Alias for options.",
 		},
 		"scale":              strField("Score vocabulary: harvey (0–4 or none/quarter/half/three-quarter/full, the default), rag (red/amber/green), or text (≤24 chars). Use \"-\" for n/a."),

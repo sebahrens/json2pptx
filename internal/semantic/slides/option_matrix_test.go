@@ -62,6 +62,27 @@ func TestOptionMatrixCompilesToTableHighlight(t *testing.T) {
 	}
 }
 
+func TestOptionMatrixLongDetailKeepsSparseMatrix(t *testing.T) {
+	body := harveyMatrix(nil)
+	options := body["options"].([]any)
+	options[0].(map[string]any)["detail"] = strings.Repeat("D", 62)
+	values, ok := compiledMatrix(t, body)
+	if !ok || values.Options[0].Detail != strings.Repeat("D", 62) {
+		t.Fatalf("62-character descriptor was lost or degraded: %+v, %v", values, ok)
+	}
+	if _, _, _, _, exceeded := OptionMatrixDetailBudgetIssue(body); exceeded {
+		t.Error("sparse 3×3 matrix should not exceed its detail budget")
+	}
+
+	options[0].(map[string]any)["detail"] = strings.Repeat("D", 81)
+	if _, ok := compiledMatrix(t, body); ok {
+		t.Error("81-character descriptor should exceed the sparse matrix budget")
+	}
+	if i, field, actual, limit, exceeded := OptionMatrixDetailBudgetIssue(body); !exceeded || i != 0 || field != "detail" || actual != 81 || limit != 80 {
+		t.Errorf("detail budget issue = (%d, %q, %d, %d, %v)", i, field, actual, limit, exceeded)
+	}
+}
+
 // An author names the recommended option; they do not count rows.
 func TestOptionMatrixResolvesHighlightsByName(t *testing.T) {
 	values, ok := compiledMatrix(t, harveyMatrix(map[string]any{
