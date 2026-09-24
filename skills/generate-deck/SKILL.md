@@ -413,11 +413,14 @@ lone strip of boxes also fails — refined families avoid that by carrying per-i
 **`card-grid` visual styles + surface overrides.** `overrides.style` selects the card
 treatment: `filled` (default, solid accent cards with light text), `accent-stripe`,
 `numbered-badge`, `icon-card`, `tinted` (alternating lt1/lt2), and `soft-card` (a single
-pale surface with dark text and an explicit no-border line). Independently of style, four
+pale surface with dark text and an explicit no-border line). If the template has no
+subtle surface, `soft-card` uses a 12% accent tint rather than disappearing into white.
+Independently of style, four
 generic surface overrides apply on top of any style:
 
 - `card_fill` — repaint every card with a scheme color (`lt2`) or, in `design_mode: "free"`,
-  a raw hex like `"#FFF5ED"`. Constrained mode rejects raw hex; use a scheme color instead.
+  a raw hex like `"#FFF5ED"`. A `recommended: true` soft-card keeps its accent fill
+  so the selection stays visible. Constrained mode rejects raw hex; use a scheme color instead.
 - `line_color` + `line_width` (0–12 pt) — draw an explicit card border. `line_color` takes
   precedence over `border`.
 - `border` — keyword shortcut: `none` (explicit no border), `subtle` (thin dk1 hairline),

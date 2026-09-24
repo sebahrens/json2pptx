@@ -253,6 +253,16 @@ func readableTextOn(ctx ExpandContext, tone fillTone, fallback string) string {
 // included (go-slide-creator-1sel).
 var readableInkCandidates = []string{"lt1", "dk2", "dk1"}
 
+// paleAccentTone keeps a panel visible on a white slide without making its
+// surface compete with the main accent. Scheme fills retain their theme link.
+func paleAccentTone(accent string) fillTone {
+	if isHexColor(accent) {
+		c := svggen.MustParseColor(accent)
+		return fillTone{Color: applyLinearMix(c, 0.12, svggen.Color{R: 255, G: 255, B: 255, A: 1}).Hex()}
+	}
+	return fillTone{Color: accent, Tint: 12000}
+}
+
 // readableInkOn returns the first theme ink that clears minContrast against the
 // fill, in the fixer's order. When none clears it, the highest-contrast of the
 // candidates wins, so the answer is never worse than the old one.

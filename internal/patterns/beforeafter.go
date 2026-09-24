@@ -8,7 +8,6 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // ---------------------------------------------------------------------------
@@ -335,11 +334,7 @@ func beforeAfterFullRowHeights(ctx ExpandContext, beforeHeader, afterHeader, bef
 // only emits tint modifiers for scheme colours, so pre-mix explicit hex
 // overrides with white instead.
 func beforeAfterPanelTone(accent string) fillTone {
-	if isHexColor(accent) {
-		c := svggen.MustParseColor(accent)
-		return fillTone{Color: applyLinearMix(c, 0.12, svggen.Color{R: 255, G: 255, B: 255, A: 1}).Hex()}
-	}
-	return fillTone{Color: accent, Tint: 12000}
+	return paleAccentTone(accent)
 }
 
 func buildBeforeAfterTextContent(content string, size float64, bold bool, color, align string) json.RawMessage {

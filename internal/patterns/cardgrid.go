@@ -635,7 +635,7 @@ func (c *cardGrid) expandCell(ctx ExpandContext, cell CardGridCell, idx int, sty
 		gc = c.expandFilled(cell, accent, headerSize, bodySize)
 	}
 	// Apply generic surface overrides (card_fill / border) on top of the style.
-	applyCardGridSurfaceOverrides(gc, ovr, accent)
+	applyCardGridSurfaceOverrides(gc, ovr, accent, cell.Recommended && style == "soft-card")
 	// Add SVG icon overlay when a bundled icon name or rich icon spec is provided.
 	if cell.Icon != nil && gc.Shape != nil && gc.Shape.Icon == nil {
 		gc.Shape.Icon = cell.Icon.Resolve(iconFillOn(ctx, gc.Shape.Fill, accent), "top")
@@ -729,15 +729,17 @@ func (c *cardGrid) expandTinted(ctx ExpandContext, cell CardGridCell, idx int, a
 }
 
 // expandSoftCard: a single pale surface card with dark text and no visible border.
-// The default surface is resolved from template metadata (subtle role → lt1
-// fallback); callers paint a brand surface (e.g. "#FFF5ED") via the card_fill
-// override. The border line is explicitly suppressed so no theme-default outline
-// leaks through.
+// An explicit subtle role wins; a white fallback is tinted from the accent so
+// the panel stays visible on white templates. card_fill still overrides it.
 func (c *cardGrid) expandSoftCard(ctx ExpandContext, cell CardGridCell, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
 	fill := ctx.ResolveSurface("subtle", "lt1")
+	fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, fill))
+	if fill == "lt1" {
+		fillJSON = paleAccentTone(accent).fillJSON()
+	}
 	textContent := buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent)
 	if cell.Recommended {
-		fill = accent
+		fillJSON = json.RawMessage(fmt.Sprintf(`"%s"`, accent))
 		ink := readableInkOn(ctx, fillTone{Color: accent}, "lt1", 4.5)
 		textContent = marshalTextObj(cardTextObj{
 			Paragraphs: []cardParagraph{
@@ -751,7 +753,7 @@ func (c *cardGrid) expandSoftCard(ctx ExpandContext, cell CardGridCell, accent s
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
+			Fill:     fillJSON,
 			Line:     json.RawMessage(`"none"`),
 			Text:     textContent,
 		},
@@ -759,13 +761,13 @@ func (c *cardGrid) expandSoftCard(ctx ExpandContext, cell CardGridCell, accent s
 }
 
 // applyCardGridSurfaceOverrides applies the generic card_fill / border overrides
-// onto an already-styled card shape. It is a no-op when no surface overrides are
-// set, preserving each style's native fill and border behavior.
-func applyCardGridSurfaceOverrides(gc *jsonschema.GridCellInput, ovr *CardGridOverrides, accent string) {
+// onto an already-styled card shape. A recommended soft-card keeps its accent
+// fill; borders still apply, and other cards keep card_fill as authored.
+func applyCardGridSurfaceOverrides(gc *jsonschema.GridCellInput, ovr *CardGridOverrides, accent string, keepRecommendedFill bool) {
 	if gc == nil || gc.Shape == nil || ovr == nil {
 		return
 	}
-	if ovr.CardFill != "" {
+	if ovr.CardFill != "" && !keepRecommendedFill {
 		gc.Shape.Fill = json.RawMessage(fmt.Sprintf("%q", ovr.CardFill))
 	}
 	if line := buildCardGridLineOverride(ovr, accent); line != nil {

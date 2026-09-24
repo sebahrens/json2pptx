@@ -760,7 +760,7 @@ func TestCardGridSoftCardAndSurfaceOverrides(t *testing.T) {
 	}
 	vals := &CardGridValues{Columns: 2, Rows: 1, Cells: cells}
 
-	// soft-card: pale surface fill (lt1 fallback), explicit no border, dark text.
+	// soft-card: pale accent-tinted surface, explicit no border, dark text.
 	t.Run("soft_card_style", func(t *testing.T) {
 		ovr := &CardGridOverrides{Style: "soft-card"}
 		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
@@ -768,12 +768,12 @@ func TestCardGridSoftCardAndSurfaceOverrides(t *testing.T) {
 			t.Fatalf("Expand: %v", err)
 		}
 		shape := grid.Rows[0].Cells[0].Shape
-		var fill string
+		var fill fillTone
 		if err := json.Unmarshal(shape.Fill, &fill); err != nil {
 			t.Fatalf("fill unmarshal: %v", err)
 		}
-		if fill != "lt1" {
-			t.Errorf("soft-card: fill = %q, want lt1 (surface fallback)", fill)
+		if fill.Color != "accent1" || fill.Tint != 12000 {
+			t.Errorf("soft-card: fill = %+v, want a subtle accent tint", fill)
 		}
 		var line string
 		if err := json.Unmarshal(shape.Line, &line); err != nil {
@@ -793,6 +793,17 @@ func TestCardGridSoftCardAndSurfaceOverrides(t *testing.T) {
 		}
 		if grid.Rows[0].Cells[0].AccentBar != nil {
 			t.Error("soft-card: expected no accent bar")
+		}
+	})
+
+	t.Run("template_surface_wins", func(t *testing.T) {
+		ctx := ExpandContext{Metadata: &types.TemplateMetadata{SurfaceTints: map[string]string{"subtle": "lt2"}}}
+		grid, err := p.Expand(ctx, vals, &CardGridOverrides{Style: "soft-card"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != `"lt2"` {
+			t.Fatalf("explicit subtle surface replaced: %s", got)
 		}
 	})
 
@@ -936,7 +947,11 @@ func TestCardGridRecommendedSoftCard(t *testing.T) {
 	}
 	plain := grid.Rows[0].Cells[0].Shape
 	selected := grid.Rows[0].Cells[1].Shape
-	if string(plain.Fill) != `"lt1"` {
+	var plainFill fillTone
+	if err := json.Unmarshal(plain.Fill, &plainFill); err != nil {
+		t.Fatal(err)
+	}
+	if plainFill.Color != "accent1" || plainFill.Tint != 12000 {
 		t.Fatalf("unselected fill = %s", plain.Fill)
 	}
 	if string(selected.Fill) == string(plain.Fill) {
@@ -953,6 +968,16 @@ func TestCardGridRecommendedSoftCard(t *testing.T) {
 	}
 	if err := p.Validate(v, &CardGridOverrides{Style: "filled"}, nil); err == nil || !strings.Contains(err.Error(), "recommended is supported only by soft-card") {
 		t.Fatalf("filled style silently drops recommendation: %v", err)
+	}
+	withFill, err := p.Expand(ctx, v, &CardGridOverrides{Style: "soft-card", CardFill: "#FFF5ED"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := string(withFill.Rows[0].Cells[0].Shape.Fill); got != `"#FFF5ED"` {
+		t.Fatalf("unselected card lost card_fill override: %s", got)
+	}
+	if got := string(withFill.Rows[0].Cells[1].Shape.Fill); got != string(selected.Fill) {
+		t.Fatalf("card_fill hid recommended selection: %s", got)
 	}
 }
 
