@@ -403,6 +403,11 @@ func buildLayoutReport(l *types.LayoutMetadata, slideW, slideH int64) LayoutRepo
 		tags = []string{}
 	}
 
+	zone := computeZone(phs, slideW, slideH)
+	if template.IsTrueBlankLayout(l) {
+		blank := template.BlankContentRect(l, slideW, slideH)
+		zone = ZoneReport{LeftEMU: blank.X, TopEMU: blank.Y, RightEMU: blank.X + blank.Width, BottomEMU: blank.Y + blank.Height}
+	}
 	return LayoutReport{
 		Index:               l.Index,
 		ID:                  l.ID,
@@ -413,7 +418,7 @@ func buildLayoutReport(l *types.LayoutMetadata, slideW, slideH int64) LayoutRepo
 		CanonicalConfidence: l.CanonicalConfidence,
 		AssetBase:           assetBase(l.ID, ct),
 		XMLPath:             "ppt/slideLayouts/" + l.ID + ".xml",
-		ContentZone:         computeZone(phs, slideW, slideH),
+		ContentZone:         zone,
 		Placeholders:        phs,
 	}
 }

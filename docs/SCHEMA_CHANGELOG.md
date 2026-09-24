@@ -28,6 +28,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Blank-canvas content-zone parity (`go-slide-creator-j9k68`).**
+  True Blank layouts now use the same title-free, 5%-margin content rectangle in
+  template discovery and shape-grid/pattern rendering. A deck rhythm grid no
+  longer reinstates a title band on an explicitly blank canvas; a `headline`
+  still reserves its own band. No input-schema version change.
+
 - **2026-09-24 — Concrete full-image addresses and requirement guidance
   (`go-slide-creator-1tgzw`, `go-slide-creator-xc5bh`, schema 4.118.0).** A
   native `full-image` capability now reports its concrete `slideLayoutN` ID in

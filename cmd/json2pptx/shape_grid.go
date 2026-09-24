@@ -264,10 +264,25 @@ func findLayoutByID(layouts []types.LayoutMetadata, id string) *types.LayoutMeta
 // resolveVirtualLayout's priority-3 path). A title-only layout falls back to
 // symmetric margins around the title placeholder. Returns nil when the layout is
 // nil or has neither a title nor a body/content placeholder to anchor the zone,
-// so the caller can fall back to virtual resolution.
+// except for a true Blank layout, which uses the shared title-free canvas rect.
 func contentZoneFromLayout(layout *types.LayoutMetadata, slideWidth, slideHeight int64) *shapegrid.ContentZone {
 	if layout == nil {
 		return nil
+	}
+	if template.IsTrueBlankLayout(layout) {
+		sw, sh := slideWidth, slideHeight
+		if sw <= 0 {
+			sw = shapegrid.DefaultSlideWidthEMU
+		}
+		if sh <= 0 {
+			sh = shapegrid.DefaultSlideHeightEMU
+		}
+		b := template.BlankContentRect(layout, sw, sh)
+		return &shapegrid.ContentZone{
+			TitleBottom: b.Y, FooterTop: b.Y + b.Height,
+			LeftMargin: b.X, RightEdge: b.X + b.Width,
+			SlideWidth: sw, SlideHeight: sh,
+		}
 	}
 	if content, ok := firstBodyOrContentBounds(layout); ok {
 		zone := fallbackContentZone(layout, content, slideWidth, slideHeight)
@@ -360,7 +375,7 @@ func patternExpansionGeometry(slide SlideInput, layouts []types.LayoutMetadata, 
 		probe.ShapeGrid = &ShapeGridInput{}
 	}
 	geom := resolveGridGeometry(probe, layouts, slideWidth, slideHeight)
-	if rhythmGrid != nil {
+	if rhythmGrid != nil && !isBlankCanvasLayout(probe.LayoutID, layouts) {
 		layoutID := probe.LayoutID
 		if geom.VirtualUsed {
 			layoutID = geom.LayoutID
@@ -377,8 +392,9 @@ func patternExpansionGeometry(slide SlideInput, layouts []types.LayoutMetadata, 
 // resolveGridGeometry resolves the ContentZone and any bounds override for a
 // shape_grid slide using the SAME priority rules as generation:
 //
-//   - Blank / virtual slides go through resolveVirtualLayout, which selects a
-//     base layout, derives a chrome-safe zone, and supplies override bounds.
+//   - A concrete true Blank layout uses its title-free canvas rect.
+//   - Other blank / virtual slides go through resolveVirtualLayout, which
+//     selects a base layout and supplies override bounds.
 //   - Slides bound to a concrete layout take their zone from THAT layout's
 //     placeholders (contentZoneFromLayout), falling back to the virtual zone
 //     for chrome protection when the concrete layout has no usable geometry.
@@ -394,6 +410,9 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 	}
 	slide.LayoutID = canonicalGridLayoutID(slide.LayoutID, layouts)
 	switch {
+	case isBlankCanvasLayout(slide.LayoutID, layouts) && findLayoutByID(layouts, slide.LayoutID) != nil:
+		g.Zone = contentZoneFromLayout(findLayoutByID(layouts, slide.LayoutID), slideWidth, slideHeight)
+		g.LayoutID = slide.LayoutID
 	case needsVirtualLayout(slide):
 		if vl := resolveVirtualLayout(layouts, slideWidth, slideHeight); vl != nil {
 			g.Zone = vl.Zone
@@ -522,7 +541,7 @@ func isBlankCanvasLayout(layoutID string, layouts []types.LayoutMetadata) bool {
 	}
 	resolved := canonicalGridLayoutID(layoutID, layouts)
 	if l := findLayoutByID(layouts, resolved); l != nil {
-		return template.EffectiveCanonicalType(l) == types.CanonicalLayoutBlank
+		return template.IsTrueBlankLayout(l)
 	}
 	return false
 }

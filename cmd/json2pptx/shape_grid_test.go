@@ -11,9 +11,11 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/examine"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -772,6 +774,67 @@ func TestContentZoneFromLayout_NilAndNoAnchor(t *testing.T) {
 	}
 	if zone := contentZoneFromLayout(layout, 0, 0); zone != nil {
 		t.Errorf("expected nil zone for layout with no title/body anchor, got %v", zone)
+	}
+}
+
+func TestBlankCanvasContentZoneCorpus(t *testing.T) {
+	for _, path := range testutil.TestTemplatePaths() {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			reader, err := template.OpenTemplate(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			layouts, err := template.ParseLayouts(reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			w, h := template.ParseSlideDimensions(reader)
+			if w == 0 || h == 0 {
+				t.Fatal("missing slide dimensions")
+			}
+			report := examine.BuildReport(examine.Inputs{SlideWidthEMU: w, SlideHeightEMU: h, Layouts: layouts})
+			checked := 0
+			for _, layout := range layouts {
+				if !template.IsTrueBlankLayout(&layout) {
+					continue
+				}
+				checked++
+				slide := SlideInput{LayoutID: layout.ID, SlideType: "blank", ShapeGrid: &ShapeGridInput{}}
+				geom := resolveGridGeometry(slide, layouts, w, h)
+				if geom.Zone == nil || geom.VirtualUsed || geom.OverrideBounds != nil {
+					t.Fatalf("blank %s resolved via virtual layout: %+v", layout.ID, geom)
+				}
+				if geom.Zone.TitleBottom != h*5/100 {
+					t.Errorf("blank %s top = %d, want 5%% of height", layout.ID, geom.Zone.TitleBottom)
+				}
+				for _, lr := range report.Layouts {
+					if lr.ID == layout.ID {
+						if geom.Zone.TitleBottom != lr.ContentZone.TopEMU || geom.Zone.FooterTop != lr.ContentZone.BottomEMU {
+							t.Errorf("blank %s render zone %+v differs from discovery zone %+v", layout.ID, geom.Zone, lr.ContentZone)
+						}
+						break
+					}
+				}
+				_, normal := patternExpansionGeometry(slide, layouts, w, h, nil)
+				if normal.Y != h*5/100+9*12700 {
+					t.Errorf("blank %s pattern top = %d, want 5%% margin plus 9pt chrome gap", layout.ID, normal.Y)
+				}
+				rhythm := &resolvedGrid{TitleBaselineY: h / 3, ContentBottomY: h * 9 / 10, LeftMarginX: w / 10, RightEdgeX: w * 9 / 10, SlideWidth: w, SlideHeight: h}
+				_, withRhythm := patternExpansionGeometry(slide, layouts, w, h, rhythm)
+				if normal != withRhythm {
+					t.Errorf("blank %s pattern frame changed under deck rhythm: normal=%+v rhythm=%+v", layout.ID, normal, withRhythm)
+				}
+				slide.Headline = "Example headline"
+				withHeadline := resolveGridGeometry(slide, layouts, w, h)
+				if withHeadline.Zone == nil || withHeadline.Zone.TitleBottom <= geom.Zone.TitleBottom {
+					t.Errorf("blank %s headline did not reserve space", layout.ID)
+				}
+			}
+			if checked == 0 {
+				t.Fatal("template has no true blank layout")
+			}
+		})
 	}
 }
 
