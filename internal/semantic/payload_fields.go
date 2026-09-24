@@ -103,6 +103,7 @@ var imageCaseImageKeys = []string{"path", "url", "alt"}
 var decisionOptionKeys = []string{
 	"label", "title", "name", "option",
 	"detail", "description", "body", "summary",
+	"recommended",
 }
 
 // archTierKeys are the keys ArchitectureTiers reads from a tier object.
@@ -443,12 +444,13 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 			typ: "array",
 			desc: "2–6 options: strings (\"Label\", or \"Label | detail\") or {label, detail?}. " +
 				"3–6 become numbered boxes (label ≤60 chars, detail ≤180); exactly 2, each WITH a detail, become numbered cards side by side (label ≤80, detail ≤300). " +
-				"Anything else renders as the recommendation plus option bullets.",
-			itemStrings: true,
-			itemKeys:    decisionOptionKeys,
+				"Mark exactly one object with recommended: true; that option gets an accent-filled Recommended badge. Anything else renders as the recommendation plus option bullets.",
+			itemStrings:    true,
+			itemKeys:       decisionOptionKeys,
+			itemKeySchemas: map[string]any{"recommended": map[string]any{"type": "boolean"}},
 		},
-		"choices":      {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys},
-		"alternatives": {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys},
+		"choices":      {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys, itemKeySchemas: map[string]any{"recommended": map[string]any{"type": "boolean"}}},
+		"alternatives": {typ: "array", desc: "Alias for options.", itemStrings: true, itemKeys: decisionOptionKeys, itemKeySchemas: map[string]any{"recommended": map[string]any{"type": "boolean"}}},
 	}, compositionFields()), universalFields()),
 	KindClosing: withFields(map[string]payloadField{
 		"title":    strField("Closing headline."),

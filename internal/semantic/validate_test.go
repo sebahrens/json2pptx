@@ -30,6 +30,35 @@ func hasCode(ds []diagnostics.Diagnostic, code string) bool {
 	return false
 }
 
+func TestDecisionRequiresOneUsableRecommendedOption(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		field      string
+		options    []any
+		code, path string
+	}{
+		{"one selected", "options", []any{map[string]any{"label": "A", "recommended": true}, "B"}, "", ""},
+		{"none selected", "options", []any{map[string]any{"label": "A"}, "B"}, diagnostics.CodeSemanticRequired, "slides[0].options"},
+		{"two selected", "choices", []any{map[string]any{"label": "A", "recommended": true}, map[string]any{"label": "B", "recommended": true}}, diagnostics.CodeSemanticRequired, "slides[0].choices"},
+		{"wrong type", "alternatives", []any{map[string]any{"label": "A", "recommended": "true"}, map[string]any{"label": "B", "recommended": true}}, diagnostics.CodeSemanticFieldType, "slides[0].alternatives[0].recommended"},
+		{"blank selected", "options", []any{map[string]any{"detail": "orphan", "recommended": true}, map[string]any{"label": "B"}}, diagnostics.CodeSemanticRequired, "slides[0].options[0]"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			spec := &DeckSpec{Meta: DeckMeta{Title: "Decision"}, Slides: []SlideSpec{{Kind: KindDecision, Body: map[string]any{"title": "Choose", tc.field: tc.options}}}}
+			ds := Validate(spec, StrictnessWarn)
+			if tc.code == "" {
+				if diagnostics.HasErrors(ds) {
+					t.Fatalf("unexpected errors: %v", ds)
+				}
+				return
+			}
+			if _, ok := findAt(ds, tc.code, tc.path); !ok {
+				t.Fatalf("missing %s at %s: %v", tc.code, tc.path, ds)
+			}
+		})
+	}
+}
+
 func TestValidateCleanFixtureHasNoErrors(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("testdata", "board_update.yaml"))
 	if err != nil {

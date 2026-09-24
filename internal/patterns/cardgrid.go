@@ -77,6 +77,9 @@ func CardGridBodyBudgets(ctx ExpandContext, v *CardGridValues, o *CardGridOverri
 		cellW, cellH := cardGridTextSpace(cardW, textW, rowH, cell)
 		cellWidths[i], cellHeights[i] = cellW, cellH
 		headerH := cardGridHeaderHeight(ctx.Theme.BodyFont, cellW, headerSize, o.Style, cell.Header, i)
+		if o.Style == "soft-card" && cell.Recommended {
+			headerH += 9 * contentLineHeight
+		}
 		headerHeights[i] = headerH
 		row := i / v.Columns
 		if row < len(rowHeaderHeights) && headerH > rowHeaderHeights[row] {
@@ -213,10 +216,11 @@ func (c *cardGrid) ExemplarValues() any {
 // one secondary is allowed per card (enforced by the field being a single
 // pointer rather than an array).
 type CardGridCell struct {
-	Header    string          `json:"header"`
-	Body      string          `json:"body"`
-	Icon      *IconRef        `json:"icon,omitempty"`      // Icon: bundled-name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object
-	Secondary *SecondaryChart `json:"secondary,omitempty"` // Optional embedded chart (one per cell)
+	Header      string          `json:"header"`
+	Body        string          `json:"body"`
+	Recommended bool            `json:"recommended,omitempty"` // accent-filled recommended card in soft-card style
+	Icon        *IconRef        `json:"icon,omitempty"`        // Icon: bundled-name string shorthand or {name|path|url|svg_data, fill?, alt?, position?} object
+	Secondary   *SecondaryChart `json:"secondary,omitempty"`   // Optional embedded chart (one per cell)
 }
 
 // UnmarshalJSON supports string shorthand "Header | Body" or object {header, body}.
@@ -317,10 +321,11 @@ func (c *cardGrid) Schema() *Schema {
 		StringSchema(0).WithDescription("Shorthand: \"Header | Body\""),
 		ObjectSchema(
 			map[string]*Schema{
-				"header":    StringSchema(80).WithDescription("Card header/title"),
-				"body":      StringSchema(300).WithDescription("Card body content. 300 characters is a hard maximum, not a fit guarantee; a denser grid holds less. expand_pattern reports a template- and font-aware pre-authoring budget for each card and emits BODY_TOO_LONG above it."),
-				"icon":      IconRefSchema("Optional icon: bundled name string (e.g. \"rocket\") or {name|path|url|svg_data, fill?, alt?, position?} object. Used with icon-card style; also rendered as overlay when set with other styles."),
-				"secondary": SecondaryChartSchema(),
+				"header":      StringSchema(80).WithDescription("Card header/title"),
+				"body":        StringSchema(300).WithDescription("Card body content. 300 characters is a hard maximum, not a fit guarantee; a denser grid holds less. expand_pattern reports a template- and font-aware pre-authoring budget for each card and emits BODY_TOO_LONG above it."),
+				"recommended": BooleanSchema().WithDescription("Highlight this card with accent fill and a Recommended badge (soft-card style)"),
+				"icon":        IconRefSchema("Optional icon: bundled name string (e.g. \"rocket\") or {name|path|url|svg_data, fill?, alt?, position?} object. Used with icon-card style; also rendered as overlay when set with other styles."),
+				"secondary":   SecondaryChartSchema(),
 			},
 			[]string{"header", "body"},
 		).WithAdditionalProperties(false),
@@ -408,7 +413,12 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 	}
 
 	// Per-cell validation
+	style := ""
+	if ovr, ok := overrides.(*CardGridOverrides); ok && ovr != nil {
+		style = ovr.Style
+	}
 	for i, cell := range vals.Cells {
+		errs = append(errs, validateRecommendedCardStyle(cell, style, i))
 		path := fmt.Sprintf("cells[%d].header", i)
 		if cell.Header == "" {
 			errs = append(errs, errRequired(name, path))
@@ -435,6 +445,14 @@ func (c *cardGrid) Validate(values, overrides any, cellOverrides map[int]any) er
 	}
 
 	return errors.Join(errs...)
+}
+
+func validateRecommendedCardStyle(cell CardGridCell, style string, index int) error {
+	if cell.Recommended && style != "soft-card" {
+		return newValidationError("card-grid", fmt.Sprintf("cells[%d].recommended", index), ErrCodeInvalidShape,
+			"recommended is supported only by soft-card style", nil)
+	}
+	return nil
 }
 
 func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -717,12 +735,25 @@ func (c *cardGrid) expandTinted(ctx ExpandContext, cell CardGridCell, idx int, a
 // leaks through.
 func (c *cardGrid) expandSoftCard(ctx ExpandContext, cell CardGridCell, accent string, headerSize, bodySize float64) *jsonschema.GridCellInput {
 	fill := ctx.ResolveSurface("subtle", "lt1")
+	textContent := buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent)
+	if cell.Recommended {
+		fill = accent
+		ink := readableInkOn(ctx, fillTone{Color: accent}, "lt1", 4.5)
+		textContent = marshalTextObj(cardTextObj{
+			Paragraphs: []cardParagraph{
+				{Content: "RECOMMENDED", Size: 9, Bold: true, Color: ink, Align: "l"},
+				{Content: cell.Header, Size: headerSize, Bold: true, Color: ink, Align: "l"},
+				{Content: pptx.ConvertMarkdownEmphasis(cell.Body), Size: bodySize, Color: ink, Align: "l"},
+			},
+			Align: "l", VerticalAlign: "t",
+		})
+	}
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "roundRect",
 			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
 			Line:     json.RawMessage(`"none"`),
-			Text:     buildCardGridDarkTextContent(cell.Header, headerSize, cell.Body, bodySize, accent),
+			Text:     textContent,
 		},
 	}
 }

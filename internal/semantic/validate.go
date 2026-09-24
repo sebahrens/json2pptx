@@ -798,6 +798,49 @@ func validateImageCase(path string, slide SlideSpec, s *semDiags) {
 // advisory says which visual is lost rather than blocking
 // (go-slide-creator-4ndv).
 func validateDecision(path string, slide SlideSpec, s *semDiags) {
+	for _, field := range []string{"options", "choices", "alternatives"} {
+		raw, ok := slide.Body[field].([]any)
+		if !ok {
+			continue
+		}
+		selected := 0
+		for i, entry := range raw {
+			option, ok := entry.(map[string]any)
+			if !ok {
+				continue
+			}
+			value, present := option["recommended"]
+			if !present {
+				continue
+			}
+			flag, valid := value.(bool)
+			if !valid {
+				s.hard(fmt.Sprintf("%s.%s[%d].recommended", path, field, i), diagnostics.CodeSemanticFieldType,
+					"recommended must be a boolean")
+				continue
+			}
+			if flag {
+				label := ""
+				for _, key := range []string{"label", "title", "name", "option"} {
+					if value, ok := option[key].(string); ok && strings.TrimSpace(value) != "" {
+						label = value
+						break
+					}
+				}
+				if label == "" {
+					s.hard(fmt.Sprintf("%s.%s[%d]", path, field, i), diagnostics.CodeSemanticRequired,
+						"recommended option needs a non-empty label")
+					continue
+				}
+				selected++
+			}
+		}
+		if len(slides.DecisionOptions(slide.Body)) > 0 && selected != 1 {
+			s.hard(path+"."+field, diagnostics.CodeSemanticRequired,
+				fmt.Sprintf("decision requires exactly one option with recommended: true; found %d", selected))
+		}
+		break // Match DecisionOptions' first-list alias precedence.
+	}
 	if over := slides.DecisionOverBudget(slide.Body); over != "" {
 		s.degrade(path+".options",
 			fmt.Sprintf("decision %s (otherwise it degrades to a content slide)", over),

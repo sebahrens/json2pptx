@@ -918,6 +918,44 @@ func TestCardGridSoftCardAndSurfaceOverrides(t *testing.T) {
 	})
 }
 
+func TestCardGridRecommendedSoftCard(t *testing.T) {
+	p := &cardGrid{}
+	ctx := fullThemeCtx()
+	for i := range ctx.Theme.Colors {
+		if ctx.Theme.Colors[i].Name == "accent1" {
+			ctx.Theme.Colors[i].RGB = "#FD5108"
+		}
+	}
+	v := &CardGridValues{Columns: 2, Rows: 1, Cells: []CardGridCell{
+		{Header: "Build", Body: "Slow"},
+		{Header: "Buy", Body: "Fast", Recommended: true},
+	}}
+	grid, err := p.Expand(ctx, v, &CardGridOverrides{Style: "soft-card"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plain := grid.Rows[0].Cells[0].Shape
+	selected := grid.Rows[0].Cells[1].Shape
+	if string(plain.Fill) != `"lt1"` {
+		t.Fatalf("unselected fill = %s", plain.Fill)
+	}
+	if string(selected.Fill) == string(plain.Fill) {
+		t.Fatalf("selected fill = %s", selected.Fill)
+	}
+	var selectedText cardTextObj
+	if err := json.Unmarshal(selected.Text, &selectedText); err != nil {
+		t.Fatal(err)
+	}
+	fg, fgOK := resolveThemeColor(ctx, selectedText.Paragraphs[0].Color)
+	bg, bgOK := resolveThemeColor(ctx, "accent1")
+	if !strings.Contains(string(selected.Text), "RECOMMENDED") || !fgOK || !bgOK || fg.ContrastWith(bg) < 4.5 {
+		t.Fatalf("selected text missing badge/contrast: %s", selected.Text)
+	}
+	if err := p.Validate(v, &CardGridOverrides{Style: "filled"}, nil); err == nil || !strings.Contains(err.Error(), "recommended is supported only by soft-card") {
+		t.Fatalf("filled style silently drops recommendation: %v", err)
+	}
+}
+
 func TestCardGridSoftCardGolden(t *testing.T) {
 	p := &cardGrid{}
 	vals := CardGridValues{

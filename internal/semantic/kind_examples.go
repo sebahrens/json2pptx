@@ -246,7 +246,7 @@ var kindExamples = map[SlideKind]map[string]any{
 		"recommendation": "Stand up a dedicated SMB customer-success pod in Q3.",
 		"options": []any{
 			map[string]any{"label": "Hold current coverage", "detail": "No new cost, and SMB churn keeps climbing through the year."},
-			map[string]any{"label": "Fund an SMB success pod", "detail": "Four people from Q3; protects net retention in the segment."},
+			map[string]any{"label": "Fund an SMB success pod", "detail": "Four people from Q3; protects net retention in the segment.", "recommended": true},
 			map[string]any{"label": "Outsource SMB support", "detail": "Cheapest per seat, but the escalation path gets longer."},
 		},
 		"takeaway": "Fund the pod now to protect net retention.",

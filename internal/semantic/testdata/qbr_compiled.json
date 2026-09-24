@@ -148,7 +148,8 @@
             },
             {
               "label": "Fund an SMB success pod",
-              "body": "Four people from Q3; protects net retention in the segment."
+              "body": "Four people from Q3; protects net retention in the segment.",
+              "recommended": true
             },
             {
               "label": "Offshore SMB support",

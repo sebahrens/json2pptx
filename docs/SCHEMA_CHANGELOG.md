@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-24 — Schema 4.119.0: decision option recommendation (`go-slide-creator-m9crb`).**
+  `kind: decision` accepts `recommended: true` on an option object. Exactly one
+  usable option must be marked when options are supplied; missing or multiple
+  selections are validation errors. The selected option gets an accent-filled
+  Recommended treatment in the numbered strip or two-card layout, and a text
+  label in the content fallback. String shorthand remains valid for unselected
+  options.
+
 - **2026-09-21 — Three-agent, two-run blind rating comparison
   (`go-slide-creator-0ek6.2`, `go-slide-creator-0ek6.3`).** `qualitybench
   --prepare-agent-ratings` now creates a manifest and six blank

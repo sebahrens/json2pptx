@@ -92,10 +92,11 @@ const (
 
 // NumberedStepStripStep is a single ordered step.
 type NumberedStepStripStep struct {
-	Label    string `json:"label"`
-	Body     string `json:"body,omitempty"`      // optional 1-3 line explanation (detail zone)
-	Number   string `json:"number,omitempty"`    // optional ordinal override (e.g. "01", "A"); defaults to %02d
-	TipColor string `json:"tip_color,omitempty"` // optional scheme color for this step's number/tip lane
+	Label       string `json:"label"`
+	Body        string `json:"body,omitempty"`        // optional 1-3 line explanation (detail zone)
+	Recommended bool   `json:"recommended,omitempty"` // highlight a selected step in stacked-box style
+	Number      string `json:"number,omitempty"`      // optional ordinal override (e.g. "01", "A"); defaults to %02d
+	TipColor    string `json:"tip_color,omitempty"`   // optional scheme color for this step's number/tip lane
 }
 
 // NumberedStepStripValues holds the render style and the ordered steps.
@@ -121,10 +122,11 @@ func (n *numberedStepStrip) NewCellOverride() any { return &NumberedStepStripCel
 func (n *numberedStepStrip) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
-			"label":     StringSchema(60).WithDescription("Short ordinal step label. Six-step chevrons hold about 47 readable characters per label at default size; all other supported styles/counts hold 60"),
-			"body":      StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone"),
-			"number":    StringSchema(6).WithDescription("Optional ordinal override (e.g. \"01\", \"A\"); defaults to the 1-based index"),
-			"tip_color": StringSchema(0).WithDescription("Optional scheme color for this step's number / tip lane (default: rotating accent)"),
+			"label":       StringSchema(60).WithDescription("Short ordinal step label. Six-step chevrons hold about 47 readable characters per label at default size; all other supported styles/counts hold 60"),
+			"body":        StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone"),
+			"recommended": BooleanSchema().WithDescription("Highlight this row with an accent fill and Recommended badge (stacked-box style)"),
+			"number":      StringSchema(6).WithDescription("Optional ordinal override (e.g. \"01\", \"A\"); defaults to the 1-based index"),
+			"tip_color":   StringSchema(0).WithDescription("Optional scheme color for this step's number / tip lane (default: rotating accent)"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -186,6 +188,10 @@ func (n *numberedStepStrip) Validate(values, overrides any, cellOverrides map[in
 	}
 
 	for i, step := range vals.Steps {
+		if step.Recommended && vals.Style != "" && vals.Style != numberedStepStripStackedBox {
+			errs = append(errs, newValidationError(name, fmt.Sprintf("steps[%d].recommended", i), ErrCodeInvalidShape,
+				"recommended is supported only by stacked-box style", nil))
+		}
 		labelPath := fmt.Sprintf("steps[%d].label", i)
 		if strings.TrimSpace(step.Label) == "" {
 			errs = append(errs, errRequired(name, labelPath))
@@ -682,6 +688,13 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 					pptx.ConvertMarkdownEmphasis(strings.TrimSpace(step.Body)), bodySize),
 			},
 		}
+		if step.Recommended {
+			bodyCell.Shape.Fill = json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent))
+			ink := readableInkOn(ctx, fillTone{Color: baseAccent}, "lt1", 4.5)
+			bodyCell.Shape.Text = buildNumberedStepRecommendedBody(
+				pptx.ConvertMarkdownEmphasis(step.Label), labelSize,
+				pptx.ConvertMarkdownEmphasis(strings.TrimSpace(step.Body)), bodySize, ink)
+		}
 		applyNumberedStepOverride(bodyCell, cellOverrides, i, baseAccent)
 
 		rows[i] = jsonschema.GridRowInput{
@@ -797,6 +810,18 @@ func buildNumberedStepStackedBody(label string, labelSize float64, body string, 
 		VerticalAlign: "ctr",
 	}
 	data, _ := json.Marshal(obj)
+	return data
+}
+
+func buildNumberedStepRecommendedBody(label string, labelSize float64, body string, bodySize float64, ink string) json.RawMessage {
+	paras := []numberedStepParagraph{
+		{Content: "RECOMMENDED", Size: 8, Bold: true, Color: ink, Align: "l"},
+		{Content: label, Size: labelSize, Bold: true, Color: ink, Align: "l"},
+	}
+	if body != "" {
+		paras = append(paras, numberedStepParagraph{Content: body, Size: bodySize, Color: ink, Align: "l"})
+	}
+	data, _ := json.Marshal(numberedStepTextObj{Paragraphs: paras, Align: "l", VerticalAlign: "ctr"})
 	return data
 }
 

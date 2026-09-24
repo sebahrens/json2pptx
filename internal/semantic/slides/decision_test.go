@@ -193,3 +193,35 @@ func TestDecisionOptionForms(t *testing.T) {
 		t.Errorf("resolved %d options, want the 1 with a label", n)
 	}
 }
+
+func TestDecisionRecommendedOptionSurvivesEveryLayout(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		options     []any
+		wantPattern string
+	}{
+		{"strip", []any{option("Hold", "Wait"), map[string]any{"label": "Fund", "detail": "Act now", "recommended": true}, option("Outsource", "Delegate")}, "numbered-step-strip"},
+		{"cards", []any{option("Build", "Slow"), map[string]any{"label": "Buy", "detail": "Fast", "recommended": true}}, "card-grid"},
+		{"fallback", []any{map[string]any{"label": "Fund", "detail": "Act now", "recommended": true}}, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			slide, _, err := CompileDecision(Input{Body: decisionBody(tc.options...)})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.wantPattern == "" {
+				encoded, _ := json.Marshal(slide.Content)
+				if !strings.Contains(string(encoded), "Recommended: Fund") {
+					t.Fatalf("fallback lost selection: %s", encoded)
+				}
+				return
+			}
+			if slide.Pattern == nil || slide.Pattern.Name != tc.wantPattern {
+				t.Fatalf("pattern = %+v", slide.Pattern)
+			}
+			if !strings.Contains(string(slide.Pattern.Values), `"recommended":true`) {
+				t.Fatalf("pattern lost selection: %s", slide.Pattern.Values)
+			}
+		})
+	}
+}

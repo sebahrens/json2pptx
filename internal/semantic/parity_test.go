@@ -138,7 +138,7 @@ func everyKindSpec() *DeckSpec {
 				"title":          "The Bet",
 				"takeaway":       "Fund the pod now.",
 				"recommendation": "Stand up an SMB success pod in Q3.",
-				"options":        []any{"Hold coverage", "Fund the pod", "Offshore support"},
+				"options":        []any{"Hold coverage", map[string]any{"label": "Fund the pod", "recommended": true}, "Offshore support"},
 			}},
 			{Kind: KindClosing, Body: map[string]any{"title": "Questions?", "subtitle": "Thank you"}},
 			{Kind: KindRawJSON2pptx, Body: map[string]any{

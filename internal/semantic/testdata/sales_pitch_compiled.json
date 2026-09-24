@@ -161,7 +161,7 @@
           "body_and_bullets_value": {
             "body": "Run a 90-day pilot with your operations team, instrumenting the two workflows that cost the most analyst time today.",
             "bullets": [
-              "Stand up a 90-day pilot on the two highest-cost workflows (recommended).",
+              "Recommended: Stand up a 90-day pilot on the two highest-cost workflows.",
               "Begin with a paid discovery to map data sources before committing.",
               "Defer to next budget cycle and revisit once headcount frees up."
             ]

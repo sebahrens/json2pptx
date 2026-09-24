@@ -388,8 +388,10 @@ var payloadFieldCoverage = map[SlideKind]map[string]fieldProbe{
 		"takeaway": {inject: func(s string) map[string]any { return map[string]any{"phases": covPhases("Pilot"), "takeaway": s} }, rendered: true},
 	},
 	KindDecision: {
-		"title":          {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},
-		"options":        {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "options": []any{s}} }, rendered: true},
+		"title": {inject: func(s string) map[string]any { return map[string]any{"title": s} }, rendered: true},
+		"options": {inject: func(s string) map[string]any {
+			return map[string]any{"title": "Filler", "options": []any{map[string]any{"label": s, "recommended": true}}}
+		}, rendered: true},
 		"recommendation": {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "recommendation": s} }, rendered: true},
 		"takeaway":       {inject: func(s string) map[string]any { return map[string]any{"title": "Filler", "takeaway": s} }, rendered: true},
 	},

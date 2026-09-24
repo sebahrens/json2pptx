@@ -32,14 +32,16 @@ const (
 
 // decisionOption is one resolved option: what it is, and what it means.
 type decisionOption struct {
-	Label  string
-	Detail string
+	Label       string
+	Detail      string
+	Recommended bool
 }
 
 // decisionStep is one numbered-step-strip step.
 type decisionStep struct {
-	Label string `json:"label"`
-	Body  string `json:"body,omitempty"`
+	Label       string `json:"label"`
+	Body        string `json:"body,omitempty"`
+	Recommended bool   `json:"recommended,omitempty"`
 }
 
 // decisionStripValues is the numbered-step-strip pattern's values object.
@@ -50,8 +52,9 @@ type decisionStripValues struct {
 
 // decisionCard is one card-grid cell.
 type decisionCard struct {
-	Header string `json:"header"`
-	Body   string `json:"body"`
+	Header      string `json:"header"`
+	Body        string `json:"body"`
+	Recommended bool   `json:"recommended,omitempty"`
 }
 
 // decisionCardValues is the card-grid pattern's values object.
@@ -87,7 +90,7 @@ func CompileDecision(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 func compileDecisionStrip(in Input, options []decisionOption) (*deckinput.SlideInput, []SourceLink, error) {
 	steps := make([]decisionStep, 0, len(options))
 	for _, o := range options {
-		steps = append(steps, decisionStep{Label: o.Label, Body: o.Detail})
+		steps = append(steps, decisionStep{Label: o.Label, Body: o.Detail, Recommended: o.Recommended})
 	}
 	encoded, err := json.Marshal(decisionStripValues{Style: "stacked-box", Steps: steps})
 	if err != nil {
@@ -103,7 +106,7 @@ func compileDecisionStrip(in Input, options []decisionOption) (*deckinput.SlideI
 func compileDecisionCards(in Input, options []decisionOption) (*deckinput.SlideInput, []SourceLink, error) {
 	cells := make([]decisionCard, 0, len(options))
 	for _, o := range options {
-		cells = append(cells, decisionCard{Header: o.Label, Body: o.Detail})
+		cells = append(cells, decisionCard{Header: o.Label, Body: o.Detail, Recommended: o.Recommended})
 	}
 	encoded, err := json.Marshal(decisionCardValues{Columns: len(cells), Rows: 1, Cells: cells})
 	if err != nil {
@@ -194,6 +197,9 @@ func decisionOptionLines(options []decisionOption) []string {
 	out := make([]string, 0, len(options))
 	for _, o := range options {
 		line := o.Label
+		if o.Recommended {
+			line = "Recommended: " + line
+		}
 		if o.Detail != "" {
 			line += " — " + o.Detail
 		}
@@ -222,9 +228,11 @@ func DecisionOptions(body map[string]any) []decisionOption {
 			if label == "" {
 				continue
 			}
+			recommended, _ := t["recommended"].(bool)
 			out = append(out, decisionOption{
-				Label:  label,
-				Detail: firstNonEmpty(strField(t, "detail"), strField(t, "description"), strField(t, "body"), strField(t, "summary")),
+				Label:       label,
+				Detail:      firstNonEmpty(strField(t, "detail"), strField(t, "description"), strField(t, "body"), strField(t, "summary")),
+				Recommended: recommended,
 			})
 		}
 	}

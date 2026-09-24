@@ -281,6 +281,42 @@ func TestNumberedStepStrip_Expand_StackedBoxShape(t *testing.T) {
 	}
 }
 
+func TestNumberedStepStripRecommendedRow(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	v := validNumberedStepStripValues("stacked-box", 3)
+	v.Steps[1].Recommended = true
+	ctx := fullThemeCtx()
+	for i := range ctx.Theme.Colors {
+		if ctx.Theme.Colors[i].Name == "accent1" {
+			ctx.Theme.Colors[i].RGB = "#FD5108"
+		}
+	}
+	grid, err := p.Expand(ctx, v, nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	selected := grid.Rows[1].Cells[1].Shape
+	if string(selected.Fill) == `"none"` {
+		t.Fatalf("selected row has no accent fill: %s", selected.Fill)
+	}
+	var selectedText numberedStepTextObj
+	if err := json.Unmarshal(selected.Text, &selectedText); err != nil {
+		t.Fatal(err)
+	}
+	fg, fgOK := resolveThemeColor(ctx, selectedText.Paragraphs[0].Color)
+	bg, bgOK := resolveThemeColor(ctx, "accent1")
+	if !strings.Contains(string(selected.Text), "RECOMMENDED") || !fgOK || !bgOK || fg.ContrastWith(bg) < 4.5 {
+		t.Fatalf("selected row has no contrasting badge/text: %s", selected.Text)
+	}
+	if string(grid.Rows[0].Cells[1].Shape.Fill) != `"none"` {
+		t.Fatal("unselected row changed fill")
+	}
+	v.Style = "chevron"
+	if err := p.Validate(v, nil, nil); err == nil || !strings.Contains(err.Error(), "recommended is supported only by stacked-box") {
+		t.Fatalf("chevron silently drops recommendation: %v", err)
+	}
+}
+
 func TestNumberedStepStrip_Expand_StackedBoxTipColor(t *testing.T) {
 	p, _ := Default().Get("numbered-step-strip")
 	v := validNumberedStepStripValues("stacked-box", 3)
