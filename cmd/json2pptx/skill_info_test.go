@@ -720,18 +720,6 @@ func TestBuildComposeEntry_PopulatedWithExamples(t *testing.T) {
 	}
 }
 
-func TestAnalyzeTemplateForSkillInfo_NoColorRolesInListMode(t *testing.T) {
-	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "list")
-	if err != nil {
-		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
-	}
-
-	if info.ColorRoles != nil {
-		t.Error("ColorRoles should be nil in list mode")
-	}
-}
-
 // TestAnalyzeTemplateForSkillInfo_CanonicalMetadataFull asserts that full mode
 // surfaces the canonical taxonomy (per-layout type/family/confidence,
 // per-placeholder role/confidence/font_size_pt) plus the template-level
@@ -907,10 +895,9 @@ func TestAnalyzeTemplateForSkillInfo_CompactSurvivesProjection(t *testing.T) {
 	}
 }
 
-// TestAnalyzeTemplateForSkillInfo_NoCanonicalMetadataInListMode confirms the
-// slim list projection (MCP fields=compact) omits the canonical/semantic
-// metadata entirely.
-func TestAnalyzeTemplateForSkillInfo_NoCanonicalMetadataInListMode(t *testing.T) {
+// TestAnalyzeTemplateForSkillInfo_ListModeKeepsSmallPaletteFields confirms the
+// slim projection keeps actionable color intent but omits heavy detail.
+func TestAnalyzeTemplateForSkillInfo_ListModeKeepsSmallPaletteFields(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
 	info, err := analyzeTemplateForSkillInfo("../../templates/midnight-blue.pptx", cache, "list")
 	if err != nil {
@@ -923,8 +910,11 @@ func TestAnalyzeTemplateForSkillInfo_NoCanonicalMetadataInListMode(t *testing.T)
 	if info.DerivableLayouts != nil {
 		t.Error("list mode: derivable_layouts should be omitted")
 	}
-	if info.SemanticAccents != nil {
-		t.Error("list mode: semantic_accents should be omitted")
+	if len(info.SemanticAccents) != 3 || info.ColorRoles == nil || info.TitleFont == "" || info.BodyFont == "" {
+		t.Errorf("list mode: missing palette intent or fonts: %+v", info)
+	}
+	if info.SurfaceTints != nil || info.DataPalette != nil {
+		t.Error("list mode: detailed palette fields should be omitted")
 	}
 	if info.SHA256 != "" {
 		t.Error("list mode: sha256 should be omitted (compact+full only)")

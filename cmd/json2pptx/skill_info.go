@@ -594,6 +594,15 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 	if info.TableStyles == nil {
 		info.TableStyles = []skillTableStyle{}
 	}
+	// These small, actionable theme fields belong in every projection. Agents
+	// need them to choose readable fills without requesting full layout detail.
+	info.TitleFont = analysis.Theme.TitleFont
+	info.BodyFont = analysis.Theme.BodyFont
+	info.ColorRoles = buildColorRoles(analysis.Theme.Colors)
+	if md := analysis.Metadata; md != nil {
+		info.MetadataVersion = md.Version
+		info.SemanticAccents = md.SemanticAccents
+	}
 
 	if mode == "list" {
 		return info, nil
@@ -604,30 +613,15 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 	for _, c := range analysis.Theme.Colors {
 		info.ThemeColors[c.Name] = c.RGB
 	}
-	info.TitleFont = analysis.Theme.TitleFont
-	info.BodyFont = analysis.Theme.BodyFont
-	info.ColorRoles = buildColorRoles(analysis.Theme.Colors)
 
 	// Stable content identity for change detection / cache keys.
 	info.SHA256 = analysis.Hash
 
-	// Surface semantic palette metadata + per-layout hints from the embedded
-	// template metadata when present (all omitempty, so metadata-less templates
-	// stay slim).
+	// Per-layout hints are only useful in detailed projections.
 	if md := analysis.Metadata; md != nil {
-		info.MetadataVersion = md.Version
-		if len(md.AccentUsageGuide) > 0 {
-			info.AccentUsageGuide = md.AccentUsageGuide
-		}
-		if len(md.SemanticAccents) > 0 {
-			info.SemanticAccents = md.SemanticAccents
-		}
-		if len(md.SurfaceTints) > 0 {
-			info.SurfaceTints = md.SurfaceTints
-		}
-		if len(md.DataPalette) > 0 {
-			info.DataPalette = md.DataPalette
-		}
+		info.AccentUsageGuide = md.AccentUsageGuide
+		info.SurfaceTints = md.SurfaceTints
+		info.DataPalette = md.DataPalette
 		if len(md.LayoutHints) > 0 {
 			info.LayoutHints = md.LayoutHints
 		}

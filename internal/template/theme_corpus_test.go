@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -71,6 +72,35 @@ var themeCorpusKnownBroken = []themeCorpusException{
 		Category: "layout contrast",
 		Tracking: "go-slide-creator-pxdp",
 	},
+}
+
+// The nine embedded templates promise authored palette intent. Local custom
+// templates (including the ignored p-style test fixture) may omit metadata.
+// The existing corpus gates below validate each declared role and scheme slot.
+func TestShippedTemplatesDeclarePaletteMetadata(t *testing.T) {
+	for _, path := range testutil.BuiltinTemplatePaths() {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			reader, err := template.OpenTemplate(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			metadata, err := template.ParseMetadata(reader)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if metadata == nil || len(metadata.SemanticAccents) != 3 || len(metadata.SurfaceTints) != 4 || len(metadata.DataPalette) != 6 {
+				t.Fatalf("shipped template has incomplete palette metadata: %+v", metadata)
+			}
+			colors := buildColorMap(template.ParseTheme(reader))
+			for _, role := range []string{"positive", "negative", "neutral"} {
+				slot := metadata.SemanticAccents[role]
+				if len(slot) != len("accent1") || !strings.HasPrefix(slot, "accent") || slot[6] < '1' || slot[6] > '6' || !resolvesToTheme(slot, colors) {
+					t.Errorf("semantic_accents[%s]=%q must resolve to an accent in the template theme", role, slot)
+				}
+			}
+		})
+	}
 }
 
 // themeCorpusException allow-lists a single (template, gate) pair.

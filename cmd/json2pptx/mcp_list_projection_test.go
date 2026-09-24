@@ -13,6 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // TestListPatterns_FieldsCompact verifies that fields=compact strips the
@@ -201,9 +202,8 @@ func TestListPatterns_FilterEmpty(t *testing.T) {
 	}
 }
 
-// TestListTemplates_FieldsCompact verifies that fields=compact drops the
-// heavy per-template detail (theme_colors, color_roles, layout_summaries) and
-// leaves only identity + capacity counts.
+// TestListTemplates_FieldsCompact verifies that compact discovery carries
+// actionable palette intent while omitting heavy layout/theme detail.
 func TestListTemplates_FieldsCompact(t *testing.T) {
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
@@ -228,21 +228,33 @@ func TestListTemplates_FieldsCompact(t *testing.T) {
 	if len(resp.Templates) == 0 {
 		t.Fatal("expected non-empty templates list")
 	}
+	shipped := make(map[string]bool)
+	for _, name := range testutil.AllBuiltinTemplateNames() {
+		shipped[name] = true
+	}
+	seen := make(map[string]bool)
 	for _, tmpl := range resp.Templates {
+		seen[tmpl.Name] = true
 		if tmpl.Name == "" {
 			t.Error("template entry missing name")
 		}
 		if tmpl.ThemeColors != nil {
 			t.Errorf("template %q: theme_colors should be omitted in compact mode, got %v", tmpl.Name, tmpl.ThemeColors)
 		}
-		if tmpl.ColorRoles != nil {
-			t.Errorf("template %q: color_roles should be omitted in compact mode", tmpl.Name)
+		if tmpl.ColorRoles == nil {
+			t.Errorf("template %q: compact discovery omitted color_roles", tmpl.Name)
 		}
 		if len(tmpl.LayoutSummaries) != 0 {
 			t.Errorf("template %q: layout_summaries should be omitted in compact mode", tmpl.Name)
 		}
-		if tmpl.TitleFont != "" {
-			t.Errorf("template %q: title_font should be omitted in compact mode, got %q", tmpl.Name, tmpl.TitleFont)
+		if tmpl.TitleFont == "" || tmpl.BodyFont == "" {
+			t.Errorf("template %q: compact discovery omitted fonts: title=%q body=%q", tmpl.Name, tmpl.TitleFont, tmpl.BodyFont)
+		}
+		if shipped[tmpl.Name] && len(tmpl.SemanticAccents) != 3 {
+			t.Errorf("shipped template %q: compact discovery omitted semantic accents: %v", tmpl.Name, tmpl.SemanticAccents)
+		}
+		if len(tmpl.SurfaceTints) != 0 || len(tmpl.DataPalette) != 0 {
+			t.Errorf("template %q: compact discovery carried detailed palette fields", tmpl.Name)
 		}
 		if tmpl.CanonicalLayoutAvailability == nil {
 			t.Errorf("template %q: slim discovery omitted canonical availability", tmpl.Name)
@@ -252,6 +264,11 @@ func TestListTemplates_FieldsCompact(t *testing.T) {
 				!slices.Contains(tmpl.CanonicalLayoutAvailability.Unavailable, "agenda") {
 				t.Errorf("modern availability contradicts its layouts: %+v", tmpl.CanonicalLayoutAvailability)
 			}
+		}
+	}
+	for name := range shipped {
+		if !seen[name] {
+			t.Errorf("compact discovery omitted shipped template %q", name)
 		}
 	}
 }
@@ -376,7 +393,7 @@ func TestListTemplates_FieldsFullCanonicalMetadata(t *testing.T) {
 	}
 	res, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
 		"fields":    "full",
-		"filter":    "midnight",
+		"filter":    "modern-yellow",
 		"page_size": float64(50),
 	}))
 	if err != nil || res.IsError {
@@ -388,7 +405,7 @@ func TestListTemplates_FieldsFullCanonicalMetadata(t *testing.T) {
 		t.Fatalf("failed to parse response: %v", err)
 	}
 	if len(resp.Templates) == 0 {
-		t.Fatal("expected midnight-blue template in response")
+		t.Fatal("expected modern-yellow template in response")
 	}
 	tmpl := resp.Templates[0]
 
@@ -397,6 +414,9 @@ func TestListTemplates_FieldsFullCanonicalMetadata(t *testing.T) {
 	}
 	if len(tmpl.SemanticAccents) == 0 {
 		t.Error("fields=full: semantic_accents missing")
+	}
+	if len(tmpl.SurfaceTints) != 4 || len(tmpl.DataPalette) != 6 {
+		t.Errorf("fields=full: backfilled palette metadata missing: surfaces=%v data=%v", tmpl.SurfaceTints, tmpl.DataPalette)
 	}
 	if len(tmpl.CanonicalCoverage) == 0 {
 		t.Error("fields=full: canonical_coverage missing")
