@@ -389,9 +389,9 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeSparseLayout: {
 		Code:        ErrCodeSparseLayout,
-		Summary:     "Slide content occupies less than 40% of the available bounds height.",
+		Summary:     "Visible slide content covers less than 40% of the resolved grid area.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight estimates that the rendered content height is under 40% of the grid bounds — the slide reads as mostly empty.",
+		WhenEmitted: "Pre-flight measures filled cells, non-text visuals, and wrapped text ink against the resolved grid bounds and finds under 40% visible coverage.",
 		RemediationSteps: []string{
 			"Add more content to the grid (more cells, longer text, supporting bullets).",
 			"Or swap to a smaller pattern via recommend_pattern with the current item count.",

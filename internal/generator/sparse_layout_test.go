@@ -28,6 +28,16 @@ func TestDetectSparseLayout_Sparse(t *testing.T) {
 	}
 }
 
+func TestDetectSparseLayout_ResolvedAreaCanBeEmpty(t *testing.T) {
+	f := DetectSparseLayout(SparseLayoutInput{
+		Path: "slides[0].shape_grid", BoundsHeightEMU: 1000000,
+		ContentHeightEMU: 0, AreaMeasured: true,
+	})
+	if f == nil || f.OverflowRatio != 0 || f.Message != "visible content covers 0% of grid area — slide is mostly empty" {
+		t.Fatalf("empty resolved grid was not diagnosed as sparse: %+v", f)
+	}
+}
+
 func TestDetectSparseLayout_NotSparse(t *testing.T) {
 	// Content is 60% of bounds — should not fire.
 	f := DetectSparseLayout(SparseLayoutInput{

@@ -408,19 +408,19 @@ Only fires when a title-anchored content zone was resolved for the slide (`Layou
 
 **Action:** `review`
 **Pattern:** `shape_grid`
-**Fix kind:** `grow_pattern`
+**Fix kind:** `adopt_pattern` for raw grids
 
-Content occupies less than 40% of the available bounds height — the slide is mostly empty. Since grid bounds are authoritative (never shrink), this fires when the estimated content extent is under 40% of the allocated bounds height.
+Visible content covers less than 40% of the resolved grid area — the slide is mostly empty. Filled cells and non-text visuals count at their drawn size; unfilled text uses its measured wrapped height. A full-bleed painted card row is not sparse merely because each label is short.
 
-The fix params include `filled_pct`, `bounds_height`, and `content_height`.
+The raw-grid fix params include `filled_pct`, `filled_slots`, `grid_rows`, and `grid_cols`, so `recommend_pattern` can use the actual structure. The measured/allowed extents retain area-equivalent heights (visible area divided by grid width), not raw newline estimates.
 
 ```json
 {
   "pattern": "shape_grid",
   "path": "/slides/1/shape_grid",
   "code": "sparse_layout",
-  "message": "content occupies 25% of bounds height (1270000 / 5080000 EMU) — slide is mostly empty",
-  "fix": { "kind": "grow_pattern", "params": { "filled_pct": 0.25, "bounds_height": 5080000, "content_height": 1270000 } },
+  "message": "visible content covers 25% of grid area — slide is mostly empty",
+  "fix": { "kind": "adopt_pattern", "params": { "filled_pct": 0.25, "filled_slots": 2, "grid_rows": 1, "grid_cols": 2 } },
   "action": "review",
   "measured": { "height_emu": 1270000 },
   "allowed": { "height_emu": 5080000 },
@@ -1596,7 +1596,7 @@ Fit findings are scoped to **JSON-authored content only**. Content inherited fro
 
 - **Layout-inherited shapes** — shapes that come from the template's slide layout or master are never checked. Callers filter these before passing to detectors.
 - **Decorative shapes** — shapes with `role: "background"` or `role: "decor"` are skipped by `slide_bounds_overflow`, `footer_collision`, and `title_collision`. These are intentionally placed at edges or off-slide.
-- **Sparse grids** — `sparse_layout` fires when the estimated content extent is under 40% of the grid bounds height. Since bounds are authoritative (never shrink), all grids are checked uniformly.
+- **Sparse grids** — `sparse_layout` fires when the resolved visible cell area (fills, visuals, and measured text ink) is under 40% of the grid bounds area. Since bounds are authoritative (never shrink), all grids are checked uniformly.
 - **Autofit placeholders** — `placeholder_overflow` is suppressed when the placeholder has `normAutofit` or `spAutoFit` set, because PowerPoint will auto-shrink text to fit.
 - **Layouts without footer** — `footer_collision` only fires when the slide's resolved layout declares a footer placeholder (dt, ftr, or sldNum). No finding is emitted on layouts using heuristic fallback positioning.
 - **Shared geometry** — `slide_bounds_overflow`, `footer_collision`, and `title_collision` resolve shape_grid cell coordinates through the same layout-aware helper (`resolveGridGeometry` → `resolveGridBounds`) generation uses, so preflight evaluates the geometry that will actually render. `title_collision` only fires when a title-anchored content zone could be resolved for the slide. The text-density findings (`fit_overflow`, `cell_underfilled`) and the `strict_fit` gate resolve shape_grid cells through this **same** helper: `generateFitReport`/`evaluateStrictFit` are passed the resolved template layouts and slide dimensions, so a shape_grid cell is measured against the content-zone / virtual-layout bounds it will render into rather than generic full-slide defaults. CLI `generate`, MCP `generate_presentation` (the `strict_fit` gate), `validate -fit-report`, MCP `validate_input`, and `preview_presentation_plan` therefore agree on shape_grid fit findings and strict-refusal behavior. When no template can be resolved (e.g. `validate -fit-report` on a deck whose template name does not resolve), the report falls back to generic default bounds.

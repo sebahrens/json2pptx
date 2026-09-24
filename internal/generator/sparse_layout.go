@@ -6,9 +6,8 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
-// SparseLayoutInput describes a shape grid's content vs available height for
-// sparse layout detection. The detector fires when rendered content occupies
-// less than 40% of the available bounds height.
+// SparseLayoutInput describes visible grid content as an equivalent height
+// relative to its bounds. The detector fires below 40% coverage.
 type SparseLayoutInput struct {
 	// SlideIndex is the zero-based slide index.
 	SlideIndex int
@@ -16,9 +15,12 @@ type SparseLayoutInput struct {
 	Path string
 	// BoundsHeightEMU is the allocated grid bounds height in EMU.
 	BoundsHeightEMU int64
-	// ContentHeightEMU is the estimated content height in EMU (sum of row
-	// content heights plus inter-row gaps).
+	// ContentHeightEMU is the estimated content height in EMU, or in area mode
+	// visible area divided by grid width.
 	ContentHeightEMU int64
+	// AreaMeasured means ContentHeightEMU is visible area divided by bounds
+	// width, not a literal text extent. Zero is a valid empty grid in this mode.
+	AreaMeasured bool
 
 	// PatternName is the pattern that produced the grid (empty for inline grids).
 	// When set, the detector can recommend reshape_grid instead of grow_pattern.
@@ -39,7 +41,7 @@ const sparseLayoutThreshold = 0.40
 // 40% of the available bounds height. Returns nil when the grid is not sparse
 // or when inputs are invalid.
 func DetectSparseLayout(input SparseLayoutInput) *patterns.FitFinding {
-	if input.BoundsHeightEMU <= 0 || input.ContentHeightEMU <= 0 {
+	if input.BoundsHeightEMU <= 0 || input.ContentHeightEMU < 0 || input.ContentHeightEMU == 0 && !input.AreaMeasured {
 		return nil
 	}
 
@@ -54,17 +56,18 @@ func DetectSparseLayout(input SparseLayoutInput) *patterns.FitFinding {
 	}
 
 	fix := sparseLayoutFix(input, filledPct)
+	message := fmt.Sprintf("content occupies %.0f%% of bounds height (%d / %d EMU) — slide is mostly empty", filledPct*100, input.ContentHeightEMU, input.BoundsHeightEMU)
+	if input.AreaMeasured {
+		message = fmt.Sprintf("visible content covers %.0f%% of grid area — slide is mostly empty", filledPct*100)
+	}
 
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: pat,
 			Path:    input.Path,
 			Code:    patterns.ErrCodeSparseLayout,
-			Message: fmt.Sprintf(
-				"content occupies %.0f%% of bounds height (%d / %d EMU) — slide is mostly empty",
-				filledPct*100, input.ContentHeightEMU, input.BoundsHeightEMU,
-			),
-			Fix: fix,
+			Message: message,
+			Fix:     fix,
 		},
 		Action: "review",
 		Measured: &patterns.Extent{

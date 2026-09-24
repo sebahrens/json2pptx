@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/textcapacity"
 	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -671,7 +673,8 @@ func checkShapeGridStructural(grid *ShapeGridInput, slideIdx int, slideWidth, sl
 
 	// Sparse layout detection: bounds are authoritative (never shrink), so
 	// content may occupy a small fraction of the allocated bounds.
-	if f := detectSparseLayoutForGrid(grid, slideIdx, slideWidth, slideHeight, patternName); f != nil {
+	bounds := resolveGridBounds(grid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
+	if f := detectSparseLayoutForGrid(grid, result, bounds, slideIdx, patternName); f != nil {
 		findings = append(findings, *f)
 	}
 
@@ -786,9 +789,9 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 	return result
 }
 
-// detectSparseLayoutForGrid estimates the content height of a shape grid and
-// compares it against the bounds height to detect mostly-empty slides.
-func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64, patternName string) *patterns.FitFinding {
+// detectSparseLayoutForGrid uses the same resolved geometry as rendering. A
+// painted card occupies its frame; unfilled text uses its wrapped ink height.
+func detectSparseLayoutForGrid(grid *ShapeGridInput, resolved *shapegrid.ResolveResult, bounds pptx.RectEmu, slideIdx int, patternName string) *patterns.FitFinding {
 	// Named patterns size their own cells: a KPI card is 2.6in tall because the
 	// pattern says so, not because its two short paragraphs need the room. This
 	// estimator measures TEXT height against bounds height, so it called a clean
@@ -799,15 +802,10 @@ func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, s
 	if patternName != "" {
 		return nil
 	}
-	boundsH := estimateGridBoundsHeightEMU(grid, slideHeight)
-	if boundsH <= 0 {
+	if resolved == nil || bounds.CX <= 0 || bounds.CY <= 0 {
 		return nil
 	}
-
-	contentH := estimateGridContentHeightEMU(grid, slideHeight)
-	if contentH <= 0 {
-		return nil
-	}
+	contentH := measuredGridContentHeightEMU(grid, resolved, bounds, 0)
 
 	// Count filled slots and grid dimensions for reshape recommendation.
 	numCols := inferGridColumns(grid)
@@ -815,149 +813,120 @@ func detectSparseLayoutForGrid(grid *ShapeGridInput, slideIdx int, slideWidth, s
 	filledSlots := occupiedGridSlots(grid)
 
 	path := slidepath.ShapeGrid(slideIdx)
-	return generator.DetectSparseLayout(generator.SparseLayoutInput{
+	f := generator.DetectSparseLayout(generator.SparseLayoutInput{
 		SlideIndex:       slideIdx,
 		Path:             path,
-		BoundsHeightEMU:  boundsH,
+		BoundsHeightEMU:  bounds.CY,
 		ContentHeightEMU: contentH,
+		AreaMeasured:     true,
 		PatternName:      patternName,
 		FilledSlots:      filledSlots,
 		GridRows:         numRows,
 		GridCols:         numCols,
 	})
+	if f != nil && patternName == "" {
+		// A raw grid has no pattern sizing contract to tighten. Recommend
+		// choosing a purpose-sized pattern with the same real content.
+		f.Fix = &patterns.FixSuggestion{Kind: "adopt_pattern", Params: map[string]any{
+			"filled_pct": f.OverflowRatio, "filled_slots": filledSlots,
+			"grid_rows": numRows, "grid_cols": numCols,
+		}}
+	}
+	return f
 }
 
-// estimateGridBoundsHeightEMU computes the total allocated bounds height for a grid.
-func estimateGridBoundsHeightEMU(grid *ShapeGridInput, slideHeight int64) int64 {
-	if slideHeight <= 0 {
-		slideHeight = shapegrid.DefaultSlideHeightEMU
-	}
-	if grid.Bounds != nil && grid.Bounds.Height > 0 {
-		return int64(float64(slideHeight) * grid.Bounds.Height / 100.0)
-	}
-	// Default: ~70% of slide height.
-	return int64(float64(slideHeight) * 0.7)
-}
-
-// estimateGridContentHeightEMU estimates the total content height from row cells.
-// It sums up per-row content estimates (tallest cell in each row) plus gaps.
-func estimateGridContentHeightEMU(grid *ShapeGridInput, slideHeight int64) int64 {
-	numRows := len(grid.Rows)
-	if numRows == 0 {
+// measuredGridContentHeightEMU is painted area divided by grid width: an
+// equivalent height that accounts for both row height and horizontal coverage.
+func measuredGridContentHeightEMU(grid *ShapeGridInput, resolved *shapegrid.ResolveResult, bounds pptx.RectEmu, depth int) int64 {
+	if resolved == nil || bounds.CX <= 0 || bounds.CY <= 0 {
 		return 0
 	}
-
-	rowGapPt := grid.RowGap
-	if rowGapPt == 0 {
-		rowGapPt = grid.Gap
-	}
-	if rowGapPt == 0 {
-		rowGapPt = 8 // default 8pt
-	}
-	rowGapEMU := int64(rowGapPt * 12700)
-
-	var totalContentH int64
-	for _, row := range grid.Rows {
-		rowH := estimateRowInputContentHeightEMU(row)
-		totalContentH += rowH
-	}
-
-	// Add inter-row gaps.
-	totalContentH += rowGapEMU * int64(numRows-1)
-	return totalContentH
-}
-
-// estimateRowInputContentHeightEMU returns the estimated content height for a
-// GridRowInput based on the tallest cell's content.
-func estimateRowInputContentHeightEMU(row GridRowInput) int64 {
-	var maxH int64
-	for _, cell := range row.Cells {
-		h := estimateCellInputContentHeightEMU(cell)
-		if h > maxH {
-			maxH = h
+	densities := textcapacity.ForResolvedGrid(resolved)
+	var paintedArea float64
+	for i, cell := range resolved.Cells {
+		visible := clippedGridCellBounds(cell.Bounds, bounds)
+		if visible.CX <= 0 || visible.CY <= 0 {
+			continue
 		}
-	}
-	if maxH == 0 {
-		maxH = int64(24 * 12700) // 24pt minimum fallback
-	}
-	// A point floor (min_height) is space the row occupies regardless of how
-	// little text it carries — content-sized patterns pin rows this way.
-	if minH := int64(row.MinHeight * 12700); minH > maxH {
-		maxH = minH
-	}
-	return maxH
-}
-
-// estimateCellInputContentHeightEMU estimates content height for a single cell.
-func estimateCellInputContentHeightEMU(cell *GridCellInput) int64 {
-	if cell == nil {
-		return 0
-	}
-
-	// Table cells: estimate from row count.
-	if cell.Table != nil {
-		rows := len(cell.Table.Rows)
-		if rows == 0 {
-			rows = 1
+		if cell.Kind == shapegrid.CellKindSubGrid && depth < maxGeomNestingDepth {
+			if authored := gridCellAtResolved(grid, cell.RowIdx, cell.ColIdx); authored != nil && authored.Grid != nil {
+				childBounds := pptx.RectEmu{X: cell.Bounds.X + subGridInsetEMU, Y: cell.Bounds.Y + subGridInsetEMU,
+					CX: cell.Bounds.CX - 2*subGridInsetEMU, CY: cell.Bounds.CY - 2*subGridInsetEMU}
+				if childBounds.CX <= 0 || childBounds.CY <= 0 {
+					childBounds = cell.Bounds
+				}
+				child := resolveGridForStructural(authored.Grid, &childBounds, nil, 0, 0)
+				childH := measuredGridContentHeightEMU(authored.Grid, child, childBounds, depth+1)
+				childVisible := clippedGridCellBounds(childBounds, bounds)
+				paintedArea += float64(childVisible.CX) * float64(sparseMin64(childVisible.CY, childH))
+			}
+			continue
 		}
-		// ~20pt per row + 8pt header
-		return int64((float64(rows)*20 + 8) * 12700)
-	}
-
-	// Shape cells: estimate from text content.
-	if cell.Shape != nil && len(cell.Shape.Text) > 0 {
-		return estimateShapeTextHeightEMU(cell.Shape.Text)
-	}
-
-	// Icon/image cells: ~40pt default.
-	if cell.Icon != nil || cell.Image != nil {
-		return int64(40 * 12700)
-	}
-
-	// Diagram cells: ~100pt default.
-	if cell.Diagram != nil {
-		return int64(100 * 12700)
-	}
-
-	// Nested sub-grids: their own stacked rows.
-	if cell.Grid != nil {
-		return estimateGridContentHeightEMU(cell.Grid, 0)
-	}
-
-	return 0
-}
-
-// estimateShapeTextHeightEMU estimates the height of a shape's text content.
-func estimateShapeTextHeightEMU(textRaw json.RawMessage) int64 {
-	// Try string shorthand.
-	var s string
-	if json.Unmarshal(textRaw, &s) == nil {
-		lines := strings.Count(s, "\n") + 1
-		return cellTextHeightEMU(lines, 11)
-	}
-
-	// Try object form.
-	var obj struct {
-		Content string  `json:"content"`
-		Size    float64 `json:"size"`
-	}
-	if json.Unmarshal(textRaw, &obj) == nil && obj.Content != "" {
-		fontSize := obj.Size
-		if fontSize == 0 {
-			fontSize = 11
+		inkH := int64(math.Round(densities[i].RequiredHeightPt * 12700))
+		if cell.Kind != shapegrid.CellKindShape && cell.Kind != shapegrid.CellKindSubGrid || cell.ShapeSpec != nil && sparseVisibleFill(cell.ShapeSpec.Fill) {
+			inkH = visible.CY
 		}
-		lines := strings.Count(obj.Content, "\n") + 1
-		return cellTextHeightEMU(lines, fontSize)
+		if cell.IconBounds.CY > inkH {
+			inkH = cell.IconBounds.CY
+		}
+		inkH = sparseMax64(0, sparseMin64(visible.CY, inkH))
+		paintedArea += float64(visible.CX) * float64(inkH)
 	}
-
-	return 0
+	return int64(math.Round(math.Min(float64(bounds.CY), paintedArea/float64(bounds.CX))))
 }
 
-// cellTextHeightEMU computes text height in EMU from line count and font size.
-func cellTextHeightEMU(lines int, fontSizePt float64) int64 {
-	lineHeightPt := fontSizePt * 1.4
-	totalPt := float64(lines)*lineHeightPt + 12 // 12pt for padding
-	return int64(totalPt * 12700)
+func clippedGridCellBounds(cell, bounds pptx.RectEmu) pptx.RectEmu {
+	x1 := sparseMax64(cell.X, bounds.X)
+	y1 := sparseMax64(cell.Y, bounds.Y)
+	x2 := sparseMin64(cell.X+cell.CX, bounds.X+bounds.CX)
+	y2 := sparseMin64(cell.Y+cell.CY, bounds.Y+bounds.CY)
+	return pptx.RectEmu{X: x1, Y: y1, CX: sparseMax64(0, x2-x1), CY: sparseMax64(0, y2-y1)}
+}
+
+func sparseMin64(a, b int64) int64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func sparseMax64(a, b int64) int64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func sparseVisibleFill(raw json.RawMessage) bool {
+	if len(raw) == 0 || string(raw) == "null" {
+		return false
+	}
+	var name string
+	if json.Unmarshal(raw, &name) == nil {
+		return !sparseInvisibleFillName(name)
+	}
+	var fill struct {
+		Color string   `json:"color"`
+		Alpha *float64 `json:"alpha"`
+	}
+	if json.Unmarshal(raw, &fill) != nil || sparseInvisibleFillName(fill.Color) {
+		return false
+	}
+	if fill.Alpha == nil {
+		return true
+	}
+	if *fill.Alpha <= 1 {
+		return *fill.Alpha >= 0.2
+	}
+	return *fill.Alpha >= 20
+}
+
+func sparseInvisibleFillName(name string) bool {
+	switch strings.ToLower(strings.TrimPrefix(name, "#")) {
+	case "", "none", "transparent":
+		return true
+	}
+	return false
 }
 
 // checkCellStructural runs bounds overflow and footer collision on one cell.
@@ -1302,76 +1271,6 @@ func inferGridColumns(grid *ShapeGridInput) int {
 		}
 	}
 	return numCols
-}
-
-// allGridRowHeightsZero returns true when no row specifies an explicit height.
-func allGridRowHeightsZero(rows []GridRowInput) bool {
-	for _, r := range rows {
-		if r.Height > 0 {
-			return false
-		}
-	}
-	return true
-}
-
-// rawGridSparseThreshold is the minimum ratio of content height to layout area
-// height. Grids occupying less than 60% of the layout content area are sparse.
-const rawGridSparseThreshold = 0.60
-
-// detectSparseRawGrid emits a sparse_layout finding for raw
-// grids whose auto-shrunk content height is less than 60% of the full layout
-// content area height.
-func detectSparseRawGrid(grid *ShapeGridInput, slideIdx int, slideWidth, slideHeight int64) *patterns.FitFinding {
-	if slideHeight <= 0 {
-		slideHeight = shapegrid.DefaultSlideHeightEMU
-	}
-
-	// The full layout area height is what the grid bounds would be if it
-	// filled the content zone (same logic as estimateGridBoundsHeightEMU).
-	layoutAreaH := estimateGridBoundsHeightEMU(grid, slideHeight)
-	if layoutAreaH <= 0 {
-		return nil
-	}
-
-	// Content height is the actual rendered height after auto-shrink.
-	contentH := estimateGridContentHeightEMU(grid, slideHeight)
-	if contentH <= 0 {
-		return nil
-	}
-
-	ratio := float64(contentH) / float64(layoutAreaH)
-	if ratio >= rawGridSparseThreshold {
-		return nil
-	}
-
-	path := slidepath.ShapeGrid(slideIdx)
-	return &patterns.FitFinding{
-		ValidationError: patterns.ValidationError{
-			Pattern: "shape_grid",
-			Path:    path,
-			Code:    patterns.ErrCodeSparseLayout,
-			Message: fmt.Sprintf(
-				"raw grid content occupies %.0f%% of layout area (%d / %d EMU) — consider explicit row heights or adopting a pattern",
-				ratio*100, contentH, layoutAreaH,
-			),
-			Fix: &patterns.FixSuggestion{
-				Kind: "adopt_pattern",
-				Params: map[string]any{
-					"filled_pct":         ratio,
-					"content_height":     contentH,
-					"layout_area_height": layoutAreaH,
-				},
-			},
-		},
-		Action: "review",
-		Measured: &patterns.Extent{
-			HeightEMU: contentH,
-		},
-		Allowed: &patterns.Extent{
-			HeightEMU: layoutAreaH,
-		},
-		OverflowRatio: ratio,
-	}
 }
 
 // =============================================================================

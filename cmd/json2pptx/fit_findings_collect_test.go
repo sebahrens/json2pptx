@@ -455,8 +455,17 @@ func TestBudgetFitFindings_TopCodesHistogram(t *testing.T) {
 	}
 }
 
-func TestDetectSparseRawGrid(t *testing.T) {
-	slideHeight := int64(6858000) // standard 7.5 inch slide height
+func TestDetectSparsePreflightGrid(t *testing.T) {
+	const slideWidth, slideHeight = int64(12192000), int64(6858000)
+	findSparse := func(grid *ShapeGridInput) *patterns.FitFinding {
+		t.Helper()
+		for _, f := range checkShapeGridStructural(grid, 0, slideWidth, slideHeight, nil, GridGeometry{}, false, "") {
+			if f.Code == patterns.ErrCodeSparseLayout {
+				return &f
+			}
+		}
+		return nil
+	}
 
 	t.Run("sparse raw grid emits finding", func(t *testing.T) {
 		// Single row, short text, no explicit height → content is tiny
@@ -470,7 +479,7 @@ func TestDetectSparseRawGrid(t *testing.T) {
 				}},
 			},
 		}
-		f := detectSparseRawGrid(grid, 0, 0, slideHeight)
+		f := findSparse(grid)
 		if f == nil {
 			t.Fatal("expected sparse_layout finding for raw grid with tiny content")
 		}
@@ -483,63 +492,83 @@ func TestDetectSparseRawGrid(t *testing.T) {
 		if f.Fix == nil || f.Fix.Kind != "adopt_pattern" {
 			t.Errorf("fix kind = %v, want adopt_pattern", f.Fix)
 		}
+		if !strings.Contains(f.Message, "visible content covers") {
+			t.Errorf("finding did not use resolved visual area: %q", f.Message)
+		}
 	})
 
-	t.Run("non-sparse raw grid no finding", func(t *testing.T) {
-		// Many rows with multi-line text that fill the layout area.
-		rows := make([]GridRowInput, 10)
-		for i := range rows {
-			rows[i] = GridRowInput{Cells: []*GridCellInput{
-				{Shape: &ShapeSpecInput{Geometry: "rect", Text: json.RawMessage(`"Line1\nLine2\nLine3\nLine4\nLine5\nLine6\nLine7\nLine8"`)}},
-			}}
-		}
+	t.Run("full-bleed painted cards are not sparse", func(t *testing.T) {
 		grid := &ShapeGridInput{
-			Columns: json.RawMessage(`1`),
-			Rows:    rows,
+			Columns: json.RawMessage(`3`),
+			Rows: []GridRowInput{{Cells: []*GridCellInput{
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`), Text: json.RawMessage(`"One"`)}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent2"`), Text: json.RawMessage(`"Two"`)}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent3"`), Text: json.RawMessage(`"Three"`)}},
+			}}},
 		}
-		f := detectSparseRawGrid(grid, 0, 0, slideHeight)
+		f := findSparse(grid)
 		if f != nil {
-			t.Errorf("expected nil for dense grid, got finding: %s", f.Message)
+			t.Errorf("filled cards should not be called mostly empty: %s", f.Message)
 		}
 	})
 
-	t.Run("explicit row height skips detection", func(t *testing.T) {
+	t.Run("one painted card of three remains sparse", func(t *testing.T) {
 		grid := &ShapeGridInput{
-			Columns: json.RawMessage(`2`),
-			Rows: []GridRowInput{
-				{
-					Height: 100,
-					Cells: []*GridCellInput{
-						{Shape: &ShapeSpecInput{Geometry: "rect"}},
-					},
-				},
-			},
+			Columns: json.RawMessage(`3`),
+			Rows: []GridRowInput{{Cells: []*GridCellInput{
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`)}},
+				{Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`{"color":"accent2","alpha":0}`)}},
+			}}},
 		}
-		if allGridRowHeightsZero(grid.Rows) {
-			t.Error("allGridRowHeightsZero should be false for explicit height")
+		f := findSparse(grid)
+		if f == nil {
+			t.Fatal("one visible card in a three-column grid should be sparse")
+		}
+		if f.OverflowRatio < 0.30 || f.OverflowRatio > 0.36 {
+			t.Errorf("visible area = %.2f, want about one third", f.OverflowRatio)
 		}
 	})
-}
 
-func TestAllGridRowHeightsZero(t *testing.T) {
-	tests := []struct {
-		name string
-		rows []GridRowInput
-		want bool
-	}{
-		{"nil rows", nil, true},
-		{"empty rows", []GridRowInput{}, true},
-		{"zero heights", []GridRowInput{{Height: 0}, {Height: 0}}, true},
-		{"one explicit", []GridRowInput{{Height: 0}, {Height: 50}}, false},
-		{"all explicit", []GridRowInput{{Height: 50}, {Height: 50}}, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := allGridRowHeightsZero(tt.rows); got != tt.want {
-				t.Errorf("allGridRowHeightsZero = %v, want %v", got, tt.want)
-			}
-		})
-	}
+	t.Run("full-width images count as visible", func(t *testing.T) {
+		grid := &ShapeGridInput{
+			Columns: json.RawMessage(`3`),
+			Rows: []GridRowInput{{Cells: []*GridCellInput{
+				{Image: &GridImageInput{Path: "one.png"}},
+				{Image: &GridImageInput{Path: "two.png"}},
+				{Image: &GridImageInput{Path: "three.png"}},
+			}}},
+		}
+		if f := findSparse(grid); f != nil {
+			t.Errorf("filled image row was called sparse: %s", f.Message)
+		}
+	})
+
+	t.Run("wrapped text contributes ink without a fill", func(t *testing.T) {
+		grid := &ShapeGridInput{Columns: json.RawMessage(`1`)}
+		body, err := json.Marshal(strings.Repeat("One long explanatory sentence that wraps across the cell width and explains the implications. ", 4))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < 8; i++ {
+			grid.Rows = append(grid.Rows, GridRowInput{Cells: []*GridCellInput{{Shape: &ShapeSpecInput{
+				Geometry: "rect", Text: body,
+			}}}})
+		}
+		if f := findSparse(grid); f != nil {
+			t.Errorf("substantial wrapped text was called sparse: %s", f.Message)
+		}
+	})
+
+	t.Run("painted nested grid counts through parent placeholder", func(t *testing.T) {
+		child := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{
+			Shape: &ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"accent1"`)},
+		}}}}}
+		grid := &ShapeGridInput{Columns: json.RawMessage(`1`), Rows: []GridRowInput{{Cells: []*GridCellInput{{Grid: child}}}}}
+		if f := findSparse(grid); f != nil {
+			t.Errorf("painted nested grid was called sparse: %s", f.Message)
+		}
+	})
 }
 
 func TestCheckShapeGridStructural_IncludesVisualCells(t *testing.T) {

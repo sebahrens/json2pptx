@@ -28,6 +28,13 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Added
 
+- **2026-09-24 — Resolved sparse-layout coverage (`go-slide-creator-atrbp`,
+  `go-slide-creator-vk3ma`).** Raw-grid `sparse_layout` now measures painted
+  cell area, non-text visuals, and wrapped text against the actual resolved
+  bounds. It no longer calls full-bleed cards mostly empty because their
+  labels are short. The unused newline-based detector and its tests were
+  removed; regression tests exercise production preflight instead.
+
 - **2026-09-24 — Honest section subtitle contract (`go-slide-creator-v8udd`,
   `go-slide-creator-8dmo0`).** Section dividers expose only `title` as authored
   placeholder text; their body slots may be decorative section numbers.
