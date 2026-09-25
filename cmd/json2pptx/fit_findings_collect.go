@@ -560,7 +560,7 @@ func checkPlaceholderFindings(slide *SlideInput, si int, layout *types.LayoutMet
 				Paragraphs:  paragraphs,
 				WidthEMU:    ph.Bounds.Width,
 				HeightEMU:   ph.Bounds.Height,
-				FontSizeHPt: ph.FontSize,
+				FontSizeHPt: effectivePlaceholderFontSizeHPt(&content, ph, len(paragraphs)),
 				FontName:    ph.FontFamily,
 			}); f != nil {
 				findings = append(findings, *f)
@@ -568,6 +568,37 @@ func checkPlaceholderFindings(slide *SlideInput, si int, layout *types.LayoutMet
 		}
 	}
 	return findings
+}
+
+func authoredOrTemplateFontSizeHPt(content *ContentInput, templateHPt int) int {
+	if content.FontSize != nil && *content.FontSize > 0 {
+		return int(*content.FontSize * 100)
+	}
+	return templateHPt
+}
+
+func contentUsesBodyTypography(content *ContentInput, ph *types.PlaceholderInfo) bool {
+	if content.FontSize != nil && *content.FontSize > 0 || ph.FontSize > 4000 {
+		return false
+	}
+	id := strings.ToLower(content.PlaceholderID)
+	if id == "title" || strings.HasPrefix(id, "title_") || strings.Contains(id, "subtitle") {
+		return false
+	}
+	switch content.Type {
+	case "text", "bullets", "body_and_bullets", "bullet_groups":
+		return true
+	default:
+		return false
+	}
+}
+
+func effectivePlaceholderFontSizeHPt(content *ContentInput, ph *types.PlaceholderInfo, paragraphs int) int {
+	if contentUsesBodyTypography(content, ph) {
+		size, _ := generator.BodySizeForDensity(ph.FontSize, paragraphs)
+		return size
+	}
+	return authoredOrTemplateFontSizeHPt(content, ph.FontSize)
 }
 
 // gridContext holds pre-computed layout data for shape grid structural checks.
@@ -1496,19 +1527,15 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 				continue
 			}
 			path := slidepath.ContentIndex(si, ci)
-			fontSizeHPt := ph.FontSize
-			if content.FontSize != nil && *content.FontSize > 0 {
-				fontSizeHPt = int(*content.FontSize * 100)
-			}
+			fontSizeHPt := authoredOrTemplateFontSizeHPt(&content, ph.FontSize)
 			findings = append(findings, generator.DetectTextAutofitPreflight(generator.TextAutofitPreflightInput{
-				Path:        path,
-				Paragraphs:  paragraphs,
-				WidthEMU:    ph.Bounds.Width,
-				HeightEMU:   ph.Bounds.Height,
-				FontSizeHPt: fontSizeHPt,
-				FontName:    ph.FontFamily,
-				NormalizeBody: (content.FontSize == nil || *content.FontSize <= 0) && (content.Type == "text" || content.Type == "bullets" ||
-					content.Type == "body_and_bullets" || content.Type == "bullet_groups"),
+				Path:          path,
+				Paragraphs:    paragraphs,
+				WidthEMU:      ph.Bounds.Width,
+				HeightEMU:     ph.Bounds.Height,
+				FontSizeHPt:   fontSizeHPt,
+				FontName:      ph.FontFamily,
+				NormalizeBody: contentUsesBodyTypography(&content, ph),
 				// The readability policy the render-time autofit tags this text
 				// with, so validate reports TEXT_BELOW_READABLE_MIN wherever
 				// generate would (go-slide-creator-nlrg).
