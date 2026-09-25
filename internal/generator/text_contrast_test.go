@@ -455,6 +455,16 @@ func TestExtractShapeFillHex(t *testing.T) {
 			want: "",
 		},
 		{
+			name: "noFill outline does not erase solid shape fill",
+			xml:  `<p:sp><p:spPr><a:solidFill><a:srgbClr val="112233"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>`,
+			want: "#112233",
+		},
+		{
+			name: "solid outline is not a shape fill",
+			xml:  `<p:sp><p:spPr><a:noFill/><a:ln><a:solidFill><a:srgbClr val="112233"/></a:solidFill></a:ln></p:spPr></p:sp>`,
+			want: "",
+		},
+		{
 			name: "no spPr returns empty",
 			xml:  `<p:sp><p:txBody/></p:sp>`,
 			want: "",
@@ -513,6 +523,17 @@ func TestEnforceShapeGridContrast_FixesHexFill(t *testing.T) {
 	// Second shape has low contrast — should be auto-fixed (dk1=black on dark blue)
 	if string(result[1]) == original1 {
 		t.Error("second shape (low contrast hex fill) should be auto-fixed")
+	}
+}
+
+func TestEnforceShapeGridContrast_SolidFillWithNoFillOutline(t *testing.T) {
+	shape := []byte(`<p:sp><p:spPr><a:solidFill><a:srgbClr val="1B2A4A"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="1200"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Needs contrast</a:t></a:r></a:p></p:txBody></p:sp>`)
+	fixed, swaps := enforceShapeGridContrast([][]byte{shape}, consultingThemeColors(), nil, 0)
+	if len(swaps) != 1 || swaps[0].BackgroundColor != "#1B2A4A" {
+		t.Fatalf("no-fill outline masked the filled cell: %+v", swaps)
+	}
+	if string(fixed[0]) == string(shape) {
+		t.Fatal("low-contrast text was not corrected")
 	}
 }
 

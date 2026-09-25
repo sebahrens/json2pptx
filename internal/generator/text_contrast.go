@@ -518,6 +518,11 @@ var shapeFillSchemeRegexp = regexp.MustCompile(
 	`<a:solidFill[^>]*>\s*<a:schemeClr\s+val="([^"]+)"`,
 )
 
+// A shape's line fill follows its area fill in spPr. Exclude the line subtree
+// so <a:noFill/> or <a:solidFill> on an outline cannot masquerade as the
+// shape's visible background.
+var shapeLineStartRegexp = regexp.MustCompile(`<a:ln(?:\s|>)`)
+
 // extractShapeFillHex extracts the fill color from a shape's spPr section as a
 // hex string (e.g., "#4472C4"). Returns empty string if no solid fill found.
 func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor, slideBackground ...string) string {
@@ -528,6 +533,9 @@ func extractShapeFillHex(shapeXML []byte, themeColors []types.ThemeColor, slideB
 		return ""
 	}
 	spPr := shapeXML[spPrStart:spPrEnd]
+	if line := shapeLineStartRegexp.FindIndex(spPr); line != nil {
+		spPr = spPr[:line[0]]
+	}
 
 	// Check for noFill — transparent shape, no contrast to enforce
 	if bytes.Contains(spPr, []byte("<a:noFill/>")) {
