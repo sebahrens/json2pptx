@@ -189,6 +189,11 @@ type OutputContext struct {
 	// Checked before the template ZIP in readLayoutFile and getMasterPositionsForLayout.
 	syntheticFiles map[string][]byte
 
+	// notesMaster is the notes master every notes slide relates to, set by
+	// prepareNotesMaster when the deck has speaker notes
+	// (go-slide-creator-s1uvj.28).
+	notesMaster *notesMasterState
+
 	// Warnings accumulated during generation
 	warnings []string
 
