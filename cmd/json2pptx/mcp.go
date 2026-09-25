@@ -33,11 +33,10 @@ import (
 // --- Tool definitions ---
 
 func mcpGenerateTool() mcp.Tool {
-	return mcp.NewTool("generate_presentation",
-		mcp.WithDescription("Generate a PowerPoint presentation from JSON slide definitions. Returns the output file path on success."),
+	return withPresentationOrDeckIDChoice(mcp.NewTool("generate_presentation",
+		mcp.WithDescription("Generate a PowerPoint presentation from JSON slide definitions or a stored deck_id. Returns the output file path and a raw-deck handle for revision calls."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGenerate)),
 		mcp.WithObject("presentation",
-			mcp.Required(),
 			mcp.Description(`Presentation definition. Use list_templates to discover available template names, layout_ids, and placeholder_ids.
 
 Minimal example:
@@ -83,6 +82,7 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 				},
 			}),
 		),
+		mcp.WithString("deck_id", mcp.Description("Stored raw presentation handle returned by generate_presentation or repair_slide. Send instead of presentation to regenerate without resending the deck; a DeckSpec handle is compiled read-only.")),
 		mcp.WithString("output_filename",
 			mcp.Description("Output filename (default: output.pptx). Path components are stripped for safety."),
 		),
@@ -115,7 +115,7 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths (image_value.path, background.image, shape_grid image/icon paths). Required when any slide references a relative path and the agent cannot guarantee the server CWD matches the JSON's authoring directory. When omitted, the server falls back to its process CWD (not portable). Must be an absolute path to an existing directory."),
 		),
 		idempotencyKeyToolParam(),
-	)
+	))
 }
 
 // listTemplatesToolDescription renders the description for the active tool
@@ -240,6 +240,12 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	case idempotencyHit:
 		if out, ok := cached.(JSONOutput); ok {
 			if artifactMatches(out.OutputPath, out.ContentHash) {
+				if out.DeckID != "" {
+					handle, live := mc.deckHandles.Load(out.DeckID)
+					if !live || handle.RawPresentation == nil || diagnostics.ComputeInputSHA256(handle.RawPresentation) != out.RawRevision {
+						return argInvalidValue("generate_presentation", "STALE_REVISION", "idempotency_key", "the cached PPTX belongs to an earlier raw-deck revision; use a fresh idempotency_key for the current deck", "string", idemKey, nil), nil
+					}
+				}
 				out.IdempotentReplay = true
 				return api.MCPSuccessResult(ctx, out)
 			}
@@ -250,7 +256,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		// fall through and generate.
 	}
 
-	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	jsonStr, sourceDeckID, paramErr := mc.presentationForTool("generate_presentation", request)
 	if paramErr != nil {
 		return paramErr, nil
 	}
@@ -637,6 +643,16 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		Slides:                   slideResolutions,
 		OutputValidationFindings: outputValidationFindings,
 	}
+	rawDeck, marshalErr := json.Marshal(input)
+	if marshalErr != nil {
+		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to store generated deck: %v", marshalErr)), nil
+	}
+	var remembered bool
+	output.DeckID, remembered = mc.rememberRawDeck(sourceDeckID, []byte(jsonStr), rawDeck)
+	if !remembered {
+		return argInvalidValue("generate_presentation", "STALE_REVISION", "deck_id", "the stored raw deck changed or expired during generation; retry with its current revision", "string", sourceDeckID, nil), nil
+	}
+	output.RawRevision = diagnostics.ComputeInputSHA256(rawDeck)
 
 	mc.idempotency.Set("generate_presentation", idemKey, idemFingerprint, output)
 

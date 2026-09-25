@@ -143,13 +143,12 @@ type resolvedDefaults struct {
 // --- Tool definition ---
 
 func mcpPreviewPlanTool() mcp.Tool {
-	return mcp.NewTool("preview_presentation_plan",
+	return withPresentationOrDeckIDChoice(mcp.NewTool("preview_presentation_plan",
 		mcp.WithDescription(`Resolve the full generation plan without rendering a PPTX. Returns per-slide layout selection, placeholder mapping, pattern expansion, and shape_grid resolution — everything the engine decides before rendering.
 
 Use this to preview what generate_presentation will do: which layout each slide gets, how virtual placeholders (title, body, slot1) resolve to actual IDs, what geometry each placeholder has, and what fit findings exist. Fix issues in the plan before paying a full generation round-trip.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPreviewPlan)),
 		mcp.WithObject("presentation",
-			mcp.Required(),
 			mcp.Description(`Presentation definition. Same schema as generate_presentation.`),
 			mcp.Properties(map[string]any{
 				"template":      map[string]any{"type": "string", "description": "Registered template NAME (never a path). Mutually exclusive with template_path."},
@@ -157,6 +156,7 @@ Use this to preview what generate_presentation will do: which layout each slide 
 				"slides":        map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
+		mcp.WithString("deck_id", mcp.Description("Stored raw presentation or DeckSpec handle, alternative to presentation.")),
 		mcp.WithBoolean("fit_report",
 			mcp.Description("When true, include fit_findings in the response. Default: true."),
 			mcp.DefaultBool(true),
@@ -170,7 +170,7 @@ Use this to preview what generate_presentation will do: which layout each slide 
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory used as the root for resolving relative local-asset paths during pre-flight (image_value.path, background.image, shape_grid image/icon paths). Same contract as generate_presentation: must be absolute and exist. Omit only if every asset reference is absolute or a URL."),
 		),
-	)
+	))
 }
 
 // --- Handler ---
@@ -180,7 +180,7 @@ Use this to preview what generate_presentation will do: which layout each slide 
 // a next_tool_call suggestion so the agent can chain forward without having to
 // infer the recovery path from prose.
 func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	jsonStr, paramErr := objectParamAsJSON(request, "presentation")
+	jsonStr, _, paramErr := mc.presentationForTool("preview_presentation_plan", request)
 	if paramErr != nil {
 		return paramErr, nil
 	}

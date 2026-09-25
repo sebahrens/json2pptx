@@ -23,7 +23,7 @@ import (
 )
 
 func mcpScoreDeckTool() mcp.Tool {
-	return mcp.NewTool("score_deck",
+	return withPresentationOrDeckIDChoice(mcp.NewTool("score_deck",
 		mcp.WithDescription(`Score a presentation's STRUCTURAL quality using deterministic rules. Returns overall_score on the shared 0-100 scale with basis="structural", per-slide scores, and structured findings with fix suggestions. It never looks at rendered pixels, so it cannot visually approve a deck; render (render_deck_thumbnails) and look at the slides for that.
 
 Runs a full generation pass (to a temporary directory) so the score reflects the GENERATED deck structure — including pagination, autofit shrink, contrast swaps, and layout synthesis — not just the input JSON. Static analysis alone (without generation) misses these generation-time effects.
@@ -39,7 +39,7 @@ Use this after generate_presentation or with a DeckSpec deck_id to get structure
 				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
-		mcp.WithString("deck_id", mcp.Description("Stored DeckSpec handle from validate_deck_spec or render_deck_spec. Alternative to presentation; compiled for scoring without changing the semantic deck.")),
+		mcp.WithString("deck_id", mcp.Description("Stored raw presentation handle from generate_presentation/repair_slide, or a DeckSpec handle. Alternative to presentation; scoring does not mutate either source.")),
 		mcp.WithString("template",
 			mcp.Description("Template name override. If omitted, uses the template field from the presentation object."),
 		),
@@ -57,7 +57,7 @@ Use this after generate_presentation or with a DeckSpec deck_id to get structure
 		mcp.WithBoolean("allow_degraded_scoring",
 			mcp.Description("Permit scoring to proceed when the render pass fails (slide conversion, temp-dir creation, or generation). Default false: a render failure emits a blocking RENDER_EVIDENCE_INCOMPLETE finding (refuse action) so the quality gate cannot pass on static-only evidence. Set true to score on static analysis alone — the response then carries render_evidence with complete=false and degraded=true, and the diagnostic drops to advisory (review action)."),
 		),
-	)
+	))
 }
 
 // handleScoreDeck renders the deck and returns visual-quality findings. All

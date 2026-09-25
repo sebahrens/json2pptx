@@ -30,7 +30,9 @@ import (
 
 // repairSlideOutput is the top-level response for repair_slide.
 type repairSlideOutput struct {
-	PatchedDeck             json.RawMessage `json:"patched_deck"`
+	PatchedDeck             json.RawMessage `json:"patched_deck,omitempty"`
+	DeckID                  string          `json:"deck_id,omitempty"`
+	ChangedSlides           *[]int          `json:"changed_slides,omitempty"`
 	SourceDeckID            string          `json:"source_deck_id,omitempty"`
 	SemanticSourceUnchanged bool            `json:"semantic_source_unchanged,omitempty"`
 	AppliedFixes            []appliedFix    `json:"applied_fixes"`
@@ -82,10 +84,10 @@ type repairFixInput struct {
 // --- Tool definition ---
 
 func mcpRepairSlideTool() mcp.Tool {
-	return mcp.NewTool("repair_slide",
-		mcp.WithDescription(`Apply Fix.Kind directives to one 0-based slide in a raw presentation or stored deck_id. A deck_id repair changes only the returned raw deck, not the stored DeckSpec.
+	return withPresentationOrDeckIDChoice(mcp.NewTool("repair_slide",
+		mcp.WithDescription(`Apply Fix.Kind directives to one 0-based slide in a raw presentation or stored deck_id. A raw deck_id repair updates the stored raw deck; a DeckSpec deck_id compiles read-only and never edits the semantic source.
 
-Returns patched_deck, applied_fixes, and post-patch findings.
+Returns applied_fixes and post-patch findings. Stateless and DeckSpec-sourced calls return patched_deck. Raw-handle calls return deck_id + changed_slides instead; request return_deck:true to include patched_deck.
 
 Fixes accept optional path (RFC 6901 JSON Pointer) to target an element; otherwise the first match is used.
 
@@ -141,7 +143,8 @@ Non-applied outcomes:
 				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
-		mcp.WithString("deck_id", mcp.Description("Stored DeckSpec handle, alternative to presentation. Compiles it to raw JSON and returns a patched raw deck; the semantic DeckSpec remains unchanged. For a durable semantic fix use render_deck_spec or validate_deck_spec with deck_id and patch.")),
+		mcp.WithString("deck_id", mcp.Description("Stored raw presentation or DeckSpec handle, alternative to presentation. A raw handle is updated in place and normally returns only changed_slides; a DeckSpec handle is compiled read-only and returns a patched raw deck.")),
+		mcp.WithBoolean("return_deck", mcp.Description("With a raw deck_id, include the full patched_deck in the response. Default false to keep one-slide revisions small; stateless and DeckSpec-sourced calls always return the deck.")),
 		mcp.WithNumber("slide_index",
 			mcp.Description("0-based index of the slide to repair."),
 			mcp.Required(),
@@ -153,7 +156,7 @@ Non-applied outcomes:
 			mcp.Items(map[string]any{"type": "object", "required": []string{"kind"}, "additionalProperties": false,
 				"properties": map[string]any{"kind": map[string]any{"type": "string"}, "params": map[string]any{"type": "object"}}}),
 		),
-	)
+	))
 }
 
 // --- Handler ---
@@ -229,16 +232,38 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 	}
 
 	output := repairSlideOutput{
-		PatchedDeck:             patchedJSON,
-		SourceDeckID:            sourceDeckID,
-		SemanticSourceUnchanged: sourceDeckID != "",
-		AppliedFixes:            applied,
-		Revision:                presentationRevision(&input),
+		SourceDeckID: sourceDeckID,
+		AppliedFixes: applied,
+		Revision:     presentationRevision(&input),
 		Findings: diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 			Subcommand:  "repair_slide",
 			Template:    input.Template,
 			InputSHA256: diagnostics.ComputeInputSHA256([]byte(jsonStr)),
 		}, diagnostics.FromFitFindings(newFindings)),
+	}
+	returnDeck, _ := request.GetArguments()["return_deck"].(bool)
+	if sourceDeckID != "" {
+		source, ok := mc.deckHandles.Load(sourceDeckID)
+		if !ok {
+			return argInvalidValue("repair_slide", "STALE_REVISION", "deck_id", "the source deck expired during repair; resend the presentation", "string", sourceDeckID, nil), nil
+		}
+		if source.RawPresentation != nil {
+			changed := changedSlideIndices(source, patchedJSON)
+			output.ChangedSlides = &changed
+			var remembered bool
+			output.DeckID, remembered = mc.rememberRawDeck(sourceDeckID, []byte(jsonStr), patchedJSON)
+			if !remembered {
+				return argInvalidValue("repair_slide", "STALE_REVISION", "deck_id", "the stored raw deck changed or expired during repair; retry with its current revision", "string", sourceDeckID, nil), nil
+			}
+			if returnDeck {
+				output.PatchedDeck = patchedJSON
+			}
+		} else {
+			output.SemanticSourceUnchanged = true
+			output.PatchedDeck = patchedJSON
+		}
+	} else {
+		output.PatchedDeck = patchedJSON
 	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, output)

@@ -16,7 +16,7 @@ import (
 // --- Tool definition ---
 
 func mcpAnalyzeDeckRhythmTool() mcp.Tool {
-	return mcp.NewTool("analyze_deck_rhythm",
+	return withPresentationOrDeckIDChoice(mcp.NewTool("analyze_deck_rhythm",
 		mcp.WithDescription(`Analyze a presentation's visual rhythm — pattern repetition, density variation, and accent usage across slides.
 
 Use this BEFORE calling generate_presentation to detect monotony and inform pattern choices. Unlike score_deck (which requires a full generation pass), this tool performs lightweight static analysis on the JSON input.
@@ -30,8 +30,8 @@ Returns per-slide fingerprints, pattern run detection, a density coefficient of 
 				"slides":   map[string]any{"type": "array", "description": "Array of slide definitions", "items": map[string]any{"type": "object"}},
 			}),
 		),
-		mcp.WithString("deck_id", mcp.Description("Stored DeckSpec handle from validate_deck_spec or render_deck_spec. Alternative to presentation; compiled for analysis without changing the semantic deck.")),
-	)
+		mcp.WithString("deck_id", mcp.Description("Stored raw presentation handle from generate_presentation/repair_slide, or a DeckSpec handle. Alternative to presentation; analysis does not mutate either source.")),
+	))
 }
 
 // --- Handler ---

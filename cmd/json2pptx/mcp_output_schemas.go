@@ -13,6 +13,7 @@ var outputSchemaGenerate = json.RawMessage(`{
   "type": "object",
   "properties": {
     "success":           {"type": "boolean"},
+    "deck_id":           {"type": "string", "description": "Per-process raw presentation handle for revision calls; expires after one hour."},
     "output_path":       {"type": "string"},
     "slide_count":       {"type": "integer"},
     "duration_ms":       {"type": "integer"},
@@ -1171,7 +1172,9 @@ var outputSchemaRepairSlide = json.RawMessage(`{
   "type": "object",
   "properties": {
     "patched_deck": {"type": "object"},
-    "source_deck_id": {"type": "string", "description": "DeckSpec handle used as source, when supplied."},
+    "deck_id": {"type": "string", "description": "Raw presentation handle updated by this repair."},
+    "changed_slides": {"type": "array", "items": {"type": "integer"}, "description": "Zero-based slide indices changed in the stored raw deck."},
+    "source_deck_id": {"type": "string", "description": "Handle used as source, when supplied."},
     "semantic_source_unchanged": {"type": "boolean", "description": "True when the raw repair left the stored DeckSpec unchanged."},
     "revision": {"type": "string"},
     "applied_fixes": {
@@ -1198,7 +1201,8 @@ var outputSchemaRepairSlide = json.RawMessage(`{
     },
     "findings": ` + findingEnvelopeSchema + `
   },
-  "required": ["patched_deck", "applied_fixes", "revision", "findings"]
+  "required": ["applied_fixes", "revision", "findings"],
+  "anyOf": [{"required": ["patched_deck"]}, {"required": ["deck_id", "changed_slides"]}]
 }`)
 
 // --- repair_slides_batch ---

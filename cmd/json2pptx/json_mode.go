@@ -145,6 +145,7 @@ type SlideResolution struct {
 // JSONOutput represents the JSON output for headless mode.
 type JSONOutput struct {
 	Success                  bool                        `json:"success"`
+	DeckID                   string                      `json:"deck_id,omitempty"`
 	OutputPath               string                      `json:"output_path,omitempty"`
 	SlideCount               int                         `json:"slide_count,omitempty"`
 	ContentHash              string                      `json:"content_hash,omitempty"`
@@ -161,6 +162,9 @@ type JSONOutput struct {
 	// idempotency cache instead of regenerated. Only set on MCP responses
 	// when an idempotency_key was supplied and matched a prior call.
 	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
+	// RawRevision ties a cached generate response to its mutable raw handle.
+	// It is cache-only metadata, never part of the MCP wire response.
+	RawRevision string `json:"-"`
 }
 
 // SlideError describes a render-time failure for a specific slide.

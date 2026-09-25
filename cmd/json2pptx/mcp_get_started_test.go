@@ -574,10 +574,8 @@ func TestGetStartedSequences_Executable(t *testing.T) {
 
 // TestGetStartedRevise_RequiresGenerateBeforeRead documents the invariant
 // the revise sequence is built around: read_presentation is inspection-only
-// and cannot serve as the source of the deck JSON the downstream editing
-// tools (preview/repair/generate) require. If a future edit reorders revise
-// so read_presentation precedes any downstream tool without a separate deck
-// JSON source, this test will surface the silent contract violation.
+// and cannot serve as the source of raw deck JSON or the handle generated
+// from it. A generated raw deck_id can serve downstream tools instead.
 func TestGetStartedRevise_ReadPresentationIsInspectionOnly(t *testing.T) {
 	withToolProfile(t, toolProfileAll)
 	resp := callGetStarted(t, "revise")
@@ -597,16 +595,16 @@ func TestGetStartedRevise_ReadPresentationIsInspectionOnly(t *testing.T) {
 			t.Errorf("read_presentation when_to_call must contain %q to prevent agents from feeding its output downstream; got: %s", must, hint)
 		}
 	}
-	// Agents are warned in notes that they must supply the deck JSON themselves.
-	noteHit := false
+	// Agents need authored JSON for the initial validate, then can use a raw
+	// handle for the revise loop. Reading a handle does not refresh its TTL.
+	initialJSON, handleFlow, expiry := false, false, false
 	for _, n := range resp.Notes {
-		if strings.Contains(n, "authoritative deck JSON") {
-			noteHit = true
-			break
-		}
+		initialJSON = initialJSON || strings.Contains(n, "authoritative raw deck JSON to validate_input")
+		handleFlow = handleFlow || strings.Contains(n, "raw deck_id can stand in")
+		expiry = expiry || strings.Contains(n, "reading it does not refresh the TTL")
 	}
-	if !noteHit {
-		t.Error("revise notes must explicitly require the agent to supply the deck JSON")
+	if !initialJSON || !handleFlow || !expiry {
+		t.Errorf("revise notes must explain initial JSON, handle reuse, and read-only expiry: initial=%v handle=%v expiry=%v", initialJSON, handleFlow, expiry)
 	}
 }
 

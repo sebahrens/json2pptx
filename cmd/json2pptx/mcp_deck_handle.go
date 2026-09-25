@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -25,19 +26,20 @@ import (
 // stateless, so the agent was the only place the deck lived, and it paid for
 // that on every call.
 //
-// A deck_id is the spec, held server-side under a TTL'd handle. Pass it instead
-// of the spec on the next call; pass a patch alongside it to change one field
-// without re-uploading the rest. The stateless form is untouched — deck_id is
-// optional everywhere — so nothing that works today stops working.
+// A deck_id names a TTL'd server-side DeckSpec or raw presentation. DeckSpec
+// tools can patch a spec; raw tools can repair and regenerate a stored raw deck
+// without re-uploading it. Stateless calls remain supported.
 
 // deckHandleTTL bounds how long a handle stays loadable. It matches the loop
 // session TTL: both are interactive-session scratch state, not persistence.
 const deckHandleTTL = time.Hour
 
-// deckHandle is the server's copy of a spec, plus what the last render of it
-// produced, so a follow-up call can answer "what changed" without the agent
-// re-sending anything.
+// deckHandle is the server's copy of one deck source and its slide digests, so
+// a follow-up call can answer "what changed" without the agent re-sending it.
 type deckHandle struct {
+	// RawPresentation is a generated raw deck. A non-nil value distinguishes
+	// it from a DeckSpec handle, even when the raw JSON happens to be empty.
+	RawPresentation []byte
 	// Spec is the DeckSpec as bytes, in whatever form it was authored (JSON or
 	// YAML). Patches are applied to its decoded form and it is re-encoded as
 	// JSON, so a YAML spec becomes JSON on the first patch — the content is
@@ -137,6 +139,26 @@ func (s *deckHandleStore) Load(id string) (*deckHandle, bool) {
 	return entry.handle, true
 }
 
+// UpdateRaw is a compare-and-swap for a raw deck. Two repairs starting from
+// the same revision must not silently overwrite one another; only the first
+// writer can replace the handle. Both the check and replacement hold the lock.
+func (s *deckHandleStore) UpdateRaw(id string, previous, next []byte) bool {
+	if s == nil || id == "" {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	entry, ok := s.entries[id]
+	if !ok || s.now().After(entry.expiresAt) || entry.handle.RawPresentation == nil || !bytes.Equal(entry.handle.RawPresentation, previous) {
+		return false
+	}
+	s.entries[id] = deckHandleEntry{handle: &deckHandle{
+		RawPresentation: append([]byte(nil), next...),
+		SlideDigests:    slideDigests(next),
+	}, expiresAt: s.now().Add(s.ttl)}
+	return true
+}
+
 // newDeckID mints a 128-bit random hex id.
 func newDeckID() string {
 	var b [16]byte
@@ -197,6 +219,10 @@ func (mc *mcpConfig) resolveSpecSource(tool string, request mcp.CallToolRequest)
 			ExpectedType: "string",
 			NextToolCall: nextCallRetry(tool, "spec"),
 		})
+	}
+	if handle.RawPresentation != nil {
+		return specSource{}, argInvalidValue(tool, diagnostics.CodeInvalidParameter, "deck_id",
+			"deck_id names a raw presentation, not a DeckSpec; use a raw-deck tool or send a DeckSpec", "string", nil, nil)
 	}
 
 	patched, changed, errRes := applySpecPatchArg(tool, request, handle)
@@ -584,6 +610,23 @@ func (mc *mcpConfig) rememberDeck(existingID string, spec []byte, filename, temp
 		return existingID
 	}
 	return mc.deckHandles.Save(h)
+}
+
+// rememberRawDeck stores the effective raw presentation after defaults and
+// structure expansion. A semantic source gets a NEW raw handle; an existing
+// raw source keeps its id only if nobody revised it since the caller loaded it.
+func (mc *mcpConfig) rememberRawDeck(existingID string, previous, presentation []byte) (string, bool) {
+	if existingID != "" {
+		old, ok := mc.deckHandles.Load(existingID)
+		if !ok {
+			return "", false
+		}
+		if old.RawPresentation != nil {
+			return existingID, mc.deckHandles.UpdateRaw(existingID, previous, presentation)
+		}
+	}
+	h := &deckHandle{RawPresentation: append([]byte(nil), presentation...), SlideDigests: slideDigests(presentation)}
+	return mc.deckHandles.Save(h), true
 }
 
 // --- tool parameters ---
