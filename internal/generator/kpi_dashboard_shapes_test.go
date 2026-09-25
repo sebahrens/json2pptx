@@ -1,14 +1,82 @@
 package generator
 
 import (
+	"bytes"
 	"encoding/xml"
+	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
-
+	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
+
+func TestKPITrendFillMeetsNormalTextContrast(t *testing.T) {
+	// The ignored p-style fixture is optional in CI, so pin its critical
+	// palette here as a portable regression case too.
+	palettes := []struct {
+		name   string
+		colors []types.ThemeColor
+	}{
+		{"p-style pale accents", []types.ThemeColor{{Name: "dk1", RGB: "#000000"}, {Name: "accent1", RGB: "#FD5108"}, {Name: "accent2", RGB: "#FE7C39"}, {Name: "accent6", RGB: "#CBD1D6"}}},
+		{"dark accents remain vivid", []types.ThemeColor{{Name: "dk1", RGB: "#111111"}, {Name: "accent1", RGB: "#3457A4"}, {Name: "accent2", RGB: "#6A1B31"}, {Name: "accent6", RGB: "#17563D"}}},
+	}
+	for _, path := range testutil.TestTemplatePaths() {
+		reader, err := template.OpenTemplate(path)
+		if err != nil {
+			t.Fatalf("open %s: %v", path, err)
+		}
+		colors := template.ParseTheme(reader).Colors
+		if err := reader.Close(); err != nil {
+			t.Fatal(err)
+		}
+		palettes = append(palettes, struct {
+			name   string
+			colors []types.ThemeColor
+		}{name: filepath.Base(path), colors: colors})
+	}
+	for _, palette := range palettes {
+		t.Run(palette.name, func(t *testing.T) {
+			cardBase, err := svggen.ParseColor(resolveSchemeColorToHex("accent1", palette.colors))
+			if err != nil {
+				t.Fatal(err)
+			}
+			white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
+			card := patterns.EffectiveColorMods(cardBase, patterns.ColorMods{Tint: panelHeaderFillLumMod}, white)
+			for _, scheme := range []string{"accent6", "accent2", "dk1"} {
+				var xml bytes.Buffer
+				kpiTrendFill(scheme, palette.colors).WriteTo(&xml)
+				if !strings.Contains(xml.String(), `val="`+scheme+`"`) {
+					t.Errorf("%s lost its theme accent: %s", scheme, xml.String())
+				}
+				shade := 100000
+				if m := regexp.MustCompile(`<a:shade val="(\d+)"`).FindStringSubmatch(xml.String()); len(m) == 2 {
+					shade, err = strconv.Atoi(m[1])
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				base, err := svggen.ParseColor(resolveSchemeColorToHex(scheme, palette.colors))
+				if err != nil {
+					t.Fatal(err)
+				}
+				visible := patterns.EffectiveColorMods(base, patterns.ColorMods{Shade: shade}, white)
+				if ratio := visible.ContrastWith(card); ratio < svggen.WCAGAANormal {
+					t.Errorf("%s shade %d contrasts %.2f:1 with the card, want 4.5:1", scheme, shade, ratio)
+				}
+				if palette.name == "dark accents remain vivid" && shade != 100000 {
+					t.Errorf("%s was unnecessarily darkened to %d", scheme, shade)
+				}
+			}
+		})
+	}
+}
 
 func TestIsKPIDashboardDiagram(t *testing.T) {
 	tests := []struct {
@@ -160,7 +228,7 @@ func TestGenerateKPIDashboardGroupXML_Basic(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 100000, Y: 200000, Width: 8000000, Height: 4000000}
 
-	result := generateKPIDashboardGroupXML(panels, bounds, 100)
+	result := generateKPIDashboardGroupXML(panels, bounds, 100, nil)
 
 	if result == "" {
 		t.Fatal("generateKPIDashboardGroupXML returned empty string")
@@ -220,7 +288,7 @@ func TestGenerateKPIDashboardGroupXML_Basic(t *testing.T) {
 }
 
 func TestGenerateKPIDashboardGroupXML_Empty(t *testing.T) {
-	result := generateKPIDashboardGroupXML(nil, types.BoundingBox{}, 100)
+	result := generateKPIDashboardGroupXML(nil, types.BoundingBox{}, 100, nil)
 	if result != "" {
 		t.Error("should return empty for nil panels")
 	}
@@ -232,7 +300,7 @@ func TestGenerateKPIDashboardGroupXML_SingleMetric(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 4000000}
 
-	result := generateKPIDashboardGroupXML(panels, bounds, 100)
+	result := generateKPIDashboardGroupXML(panels, bounds, 100, nil)
 	if result == "" {
 		t.Fatal("should generate XML for single metric")
 	}
@@ -250,7 +318,7 @@ func TestGenerateKPIDashboardGroupXML_NoDeltas(t *testing.T) {
 	}
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 4000000}
 
-	result := generateKPIDashboardGroupXML(panels, bounds, 100)
+	result := generateKPIDashboardGroupXML(panels, bounds, 100, nil)
 	if result == "" {
 		t.Fatal("should generate XML without delta text")
 	}

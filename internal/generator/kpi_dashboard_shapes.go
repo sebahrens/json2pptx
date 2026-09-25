@@ -9,6 +9,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 // =============================================================================
@@ -160,7 +161,7 @@ func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum, contentI
 
 // generateKPIDashboardGroupXML produces the complete <p:grpSp> XML for a KPI dashboard.
 // Each metric is a roundRect card with hero value, label, and delta/trend indicator.
-func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, themeColors []types.ThemeColor) string {
 	n := len(panels)
 	if n == 0 {
 		return ""
@@ -191,7 +192,7 @@ func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.Boundin
 			// Each KPI card uses 1 shape ID.
 			shapeID := shapeIDBase + uint32(idx) + 1
 
-			cardXML := generateKPICardXML(panel, cardX, cardY, cardW, cardH, shapeID)
+			cardXML := generateKPICardXML(panel, cardX, cardY, cardW, cardH, shapeID, themeColors)
 			children = append(children, []byte(cardXML))
 
 			idx++
@@ -214,7 +215,7 @@ func generateKPIDashboardGroupXML(panels []nativePanelData, bounds types.Boundin
 
 // generateKPICardXML produces a single KPI metric card as a roundRect shape
 // with hero value, label, and delta/trend paragraphs.
-func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32) string {
+func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint32, themeColors []types.ThemeColor) string {
 	var paras []pptx.Paragraph
 
 	// Hero value paragraph — large, bold, accent-colored, centered.
@@ -262,11 +263,11 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 		// Color based on trend: body starts with ▲ for up, ▼ for down.
 		switch {
 		case strings.HasPrefix(panel.body, "\u25B2"): // ▲ up
-			deltaRun.Color = pptx.SchemeFill("accent6") // green-ish
+			deltaRun.Color = kpiTrendFill("accent6", themeColors)
 		case strings.HasPrefix(panel.body, "\u25BC"): // ▼ down
-			deltaRun.Color = pptx.SchemeFill("accent2") // red-ish
+			deltaRun.Color = kpiTrendFill("accent2", themeColors)
 		default:
-			deltaRun.Color = pptx.SchemeFill("dk1", pptx.LumMod(50000), pptx.LumOff(50000))
+			deltaRun.Color = kpiTrendFill("dk1", themeColors)
 		}
 		paras = append(paras, pptx.Paragraph{
 			Align:    "ctr",
@@ -298,6 +299,36 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 		return ""
 	}
 	return string(b)
+}
+
+// kpiTrendFill keeps up/down text theme-linked while shading a pale accent
+// only as far as needed to clear WCAG AA for the 10pt delta text. In p-style,
+// accent6 is near-white gray: using it raw makes an up trend nearly vanish on
+// the pale card. The arrow still carries direction when an accent needs shade.
+func kpiTrendFill(scheme string, themeColors []types.ThemeColor) pptx.Fill {
+	const fallbackShade = 35000
+	baseHex := resolveSchemeColorToHex(scheme, themeColors)
+	cardHex := resolveSchemeColorToHex(panelHeaderFillSchemeColor, themeColors)
+	if baseHex == "" || cardHex == "" {
+		return pptx.SchemeFill(scheme, pptx.Shade(fallbackShade))
+	}
+	base, baseErr := svggen.ParseColor(baseHex)
+	cardBase, cardErr := svggen.ParseColor(cardHex)
+	if baseErr != nil || cardErr != nil {
+		return pptx.SchemeFill(scheme, pptx.Shade(fallbackShade))
+	}
+	white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
+	card := patterns.EffectiveColorMods(cardBase, patterns.ColorMods{Tint: panelHeaderFillLumMod}, white)
+	for shade := 100000; shade >= 10000; shade -= 5000 {
+		candidate := patterns.EffectiveColorMods(base, patterns.ColorMods{Shade: shade}, white)
+		if candidate.ContrastWith(card) >= svggen.WCAGAANormal {
+			if shade == 100000 {
+				return pptx.SchemeFill(scheme)
+			}
+			return pptx.SchemeFill(scheme, pptx.Shade(shade))
+		}
+	}
+	return pptx.SchemeFill(scheme, pptx.Shade(10000))
 }
 
 // kpiGridLayout calculates columns and rows for n KPI metric cards.
