@@ -194,20 +194,7 @@ func buildPagesFromGroups(original types.SlideDefinition, pages [][]types.Bullet
 	result := make([]types.SlideDefinition, total)
 
 	for i, groups := range pages {
-		s := types.SlideDefinition{
-			SourceLine: original.SourceLine,
-			Title:      paginatedTitle(original.Title, i+1, total),
-			Type:       original.Type,
-			RawContent: original.RawContent,
-		}
-
-		// First page gets body text; continuation pages don't
-		if i == 0 {
-			s.Content.Body = original.Content.Body
-			s.SpeakerNotes = original.SpeakerNotes
-			s.Source = original.Source
-		}
-
+		s := newPage(original, i, total)
 		s.Content.BulletGroups = groups
 		// Populate flat bullets for backward compatibility
 		for _, g := range groups {
@@ -226,25 +213,40 @@ func buildPagesFromBullets(original types.SlideDefinition, pages [][]string) []t
 	result := make([]types.SlideDefinition, total)
 
 	for i, bullets := range pages {
-		s := types.SlideDefinition{
-			SourceLine: original.SourceLine,
-			Title:      paginatedTitle(original.Title, i+1, total),
-			Type:       original.Type,
-			RawContent: original.RawContent,
-		}
-
-		// First page gets body text; continuation pages don't
-		if i == 0 {
-			s.Content.Body = original.Content.Body
-			s.SpeakerNotes = original.SpeakerNotes
-			s.Source = original.Source
-		}
-
+		s := newPage(original, i, total)
 		s.Content.Bullets = bullets
 		result[i] = s
 	}
 
 	return result
+}
+
+// newPage builds page i (zero-based) of a split slide without its bullets.
+// Presentation settings (transition, build) belong to every page — a split
+// must not turn a faded, bullet-by-bullet slide into a hard cut on its
+// continuation pages. The lead body, notes and source introduce the content
+// and stay on the first page; the trailing body (a closing "bottom line")
+// concludes it and lands on the last page (go-slide-creator-s1uvj.15).
+func newPage(original types.SlideDefinition, i, total int) types.SlideDefinition {
+	s := types.SlideDefinition{
+		SourceLine:        original.SourceLine,
+		Title:             paginatedTitle(original.Title, i+1, total),
+		Type:              original.Type,
+		RawContent:        original.RawContent,
+		Transition:        original.Transition,
+		TransitionSpeed:   original.TransitionSpeed,
+		Build:             original.Build,
+		AutoSectionNumber: original.AutoSectionNumber,
+	}
+	if i == 0 {
+		s.Content.Body = original.Content.Body
+		s.SpeakerNotes = original.SpeakerNotes
+		s.Source = original.Source
+	}
+	if i == total-1 {
+		s.Content.BodyAfterBullets = original.Content.BodyAfterBullets
+	}
+	return s
 }
 
 // paginatedTitle adds a page suffix to the slide title.
