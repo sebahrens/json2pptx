@@ -431,22 +431,25 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 // the semantic source paths the author wrote, and an explanation summary of the
 // compiler's planned decisions.
 type renderDeckSpecResponse struct {
-	OK          bool   `json:"ok"`
-	Success     bool   `json:"success"`
-	PptxPath    string `json:"pptx_path,omitempty"`
-	Overwrote   bool   `json:"overwrote,omitempty"`
-	Publishable *bool  `json:"publishable,omitempty"`
+	OK                   bool   `json:"ok"`
+	Success              bool   `json:"success"`
+	PptxPath             string `json:"pptx_path,omitempty"`
+	Overwrote            bool   `json:"overwrote,omitempty"`
+	DeterministicReady   *bool  `json:"deterministic_ready,omitempty"`
+	Publishable          *bool  `json:"publishable,omitempty"`
+	ManualReviewRequired *bool  `json:"manual_review_required,omitempty"`
 
-	BlockingReasons []string                  `json:"blocking_reasons,omitempty"`
-	Template        string                    `json:"template,omitempty"`
-	SlideCount      int                       `json:"slide_count,omitempty"`
-	ContentHash     string                    `json:"content_hash,omitempty"`
-	DurationMs      int64                     `json:"duration_ms,omitempty"`
-	Quality         *QualityScore             `json:"quality_summary,omitempty"`
-	Warnings        []string                  `json:"warnings,omitempty"`
-	Diagnostics     []semanticDiagnostic      `json:"diagnostics,omitempty"`
-	Explanation     *semantic.DeckExplanation `json:"explanation_summary,omitempty"`
-	Error           string                    `json:"error,omitempty"`
+	BlockingReasons              []string                  `json:"blocking_reasons,omitempty"`
+	DeterministicBlockingReasons []string                  `json:"deterministic_blocking_reasons,omitempty"`
+	Template                     string                    `json:"template,omitempty"`
+	SlideCount                   int                       `json:"slide_count,omitempty"`
+	ContentHash                  string                    `json:"content_hash,omitempty"`
+	DurationMs                   int64                     `json:"duration_ms,omitempty"`
+	Quality                      *QualityScore             `json:"quality_summary,omitempty"`
+	Warnings                     []string                  `json:"warnings,omitempty"`
+	Diagnostics                  []semanticDiagnostic      `json:"diagnostics,omitempty"`
+	Explanation                  *semantic.DeckExplanation `json:"explanation_summary,omitempty"`
+	Error                        string                    `json:"error,omitempty"`
 
 	// DeckID is the handle for the spec this render used. Send it as deck_id on
 	// the next call instead of re-uploading the spec (go-slide-creator-voxp).
@@ -462,28 +465,31 @@ type renderDeckSpecResponse struct {
 // agents already branch on for generate_presentation).
 func semanticRenderToMCP(r semanticRenderResult, explanation *semantic.DeckExplanation) renderDeckSpecResponse {
 	return renderDeckSpecResponse{
-		OK:          r.OK,
-		Success:     r.OK,
-		PptxPath:    r.OutputPath,
-		Overwrote:   r.Overwrote,
-		Publishable: r.Publishable,
+		OK:                   r.OK,
+		Success:              r.OK,
+		PptxPath:             r.OutputPath,
+		Overwrote:            r.Overwrote,
+		DeterministicReady:   r.DeterministicReady,
+		Publishable:          r.Publishable,
+		ManualReviewRequired: r.ManualReviewRequired,
 
-		BlockingReasons: r.BlockingReasons,
-		Template:        r.Template,
-		SlideCount:      r.SlideCount,
-		ContentHash:     r.ContentHash,
-		DurationMs:      r.DurationMs,
-		Quality:         r.Quality,
-		Warnings:        r.Warnings,
-		Diagnostics:     r.Diagnostics,
-		Explanation:     explanation,
-		Error:           r.Error,
+		BlockingReasons:              r.BlockingReasons,
+		DeterministicBlockingReasons: r.DeterministicBlockingReasons,
+		Template:                     r.Template,
+		SlideCount:                   r.SlideCount,
+		ContentHash:                  r.ContentHash,
+		DurationMs:                   r.DurationMs,
+		Quality:                      r.Quality,
+		Warnings:                     r.Warnings,
+		Diagnostics:                  r.Diagnostics,
+		Explanation:                  explanation,
+		Error:                        r.Error,
 	}
 }
 
 func mcpRenderDeckSpecTool() mcp.Tool {
 	return withSpecOrDeckIDChoice(mcp.NewTool("render_deck_spec",
-		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, publishable, blocking_reasons[], quality_summary, diagnostics[], explanation_summary}: success/ok report whether the artifact was WRITTEN and publishable whether it is fit to SHIP — a deck can be written and still carry an action:refuse diagnostic or fail the deterministic quality gate, so gate your "done" on publishable, not success. blocking_reasons say why not. pptx_path locates it, quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a structural or visual verdict — use score_deck / render tools for those), diagnostics carry compile findings plus render-time fit findings mapped back to the semantic source paths you wrote (raw paths retained as fallback), and explanation_summary reports the compiler's planned archetype/template and per-slide kind/role/family/density/pattern. Strict output validation is the default. Parse/template errors use a finding envelope; other failures use success=false. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
+		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, deterministic_ready, publishable, blocking_reasons[], quality_summary, diagnostics[], explanation_summary}: success/ok mean the artifact was WRITTEN; deterministic_ready means diagnostics, validation evidence and the quality gate passed. publishable additionally requires a current approved all-slide visual verdict and is false on a fresh render. Render every slide with render_deck_thumbnails, inspect the images, then record an approved verdict with submit_visual_review before treating the artifact as done. blocking_reasons include the missing visual verdict; deterministic_blocking_reasons separate editing work from review work. quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a visual verdict), diagnostics carry compile findings plus render-time fit findings mapped back to semantic source paths, and explanation_summary reports the compiler's planned decisions. Strict output validation is the default. Parse/template errors use a finding envelope; other failures use success=false. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
 		deckSpecOrHandleArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		deckHandleToolParams()[0],

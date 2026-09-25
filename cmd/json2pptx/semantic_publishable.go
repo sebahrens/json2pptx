@@ -5,7 +5,8 @@ import (
 	"sort"
 )
 
-// Publishability of a rendered deck (go-slide-creator-swak).
+// Publication status of a rendered semantic deck (go-slide-creator-swak,
+// go-slide-creator-uxfx8.1).
 //
 // render_deck_spec's ok/success answer one question — "was the .pptx written?"
 // — and the closure audit found a deck that answered yes while carrying an
@@ -15,8 +16,8 @@ import (
 // severity saved it.
 //
 // Rather than overload ok — other tools' parity depends on it meaning "the call
-// produced its artifact" — the response gained a second, explicit verdict.
-// publishable answers "is it fit to ship?", and blocking_reasons say why not.
+// produced its artifact" — the response carries deterministic_ready and
+// publishable separately. A render cannot approve pixels it has not inspected.
 
 // blockingDiagnosticReasons returns one human-readable reason per diagnostic
 // that blocks publication: an error-severity finding, or one whose action is
@@ -66,12 +67,17 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-// publishabilityOf decides whether a rendered deck is fit to ship and why not.
-// A deck is publishable when nothing in its diagnostics blocks and the
-// deterministic quality gate — the same gate score_deck applies — passed.
-func publishabilityOf(diags []semanticDiagnostic, q *QualityScore) (publishable bool, reasons []string) {
-	reasons = blockingDiagnosticReasons(diags)
-	if q != nil && q.QualityGate != nil && !q.QualityGate.Passed {
+// semanticPublicationStatus combines the deterministic verdict with evidence
+// for the *current* artifact. It reuses the facade's two-stage contract:
+// deterministic_ready can be reached on the render call, while publishable
+// additionally requires an approved all-slide review of matching bytes.
+func semanticPublicationStatus(diags []semanticDiagnostic, q *QualityScore, currentHash string) facadeStatus {
+	diagnosticReasons := blockingDiagnosticReasons(diags)
+	reasons := append([]string(nil), diagnosticReasons...)
+	gatePassed := q != nil && q.QualityGate != nil && q.QualityGate.Passed
+	if q == nil || q.QualityGate == nil {
+		reasons = append(reasons, "quality gate: missing")
+	} else if !q.QualityGate.Passed {
 		for _, r := range q.QualityGate.Reasons {
 			reasons = append(reasons, "quality gate: "+r)
 		}
@@ -79,5 +85,14 @@ func publishabilityOf(diags []semanticDiagnostic, q *QualityScore) (publishable 
 			reasons = append(reasons, "quality gate: failed")
 		}
 	}
-	return len(reasons) == 0, reasons
+	gatePassed = gatePassed && len(diagnosticReasons) == 0
+
+	evidenceComplete, outputValid, visuallyApproved := false, false, false
+	if q != nil && q.Evidence != nil {
+		e := q.Evidence
+		outputValid = e.StructuralValid
+		evidenceComplete = e.SchemaValid && e.Generated && e.FitChecked && e.StructuralValid && currentHash != "" && e.ArtifactSHA256 == currentHash
+		visuallyApproved = e.Approved && currentHash != "" && e.ArtifactSHA256 == currentHash
+	}
+	return deriveFacadeStatus(gatePassed, evidenceComplete, outputValid, visuallyApproved, reasons, contentProvenanceAuthorSupplied)
 }

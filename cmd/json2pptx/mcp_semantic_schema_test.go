@@ -357,3 +357,53 @@ func TestSpecOutlineRenderRejectsUnknownFields(t *testing.T) {
 		t.Errorf("render_deck_spec accepted dropped content: %+v", verdict)
 	}
 }
+
+func TestRenderDeckSpecOutputSchemaSeparatesReadinessAndPublication(t *testing.T) {
+	var schema struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	if err := json.Unmarshal(outputSchemaRenderDeckSpec, &schema); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{
+		"success", "deterministic_ready", "publishable",
+		"manual_review_required", "blocking_reasons",
+		"deterministic_blocking_reasons",
+	} {
+		if len(schema.Properties[field]) == 0 {
+			t.Errorf("render_deck_spec output schema omits %q", field)
+		}
+	}
+}
+
+func TestRenderDeckSpecFreshArtifactNeedsVisualReview(t *testing.T) {
+	mc := &mcpConfig{templatesDir: "../../templates", outputDir: t.TempDir()}
+	spec := map[string]any{
+		"meta": map[string]any{"title": "Publication status check", "template": "midnight-blue"},
+		"slides": []any{
+			map[string]any{"kind": "title", "title": "Publication status check"},
+			map[string]any{"kind": "decision", "title": "Recommendation", "recommendation": "Proceed",
+				"options": []any{
+					map[string]any{"label": "Proceed", "detail": "Fund the next phase", "recommended": true},
+					map[string]any{"label": "Wait", "detail": "Defer the decision"},
+				},
+			},
+		},
+	}
+	res, err := mc.handleRenderDeckSpec(context.Background(), makeRequest(map[string]any{"spec": spec}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var verdict renderDeckSpecResponse
+	structuredInto(t, res.StructuredContent, &verdict)
+	if !verdict.Success || verdict.DeterministicReady == nil || !*verdict.DeterministicReady ||
+		verdict.Publishable == nil || *verdict.Publishable ||
+		verdict.ManualReviewRequired == nil || !*verdict.ManualReviewRequired ||
+		len(verdict.BlockingReasons) == 0 {
+		t.Fatalf("fresh semantic render status = %+v", verdict)
+	}
+	if verdict.Quality == nil || verdict.Quality.Evidence == nil ||
+		verdict.Quality.Evidence.VisuallyInspected || verdict.Quality.Evidence.Approved {
+		t.Fatalf("fresh render claimed visual evidence: %+v", verdict.Quality)
+	}
+}

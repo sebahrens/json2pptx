@@ -50,9 +50,9 @@ func TestSemanticTakeawayFindingMapsToSourceAndBlocksShipping(t *testing.T) {
 		if d.SemanticPath != "slides[0].takeaway" || d.Action != "refuse" {
 			t.Fatalf("semantic takeaway diagnostic = %+v", d)
 		}
-		publishable, reasons := publishabilityOf([]semanticDiagnostic{d}, nil)
-		if publishable || len(reasons) == 0 {
-			t.Fatalf("wrapped takeaway remained publishable: %v, %v", publishable, reasons)
+		status := semanticPublicationStatus([]semanticDiagnostic{d}, nil, "")
+		if status.Publishable || status.DeterministicReady || len(status.DeterministicBlockingReasons) == 0 {
+			t.Fatalf("wrapped takeaway remained ready: %+v", status)
 		}
 		return
 	}

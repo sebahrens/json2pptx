@@ -457,7 +457,7 @@ collapse a whole chain into one call:
 
 | Tool | Purpose | CLI |
 |------|---------|-----|
-| `render_deck_spec` | Compile and render a semantic deck spec; returns PPTX path, quality summary, and semantic diagnostics | `semantic render` |
+| `render_deck_spec` | Compile and render a semantic deck spec; returns PPTX path, diagnostics, `deterministic_ready`, and `publishable` (false until current all-slide visual approval) | `semantic render` |
 | `validate_input` | Schema + static checks (+ optional `fit_report`), no render | `validate` |
 | `preview_presentation_plan` | Resolve layouts/placeholders/findings without rendering | `preview` |
 | `preview_slide_wireframe` | Annotated per-slide wireframe (SVG + PNG) without LibreOffice | `preview-wireframe` |

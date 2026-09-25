@@ -88,9 +88,16 @@ content.
 ## Render and revise
 
 Use `validate_deck_spec` → `render_deck_spec`. A render's
-`success: true` means a file was written, not that its content is fit to
-ship. Resolve `diagnostics[]`, `blocking_reasons[]`, and the deterministic
-`quality_gate`. Each diagnostic has a `semantic_path` to edit and a
+`success: true` means a file was written. `deterministic_ready` means
+diagnostics, output validation, and the quality gate cleared; `publishable`
+is false on a fresh render until a current all-slide visual verdict is
+approved. The CLI exits successfully for a clean, unreviewed render but
+not for a deterministic blocker under strict mode. Resolve `diagnostics[]`,
+`deterministic_blocking_reasons[]`, and the quality gate before review.
+After inspecting the images, use `submit_visual_review` and its returned
+current-revision status for the final verdict; re-rendering creates a new
+unreviewed response rather than refreshing the earlier one.
+Each diagnostic has a `semantic_path` to edit and a
 `raw_path` only as fallback. Keep the DeckSpec as the source of truth.
 After each revision, render and inspect the affected slides, then inspect all
 slides of the final revision as required by [SKILL.md](SKILL.md).

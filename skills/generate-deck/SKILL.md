@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.137.0
+schema_version: 4.138.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -43,11 +43,13 @@ using a pattern) → `validate_input` → `generate_presentation` → render and
 inspect. Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its
 preconditions are **not** universal DeckSpec requirements.
 
-For both paths, a passing `quality_gate` or `publishable` field is a
-deterministic precondition, not proof that anybody looked at the slides. If a
-host needs a recorded verdict, use `submit_visual_review` only after inspecting
-each current-revision image. Any changed slide invalidates its previous visual
-verdict. If a finding is unfamiliar, call `describe_finding`; use
+For both paths, a passing `quality_gate` or `deterministic_ready` field is a
+precondition, not proof that anybody looked at the slides. On a fresh semantic
+render, `publishable` remains false until a complete approved visual verdict
+for the current artifact exists. For a recorded publishable verdict, use
+`submit_visual_review` only after inspecting each current-revision image.
+Any changed slide invalidates its previous visual verdict. If a finding is
+unfamiliar, call `describe_finding`; use
 `get_capabilities().vocabularies.repair_fix_kinds` to distinguish executable
 repairs from advice. Do not retry an advisory fix kind as though it were an
 executable one.

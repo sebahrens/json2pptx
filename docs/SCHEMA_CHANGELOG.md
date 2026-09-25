@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
+  `render_deck_spec` and `semantic render` now report
+  `deterministic_ready`, `deterministic_blocking_reasons[]`, and
+  `manual_review_required`. A fresh render can be deterministically ready
+  but reports `publishable: false` until the current artifact has a complete
+  approved all-slide visual verdict. `blocking_reasons[]` includes missing
+  visual review. A clean unreviewed CLI render still exits 0; strict mode
+  exits nonzero only for deterministic blockers.
+
 - **2026-09-25 — Schema 4.137.0: measured type scale (`go-slide-creator-yfygk`).**
   DeckSpec `meta.type_scale` and raw top-level `type_scale` accept `compact`,
   `comfortable`, or `presentation`; semantic decks default to `comfortable`

@@ -7,6 +7,7 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 )
 
@@ -197,25 +198,104 @@ func TestBlockingDiagnosticReasons(t *testing.T) {
 	}
 }
 
-func TestPublishabilityOf(t *testing.T) {
+func TestSemanticPublicationStatusRequiresCurrentVisualVerdict(t *testing.T) {
+	const hash = "current-pptx-sha256"
+	q := &QualityScore{
+		QualityGate: &deterministic.QualityGate{Passed: true},
+		Evidence: &pipeline.QualityEvidence{
+			ArtifactSHA256: hash, SchemaValid: true, Generated: true,
+			FitChecked: true, StructuralValid: true, TotalSlides: 2,
+		},
+	}
+	q.Evidence.Finalize()
+	status := semanticPublicationStatus(nil, q, hash)
+	if !status.DeterministicReady || status.Publishable || !status.ManualReviewRequired {
+		t.Fatalf("fresh render status = %+v", status)
+	}
+	if len(status.DeterministicBlockingReasons) != 0 || len(status.BlockingReasons) == 0 {
+		t.Fatalf("fresh render reasons = %+v", status)
+	}
+
+	q.Evidence.PixelsRendered = true
+	q.Evidence.ReviewedSlideIDs = []string{"0", "1"}
+	q.Evidence.InspectionBackend = "host"
+	q.Evidence.VisualVerdict = "approved"
+	q.Evidence.Finalize()
+	status = semanticPublicationStatus(nil, q, hash)
+	if !status.DeterministicReady || !status.Publishable || status.ManualReviewRequired || len(status.BlockingReasons) != 0 {
+		t.Fatalf("approved current artifact status = %+v", status)
+	}
+
+	status = semanticPublicationStatus(nil, q, "changed-pptx-sha256")
+	if status.Publishable || status.DeterministicReady || !status.ManualReviewRequired {
+		t.Fatalf("stale review approved changed artifact: %+v", status)
+	}
+}
+
+func TestSemanticPublicationStatusBlocksDiagnosticAndGateFailures(t *testing.T) {
+	const hash = "current"
+	q := &QualityScore{
+		QualityGate: &deterministic.QualityGate{Passed: true},
+		Evidence: &pipeline.QualityEvidence{
+			ArtifactSHA256: hash, SchemaValid: true, Generated: true,
+			FitChecked: true, StructuralValid: true, TotalSlides: 1,
+		},
+	}
+	q.Evidence.Finalize()
 	refuse := []semanticDiagnostic{{Code: "text_overflow", Severity: "error", Action: "refuse"}}
-
-	if ok, reasons := publishabilityOf(nil, nil); !ok || reasons != nil {
-		t.Errorf("a clean render should be publishable, got %v %v", ok, reasons)
+	if status := semanticPublicationStatus(refuse, q, hash); status.DeterministicReady || status.Publishable {
+		t.Errorf("refuse diagnostic did not block: %+v", status)
 	}
-	if ok, reasons := publishabilityOf(refuse, nil); ok || len(reasons) != 1 {
-		t.Errorf("a refuse diagnostic must block: %v %v", ok, reasons)
-	}
-
-	// A failed quality gate blocks on its own, with its reasons carried through.
-	q := &QualityScore{}
 	q.QualityGate = failedGate("1 P1 finding(s) exceeds max_p1_findings 0")
-	ok, reasons := publishabilityOf(nil, q)
-	if ok {
-		t.Error("a deck failing the deterministic quality gate is not publishable")
+	status := semanticPublicationStatus(nil, q, hash)
+	if status.DeterministicReady || status.Publishable || len(status.DeterministicBlockingReasons) != 1 ||
+		status.DeterministicBlockingReasons[0] != "quality gate: 1 P1 finding(s) exceeds max_p1_findings 0" {
+		t.Errorf("failed gate status = %+v", status)
 	}
-	if len(reasons) != 1 || reasons[0] != "quality gate: 1 P1 finding(s) exceeds max_p1_findings 0" {
-		t.Errorf("gate reasons = %v", reasons)
+	if status := semanticPublicationStatus(nil, nil, hash); status.DeterministicReady || status.Publishable {
+		t.Errorf("missing validation evidence did not block: %+v", status)
+	}
+	q.QualityGate = &deterministic.QualityGate{Passed: true}
+	q.Evidence.StructuralValid = false
+	q.Evidence.Finalize()
+	if status := semanticPublicationStatus(nil, q, hash); status.DeterministicReady || status.Publishable {
+		t.Errorf("structurally invalid artifact was marked ready: %+v", status)
+	}
+}
+
+func TestSemanticRenderExitUsesDeterministicVerdict(t *testing.T) {
+	ready, notReady, unreviewed := true, false, false
+	clean := semanticRenderResult{
+		OK: true, OutputPath: "unreviewed.pptx",
+		DeterministicReady: &ready, Publishable: &unreviewed,
+	}
+	if err := emitSemanticRenderResult(clean, "strict"); err != nil {
+		t.Errorf("clean but unreviewed render should exit successfully: %v", err)
+	}
+	failed := semanticRenderResult{
+		OK: true, OutputPath: "failed.pptx",
+		DeterministicReady: &notReady, Publishable: &unreviewed,
+		DeterministicBlockingReasons: []string{"quality gate: failed"},
+	}
+	if err := emitSemanticRenderResult(failed, "strict"); err == nil {
+		t.Error("deterministic blocker should fail strict CLI render")
+	}
+}
+
+func TestSemanticRenderToMCPPreservesPublicationStatus(t *testing.T) {
+	ready, publishable, reviewRequired := true, false, true
+	cli := semanticRenderResult{
+		OK: true, OutputPath: "deck.pptx",
+		DeterministicReady: &ready, Publishable: &publishable,
+		ManualReviewRequired: &reviewRequired,
+		BlockingReasons:      []string{"visual review missing"},
+	}
+	mcp := semanticRenderToMCP(cli, nil)
+	if !mcp.Success || mcp.DeterministicReady == nil || !*mcp.DeterministicReady ||
+		mcp.Publishable == nil || *mcp.Publishable ||
+		mcp.ManualReviewRequired == nil || !*mcp.ManualReviewRequired ||
+		len(mcp.BlockingReasons) != 1 {
+		t.Errorf("MCP status diverged from CLI render: %+v", mcp)
 	}
 }
 

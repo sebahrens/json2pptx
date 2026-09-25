@@ -347,21 +347,23 @@ type semanticRenderResult struct {
 	OK         bool   `json:"ok"`
 	OutputPath string `json:"output_path,omitempty"`
 	Overwrote  bool   `json:"overwrote,omitempty"`
-	// Publishable is the second verdict: ok says the .pptx was written,
-	// publishable says it is fit to ship. BlockingReasons say why not
-	// (go-slide-creator-swak).
-	Publishable     *bool                `json:"publishable,omitempty"`
-	BlockingReasons []string             `json:"blocking_reasons,omitempty"`
-	Template        string               `json:"template,omitempty"`
-	SlideCount      int                  `json:"slide_count,omitempty"`
-	ContentHash     string               `json:"content_hash,omitempty"`
-	Revision        string               `json:"revision,omitempty"`
-	ManifestPath    string               `json:"manifest_path,omitempty"`
-	DurationMs      int64                `json:"duration_ms,omitempty"`
-	Quality         *QualityScore        `json:"quality,omitempty"`
-	Warnings        []string             `json:"warnings,omitempty"`
-	Diagnostics     []semanticDiagnostic `json:"diagnostics,omitempty"`
-	Error           string               `json:"error,omitempty"`
+	// A written deck can clear deterministic checks while still needing a
+	// current all-slide visual review before it is publishable.
+	DeterministicReady           *bool                `json:"deterministic_ready,omitempty"`
+	Publishable                  *bool                `json:"publishable,omitempty"`
+	ManualReviewRequired         *bool                `json:"manual_review_required,omitempty"`
+	BlockingReasons              []string             `json:"blocking_reasons,omitempty"`
+	DeterministicBlockingReasons []string             `json:"deterministic_blocking_reasons,omitempty"`
+	Template                     string               `json:"template,omitempty"`
+	SlideCount                   int                  `json:"slide_count,omitempty"`
+	ContentHash                  string               `json:"content_hash,omitempty"`
+	Revision                     string               `json:"revision,omitempty"`
+	ManifestPath                 string               `json:"manifest_path,omitempty"`
+	DurationMs                   int64                `json:"duration_ms,omitempty"`
+	Quality                      *QualityScore        `json:"quality,omitempty"`
+	Warnings                     []string             `json:"warnings,omitempty"`
+	Diagnostics                  []semanticDiagnostic `json:"diagnostics,omitempty"`
+	Error                        string               `json:"error,omitempty"`
 }
 
 // semanticDiagnostic is one compact finding in a render result. SemanticPath
@@ -578,20 +580,18 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 // emitSemanticRenderResult prints a completed render result and decides the
 // process exit.
 //
-// Under the default --output-validation=strict, a deck that is not fit to ship
-// must not exit 0. The artifact is still on disk and the full result has already
-// been printed, so a caller can inspect it — but `semantic render …; echo $?`
-// used to print 0 for a deck carrying an action:refuse diagnostic
-// (go-slide-creator-swak).
+// Under the default --output-validation=strict, a deck that failed
+// deterministic checks must not exit 0. A clean render may exit 0 while
+// publishable remains false pending an all-slide visual verdict.
 func emitSemanticRenderResult(res semanticRenderResult, outputValidation string) error {
 	if err := printJSONIndent(res); err != nil {
 		return err
 	}
-	if outputValidation != "strict" || res.Publishable == nil || *res.Publishable {
+	if outputValidation != "strict" || res.DeterministicReady == nil || *res.DeterministicReady {
 		return nil
 	}
-	return fmt.Errorf("semantic render: deck written to %s but not publishable: %s",
-		res.OutputPath, strings.Join(res.BlockingReasons, "; "))
+	return fmt.Errorf("semantic render: deck written to %s but not deterministically ready: %s",
+		res.OutputPath, strings.Join(res.DeterministicBlockingReasons, "; "))
 }
 
 // buildSemanticRenderSuccess assembles the compact success result: compile-time
@@ -662,13 +662,12 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	evidence.Finalize()
 	res.Quality.Evidence = evidence
 
-	// The deck was written; say separately whether it is fit to ship. A render
-	// used to report ok:true with an action:refuse diagnostic buried in the
-	// payload, and an agent keying on ok shipped the broken slide
-	// (go-slide-creator-swak).
-	publishable, reasons := publishabilityOf(diags, res.Quality)
-	res.Publishable = &publishable
-	res.BlockingReasons = reasons
+	status := semanticPublicationStatus(diags, res.Quality, res.ContentHash)
+	res.DeterministicReady = &status.DeterministicReady
+	res.Publishable = &status.Publishable
+	res.ManualReviewRequired = &status.ManualReviewRequired
+	res.BlockingReasons = status.BlockingReasons
+	res.DeterministicBlockingReasons = status.DeterministicBlockingReasons
 	return res
 }
 
