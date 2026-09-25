@@ -97,3 +97,25 @@ func TestMCPImageResult_Layout(t *testing.T) {
 		t.Fatal("StructuredContent must carry meta")
 	}
 }
+
+func TestMCPImageResult_ModernSummaryDoesNotDuplicateImage(t *testing.T) {
+	withMode(t, TextFallbackAuto)
+	ctx := ctxForSession("modern-image")
+	RecordProtocolVersion(ctx, "2025-06-18")
+	t.Cleanup(func() { ForgetProtocolVersion(ctx) })
+	img := MCPImage{MIMEType: "image/png", Data: testPNG(t, 4, 4)}
+	res, err := MCPImageResult(ctx, map[string]any{"ok": true, "summary": "one slide", "payload": strings.Repeat("x", 3000)}, []MCPImage{img})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Content) != 2 {
+		t.Fatalf("content blocks = %d, want one summary and one image", len(res.Content))
+	}
+	text := res.Content[0].(mcp.TextContent).Text
+	if len(text) > maxMCPTextSummaryBytes || !strings.Contains(text, "one slide") || strings.Contains(text, strings.Repeat("x", 100)) {
+		t.Errorf("image metadata synopsis = %q", text)
+	}
+	if content, ok := res.Content[1].(mcp.ImageContent); !ok || content.MIMEType != "image/png" || content.Data != base64.StdEncoding.EncodeToString(img.Data) {
+		t.Errorf("image block = %#v, want exactly one native image", res.Content[1])
+	}
+}

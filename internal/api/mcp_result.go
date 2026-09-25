@@ -17,17 +17,11 @@ import (
 const mcpErrorSubcommand = "mcp"
 
 // MCPSuccessResult builds a CallToolResult with StructuredContent set to data
-// and a JSON text fallback in Content. The text fallback respects the session's
-// compact_responses negotiation (via MarshalMCPResponse).
+// and a text block for hosts that read only Content. Legacy sessions receive
+// the complete compact JSON; modern sessions receive a bounded synopsis.
 func MCPSuccessResult(ctx context.Context, data any) (*mcp.CallToolResult, error) {
 	res := &mcp.CallToolResult{StructuredContent: data}
-	// The text copy is a fallback for clients that predate structuredContent.
-	// Sending it to a client that negotiated 2025-06-18 doubles every response
-	// for nothing (go-slide-creator-vxre).
-	if !includeTextFallback(ctx) {
-		return res, nil
-	}
-	textJSON, err := MarshalMCPResponse(ctx, data)
+	textJSON, err := mcpResponseText(ctx, data)
 	if err != nil {
 		return nil, err
 	}
@@ -59,23 +53,12 @@ func MCPResultFor(ctx context.Context, data any) (*mcp.CallToolResult, error) {
 	if err != nil {
 		return nil, err
 	}
-	if text, ok := firstTextContent(res); ok {
-		res.IsError = payloadReportsFailure([]byte(text))
+	marshalled, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
 	}
+	res.IsError = payloadReportsFailure(marshalled)
 	return res, nil
-}
-
-// firstTextContent returns the result's JSON text fallback.
-func firstTextContent(res *mcp.CallToolResult) (string, bool) {
-	if res == nil {
-		return "", false
-	}
-	for _, c := range res.Content {
-		if tc, ok := c.(mcp.TextContent); ok {
-			return tc.Text, true
-		}
-	}
-	return "", false
 }
 
 // payloadReportsFailure reports whether a marshalled tool response declares its

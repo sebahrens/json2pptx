@@ -8,10 +8,8 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 )
 
-// go-slide-creator-vxre. MCPSuccessResult put the whole payload in
-// Content[0].text AND in StructuredContent. One pass over the 18 callable core
-// tools weighed 389 KB on the wire for 168 KB of information, 53,134 B of it
-// pure two-space indentation.
+// Modern sessions keep a small content synopsis; older sessions retain the
+// complete JSON fallback for clients without structuredContent support.
 
 // fakeSession is a ClientSession with a fixed ID, enough for the per-session
 // protocol registry.
@@ -37,7 +35,7 @@ func withMode(t *testing.T, mode TextFallbackMode) {
 	t.Cleanup(func() { SetTextFallbackMode(TextFallbackAuto) })
 }
 
-func TestTextFallbackOmittedOnModernProtocol(t *testing.T) {
+func TestTextSummaryOnModernProtocol(t *testing.T) {
 	withMode(t, TextFallbackAuto)
 	ctx := ctxForSession("modern")
 	RecordProtocolVersion(ctx, "2025-06-18")
@@ -47,8 +45,11 @@ func TestTextFallbackOmittedOnModernProtocol(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Content) != 0 {
-		t.Errorf("a client on 2025-06-18 still received the duplicate text copy: %+v", res.Content)
+	if len(res.Content) != 1 {
+		t.Fatalf("modern result content blocks = %d, want one summary", len(res.Content))
+	}
+	if text := res.Content[0].(mcp.TextContent).Text; text != `{"key":"value"}` || len(text) > maxMCPTextSummaryBytes {
+		t.Errorf("modern text synopsis = %q", text)
 	}
 	if res.StructuredContent == nil {
 		t.Error("structuredContent must always be present")
@@ -91,18 +92,20 @@ func TestTextFallbackModes(t *testing.T) {
 	t.Cleanup(func() { ForgetProtocolVersion(ctx) })
 
 	withMode(t, TextFallbackAlways)
-	if res, _ := MCPSuccessResult(ctx, map[string]string{"k": "v"}); len(res.Content) == 0 {
-		t.Error("always: the text copy should be present even on a modern protocol")
+	if res, err := MCPSuccessResult(ctx, map[string]string{"k": "v"}); err != nil {
+		t.Fatal(err)
+	} else if len(res.Content) != 1 || res.Content[0].(mcp.TextContent).Text != `{"k":"v"}` {
+		t.Errorf("always: want complete JSON copy, got %+v", res.Content)
 	}
 
 	SetTextFallbackMode(TextFallbackNever)
-	if res, _ := MCPSuccessResult(context.Background(), map[string]string{"k": "v"}); len(res.Content) != 0 {
-		t.Error("never: the text copy should be absent even for an unknown protocol")
+	if res, _ := MCPSuccessResult(context.Background(), map[string]string{"k": "v"}); len(res.Content) != 1 {
+		t.Error("never: a bounded summary should remain even for an unknown protocol")
 	}
 
 	// An unrecognised mode leaves the current one in place.
 	SetTextFallbackMode("nonsense")
-	if res, _ := MCPSuccessResult(context.Background(), map[string]string{"k": "v"}); len(res.Content) != 0 {
+	if res, _ := MCPSuccessResult(context.Background(), map[string]string{"k": "v"}); len(res.Content) != 1 {
 		t.Error("an unrecognised mode changed the behaviour")
 	}
 	SetTextFallbackMode(TextFallbackAuto)

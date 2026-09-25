@@ -16,24 +16,23 @@ import (
 // indentation. The bloat scales with the input too: a 1 MB title produced a
 // 2,003,105 B response because both copies echo it.
 //
-// Two changes. Compact JSON is now the default (the text block is a
-// machine-read fallback, not a human document), and on a protocol version that
-// guarantees structuredContent the duplicate copy is dropped entirely.
+// Compact JSON is the default for older clients. Modern clients receive a
+// bounded text synopsis alongside complete structuredContent, so a host that
+// ignores structuredContent still sees a useful result without a large copy.
 
-// TextFallbackMode decides whether a tool result carries the JSON text copy
-// alongside StructuredContent.
+// TextFallbackMode decides whether Content carries the complete JSON copy or
+// only a bounded synopsis. Content is never empty for a JSON tool result.
 type TextFallbackMode string
 
 const (
-	// TextFallbackAuto omits the text copy when the session negotiated a
-	// protocol version that guarantees structuredContent support, and keeps it
-	// for older clients. This is the default.
+	// TextFallbackAuto sends a synopsis on modern sessions and the complete
+	// JSON fallback on older or unrecognized sessions. This is the default.
 	TextFallbackAuto TextFallbackMode = "auto"
 	// TextFallbackAlways keeps the text copy for every client — the pre-
 	// go-slide-creator-vxre behaviour, for a client that reads content[0].text
 	// even though it negotiated a modern protocol.
 	TextFallbackAlways TextFallbackMode = "always"
-	// TextFallbackNever drops the text copy unconditionally.
+	// TextFallbackNever uses a synopsis unconditionally (never a full copy).
 	TextFallbackNever TextFallbackMode = "never"
 )
 
@@ -85,8 +84,8 @@ func ForgetProtocolVersion(ctx context.Context) {
 	protocolMu.Unlock()
 }
 
-// includeTextFallback reports whether this response should carry the JSON text
-// copy in addition to StructuredContent.
+// includeTextFallback reports whether this response should carry the complete
+// JSON text copy. A false return still sends a bounded synopsis.
 func includeTextFallback(ctx context.Context) bool {
 	textFallbackMu.RLock()
 	mode := textFallbackMode

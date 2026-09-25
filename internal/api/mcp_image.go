@@ -66,11 +66,11 @@ func EncodeImageForMCP(data []byte, maxWidth, quality int) (MCPImage, int, int, 
 // ImageContent blocks so the client model can actually see them, instead of
 // burying base64 inside a JSON text payload the model cannot view.
 //
-// Content layout: Content[0] is a TextContent carrying the JSON-encoded meta
-// (which must NOT contain base64 image data), followed by one ImageContent
-// per image in order. StructuredContent is set to meta.
+// Content layout: Content[0] is a TextContent carrying the compact metadata
+// synopsis (or legacy JSON fallback), followed by one ImageContent per image
+// in order. StructuredContent retains the complete metadata.
 func MCPImageResult(ctx context.Context, meta any, images []MCPImage) (*mcp.CallToolResult, error) {
-	textJSON, err := MarshalMCPResponse(ctx, meta)
+	textJSON, err := mcpResponseText(ctx, meta)
 	if err != nil {
 		return nil, err
 	}

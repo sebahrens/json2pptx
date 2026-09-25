@@ -164,9 +164,9 @@ func runMCP() error {
 	configPath := fs.String("config", "", "Path to config file (optional)")
 	toolsProfile := fs.String("tools", toolProfileCore, "Tool profile advertised in tools/list: core (default; ~21 tools, no outputSchema) or all (full catalog). Env: "+toolProfileEnv)
 	textFallback := fs.String("text-fallback", string(api.TextFallbackAuto),
-		"Whether tool results also carry the payload as JSON text alongside structuredContent: "+
-			"auto (default; omitted for clients that negotiated protocol 2025-06-18 or later, kept for older ones), "+
-			"always (keep it for every client), never. Env: "+textFallbackEnv)
+		"Text content alongside structuredContent: "+
+			"auto (default; up to 1 KB synopsis for protocol 2025-06-18 or later, full JSON for older clients), "+
+			"always (full JSON for every client), never (synopsis for every client). Env: "+textFallbackEnv)
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx mcp [options]\n\n")

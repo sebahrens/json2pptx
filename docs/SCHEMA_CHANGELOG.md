@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.124.0: modern MCP text summaries and producer failure flags (`go-slide-creator-vn2bl`, `go-slide-creator-tkls4`).**
+  Every tool result now includes a text content block alongside complete
+  `structuredContent`. Modern-protocol sessions get a bounded JSON synopsis
+  (at most 1 KB) with status, paths and initial findings/next action where
+  available; older sessions retain the complete compact JSON fallback. Image
+  results keep one native block per image. Producer tools now derive `isError`
+  from the original payload even when the text block is summarized.
+
 - **2026-09-25 — Schema 4.123.0: readable matrix horizontal-axis titles (`go-slide-creator-eg96u`).**
   `matrix-2x2` horizontal axis titles now accept at most 16 characters (down
   from 60); vertical axis titles retain their 60-character budget. A valid
