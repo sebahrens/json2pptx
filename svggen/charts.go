@@ -1687,6 +1687,19 @@ func (lc *LineChart) calculateYDomain(data ChartData) (min, max float64) {
 		}
 	}
 
+	// A filled mark is read against the axis: the band's area IS the claim
+	// ("this much of the total"), and on a stacked area the bands are a
+	// part-to-whole. Truncating the axis makes a 40-unit base look like zero
+	// and overstates the trend, so area and stacked_area always baseline at
+	// zero — matching stacked_bar, which already did (go-slide-creator-6wfe).
+	// A plain line chart keeps the zoomed axis: it encodes value by position,
+	// not by area. This runs before the constant-data case below so a flat
+	// area (e.g. [40,40,40]) still baselines at zero (go-slide-creator-s1uvj.34).
+	if lc.config.FillArea {
+		min = math.Min(0, min)
+		max = math.Max(0, max)
+	}
+
 	// Handle degenerate case where all values are identical.
 	if min == max {
 		if min == 0 {
@@ -1698,18 +1711,6 @@ func (lc *LineChart) calculateYDomain(data ChartData) (min, max float64) {
 			offset = 1
 		}
 		return min - offset, max + offset
-	}
-
-	// A filled mark is read against the axis: the band's area IS the claim
-	// ("this much of the total"), and on a stacked area the bands are a
-	// part-to-whole. Truncating the axis makes a 40-unit base look like zero
-	// and overstates the trend, so area and stacked_area always baseline at
-	// zero — matching stacked_bar, which already did (go-slide-creator-6wfe).
-	// A plain line chart keeps the zoomed axis: it encodes value by position,
-	// not by area.
-	if lc.config.FillArea {
-		min = math.Min(0, min)
-		max = math.Max(0, max)
 	}
 
 	// Add small top padding (~5%) so the highest data point doesn't touch
