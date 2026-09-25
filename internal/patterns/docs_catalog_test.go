@@ -8,8 +8,8 @@ import (
 	"testing"
 )
 
-// Keep both human-facing catalogs aligned with the live registry. A missing
-// row makes a registered pattern invisible to authors reading the guides.
+// Keep the static contributor catalog aligned with the live registry. The
+// agent skill uses live list_patterns/show_pattern discovery instead.
 func TestPatternDocumentationMatchesRegistry(t *testing.T) {
 	want := make([]string, 0)
 	for _, pattern := range Default().List() {
@@ -20,7 +20,6 @@ func TestPatternDocumentationMatchesRegistry(t *testing.T) {
 		name, path, heading string
 	}{
 		{"CLAUDE.md", filepath.Join("..", "..", "CLAUDE.md"), "### Named Patterns (registered in `internal/patterns/`)"},
-		{"PATTERNS.md", filepath.Join("..", "..", "skills", "generate-deck", "PATTERNS.md"), "### Registered Pattern Index"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			data, err := os.ReadFile(tc.path)
@@ -32,6 +31,22 @@ func TestPatternDocumentationMatchesRegistry(t *testing.T) {
 				t.Errorf("documented patterns differ from registry\nmissing from docs: %v\nnot registered: %v", patternNameDifference(want, got), patternNameDifference(got, want))
 			}
 		})
+	}
+}
+
+func TestAgentPatternGuideUsesLiveCatalog(t *testing.T) {
+	path := filepath.Join("..", "..", "skills", "generate-deck", "PATTERNS.md")
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"list_patterns", "show_pattern", "text_budget_guide"} {
+		if !strings.Contains(string(body), name) {
+			t.Errorf("agent pattern guide does not route through %s", name)
+		}
+	}
+	if strings.Contains(string(body), "### Registered Pattern Index") {
+		t.Error("agent pattern guide reintroduced a static registry catalog")
 	}
 }
 

@@ -1,6 +1,8 @@
 # Workflow: Plan → Vary → Render → Repair
 
-The 4-phase deep dive. SKILL.md has the short overview and the PRECONDITION list; this file walks each phase in detail and covers the post-generation visual-inspection loop.
+The 4-phase deep dive. SKILL.md routes to semantic or raw authoring;
+RAW_PATH.md scopes the raw preconditions. This file walks each phase in
+detail and covers the post-generation visual-inspection loop.
 
 ---
 
@@ -9,8 +11,8 @@ The 4-phase deep dive. SKILL.md has the short overview and the PRECONDITION list
 For new content-bearing decks, the preferred artifact is a semantic **DeckSpec**,
 not raw `PresentationInput` JSON. Capture the same outline below, then encode it
 as semantic YAML/JSON (`meta` metadata plus `slides[].kind`) and render it with
-`render_deck_spec` — see [SKILL.md → Semantic deck specs](SKILL.md#semantic-deck-specs--the-default-authoring-path)
-for the tool table, archetype/kind enums, and the spec-level repair contract. Use
+`render_deck_spec` — see [DECKSPEC.md](DECKSPEC.md)
+for budgets, live kind discovery, and the spec-level repair contract. Use
 raw JSON only when the user asks for low-level control or the required visual is
 outside the semantic schema.
 
@@ -129,7 +131,7 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 
 Validation is NOT verification. `validate_input` checks JSON structure; it does not judge whether the deck looks right. Contrast auto-fix, sizing choices, overflowing text, and mis-chosen layouts are all visible in pixels and invisible in JSON. **Images are truth.**
 
-1. **Schema + fit check.** Call `validate_input` with `fit_report: true` (MCP) or run `json2pptx validate -fit-report` (CLI). The CLI form `-fit-report=path.json` writes **NDJSON** (one finding per line, no array wrapping); `-fit-report=-` writes NDJSON to stdout; bare `-fit-report` prints a human-readable summary to stderr. Validate exits 0 even with unfittable cells — refusal comes via `strict_fit` on generate. Fix only failing slides, don't regenerate the deck. The fit-report surfaces diagnostics with `fix.kind` hints that are directly actionable. See `FINDINGS.md` for the full code catalog and `fix.kind` enums. Input JSON is validated with `additionalProperties: false` — unknown fields produce warnings identifying the unexpected key and its location.
+1. **Schema + fit check.** Call `validate_input` with `fit_report: true` (MCP) or run `json2pptx validate -fit-report` (CLI). The CLI form `-fit-report=path.json` writes **NDJSON** (one finding per line, no array wrapping); `-fit-report=-` writes NDJSON to stdout; bare `-fit-report` prints a human-readable summary to stderr. Validate exits 0 even with unfittable cells — refusal comes via `strict_fit` on generate. Fix only failing slides, don't regenerate the deck. The fit-report surfaces diagnostics with `fix.kind` hints that are directly actionable. Use `describe_finding` and `get_capabilities().vocabularies` for live codes and fix kinds; [FINDINGS.md](FINDINGS.md) explains the decision process. Input JSON is validated with `additionalProperties: false` — unknown fields produce warnings identifying the unexpected key and its location.
 
    **Findings sort invariant.** Every `findings` / `fit_findings` array — across `validate_input`, `preview_presentation_plan`, `generate_presentation`, `score_deck`, and `repair_slide` — is sorted by `(severity desc, slide_index asc, code asc)`. `findings[0]` is always the most important fix to attempt first. Deck-level findings (path doesn't match `/slides/N/...`) sort before slide 0 at equal severity. The ordering is deterministic across runs, so agents can address findings top-to-bottom without re-prioritising.
 2. **Generate.** Call `generate_presentation` with `strict_fit: "warn"` (default) or `"strict"` for refuse-on-overflow (MCP), or `json2pptx generate -strict-fit warn|strict` (CLI). The strict-fit ladder: `off` (legacy, silent shrink+truncate); `warn` (shrink + emit fit-findings); `strict` (refuse on overflow with `fix.kind: split_at_row|reduce_text`). Both native layout findings and chart findings participate in the ladder — see FINDINGS.md for which codes promote at which level. On refusal, MCP returns the shared FindingEnvelope with `IsError=true`:
@@ -166,7 +168,7 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
    - [ ] Every placeholder and grid cell shows the content you intended.
    - [ ] Text color is intentional — no surprise grays from contrast auto-fix (see Rule 16 in RULES.md).
    - [ ] Footer and source render where expected; no "Source: Source:" double prefix (see Rule 18).
-5. **Repair.** Prefer `repair_slide` (MCP) over hand-editing JSON — it accepts the same `Fix.Kind` vocabulary fit-report emits and patches one slide without regenerating the deck. Pass the raw `deck_id` returned by `generate_presentation` (or the deck JSON), the 0-based `slide_index`, and a `fixes` array of `{kind, params}` directives. A raw-handle repair persists the change and returns `changed_slides` plus post-patch findings without echoing the full deck; pass `return_deck:true` only when you need that JSON. A stateless repair returns the patched deck as before. Supported `repair_slide` apply-only kinds are a *superset* of the fit-report enum — see "Fix kinds for `repair_slide`" in FINDINGS.md. Common repairs:
+5. **Repair.** Prefer `repair_slide` (MCP) over hand-editing JSON — it accepts the executable vocabulary advertised by `get_capabilities().vocabularies.repair_fix_kinds` and patches one slide without regenerating the deck. Pass the raw `deck_id` returned by `generate_presentation` (or the deck JSON), the 0-based `slide_index`, and a `fixes` array of `{kind, params}` directives. A raw-handle repair persists the change and returns `changed_slides` plus post-patch findings without echoing the full deck; pass `return_deck:true` only when you need that JSON. A stateless repair returns the patched deck as before. Supported `repair_slide` kinds are a *superset* of the fit-report's suggestions; [FINDINGS.md](FINDINGS.md) explains executable versus advisory fixes. Common repairs:
    - Text clipping or overflow → `repair_slide` with `{kind:"reduce_text", params:{max_items|max_length}}`, `{kind:"shorten_title", params:{max_length}}`, or `{kind:"split_at_row", params:{row}}`. For shape_grid cells specifically, `{kind:"reduce_cell_text", params:{cell_path, max_chars}}` truncates a single cell's text to a character budget (with ellipsis). Prefer rewriting content to fit over truncation; use `reduce_cell_text` only when the agent should not rephrase the text (e.g., user-supplied verbatim content). As a last resort, lower font size or increase cell/row allocation in JSON.
    - Wrong layout for the content → `repair_slide` with `{kind:"swap_layout", params:{layout_id}}`.
    - Surprise gray text from contrast auto-fix (visible as a `contrast_autofixed` finding) → swap fill to an accent with ≥3.0 contrast against white, OR switch text color to `dk1`, OR set `"contrast_check": false` if the gray is wrong and the accent is already a compliant color (see Rule 16 in RULES.md).

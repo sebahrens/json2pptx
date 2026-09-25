@@ -35,7 +35,7 @@ This document catalogs **fit findings** (`patterns.FitFinding`) emitted by the l
 | MCP response field | `fit_findings[]` on the success envelope | error envelope `findings[]` (strict mode) or `output_validation_findings[]` (warn mode) | not an MCP tool — consumed by `auto_repair` after the skill runs |
 | Repair path | `repair_slide` with a `Fix.Kind` directive | `repair_slide` with a directive chosen per finding's `code` + `scope` | mapped to `repair_slide` directives via `internal/visualqa/repair_map.go` |
 
-Output-validation codes are the "zero needs repair" contract: in strict mode (the default) a blocking `OPC_*` or `OOXML_*` finding fails generation outright. See [skills/generate-deck/SKILL.md → Output Validation Guarantee](../skills/generate-deck/SKILL.md#output-validation-guarantee) for the envelope shape and response protocol. Authoritative code list: `opcCodeMap` and `ooxmlCodeMap` in `internal/pptx/output_validator.go`.
+Output-validation codes are the "zero needs repair" contract: in strict mode (the default) a blocking `OPC_*` or `OOXML_*` finding fails generation outright. See [the raw authoring path](../skills/generate-deck/RAW_PATH.md#diagnose-and-repair) for the response protocol. Authoritative code list: `opcCodeMap` and `ooxmlCodeMap` in `internal/pptx/output_validator.go`.
 
 Visual-QA codes are subjective image-derived findings. They never block generation; they raise the bar from "renders correctly" to "looks consulting-grade." The full catalog of aesthetic codes is below in the [Visual-QA Aesthetic Findings](#visual-qa-aesthetic-findings) section.
 

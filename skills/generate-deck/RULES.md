@@ -204,7 +204,11 @@ Slide 2: numbered-step-strip — 4 steps, each with a per-step detail zone
     process-grid-2row for two aligned tracks · a shape_grid lane + detail zone)
 ```
 
-See the **Sparse-sequence rule (hard)** and the lane + detail-zone skeleton in SKILL.md's Quick Pattern Selector for the full decision list and a copyable example.
+If no named pattern fits, build a two-row `shape_grid`: a narrow numbered
+lane above an aligned detail row with the same column count. Inspect the
+expanded/rendered result; do not let a decorative strip stand in for the
+actual step descriptions. Query `list_patterns` / `show_pattern` for the
+current alternatives and value schemas.
 
 ---
 

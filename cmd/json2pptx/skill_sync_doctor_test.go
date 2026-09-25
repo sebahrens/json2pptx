@@ -45,18 +45,8 @@ var stringLiteralCodes = map[string]string{
 	"contrast_autofixed": "fit_findings_collect.go",
 }
 
-// knownSkillDrift lists codes emitted in Go but not yet documented in SKILL.md.
-// Entries are warnings, not failures, giving time to update the docs. When a
-// code IS added to SKILL.md, remove it here — the staleness subtest catches
-// entries that are no longer needed.
-var knownSkillDrift = map[string]string{
-	"chart_data_empty":     "pre-flight chart diagnostic, SKILL.md lists chart.* variant",
-	"chart_shape_inferred": "pre-flight chart diagnostic, SKILL.md lists chart.* variant",
-	"chart_value_coerced":  "pre-flight chart diagnostic, SKILL.md lists chart.* variant",
-}
-
 // knownFitDocDrift lists codes emitted in Go but not yet documented in
-// docs/FIT_FINDINGS.md. Same warning-only semantics as knownSkillDrift.
+// docs/FIT_FINDINGS.md. These are warnings with a staleness check.
 var knownFitDocDrift = map[string]string{
 	// Chart codes — documented in SKILL.md's chart-codes table but not
 	// yet in FIT_FINDINGS.md.
@@ -100,23 +90,7 @@ func TestSkillSyncDoctor_FindingCodes(t *testing.T) {
 		fitCodes = append(fitCodes, code)
 	}
 
-	skillText := readSkillDirBundle(t, "../../skills/generate-deck")
 	fitDocText := readFile(t, "../../docs/FIT_FINDINGS.md")
-
-	// Direction 1a: code → SKILL.md
-	t.Run("code_in_skill", func(t *testing.T) {
-		for _, code := range fitCodes {
-			if !strings.Contains(skillText, code) {
-				if reason, ok := knownSkillDrift[code]; ok {
-					t.Logf("KNOWN DRIFT: %q not in SKILL.md (%s)", code, reason)
-					continue
-				}
-				t.Errorf("finding code %q emitted in Go code but not documented in SKILL.md\n"+
-					"  Fix: add %q to the finding codes table in skills/generate-deck/SKILL.md\n"+
-					"  Or: add to knownSkillDrift with justification", code, code)
-			}
-		}
-	})
 
 	// Direction 1b: code → FIT_FINDINGS.md
 	t.Run("code_in_fit_findings", func(t *testing.T) {
@@ -129,22 +103,6 @@ func TestSkillSyncDoctor_FindingCodes(t *testing.T) {
 				t.Errorf("finding code %q emitted in Go code but not documented in docs/FIT_FINDINGS.md\n"+
 					"  Fix: add a ### `%s` section to docs/FIT_FINDINGS.md\n"+
 					"  Or: add to knownFitDocDrift with justification", code, code)
-			}
-		}
-	})
-
-	// Direction 2a: SKILL.md → code
-	skillDocCodes := extractDocumentedCodes(skillText, allCodes)
-	t.Run("skill_in_code", func(t *testing.T) {
-		codeSet := toSet(allCodes)
-		for _, code := range skillDocCodes {
-			if _, ok := stringLiteralCodes[code]; ok {
-				verifyStringLiteral(t, code, stringLiteralCodes[code])
-				continue
-			}
-			if !codeSet[code] {
-				t.Errorf("finding code %q documented in SKILL.md but never emitted in Go code\n"+
-					"  Fix: add emission in the engine, or remove %q from SKILL.md", code, code)
 			}
 		}
 	})
@@ -169,16 +127,6 @@ func TestSkillSyncDoctor_FindingCodes(t *testing.T) {
 	t.Run("string_literal_codes_exist", func(t *testing.T) {
 		for code, srcFile := range stringLiteralCodes {
 			verifyStringLiteral(t, code, srcFile)
-		}
-	})
-
-	// Staleness check: flag knownSkillDrift entries that have been fixed.
-	t.Run("skill_drift_staleness", func(t *testing.T) {
-		for code, reason := range knownSkillDrift {
-			if strings.Contains(skillText, code) {
-				t.Errorf("knownSkillDrift entry %q is stale — SKILL.md now documents it (was: %s)\n"+
-					"  Fix: remove %q from knownSkillDrift", code, reason, code)
-			}
 		}
 	})
 
@@ -223,19 +171,13 @@ func TestSkillSyncDoctor_OverridesFields(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// TestSkillSyncDoctor_ChartPromotionTable — chart code documentation and
-// promotion-ladder validity
+// TestSkillSyncDoctor_ChartPromotionTable — promotion-ladder validity.
+// describe_finding coverage is checked at the MCP boundary elsewhere.
 // ---------------------------------------------------------------------------
 
 func TestSkillSyncDoctor_ChartPromotionTable(t *testing.T) {
-	skillText := readSkillDirBundle(t, "../../skills/generate-deck")
-
 	for _, code := range allChartFindingCodes() {
 		t.Run(code, func(t *testing.T) {
-			if !strings.Contains(skillText, code) {
-				t.Errorf("chart code %q not documented in the skill bundle (SKILL.md or sub-files)", code)
-			}
-
 			base := core.Finding{Code: code, Severity: core.SeverityWarning}
 			for _, level := range []string{"off", "warn", "strict"} {
 				result := core.PromoteFindings([]core.Finding{base}, level)
@@ -351,36 +293,6 @@ func readFile(t *testing.T, path string) string {
 		t.Fatalf("cannot read %s: %v", path, err)
 	}
 	return string(data)
-}
-
-// readSkillDirBundle concatenates every .md file in the skill directory. The
-// generate-deck skill was split out of a 1000+ line SKILL.md into focused
-// sub-files (WORKFLOW.md, FINDINGS.md, RULES.md, PATTERNS.md); any of them
-// counts as "documented in the skill" for drift purposes.
-func readSkillDirBundle(t *testing.T, dir string) string {
-	t.Helper()
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("cannot read dir %s: %v", dir, err)
-	}
-	var mdFiles []string
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
-			continue
-		}
-		mdFiles = append(mdFiles, e.Name())
-	}
-	sort.Strings(mdFiles)
-	var b strings.Builder
-	for _, name := range mdFiles {
-		data, err := os.ReadFile(dir + "/" + name)
-		if err != nil {
-			t.Fatalf("cannot read %s/%s: %v", dir, name, err)
-		}
-		b.Write(data)
-		b.WriteByte('\n')
-	}
-	return b.String()
 }
 
 func toSet(items []string) map[string]bool {

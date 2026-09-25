@@ -3,9 +3,9 @@ package main
 // Drift test for skills/generate-deck/.
 //
 // The skill is the agent-facing contract: it tells deck-generating agents
-// which MCP tools exist and which repair-fix kinds repair_slide accepts. When
-// the engine ships a new tool or fix kind but the skill is not updated, agents
-// silently keep using the old surface. This test makes that drift loud.
+// which MCP tools exist and where to discover executable repair kinds. Tool
+// names remain in the phase map; fix kinds come from get_capabilities at
+// runtime, with a separate registry-to-switch test.
 //
 // The skill was split out of a 1000+ line SKILL.md into focused sub-files
 // (WORKFLOW.md, FINDINGS.md, RULES.md, PATTERNS.md). Drift is enforced against
@@ -16,10 +16,7 @@ package main
 //   - Every tool name returned by mcpToolNames() (the source of truth for
 //     get_capabilities().mcp_tools_available) appears at least once in the
 //     skill bundle.
-//   - Every fix kind returned by repairFixKinds() (the source of truth for
-//     get_capabilities().vocabularies.repair_fix_kinds and the
-//     applyRepairFix switch in mcp_repair.go) appears at least once in the
-//     skill bundle.
+//   - The skill routes repair-kind discovery through get_capabilities.
 //   - The TEMPLATE_GUIDE.md cross-reference resolves to a real file.
 //
 // What is NOT enforced:
@@ -114,12 +111,10 @@ func TestSkillMdMentionsEveryMCPTool(t *testing.T) {
 	}
 }
 
-func TestSkillMdMentionsEveryRepairFixKind(t *testing.T) {
-	kinds := repairFixKinds()
-	if len(kinds) == 0 {
-		t.Fatal("repairFixKinds() returned no kinds — repair vocabulary is empty")
+func TestSkillRoutesRepairKindsToRuntime(t *testing.T) {
+	if len(repairFixKinds()) == 0 {
+		t.Fatal("repair vocabulary is empty")
 	}
-
 	for _, skillPath := range skillMdPaths(t) {
 		skillPath := skillPath
 		t.Run(filepath.Base(filepath.Dir(filepath.Dir(skillPath)))+"/"+filepath.Base(filepath.Dir(skillPath)), func(t *testing.T) {
@@ -128,20 +123,8 @@ func TestSkillMdMentionsEveryRepairFixKind(t *testing.T) {
 				return
 			}
 			body := readSkillBundle(t, skillPath)
-			var missing []string
-			for _, kind := range kinds {
-				if strings.Contains(body, "`"+kind+"`") || strings.Contains(body, kind) {
-					continue
-				}
-				missing = append(missing, kind)
-			}
-			if len(missing) > 0 {
-				t.Errorf("%s bundle is missing %d repair_slide fix kind(s): %v\n"+
-					"Every case in applyRepairFix (cmd/json2pptx/mcp_repair.go) — also returned by "+
-					"repairFixKinds() — must appear at least once in some .md file under the skill "+
-					"directory (typically FINDINGS.md's repair_slide fix-kinds table). "+
-					"Add the missing kind(s) or remove from applyRepairFix.",
-					skillPath, len(missing), missing)
+			if !strings.Contains(body, "get_capabilities().vocabularies.repair_fix_kinds") {
+				t.Errorf("%s does not route executable repair discovery to the runtime", skillPath)
 			}
 		})
 	}

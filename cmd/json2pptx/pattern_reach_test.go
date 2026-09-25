@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -16,8 +14,8 @@ import (
 // registry, and nothing said which subset: three reviewers independently
 // mis-modelled slides because "unknown slide kind" was the only signal and it
 // arrived after the spec was written (go-slide-creator-4fr1). These tests pin
-// the published answer to the code — the registry on one side, SKILL.md's
-// "Patterns DeckSpec cannot reach" table on the other.
+// the registry to the compiler and ensure the skill routes authors to its
+// live compositions instead of maintaining a stale pattern table.
 
 // TestPatternReachCoversTheRegistry fails when a pattern is registered without
 // anyone saying whether a spec author can reach it.
@@ -83,43 +81,17 @@ func TestGetStartedNamesTheEscapeHatchCount(t *testing.T) {
 	}
 }
 
-// skillUnreachableRow matches one row of SKILL.md's unreachable-pattern table.
-var skillUnreachableRow = regexp.MustCompile("(?m)^\\| `([a-z0-9-]+)` \\|")
-
-// TestSkillUnreachableTableMatchesCode keeps the table an agent reads in step
-// with the compiler. A pattern that becomes reachable and stays in the table
-// sends an agent to raw_json2pptx for no reason; one that leaves the table
-// without becoming reachable sends it to a kind that does not exist.
-func TestSkillUnreachableTableMatchesCode(t *testing.T) {
-	raw, err := os.ReadFile("../../skills/generate-deck/SKILL.md")
-	if err != nil {
-		t.Fatalf("read SKILL.md: %v", err)
+// TestSkillRoutesPatternReachToLiveCatalog checks the durable instruction
+// without duplicating the runtime's current reachable/unreachable names.
+func TestSkillRoutesPatternReachToLiveCatalog(t *testing.T) {
+	skill := readRepoFile(t, "skills/generate-deck/SKILL.md")
+	spec := readRepoFile(t, "skills/generate-deck/DECKSPEC.md")
+	if len(semantic.UnreachablePatterns()) == 0 {
+		t.Fatal("expected an escape-hatch pattern to exercise this contract")
 	}
-	const marker = "### Patterns DeckSpec cannot reach"
-	start := strings.Index(string(raw), marker)
-	if start < 0 {
-		t.Fatalf("SKILL.md has no %q section; it publishes the list agents need", marker)
-	}
-	section := string(raw)[start:]
-	if end := strings.Index(section[len(marker):], "\n## "); end >= 0 {
-		section = section[:len(marker)+end]
-	}
-
-	var listed []string
-	for _, m := range skillUnreachableRow.FindAllStringSubmatch(section, -1) {
-		listed = append(listed, m[1])
-	}
-	sort.Strings(listed)
-
-	want := semantic.UnreachablePatterns()
-	if strings.Join(listed, ",") != strings.Join(want, ",") {
-		t.Errorf("SKILL.md's unreachable-pattern table is out of step with internal/semantic.patternReach\n listed: %v\n  want: %v", listed, want)
-	}
-
-	// The counts in the sentence above the table drift as silently as the rows.
-	wantSentence := fmt.Sprintf("compiles to %d of the %d registered patterns",
-		len(semantic.ReachablePatterns()), len(semantic.ReachablePatterns())+len(want))
-	if !strings.Contains(section, wantSentence) {
-		t.Errorf("SKILL.md does not say %q; the counts above the table are stale", wantSentence)
+	for _, want := range []string{"list_slide_kinds", "compositions", "raw_json2pptx", "SEMANTIC_PATTERN_NOT_AVAILABLE"} {
+		if !strings.Contains(skill+spec, want) {
+			t.Errorf("skill does not explain live pattern reach through %q", want)
+		}
 	}
 }

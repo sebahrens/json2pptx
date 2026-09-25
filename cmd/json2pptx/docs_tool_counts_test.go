@@ -3,9 +3,6 @@ package main
 import (
 	"os"
 	"path/filepath"
-	"regexp"
-	"sort"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -16,9 +13,8 @@ import (
 //
 // README said "51 MCP tools" and "4 bundled templates" while the wire showed 52
 // and 9, and SKILL.md enumerated a core profile that had since gained
-// submit_visual_review — the tool the no-vision completion path depends on. A
-// test that only forbids hardcoded numbers does not catch an enumerated list
-// going stale, so these read the documents and compare them with the registry.
+// submit_visual_review. The skill now routes discovery to the live registry
+// instead of copying its changing names.
 
 // readRepoFile reads a file relative to the repository root.
 func readRepoFile(t *testing.T, rel string) string {
@@ -30,54 +26,20 @@ func readRepoFile(t *testing.T, rel string) string {
 	return string(data)
 }
 
-// coreProfileTools lists the core profile's tool names, sorted.
-func coreProfileTools() []string {
-	set := coreToolSet()
-	names := make([]string, 0, len(set))
-	for n := range set {
-		names = append(names, n)
-	}
-	sort.Strings(names)
-	return names
-}
-
-// skillCoreListRE captures the backticked names SKILL.md enumerates for the
-// core profile, and the count it claims.
-var skillCoreListRE = regexp.MustCompile(`tools/list` + "`" + ` advertises only the (\d+) core tools \(([^)]*)\)`)
-
-// TestSkillCoreToolListMatchesTheProfile: the enumerated list and its count
-// must equal what the server actually advertises.
-func TestSkillCoreToolListMatchesTheProfile(t *testing.T) {
+// TestSkillCoreProfileUsesRuntimeDiscovery prevents a static core profile
+// list from drifting away from the server's live registry.
+func TestSkillCoreProfileUsesRuntimeDiscovery(t *testing.T) {
 	skill := readRepoFile(t, filepath.Join("skills", "generate-deck", "SKILL.md"))
-	m := skillCoreListRE.FindStringSubmatch(skill)
-	if m == nil {
-		t.Fatal("SKILL.md no longer enumerates the core profile in the expected form; update this test with it")
+	if len(coreToolSet()) == 0 {
+		t.Fatal("core profile is empty")
 	}
-	claimed, err := strconv.Atoi(m[1])
-	if err != nil {
-		t.Fatalf("parse claimed count %q: %v", m[1], err)
-	}
-
-	documented := map[string]bool{}
-	for _, tok := range regexp.MustCompile("`([a-z_]+)`").FindAllStringSubmatch(m[2], -1) {
-		documented[tok[1]] = true
-	}
-
-	want := coreProfileTools()
-	if claimed != len(want) {
-		t.Errorf("SKILL.md says %d core tools; the profile has %d", claimed, len(want))
-	}
-	if len(documented) != len(want) {
-		t.Errorf("SKILL.md enumerates %d names but claims %d and the profile has %d", len(documented), claimed, len(want))
-	}
-	for _, name := range want {
-		if !documented[name] {
-			t.Errorf("core tool %q is missing from SKILL.md's list", name)
+	for _, want := range []string{"get_capabilities().mcp_tools_available", "--tools all", "tools/list"} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("SKILL.md must route core-profile discovery through %q", want)
 		}
-		delete(documented, name)
 	}
-	for name := range documented {
-		t.Errorf("SKILL.md lists %q as core, but the profile does not", name)
+	if strings.Contains(skill, "core tools (") {
+		t.Error("SKILL.md reintroduced a static core-tool list")
 	}
 }
 

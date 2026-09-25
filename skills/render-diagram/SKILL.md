@@ -218,7 +218,9 @@ Each diagnostic's `fix.kind` is one of:
 - `explicit_scale` — supply explicit axis scale / bounds.
 - `reduce_items` — too many items for the chosen renderer; trim before retry.
 
-`fix.kind` mirrors the chart-finding enum documented in `../generate-deck/FINDINGS.md`. The values are the same vocabulary; this server emits the subset relevant to svggen.
+`fix.kind` uses the shared chart-finding vocabulary. Use `describe_finding`
+on the deck server for a current code description; this server emits the
+subset relevant to svggen.
 
 ---
 
@@ -235,5 +237,6 @@ Each diagnostic's `fix.kind` is one of:
 ## Reference
 
 - `../generate-deck/SKILL.md` — full deck workflow; load this when the consumer is a PPTX, not a standalone SVG.
-- `../generate-deck/FINDINGS.md` — full `fix.kind` enum and the layout-finding catalog.
+- `../generate-deck/FINDINGS.md` — how to interpret finding actions and
+  executable versus advisory fixes; query the runtime for current codes.
 - `../template-deck/TEMPLATE_GUIDE.md` — `shape_grid` cell schema, including `icon.svg_data`, `path`, `url`, `name`, and `alt`.
