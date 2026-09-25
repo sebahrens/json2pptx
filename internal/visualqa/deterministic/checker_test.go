@@ -441,6 +441,31 @@ func TestEvaluateQualityGate(t *testing.T) {
 	}
 }
 
+func TestQualityGateActionReasonsNameDistinctFindingCodes(t *testing.T) {
+	criteria := DefaultQualityGateCriteria()
+	findings := []patterns.FitFinding{
+		{ValidationError: patterns.ValidationError{Code: "title_wraps"}, Action: "shrink_or_split"},
+		{ValidationError: patterns.ValidationError{Code: "body_too_long"}, Action: "shrink_or_split"},
+		{ValidationError: patterns.ValidationError{Code: "title_wraps"}, Action: "shrink_or_split"},
+		{ValidationError: patterns.ValidationError{Code: "placeholder_overflow"}, Action: "refuse"},
+		{ValidationError: patterns.ValidationError{Code: "info_only"}, Action: "info"},
+	}
+	gate := EvaluateQualityGate(&DeckScore{OverallScore: 100}, findings, criteria)
+	if gate.Passed || len(gate.Reasons) != 2 {
+		t.Fatalf("gate = %+v, want P0 and P1 reasons", gate)
+	}
+	if want := "1 P0 (refuse) finding(s) exceeds max_p0_findings 0 (codes: placeholder_overflow)"; gate.Reasons[0] != want {
+		t.Errorf("P0 reason = %q, want %q", gate.Reasons[0], want)
+	}
+	if want := "3 P1 (shrink_or_split) finding(s) exceeds max_p1_findings 0 (codes: body_too_long, title_wraps)"; gate.Reasons[1] != want {
+		t.Errorf("P1 reason = %q, want %q", gate.Reasons[1], want)
+	}
+	withoutCode := EvaluateQualityGate(&DeckScore{OverallScore: 100}, []patterns.FitFinding{{Action: "shrink_or_split"}}, criteria)
+	if want := "1 P1 (shrink_or_split) finding(s) exceeds max_p1_findings 0"; len(withoutCode.Reasons) != 1 || withoutCode.Reasons[0] != want {
+		t.Errorf("code-free P1 reason = %v, want %q", withoutCode.Reasons, want)
+	}
+}
+
 func contains(s, sub string) bool {
 	for i := 0; i+len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {

@@ -263,10 +263,10 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 	}
 
 	if p0 > criteria.MaxP0Findings {
-		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d P0 (refuse) finding(s) exceeds max_p0_findings %d", p0, criteria.MaxP0Findings))
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d P0 (refuse) finding(s) exceeds max_p0_findings %d%s", p0, criteria.MaxP0Findings, gateActionCodes(findings, "refuse")))
 	}
 	if p1 > criteria.MaxP1Findings {
-		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d P1 (shrink_or_split) finding(s) exceeds max_p1_findings %d", p1, criteria.MaxP1Findings))
+		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d P1 (shrink_or_split) finding(s) exceeds max_p1_findings %d%s", p1, criteria.MaxP1Findings, gateActionCodes(findings, "shrink_or_split")))
 	}
 	if substantiveReviews > 0 {
 		gate.Reasons = append(gate.Reasons, fmt.Sprintf("%d substantive review finding(s) remain (readability, empty content, or contrast)", substantiveReviews))
@@ -301,6 +301,27 @@ func EvaluateQualityGate(ds *DeckScore, findings []patterns.FitFinding, criteria
 
 	gate.Passed = len(gate.Reasons) == 0
 	return gate
+}
+
+// gateActionCodes names the distinct findings behind an action-based gate
+// reason, so the reason can be matched to an actionable diagnostic. Sorting
+// keeps the explanation stable regardless of finding collection order.
+func gateActionCodes(findings []patterns.FitFinding, action string) string {
+	codes := make(map[string]bool)
+	for _, finding := range findings {
+		if finding.Action == action && finding.Code != "" {
+			codes[finding.Code] = true
+		}
+	}
+	if len(codes) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(codes))
+	for code := range codes {
+		names = append(names, code)
+	}
+	sort.Strings(names)
+	return " (codes: " + strings.Join(names, ", ") + ")"
 }
 
 // compositionCodes joins a composition result's diagnostic codes, so the gate

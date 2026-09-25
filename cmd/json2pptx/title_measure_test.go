@@ -55,6 +55,29 @@ func TestTitlePlaceholderInheritsModernTemplateStyle(t *testing.T) {
 	}
 }
 
+func TestModernCoverTitleDoesNotClaimTruncationWhenMeasuredFitSucceeds(t *testing.T) {
+	a := loadTemplateAnalysis(t, "modern-template")
+	title := "Entering DACH: A partner-led go-to-market for Northwind Analytics"
+	slide := SlideInput{LayoutID: "title", Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr(title)}}}
+	ph := titlePlaceholderFor(&slide, "title", a.Layouts)
+	if ph == nil {
+		t.Fatal("modern cover title placeholder was not resolved")
+	}
+	if ph.FontFamily != "Lora" {
+		t.Fatalf("modern cover title font = %q, want resolved Lora", ph.FontFamily)
+	}
+	measurement := measureTitleInPlaceholder(title, ph)
+	if !measurement.OK || measurement.Flagged() {
+		t.Fatalf("rendered cover title must have a comfortable measured fit: %+v", measurement)
+	}
+	findings, _ := collectTitleFitFindings(&PresentationInput{Slides: []SlideInput{slide}}, a.Layouts)
+	for _, finding := range findings {
+		if isTitleLengthCode(finding.Code) && (finding.Action == "shrink_or_split" || finding.Code == patterns.ErrCodeTitleOverflow || strings.Contains(finding.Message, "will be truncated")) {
+			t.Errorf("rendered three-line cover title must not block the gate or claim truncation: %+v", finding)
+		}
+	}
+}
+
 // go-slide-creator-vjwn: validate, quality score and fit report share one
 // measured title verdict. A ~40-char title passes all three; the 104-char
 // consulting title on modern-template is flagged by all three.
