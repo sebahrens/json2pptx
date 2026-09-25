@@ -1,0 +1,73 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "state-shift-hub.pptx",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "From Today to the Agentic Operating Model"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "State-shift hub pattern examples"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Agentic AI reshapes every workflow stage"}
+      ],
+      "pattern": {
+        "name": "state-shift-hub",
+        "values": {
+          "hub_label": "Today's state vs. agentic state",
+          "left_header": "TODAY'S STATE",
+          "right_header": "AGENTIC STATE (doing more in less time)",
+          "pairs": [
+            {"title": "Intake", "before": "Requests arrive by email and are triaged by hand, often days later", "after": "Agents classify, enrich and route every request the moment it arrives"},
+            {"title": "Research", "before": "Analysts spend days assembling context from scattered sources", "after": "Agents draft a sourced brief in minutes for analysts to refine"},
+            {"title": "Decision", "before": "Committees wait for weekly meetings to review options", "after": "Owners approve pre-analysed options the same day"},
+            {"title": "Follow-up", "before": "Status is chased manually across email and spreadsheets", "after": "Agents track progress and escalate only the exceptions"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Six shifts in how the finance close runs"}
+      ],
+      "pattern": {
+        "name": "state-shift-hub",
+        "values": {
+          "hub_label": "Current close vs. target close",
+          "left_header": "CURRENT STATE",
+          "right_header": "TARGET STATE",
+          "pairs": [
+            {"title": "Data capture", "before": "Manual uploads from 14 ledgers", "after": "Automated nightly feeds"},
+            {"title": "Reconciliation", "before": "Spreadsheet matching by hand", "after": "Rules engine clears 90% of items"},
+            {"title": "Accruals", "before": "Estimated from last month", "after": "Calculated from live commitments"},
+            {"title": "Review", "before": "Line-by-line sign-off", "after": "Exception-based review"},
+            {"before_title": "Reporting", "after_title": "Insight", "before": "Static packs a week late", "after": "Live dashboards on day 3"},
+            {"title": "Controls", "before": "Sample testing after the fact", "after": "Continuous automated monitoring"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three shifts define the target model"}
+      ],
+      "pattern": {
+        "name": "state-shift-hub",
+        "values": {
+          "hub_label": "As-is vs. to-be",
+          "pairs": [
+            {"title": "Customers", "before": "Served through a single call centre with long wait times at peak", "after": "Self-serve first, with agents handling complex cases"},
+            {"title": "Operations", "before": "Batch processing overnight with frequent manual rework", "after": "Straight-through processing in real time"},
+            {"title": "People", "before": "Specialists tied up in routine checks", "after": "Specialists focused on judgement calls and coaching"}
+          ]
+        },
+        "overrides": {"accent": "accent2"}
+      }
+    }
+  ]
+}

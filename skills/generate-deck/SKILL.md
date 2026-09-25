@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.138.0
+schema_version: 4.139.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -66,9 +66,10 @@ executable one.
   visual inspection, resumable calls, and idempotency.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules.
-- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance; get
-  the current catalog and per-pattern schema from `list_patterns` /
-  `show_pattern`.
+- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
+  (including per-pair-count copy budgets for patterns such as
+  `state-shift-hub`); get the current catalog and per-pattern schema from
+  `list_patterns` / `show_pattern`.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

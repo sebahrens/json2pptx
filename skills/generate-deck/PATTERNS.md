@@ -84,6 +84,8 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Numbered steps.** For `numbered-step-strip`, a six-step `chevron` holds about 47 readable label characters at default size; three to five chevrons and all `stacked-box` / `toc` labels hold the 60-character schema limit. Optional step bodies hold 180. `BODY_TOO_LONG` names labels past the six-chevron target; `TEXT_EXCEEDS_SHAPE` remains the stronger signal when the chevron renderer knows a label will break mid-word.
 
+**State-shift hub.** `state-shift-hub` holds 3–6 today/future `pairs` around a central hub circle, so each stage row gets a share of the slide height. With a one-line title per side, a `before` / `after` description holds about 140 characters with 3 pairs, 120 with 4, 80 with 5 and 40 with 6 at default sizes. The `hub_label` shrinks to fit the circle (never below 12pt); keep it to about 40 characters of short words. `BODY_TOO_LONG` names the pair and side (`pairs[2].after`) or the hub label. Use `before-after` for one contrast with bullet lists.
+
 **Inline KPIs.** `kpi-inline` has a compact height. Captions hold the 40-character schema limit without icons or with up to four KPIs. With icons in five or six cells, the number and optional delta share space with the caption: an eight-character number in a five-KPI bar leaves about 16 caption characters without a delta and none with one. `show_pattern` describes the dense cases; `BODY_TOO_LONG` names the affected KPI and suggests shortening copy or dropping the delta/icon.
 
 ---

@@ -61,6 +61,7 @@ var patternReach = map[string]SlideKind{
 	"pyramid":                      "",
 	"roadmap-phased":               "",
 	"scqa-summary":                 "",
+	"state-shift-hub":              "",
 	"swimlane":                     "",
 	"value-chain":                  "",
 }

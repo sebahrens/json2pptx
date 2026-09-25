@@ -315,6 +315,24 @@ var rules = []rule{
 		rationale: "Height-capped before/after for supporting context",
 	},
 
+	// State-shift hub — numbered today/future stage pairs around a central hub
+	{
+		pattern:   "state-shift-hub",
+		keywords:  []string{"today vs future", "today vs. future", "today versus future", "today vs tomorrow", "current vs target", "current vs. target", "current versus target", "current vs target state", "state shift", "state-shift", "shift from today", "agentic state", "from-to shifts", "from-to stages"},
+		baseScore: 0.92,
+		rationale: "Central hub circle with 3-6 numbered today/future stage pairs orbiting it (left = today, right = future)",
+		itemMin:   3,
+		itemMax:   6,
+	},
+	{
+		pattern:   "state-shift-hub",
+		keywords:  []string{"from-to", "today", "target state", "future state", "shifts"},
+		baseScore: 0.74,
+		rationale: "State-shift hub when a today-vs-future contrast breaks into 3-6 numbered stage pairs",
+		itemMin:   3,
+		itemMax:   6,
+	},
+
 	// Process flow
 	{
 		pattern:   "process-flow",

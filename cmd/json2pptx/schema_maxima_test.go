@@ -382,6 +382,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"roadmap-phased":      5.0,
 	"scqa-summary":        7.4,
 	"stat-hero":           7.4,
+	"state-shift-hub":     4.6,
 	"strategy-house":      8.2,
 	"stylish-panels":      6.4,
 	"swimlane":            5.5,
