@@ -39,6 +39,9 @@ func getOrAnalyzeTemplate(templatePath string, cache types.TemplateCache) (*type
 
 	// Apply metadata hints to layouts
 	template.ApplyMetadataHints(layouts, validationResult.Metadata)
+	if validationResult.Metadata != nil {
+		theme.SemanticAccents = validationResult.Metadata.SemanticAccents
+	}
 
 	// Extract actual slide dimensions from presentation.xml.
 	slideWidth, slideHeight := template.ParseSlideDimensions(reader)

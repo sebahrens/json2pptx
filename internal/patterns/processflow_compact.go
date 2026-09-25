@@ -230,7 +230,7 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 
 	cells := make([]*jsonschema.GridCellInput, len(vals.Steps))
 	for i, step := range vals.Steps {
-		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		geometry := "roundRect"
 		pointed := false
 		switch step.Type {

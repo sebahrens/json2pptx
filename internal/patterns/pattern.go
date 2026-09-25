@@ -139,12 +139,35 @@ type ExpandContext struct {
 	AccentStrategy AccentStrategy // deck-level accent rotation strategy
 	SlideIndex     int            // zero-based slide position in the deck
 	SectionIndex   int            // zero-based section index (0 when no sections)
+	// RotationKey is a content-derived slide identity. It keeps rotate stable
+	// when unrelated slides are inserted before this pattern.
+	RotationKey string
+	// AutoAccent is true only when the pattern did not author an accent or
+	// semantic_accent override. Per-cell variation then stays in the safe pool.
+	AutoAccent bool
 }
 
 // ResolveAccent resolves the accent color for this context, honoring the
 // deck-level accent strategy when no explicit accent is specified.
 func (c ExpandContext) ResolveAccent(accent, semanticAccent string) string {
-	return ResolveAccentWithStrategy(accent, semanticAccent, c.Metadata, c.AccentStrategy, c.SlideIndex, c.SectionIndex)
+	if accent != "" {
+		return accent
+	}
+	if semanticAccent != "" && c.Metadata != nil {
+		if resolved := c.Metadata.SemanticAccents[semanticAccent]; resolved != "" {
+			return resolved
+		}
+	}
+	if semanticAccent != "" {
+		if resolved := c.Theme.SemanticAccents[semanticAccent]; resolved != "" {
+			return resolved
+		}
+	}
+	if c.AccentStrategy == AccentStrategyRotate {
+		chosen, _, _ := c.rotatedAccent()
+		return chosen
+	}
+	return AccentForStrategy(c.AccentStrategy, c.SlideIndex, c.SectionIndex)
 }
 
 // ResolveSurface returns the scheme color name for a surface tint role,

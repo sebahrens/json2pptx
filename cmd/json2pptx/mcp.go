@@ -403,6 +403,10 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		syntheticFiles = analysis.Synthesis.SyntheticFiles
 	}
 	templateMetadata, _ = template.ParseMetadata(reader)
+	if templateMetadata != nil {
+		theme.SemanticAccents = templateMetadata.SemanticAccents
+		analysis.Theme = theme
+	}
 
 	// Resolve canonical layout names (e.g. "title", "content", "blank") to
 	// concrete layout IDs using tag-based matching against the target template.

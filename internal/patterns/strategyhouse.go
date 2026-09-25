@@ -328,7 +328,7 @@ func (sh *strategyHouse) Expand(ctx ExpandContext, values, overrides any, cellOv
 	pillarSurface := ctx.ResolveSurface("subtle", "lt2")
 	pillarCells := make([]*jsonschema.GridCellInput, numPillars)
 	for i, p := range vals.Pillars {
-		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		pillarCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",

@@ -206,8 +206,8 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	bodySize := ResolveSize(ovr.BodySize, 12.0)
 	cellAccentMode := ovr.CellAccentMode
 
-	beforeAccent := ResolveCellAccent(baseAccent, 0, cellAccentMode)
-	afterAccent := ResolveCellAccent(baseAccent, 1, cellAccentMode)
+	beforeAccent := ctx.ResolveCellAccent(baseAccent, 0, cellAccentMode)
+	afterAccent := ctx.ResolveCellAccent(baseAccent, 1, cellAccentMode)
 
 	cellIdx := 0
 

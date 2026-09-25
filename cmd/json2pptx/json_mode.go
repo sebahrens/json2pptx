@@ -334,6 +334,9 @@ func analyzeTemplateLayouts(templatePath string) ([]types.LayoutMetadata, map[st
 
 	// Parse optional template metadata (for semantic accents, layout hints, etc.)
 	metadata, _ := template.ParseMetadata(reader)
+	if metadata != nil {
+		theme.SemanticAccents = metadata.SemanticAccents
+	}
 
 	// Normalize placeholder names to canonical form (body, body_2, body_3, etc.)
 	normalizedFiles, normErr := template.NormalizeLayoutFiles(reader, analysis.Layouts)
@@ -1016,6 +1019,9 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			slog.Warn("compose warning",
 				slog.Int("slide", i+1),
 				slog.String("message", w))
+			if f := composeWarningAsFinding(i, w); f != nil {
+				slideFitFindings = append(slideFitFindings, *f)
+			}
 		}
 		slide.ShapeGrid = expanded
 	}
@@ -1033,9 +1039,14 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 			SectionIndex:   sectionIndices[i],
 			Theme:          patternThemeFromDiag(diagCtx),
 		}
-		expanded, _, err := expandPattern(slide.Pattern, ctx, patterns.Default())
+		expanded, patternWarnings, err := expandPattern(slide.Pattern, ctx, patterns.Default())
 		if err != nil {
 			return generator.SlideSpec{}, nil, nil, newSlidePatternError(i, "pattern", "pattern", err)
+		}
+		for _, warning := range patternWarnings {
+			if f := patternWarningAsFinding(i, slide.Pattern.Name, warning); f != nil {
+				slideFitFindings = append(slideFitFindings, *f)
+			}
 		}
 		slide.ShapeGrid = expanded
 	}

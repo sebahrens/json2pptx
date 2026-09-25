@@ -3,12 +3,41 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+func TestComposePreservesRotatedAccentFindingFromLeaf(t *testing.T) {
+	compose := &ComposeInput{Direction: "vertical", Segments: []SegmentInput{
+		{Pattern: PatternInput{Name: "icon-row", Values: json.RawMessage(`[{"icon":"rocket","caption":"Launch"},{"icon":"rocket","caption":"Build"},{"icon":"rocket","caption":"Measure"}]`)}},
+		{Pattern: PatternInput{Name: "stat-hero", Values: json.RawMessage(`{"value":"3x","label":"Growth"}`)}},
+	}}
+	ctx := patterns.ExpandContext{AccentStrategy: patterns.AccentStrategyRotate,
+		Theme: types.ThemeInfo{Colors: []types.ThemeColor{
+			{Name: "lt1", RGB: "FFFFFF"}, {Name: "accent1", RGB: "003366"},
+			{Name: "accent2", RGB: "E5E5E5"}, {Name: "accent3", RGB: "E5E5E5"},
+			{Name: "accent4", RGB: "E5E5E5"}, {Name: "accent5", RGB: "E5E5E5"},
+			{Name: "accent6", RGB: "9E8520"},
+		}},
+	}
+	_, warnings, err := expandCompose(compose, ctx, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, warning := range warnings {
+		if strings.HasPrefix(warning, patterns.ErrCodeRotatedAccentUnreadable+": segment[0]") {
+			if finding := composeWarningAsFinding(0, warning); finding == nil || finding.SegmentIndex == nil || *finding.SegmentIndex != 0 {
+				t.Fatalf("leaf warning did not become segment-scoped finding: %v", warning)
+			}
+			return
+		}
+	}
+	t.Fatalf("compose dropped the leaf's colour-safety warning: %v", warnings)
+}
 
 func TestExpandCompose_Vertical(t *testing.T) {
 	compose := &ComposeInput{

@@ -128,6 +128,60 @@ func TestExpandContext_ResolveAccent(t *testing.T) {
 	}
 }
 
+func TestRotateSkipsUnreadableAndNegativeThemeAccents(t *testing.T) {
+	ctx := ExpandContext{
+		AccentStrategy: AccentStrategyRotate,
+		SlideIndex:     5, // accent6 is too light for lt1 text
+		AutoAccent:     true,
+		Theme: types.ThemeInfo{Colors: []types.ThemeColor{
+			{Name: "lt1", RGB: "FFFFFF"},
+			{Name: "accent1", RGB: "003366"},
+			{Name: "accent2", RGB: "900000"},
+			{Name: "accent3", RGB: "004488"},
+			{Name: "accent4", RGB: "DDDDDD"},
+			{Name: "accent5", RGB: "005555"},
+			{Name: "accent6", RGB: "9E8520"},
+		}},
+		Metadata: &types.TemplateMetadata{SemanticAccents: map[string]string{"negative": "accent2"}},
+	}
+	if got := ctx.ResolveAccent("", ""); got != "accent1" {
+		t.Errorf("unreadable accent6 should rotate to safe accent1, got %s", got)
+	}
+	if warning := ctx.RotationWarning(); warning == "" {
+		t.Error("skipping an unreadable accent should produce a finding warning")
+	}
+	ctx.SlideIndex = 1 // accent2 is readable, but reserved for negative meaning
+	if got := ctx.ResolveAccent("", ""); got != "accent3" {
+		t.Errorf("negative accent2 should rotate to accent3, got %s", got)
+	}
+	if got := ctx.ResolveAccent("accent2", ""); got != "accent2" {
+		t.Errorf("authored accent must remain untouched, got %s", got)
+	}
+	ctx.SlideIndex = 0
+	for i, want := range []string{"accent1", "accent3", "accent5", "accent1"} {
+		if got := ctx.ResolveCellAccent("accent1", i, CellAccentProgressive); got != want {
+			t.Errorf("safe progressive accent %d = %s, want %s", i, got, want)
+		}
+	}
+}
+
+func TestRotateFallsBackWhenNoThemeAccentCanCarryLightText(t *testing.T) {
+	ctx := ExpandContext{AccentStrategy: AccentStrategyRotate, AutoAccent: true,
+		Theme: types.ThemeInfo{Colors: []types.ThemeColor{
+			{Name: "lt1", RGB: "FFFFFF"}, {Name: "accent1", RGB: "EEEEEE"},
+		}},
+	}
+	if got := ctx.ResolveAccent("", ""); got != "#000000" {
+		t.Errorf("no safe theme accent: fill = %s, want contrast-safe black", got)
+	}
+	if got := ctx.ResolveCellAccent("#000000", 1, CellAccentAlternate); got != "#000000" {
+		t.Errorf("fallback fill should stay uniform, got %s", got)
+	}
+	if ctx.RotationWarning() == "" {
+		t.Error("no certified accent should report a finding warning")
+	}
+}
+
 func TestResolveSurface(t *testing.T) {
 	meta := &types.TemplateMetadata{
 		SurfaceTints: map[string]string{

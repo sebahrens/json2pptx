@@ -284,7 +284,7 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 				}},
 			})
 		}
-		accent := ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
 		cells := make([]*jsonschema.GridCellInput, 0, len(cols))
 		// Every cell in a row is top-anchored so the lead and its support share
 		// a first baseline. Centred, the support floated between the two lines

@@ -226,7 +226,7 @@ func (a *archStack) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 			text = buildArchStackSimpleContent(pptx.ConvertMarkdownEmphasis(tier.Label), headerSize)
 		}
 
-		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 
 		// Vary fill slightly per tier for visual distinction
 		alpha := 100 - i*10

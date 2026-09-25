@@ -838,6 +838,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 		ExampleBefore: `{"highlight_color": "accent2", "steps": [{"label": "Manufacturing", "highlight": true}]}`,
 		ExampleAfter:  `{"steps": [{"label": "Manufacturing", "highlight": true}]}`,
 	},
+	ErrCodeRotatedAccentUnreadable: {
+		Code:        ErrCodeRotatedAccentUnreadable,
+		Summary:     "The requested rotating accent was unreadable or reserved for negative meaning; a safe fill was substituted.",
+		Severity:    "review",
+		WhenEmitted: "A pattern using accent_strategy=rotate would otherwise place normal-size lt1 text on a low-contrast accent or use the template's negative semantic accent for neutral content.",
+		RemediationSteps: []string{
+			"Keep the substituted accent, or supply an explicit accent/semantic_accent if the intended meaning differs.",
+			"Choose a template whose accents provide more 4.5:1-safe options for light body text.",
+		},
+	},
 
 	// ---- Grid visual cell codes ----
 

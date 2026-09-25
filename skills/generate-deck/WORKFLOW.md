@@ -112,7 +112,7 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 
 **Accent strategy.** Set `accent_strategy` at the top level of the presentation JSON:
 - `"primary"` (default) — all slides use the template's primary accent. Good for short decks.
-- `"rotate"` — engine cycles through `accent1`–`accent6` across slides. Use for visual variety.
+- `"rotate"` — starts from each pattern's content-stable colour slot, then skips accents that cannot carry normal-size light text or are reserved for negative meaning. Inserting another slide does not recolour an existing pattern.
 - `"section-keyed"` — accents rotate per section (slides between `section` layout slides share an accent).
 
 **Pre-emit checklist (verify BEFORE outputting JSON):**

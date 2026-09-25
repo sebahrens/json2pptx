@@ -383,7 +383,7 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 				// rotation, which they own.
 				fill = positiveAccent
 			default:
-				fill = ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
+				fill = ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
 			}
 		case wbTypeTotal:
 			fill = baseAccent

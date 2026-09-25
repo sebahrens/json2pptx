@@ -199,7 +199,7 @@ func applyEmphasis(para map[string]any, emphasis string) {
 // resolveKPIAccent returns the accent color, honoring the deck-level accent strategy.
 func resolveKPIAccent(ovr *KPIOverrides, ctx ExpandContext) string {
 	if ovr == nil {
-		return AccentForStrategy(ctx.AccentStrategy, ctx.SlideIndex, ctx.SectionIndex)
+		return ctx.ResolveAccent("", "")
 	}
 	return ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 }

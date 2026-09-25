@@ -198,7 +198,7 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		// Resolved accent governs the connector and per-cell override accent bar,
 		// but does NOT override the label fill — that semantic is reserved for
 		// highlight vs. dk2 contrast per the layout spec.
-		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 
 		labelText := buildValueChainLabelText(pptx.ConvertMarkdownEmphasis(step.Label), labelSize, readableTextOn(ctx, fillTone{Color: fill}, "lt1"))
 		labelCell := &jsonschema.GridCellInput{

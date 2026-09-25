@@ -11,10 +11,111 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/testutil"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // ensure patterns package init runs
 var _ = patterns.Default()
+
+func TestRotatingPatternAccentIsReadableAndStableAfterInsertion(t *testing.T) {
+	p := &PatternInput{
+		Name: "icon-row", Values: json.RawMessage(`[{"icon":"rocket","caption":"Launch"},{"icon":"rocket","caption":"Build"},{"icon":"rocket","caption":"Measure"}]`),
+		Overrides: json.RawMessage(`{"cell_accent_mode":"progressive"}`),
+	}
+	theme := types.ThemeInfo{Colors: []types.ThemeColor{
+		{Name: "lt1", RGB: "FFFFFF"}, {Name: "accent1", RGB: "003366"},
+		{Name: "accent2", RGB: "E5E5E5"}, {Name: "accent3", RGB: "E5E5E5"},
+		{Name: "accent4", RGB: "E5E5E5"}, {Name: "accent5", RGB: "E5E5E5"},
+		{Name: "accent6", RGB: "9E8520"},
+	}}
+	var firstFill string
+	for _, slideIndex := range []int{0, 5} {
+		ctx := patterns.ExpandContext{AccentStrategy: patterns.AccentStrategyRotate, SlideIndex: slideIndex, Theme: theme}
+		grid, warnings, err := expandPattern(p, ctx, patterns.Default())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(warnings) == 0 || !strings.HasPrefix(warnings[0], patterns.ErrCodeRotatedAccentUnreadable+":") {
+			t.Errorf("slide position %d: expected structured unreadable-accent warning, got %v", slideIndex, warnings)
+		}
+		if finding := patternWarningAsFinding(slideIndex, p.Name, warnings[0]); finding == nil || finding.Code != patterns.ErrCodeRotatedAccentUnreadable {
+			t.Errorf("slide position %d: warning did not become a fit finding", slideIndex)
+		}
+		for _, cell := range grid.Rows[0].Cells {
+			if got := string(cell.Shape.Fill); got != `"accent1"` {
+				t.Errorf("slide position %d: rotating cell fill = %s, want certified accent1", slideIndex, got)
+			}
+		}
+		fill := string(grid.Rows[0].Cells[0].Shape.Fill)
+		if firstFill != "" && fill != firstFill {
+			t.Errorf("inserting earlier slides changed this pattern's accent: %s -> %s", firstFill, fill)
+		}
+		firstFill = fill
+	}
+}
+
+func TestRotateSubstitutionSurfacesInGeneratedFitFindings(t *testing.T) {
+	layouts, _, sw, sh := fitReportGeometry("modern-template", testutil.TemplatesDir())
+	p := &PatternInput{Name: "icon-row",
+		Values: json.RawMessage(`[{"icon":"rocket","caption":"Launch"},{"icon":"rocket","caption":"Build"},{"icon":"rocket","caption":"Measure"}]`),
+	}
+	colors := []types.ThemeColor{
+		{Name: "lt1", RGB: "FFFFFF"}, {Name: "accent1", RGB: "003366"},
+		{Name: "accent2", RGB: "E5E5E5"}, {Name: "accent3", RGB: "E5E5E5"},
+		{Name: "accent4", RGB: "E5E5E5"}, {Name: "accent5", RGB: "E5E5E5"},
+		{Name: "accent6", RGB: "9E8520"},
+	}
+	_, _, findings, err := convertPresentationSlides(
+		[]SlideInput{{SlideType: "content", Pattern: p}}, layouts, sw, sh,
+		nil, nil, patterns.AccentStrategyRotate, &GridDiagramContext{ThemeColors: colors}, false,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range findings {
+		if finding.Code == patterns.ErrCodeRotatedAccentUnreadable && finding.Path == "/slides/0/pattern" {
+			return
+		}
+	}
+	t.Fatalf("generated slide did not report rotated-accent substitution: %+v", findings)
+}
+
+func TestRotateNegativeAccentParityBetweenPreflightAndGenerate(t *testing.T) {
+	p := &PatternInput{Name: "icon-row", Values: json.RawMessage(`[{"icon":"rocket","caption":"Launch"},{"icon":"rocket","caption":"Build"},{"icon":"rocket","caption":"Measure"}]`)}
+	colors := []types.ThemeColor{
+		{Name: "lt1", RGB: "FFFFFF"},
+		{Name: "accent1", RGB: "003366"}, {Name: "accent2", RGB: "003366"},
+		{Name: "accent3", RGB: "003366"}, {Name: "accent4", RGB: "003366"},
+		{Name: "accent5", RGB: "003366"}, {Name: "accent6", RGB: "003366"},
+	}
+	base, _, err := expandPattern(p, patterns.ExpandContext{AccentStrategy: patterns.AccentStrategyRotate, Theme: types.ThemeInfo{Colors: colors}}, patterns.Default())
+	if err != nil {
+		t.Fatal(err)
+	}
+	reserved := strings.Trim(string(base.Rows[0].Cells[0].Shape.Fill), `"`)
+	theme := types.ThemeInfo{Colors: colors, SemanticAccents: map[string]string{"negative": reserved}}
+	input := &PresentationInput{AccentStrategy: "rotate", Slides: []SlideInput{{SlideType: "content", Pattern: p}}}
+	layouts, _, sw, sh := fitReportGeometry("modern-template", testutil.TemplatesDir())
+	preflight := collectFitFindings(input, layouts, sw, sh, &theme)
+	_, _, generated, err := convertPresentationSlides(input.Slides, layouts, sw, sh,
+		&types.TemplateMetadata{SemanticAccents: theme.SemanticAccents}, nil,
+		patterns.AccentStrategyRotate, &GridDiagramContext{ThemeColors: colors}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for label, findings := range map[string][]patterns.FitFinding{"preflight": preflight, "generate": generated} {
+		found := false
+		for _, f := range findings {
+			if f.Code == patterns.ErrCodeRotatedAccentUnreadable {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("%s did not report reserved negative accent %s", label, reserved)
+		}
+	}
+}
 
 func TestExpandPattern_KPI3Up(t *testing.T) {
 	input := &PatternInput{

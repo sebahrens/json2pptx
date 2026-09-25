@@ -225,7 +225,7 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 	gridCells := make([]*jsonschema.GridCellInput, len(*items))
 	for i, item := range *items {
-		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 
 		// SVG icon: caption-only text + icon overlay (same approach as kpi_parametric).
 		// Validate has already rejected any icon that doesn't classify as a loadable

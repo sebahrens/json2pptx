@@ -237,7 +237,7 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 		// the user picks cell_accent_mode=progressive or alternate this gives
 		// per-stage variation while still emphasising the current stage by
 		// matching the base accent.
-		headerFill := ResolveCellAccent(baseAccent, i, cellAccentMode)
+		headerFill := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		if stage.Current {
 			headerFill = baseAccent
 		}

@@ -742,6 +742,14 @@ func TestThemeInfo_ApplyOverride(t *testing.T) {
 	}
 }
 
+func TestThemeOverridePreservesSemanticAccentRoles(t *testing.T) {
+	base := ThemeInfo{Colors: []ThemeColor{{Name: "accent2", RGB: "#900000"}}, SemanticAccents: map[string]string{"negative": "accent2"}}
+	got, _ := base.ApplyOverride(&ThemeOverride{Colors: map[string]string{"accent2": "#770000"}})
+	if got.SemanticAccents["negative"] != "accent2" {
+		t.Errorf("theme override lost negative role: %+v", got.SemanticAccents)
+	}
+}
+
 func TestApplyOverride_FontWarningMessage(t *testing.T) {
 	base := ThemeInfo{
 		Name:      "Corporate",

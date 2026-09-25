@@ -96,7 +96,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// Size content against the rectangle it will actually render into. Author
 	// bounds used to replace only grid.Bounds after expansion, so card heights
 	// and text fit had already been chosen from the full content area.
-	expandCtx := ctx
+	expandCtx := patternAccentContext(ctx, p)
 	if b, relative := resolvePatternBounds(p); b != nil {
 		expandCtx.LayoutBounds = patternExpansionBounds(ctx, b, relative)
 	}
@@ -136,10 +136,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// warning strings (e.g. CHART_PLACEHOLDER_EMPTY) describing known-degraded
 	// states after a successful expansion. Downstream fit-report consumers
 	// parse the leading "<CODE>: " prefix into FitFindings.
-	var warnings []string
-	if warner, ok := pat.(patterns.PostExpandWarner); ok {
-		warnings = warner.PostExpandWarnings(postExpandWarningContext(expandCtx, p), values, overrides)
-	}
+	warnings := collectExpansionWarnings(pat, expandCtx, p, values, overrides)
 
 	// Stamp the grid with its provenance. It is what lets an agent feed an
 	// expansion straight back into generate_presentation: the expanders emit
@@ -157,6 +154,47 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	)
 
 	return grid, warnings, nil
+}
+
+func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) patterns.ExpandContext {
+	var authored struct {
+		Accent         string `json:"accent"`
+		SemanticAccent string `json:"semantic_accent"`
+	}
+	_ = json.Unmarshal(p.Overrides, &authored)
+	semanticResolved := false
+	if ctx.Metadata != nil {
+		semanticResolved = ctx.Metadata.SemanticAccents[authored.SemanticAccent] != ""
+	}
+	if !semanticResolved {
+		semanticResolved = ctx.Theme.SemanticAccents[authored.SemanticAccent] != ""
+	}
+	ctx.AutoAccent = authored.Accent == "" && !semanticResolved
+	if ctx.AccentStrategy != patterns.AccentStrategyRotate {
+		return ctx
+	}
+	// Canonical JSON is stable across whitespace and object-key order, unlike
+	// deck position. Repeated identical patterns intentionally share a colour.
+	var canonical any
+	if err := json.Unmarshal(p.Values, &canonical); err == nil {
+		if data, err := json.Marshal(canonical); err == nil {
+			ctx.RotationKey = p.Name + ":" + string(data)
+		}
+	}
+	return ctx
+}
+
+func collectExpansionWarnings(pat patterns.Pattern, ctx patterns.ExpandContext, p *PatternInput, values, overrides any) []string {
+	var warnings []string
+	if warner, ok := pat.(patterns.PostExpandWarner); ok {
+		warnings = warner.PostExpandWarnings(postExpandWarningContext(ctx, p), values, overrides)
+	}
+	if ctx.AccentStrategy == patterns.AccentStrategyRotate && ctx.AutoAccent {
+		if warning := ctx.RotationWarning(); warning != "" {
+			warnings = append(warnings, warning)
+		}
+	}
+	return warnings
 }
 
 func patternExpansionBounds(ctx patterns.ExpandContext, pct *GridBoundsInput, relativeToContent bool) patterns.LayoutBounds {

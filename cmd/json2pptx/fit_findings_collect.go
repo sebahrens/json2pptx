@@ -50,7 +50,9 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// a horizontally-merged segment would never trip CheckDiagramInNarrowBoundsFinding
 	// or aspect-mismatch findings during preflight — the unexpanded slide
 	// carries ShapeGrid == nil, so checkShapeGridStructural is skipped.
-	input = expandComposeForPreflight(input, slideWidth, slideHeight, layouts...)
+	var composeFindings []patterns.FitFinding
+	input, composeFindings = expandComposeForPreflightWithTheme(input, slideWidth, slideHeight, theme, layouts...)
+	findings = append(findings, composeFindings...)
 
 	// Expand slide-level patterns the same way, so every detector below — text
 	// capacity, readability, structural geometry, table and chart preflight —
@@ -1879,8 +1881,13 @@ type shapeTextColor struct {
 // When no slide has an unexpanded compose envelope, the original input is
 // returned unchanged (no allocation).
 func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight int64, layoutSets ...types.LayoutMetadata) *PresentationInput {
+	expanded, _ := expandComposeForPreflightWithTheme(input, slideWidth, slideHeight, nil, layoutSets...)
+	return expanded
+}
+
+func expandComposeForPreflightWithTheme(input *PresentationInput, slideWidth, slideHeight int64, theme *types.ThemeInfo, layoutSets ...types.LayoutMetadata) (*PresentationInput, []patterns.FitFinding) {
 	if input == nil {
-		return nil
+		return nil, nil
 	}
 	needsExpansion := false
 	for i := range input.Slides {
@@ -1891,7 +1898,7 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 		}
 	}
 	if !needsExpansion {
-		return input
+		return input, nil
 	}
 
 	expanded := *input
@@ -1899,6 +1906,7 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 	copy(expanded.Slides, input.Slides)
 	rhythm := resolvedValidRhythmGrid(input, layoutSets, slideWidth, slideHeight)
 	sectionIndices := slideSectionIndices(input.Slides, layoutSets)
+	var findings []patterns.FitFinding
 
 	for i := range expanded.Slides {
 		s := &expanded.Slides[i]
@@ -1912,18 +1920,26 @@ func expandComposeForPreflight(input *PresentationInput, slideWidth, slideHeight
 			SectionIndex:   sectionIndices[i],
 			AccentStrategy: patterns.AccentStrategy(input.AccentStrategy),
 		}
+		if theme != nil {
+			ctx.Theme = *theme
+		}
 		if len(layoutSets) > 0 {
 			geom, b := patternExpansionGeometry(*s, layoutSets, slideWidth, slideHeight, rhythm)
 			ctx.LayoutBounds = patterns.LayoutBounds{X: b.X, Y: b.Y, Width: b.CX, Height: b.CY}
 			ctx.ContentZone = geom.Zone
 		}
-		eg, _, err := expandCompose(s.Compose, ctx, patterns.Default())
+		eg, warnings, err := expandCompose(s.Compose, ctx, patterns.Default())
 		if err != nil {
 			continue
 		}
+		for _, warning := range warnings {
+			if f := composeWarningAsFinding(i, warning); f != nil {
+				findings = append(findings, *f)
+			}
+		}
 		s.ShapeGrid = eg
 	}
-	return &expanded
+	return &expanded, findings
 }
 
 // dedupFitFindings removes findings that share the same

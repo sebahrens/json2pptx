@@ -331,7 +331,7 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 	for i, bar := range vals.Bars {
 		// Per-bar accent (governs the callout accent bar; bar fill stays accent
 		// for consistency unless cell_accent_mode is explicitly set).
-		accent := ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
 
 		// Bar value clamped into [0, maxVal] so the sub-grid columns stay valid.
 		clampedValue := bar.Value

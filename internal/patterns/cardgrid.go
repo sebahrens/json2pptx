@@ -485,7 +485,7 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		gridCells := make([]*jsonschema.GridCellInput, vals.Columns)
 		for col := 0; col < vals.Columns; col++ {
 			cell := vals.Cells[cellIdx]
-			accent := ResolveCellAccent(baseAccent, cellIdx, cellAccentMode)
+			accent := ctx.ResolveCellAccent(baseAccent, cellIdx, cellAccentMode)
 			gc := c.expandCell(ctx, cell, cellIdx, style, accent, headerSize, bodySize, ovr)
 
 			// Apply cell overrides

@@ -365,6 +365,9 @@ type ThemeInfo struct {
 	Colors    []ThemeColor // Theme colors
 	TitleFont string       // Font for titles
 	BodyFont  string       // Font for body text
+	// SemanticAccents mirrors the template metadata for read-only colour
+	// preflight; it is not an OOXML theme slot.
+	SemanticAccents map[string]string
 }
 
 // ThemeColor represents a single color in the theme.
@@ -382,10 +385,11 @@ func (t ThemeInfo) ApplyOverride(o *ThemeOverride) (ThemeInfo, []string) {
 	}
 
 	result := ThemeInfo{
-		Name:      t.Name,
-		TitleFont: t.TitleFont,
-		BodyFont:  t.BodyFont,
-		Colors:    make([]ThemeColor, len(t.Colors)),
+		Name:            t.Name,
+		TitleFont:       t.TitleFont,
+		BodyFont:        t.BodyFont,
+		Colors:          make([]ThemeColor, len(t.Colors)),
+		SemanticAccents: t.SemanticAccents,
 	}
 	copy(result.Colors, t.Colors)
 

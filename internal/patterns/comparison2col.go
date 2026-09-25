@@ -363,8 +363,8 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 
 	// Header row (optional)
 	if hasHeaders {
-		leftAccent := ResolveCellAccent(baseAccent, 0, cellAccentMode)
-		rightAccent := ResolveCellAccent(baseAccent, 1, cellAccentMode)
+		leftAccent := ctx.ResolveCellAccent(baseAccent, 0, cellAccentMode)
+		rightAccent := ctx.ResolveCellAccent(baseAccent, 1, cellAccentMode)
 
 		leftHeader := buildComparison2colTextContent(vals.HeaderLeft, headerSize, true, "lt1", "ctr")
 		rightHeader := buildComparison2colTextContent(vals.HeaderRight, headerSize, true, "lt1", "ctr")

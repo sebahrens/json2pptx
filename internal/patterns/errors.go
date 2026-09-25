@@ -98,6 +98,9 @@ const (
 	// that does not read as a highlight against the structure it sits in
 	// (go-slide-creator-ah5s).
 	ErrCodeLowContrastHighlight = "LOW_CONTRAST_HIGHLIGHT"
+	// ErrCodeRotatedAccentUnreadable reports an automatic rotate slot that
+	// could not carry the pattern's normal-size light text safely.
+	ErrCodeRotatedAccentUnreadable = "ROTATED_ACCENT_UNREADABLE"
 	// ErrCodeNumberedListNotApplied reports typed "N. " prefixes the renderer
 	// could not turn into auto-numbering, which print beside the layout's own
 	// bullet glyph as a double marker (go-slide-creator-6or2).

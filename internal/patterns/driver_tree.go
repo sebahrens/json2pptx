@@ -418,7 +418,7 @@ func (dt *driverTree) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	leafCounter := 0
 	annotCounter := 0
 	for branchPos, branch := range vals.Branches {
-		branchAccent := ResolveCellAccent(baseAccent, branchPos, cellAccentMode)
+		branchAccent := ctx.ResolveCellAccent(baseAccent, branchPos, cellAccentMode)
 		// Branch nodes are boxed in a light tint of their accent (they used to
 		// be lt1-on-white, i.e. unboxed floating labels) so the elbow
 		// connectors from the root and to the leaves attach to a visible box.

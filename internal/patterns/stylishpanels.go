@@ -285,7 +285,7 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// Row 1: accent header cells (short, colored band)
 	headerCells := make([]*jsonschema.GridCellInput, n)
 	for i, item := range *items {
-		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		headerCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
@@ -298,7 +298,7 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 	// Row 2: body cells (light tinted, with bullet text)
 	bodyCells := make([]*jsonschema.GridCellInput, n)
 	for i, item := range *items {
-		accent := ResolveCellAccent(baseAccent, i, cellAccentMode)
+		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		bodyCells[i] = &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",

@@ -326,7 +326,7 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 	for i, step := range vals.Steps {
 		fill := step.TipColor
 		if fill == "" {
-			fill = ResolveCellAccent(baseAccent, i, cellAccentMode)
+			fill = ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		}
 		textColor := readableTextOn(ctx, fillTone{Color: fill}, "lt1")
 		text := buildChevronLabelText(stepNumber(step, i), pptx.ConvertMarkdownEmphasis(step.Label), labelSize, textColor, notchInsetPt)
@@ -668,7 +668,7 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 	for i, step := range vals.Steps {
 		tip := step.TipColor
 		if tip == "" {
-			tip = ResolveCellAccent(baseAccent, i, cellAccentMode)
+			tip = ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		}
 
 		numberCell := &jsonschema.GridCellInput{
@@ -727,7 +727,7 @@ func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStrip
 	for i, step := range vals.Steps {
 		badge := step.TipColor
 		if badge == "" {
-			badge = ResolveCellAccent(baseAccent, i, cellAccentMode)
+			badge = ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		}
 
 		numberCell := &jsonschema.GridCellInput{

@@ -186,9 +186,16 @@ func expandComposeSegments(c *ComposeInput, ctx patterns.ExpandContext, bounds [
 				pattern.Bounds = nil
 				pattern.MaxHeightPct = 0
 			}
-			grid, _, err := expandPattern(&pattern, segCtx, reg)
+			grid, patternWarnings, err := expandPattern(&pattern, segCtx, reg)
 			if err != nil {
 				return nil, nil, fmt.Errorf("compose: segment[%d]: %w", i, err)
+			}
+			if bounds != nil {
+				for _, warning := range patternWarnings {
+					if m := patternWarningRE.FindStringSubmatch(warning); len(m) == 3 {
+						warnings = append(warnings, fmt.Sprintf("%s: segment[%d] %s", m[1], i, m[2]))
+					}
+				}
 			}
 			if ignoredBoundsWarning != "" {
 				warnings = append(warnings, ignoredBoundsWarning)
