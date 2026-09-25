@@ -5,9 +5,41 @@ import (
 	"archive/zip"
 	"encoding/xml"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+var embeddedSVGFontFace = regexp.MustCompile(`@font-face\{[^}]*\}`)
+var embeddedSVGFontFamily = regexp.MustCompile(`font-family:'([^']+)'`)
+
+// StripTemplateSystemFontFaces avoids re-embedding the same common template
+// face in every chart SVG. Native PPTX text already depends on the template's
+// installed font; the chart keeps its font-family declaration and the SVG's
+// existing generic fallback. Custom/non-template faces stay self-contained.
+func StripTemplateSystemFontFaces(svgData []byte, templateFont string) []byte {
+	if !commonTemplateSystemFont(templateFont) {
+		return svgData
+	}
+	templateFont = strings.TrimSpace(templateFont)
+	return embeddedSVGFontFace.ReplaceAllFunc(svgData, func(face []byte) []byte {
+		family := embeddedSVGFontFamily.FindSubmatch(face)
+		if len(family) != 2 || !strings.EqualFold(string(family[1]), templateFont) ||
+			!strings.Contains(string(face), "data:font/") {
+			return face
+		}
+		return nil
+	})
+}
+
+func commonTemplateSystemFont(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "arial", "aptos", "calibri", "courier new", "georgia", "helvetica", "tahoma", "times new roman", "trebuchet ms", "verdana":
+		return true
+	default:
+		return false
+	}
+}
 
 // SVGCompatibilityChecker detects native SVG support based on template metadata.
 type SVGCompatibilityChecker struct {

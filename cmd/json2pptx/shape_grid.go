@@ -1362,6 +1362,9 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 	if len(result.SVG) == 0 {
 		return nil, nil, nil, fmt.Errorf("%s: renderer returned empty SVG", cellLocation)
 	}
+	if diagCtx != nil {
+		result.SVG = generator.StripTemplateSystemFontFaces(result.SVG, diagCtx.FontFamily)
+	}
 
 	// Check for complex diagram in narrow cell
 	var warnings []string

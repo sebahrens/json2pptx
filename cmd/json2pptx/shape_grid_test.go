@@ -3709,6 +3709,11 @@ func TestDiagramCellInserts_InjectsTemplateBodyFont(t *testing.T) {
 		t.Errorf("Georgia-context SVG must not contain Roboto font-family")
 	}
 
+	svgArial := render(t, fontDiagramCell(4, ""), "Arial")
+	if strings.Contains(svgArial, "@font-face{font-family:'Arial'") {
+		t.Error("grid-cell SVG still embeds the template system font")
+	}
+
 	// Explicit per-diagram font_family wins over the injected context font.
 	svgExplicit := render(t, fontDiagramCell(3, "Verdana"), "Roboto")
 	if !strings.Contains(svgExplicit, "font-family:Verdana") {

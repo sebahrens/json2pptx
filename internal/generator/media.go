@@ -620,7 +620,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, it
 		diagramAlt := diagramAltText(item)
 
 		ctx.nativeSVGInserts[slideNum] = append(ctx.nativeSVGInserts[slideNum], nativeSVGInsert{
-			svgData:        renderResult.SVG,
+			svgData:        StripTemplateSystemFontFaces(renderResult.SVG, ctx.themeFontName),
 			pngData:        pngFallback,
 			svgMediaFile:   svgMediaFile,
 			pngMediaFile:   pngMediaFile,

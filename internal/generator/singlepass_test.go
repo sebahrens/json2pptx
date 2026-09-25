@@ -1944,6 +1944,7 @@ func TestResolveDiagramBytes(t *testing.T) {
 // TestPrepareImages_DiagramContent tests diagram processing in prepareImages
 func TestPrepareImages_DiagramContent(t *testing.T) {
 	ctx := newSinglePassContext("", nil, nil, false, nil)
+	ctx.themeFontName = "Arial"
 	ctx.svgConverter = NewSVGConverterWithConfig(SVGConfig{
 		Strategy: SVGStrategyNative,
 		Scale:    DefaultSVGScale,
@@ -2006,6 +2007,9 @@ func TestPrepareImages_DiagramContent(t *testing.T) {
 	}
 	if len(insert.svgData) == 0 {
 		t.Error("expected non-empty SVG data")
+	}
+	if strings.Contains(string(insert.svgData), "@font-face{font-family:'Arial'") {
+		t.Error("native diagram insert still embeds the template system font")
 	}
 	if len(insert.pngData) == 0 {
 		t.Error("expected non-empty PNG fallback data")

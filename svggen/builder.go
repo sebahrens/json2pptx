@@ -2,6 +2,7 @@ package svggen
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/color"
@@ -1354,6 +1355,7 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	svgEmitMu.Unlock()
 
 	content := buf.Bytes()
+	content = normalizeCanvasFontMIME(content)
 
 	// Fix rotation transforms: convert matrix-form rotations to translate+rotate
 	// form BEFORE pixel scaling so translate values get scaled correctly.
@@ -1402,6 +1404,34 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 		Height:  heightPx,
 		ViewBox: viewBox,
 	}, nil
+}
+
+var canvasFontDataURI = regexp.MustCompile(`data:type/opentype;base64,[A-Za-z0-9+/]{8}`)
+
+// normalizeCanvasFontMIME corrects the canvas renderer's unregistered
+// "type/opentype" data URI. The subset may contain TrueType or CFF outlines;
+// inspect its SFNT signature rather than labelling every face font/otf.
+func normalizeCanvasFontMIME(content []byte) []byte {
+	const prefix = "data:type/opentype;base64,"
+	return canvasFontDataURI.ReplaceAllFunc(content, func(match []byte) []byte {
+		var header [6]byte
+		n, err := base64.StdEncoding.Decode(header[:], match[len(prefix):])
+		if err != nil || n < 4 {
+			return match
+		}
+		mime := "font/sfnt"
+		switch {
+		case bytes.Equal(header[:4], []byte{0, 1, 0, 0}):
+			mime = "font/ttf"
+		case bytes.Equal(header[:4], []byte("OTTO")):
+			mime = "font/otf"
+		}
+		out := make([]byte, 0, len(mime)+len(match)-len("type/opentype"))
+		out = append(out, "data:"...)
+		out = append(out, mime...)
+		out = append(out, match[len("data:type/opentype"):]...)
+		return out
+	})
 }
 
 // RenderToBytes renders the SVG and returns the raw bytes.

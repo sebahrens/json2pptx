@@ -1,6 +1,7 @@
 package svggen
 
 import (
+	"encoding/base64"
 	"regexp"
 	"strings"
 	"testing"
@@ -62,6 +63,34 @@ func TestChartSVGEmbedsSubsettedFonts(t *testing.T) {
 	// drawing's font-family references, so text does not fall back silently.
 	if !strings.Contains(svg, "@font-face") {
 		t.Error("expected an @font-face block alongside the embedded font data")
+	}
+	if strings.Contains(svg, "data:type/opentype;base64,") {
+		t.Error("canvas's unregistered font MIME survived SVG rendering")
+	}
+	if !strings.Contains(svg, "data:font/ttf;base64,") && !strings.Contains(svg, "data:font/otf;base64,") && !strings.Contains(svg, "data:font/sfnt;base64,") {
+		t.Error("embedded font has no registered font media type")
+	}
+}
+
+func TestNormalizeCanvasFontMIME(t *testing.T) {
+	fontURI := func(signature []byte) string {
+		payload := append(append([]byte(nil), signature...), 0, 0)
+		return "data:type/opentype;base64," + base64.StdEncoding.EncodeToString(payload)
+	}
+	for _, tc := range []struct {
+		name, input, want string
+	}{
+		{"truetype", fontURI([]byte{0, 1, 0, 0}), "data:font/ttf;base64,"},
+		{"cff opentype", fontURI([]byte("OTTO")), "data:font/otf;base64,"},
+		{"other sfnt", fontURI([]byte("true")), "data:font/sfnt;base64,"},
+		{"short malformed data", "data:type/opentype;base64,AAA=", "data:type/opentype;base64,AAA="},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := string(normalizeCanvasFontMIME([]byte(tc.input)))
+			if !strings.HasPrefix(got, tc.want) {
+				t.Errorf("normalized URI = %q, want prefix %q", got, tc.want)
+			}
+		})
 	}
 }
 
