@@ -29,6 +29,12 @@ const (
 // direction yields better contrast) in small incremental steps. If the
 // iterative approach cannot reach the target ratio, the function falls back
 // to pure black or pure white -- whichever provides higher contrast against bg.
+//
+// A color that needs adjusting is returned opaque. The search solves for the
+// composited color; re-applying a partial alpha would blend that solution back
+// toward the background and miss minRatio (a 30%-alpha black on white came
+// back as #D6D6D6 at 30%, i.e. 1.45:1), and a low alpha often cannot reach the
+// ratio at all (go-slide-creator-s1uvj.35). A compliant color keeps its alpha.
 func EnsureContrast(fg, bg Color, minRatio float64) Color {
 	// Composite semi-transparent colors over white for accurate contrast.
 	fgOpaque := fg.Opaque()
@@ -50,9 +56,9 @@ func EnsureContrast(fg, bg Color, minRatio float64) Color {
 	// If neither extreme can meet the ratio, pick the best one and return.
 	if blackContrast < minRatio && whiteContrast < minRatio {
 		if blackContrast >= whiteContrast {
-			return black.WithAlpha(fg.A)
+			return black
 		}
-		return white.WithAlpha(fg.A)
+		return white
 	}
 
 	// Binary search for the minimum adjustment amount that meets the ratio.
@@ -85,12 +91,12 @@ func EnsureContrast(fg, bg Color, minRatio float64) Color {
 	if result.ContrastWith(bgOpaque) < minRatio {
 		// Fall back to the extreme.
 		if blackContrast >= whiteContrast {
-			return black.WithAlpha(fg.A)
+			return black
 		}
-		return white.WithAlpha(fg.A)
+		return white
 	}
 
-	return result.WithAlpha(fg.A)
+	return result
 }
 
 // EnsureWCAGAA is a convenience wrapper that enforces WCAG AA contrast for
