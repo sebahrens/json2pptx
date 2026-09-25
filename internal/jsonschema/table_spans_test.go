@@ -90,7 +90,7 @@ func TestExpandCellSpans(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := shapeOf(expandCellSpans(tt.rows))
+			got := shapeOf(expandCellSpans(tt.rows, 0))
 			if len(got) != len(tt.want) {
 				t.Fatalf("row count = %d, want %d (%v)", len(got), len(tt.want), got)
 			}
@@ -118,8 +118,8 @@ func TestExpandCellSpans_Idempotent(t *testing.T) {
 	rows := [][]types.TableCell{
 		{{Content: "Total", ColSpan: 2, RowSpan: 1}, {Content: "9", ColSpan: 1, RowSpan: 1}},
 	}
-	once := expandCellSpans(rows)
-	twice := expandCellSpans(once)
+	once := expandCellSpans(rows, 0)
+	twice := expandCellSpans(once, 0)
 
 	if len(once) != len(twice) {
 		t.Fatalf("row count changed on re-expansion: %d then %d", len(once), len(twice))
@@ -156,5 +156,35 @@ func TestToTableSpec_ExpandsSpans(t *testing.T) {
 	}
 	if merged != 2 {
 		t.Errorf("expected 2 merge continuations for two col_span=2 cells, got %d", merged)
+	}
+}
+
+// go-slide-creator-s1uvj.26: a row shorter than the header count rendered
+// fewer <a:tc> than <a:gridCol>. ToTableSpec pads it to the grid width, giving
+// a column that a row_span still covers its continuation, not a plain cell.
+func TestToTableSpec_PadsShortRows(t *testing.T) {
+	in := &TableInput{
+		Headers: []string{"Region", "Revenue", "Growth"},
+		Rows: [][]TableCellInput{
+			{{Content: "NA", ColSpan: 1, RowSpan: 1}, {Content: "$12.4M", ColSpan: 1, RowSpan: 1}, {Content: "+3%", ColSpan: 1, RowSpan: 2}},
+			{{Content: "$8.7M", ColSpan: 1, RowSpan: 1}},
+			{{Content: "EU", ColSpan: 1, RowSpan: 1}, {Content: "$9.1M", ColSpan: 1, RowSpan: 1}},
+		},
+	}
+	got := shapeOf(in.ToTableSpec().Rows)
+	want := [][]cellShape{
+		{{"NA", 1, 1, false}, {"$12.4M", 1, 1, false}, {"+3%", 1, 2, false}},
+		{{"$8.7M", 1, 1, false}, {"", 1, 1, false}, {"", 1, 0, true}},
+		{{"EU", 1, 1, false}, {"$9.1M", 1, 1, false}, {"", 1, 1, false}},
+	}
+	for i := range want {
+		if len(got[i]) != len(want[i]) {
+			t.Fatalf("row %d = %v, want %v", i, got[i], want[i])
+		}
+		for j := range want[i] {
+			if got[i][j] != want[i][j] {
+				t.Errorf("row %d cell %d = %+v, want %+v", i, j, got[i][j], want[i][j])
+			}
+		}
 	}
 }

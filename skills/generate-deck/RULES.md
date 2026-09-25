@@ -98,6 +98,8 @@ Accepted `IconInput` sources, exactly one per icon: `name` (bundled), `path` (lo
 |---|---|---|
 | 20 | **MUST split** if rows > 7 OR cols > 6 OR font_size < 9pt. No exceptions. | Tables exceeding these limits overflow, clip, or become unreadable at presentation-viewing distance. Emit `split_slide` instead of cramming |
 
+**Row width.** `headers` defines the table's columns. A row with fewer cells (counting `col_span`) is padded with empty cells; a row wider than `headers` is rejected by `validate` / `generate` with `INVALID_PARAMETER` at `...table_value.rows` ("table row N spans M columns ... but headers define K").
+
 **Multiline cell counting.** A table cell containing `\n` or a comma-list with ≥3 items counts as N logical rows where N = max(line_count, ceil(comma_items / 1)). Apply this adjusted row count BEFORE the rows > 7 check. A 5-row table where 3 cells each contain 2 lines = 5 + 3 = 8 logical rows → must split.
 
 **Refusal wording.** When TDR forces a split, emit exactly: *"This table has [N] logical rows × [M] columns; per Rule 20 I cannot fit this — emitting split_slide to distribute rows across slides."* Do not silently shrink fonts below 9pt to avoid the split.

@@ -1362,7 +1362,11 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			if !ok {
 				return nil, fmt.Errorf("slide %d, content %d: table resolved to %T, want *TableInput", slideNum, j+1, resolved)
 			}
-			item.Value = input.ToTableSpec()
+			spec := input.ToTableSpec()
+			if err := spec.CheckRowWidths(); err != nil {
+				return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+			}
+			item.Value = spec
 
 		case "chart":
 			item.Type = generator.ContentDiagram
@@ -1833,7 +1837,11 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			if err := json.Unmarshal(jsonItem.Value, &tableInput); err != nil {
 				return nil, fmt.Errorf("slide %d, content %d: invalid table value: %w", slideNum, j+1, err)
 			}
-			item.Value = tableInput.ToTableSpec()
+			spec := tableInput.ToTableSpec()
+			if err := spec.CheckRowWidths(); err != nil {
+				return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+			}
+			item.Value = spec
 
 		case "body_and_bullets":
 			item.Type = generator.ContentBodyAndBullets
