@@ -586,3 +586,76 @@ func TestComparison2col(t *testing.T) {
 		}
 	})
 }
+
+func TestComparison2colConnectors(t *testing.T) {
+	p := &comparison2col{}
+	vals := Comparison2colValues{
+		HeaderLeft:  "Traditional",
+		HeaderRight: "AI-first",
+		Rows: []Comparison2colRow{
+			{Left: "Product as moat", Right: "Distribution as moat"},
+			{Left: "Analysis as an edge", Right: "Learning loops"},
+		},
+	}
+
+	t.Run("off_is_unchanged", func(t *testing.T) {
+		plain, err := p.Expand(ExpandContext{}, &vals, nil, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		off, err := p.Expand(ExpandContext{}, &vals, &Comparison2colOverrides{Connectors: false}, nil)
+		if err != nil {
+			t.Fatalf("Expand: %v", err)
+		}
+		a, _ := json.Marshal(plain)
+		b, _ := json.Marshal(off)
+		if string(a) != string(b) {
+			t.Fatalf("connectors=false changed output:\n%s\n%s", a, b)
+		}
+	})
+
+	grid, err := p.Expand(ExpandContext{}, &vals, &Comparison2colOverrides{Connectors: true}, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if got := string(grid.Columns); got != "[45, 10, 45]" {
+		t.Errorf("columns = %s, want [45, 10, 45]", got)
+	}
+	if len(grid.Rows) != 3 {
+		t.Fatalf("rows = %d, want 3", len(grid.Rows))
+	}
+	if grid.Rows[0].Connector != nil {
+		t.Error("header row must not carry a connector")
+	}
+	for i, row := range grid.Rows[1:] {
+		if len(row.Cells) != 3 {
+			t.Fatalf("body row %d has %d cells, want 3", i, len(row.Cells))
+		}
+		if row.Connector == nil || row.Connector.Style != "line" {
+			t.Errorf("body row %d connector = %+v, want line", i, row.Connector)
+		}
+		mid := row.Cells[1]
+		if mid.Shape == nil || mid.Shape.Geometry != "ellipse" || mid.Shape.Icon == nil || mid.Fit != "contain" || mid.MaxHeight <= 0 {
+			t.Errorf("body row %d gutter cell is not a centred badge: %+v", i, mid)
+		}
+		if row.Cells[0].AccentBar == nil || row.Cells[0].AccentBar.Position != "left" {
+			t.Errorf("body row %d left cell lacks a left accent stripe", i)
+		}
+		if got := string(row.Cells[2].Shape.Fill); !strings.Contains(got, "lumMod") {
+			t.Errorf("body row %d right fill = %s, want accent tint", i, got)
+		}
+	}
+	assertPatternGolden(t, grid, filepath.Join("testdata", "comparison-2col", "connectors.golden.json"))
+
+	t.Run("budget_narrows", func(t *testing.T) {
+		long := strings.Repeat("x", 190)
+		v := Comparison2colValues{Rows: []Comparison2colRow{{Left: long, Right: "ok"}}}
+		if w := p.PostExpandWarnings(ExpandContext{}, &v, nil); len(w) != 0 {
+			t.Fatalf("plain layout warned at 190 chars: %v", w)
+		}
+		w := p.PostExpandWarnings(ExpandContext{}, &v, &Comparison2colOverrides{Connectors: true})
+		if len(w) != 1 || !strings.Contains(w[0], "connectors") {
+			t.Fatalf("connector layout warnings = %v, want one BODY_TOO_LONG naming connectors", w)
+		}
+	})
+}

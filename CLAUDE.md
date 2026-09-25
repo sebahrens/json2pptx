@@ -154,7 +154,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
 | `card-grid` | Parameterized N×M grid of titled cards |
 | `chart-insights-split` | Left chart panel + right insights column (65/35 split, 75/25 when the insights are sparse) with optional headline number and so-what callout, a series/unit caption and auto data labels; falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
-| `comparison-2col` | Two-column comparison with optional headers |
+| `comparison-2col` | Two-column comparison with optional headers; `overrides.connectors` draws a per-row accent connector badge in a centre gutter ("from → to" shifts) |
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
 | `dual-org-ladder` | Two parallel org columns with 2–6 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
 | `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |

@@ -1,0 +1,43 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "comparison-2col-connectors.pptx",
+  "slides": [
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "AI reshapes the winning playbook as the basis of competition shifts"}
+      ],
+      "pattern": {
+        "name": "comparison-2col",
+        "values": {
+          "headers": ["Traditional model", "AI-first model"],
+          "rows": [
+            {"left": "Product as primary moat", "right": "Distribution and client relationships become a larger part of the moat"},
+            {"left": "$500 million+ mandates for customization", "right": "Mass customization at sub-$10 million, unlocking new revenue pools"},
+            {"left": "AUM growth adds costs faster than revenues", "right": "Step change in scalability: 3x to 5x AUM per head at near-zero marginal cost"},
+            {"left": "Analysis as an edge", "right": "PMs build learning loops with AI, creating compounding advantage"},
+            {"left": "Junior roles gather data; senior roles review", "right": "Juniors validate and synthesize; seniors lead strategy and client engagement"}
+          ]
+        },
+        "overrides": {"connectors": true}
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three shifts in how we serve clients"}
+      ],
+      "pattern": {
+        "name": "comparison-2col",
+        "values": {
+          "rows": [
+            {"left": "Quarterly reporting packs", "right": "Always-on client portal with live exposures"},
+            {"left": "Relationship manager as sole contact", "right": "Pod model: RM, specialist and service lead"},
+            {"left": "Reactive issue handling", "right": "Proactive alerts before clients notice"}
+          ]
+        },
+        "overrides": {"connectors": true, "accent": "accent2"}
+      }
+    }
+  ]
+}

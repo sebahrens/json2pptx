@@ -1,5 +1,16 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.139.0: `comparison-2col` row connectors (`go-slide-creator-s1uvj.7`).**
+  `comparison-2col` accepts `overrides.connectors` (boolean, default
+  `false`). When true, the grid becomes `[45, 10, 45]`: the centre gutter
+  holds a 24pt accent circle with a chevron, vertically centred on each body
+  row and joined to both cells by an accent rule. Left cells take one neutral
+  surface (or `row_fill`) with a left accent stripe; right cells take the
+  accent's light tint with measured text colour. The header row keeps its
+  two accent header cells over an empty gutter. `cell_overrides` indices
+  still count only the left/right cells. Per-cell `BODY_TOO_LONG` budgets drop
+  to 88% of the plain values. Output with the flag off is byte-identical.
+
 - **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
   `render_deck_spec` and `semantic render` now report
   `deterministic_ready`, `deterministic_blocking_reasons[]`, and
