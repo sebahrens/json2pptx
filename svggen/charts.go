@@ -765,16 +765,27 @@ func (bc *BarChart) calculateDomain(data ChartData) (min, max float64) {
 	max = 0
 
 	if bc.config.Stacked {
-		// For stacked bars, calculate max stack height
+		// Stacked bars diverge from zero: positive segments stack upward and
+		// negative segments stack downward (see drawStackedBars), so the
+		// domain spans the deepest negative stack to the tallest positive
+		// stack. Using the net sum hid negative segments below the axis
+		// (go-slide-creator-s1uvj.29).
 		for i := range data.Categories {
-			stackSum := 0.0
+			posSum, negSum := 0.0, 0.0
 			for _, series := range data.Series {
 				if i < len(series.Values) {
-					stackSum += series.Values[i]
+					if v := series.Values[i]; v > 0 {
+						posSum += v
+					} else {
+						negSum += v
+					}
 				}
 			}
-			if stackSum > max {
-				max = stackSum
+			if posSum > max {
+				max = posSum
+			}
+			if negSum < min {
+				min = negSum
 			}
 		}
 	} else {
@@ -1065,9 +1076,19 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 
 	baseY := plotArea.Y + adjustedYScale.Scale(0)
 
-	// Track cumulative values per category for stacking
+	// Track cumulative values per category for stacking. Positive and
+	// negative segments keep separate running totals so the stack diverges
+	// from zero: positives grow upward, negatives grow downward
+	// (go-slide-creator-s1uvj.29).
 	numCategories := len(data.Categories)
-	cumulative := make([]float64, numCategories)
+	posCumulative := make([]float64, numCategories)
+	negCumulative := make([]float64, numCategories)
+	cumulativeFor := func(pos, neg []float64, v float64) []float64 {
+		if v > 0 {
+			return pos
+		}
+		return neg
+	}
 
 	b.Push()
 
@@ -1086,7 +1107,8 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 			cat := data.Categories[catIdx]
 			x := adjustedXScale.Scale(cat)
 
-			// Bottom of this segment = cumulative so far
+			// Bottom of this segment = same-sign cumulative so far
+			cumulative := cumulativeFor(posCumulative, negCumulative, v)
 			segBottom := cumulative[catIdx]
 			// Top of this segment = cumulative + current value
 			segTop := segBottom + v
@@ -1122,7 +1144,8 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 		b.SetFontSize(labelFontSize)
 		b.SetFontWeight(style.Typography.WeightNormal)
 
-		cumulativeForLabels := make([]float64, numCategories)
+		posForLabels := make([]float64, numCategories)
+		negForLabels := make([]float64, numCategories)
 
 		for seriesIdx, series := range data.Series {
 			segColor := colors[seriesIdx%len(colors)]
@@ -1139,6 +1162,7 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 				cat := data.Categories[catIdx]
 				x := adjustedXScale.Scale(cat)
 
+				cumulativeForLabels := cumulativeFor(posForLabels, negForLabels, v)
 				segBottom := cumulativeForLabels[catIdx]
 				segTop := segBottom + v
 
