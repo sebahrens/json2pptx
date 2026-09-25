@@ -139,6 +139,9 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 	checks = append(checks, checkDuplicateLayoutSignatures(layouts)...)
 	checks = append(checks, checkSectionNumber(layouts)...)
 	checks = append(checks, checkFooterChromeCompleteness(layouts))
+	checks = append(checks, checkConflictingLayoutTags(layouts)...)
+	checks = append(checks, checkTextPlaceholderOverlap(layouts)...)
+	checks = append(checks, checkImageTitleLayerOrder(layouts)...)
 	checks = append(checks, checkContentTitleBodyHierarchy(layouts)...)
 	staticText, err := checkLayoutStaticText(reader)
 	if err != nil {

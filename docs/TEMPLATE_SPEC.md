@@ -222,6 +222,11 @@ The checker verifies:
 7. **Layout names match canonical roles** — emits WARN when a layout is structurally a canonical role (Title Slide, One Content, Two Content, Section Divider, Blank, Blank + Title, Closing) but uses a non-canonical name (e.g. "Cover Slide" → "Title Slide"). The repair pipeline must rename in place; do not author a new duplicate layout.
 8. **No duplicate layout signatures** — emits WARN when two or more layouts map to the **same canonical role** AND share the **same structural signature**. Layouts that share only a signature but have different canonical roles (e.g. a Closing layout and a Title Slide both with `subtitle+title`) are not flagged.
 9. **First accent visible on the light canvas** — emits WARN when `accent1` has less than 2:1 contrast against `lt1`; such a color can still be intentional on a dark surface, but should not lead charts on the light canvas.
+10. **Footer chrome complete or absent** — the resolved `dt`, `ftr`, and `sldNum` slots must appear together, or not at all.
+11. **No conflicting structural tags** — a layout must not be classified as both `content` and `section-header`.
+12. **Text slots do not materially overlap** — title, subtitle, and body/content placeholders must not intersect by at least 1 mm in both dimensions and 2% of the smaller slot. Decorative section-number frames and picture/text overlays are excluded.
+13. **Image does not cover title** — an image placeholder that overlaps a title must precede it in the layout shape tree. The generator also protects emitted slide order, but source templates should be safe independently.
+14. **Content title/body hierarchy** — a visible title on One Content or Two Content must be larger than first-level body text when both sizes resolve.
 
 Exit codes:
 - **0**: All checks pass (WARN findings do not fail the check)
