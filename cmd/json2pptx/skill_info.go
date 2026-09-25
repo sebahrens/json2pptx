@@ -17,6 +17,7 @@ import (
 	"math"
 
 	"github.com/sebahrens/json2pptx/internal/examine"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -249,12 +250,16 @@ type skillTemplateInfo struct {
 	SHA256 string `json:"sha256,omitempty"`
 	// MetadataVersion is the embedded template metadata schema version (e.g.
 	// "1.0"). Omitted when the template carries no metadata block.
-	MetadataVersion  string            `json:"metadata_version,omitempty"`
-	ThemeColors      map[string]string `json:"theme_colors,omitempty"`
-	ColorRoles       *skillColorRoles  `json:"color_roles,omitempty"`
-	TitleFont        string            `json:"title_font,omitempty"`
-	BodyFont         string            `json:"body_font,omitempty"`
-	AccentUsageGuide map[string]string `json:"accent_usage_guide,omitempty"` // from template metadata; omitted when unset
+	MetadataVersion string            `json:"metadata_version,omitempty"`
+	ThemeColors     map[string]string `json:"theme_colors,omitempty"`
+	ColorRoles      *skillColorRoles  `json:"color_roles,omitempty"`
+	TitleFont       string            `json:"title_font,omitempty"`
+	BodyFont        string            `json:"body_font,omitempty"`
+	// BodyFontSizePt is the nominal generated size on the canonical content
+	// layout at five paragraphs, before any content-specific autofit.
+	BodyFontSizePt         float64           `json:"body_font_size_pt,omitempty"`
+	TemplateBodyFontSizePt float64           `json:"template_body_font_size_pt,omitempty"`
+	AccentUsageGuide       map[string]string `json:"accent_usage_guide,omitempty"` // from template metadata; omitted when unset
 	// SemanticAccents maps semantic roles (positive/negative/neutral) to theme
 	// accent names. Mirrors TemplateMetadata.SemanticAccents; omitted when unset.
 	SemanticAccents map[string]string `json:"semantic_accents,omitempty"`
@@ -599,6 +604,7 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 	// need them to choose readable fills without requesting full layout detail.
 	info.TitleFont = analysis.Theme.TitleFont
 	info.BodyFont = analysis.Theme.BodyFont
+	info.TemplateBodyFontSizePt, info.BodyFontSizePt = canonicalContentBodySizes(analysis.Layouts, canonicalIDs["content"])
 	info.ColorRoles = buildColorRoles(analysis.Theme.Colors)
 	if md := analysis.Metadata; md != nil {
 		info.MetadataVersion = md.Version
@@ -683,6 +689,24 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 	}
 
 	return info, nil
+}
+
+func canonicalContentBodySizes(layouts []types.LayoutMetadata, contentLayoutID string) (templatePt, effectivePt float64) {
+	for _, candidate := range layouts {
+		if candidate.ID != contentLayoutID {
+			continue
+		}
+		for _, ph := range candidate.Placeholders {
+			if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
+				if ph.FontSize > 4000 {
+					return float64(ph.FontSize) / 100, float64(ph.FontSize) / 100
+				}
+				effective, _ := generator.BodySizeForDensity(ph.FontSize, 5)
+				return float64(ph.FontSize) / 100, float64(effective) / 100
+			}
+		}
+	}
+	return 0, 0
 }
 
 // buildSkillSideEffects describes the disk side effects of a discovery call.

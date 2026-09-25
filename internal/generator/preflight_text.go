@@ -42,6 +42,9 @@ type TextAutofitPreflightInput struct {
 	HeightEMU int64
 	// FontSizeHPt is the font size in hundredths of a point (e.g. 2000 = 20pt).
 	FontSizeHPt int
+	// NormalizeBody predicts the same density-aware template correction as
+	// generated regular body placeholders. Explicit author sizes opt out.
+	NormalizeBody bool
 	// FontName is the font family name.
 	FontName string
 	// ViewingMode and TextRole select the readability policy the predicted
@@ -100,11 +103,16 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 
 	paraCount := len(input.Paragraphs)
 	readabilityFloor, minFontScalePct := AutofitDensityPolicy(paraCount)
+	baseHPt := input.FontSizeHPt
+	var bodyPolicy BodySizePolicy
+	if input.NormalizeBody && input.FontSizeHPt <= 4000 {
+		baseHPt, bodyPolicy = BodySizeForDensity(input.FontSizeHPt, paraCount)
+	}
 
 	params := textfit.Params{
 		WidthEMU:        input.WidthEMU,
 		HeightEMU:       input.HeightEMU,
-		FontSizeHPt:     input.FontSizeHPt,
+		FontSizeHPt:     baseHPt,
 		FontName:        input.FontName,
 		Paragraphs:      input.Paragraphs,
 		ExtraSpacingPt:  input.ExtraSpacingPt,
@@ -117,6 +125,11 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 	}
 
 	var findings []patterns.FitFinding
+	if input.NormalizeBody && bodyPolicy.MinHPt > 0 {
+		if f := NewBodySizeFinding(input.Path, input.FontSizeHPt, baseHPt, bodyPolicy, result.FontScale); f != nil {
+			findings = append(findings, *f)
+		}
+	}
 
 	// The readability verdict is independent of trimming: the renderer trims
 	// AND then judges the size it ended up with, so both can be true of one

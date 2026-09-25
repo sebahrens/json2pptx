@@ -1503,6 +1503,8 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 				HeightEMU:   ph.Bounds.Height,
 				FontSizeHPt: ph.FontSize,
 				FontName:    ph.FontFamily,
+				NormalizeBody: (content.FontSize == nil || *content.FontSize <= 0) && (content.Type == "text" || content.Type == "bullets" ||
+					content.Type == "body_and_bullets" || content.Type == "bullet_groups"),
 				// The readability policy the render-time autofit tags this text
 				// with, so validate reports TEXT_BELOW_READABLE_MIN wherever
 				// generate would (go-slide-creator-nlrg).

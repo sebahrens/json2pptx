@@ -109,6 +109,43 @@ func TestAutofitPreflightReportsTrimAndReadabilityTogether(t *testing.T) {
 	}
 }
 
+func TestBodyTypographyPreflightUsesAuthoredPlaceholderAndOverride(t *testing.T) {
+	bullets := []string{"Manual handoffs", "Five-day close", "Fragmented reporting", "Rework", "Delayed decisions"}
+	for _, source := range []int{1400, 2000, 3200} {
+		layouts := []types.LayoutMetadata{{
+			ID: "content-layout", CanonicalType: types.CanonicalLayoutType("content"),
+			Placeholders: []types.PlaceholderInfo{{
+				ID: "body", Type: types.PlaceholderBody, FontSize: source, FontFamily: "Arial",
+				Bounds: types.BoundingBox{Width: 9000000, Height: 4500000},
+			}},
+		}}
+		input := &PresentationInput{Slides: []SlideInput{{LayoutID: "content-layout", Content: []ContentInput{{
+			PlaceholderID: "body", Type: "bullets", BulletsValue: &bullets,
+		}}}}}
+		var found bool
+		for _, f := range collectTextAutofitPreflightFindings(input, layouts) {
+			if f.Code == patterns.ErrCodeTextSizeOffTarget {
+				found = true
+				if f.Action != "info" || f.Path != "/slides/0/content/0" {
+					t.Errorf("source %d finding = %+v", source, f)
+				}
+			}
+		}
+		if found != (source != 2000) {
+			t.Errorf("source %d finding=%v, want %v", source, found, source != 2000)
+		}
+		if source == 1400 {
+			authorPt := 24.0
+			input.Slides[0].Content[0].FontSize = &authorPt
+			for _, f := range collectTextAutofitPreflightFindings(input, layouts) {
+				if f.Code == patterns.ErrCodeTextSizeOffTarget {
+					t.Errorf("author font-size override should not be normalised: %+v", f)
+				}
+			}
+		}
+	}
+}
+
 // layoutIDWithBody returns the id of the first layout carrying a usable body
 // placeholder — the layout the autofit prediction has something to measure in.
 func layoutIDWithBody(layouts []types.LayoutMetadata) string {

@@ -452,6 +452,33 @@ func TestListTemplates_FieldsFullCanonicalMetadata(t *testing.T) {
 	}
 }
 
+func TestListTemplates_DefaultProjectionReportsEffectiveBodySize(t *testing.T) {
+	mc := &mcpConfig{
+		templatesDir: "../../templates", outputDir: t.TempDir(),
+		cache: template.NewMemoryCache(24 * time.Hour),
+	}
+	res, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{
+		"filter": "modern-template", "read_only": true,
+	}))
+	if err != nil || res.IsError {
+		t.Fatalf("list_templates failed: err=%v result=%+v", err, res)
+	}
+	var wire struct {
+		Templates []struct {
+			Name                   string  `json:"name"`
+			BodyFontSizePt         float64 `json:"body_font_size_pt"`
+			TemplateBodyFontSizePt float64 `json:"template_body_font_size_pt"`
+		} `json:"templates"`
+	}
+	if err := json.Unmarshal([]byte(res.Content[0].(mcp.TextContent).Text), &wire); err != nil {
+		t.Fatal(err)
+	}
+	if len(wire.Templates) != 1 || wire.Templates[0].Name != "modern-template" ||
+		wire.Templates[0].BodyFontSizePt != 18 || wire.Templates[0].TemplateBodyFontSizePt != 14 {
+		t.Errorf("default listing body sizes = %+v, want modern-template 14pt → 18pt", wire.Templates)
+	}
+}
+
 // TestListTemplates_ReadOnlySideEffects verifies the read_only parameter
 // suppresses preview cache writes and that the response side_effects block
 // truthfully reports the write intent for both read-only and default calls.

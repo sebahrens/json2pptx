@@ -18,6 +18,9 @@ const (
 	// predicted renderer shrink) below the deck viewing_mode's readability
 	// floor for its text role (go-slide-creator-vbic).
 	ErrCodeTextBelowReadableMin = "TEXT_BELOW_READABLE_MIN"
+	// ErrCodeTextSizeOffTarget reports template body-size normalization or a
+	// fitted result outside the range selected for the content density.
+	ErrCodeTextSizeOffTarget = "TEXT_SIZE_OFF_TARGET"
 )
 
 // ErrTitleOverflow is the sentinel for ErrCodeTitleOverflow.
@@ -26,11 +29,24 @@ var ErrTitleTruncated = errors.New("section title cannot fit its divider at the 
 
 // ErrTextBelowReadableMin is the sentinel for ErrCodeTextBelowReadableMin.
 var ErrTextBelowReadableMin = errors.New("text renders below the viewing-mode readability minimum")
+var ErrTextSizeOffTarget = errors.New("body text size differs from its density target")
 
 func init() {
 	codeSentinel[ErrCodeTitleOverflow] = ErrTitleOverflow
 	codeSentinel[ErrCodeTitleTruncated] = ErrTitleTruncated
 	codeSentinel[ErrCodeTextBelowReadableMin] = ErrTextBelowReadableMin
+	codeSentinel[ErrCodeTextSizeOffTarget] = ErrTextSizeOffTarget
+
+	findingMetaRegistry[ErrCodeTextSizeOffTarget] = FindingMeta{
+		Code:             ErrCodeTextSizeOffTarget,
+		Summary:          "Body text inherited from a template was normalised to a density target, or autofit shrank it outside that target range.",
+		Severity:         "review",
+		WhenEmitted:      "Generation and fit-report preflight: after template body size is resolved and content-aware autofit is measured or predicted.",
+		RemediationSteps: []string{"For a review finding, shorten or split the body content so it fits within the reported size range.", "An info finding documents an automatic template-size correction; no action is needed."},
+		ExampleBefore:    `{"code":"TEXT_SIZE_OFF_TARGET","action":"review","fix":{"kind":"reduce_text","params":{"strategy":"split","actual_pt":13,"min_pt":16}}}`,
+		ExampleAfter:     "Split the dense slide until the body text fits at 16pt or larger.",
+		RelatedCodes:     []string{ErrCodeTextBelowReadableMin, ErrCodeTextTrimmed},
+	}
 
 	findingMetaRegistry[ErrCodeTextBelowReadableMin] = FindingMeta{
 		Code:        ErrCodeTextBelowReadableMin,

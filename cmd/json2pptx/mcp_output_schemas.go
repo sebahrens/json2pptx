@@ -104,7 +104,9 @@ var outputSchemaListTemplates = json.RawMessage(`{
         "available": {"type": "array", "items": {"type": "string"}},
         "unavailable": {"type": "array", "items": {"type": "string"}}
       }, "required": ["available", "unavailable"]},
-      "canonical_layout_ids": {"type": "object", "description": "Available canonical alias to concrete layout ID in every projection, including compact."}
+      "canonical_layout_ids": {"type": "object", "description": "Available canonical alias to concrete layout ID in every projection, including compact."},
+      "body_font_size_pt": {"type": "number", "description": "Nominal generated body size on the canonical content layout at five paragraphs, before content-specific autofit."},
+      "template_body_font_size_pt": {"type": "number", "description": "Original template body size on the canonical content layout before density normalization."}
     }}},
     "supported_types": {"type": "object"},
     "input_formats":   {"type": "array", "items": {"type": "string"}},

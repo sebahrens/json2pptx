@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.135.0: template-independent body typography (`go-slide-creator-hw4vg`).**
+  Generated body text now uses a density-based size range, preserving an
+  in-range template size and normalising outliers before measured autofit.
+  `TEXT_SIZE_OFF_TARGET` documents automatic corrections or reports a final
+  size below the density target in generation and fit-report preflight. `list_templates` exposes nominal
+  `body_font_size_pt` and original `template_body_font_size_pt` for its
+  canonical content layout (five-paragraph basis).
+
 - **2026-09-25 — Schema 4.134.0: measurable KPI metric budgets (`go-slide-creator-vqnct`).**
   Full-size `kpi-2up` through `kpi-6up` accept up to 12-character `big`
   metrics, including `EUR 48.25m`; `kpi-inline` retains its tighter

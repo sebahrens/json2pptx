@@ -54,6 +54,16 @@ type autofitConfig struct {
 	// judged against (TEXT_BELOW_READABLE_MIN). Empty role = not checked.
 	viewingMode tokens.ViewingMode
 	textRole    tokens.TextRole
+	// bodyTypography normalises template-native body sizes against the
+	// paragraph density before measuring fit. Explicit author sizes opt out.
+	bodyTypography bool
+	bodySourceHPt  int
+	bodyPolicy     BodySizePolicy
+	bodyBaseHPt    int
+}
+
+func withBodyTypography() autofitOption {
+	return func(c *autofitConfig) { c.bodyTypography = true }
 }
 
 // withInheritedTextStyle supplies the placeholder's inherited (master) text
@@ -130,9 +140,11 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	if shape.TextBody == nil || shape.TextBody.BodyProperties == nil {
 		return
 	}
+	normalizeBodyTypography(shape, &cfg)
 
 	bp := shape.TextBody.BodyProperties
 	if handleNoAutofitDirective(bp, shape, &cfg) {
+		emitBodySizeFinding(&cfg, 100000)
 		return
 	}
 	// Strip any existing normAutofit from the template. Our content-aware
@@ -149,6 +161,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	widthEMU, heightEMU := getShapeDimensions(shape)
 	if widthEMU <= 0 || heightEMU <= 0 {
 		applyZeroDimensionAutofit(bp, shape, &cfg)
+		emitBodySizeFinding(&cfg, 100000)
 		return
 	}
 
@@ -169,6 +182,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	if err != nil {
 		slog.Warn("textfit: font cache unavailable, skipping autofit", slog.String("err", err.Error()))
 		bp.Inner += `<a:normAutofit/>`
+		emitBodySizeFinding(&cfg, 100000)
 		return
 	}
 	// Titles are a single statement: never trim paragraphs. When the title
@@ -218,6 +232,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// built-in shrink-to-fit. This is a safety net for cases where our height
 	// estimate is slightly optimistic (e.g., bold text width, inherited marL).
 	emitReadabilityFinding(&cfg, params, result, len(shape.TextBody.Paragraphs))
+	emitBodySizeFinding(&cfg, result.FontScale)
 	bp.Inner += buildNormAutofitElement(result)
 }
 
@@ -336,6 +351,11 @@ func buildTextfitParams(shape *shapeXML, widthEMU, heightEMU int64, texts []stri
 		} else {
 			extraSpacingPt = defaultParagraphSpacingPt
 		}
+	}
+	// Normalising the runs makes their size explicit, but must not discard the
+	// inherited paragraph spacing that still renders from the master.
+	if cfg.bodyTypography && style != nil && extraSpacingPt == 0 {
+		extraSpacingPt = style.SpcBefPt
 	}
 
 	// Extract per-paragraph spacings from explicit spcBef values in paragraph properties.

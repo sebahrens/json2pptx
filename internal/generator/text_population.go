@@ -32,6 +32,13 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	}
 
 	var err error
+	// Template body styles vary widely (14pt to 32pt for identical bullets).
+	// Let the authored content density choose the base size unless the author
+	// supplied an explicit override. Titles and lead/evidence layouts carry
+	// their own intentional hierarchy.
+	if shouldNormalizeBodyTypography(shape, item) {
+		autofitOpts = append(autofitOpts, withBodyTypography())
+	}
 	switch item.Type {
 	case ContentText:
 		if isTitleShape(shape) || isTitlePlaceholder(item.PlaceholderID) {

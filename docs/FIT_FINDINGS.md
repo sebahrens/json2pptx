@@ -1569,6 +1569,16 @@ The facades also surface a structured `render_evidence` block (`{complete:false,
 }
 ```
 
+### `TEXT_SIZE_OFF_TARGET`
+
+Generated placeholder body text uses a density-based nominal range: 16–20pt
+for up to six paragraphs, 14–18pt for seven to nine, and 12–16pt for ten or
+more. An out-of-range template size is normalised before autofit and produces
+an `info` finding in preflight and generation. If measured autofit still pushes the effective size outside
+the range, the finding is `review` with a `reduce_text` suggestion; shorten or
+split the content. Explicit author font-size overrides and display placeholders
+above 40pt retain their requested size.
+
 ### `TEXT_BELOW_READABLE_MIN`
 
 **Action:** `review`

@@ -974,6 +974,36 @@ func TestAnalyzeTemplateForSkillInfo_ListModeKeepsSmallPaletteFields(t *testing.
 	}
 }
 
+func TestTemplateListReportsBodyTypographyAcrossTemplates(t *testing.T) {
+	cache := template.NewMemoryCache(time.Minute)
+	for _, name := range []string{"modern-template", "business-template", "p-style"} {
+		path := filepath.Join("..", "..", "templates", name+".pptx")
+		if name == "p-style" {
+			if _, err := os.Stat(path); os.IsNotExist(err) {
+				continue // local, gitignored fixture; present in local runs
+			}
+		}
+		t.Run(name, func(t *testing.T) {
+			info, err := analyzeTemplateForSkillInfoOpts(path, cache, "list", skillInfoOptions{NoPreview: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.TemplateBodyFontSizePt <= 0 || info.BodyFontSizePt <= 0 {
+				t.Fatalf("missing body size in list projection: template=%g effective=%g", info.TemplateBodyFontSizePt, info.BodyFontSizePt)
+			}
+			if info.BodyFontSizePt < 16 || info.BodyFontSizePt > 20 {
+				t.Errorf("five-bullet body size %gpt outside 16–20pt", info.BodyFontSizePt)
+			}
+			if name == "modern-template" && info.TemplateBodyFontSizePt != 14 {
+				t.Errorf("modern template body size = %g, want 14pt", info.TemplateBodyFontSizePt)
+			}
+			if name == "business-template" && info.TemplateBodyFontSizePt != 22 {
+				t.Errorf("business canonical content body size = %g, want 22pt", info.TemplateBodyFontSizePt)
+			}
+		})
+	}
+}
+
 // go-slide-creator-ccpv: with --templates-dir set, every embedded template was
 // listed under its os.CreateTemp filename ("json2pptx-template-2729383514"),
 // which changes on every call and is rejected by generate as
