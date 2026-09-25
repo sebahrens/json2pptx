@@ -56,6 +56,12 @@ func TestUnreadableAutofitIsReported(t *testing.T) {
 	if f.Action != "review" {
 		t.Errorf("action = %q, want review — the prediction is advisory", f.Action)
 	}
+	if f.Path != "/slides/0/rendered_shapes/1" {
+		t.Errorf("path = %q, want exact rendered shape", f.Path)
+	}
+	if got := f.Fix.Params["rendered_shape_text"]; got != "Some bullet text Some bullet text Some bullet text Some bullet text" {
+		t.Errorf("rendered shape text = %v", got)
+	}
 }
 
 func TestReadableAutofitIsNotReported(t *testing.T) {

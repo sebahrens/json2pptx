@@ -2,8 +2,10 @@ package generator
 
 import (
 	"fmt"
+	"html"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/tokens"
@@ -25,6 +27,8 @@ var autofitScaleRE = regexp.MustCompile(`<a:normAutofit fontScale="(\d+)"`)
 
 // shapeRunSizeRE captures a run's declared size in hundredths of a point.
 var shapeRunSizeRE = regexp.MustCompile(`sz="(\d+)"`)
+var renderedShapeIDRE = regexp.MustCompile(`<p:cNvPr\b[^>]*\bid="(\d+)"`)
+var renderedShapeTextRE = regexp.MustCompile(`(?s)<a:t>(.*?)</a:t>`)
 
 // autofitScaleDenominator converts OOXML percent-thousandths to a 0..1 scale.
 const autofitScaleDenominator = 100000.0
@@ -51,8 +55,12 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 			continue
 		}
 		effective := int(float64(smallest) * float64(scaleThousandths) / autofitScaleDenominator)
+		shapePath := slidepath.Slide(slideIndex)
+		if id := renderedShapeIDRE.FindStringSubmatch(shape); len(id) == 2 {
+			shapePath += "/rendered_shapes/" + id[1]
+		}
 		if f := NewReadabilityFinding(ReadabilityFindingInput{
-			Path:              slidepath.Slide(slideIndex),
+			Path:              shapePath,
 			Mode:              ctx.viewingMode,
 			Role:              tokens.TextRoleBody,
 			EffectiveHPt:      effective,
@@ -61,6 +69,17 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 			Context: fmt.Sprintf("autofit %d%% to fit the shape",
 				scaleThousandths*100/int(autofitScaleDenominator)),
 		}); f != nil {
+			if matches := renderedShapeTextRE.FindAllStringSubmatch(shape, -1); len(matches) > 0 {
+				var parts []string
+				for _, m := range matches {
+					if s := strings.TrimSpace(html.UnescapeString(m[1])); s != "" {
+						parts = append(parts, s)
+					}
+				}
+				if len(parts) > 0 {
+					f.Fix.Params["rendered_shape_text"] = strings.Join(parts, " ")
+				}
+			}
 			ctx.emitFitFinding(*f)
 		}
 	}

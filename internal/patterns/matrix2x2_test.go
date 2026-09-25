@@ -8,7 +8,25 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/textcapacity"
 )
+
+func TestMatrixAxisEndBudgetFitsMeasuredNarrowBox(t *testing.T) {
+	// The documented 20-character budget admitted "Fast, under-served",
+	// which rendered at 8.4pt after autofit in the observed 1.25×0.28in
+	// vertical-axis end box. A 12%-tall end row gives about 1.25×0.42in
+	// without taking space away from the quadrant text.
+	const emuPerInch = 914400
+	const emuPerPoint = 12700
+	width := int64(1.25*emuPerInch) - 4*emuPerPoint // 2pt left/right inset
+	height := int64(0.42 * emuPerInch)
+	for _, label := range []string{"Underserved", "High effort"} {
+		scale, fits := textcapacity.AutofitScaleFor([]textcapacity.ParagraphSpec{{Text: label, FontPt: 12}}, width, height)
+		if !fits || scale < 1 {
+			t.Errorf("%q needs autofit %.2f in the narrow axis-end box", label, scale)
+		}
+	}
+}
 
 func TestMatrix2x2(t *testing.T) {
 	p := &matrix2x2{}
@@ -564,6 +582,11 @@ func TestMatrix2x2_AxisEndLabels(t *testing.T) {
 	if err := p.Validate(&vals, nil, nil); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
+	vals.YHigh = "Fast, under-served"
+	if err := p.Validate(&vals, nil, nil); err == nil {
+		t.Error("raw pattern accepted an axis end that would shrink below readable size")
+	}
+	vals.YHigh = "Major"
 	grid, err := p.Expand(ExpandContext{}, &vals, nil, nil)
 	if err != nil {
 		t.Fatal(err)

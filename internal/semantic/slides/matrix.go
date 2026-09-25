@@ -22,7 +22,7 @@ const (
 	// matrixAxisMax / matrixAxisEndMax / matrixHeaderMax / matrixBodyMax mirror
 	// the pattern's own string budgets.
 	matrixAxisMax    = 60
-	matrixAxisEndMax = 20
+	matrixAxisEndMax = 11
 	matrixHeaderMax  = 80
 	matrixBodyMax    = 200
 )

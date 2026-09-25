@@ -21,9 +21,9 @@
             "col_gap": 4,
             "row_gap": 0.01,
             "columns": [
-              11,
-              78,
-              11
+              18,
+              64,
+              18
             ],
             "rows": [
               {
@@ -108,7 +108,7 @@
             "columns": 1,
             "rows": [
               {
-                "height": 8,
+                "height": 12,
                 "cells": [
                   {
                     "shape": {
@@ -133,7 +133,7 @@
                 ]
               },
               {
-                "height": 84,
+                "height": 76,
                 "cells": [
                   {
                     "shape": {
@@ -162,7 +162,7 @@
                 ]
               },
               {
-                "height": 8,
+                "height": 12,
                 "cells": [
                   {
                     "shape": {

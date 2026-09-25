@@ -67,6 +67,17 @@ func TestCompileMatrixUsesTheQuadrantsWhenItFits(t *testing.T) {
 	}
 }
 
+func TestMatrixAxisEndBudgetRejectsTextThatShrinksBelowReadableSize(t *testing.T) {
+	fit := matrixBody(map[string]any{"y_high": "Underserved"}) // 11 chars
+	if reason := MatrixOverBudget(fit); reason != "" {
+		t.Fatalf("11-character end label rejected: %s", reason)
+	}
+	tooLong := matrixBody(map[string]any{"y_high": "Fast, under-served"})
+	if reason := MatrixOverBudget(tooLong); !strings.Contains(reason, "an axis end holds 11") {
+		t.Errorf("18-character end label should trigger fallback, got %q", reason)
+	}
+}
+
 // Quadrants can be written by position instead of as a list.
 func TestMatrixAcceptsNamedPositions(t *testing.T) {
 	body := map[string]any{

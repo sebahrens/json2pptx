@@ -1634,7 +1634,7 @@ func TestMatrix2x2BudgetProbe(t *testing.T) {
 		t.Skip("set JSON2PPTX_MATRIX_BUDGET_PROBE=1")
 	}
 	for _, field := range []string{"header", "body", "x_axis", "y_axis", "axis_end", "paired_header", "paired_body", "all_body"} {
-		limit := map[string]int{"header": 80, "body": 200, "x_axis": 60, "y_axis": 60, "axis_end": 20, "paired_header": 80, "paired_body": 200, "all_body": 200}[field]
+		limit := map[string]int{"header": 80, "body": 200, "x_axis": 60, "y_axis": 60, "axis_end": 11, "paired_header": 80, "paired_body": 200, "all_body": 200}[field]
 		budget := probeReadableBudget(t, "matrix-2x2", limit, func(length int) any {
 			v := &patterns.Matrix2x2Values{XAxisLabel: "Market", YAxisLabel: "Growth", TopLeft: patterns.Matrix2x2Quadrant{Header: "Stars", Body: "Brief"}, TopRight: patterns.Matrix2x2Quadrant{Header: "Emerging", Body: "Brief"}, BottomLeft: patterns.Matrix2x2Quadrant{Header: "Core", Body: "Brief"}, BottomRight: patterns.Matrix2x2Quadrant{Header: "Exit", Body: "Brief"}}
 			copy := budgetProbeCopy(length)
@@ -1666,7 +1666,7 @@ func TestMatrix2x2BudgetProbe(t *testing.T) {
 		t.Logf("field=%s budget=%d", field, budget)
 	}
 	for _, field := range []string{"header", "body", "x_axis", "y_axis", "axis_end", "paired_body", "body_word_header", "body_wide_header", "header_word_body", "header_wide_body", "all_body", "full_stack_body"} {
-		limit := map[string]int{"header": 80, "body": 200, "x_axis": 60, "y_axis": 60, "axis_end": 20, "paired_body": 200, "body_word_header": 200, "body_wide_header": 200, "header_word_body": 80, "header_wide_body": 80, "all_body": 200, "full_stack_body": 200}[field]
+		limit := map[string]int{"header": 80, "body": 200, "x_axis": 60, "y_axis": 60, "axis_end": 11, "paired_body": 200, "body_word_header": 200, "body_wide_header": 200, "header_word_body": 80, "header_wide_body": 80, "all_body": 200, "full_stack_body": 200}[field]
 		budget := probeReadableBudget(t, "matrix-2x2", limit, func(length int) any {
 			v := &patterns.Matrix2x2Values{XAxisLabel: "Market", YAxisLabel: "Growth", TopLeft: patterns.Matrix2x2Quadrant{Header: "Stars", Body: "Brief"}, TopRight: patterns.Matrix2x2Quadrant{Header: "Emerging", Body: "Brief"}, BottomLeft: patterns.Matrix2x2Quadrant{Header: "Core", Body: "Brief"}, BottomRight: patterns.Matrix2x2Quadrant{Header: "Exit", Body: "Brief"}}
 			copy := strings.Repeat("W", length)

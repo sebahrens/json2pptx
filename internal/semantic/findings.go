@@ -31,7 +31,8 @@ type RawFinding struct {
 	// Action is the fit-finding remediation action ("refuse", "shrink_or_split",
 	// "review", "info"), or "" for non-fit findings.
 	Action string
-	// RawPath is the JSON pointer into the generated PresentationInput.
+	// RawPath is the JSON pointer into generated PresentationInput, or a
+	// /slides/N/rendered_shapes/ID locator for an OOXML-only autofit finding.
 	RawPath string
 }
 

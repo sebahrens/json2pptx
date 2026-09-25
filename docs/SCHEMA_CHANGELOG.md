@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.122.0: readable matrix axis ends and shape-level findings (`go-slide-creator-x5pbi`).**
+  `matrix-2x2` axis-end labels now accept at most 11 characters (down from
+  20); the horizontal end-label boxes are wider and vertical end rows taller,
+  without narrowing quadrants, so ordinary labels at the new budget fit at
+  the 12pt present-mode floor. A longer
+  semantic label degrades to the positioned bullet fallback. Render-time
+  `TEXT_BELOW_READABLE_MIN` now identifies the generated OOXML shape by ID,
+  and DeckSpec matrix axis-end findings map back to the authored field when
+  its rendered text is unique.
+
 - **2026-09-24 — Schema 4.121.0: template-aware DeckSpec validation (`go-slide-creator-wttox`).**
   `validate_deck_spec` accepts the same optional `template` default as
   `render_deck_spec` (spec pin > caller selection > archetype default), retains

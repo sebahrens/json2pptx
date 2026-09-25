@@ -504,8 +504,10 @@ func applyMatrix2x2CellOverride(cell *jsonschema.GridCellInput, cellOverrides ma
 	}
 }
 
-// matrix2x2AxisEndMax bounds the low/high axis end labels.
-const matrix2x2AxisEndMax = 20
+// matrix2x2AxisEndMax bounds low/high labels for the narrow axis-end boxes.
+// Eighteen characters rendered at 8.4pt after autofit in a 1.25in box; eleven
+// keeps ordinary end labels at 12pt without narrowing the quadrants.
+const matrix2x2AxisEndMax = 11
 
 // axisEnds applies the "Low" / "High" defaults to the axis end labels.
 func axisEnds(low, high string) (string, string) {
@@ -566,7 +568,7 @@ func buildMatrix2x2XAxis(label, low, high string, size float64, accent, textColo
 		Text:        buildMatrix2x2LabelContent(label, size, textColor, "ctr", ""),
 	}}
 	return &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`[11, 78, 11]`),
+		Columns: json.RawMessage(`[18, 64, 18]`),
 		ColGap:  4,
 		RowGap:  0.01,
 		Rows: []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{
@@ -594,9 +596,9 @@ func buildMatrix2x2YAxis(label, low, high string, size float64, accent, textColo
 		ColGap:  0.01,
 		RowGap:  4,
 		Rows: []jsonschema.GridRowInput{
-			{Height: 8, Cells: []*jsonschema.GridCellInput{matrix2x2EndCell(high, endSize, "ctr", "b")}},
-			{Height: 84, Cells: []*jsonschema.GridCellInput{arrow}},
-			{Height: 8, Cells: []*jsonschema.GridCellInput{matrix2x2EndCell(low, endSize, "ctr", "t")}},
+			{Height: 12, Cells: []*jsonschema.GridCellInput{matrix2x2EndCell(high, endSize, "ctr", "b")}},
+			{Height: 76, Cells: []*jsonschema.GridCellInput{arrow}},
+			{Height: 12, Cells: []*jsonschema.GridCellInput{matrix2x2EndCell(low, endSize, "ctr", "t")}},
 		},
 	}
 }

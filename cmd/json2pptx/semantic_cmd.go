@@ -18,6 +18,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/resource"
 	"github.com/sebahrens/json2pptx/internal/semantic"
+	"github.com/sebahrens/json2pptx/internal/semantic/slides"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
@@ -599,8 +600,10 @@ func emitSemanticRenderResult(res semanticRenderResult, outputValidation string)
 // quality summary computed over the compiled slides.
 func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileResult, rr RenderResult, start time.Time) semanticRenderResult {
 	var sm *semantic.SourceMap
+	var ir *semantic.DeckIR
 	if cr != nil {
 		sm = cr.SourceMap
+		ir = cr.IR
 	}
 
 	var diags []semanticDiagnostic
@@ -632,7 +635,7 @@ func buildSemanticRenderSuccess(input *PresentationInput, cr *semantic.CompileRe
 	fit = dedupFitFindings(fit)
 	patterns.SortCanonical(fit, slidepath.SlideIndex)
 	for _, f := range fit {
-		diags = append(diags, semanticDiagFromFit(sm, f))
+		diags = append(diags, semanticDiagFromFitWithIR(sm, ir, f))
 	}
 
 	var warnings []string
@@ -689,7 +692,11 @@ func buildSemanticRenderFailure(cr *semantic.CompileResult, err error) semanticR
 	var refusal *StrictFitRefusal
 	if errors.As(err, &refusal) {
 		for _, f := range refusal.Findings {
-			res.Diagnostics = append(res.Diagnostics, semanticDiagFromFit(sm, f))
+			var ir *semantic.DeckIR
+			if cr != nil {
+				ir = cr.IR
+			}
+			res.Diagnostics = append(res.Diagnostics, semanticDiagFromFitWithIR(sm, ir, f))
 		}
 	}
 	return res
@@ -746,6 +753,53 @@ func semanticDiagFromFit(sm *semantic.SourceMap, f patterns.FitFinding) semantic
 	if mapped.SlideIndex >= 0 {
 		idx := mapped.SlideIndex
 		d.SlideIndex = &idx
+	}
+	return d
+}
+
+// semanticDiagFromFitWithIR resolves a generated shape's text back to a
+// DeckSpec matrix axis-end field when the source map cannot: generated OOXML
+// shape IDs are allocated after compilation and therefore have no raw JSON
+// source-map entry. Duplicate labels are deliberately left unmapped rather
+// than guessing which axis the author should edit.
+func semanticDiagFromFitWithIR(sm *semantic.SourceMap, ir *semantic.DeckIR, f patterns.FitFinding) semanticDiagnostic {
+	d := semanticDiagFromFit(sm, f)
+	if d.SemanticPath != "" || ir == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || !strings.Contains(f.Path, "/rendered_shapes/") || f.Fix == nil {
+		return d
+	}
+	text, _ := f.Fix.Params["rendered_shape_text"].(string)
+	idx := slidepath.SlideIndex(f.Path)
+	if text == "" || idx < 0 || idx >= len(ir.Slides) {
+		return d
+	}
+	slide := ir.Slides[idx]
+	if slide.Kind != semantic.KindMatrix2x2 || slide.Visual.Pattern != "matrix-2x2" || slide.SourcePath == "" {
+		return d
+	}
+	var matched string
+	for _, field := range []string{"x_low", "x_high", "y_low", "y_high"} {
+		value, _ := slide.Body[field].(string)
+		if value != text {
+			continue
+		}
+		if matched != "" {
+			return d
+		}
+		matched = field
+	}
+	if matched != "" {
+		// A rendered shape is identified by its text, so a matching title,
+		// takeaway, axis title, or quadrant would make attribution ambiguous.
+		if slide.Title == text || slide.Takeaway == text || slide.Body["x_axis"] == text || slide.Body["x_axis_label"] == text || slide.Body["y_axis"] == text || slide.Body["y_axis_label"] == text {
+			return d
+		}
+		for _, quadrant := range slides.MatrixQuadrants(slide.Body) {
+			if quadrant.Header == text || quadrant.Body == text {
+				return d
+			}
+		}
+		d.SemanticPath = slide.SourcePath + "." + matched
+		d.RecommendedEdit = &semantic.SemanticEdit{Kind: semantic.EditShortenText, Hint: "Shorten this matrix axis-end label; use at most 11 characters and re-render."}
 	}
 	return d
 }
