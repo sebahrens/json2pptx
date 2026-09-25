@@ -29,9 +29,9 @@ type titleMeasurement struct {
 	// Shrinks: the title fits only below the comfort scale or with reduced
 	// line spacing.
 	Shrinks bool
-	// ScalePct is the font scale the title needs (100 = template size).
+	// ScalePct is the font scale the title needs (100 = starting size).
 	ScalePct int
-	// FontPt is the template title size in points.
+	// FontPt is the effective starting title size in points.
 	FontPt float64
 	// Chars is the title length in runes; MaxChars the longest prefix of THIS
 	// title that fits at the comfort scale (only computed when flagged) — the
@@ -46,6 +46,18 @@ type titleMeasurement struct {
 
 // Flagged reports whether the title should be shortened.
 func (m titleMeasurement) Flagged() bool { return m.OK && (m.Refuse || m.Overflow || m.Shrinks) }
+
+// authoredTitlePlaceholder returns the title style generation will measure:
+// an explicit content font_size replaces the inherited template size, while
+// every other inherited property and the original template metadata survive.
+func authoredTitlePlaceholder(ph *types.PlaceholderInfo, content *ContentInput) *types.PlaceholderInfo {
+	if ph == nil || content == nil || content.FontSize == nil || *content.FontSize <= 0 {
+		return ph
+	}
+	withSize := *ph
+	withSize.FontSize = int(*content.FontSize * 100)
+	return &withSize
+}
 
 // measureTitleInPlaceholder measures title text against a title placeholder's
 // resolved bounds and inherited style (size, caps, line spacing).
@@ -96,10 +108,10 @@ func (m titleMeasurement) describe() string {
 		return fmt.Sprintf("section title (%d chars) cannot fit its divider at the 28pt floor; shorten to about %d chars", m.Chars, m.MaxChars)
 	}
 	if m.Overflow {
-		return fmt.Sprintf("title (%d chars) does not fit its title placeholder even at the minimum autofit size (template %.0fpt); shorten to ≤ %d chars",
+		return fmt.Sprintf("title (%d chars) does not fit its title placeholder even at the minimum autofit size (starting %.0fpt); shorten to ≤ %d chars",
 			m.Chars, m.FontPt, m.MaxChars)
 	}
-	return fmt.Sprintf("title (%d chars) only fits its title placeholder at %d%% of the template %.0fpt size; shorten to ≤ %d chars",
+	return fmt.Sprintf("title (%d chars) only fits its title placeholder at %d%% of the starting %.0fpt size; shorten to ≤ %d chars",
 		m.Chars, m.ScalePct, m.FontPt, m.MaxChars)
 }
 
@@ -240,7 +252,8 @@ func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMet
 				continue
 			}
 			path := slidepath.ContentIndex(si, ci)
-			m := measureTitleInPlaceholder(title, ph, isSectionSlideInput(*slide, layouts))
+			effectivePh := authoredTitlePlaceholder(ph, content)
+			m := measureTitleInPlaceholder(title, effectivePh, isSectionSlideInput(*slide, layouts))
 			if m.OK {
 				measured[measuredTitleKey{slide: si, placeholder: content.PlaceholderID}] = true
 			}
@@ -261,7 +274,7 @@ func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMet
 				Title:       title,
 				WidthEMU:    ph.Bounds.Width,
 				HeightEMU:   ph.Bounds.Height,
-				FontSizeHPt: ph.FontSize,
+				FontSizeHPt: effectivePh.FontSize,
 				FontName:    ph.FontFamily,
 			}); f != nil {
 				findings = append(findings, *f)

@@ -123,6 +123,86 @@ func TestTitleChecksUnifiedOnMeasuredFit(t *testing.T) {
 	}
 }
 
+func TestAuthoredTitleFontSizeChangesMeasuredVerdictAndCapacity(t *testing.T) {
+	analysis := loadTemplateAnalysis(t, "modern-template")
+	title := vjwnShortTitle
+	baseline := titleSlide(title)
+	large := titleSlide(title)
+	largePt := 96.0
+	large.Content[0].FontSize = &largePt
+	small := titleSlide(title)
+	smallPt := 18.0
+	small.Content[0].FontSize = &smallPt
+
+	baselineFindings, _ := collectTitleFitFindings(&PresentationInput{Slides: []SlideInput{baseline}}, analysis.Layouts)
+	largeFindings, _ := collectTitleFitFindings(&PresentationInput{Slides: []SlideInput{large}}, analysis.Layouts)
+	smallFindings, _ := collectTitleFitFindings(&PresentationInput{Slides: []SlideInput{small}}, analysis.Layouts)
+	if len(baselineFindings) != 0 || len(smallFindings) != 0 || len(largeFindings) == 0 {
+		t.Fatalf("title verdict must change with author size: baseline=%+v small=%+v large=%+v", baselineFindings, smallFindings, largeFindings)
+	}
+	if largeFindings[0].Path != "/slides/0/content/0" || !isTitleLengthCode(largeFindings[0].Code) {
+		t.Errorf("large title finding = %+v", largeFindings[0])
+	}
+
+	capacity := func(slide SlideInput) (int, bool) {
+		out := dryRunOutput{Valid: true}
+		slides := []SlideInput{slide}
+		resolveCanonicalLayoutIDs(slides, analysis.Layouts)
+		validateSlidesAgainstTemplate(&out, slides, analysis)
+		if len(out.Slides) != 1 {
+			t.Fatalf("missing dry-run slide: %+v", out)
+		}
+		var found bool
+		for _, d := range out.Diagnostics {
+			if isTitleLengthCode(d.Code) && d.Path == "/slides/0/content/0" {
+				found = true
+			}
+		}
+		for _, ph := range out.Slides[0].Placeholders {
+			if ph.PlaceholderID == "title" {
+				return ph.MaxChars, found
+			}
+		}
+		t.Fatal("dry run omitted title placeholder")
+		return 0, false
+	}
+	baseCapacity, baseFlag := capacity(baseline)
+	largeCapacity, largeFlag := capacity(large)
+	smallCapacity, smallFlag := capacity(small)
+	if baseFlag || smallFlag || !largeFlag {
+		t.Errorf("dry-run title diagnostics: baseline=%v large=%v small=%v", baseFlag, largeFlag, smallFlag)
+	}
+	// The comfort-size policy caps large display titles at 32pt, so a 96pt
+	// override can share the baseline capacity even though it changes the
+	// measured fit verdict. A smaller explicit size must increase capacity.
+	if !(largeCapacity <= baseCapacity && baseCapacity < smallCapacity) {
+		t.Errorf("dry-run title capacities: large=%d baseline=%d small=%d, want large<=base<small", largeCapacity, baseCapacity, smallCapacity)
+	}
+	// The same authored size must be honored when the layout is inferred.
+	predictedLarge := large
+	predictedLarge.LayoutID = ""
+	predictedLarge.SlideType = "content"
+	predictedSmall := small
+	predictedSmall.LayoutID = ""
+	predictedSmall.SlideType = "content"
+	predictedLargeCapacity, predictedLargeFlag := capacity(predictedLarge)
+	predictedSmallCapacity, predictedSmallFlag := capacity(predictedSmall)
+	if !predictedLargeFlag || predictedSmallFlag || predictedLargeCapacity >= predictedSmallCapacity {
+		t.Errorf("inferred-layout title sizing: large=(%d,%v) small=(%d,%v)", predictedLargeCapacity, predictedLargeFlag, predictedSmallCapacity, predictedSmallFlag)
+	}
+
+	quality := computeQualityScoreWithLayouts([]SlideInput{large}, nil, analysis.Layouts)
+	var qualityTitleIssue bool
+	for _, issue := range quality.SlideScores[0].Issues {
+		if strings.Contains(issue, "title") {
+			qualityTitleIssue = true
+		}
+	}
+	if !qualityTitleIssue {
+		t.Errorf("quality score ignored authored 96pt title: %+v", quality.SlideScores[0])
+	}
+}
+
 func TestMeasuredTitleFindingsUseAuthoredContentIndex(t *testing.T) {
 	a := loadTemplateAnalysis(t, "modern-template")
 	slide := titleSlide(vjwnLongTitle)

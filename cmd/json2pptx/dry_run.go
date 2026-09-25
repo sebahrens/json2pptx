@@ -609,7 +609,8 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					}
 					output.Diagnostics = append(output.Diagnostics, diagnostics.FromValidationError(ve))
 				} else {
-					ph.MaxChars = generator.ReportedMaxChars(&phInfo)
+					effectivePhInfo := authoredTitlePlaceholder(&phInfo, &item)
+					ph.MaxChars = generator.ReportedMaxChars(effectivePhInfo)
 
 					// Titles: measured fit against the resolved title box and
 					// inherited title style replaces the character estimate
@@ -622,7 +623,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					if item.Type == "text" && phInfo.Type == types.PlaceholderTitle {
 						resolved, _ := item.ResolveValue()
 						if text, ok := resolved.(string); ok {
-							m := measureTitleInPlaceholder(text, &phInfo, isSectionSlideInput(slideInput, analysis.Layouts))
+							m := measureTitleInPlaceholder(text, effectivePhInfo, isSectionSlideInput(slideInput, analysis.Layouts))
 							if m.OK {
 								titleMeasured = true
 								if d := m.diagnostic(i, j); d != nil {
@@ -665,8 +666,9 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				if phInfo := titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID); phInfo != nil {
 					resolved, _ := item.ResolveValue()
 					if text, ok := resolved.(string); ok {
-						m := measureTitleInPlaceholder(text, phInfo, isSectionSlideInput(slideInput, analysis.Layouts))
-						if capacity := generator.TitlePlaceholderCapacityChars(phInfo); capacity > 0 {
+						effectivePhInfo := authoredTitlePlaceholder(phInfo, &item)
+						m := measureTitleInPlaceholder(text, effectivePhInfo, isSectionSlideInput(slideInput, analysis.Layouts))
+						if capacity := generator.TitlePlaceholderCapacityChars(effectivePhInfo); capacity > 0 {
 							ph.MaxChars = capacity
 						}
 						if d := m.diagnostic(i, j); d != nil {
