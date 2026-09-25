@@ -136,6 +136,11 @@ func applyShapeGridDefaults(sg *jsonschema.ShapeGridInput, d *DefaultsInput) {
 			if cell.Shape != nil && d.CellStyle != nil {
 				applyCellStyleDefaults(cell.Shape, d.CellStyle)
 			}
+			// A nested sub-grid is still a shape_grid: its shapes and tables
+			// are grid cells too (go-slide-creator-s1uvj.14).
+			if cell.Grid != nil {
+				applyShapeGridDefaults(cell.Grid, d)
+			}
 		}
 	}
 }

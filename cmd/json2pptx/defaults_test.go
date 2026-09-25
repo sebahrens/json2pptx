@@ -291,3 +291,45 @@ func TestApplyDefaults_HeaderBackgroundSwap(t *testing.T) {
 		t.Errorf("expected inline HeaderBackground=accent3, got %v", bg)
 	}
 }
+
+// Defaults reach shapes and tables inside a nested sub-grid, at any depth
+// (go-slide-creator-s1uvj.14).
+func TestApplyDefaults_NestedSubGrid(t *testing.T) {
+	input := &PresentationInput{
+		Defaults: &DefaultsInput{
+			TableStyle: &jsonschema.TableStyleInput{Borders: "all", StyleID: "@template-default"},
+			CellStyle:  &jsonschema.ShapeSpecInput{Geometry: "roundRect", Fill: json.RawMessage(`"accent1"`)},
+		},
+		Slides: []SlideInput{{
+			ShapeGrid: &jsonschema.ShapeGridInput{
+				Rows: []jsonschema.GridRowInput{{
+					Cells: []*jsonschema.GridCellInput{{
+						Grid: &jsonschema.ShapeGridInput{
+							Rows: []jsonschema.GridRowInput{{
+								Cells: []*jsonschema.GridCellInput{
+									{Shape: &jsonschema.ShapeSpecInput{Text: json.RawMessage(`{"content":"x"}`)}},
+									{Table: &jsonschema.TableInput{Headers: []string{"X"}, Rows: [][]jsonschema.TableCellInput{{{Content: "v"}}}}},
+									{Grid: &jsonschema.ShapeGridInput{Rows: []jsonschema.GridRowInput{{
+										Cells: []*jsonschema.GridCellInput{{Shape: &jsonschema.ShapeSpecInput{}}},
+									}}}},
+								},
+							}},
+						},
+					}},
+				}},
+			},
+		}},
+	}
+	applyDefaults(input)
+
+	inner := input.Slides[0].ShapeGrid.Rows[0].Cells[0].Grid.Rows[0].Cells
+	if inner[0].Shape.Geometry != "roundRect" || string(inner[0].Shape.Fill) != `"accent1"` {
+		t.Errorf("nested shape: geometry=%q fill=%s, want roundRect/accent1", inner[0].Shape.Geometry, inner[0].Shape.Fill)
+	}
+	if inner[1].Table.Style == nil || inner[1].Table.Style.Borders != "all" {
+		t.Errorf("nested table did not receive table_style defaults: %+v", inner[1].Table.Style)
+	}
+	if deep := inner[2].Grid.Rows[0].Cells[0].Shape; deep.Geometry != "roundRect" {
+		t.Errorf("doubly nested shape geometry=%q, want roundRect", deep.Geometry)
+	}
+}
