@@ -23,9 +23,6 @@ services:
     environment:
       # Development settings
       - LOG_LEVEL=debug
-      - SERVER_AUTH_MODE=disabled
-      # Allow all origins in development
-      - ALLOWED_ORIGINS=*
 
     # Development: remove restart policy for easier debugging
     restart: "no"

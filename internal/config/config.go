@@ -302,5 +302,10 @@ func (c *Config) Validate() error {
 	if c.Storage.OutputDir == "" {
 		return fmt.Errorf("output directory is required")
 	}
+	// A non-positive retention would make the output cleaner treat every file
+	// as expired the moment it is written (go-slide-creator-s1uvj.22).
+	if c.Storage.FileRetention <= 0 {
+		return fmt.Errorf("storage file_retention must be positive, got %s", c.Storage.FileRetention)
+	}
 	return nil
 }

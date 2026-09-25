@@ -71,7 +71,7 @@ func TestValidateJSONFile_UnknownKey_StrictError(t *testing.T) {
 func TestRunJSONDryRun_UnknownKey_DefaultWarning(t *testing.T) {
 	path := writeTempJSON(t, inputWithTypo)
 	output := captureDryRun(t, func() error {
-		return runJSONDryRun(path, "../../templates", "", "", false)
+		return runJSONDryRun(path, "", "../../templates", "", "", false)
 	})
 	warns := findingMessages(output.Findings, diagnostics.SeverityWarning)
 	if !output.Valid {
@@ -85,7 +85,7 @@ func TestRunJSONDryRun_UnknownKey_DefaultWarning(t *testing.T) {
 func TestRunJSONDryRun_UnknownKey_StrictError(t *testing.T) {
 	path := writeTempJSON(t, inputWithTypo)
 	output := captureDryRun(t, func() error {
-		return runJSONDryRun(path, "../../templates", "", "", true)
+		return runJSONDryRun(path, "", "../../templates", "", "", true)
 	})
 	if output.Valid {
 		t.Fatalf("expected Valid=false with strict=true")
@@ -215,4 +215,29 @@ func captureDryRun(t *testing.T, fn func() error) dryRunOutput {
 		t.Fatalf("dry-run output not JSON: %v\nraw: %s", err, string(buf))
 	}
 	return output
+}
+
+// go-slide-creator-s1uvj.20: `generate --dry-run -template X` ignored the
+// override and validated against the deck's own template, so a dry run could
+// disagree with the real run it previews.
+func TestRunJSONDryRun_TemplateOverride(t *testing.T) {
+	deck := `{"template":"no-such-template","slides":[{"slide_type":"title","content":[{"placeholder_id":"title","type":"text","text_value":"Hi"}]}]}`
+	path := writeTempJSON(t, deck)
+	output := captureDryRun(t, func() error {
+		return runJSONDryRun(path, "midnight-blue.pptx", "../../templates", "", "", false)
+	})
+	if !output.Valid {
+		t.Fatalf("dry run ignored -template override: %v", findingMessages(output.Findings, diagnostics.SeverityError))
+	}
+	if output.Findings.Template != "midnight-blue" {
+		t.Errorf("findings template = %q, want midnight-blue", output.Findings.Template)
+	}
+
+	// Without the override the deck's own (unknown) template still fails.
+	output = captureDryRun(t, func() error {
+		return runJSONDryRun(path, "", "../../templates", "", "", false)
+	})
+	if output.Valid {
+		t.Fatal("dry run without override accepted an unknown template")
+	}
 }

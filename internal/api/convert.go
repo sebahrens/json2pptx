@@ -40,6 +40,9 @@ type ConvertService struct {
 	// link lives longer (or shorter) than the file actually survives. A
 	// zero/negative value falls back to DefaultFileRetention.
 	fileRetention time.Duration
+	// allowedImagePaths restricts local image paths (ALLOWED_IMAGE_PATHS).
+	// Empty means unrestricted apart from the traversal check.
+	allowedImagePaths []string
 }
 
 // NewConvertService creates a new convert service.
@@ -56,6 +59,12 @@ func NewConvertService(templatesDir, outputDir string, templateAnalyzer Template
 // A zero or negative duration preserves the DefaultFileRetention fallback.
 func (cs *ConvertService) SetFileRetention(d time.Duration) {
 	cs.fileRetention = d
+}
+
+// SetAllowedImagePaths restricts local image paths referenced by converted
+// decks to the given roots. Nil or empty leaves them unrestricted.
+func (cs *ConvertService) SetAllowedImagePaths(paths []string) {
+	cs.allowedImagePaths = append([]string(nil), paths...)
 }
 
 // effectiveFileRetention returns the configured retention, or
@@ -132,6 +141,7 @@ func (cs *ConvertService) ConvertHandler() http.HandlerFunc {
 			TemplatePath:          templatePath,
 			SVGScale:              req.Options.SVGScale,
 			ExcludeTemplateSlides: req.Options.ExcludeTemplateSlides,
+			AllowedImagePaths:     cs.allowedImagePaths,
 		}
 
 		// Execute conversion

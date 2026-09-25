@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/templatesettings"
 	"github.com/sebahrens/json2pptx/templates"
 )
 
@@ -121,6 +122,18 @@ func resolveTemplatesDir(flagValue string) (string, bool) {
 func resolveTemplatePath(templateName, flagTemplatesDir string) (string, func(), error) {
 	// Strip .pptx extension if user included it (e.g., "my-template.pptx" -> "my-template")
 	templateName = strings.TrimSuffix(templateName, ".pptx")
+	noop := func() {}
+
+	// A template NAME is a bare file stem; it must never act as a path. Without
+	// this check "../elsewhere/x" escaped every templates dir via filepath.Join,
+	// sidestepping the base_dir guard template_path enforces
+	// (go-slide-creator-s1uvj.18).
+	if err := templatesettings.ValidateTemplateName(templateName); err != nil {
+		return "", noop, fmt.Errorf("invalid template name: %v: %w", err, errTemplateNameNotFound)
+	}
+	if filepath.IsAbs(templateName) || filepath.VolumeName(templateName) != "" {
+		return "", noop, fmt.Errorf("invalid template name %q: absolute paths are not template names: %w", templateName, errTemplateNameNotFound)
+	}
 	filename := templateName + ".pptx"
 
 	// Build candidate directories in priority order.
@@ -151,8 +164,6 @@ func resolveTemplatePath(templateName, flagTemplatesDir string) (string, func(),
 
 	// 5. Current directory
 	candidates = append(candidates, "./templates")
-
-	noop := func() {}
 
 	// Search each candidate
 	for _, dir := range candidates {

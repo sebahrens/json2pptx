@@ -665,6 +665,7 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		SVGScale:             cfg.SVG.Scale,
 		SVGNativeCompat:      string(cfg.SVG.NativeCompatibility),
 		MaxPNGWidth:          cfg.SVG.MaxPNGWidth,
+		AllowedImagePaths:    imageAllowList(mc.cfg.Images.AllowedBasePaths),
 	})
 	defer cleanup()
 	if renderErr != nil {

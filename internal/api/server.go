@@ -49,6 +49,10 @@ type ServerConfig struct {
 	// compute the expires_at advertised in file responses so it matches the
 	// OutputCleaner policy. Zero/negative falls back to DefaultFileRetention.
 	FileRetention time.Duration
+	// AllowedImagePaths restricts local image paths referenced by decks to
+	// these roots (config Images.AllowedBasePaths / ALLOWED_IMAGE_PATHS).
+	// Empty means unrestricted apart from the traversal check.
+	AllowedImagePaths []string
 }
 
 // NewServer creates a new API server with all handlers configured.
@@ -61,6 +65,7 @@ func NewServer(cfg ServerConfig) *Server {
 	conversionPipeline := pipeline.NewPipeline()
 	convertService := NewConvertService(cfg.TemplatesDir, cfg.OutputDir, templateService, conversionPipeline)
 	convertService.SetFileRetention(cfg.FileRetention)
+	convertService.SetAllowedImagePaths(cfg.AllowedImagePaths)
 	healthHandler := NewHealthHandler(cfg.Logger, HealthConfig{
 		Version:   cfg.Version,
 		CommitSHA: cfg.CommitSHA,
