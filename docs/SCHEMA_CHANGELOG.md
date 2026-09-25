@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.132.0: complete pattern discovery placement fields (`go-slide-creator-izxpe`).**
+  `show_pattern` and other pattern-discovery schemas now declare
+  `bounds` and `max_height_pct`. Structured `values` objects with declared
+  fields reject unknown properties in the published schema. A dropped
+  `card-grid.values.cards` field now suggests renaming it to `cells`. The
+  height cap declares the runtime's open `(0,100)` interval, including
+  fractional percentages (`go-slide-creator-v0tg8`).
+
 - **2026-09-25 — Schema 4.131.0: installed-skill drift detection and projected output schemas (`go-slide-creator-o6i9d`, `go-slide-creator-pzlsj`, `go-slide-creator-9vohe`).**
   The generate-deck skill frontmatter now carries a test-enforced
   `schema_version`. `get_capabilities` and `get_started` expose

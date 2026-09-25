@@ -120,7 +120,8 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// This constrains the grid to a sub-region of the layout area, which also
 	// corrects density math (cell_budgets uses grid.Bounds when present).
 	// A user-positioned block is kept where the user put it: max_height_pct
-	// stays top-anchored and rows fill the user's bounds (stretch).
+	// stays top-anchored and rows fill the user's bounds (stretch). The shapegrid
+	// stretch constant is the empty string, so vertical_align is omitted in JSON.
 	if b, relativeToContentArea := resolvePatternBounds(p); b != nil {
 		grid.Bounds = b
 		grid.BoundsRelativeToContentArea = relativeToContentArea

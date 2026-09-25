@@ -542,12 +542,12 @@ With a headline or so-what the insights cell becomes a nested column (headline /
 
 Patterns assume `full_content_area` by default — the grid fills the entire layout content area. For patterns with short content this produces oversized cells. Constrain the grid with:
 
-- **`max_height_pct`** (number, 1–99): constrains grid height to this percentage of the content area.
+- **`max_height_pct`** (number strictly between 0 and 100, including fractions): constrains grid height to this percentage of the content area.
 - **`bounds`** (object: `{x, y, width, height}` as percentages of slide dimensions): explicit bounding rectangle.
 
 These fields live on `PatternInput` (slide-level JSON) and on the `expand_pattern` MCP tool parameters. When set, the expanded grid gets a `bounds` field on the `ShapeGridInput`, which the shapegrid resolver and density math respect automatically.
 
-`bounds` takes priority over `max_height_pct`. If neither is set, the grid uses the full content area (backward-compatible default). A user `bounds` / `max_height_pct` override also resets the grid's `vertical_align` to `stretch`, so the block stays where the user put it.
+`bounds` takes priority over `max_height_pct`. If neither is set, the grid uses the full content area (backward-compatible default). A user `bounds` / `max_height_pct` override clears `vertical_align`; the omitted value means effective `stretch`, so the block stays where the user put it. The expanded JSON does not contain the literal string `"stretch"`.
 
 ## Content-sized heights and vertical centring (authoring contract)
 

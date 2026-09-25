@@ -202,6 +202,33 @@ func TestMCPListPatterns_InvalidCursor(t *testing.T) {
 }
 
 func TestMCPShowPattern(t *testing.T) {
+	t.Run("placement fields and closed card-grid values", func(t *testing.T) {
+		result, err := handleShowPattern(context.Background(), makeRequest(map[string]any{"name": "card-grid"}))
+		if err != nil || result.IsError {
+			t.Fatalf("show_pattern failed: %v, %+v", err, result)
+		}
+		entry, ok := result.StructuredContent.(skillPatternFull)
+		if !ok {
+			t.Fatalf("show_pattern returned %T", result.StructuredContent)
+		}
+		var schema struct {
+			Properties map[string]struct {
+				Type                 string `json:"type"`
+				AdditionalProperties *bool  `json:"additionalProperties"`
+			} `json:"properties"`
+		}
+		if err := json.Unmarshal(entry.Schema, &schema); err != nil {
+			t.Fatal(err)
+		}
+		if schema.Properties["bounds"].Type != "object" || schema.Properties["max_height_pct"].Type != "number" {
+			t.Errorf("placement fields missing from show_pattern schema: %s", entry.Schema)
+		}
+		values := schema.Properties["values"]
+		if values.Type != "object" || values.AdditionalProperties == nil || *values.AdditionalProperties {
+			t.Errorf("card-grid values must be closed: %s", entry.Schema)
+		}
+	})
+
 	t.Run("known pattern", func(t *testing.T) {
 		result, err := handleShowPattern(context.Background(), makeRequest(map[string]any{
 			"name": "kpi-3up",

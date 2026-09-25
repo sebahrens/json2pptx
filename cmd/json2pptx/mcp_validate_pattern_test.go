@@ -65,6 +65,40 @@ func TestValidatePatternCatchesExpandContentBudgets(t *testing.T) {
 	}
 }
 
+func TestValidatePatternSuggestsCellsForDroppedCards(t *testing.T) {
+	mc := &mcpConfig{templatesDir: "../../templates"}
+	result, err := mc.handleValidatePattern(context.Background(), makeRequest(map[string]any{
+		"name": "card-grid",
+		"values": map[string]any{
+			"columns": 1,
+			"rows":    1,
+			"cards":   []any{map[string]any{"header": "Revenue", "body": "Growing"}},
+		},
+	}))
+	if err != nil || result.IsError {
+		t.Fatalf("validate_pattern failed: %v, %+v", err, result)
+	}
+	env := patternValidationEnvelope(t, result)
+	if env.OK {
+		t.Fatal("dropped cards must not validate")
+	}
+	for _, finding := range env.Findings {
+		if finding.Code != "GRID.PATTERN_UNKNOWN_FIELD" {
+			continue
+		}
+		if path, _ := finding.Evidence["path"].(string); path != "/values/cards" {
+			continue
+		}
+		if finding.Remediation == nil || finding.Remediation.Primary == nil ||
+			finding.Remediation.Primary.Params["kind"] != "rename_field" ||
+			finding.Remediation.Primary.Params["to"] != "cells" {
+			t.Fatalf("cards finding lacks actionable cells rename: %+v", finding)
+		}
+		return
+	}
+	t.Fatalf("missing cards finding: %+v", env.Findings)
+}
+
 func TestPatternExpansionDiagnosticsCapacityStatus(t *testing.T) {
 	tests := []struct {
 		status   string

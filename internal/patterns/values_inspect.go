@@ -765,7 +765,7 @@ func containedIn(leaf string, survived map[string]int) bool {
 // Keep each class to genuinely interchangeable slide vocabulary.
 var fieldSynonymClasses = [][]string{
 	{"title", "name", "label", "heading", "header", "role", "caption", "subtitle", "eyebrow", "position"},
-	{"rows", "columns", "cols", "items", "entries", "cells", "list", "points", "lines"},
+	{"rows", "columns", "cols", "items", "entries", "cells", "cards", "list", "points", "lines"},
 	{"body", "text", "content", "description", "detail", "details", "summary", "blurb", "bio", "note"},
 	{"date", "date_label", "when", "timeframe", "period", "timing", "duration"},
 	{"value", "number", "metric", "stat", "figure", "amount", "big", "total"},

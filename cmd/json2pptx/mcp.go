@@ -1275,7 +1275,7 @@ func mcpValidatePatternTool() mcp.Tool {
 			mcp.Description("Explicit bounding rectangle (percentages of slide dimensions: x, y, width, height), matching expand_pattern."),
 		),
 		mcp.WithNumber("max_height_pct",
-			mcp.Description("Maximum grid height as a percentage of the content area (1-99), matching expand_pattern."),
+			mcp.Description("Maximum grid height as a percentage of the content area (strictly between 0 and 100), matching expand_pattern."),
 		),
 	)
 }
@@ -1302,7 +1302,7 @@ func mcpExpandPatternTool() mcp.Tool {
 			mcp.Description("Explicit bounding rectangle (percentages of slide dimensions: x, y, width, height). Constrains the grid to a sub-region, fixing density math for patterns that don't fill the full content area."),
 		),
 		mcp.WithNumber("max_height_pct",
-			mcp.Description("Convenience alias: constrains grid height to this percentage of the content area (1-99). Equivalent to bounds:{x:0,y:0,width:100,height:<value>}."),
+			mcp.Description("Convenience alias: constrains grid height to this percentage of the content area (strictly between 0 and 100). Equivalent to bounds:{x:0,y:0,width:100,height:<value>}."),
 		),
 	)
 }

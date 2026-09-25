@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.131.0
+schema_version: 4.132.0
 description: >
   Generate consulting-quality PowerPoint decks from user prompts using json2pptx.
   Applies constrained generation: 4-phase workflow (Plan → Vary → Render → Repair),

@@ -5,6 +5,57 @@ import (
 	"testing"
 )
 
+func TestDiscoverySchemaIncludesPlacementAndClosesStructuredValues(t *testing.T) {
+	for _, pat := range Default().List() {
+		t.Run(pat.Name(), func(t *testing.T) {
+			var doc map[string]any
+			if err := json.Unmarshal(SchemaJSON(pat), &doc); err != nil {
+				t.Fatal(err)
+			}
+			props, ok := doc["properties"].(map[string]any)
+			if !ok {
+				t.Fatal("pattern schema has no properties")
+			}
+			maxHeight, ok := props["max_height_pct"].(map[string]any)
+			if !ok || maxHeight["exclusiveMinimum"] != float64(0) || maxHeight["exclusiveMaximum"] != float64(100) {
+				t.Errorf("max_height_pct = %v", props["max_height_pct"])
+			}
+			bounds, ok := props["bounds"].(map[string]any)
+			if !ok || bounds["additionalProperties"] != false {
+				t.Errorf("bounds = %v", props["bounds"])
+			} else if fields, ok := bounds["properties"].(map[string]any); !ok || len(fields) != 4 {
+				t.Errorf("bounds properties = %v", bounds["properties"])
+			}
+			values, ok := props["values"].(map[string]any)
+			if !ok {
+				t.Fatal("pattern schema has no values")
+			}
+			if values["type"] == "object" {
+				if fields, ok := values["properties"].(map[string]any); ok && len(fields) > 0 && values["additionalProperties"] != false {
+					t.Errorf("structured values object permits unknown keys: %v", values)
+				} else if ok {
+					// An exemplar is a concrete payload we tell agents to copy. Closing
+					// the schema must never reject one of its own documented keys.
+					if example, ok := pat.(Exemplar); ok {
+						raw, err := json.Marshal(example.ExemplarValues())
+						if err != nil {
+							t.Fatal(err)
+						}
+						var exampleValues map[string]any
+						if err := json.Unmarshal(raw, &exampleValues); err == nil {
+							for key := range exampleValues {
+								if _, declared := fields[key]; !declared {
+									t.Errorf("exemplar value key %q is excluded by closed discovery schema", key)
+								}
+							}
+						}
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestObjectSchemaRoundTrip(t *testing.T) {
 	// Build a schema: object with required string "title" and optional
 	// array of strings "tags".
@@ -361,15 +412,15 @@ func TestPatternSchemaCompression(t *testing.T) {
 }
 
 func TestSchemaJSONCacheConsistency(t *testing.T) {
-	// Verify SchemaJSON returns the same bytes as json.Marshal(p.Schema())
+	// Verify SchemaJSON returns the same bytes as the completed discovery schema.
 	for _, p := range Default().List() {
-		direct, err := json.Marshal(p.Schema())
+		direct, err := json.Marshal(discoverySchema(p))
 		if err != nil {
 			t.Fatalf("%s: marshal error: %v", p.Name(), err)
 		}
 		cached := SchemaJSON(p)
 		if string(cached) != string(direct) {
-			t.Errorf("%s: SchemaJSON mismatch with json.Marshal(Schema())", p.Name())
+			t.Errorf("%s: SchemaJSON mismatch with json.Marshal(discoverySchema())", p.Name())
 		}
 
 		// Call again to verify cache hit returns same result
@@ -385,7 +436,7 @@ func BenchmarkSchemaJSONDirect(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, p := range all {
-			json.Marshal(p.Schema()) //nolint:errcheck
+			json.Marshal(discoverySchema(p)) //nolint:errcheck
 		}
 	}
 }

@@ -40,6 +40,8 @@ type schemaJSON struct {
 	MinLength            *int               `json:"minLength,omitempty"`
 	Minimum              *float64           `json:"minimum,omitempty"`
 	Maximum              *float64           `json:"maximum,omitempty"`
+	ExclusiveMinimum     *float64           `json:"exclusiveMinimum,omitempty"`
+	ExclusiveMaximum     *float64           `json:"exclusiveMaximum,omitempty"`
 	Enum                 []string           `json:"enum,omitempty"`
 	Const                *json.RawMessage   `json:"const,omitempty"`
 	Ref                  string             `json:"$ref,omitempty"`
@@ -226,7 +228,7 @@ func SchemaJSON(p Pattern) []byte {
 	if cached, ok := schemaJSONCache.Load(name); ok {
 		return cached.([]byte) //nolint:errcheck // type assertion on known []byte
 	}
-	data, _ := json.Marshal(p.Schema()) //nolint:errcheck // schema marshaling is infallible
+	data, _ := json.Marshal(discoverySchema(p)) //nolint:errcheck // schema marshaling is infallible
 	schemaJSONCache.Store(name, data)
 	return data
 }
@@ -241,9 +243,43 @@ func SchemaJSONIndent(p Pattern) []byte {
 	if cached, ok := schemaJSONIndentCache.Load(name); ok {
 		return cached.([]byte) //nolint:errcheck // type assertion on known []byte
 	}
-	data, _ := json.MarshalIndent(p.Schema(), "", "  ") //nolint:errcheck // schema marshaling is infallible
+	data, _ := json.MarshalIndent(discoverySchema(p), "", "  ") //nolint:errcheck // schema marshaling is infallible
 	schemaJSONIndentCache.Store(name, data)
 	return data
+}
+
+// discoverySchema completes the pattern's hand-authored value contract with
+// the placement fields accepted by PatternInput. The decoder, not JSON Schema,
+// remains authoritative for tolerated value aliases; only object value
+// sections with declared properties can safely be marked closed.
+func discoverySchema(p Pattern) *Schema {
+	authored := p.Schema()
+	if authored == nil || authored.raw.Type != TypeObject {
+		return authored
+	}
+	root := *authored
+	root.raw.Properties = make(map[string]*Schema, len(authored.raw.Properties)+2)
+	for key, value := range authored.raw.Properties {
+		root.raw.Properties[key] = value
+	}
+	root.raw.Properties["max_height_pct"] = (&Schema{raw: schemaJSON{
+		Type:             TypeNumber,
+		ExclusiveMinimum: float64Ptr(0),
+		ExclusiveMaximum: float64Ptr(100),
+	}}).WithDescription("Maximum grid height as a percentage of the content area; strictly between 0 and 100, including fractional values; ignored when bounds is set")
+	root.raw.Properties["bounds"] = ObjectSchema(map[string]*Schema{
+		"x":      NumberSchema(0, 100),
+		"y":      NumberSchema(0, 100),
+		"width":  NumberSchema(0, 100),
+		"height": NumberSchema(0, 100),
+	}, []string{"x", "y", "width", "height"}).WithAdditionalProperties(false).
+		WithDescription("Explicit rectangle as percentages of slide dimensions; takes priority over max_height_pct")
+	if values := root.raw.Properties["values"]; values != nil && values.raw.Type == TypeObject && len(values.raw.Properties) > 0 && len(values.raw.PatternProperties) == 0 {
+		closed := *values
+		closed.WithAdditionalProperties(false)
+		root.raw.Properties["values"] = &closed
+	}
+	return &root
 }
 
 func intPtr(v int) *int             { return &v }

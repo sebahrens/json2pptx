@@ -147,6 +147,29 @@ func TestExpandPattern_KPI3Up(t *testing.T) {
 	}
 }
 
+func TestResolvePatternBoundsFractionalHeightCaps(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		pct  float64
+		want bool
+	}{
+		{"zero excluded", 0, false},
+		{"small fraction accepted", 0.5, true},
+		{"large fraction accepted", 99.5, true},
+		{"hundred excluded", 100, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			bounds, relative := resolvePatternBounds(&PatternInput{MaxHeightPct: tt.pct})
+			if (bounds != nil) != tt.want {
+				t.Fatalf("max_height_pct %g: bounds = %+v, want present %v", tt.pct, bounds, tt.want)
+			}
+			if tt.want && (!relative || bounds.Height != tt.pct) {
+				t.Errorf("max_height_pct %g: bounds = %+v, relative = %v", tt.pct, bounds, relative)
+			}
+		})
+	}
+}
+
 func TestExpandPattern_MaxHeightPctMarksContentRelativeBounds(t *testing.T) {
 	input := &PatternInput{
 		Name:         "process-flow",
@@ -172,6 +195,11 @@ func TestExpandPattern_MaxHeightPctMarksContentRelativeBounds(t *testing.T) {
 	}
 	if got := grid.Bounds.Height; got != 35 {
 		t.Fatalf("bounds height = %v, want 35", got)
+	}
+	if grid.VerticalAlign != "" {
+		t.Errorf("max_height_pct override vertical_align = %q, want omitted default", grid.VerticalAlign)
+	} else if align, ok := shapegrid.ParseVerticalAlign(grid.VerticalAlign); !ok || align != shapegrid.VAlignStretch {
+		t.Errorf("max_height_pct override has effective vertical alignment %q, want stretch", align)
 	}
 }
 
@@ -220,6 +248,11 @@ func TestExpandPattern_ExplicitBoundsStaySlideRelative(t *testing.T) {
 	}
 	if grid.BoundsRelativeToContentArea {
 		t.Fatal("caller-supplied explicit bounds must stay slide-relative")
+	}
+	if grid.VerticalAlign != "" {
+		t.Errorf("explicit bounds override vertical_align = %q, want omitted default", grid.VerticalAlign)
+	} else if align, ok := shapegrid.ParseVerticalAlign(grid.VerticalAlign); !ok || align != shapegrid.VAlignStretch {
+		t.Errorf("explicit bounds override has effective vertical alignment %q, want stretch", align)
 	}
 }
 
