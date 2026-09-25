@@ -196,7 +196,7 @@ slides:
 	}
 }
 
-func TestSemanticMCP_ParseFailuresDoNotMintDeckHandles(t *testing.T) {
+func TestSemanticMCP_ParseFailuresReturnFindingsWithoutHandles(t *testing.T) {
 	mc := handleTestConfig(t)
 	for _, spec := range []string{
 		"meta: [unterminated",
@@ -222,32 +222,49 @@ func TestSemanticMCP_ParseFailuresDoNotMintDeckHandles(t *testing.T) {
 				t.Fatalf("validation lost SEMANTIC_UNKNOWN_KIND: %+v", response.Findings)
 			}
 		}
-		rendered := mustCall(t, mc.handleRenderDeckSpec, map[string]any{"spec": spec})
-		if !rendered.IsError {
-			t.Fatal("render_deck_spec parse failure must be an MCP error")
-		}
-		var envelope diagnostics.FindingEnvelope
-		structuredInto(t, rendered.StructuredContent, &envelope)
-		if envelope.OK || len(envelope.Findings) == 0 {
-			t.Fatalf("render parse failure has no actionable finding envelope: %+v", envelope)
-		}
+		caseName := "invalid_yaml"
 		if strings.Contains(spec, "not_a_kind") {
-			found := false
-			for _, finding := range envelope.Findings {
-				if !strings.HasSuffix(finding.Code, diagnostics.CodeSemanticUnknownKind) {
-					continue
+			caseName = "unknown_kind"
+		}
+		for _, producer := range []struct {
+			name string
+			fn   func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+		}{
+			{"render_deck_spec", mc.handleRenderDeckSpec},
+			{"compile_deck_spec", handleCompileDeckSpec},
+		} {
+			t.Run(producer.name+"/"+caseName, func(t *testing.T) {
+				result := mustCall(t, producer.fn, map[string]any{"spec": spec})
+				if !result.IsError {
+					t.Fatal("parse failure must be an MCP error")
 				}
-				found = true
-				if finding.Evidence["path"] != "slides[0].kind" || finding.NextToolCall == nil || finding.NextToolCall.Tool != "list_slide_kinds" {
-					t.Fatalf("unknown kind finding lacks source path or recovery call: %+v", finding)
+				var envelope diagnostics.FindingEnvelope
+				structuredInto(t, result.StructuredContent, &envelope)
+				if envelope.OK || len(envelope.Findings) == 0 {
+					t.Fatalf("parse failure has no actionable finding envelope: %+v", envelope)
 				}
-				if available, ok := finding.Evidence["available"].([]any); !ok || len(available) == 0 {
-					t.Fatalf("unknown kind finding lacks available kinds: %+v", finding)
+				if caseName == "invalid_yaml" && !strings.HasSuffix(envelope.Findings[0].Code, diagnostics.CodeInvalidJSON) {
+					t.Fatalf("invalid YAML finding code = %q, want INVALID_JSON", envelope.Findings[0].Code)
 				}
-			}
-			if !found {
-				t.Fatalf("missing SEMANTIC_UNKNOWN_KIND finding: %+v", envelope.Findings)
-			}
+				if strings.Contains(spec, "not_a_kind") {
+					found := false
+					for _, finding := range envelope.Findings {
+						if !strings.HasSuffix(finding.Code, diagnostics.CodeSemanticUnknownKind) {
+							continue
+						}
+						found = true
+						if finding.Evidence["path"] != "slides[0].kind" || finding.NextToolCall == nil || finding.NextToolCall.Tool != "list_slide_kinds" {
+							t.Fatalf("unknown kind finding lacks source path or recovery call: %+v", finding)
+						}
+						if available, ok := finding.Evidence["available"].([]any); !ok || len(available) == 0 {
+							t.Fatalf("unknown kind finding lacks available kinds: %+v", finding)
+						}
+					}
+					if !found {
+						t.Fatalf("missing SEMANTIC_UNKNOWN_KIND finding: %+v", envelope.Findings)
+					}
+				}
+			})
 		}
 	}
 }

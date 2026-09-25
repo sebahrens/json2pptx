@@ -301,7 +301,7 @@ type compileDeckSpecResponse struct {
 
 func mcpCompileDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("compile_deck_spec",
-		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) into the raw json2pptx PresentationInput model. Returns a COMPACT result by default — {ok, slide_count, template, diagnostics[]} — so you can confirm the spec lowers cleanly and inspect any blocking findings without paying for the whole compiled deck. Pass include_compiled_json=true to also receive the full PresentationInput under compiled_json (consumable by validate_input / generate_presentation for advanced edits or debugging). ok=false carries the blocking error and diagnostics. Mirrors the `+"`json2pptx semantic compile`"+` CLI.`),
+		mcp.WithDescription(`Compile a semantic DeckSpec into raw PresentationInput. Returns {ok, slide_count, template, diagnostics[]} without the full deck by default; include_compiled_json=true adds compiled_json for validate_input or generate_presentation. Parse errors use a finding envelope; unknown kinds include available kinds and a discovery call. Other blocking failures return ok=false with diagnostics. Mirrors the `+"`json2pptx semantic compile`"+` CLI.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaCompileDeckSpec)),
 		deckSpecArg("The semantic DeckSpec to compile, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		mcp.WithString("strict",
@@ -336,11 +336,9 @@ func handleCompileDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*m
 
 	spec, parseDiags := semantic.Parse(filename, data)
 	if parseDiags.HasErrors() {
-		res := compileDeckSpecResponse{OK: false, Error: "compile_deck_spec: spec could not be parsed"}
-		for _, d := range parseDiags.ToDiagnostics() {
-			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
-		}
-		return semanticSuccessOrInternal(ctx, "compile_deck_spec", res)
+		ds := parseDiags.ToDiagnostics()
+		enrichSemanticKindDiagnostics(ds)
+		return api.MCPDiagnosticsError(ds), nil
 	}
 
 	input, result, err := semantic.Compile(spec, semantic.CompileOptions{
