@@ -341,15 +341,19 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 // TestSchemaMaximaStayReadable fails both when a number gets worse and when it
 // improves without the pin following, so the ground a fix wins cannot be given
 // back (go-slide-creator-0g6p).
+// The schema-maximum payload is an unbroken run of "W"s. Until
+// go-slide-creator-s1uvj.12 textfit character-wrapped an over-wide word only
+// when it opened its paragraph, so a maximum that followed a bullet or label
+// prefix measured as one line; the pins below were re-measured with the fix.
 var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8,
 	"agenda-with-images":           6.0,
 	"arch-stack":                   0,
-	"before-after":                 0.0,
-	"before-after-compact":         10.1,
-	"bmc-canvas":                   3.8,
+	"before-after":                 5.0,
+	"before-after-compact":         5.0,
+	"bmc-canvas":                   2.4,
 	"card-grid":                    2.4,
-	"chart-insights-split":         9.4,
+	"chart-insights-split":         6.2,
 	"comparison-2col":              4.2,
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
@@ -380,10 +384,10 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"pyramid":             9.2,
 	"quote-cluster":       6.7,
 	"roadmap-phased":      5.0,
-	"scqa-summary":        7.4,
+	"scqa-summary":        4.8,
 	"stat-hero":           7.4,
-	"strategy-house":      8.2,
-	"stylish-panels":      6.4,
+	"strategy-house":      4.6,
+	"stylish-panels":      2.8,
 	"swimlane":            5.5,
 	"table-highlight":     6.7,
 	"team-bios":           5.5,
