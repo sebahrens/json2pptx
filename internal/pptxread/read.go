@@ -117,8 +117,62 @@ func readSlide(pkg *pptx.Package, info pptx.SlideInfo) (*Slide, error) {
 		return nil, fmt.Errorf("parse slide %d XML: %w", info.Index, err)
 	}
 
+	collectShapeTree(slide, &sld.CSld.SpTree, identityTransform)
+
+	// Extract speaker notes.
+	slide.SpeakerNotes = readSpeakerNotes(pkg, info.PartPath)
+
+	return slide, nil
+}
+
+// childTransform maps a rectangle from a shape tree's coordinate space to
+// slide coordinates. The top-level spTree uses the identity; each p:grpSp
+// composes its chOff/chExt -> off/ext mapping on top of its parent's.
+type childTransform func(r Rect) Rect
+
+func identityTransform(r Rect) Rect { return r }
+
+// groupTransform returns the transform for a group's children, composed with
+// the parent transform. A group without a usable xfrm (zero child extent)
+// passes coordinates through unscaled.
+func groupTransform(parent childTransform, x *groupXfrmElement) childTransform {
+	if x == nil {
+		return parent
+	}
+	sx, sy := 1.0, 1.0
+	if x.ChExt.CX != 0 {
+		sx = float64(x.Ext.CX) / float64(x.ChExt.CX)
+	}
+	if x.ChExt.CY != 0 {
+		sy = float64(x.Ext.CY) / float64(x.ChExt.CY)
+	}
+	return func(r Rect) Rect {
+		return parent(Rect{
+			X:      x.Off.X + int64(float64(r.X-x.ChOff.X)*sx),
+			Y:      x.Off.Y + int64(float64(r.Y-x.ChOff.Y)*sy),
+			Width:  int64(float64(r.Width) * sx),
+			Height: int64(float64(r.Height) * sy),
+		})
+	}
+}
+
+// boundsIn converts an xfrm in a tree's coordinate space to slide bounds.
+func boundsIn(xfrm *xfrmElement, tf childTransform) *Rect {
+	r := xfrmToRect(xfrm)
+	if r == nil {
+		return nil
+	}
+	out := tf(*r)
+	return &out
+}
+
+// collectShapeTree appends the placeholders, shapes and tables of a shape
+// tree to slide, recursing into p:grpSp groups so grouped text (native
+// diagrams) is read and reported at slide coordinates
+// (go-slide-creator-s1uvj.27).
+func collectShapeTree(slide *Slide, tree *shapeTree, tf childTransform) {
 	// Extract shapes (sp elements).
-	for _, sp := range sld.CSld.SpTree.Shapes {
+	for _, sp := range tree.Shapes {
 		ph := sp.NvSpPr.NvPr.Placeholder
 		text := extractText(sp.TxBody)
 
@@ -130,9 +184,7 @@ func readSlide(pkg *pptx.Package, info pptx.SlideInfo) (*Slide, error) {
 				Type: ph.Type,
 				Text: text,
 			}
-			if sp.SpPr.Xfrm != nil {
-				p.Bounds = xfrmToRect(sp.SpPr.Xfrm)
-			}
+			p.Bounds = boundsIn(sp.SpPr.Xfrm, tf)
 			slide.Placeholders = append(slide.Placeholders, p)
 		} else if text != "" || sp.SpPr.PrstGeom != nil {
 			// Non-placeholder shape with text or geometry.
@@ -143,27 +195,26 @@ func readSlide(pkg *pptx.Package, info pptx.SlideInfo) (*Slide, error) {
 			if sp.SpPr.PrstGeom != nil {
 				s.Geometry = sp.SpPr.PrstGeom.Prst
 			}
-			if sp.SpPr.Xfrm != nil {
-				s.Bounds = xfrmToRect(sp.SpPr.Xfrm)
-			}
+			s.Bounds = boundsIn(sp.SpPr.Xfrm, tf)
 			slide.Shapes = append(slide.Shapes, s)
 		}
 	}
 
 	// Extract tables (graphicFrame elements with tbl).
-	for _, gf := range sld.CSld.SpTree.GraphicFrames {
+	for _, gf := range tree.GraphicFrames {
 		tbl := gf.Graphic.GraphicData.Table
 		if tbl == nil {
 			continue
 		}
 		t := extractTable(gf.NvGraphicFramePr.CNvPr.Name, tbl, gf.Xfrm)
+		t.Bounds = boundsIn(gf.Xfrm, tf)
 		slide.Tables = append(slide.Tables, t)
 	}
 
-	// Extract speaker notes.
-	slide.SpeakerNotes = readSpeakerNotes(pkg, info.PartPath)
-
-	return slide, nil
+	for i := range tree.Groups {
+		g := &tree.Groups[i]
+		collectShapeTree(slide, &g.shapeTree, groupTransform(tf, g.GrpSpPr.Xfrm))
+	}
 }
 
 // resolveLayoutID finds the layout filename referenced by a slide's .rels file.
