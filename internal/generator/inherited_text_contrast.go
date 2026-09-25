@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -105,6 +106,34 @@ func layoutPlaceholderLevelStyle(layoutXML []byte, ph *placeholderXML) string {
 			return lvl
 		}
 		return body[1]
+	}
+	return ""
+}
+
+// layoutPlaceholderSolidFill resolves a placeholder's own area fill. That
+// fill is painted above the slide background, so contrast against <p:bg>
+// alone can produce the opposite text color from the one the viewer needs.
+func layoutPlaceholderSolidFill(layoutXML []byte, ph *placeholderXML, themeColors []types.ThemeColor, slideBackground string, override map[string]string) string {
+	if ph == nil {
+		return ""
+	}
+	for _, sp := range layoutShapeRegexp.FindAllString(string(layoutXML), -1) {
+		if placeholderMatches(sp, ph) {
+			fill := extractShapeFillHex([]byte(sp), themeColors, slideBackground)
+			if fill == "" || len(override) == 0 {
+				return fill
+			}
+			// Scheme colors on a layout shape obey its clrMapOvr just like
+			// inherited text. Resolve the mapped base before applying tint/alpha.
+			spPr := []byte(sp)
+			if end := bytes.Index(spPr, []byte("</p:spPr>")); end >= 0 {
+				spPr = spPr[:end]
+			}
+			if m := shapeFillSchemeRegexp.FindSubmatch(spPr); len(m) > 1 {
+				return applyShapeFillModifiers(resolveSchemeColorMapped(string(m[1]), override, themeColors), spPr, themeColors, slideBackground)
+			}
+			return fill
+		}
 	}
 	return ""
 }
@@ -257,11 +286,7 @@ func pinRunColors(shape *shapeXML, hex string) {
 // master, and without either file there is nothing to resolve and nothing is
 // changed.
 func enforceInheritedTextContrast(slide *slideXML, layoutXML, masterXML []byte, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string) []ContrastSwap {
-	if slide == nil || bgHex == "" || len(layoutXML) == 0 {
-		return nil
-	}
-	bg, err := svggen.ParseColor(bgHex)
-	if err != nil {
+	if slide == nil || len(layoutXML) == 0 {
 		return nil
 	}
 
@@ -287,6 +312,14 @@ func enforceInheritedTextContrast(slide *slideXML, layoutXML, masterXML []byte, 
 			}
 		}
 		if hex == "" {
+			continue
+		}
+		effectiveBG := bgHex
+		if ownFill := layoutPlaceholderSolidFill(layoutXML, ph, themeColors, bgHex, override); ownFill != "" {
+			effectiveBG = ownFill
+		}
+		bg, bgErr := svggen.ParseColor(effectiveBG)
+		if bgErr != nil {
 			continue
 		}
 		current, perr := svggen.ParseColor(hex)

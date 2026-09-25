@@ -182,6 +182,45 @@ func TestInheritedTextContrast_LayoutStyleWins(t *testing.T) {
 	}
 }
 
+func TestInheritedTextContrast_UsesPlaceholderSolidFillBeforeSlideCanvas(t *testing.T) {
+	layout := []byte(`<p:sldLayout><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></p:bgPr></p:bg><p:spTree>
+		<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+		<p:spPr><a:solidFill><a:srgbClr val="1B2A4A"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr>
+		<p:txBody><a:lstStyle/></p:txBody></p:sp>
+	</p:spTree></p:cSld></p:sldLayout>`)
+	slide := bodySlide("Black text on a dark placeholder")
+	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), "#FFFFFF", modernLikeTheme(), 0, nil)
+	if len(swaps) != 1 || swaps[0].BackgroundColor != "#1B2A4A" || swaps[0].RatioAfter < 4.5 {
+		t.Fatalf("layout placeholder fill must supersede white canvas: %+v", swaps)
+	}
+}
+
+func TestExplicitTextContrast_UsesPlaceholderSolidFillWithoutSlideCanvas(t *testing.T) {
+	layout := []byte(`<p:sldLayout><p:cSld><p:spTree>
+		<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+		<p:spPr><a:solidFill><a:srgbClr val="1B2A4A"/></a:solidFill></p:spPr></p:sp>
+	</p:spTree></p:cSld></p:sldLayout>`)
+	slide := bodySlide("Black run on dark placeholder")
+	slide.CommonSlideData.ShapeTree.Shapes[0].TextBody.Paragraphs[0].Runs[0].RunProperties.Inner = `<a:solidFill><a:schemeClr val="dk1"/></a:solidFill>`
+	swaps := enforceTextContrastInSlide(slide, "", modernLikeTheme(), 0, nil, false, layout)
+	if len(swaps) != 1 || swaps[0].BackgroundColor != "#1B2A4A" || swaps[0].RatioAfter < 4.5 {
+		t.Fatalf("explicit text must use its layout placeholder fill even without p:bg: %+v", swaps)
+	}
+}
+
+func TestInheritedTextContrast_MapsPlaceholderFillThroughLayoutColorMap(t *testing.T) {
+	layout := []byte(`<p:sldLayout><p:cSld><p:spTree>
+		<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>
+		<p:spPr><a:solidFill><a:schemeClr val="bg1"/></a:solidFill></p:spPr><p:txBody><a:lstStyle/></p:txBody></p:sp>
+	</p:spTree></p:cSld><p:clrMapOvr><a:overrideClrMapping bg1="dk1"/></p:clrMapOvr></p:sldLayout>`)
+	slide := bodySlide("Black text on mapped dark fill")
+	bg := "#FFFFFF"
+	swaps := enforceInheritedTextContrast(slide, layout, []byte(masterWithTx1Body), bg, modernLikeTheme(), 0, parseLayoutColorMapOverride(layout))
+	if len(swaps) != 1 || swaps[0].BackgroundColor != "#000000" {
+		t.Fatalf("layout color map was not applied to placeholder fill: %+v", swaps)
+	}
+}
+
 func TestInheritedTextContrast_ColorlessLayoutInheritsMasterColor(t *testing.T) {
 	layout := []byte(`<p:sldLayout><p:cSld><p:spTree>
 		<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>

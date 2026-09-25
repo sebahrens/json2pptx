@@ -165,22 +165,20 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 		if bgHex == "" {
 			bgHex = inheritedTemplateBackgroundHex(layoutData, masterData, ctx.themeColors)
 		}
-		if bgHex != "" {
-			// The layout's color map override applies to the slide's own scheme
-			// colors too, not just its background (go-slide-creator-hln7).
-			override := parseLayoutColorMapOverride(layoutData)
-			swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex, override, authorBackground)
-			ctx.contrastSwaps = append(ctx.contrastSwaps, swaps...)
+		// The layout's color map override applies to the slide's own scheme
+		// colors too, not just its background (go-slide-creator-hln7).
+		override := parseLayoutColorMapOverride(layoutData)
+		swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex, override, authorBackground, layoutData)
+		ctx.contrastSwaps = append(ctx.contrastSwaps, swaps...)
 
-			// Text that names no color at all was invisible to the pass above:
-			// there was nothing to rewrite, so five white bullets on a white
-			// section divider drew no fix and no finding. Resolve what the
-			// placeholder INHERITS and fix that too (go-slide-creator-ucmgr).
-			ctx.contrastSwaps = append(ctx.contrastSwaps, enforceInheritedTextContrast(
-				slide, layoutData, masterData,
-				bgHex, ctx.themeColors, input.slideIndex, override,
-			)...)
-		}
+		// Text that names no color at all was invisible to the pass above:
+		// there was nothing to rewrite, so five white bullets on a white
+		// section divider drew no fix and no finding. Resolve what the
+		// placeholder INHERITS and fix that too (go-slide-creator-ucmgr).
+		ctx.contrastSwaps = append(ctx.contrastSwaps, enforceInheritedTextContrast(
+			slide, layoutData, masterData,
+			bgHex, ctx.themeColors, input.slideIndex, override,
+		)...)
 	}
 
 	slideEntry := fmt.Sprintf(`<p:sldId id="%d" r:id="%s"/>`, uint32(256+input.slideNum), input.relID)

@@ -129,21 +129,31 @@ var schemeClrInFillRegexp = regexp.MustCompile(
 // Returns a slice of ContrastSwap records for each color replacement made.
 // This function mutates the slide's shapes in place. slideIndex is the 0-based
 // index into the input slides array, recorded on each swap for finding paths.
-func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool) []ContrastSwap {
-	if bgHex == "" || slide == nil {
-		return nil
-	}
-
-	bgColor, err := svggen.ParseColor(bgHex)
-	if err != nil {
-		slog.Debug("text contrast: failed to parse background color", slog.String("bg", bgHex))
+func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool, layoutXML ...[]byte) []ContrastSwap {
+	if slide == nil {
 		return nil
 	}
 
 	var swaps []ContrastSwap
 	for i := range slide.CommonSlideData.ShapeTree.Shapes {
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
-		swaps = append(swaps, enforceTextContrastInShape(shape, bgColor, bgHex, themeColors, slideIndex, override, authorBackground)...)
+		effectiveBG := bgHex
+		shapeAuthorBackground := authorBackground
+		if len(layoutXML) > 0 {
+			if ownFill := layoutPlaceholderSolidFill(layoutXML[0], shape.NonVisualProperties.NvPr.Placeholder, themeColors, bgHex, override); ownFill != "" {
+				effectiveBG = ownFill
+				shapeAuthorBackground = false
+			}
+		}
+		if effectiveBG == "" {
+			continue
+		}
+		bgColor, err := svggen.ParseColor(effectiveBG)
+		if err != nil {
+			slog.Debug("text contrast: failed to parse background color", slog.String("bg", effectiveBG))
+			continue
+		}
+		swaps = append(swaps, enforceTextContrastInShape(shape, bgColor, effectiveBG, themeColors, slideIndex, override, shapeAuthorBackground)...)
 	}
 	return swaps
 }
