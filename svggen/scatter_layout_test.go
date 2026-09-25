@@ -161,22 +161,29 @@ func TestScatterAxisTicksAlignWithGrid(t *testing.T) {
 		t.Fatal("No Y-axis tick labels found in SVG")
 	}
 
-	// Each Y-axis tick label should have a grid line at the same Y (within
-	// tolerance).  Tick labels have a text-baseline offset (~4-6px for
-	// TextBaselineMiddle at typical font sizes), so we allow up to 8px.
-	// The pre-fix double-offset bug produced shifts of plotArea.Y (~88px),
-	// so 8px still catches regressions.
-	const tol = 8.0
+	// The text y is the alphabetic baseline, not the visual middle of a tick.
+	// The baked baseline offset is about 9px here; all ticks must have the
+	// same offset from their corresponding grid lines. The old double-offset
+	// bug shifted labels by the plot origin (~88px).
+	const maxBaselineOffset = 12.0
+	var referenceOffset float64
+	var haveReference bool
 	for _, ty := range tickYs {
-		found := false
+		nearest := math.Inf(1)
 		for gy := range gridYs {
-			if math.Abs(ty-gy) < tol {
-				found = true
-				break
+			if delta := ty - gy; math.Abs(delta) < math.Abs(nearest) {
+				nearest = delta
 			}
 		}
-		if !found {
+		if nearest <= 0 || nearest >= maxBaselineOffset {
 			t.Errorf("Y-axis tick at y=%.1f has no matching grid line (grid Ys: %v)", ty, gridYKeys(gridYs))
+			continue
+		}
+		if !haveReference {
+			referenceOffset = nearest
+			haveReference = true
+		} else if math.Abs(nearest-referenceOffset) > 1 {
+			t.Errorf("Y-axis tick at y=%.1f has inconsistent grid offset %.2fpx (first %.2fpx)", ty, nearest, referenceOffset)
 		}
 	}
 

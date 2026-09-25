@@ -8,6 +8,7 @@ import (
 	"image/png"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -143,10 +144,12 @@ type SVGBuilder struct {
 	textAligns []TextAlign
 
 	// textBaselines records the vertical baseline of each successfully-drawn
-	// text element in draw order. fixSVGTextAlignment uses it to inject an
-	// explicit dominant-baseline attribute so downstream renderers don't drift
-	// the label up or down based on their own font ascent/descent metrics.
+	// text element in draw order. The post-render passes use it to bake stable
+	// alphabetic y coordinates for non-alphabetic alignments.
 	textBaselines []TextBaseline
+	// textFontSizes pairs each emitted <text> with its font size at draw time.
+	// The baseline compatibility pass needs it after canvas has serialized SVG.
+	textFontSizes []float64
 
 	// Drawn text geometry is inspected after rendering for visible collisions.
 	textBoxes     []drawnTextBox
@@ -368,6 +371,11 @@ func isCSSFontWeight(token string) bool {
 // half outside its own quadrant (go-slide-creator-s27x).
 var textElementRe = regexp.MustCompile(`<text\b([^>]*)><tspan x="(-?[\d.]+)"`)
 
+var svgTextBlockRe = regexp.MustCompile(`(?s)<text\b[^>]*>.*?</text>`)
+var svgTspanOpenRe = regexp.MustCompile(`<tspan\b[^>]*>`)
+var svgYAttrRe = regexp.MustCompile(` y="(-?[\d.]+)"`)
+var svgDominantBaselineAttrRe = regexp.MustCompile(` dominant-baseline="[^"]+"`)
+
 // textXAttrRe matches the leading x attribute of a positioned <text> element.
 var textXAttrRe = regexp.MustCompile(`\A x="([\d.]+)"`)
 
@@ -397,25 +405,24 @@ func injectTabularNumsStyle(svgContent []byte) []byte {
 	})
 }
 
-// fixSVGTextAlignment injects an explicit text-anchor and dominant-baseline on
-// every <text> element emitted by DrawText, using the alignment and baseline
-// recorded at draw time.
+// fixSVGTextAlignment injects text-anchor and a temporary dominant-baseline
+// on positioned <text> elements using the alignment and baseline recorded at
+// draw time. bakeSVGTextBaselines converts the temporary baseline into a
+// numeric y and removes the attribute before the SVG is returned.
 //
 // The canvas library pre-computes tspan x positions and shifts y by font
 // ascent/descent using its own font metrics (Arial), but downstream SVG
 // renderers (rsvg-convert, LibreOffice, browsers, PowerPoint) re-measure text
-// with their own metrics. Without explicit text-anchor / dominant-baseline this
-// causes:
+// with their own metrics. Without corrected text anchoring this causes:
 //   - center-aligned text to overflow rightward when the fallback font is wider
 //   - right-aligned text (Y-axis tick labels, rotated bottom-axis labels) to
 //     drift right and overlap tick marks (adversarial finding A1).
-//   - axis labels to drift vertically by several px because the renderer's
-//     ascent/descent differs from the canvas library's (adversarial finding A5).
+//   - axis labels to drift vertically by several px when a renderer ignores
+//     the requested baseline (adversarial finding A5).
 //
 // We emit text-anchor="middle"/"end" so each renderer aligns text using its
-// own metrics. We also emit dominant-baseline="text-before-edge"/"central"/
-// "text-after-edge" for the three non-alphabetic baseline modes so renderers
-// don't have to guess the intended vertical anchor.
+// own metrics. The transient dominant-baseline marks the three non-alphabetic
+// modes for the compatibility pass; it must not survive in the final SVG.
 //
 // Left-aligned and alphabetic-baseline text is left untouched: tspan.x already
 // equals text.x, and the SVG defaults (text-anchor="start", alphabetic
@@ -485,6 +492,55 @@ func (b *SVGBuilder) fixSVGTextAlignment(svgContent []byte) []byte {
 		attrs := string(parts[2])
 		return []byte(fmt.Sprintf(`<text x="%s"%s%s%s><tspan x="%s"`,
 			string(parts[1]), anchorAttr, baselineAttr, attrs, tspanX))
+	})
+}
+
+// bakeSVGTextBaselines converts the non-alphabetic anchors from
+// fixSVGTextAlignment to explicit alphabetic y coordinates. Some SVG consumers
+// ignore dominant-baseline; removing the attribute after this conversion makes
+// those consumers and standards-compliant renderers use the same position.
+// Offsets are in em units of the font size, converted from pt to the canvas
+// SVG's millimetre coordinate space. Render converts mm to CSS px later.
+func (b *SVGBuilder) bakeSVGTextBaselines(svgContent []byte) []byte {
+	idx := 0
+	return svgTextBlockRe.ReplaceAllFunc(svgContent, func(block []byte) []byte {
+		i := idx
+		idx++
+		if i >= len(b.textBaselines) || i >= len(b.textFontSizes) {
+			return block
+		}
+		var emOffset float64
+		switch b.textBaselines[i] {
+		case TextBaselineTop:
+			emOffset = 0.65
+		case TextBaselineMiddle:
+			emOffset = 0.35
+		case TextBaselineBottom:
+			emOffset = -0.20
+		default:
+			return block
+		}
+		openEnd := bytes.IndexByte(block, '>')
+		if openEnd < 0 || !svgDominantBaselineAttrRe.Match(block[:openEnd]) || !svgYAttrRe.Match(block[:openEnd]) {
+			return block
+		}
+		delta := b.textFontSizes[i] * ptToMM * emOffset
+		shiftY := func(tag []byte) []byte {
+			return svgYAttrRe.ReplaceAllFunc(tag, func(attr []byte) []byte {
+				parts := svgYAttrRe.FindSubmatch(attr)
+				if len(parts) != 2 {
+					return attr
+				}
+				y, err := strconv.ParseFloat(string(parts[1]), 64)
+				if err != nil {
+					return attr
+				}
+				return []byte(fmt.Sprintf(` y="%.2f"`, y+delta))
+			})
+		}
+		open := shiftY(svgDominantBaselineAttrRe.ReplaceAll(block[:openEnd+1], nil))
+		body := svgTspanOpenRe.ReplaceAllFunc(block[openEnd+1:], shiftY)
+		return append(open, body...)
 	})
 }
 
@@ -1031,6 +1087,7 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 	// stay in sync with emitted elements.
 	b.textAligns = append(b.textAligns, align)
 	b.textBaselines = append(b.textBaselines, baseline)
+	b.textFontSizes = append(b.textFontSizes, b.fontSize)
 	return b
 }
 
@@ -1307,6 +1364,7 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	// recorded by DrawText. Must run before pixel scaling so it operates on the
 	// same coordinate space the canvas library produced.
 	content = b.fixSVGTextAlignment(content)
+	content = b.bakeSVGTextBaselines(content)
 
 	// Scale all SVG coordinates from mm to CSS pixels. LibreOffice and PowerPoint
 	// misinterpret font-size "px" values when the viewBox uses mm-scale coordinates,

@@ -761,7 +761,10 @@ func (gc *GanttChart) drawMilestoneDateLabel(d time.Time, cx, cy, halfSize float
 		b.DrawText(label, cx, belowY, TextAlignCenter, TextBaselineTop)
 	} else {
 		labelWidth, _ := b.MeasureText(label)
-		labelY := math.Min(cy, chartArea.Y+chartArea.H-fontSize/2-gap)
+		// Leave a full extra gap for the rendered font's descender. The
+		// renderer-independent alphabetic baseline can sit below the nominal
+		// middle anchor even when the row itself fits above the time axis.
+		labelY := math.Min(cy, chartArea.Y+chartArea.H-fontSize/2-2*gap)
 		if labelY-fontSize/2 >= chartArea.Y+gap {
 			rightX := cx + halfSize + gap
 			if rightX+labelWidth <= chartArea.X+chartArea.W {

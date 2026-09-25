@@ -264,6 +264,9 @@ func TestGanttMilestoneDateStaysAboveTimeAxis(t *testing.T) {
 			if dateLabel == nil {
 				t.Fatal("milestone date missing or not day-first")
 			}
+			if dateLabel.Baseline != "" {
+				t.Errorf("milestone date still depends on dominant-baseline=%q", dateLabel.Baseline)
+			}
 			pxToPt, ok := ViewBoxPxToPt(t, svg, widthPt)
 			if !ok {
 				t.Fatal("could not parse SVG viewBox")

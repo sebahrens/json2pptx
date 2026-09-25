@@ -417,16 +417,17 @@ func TestDrawText_TextAnchorByAlignment(t *testing.T) {
 
 // TestDrawText_DominantBaselineByBaseline exercises the four TextBaseline
 // values directly and asserts that the emitted SVG carries the matching
-// dominant-baseline attribute. Pins the contract that DrawText emits
-// dominant-baseline="text-before-edge" for TextBaselineTop, "central" for
-// TextBaselineMiddle, "text-after-edge" for TextBaselineBottom, and no
-// dominant-baseline (SVG default = alphabetic) for TextBaselineAlphabetic.
-func TestDrawText_DominantBaselineByBaseline(t *testing.T) {
+// alphabetic coordinates without a renderer-dependent dominant-baseline.
+// The exact offset for each requested anchor is covered by the compatibility
+// shim test; this test covers the public DrawText -> Render path.
+func TestDrawText_BakedBaselineByBaseline(t *testing.T) {
 	b := NewSVGBuilder(200, 200)
-	b.DrawText("top", 50, 30, TextAlignLeft, TextBaselineTop)
-	b.DrawText("middle", 50, 70, TextAlignLeft, TextBaselineMiddle)
-	b.DrawText("bottom", 50, 110, TextAlignLeft, TextBaselineBottom)
-	b.DrawText("alpha", 50, 150, TextAlignLeft, TextBaselineAlphabetic)
+	// Share a nominal y so the final alphabetic coordinates must reflect the
+	// four requested anchors; different source y values would hide a bad shim.
+	b.DrawText("top", 10, 80, TextAlignLeft, TextBaselineTop)
+	b.DrawText("middle", 50, 80, TextAlignLeft, TextBaselineMiddle)
+	b.DrawText("bottom", 100, 80, TextAlignLeft, TextBaselineBottom)
+	b.DrawText("alpha", 150, 80, TextAlignLeft, TextBaselineAlphabetic)
 
 	svgStr, err := b.RenderToString()
 	if err != nil {
@@ -437,12 +438,13 @@ func TestDrawText_DominantBaselineByBaseline(t *testing.T) {
 		Content string `xml:",chardata"`
 	}
 	type textEl struct {
-		Baseline string `xml:"dominant-baseline,attr"`
-		Tspan    tspan  `xml:"tspan"`
+		Baseline string  `xml:"dominant-baseline,attr"`
+		Y        float64 `xml:"y,attr"`
+		Tspan    tspan   `xml:"tspan"`
 	}
 
 	dec := xml.NewDecoder(strings.NewReader(svgStr))
-	got := map[string]string{}
+	got := map[string]textEl{}
 	for {
 		tok, err := dec.Token()
 		if err != nil {
@@ -456,100 +458,17 @@ func TestDrawText_DominantBaselineByBaseline(t *testing.T) {
 		if err := dec.DecodeElement(&el, &se); err != nil {
 			continue
 		}
-		got[strings.TrimSpace(el.Tspan.Content)] = el.Baseline
+		got[strings.TrimSpace(el.Tspan.Content)] = el
 	}
-
-	cases := map[string]string{
-		"top":    "text-before-edge",
-		"middle": "central",
-		"bottom": "text-after-edge",
-		"alpha":  "", // no dominant-baseline attribute -> SVG default
-	}
-	for label, want := range cases {
-		if baseline, ok := got[label]; !ok {
+	for _, label := range []string{"top", "middle", "bottom", "alpha"} {
+		if el, ok := got[label]; !ok {
 			t.Errorf("missing <text> element for label %q", label)
-		} else if baseline != want {
-			t.Errorf("label %q: dominant-baseline = %q, want %q", label, baseline, want)
+		} else if el.Baseline != "" {
+			t.Errorf("label %q: renderer-dependent dominant-baseline survived: %q", label, el.Baseline)
 		}
 	}
-}
-
-// TestAxisLabels_DominantBaseline is the regression test for adversarial
-// finding A5: axis tick labels must emit an explicit dominant-baseline so
-// downstream renderers (rsvg, LibreOffice, browsers, PowerPoint) don't drift
-// the label vertically based on their own font ascent/descent metrics.
-//
-// Left axis labels use TextBaselineMiddle -> "central".
-// Bottom axis (unrotated) labels use TextBaselineTop -> "text-before-edge".
-func TestAxisLabels_DominantBaseline(t *testing.T) {
-	// --- Left axis (numeric ticks, TextBaselineMiddle) ---
-	leftBuilder := NewSVGBuilder(400, 300)
-	leftScale := NewLinearScale(0, 50).SetRangeLinear(0, 200)
-	leftConfig := DefaultAxisConfig(AxisPositionLeft)
-	leftConfig.TickCount = 6
-	leftAxis := NewAxis(leftBuilder, leftConfig)
-	leftAxis.DrawLinearAxis(leftScale, 60, 50)
-	leftSVG, err := leftBuilder.RenderToString()
-	if err != nil {
-		t.Fatalf("Left axis render failed: %v", err)
-	}
-	leftLabels := map[string]bool{"0": true, "10": true, "20": true, "30": true, "40": true, "50": true}
-	assertBaseline(t, "Left", leftSVG, leftLabels, "central")
-
-	// --- Bottom axis (categorical, unrotated, TextBaselineTop) ---
-	bottomBuilder := NewSVGBuilder(400, 300)
-	categories := []string{"Q1", "Q2", "Q3", "Q4"}
-	bottomScale := NewCategoricalScale(categories).SetRangeCategorical(0, 300)
-	bottomConfig := DefaultAxisConfig(AxisPositionBottom)
-	bottomAxis := NewAxis(bottomBuilder, bottomConfig)
-	bottomAxis.DrawCategoricalAxis(bottomScale, 50, 250)
-	bottomSVG, err := bottomBuilder.RenderToString()
-	if err != nil {
-		t.Fatalf("Bottom axis render failed: %v", err)
-	}
-	bottomLabels := map[string]bool{"Q1": true, "Q2": true, "Q3": true, "Q4": true}
-	assertBaseline(t, "Bottom", bottomSVG, bottomLabels, "text-before-edge")
-}
-
-// assertBaseline parses every <text> element in svgStr and asserts that any
-// element whose tspan content matches a key in expected carries the wanted
-// dominant-baseline attribute.
-func assertBaseline(t *testing.T, axisName, svgStr string, expected map[string]bool, want string) {
-	t.Helper()
-	type tspan struct {
-		Content string `xml:",chardata"`
-	}
-	type textEl struct {
-		Baseline string `xml:"dominant-baseline,attr"`
-		Tspan    tspan  `xml:"tspan"`
-	}
-	dec := xml.NewDecoder(strings.NewReader(svgStr))
-	var sawAny bool
-	for {
-		tok, err := dec.Token()
-		if err != nil {
-			break
-		}
-		se, ok := tok.(xml.StartElement)
-		if !ok || se.Name.Local != "text" {
-			continue
-		}
-		var el textEl
-		if err := dec.DecodeElement(&el, &se); err != nil {
-			continue
-		}
-		label := strings.TrimSpace(el.Tspan.Content)
-		if !expected[label] {
-			continue
-		}
-		sawAny = true
-		if el.Baseline != want {
-			t.Errorf("%s axis label %q: dominant-baseline = %q, want %q",
-				axisName, label, el.Baseline, want)
-		}
-	}
-	if !sawAny {
-		t.Fatalf("%s axis: did not find any expected tick labels in SVG", axisName)
+	if !(got["top"].Y > got["middle"].Y && got["middle"].Y > got["alpha"].Y && got["alpha"].Y > got["bottom"].Y) {
+		t.Errorf("baked alphabetic baselines lost requested vertical ordering: %+v", got)
 	}
 }
 
@@ -708,13 +627,13 @@ func TestAxis_WithRotatedLabels(t *testing.T) {
 // combination it renders one axis and asserts parsing-derived geometry
 // invariants:
 //
-//   - Left unrotated         → text-anchor=end, dominant-baseline=central,
+//   - Left unrotated         → text-anchor=end, baked alphabetic baseline,
 //     on-screen label x < origin x.
 //   - Bottom unrotated       → text-anchor=middle,
-//     dominant-baseline=text-before-edge,
+//     baked alphabetic baseline,
 //     on-screen label y > axis y (below the axis line).
 //   - Bottom rotated -45°    → text-anchor=end,
-//     dominant-baseline=text-before-edge,
+//     baked alphabetic baseline,
 //     pivot ≈ tick x (post-translate),
 //     post-rotation top of bbox sits at or below the
 //     axis line (i.e. label hangs into the bottom strip).
@@ -760,8 +679,8 @@ func TestAxisLabels_Geometry(t *testing.T) {
 			if el.Anchor != "end" {
 				t.Errorf("label %q: text-anchor=%q, want %q", lab, el.Anchor, "end")
 			}
-			if el.Baseline != "central" {
-				t.Errorf("label %q: dominant-baseline=%q, want %q", lab, el.Baseline, "central")
+			if el.Baseline != "" {
+				t.Errorf("label %q: renderer-dependent dominant-baseline=%q", lab, el.Baseline)
 			}
 			if !el.HasX {
 				t.Errorf("label %q: missing x attribute on <text>", lab)
@@ -810,8 +729,8 @@ func TestAxisLabels_Geometry(t *testing.T) {
 			if el.Anchor != "middle" {
 				t.Errorf("label %q: text-anchor=%q, want %q", lab, el.Anchor, "middle")
 			}
-			if el.Baseline != "text-before-edge" {
-				t.Errorf("label %q: dominant-baseline=%q, want %q", lab, el.Baseline, "text-before-edge")
+			if el.Baseline != "" {
+				t.Errorf("label %q: renderer-dependent dominant-baseline=%q", lab, el.Baseline)
 			}
 			if !el.HasY {
 				t.Errorf("label %q: missing y attribute on <text>", lab)
@@ -1516,8 +1435,8 @@ func TestBottomAxisLabels_GapAndAnchor(t *testing.T) {
 		if el.Anchor != "middle" {
 			t.Errorf("X-axis label %q: text-anchor=%q, want %q", label, el.Anchor, "middle")
 		}
-		if el.Baseline != "text-before-edge" {
-			t.Errorf("X-axis label %q: dominant-baseline=%q, want %q", label, el.Baseline, "text-before-edge")
+		if el.Baseline != "" {
+			t.Errorf("X-axis label %q: renderer-dependent dominant-baseline=%q", label, el.Baseline)
 		}
 
 		yPx, parseErr := strconv.ParseFloat(el.Y, 64)

@@ -74,8 +74,8 @@ func TestTextAnchorSurvivesRotatedText(t *testing.T) {
 	if anchor != "-" {
 		t.Errorf("left-aligned label got text-anchor=%q — it inherited the rotated label's alignment", anchor)
 	}
-	if baseline != "central" {
-		t.Errorf("baseline = %q, want central (its own TextBaselineMiddle)", baseline)
+	if baseline != "-" {
+		t.Errorf("baseline = %q, want baked alphabetic position", baseline)
 	}
 
 	// And the element before the rotation must be untouched.
@@ -83,8 +83,8 @@ func TestTextAnchorSurvivesRotatedText(t *testing.T) {
 	if !found {
 		t.Fatal("first label not emitted")
 	}
-	if anchor != "middle" || baseline != "text-before-edge" {
-		t.Errorf("first label = (%s, %s), want (middle, text-before-edge)", anchor, baseline)
+	if anchor != "middle" || baseline != "-" {
+		t.Errorf("first label = (%s, %s), want (middle, no semantic baseline)", anchor, baseline)
 	}
 }
 
