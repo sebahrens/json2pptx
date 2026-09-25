@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.127.0: compact slide-kind discovery (`go-slide-creator-s9g1f`).**
+  `list_slide_kinds{}` now returns kind summaries, required/typical fields,
+  aliases, and one copy-ready example without every kind's large JSON Schema
+  and composition list. Use `kinds:["kind_name"]` to filter and
+  `fields:["item_schema","compositions"]` to opt into the omitted details.
+  Unknown kinds/fields are rejected. Modern MCP clients already receive a
+  bounded text synopsis beside `structuredContent`; older clients retain the
+  complete text fallback. The schema fingerprint is unchanged (existing tool
+  name, optional arguments and response projection only).
+
 - **2026-09-25 — Schema 4.126.0: duplicate-title rewrite advisory (`go-slide-creator-kl1p5`).**
   Duplicate content-slide titles now suggest `differentiate_title`, an editorial
   advisory that identifies the repeated title and its peers. It does not offer

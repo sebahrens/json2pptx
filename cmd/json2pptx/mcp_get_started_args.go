@@ -49,7 +49,7 @@ var getStartedArgTemplates = map[string]map[string]any{
 }
 
 // argsTemplateFor returns the argument hint for a step's tool, or nil when the
-// tool takes no argument worth pre-filling (list_slide_kinds takes none at all).
+// tool needs no argument for its first call (list_slide_kinds defaults to compact).
 func argsTemplateFor(tool string) map[string]any {
 	return getStartedArgTemplates[tool]
 }

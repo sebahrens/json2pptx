@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -156,7 +157,7 @@ func TestSemanticMCP_UnknownKPIFieldDiagnostic(t *testing.T) {
 // Every list_slide_kinds example must validate clean through validate_deck_spec.
 func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 	ctx := context.Background()
-	res, err := handleListSlideKinds(ctx, makeRequest(map[string]any{}))
+	res, err := handleListSlideKinds(ctx, makeRequest(map[string]any{"fields": []any{"item_schema"}}))
 	if err != nil || res.IsError {
 		t.Fatalf("list_slide_kinds failed: %v", err)
 	}
@@ -187,6 +188,94 @@ func TestSemanticMCP_ListSlideKindsExamplesValidate(t *testing.T) {
 		structuredInto(t, vres.StructuredContent, &env)
 		if !env.OK || len(env.Findings) != 0 {
 			t.Errorf("%s: example does not validate clean: %+v", k.Kind, env.Findings)
+		}
+	}
+}
+
+func TestSemanticMCP_ListSlideKindsProjection(t *testing.T) {
+	ctx := context.Background()
+	compact, err := handleListSlideKinds(ctx, makeRequest(map[string]any{}))
+	if err != nil || compact.IsError {
+		t.Fatalf("compact list failed: %v, %+v", err, compact)
+	}
+	compactJSON, err := json.Marshal(compact.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(compactJSON), `"item_schema"`) || strings.Contains(string(compactJSON), `"compositions"`) {
+		t.Fatal("default catalog includes opt-in detail fields")
+	}
+	var summary struct {
+		SlideKinds []slideKindListEntry `json:"slide_kinds"`
+	}
+	structuredInto(t, compact.StructuredContent, &summary)
+	if len(summary.SlideKinds) != len(semantic.AllSlideKinds()) {
+		t.Fatalf("compact returned %d kinds, want %d", len(summary.SlideKinds), len(semantic.AllSlideKinds()))
+	}
+	for _, k := range summary.SlideKinds {
+		if k.Kind == "" || k.Summary == "" || k.Example == nil {
+			t.Fatalf("compact entry missing authoring context: %+v", k)
+		}
+	}
+
+	full, err := handleListSlideKinds(ctx, makeRequest(map[string]any{
+		"fields": []any{"item_schema", "compositions"},
+	}))
+	if err != nil || full.IsError {
+		t.Fatalf("full list failed: %v, %+v", err, full)
+	}
+	fullJSON, err := json.Marshal(full.StructuredContent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(compactJSON)*2 >= len(fullJSON) {
+		t.Fatalf("compact catalog too large: %d vs full %d bytes", len(compactJSON), len(fullJSON))
+	}
+	t.Logf("slide-kind structured payload: compact=%d bytes, full=%d bytes", len(compactJSON), len(fullJSON))
+
+	selected, err := handleListSlideKinds(ctx, makeRequest(map[string]any{
+		"kinds":  []any{"kpi_snapshot"},
+		"fields": []any{"item_schema"},
+	}))
+	if err != nil || selected.IsError {
+		t.Fatalf("filtered list failed: %v, %+v", err, selected)
+	}
+	var detail struct {
+		SlideKinds []slideKindListEntry `json:"slide_kinds"`
+	}
+	structuredInto(t, selected.StructuredContent, &detail)
+	if len(detail.SlideKinds) != 1 || detail.SlideKinds[0].Kind != "kpi_snapshot" || detail.SlideKinds[0].ItemSchema == nil || len(detail.SlideKinds[0].Compositions) != 0 {
+		t.Fatalf("filtered projection is wrong: %+v", detail.SlideKinds)
+	}
+	compositionOnly, err := handleListSlideKinds(ctx, makeRequest(map[string]any{
+		"kinds":  []any{"kpi_snapshot", "kpi_snapshot"},
+		"fields": []any{"compositions"},
+	}))
+	if err != nil || compositionOnly.IsError {
+		t.Fatalf("composition projection failed: %v, %+v", err, compositionOnly)
+	}
+	var compositions struct {
+		SlideKinds []slideKindListEntry `json:"slide_kinds"`
+	}
+	structuredInto(t, compositionOnly.StructuredContent, &compositions)
+	if len(compositions.SlideKinds) != 1 || compositions.SlideKinds[0].ItemSchema != nil || len(compositions.SlideKinds[0].Compositions) == 0 {
+		t.Fatalf("composition projection is wrong: %+v", compositions.SlideKinds)
+	}
+	for _, args := range []map[string]any{
+		{"kinds": []any{"not_a_kind"}},
+		{"kinds": []any{42}},
+		{"fields": []any{"bogus"}},
+		{"fields": []any{42}},
+		{"fields": "full"},
+	} {
+		result, err := handleListSlideKinds(ctx, makeRequest(args))
+		if err != nil || !result.IsError {
+			t.Fatalf("invalid list filter was accepted: args=%v err=%v result=%+v", args, err, result)
+		}
+		var findings diagnostics.FindingEnvelope
+		structuredInto(t, result.StructuredContent, &findings)
+		if len(findings.Findings) == 0 || findings.Findings[0].NextToolCall == nil || findings.Findings[0].NextToolCall.Tool != "list_slide_kinds" || len(findings.Findings[0].NextToolCall.ArgsTemplate) != 0 {
+			t.Fatalf("invalid filter lacks a usable compact-catalog recovery call: %+v", findings.Findings)
 		}
 	}
 }

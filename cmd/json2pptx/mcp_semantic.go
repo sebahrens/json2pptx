@@ -173,7 +173,7 @@ const deckSpecSchemaNote = " Schema: full closed DeckSpec contract. Call list_sl
 
 // deckSpecOutlineNote is the tail everywhere else: the shape is declared, the
 // per-kind contract is one call away, and the contract still binds.
-const deckSpecOutlineNote = " Schema: DeckSpec outline. Call list_slide_kinds for per-kind item_schema and examples, then validate_deck_spec for closed-schema checks. Unknown payload fields still report SEMANTIC_UNKNOWN_FIELD."
+const deckSpecOutlineNote = " Schema: DeckSpec outline. Call list_slide_kinds for examples; pass kinds and fields:[item_schema] for a chosen kind's closed schema, then validate_deck_spec. Unknown payload fields still report SEMANTIC_UNKNOWN_FIELD."
 
 // withDeckSpecOutline merges the DeckSpec outline into the property schema.
 func withDeckSpecOutline() mcp.PropertyOption {
@@ -762,7 +762,7 @@ type slideKindListEntry struct {
 	TypicalFields   []string            `json:"typical_fields,omitempty"`
 	// ItemSchema is the closed JSON Schema for one slide of this kind (every
 	// payload field the compiler reads; additionalProperties:false).
-	ItemSchema map[string]any `json:"item_schema"`
+	ItemSchema map[string]any `json:"item_schema,omitempty"`
 	// Example is a minimal copy-ready slide of this kind (including "kind")
 	// that validates with zero findings.
 	Example map[string]any `json:"example"`
@@ -783,8 +783,16 @@ type slideKindComposition struct {
 
 func mcpListSlideKindsTool() mcp.Tool {
 	return mcp.NewTool("list_slide_kinds",
-		mcp.WithDescription(`List the slide kinds the semantic compiler recognizes for DeckSpec.slides[].kind. Returns {slide_kinds:[{kind, summary, required_fields, required_aliases, typical_fields, item_schema, example, compositions}], takeaway_budget:{font_pt,max_lines,note}}: the kind selects a slide's semantic payload shape, required_fields are the payload keys the kind needs to compile, required_aliases maps a required field to interchangeable alias keys (required-one-of — e.g. kpi_snapshot accepts "metrics" in place of "kpis"), typical_fields are common optional keys, item_schema is the closed JSON Schema for one slide of the kind (every field the compiler reads, list-entry and chart shapes included; additionalProperties:false), example is a minimal copy-ready slide that validates clean, and compositions lists the values this kind's optional "pattern" / "layout" override accepts (anything else is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE). Takeaways fit one 14pt line in a template-sized band; no universal character limit. Call this when authoring a new deck spec.`),
+		mcp.WithDescription(`Discover DeckSpec slide kinds. Default response lists every kind with summary, required_fields, required_aliases, typical_fields and one copy-ready example, plus the takeaway budget. Pass kinds:["kpi_snapshot"] to filter by exact kind. Request fields:["item_schema"] for that kind's closed JSON Schema, or fields:["compositions"] for its supported pattern/layout overrides; both are omitted by default to keep discovery small. Takeaways fit one 14pt line in a template-sized band; validate_deck_spec checks measured fit.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListSlideKinds)),
+		mcp.WithArray("kinds",
+			mcp.Description("Exact kind names to return. Omit to list all kinds."),
+			mcp.Items(map[string]any{"type": "string"}),
+		),
+		mcp.WithArray("fields",
+			mcp.Description("Optional detail fields to include: item_schema and/or compositions. Omit for the compact catalog."),
+			mcp.Items(map[string]any{"type": "string", "enum": []string{"item_schema", "compositions"}}),
+		),
 	)
 }
 
@@ -807,20 +815,36 @@ func slideKindCompositions(k semantic.SlideKind) []slideKindComposition {
 	return out
 }
 
-func handleListSlideKinds(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func handleListSlideKinds(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	kindFilter, errRes := slideKindListSelection(request, "kinds", false)
+	if errRes != nil {
+		return errRes, nil
+	}
+	fieldFilter, errRes := slideKindListSelection(request, "fields", true)
+	if errRes != nil {
+		return errRes, nil
+	}
 	out := make([]slideKindListEntry, 0)
 	for _, k := range semantic.AllSlideKinds() {
+		if kindFilter != nil && !kindFilter[string(k)] {
+			continue
+		}
 		info, _ := semantic.LookupKind(k)
-		out = append(out, slideKindListEntry{
+		entry := slideKindListEntry{
 			Kind:            string(k),
 			Summary:         info.Summary,
 			RequiredFields:  info.RequiredFields,
 			RequiredAliases: info.RequiredAliases,
 			TypicalFields:   info.TypicalFields,
-			ItemSchema:      semantic.KindItemSchema(k),
 			Example:         semantic.KindExample(k),
-			Compositions:    slideKindCompositions(k),
-		})
+		}
+		if fieldFilter["item_schema"] {
+			entry.ItemSchema = semantic.KindItemSchema(k)
+		}
+		if fieldFilter["compositions"] {
+			entry.Compositions = slideKindCompositions(k)
+		}
+		out = append(out, entry)
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, map[string]any{
 		"slide_kinds": out,
@@ -833,6 +857,37 @@ func handleListSlideKinds(ctx context.Context, _ mcp.CallToolRequest) (*mcp.Call
 		return api.MCPSimpleError("INTERNAL", fmt.Sprintf("failed to marshal list_slide_kinds response: %v", err)), nil
 	}
 	return mcpResult, nil
+}
+
+func slideKindListSelection(request mcp.CallToolRequest, arg string, detail bool) (map[string]bool, *mcp.CallToolResult) {
+	retryCatalog := &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{}}
+	raw, present := request.GetArguments()[arg]
+	if !present {
+		return nil, nil
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		return nil, argInvalidValue("list_slide_kinds", "INVALID_PARAMETER", arg, arg+" must be an array of strings", "array", nil, retryCatalog)
+	}
+	allowed := make(map[string]bool)
+	if detail {
+		allowed["item_schema"] = true
+		allowed["compositions"] = true
+	} else {
+		for _, k := range semantic.AllSlideKinds() {
+			allowed[string(k)] = true
+		}
+	}
+	selected := make(map[string]bool, len(items))
+	for i, item := range items {
+		name, ok := item.(string)
+		if !ok || !allowed[name] {
+			return nil, argInvalidValue("list_slide_kinds", "INVALID_PARAMETER", fmt.Sprintf("%s[%d]", arg, i),
+				fmt.Sprintf("unknown %s value %v", arg, item), "string", nil, retryCatalog)
+		}
+		selected[name] = true
+	}
+	return selected, nil
 }
 
 // semanticSuccessOrInternal marshals a compact semantic result (which may carry

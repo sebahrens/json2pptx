@@ -24,7 +24,7 @@ const mcpCompletionRule = "A deck is done only after every slide of the CURRENT 
 // quality_workflow field.
 const mcpQualityWorkflow = `json2pptx quality workflow:
 1. Call get_started first (task: brief | revise | validate-only) for the recommended path.
-2. New deck from a brief: author a DeckSpec (list_slide_kinds gives each kind's item_schema and a copy-ready example), check it with validate_deck_spec, then render it with render_deck_spec. make_deck is a skeleton/wireframe only: it fills slides with exemplar placeholder copy and its gate always fails.
+2. New deck from a brief: author a DeckSpec (list_slide_kinds gives compact kind summaries and examples; request item_schema only for chosen kinds), check it with validate_deck_spec, then render it with render_deck_spec. make_deck is a skeleton/wireframe only: it fills slides with exemplar placeholder copy and its gate always fails.
 3. ` + mcpCompletionRule + `
 4. Fix what you see or what diagnostics report at their semantic_path in the DeckSpec (raw decks: repair_slide), then re-render and re-inspect.
 5. Never ship exemplar or placeholder content (uses_exemplar_content=true, an "exemplar_content" blocking reason, __FILL__ tokens, SEMANTIC_WEAK_CONTENT).
