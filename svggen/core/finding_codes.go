@@ -17,6 +17,13 @@ const (
 	// all-negative values, producing a blank or misleading chart.
 	FindingZeroSumPie = "chart.zero_sum_pie"
 
+	// FindingNegativePieSlice is emitted when a pie/donut chart receives
+	// negative slice values. A negative has no area in a part-to-whole chart:
+	// counting it shrank the total so the remaining arcs overlapped and their
+	// percentages summed past 100%. Negative slices are excluded before the
+	// total is computed (go-slide-creator-s1uvj.30).
+	FindingNegativePieSlice = "chart.negative_pie_slice"
+
 	// FindingNegativeOnLog is emitted when negative values appear in a
 	// log-scale chart and are silently dropped or clamped.
 	FindingNegativeOnLog = "chart.negative_on_log"
@@ -190,6 +197,7 @@ var promotionTable = map[string]promotionRule{
 	// --- Data-integrity codes: promoted under strict only ---
 	FindingInvalidNumeric:    {strictLevel: SeverityRefuse},
 	FindingZeroSumPie:        {strictLevel: SeverityRefuse},
+	FindingNegativePieSlice:  {strictLevel: SeverityRefuse},
 	FindingNegativeOnLog:     {strictLevel: SeverityRefuse},
 	FindingInvalidTimeFormat: {strictLevel: SeverityRefuse},
 	FindingAllZeroSeries:     {strictLevel: SeverityRefuse},

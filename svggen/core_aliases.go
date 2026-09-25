@@ -155,6 +155,7 @@ const (
 	// Finding codes (re-exported from core/finding_codes.go).
 	FindingInvalidNumeric            = core.FindingInvalidNumeric
 	FindingZeroSumPie                = core.FindingZeroSumPie
+	FindingNegativePieSlice          = core.FindingNegativePieSlice
 	FindingNegativeOnLog             = core.FindingNegativeOnLog
 	FindingAllZeroSeries             = core.FindingAllZeroSeries
 	FindingCapacityExceeded          = core.FindingCapacityExceeded

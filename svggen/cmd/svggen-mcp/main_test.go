@@ -1242,6 +1242,7 @@ func TestGetCapabilities(t *testing.T) {
 			svggen.FindingDiagramItemsDropped, svggen.FindingDiagramTextOverlap,
 			svggen.FindingOrgChartDepthPruned, svggen.FindingQuadrantPositionDefaulted,
 			svggen.FindingPlotAreaCollapsed, svggen.FindingPointOutOfRange,
+			svggen.FindingNegativePieSlice,
 		} {
 			if !slices.Contains(resp.Vocabularies.FindingCodes, code) {
 				t.Errorf("vocabularies.finding_codes missing %q", code)

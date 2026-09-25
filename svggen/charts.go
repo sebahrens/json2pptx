@@ -2703,6 +2703,14 @@ func (pc *PieChart) Draw(data ChartData) error {
 		labels = data.Series[0].Labels
 	}
 
+	// Negative slices have no area in a part-to-whole chart. Counting them
+	// shrank the total, so the remaining arcs overlapped and their labels
+	// summed past 100% (go-slide-creator-s1uvj.30). Exclude them — together
+	// with their labels, colors and explode flags — before anything is
+	// totalled, measured or drawn, and report what was dropped.
+	colors := pc.getColors(style, len(values))
+	values, labels, colors, exploded := pc.excludeNegativeSlices(values, labels, colors)
+
 	// Detect zero-sum condition: all values zero or all negative.
 	total := 0.0
 	for _, v := range values {
@@ -2732,8 +2740,6 @@ func (pc *PieChart) Draw(data ChartData) error {
 		}
 		labelConfig.ValueFmt = NewValueFormatter(spec, labelValues, "", false)
 	}
-
-	colors := pc.getColors(style, len(values))
 
 	// Calculate layout
 	plotArea := pc.config.PlotArea()
@@ -2920,7 +2926,7 @@ func (pc *PieChart) Draw(data ChartData) error {
 	arcConfig.ValueFmt = labelConfig.ValueFmt
 	arcConfig.LabelValuesAreRaw = labelConfig.LabelValuesAreRaw
 	arcConfig.ExplodeOffset = pc.config.ExplodeOffset
-	arcConfig.ExplodedSlices = pc.config.ExplodedSlices
+	arcConfig.ExplodedSlices = exploded
 	arcConfig.Colors = colors
 
 	arcs := NewArcSeries(b, arcConfig)
@@ -2975,6 +2981,66 @@ func (pc *PieChart) Draw(data ChartData) error {
 	}
 
 	return nil
+}
+
+// excludeNegativeSlices drops negative slice values, keeping labels, colors
+// and ExplodedSlices indices aligned with the surviving slices, and emits
+// FindingNegativePieSlice naming what was dropped. Zero-valued slices are
+// kept: they are handled (and reported, when every slice is zero) by the
+// zero-sum path.
+func (pc *PieChart) excludeNegativeSlices(values []float64, labels []string, colors []Color) ([]float64, []string, []Color, []int) {
+	newIndex := make(map[int]int, len(values))
+	var (
+		keptValues []float64
+		keptLabels []string
+		keptColors []Color
+		dropped    []string
+		droppedIdx []int
+	)
+	for i, v := range values {
+		label := fmt.Sprintf("Slice %d", i+1)
+		if i < len(labels) && labels[i] != "" {
+			label = labels[i]
+		}
+		if v < 0 {
+			dropped = append(dropped, label)
+			droppedIdx = append(droppedIdx, i)
+			continue
+		}
+		newIndex[i] = len(keptValues)
+		keptValues = append(keptValues, v)
+		keptLabels = append(keptLabels, label)
+		if len(colors) > 0 {
+			keptColors = append(keptColors, colors[i%len(colors)])
+		}
+	}
+	if len(dropped) == 0 {
+		return values, labels, colors, pc.config.ExplodedSlices
+	}
+
+	pc.builder.AddFinding(Finding{
+		Field: "data.series[0].values",
+		Code:  FindingNegativePieSlice,
+		Message: fmt.Sprintf("pie chart has %d negative slice value(s) (%s) — excluded, "+
+			"because a part-to-whole chart cannot show a negative share; use a bar or waterfall chart for signed values",
+			len(dropped), strings.Join(dropped, ", ")),
+		Severity: "warning",
+		Fix: &FixSuggestion{
+			Kind:   FixKindReplaceValue,
+			Params: map[string]any{"negative_count": len(dropped), "labels": dropped, "indices": droppedIdx},
+		},
+	})
+
+	var exploded []int
+	for _, idx := range pc.config.ExplodedSlices {
+		if n, ok := newIndex[idx]; ok {
+			exploded = append(exploded, n)
+		}
+	}
+	if len(keptColors) == 0 {
+		keptColors = colors
+	}
+	return keptValues, keptLabels, keptColors, exploded
 }
 
 // pieLegendItems builds LegendItem slice from values/labels/colors.
