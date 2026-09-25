@@ -1,6 +1,8 @@
 package generator
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -58,7 +60,7 @@ func TestHeatmapValueContrastOnEveryTheme(t *testing.T) {
 					textScheme := heatmapValueColor(tone, colors)
 
 					base := schemeHex(t, tone.scheme, colors)
-					cell := patterns.EffectiveColor(base, tone.lumMod, tone.lumOff, 1, white)
+					cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
 					text := schemeHex(t, textScheme, colors)
 
 					if ratio := text.ContrastWith(cell); ratio < svggen.WCAGAANormal {
@@ -92,5 +94,32 @@ func TestHeatmapValueColorWithoutTheme(t *testing.T) {
 	tone := heatmapCellFill(92, 12, 92, "sequential")
 	if got := heatmapValueColor(tone, nil); got != "dk1" {
 		t.Errorf("with no theme the value colour is %q, want dk1", got)
+	}
+}
+
+func TestHeatmapTintAndValueContrastOnSaturatedAccents(t *testing.T) {
+	colors := []types.ThemeColor{
+		{Name: "dk1", RGB: "000000"}, {Name: "lt1", RGB: "FFFFFF"},
+		{Name: "accent1", RGB: "0097A7"}, {Name: "accent2", RGB: "E60000"},
+	}
+	white := schemeHex(t, "lt1", colors)
+	for _, scale := range []string{"sequential", "diverging"} {
+		for _, value := range []float64{0, 25, 50, 75, 100} {
+			tone := heatmapCellFill(value, 0, 100, scale)
+			var xml bytes.Buffer
+			tone.fill().WriteTo(&xml)
+			if tone.lumOff > 0 && !strings.Contains(xml.String(), `<a:tint val="`) {
+				t.Errorf("%s %.0f: expected RGB tint, got %s", scale, value, xml.String())
+			}
+			if strings.Contains(xml.String(), "lumMod") || strings.Contains(xml.String(), "lumOff") {
+				t.Errorf("%s %.0f: HSL modifier still present: %s", scale, value, xml.String())
+			}
+			base := schemeHex(t, tone.scheme, colors)
+			cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
+			text := schemeHex(t, heatmapValueColor(tone, colors), colors)
+			if ratio := text.ContrastWith(cell); ratio < svggen.WCAGAANormal {
+				t.Errorf("%s %.0f: value contrast %.2f:1 on %s", scale, value, ratio, cell.Hex())
+			}
+		}
 	}
 }

@@ -123,7 +123,7 @@ func clampPorterIntensity(v float64) float64 {
 // own light neutral, which asserts nothing.
 const porterNeutralScheme = "lt2"
 
-// porterIntensityColor maps ordinal intensity to three lightness steps of the
+// porterIntensityColor maps ordinal intensity to three RGB tint steps of the
 // same template accent. An unstated intensity takes the neutral surface:
 // colour-coding a force nobody scored asserts a reading the author never made.
 func porterIntensityColor(intensity *float64) (scheme string, lumMod, lumOff int) {
@@ -571,20 +571,23 @@ func porterIntensityTextColor(scheme string, lumMod, lumOff int, themeColors []t
 	if dErr != nil {
 		dark = svggen.Color{A: 1}
 	}
-	fill := patterns.EffectiveColor(base, lumMod, lumOff, 1, light)
+	fill := base
+	if lumOff > 0 {
+		fill = patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: lumMod}, light)
+	}
 	if light.ContrastWith(fill) > dark.ContrastWith(fill) {
 		return "lt1"
 	}
 	return "dk2"
 }
 
-// porterBoxFill builds the box fill, omitting the luminance modifiers when
-// there are none: pptx.LumMod(0) writes a 0% luminance, which renders black.
+// porterBoxFill keeps unscored boxes neutral and lightens scored accents with
+// an RGB tint, matching the color used for intensity-text contrast checks.
 func porterBoxFill(scheme string, lumMod, lumOff int) pptx.Fill {
 	if lumMod == 0 && lumOff == 0 {
 		return pptx.SchemeFill(scheme)
 	}
-	return pptx.SchemeFill(scheme, pptx.LumMod(lumMod), pptx.LumOff(lumOff))
+	return diagramTintFill(scheme, lumMod, lumOff)
 }
 
 // porterOutlineScheme keeps an unscored box's outline visible: lt2 on white is
@@ -688,8 +691,7 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 		Adjustments: []pptx.AdjustValue{
 			{Name: "adj", Value: porterCornerRadius},
 		},
-		// LumMod(0) is 0% luminance — black — not "no modifier", so an unscored
-		// force's neutral fill has to be emitted without the modifiers at all.
+		// An unscored force keeps the template's neutral surface unmodified.
 		Fill: porterBoxFill(scheme, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill(porterOutlineScheme(scheme))},
 		Text: &pptx.TextBody{

@@ -17,8 +17,8 @@ import (
 // =============================================================================
 //
 // Replaces SVG-rendered heatmap diagrams with native OOXML grouped shapes.
-// Each cell is a rect with a scheme-colored tint fill (varying lumMod/lumOff
-// based on data value) and centered value text. Row/column header text boxes
+// Each cell is a rect with an accent-to-white RGB tint based on data value
+// and centered value text. Row/column header text boxes
 // along edges. All shapes wrapped in a single p:grpSp.
 //
 // Layout:
@@ -348,7 +348,7 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 }
 
 // heatmapCellFill computes a scheme-based fill for a heatmap cell.
-// Sequential: accent1 with lumMod interpolated from 20000 (lightest) to 100000 (full saturation).
+// Sequential: accent1 retained at 20% (lightest) to 100% (full accent).
 // Diverging: accent2 for low values, lt1 for midpoint, accent1 for high values.
 func heatmapCellFill(value, minVal, maxVal float64, colorScale string) heatmapTone {
 	if maxVal == minVal {
@@ -381,8 +381,8 @@ func heatmapCellFill(value, minVal, maxVal float64, colorScale string) heatmapTo
 	return heatmapTone{scheme: "accent1", lumMod: lumMod, lumOff: 100000 - lumMod}
 }
 
-// heatmapTone is a heatmap cell's fill: a scheme colour and the luminance
-// modifiers that turn it into this cell's tint. Keeping the ingredients rather
+// heatmapTone is a heatmap cell's fill: a scheme colour and retained-accent /
+// white-blend percentages. Keeping the ingredients rather
 // than only the pptx.Fill is what lets the value's colour be chosen against the
 // colour a viewer actually sees (go-slide-creator-vdvs).
 type heatmapTone struct {
@@ -393,7 +393,7 @@ type heatmapTone struct {
 
 // fill renders the tone as a shape fill.
 func (t heatmapTone) fill() pptx.Fill {
-	return pptx.SchemeFill(t.scheme, pptx.LumMod(t.lumMod), pptx.LumOff(t.lumOff))
+	return diagramTintFill(t.scheme, t.lumMod, t.lumOff)
 }
 
 // heatmapValueColor names the scheme colour of the value printed ON the cell:
@@ -421,7 +421,7 @@ func heatmapValueColor(tone heatmapTone, themeColors []types.ThemeColor) string 
 		dark = svggen.Color{A: 1}
 	}
 
-	cell := patterns.EffectiveColor(base, tone.lumMod, tone.lumOff, 1, white)
+	cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
 	if white.ContrastWith(cell) > dark.ContrastWith(cell) {
 		return "lt1"
 	}

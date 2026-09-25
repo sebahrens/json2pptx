@@ -900,19 +900,19 @@ func pfColorsForStepType(st processFlowStepType) (fill pptx.Fill, line pptx.Line
 	switch st {
 	case pfDecisionType:
 		// Warning-tinted fill (accent3 light tint).
-		return pptx.SchemeFill("accent3", pptx.LumMod(20000), pptx.LumOff(80000)),
+		return diagramTintFill("accent3", 20000, 80000),
 			pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("accent3")}
 	case pfStartType, pfEndType:
 		// Success-tinted fill (accent6 light tint).
-		return pptx.SchemeFill("accent6", pptx.LumMod(20000), pptx.LumOff(80000)),
+		return diagramTintFill("accent6", 20000, 80000),
 			pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("accent6")}
 	case pfSubprocessType:
 		// Accent2 fill for subprocess.
-		return pptx.SchemeFill("accent2", pptx.LumMod(20000), pptx.LumOff(80000)),
+		return diagramTintFill("accent2", 20000, 80000),
 			pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("accent2")}
 	default:
 		// Primary accent1 fill for regular steps.
-		return pptx.SchemeFill("accent1", pptx.LumMod(20000), pptx.LumOff(80000)),
+		return diagramTintFill("accent1", 20000, 80000),
 			pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill("accent1")}
 	}
 }
