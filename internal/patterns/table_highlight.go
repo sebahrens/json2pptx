@@ -366,7 +366,7 @@ func parseTableHighlightScore(raw TableHighlightScore, scale string) (thNormaliz
 		}
 		return thNormalizedScore{}, false
 	case thScaleText:
-		if s == "" || len(s) > thTextCellMax {
+		if s == "" || runeLen(s) > thTextCellMax {
 			return thNormalizedScore{}, false
 		}
 		return thNormalizedScore{kind: thScaleText, text: s}, true
