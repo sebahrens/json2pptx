@@ -86,6 +86,56 @@
     `text-sidebar`. Both patterns are raw-path only (`raw_json2pptx` in a
     DeckSpec). Existing inputs are unchanged.
 
+- **2026-09-25 — Schema 4.142.0: `process-grid-2row` column headers and outcomes (`go-slide-creator-s1uvj.10`).**
+  `process-grid-2row` values accept `column_headers` (3–6 strings, ≤24
+  characters) and `outcomes` (3–6 strings, ≤32 characters). When given, each
+  must have one entry per phase column, which requires `row1_phases` and
+  `row2_phases` to have equal length; a mismatch is a `count_mismatch` error
+  with a resize fix. Headers render as a content-sized row of bold 12pt
+  labels with a 3pt accent underline above both tracks; outcomes render as a
+  content-sized row of rounded pills on the accent's light tint beneath them.
+  The cell under / over the row-label column stays empty. `cell_overrides`
+  indices for the tracks are unchanged; headers, then outcomes, are appended
+  after `row2_phases`. Omitting both leaves the output unchanged. The
+  schema-maxima readability pin for the pattern moves to 10.4pt: at the
+  all-"W" maximum the 40-character row labels autofit once both extra rows
+  take their height.
+
+- **2026-09-25 — Schema 4.141.0: seven-step and iconed `numbered-step-strip` (`go-slide-creator-s1uvj.9`).**
+  `numbered-step-strip` `steps` now allows 3–7 items. `stacked-box` and `toc`
+  accept the seventh step; `chevron` stays at six and a seventh step fails
+  with a `max_items` error naming `stacked-box` / `toc`. Steps accept an
+  optional `icon` (the shared IconRef: bundled name shorthand or
+  `{name|path|url|svg_data, fill?, alt?}`), rendered for `stacked-box` / `toc`
+  in an icon column between the number badge and the label, in the step's tip
+  colour (or a readable ink), capped at 26pt. The column is all-or-nothing:
+  steps without an icon get an empty cell. `chevron` rejects icons. With seven
+  rows, `BODY_TOO_LONG` flags bodies over about 140 (`stacked-box`) or 135
+  (`toc`) characters. Output without icons and with ≤6 steps is unchanged.
+
+- **2026-09-25 — Schema 4.140.0: `phase-roadmap` parallel tracks (`go-slide-creator-s1uvj.8`).**
+  `phase-roadmap` values accept `parallel_tracks` (0–4 strings, each ≤90
+  characters) and `parallel_label` (≤24 characters, default `"In parallel"`).
+  Tracks render below the descriptions as full-width, content-sized bars on
+  the accent's light tint, with the bold label at the left spanning all of
+  them behind an accent stripe. The block's height is taken from the phase-box
+  row (20% of the content height, floored at 11%), so the rest of the roadmap
+  and any callout keep their space. `cell_overrides` indices continue after
+  the descriptions: the label, then one bar per track. Omitted or empty
+  `parallel_tracks` leaves the output unchanged; `parallel_label` is ignored
+  without tracks.
+
+- **2026-09-25 — Schema 4.139.0: `comparison-2col` row connectors (`go-slide-creator-s1uvj.7`).**
+  `comparison-2col` accepts `overrides.connectors` (boolean, default
+  `false`). When true, the grid becomes `[45, 10, 45]`: the centre gutter
+  holds a 24pt accent circle with a chevron, vertically centred on each body
+  row and joined to both cells by an accent rule. Left cells take one neutral
+  surface (or `row_fill`) with a left accent stripe; right cells take the
+  accent's light tint with measured text colour. The header row keeps its
+  two accent header cells over an empty gutter. `cell_overrides` indices
+  still count only the left/right cells. Per-cell `BODY_TOO_LONG` budgets drop
+  to 88% of the plain values. Output with the flag off is byte-identical.
+
 - **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
   `render_deck_spec` and `semantic render` now report
   `deterministic_ready`, `deterministic_blocking_reasons[]`, and

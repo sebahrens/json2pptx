@@ -1,0 +1,400 @@
+{
+  "gap": 6,
+  "row_gap": 4,
+  "columns": 4,
+  "rows": [
+    {
+      "height": 11,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Plan",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Build",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Scale",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Optimize",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "height": 3,
+      "cells": [
+        {
+          "col_span": 4,
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1"
+          }
+        }
+      ]
+    },
+    {
+      "height": 6.5,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Mar–Apr 2025",
+                  "size": 10,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "May–Jul 2025",
+                  "size": 10,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Aug–Oct 2025",
+                  "size": 10,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Nov–Dec 2025",
+                  "size": 10,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "max_height": 28,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Define scope and governance.",
+                  "size": 10,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Implement pilot.",
+                  "size": 10,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Roll out to BUs.",
+                  "size": 10,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Tune cost, capture lessons.",
+                  "size": 10,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 94,
+      "max_height": 94,
+      "cells": [
+        {
+          "col_span": 4,
+          "grid": {
+            "col_gap": 4,
+            "row_gap": 4,
+            "columns": [
+              14,
+              86
+            ],
+            "rows": [
+              {
+                "min_height": 26,
+                "max_height": 26,
+                "cells": [
+                  {
+                    "row_span": 3,
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "none",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "Enablers",
+                            "size": 12,
+                            "bold": true,
+                            "color": "accent1",
+                            "align": "l"
+                          }
+                        ],
+                        "align": "l",
+                        "vertical_align": "ctr"
+                      }
+                    },
+                    "accent_bar": {
+                      "position": "left",
+                      "color": "accent1",
+                      "width": 3
+                    }
+                  },
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": {
+                        "color": "accent1",
+                        "lumMod": 20000,
+                        "lumOff": 80000
+                      },
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "Governance, change management, and upskilling track A",
+                            "size": 10,
+                            "color": "dk1",
+                            "align": "l"
+                          }
+                        ],
+                        "align": "l",
+                        "vertical_align": "ctr"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "min_height": 26,
+                "max_height": 26,
+                "cells": [
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": {
+                        "color": "accent1",
+                        "lumMod": 20000,
+                        "lumOff": 80000
+                      },
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "Governance, change management, and upskilling track B",
+                            "size": 10,
+                            "color": "dk1",
+                            "align": "l"
+                          }
+                        ],
+                        "align": "l",
+                        "vertical_align": "ctr"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "min_height": 26,
+                "max_height": 26,
+                "cells": [
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": {
+                        "color": "accent1",
+                        "lumMod": 20000,
+                        "lumOff": 80000
+                      },
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "Governance, change management, and upskilling track C",
+                            "size": 10,
+                            "color": "dk1",
+                            "align": "l"
+                          }
+                        ],
+                        "align": "l",
+                        "vertical_align": "ctr"
+                      }
+                    }
+                  }
+                ]
+              }
+            ],
+            "vertical_align": "bottom"
+          }
+        }
+      ]
+    }
+  ],
+  "vertical_align": "center"
+}

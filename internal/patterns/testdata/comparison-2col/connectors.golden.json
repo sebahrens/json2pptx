@@ -1,0 +1,188 @@
+{
+  "gap": 8,
+  "col_gap": 2,
+  "columns": [
+    45,
+    10,
+    45
+  ],
+  "rows": [
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Traditional",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "AI-first",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt2",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Product as moat",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "accent1",
+            "width": 4
+          }
+        },
+        {
+          "max_height": 24,
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "icon": {
+              "name": "chevron-right",
+              "fill": "lt1",
+              "scale": 0.7
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Distribution as moat",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ],
+      "connector": {
+        "style": "line",
+        "color": "accent1",
+        "width": 1.5
+      }
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "lt2",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Analysis as an edge",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "accent1",
+            "width": 4
+          }
+        },
+        {
+          "max_height": 24,
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "icon": {
+              "name": "chevron-right",
+              "fill": "lt1",
+              "scale": 0.7
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Learning loops",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ],
+      "connector": {
+        "style": "line",
+        "color": "accent1",
+        "width": 1.5
+      }
+    }
+  ]
+}

@@ -600,3 +600,104 @@ func TestChevronStripGeometry_SubtractsTheColumnGap(t *testing.T) {
 		t.Errorf("stepW = %.2f, want %.2f", geo.stepWPt, want)
 	}
 }
+
+func sevenSteps(style string) *NumberedStepStripValues {
+	v := validNumberedStepStripValues(style, 6)
+	v.Steps = append(v.Steps, NumberedStepStripStep{Label: "Retire", Body: "Decommission what the new platform replaced."})
+	return v
+}
+
+func TestNumberedStepStrip_SevenSteps(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+	for _, style := range []string{"", "stacked-box", "toc"} {
+		if err := p.Validate(sevenSteps(style), nil, nil); err != nil {
+			t.Errorf("style=%q: 7 steps should validate: %v", style, err)
+		}
+		grid, err := p.Expand(ExpandContext{}, sevenSteps(style), nil, nil)
+		if err != nil || len(grid.Rows) != 7 {
+			t.Errorf("style=%q: want 7 rows, got err=%v", style, err)
+		}
+	}
+	err := p.Validate(sevenSteps("chevron"), nil, nil)
+	if err == nil {
+		t.Fatal("chevron with 7 steps must fail validation")
+	}
+	for _, want := range []string{"at most 6", "stacked-box", "toc"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("chevron error %q does not mention %q", err, want)
+		}
+	}
+	warner := p.(PostExpandWarner)
+	long := sevenSteps("toc")
+	long.Steps[3].Body = strings.Repeat("x", 136)
+	if w := warner.PostExpandWarnings(ExpandContext{}, long, nil); len(w) != 1 || !strings.Contains(w[0], "steps[3].body") {
+		t.Errorf("seven toc rows with a 136-char body: want one BODY_TOO_LONG, got %v", w)
+	}
+	long.Style = "stacked-box"
+	if w := warner.PostExpandWarnings(ExpandContext{}, long, nil); len(w) != 0 {
+		t.Errorf("seven stacked-box rows hold 140 chars, got %v", w)
+	}
+	eight := sevenSteps("stacked-box")
+	eight.Steps = append(eight.Steps, NumberedStepStripStep{Label: "Eighth"})
+	if err := p.Validate(eight, nil, nil); err == nil || !strings.Contains(err.Error(), "at most 7") {
+		t.Errorf("8 steps: want max-items 7 error, got %v", err)
+	}
+}
+
+func TestNumberedStepStrip_Icons(t *testing.T) {
+	p, _ := Default().Get("numbered-step-strip")
+
+	v := validNumberedStepStripValues("chevron", 4)
+	v.Steps[0].Icon = &IconRef{Name: "flag"}
+	if err := p.Validate(v, nil, nil); err == nil || !strings.Contains(err.Error(), "icon is supported only by stacked-box and toc") {
+		t.Errorf("chevron icon: want style error, got %v", err)
+	}
+	v = validNumberedStepStripValues("stacked-box", 4)
+	v.Steps[0].Icon = &IconRef{Name: "definitely-not-an-icon-xyz"}
+	if err := p.Validate(v, nil, nil); err == nil {
+		t.Error("unknown bundled icon name must fail validation")
+	}
+
+	var decoded NumberedStepStripValues
+	if err := json.Unmarshal([]byte(`{"style":"toc","steps":[{"label":"A","icon":"flag"},{"label":"B"},{"label":"C","icon":{"name":"target"}}]}`), &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if decoded.Steps[0].Icon == nil || decoded.Steps[0].Icon.Name != "flag" || decoded.Steps[2].Icon.Name != "target" {
+		t.Fatalf("icon shorthand/object not decoded: %+v", decoded.Steps)
+	}
+	if err := p.Validate(&decoded, nil, nil); err != nil {
+		t.Fatalf("toc with icons: %v", err)
+	}
+
+	for _, style := range []string{"stacked-box", "toc"} {
+		plain, _ := p.Expand(ExpandContext{}, validNumberedStepStripValues(style, 3), nil, nil)
+		if len(plain.Rows[0].Cells) != 2 {
+			t.Fatalf("style=%s without icons must keep 2 columns", style)
+		}
+		v := validNumberedStepStripValues(style, 3)
+		v.Steps[0].Icon = &IconRef{Name: "flag"}
+		v.Steps[2].Icon = &IconRef{Name: "target"}
+		cellOverrides := map[int]any{1: &NumberedStepStripCellOverride{AccentBar: true}}
+		grid, err := p.Expand(ExpandContext{}, v, nil, cellOverrides)
+		if err != nil {
+			t.Fatalf("style=%s Expand: %v", style, err)
+		}
+		for i, row := range grid.Rows {
+			if len(row.Cells) != 3 {
+				t.Fatalf("style=%s row %d: want number + icon + body, got %d cells", style, i, len(row.Cells))
+			}
+		}
+		if ic := grid.Rows[0].Cells[1]; ic.Icon == nil || ic.Icon.Name != "flag" || ic.MaxHeight <= 0 {
+			t.Errorf("style=%s row 0 icon cell = %+v", style, ic)
+		}
+		if ic := grid.Rows[1].Cells[1]; ic.Icon != nil || ic.Shape != nil {
+			t.Errorf("style=%s row 1 (no icon) should be an empty spacer, got %+v", style, ic)
+		}
+		if grid.Rows[1].Cells[2].AccentBar == nil {
+			t.Errorf("style=%s cell override must still land on the body cell", style)
+		}
+		if style == "stacked-box" {
+			assertPatternGolden(t, grid, "testdata/numbered-step-strip/icons.golden.json")
+		}
+	}
+}

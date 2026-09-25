@@ -381,7 +381,11 @@ var schemaMaximaShrinkPt = map[string]float64{
 	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
 	"process-flow":         0,
 	"process-flow-compact": 9.1,
-	"process-grid-2row":    0.0,
+	// Optional column_headers + outcomes rows (go-slide-creator-s1uvj.10) take
+	// height from the two tracks; at the all-"W" schema maximum the 40-char row
+	// labels in the 12% label column then autofit to ~10.4pt. Without the
+	// extra rows the maximum still renders with nothing below the floor.
+	"process-grid-2row": 10.4,
 	// A long italic quote is prose, not a KPI value. With the 12pt prose floor,
 	// the schema-maximum quote remains readable beside its optional headshot;
 	// genuine sub-12pt shrink still produces a finding (tp23k.2).
@@ -503,6 +507,13 @@ func coherentMaximum(pattern string, v any) any {
 					}
 				}
 			}
+		}
+	case "numbered-step-strip":
+		// Seven steps and per-step icons are stacked-box / toc only; chevron
+		// (the first enum value) holds six without icons. Measure the style
+		// that admits the full schema maximum.
+		if m, ok := v.(map[string]any); ok {
+			m["style"] = "stacked-box"
 		}
 	case "timeline-horizontal":
 		// end_date is only legal in gantt style, which lives in overrides.
