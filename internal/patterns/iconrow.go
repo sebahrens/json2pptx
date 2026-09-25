@@ -251,6 +251,7 @@ func (ir *iconRow) Expand(ctx ExpandContext, values, overrides any, cellOverride
 			if !coOk {
 				continue
 			}
+			applyCellTextOverride(gc, cellOvr)
 			if cellOvr.AccentBar {
 				gc.AccentBar = &jsonschema.AccentBarInput{
 					Position: "left",

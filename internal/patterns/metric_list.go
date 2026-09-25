@@ -486,6 +486,8 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 				InsetLeft: metricListOuterPt + metricListBarPt, InsetRight: metricListGutterPt,
 			}.json(),
 		}}
+		// The big value is the item's primary text (D15 text keys).
+		applyCellTextOverride(valueCell, co)
 		if it.Highlight || (co != nil && co.AccentBar) {
 			valueCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: metricListBarPt}
 		}

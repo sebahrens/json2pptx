@@ -359,12 +359,18 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 		restPct := barAreaPct - fillPct
 
 		barCell := buildHorizontalBarRowCell(bar, accent, vals.Unit, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt)
+		textOvr := hbcTextOverride(cellOverrides[i])
+		if strings.TrimSpace(bar.Callout) == "" || !withCallouts {
+			// No insight to restyle: the text keys land on the bar's label.
+			applyCellTextOverride(barCell.Grid.Rows[0].Cells[0], textOvr)
+		}
 		if !withCallouts {
 			rows[i] = jsonschema.GridRowInput{Cells: []*jsonschema.GridCellInput{barCell}}
 			continue
 		}
 
 		calloutCell := buildHorizontalBarCalloutCell(bar.Callout, calloutSize)
+		applyCellTextOverride(calloutCell, textOvr)
 
 		// The accent bar is the visual bond between a bar and its insight, so it
 		// only renders where there is an insight to bind to: on a callout-less
@@ -408,6 +414,23 @@ func hbcAccentBarEnabled(co any) bool {
 		return true
 	}
 	return *cellOvr.AccentBar
+}
+
+// hbcTextOverride converts a row's cell override to the shared CellOverride
+// carrying only its D15 text keys (accent_bar is handled by
+// hbcAccentBarEnabled). Returns nil when the row has no override.
+func hbcTextOverride(co any) *CellOverride {
+	cellOvr, ok := co.(*HorizontalBarCalloutsCellOverride)
+	if !ok || cellOvr == nil {
+		return nil
+	}
+	return &CellOverride{
+		Emphasis:      cellOvr.Emphasis,
+		Align:         cellOvr.Align,
+		VerticalAlign: cellOvr.VerticalAlign,
+		FontSize:      cellOvr.FontSize,
+		Color:         cellOvr.Color,
+	}
 }
 
 // ---------------------------------------------------------------------------

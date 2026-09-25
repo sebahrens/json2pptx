@@ -304,11 +304,14 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 				// Cell overrides apply to the text cell (where name/role/bio live).
 				if co, ok := cellOverrides[memberIdx]; ok {
-					if cellOvr, ok2 := co.(*TeamBiosCellOverride); ok2 && cellOvr.AccentBar {
-						textCells[col].AccentBar = &jsonschema.AccentBarInput{
-							Position: "left",
-							Color:    accent,
-							Width:    3,
+					if cellOvr, ok2 := co.(*TeamBiosCellOverride); ok2 {
+						applyCellTextOverride(textCells[col], cellOvr)
+						if cellOvr.AccentBar {
+							textCells[col].AccentBar = &jsonschema.AccentBarInput{
+								Position: "left",
+								Color:    accent,
+								Width:    3,
+							}
 						}
 					}
 				}

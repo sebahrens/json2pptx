@@ -418,6 +418,7 @@ func applyBMCCellOverride(cell *jsonschema.GridCellInput, cellOverrides map[int]
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "top",

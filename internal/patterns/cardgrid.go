@@ -490,12 +490,14 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 			// Apply cell overrides
 			if co, ok := cellOverrides[cellIdx]; ok {
-				cellOvr, coOk := co.(*CardGridCellOverride)
-				if coOk && cellOvr.AccentBar {
-					gc.AccentBar = &jsonschema.AccentBarInput{
-						Position: "top",
-						Color:    accent,
-						Width:    4,
+				if cellOvr, coOk := co.(*CardGridCellOverride); coOk {
+					applyCellTextOverride(gc, cellOvr)
+					if cellOvr.AccentBar {
+						gc.AccentBar = &jsonschema.AccentBarInput{
+							Position: "top",
+							Color:    accent,
+							Width:    4,
+						}
 					}
 				}
 			}

@@ -944,6 +944,7 @@ func applyNumberedStepOverride(cell *jsonschema.GridCellInput, cellOverrides map
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

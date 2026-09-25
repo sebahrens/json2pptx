@@ -432,7 +432,12 @@ func fgApplyCellOverride(cell *jsonschema.GridCellInput, cellOverrides map[int]a
 	if !ok {
 		return
 	}
-	if cellOvr, ok := co.(*FrameworkGridCellOverride); ok && cellOvr.AccentBar {
+	cellOvr, ok := co.(*FrameworkGridCellOverride)
+	if !ok {
+		return
+	}
+	applyCellTextOverride(cell, cellOvr)
+	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 4}
 	}
 }

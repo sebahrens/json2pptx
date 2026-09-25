@@ -514,6 +514,7 @@ func applyMatrix2x2CellOverride(cell *jsonschema.GridCellInput, cellOverrides ma
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

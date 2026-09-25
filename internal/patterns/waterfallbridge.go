@@ -445,11 +445,14 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 			},
 		}
 		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*WaterfallBridgeCellOverride); ok2 && cellOvr.AccentBar {
-				labelCell.AccentBar = &jsonschema.AccentBarInput{
-					Position: "left",
-					Color:    baseAccent,
-					Width:    2,
+			if cellOvr, ok2 := co.(*WaterfallBridgeCellOverride); ok2 {
+				applyCellTextOverride(labelCell, cellOvr)
+				if cellOvr.AccentBar {
+					labelCell.AccentBar = &jsonschema.AccentBarInput{
+						Position: "left",
+						Color:    baseAccent,
+						Width:    2,
+					}
 				}
 			}
 		}

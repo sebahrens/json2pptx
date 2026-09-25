@@ -469,6 +469,7 @@ func applyStrategyHouseOverride(cell *jsonschema.GridCellInput, cellOverrides ma
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "top",

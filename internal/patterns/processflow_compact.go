@@ -264,11 +264,14 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 		}
 
 		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*ProcessFlowCellOverride); ok2 && cellOvr.AccentBar {
-				cell.AccentBar = &jsonschema.AccentBarInput{
-					Position: "left",
-					Color:    accent,
-					Width:    4,
+			if cellOvr, ok2 := co.(*ProcessFlowCellOverride); ok2 {
+				applyCellTextOverride(cell, cellOvr)
+				if cellOvr.AccentBar {
+					cell.AccentBar = &jsonschema.AccentBarInput{
+						Position: "left",
+						Color:    accent,
+						Width:    4,
+					}
 				}
 			}
 		}

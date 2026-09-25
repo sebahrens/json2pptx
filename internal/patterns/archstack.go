@@ -382,6 +382,7 @@ func applyArchStackOverride(cell *jsonschema.GridCellInput, cellOverrides map[in
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

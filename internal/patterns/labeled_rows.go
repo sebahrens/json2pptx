@@ -406,6 +406,9 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			}}
 		}
 
+		// The row's label block is the cell's primary text (D15 text keys).
+		applyCellTextOverride(labelCell, co)
+
 		bodyCell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"none"`),

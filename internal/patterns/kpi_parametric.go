@@ -217,7 +217,7 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 					Width:    4,
 				}
 			}
-			shape.Text = applyKPICellTextOverrides(shape.Text, cellOvr)
+			shape.Text = applyCellTextOverrideToText(shape.Text, cellOvr)
 		}
 
 		gridCells[i] = gc

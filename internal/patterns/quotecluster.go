@@ -279,11 +279,14 @@ func (q *quoteCluster) Expand(ctx ExpandContext, values, overrides any, cellOver
 				},
 			}
 			if co, coOk := cellOverrides[idx]; coOk {
-				if cellOvr, ok2 := co.(*QuoteClusterCellOverride); ok2 && cellOvr.AccentBar {
-					cell.AccentBar = &jsonschema.AccentBarInput{
-						Position: "left",
-						Color:    accent,
-						Width:    3,
+				if cellOvr, ok2 := co.(*QuoteClusterCellOverride); ok2 {
+					applyCellTextOverride(cell, cellOvr)
+					if cellOvr.AccentBar {
+						cell.AccentBar = &jsonschema.AccentBarInput{
+							Position: "left",
+							Color:    accent,
+							Width:    3,
+						}
 					}
 				}
 			}
