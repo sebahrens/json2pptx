@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -52,8 +53,131 @@ func strictArgsMiddleware(lookup func(name string) *server.ServerTool) server.To
 			if res := unknownArgumentsError(st.Tool, request.GetArguments()); res != nil {
 				return res, nil
 			}
+			if res := invalidArgumentValuesError(st.Tool, request.GetArguments()); res != nil {
+				return res, nil
+			}
 			return next(ctx, request)
 		}
+	}
+}
+
+// invalidArgumentValuesError checks the declared top-level types and enums.
+// Nested payloads are validated by their dedicated handlers, which can return
+// more specific source paths and repair guidance than a generic schema error.
+func invalidArgumentValuesError(tool mcp.Tool, args map[string]any) *mcp.CallToolResult {
+	props := tool.InputSchema.Properties
+	if len(tool.RawInputSchema) > 0 {
+		var raw struct {
+			Properties map[string]any `json:"properties"`
+		}
+		if json.Unmarshal(tool.RawInputSchema, &raw) == nil {
+			props = raw.Properties
+		}
+	}
+	names := make([]string, 0, len(args))
+	for name := range args {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		schemaName := name
+		if tool.Name == "make_deck" && name == "max_passes" {
+			schemaName = "max_repair_passes" // accepted legacy spelling
+		}
+		property, ok := props[schemaName].(map[string]any)
+		if !ok {
+			continue
+		}
+		value := args[name]
+		if expected, valid := argumentMatchesSchemaType(value, property["type"]); !valid {
+			return argInvalidValue(tool.Name, diagnostics.CodeInvalidParameter, name,
+				fmt.Sprintf("%s must be %s; received %T", name, articleFor(expected), value), expected, schemaExample(property), nil)
+		}
+		if enum := schemaEnumValues(property["enum"]); len(enum) > 0 {
+			valid := false
+			for _, candidate := range enum {
+				if reflect.DeepEqual(value, candidate) {
+					valid = true
+					break
+				}
+			}
+			if !valid {
+				return argInvalidValue(tool.Name, diagnostics.CodeInvalidParameter, name,
+					fmt.Sprintf("%s must be one of %v; received %v", name, enum, value), fmt.Sprintf("one of %v", enum), enum[0], nil)
+			}
+		}
+	}
+	return nil
+}
+
+func schemaExample(property map[string]any) any {
+	if value, ok := property["default"]; ok {
+		return value
+	}
+	if enum := schemaEnumValues(property["enum"]); len(enum) > 0 {
+		return enum[0]
+	}
+	return nil
+}
+
+func schemaEnumValues(raw any) []any {
+	values := reflect.ValueOf(raw)
+	if !values.IsValid() || (values.Kind() != reflect.Array && values.Kind() != reflect.Slice) {
+		return nil
+	}
+	enum := make([]any, values.Len())
+	for i := range enum {
+		enum[i] = values.Index(i).Interface()
+	}
+	return enum
+}
+
+func argumentMatchesSchemaType(value, rawType any) (string, bool) {
+	if expected, ok := rawType.(string); ok {
+		return expected, argumentMatchesType(value, expected)
+	}
+	types := schemaEnumValues(rawType)
+	if len(types) == 0 {
+		return "", true
+	}
+	names := make([]string, 0, len(types))
+	for _, item := range types {
+		name, ok := item.(string)
+		if !ok {
+			return "", true // Unknown schema representation: defer to handler.
+		}
+		names = append(names, name)
+		if argumentMatchesType(value, name) {
+			return strings.Join(names, "|"), true
+		}
+	}
+	return strings.Join(names, "|"), false
+}
+
+func argumentMatchesType(value any, expected string) bool {
+	switch expected {
+	case "string":
+		_, ok := value.(string)
+		return ok
+	case "boolean":
+		_, ok := value.(bool)
+		return ok
+	case "number", "integer":
+		n, ok := value.(float64)
+		if !ok {
+			return false
+		}
+		return expected == "number" || n == float64(int64(n))
+	case "object":
+		_, ok := value.(map[string]any)
+		return ok
+	case "array":
+		_, ok := value.([]any)
+		return ok
+	case "null":
+		return value == nil
+	default:
+		return true // Unknown schema types remain the handler's responsibility.
 	}
 }
 

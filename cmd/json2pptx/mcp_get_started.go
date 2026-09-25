@@ -381,6 +381,7 @@ func mcpGetStartedTool() mcp.Tool {
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaGetStarted)),
 		mcp.WithString("task",
 			mcp.Description("Optional task scope: \"brief\" (new deck, default), \"revise\" (modify existing deck), \"validate-only\" (validate JSON without generating), or \"onboard-template\" (vet and render with a user-supplied .pptx). An unknown value answers with \"brief\" and says so in task_warning."),
+			mcp.DefaultString("brief"),
 		),
 		mcp.WithBoolean("verbose",
 			mcp.Description("Include quality_workflow, the prose workflow narrative. Omitted by default because it repeats the MCP initialize instructions verbatim, which every client already received; completion_protocol carries the same rule in structured form. Pass true if you did not read the initialize instructions."),

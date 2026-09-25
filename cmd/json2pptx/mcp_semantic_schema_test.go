@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -28,8 +29,8 @@ func TestSemanticMCP_SpecInputSchemaHasPerKindOneOf(t *testing.T) {
 	spec := toolSpecProperty(t, mcpValidateDeckSpecTool().InputSchema.Properties)
 	const tool = "validate_deck_spec"
 
-	if spec["type"] != "object" {
-		t.Errorf("%s: spec.type = %v, want object", tool, spec["type"])
+	if !reflect.DeepEqual(spec["type"], []string{"object", "string"}) {
+		t.Errorf("%s: spec.type = %v, want object|string", tool, spec["type"])
 	}
 	if spec["additionalProperties"] != false {
 		t.Errorf("%s: spec must be closed (additionalProperties:false)", tool)
@@ -85,8 +86,8 @@ func TestSpecOutlineIsCarriedByTheOtherSpecTools(t *testing.T) {
 		{"explain_deck_spec", mcpExplainDeckSpecTool()},
 	} {
 		spec := toolSpecProperty(t, tool.def.InputSchema.Properties)
-		if spec["type"] != "object" {
-			t.Errorf("%s: spec.type = %v, want object", tool.name, spec["type"])
+		if !reflect.DeepEqual(spec["type"], []string{"object", "string"}) {
+			t.Errorf("%s: spec.type = %v, want object|string", tool.name, spec["type"])
 		}
 		props, _ := spec["properties"].(map[string]any)
 		slides, _ := props["slides"].(map[string]any)

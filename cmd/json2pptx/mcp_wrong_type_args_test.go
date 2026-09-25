@@ -35,7 +35,7 @@ func TestWrongTypedArgIsNeverReportedAsMissing(t *testing.T) {
 		}
 		var schema struct {
 			Properties map[string]struct {
-				Type string `json:"type"`
+				Type any `json:"type"`
 			} `json:"properties"`
 			Required []string `json:"required"`
 		}
@@ -45,7 +45,7 @@ func TestWrongTypedArgIsNeverReportedAsMissing(t *testing.T) {
 
 		for _, arg := range schema.Required {
 			var wrong any = 12345
-			if typ := schema.Properties[arg].Type; typ == "number" || typ == "integer" {
+			if typ, _ := schema.Properties[arg].Type.(string); typ == "number" || typ == "integer" {
 				wrong = "not-a-number"
 			}
 			t.Run(tool.Name+"/"+arg, func(t *testing.T) {

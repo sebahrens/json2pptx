@@ -1,5 +1,16 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.129.0: strict MCP argument values and semantic spec strings (`go-slide-creator-paxnw`, `go-slide-creator-jg51i`).**
+  MCP tool calls now reject a supplied argument whose top-level value has the
+  wrong declared type or is outside its declared enum, returning a structured
+  `INVALID_PARAMETER` error with the offending path and expected type before
+  the handler runs. This prevents values such as `slide_index:"3"`,
+  `fit_report:"true"`, and `strict_fit:"strictly"` from silently falling back to
+  defaults. The four semantic DeckSpec tools now declare `spec` as
+  `object|string`, matching their existing support for YAML/JSON document
+  strings as well as objects. Nested deck validation remains with the
+  dedicated handlers.
+
 - **2026-09-25 — Schema 4.128.0: shared DeckSpec list-entry schemas (`go-slide-creator-cfo3g`).**
   The compact closed schema embedded in `validate_deck_spec` now hoists
   repeated item-object definitions into `$defs` references. Its schema payload

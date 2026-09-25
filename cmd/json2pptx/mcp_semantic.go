@@ -178,6 +178,9 @@ const deckSpecOutlineNote = " Schema: DeckSpec outline. Call list_slide_kinds fo
 // withDeckSpecOutline merges the DeckSpec outline into the property schema.
 func withDeckSpecOutline() mcp.PropertyOption {
 	return func(schema map[string]any) {
+		// semanticSpecBytes accepts an object or a YAML/JSON document string.
+		// Object-only keywords below remain applicable only to object values.
+		schema["type"] = []string{"object", "string"}
 		for k, v := range semantic.OutlineInlineSchema() {
 			switch k {
 			case "type", "description", "title":
@@ -192,6 +195,7 @@ func withDeckSpecOutline() mcp.PropertyOption {
 // into the property, keeping the property's own type/description.
 func withDeckSpecSchema() mcp.PropertyOption {
 	return func(schema map[string]any) {
+		schema["type"] = []string{"object", "string"}
 		for k, v := range semantic.CompactSchemaAt("#/properties/spec") {
 			switch k {
 			case "type", "description", "title":

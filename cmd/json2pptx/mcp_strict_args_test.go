@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -105,6 +106,9 @@ func TestStrictArgs_LegacyAliasAccepted(t *testing.T) {
 	if res := unknownArgumentsError(mcpMakeDeckTool(), map[string]any{"outline": "x", "max_passes": 2}); res != nil {
 		t.Fatalf("make_deck max_passes legacy alias must be accepted, got %s", resultText(res))
 	}
+	if res := invalidArgumentValuesError(mcpMakeDeckTool(), map[string]any{"max_passes": "2"}); res == nil {
+		t.Fatal("make_deck max_passes legacy alias must be type-checked")
+	}
 }
 
 func TestSuggestArgName(t *testing.T) {
@@ -136,6 +140,85 @@ func TestStrictArgs_RawInputSchemaProperties(t *testing.T) {
 	}
 	if text := resultText(res); !strings.Contains(text, `did you mean \"alpha\"`) && !strings.Contains(text, fmt.Sprintf("did you mean %q", "alpha")) {
 		t.Errorf("expected did-you-mean alpha, got %s", text)
+	}
+}
+
+func TestStrictArgs_RejectsWrongTypedAndEnumArguments(t *testing.T) {
+	s := strictArgsTestServer(t)
+	tests := []struct {
+		name, tool, path, expected string
+		args                       map[string]any
+	}{
+		{"slide index", "render_slide_image", "slide_index", "number", map[string]any{"pptx_path": "/missing.pptx", "slide_index": "3"}},
+		{"max slides", "render_deck_thumbnails", "max_slides", "number", map[string]any{"pptx_path": "/missing.pptx", "max_slides": "2"}},
+		{"fit report", "generate_presentation", "fit_report", "boolean", map[string]any{"presentation": map[string]any{}, "fit_report": "true"}},
+		{"strict fit enum", "generate_presentation", "strict_fit", "one of", map[string]any{"presentation": map[string]any{}, "strict_fit": "strictly"}},
+		{"null value", "render_deck_thumbnails", "max_slides", "number", map[string]any{"pptx_path": "/missing.pptx", "max_slides": nil}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res := callToolViaServer(t, s, tt.tool, tt.args)
+			got := resultText(res)
+			if !res.IsError || !strings.Contains(got, "INVALID_PARAMETER") || !strings.Contains(got, tt.path) || !strings.Contains(got, tt.expected) {
+				t.Fatalf("expected typed argument error for %s: %s", tt.path, got)
+			}
+		})
+	}
+}
+
+func TestStrictArgs_RawSchemaTypeAndEnum(t *testing.T) {
+	tool := mcp.NewToolWithRawSchema("raw_tool", "d", json.RawMessage(`{"type":"object","properties":{"mode":{"type":"string","enum":["a","b"]},"count":{"type":"integer"}}}`))
+	for _, tt := range []struct {
+		args map[string]any
+		path string
+	}{
+		{map[string]any{"mode": "c"}, "mode"},
+		{map[string]any{"count": 1.5}, "count"},
+		{map[string]any{"count": "1"}, "count"},
+	} {
+		res := invalidArgumentValuesError(tool, tt.args)
+		if res == nil || !res.IsError || !strings.Contains(resultText(res), tt.path) {
+			t.Fatalf("expected invalid %s: %v", tt.path, res)
+		}
+	}
+	if res := invalidArgumentValuesError(tool, map[string]any{"mode": "a", "count": float64(2)}); res != nil {
+		t.Fatalf("valid raw-schema values rejected: %s", resultText(res))
+	}
+}
+
+func TestStrictArgs_SemanticSpecStringCompatibility(t *testing.T) {
+	for _, tool := range []mcp.Tool{mcpValidateDeckSpecTool(), mcpCompileDeckSpecTool(), mcpRenderDeckSpecTool(), mcpExplainDeckSpecTool()} {
+		property, ok := tool.InputSchema.Properties["spec"].(map[string]any)
+		if !ok {
+			t.Fatalf("%s has no spec property schema", tool.Name)
+		}
+		if got, ok := property["type"].([]string); !ok || !reflect.DeepEqual(got, []string{"object", "string"}) {
+			t.Errorf("%s spec type = %v, want object|string", tool.Name, property["type"])
+		}
+		wire, err := json.Marshal(tool)
+		if err != nil {
+			t.Fatalf("marshal %s: %v", tool.Name, err)
+		}
+		var published struct {
+			InputSchema struct {
+				Properties map[string]map[string]any `json:"properties"`
+			} `json:"inputSchema"`
+		}
+		if err := json.Unmarshal(wire, &published); err != nil {
+			t.Fatalf("decode %s published schema: %v", tool.Name, err)
+		}
+		if got := published.InputSchema.Properties["spec"]["type"]; !reflect.DeepEqual(got, []any{"object", "string"}) {
+			t.Errorf("%s published spec type = %v, want object|string", tool.Name, got)
+		}
+		if res := invalidArgumentValuesError(tool, map[string]any{"spec": "meta:\n  title: Test"}); res != nil {
+			t.Errorf("%s rejected accepted YAML string: %s", tool.Name, resultText(res))
+		}
+		if res := invalidArgumentValuesError(tool, map[string]any{"spec": map[string]any{"meta": map[string]any{}}}); res != nil {
+			t.Errorf("%s rejected spec object: %s", tool.Name, resultText(res))
+		}
+		if res := invalidArgumentValuesError(tool, map[string]any{"spec": true}); res == nil {
+			t.Errorf("%s accepted boolean spec", tool.Name)
+		}
 	}
 }
 
