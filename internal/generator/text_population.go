@@ -39,6 +39,9 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	if shouldNormalizeBodyTypography(shape, item) {
 		autofitOpts = append(autofitOpts, withBodyTypography())
 	}
+	if item.FontSize > 0 {
+		autofitOpts = append(autofitOpts, withAuthoredFontSize(item.FontSize))
+	}
 	switch item.Type {
 	case ContentText:
 		if isTitleShape(shape) || isTitlePlaceholder(item.PlaceholderID) {
@@ -67,10 +70,6 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 		return err
 	}
 
-	// Apply font size override if specified.
-	if item.FontSize > 0 {
-		applyFontSizeOverride(shape, item.FontSize)
-	}
 	if item.linkMarker != "" {
 		for i := range shape.TextBody.Paragraphs {
 			for j := range shape.TextBody.Paragraphs[i].Runs {

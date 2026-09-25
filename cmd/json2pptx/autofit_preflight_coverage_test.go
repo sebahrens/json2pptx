@@ -2,10 +2,13 @@ package main
 
 import (
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -143,6 +146,30 @@ func TestBodyTypographyPreflightUsesAuthoredPlaceholderAndOverride(t *testing.T)
 				}
 			}
 		}
+	}
+}
+
+func TestAutofitPreflightMeasuresExplicitContentFontSize(t *testing.T) {
+	bullets := []string{"Manual handoffs delay close", "Customer growth is accelerating", "Reporting remains fragmented", "Rework slows the team", "Decisions arrive too late"}
+	authorPt := 24.0
+	input := &PresentationInput{Slides: []SlideInput{{LayoutID: "content-layout", Content: []ContentInput{{
+		PlaceholderID: "body", Type: "bullets", BulletsValue: &bullets, FontSize: &authorPt,
+	}}}}}
+	layouts := []types.LayoutMetadata{{ID: "content-layout", Placeholders: []types.PlaceholderInfo{{
+		ID: "body", Type: types.PlaceholderBody, FontSize: 1400, FontFamily: "Arial",
+		Bounds: types.BoundingBox{Width: 3000000, Height: 1500000},
+	}}}}
+	got := collectTextAutofitPreflightFindings(input, layouts)
+	want := generator.DetectTextAutofitPreflight(generator.TextAutofitPreflightInput{
+		Path: "/slides/0/content/0", Paragraphs: bullets, WidthEMU: 3000000, HeightEMU: 1500000,
+		FontSizeHPt: 2400, FontName: "Arial", ViewingMode: tokens.ViewingModePresentation,
+		TextRole: tokens.TextRoleBody, ExtraSpacingPt: generator.InheritedParagraphSpacingPt(0),
+	})
+	if len(want) == 0 {
+		t.Fatal("fixture needs at least one fit finding to verify the measured size")
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("collector did not measure authored 24pt size:\n got %+v\nwant %+v", got, want)
 	}
 }
 

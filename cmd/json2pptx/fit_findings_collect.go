@@ -1496,12 +1496,16 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 				continue
 			}
 			path := slidepath.ContentIndex(si, ci)
+			fontSizeHPt := ph.FontSize
+			if content.FontSize != nil && *content.FontSize > 0 {
+				fontSizeHPt = int(*content.FontSize * 100)
+			}
 			findings = append(findings, generator.DetectTextAutofitPreflight(generator.TextAutofitPreflightInput{
 				Path:        path,
 				Paragraphs:  paragraphs,
 				WidthEMU:    ph.Bounds.Width,
 				HeightEMU:   ph.Bounds.Height,
-				FontSizeHPt: ph.FontSize,
+				FontSizeHPt: fontSizeHPt,
 				FontName:    ph.FontFamily,
 				NormalizeBody: (content.FontSize == nil || *content.FontSize <= 0) && (content.Type == "text" || content.Type == "bullets" ||
 					content.Type == "body_and_bullets" || content.Type == "bullet_groups"),

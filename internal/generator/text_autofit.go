@@ -60,10 +60,17 @@ type autofitConfig struct {
 	bodySourceHPt  int
 	bodyPolicy     BodySizePolicy
 	bodyBaseHPt    int
+	// authoredFontSizeHPt is applied to generated runs before measurement,
+	// so autofit uses the same size the output PPTX will actually render.
+	authoredFontSizeHPt int
 }
 
 func withBodyTypography() autofitOption {
 	return func(c *autofitConfig) { c.bodyTypography = true }
+}
+
+func withAuthoredFontSize(sizeHPt int) autofitOption {
+	return func(c *autofitConfig) { c.authoredFontSizeHPt = sizeHPt }
 }
 
 // withInheritedTextStyle supplies the placeholder's inherited (master) text
@@ -139,6 +146,9 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 
 	if shape.TextBody == nil || shape.TextBody.BodyProperties == nil {
 		return
+	}
+	if cfg.authoredFontSizeHPt > 0 {
+		applyFontSizeOverride(shape, cfg.authoredFontSizeHPt)
 	}
 	normalizeBodyTypography(shape, &cfg)
 

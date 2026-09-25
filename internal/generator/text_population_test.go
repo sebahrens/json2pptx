@@ -2,6 +2,8 @@ package generator
 
 import (
 	"fmt"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -846,6 +848,47 @@ func TestPopulateShapeTextFontSizeOverride(t *testing.T) {
 		for _, r := range p.Runs {
 			if r.RunProperties == nil || r.RunProperties.FontSize != "7200" {
 				t.Errorf("expected sz=7200 on run, got %v", r.RunProperties)
+			}
+		}
+	}
+}
+
+func TestAuthoredBodyFontSizeIsMeasuredBeforeAutofit(t *testing.T) {
+	makeShape := func() *shapeXML {
+		return &shapeXML{
+			NonVisualProperties: nonVisualPropertiesXML{NvPr: nvPrXML{Placeholder: &placeholderXML{Type: "body"}}},
+			ShapeProperties:     shapePropertiesXML{Transform: &transformXML{Extent: extentXML{CX: 3000000, CY: 1500000}}},
+			TextBody: &textBodyXML{BodyProperties: &bodyPropertiesXML{},
+				ListStyle:  &listStyleXML{Inner: `<a:lvl1pPr><a:defRPr sz="1400"/></a:lvl1pPr>`},
+				Paragraphs: []paragraphXML{emptyParagraph()}},
+		}
+	}
+	bullets := []string{"Manual handoffs delay close", "Customer growth is accelerating", "Reporting remains fragmented", "Rework slows the team", "Decisions arrive too late"}
+	fontScale := func(bodyPr string) int {
+		matches := regexp.MustCompile(`fontScale="([0-9]+)"`).FindStringSubmatch(bodyPr)
+		if len(matches) < 2 {
+			return 100000
+		}
+		scale, _ := strconv.Atoi(matches[1])
+		return scale
+	}
+	plain := makeShape()
+	if err := populateShapeText(plain, ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets}, 0, "Arial"); err != nil {
+		t.Fatal(err)
+	}
+	authored := makeShape()
+	if err := populateShapeText(authored, ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets, FontSize: 2400}, 0, "Arial"); err != nil {
+		t.Fatal(err)
+	}
+	plainScale := fontScale(plain.TextBody.BodyProperties.Inner)
+	authoredScale := fontScale(authored.TextBody.BodyProperties.Inner)
+	if authoredScale >= plainScale {
+		t.Errorf("24pt author size must require more shrink than nominal body: authored=%d, plain=%d", authoredScale, plainScale)
+	}
+	for _, para := range authored.TextBody.Paragraphs {
+		for _, run := range para.Runs {
+			if run.RunProperties == nil || run.RunProperties.FontSize != "2400" {
+				t.Errorf("authored run size lost after measured fit: %+v", run.RunProperties)
 			}
 		}
 	}
