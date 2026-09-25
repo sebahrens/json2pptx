@@ -231,9 +231,10 @@ func TitleNeedsShortening(res textfit.FitResult, sizeHPt int) bool {
 // box so the prefix search finds the box's ceiling rather than the probe's end.
 var titleCapacityProbe = strings.Repeat("Strategy delivers measured revenue growth across the whole business ", 12)
 
-// TitleCapacityChars estimates how many characters a title placeholder holds at
-// or above minScalePct of the template size, independently of what the slide
-// currently says.
+// TitleCapacityChars gives a conservative writing budget for a title box at
+// or above minScalePct of the starting size, independently of what the slide
+// currently says. It caps the measured probe at three wide-capital lines;
+// an individual title may fit more or less depending on its words.
 //
 // MaxTitleCharsAtScale answers "how much of THIS title fits", so its answer is
 // capped by the title's own length. Reporting that as the placeholder's capacity
@@ -246,7 +247,44 @@ func TitleCapacityChars(in TitleFitInput, minScalePct int) int {
 	}
 	probe := in
 	probe.Title = titleCapacityProbe
-	return MaxTitleCharsAtScale(probe, minScalePct)
+	capacity := MaxTitleCharsAtScale(probe, minScalePct)
+	// Discovery budgets are writing guidance, not an invitation to fill every
+	// vertical inch of a divider with headline text. In the rendered abstract
+	// divider, the area-only 126-char budget allowed a 26-char phrase to break
+	// mid-word. A conservative three-line ceiling based on a wide capital also
+	// accounts for all-caps/tracked headings better than the average-word probe.
+	if perLine := TitleCapacityPerLine(in, minScalePct); perLine > 0 {
+		capacity = min(capacity, 3*perLine)
+	}
+	return capacity
+}
+
+// TitleCapacityPerLine is a conservative single-line character budget at the
+// comfortable title size. It measures wide capital glyphs against the usable
+// box width; actual fit still depends on the authored words and font.
+func TitleCapacityPerLine(in TitleFitInput, minScalePct int) int {
+	const insetEMU = 91440 // OOXML's default 0.1-inch left/right inset.
+	// Reserve another 10% for letter spacing declared by some templates (the
+	// abstract divider tracks capitals by 1.5pt) and font substitution drift.
+	usableWidth := (in.WidthEMU - 2*insetEMU) * 9 / 10
+	if usableWidth <= 0 || in.Style.SizeHPt <= 0 || minScalePct <= 0 {
+		return 0
+	}
+	fontPt := float64(in.Style.SizeHPt) * float64(minScalePct) / 10000
+	lo, hi := 0, 256
+	for lo < hi {
+		mid := (lo + hi + 1) / 2
+		width, err := textfit.MeasureLineWidth(strings.Repeat("M", mid), in.FontName, fontPt)
+		if err != nil {
+			return 0
+		}
+		if width > usableWidth {
+			hi = mid - 1
+		} else {
+			lo = mid
+		}
+	}
+	return lo
 }
 
 // TitleFitInputForPlaceholder builds the measured-fit input for title text in a
@@ -267,9 +305,8 @@ func TitleFitInputForPlaceholder(text string, ph *types.PlaceholderInfo) TitleFi
 }
 
 // TitlePlaceholderCapacityChars is TitleCapacityChars for a resolved title
-// placeholder: the characters the box holds at the comfort scale, independent of
-// what the slide currently says. Returns 0 for anything that is not a measurable
-// title placeholder.
+// placeholder: conservative writing guidance at the comfort scale, independent
+// of what the slide currently says. Returns 0 when the title is not measurable.
 func TitlePlaceholderCapacityChars(ph *types.PlaceholderInfo) int {
 	if ph == nil || ph.Type != types.PlaceholderTitle || ph.FontSize <= 0 {
 		return 0
@@ -280,8 +317,17 @@ func TitlePlaceholderCapacityChars(ph *types.PlaceholderInfo) int {
 	return TitleCapacityChars(TitleFitInputForPlaceholder("", ph), TitleComfortScalePct(ph.FontSize))
 }
 
-// ReportedMaxChars is the character capacity to report for a placeholder on an
-// agent-facing surface: the measured title capacity for a title, the geometric
+// ReportedMaxCharsPerLine gives title authors a conservative width budget in
+// addition to the total box budget. Non-title placeholders return zero.
+func ReportedMaxCharsPerLine(ph *types.PlaceholderInfo) int {
+	if ph == nil || ph.Type != types.PlaceholderTitle || ph.FontSize <= 0 {
+		return 0
+	}
+	return TitleCapacityPerLine(TitleFitInputForPlaceholder("", ph), TitleComfortScalePct(ph.FontSize))
+}
+
+// ReportedMaxChars is the writing budget to report on an agent-facing surface:
+// conservative measured capacity for a title, the geometric
 // estimate (types.PlaceholderInfo.MaxChars) for everything else.
 //
 // A title's capacity has to be measured, not estimated from the box's area: the

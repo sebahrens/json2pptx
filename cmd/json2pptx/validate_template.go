@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -53,10 +54,11 @@ type validateTemplateLayout struct {
 
 // validateTemplatePlaceholder is a placeholder in the JSON output.
 type validateTemplatePlaceholder struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
-	Index    int    `json:"index"`
-	MaxChars int    `json:"max_chars"`
+	ID              string `json:"id"`
+	Type            string `json:"type"`
+	Index           int    `json:"index"`
+	MaxChars        int    `json:"max_chars"`
+	MaxCharsPerLine int    `json:"max_chars_per_line,omitempty"`
 }
 
 // validateTemplateCapacityEstimate is the capacity estimate in the JSON output.
@@ -242,10 +244,11 @@ func buildLayoutsOutput(layouts []types.LayoutMetadata, verbose bool) []validate
 			phs := make([]validateTemplatePlaceholder, len(l.Placeholders))
 			for j, ph := range l.Placeholders {
 				phs[j] = validateTemplatePlaceholder{
-					ID:       ph.ID,
-					Type:     string(ph.Type),
-					Index:    ph.Index,
-					MaxChars: ph.MaxChars,
+					ID:              ph.ID,
+					Type:            string(ph.Type),
+					Index:           ph.Index,
+					MaxChars:        generator.ReportedMaxChars(&ph),
+					MaxCharsPerLine: generator.ReportedMaxCharsPerLine(&ph),
 				}
 			}
 			vl.Placeholders = phs

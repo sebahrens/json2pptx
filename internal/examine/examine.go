@@ -175,20 +175,21 @@ type ZoneReport struct {
 
 // PlaceholderReport describes one placeholder. ZIndex is the document order of
 // the placeholder in the layout shape tree (later = drawn on top). FontPt and
-// MaxChars are the font-aware budget the engine uses for fit decisions: for a
-// title, MaxChars is the measured capacity at the comfort scale, the same number
-// the measured title check shortens against (go-slide-creator-jcph).
+// MaxChars are font-aware writing guidance: titles get a conservative measured
+// three-line budget plus a per-line width hint. Actual-title fit decisions use
+// the authored words, which can differ from this generic budget.
 type PlaceholderReport struct {
-	ID             string       `json:"id"`
-	Type           string       `json:"type"`
-	AutoFilled     bool         `json:"auto_filled,omitempty"`
-	Role           string       `json:"role"`
-	RoleConfidence float64      `json:"role_confidence"`
-	Index          int          `json:"index"`
-	ZIndex         int          `json:"z_index"`
-	FontPt         float64      `json:"font_pt"`
-	MaxChars       int          `json:"max_chars"`
-	Bounds         BoundsReport `json:"bounds"`
+	ID              string       `json:"id"`
+	Type            string       `json:"type"`
+	AutoFilled      bool         `json:"auto_filled,omitempty"`
+	Role            string       `json:"role"`
+	RoleConfidence  float64      `json:"role_confidence"`
+	Index           int          `json:"index"`
+	ZIndex          int          `json:"z_index"`
+	FontPt          float64      `json:"font_pt"`
+	MaxChars        int          `json:"max_chars"`
+	MaxCharsPerLine int          `json:"max_chars_per_line,omitempty"`
+	Bounds          BoundsReport `json:"bounds"`
 }
 
 // BoundsReport carries a placeholder's rectangle in both EMU and inches.
@@ -436,15 +437,16 @@ func ProjectLayoutPlaceholders(l *types.LayoutMetadata) []PlaceholderReport {
 // z-index and converting EMU bounds to inches.
 func buildPlaceholderReport(ph *types.PlaceholderInfo, zIndex int) PlaceholderReport {
 	return PlaceholderReport{
-		ID:             ph.ID,
-		Type:           string(ph.Type),
-		AutoFilled:     types.IsAutoFilledPlaceholder(ph.ID),
-		Role:           string(ph.Role),
-		RoleConfidence: ph.RoleConfidence,
-		Index:          ph.Index,
-		ZIndex:         zIndex,
-		FontPt:         round2(float64(ph.FontSize) / 100.0),
-		MaxChars:       generator.ReportedMaxChars(ph),
+		ID:              ph.ID,
+		Type:            string(ph.Type),
+		AutoFilled:      types.IsAutoFilledPlaceholder(ph.ID),
+		Role:            string(ph.Role),
+		RoleConfidence:  ph.RoleConfidence,
+		Index:           ph.Index,
+		ZIndex:          zIndex,
+		FontPt:          round2(float64(ph.FontSize) / 100.0),
+		MaxChars:        generator.ReportedMaxChars(ph),
+		MaxCharsPerLine: generator.ReportedMaxCharsPerLine(ph),
 		Bounds: BoundsReport{
 			XEMU: ph.Bounds.X,
 			YEMU: ph.Bounds.Y,

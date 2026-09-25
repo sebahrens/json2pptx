@@ -1027,6 +1027,7 @@ var outputSchemaExamineTemplate = json.RawMessage(`{
                 "z_index":         {"type": "integer", "description": "Document order in the layout shape tree (later = drawn on top)."},
                 "font_pt":         {"type": "number", "description": "Font-aware point size the engine uses for fit decisions."},
                 "max_chars":       {"type": "integer", "description": "Font-aware character budget."},
+                "max_chars_per_line": {"type": "integer", "description": "Conservative single-line title width budget; omitted for non-title placeholders."},
                 "bounds": {
                   "type": "object",
                   "properties": {

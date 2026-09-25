@@ -81,6 +81,12 @@ func TestTemplateDiscoveryPlaceholderParity(t *testing.T) {
 					if f.ID != want.ID || f.Type != want.Type || f.Role != want.Role || f.AutoFilled != want.AutoFilled {
 						t.Errorf("%s placeholder %d full=%+v, examine=%+v", layout.ID, i, f, want)
 					}
+					if c.MaxChars != want.MaxChars || f.MaxChars != want.MaxChars ||
+						c.MaxCharsPerLine != want.MaxCharsPerLine || f.MaxCharsPerLine != want.MaxCharsPerLine {
+						t.Errorf("%s placeholder %d capacity examine=(%d,%d) compact=(%d,%d) full=(%d,%d)",
+							layout.ID, i, want.MaxChars, want.MaxCharsPerLine,
+							c.MaxChars, c.MaxCharsPerLine, f.MaxChars, f.MaxCharsPerLine)
+					}
 				}
 			}
 		})

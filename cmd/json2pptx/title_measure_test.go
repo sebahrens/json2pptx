@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/examine"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -397,4 +398,57 @@ func TestTitlePlaceholderMaxCharsIsMeasured(t *testing.T) {
 		return
 	}
 	t.Fatal("no title placeholder in the dry-run output")
+}
+
+func TestTitleCapacityConsistentAcrossTemplateSurfaces(t *testing.T) {
+	a := loadTemplateAnalysis(t, "abstract")
+	validated := buildLayoutsOutput(a.Layouts, true)
+	full := buildFullLayoutInfos(a.Layouts, nil)
+	var sawSectionDivider bool
+	for i := range a.Layouts {
+		l := &a.Layouts[i]
+		projected := examine.ProjectLayoutPlaceholders(l)
+		for j := range l.Placeholders {
+			ph := &l.Placeholders[j]
+			if ph.Type != types.PlaceholderTitle || ph.FontSize <= 0 {
+				continue
+			}
+			want := generator.ReportedMaxChars(ph)
+			perLine := generator.ReportedMaxCharsPerLine(ph)
+			if want <= 0 {
+				t.Fatalf("layout %q title %q has no measured capacity", l.Name, ph.ID)
+			}
+			if perLine <= 0 || want > 3*perLine {
+				t.Errorf("layout %q title %q capacity %d must fit the conservative 3-line ceiling of %d", l.Name, ph.ID, want, perLine)
+			}
+			if got := validated[i].Placeholders[j].MaxChars; got != want {
+				t.Errorf("validate-template %q/%q max_chars=%d, want %d", l.Name, ph.ID, got, want)
+			}
+			if got := validated[i].Placeholders[j].MaxCharsPerLine; got != perLine {
+				t.Errorf("validate-template %q/%q max_chars_per_line=%d, want %d", l.Name, ph.ID, got, perLine)
+			}
+			if got := projected[j].MaxChars; got != want {
+				t.Errorf("examine-template %q/%q max_chars=%d, want %d", l.Name, ph.ID, got, want)
+			}
+			if got := projected[j].MaxCharsPerLine; got != perLine {
+				t.Errorf("examine-template %q/%q max_chars_per_line=%d, want %d", l.Name, ph.ID, got, perLine)
+			}
+			if got := full[i].Placeholders[j].MaxChars; got != want {
+				t.Errorf("list_templates %q/%q max_chars=%d, want %d", l.Name, ph.ID, got, want)
+			}
+			if got := full[i].Placeholders[j].MaxCharsPerLine; got != perLine {
+				t.Errorf("list_templates %q/%q max_chars_per_line=%d, want %d", l.Name, ph.ID, got, perLine)
+			}
+			if l.Name == "Section Divider" {
+				sawSectionDivider = true
+				t.Logf("abstract Section Divider title budget: total=%d per_line=%d (old area estimate=%d)", want, perLine, ph.MaxChars)
+				if want >= 126 || perLine >= 26 {
+					t.Errorf("abstract Section Divider repeats the misleading 126-char/26-char-line guidance: max_chars=%d per_line=%d", want, perLine)
+				}
+			}
+		}
+	}
+	if !sawSectionDivider {
+		t.Fatal("abstract Section Divider title was not checked")
+	}
 }

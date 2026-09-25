@@ -363,8 +363,9 @@ type skillPlaceholderCompact struct {
 	// Role is the canonical, intent-level placeholder role (title, eyebrow,
 	// section_number, body, image, chart, …) — refines Type for role-aware
 	// placement. Omitted when unclassified.
-	Role     string `json:"role,omitempty"`
-	MaxChars int    `json:"max_chars"`
+	Role            string `json:"role,omitempty"`
+	MaxChars        int    `json:"max_chars"`
+	MaxCharsPerLine int    `json:"max_chars_per_line,omitempty"`
 }
 
 // skillLayoutInfo describes a single layout (only included in full mode).
@@ -390,15 +391,16 @@ type skillPlaceholderInfo struct {
 	AutoFilled bool   `json:"auto_filled,omitempty"`
 	// Role / RoleConfidence are the canonical, intent-level placeholder role and
 	// the classifier's 0.0–1.0 confidence in it.
-	Role           string  `json:"role,omitempty"`
-	RoleConfidence float64 `json:"role_confidence,omitempty"`
-	MaxChars       int     `json:"max_chars"`
-	X              int64   `json:"x_emu"`
-	Y              int64   `json:"y_emu"`
-	Width          int64   `json:"width_emu"`
-	Height         int64   `json:"height_emu"`
-	FontFamily     string  `json:"font_family,omitempty"`
-	FontSize       int     `json:"font_size_hundredths,omitempty"`
+	Role            string  `json:"role,omitempty"`
+	RoleConfidence  float64 `json:"role_confidence,omitempty"`
+	MaxChars        int     `json:"max_chars"`
+	MaxCharsPerLine int     `json:"max_chars_per_line,omitempty"`
+	X               int64   `json:"x_emu"`
+	Y               int64   `json:"y_emu"`
+	Width           int64   `json:"width_emu"`
+	Height          int64   `json:"height_emu"`
+	FontFamily      string  `json:"font_family,omitempty"`
+	FontSize        int     `json:"font_size_hundredths,omitempty"`
 	// FontSizePt is FontSize expressed in points (the font-size evidence behind
 	// the font-aware MaxChars estimate). Omitted when unknown.
 	FontSizePt float64 `json:"font_size_pt,omitempty"`
@@ -663,11 +665,12 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 		phs := make([]skillPlaceholderCompact, len(projected))
 		for k, ph := range projected {
 			phs[k] = skillPlaceholderCompact{
-				ID:         ph.ID,
-				Type:       ph.Type,
-				AutoFilled: ph.AutoFilled,
-				Role:       ph.Role,
-				MaxChars:   ph.MaxChars,
+				ID:              ph.ID,
+				Type:            ph.Type,
+				AutoFilled:      ph.AutoFilled,
+				Role:            ph.Role,
+				MaxChars:        ph.MaxChars,
+				MaxCharsPerLine: ph.MaxCharsPerLine,
 			}
 		}
 		if len(phs) > 0 {
@@ -730,20 +733,21 @@ func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutprevie
 		for k, ph := range projected {
 			raw := &l.Placeholders[k]
 			phs[k] = skillPlaceholderInfo{
-				ID:             ph.ID,
-				Type:           ph.Type,
-				AutoFilled:     ph.AutoFilled,
-				Role:           ph.Role,
-				RoleConfidence: ph.RoleConfidence,
-				MaxChars:       ph.MaxChars,
-				X:              ph.Bounds.XEMU,
-				Y:              ph.Bounds.YEMU,
-				Width:          ph.Bounds.WEMU,
-				Height:         ph.Bounds.HEMU,
-				FontFamily:     raw.FontFamily,
-				FontSize:       raw.FontSize,
-				FontSizePt:     fontHundredthsToPt(raw.FontSize),
-				FontColor:      raw.FontColor,
+				ID:              ph.ID,
+				Type:            ph.Type,
+				AutoFilled:      ph.AutoFilled,
+				Role:            ph.Role,
+				RoleConfidence:  ph.RoleConfidence,
+				MaxChars:        ph.MaxChars,
+				MaxCharsPerLine: ph.MaxCharsPerLine,
+				X:               ph.Bounds.XEMU,
+				Y:               ph.Bounds.YEMU,
+				Width:           ph.Bounds.WEMU,
+				Height:          ph.Bounds.HEMU,
+				FontFamily:      raw.FontFamily,
+				FontSize:        raw.FontSize,
+				FontSizePt:      fontHundredthsToPt(raw.FontSize),
+				FontColor:       raw.FontColor,
 			}
 		}
 		tags := l.Tags
