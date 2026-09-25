@@ -116,8 +116,15 @@ func TestProposeRepairsConsumesRealValidateFindings(t *testing.T) {
 				t.Fatal(err)
 			}
 			got := patched.Slides[0].Content[0].TextValue
-			if got == nil || len([]rune(*got)) > 90 || len([]rune(*got)) <= 50 || len(strings.Fields(*got)) < 8 {
-				t.Fatalf("measured title trim did not honor the 90-char budget without falling back to 50: %v", got)
+			if got == nil {
+				t.Fatal("measured title trim produced no text")
+			}
+			budget, ok := directive.Params["max_chars"].(float64)
+			if !ok || budget <= 50 {
+				t.Fatalf("validation-derived max_chars must be a measured budget above the old 50-char fallback: %+v", directive.Params)
+			}
+			if len([]rune(*got)) > int(budget) || len([]rune(*got)) <= 50 || len(strings.Fields(*got)) < 8 {
+				t.Fatalf("measured title trim did not honor the %d-char budget without falling back to 50: %q", int(budget), *got)
 			}
 			return
 		}

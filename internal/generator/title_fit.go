@@ -61,6 +61,8 @@ type TitleFitInput struct {
 	Title     string
 	WidthEMU  int64
 	HeightEMU int64
+	// MinFontHPt is an absolute fitting floor for display titles, when set.
+	MinFontHPt int
 	// Style is the inherited title text style (size, caps, line spacing).
 	Style template.InheritedTextStyle
 	// FontName is the concrete font family (theme tokens already resolved).
@@ -76,8 +78,55 @@ func titleFitParams(in TitleFitInput) textfit.Params {
 		FontName:    in.FontName,
 		Paragraphs:  []string{in.Title},
 	}
+	if in.MinFontHPt > 0 && in.Style.SizeHPt > 0 {
+		p.MinFontScalePct = int(math.Ceil(float64(in.MinFontHPt) / float64(in.Style.SizeHPt) * 100))
+	}
 	applyInheritedStyleToParams(&p, in.Style)
 	return p
+}
+
+// SectionTitleMinHPt is the readable floor for divider titles. The full
+// authored title is preserved; content that cannot fit at this size is refused.
+const SectionTitleMinHPt = 2800
+
+// DetectSectionTitleFloor reports a divider title that cannot fit at 28pt
+// without compressing line spacing. It uses the same title-fit estimator and
+// word-prefix capacity calculation as ordinary title overflow findings.
+func DetectSectionTitleFloor(path string, in TitleFitInput) *patterns.FitFinding {
+	in.MinFontHPt = SectionTitleMinHPt
+	p := titleFitParams(in)
+	if in.Style.SizeHPt > 0 && in.Style.SizeHPt < SectionTitleMinHPt {
+		f := newSectionTitleFloorFinding(path, in.Title, p)
+		return &f
+	}
+	res, err := textfit.Calculate(p)
+	if err != nil || (!res.Overflow && res.LnSpcReduction == 0) {
+		return nil
+	}
+	f := newSectionTitleFloorFinding(path, in.Title, p)
+	return &f
+}
+
+func newSectionTitleFloorFinding(path, title string, p textfit.Params) patterns.FitFinding {
+	maxChars := 0
+	if p.FontSizeHPt >= SectionTitleMinHPt {
+		maxChars = longestFittingPrefix(p, func(r textfit.FitResult) bool {
+			return !r.Overflow && r.LnSpcReduction == 0
+		})
+	}
+	return patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Pattern: "placeholder",
+			Path:    path,
+			Code:    patterns.ErrCodeTitleTruncated,
+			Message: fmt.Sprintf("section title (%d chars) cannot fit its divider box at the 28pt floor without losing text or compressing line spacing; shorten to about %d chars", len([]rune(title)), maxChars),
+			Fix: &patterns.FixSuggestion{Kind: "shorten_title", Params: map[string]any{
+				"current_chars": len([]rune(title)), "max_chars": maxChars, "min_font_pt": 28,
+			}},
+		},
+		Action:  "refuse",
+		Allowed: &patterns.Extent{WidthEMU: p.WidthEMU, HeightEMU: p.HeightEMU},
+	}
 }
 
 // MeasureTitleFit runs the measured autofit calculation for a title in its

@@ -4,6 +4,7 @@ package generator
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -40,6 +41,9 @@ type autofitConfig struct {
 	// isTitle marks a title placeholder: overflow is reported as
 	// TITLE_OVERFLOW and no paragraphs are trimmed.
 	isTitle bool
+	// sectionTitle applies the divider-specific 28pt floor and refuses a
+	// title that would require smaller text or compressed line spacing.
+	sectionTitle bool
 	// overrideNoAutofit allows a content-populated display title to replace a
 	// template's noAutofit directive with measured shrink-to-fit protection.
 	// Layout placeholder copy is often short, while authored closing statements
@@ -65,6 +69,14 @@ func withInheritedTextStyle(st template.InheritedTextStyle, fontName string) aut
 // withTitleRole marks the shape as a title placeholder.
 func withTitleRole() autofitOption {
 	return func(c *autofitConfig) { c.isTitle = true }
+}
+
+func withSectionTitleRole() autofitOption {
+	return func(c *autofitConfig) {
+		c.isTitle = true
+		c.sectionTitle = true
+		c.overrideNoAutofit = true
+	}
 }
 
 func withNoAutofitOverride() autofitOption {
@@ -149,6 +161,9 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	params := buildTextfitParams(shape, widthEMU, heightEMU, texts, &cfg)
 	params.ViewingMode = cfg.viewingMode
 	params.TextRole = cfg.textRole
+	if cfg.sectionTitle && params.FontSizeHPt > 0 {
+		params.MinFontScalePct = int(math.Ceil(float64(SectionTitleMinHPt) / float64(params.FontSizeHPt) * 100))
+	}
 
 	result, err := textfit.Calculate(params)
 	if err != nil {
@@ -160,15 +175,25 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// cannot fit even at the minimum scale, keep the maximum reduction and
 	// report TITLE_OVERFLOW so the author shortens it.
 	if cfg.isTitle {
-		if result.Overflow && cfg.findings != nil {
-			*cfg.findings = append(*cfg.findings, newTitleOverflowFinding(cfg.findingPath, strings.Join(texts, " "), params, result))
+		if cfg.findings != nil {
+			if cfg.sectionTitle && (result.Overflow || result.LnSpcReduction > 0) {
+				*cfg.findings = append(*cfg.findings, newSectionTitleFloorFinding(cfg.findingPath, strings.Join(texts, " "), params))
+			} else if result.Overflow {
+				*cfg.findings = append(*cfg.findings, newTitleOverflowFinding(cfg.findingPath, strings.Join(texts, " "), params, result))
+			}
 		}
-		// Bake the fit into explicit sizes / line spacing (renderers that
-		// recompute autofit would otherwise squash the lines together) and
-		// keep a bare normAutofit as the shrink safety net.
+		// Bake the fit into explicit sizes / line spacing. Ordinary titles
+		// retain normAutofit as a safety net; divider titles disable further
+		// renderer shrink so the 28pt floor remains stable.
 		bakeTitleFit(shape, params, result)
 		emitReadabilityFinding(&cfg, params, result, len(shape.TextBody.Paragraphs))
-		bp.Inner += `<a:normAutofit/>`
+		if cfg.sectionTitle {
+			// Keep the measured font size stable across renderers. A bare
+			// normAutofit can silently shrink below the floor on re-open.
+			bp.Inner += `<a:noAutofit/>`
+		} else {
+			bp.Inner += `<a:normAutofit/>`
+		}
 		return
 	}
 

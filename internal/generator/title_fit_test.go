@@ -18,6 +18,91 @@ import (
 
 const longConsultingTitle = "Procurement is fragmented across 14 business units, leaving an estimated $38-52M of annual savings uncaptured"
 
+func TestDetectSectionTitleFloor(t *testing.T) {
+	base := TitleFitInput{
+		WidthEMU: 4968816, HeightEMU: 1461188,
+		Style: template.InheritedTextStyle{SizeHPt: 3200}, FontName: "Calibri Light",
+	}
+	base.Title = "Revenue grew 17% in Q3"
+	if f := DetectSectionTitleFloor("/slides/0/content/0", base); f != nil {
+		t.Fatalf("normal divider title should fit at >=28pt: %+v", f)
+	}
+	base.Title = "Revenue grew 17% in Q3 while margins expanded globally and operating costs stayed flat across every region"
+	f := DetectSectionTitleFloor("/slides/0/content/0", base)
+	if f == nil || f.Code != patterns.ErrCodeTitleTruncated || f.Action != "refuse" {
+		t.Fatalf("long divider title must be refused at floor: %+v", f)
+	}
+	if f.Fix == nil || f.Fix.Kind != "shorten_title" {
+		t.Fatalf("finding must offer a shortening target: %+v", f)
+	}
+	maxChars, ok := f.Fix.Params["max_chars"].(int)
+	if !ok || maxChars <= 0 || maxChars >= len([]rune(base.Title)) {
+		t.Errorf("max_chars = %v, want a positive value below the authored length", f.Fix.Params["max_chars"])
+	}
+	base.Style.SizeHPt = 2000
+	base.Title = "Short"
+	if f := DetectSectionTitleFloor("/slides/0/content/0", base); f == nil || f.Code != patterns.ErrCodeTitleTruncated || f.Fix.Params["max_chars"] != 0 {
+		t.Errorf("sub-28pt divider style must not be accepted as a readable title: %+v", f)
+	}
+}
+
+func TestBusinessDividerPreservesTitleAndFontFloor(t *testing.T) {
+	tpl := "../../templates/business-template.pptx"
+	if _, err := os.Stat(tpl); err != nil {
+		t.Skipf("business-template not found: %v", err)
+	}
+	for _, tc := range []struct {
+		name, title string
+		wantRefuse  bool
+	}{
+		{"short", "Revenue", false},
+		{"fits", "Revenue grew 17% in Q3 while margins expanded globally", false},
+		{"too_long", "Revenue grew 17% in Q3 while margins expanded globally and operating costs stayed flat across every region", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := filepath.Join(t.TempDir(), "divider.pptx")
+			result, _, err := generateSinglePass(context.Background(), GenerationRequest{
+				TemplatePath: tpl, OutputPath: out, ExcludeTemplateSlides: true,
+				Slides: []SlideSpec{{LayoutID: "slideLayout2", Content: []ContentItem{
+					{PlaceholderID: "title", Type: ContentSectionTitle, Value: tc.title},
+					{PlaceholderID: "section_number", Type: ContentSectionTitle, Value: "01"},
+				}}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			xml := readZipFileString(t, out, "ppt/slides/slide1.xml")
+			if !strings.Contains(xml, tc.title) || strings.Contains(xml, "…") {
+				t.Errorf("authored title was shortened in slide XML")
+			}
+			titleXML := xml[:strings.Index(xml, `name="Section Number"`)]
+			if !strings.Contains(titleXML, `<a:noAutofit/>`) {
+				t.Error("divider title permits renderer-driven shrink below floor")
+			}
+			m := regexp.MustCompile(`<a:rPr[^>]*\bsz="(\d+)"`).FindStringSubmatch(titleXML)
+			if m == nil {
+				m = regexp.MustCompile(`<a:defRPr[^>]*\bsz="(\d+)"`).FindStringSubmatch(titleXML)
+			}
+			if m == nil {
+				t.Fatal("divider title has no measurable run or inherited font size")
+			}
+			sz, _ := strconv.Atoi(m[1])
+			if sz < SectionTitleMinHPt {
+				t.Errorf("divider title rendered at %d hpt, below %d floor", sz, SectionTitleMinHPt)
+			}
+			var refused bool
+			for _, f := range result.FitFindings {
+				if f.Code == patterns.ErrCodeTitleTruncated && f.Action == "refuse" {
+					refused = true
+				}
+			}
+			if refused != tc.wantRefuse {
+				t.Errorf("TITLE_TRUNCATED refuse=%v, want %v; findings=%+v", refused, tc.wantRefuse, result.FitFindings)
+			}
+		})
+	}
+}
+
 func readZipFileString(t *testing.T, path, name string) string {
 	t.Helper()
 	r, err := zip.OpenReader(path)

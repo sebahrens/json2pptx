@@ -3,7 +3,34 @@ package textfit
 import (
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/svggen/fontcache"
 )
+
+func TestCalculate_TriesNonGridMinimumBeforeReducingLineSpacing(t *testing.T) {
+	ff, _, _ := fontcache.Resolve("Arial", "Arial")
+	if ff == nil {
+		t.Fatal("Arial fallback font unavailable")
+	}
+	paragraphs := []string{strings.Repeat("Revenue growth across regions ", 5)}
+	usableWidthPt := 300.0
+	at90 := estimateTextHeight(ff, paragraphs, 32*0.90, usableWidthPt, 1.2, 0, nil, nil)
+	at88 := estimateTextHeight(ff, paragraphs, 32*0.88, usableWidthPt, 1.2, 0, nil, nil)
+	if at90 <= at88 {
+		t.Fatalf("fixture must distinguish 90%% and 88%%: %.2f vs %.2f", at90, at88)
+	}
+	heightPt := (at90+at88)/2 + 14.4 // textfit subtracts 7.2pt on each side
+	got, err := Calculate(Params{
+		WidthEMU: int64((usableWidthPt + 14.4) * 12700), HeightEMU: int64(heightPt * 12700),
+		FontSizeHPt: 3200, FontName: "Arial", Paragraphs: paragraphs, MinFontScalePct: 88,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Overflow || got.FontScale != 88000 || got.LnSpcReduction != 0 {
+		t.Errorf("exact 88%% floor fits without compressed leading, got %+v", got)
+	}
+}
 
 func TestCalculate_EmptyInput(t *testing.T) {
 	tests := []struct {

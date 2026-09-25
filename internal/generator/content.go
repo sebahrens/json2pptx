@@ -52,7 +52,7 @@ func BuildContentItems(slide types.SlideDefinition, mappings []layout.ContentMap
 		case "title":
 			// Section divider titles use ContentSectionTitle so the generator
 			// preserves the template's large font size instead of capping it
-			// to 24pt. normAutofit scales the text to fill the placeholder.
+			// to 24pt. Measured fitting preserves a 28pt readability floor.
 			// Title slide titles use ContentTitleSlideTitle to preserve the
 			// template's large ctrTitle font size, centered alignment, and
 			// bold styling instead of capping to 24pt body-text size.

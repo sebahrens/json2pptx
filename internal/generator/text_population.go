@@ -34,9 +34,15 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	var err error
 	switch item.Type {
 	case ContentText:
+		if isTitleShape(shape) || isTitlePlaceholder(item.PlaceholderID) {
+			autofitOpts = append(autofitOpts, withTitleRole())
+		}
 		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 2400, themeFontName, autofitOpts...) // 24pt cap (only if layout has no explicit sz)
 	case ContentSectionTitle:
-		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 0, themeFontName, autofitOpts...) // no cap — normAutofit scales to fill
+		if isTitleShape(shape) || isTitlePlaceholder(item.PlaceholderID) {
+			autofitOpts = append(autofitOpts, withSectionTitleRole())
+		}
+		err = setTextParagraph(shape, item.PlaceholderID, item.Value, 0, themeFontName, autofitOpts...) // no ordinary-text cap; divider titles use the measured 28pt floor
 	case ContentTitleSlideTitle:
 		err = setTitleSlideTitle(shape, item.PlaceholderID, item.Value, themeFontName, autofitOpts...) // preserve template styling, add overflow protection
 	case ContentBullets:
@@ -107,7 +113,7 @@ func applyFontSizeOverride(shape *shapeXML, fontSizeHPt int) {
 // each segment is rendered as a separate OOXML paragraph.
 //
 // maxFontSizeHPt is the maximum allowed lstStyle font size in hundredths of a point.
-// Pass 0 to skip font capping (used for section titles where normAutofit handles sizing).
+// Pass 0 to skip the ordinary-text cap (section titles have their own fit policy).
 // themeFontName is the template's theme font for text fitting measurements.
 func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, maxFontSizeHPt int, themeFontName string, autofitOpts ...autofitOption) error {
 	text, ok := value.(string)
@@ -173,41 +179,7 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	floorLstStyleFontSize(shape, 1200) // 12pt min
 
 	if maxFontSizeHPt == 0 {
-		fitSectionTitle(shape, text)
-	}
-
-	// Limit title wrapping: truncate extremely long titles to maxTitleLines so they
-	// don't shrink to tiny font sizes and crowd the body text below. Section titles
-	// (maxFontSizeHPt=0) have their own sizing logic and are not truncated here.
-	if maxFontSizeHPt > 0 && isTitlePlaceholder(placeholderID) {
-		titleWidthEMU, _ := getShapeDimensions(shape)
-		titleFontSizeHPt := extractFontSizeFromShape(shape)
-		if titleFontSizeHPt == 0 {
-			titleFontSizeHPt = 2000 // 20pt default (typical slide master body lvl1)
-		}
-		truncated := truncateTextToMaxLines(text, titleWidthEMU, titleFontSizeHPt, maxTitleLines, themeFontName)
-		if truncated != text {
-			slog.Info("truncated long title to fit max lines",
-				slog.String("placeholder", placeholderID),
-				slog.Int("max_lines", maxTitleLines),
-				slog.Int("original_runes", len([]rune(text))),
-				slog.Int("truncated_runes", len([]rune(truncated))))
-			// Rebuild paragraphs with the truncated text
-			var newParas []paragraphXML
-			for _, seg := range strings.Split(truncated, "\n") {
-				if seg == "" {
-					continue
-				}
-				runs := createFormattedRuns(seg, templateRProps)
-				newParas = append(newParas, paragraphXML{
-					Properties: textPProps,
-					Runs:       runs,
-				})
-			}
-			if len(newParas) > 0 {
-				shape.TextBody.Paragraphs = newParas
-			}
-		}
+		fitSectionTitle(shape, text, isTitleShape(shape) || isTitlePlaceholder(placeholderID))
 	}
 
 	// Replace spAutoFit (grow-box-to-fit-text) with nothing so normAutofit can be applied.
@@ -235,7 +207,7 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 // fitSectionTitle establishes prominence before applying the final width cap.
 // Keeping this separate also makes the section-specific sizing order explicit:
 // a later prominence boost must never undo the safe fit calculation.
-func fitSectionTitle(shape *shapeXML, text string) {
+func fitSectionTitle(shape *shapeXML, text string, isTitle bool) {
 	boostSectionTitleFont(shape)
 
 	widthEMU, _ := getShapeDimensions(shape)
@@ -250,6 +222,9 @@ func fitSectionTitle(shape *shapeXML, text string) {
 	// on one line so LibreOffice does not shift that adjacent number off-slide.
 	if singleLine := maxFontForSingleLineFit(text, widthEMU); singleLine >= 3200 && singleLine < safeMax {
 		safeMax = singleLine
+	}
+	if isTitle && safeMax < SectionTitleMinHPt {
+		safeMax = SectionTitleMinHPt
 	}
 	if safeMax <= 0 || fontSizeHPt <= safeMax {
 		return

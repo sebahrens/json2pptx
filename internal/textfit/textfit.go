@@ -186,6 +186,18 @@ func Calculate(p Params) (FitResult, error) {
 			}, nil
 		}
 	}
+	// A caller-provided floor need not align with the 5% search grid. Try that
+	// exact size at normal line spacing before reducing leading; otherwise a
+	// 28pt floor on a 32pt title (88%) is skipped after 90%, and a title that
+	// fits at 88% is incorrectly reported as needing compressed lines.
+	if (100-minScale)%fontScaleStep != 0 {
+		scaledFontPt := fontSizePt * float64(minScale) / 100.0
+		totalHeight := estimateTextHeight(ff, p.Paragraphs, scaledFontPt, usableWidthPt, p.LineSpacing, p.ExtraSpacingPt, p.ExtraSpacingsPt, p.LeftMarginsPt)
+		if totalHeight <= usableHeightPt {
+			readability := CheckReadability(p.FontSizeHPt, minScale*1000, p.ViewingMode, p.TextRole)
+			return FitResult{FontScale: minScale * 1000, Readable: readability.Readable, EffectiveHPt: readability.EffectiveHPt, PolicyMinHPt: readability.MinimumHPt, FontSubstituted: fontSubstituted}, nil
+		}
+	}
 
 	// At minimum font scale, try reducing line spacing
 	minScaleF := float64(minScale) / 100.0

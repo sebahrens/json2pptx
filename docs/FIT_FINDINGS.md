@@ -290,6 +290,8 @@ Text in a body or content placeholder overflows its frame. Emitted only when all
 
 An ordinary two-line title in a box tall enough for it produces no finding. The informational finding is reserved for three or more lines that still fit; a title wrapping inside a one-line box needs review. This keeps normal action titles from consuming the per-slide finding budget ahead of substantive contrast or fit findings. The budget itself ranks `refuse` above `shrink_or_split`, `review`, and `info` before truncating.
 
+Titles are never ellipsized by the generator. A wrap notice describes the lines at the template font, not lost text; measured fit decides whether shortening is required.
+
 **Measured escalation (go-slide-creator-vjwn).** Titles are also measured against the resolved title placeholder with the template's inherited title style (master size, all-caps, line spacing; canonical `layout_id`s such as `"content"` are resolved) using exact glyph widths — the same measurement the generator applies at render time. When the title only fits below the comfort size (80% of the template title size, capped at 32pt for large display titles) or only with reduced line spacing, `title_wraps` is emitted with `action: shrink_or_split`, `fix.kind: shorten_title` and `fix.params: {current_chars, max_chars, fit_scale_pct}` (`max_chars` = longest prefix that fits at the comfort size). When it cannot fit at all, `TITLE_OVERFLOW` is emitted instead. `validate` and the generate `quality` score use the same verdict, and they now say it in the same words: the validate-time diagnostic is the very same finding converted to a diagnostic, carrying the identical code (`title_wraps` / `TITLE_OVERFLOW`), path and message, so the findings envelope collapses the two into one entry instead of reporting one wrapped title twice under two codes (`max_length` no longer appears for titles). The measured verdict is now the **only** title-length rule:
 
 - The 60-character score fallback is gone. An unmeasurable title scores clean rather than against a number nothing renders; `HEADLINE_TOO_LONG` (12 words) is the fallback lint for that case, and it stands down for any title the measurement covered.
@@ -311,6 +313,14 @@ The measurement no longer requires an explicit `layout_id`. A slide that gives o
   "overflow_ratio": 1.33
 }
 ```
+
+### `TITLE_TRUNCATED`
+
+**Action:** `refuse`
+**Pattern:** `placeholder`
+**Fix kind:** `shorten_title`
+
+A section-divider title cannot fit its title box at 28pt or larger without losing text or compressing line spacing. The generator preserves the full title and reports `fix.params.max_chars` from the shared measured word-prefix estimator; strict fit refuses generation. Shorten the heading or choose a divider with a larger title box. Decorative section numbers are not subject to this title policy.
 
 ### `TITLE_OVERFLOW`
 

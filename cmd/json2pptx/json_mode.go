@@ -1971,10 +1971,10 @@ func computeQualityScoreWithLayouts(slides []SlideInput, warnings []string, layo
 					// An unmeasurable title now scores clean rather than against
 					// a number nothing renders (go-slide-creator-jcph).
 					if text, isText := resolved.(string); isText {
-						m := measureTitleInPlaceholder(text, titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID))
+						m := measureTitleInPlaceholder(text, titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID), isSectionSlideInput(slide, layouts))
 						if m.Flagged() {
 							penalty := 0.15
-							if m.Overflow {
+							if m.Overflow || m.Refuse {
 								penalty = 0.3
 							}
 							slideScore -= penalty

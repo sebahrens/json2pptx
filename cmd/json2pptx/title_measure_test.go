@@ -163,10 +163,43 @@ func TestMeasureTitleFlaggedCarriesMaxChars(t *testing.T) {
 	}
 }
 
+func TestSectionTitlePreflightUsesReadableFloor(t *testing.T) {
+	a := loadTemplateAnalysis(t, "business-template")
+	short := "Revenue grew 17% in Q3 while margins expanded globally"
+	long := short + " and operating costs stayed flat across every region"
+	for _, tc := range []struct {
+		title      string
+		wantRefuse bool
+	}{
+		{short, false}, {long, true},
+	} {
+		t.Run(tc.title, func(t *testing.T) {
+			input := PresentationInput{Slides: []SlideInput{{
+				LayoutID: "section", SlideType: "section",
+				Content: []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr(tc.title)}},
+			}}}
+			resolveCanonicalLayoutIDs(input.Slides, a.Layouts)
+			findings, _ := collectTitleFitFindings(&input, a.Layouts)
+			var floor *patterns.FitFinding
+			for i := range findings {
+				if findings[i].Code == patterns.ErrCodeTitleTruncated {
+					floor = &findings[i]
+				}
+			}
+			if (floor != nil) != tc.wantRefuse {
+				t.Fatalf("TITLE_TRUNCATED = %+v, wantRefuse=%v; all findings=%+v", floor, tc.wantRefuse, findings)
+			}
+			if floor != nil && (floor.Action != "refuse" || floor.Fix == nil || floor.Fix.Params["max_chars"] == nil) {
+				t.Errorf("floor finding lacks blocking action or max_chars: %+v", floor)
+			}
+		})
+	}
+}
+
 // isTitleLengthCode reports whether a code is one of the two the measured title
 // check owns. Nothing else may report a title's length (go-slide-creator-jcph).
 func isTitleLengthCode(code string) bool {
-	return code == patterns.ErrCodeTitleWraps || code == patterns.ErrCodeTitleOverflow
+	return code == patterns.ErrCodeTitleWraps || code == patterns.ErrCodeTitleOverflow || code == patterns.ErrCodeTitleTruncated
 }
 
 // TestUnmeasurableTitleFallsBackToWordCount pins what happens when there is no

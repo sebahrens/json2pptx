@@ -392,8 +392,7 @@ const maxTitleLines = 3
 const maxSubtitleLines = 3
 
 // isTitlePlaceholder returns true if the placeholder ID indicates a regular
-// slide title (not subtitle, section title, or title slide ctrTitle — those
-// have separate code paths).
+// slide title (not subtitle or title-slide ctrTitle).
 func isTitlePlaceholder(placeholderID string) bool {
 	lower := strings.ToLower(placeholderID)
 	return lower == "title" || strings.HasPrefix(lower, "title_")
@@ -551,7 +550,7 @@ func capLstStyleFontSizeIfUnset(shape *shapeXML, maxSizeHPt int) {
 // Section titles are meant to be visually prominent; a tiny font in a large
 // placeholder looks out of place. The calculation targets 2 lines of text at
 // 1.2× line spacing filling ~50% of the placeholder height, clamped to [3200, 5400]
-// (32pt–54pt). normAutofit handles overflow if the text is longer.
+// (32pt–54pt). The measured section-title policy handles longer text.
 func minSectionTitleFontForHeight(heightEMU int64) int {
 	if heightEMU <= 0 {
 		return 3200 // 32pt default floor

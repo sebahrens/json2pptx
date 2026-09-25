@@ -11,6 +11,8 @@ const (
 	// placeholder even at the minimum autofit font scale and line-spacing
 	// reduction (go-slide-creator-6cjs).
 	ErrCodeTitleOverflow = "TITLE_OVERFLOW"
+	// ErrCodeTitleTruncated refuses a divider title that cannot fit at 28pt.
+	ErrCodeTitleTruncated = "TITLE_TRUNCATED"
 
 	// ErrCodeTextBelowReadableMin fires when text renders (after autofit or
 	// predicted renderer shrink) below the deck viewing_mode's readability
@@ -20,12 +22,14 @@ const (
 
 // ErrTitleOverflow is the sentinel for ErrCodeTitleOverflow.
 var ErrTitleOverflow = errors.New("title does not fit its placeholder at the minimum autofit size")
+var ErrTitleTruncated = errors.New("section title cannot fit its divider at the readable floor")
 
 // ErrTextBelowReadableMin is the sentinel for ErrCodeTextBelowReadableMin.
 var ErrTextBelowReadableMin = errors.New("text renders below the viewing-mode readability minimum")
 
 func init() {
 	codeSentinel[ErrCodeTitleOverflow] = ErrTitleOverflow
+	codeSentinel[ErrCodeTitleTruncated] = ErrTitleTruncated
 	codeSentinel[ErrCodeTextBelowReadableMin] = ErrTextBelowReadableMin
 
 	findingMetaRegistry[ErrCodeTextBelowReadableMin] = FindingMeta{
@@ -55,5 +59,15 @@ func init() {
 		ExampleBefore: `{"code":"TITLE_OVERFLOW","path":"/slides/1/content/title","fix":{"kind":"shorten_title","params":{"current_chars":104,"max_chars":70,"font_pt":45,"min_font_pt":27}}}`,
 		ExampleAfter:  `Set the title text_value to at most fix.params.max_chars characters.`,
 		RelatedCodes:  []string{ErrCodeTitleWraps, ErrCodeHeadlineTooLong},
+	}
+	findingMetaRegistry[ErrCodeTitleTruncated] = FindingMeta{
+		Code:             ErrCodeTitleTruncated,
+		Summary:          "A section-divider title cannot fit at the 28pt readability floor without losing text.",
+		Severity:         "refuse",
+		WhenEmitted:      "Generation and title-fit preflight measure a section title against its divider box at a 28pt floor and normal line spacing.",
+		RemediationSteps: []string{"Shorten the title to about fix.params.max_chars characters, or use a divider with a larger title box."},
+		ExampleBefore:    `{"code":"TITLE_TRUNCATED","action":"refuse","fix":{"kind":"shorten_title","params":{"max_chars":36,"min_font_pt":28}}}`,
+		ExampleAfter:     "Use a shorter section title that fits at 28pt or larger.",
+		RelatedCodes:     []string{ErrCodeTitleOverflow, ErrCodeTitleWraps},
 	}
 }

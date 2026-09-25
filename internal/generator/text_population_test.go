@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
@@ -1981,9 +1982,9 @@ func TestTruncateTextToMaxLines(t *testing.T) {
 	})
 }
 
-// TestLongTitleTruncation verifies that populateShapeText truncates extremely
-// long titles to prevent crowding of body text (regression test for pptx-4pb).
-func TestLongTitleTruncation(t *testing.T) {
+// TestLongTitlePreservation verifies that authored title text is never replaced
+// by an ellipsis; measured fit findings own the overflow decision.
+func TestLongTitlePreservation(t *testing.T) {
 	makeTitleShape := func() *shapeXML {
 		return &shapeXML{
 			ShapeProperties: shapePropertiesXML{
@@ -2026,32 +2027,33 @@ func TestLongTitleTruncation(t *testing.T) {
 		}
 	})
 
-	t.Run("extremely long title truncated with ellipsis", func(t *testing.T) {
+	t.Run("extremely long title remains intact", func(t *testing.T) {
 		shape := makeTitleShape()
-		longTitle := strings.Repeat("Comprehensive Analysis of Global Market Trends and Revenue Growth Patterns Across All Business Segments ", 5)
+		longTitle := strings.TrimSuffix(strings.Repeat("Comprehensive Analysis of Global Market Trends and Revenue Growth Patterns Across All Business Segments\n", 10), "\n")
+		var findings []patterns.FitFinding
 		err := populateShapeText(shape, ContentItem{
 			PlaceholderID: "title",
 			Type:          ContentText,
 			Value:         longTitle,
-		}, 0, "")
+		}, 0, "", withFindingsCollector(&findings, "/slides/0/content/0"))
 		if err != nil {
 			t.Fatalf("populateShapeText() error = %v", err)
 		}
 
 		// Extract rendered text
-		var text string
+		var paragraphs []string
 		for _, para := range shape.TextBody.Paragraphs {
+			var text string
 			for _, run := range para.Runs {
 				text += run.Text
 			}
+			paragraphs = append(paragraphs, text)
 		}
-		// Should be truncated and end with ellipsis
-		if !strings.Contains(text, "\u2026") {
-			t.Errorf("long title should contain ellipsis, got %q", text)
+		if got := strings.Join(paragraphs, "\n"); got != longTitle {
+			t.Errorf("long title was changed: got %q, want %q", got, longTitle)
 		}
-		if len(text) >= len(longTitle) {
-			t.Errorf("truncated text should be shorter: got %d chars, original %d",
-				len(text), len(longTitle))
+		if len(findings) == 0 || findings[0].Code != patterns.ErrCodeTitleOverflow {
+			t.Errorf("body-shaped title must report overflow rather than lose text: %+v", findings)
 		}
 	})
 
@@ -2067,7 +2069,7 @@ func TestLongTitleTruncation(t *testing.T) {
 			t.Fatalf("populateShapeText() error = %v", err)
 		}
 
-		// Body text should NOT be truncated (only titles get line-count limits)
+		// Body text should not be truncated either.
 		var text string
 		for _, para := range shape.TextBody.Paragraphs {
 			for _, run := range para.Runs {

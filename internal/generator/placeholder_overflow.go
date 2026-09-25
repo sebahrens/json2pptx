@@ -129,16 +129,14 @@ type TitleWrapsInput struct {
 	FontSizeHPt int
 	// FontName is the font family name (e.g. "Arial").
 	FontName string
-	// MaxLines is the maximum number of wrapped lines before the title is
-	// destructively truncated (default: maxTitleLines = 3). When the title
-	// exceeds this limit, the finding escalates to action "shrink_or_split".
+	// MaxLines is the line-count threshold for an informational wrap notice
+	// (default: maxTitleLines = 3). Titles are never truncated by this check.
 	MaxLines int
 }
 
 // DetectTitleWraps reports three or more lines, or two lines in a one-line
 // title box. Two lines in a box tall enough for them are normal and produce no
-// finding. Wrapping beyond MaxLines escalates to "shrink_or_split" because the
-// generator will destructively truncate it.
+// finding. The generator preserves the full title even beyond MaxLines.
 //
 // Returns nil when the title fits on a single line or when measurement
 // is not possible.
@@ -195,7 +193,8 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 		return nil
 	}
 
-	// Determine whether the title merely wraps or exceeds the truncation cap.
+	// Report wrapping without implying the text will be shortened. The
+	// measured title-fit path owns blocking overflow decisions.
 	action := "info"
 	if input.HeightEMU < measuredEMU {
 		action = "review"
@@ -206,10 +205,9 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 		float64(input.WidthEMU)/914400.0,
 	)
 	if mErr == nil && m.Lines > maxLines {
-		action = "shrink_or_split"
 		msg = fmt.Sprintf(
-			"title wraps to %d lines, exceeds %d-line cap and will be truncated (%.0fpt font, %.1f\" wide placeholder)",
-			m.Lines, maxLines,
+			"title wraps to %d lines at the template font (%.0fpt, %.1f\" wide placeholder); full text is preserved",
+			m.Lines,
 			fontSizePt,
 			float64(input.WidthEMU)/914400.0,
 		)

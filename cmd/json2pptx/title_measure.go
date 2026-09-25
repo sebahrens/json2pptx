@@ -24,6 +24,8 @@ type titleMeasurement struct {
 	OK bool
 	// Overflow: the title cannot fit even at the minimum autofit size.
 	Overflow bool
+	// Refuse marks a section title that cannot fit at the 28pt floor.
+	Refuse bool
 	// Shrinks: the title fits only below the comfort scale or with reduced
 	// line spacing.
 	Shrinks bool
@@ -43,15 +45,22 @@ type titleMeasurement struct {
 }
 
 // Flagged reports whether the title should be shortened.
-func (m titleMeasurement) Flagged() bool { return m.OK && (m.Overflow || m.Shrinks) }
+func (m titleMeasurement) Flagged() bool { return m.OK && (m.Refuse || m.Overflow || m.Shrinks) }
 
 // measureTitleInPlaceholder measures title text against a title placeholder's
 // resolved bounds and inherited style (size, caps, line spacing).
-func measureTitleInPlaceholder(text string, ph *types.PlaceholderInfo) titleMeasurement {
+func measureTitleInPlaceholder(text string, ph *types.PlaceholderInfo, sectionTitle ...bool) titleMeasurement {
 	if ph == nil || text == "" || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 || ph.FontSize <= 0 {
 		return titleMeasurement{}
 	}
 	in := generator.TitleFitInputForPlaceholder(text, ph)
+	isSection := len(sectionTitle) > 0 && sectionTitle[0]
+	if isSection {
+		in.MinFontHPt = generator.SectionTitleMinHPt
+		if in.Style.SizeHPt < 3200 {
+			in.Style.SizeHPt = 3200 // generation boosts divider titles to at least 32pt
+		}
+	}
 	res, err := generator.MeasureTitleFit(in)
 	if err != nil {
 		return titleMeasurement{}
@@ -59,7 +68,8 @@ func measureTitleInPlaceholder(text string, ph *types.PlaceholderInfo) titleMeas
 	m := titleMeasurement{
 		OK:       true,
 		Overflow: res.Overflow,
-		Shrinks:  generator.TitleNeedsShortening(res, ph.FontSize),
+		Refuse:   isSection && (res.Overflow || res.LnSpcReduction > 0),
+		Shrinks:  !isSection && generator.TitleNeedsShortening(res, ph.FontSize),
 		ScalePct: 100,
 		FontPt:   float64(ph.FontSize) / 100.0,
 		Chars:    len([]rune(text)),
@@ -70,13 +80,21 @@ func measureTitleInPlaceholder(text string, ph *types.PlaceholderInfo) titleMeas
 		m.ScalePct = res.FontScale / 1000
 	}
 	if m.Flagged() {
-		m.MaxChars = generator.MaxTitleCharsAtScale(in, generator.TitleComfortScalePct(ph.FontSize))
+		if isSection {
+			minScalePct := (in.MinFontHPt*100 + in.Style.SizeHPt - 1) / in.Style.SizeHPt
+			m.MaxChars = generator.MaxTitleCharsAtScale(in, minScalePct)
+		} else {
+			m.MaxChars = generator.MaxTitleCharsAtScale(in, generator.TitleComfortScalePct(ph.FontSize))
+		}
 	}
 	return m
 }
 
 // describe renders a one-line human explanation of a flagged measurement.
 func (m titleMeasurement) describe() string {
+	if m.Refuse {
+		return fmt.Sprintf("section title (%d chars) cannot fit its divider at the 28pt floor; shorten to about %d chars", m.Chars, m.MaxChars)
+	}
 	if m.Overflow {
 		return fmt.Sprintf("title (%d chars) does not fit its title placeholder even at the minimum autofit size (template %.0fpt); shorten to ≤ %d chars",
 			m.Chars, m.FontPt, m.MaxChars)
@@ -86,10 +104,14 @@ func (m titleMeasurement) describe() string {
 }
 
 // fitFinding converts a flagged measurement into a fit-report finding:
-// TITLE_OVERFLOW when it overflows, else an escalated title_wraps.
+// TITLE_TRUNCATED for section-floor failure, TITLE_OVERFLOW for ordinary
+// overflow, or an escalated title_wraps for uncomfortable ordinary fit.
 func (m titleMeasurement) fitFinding(path string) *patterns.FitFinding {
 	if !m.Flagged() {
 		return nil
+	}
+	if m.Refuse {
+		return generator.DetectSectionTitleFloor(path, m.input)
 	}
 	if m.Overflow {
 		return generator.DetectTitleOverflow(path, m.input)
@@ -185,9 +207,8 @@ func titlePlaceholderIn(l *types.LayoutMetadata, placeholderID string) *types.Pl
 }
 
 // collectTitleFitFindings measures every title against its resolved title
-// placeholder: TITLE_OVERFLOW when it cannot fit, an escalated title_wraps
-// (shrink_or_split, shorten_title) when it only fits below the comfort scale,
-// and the informational title_wraps otherwise.
+// placeholder: section titles use the 28pt floor and TITLE_TRUNCATED refusal;
+// ordinary titles use TITLE_OVERFLOW or the comfort-scale title_wraps finding.
 //
 // The second return value names every title this measurement covered, so the
 // word-count content lint stands down for them (go-slide-creator-jcph).
@@ -219,7 +240,7 @@ func collectTitleFitFindings(input *PresentationInput, layouts []types.LayoutMet
 				continue
 			}
 			path := slidepath.ContentIndex(si, ci)
-			m := measureTitleInPlaceholder(title, ph)
+			m := measureTitleInPlaceholder(title, ph, isSectionSlideInput(*slide, layouts))
 			if m.OK {
 				measured[measuredTitleKey{slide: si, placeholder: content.PlaceholderID}] = true
 			}

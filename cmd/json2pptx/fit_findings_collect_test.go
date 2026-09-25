@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	mcpgo "github.com/mark3labs/mcp-go/mcp"
+
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -1380,6 +1382,47 @@ func TestDedupeDiagnostics(t *testing.T) {
 			t.Errorf("got %d, want both findings kept: %+v", len(got), got)
 		}
 	})
+}
+
+func TestMarshalValidateResultDeduplicatesErrorFindings(t *testing.T) {
+	finding := patterns.FitFinding{ValidationError: patterns.ValidationError{
+		Code: patterns.ErrCodeTitleTruncated, Path: "/slides/0/content/0",
+		Message: "section title cannot fit at 28pt",
+		Fix:     &patterns.FixSuggestion{Kind: "shorten_title", Params: map[string]any{"max_chars": 40}},
+	}, Action: "refuse", NextToolCall: &patterns.ToolCallSuggestion{
+		Tool: "repair_slide", ArgsTemplate: map[string]any{"slide_index": 0},
+	}}
+	out := dryRunOutput{
+		Valid: false,
+		Diagnostics: []diagnostics.Diagnostic{{
+			Code: finding.Code, Path: finding.Path, Message: finding.Message, Severity: diagnostics.SeverityError,
+		}},
+		FitFindings: []patterns.FitFinding{finding},
+	}
+	result, err := marshalValidateResult(context.Background(), out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.IsError {
+		t.Fatal("refuse finding must keep validation invalid")
+	}
+	var envelope struct {
+		Findings []json.RawMessage `json:"findings"`
+	}
+	if err := json.Unmarshal([]byte(result.Content[0].(mcpgo.TextContent).Text), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if len(envelope.Findings) != 1 {
+		t.Errorf("same error from validation and fit report appeared %d times, want once", len(envelope.Findings))
+	} else {
+		var kept map[string]any
+		if err := json.Unmarshal(envelope.Findings[0], &kept); err != nil {
+			t.Fatal(err)
+		}
+		if kept["remediation"] == nil || kept["next_tool_call"] == nil {
+			t.Errorf("dedupe discarded the actionable fit finding: %+v", kept)
+		}
+	}
 }
 
 // TestDeclaredFindingActionUsesTheRegistry pins that an emitter with no action

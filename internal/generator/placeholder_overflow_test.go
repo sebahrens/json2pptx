@@ -326,8 +326,8 @@ func TestDetectTitleWraps_NormalTwoLineTitleIsSilent(t *testing.T) {
 	}
 	input.HeightEMU = 2 * testTitleHeightEMU
 	input.MaxLines = 1
-	if finding := DetectTitleWraps(input); finding == nil || finding.Action != "shrink_or_split" {
-		t.Errorf("explicit one-line cap must still escalate, got %+v", finding)
+	if finding := DetectTitleWraps(input); finding == nil || finding.Action != "info" {
+		t.Errorf("explicit one-line threshold is informational when the box holds the title, got %+v", finding)
 	}
 }
 
@@ -358,7 +358,7 @@ func TestDetectTitleWraps_ThreeLinesRemainInformational(t *testing.T) {
 }
 
 func TestDetectTitleWraps_ExceedsMaxLines(t *testing.T) {
-	// Title that exceeds 3-line cap → action escalates to "shrink_or_split".
+	// A title beyond the line-count threshold is reported but not truncated.
 	// At 36pt/8.5", Arial needs substantial text to exceed 3 wrapped lines.
 	longTitle := strings.Repeat("Comprehensive Analysis of Global Market Trends and Revenue Growth ", 5)
 	input := TitleWrapsInput{
@@ -380,8 +380,11 @@ func TestDetectTitleWraps_ExceedsMaxLines(t *testing.T) {
 	if finding.Code != patterns.ErrCodeTitleWraps {
 		t.Errorf("Code = %q, want %q", finding.Code, patterns.ErrCodeTitleWraps)
 	}
-	if finding.Action != "shrink_or_split" {
-		t.Errorf("Action = %q, want %q", finding.Action, "shrink_or_split")
+	if finding.Action != "review" {
+		t.Errorf("Action = %q, want %q", finding.Action, "review")
+	}
+	if strings.Contains(finding.Message, "truncat") {
+		t.Errorf("wrap notice falsely claims truncation: %s", finding.Message)
 	}
 }
 

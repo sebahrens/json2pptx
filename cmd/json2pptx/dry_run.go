@@ -622,7 +622,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					if item.Type == "text" && phInfo.Type == types.PlaceholderTitle {
 						resolved, _ := item.ResolveValue()
 						if text, ok := resolved.(string); ok {
-							m := measureTitleInPlaceholder(text, &phInfo)
+							m := measureTitleInPlaceholder(text, &phInfo, isSectionSlideInput(slideInput, analysis.Layouts))
 							if m.OK {
 								titleMeasured = true
 								if d := m.diagnostic(i, j); d != nil {
@@ -665,7 +665,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 				if phInfo := titlePlaceholderIn(predictedLayouts[i], item.PlaceholderID); phInfo != nil {
 					resolved, _ := item.ResolveValue()
 					if text, ok := resolved.(string); ok {
-						m := measureTitleInPlaceholder(text, phInfo)
+						m := measureTitleInPlaceholder(text, phInfo, isSectionSlideInput(slideInput, analysis.Layouts))
 						if capacity := generator.TitlePlaceholderCapacityChars(phInfo); capacity > 0 {
 							ph.MaxChars = capacity
 						}

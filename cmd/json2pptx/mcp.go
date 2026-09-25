@@ -1151,7 +1151,7 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 		// Return the same error envelope shape as generate_presentation.
 		all := append([]diagnostics.Diagnostic(nil), output.Diagnostics...)
 		all = append(all, diagnostics.FromFitFindings(output.FitFindings)...)
-		return api.MCPDiagnosticsError(all), nil
+		return api.MCPDiagnosticsError(dedupeDiagnostics(all)), nil
 	}
 	// Success path: fold the accumulated diagnostics and fit findings into the
 	// single Findings envelope just before serialization.
