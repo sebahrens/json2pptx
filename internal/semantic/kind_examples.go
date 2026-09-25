@@ -72,7 +72,7 @@ var kindExamples = map[SlideKind]map[string]any{
 	KindMatrix2x2: {
 		"kind":   "matrix_2x2",
 		"title":  "Where to spend the next two quarters",
-		"x_axis": "Effort to deliver",
+		"x_axis": "Delivery effort",
 		"y_axis": "Impact on settlement risk",
 		"x_low":  "Low effort",
 		"x_high": "High effort",

@@ -1634,7 +1634,7 @@ func TestMatrix2x2BudgetProbe(t *testing.T) {
 		t.Skip("set JSON2PPTX_MATRIX_BUDGET_PROBE=1")
 	}
 	for _, field := range []string{"header", "body", "x_axis", "y_axis", "axis_end", "paired_header", "paired_body", "all_body"} {
-		limit := map[string]int{"header": 80, "body": 200, "x_axis": 60, "y_axis": 60, "axis_end": 11, "paired_header": 80, "paired_body": 200, "all_body": 200}[field]
+		limit := map[string]int{"header": 80, "body": 200, "x_axis": 16, "y_axis": 60, "axis_end": 11, "paired_header": 80, "paired_body": 200, "all_body": 200}[field]
 		budget := probeReadableBudget(t, "matrix-2x2", limit, func(length int) any {
 			v := &patterns.Matrix2x2Values{XAxisLabel: "Market", YAxisLabel: "Growth", TopLeft: patterns.Matrix2x2Quadrant{Header: "Stars", Body: "Brief"}, TopRight: patterns.Matrix2x2Quadrant{Header: "Emerging", Body: "Brief"}, BottomLeft: patterns.Matrix2x2Quadrant{Header: "Core", Body: "Brief"}, BottomRight: patterns.Matrix2x2Quadrant{Header: "Exit", Body: "Brief"}}
 			copy := budgetProbeCopy(length)
@@ -1666,7 +1666,7 @@ func TestMatrix2x2BudgetProbe(t *testing.T) {
 		t.Logf("field=%s budget=%d", field, budget)
 	}
 	for _, field := range []string{"header", "body", "x_axis", "y_axis", "axis_end", "paired_body", "body_word_header", "body_wide_header", "header_word_body", "header_wide_body", "all_body", "full_stack_body"} {
-		limit := map[string]int{"header": 80, "body": 200, "x_axis": 60, "y_axis": 60, "axis_end": 11, "paired_body": 200, "body_word_header": 200, "body_wide_header": 200, "header_word_body": 80, "header_wide_body": 80, "all_body": 200, "full_stack_body": 200}[field]
+		limit := map[string]int{"header": 80, "body": 200, "x_axis": 16, "y_axis": 60, "axis_end": 11, "paired_body": 200, "body_word_header": 200, "body_wide_header": 200, "header_word_body": 80, "header_wide_body": 80, "all_body": 200, "full_stack_body": 200}[field]
 		budget := probeReadableBudget(t, "matrix-2x2", limit, func(length int) any {
 			v := &patterns.Matrix2x2Values{XAxisLabel: "Market", YAxisLabel: "Growth", TopLeft: patterns.Matrix2x2Quadrant{Header: "Stars", Body: "Brief"}, TopRight: patterns.Matrix2x2Quadrant{Header: "Emerging", Body: "Brief"}, BottomLeft: patterns.Matrix2x2Quadrant{Header: "Core", Body: "Brief"}, BottomRight: patterns.Matrix2x2Quadrant{Header: "Exit", Body: "Brief"}}
 			copy := strings.Repeat("W", length)
@@ -1702,24 +1702,57 @@ func TestMatrix2x2BudgetProbe(t *testing.T) {
 				v.BottomLeft.Body = copy
 				v.BottomRight.Body = copy
 			case "full_stack_body":
-				v.XAxisLabel = strings.Repeat("W", 60)
-				v.YAxisLabel = strings.Repeat("W", 60)
-				v.XLow = strings.Repeat("W", 20)
-				v.XHigh = strings.Repeat("W", 20)
-				v.YLow = strings.Repeat("W", 20)
-				v.YHigh = strings.Repeat("W", 20)
-				v.TopLeft.Header = strings.Repeat("W", 80)
-				v.TopRight.Header = strings.Repeat("W", 80)
-				v.BottomLeft.Header = strings.Repeat("W", 80)
-				v.BottomRight.Header = strings.Repeat("W", 80)
-				v.TopLeft.Body = copy
-				v.TopRight.Body = copy
-				v.BottomLeft.Body = copy
-				v.BottomRight.Body = copy
+				v = matrixFullStackProbeValues(copy)
 			}
 			return v
 		})
 		t.Logf("field=wide_%s budget=%d", field, budget)
+	}
+}
+
+// matrixFullStackProbeValues deliberately fills every matrix field at the
+// current schema limit. A cheap regular test guards this opt-in probe fixture
+// against becoming invalid when any budget changes.
+func matrixFullStackProbeValues(body string) *patterns.Matrix2x2Values {
+	quadrant := patterns.Matrix2x2Quadrant{Header: strings.Repeat("W", 80), Body: body}
+	return &patterns.Matrix2x2Values{
+		XAxisLabel: strings.Repeat("W", 16), YAxisLabel: strings.Repeat("W", 60),
+		XLow: strings.Repeat("W", 11), XHigh: strings.Repeat("W", 11),
+		YLow: strings.Repeat("W", 11), YHigh: strings.Repeat("W", 11),
+		TopLeft: quadrant, TopRight: quadrant, BottomLeft: quadrant, BottomRight: quadrant,
+	}
+}
+
+func TestMatrixFullStackBudgetProbeFixtureValid(t *testing.T) {
+	pat, ok := patterns.Default().Get("matrix-2x2")
+	if !ok {
+		t.Fatal("matrix-2x2 pattern missing")
+	}
+	fixture := matrixFullStackProbeValues(strings.Repeat("W", 200))
+	if err := pat.Validate(fixture, nil, nil); err != nil {
+		t.Fatalf("full-stack matrix probe must stay valid at schema maxima: %v", err)
+	}
+	maximum, note := schemaMaximumValues(pat)
+	if note != "" {
+		t.Fatal(note)
+	}
+	want := maximum.(*patterns.Matrix2x2Values)
+	for _, field := range []struct {
+		name     string
+		got, max string
+	}{
+		{"x_axis_label", fixture.XAxisLabel, want.XAxisLabel},
+		{"y_axis_label", fixture.YAxisLabel, want.YAxisLabel},
+		{"x_low", fixture.XLow, want.XLow},
+		{"x_high", fixture.XHigh, want.XHigh},
+		{"y_low", fixture.YLow, want.YLow},
+		{"y_high", fixture.YHigh, want.YHigh},
+		{"quadrant.header", fixture.TopLeft.Header, want.TopLeft.Header},
+		{"quadrant.body", fixture.TopLeft.Body, want.TopLeft.Body},
+	} {
+		if len([]rune(field.got)) != len([]rune(field.max)) {
+			t.Errorf("full-stack %s length = %d, schema maximum = %d", field.name, len([]rune(field.got)), len([]rune(field.max)))
+		}
 	}
 }
 

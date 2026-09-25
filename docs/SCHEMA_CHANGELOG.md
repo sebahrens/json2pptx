@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.123.0: readable matrix horizontal-axis titles (`go-slide-creator-eg96u`).**
+  `matrix-2x2` horizontal axis titles now accept at most 16 characters (down
+  from 60); vertical axis titles retain their 60-character budget. A valid
+  60-character unbroken wide title rendered at 10.1pt on the `modern`
+  template. On `abstract`, 20 wide glyphs visibly crossed into the arrow
+  despite a nominal 12pt OOXML size; 16 leave a clear gap. The title stays
+  readable across shipped templates and the local p-style fixture.
+  Over-budget DeckSpec matrix copy continues to degrade to the positioned
+  bullet fallback.
+
 - **2026-09-25 — Schema 4.122.0: readable matrix axis ends and shape-level findings (`go-slide-creator-x5pbi`).**
   `matrix-2x2` axis-end labels now accept at most 11 characters (down from
   20); the horizontal end-label boxes are wider and vertical end rows taller,

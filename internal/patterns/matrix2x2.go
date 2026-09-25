@@ -204,7 +204,7 @@ func (m *matrix2x2) Schema() *Schema {
 	// Named form: top_left, top_right, bottom_left, bottom_right
 	namedValuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"x_axis_label": StringSchema(60).WithDescription("X-axis label (horizontal dimension)"),
+			"x_axis_label": StringSchema(matrix2x2XAxisMax).WithDescription("X-axis label (horizontal dimension)"),
 			"y_axis_label": StringSchema(60).WithDescription("Y-axis label (vertical dimension)"),
 			"x_low":        axisEndRef,
 			"x_high":       axisEndRef,
@@ -221,7 +221,7 @@ func (m *matrix2x2) Schema() *Schema {
 	// Positional form: quadrants: [TL, TR, BL, BR]
 	arrayValuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"x_axis_label": StringSchema(60).WithDescription("X-axis label (horizontal dimension)"),
+			"x_axis_label": StringSchema(matrix2x2XAxisMax).WithDescription("X-axis label (horizontal dimension)"),
 			"y_axis_label": StringSchema(60).WithDescription("Y-axis label (vertical dimension)"),
 			"x_low":        axisEndRef,
 			"x_high":       axisEndRef,
@@ -269,8 +269,8 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 	// Axis labels required
 	if vals.XAxisLabel == "" {
 		errs = append(errs, errRequired(name, "x_axis_label"))
-	} else if runeLen(vals.XAxisLabel) > 60 {
-		errs = append(errs, errMaxLength(name, "x_axis_label", 60, runeLen(vals.XAxisLabel)))
+	} else if runeLen(vals.XAxisLabel) > matrix2x2XAxisMax {
+		errs = append(errs, errMaxLength(name, "x_axis_label", matrix2x2XAxisMax, runeLen(vals.XAxisLabel)))
 	}
 	if vals.YAxisLabel == "" {
 		errs = append(errs, errRequired(name, "y_axis_label"))
@@ -503,6 +503,11 @@ func applyMatrix2x2CellOverride(cell *jsonschema.GridCellInput, cellOverrides ma
 		}
 	}
 }
+
+// matrix2x2XAxisMax fits even unbroken wide copy in the horizontal title box
+// at >=12pt with visual clearance from the arrow on the narrowest shipped
+// layout (abstract). The vertical axis retains its 60-character budget.
+const matrix2x2XAxisMax = 16
 
 // matrix2x2AxisEndMax bounds low/high labels for the narrow axis-end boxes.
 // Eighteen characters rendered at 8.4pt after autofit in a 1.25in box; eleven

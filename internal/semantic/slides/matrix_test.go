@@ -17,7 +17,7 @@ func quadrant(header, body string) map[string]any {
 func matrixBody(overlay map[string]any) map[string]any {
 	body := map[string]any{
 		"title":  "Where to spend the next two quarters",
-		"x_axis": "Effort to deliver",
+		"x_axis": "Delivery effort",
 		"y_axis": "Impact on settlement risk",
 		"quadrants": []any{
 			quadrant("Do first", "Reconciliation alerts."),
@@ -59,7 +59,7 @@ func TestCompileMatrixUsesTheQuadrantsWhenItFits(t *testing.T) {
 		values.BottomRight.Header != "Defer" || values.BottomLeft.Header != "Fill the gaps" {
 		t.Errorf("quadrants landed in the wrong corners: %+v", values)
 	}
-	if values.XAxisLabel != "Effort to deliver" || values.YAxisLabel != "Impact on settlement risk" {
+	if values.XAxisLabel != "Delivery effort" || values.YAxisLabel != "Impact on settlement risk" {
 		t.Errorf("axes = %q / %q", values.XAxisLabel, values.YAxisLabel)
 	}
 	if values.XLow != "Low effort" || values.YHigh != "High impact" {
@@ -75,6 +75,24 @@ func TestMatrixAxisEndBudgetRejectsTextThatShrinksBelowReadableSize(t *testing.T
 	tooLong := matrixBody(map[string]any{"y_high": "Fast, under-served"})
 	if reason := MatrixOverBudget(tooLong); !strings.Contains(reason, "an axis end holds 11") {
 		t.Errorf("18-character end label should trigger fallback, got %q", reason)
+	}
+}
+
+func TestMatrixHorizontalAxisBudgetKeepsWideTextReadable(t *testing.T) {
+	fit := matrixBody(map[string]any{"x_axis": strings.Repeat("W", 16)})
+	if reason := MatrixOverBudget(fit); reason != "" {
+		t.Fatalf("16-character horizontal axis label rejected: %s", reason)
+	}
+	tooLong := matrixBody(map[string]any{"x_axis": strings.Repeat("W", 17)})
+	if reason := MatrixOverBudget(tooLong); !strings.Contains(reason, "x axis label is 17 characters; the axis holds 16") {
+		t.Errorf("17-character horizontal axis label should trigger fallback, got %q", reason)
+	}
+	slide, _, err := CompileMatrix(Input{Body: tooLong})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Pattern != nil {
+		t.Errorf("over-budget horizontal axis should compile to positioned bullets, got pattern %+v", slide.Pattern)
 	}
 }
 
@@ -193,7 +211,7 @@ func TestMatrixFallbackKeepsThePositionsAndAxes(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Impact on settlement risk (Low impact to High impact)",
-		"Effort to deliver (Low effort to High effort)",
+		"Delivery effort (Low effort to High effort)",
 		"Top left — A", "Top right — B", "Bottom right — C",
 	} {
 		if !strings.Contains(string(encoded), want) {

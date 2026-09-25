@@ -157,14 +157,14 @@ func TestMatrix2x2(t *testing.T) {
 		{
 			name: "x_axis_label_exceeds_maxlen",
 			values: Matrix2x2Values{
-				XAxisLabel:  strings.Repeat("x", 61),
+				XAxisLabel:  strings.Repeat("x", 17),
 				YAxisLabel:  "Y",
 				TopLeft:     Matrix2x2Quadrant{Header: "A"},
 				TopRight:    Matrix2x2Quadrant{Header: "B"},
 				BottomLeft:  Matrix2x2Quadrant{Header: "C"},
 				BottomRight: Matrix2x2Quadrant{Header: "D"},
 			},
-			wantErr: "x_axis_label exceeds maxLength 60",
+			wantErr: "x_axis_label exceeds maxLength 16",
 		},
 		{
 			name: "cell_override_out_of_range",

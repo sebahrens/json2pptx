@@ -19,9 +19,10 @@ const (
 	// matrixQuadrantCount is the shape of the thing: four quadrants, no more
 	// and no fewer.
 	matrixQuadrantCount = 4
-	// matrixAxisMax / matrixAxisEndMax / matrixHeaderMax / matrixBodyMax mirror
+	// matrixXAxisMax / matrixYAxisMax / matrixAxisEndMax / matrixHeaderMax / matrixBodyMax mirror
 	// the pattern's own string budgets.
-	matrixAxisMax    = 60
+	matrixXAxisMax   = 16
+	matrixYAxisMax   = 60
 	matrixAxisEndMax = 11
 	matrixHeaderMax  = 80
 	matrixBodyMax    = 200
@@ -239,10 +240,10 @@ func MatrixOverBudget(body map[string]any) string {
 	switch {
 	case x == "" || y == "":
 		return "is missing an axis label; a 2x2 whose axes are unnamed says nothing about why a quadrant is where it is"
-	case runeLen(x) > matrixAxisMax:
-		return fmt.Sprintf("x axis label is %d characters; the axis holds %d", runeLen(x), matrixAxisMax)
-	case runeLen(y) > matrixAxisMax:
-		return fmt.Sprintf("y axis label is %d characters; the axis holds %d", runeLen(y), matrixAxisMax)
+	case runeLen(x) > matrixXAxisMax:
+		return fmt.Sprintf("x axis label is %d characters; the axis holds %d", runeLen(x), matrixXAxisMax)
+	case runeLen(y) > matrixYAxisMax:
+		return fmt.Sprintf("y axis label is %d characters; the axis holds %d", runeLen(y), matrixYAxisMax)
 	}
 	for _, end := range []struct{ name, value string }{
 		{"x_low", strField(body, "x_low")}, {"x_high", strField(body, "x_high")},

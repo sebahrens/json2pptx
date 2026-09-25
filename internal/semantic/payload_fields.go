@@ -380,7 +380,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"top_right":    {typ: "object", desc: "One quadrant by position.", itemKeys: matrixQuadrantKeys},
 		"bottom_left":  {typ: "object", desc: "One quadrant by position.", itemKeys: matrixQuadrantKeys},
 		"bottom_right": {typ: "object", desc: "One quadrant by position.", itemKeys: matrixQuadrantKeys},
-		"x_axis":       strField("The horizontal axis's name (e.g. \"Effort\"). ≤60 chars."),
+		"x_axis":       strField("The horizontal axis's name (e.g. \"Effort\"). ≤16 chars."),
 		"x_axis_label": strField("Alias for x_axis."),
 		"y_axis":       strField("The vertical axis's name (e.g. \"Impact\"). ≤60 chars."),
 		"y_axis_label": strField("Alias for y_axis."),
