@@ -120,7 +120,7 @@ func runGenerate() error {
 	}
 
 	if *dryRun {
-		return runJSONDryRun(*jsonInput, effTemplatesDir, *configPath, *designMode, *strictUnknownKeys)
+		return runJSONDryRun(*jsonInput, *templateName, effTemplatesDir, *configPath, *designMode, *strictUnknownKeys)
 	}
 	return runJSONMode(*jsonInput, resolvedJSONOutput, effTemplatesDir, effOutputDir, *configPath, *verbose, *chartPNG, *templateName, *strictFit, *partial, *outputValidation, *designMode, *strictUnknownKeys)
 }

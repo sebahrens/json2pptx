@@ -172,7 +172,7 @@ type dryRunPlaceholder struct {
 // after parsing so the CLI flag wins over the JSON field. When strictUnknownKeys
 // is true, unknown JSON keys are reported as errors (matching MCP
 // strict_unknown_keys=true semantics) instead of warnings.
-func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool) error {
+func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool) error {
 	output := dryRunOutput{
 		Valid:      true,
 		Slides:     []dryRunSlide{},
@@ -220,6 +220,13 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 			})
 			return writeDryRunOutput(output)
 		}
+	}
+
+	// CLI --template override wins over the JSON field, exactly as
+	// parseJSONInput applies it for the real run, so a dry run validates the
+	// template the render would use (go-slide-creator-s1uvj.20).
+	if templateOverride != "" {
+		input.Template = strings.TrimSuffix(templateOverride, ".pptx")
 	}
 
 	// CLI --design-mode override wins over the JSON field.
