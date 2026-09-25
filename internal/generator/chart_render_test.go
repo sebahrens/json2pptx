@@ -17,11 +17,11 @@ func TestChartViewingModeControlsRenderedAxisText(t *testing.T) {
 		"categories": []string{"A", "B"},
 		"series":     []map[string]any{{"name": "Values", "values": []float64{3, 5}}},
 	}}
-	report, err := renderDiagramSpecFull(spec, nil, 0, true, "", tokens.ViewingModeReport)
+	report, err := renderDiagramSpecFull(spec, nil, 0, true, "", tokens.ViewingModeReport, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	presentation, err := renderDiagramSpecFull(spec, nil, 0, true, "", tokens.ViewingModePresentation)
+	presentation, err := renderDiagramSpecFull(spec, nil, 0, true, "", tokens.ViewingModePresentation, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

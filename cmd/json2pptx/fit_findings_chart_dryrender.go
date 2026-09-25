@@ -8,6 +8,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -84,6 +85,7 @@ func collectChartDryRenderFindingsResolved(
 		return nil
 	}
 	var findings []patterns.FitFinding
+	viewingMode := tokens.ParseViewingMode(input.ViewingMode)
 	predictedLayouts := predictSlideLayouts(input, layouts)
 	rhythmGrid := resolvedValidRhythmGrid(input, layouts, slideWidth, slideHeight)
 	for slideIdx, slide := range input.Slides {
@@ -120,7 +122,7 @@ func collectChartDryRenderFindingsResolved(
 			result := resolveGridForStructural(slide.ShapeGrid, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 			findings = append(findings, collectGridDryRenderFindingsResolved(
 				slide.ShapeGrid, slidepath.ShapeGrid(slideIdx), themeColors, bodyFont, strictFit,
-				converterAvailable, result, slideWidth, slideHeight)...)
+				converterAvailable, result, slideWidth, slideHeight, viewingMode)...)
 		} else if slide.Pattern != nil {
 			// Named patterns that embed charts (chart-insights-split, ...)
 			// are only expanded at generate time; expand them here so their
@@ -135,7 +137,7 @@ func collectChartDryRenderFindingsResolved(
 			result := resolveGridForStructural(pg, geom.OverrideBounds, geom.Zone, slideWidth, slideHeight)
 			findings = append(findings, collectGridDryRenderFindingsResolved(
 				pg, slidepath.SlideField(slideIdx, "pattern"), themeColors, bodyFont, strictFit,
-				converterAvailable, result, slideWidth, slideHeight)...)
+				converterAvailable, result, slideWidth, slideHeight, viewingMode)...)
 		}
 	}
 	return chartFindingsAtAuthoredPaths(input, findings)
@@ -160,6 +162,7 @@ func collectGridDryRenderFindingsResolved(
 	converterAvailable bool,
 	result *shapegrid.ResolveResult,
 	slideWidth, slideHeight int64,
+	viewingMode tokens.ViewingMode,
 ) []patterns.FitFinding {
 	if grid == nil {
 		return nil
@@ -174,11 +177,11 @@ func collectGridDryRenderFindingsResolved(
 			diagramBounds := resolvedGridCellBounds(result, ri, ci, shapegrid.CellKindDiagram)
 			if cell.Diagram != nil {
 				findings = append(findings, dryRenderGridSpecInBounds(
-					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram", converterAvailable, diagramBounds)...)
+					cell.Diagram, themeColors, bodyFont, strictFit, cellPath+"/diagram", converterAvailable, diagramBounds, viewingMode)...)
 			}
 			if cell.Composite != nil && cell.Composite.SubDiagram != nil {
 				findings = append(findings, dryRenderGridSpecInBounds(
-					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram", converterAvailable, diagramBounds)...)
+					cell.Composite.SubDiagram, themeColors, bodyFont, strictFit, cellPath+"/composite/sub_diagram", converterAvailable, diagramBounds, viewingMode)...)
 			}
 			if cell.Grid != nil {
 				var nested *shapegrid.ResolveResult
@@ -192,7 +195,7 @@ func collectGridDryRenderFindingsResolved(
 				}
 				findings = append(findings, collectGridDryRenderFindingsResolved(
 					cell.Grid, cellPath+"/grid", themeColors, bodyFont, strictFit,
-					converterAvailable, nested, slideWidth, slideHeight)...)
+					converterAvailable, nested, slideWidth, slideHeight, viewingMode)...)
 			}
 		}
 	}
@@ -255,8 +258,9 @@ func dryRenderGridSpecInBounds(
 	bodyFont, strictFit, path string,
 	converterAvailable bool,
 	bounds types.BoundingBox,
+	viewingMode tokens.ViewingMode,
 ) []patterns.FitFinding {
-	findings := dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, true, bounds)
+	findings := dryRenderSpecInBounds(spec, themeColors, bodyFont, strictFit, path, true, bounds, viewingMode)
 	if converterAvailable || spec == nil || spec.Type == "" || generator.IsNativeDiagramType(spec) {
 		return findings
 	}
@@ -292,6 +296,7 @@ func dryRenderSpecInBounds(
 	bodyFont, strictFit, path string,
 	gridSurface bool,
 	bounds types.BoundingBox,
+	viewingModes ...tokens.ViewingMode,
 ) []patterns.FitFinding {
 	if spec == nil || spec.Type == "" {
 		return nil
@@ -321,6 +326,16 @@ func dryRenderSpecInBounds(
 	}
 	req.Output.Width, req.Output.Height, _ = generator.ResolveDiagramRenderDimensions(spec, bounds)
 	req.Output.StrictFit = strictFit
+	if gridSurface && bounds.Width > 0 && bounds.Height > 0 {
+		mode := tokens.ViewingModePresentation
+		if len(viewingModes) > 0 {
+			mode = viewingModes[0]
+		}
+		req.Style.PlacementWidthPt = float64(bounds.Width) / float64(types.EMUPerPoint)
+		req.Style.PlacementHeightPt = float64(bounds.Height) / float64(types.EMUPerPoint)
+		req.Style.MinReadablePt = float64(tokens.MinReadableHPt(mode, tokens.TextRoleBody)) / 100
+		req.Style.ViewingMode = string(mode)
+	}
 	// Forward resolved colors so dry-render palette behavior matches generation.
 	if spec.Style != nil && len(spec.Style.Colors) > 0 {
 		effectiveTheme := themeColors

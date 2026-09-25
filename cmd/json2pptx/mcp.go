@@ -25,6 +25,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/templatepreview"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/svggen/icons"
@@ -482,6 +483,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		DataPalette: resolveDataPalette(templateMetadata, theme.Colors),
 		FontFamily:  theme.BodyFont,
 		TitleFont:   theme.TitleFont,
+		ViewingMode: tokens.ParseViewingMode(input.ViewingMode),
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, err := convertPresentationSlides(input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata, rhythmGrid, patterns.AccentStrategy(input.AccentStrategy), mcpDiagCtx, false)
 	if err != nil {

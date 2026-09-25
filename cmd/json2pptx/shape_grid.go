@@ -16,8 +16,10 @@ import (
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/utils"
+	"github.com/sebahrens/json2pptx/svggen"
 	"github.com/sebahrens/json2pptx/svggen/icons"
 )
 
@@ -42,6 +44,7 @@ type GridDiagramContext struct {
 	DataPalette []string           // Ordered hex palette for chart series (from TemplateMetadata)
 	FontFamily  string             // Template body font, injected when a diagram omits style.font_family
 	TitleFont   string             // Template title font for generated canvas headlines
+	ViewingMode tokens.ViewingMode // Deck-level readability policy for embedded SVG text
 	SlideNum    int                // 1-based slide number for warning messages
 }
 
@@ -1131,13 +1134,15 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 				ExtentCY: cell.Bounds.CY,
 			})
 		case shapegrid.CellKindDiagram:
-			icons, diagramWarnings, err := generateDiagramCellInserts(cell, diagCtx)
+			icons, diagramWarnings, renderFindings, err := generateDiagramCellInserts(cell, diagCtx)
 			if err != nil {
 				return nil, err
 			}
 			cellIcons = append(cellIcons, icons...)
 			warnings = append(warnings, diagramWarnings...)
 			fitFindings = append(fitFindings, collectDiagramCellFindings(cell, slideIdx)...)
+			fitFindings = append(fitFindings, generator.SvggenFindingsToFit(renderFindings, cell.DiagramSpec.Type,
+				slidepath.GridCellField(slideIdx, cell.RowIdx, cell.ColIdx, "diagram"))...)
 		case shapegrid.CellKindImage:
 			s, imgs, err := generateImageCellXML(cell, alloc)
 			if err != nil {
@@ -1291,7 +1296,7 @@ func cloneDiagramSpecForCell(spec *types.DiagramSpec) *types.DiagramSpec {
 //
 // diagCtx provides template theme colors and data palette so grid-cell diagrams
 // inherit the same color scheme as placeholder-based diagrams.
-func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagramContext) ([]generator.IconInsert, []string, error) {
+func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagramContext) ([]generator.IconInsert, []string, []svggen.Finding, error) {
 	// Clone the caller's DiagramSpec before injecting theme/palette state or
 	// defaulting Width/Height. An agent reusing the same DiagramSpec across
 	// cells, slides, or retries must observe byte-identical input on every
@@ -1338,12 +1343,21 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 	// ("grid cell 204") that means nothing to the caller (go-slide-creator-rrjj).
 	cellLocation := fmt.Sprintf("diagram in grid row %d, column %d", cell.RowIdx+1, cell.ColIdx+1)
 
-	result, err := generator.RenderDiagramSpecWithMetadata(diagramSpec, themeColors, 0, true)
+	mode := tokens.ViewingModePresentation
+	if diagCtx != nil {
+		mode = tokens.ParseViewingMode(string(diagCtx.ViewingMode))
+	}
+	result, err := generator.RenderDiagramSpecInPlacement(diagramSpec, themeColors, generator.DiagramPlacement{
+		WidthPt:       float64(cell.Bounds.CX) / float64(types.EMUPerPoint),
+		HeightPt:      float64(cell.Bounds.CY) / float64(types.EMUPerPoint),
+		MinReadablePt: float64(tokens.MinReadableHPt(mode, tokens.TextRoleBody)) / 100,
+		ViewingMode:   mode,
+	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("%s: %w", cellLocation, err)
+		return nil, nil, nil, fmt.Errorf("%s: %w", cellLocation, err)
 	}
 	if len(result.SVG) == 0 {
-		return nil, nil, fmt.Errorf("%s: renderer returned empty SVG", cellLocation)
+		return nil, nil, nil, fmt.Errorf("%s: renderer returned empty SVG", cellLocation)
 	}
 
 	// Check for complex diagram in narrow cell
@@ -1370,7 +1384,7 @@ func generateDiagramCellInserts(cell shapegrid.ResolvedCell, diagCtx *GridDiagra
 		// treats the diagram as a single selection target, matching the
 		// behavior of grouped native shape cells (go-slide-creator-zg8q.10).
 		Group: cell.Group,
-	}}, warnings, nil
+	}}, warnings, result.Findings, nil
 }
 
 // diagramFallbackSizePx gives the raster fallback at least 150 pixels per

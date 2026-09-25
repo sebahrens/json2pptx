@@ -36,6 +36,25 @@ func TestDroppedDiagramItemsDescribeFinding(t *testing.T) {
 	}
 }
 
+func TestTextBelowReadableMinDescribesEmbeddedDiagrams(t *testing.T) {
+	meta, ok := GetFindingMeta(ErrCodeTextBelowReadableMin)
+	if !ok {
+		t.Fatal("describe_finding must recognize TEXT_BELOW_READABLE_MIN")
+	}
+	if !strings.Contains(meta.WhenEmitted, "embedded SVG") {
+		t.Errorf("readability metadata omits embedded SVG emission: %+v", meta)
+	}
+	var diagramRemedy bool
+	for _, step := range meta.RemediationSteps {
+		if strings.Contains(step, "diagram") && strings.Contains(step, "grid cell") {
+			diagramRemedy = true
+		}
+	}
+	if !diagramRemedy {
+		t.Errorf("readability metadata omits diagram-specific remedy: %+v", meta)
+	}
+}
+
 // TestFindingMetaWellFormed asserts each entry has the required fields and a
 // recognized severity. This catches typos in severity strings that would
 // otherwise pass the schema check at runtime.

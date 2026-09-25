@@ -107,6 +107,9 @@ type SVGBuilder struct {
 	fontFamily *canvas.FontFamily
 	fontSize   float64
 	fontStyle  canvas.FontStyle
+	// Smallest non-empty text size actually drawn, in SVG user points. The
+	// embedded-PPTX path converts it to physical points after layout fitting.
+	minDrawnFontSize float64
 
 	// Text color tracking — when non-nil, DrawText uses this instead of TextPrimary.
 	// Set via SetFillColor (for backward compatibility) or SetTextColor.
@@ -534,6 +537,9 @@ func (b *SVGBuilder) SetFontSize(size float64) *SVGBuilder {
 func (b *SVGBuilder) FontSize() float64 {
 	return b.fontSize
 }
+
+// MinDrawnFontSize returns zero when no non-empty text was drawn.
+func (b *SVGBuilder) MinDrawnFontSize() float64 { return b.minDrawnFontSize }
 
 // SetMinFontSize sets the absolute minimum font size floor (in points).
 // ClampFontSize and ClampFontSizeForRect will never return a value below this.
@@ -1014,6 +1020,9 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 	}
 
 	b.ctx.DrawText(xMM, yMM, textLine)
+	if strings.TrimSpace(text) != "" && (b.minDrawnFontSize == 0 || b.fontSize < b.minDrawnFontSize) {
+		b.minDrawnFontSize = b.fontSize
+	}
 	b.recordDrawnText(text, x, y, align, baseline, face)
 	// Record the alignment and baseline so fixSVGTextAlignment can inject the
 	// matching text-anchor and dominant-baseline on the corresponding <text>

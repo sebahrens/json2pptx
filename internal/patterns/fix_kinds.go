@@ -220,6 +220,12 @@ var fixKindRegistry = map[string]FixKindInfo{
 		Class:    FixClassAdvisory,
 		Guidance: "The deck asked for something the current design mode forbids. Set design_mode to \"free\" deliberately, or stay inside the mode's constraints.",
 	},
+	"simplify_or_enlarge_diagram": {
+		Kind:         "simplify_or_enlarge_diagram",
+		Class:        FixClassAdvisory,
+		Guidance:     "The embedded diagram has text below the viewing-mode readability floor at its actual slide size. Remove low-priority labels or nodes, give the diagram a larger cell, or use a slide layout with more room.",
+		Alternatives: []string{"reshape_grid", "swap_layout"},
+	},
 	"shrink_text": {
 		Kind:         "shrink_text",
 		Class:        FixClassAdvisory,

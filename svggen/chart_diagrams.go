@@ -5,6 +5,9 @@ package svggen
 
 import (
 	"fmt"
+	"math"
+
+	"github.com/sebahrens/json2pptx/svggen/core"
 )
 
 // applyChartStyleOverrides applies a request's legend intent to a ChartConfig:
@@ -1257,10 +1260,12 @@ func RenderWithHelper(req *RequestEnvelope, draw DrawFunc) (*SVGBuilder, *SVGDoc
 	builder := NewSVGBuilder(contentW, contentH)
 	applyStyleToBuilder(builder, req.Style)
 	scaleTypographyForBuilder(builder, contentW, contentH, req.Output.Preset, req.Style.ViewingMode)
+	applyPlacementTypography(builder, req.Style, contentW, contentH)
 
 	if err := draw(builder, req); err != nil {
 		return nil, nil, err
 	}
+	reportPlacementReadability(builder, req.Style, contentW, contentH)
 
 	doc, err := builder.Render()
 	if err != nil {
@@ -1343,10 +1348,12 @@ func RenderWithHelperDimensions(req *RequestEnvelope, defaultWidth, defaultHeigh
 	builder := NewSVGBuilder(contentW, contentH)
 	applyStyleToBuilder(builder, req.Style)
 	scaleTypographyForBuilder(builder, contentW, contentH, req.Output.Preset, req.Style.ViewingMode)
+	applyPlacementTypography(builder, req.Style, contentW, contentH)
 
 	if err := draw(builder, req); err != nil {
 		return nil, nil, err
 	}
+	reportPlacementReadability(builder, req.Style, contentW, contentH)
 
 	doc, err := builder.Render()
 	if err != nil {
@@ -1421,6 +1428,63 @@ func scaleTypographyForBuilder(builder *SVGBuilder, width, height float64, prese
 	// Fallback: geometric mean scaling with min/max caps.
 	style.Typography = style.Typography.ScaleForDimensions(width, height)
 	applySmallTextFloor(style.Typography, viewingMode)
+}
+
+// placementScale converts SVG user points to the points that appear on the
+// actual slide. An authored 800px canvas inside a 2-inch cell is not 800pt
+// wide on screen, even though svggen's internal layout uses that canvas.
+func placementScale(style StyleSpec, width, height float64) float64 {
+	if style.PlacementWidthPt <= 0 || style.PlacementHeightPt <= 0 || width <= 0 || height <= 0 ||
+		math.IsNaN(style.PlacementWidthPt) || math.IsNaN(style.PlacementHeightPt) ||
+		math.IsInf(style.PlacementWidthPt, 0) || math.IsInf(style.PlacementHeightPt, 0) ||
+		math.IsNaN(width) || math.IsNaN(height) || math.IsInf(width, 0) || math.IsInf(height, 0) {
+		return 0
+	}
+	return math.Min(style.PlacementWidthPt/width, style.PlacementHeightPt/height)
+}
+
+// applyPlacementTypography raises the starting type scale in proportion to
+// the physical placement. Individual diagram fitters may still need smaller
+// text; reportPlacementReadability identifies that actual result afterward.
+func applyPlacementTypography(builder *SVGBuilder, style StyleSpec, width, height float64) {
+	scale := placementScale(style, width, height)
+	if scale <= 0 || style.MinReadablePt <= 0 || builder.style == nil || builder.style.Typography == nil {
+		return
+	}
+	typ := builder.style.Typography
+	if typ.SizeSmall <= 0 {
+		return
+	}
+	factor := style.MinReadablePt / (scale * typ.SizeSmall)
+	if factor <= 1 {
+		return
+	}
+	typ.SizeTitle *= factor
+	typ.SizeSubtitle *= factor
+	typ.SizeHeading *= factor
+	typ.SizeBody *= factor
+	typ.SizeSmall *= factor
+	typ.SizeCaption *= factor
+}
+
+func reportPlacementReadability(builder *SVGBuilder, style StyleSpec, width, height float64) {
+	scale := placementScale(style, width, height)
+	minDrawn := builder.MinDrawnFontSize()
+	if scale <= 0 || style.MinReadablePt <= 0 || minDrawn <= 0 {
+		return
+	}
+	actualPt := minDrawn * scale
+	if actualPt+0.05 >= style.MinReadablePt {
+		return
+	}
+	builder.AddFinding(core.Finding{
+		Code:     core.FindingTextBelowReadableMin,
+		Severity: core.SeverityWarning,
+		Message:  fmt.Sprintf("embedded diagram text renders at %.1fpt in its PPTX cell, below the %.0fpt readability floor; simplify the diagram or enlarge its cell", actualPt, style.MinReadablePt),
+		Fix: &core.FixSuggestion{Kind: "simplify_or_enlarge_diagram", Params: map[string]any{
+			"actual_pt": actualPt, "min_pt": style.MinReadablePt,
+		}},
+	})
 }
 
 func applySmallTextFloor(typography *Typography, viewingMode string) {

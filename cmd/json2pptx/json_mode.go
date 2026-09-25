@@ -1107,6 +1107,7 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 				DataPalette: diagCtx.DataPalette,
 				FontFamily:  diagCtx.FontFamily,
 				TitleFont:   diagCtx.TitleFont,
+				ViewingMode: diagCtx.ViewingMode,
 				SlideNum:    i + 1,
 			}
 		}

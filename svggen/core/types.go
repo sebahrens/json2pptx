@@ -175,6 +175,12 @@ type StyleSpec struct {
 	// ViewingMode is supplied by the PPTX generator, not by chart JSON.
 	// Projected slides need larger axis and value labels than dense reports.
 	ViewingMode string `json:"-" yaml:"-"`
+	// Placement dimensions are the physical PPTX box in points. They are not
+	// author-facing SVG style: they let embedded diagrams size text for the
+	// actual display size rather than an arbitrary SVG canvas/viewBox.
+	PlacementWidthPt  float64 `json:"-" yaml:"-"`
+	PlacementHeightPt float64 `json:"-" yaml:"-"`
+	MinReadablePt     float64 `json:"-" yaml:"-"`
 	// Palette is the color scheme name or custom colors.
 	// Built-in palettes: "corporate", "vibrant", "muted", "monochrome".
 	// Custom: array of hex colors ["#336699", "#993366", ...].

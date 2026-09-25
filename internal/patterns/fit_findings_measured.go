@@ -52,9 +52,10 @@ func init() {
 		Code:        ErrCodeTextBelowReadableMin,
 		Summary:     "Text renders below the readability floor for its role in the deck's viewing_mode (present: 12pt body, 10pt captions, 20pt titles).",
 		Severity:    "review",
-		WhenEmitted: "Generation: a placeholder's measured autofit shrinks its text below the floor. Preflight (fit report): a shape_grid cell's text would be shrunk by the renderer's autofit below the floor because it exceeds the cell's capacity.",
+		WhenEmitted: "Generation or fit-report preflight: a placeholder or native shape_grid cell shrinks below the viewing-mode floor, or an embedded SVG diagram has text below that floor at its physical PPTX cell size.",
 		RemediationSteps: []string{
 			"Shorten the text (fix.params.strategy=shorten) or split the content across slides/cells (strategy=split).",
+			"For a diagram, remove low-priority labels or nodes, enlarge its grid cell, or choose a roomier layout; inspect fix.params.actual_pt and min_pt.",
 			"Use a pattern with larger cells, or fewer items per slide.",
 			"Set viewing_mode: \"read\" only if the deck is read on screen or printed, not projected.",
 		},

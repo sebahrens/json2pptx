@@ -34,6 +34,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -248,6 +249,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		DataPalette: dataPalette,
 		FontFamily:  templateTheme.BodyFont,
 		TitleFont:   templateTheme.TitleFont,
+		ViewingMode: tokens.ParseViewingMode(input.ViewingMode),
 	}
 	slideSpecs, gridDiagWarnings, gridVisualFindings, convErr := convertPresentationSlides(
 		input.Slides, templateLayouts, slideWidth, slideHeight, templateMetadata,

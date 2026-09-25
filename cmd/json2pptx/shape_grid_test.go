@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/examine"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -3205,7 +3207,7 @@ func TestDiagramCellInserts_ThemeColorInjection(t *testing.T) {
 		SlideNum:    1,
 	}
 
-	icons, warnings, err := generateDiagramCellInserts(cell, diagCtx)
+	icons, warnings, _, err := generateDiagramCellInserts(cell, diagCtx)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -3235,36 +3237,47 @@ func TestDiagramCellInserts_NarrowCellWarning(t *testing.T) {
 		Bounds: pptx.RectEmu{
 			X: 100000, Y: 100000, CX: 3000000, CY: 3000000, // ~25% of slide width — narrow
 		},
-		DiagramSpec: &types.DiagramSpec{
-			Type:  "org_chart",
-			Title: "Large Org",
-			Data: map[string]any{
-				"root": map[string]any{
-					"name": "CEO",
-					"children": []any{
-						map[string]any{"name": "VP1", "children": []any{
-							map[string]any{"name": "D1"},
-							map[string]any{"name": "D2"},
-							map[string]any{"name": "D3"},
-						}},
-						map[string]any{"name": "VP2", "children": []any{
-							map[string]any{"name": "D4"},
-							map[string]any{"name": "D5"},
-							map[string]any{"name": "D6"},
-						}},
-					},
-				},
-			},
-		},
+		DiagramSpec: crowdedOrgDiagram(),
 	}
 
 	diagCtx := &GridDiagramContext{SlideNum: 3}
-	icons, warnings, err := generateDiagramCellInserts(cell, diagCtx)
+	icons, warnings, findings, err := generateDiagramCellInserts(cell, diagCtx)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if len(icons) != 1 {
 		t.Fatalf("expected 1 icon insert, got %d", len(icons))
+	}
+	if pt := minDisplayedSVGFontPt(t, icons[0].SVGData, cell.Bounds); pt >= 12 {
+		t.Fatalf("fixture no longer exercises unreadable embedded text: %.1fpt", pt)
+	}
+	var readability bool
+	for _, finding := range findings {
+		if finding.Code == "TEXT_BELOW_READABLE_MIN" {
+			readability = true
+			if finding.Severity != "warning" || !strings.Contains(finding.Message, "readability floor") {
+				t.Errorf("rendered SVG readability finding = %+v", finding)
+			}
+		}
+	}
+	if !readability {
+		t.Errorf("unreadable org-chart text has no structured finding: %+v", findings)
+	}
+	gridOut, err := generateGridOutput(&shapegrid.ResolveResult{Cells: []shapegrid.ResolvedCell{cell}}, newAllocFrom(200), diagCtx, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var surfaced bool
+	for _, finding := range gridOut.FitFindings {
+		if finding.Code == "TEXT_BELOW_READABLE_MIN" {
+			surfaced = true
+			if finding.Path != "/slides/2/shape_grid/rows/0/cells/0/diagram" || finding.Action != "review" {
+				t.Errorf("grid readability finding lost its path/severity: %+v", finding)
+			}
+		}
+	}
+	if !surfaced {
+		t.Errorf("grid output dropped SVG readability finding: %+v", gridOut.FitFindings)
 	}
 	if len(warnings) != 1 {
 		t.Fatalf("expected 1 warning for complex org_chart in narrow cell, got %d", len(warnings))
@@ -3277,6 +3290,30 @@ func TestDiagramCellInserts_NarrowCellWarning(t *testing.T) {
 	}
 	if !strings.Contains(warnings[0], "grid cell 1") {
 		t.Errorf("warning should mention grid cell 1, got: %s", warnings[0])
+	}
+}
+
+func crowdedOrgDiagram() *types.DiagramSpec {
+	return &types.DiagramSpec{
+		Type:  "org_chart",
+		Title: "Large Org",
+		Data: map[string]any{
+			"root": map[string]any{
+				"name": "CEO",
+				"children": []any{
+					map[string]any{"name": "VP1", "children": []any{
+						map[string]any{"name": "D1"},
+						map[string]any{"name": "D2"},
+						map[string]any{"name": "D3"},
+					}},
+					map[string]any{"name": "VP2", "children": []any{
+						map[string]any{"name": "D4"},
+						map[string]any{"name": "D5"},
+						map[string]any{"name": "D6"},
+					}},
+				},
+			},
+		},
 	}
 }
 
@@ -3308,7 +3345,7 @@ func TestDiagramCellInserts_ForwardsCellBoundsToDiagramSpec(t *testing.T) {
 		},
 	}
 
-	icons, _, err := generateDiagramCellInserts(cell, nil)
+	icons, _, _, err := generateDiagramCellInserts(cell, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -3341,6 +3378,74 @@ func TestDiagramCellInserts_ForwardsCellBoundsToDiagramSpec(t *testing.T) {
 	}
 }
 
+func TestDiagramCellTypographyUsesPhysicalPlacement(t *testing.T) {
+	cell := shapegrid.ResolvedCell{
+		ID: 41, Kind: shapegrid.CellKindDiagram,
+		Bounds: pptx.RectEmu{CX: 3_200_000, CY: 2_200_000},
+		DiagramSpec: &types.DiagramSpec{Type: "bar_chart", Data: map[string]any{
+			"categories": []any{"East", "West"},
+			"series":     []any{map[string]any{"name": "Revenue", "values": []any{12.0, 18.0}}},
+		}},
+	}
+	placed, _, findings, err := generateDiagramCellInserts(cell, &GridDiagramContext{SlideNum: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(placed) != 1 {
+		t.Fatalf("expected one SVG insert, got %d", len(placed))
+	}
+	placedPt := minDisplayedSVGFontPt(t, placed[0].SVGData, cell.Bounds)
+	legacySpec := *cell.DiagramSpec
+	legacySpec.Width, legacySpec.Height, _ = generator.ResolveDiagramRenderDimensions(&legacySpec,
+		types.BoundingBox{Width: cell.Bounds.CX, Height: cell.Bounds.CY})
+	legacy, err := generator.RenderDiagramSpecWithMetadata(&legacySpec, nil, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyPt := minDisplayedSVGFontPt(t, legacy.SVG, cell.Bounds)
+	t.Logf("cell displayed text: placed %.1fpt, old unplaced %.1fpt", placedPt, legacyPt)
+	if placedPt <= legacyPt+0.5 {
+		t.Errorf("physical placement did not materially improve text size: placed %.1fpt old %.1fpt", placedPt, legacyPt)
+	}
+	var unreadable bool
+	for _, finding := range findings {
+		if finding.Code == "TEXT_BELOW_READABLE_MIN" {
+			unreadable = true
+		}
+	}
+	if unreadable != (placedPt < 11.95) {
+		t.Errorf("rendered %.1fpt text and readability findings disagree: %+v", placedPt, findings)
+	}
+	if cell.DiagramSpec.Width != 0 || cell.DiagramSpec.Height != 0 {
+		t.Errorf("physical placement mutated the authored diagram: %+v", cell.DiagramSpec)
+	}
+}
+
+func minDisplayedSVGFontPt(t *testing.T, svg []byte, bounds pptx.RectEmu) float64 {
+	t.Helper()
+	vb := regexp.MustCompile(`viewBox="0 0 ([0-9.]+) ([0-9.]+)"`).FindSubmatch(svg)
+	if len(vb) != 3 {
+		t.Fatalf("missing viewBox in rendered SVG")
+	}
+	w, _ := strconv.ParseFloat(string(vb[1]), 64)
+	h, _ := strconv.ParseFloat(string(vb[2]), 64)
+	if w <= 0 || h <= 0 {
+		t.Fatalf("invalid SVG viewBox %q", vb[0])
+	}
+	scale := math.Min(float64(bounds.CX)/float64(types.EMUPerPoint)/w,
+		float64(bounds.CY)/float64(types.EMUPerPoint)/h)
+	sizes := regexp.MustCompile(`font-size:([0-9.]+)px`).FindAllSubmatch(svg, -1)
+	if len(sizes) == 0 {
+		t.Fatal("rendered SVG has no explicit text sizes")
+	}
+	minimum := 1e9
+	for _, match := range sizes {
+		size, _ := strconv.ParseFloat(string(match[1]), 64)
+		minimum = math.Min(minimum, size*scale)
+	}
+	return minimum
+}
+
 // TestDiagramCellInserts_PropagatesGroupFlag is a regression for
 // go-slide-creator-zg8q.10: when cell.Group=true on a diagram cell, the
 // resulting IconInsert must carry Group=true so the singlepass emitter wraps
@@ -3365,7 +3470,7 @@ func TestDiagramCellInserts_PropagatesGroupFlag(t *testing.T) {
 	}
 
 	grouped := mkCell(true)
-	icons, _, err := generateDiagramCellInserts(grouped, nil)
+	icons, _, _, err := generateDiagramCellInserts(grouped, nil)
 	if err != nil {
 		t.Fatalf("unexpected error (grouped): %v", err)
 	}
@@ -3374,7 +3479,7 @@ func TestDiagramCellInserts_PropagatesGroupFlag(t *testing.T) {
 	}
 
 	bare := mkCell(false)
-	icons, _, err = generateDiagramCellInserts(bare, nil)
+	icons, _, _, err = generateDiagramCellInserts(bare, nil)
 	if err != nil {
 		t.Fatalf("unexpected error (bare): %v", err)
 	}
@@ -3403,7 +3508,7 @@ func TestDiagramCellInserts_PreservesExplicitDiagramDimensions(t *testing.T) {
 		},
 	}
 
-	if _, _, err := generateDiagramCellInserts(cell, nil); err != nil {
+	if _, _, _, err := generateDiagramCellInserts(cell, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if cell.DiagramSpec.Width != 640 || cell.DiagramSpec.Height != 480 {
@@ -3430,7 +3535,7 @@ func TestDiagramCellInserts_NilContext(t *testing.T) {
 	}
 
 	// With nil context, diagram should still render (just without theme colors)
-	icons, warnings, err := generateDiagramCellInserts(cell, nil)
+	icons, warnings, _, err := generateDiagramCellInserts(cell, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -3485,7 +3590,7 @@ func TestDiagramCellInserts_DoesNotMutateCallerSpec(t *testing.T) {
 		SlideNum:    2,
 	}
 
-	iconsA, _, err := generateDiagramCellInserts(cellA, ctxA)
+	iconsA, _, _, err := generateDiagramCellInserts(cellA, ctxA)
 	if err != nil {
 		t.Fatalf("cellA render: %v", err)
 	}
@@ -3502,7 +3607,7 @@ func TestDiagramCellInserts_DoesNotMutateCallerSpec(t *testing.T) {
 			preCall.Width, preCall.Height, sharedSpec.Width, sharedSpec.Height)
 	}
 
-	iconsB, _, err := generateDiagramCellInserts(cellB, ctxB)
+	iconsB, _, _, err := generateDiagramCellInserts(cellB, ctxB)
 	if err != nil {
 		t.Fatalf("cellB render: %v", err)
 	}
@@ -3581,7 +3686,7 @@ func TestDiagramCellInserts_InjectsTemplateBodyFont(t *testing.T) {
 	render := func(t *testing.T, cell shapegrid.ResolvedCell, fontFamily string) string {
 		t.Helper()
 		ctx := &GridDiagramContext{FontFamily: fontFamily, SlideNum: 1}
-		icons, _, err := generateDiagramCellInserts(cell, ctx)
+		icons, _, _, err := generateDiagramCellInserts(cell, ctx)
 		if err != nil {
 			t.Fatalf("generateDiagramCellInserts: %v", err)
 		}
