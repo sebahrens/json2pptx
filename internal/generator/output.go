@@ -66,6 +66,13 @@ func (ctx *singlePassContext) writeOutput() error {
 	// favour of the override (go-slide-creator-p327).
 	ctx.applyThemeOverrideToThemeParts()
 
+	// Resolve (or synthesize) the notes master that notes slides must relate
+	// to. Runs after the theme override so a synthesized notes-master theme
+	// copies the patched theme (go-slide-creator-s1uvj.28).
+	if err := ctx.prepareNotesMaster(); err != nil {
+		return err
+	}
+
 	// Step 1: Copy unchanged template files
 	if err := ctx.writeTemplateFiles(); err != nil {
 		return err
@@ -634,6 +641,13 @@ func (ctx *singlePassContext) writePresentationRelationships() error {
 			ID:     rID,
 			Type:   "http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide",
 			Target: fmt.Sprintf("slides/slide%d.xml", slideNum), // Relative to ppt/_rels/
+		})
+	}
+	if nm := ctx.notesMaster; nm != nil && nm.synthesized {
+		existingRels.Relationships = append(existingRels.Relationships, pptx.RelationshipXML{
+			ID:     nm.presRelID,
+			Type:   pptx.RelTypeNotesMaster,
+			Target: strings.TrimPrefix(nm.part, "ppt/"),
 		})
 	}
 
@@ -1237,6 +1251,10 @@ func (ctx *singlePassContext) writeContentTypes() error {
 		ctData, err = addNotesSlideContentTypes(ctData, ctx.slideNotes)
 		if err != nil {
 			return fmt.Errorf("failed to add notes slide content types: %w", err)
+		}
+		ctData, err = addNotesMasterContentTypes(ctData, ctx.notesMaster)
+		if err != nil {
+			return err
 		}
 	}
 

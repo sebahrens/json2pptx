@@ -759,6 +759,19 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 							output.Valid = false
 							output.Diagnostics = append(output.Diagnostics, *d)
 						}
+						// A row wider than the headers cannot render (the
+						// header count defines the table grid) and generate
+						// refuses it; short rows are padded
+						// (go-slide-creator-s1uvj.26).
+						if err := table.ToTableSpec().CheckRowWidths(); err != nil {
+							output.Valid = false
+							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+								Code:     diagnostics.CodeInvalidParameter,
+								Path:     tablePath + ".rows",
+								Message:  fmt.Sprintf("slide %d: %v", i+1, err),
+								Severity: diagnostics.SeverityError,
+							})
+						}
 						// Validate style_id against template's declared table styles.
 						// Advisory only — an unknown (but well-formed) style_id does
 						// not invalidate the deck (Valid is left unchanged).

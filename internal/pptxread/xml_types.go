@@ -21,6 +21,28 @@ type commonSlideData struct {
 type shapeTree struct {
 	Shapes        []shapeElement        `xml:"sp"`
 	GraphicFrames []graphicFrameElement `xml:"graphicFrame"`
+	// Groups holds p:grpSp children. Native diagrams (swot, pestel, bmc)
+	// render as groups, so without them their text was invisible to readers
+	// (go-slide-creator-s1uvj.27).
+	Groups []groupShapeElement `xml:"grpSp"`
+}
+
+// groupShapeElement represents a <p:grpSp>: a nested shape tree whose
+// children are positioned in the group's child coordinate space.
+type groupShapeElement struct {
+	GrpSpPr groupShapeProperties `xml:"grpSpPr"`
+	shapeTree
+}
+
+type groupShapeProperties struct {
+	Xfrm *groupXfrmElement `xml:"xfrm"`
+}
+
+type groupXfrmElement struct {
+	Off   offsetElement `xml:"off"`
+	Ext   extentElement `xml:"ext"`
+	ChOff offsetElement `xml:"chOff"`
+	ChExt extentElement `xml:"chExt"`
 }
 
 // shapeElement represents a <p:sp> element.

@@ -58,7 +58,7 @@ func (t *TableInput) ToTableSpec() *types.TableSpec {
 		}
 		spec.Rows = append(spec.Rows, cells)
 	}
-	spec.Rows = expandCellSpans(spec.Rows)
+	spec.Rows = expandCellSpans(spec.Rows, len(t.Headers))
 	if t.Style != nil {
 		spec.Style = types.TableStyle{
 			Borders:         t.Style.Borders,
@@ -222,6 +222,23 @@ func CellExtraLogicalRows(content string) int {
 	return effective - 1
 }
 
+// takeCoveredContinuation returns the continuation cell for a grid column a
+// vertical span from an earlier row still covers, consuming one row of that
+// coverage. The interior column of a rectangle merge gets a horizontal
+// continuation (horizontal wins).
+func takeCoveredContinuation(covered, hSpanOf map[int]int, col int) (types.TableCell, bool) {
+	n := covered[col]
+	if n <= 0 {
+		return types.TableCell{}, false
+	}
+	covered[col] = n - 1
+	cont := types.TableCell{IsMerged: true, RowSpan: 0, ColSpan: 1}
+	if hSpanOf[col] == 0 {
+		cont.ColSpan = 0
+	}
+	return cont, true
+}
+
 // expandCellSpans materialises the continuation cells a merge requires.
 //
 // ECMA-376 expresses a merge as a gridSpan/rowSpan on the origin cell PLUS an
@@ -239,7 +256,14 @@ func CellExtraLogicalRows(content string) int {
 // in the wild pad rowspans by hand — and get a synthetic continuation
 // otherwise. Rows that already carry IsMerged cells are left untouched, so
 // re-converting an expanded spec is a no-op.
-func expandCellSpans(rows [][]types.TableCell) [][]types.TableCell {
+//
+// When numCols > 0 a row whose cells run out before the grid width is padded
+// to numCols: columns a vertical span still covers get their continuation,
+// the rest get an empty cell. A short row otherwise rendered fewer <a:tc> than
+// <a:gridCol> and failed OOXML_INVALID_TABLE (go-slide-creator-s1uvj.26).
+// Rows wider than numCols are left as they are; types.TableSpec.CheckRowWidths
+// reports them.
+func expandCellSpans(rows [][]types.TableCell, numCols int) [][]types.TableCell {
 	if len(rows) == 0 {
 		return rows
 	}
@@ -270,13 +294,7 @@ func expandCellSpans(rows [][]types.TableCell) [][]types.TableCell {
 
 		for {
 			// Fill any grid columns a span from an earlier row covers.
-			if n := covered[col]; n > 0 {
-				covered[col] = n - 1
-				cont := types.TableCell{IsMerged: true, RowSpan: 0, ColSpan: 1}
-				if hSpanOf[col] == 0 {
-					// Interior column of a rectangle merge: horizontal wins.
-					cont.ColSpan = 0
-				}
+			if cont, ok := takeCoveredContinuation(covered, hSpanOf, col); ok {
 				// Consume an author-supplied empty filler at this position
 				// rather than inserting a second cell for it.
 				if src < len(row) && row[src].Content == "" && row[src].ColSpan <= 1 && row[src].RowSpan <= 1 {
@@ -286,6 +304,10 @@ func expandCellSpans(rows [][]types.TableCell) [][]types.TableCell {
 				continue
 			}
 			if src >= len(row) {
+				if col < numCols {
+					emit(types.TableCell{ColSpan: 1, RowSpan: 1})
+					continue
+				}
 				break
 			}
 

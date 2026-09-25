@@ -138,3 +138,44 @@ func TestPatchThemeXML_EscapesFontNames(t *testing.T) {
 		t.Errorf("font name should be XML-escaped, got: %s", latinTypeface(t, patched, "majorFont"))
 	}
 }
+
+// go-slide-creator-s1uvj.24: font names were spliced into a regexp replacement
+// template, so "$1" was expanded to the captured prefix, and colour values were
+// written verbatim, so "#abc", "navy" or an injected quote produced an invalid
+// or ill-formed theme part.
+func TestPatchThemeXML_FontNameIsLiteral(t *testing.T) {
+	override := &types.ThemeOverride{TitleFont: "Cost$1Sans", BodyFont: "${2}Body"}
+	patched, _ := patchThemeXML(themeFixture, override)
+	if got := latinTypeface(t, patched, "majorFont"); got != "Cost$1Sans" {
+		t.Errorf("major font = %q, want literal Cost$1Sans", got)
+	}
+	if got := latinTypeface(t, patched, "minorFont"); got != "${2}Body" {
+		t.Errorf("minor font = %q, want literal ${2}Body", got)
+	}
+}
+
+func TestPatchThemeXML_RejectsInvalidColors(t *testing.T) {
+	override := &types.ThemeOverride{Colors: map[string]string{
+		"accent1": "#abc",
+		"accent2": "navy",
+		"dk2":     `#112233"/><a:bogus x="`,
+		"lt2":     "#a1b2c3",
+	}}
+	patched, result := patchThemeXML(themeFixture, override)
+	if strings.Contains(patched, "bogus") || strings.Contains(patched, "NAVY") || strings.Contains(patched, `val="ABC"`) {
+		t.Fatalf("invalid colour reached the theme part:\n%s", patched)
+	}
+	if got := schemeColor(t, patched, "accent1"); got != "2E5090" {
+		t.Errorf("accent1 = %q, want template value 2E5090", got)
+	}
+	if got := schemeColor(t, patched, "lt2"); got != "A1B2C3" {
+		t.Errorf("lt2 = %q, want A1B2C3", got)
+	}
+	if result.colors != 1 {
+		t.Errorf("colors = %d, want 1", result.colors)
+	}
+	want := []string{"dk2", "accent1", "accent2"} // schemeColorElements order
+	if strings.Join(result.invalidColors, ",") != strings.Join(want, ",") {
+		t.Errorf("invalidColors = %v, want %v", result.invalidColors, want)
+	}
+}

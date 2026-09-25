@@ -2,13 +2,11 @@
 package generator
 
 import (
-	"encoding/xml"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
-	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // allocateMediaRelIDs pre-allocates relationship IDs for media inserts (images, charts, infographics).
@@ -68,31 +66,14 @@ func (ctx *singlePassContext) allocateNativeSVGRelIDs() error {
 			continue
 		}
 
-		// Read existing relationships to find next available ID.
-		// For new slides, rId1 is reserved for the layout relationship,
-		// so media relationships start at rId2.
-		relsFileName := SlideRelsPath(slideNum)
-		nextRelID := 2
-
-		relsData, err := utils.ReadFileFromZipIndex(ctx.templateIndex, relsFileName)
-		if err == nil {
-			var existingRels pptx.RelationshipsXML
-			if parseErr := xml.Unmarshal(relsData, &existingRels); parseErr == nil {
-				for _, rel := range existingRels.Relationships {
-					var num int
-					if _, err := fmt.Sscanf(rel.ID, "rId%d", &num); err == nil {
-						if num >= nextRelID {
-							nextRelID = num + 1
-						}
-					}
-				}
-			}
-		}
-
-		// Also check if there are regular media relationships being added
-		if mediaRels, hasMedia := ctx.slideRelUpdates[slideNum]; hasMedia {
-			nextRelID += len(mediaRels)
-		}
+		// Every output slide is a new slide (template example slides are
+		// always excluded and new slides reuse their numbers), so its rels
+		// are exactly what writeNewSlideRelationships writes: rId1 = layout,
+		// then regular media, then these SVG pairs, then background, notes
+		// and hyperlinks. Do NOT seed from the template's example-slide rels:
+		// the background/notes/hyperlink allocators count only new-slide rels,
+		// and diverging here produced duplicate rIds (go-slide-creator-s1uvj.23).
+		nextRelID := 2 + len(ctx.slideRelUpdates[slideNum])
 
 		// Allocate IDs for each native SVG insert (PNG first, then SVG)
 		for i := range nativeSVGs {

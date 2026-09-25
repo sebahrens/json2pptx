@@ -170,3 +170,28 @@ func TestCheckInputEnumValues_InvalidSlideType(t *testing.T) {
 		t.Errorf("expected path /slides/0/slide_type, got %q", errs[0].Path)
 	}
 }
+
+// go-slide-creator-s1uvj.24: theme_override colours were never validated, so
+// validate said VALID for values that produced an invalid theme part.
+func TestCheckDeckEnumValues_ThemeOverrideColors(t *testing.T) {
+	input := &PresentationInput{ThemeOverride: &ThemeInput{Colors: map[string]string{
+		"accent1": "#abc",
+		"accent2": "navy",
+		"accent3": `#112233"/><a:bogus x="`,
+		"accent4": "#A1b2C3",
+		"accent5": "336699",
+	}}}
+	errs := checkDeckEnumValues(input)
+	if len(errs) != 3 {
+		t.Fatalf("got %d errors, want 3: %v", len(errs), errs)
+	}
+	wantPaths := []string{"theme_override/colors/accent1", "theme_override/colors/accent2", "theme_override/colors/accent3"}
+	for i, e := range errs {
+		if e.Path != wantPaths[i] {
+			t.Errorf("errs[%d].Path = %q, want %q", i, e.Path, wantPaths[i])
+		}
+		if e.Code != "invalid_color" {
+			t.Errorf("errs[%d].Code = %q, want invalid_color", i, e.Code)
+		}
+	}
+}

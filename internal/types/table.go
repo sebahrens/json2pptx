@@ -1,6 +1,9 @@
 package types
 
-import "regexp"
+import (
+	"fmt"
+	"regexp"
+)
 
 // TableSpec represents a parsed markdown table.
 type TableSpec struct {
@@ -16,6 +19,45 @@ type TableSpec struct {
 	// the table's own shape (columns by rows, and the column names) when it is
 	// absent (go-slide-creator-6e8h).
 	Alt string
+}
+
+// RowGridWidth is the number of grid columns a data row occupies: each cell
+// counts as one column (merge continuations included), and an origin cell
+// whose ColSpan has not been expanded into continuations counts as ColSpan.
+func RowGridWidth(row []TableCell) int {
+	width := 0
+	expanded := false
+	for _, c := range row {
+		if c.IsMerged {
+			expanded = true
+			break
+		}
+	}
+	for _, c := range row {
+		if !expanded && c.ColSpan > 1 {
+			width += c.ColSpan
+			continue
+		}
+		width++
+	}
+	return width
+}
+
+// CheckRowWidths reports the first data row that spans more grid columns than
+// the table has headers. The header count defines <a:tblGrid>, so such a row
+// can never render as a valid table; shorter rows are padded instead
+// (go-slide-creator-s1uvj.26).
+func (t *TableSpec) CheckRowWidths() error {
+	if t == nil || len(t.Headers) == 0 {
+		return nil
+	}
+	for i, row := range t.Rows {
+		if w := RowGridWidth(row); w > len(t.Headers) {
+			return fmt.Errorf("table row %d spans %d columns (counting col_span) but headers define %d; remove the extra cells or add headers",
+				i+1, w, len(t.Headers))
+		}
+	}
+	return nil
 }
 
 // TableCell represents a single cell in a table.
