@@ -2343,3 +2343,61 @@ func TestIconOverlayBounds_Scale(t *testing.T) {
 		}
 	}
 }
+
+// go-slide-creator-s1uvj.38: an empty spacer cell with col_span advanced the
+// cursor by one column, so the next cell landed inside the spacer's span.
+func TestResolve_EmptySpacerHonoursColSpan(t *testing.T) {
+	grid := &Grid{
+		Bounds:  BoundsFromPercentages(0, 0, 100, 100, 0, 0),
+		Columns: []float64{100.0 / 3, 100.0 / 3, 100.0 / 3},
+		Rows: []Row{
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "rect"}},
+				{Shape: &ShapeSpec{Geometry: "rect"}},
+				{Shape: &ShapeSpec{Geometry: "rect"}},
+			}},
+			{Cells: []Cell{
+				{ColSpan: 2},
+				{Shape: &ShapeSpec{Geometry: "ellipse"}},
+			}},
+		},
+	}
+	result, err := Resolve(grid, newAlloc(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Cells) != 4 {
+		t.Fatalf("expected 4 cells, got %d", len(result.Cells))
+	}
+	if got, want := result.Cells[3].Bounds.X, result.Cells[2].Bounds.X; got != want {
+		t.Errorf("row 1 shape X = %d, want column 2 X = %d", got, want)
+	}
+}
+
+// go-slide-creator-s1uvj.38: an empty spacer with row_span must reserve the
+// cells below it, as a filled cell would.
+func TestResolve_EmptySpacerHonoursRowSpan(t *testing.T) {
+	grid := &Grid{
+		Bounds:  BoundsFromPercentages(0, 0, 100, 100, 0, 0),
+		Columns: []float64{50, 50},
+		Rows: []Row{
+			{Cells: []Cell{
+				{RowSpan: 2},
+				{Shape: &ShapeSpec{Geometry: "rect"}},
+			}},
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "ellipse"}},
+			}},
+		},
+	}
+	result, err := Resolve(grid, newAlloc(1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Cells) != 2 {
+		t.Fatalf("expected 2 cells, got %d", len(result.Cells))
+	}
+	if got, want := result.Cells[1].Bounds.X, result.Cells[0].Bounds.X; got != want {
+		t.Errorf("row 1 shape X = %d, want column 1 X = %d", got, want)
+	}
+}

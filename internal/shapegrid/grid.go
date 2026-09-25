@@ -122,11 +122,6 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				break
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && cell.Composite == nil && !cell.Placeholder {
-				col++
-				continue
-			}
-
 			colSpan := cell.ColSpan
 			if colSpan < 1 {
 				colSpan = 1
@@ -141,6 +136,14 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				for dc := 0; dc < colSpan && col+dc < numCols; dc++ {
 					occupied[r+dr][col+dc] = true
 				}
+			}
+
+			// An empty spacer cell renders nothing but still claims its
+			// col_span × row_span footprint, so later cells land where the
+			// author placed them (go-slide-creator-s1uvj.38).
+			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && cell.Composite == nil && !cell.Placeholder {
+				col += colSpan
+				continue
 			}
 
 			// Compute cell bounds

@@ -109,8 +109,15 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 				errs = append(errs, fmt.Errorf("row %d col %d: invalid fit mode %q; valid values are \"contain\", \"fit-width\", or \"fit-height\" (omit for default stretch behavior)", r, ci, cell.Fit))
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil && cell.DiagramSpec == nil && cell.Icon == nil && cell.Image == nil && cell.Composite == nil {
-				col++
+			// Empty spacer cells are not skipped: they claim their
+			// col_span × row_span footprint exactly as Resolve does, so span
+			// and overlap checks see the same layout that renders
+			// (go-slide-creator-s1uvj.38). Trailing empty cells past the last
+			// free column (patterns emit nil cells for positions covered by an
+			// earlier row_span) render nothing and are ignored, as Resolve
+			// stops at the grid edge.
+			isEmpty := cell.Shape == nil && cell.TableSpec == nil && cell.DiagramSpec == nil && cell.Icon == nil && cell.Image == nil && cell.Composite == nil && !cell.Placeholder
+			if isEmpty && col >= numCols {
 				continue
 			}
 

@@ -499,3 +499,53 @@ func TestValidate_CompositeRatioOutOfRange(t *testing.T) {
 		}
 	}
 }
+
+// go-slide-creator-s1uvj.38: Validate skipped empty spacer cells by one
+// column regardless of col_span, so it checked a different layout than the
+// one Resolve renders.
+func TestValidate_EmptySpacerHonoursColSpan(t *testing.T) {
+	ok := &Grid{
+		Columns: []float64{100.0 / 3, 100.0 / 3, 100.0 / 3},
+		Rows: []Row{{Cells: []Cell{
+			{ColSpan: 2},
+			{Shape: &ShapeSpec{Geometry: "rect"}},
+		}}},
+	}
+	if err := Validate(ok); err != nil {
+		t.Fatalf("spacer col_span 2 + one shape in 3 columns should be valid: %v", err)
+	}
+	overflow := &Grid{
+		Columns: []float64{100.0 / 3, 100.0 / 3, 100.0 / 3},
+		Rows: []Row{{Cells: []Cell{
+			{ColSpan: 2},
+			{ColSpan: 2, Shape: &ShapeSpec{Geometry: "rect"}},
+		}}},
+	}
+	err := Validate(overflow)
+	if err == nil || !strings.Contains(err.Error(), "col_span 2 exceeds grid width") {
+		t.Fatalf("expected col_span overflow error after a spanning spacer, got %v", err)
+	}
+}
+
+// Trailing empty cells standing in for positions covered by an earlier
+// row_span (arch-stack side rails) must stay valid.
+func TestValidate_TrailingCoveredEmptyCellsAllowed(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{60, 20, 20},
+		Rows: []Row{
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "rect"}},
+				{RowSpan: 2, Shape: &ShapeSpec{Geometry: "rect"}},
+				{RowSpan: 2, Shape: &ShapeSpec{Geometry: "rect"}},
+			}},
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "rect"}},
+				{},
+				{},
+			}},
+		},
+	}
+	if err := Validate(grid); err != nil {
+		t.Fatalf("covered trailing empty cells should be valid: %v", err)
+	}
+}
