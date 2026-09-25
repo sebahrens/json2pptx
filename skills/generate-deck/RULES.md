@@ -7,7 +7,7 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 | # | Rule | Rationale |
 |---|---|---|
 | 1 | Cell col_spans must sum to column count per row | Engine panics on mismatched grids |
-| 2 | `columns: 3` (int) = 3 equal cols; `[10, 90]` = proportional widths. Never `[3]` | `[3]` creates one column at 3% width, not three columns |
+| 2 | `columns: 3` (int) = 3 equal cols; `[10, 90]` = proportional widths. Never `[3]`. Widths (and row `height` / `flex`) must be finite and >= 0 and the widths must not all be 0 — `validate` rejects them | `[3]` creates one column at 3% width, not three columns |
 | 3 | `bounds` uses percentages (0-100), not points or EMU | `{"x": 5, "y": 18, "width": 90, "height": 72}` = 5% from left, 18% from top |
 | 4 | `gap`/`row_gap`/`col_gap` are typographic points, not percentages. Default 8; 1-4 for dense slides | Cumulative: 5-row grid with `row_gap: 10` burns 40pt (~5% height). Tighten gaps before shrinking content |
 | 5 | Row `height` is a percentage of `bounds.height` | Rows without height split remaining space equally |

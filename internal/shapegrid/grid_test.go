@@ -2,6 +2,7 @@ package shapegrid
 
 import (
 	"encoding/json"
+	"math"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -2399,5 +2400,33 @@ func TestResolve_EmptySpacerHonoursRowSpan(t *testing.T) {
 	}
 	if got, want := result.Cells[1].Bounds.X, result.Cells[0].Bounds.X; got != want {
 		t.Errorf("row 1 shape X = %d, want column 1 X = %d", got, want)
+	}
+}
+
+// go-slide-creator-s1uvj.39: distributeEMU is the backstop when Validate is
+// bypassed — a negative or non-finite weight must never yield a negative
+// extent, and the extents must still sum to the total.
+func TestDistributeEMU_ClampsBadWeights(t *testing.T) {
+	const total = int64(1_000_000)
+	for _, pcts := range [][]float64{
+		{-20, 60, 60},
+		{math.NaN(), 50, 50},
+		{math.Inf(1), 50, 50},
+		{-10, -10},
+	} {
+		got := distributeEMU(pcts, total)
+		var sum int64
+		for i, v := range got {
+			if v < 0 {
+				t.Errorf("distributeEMU(%v)[%d] = %d, want >= 0", pcts, i, v)
+			}
+			sum += v
+		}
+		if sum != total {
+			t.Errorf("distributeEMU(%v) sums to %d, want %d", pcts, sum, total)
+		}
+	}
+	if got := distributeEMU([]float64{-20, 60, 60}, total); got[0] != 0 || got[1] != total/2 {
+		t.Errorf("distributeEMU([-20,60,60]) = %v, want [0 %d %d]", got, total/2, total/2)
 	}
 }

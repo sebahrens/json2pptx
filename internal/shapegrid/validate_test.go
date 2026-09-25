@@ -1,6 +1,7 @@
 package shapegrid
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -547,5 +548,35 @@ func TestValidate_TrailingCoveredEmptyCellsAllowed(t *testing.T) {
 	}
 	if err := Validate(grid); err != nil {
 		t.Fatalf("covered trailing empty cells should be valid: %v", err)
+	}
+}
+
+// go-slide-creator-s1uvj.39: negative or non-finite track weights produced
+// negative extents that passed validation.
+func TestValidate_RejectsBadTrackWeights(t *testing.T) {
+	shape := []Cell{{Shape: &ShapeSpec{Geometry: "rect"}}}
+	tests := []struct {
+		name string
+		grid *Grid
+		want string
+	}{
+		{"negative column", &Grid{Columns: []float64{-20, 60, 60}, Rows: []Row{{Cells: shape}}}, "columns[0] is -20"},
+		{"NaN column", &Grid{Columns: []float64{50, math.NaN()}, Rows: []Row{{Cells: shape}}}, "columns[1] is NaN"},
+		{"Inf column", &Grid{Columns: []float64{math.Inf(1), 50}, Rows: []Row{{Cells: shape}}}, "columns[0] is +Inf"},
+		{"all-zero columns", &Grid{Columns: []float64{0, 0, 0}, Rows: []Row{{Cells: shape}}}, "columns widths sum to 0"},
+		{"negative row height", &Grid{Columns: []float64{100}, Rows: []Row{{Height: -10, Cells: shape}}}, "rows[0].height is -10"},
+		{"negative flex", &Grid{Columns: []float64{100}, Rows: []Row{{Flex: -1, Cells: shape}}}, "rows[0].flex is -1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Validate(tt.grid)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Validate() = %v, want error containing %q", err, tt.want)
+			}
+		})
+	}
+	ok := &Grid{Columns: []float64{0, 60, 40}, Rows: []Row{{Cells: []Cell{{}, {Shape: &ShapeSpec{Geometry: "rect"}}, {}}}}}
+	if err := Validate(ok); err != nil {
+		t.Fatalf("a zero-width column among positive ones is valid: %v", err)
 	}
 }

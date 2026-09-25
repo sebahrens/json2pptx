@@ -1138,14 +1138,28 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 	}
 
 	// Validate columns
+	var colWeights []float64
 	if len(grid.Columns) > 0 {
 		var n float64
 		if err := json.Unmarshal(grid.Columns, &n); err != nil {
 			var arr []float64
 			if err := json.Unmarshal(grid.Columns, &arr); err != nil {
 				errors = append(errors, fmt.Sprintf("slide %d: shape_grid columns must be a number or array of numbers", slideNum))
+			} else {
+				colWeights = arr
 			}
 		}
+	}
+
+	// Negative / non-finite column widths and row weights resolve to
+	// negative extents; reject them here as shapegrid.Validate does at
+	// generation time (go-slide-creator-s1uvj.39).
+	weightGrid := &shapegrid.Grid{Columns: colWeights, Rows: make([]shapegrid.Row, len(grid.Rows))}
+	for i, row := range grid.Rows {
+		weightGrid.Rows[i] = shapegrid.Row{Height: row.Height, Flex: row.Flex, MinHeight: row.MinHeight, MaxHeight: row.MaxHeight}
+	}
+	for _, err := range shapegrid.ValidateTrackWeights(weightGrid) {
+		errors = append(errors, fmt.Sprintf("slide %d: %v", slideNum, err))
 	}
 
 	for rowIdx, row := range grid.Rows {

@@ -3,6 +3,7 @@ package shapegrid
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -691,6 +692,17 @@ func distributeEMU(pcts []float64, totalEMU int64) []int64 {
 	if totalEMU <= 0 {
 		return make([]int64, n)
 	}
+
+	// Backstop for Validate: a negative or non-finite weight would yield a
+	// negative (or garbage) extent, so treat it as zero
+	// (go-slide-creator-s1uvj.39).
+	clean := make([]float64, n)
+	for i, p := range pcts {
+		if p > 0 && !math.IsInf(p, 0) {
+			clean[i] = p
+		}
+	}
+	pcts = clean
 
 	// Compute the sum of percentages to normalise against.
 	var pctSum float64
