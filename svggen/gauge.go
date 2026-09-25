@@ -435,47 +435,69 @@ func (gc *GaugeChart) drawBackgroundArc(centerX, centerY, outerRadius, innerRadi
 	b.Pop()
 }
 
-// drawThresholdZones draws colored zones on the gauge.
-func (gc *GaugeChart) drawThresholdZones(centerX, centerY, outerRadius, innerRadius, startAngle, endAngle float64) {
-	b := gc.builder
+// gaugeZone is one colored band of the dial, as fractions of the sweep.
+type gaugeZone struct {
+	startRatio, endRatio float64
+	color                Color
+	remainder            bool // the unfilled band after the last threshold
+}
 
+// thresholdZones maps the configured thresholds onto fractions of the dial.
+// Thresholds outside [min, max] are clamped to the dial and the walk stops at
+// max: an unclamped ratio above 1 swept a zone past the end of the dial and
+// round through the gap at its foot (go-slide-creator-s1uvj.32). Zones that
+// clamp to nothing (below min, or out of order) are skipped.
+func (gc *GaugeChart) thresholdZones() []gaugeZone {
 	totalRange := gc.config.MaxValue - gc.config.MinValue
-	totalAngle := endAngle - startAngle
-
 	prevValue := gc.config.MinValue
+	var zones []gaugeZone
 
 	for _, threshold := range gc.config.Thresholds {
-		// Calculate angle range for this zone
-		startRatio := (prevValue - gc.config.MinValue) / totalRange
-		endRatio := (threshold.Value - gc.config.MinValue) / totalRange
-
-		zoneStartAngle := startAngle + startRatio*totalAngle
-		zoneEndAngle := startAngle + endRatio*totalAngle
-
-		b.Push()
-		b.SetFillColor(threshold.Color)
-		b.SetStrokeWidth(0)
-
-		gc.drawArc(centerX, centerY, outerRadius, innerRadius, zoneStartAngle, zoneEndAngle)
-
-		b.Pop()
-
-		prevValue = threshold.Value
+		if prevValue >= gc.config.MaxValue {
+			break
+		}
+		value := math.Min(threshold.Value, gc.config.MaxValue)
+		if value <= prevValue {
+			continue
+		}
+		zones = append(zones, gaugeZone{
+			startRatio: (prevValue - gc.config.MinValue) / totalRange,
+			endRatio:   (value - gc.config.MinValue) / totalRange,
+			color:      threshold.Color,
+		})
+		prevValue = value
 	}
 
 	// Fill remaining area if thresholds don't cover the full range
 	if prevValue < gc.config.MaxValue {
-		startRatio := (prevValue - gc.config.MinValue) / totalRange
-		zoneStartAngle := startAngle + startRatio*totalAngle
+		zones = append(zones, gaugeZone{
+			startRatio: (prevValue - gc.config.MinValue) / totalRange,
+			endRatio:   1,
+			remainder:  true,
+		})
+	}
+	return zones
+}
 
-		style := b.StyleGuide()
-		remainFill := lerpColors(style.Palette.Background.Opaque(), style.Palette.Border.Opaque(), 0.30)
-		remainFill = EnsureContrast(remainFill, style.Palette.Background, WCAGAALarge)
+// drawThresholdZones draws colored zones on the gauge.
+func (gc *GaugeChart) drawThresholdZones(centerX, centerY, outerRadius, innerRadius, startAngle, endAngle float64) {
+	b := gc.builder
+	totalAngle := endAngle - startAngle
+
+	for _, zone := range gc.thresholdZones() {
+		fill := zone.color
+		if zone.remainder {
+			style := b.StyleGuide()
+			fill = lerpColors(style.Palette.Background.Opaque(), style.Palette.Border.Opaque(), 0.30)
+			fill = EnsureContrast(fill, style.Palette.Background, WCAGAALarge)
+		}
+
 		b.Push()
-		b.SetFillColor(remainFill)
+		b.SetFillColor(fill)
 		b.SetStrokeWidth(0)
 
-		gc.drawArc(centerX, centerY, outerRadius, innerRadius, zoneStartAngle, endAngle)
+		gc.drawArc(centerX, centerY, outerRadius, innerRadius,
+			startAngle+zone.startRatio*totalAngle, startAngle+zone.endRatio*totalAngle)
 
 		b.Pop()
 	}

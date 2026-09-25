@@ -54,7 +54,7 @@ Display a single KPI value against thresholds on a semicircular dial.
 | `start_angle` | `number` | - | Gauge arc start angle |
 | `end_angle` | `number` | - | Gauge arc end angle |
 | `thresholds` | `object[]` | - | Color bands on the gauge |
-| `thresholds[].value` | `number` | - | Upper bound of this band |
+| `thresholds[].value` | `number` | - | Upper bound of this band; values beyond `max` are clamped so the last band stops at `max`, and bands at or below `min` are skipped |
 | `thresholds[].color` | `string` | - | Hex color for this band |
 | `thresholds[].label` | `string` | - | Band label |
 
