@@ -305,8 +305,11 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		leadCell := execSummaryTextCell([]chartInsightsParagraph{
 			{Content: pptx.ConvertMarkdownEmphasis(p.Lead), Size: leadSize, Bold: true, Color: leadInk, Align: "l"},
 		}, "t", baselineInsetPt(tallest, leadSize))
-		if co, ok := cellOverrides[i].(*ExecSummaryCellOverride); ok && co.AccentBar {
-			leadCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 4}
+		if co, ok := cellOverrides[i].(*ExecSummaryCellOverride); ok {
+			applyCellTextOverride(leadCell, co)
+			if co.AccentBar {
+				leadCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 4}
+			}
 		}
 		cells = append(cells, leadCell)
 		cells = append(cells, execSummaryTextCell([]chartInsightsParagraph{

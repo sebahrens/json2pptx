@@ -578,6 +578,7 @@ func applyComparison2colCellOverride(cell *jsonschema.GridCellInput, cellOverrid
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

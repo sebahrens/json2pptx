@@ -310,6 +310,9 @@ func (sp *stylishPanels) Expand(ctx ExpandContext, values, overrides any, cellOv
 		// Apply cell overrides
 		if co, ok := cellOverrides[i]; ok {
 			cellOvr, coOk := co.(*StylishPanelsCellOverride)
+			if coOk {
+				applyCellTextOverride(bodyCells[i], cellOvr)
+			}
 			if coOk && cellOvr.AccentBar {
 				bodyCells[i].AccentBar = &jsonschema.AccentBarInput{
 					Position: "top",

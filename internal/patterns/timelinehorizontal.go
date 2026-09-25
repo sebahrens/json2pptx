@@ -379,8 +379,11 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 			textParagraph{text: stop.Body, size: bodySize}))
 
 		if co, ok := cellOverrides[i]; ok {
-			if cellOvr, coOk := co.(*TimelineHorizontalCellOverride); coOk && cellOvr.AccentBar {
-				labelCells[i].AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
+			if cellOvr, coOk := co.(*TimelineHorizontalCellOverride); coOk {
+				applyCellTextOverride(labelCells[i], cellOvr)
+				if cellOvr.AccentBar {
+					labelCells[i].AccentBar = &jsonschema.AccentBarInput{Position: "top", Color: accent, Width: 4}
+				}
 			}
 		}
 	}
@@ -485,6 +488,9 @@ func (th *timelineHorizontal) expandChevron(ctx ExpandContext, stops *TimelineHo
 		// Apply cell overrides
 		if co, ok := cellOverrides[i]; ok {
 			cellOvr, coOk := co.(*TimelineHorizontalCellOverride)
+			if coOk {
+				applyCellTextOverride(gc, cellOvr)
+			}
 			if coOk && cellOvr.AccentBar {
 				gc.AccentBar = &jsonschema.AccentBarInput{
 					Position: "top",
@@ -586,6 +592,9 @@ func (th *timelineHorizontal) expandGantt(ctx ExpandContext, stops *TimelineHori
 		// Apply cell overrides
 		if co, ok := cellOverrides[i]; ok {
 			cellOvr, coOk := co.(*TimelineHorizontalCellOverride)
+			if coOk {
+				applyCellTextOverride(barCell, cellOvr)
+			}
 			if coOk && cellOvr.AccentBar {
 				barCell.AccentBar = &jsonschema.AccentBarInput{
 					Position: "left",

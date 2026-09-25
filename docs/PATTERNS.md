@@ -84,6 +84,34 @@ Per-cell overrides are narrowly scoped to text/style/decoration adjustments only
 
 **MUST NOT** accept arbitrary nested `shape_grid` fragments or geometry changes. Cells are addressed by zero-based index as string keys (`"0"`, `"1"`, ...). The pattern's `Validate` must reject unknown override keys with an error citing the D15 whitelist.
 
+**Every advertised key must change the output.** A pattern whose schema uses `CellOverrideDefSchema()` must honour all six keys. The five text keys go through the shared `applyCellTextOverride(cell, ovr)` helper (`cell_override.go`), which rewrites the target cell's primary text — a shape's `text`, a composite cell's text shape, or an image cell's overlay label:
+
+- `font_size`, `emphasis`, `color` apply to **every** paragraph of that text (a header/body cell loses its size hierarchy under `font_size`). `emphasis: "bold"` clears italic and `"italic"` clears bold; `"bold-italic"` sets both.
+- `align` sets the text default **and** each paragraph's own `align` (a paragraph align wins over the default, so the default alone would be a no-op).
+- `vertical_align` sets the anchor. The sparse-card re-centring pass (`anchorSparseText`) keeps an explicit `"b"`.
+
+Call the helper where the cell is built, before any content-sized row measurement, so a larger `font_size` grows the row. If a pattern truly cannot honour a key, give it a narrowed cellOverride schema and make `Validate` reject that key as `unknown_key` — never accept and ignore it. `TestCellOverrideKeys_ChangeExpandOrAreRejected` (`cell_override_text_test.go`) enforces this for every registered pattern: each advertised key must change the `Expand` output (and the text values must appear in it), and each unadvertised D15 key must be rejected.
+
+Where an index addresses a composite of several shapes, the text keys land on the primary text shape; the accent bar keeps its existing placement:
+
+| Pattern | Index → text target |
+|---|---|
+| `agenda`, `agenda-with-images` | item → title cell (not the number badge) |
+| `dual-org-ladder` | `0` → both org headers; `i+1` → both role cards of row `i` |
+| `exec-summary` | point → bold lead-in cell (not the support sentence) |
+| `hero-detail` | `0` → hero stat (now also takes `accent_bar`); `i+1` → detail card `i` |
+| `horizontal-bar-with-callouts` | bar → its callout; the bar label when the row has no callout |
+| `journey-maturity-model` | stage → stage header |
+| `labeled-rows` | row → label block (label + sublabel) |
+| `metric-list` | item → big value (not label/detail) |
+| `stylish-panels` | panel → body (not the ribbon header) |
+| `table-highlight` | option → option-name cell (not the score cells) |
+| `team-bios` | member → name/role/bio text cell (not the photo) |
+| `timeline-horizontal` | stop → label cell (`dots`), chevron (`chevron`), bar (`gantt`) |
+| `value-chain`, `waterfall-bridge` | step / column → label cell |
+
+All other patterns apply the text keys to the one shape the index addresses (banner / pillar / foundation / roof in `strategy-house`, a quadrant in `matrix-2x2`, a card in `card-grid`, and so on). The `kpi-*` family already did this through the same helper (formerly `applyKPICellTextOverrides`).
+
 ## card-grid styles + surface overrides
 
 `card-grid` (`cardgrid.go`) exposes two complementary knobs through pattern-level `overrides` (distinct from the per-cell `cell_overrides` whitelist above):

@@ -277,13 +277,16 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 			},
 		}
 
-		// Apply per-cell override (accent bar on the title cell).
+		// Apply per-cell override (text keys and accent bar on the title cell).
 		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*AgendaWithImagesCellOverride); ok2 && cellOvr.AccentBar {
-				titleCell.AccentBar = &jsonschema.AccentBarInput{
-					Position: "left",
-					Color:    accent,
-					Width:    4,
+			if cellOvr, ok2 := co.(*AgendaWithImagesCellOverride); ok2 {
+				applyCellTextOverride(titleCell, cellOvr)
+				if cellOvr.AccentBar {
+					titleCell.AccentBar = &jsonschema.AccentBarInput{
+						Position: "left",
+						Color:    accent,
+						Width:    4,
+					}
 				}
 			}
 		}

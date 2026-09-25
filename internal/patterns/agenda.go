@@ -243,6 +243,7 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 		// Apply cell overrides
 		if co, ok := cellOverrides[i]; ok {
 			if cellOvr, coOk := co.(*AgendaCellOverride); coOk {
+				applyCellTextOverride(titleCell, cellOvr)
 				if cellOvr.AccentBar {
 					titleCell.AccentBar = &jsonschema.AccentBarInput{
 						Position: "left",

@@ -306,6 +306,8 @@ func (hd *heroDetail) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	// Row 1: Hero stat (single cell spanning all columns, ~40% height)
 	heroCell := hd.buildHeroCell(v.Hero, accent, heroSize, labelSize)
 	heroCell.ColSpan = len(v.Details)
+	// Cell 0 is the hero; Validate accepts it, so honour it like the details.
+	applyHeroDetailCellOverride(heroCell, cellOverrides, 0, accent)
 
 	// Content-sized rows (go-slide-creator-3i7c): the hero row hugs the
 	// stat + label, detail cards hug their title/body (sparse card text is
@@ -328,16 +330,7 @@ func (hd *heroDetail) Expand(ctx ExpandContext, values, overrides any, cellOverr
 			detailCells[i] = hd.buildCardDetailCell(ctx, d, accent, headerSize, detailSize)
 		}
 		// Apply cell overrides (detail cells are 1-indexed since cell 0 is the hero)
-		if co, ok := cellOverrides[i+1]; ok {
-			cellOvr, coOk := co.(*HeroDetailCellOverride)
-			if coOk && cellOvr.AccentBar {
-				detailCells[i].AccentBar = &jsonschema.AccentBarInput{
-					Position: "top",
-					Color:    accent,
-					Width:    3,
-				}
-			}
-		}
+		applyHeroDetailCellOverride(detailCells[i], cellOverrides, i+1, accent)
 	}
 
 	cardW := equalColumnWidthPt(contentW, len(v.Details), 10)
@@ -488,4 +481,21 @@ type heroDetailText struct {
 	Paragraphs    []heroDetailParagraph `json:"paragraphs"`
 	Align         string                `json:"align"`
 	VerticalAlign string                `json:"vertical_align"`
+}
+
+// applyHeroDetailCellOverride applies cell_overrides[idx] (0 = hero, i+1 =
+// detail i): the D15 text keys and a top accent bar.
+func applyHeroDetailCellOverride(cell *jsonschema.GridCellInput, cellOverrides map[int]any, idx int, accent string) {
+	cellOvr, ok := cellOverrides[idx].(*HeroDetailCellOverride)
+	if !ok || cell == nil {
+		return
+	}
+	applyCellTextOverride(cell, cellOvr)
+	if cellOvr.AccentBar {
+		cell.AccentBar = &jsonschema.AccentBarInput{
+			Position: "top",
+			Color:    accent,
+			Width:    3,
+		}
+	}
 }
