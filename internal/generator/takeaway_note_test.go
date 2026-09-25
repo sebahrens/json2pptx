@@ -19,7 +19,7 @@ func TestGenerateTakeawayShape(t *testing.T) {
 	wants := []string{
 		"Revenue doubled year over year.",
 		`name="Takeaway"`,
-		`sz="1400"`,                       // 14pt headline, not a 12pt footnote
+		`sz="1600"`,                       // 16pt takeaway, not a small card title
 		`b="1"`,                           // bold
 		"1F1F1F",                          // dark gray text color
 		`<a:schemeClr val="accent1"`,      // accent-driven band fill / rule

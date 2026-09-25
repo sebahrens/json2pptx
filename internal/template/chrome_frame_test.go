@@ -118,6 +118,9 @@ func TestResolveChromeFrameAcrossAspectRatios(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := ResolveChromeFrame(nil, nil, tc.w, tc.h, true, true)
+			if ratio := float64(f.Takeaway.CY) / float64(tc.h); ratio < 0.07 || ratio > 0.08 {
+				t.Errorf("takeaway band uses %.1f%% of slide height, want 7–8%%", ratio*100)
+			}
 			for name, r := range map[string]ChromeRect{"content": f.Content, "takeaway": f.Takeaway, "source": f.Source} {
 				if r.X < 0 || r.Y < 0 || r.CX < 0 || r.CY < 0 || r.X+r.CX > tc.w || r.Y+r.CY > tc.h {
 					t.Errorf("%s outside %dx%d: %+v", name, tc.w, tc.h, r)

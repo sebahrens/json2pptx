@@ -1,6 +1,9 @@
 package slides
 
-import "testing"
+import (
+	"encoding/json"
+	"testing"
+)
 
 // A lone insight that IS the takeaway printed the same sentence twice on one
 // slide: once as the only Key Insight bullet and once verbatim in the takeaway
@@ -60,5 +63,90 @@ func TestCompileChartInsightDropsTheDuplicateBand(t *testing.T) {
 	}
 	if slide.Takeaway != "Shift spend to R&D" {
 		t.Errorf("takeaway = %q; a takeaway that is not the insight must survive", slide.Takeaway)
+	}
+}
+
+func TestCompileChartInsightUsesDistinctInsightAsCallout(t *testing.T) {
+	chart := map[string]any{"type": "bar", "data": map[string]any{
+		"categories": []any{"Q1"}, "series": []any{map[string]any{"name": "Revenue", "values": []any{42.0}}},
+	}}
+	for _, tc := range []struct {
+		name, insight, takeaway, wantCallout, wantBand string
+	}{
+		{"distinct implication", "Expand the sales team", "", "Expand the sales team", ""},
+		{"duplicate bullet", "Revenue rose 18%", "", "", ""},
+		{"explicit separate takeaway", "Expand the sales team", "Cap spend", "Expand the sales team", "Cap spend"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{"chart": chart, "insights": []any{"Revenue rose 18%"}, "insight": tc.insight}
+			if tc.takeaway != "" {
+				body["takeaway"] = tc.takeaway
+			}
+			in := Input{Body: body, Takeaway: tc.insight}
+			if tc.takeaway != "" {
+				in.Takeaway = tc.takeaway
+			}
+			slide, links, err := CompileChartInsight(in)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if slide.Takeaway != tc.wantBand {
+				t.Errorf("takeaway = %q, want %q", slide.Takeaway, tc.wantBand)
+			}
+			var vals chartInsightsValues
+			if err := json.Unmarshal(slide.Pattern.Values, &vals); err != nil {
+				t.Fatal(err)
+			}
+			if vals.SoWhat != tc.wantCallout {
+				t.Errorf("so_what = %q, want %q", vals.SoWhat, tc.wantCallout)
+			}
+			if len(vals.Insights) != 1 || vals.Insights[0] != "Revenue rose 18%" {
+				t.Errorf("insights = %v, want the one evidence bullet", vals.Insights)
+			}
+			var ovr struct {
+				TitleSize  float64 `json:"title_size"`
+				BulletSize float64 `json:"bullet_size"`
+			}
+			if err := json.Unmarshal(slide.Pattern.Overrides, &ovr); err != nil {
+				t.Fatal(err)
+			}
+			if ovr.TitleSize != 14 || ovr.BulletSize != 14 {
+				t.Errorf("compiled chart insight sizes = %.0f/%.0fpt, want 14/14pt", ovr.TitleSize, ovr.BulletSize)
+			}
+			linkedCallout := false
+			for _, link := range links {
+				if link.RawPath == "slides[0].pattern.values.so_what" && link.SemanticPath == "slides[0].insight" {
+					linkedCallout = true
+				}
+			}
+			if linkedCallout != (tc.wantCallout != "") {
+				t.Errorf("callout source link present = %t, want %t", linkedCallout, tc.wantCallout != "")
+			}
+		})
+	}
+}
+
+func TestCompileChartInsightDoesNotRepeatScalarAliasInMultiBulletFooter(t *testing.T) {
+	line := "Revenue rose 18%"
+	in := Input{
+		Body: map[string]any{
+			"insights": []any{line, "Margin rose 3 points"},
+			"insight":  line,
+		},
+		Takeaway: line,
+	}
+	slide, _, err := CompileChartInsight(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Takeaway != "" {
+		t.Errorf("repeated scalar alias in footer: %q", slide.Takeaway)
+	}
+	var vals chartInsightsValues
+	if err := json.Unmarshal(slide.Pattern.Values, &vals); err != nil {
+		t.Fatal(err)
+	}
+	if vals.SoWhat != "" || len(vals.Insights) != 2 {
+		t.Errorf("expected two evidence bullets and no duplicate callout, got %+v", vals)
 	}
 }

@@ -146,6 +146,9 @@ func TestKPIRowHeightInvariant(t *testing.T) {
 				}
 				got := grid.Rows[0].MaxHeight
 				base := contentH * kpiBaseCardHeightFrac
+				if c.atBase && got < contentH*0.70-0.5 {
+					t.Errorf("full-size KPI row uses %.1f%% of the content height, want at least 70%%", got/contentH*100)
+				}
 				if got < base-0.5 {
 					t.Errorf("row max_height %.1fpt is below the %.1fpt base", got, base)
 				}

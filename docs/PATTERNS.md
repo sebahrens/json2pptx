@@ -519,7 +519,7 @@ When adding the same slot to a new grid-shaped pattern, reuse `SecondaryChartSch
 
 ## chart-insights-split (data + narrative composite)
 
-The `chart-insights-split` pattern is the canonical "chart on the left, takeaways on the right" consulting layout. The pattern emits a 65/35 column split: the left panel is a `Diagram` cell rendered by svggen; the right panel is a Shape cell with the title (defaults to `Key Insights`) and 1–6 bullet takeaways. **The default widens to 75/25 when the insights column is sparse** — at most two bullets, ≤140 characters in total, and no headline or so-what — because a 35% column holding one short bullet leaves a large empty block while the chart is squeezed into 55% of the slide (go-slide-creator-pyxn). A thin vertical accent divider can be toggled via `overrides.show_divider`, and `overrides.chart_width_pct` (clamped 40–80) pins the ratio, overriding both defaults.
+The `chart-insights-split` pattern is the canonical "chart on the left, takeaways on the right" consulting layout. The pattern emits a 65/35 column split: the left panel is a `Diagram` cell rendered by svggen; the right panel is a Shape cell with the title (defaults to `Key Insights`) and 1–6 bullet takeaways, or a full-height `so_what` callout when there are no bullets. At least one bullet or a nonempty `so_what` is required. **The default widens to 75/25 when the insights column is sparse** — at most two bullets, ≤140 characters in total, and no headline or so-what — because a 35% column holding one short bullet leaves a large empty block while the chart is squeezed into 55% of the slide (go-slide-creator-pyxn). A thin vertical accent divider can be toggled via `overrides.show_divider`, and `overrides.chart_width_pct` (clamped 40–80) pins the ratio, overriding both defaults.
 
 For readability the right panel applies vertical rhythm via per-paragraph `space_after` (points): the title carries extra separation below it so it reads as a header, and non-final bullets carry inter-bullet breathing room so the column does not render as a dense block. `space_after` is a general field on the shape-grid `paragraphs[]` cell-text form (points, converted to hundredths of a point), available to any pattern that emits paragraph arrays.
 
@@ -532,7 +532,7 @@ For readability the right panel applies vertical rhythm via per-paragraph `space
 **So-what extensions (go-slide-creator-pzrs).** Consulting chart slides state the figure and the implication, not just the bullets:
 
 - `headline` `{value ≤12, label ≤60}` — a big accent number (32pt, 26pt with ≥5 insights; `overrides.headline_size`) at the top of the insights column.
-- `so_what` (≤160) — a tinted, accent-barred callout ("**So what:** …") at the bottom of the column.
+- `so_what` (≤160) — a tinted, accent-barred callout ("**So what:** …") at the bottom of the column, or filling the right panel when it is the only insight.
 - Chart caption — single-series charts render without a legend, so the series name used to disappear. A bold caption above the chart now shows `chart_label` (≤60) or, when the chart has no `title`, the single series name plus `unit` (≤12): `"Revenue"` + `"$M"` → `Revenue ($M)`; multi-series charts get `Values in <unit>` (their legend names the series).
 - Data labels — `Style.ShowValues` is switched on by default for bar-type charts with ≤16 points and single-series line / area charts with ≤12 points; `overrides.data_labels` forces on / off and an explicit `data.data_labels` payload is left to svggen. The caller's chart spec is never mutated.
 

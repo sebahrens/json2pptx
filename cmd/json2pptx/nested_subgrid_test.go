@@ -180,8 +180,9 @@ func TestExpandNestedCellPatterns_KPI3UpInMatrixCell(t *testing.T) {
 	if !found {
 		t.Fatal("expected a CellKindSubGrid placeholder at row=1 col=1")
 	}
-	if got, want := cell.Grid.Rows[0].MaxHeight, 0.60*float64(parentBounds.CY)/12700; got < want-5 || got > want+5 {
-		t.Errorf("nested KPI max_height %.1fpt should use about 60%% of its %.1fpt parent cell", got, float64(parentBounds.CY)/12700)
+	usableHeight := float64(parentBounds.CY-2*subGridInsetEMU) / 12700
+	if got, want := cell.Grid.Rows[0].MaxHeight, 0.70*usableHeight; got < want-1 || got > want+1 {
+		t.Errorf("nested KPI max_height %.1fpt should use about 70%% of its %.1fpt inset parent cell", got, usableHeight)
 	}
 
 	// At least one rendered cell must fall inside the placeholder bounds.

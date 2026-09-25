@@ -54,6 +54,13 @@ func CompileKPISnapshot(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 		Name:   patternName,
 		Values: values,
 	}
+	// DeckSpec is a presentation-first surface: use readable hero type instead
+	// of the smaller raw-pattern defaults. The pattern's measured fit may still
+	// shrink a long value to avoid wrapping in a narrow 5–6-card row.
+	slide.Pattern.Overrides, err = json.Marshal(patterns.KPIOverrides{BigSize: 44, SmallSize: 16})
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal kpi design defaults: %w", err)
+	}
 	for k := range cells {
 		links = append(links, SourceLink{
 			RawPath:      fmt.Sprintf("%s.pattern.values[%d]", in.rawSlide(), k),

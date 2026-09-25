@@ -6,11 +6,11 @@ import (
 )
 
 // takeawayFontSize is the takeaway font size in hundredths of a point. The
-// takeaway is the slide's headline answer, so it uses the top of the CardTitle
-// typography role (14pt) rather than a footnote-sized 12pt. Its band geometry
+// takeaway is the slide's headline answer, so it uses a 16pt banner size
+// rather than a card-title or footnote size. Its band geometry
 // (x-range, height, position above the footer chrome) comes from the template
 // profile via template.ResolveChromeFrame — there are no fixed EMU positions.
-var takeawayFontSize = tokens.CardTitleMaxHPt // 14pt
+var takeawayFontSize = tokens.GridHeaderDefaultHPt // 16pt
 
 // Takeaway band accent tint (in thousandths of a percent). The band fill is
 // the template's accent1 lightened ~80% toward white ("Accent 1, Lighter 80%"

@@ -98,10 +98,14 @@
             "Real-time decisioning overtakes batch reporting within the window.",
             "Buyers are consolidating onto platforms that close the loop.",
             "Early adopters report faster cycle times within a quarter."
-          ]
+          ],
+          "so_what": "Spend is shifting decisively from batch reporting to live decisioning."
+        },
+        "overrides": {
+          "title_size": 14,
+          "bullet_size": 14
         }
-      },
-      "takeaway": "Spend is shifting decisively from batch reporting to live decisioning."
+      }
     },
     {
       "layout_id": "blank-title",
@@ -132,7 +136,11 @@
             "big": "11wk",
             "small": "Median time to value"
           }
-        ]
+        ],
+        "overrides": {
+          "big_size": 44,
+          "small_size": 16
+        }
       },
       "takeaway": "Early customers are already seeing the decision gap close."
     },

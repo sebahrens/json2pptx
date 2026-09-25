@@ -78,7 +78,11 @@
             "big": "2.4%",
             "small": "Logo churn (SMB-weighted)"
           }
-        ]
+        ],
+        "overrides": {
+          "big_size": 44,
+          "small_size": 16
+        }
       },
       "takeaway": "Every headline metric improved except SMB churn."
     },
@@ -122,10 +126,14 @@
             "Revenue grew 41% across the fiscal year, led by enterprise adoption.",
             "The Q4 step-up reflects the EMEA market launch landing early.",
             "Pipeline coverage points to continued acceleration into H2."
-          ]
+          ],
+          "so_what": "Q4 acceleration reflects the EMEA launch landing ahead of schedule."
+        },
+        "overrides": {
+          "title_size": 14,
+          "bullet_size": 14
         }
-      },
-      "takeaway": "Q4 acceleration reflects the EMEA launch landing ahead of schedule."
+      }
     },
     {
       "layout_id": "blank-title",

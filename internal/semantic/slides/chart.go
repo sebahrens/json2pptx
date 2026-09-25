@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -14,6 +15,7 @@ type chartInsightsValues struct {
 	Chart         *types.DiagramSpec `json:"chart,omitempty"`
 	InsightsTitle string             `json:"insights_title,omitempty"`
 	Insights      []string           `json:"insights"`
+	SoWhat        string             `json:"so_what,omitempty"`
 	Source        string             `json:"source,omitempty"`
 }
 
@@ -23,9 +25,9 @@ type chartInsightsValues struct {
 // this bound to stay in step with compile.
 const ChartInsightMaxInsights = 6
 
-// ChartInsightInsightCount returns the number of insight bullets a chart_insight
+// ChartInsightInsightCount returns the number of insight items a chart_insight
 // payload will compile with, mirroring CompileChartInsight: the "insights" list
-// (or the single "insight") — or, when those are absent but a renderable chart
+// (or the single "insight" callout) — or, when those are absent but a chart
 // and a "takeaway" are present, the takeaway counts as a single insight (the
 // takeaway-as-lone-insight fallback). Validation and the explain planner consult
 // this so neither flags nor advertises a treatment that disagrees with compile.
@@ -40,14 +42,14 @@ func ChartInsightInsightCount(body map[string]any) int {
 // ChartInsightPatternFeasible reports whether a chart_insight payload will
 // compile to the chart-insights-split pattern rather than degrading to the
 // native two-column fallback: it must resolve to 1–ChartInsightMaxInsights
-// usable insight bullets.
+// usable insight items (bullets or a lone callout).
 func ChartInsightPatternFeasible(body map[string]any) bool {
 	n := ChartInsightInsightCount(body)
 	return n >= 1 && n <= ChartInsightMaxInsights
 }
 
 // CompileChartInsight compiles a chart-insight slide. When the payload exposes
-// 1–ChartInsightMaxInsights insight bullets it emits a chart-insights-split
+// 1–ChartInsightMaxInsights insight items it emits a chart-insights-split
 // pattern (left chart panel + right insights), including the chart only when it
 // carries a type and a non-empty data payload — the pattern renders insights
 // full-width otherwise. Without usable insights (or beyond the cap) it degrades
@@ -60,16 +62,15 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 	// insight bullets. The content fallback below cannot render a chart, so
 	// without this the chart silently disappears even though validation passed.
 	// Treat the takeaway as the single insight so the chart-insights-split
-	// pattern still emits the chart — mirroring the "insight" alias, where the
-	// same line already serves as both the lone insight bullet and the takeaway.
+	// pattern still emits the chart. A scalar "insight" becomes a callout.
 	if len(insights) == 0 && in.Takeaway != "" && chartSpec(in.Body) != nil {
 		insights = []string{in.Takeaway}
 		insightsField = "takeaway"
 	}
 
 	// A lone insight that IS the takeaway would print the same sentence twice:
-	// once as the only Key Insight bullet and once verbatim in the takeaway
-	// bar. The bullet is the slide's own content, so the band is what gives way
+	// once in the pattern and once verbatim in the takeaway bar. The pattern
+	// carries the slide's content, so the band is what gives way
 	// (go-slide-creator-pyxn).
 	in.Takeaway = dropDuplicateTakeaway(in.Takeaway, insights)
 
@@ -89,6 +90,41 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 	}
 
 	vals := chartInsightsValues{Insights: insights}
+	if insightsField == "insight" {
+		// A single implication is a callout, not a one-item list headed
+		// "Key Insights". The pattern accepts callout-only content.
+		vals.Insights = []string{}
+		vals.SoWhat = strField(in.Body, "insight")
+		links = append(links, SourceLink{
+			RawPath:      in.rawSlide() + ".pattern.values.so_what",
+			SemanticPath: in.semSlide() + ".insight",
+		})
+	}
+	if insight := strField(in.Body, "insight"); insight != "" && insightsField == "insights" {
+		// When an author supplies both evidence bullets and one implication,
+		// the scalar insight is the callout, not another copy in the footer.
+		duplicate := false
+		for _, bullet := range insights {
+			if strings.EqualFold(strings.TrimSpace(bullet), strings.TrimSpace(insight)) {
+				duplicate = true
+				break
+			}
+		}
+		if duplicate && strField(in.Body, "takeaway") == "" && in.Takeaway == insight {
+			// The scalar alias is already one of the evidence bullets.
+			// Do not reprint it in the footer, even for a multi-bullet list.
+			in.Takeaway = ""
+		} else if !duplicate {
+			vals.SoWhat = insight
+			links = append(links, SourceLink{
+				RawPath:      in.rawSlide() + ".pattern.values.so_what",
+				SemanticPath: in.semSlide() + ".insight",
+			})
+			if strField(in.Body, "takeaway") == "" && in.Takeaway == insight {
+				in.Takeaway = ""
+			}
+		}
+	}
 	if chart := chartSpec(in.Body); chart != nil {
 		vals.Chart = chart
 		links = append(links, SourceLink{
@@ -112,10 +148,16 @@ func CompileChartInsight(in Input) (*deckinput.SlideInput, []SourceLink, error) 
 		Name:   "chart-insights-split",
 		Values: encoded,
 	}
-	links = append(links, SourceLink{
-		RawPath:      in.rawSlide() + ".pattern.values.insights",
-		SemanticPath: in.semSlide() + "." + insightsField,
-	})
+	slide.Pattern.Overrides, err = json.Marshal(patterns.ChartInsightsSplitOverrides{TitleSize: 14, BulletSize: 14})
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal chart-insight design defaults: %w", err)
+	}
+	if len(vals.Insights) > 0 {
+		links = append(links, SourceLink{
+			RawPath:      in.rawSlide() + ".pattern.values.insights",
+			SemanticPath: in.semSlide() + "." + insightsField,
+		})
+	}
 
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil

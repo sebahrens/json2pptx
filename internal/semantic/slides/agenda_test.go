@@ -90,6 +90,40 @@ func TestCompileAgendaPicksThePatternFromTheContent(t *testing.T) {
 	}
 }
 
+func TestCompileAgendaUsesReadableTypeSizes(t *testing.T) {
+	cases := []struct {
+		name     string
+		body     map[string]any
+		wantSize float64
+		wantSub  float64
+	}{
+		{"short list", agendaBody(nil, "Performance", "Risks", "Investment"), 18, 0},
+		{"dense list", agendaBody(nil, "one", "two", "three", "four", "five", "six"), 16, 0},
+		{"subtitled rows", agendaBody(nil,
+			subtitled("Performance", "What changed"),
+			subtitled("Risks", "What matters"),
+			subtitled("Investment", "What comes next")), 16, 12},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			slide, _, err := CompileAgenda(Input{Body: tc.body})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var ovr struct {
+				TitleSize    float64 `json:"title_size"`
+				SubtitleSize float64 `json:"subtitle_size"`
+			}
+			if err := json.Unmarshal(slide.Pattern.Overrides, &ovr); err != nil {
+				t.Fatal(err)
+			}
+			if ovr.TitleSize != tc.wantSize || ovr.SubtitleSize != tc.wantSub {
+				t.Errorf("type sizes = %g/%g, want %g/%g", ovr.TitleSize, ovr.SubtitleSize, tc.wantSize, tc.wantSub)
+			}
+		})
+	}
+}
+
 // The current section is the whole reason an agenda is repeated between
 // sections; it must survive whichever way the slide is rendered.
 func TestAgendaCurrentSectionSurvivesEveryPath(t *testing.T) {

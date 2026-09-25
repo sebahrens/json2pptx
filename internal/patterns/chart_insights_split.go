@@ -195,7 +195,7 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 		map[string]*Schema{
 			"chart":          chartSchema,
 			"insights_title": StringSchema(40).WithDescription("Label above the bullet list (default \"Key Insights\")").WithDefault("Key Insights"),
-			"insights":       ArraySchema(StringSchema(160), 1, 6).WithDescription("1–6 narrative takeaway bullets"),
+			"insights":       ArraySchema(StringSchema(160), 0, 6).WithDescription("Up to 6 narrative takeaway bullets; may be empty when so_what carries the sole insight"),
 			"source":         StringSchema(120).WithDescription("Optional source/footnote below the chart; target about 108 characters with one insight and no headline/callout, or 95 when the right column has more content"),
 			"headline": ObjectSchema(map[string]*Schema{
 				"value": StringSchema(cisHeadlineValueMax).WithDescription("Headline figure, e.g. \"+75%\""),
@@ -243,8 +243,8 @@ func (cis *chartInsightsSplit) Validate(values, overrides any, cellOverrides map
 	const name = "chart-insights-split"
 	var errs []error
 
-	if len(v.Insights) == 0 {
-		errs = append(errs, errRequired(name, "values.insights"))
+	if len(v.Insights) == 0 && strings.TrimSpace(v.SoWhat) == "" {
+		errs = append(errs, errRequired(name, "values.insights or values.so_what"))
 	}
 	if len(v.Insights) > 6 {
 		errs = append(errs, newValidationError(name, "values.insights", ErrCodeMaxItems,
@@ -334,9 +334,11 @@ func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, 
 		insightsTitle = "Key Insights"
 	}
 
-	// Build the insights panel (always present): the plain text cell, or a
-	// stacked headline / insights / so-what column when the extras are used.
-	insightsCell := buildInsightsPanel(insightsTitle, v.Insights, accent, titleSize, bulletSize)
+	// Build the insights panel, or a callout-only panel for a scalar insight.
+	var insightsCell *jsonschema.GridCellInput
+	if len(v.Insights) > 0 {
+		insightsCell = buildInsightsPanel(insightsTitle, v.Insights, accent, titleSize, bulletSize)
+	}
 	insightsCell = buildInsightsColumn(ctx, v, ovr, insightsCell, accent)
 
 	// Full-width fallback: no chart → single insights cell spanning the grid.
@@ -726,6 +728,21 @@ func buildChartWithCaption(ctx ExpandContext, chart *jsonschema.GridCellInput, l
 func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *ChartInsightsSplitOverrides, insights *jsonschema.GridCellInput, accent string) *jsonschema.GridCellInput {
 	hasHeadline := v.Headline != nil && strings.TrimSpace(v.Headline.Value) != ""
 	hasSoWhat := strings.TrimSpace(v.SoWhat) != ""
+	if insights == nil && hasSoWhat && !hasHeadline {
+		// Callout-only semantic slides give the implication the whole right
+		// panel instead of leaving an empty "Key Insights" row above it.
+		tone := inactiveTintTone(accent)
+		content := "<b>So what:</b> " + pptx.ConvertMarkdownEmphasis(v.SoWhat)
+		textJSON, _ := json.Marshal(chartInsightsText{
+			Paragraphs:    []chartInsightsParagraph{{Content: content, Size: 16, Color: readableTextOn(ctx, tone, "dk1"), Align: "l"}},
+			Align:         "l",
+			VerticalAlign: "ctr",
+		})
+		return &jsonschema.GridCellInput{
+			Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: tone.fillJSON(), Text: textJSON},
+			AccentBar: &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 3},
+		}
+	}
 	if !hasHeadline && !hasSoWhat {
 		return insights
 	}
@@ -779,7 +796,9 @@ func buildInsightsColumn(ctx ExpandContext, v *ChartInsightsSplitValues, ovr *Ch
 		}}}
 		used += pctOf(h, colH)
 	}
-	rows = append(rows, jsonschema.GridRowInput{Height: math.Max(100-used, 10), Cells: []*jsonschema.GridCellInput{insights}})
+	if insights != nil {
+		rows = append(rows, jsonschema.GridRowInput{Height: math.Max(100-used, 10), Cells: []*jsonschema.GridCellInput{insights}})
+	}
 	if soWhatRow != nil {
 		rows = append(rows, *soWhatRow)
 	}

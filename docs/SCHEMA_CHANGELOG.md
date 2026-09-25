@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.136.0: chart callout-only content and semantic design defaults (`go-slide-creator-v22hn`, `go-slide-creator-an2az`).**
+  `chart-insights-split` now accepts an empty `insights` array when a nonempty
+  `so_what` carries the sole narrative point. A scalar DeckSpec
+  `chart_insight.insight` compiles into that full-height callout; a distinct
+  scalar beside an `insights` list becomes its implication. The compiler also
+  emits larger KPI, agenda, and chart type defaults, while the takeaway band
+  grows to 7.5% of slide height at 16pt. `takeaway_missing` recognizes the
+  chart callout as the slide's visible implication. Existing raw inputs remain
+  valid.
+
 - **2026-09-25 — Independent title eyebrow textbox (`go-slide-creator-mb31w`).**
   A title-slide eyebrow now occupies its own textbox above the title text,
   reserving space within the layout's title region. It keeps the inherited

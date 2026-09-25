@@ -207,7 +207,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"title":    strField("Slide title."),
 		"takeaway": strField("One-line takeaway footer."),
 		"source":   strField("Data source note."),
-		"insight":  strField("Single insight (alias for a one-item insights list)."),
+		"insight":  strField("Single implication rendered as a so-what callout; when insights bullets are present, keep it distinct from them."),
 		"insights": textList("1–6 insight bullets rendered beside the chart."),
 		"chart": {typ: "object", desc: "Chart: {type, title?, data}. For bar/line/area charts data is {categories:[…], series:[{name, values:[…]}]}; for pie/donut {categories:[…], values:[…]}.",
 			objectKeys: chartObjectKeys},

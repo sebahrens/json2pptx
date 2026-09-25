@@ -921,7 +921,7 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 		// audience cannot tell what the chart is supposed to argue. Warn (do
 		// not error) when missing, and stay quiet when the title already
 		// carries the argument.
-		if strings.TrimSpace(slideInput.Takeaway) == "" && slideRequiresTakeaway(slideInput) && !slideTitleStatesTakeaway(slideInput) {
+		if strings.TrimSpace(slideInput.Takeaway) == "" && slideRequiresTakeaway(slideInput) && !slideTitleStatesTakeaway(slideInput) && !slideHasChartSoWhat(slideInput) {
 			msg := fmt.Sprintf("slide %d: this slide argues from data — set a takeaway headline (or make the title a full sentence) so the audience knows the 'so what'", i+1)
 			ve := &patterns.ValidationError{
 				Path:    slidepath.SlideField(i, "takeaway"),
@@ -939,6 +939,19 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 
 		output.Slides = append(output.Slides, slide)
 	}
+}
+
+// slideHasChartSoWhat recognizes the visible implication in this pattern.
+// Its callout fulfills the same narrative role as the slide-level takeaway;
+// malformed pattern values are not evidence of a visible callout.
+func slideHasChartSoWhat(s SlideInput) bool {
+	if s.Pattern == nil || s.Pattern.Name != "chart-insights-split" {
+		return false
+	}
+	var values struct {
+		SoWhat string `json:"so_what"`
+	}
+	return json.Unmarshal(s.Pattern.Values, &values) == nil && strings.TrimSpace(values.SoWhat) != ""
 }
 
 // slideRequiresTakeaway reports whether a slide argues from data, and so wants

@@ -384,7 +384,7 @@ const (
 	kpiLeftIconHFrac = 0.4
 	kpiLeftIconWFrac = 0.2
 	// kpiBaseCardHeightFrac is the share of the content height a KPI card
-	// takes when its content fits. The full-size variant uses at least 60% of
+	// takes when its content fits. The full-size variant uses at least 70% of
 	// the zone while the row remains centred vertically by the grid.
 	//
 	// It is a BASE, not a cap — kpiRowMaxHeightPt raises the row to whatever
@@ -392,7 +392,7 @@ const (
 	// box. It was named kpiMaxCardHeightFrac and passed to clampPt as the
 	// LOWER bound, so every doc and test asserting a "cap" was false
 	// (go-slide-creator-4uxi).
-	kpiBaseCardHeightFrac = 0.60
+	kpiBaseCardHeightFrac = 0.70
 	// kpiCardPadPt is the vertical breathing room added around the card text
 	// when content needs more than the cap.
 	kpiCardPadPt = 24.0

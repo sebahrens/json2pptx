@@ -113,8 +113,44 @@ func TestChartInsightsSplit(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for missing insights, got nil")
 		}
-		if !strings.Contains(err.Error(), "values.insights is required") {
-			t.Errorf("error %q does not mention values.insights required", err)
+		if !strings.Contains(err.Error(), "values.insights or values.so_what is required") {
+			t.Errorf("error %q does not mention required content", err)
+		}
+	})
+
+	t.Run("validate_callout_only", func(t *testing.T) {
+		v := &ChartInsightsSplitValues{SoWhat: "Increase capacity"}
+		if err := p.Validate(v, nil, nil); err != nil {
+			t.Errorf("callout-only insight should be valid: %v", err)
+		}
+		grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(grid.Rows) == 0 || len(grid.Rows[0].Cells) == 0 {
+			t.Fatal("callout-only expansion is empty")
+		}
+		cell := grid.Rows[0].Cells[0]
+		if cell.Shape == nil || !strings.Contains(string(cell.Shape.Text), "Increase capacity") {
+			t.Errorf("callout text missing from expanded panel: %+v", cell)
+		}
+	})
+
+	t.Run("headline_and_callout_without_bullets", func(t *testing.T) {
+		v := &ChartInsightsSplitValues{
+			Headline: &ChartInsightsHeadline{Value: "+18%"},
+			SoWhat:   "Increase capacity",
+		}
+		if err := p.Validate(v, nil, nil); err != nil {
+			t.Fatal(err)
+		}
+		grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		panel := grid.Rows[0].Cells[0]
+		if panel.Grid == nil || len(panel.Grid.Rows) != 2 {
+			t.Errorf("expected headline and callout rows without an empty insights row, got %+v", panel.Grid)
 		}
 	})
 

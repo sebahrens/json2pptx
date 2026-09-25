@@ -299,6 +299,32 @@ func TestCompileKPISnapshot_Fallback(t *testing.T) {
 	}
 }
 
+func TestCompileKPISnapshotComfortableTypeScale(t *testing.T) {
+	slide, _, err := CompileKPISnapshot(Input{
+		Title: "Quarterly growth",
+		Body: map[string]any{"kpis": []any{
+			map[string]any{"value": "$42M", "label": "Revenue"},
+			map[string]any{"value": "117%", "label": "NRR"},
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slide.Pattern == nil || slide.Pattern.Name != "kpi-2up" {
+		t.Fatalf("expected kpi-2up, got %+v", slide.Pattern)
+	}
+	var defaults struct {
+		BigSize   float64 `json:"big_size"`
+		SmallSize float64 `json:"small_size"`
+	}
+	if err := json.Unmarshal(slide.Pattern.Overrides, &defaults); err != nil {
+		t.Fatalf("decode KPI defaults: %v", err)
+	}
+	if defaults.BigSize < 40 || defaults.SmallSize < 16 {
+		t.Errorf("compiled KPI sizes = %.0f/%.0fpt, want >=40/16pt", defaults.BigSize, defaults.SmallSize)
+	}
+}
+
 func TestCompileKPISnapshot_DeltaPreserved(t *testing.T) {
 	// Regression (go-slide-creator-09pa): KPI delta/trend fields must reach the
 	// compiled kpi-Nup cells as `sub`, not be silently dropped.
@@ -426,7 +452,7 @@ func TestCompileChartInsight_PatternWithChart(t *testing.T) {
 }
 
 func TestCompileChartInsight_PatternNoChart(t *testing.T) {
-	// Chart with no data -> chartSpec returns nil -> pattern with insights only.
+	// Chart with no data -> chartSpec returns nil -> callout-only pattern.
 	in := Input{
 		Title: "Trend",
 		Body: map[string]any{
@@ -434,7 +460,7 @@ func TestCompileChartInsight_PatternNoChart(t *testing.T) {
 			"chart":   map[string]any{"type": "bar"},
 		},
 	}
-	slide, _, err := CompileChartInsight(in)
+	slide, links, err := CompileChartInsight(in)
 	if err != nil {
 		t.Fatalf("CompileChartInsight: %v", err)
 	}
@@ -448,8 +474,17 @@ func TestCompileChartInsight_PatternNoChart(t *testing.T) {
 	if vals.Chart != nil {
 		t.Errorf("chart should be nil without data, got %+v", vals.Chart)
 	}
-	if len(vals.Insights) != 1 || vals.Insights[0] != "single insight string" {
-		t.Errorf("insights = %v", vals.Insights)
+	if vals.SoWhat != "single insight string" || len(vals.Insights) != 0 {
+		t.Errorf("solo insight should be the callout, got so_what=%q insights=%v", vals.SoWhat, vals.Insights)
+	}
+	foundLink := false
+	for _, link := range links {
+		if link.RawPath == "slides[0].pattern.values.so_what" && link.SemanticPath == "slides[0].insight" {
+			foundLink = true
+		}
+	}
+	if !foundLink {
+		t.Error("solo callout must map diagnostics back to the semantic insight")
 	}
 }
 

@@ -126,6 +126,28 @@ func TestAgendaWithImages_Expand_FiveItems_ProducesRows(t *testing.T) {
 	}
 }
 
+func TestAgendaWithImagesRowsFillContentHeight(t *testing.T) {
+	p, _ := Default().Get("agenda-with-images")
+	for _, count := range []int{3, 6} {
+		grid, err := p.Expand(ExpandContext{}, validAgendaWithImagesValues(count), nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, areaH := sizingAreaPt(ExpandContext{})
+		occupied := float64(2*count-2) * grid.RowGap
+		for _, row := range grid.Rows {
+			if row.AutoHeight {
+				occupied += row.MinHeight
+			} else {
+				occupied += areaH * row.Height / 100
+			}
+		}
+		if occupied < areaH*0.70 {
+			t.Errorf("%d rows occupy %.1f%% of content height, want at least 70%%", count, occupied/areaH*100)
+		}
+	}
+}
+
 // go-slide-creator-jodu: the image column is all-or-nothing. One row skipping
 // its box punched a hole in the column and made the whole grid read as ragged
 // — most visibly on a five-item agenda whose last row has no preview.

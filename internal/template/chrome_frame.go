@@ -86,7 +86,7 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 	edgeMargin := h * 290 / 10000
 	gap := h * 70 / 10000
 	sourceH := max(h*292/10000, 160000)
-	takeawayH := max(h*525/10000, 300000)
+	takeawayH := max(h*750/10000, 300000)
 
 	frame := ChromeFrame{Canvas: ChromeRect{CX: w, CY: h}, Basis: ChromeBasisSlideFallback}
 

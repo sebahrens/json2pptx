@@ -106,12 +106,12 @@ func TestGeneratePatternUsesTemplateContentHeight(t *testing.T) {
 	if diff := float64(maxHeight)/12700 - preflightHeight; diff < -1 || diff > 1 {
 		t.Errorf("preflight KPI height %.1fpt disagrees with generated shape %.1fpt", preflightHeight, float64(maxHeight)/12700)
 	}
-	if float64(maxHeight) < 0.59*float64(content.CY) || float64(maxHeight) > 0.61*float64(content.CY) {
-		t.Errorf("KPI row height %.1fpt should use about 60%% of template content height %.1fpt", float64(maxHeight)/12700, float64(content.CY)/12700)
+	if float64(maxHeight) < 0.69*float64(content.CY) || float64(maxHeight) > 0.71*float64(content.CY) {
+		t.Errorf("KPI row height %.1fpt should use about 70%% of template content height %.1fpt", float64(maxHeight)/12700, float64(content.CY)/12700)
 	}
 
 	// A deck rhythm grid can make the real render frame narrower still. Its
-	// 3913340 EMU frame must yield the 60%% KPI base on the tighter frame.
+	// 3913340 EMU frame must yield the 70%% KPI base on the tighter frame.
 	rhythm := &resolvedGrid{TitleBaselineY: 1600000, ContentBottomY: 5741940, LeftMarginX: 838200, RightEdgeX: 11353800, SlideWidth: sw, SlideHeight: sh}
 	_, tight := patternExpansionGeometry(slide, layouts, sw, sh, rhythm)
 	if tight.CY != 3913340 {
@@ -133,8 +133,8 @@ func TestGeneratePatternUsesTemplateContentHeight(t *testing.T) {
 			}
 		}
 	}
-	if got := float64(tightMax) / 12700; got < 184 || got > 186 {
-		t.Errorf("KPI card height = %.1fpt with 308.1pt render frame, want about 185pt", got)
+	if got := float64(tightMax) / 12700; got < 215 || got > 217 {
+		t.Errorf("KPI card height = %.1fpt with 308.1pt render frame, want about 216pt", got)
 	}
 }
 

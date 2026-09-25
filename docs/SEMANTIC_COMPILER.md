@@ -85,7 +85,7 @@ Each content-bearing kind compiles to the named pattern its plan advertises (the
 | Kind | Pattern | Payload | Fits the visual when |
 |------|---------|---------|----------------------|
 | `kpi_snapshot` | `kpi-2up`…`kpi-6up` | `kpis: [{value,label}]` | 2–6 KPIs |
-| `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]` | 1–6 insights (a usable chart with no `insights`/`insight` falls back to the `takeaway` as the single insight, so the chart is never silently dropped) |
+| `chart_insight` | `chart-insights-split` | `chart: {type,data}`, `insights: [string]`, `insight?: string` | 1–6 bullets or one scalar `insight` rendered as a so-what callout; a usable chart with neither falls back to the `takeaway` as one bullet, so the chart is never silently dropped |
 | `comparison` | `comparison-2col` | `columns: [{title, items:[string]}, …]` | exactly 2 columns with equal, non-empty item counts (≤10 rows) |
 | `stat` | `stat-hero` | `value`, `label` (+ `unit?`, `context?`, `source?`) | the number ≤20 chars, label ≤80, unit ≤10, context ≤120, source ≤80 |
 | `timeline` | `timeline-horizontal` | `milestones: [{label, date?, end_date?, body?}]` | 3–7 milestones; label ≤60 chars, date ≤30, body ≤200 |

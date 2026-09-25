@@ -36,6 +36,9 @@ func TestValidateTakeawayMissing(t *testing.T) {
 	}}
 
 	matrixPattern := &PatternInput{Name: "matrix-2x2"}
+	chartPattern := func(values string) *PatternInput {
+		return &PatternInput{Name: "chart-insights-split", Values: json.RawMessage(values)}
+	}
 
 	cases := []struct {
 		name        string
@@ -96,6 +99,30 @@ func TestValidateTakeawayMissing(t *testing.T) {
 				LayoutID: "content-slide",
 				Content:  chartContent,
 				Takeaway: "   \t  ",
+			},
+			wantWarning: true,
+		},
+		{
+			name: "chart pattern callout is the takeaway",
+			slide: SlideInput{
+				LayoutID: "blank",
+				Pattern:  chartPattern(`{"insights":[],"so_what":"Increase capacity"}`),
+			},
+			wantWarning: false,
+		},
+		{
+			name: "chart pattern without callout still needs takeaway",
+			slide: SlideInput{
+				LayoutID: "blank",
+				Pattern:  chartPattern(`{"insights":["Revenue grew"]}`),
+			},
+			wantWarning: true,
+		},
+		{
+			name: "malformed callout is not evidence",
+			slide: SlideInput{
+				LayoutID: "blank",
+				Pattern:  chartPattern(`{"insights":["Revenue grew"],"so_what":123}`),
 			},
 			wantWarning: true,
 		},

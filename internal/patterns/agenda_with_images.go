@@ -246,6 +246,13 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 	// slab (go-slide-creator-tiarr). badgeWidthPct narrows it inside its cell
 	// to the row's own height, centring the remainder.
 	badgeWidthPct := agendaBadgeWidthPct(ctx, len(v.Items))
+	_, areaH := sizingAreaPt(ctx)
+	// A three-row semantic agenda used to occupy only 144pt of a roughly
+	// 389pt content zone. Give the rows a substantial shared footprint while
+	// retaining the 48pt readability floor for denser six-row agendas.
+	rowCount := float64(len(v.Items))
+	minRowPt := (areaH*0.70 - (rowCount-1)*agendaDividerHeightPct*areaH/100 - (2*rowCount-2)*agendaRowGapPt) / rowCount
+	minRowPt = max(minRowPt, 48)
 
 	// Build content rows interleaved with thin divider rows (one divider between
 	// each pair of items, none above the first or below the last).
@@ -305,7 +312,7 @@ func (a *agendaWithImages) Expand(ctx ExpandContext, values, overrides any, cell
 
 		rows = append(rows, jsonschema.GridRowInput{
 			AutoHeight: true,
-			MinHeight:  48,
+			MinHeight:  minRowPt,
 			Cells:      cells,
 		})
 

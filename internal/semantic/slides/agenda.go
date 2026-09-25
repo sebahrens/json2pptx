@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // Agenda slides (go-slide-creator-3rvk).
@@ -48,11 +49,6 @@ type agendaSection struct {
 // agendaValues is the agenda pattern's values object.
 type agendaValues struct {
 	Items []string `json:"items"`
-}
-
-// agendaOverrides carries the highlighted row.
-type agendaOverrides struct {
-	Highlight int `json:"highlight,omitempty"`
 }
 
 // agendaImagesItem is one agenda-with-images row.
@@ -97,12 +93,28 @@ func compileAgendaList(in Input, sections []agendaSection, current int) (*deckin
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	links := titleLink(slide, in)
 	slide.Pattern = &deckinput.PatternInput{Name: "agenda", Values: encoded}
-	if current > 0 {
-		overrides, oErr := json.Marshal(agendaOverrides{Highlight: current})
-		if oErr != nil {
-			return nil, nil, fmt.Errorf("marshal agenda overrides: %w", oErr)
+	// The pattern's compact 14pt fallback is too small for a compiled agenda.
+	// Its short-list default remains 18pt, so only the dense case needs an
+	// explicit 16pt floor.
+	ovr := patterns.AgendaOverrides{Highlight: current, TitleSize: 16}
+	if len(items) <= 5 {
+		short := true
+		for _, item := range items {
+			if runeLen(item) > 36 {
+				short = false
+				break
+			}
 		}
-		slide.Pattern.Overrides = overrides
+		if short {
+			ovr.TitleSize = 18
+		}
+	}
+	var oErr error
+	slide.Pattern.Overrides, oErr = json.Marshal(ovr)
+	if oErr != nil {
+		return nil, nil, fmt.Errorf("marshal agenda overrides: %w", oErr)
+	}
+	if current > 0 {
 		links = append(links, SourceLink{
 			RawPath:      in.rawSlide() + ".pattern.overrides.highlight",
 			SemanticPath: in.semSlide() + "." + agendaCurrentField(in.Body),
@@ -131,6 +143,10 @@ func compileAgendaWithImages(in Input, sections []agendaSection, current int) (*
 	slide := &deckinput.SlideInput{SlideType: "content", LayoutID: "blank-title"}
 	links := titleLink(slide, in)
 	slide.Pattern = &deckinput.PatternInput{Name: "agenda-with-images", Values: encoded}
+	slide.Pattern.Overrides, err = json.Marshal(patterns.AgendaWithImagesOverrides{TitleSize: 16, SubtitleSize: 12})
+	if err != nil {
+		return nil, nil, fmt.Errorf("marshal agenda-with-images design defaults: %w", err)
+	}
 	// agenda-with-images has no highlight override; the current section is
 	// marked in its own subtitle so the signal is not silently lost.
 	if current > 0 && current <= len(items) {
