@@ -113,12 +113,12 @@ func TestKpi4up(t *testing.T) {
 		{
 			name: "big_exceeds_maxlen",
 			values: Kpi4upValues{
-				{Big: "123456789", Small: "ARR"},
+				{Big: "1234567890123", Small: "ARR"},
 				{Big: "127%", Small: "NRR"},
 				{Big: "12d", Small: "Sales cycle"},
 				{Big: "98%", Small: "CSAT"},
 			},
-			wantErr: "exceeds maxLength 8",
+			wantErr: "exceeds maxLength 12",
 		},
 		{
 			name: "missing_small",

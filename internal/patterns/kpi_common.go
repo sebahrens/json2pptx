@@ -29,7 +29,11 @@ type KPICell struct {
 	Icon  *IconRef `json:"icon,omitempty"`
 }
 
-const kpiSubMaxChars = 12
+const (
+	kpiSubMaxChars       = 12
+	kpiNupBigMaxChars    = 12
+	kpiInlineBigMaxChars = 8
+)
 
 // UnmarshalJSON supports string shorthand "Big | Small" or an object. The object
 // canonical keys are {big, small}, but the intuitive aliases {value|number} and
@@ -243,8 +247,8 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 		bigPath := fmt.Sprintf("values[%d].big", i)
 		if cell.Big == "" {
 			errs = append(errs, errRequired(patternName, bigPath))
-		} else if runeLen(cell.Big) > 8 {
-			errs = append(errs, errMaxLength(patternName, bigPath, 8, runeLen(cell.Big)))
+		} else if runeLen(cell.Big) > kpiNupBigMaxChars {
+			errs = append(errs, errMaxLength(patternName, bigPath, kpiNupBigMaxChars, runeLen(cell.Big)))
 		}
 		smallPath := fmt.Sprintf("values[%d].small", i)
 		if cell.Small == "" {
@@ -275,12 +279,12 @@ func validateKPICells(patternName string, cells []KPICell, expectedCount int, si
 // The icon field is polymorphic: it accepts a bundled-name string shorthand
 // (e.g. "rocket") or a full IconRef object (path / url / svg_data / fill / alt
 // / position).
-func kpiCellSchema() *Schema {
+func kpiCellSchema(bigMaxChars int) *Schema {
 	return OneOfSchema(
 		StringSchema(0).WithDescription("Shorthand: \"Big | Small\" (e.g. \"$4.2M | ARR\")"),
 		ObjectSchema(
 			map[string]*Schema{
-				"big":   StringSchema(8).WithDescription("The big number (e.g. \"$4.2M\")"),
+				"big":   StringSchema(bigMaxChars).WithDescription("The big number (e.g. \"$4.2M\"); the hard character maximum is not a fit guarantee for every card width"),
 				"small": StringSchema(40).WithDescription("Short caption (e.g. \"ARR\")"),
 				"sub":   StringSchema(kpiSubMaxChars).WithDescription("Optional delta/trend annotation rendered below the number (e.g. \"+5%\"); aliases delta/trend/change"),
 				"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),

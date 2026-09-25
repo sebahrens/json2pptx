@@ -2,6 +2,7 @@ package patterns
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -13,6 +14,79 @@ func kpiTestCtx() ExpandContext {
 		SlideWidth:   12192000,
 		SlideHeight:  6858000,
 		LayoutBounds: LayoutBounds{X: 457200, Y: 1400000, Width: 10515600, Height: 4480000},
+	}
+}
+
+func TestKPINupMetricUsesHardCeilingAndMeasuredFitWarning(t *testing.T) {
+	wide := KPINupValues{
+		{Big: "EUR 48.25m", Small: "Revenue"},
+		{Big: "127%", Small: "Retention"},
+		{Big: "12d", Small: "Cycle"},
+		{Big: "98%", Small: "Satisfaction"},
+	}
+	pat, ok := Default().Get("kpi-4up")
+	if !ok {
+		t.Fatal("kpi-4up not registered")
+	}
+	if err := pat.Validate(&wide, nil, nil); err != nil {
+		t.Fatalf("a ten-character metric should be valid: %v", err)
+	}
+	items := pat.Schema().raw.Properties["values"].raw.Items
+	if max := items.raw.OneOf[1].raw.Properties["big"].raw.MaxLength; max == nil || *max != kpiNupBigMaxChars {
+		t.Fatalf("full-size KPI schema limit differs from validation: %v", max)
+	}
+	if got := pat.(PostExpandWarner).PostExpandWarnings(kpiTestCtx(), &wide, nil); len(got) != 0 {
+		t.Fatalf("a metric that fits should not warn: %v", got)
+	}
+	grid := expandKPIForTest(t, 4, wide)
+	var text kpiTextObj
+	if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Text, &text); err != nil {
+		t.Fatal(err)
+	}
+	width := kpiCardGeometryFor(kpiTestCtx(), 4).valueWidthPt(nil, "")
+	if lines := measuredLines(text.Paragraphs[0].Content, "", true, text.Paragraphs[0].Size, width); lines != 1 {
+		t.Fatalf("accepted metric renders on %d lines at %.0fpt", lines, text.Paragraphs[0].Size)
+	}
+
+	wide[0].Big = strings.Repeat("W", kpiNupBigMaxChars+1)
+	if err := pat.Validate(&wide, nil, nil); err == nil || !strings.Contains(err.Error(), "maxLength 12") {
+		t.Fatalf("metric beyond the hard ceiling was accepted: %v", err)
+	}
+
+	compact := make(KPINupValues, 6)
+	for i := range compact {
+		compact[i] = KPICell{Big: "42", Small: "Value"}
+	}
+	compact[2].Big = strings.Repeat("W", kpiNupBigMaxChars)
+	pat, ok = Default().Get("kpi-6up")
+	if !ok {
+		t.Fatal("kpi-6up not registered")
+	}
+	if err := pat.Validate(&compact, nil, nil); err != nil {
+		t.Fatalf("metric at the hard ceiling should remain valid: %v", err)
+	}
+	warnings := pat.(PostExpandWarner).PostExpandWarnings(kpiTestCtx(), &compact, nil)
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "values[2].big") || !strings.Contains(warnings[0], ErrCodeBodyTooLong) {
+		t.Fatalf("narrow metric should produce one actionable fit warning: %v", warnings)
+	}
+	compact[2].Big = "42"
+	if got := pat.(PostExpandWarner).PostExpandWarnings(kpiTestCtx(), &compact, nil); len(got) != 0 {
+		t.Fatalf("shortened metric should clear warning: %v", got)
+	}
+}
+
+func TestKPIInlineRetainsCompactMetricLimit(t *testing.T) {
+	pat, ok := Default().Get("kpi-inline")
+	if !ok {
+		t.Fatal("kpi-inline not registered")
+	}
+	values := KPINupValues{{Big: "123456789", Small: "A"}, {Big: "42", Small: "B"}}
+	if err := pat.Validate(&values, nil, nil); err == nil || !strings.Contains(err.Error(), "maxLength 8") {
+		t.Fatalf("compact KPI should reject nine-character metric: %v", err)
+	}
+	items := pat.Schema().raw.Properties["values"].raw.Items
+	if max := items.raw.OneOf[1].raw.Properties["big"].raw.MaxLength; max == nil || *max != kpiInlineBigMaxChars {
+		t.Fatalf("compact KPI schema limit differs from validation: %v", max)
 	}
 }
 

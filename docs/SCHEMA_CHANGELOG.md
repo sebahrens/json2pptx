@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.134.0: measurable KPI metric budgets (`go-slide-creator-vqnct`).**
+  Full-size `kpi-2up` through `kpi-6up` accept up to 12-character `big`
+  metrics, including `EUR 48.25m`; `kpi-inline` retains its tighter
+  eight-character ceiling. Full-size cards emit `BODY_TOO_LONG` when an
+  in-budget value still cannot fit on one line at the chosen density,
+  template width, font size, and icon position. The same ceiling is used by
+  pattern validation, public schemas, and DeckSpec compilation.
+
 - **2026-09-25 — Schema 4.133.0: template placeholder parity and compact layout IDs (`go-slide-creator-6ofcx`).**
   `list_templates` and `skill-info` now use examine-template's physical
   placeholder projection. Full and legacy compact layout details include

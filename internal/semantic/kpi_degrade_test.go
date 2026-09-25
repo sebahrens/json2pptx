@@ -48,6 +48,21 @@ func TestKPISnapshotKeepsCardsForMultiByteValues(t *testing.T) {
 	}
 }
 
+func TestKPISnapshotKeepsCardsForTenCharacterMetric(t *testing.T) {
+	input, result, err := Compile(kpiSpec("EUR 48.25m", "117%", "6.2%"), CompileOptions{Strict: StrictnessWarn})
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	if got := input.Slides[0].Pattern; got == nil || got.Name != "kpi-3up" {
+		t.Fatalf("ten-character metric degraded instead of using KPI cards: %+v", got)
+	}
+	for _, d := range result.Diagnostics {
+		if d.Code == string(diagnostics.CodeSemanticPatternDegraded) {
+			t.Fatalf("in-budget metric drew degradation advisory: %s", d.Message)
+		}
+	}
+}
+
 // A value genuinely past the budget still degrades — but no longer silently:
 // validate, compile and render all carry the advisory, and the plan stops
 // advertising a KPI visual the compiler will not emit.
@@ -76,7 +91,7 @@ func TestKPISnapshotReportsBudgetDegrade(t *testing.T) {
 		t.Errorf("code = %q, want %q", found.Code, diagnostics.CodeSemanticPatternDegraded)
 	}
 	// The author needs the field and the budget, not just "it degraded".
-	for _, want := range []string{"kpi-3up", "values[0].big", "maxLength 8"} {
+	for _, want := range []string{"kpi-3up", "values[0].big", "maxLength 12"} {
 		if !strings.Contains(found.Message, want) {
 			t.Errorf("message %q does not name %q", found.Message, want)
 		}

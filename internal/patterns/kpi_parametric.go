@@ -89,7 +89,7 @@ func (k *kpiNup) Schema() *Schema {
 	n := k.cfg.Count
 	return ObjectSchema(
 		map[string]*Schema{
-			"values":         ArraySchema(kpiCellSchema(), n, n).WithDescription(fmt.Sprintf("Exactly %d KPI cells", n)),
+			"values":         ArraySchema(kpiCellSchema(kpiNupBigMaxChars), n, n).WithDescription(fmt.Sprintf("Exactly %d KPI cells; metric values have a 12-character hard maximum and a measured fit warning when they cannot stay on one line", n)),
 			"overrides":      kpiOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
@@ -122,6 +122,28 @@ func (k *kpiNup) Validate(values, overrides any, cellOverrides map[int]any) erro
 		return errors.Join(accentModeErr, cellErr)
 	}
 	return cellErr
+}
+
+// PostExpandWarnings applies the same hard-ceiling/soft-fit distinction as
+// card-grid. A legal metric may still be too wide for the chosen template,
+// density, icon position, or font at the readable 16pt floor.
+func (k *kpiNup) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
+	cells, ok := values.(*KPINupValues)
+	if !ok || cells == nil || len(*cells) == 0 {
+		return nil
+	}
+	ovr, _ := overrides.(*KPIOverrides)
+	geo := kpiCardGeometryFor(ctx, k.cfg.Count)
+	iconPos := geo.iconPosition()
+	bigSize := kpiFitBigSize(ctx, *cells, resolveKPIBigSize(ovr), geo, iconPos)
+	var warnings []string
+	for i, cell := range *cells {
+		width := geo.valueWidthPt(cell.Icon, iconPos)
+		if measuredLines(cell.Big, ctx.Theme.BodyFont, true, bigSize, width) > 1 {
+			warnings = append(warnings, fmt.Sprintf("%s: %s values[%d].big cannot fit on one line at the %.0fpt effective size in a %.0fpt-wide card — shorten the metric, move/remove its icon, or use fewer KPI cards", ErrCodeBodyTooLong, k.Name(), i, bigSize, width))
+		}
+	}
+	return warnings
 }
 
 func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {

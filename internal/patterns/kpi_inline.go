@@ -110,7 +110,7 @@ func (k *kpiInline) PostExpandWarnings(_ ExpandContext, values, _ any) []string 
 func (k *kpiInline) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
-			"values":         ArraySchema(kpiCellSchema(), 2, 6).WithDescription("2-6 KPI cells in a compact bar. Caption budget without icons: 40 chars. With icons at 5 KPIs: 40 if number <=7 chars/no delta, 31 with delta, or 16 for an 8-char number/no delta; an 8-char number plus delta leaves no readable caption. At 6 KPIs with icons: number <=5 chars holds 31 without delta, 21 with a 1-10 char delta, 11 with an 11-12 char delta; number >=6 chars holds 11 without delta and no readable caption with delta."),
+			"values":         ArraySchema(kpiCellSchema(kpiInlineBigMaxChars), 2, 6).WithDescription("2-6 KPI cells in a compact bar. Metric values have a tighter 8-character maximum than full-size KPI cards. Caption budget without icons: 40 chars. With icons at 5 KPIs: 40 if number <=7 chars/no delta, 31 with delta, or 16 for an 8-char number/no delta; an 8-char number plus delta leaves no readable caption. At 6 KPIs with icons: number <=5 chars holds 31 without delta, 21 with a 1-10 char delta, 11 with an 11-12 char delta; number >=6 chars holds 11 without delta and no readable caption with delta."),
 			"overrides":      kpiOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
@@ -148,8 +148,8 @@ func (k *kpiInline) Validate(values, overrides any, cellOverrides map[int]any) e
 		bigPath := fmt.Sprintf("values[%d].big", i)
 		if cell.Big == "" {
 			errs = append(errs, errRequired(name, bigPath))
-		} else if runeLen(cell.Big) > 8 {
-			errs = append(errs, errMaxLength(name, bigPath, 8, runeLen(cell.Big)))
+		} else if runeLen(cell.Big) > kpiInlineBigMaxChars {
+			errs = append(errs, errMaxLength(name, bigPath, kpiInlineBigMaxChars, runeLen(cell.Big)))
 		}
 		smallPath := fmt.Sprintf("values[%d].small", i)
 		if cell.Small == "" {
