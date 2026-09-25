@@ -142,7 +142,7 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	}
 
 	var warnings []string
-	if len(input.slideSpec.Content) > 0 {
+	if len(input.slideSpec.Content) > 0 || input.slideSpec.Eyebrow != "" {
 		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex, input.slideSpec.Eyebrow)
 	}
 
@@ -484,6 +484,13 @@ func (ctx *singlePassContext) findMaxPresentationRelID() int {
 // layoutID is used to look up the slide master's bullet level configuration.
 func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []ContentItem, layoutID string, slideIndex int, eyebrow string) []string {
 	var warnings []string
+	// Reserve the eyebrow's own band before title population so measured
+	// autofit sees the title's final, shorter geometry.
+	if eyebrow != "" {
+		if err := ctx.placeTitleEyebrow(slide, eyebrow, layoutID); err != nil {
+			warnings = append(warnings, err.Error())
+		}
+	}
 	resolver := newPlaceholderResolver(slide.CommonSlideData.ShapeTree.Shapes, layoutID)
 	warnings = append(warnings, resolver.warnings...)
 
@@ -563,10 +570,6 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 			warnings = append(warnings, err.Error())
 		}
 
-		// Inject eyebrow paragraph above title text
-		if eyebrow != "" && isTitlePlaceholder(item.PlaceholderID) {
-			prependEyebrowParagraph(shape, eyebrow, eyebrowFontSize(slide))
-		}
 	}
 	alignSiblingBodyColumns(slide, content, layoutID)
 

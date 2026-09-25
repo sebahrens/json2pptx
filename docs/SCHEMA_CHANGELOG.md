@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-09-25 — Independent title eyebrow textbox (`go-slide-creator-mb31w`).**
+  A title-slide eyebrow now occupies its own textbox above the title text,
+  reserving space within the layout's title region. It keeps the inherited
+  title alignment but uses a 12–18pt minor font and a separate accent-color
+  role, so title tracking and color no longer make the two lines look alike.
+  A template-authored eyebrow placeholder is used when present. Eyebrow-only
+  raw slides now emit the textbox; a layout with no title reports a warning
+  instead of silently dropping the text (`go-slide-creator-gn157`). No
+  input-schema version change.
+
 - **2026-09-25 — Schema 4.135.0: template-independent body typography (`go-slide-creator-hw4vg`).**
   Generated body text now uses a density-based size range, preserving an
   in-range template size and normalising outliers before measured autofit.
