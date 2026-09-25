@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-09-25 — Pie/donut negative slices excluded (`go-slide-creator-s1uvj.30`).**
+  A negative pie or donut value shrank the total, so the remaining arcs
+  overlapped and their labels summed past 100% (`[-1, 2, 3]` read 50% + 75%),
+  and an all-negative pie drew a full circle. Negative values are now excluded
+  before totalling and reported as the new **`chart.negative_pie_slice`**
+  (warning, promoted to refuse under strict fit; fix kind `replace_value`,
+  params `{negative_count, labels, indices}`). A pie with no positive total
+  draws nothing and reports `chart.zero_sum_pie`.
+
 - **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
   `render_deck_spec` and `semantic render` now report
   `deterministic_ready`, `deterministic_blocking_reasons[]`, and

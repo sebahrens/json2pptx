@@ -115,6 +115,7 @@ func TestDescribeAdditionalEmittedCodes(t *testing.T) {
 		"COMPOSE_SEGMENT_BOUNDS_IGNORED", "COMPOSE_SEGMENT_EXPAND_FAILED",
 		"chart.label_truncated", "diagram.label_truncated", "diagram.text_below_readable_min",
 		"diagram.org_chart_depth_pruned", "chart.plot_area_collapsed", "chart.point_out_of_range",
+		"chart.negative_pie_slice",
 		"ACCENT_OVERLOAD", "BASELINE_MISALIGN", "MISSING_TAKEAWAY",
 		"CHART_BORDER", "CHART_VERTICAL_GRIDLINES", "REDUNDANT_LEGEND",
 		"NON_TABULAR_NUMS", "EYEBROW_NO_CAPS",

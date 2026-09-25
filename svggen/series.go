@@ -1086,12 +1086,16 @@ func (as *ArcSeries) Draw(slices []ArcSlice) *ArcSeries {
 	b := as.builder
 	style := b.StyleGuide()
 
-	// Calculate total value
+	// Calculate total value. Negative slices have no area and are skipped:
+	// counting them shrank the total so the remaining arcs overlapped, and a
+	// negative total drew a full pie (go-slide-creator-s1uvj.30).
 	total := 0.0
 	for _, s := range slices {
-		total += s.Value
+		if s.Value > 0 {
+			total += s.Value
+		}
 	}
-	if total == 0 {
+	if total <= 0 {
 		return as
 	}
 
@@ -1117,6 +1121,9 @@ func (as *ArcSeries) Draw(slices []ArcSlice) *ArcSeries {
 	}
 
 	for i, slice := range slices {
+		if slice.Value < 0 {
+			continue
+		}
 		// Calculate arc angles
 		sweepAngle := (slice.Value / total) * 360
 

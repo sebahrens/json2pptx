@@ -105,6 +105,16 @@ Display proportions of a whole as circular segments.
 - Use consistent colors across related charts
 - Consider donut chart for center text
 
+## Negative and Zero Values
+
+A pie shows shares of a whole, so a negative value has no slice. Negative
+values are **excluded** before the total is computed and reported as
+`chart.negative_pie_slice` (warning, fix kind `replace_value`, params
+`{negative_count, labels, indices}`); the remaining slices are drawn and
+labelled against the total of the non-negative values. When nothing positive
+is left, nothing is drawn and `chart.zero_sum_pie` is reported. Use a bar or
+waterfall chart for signed data.
+
 ## Output Formats
 
 - SVG (default)

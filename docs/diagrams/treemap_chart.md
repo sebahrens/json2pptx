@@ -37,13 +37,13 @@ Display hierarchical data as nested rectangles sized by value.
 |-------|------|-------------|
 | `nodes` | `object[]` | Treemap items. Alias: `items` |
 | `nodes[].label` | `string` | Item label |
-| `nodes[].value` | `number` | Item size |
+| `nodes[].value` | `number` | Item size; must not be negative (a negative value is rejected with an error naming the node), zero is allowed |
 
 Alternative flat format:
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `values` | `number[]` | Values per item |
+| `values` | `number[]` | Values per item; must not be negative |
 | `categories` | `string[]` | Item labels |
 
 ## Optional Fields

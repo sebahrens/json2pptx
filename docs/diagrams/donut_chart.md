@@ -97,6 +97,12 @@ Pie chart variant with a center hole, useful for displaying a central metric.
 }
 ```
 
+## Negative and Zero Values
+
+Donut charts follow the [pie chart rules](./pie_chart.md#negative-and-zero-values):
+negative values are excluded and reported as `chart.negative_pie_slice`, and a
+donut with no positive total draws nothing and reports `chart.zero_sum_pie`.
+
 ## Output Formats
 
 - SVG (default)
