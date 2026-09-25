@@ -1,0 +1,60 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "metric-list.pptx",
+  "slides": [
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "AI leaders are pulling away on every measure"}
+      ],
+      "pattern": {
+        "name": "metric-list",
+        "values": {
+          "items": [
+            {"value": "3.8x", "label": "Higher TSR for AI leaders", "detail": "Leaders compound returns across the full cycle", "highlight": true},
+            {"value": "~30%", "label": "Share of value already generated", "detail": "Up 2.2x from 2023"},
+            {"value": "20x", "label": "More agentic solutions in production", "detail": "Leaders versus laggards"},
+            {"value": "16→33%", "label": "Agentic share of AI value", "detail": "Expected to double by 2028"}
+          ],
+          "callout": "The window is open because most firms have not moved beyond pilots"
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "AI-first research by the numbers"}
+      ],
+      "pattern": {
+        "name": "metric-list",
+        "values": {
+          "items": [
+            {"value": "2-5x", "label": "Research coverage per analyst"},
+            {"value": "5–15%", "label": "Sharpe ratio improvement"},
+            {"value": "3-5x", "label": "Client coverage per relationship manager"},
+            {"value": "50–70%", "label": "Trade error reduction"},
+            {"value": "25-30%", "label": "Net cost reduction in three to five years"},
+            {"value": "55–65%", "label": "Operations capacity released"}
+          ]
+        },
+        "overrides": {"accent": "accent2", "value_width_pct": 24}
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three proof points behind the recommendation"}
+      ],
+      "pattern": {
+        "name": "metric-list",
+        "values": {
+          "items": [
+            {"value": "$12M", "label": "Run-rate savings from wave 1", "detail": "Quick wins in onboarding, reconciliations and reporting"},
+            {"value": "18 mo", "label": "Payback on the platform investment", "detail": "Funded from wave-1 savings, no incremental budget in year two", "highlight": true},
+            {"value": "+4 pts", "label": "Retention uplift at peers that automated", "detail": "Median of six comparable programmes, 2022-2025"}
+          ]
+        }
+      }
+    }
+  ]
+}

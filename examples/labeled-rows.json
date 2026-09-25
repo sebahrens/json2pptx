@@ -1,0 +1,58 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "labeled-rows.pptx",
+  "slides": [
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "An AI-first asset management transformation journey"}
+      ],
+      "pattern": {
+        "name": "labeled-rows",
+        "values": {
+          "rows": [
+            {"label": "WHY", "sublabel": "now is the right time to act", "body": "The industry grew 11% to $147T AUM in 2025, but 80%+ of revenue growth came from market performance while fee compression continues at 1–3% a year. **Agentic AI will disrupt the industry, and it rewards quick, thoughtful action.**"},
+            {"label": "WHAT", "sublabel": "an AI-first manager will look like", "body": "**Rebuilt with AI at its core:** research coverage up 2x to 5x, client coverage per relationship manager up to 3x, and 55–65% of operations capacity released — 300 to 500 bps of value across the P&L."},
+            {"label": "HOW", "sublabel": "to start the journey", "body": "Three plays — **Deploy** (table stakes), **Reshape** (value concentrates), **Invent** (new models) — starting with two or three workflows reimagined end to end and owned by the business."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "AI lets asset managers capture significant value"}
+      ],
+      "pattern": {
+        "name": "labeled-rows",
+        "values": {
+          "rows": [
+            {"label": "Smarter", "body": "2x-5x research coverage and 5-15% Sharpe ratio improvement. Research agents deliver overnight what used to take weeks."},
+            {"label": "Closer to Clients", "body": "3x-5x client coverage per relationship manager and 5x-10x RFP capacity; personalization at scale for segments too small to serve."},
+            {"label": "Faster", "body": "2x-3x speed to market for new products, 50-70% trade error reduction, and operations capacity up 55-65%."},
+            {"label": "Leaner", "body": "25-30% net cost reduction over three to five years; negative operating leverage reversed."},
+            {"label": "More Resilient", "body": "Continuous compliance surveillance, AI risk monitoring and audit-grade transparency in agentic workflows."}
+          ]
+        },
+        "overrides": {"label_style": "text", "label_width_pct": 20}
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Three ways to source each capability"}
+      ],
+      "pattern": {
+        "name": "labeled-rows",
+        "values": {
+          "rows": [
+            {"label": "Adopt", "sublabel": "buy and configure", "body": "Commodity capabilities — document extraction, meeting notes, code assistants — bought from vendors and configured, not built."},
+            {"label": "Adapt", "sublabel": "extend a platform", "body": "Differentiating workflows built on a shared platform with firm data, prompts and guardrails."},
+            {"label": "Assemble", "sublabel": "build the edge", "body": "Proprietary agents on the investment knowledge graph, where the firm's data is the moat."}
+          ]
+        },
+        "overrides": {"accent": "accent5", "label_width_pct": 18}
+      }
+    }
+  ]
+}

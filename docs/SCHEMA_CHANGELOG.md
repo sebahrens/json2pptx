@@ -1,5 +1,21 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.139.0: `metric-list` and `labeled-rows` patterns (`go-slide-creator-s1uvj.1`, `go-slide-creator-s1uvj.2`).**
+  Two new named patterns, both content-sized row stacks with hairline rules.
+  `metric-list` takes `values.items[]` (3–7 × `{value ≤12, label ≤60,
+  detail? ≤120, highlight?}`, at most one highlighted) and an optional
+  `values.callout` (≤140) rendered as a full-width accent banner; overrides
+  `accent`, `semantic_accent`, `value_size`, `label_size`, `value_width_pct`
+  (15–50, default 28) and `cell_accent_mode`. `labeled-rows` takes
+  `values.rows[]` (2–6 × `{label ≤24, sublabel? ≤60, body ≤300}`); overrides
+  `accent`, `semantic_accent`, `label_style` (`filled` default | `text`),
+  `label_width_pct` (12–40, default 22), `label_size`, `body_size` and
+  `cell_accent_mode`. Both report measured `TEXT_EXCEEDS_SHAPE` and
+  `BODY_TOO_LONG` warnings, and `recommend_pattern` / `recommend_visual` route
+  "metric list", "stat stack", "by the numbers", "why what how", "labeled
+  rows" and "row labels" intents to them. Neither is reachable from a DeckSpec
+  kind yet; author them through raw `PresentationInput`.
+
 - **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
   `render_deck_spec` and `semantic render` now report
   `deterministic_ready`, `deterministic_blocking_reasons[]`, and

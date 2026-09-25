@@ -365,7 +365,9 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"kpi-5up":                      0.0,
 	"kpi-6up":                      0.0,
 	"kpi-inline":                   5.8,
+	"labeled-rows":                 5.3,
 	"matrix-2x2":                   10.1,
+	"metric-list":                  8.4,
 	"numbered-step-strip":          7.0,
 	"phase-roadmap":                6.2,
 	// Layout-aware standalone readability measurement exposed a schema-legal

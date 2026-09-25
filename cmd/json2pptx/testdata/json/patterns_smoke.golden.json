@@ -192,5 +192,28 @@
     "cell_counts": [
       2
     ]
+  },
+  {
+    "pattern_name": "metric-list",
+    "row_count": 6,
+    "cell_counts": [
+      2,
+      1,
+      2,
+      1,
+      2,
+      1
+    ]
+  },
+  {
+    "pattern_name": "labeled-rows",
+    "row_count": 5,
+    "cell_counts": [
+      2,
+      1,
+      2,
+      1,
+      2
+    ]
   }
 ]

@@ -804,6 +804,43 @@ var rules = []rule{
 		rationale: "image-text-split when a single visual needs a short narrative next to it",
 	},
 
+	// metric-list — vertical stack of 3-7 big values with a label each
+	{
+		pattern:   "metric-list",
+		keywords:  []string{"metric list", "metrics list", "stat stack", "stats stack", "stacked stats", "stacked metrics", "by the numbers", "numbers list", "list of numbers", "proof points", "metric column", "stat column", "number stack"},
+		baseScore: 0.93,
+		rationale: "Vertical stack of 3–7 big accent values, each with a one-line label and optional detail, optionally closed by a callout banner",
+		itemMin:   3,
+		itemMax:   7,
+	},
+	{
+		pattern:      "metric-list",
+		keywords:     []string{"metrics", "stats", "statistics", "numbers", "figures", "data points"},
+		baseScore:    0.72,
+		rationale:    "metric-list when several numbers each need a label and a line of context, read top to bottom rather than as side-by-side cards",
+		itemMin:      5,
+		itemMax:      7,
+		needsMetrics: true,
+	},
+
+	// labeled-rows — keyword label block beside body text, 2-6 rows
+	{
+		pattern:   "labeled-rows",
+		keywords:  []string{"why what how", "why / what / how", "why-what-how", "labeled rows", "labelled rows", "row labels", "label rows", "keyword rows", "labeled list", "labelled list", "adopt adapt", "label and description rows", "rows with labels"},
+		baseScore: 0.93,
+		rationale: "2–6 rows, each a keyword label block (WHY / WHAT / HOW, Smarter / Faster / Leaner) beside 1–4 lines of body text",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "labeled-rows",
+		keywords:  []string{"themes", "benefits", "dimensions"},
+		baseScore: 0.70,
+		rationale: "labeled-rows when each theme is a short keyword followed by a sentence or two of explanation",
+		itemMin:   2,
+		itemMax:   6,
+	},
+
 	// exec-summary — 3-5 bold lead-in statements with support (answer-first)
 	{
 		pattern:   "exec-summary",

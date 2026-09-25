@@ -27,6 +27,10 @@ func TestRecommendIntentTopOneGolden(t *testing.T) {
 		{"quarterly release plan across four workstreams", nil, "roadmap-phased"},
 		{"project roadmap with milestones", nil, "timeline-horizontal"},
 		{"four capabilities with icons", &ContentHints{ItemCount: 4}, "icon-row"},
+		{"our impact by the numbers", &ContentHints{ItemCount: 5, HasMetrics: true}, "metric-list"},
+		{"stat stack of proof points", nil, "metric-list"},
+		{"why what how summary", &ContentHints{ItemCount: 3}, "labeled-rows"},
+		{"labeled rows of benefits", nil, "labeled-rows"},
 	}
 	for _, tc := range patternCases {
 		t.Run("pattern/"+tc.intent, func(t *testing.T) {

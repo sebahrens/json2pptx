@@ -392,6 +392,39 @@
           "metrics": [{"value": "-34%", "label": "stock-outs"}, {"value": "$12M", "label": "working capital"}]
         }
       }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "By the Numbers"}
+      ],
+      "pattern": {
+        "name": "metric-list",
+        "values": {
+          "items": [
+            {"value": "3.8x", "label": "Higher TSR for AI leaders", "detail": "Leaders compound returns across the cycle", "highlight": true},
+            {"value": "~30%", "label": "Share of value already generated", "detail": "Up 2.2x from 2023"},
+            {"value": "16→33%", "label": "Agentic share of AI value", "detail": "Expected to double by 2028"}
+          ],
+          "callout": "Most firms have not moved beyond pilots"
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Why, What, How"}
+      ],
+      "pattern": {
+        "name": "labeled-rows",
+        "values": {
+          "rows": [
+            {"label": "WHY", "sublabel": "act now", "body": "Growth came from markets, not operations, and fee pressure continues."},
+            {"label": "WHAT", "sublabel": "the target state", "body": "An AI-first operating model with **2x to 5x** research coverage."},
+            {"label": "HOW", "sublabel": "to start", "body": "Reimagine two or three workflows end to end, owned by the business."}
+          ]
+        }
+      }
     }
   ]
 }
