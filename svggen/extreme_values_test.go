@@ -32,12 +32,53 @@ func svgHasNaNOrInf(svg string) (hasNaN, hasInf bool) {
 	cleaned := stripBase64Data(svg)
 	cleaned = stripTextContent(cleaned)
 
-	nanRe := regexp.MustCompile(`\bNaN\b`)
-	infRe := regexp.MustCompile(`[+-]?Inf\b`)
+	// No word boundaries: in a path the token is glued to command letters and
+	// other numbers ("MNaNNaN", "L+Inf 3"), where \bNaN\b never matches
+	// (go-slide-creator-s1uvj.31). Text content is already stripped, so any
+	// NaN left is a coordinate; Inf must not be followed by a lowercase letter
+	// other than the "inity" of "Infinity" to avoid words like "Info".
+	nanRe := regexp.MustCompile(`NaN`)
+	infRe := regexp.MustCompile(`[+-]?Inf(inity)?([^a-z]|$)`)
 
 	hasNaN = nanRe.MatchString(cleaned)
 	hasInf = infRe.MatchString(cleaned)
 	return
+}
+
+// TestSVGHasNaNOrInf_DetectsTokensInsideAttributes guards the helper itself:
+// renderer NaN/Inf land inside path data, not as standalone words.
+func TestSVGHasNaNOrInf_DetectsTokensInsideAttributes(t *testing.T) {
+	for _, tc := range []struct {
+		svg      string
+		nan, inf bool
+	}{
+		{`<path d="MNaNNaN L10 10"/>`, true, false},
+		{`<circle cx="NaN" cy="4"/>`, true, false},
+		{`<path d="M0 0L+Inf 3"/>`, false, true},
+		{`<path d="M-Inf,0"/>`, false, true},
+		{`<rect x="Infinity"/>`, false, true},
+		{`<path d="M0 0L10 10"/><text x="1">NaN Inf</text>`, false, false},
+		{`<g class="Info"><path d="M1 2"/></g>`, false, false},
+	} {
+		nan, inf := svgHasNaNOrInf(tc.svg)
+		if nan != tc.nan || inf != tc.inf {
+			t.Errorf("svgHasNaNOrInf(%q) = (%v, %v), want (%v, %v)", tc.svg, nan, inf, tc.nan, tc.inf)
+		}
+	}
+}
+
+// TestExtremeValues_GaugeEmptyRangeRejected covers go-slide-creator-s1uvj.31
+// end to end: min == max must be rejected rather than drawn with NaN geometry.
+func TestExtremeValues_GaugeEmptyRangeRejected(t *testing.T) {
+	req, err := svggen.ParseRequest([]byte(`{"type":"gauge_chart","data":{"value":50,"min":50,"max":50}}`))
+	if err != nil {
+		t.Fatalf("failed to parse request: %v", err)
+	}
+	doc, err := svggen.Render(req)
+	if err == nil {
+		hasNaN, hasInf := svgHasNaNOrInf(doc.String())
+		t.Fatalf("gauge with min == max rendered (NaN=%v, Inf=%v); want a validation error", hasNaN, hasInf)
+	}
 }
 
 // TestExtremeValues_WaterfallMaxFloat64 verifies that a waterfall chart with

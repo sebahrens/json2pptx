@@ -151,6 +151,9 @@ func NewGaugeChart(builder *SVGBuilder, config GaugeChartConfig) *GaugeChart {
 
 // Draw renders the gauge chart.
 func (gc *GaugeChart) Draw(data GaugeData) error {
+	if err := validateGaugeRange(gc.config.MinValue, gc.config.MaxValue); err != nil {
+		return err
+	}
 	b := gc.builder
 	style := b.StyleGuide()
 
@@ -706,7 +709,52 @@ func (d *GaugeDiagram) Validate(req *RequestEnvelope) error {
 		return fmt.Errorf("gauge chart requires 'value' field in data. Expected: {\"value\": 75} (optionally with \"min\", \"max\", \"thresholds\")")
 	}
 
+	// An empty or inverted range has no geometry: every value-to-angle ratio
+	// divides by max-min, which wrote NaN coordinates into the needle, tick
+	// and threshold paths (go-slide-creator-s1uvj.31).
+	value, _ := req.Data["value"].(float64)
+	if v, ok := req.Data["value"].(int); ok {
+		value = float64(v)
+	}
+	minValue, maxValue := resolveGaugeRange(req.Data, value, DefaultGaugeChartConfig(0, 0))
+	if err := validateGaugeRange(minValue, maxValue); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// validateGaugeRange rejects a gauge scale whose max is not greater than its
+// min; such a range cannot be mapped onto the dial.
+func validateGaugeRange(minValue, maxValue float64) error {
+	if !(maxValue > minValue) {
+		return fmt.Errorf("gauge chart requires max greater than min, got min=%v max=%v", minValue, maxValue)
+	}
+	return nil
+}
+
+// resolveGaugeRange returns the effective scale for a gauge request: explicit
+// "min"/"max" override the config defaults, and a value in [0,1] with neither
+// given selects a 0–1 scale.
+func resolveGaugeRange(data map[string]any, value float64, config GaugeChartConfig) (minValue, maxValue float64) {
+	minValue, maxValue = config.MinValue, config.MaxValue
+	_, hasMin := data["min"]
+	_, hasMax := data["max"]
+	if v, ok := data["min"].(float64); ok {
+		minValue = v
+	}
+	if v, ok := data["max"].(float64); ok {
+		maxValue = v
+	}
+
+	// Auto-detect 0-1 scale: if no explicit min/max was provided and
+	// the value is in [0,1], assume a 0-1 range instead of the default
+	// 0-100. This prevents fractional values like 0.73 from rendering
+	// as needle-near-zero on a 0-100 scale.
+	if !hasMin && !hasMax && value >= 0 && value <= 1 {
+		minValue, maxValue = 0, 1
+	}
+	return minValue, maxValue
 }
 
 // Render generates an SVG document from the request envelope.
@@ -727,24 +775,8 @@ func (d *GaugeDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SV
 		config.ValueFormatSpec = req.Style.ValueFormat
 		config.ShowValues = req.Style.ShowValues
 
-		// Apply custom min/max, tracking whether they were explicitly set.
-		_, hasMin := req.Data["min"]
-		_, hasMax := req.Data["max"]
-		if minVal, ok := req.Data["min"].(float64); ok {
-			config.MinValue = minVal
-		}
-		if maxVal, ok := req.Data["max"].(float64); ok {
-			config.MaxValue = maxVal
-		}
-
-		// Auto-detect 0-1 scale: if no explicit min/max was provided and
-		// the value is in [0,1], assume a 0-1 range instead of the default
-		// 0-100. This prevents fractional values like 0.73 from rendering
-		// as needle-near-zero on a 0-100 scale.
-		if !hasMin && !hasMax && data.Value >= 0 && data.Value <= 1 {
-			config.MinValue = 0
-			config.MaxValue = 1
-		}
+		// Apply custom min/max (or the auto-detected 0-1 scale).
+		config.MinValue, config.MaxValue = resolveGaugeRange(req.Data, data.Value, config)
 		if startAngle, ok := req.Data["start_angle"].(float64); ok {
 			config.StartAngle = startAngle
 		}
