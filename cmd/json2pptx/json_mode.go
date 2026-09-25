@@ -935,6 +935,16 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 	if err != nil {
 		return generator.SlideSpec{}, nil, nil, err
 	}
+	if accentStrategy == patterns.AccentStrategySectionKeyed && sectionNumber != "" {
+		accent := patterns.AccentForStrategy(accentStrategy, i, sectionIndices[i])
+		layout := findLayoutMetadataByID(layouts, slide.LayoutID)
+		for j := range contentItems {
+			if contentItems[j].Type == generator.ContentSectionTitle && contentItems[j].Value == sectionNumber &&
+				isSectionNumberContentTarget(contentItems[j].PlaceholderID, layout) {
+				contentItems[j].TextColor = accent
+			}
+		}
+	}
 
 	spec := generator.SlideSpec{
 		LayoutID:          slide.LayoutID,
@@ -2798,6 +2808,29 @@ func injectSectionNumber(content []ContentInput, layout *types.LayoutMetadata, n
 		Type:          "text",
 		TextValue:     &n,
 	})
+}
+
+// isSectionNumberContentTarget distinguishes the decorative number from a
+// section title that happens to have the same text (e.g. a title of "01").
+// Auto-mapping may replace the virtual section_number ID with a physical
+// placeholder ID, so the layout's canonical role is the final authority.
+func isSectionNumberContentTarget(id string, layout *types.LayoutMetadata) bool {
+	if placeholderrole.IsSectionNumberAlias(id) {
+		return true
+	}
+	lower := strings.ToLower(id)
+	if strings.Contains(lower, "section") && strings.Contains(lower, "number") {
+		return true
+	}
+	if layout == nil {
+		return id == "body" // fallback when no metadata is available
+	}
+	for _, ph := range layout.Placeholders {
+		if ph.ID == id && ph.Role == types.PlaceholderRoleSectionNumber {
+			return true
+		}
+	}
+	return id == "body" && !layoutHasSectionNumberPlaceholder(*layout)
 }
 
 // layoutHasSectionNumberPlaceholder reports whether a layout exposes a

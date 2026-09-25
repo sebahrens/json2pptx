@@ -174,11 +174,18 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	rowMaxPt := kpiRowMaxHeightPt(ctx, *cells, geo, iconPos, bigSize, smallSize)
 	// Icons are sized against the final card height.
 	cardGeo := kpiCardGeometry{wPt: geo.wPt, hPt: rowMaxPt}
+	reserveDelta := false
+	for _, cell := range *cells {
+		if cell.Sub != "" {
+			reserveDelta = true
+			break
+		}
+	}
 
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
-		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub)
+		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub, reserveDelta)
 		fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
 
 		shape := &jsonschema.ShapeSpecInput{

@@ -3,12 +3,46 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/testutil"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+var sectionBadgeRunFillRE = regexp.MustCompile(`<a:rPr\b[^>]*><a:solidFill>`) // run fill, not inherited lstStyle fill
+
+func TestSectionNumberTargetDoesNotIncludeSameTextTitle(t *testing.T) {
+	withBadge := &types.LayoutMetadata{Placeholders: []types.PlaceholderInfo{
+		{ID: "7", Role: types.PlaceholderRoleTitle},
+		{ID: "13", Role: types.PlaceholderRoleSectionNumber},
+	}}
+	withoutBadge := &types.LayoutMetadata{Placeholders: []types.PlaceholderInfo{
+		{ID: "7", Role: types.PlaceholderRoleTitle},
+		{ID: "body", Role: types.PlaceholderRoleBody},
+	}}
+	for _, tc := range []struct {
+		name   string
+		id     string
+		layout *types.LayoutMetadata
+		want   bool
+	}{
+		{"virtual badge", "section_number", withBadge, true},
+		{"physical badge", "13", withBadge, true},
+		{"same-text title", "7", withBadge, false},
+		{"body with badge", "body", withBadge, false},
+		{"body fallback", "body", withoutBadge, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isSectionNumberContentTarget(tc.id, tc.layout); got != tc.want {
+				t.Errorf("target(%q) = %t, want %t", tc.id, got, tc.want)
+			}
+		})
+	}
+}
 
 // A section-keyed pattern after a divider uses accent2 in both validation and
 // rendering. The light override makes a real contrast decision observable,
@@ -89,5 +123,67 @@ func TestSectionKeyedComposePreflightUsesSectionAccent(t *testing.T) {
 	}
 	if !strings.Contains(string(encoded), `"accent2"`) || strings.Contains(string(encoded), `"accent1"`) {
 		t.Fatalf("section-keyed compose colors = %s, want accent2 only", encoded)
+	}
+}
+
+// The divider number is part of the section's visual identity. A template's
+// default accent1 must not remain on the badge while its KPI cards rotate to
+// accent2/3 under section-keyed mode.
+func TestSectionKeyedDividerNumberMatchesCardAccent(t *testing.T) {
+	for _, templateName := range testutil.AllTestTemplateNames() {
+		t.Run(templateName, func(t *testing.T) {
+			input := &PresentationInput{
+				Template: templateName, AccentStrategy: "section-keyed",
+				Slides: []SlideInput{
+					{SlideType: "title"},
+					{SlideType: "section"},
+					{SlideType: "content", Pattern: &PatternInput{Name: "kpi-2up", Values: json.RawMessage(`[{"big":"42%","small":"Growth"},{"big":"1.2M","small":"ARR"}]`)}},
+					{SlideType: "section"},
+					{SlideType: "content", Pattern: &PatternInput{Name: "kpi-2up", Values: json.RawMessage(`[{"big":"43%","small":"Growth"},{"big":"1.3M","small":"ARR"}]`)}},
+				},
+			}
+			result, cleanup, err := RunPresentation(context.Background(), input, RenderOptions{
+				OutputDir: t.TempDir(), TemplatesDir: testutil.TemplatesDir(), StrictFit: "off", OutputValidation: "off",
+				AccentStrategy: patterns.AccentStrategySectionKeyed,
+			})
+			if cleanup != nil {
+				defer cleanup()
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, tc := range []struct {
+				slide       int
+				num, accent string
+			}{
+				{2, "01", "accent2"}, {4, "02", "accent3"},
+			} {
+				colored := false
+				for _, item := range result.SlideSpecs[tc.slide-1].Content {
+					if item.Value == tc.num && item.TextColor == tc.accent {
+						colored = true
+					}
+				}
+				if !colored {
+					t.Errorf("section %s badge was not assigned %s: %+v", tc.num, tc.accent, result.SlideSpecs[tc.slide-1].Content)
+				}
+				var badge string
+				for _, shape := range matrixRenderedShapeRE.FindAllString(readSlideXML(t, result.OutputPath, "ppt/slides/slide"+strconv.Itoa(tc.slide)+".xml"), -1) {
+					if strings.Contains(shape, "<a:t>"+tc.num+"</a:t>") {
+						badge = shape
+						break
+					}
+				}
+				if badge == "" {
+					t.Fatalf("section %s number missing from rendered slide %d", tc.num, tc.slide)
+				}
+				// Some template accents need a contrast-safe shade on the divider's
+				// background. In that case the run is repaired to an sRGB fill;
+				// otherwise it retains the assigned scheme color.
+				if !sectionBadgeRunFillRE.MatchString(badge) {
+					t.Errorf("section %s badge lacks an explicit accent-derived run fill", tc.num)
+				}
+			}
+		})
 	}
 }

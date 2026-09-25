@@ -335,6 +335,25 @@ func TestApplySmartAutofit(t *testing.T) {
 	})
 }
 
+func TestApplyTextSchemeColorReplacesExistingFill(t *testing.T) {
+	shape := &shapeXML{TextBody: &textBodyXML{Paragraphs: []paragraphXML{{Runs: []runXML{
+		{Text: "01", RunProperties: &runPropertiesXML{Lang: "en-US", Inner: `<a:solidFill><a:schemeClr val="accent1"/></a:solidFill><a:latin typeface="Arial"/>`}},
+		{Text: "02"},
+	}}}}}
+	applyTextSchemeColor(shape, "accent3")
+	for _, run := range shape.TextBody.Paragraphs[0].Runs {
+		if got := strings.Count(run.RunProperties.Inner, "<a:solidFill>"); got != 1 {
+			t.Errorf("run %q has %d fills, want one: %s", run.Text, got, run.RunProperties.Inner)
+		}
+		if !strings.Contains(run.RunProperties.Inner, `<a:schemeClr val="accent3"/>`) {
+			t.Errorf("run %q lost accent3: %s", run.Text, run.RunProperties.Inner)
+		}
+		if run.Text == "01" && !strings.Contains(run.RunProperties.Inner, `<a:latin typeface="Arial"/>`) {
+			t.Errorf("run %q lost its font: %s", run.Text, run.RunProperties.Inner)
+		}
+	}
+}
+
 func TestExtractFontSizeFromShape(t *testing.T) {
 	tests := []struct {
 		name     string

@@ -4,6 +4,7 @@ package generator
 import (
 	"fmt"
 	"log/slog"
+	"regexp"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -69,6 +70,9 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	if err != nil {
 		return err
 	}
+	if item.TextColor != "" {
+		applyTextSchemeColor(shape, item.TextColor)
+	}
 
 	if item.linkMarker != "" {
 		for i := range shape.TextBody.Paragraphs {
@@ -87,6 +91,26 @@ func populateShapeText(shape *shapeXML, item ContentItem, masterBulletLevel int,
 	}
 
 	return nil
+}
+
+var textSolidFillPattern = regexp.MustCompile(`(?s)<a:solidFill>.*?</a:solidFill>`)
+
+// applyTextSchemeColor pins a theme color to populated runs. Existing run
+// fills must be removed first: OOXML permits only one fill child per rPr.
+func applyTextSchemeColor(shape *shapeXML, scheme string) {
+	if shape.TextBody == nil {
+		return
+	}
+	fill := `<a:solidFill><a:schemeClr val="` + scheme + `"/></a:solidFill>`
+	for pi := range shape.TextBody.Paragraphs {
+		for ri := range shape.TextBody.Paragraphs[pi].Runs {
+			run := &shape.TextBody.Paragraphs[pi].Runs[ri]
+			if run.RunProperties == nil {
+				run.RunProperties = &runPropertiesXML{Lang: "en-US"}
+			}
+			run.RunProperties.Inner = fill + textSolidFillPattern.ReplaceAllString(run.RunProperties.Inner, "")
+		}
+	}
 }
 
 // applyFontSizeOverride sets the sz attribute on all runs in the shape's text body

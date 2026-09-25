@@ -309,11 +309,11 @@ func kpiOverridesSchema() *Schema {
 }
 
 // buildKPITextContent creates a JSON text object with paragraphs for a KPI cell.
-// When sub is non-empty (a delta/trend annotation, e.g. "+5%"), it is rendered
-// as a smaller paragraph between the big number and the caption. The text color
-// stays "lt1" so it remains readable on the accent-colored card fill (the
-// direction is conveyed by the value's own sign, e.g. "+5%" / "-0.4%").
-func buildKPITextContent(big string, bigSize float64, small string, smallSize float64, sub string) json.RawMessage {
+// The caption stays directly below the value; the smaller delta/trend line has
+// a reserved final slot on full-size cards so all cards in a row keep the same
+// baseline even when some metrics have no delta. Compact inline bars omit that
+// empty slot. The text color stays "lt1" on the accent fill.
+func buildKPITextContent(big string, bigSize float64, small string, smallSize float64, sub string, fixedDeltaSlot bool) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -324,11 +324,16 @@ func buildKPITextContent(big string, bigSize float64, small string, smallSize fl
 
 	paragraphs := []paragraph{
 		{Content: big, Size: bigSize, Bold: true, Color: "lt1", Align: "ctr"},
+		{Content: small, Size: smallSize, Color: "lt1", Align: "ctr"},
+	}
+	if sub == "" && fixedDeltaSlot {
+		// An empty <a:t> may be collapsed by PowerPoint/LibreOffice. A non-
+		// breaking space reserves exactly one visually blank delta line.
+		sub = "\u00a0"
 	}
 	if sub != "" {
 		paragraphs = append(paragraphs, paragraph{Content: sub, Size: kpiSubSize(smallSize), Color: "lt1", Align: "ctr"})
 	}
-	paragraphs = append(paragraphs, paragraph{Content: small, Size: smallSize, Color: "lt1", Align: "ctr"})
 
 	textObj := struct {
 		Paragraphs    []paragraph `json:"paragraphs"`
@@ -414,15 +419,26 @@ func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, 
 	font := ctx.Theme.BodyFont
 	textW := geo.wPt - 2*defaultShapeInsetLRPt
 	need := 0.0
+	reserveDelta := false
+	for _, c := range cells {
+		if c.Sub != "" {
+			reserveDelta = true
+			break
+		}
+	}
 	for _, c := range cells {
 		w := geo.valueWidthPt(c.Icon, iconPos)
 		if w <= 0 {
 			w = textW
 		}
+		sub := c.Sub
+		if sub == "" && reserveDelta {
+			sub = "\u00a0" // same reserved baseline as buildKPITextContent
+		}
 		h := textBlockHeightPt(font, w,
 			textParagraph{text: c.Big, size: bigSize, bold: true},
-			textParagraph{text: c.Sub, size: kpiSubSize(smallSize)},
 			textParagraph{text: c.Small, size: smallSize},
+			textParagraph{text: sub, size: kpiSubSize(smallSize)},
 		)
 		pos := effectiveIconPos(c.Icon, iconPos)
 		if c.Icon != nil && !c.Icon.IsEmpty() && pos == "top" {

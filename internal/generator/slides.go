@@ -151,6 +151,7 @@ type ContentItem struct {
 	Type          ContentType // Type of content
 	Value         any         // Type-specific value
 	FontSize      int         // Font size override in hundredths of a point (e.g., 7200 = 72pt). 0 means no override.
+	TextColor     string      // Optional theme scheme color for generated text runs (e.g., "accent2").
 	Link          *LinkSpec   // Optional hyperlink on every text run in this item
 	linkMarker    string      // Temporary run relationship marker, resolved during slide writing
 }

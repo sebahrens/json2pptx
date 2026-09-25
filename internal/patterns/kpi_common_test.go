@@ -36,7 +36,7 @@ func TestKPICellSubAliases(t *testing.T) {
 }
 
 // TestKPISubRendered verifies the sub annotation reaches the expanded shape text
-// as its own paragraph, between the big number and the caption.
+// as its own paragraph, below the caption at the same baseline in every card.
 func TestKPISubRendered(t *testing.T) {
 	p, ok := Default().Get("kpi-3up")
 	if !ok {
@@ -67,23 +67,26 @@ func TestKPISubRendered(t *testing.T) {
 		return to
 	}
 
-	// Cell 0 has a sub: expect 3 paragraphs big, sub, small in order.
+	// Cell 0 has a sub: the caption belongs to the number, then the delta.
 	c0 := parse(0)
 	if len(c0.Paragraphs) != 3 {
 		t.Fatalf("cell[0] paragraphs = %d, want 3", len(c0.Paragraphs))
 	}
 	gotOrder := []string{c0.Paragraphs[0].Content, c0.Paragraphs[1].Content, c0.Paragraphs[2].Content}
-	wantOrder := []string{"$50M", "+5%", "Revenue"}
+	wantOrder := []string{"$50M", "Revenue", "+5%"}
 	for i := range wantOrder {
 		if gotOrder[i] != wantOrder[i] {
 			t.Errorf("cell[0] paragraph[%d] = %q, want %q", i, gotOrder[i], wantOrder[i])
 		}
 	}
 
-	// Cell 2 has no sub: expect 2 paragraphs (unchanged behavior).
+	// Cell 2 has no sub: a blank final paragraph preserves the same baselines.
 	c2 := parse(2)
-	if len(c2.Paragraphs) != 2 {
-		t.Errorf("cell[2] paragraphs = %d, want 2", len(c2.Paragraphs))
+	if len(c2.Paragraphs) != 3 {
+		t.Fatalf("cell[2] paragraphs = %d, want 3", len(c2.Paragraphs))
+	}
+	if c2.Paragraphs[1].Content != "Churn" || c2.Paragraphs[2].Content != "\u00a0" {
+		t.Errorf("cell[2] caption/delta = %+v, want Churn plus reserved blank delta", c2.Paragraphs)
 	}
 	if strings.Contains(string(grid.Rows[0].Cells[2].Shape.Text), "+") {
 		t.Errorf("cell[2] should not contain a delta annotation")
