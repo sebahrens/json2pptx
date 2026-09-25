@@ -577,15 +577,15 @@ func suggestBreakPatterns(runFamily string, slide Slide) []string {
 func breakPreferences(intent string) []string {
 	switch intent {
 	case "chart":
-		return []string{"chart-insights-split", "horizontal-bar-callouts", "waterfall-bridge", "stat-hero"}
+		return []string{"chart-insights-split", "horizontal-bar-with-callouts", "waterfall-bridge", "stat-hero"}
 	case "table":
 		return []string{"table-highlight", "comparison-2col", "matrix-2x2", "chart-insights-split"}
 	case "diagram", "process-flow":
-		return []string{"timeline-horizontal", "phase-roadmap", "journey-maturity", "before-after"}
+		return []string{"timeline-horizontal", "phase-roadmap", "journey-maturity-model", "before-after"}
 	case "image":
 		return []string{"image-text-split", "agenda-with-images", "quote-cluster", "pull-quote"}
 	case "kpi":
-		return []string{"stat-hero", "horizontal-bar-callouts", "chart-insights-split", "table-highlight"}
+		return []string{"stat-hero", "horizontal-bar-with-callouts", "chart-insights-split", "table-highlight"}
 	case "card-grid", "comparison":
 		return []string{"comparison-2col", "before-after", "matrix-2x2", "process-flow"}
 	default:
