@@ -1,5 +1,17 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.140.0: `phase-roadmap` parallel tracks (`go-slide-creator-s1uvj.8`).**
+  `phase-roadmap` values accept `parallel_tracks` (0–4 strings, each ≤90
+  characters) and `parallel_label` (≤24 characters, default `"In parallel"`).
+  Tracks render below the descriptions as full-width, content-sized bars on
+  the accent's light tint, with the bold label at the left spanning all of
+  them behind an accent stripe. The block's height is taken from the phase-box
+  row (20% of the content height, floored at 11%), so the rest of the roadmap
+  and any callout keep their space. `cell_overrides` indices continue after
+  the descriptions: the label, then one bar per track. Omitted or empty
+  `parallel_tracks` leaves the output unchanged; `parallel_label` is ignored
+  without tracks.
+
 - **2026-09-25 — Schema 4.139.0: `comparison-2col` row connectors (`go-slide-creator-s1uvj.7`).**
   `comparison-2col` accepts `overrides.connectors` (boolean, default
   `false`). When true, the grid becomes `[45, 10, 45]`: the centre gutter

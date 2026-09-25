@@ -175,7 +175,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
 | `process-grid-2row` | Two parallel process tracks: dk2 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution) |
 | `pull-quote` | Italic quote block with attribution and an optional headshot column (`values.image`) |
-| `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones |
+| `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones and 0–4 full-width `parallel_tracks` bars ("In parallel" workstreams) |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
 | `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quote bubbles (voice-of-customer slides), with alternating tinted fills |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |

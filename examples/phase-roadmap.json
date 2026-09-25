@@ -87,6 +87,32 @@
           "accent": "accent2"
         }
       }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "A 12-month path from opportunity to enterprise-scale deployment"}
+      ],
+      "pattern": {
+        "name": "phase-roadmap",
+        "values": {
+          "phases": [
+            {"name": "Prioritized opportunity", "date_label": "Weeks 1–8", "description": "Assess maturity, identify top workflows, size P&L impact, define governance."},
+            {"name": "Lighthouse builds", "date_label": "Months 3–6", "description": "Reimagine two to three workflows end to end with business owners.", "active": true, "milestone": "First lighthouse live"},
+            {"name": "Wave 1 scale-up", "date_label": "Months 6–12", "description": "Expand across business units; systematize upskilling and extend to performance management."},
+            {"name": "Continuous expansion", "date_label": "12 months+", "description": "Full value-chain extension, recursive improvement and an AI-native operating model."}
+          ],
+          "parallel_tracks": [
+            "Data and technology architecture, modernization, integrations, and governance",
+            "AI governance, agent permissions, measurement, and Transformation Management Office",
+            "AI activation, change management, talent, and upskilling"
+          ]
+        },
+        "callout": {
+          "text": "Lighthouse value funds the Wave 1 scale-up.",
+          "emphasis": "bold"
+        }
+      }
     }
   ]
 }
