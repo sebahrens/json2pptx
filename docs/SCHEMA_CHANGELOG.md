@@ -1,9 +1,24 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.142.0: `process-grid-2row` column headers and outcomes (`go-slide-creator-s1uvj.10`).**
+  `process-grid-2row` values accept `column_headers` (3–6 strings, ≤24
+  characters) and `outcomes` (3–6 strings, ≤32 characters). When given, each
+  must have one entry per phase column, which requires `row1_phases` and
+  `row2_phases` to have equal length; a mismatch is a `count_mismatch` error
+  with a resize fix. Headers render as a content-sized row of bold 12pt
+  labels with a 3pt accent underline above both tracks; outcomes render as a
+  content-sized row of rounded pills on the accent's light tint beneath them.
+  The cell under / over the row-label column stays empty. `cell_overrides`
+  indices for the tracks are unchanged; headers, then outcomes, are appended
+  after `row2_phases`. Omitting both leaves the output unchanged. The
+  schema-maxima readability pin for the pattern moves to 10.4pt: at the
+  all-"W" maximum the 40-character row labels autofit once both extra rows
+  take their height.
+
 - **2026-09-25 — Schema 4.141.0: seven-step and iconed `numbered-step-strip` (`go-slide-creator-s1uvj.9`).**
   `numbered-step-strip` `steps` now allows 3–7 items. `stacked-box` and `toc`
   accept the seventh step; `chevron` stays at six and a seventh step fails
-  with a `MAX_ITEMS` error naming `stacked-box` / `toc`. Steps accept an
+  with a `max_items` error naming `stacked-box` / `toc`. Steps accept an
   optional `icon` (the shared IconRef: bundled name shorthand or
   `{name|path|url|svg_data, fill?, alt?}`), rendered for `stacked-box` / `toc`
   in an icon column between the number badge and the label, in the step's tip

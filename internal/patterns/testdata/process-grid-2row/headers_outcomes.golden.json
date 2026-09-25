@@ -1,0 +1,442 @@
+{
+  "gap": 6,
+  "row_gap": 6,
+  "columns": [
+    12,
+    22,
+    22,
+    22,
+    22
+  ],
+  "rows": [
+    {
+      "min_height": 27,
+      "max_height": 27,
+      "cells": [
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Segment",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "bottom",
+            "color": "accent1",
+            "width": 3
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Prospect",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "bottom",
+            "color": "accent1",
+            "width": 3
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Meet",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "bottom",
+            "color": "accent1",
+            "width": 3
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Retain",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "bottom",
+            "color": "accent1",
+            "width": 3
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "dk2",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "DESIGN PROCESS",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "accent1",
+            "width": 4
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "DESIGN",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "EDIT",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "ASSETS",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "UX / UI",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "dk2",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "PRODUCTION",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 65000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "PROTOTYPE",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 65000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "DEVELOP",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 65000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "USER TESTING",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 65000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "RELEASE",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 30,
+      "max_height": 30,
+      "cells": [
+        {},
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "+5% wallet",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 35000
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "+5% win",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 35000
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "+15% coverage",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 35000
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "roundRect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "-3% attrition",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            },
+            "adjustments": {
+              "adj": 35000
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

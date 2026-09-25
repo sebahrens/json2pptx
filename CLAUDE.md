@@ -173,7 +173,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `numbered-step-strip` | Ordered numbered steps (3–7; chevron ≤6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone and (stacked-box / toc) an optional `steps[].icon` |
 | `process-flow` | Left-to-right process flow with steps and decision points |
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
-| `process-grid-2row` | Two parallel process tracks: dk2 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution) |
+| `process-grid-2row` | Two parallel process tracks: dk2 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution), with optional per-column `column_headers` and `outcomes` pills |
 | `pull-quote` | Italic quote block with attribution and an optional headshot column (`values.image`) |
 | `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones and 0–4 full-width `parallel_tracks` bars ("In parallel" workstreams) |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |

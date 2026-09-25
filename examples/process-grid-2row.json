@@ -56,6 +56,23 @@
           "row2_phases": ["AWARENESS", "TRAINING", "PILOT", "ROLLOUT", "SUPPORT", "OPTIMISE"]
         }
       }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Client coverage: from artisanal to scalable engine"}
+      ],
+      "pattern": {
+        "name": "process-grid-2row",
+        "values": {
+          "column_headers": ["Segment", "Prospect", "Meetings", "Retain", "Service"],
+          "row1_label": "AI agents",
+          "row1_phases": ["Scan CRM signals and rank tiers", "Draft outreach and RFP answers", "Assemble briefings and copilot data", "Monitor signals and flag at-risk clients", "Automate reporting and queries"],
+          "row2_label": "People",
+          "row2_phases": ["Validate tiers and set priorities", "Lead Tier 1 conversations", "Lead, build trust, exercise judgment", "Own the retention conversation", "Manage escalations and key accounts"],
+          "outcomes": ["5–10% wallet ↑", "5–10% win rate ↑", "15–20% coverage ↑", "2–5% attrition ↓", "0.5–1% net inflows ↑"]
+        }
+      }
     }
   ]
 }
