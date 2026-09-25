@@ -49,6 +49,7 @@ var patternReach = map[string]SlideKind{
 	// Not reachable: author these with raw_json2pptx.
 	"before-after":                 "",
 	"before-after-compact":         "",
+	"contact-directory":            "",
 	"driver-tree":                  "",
 	"dual-org-ladder":              "",
 	"hero-detail":                  "",
@@ -62,6 +63,7 @@ var patternReach = map[string]SlideKind{
 	"roadmap-phased":               "",
 	"scqa-summary":                 "",
 	"swimlane":                     "",
+	"text-sidebar":                 "",
 	"value-chain":                  "",
 }
 

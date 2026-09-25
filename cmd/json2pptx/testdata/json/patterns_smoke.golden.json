@@ -192,5 +192,22 @@
     "cell_counts": [
       2
     ]
+  },
+  {
+    "pattern_name": "contact-directory",
+    "row_count": 4,
+    "cell_counts": [
+      1,
+      8,
+      1,
+      5
+    ]
+  },
+  {
+    "pattern_name": "text-sidebar",
+    "row_count": 1,
+    "cell_counts": [
+      2
+    ]
   }
 ]

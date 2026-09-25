@@ -392,6 +392,47 @@
           "metrics": [{"value": "-34%", "label": "stock-outs"}, {"value": "$12M", "label": "working capital"}]
         }
       }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Key Contacts"}
+      ],
+      "pattern": {
+        "name": "contact-directory",
+        "values": {
+          "groups": [
+            {"name": "North America", "people": [
+              {"name": "Jane Smith", "title": "Managing Director, New York"},
+              {"name": "Arun Patel", "title": "Partner, Toronto"},
+              {"name": "Lila Romero", "title": "Principal, Chicago"},
+              {"name": "Tom Becker", "title": "Principal, San Francisco"}
+            ]},
+            {"name": "Europe", "people": [
+              {"name": "Sophie Laurent", "title": "Managing Director, Paris"},
+              {"name": "Henrik Nilsson", "title": "Partner, Stockholm"}
+            ]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Introduction"}
+      ],
+      "pattern": {
+        "name": "text-sidebar",
+        "values": {
+          "heading": "Introduction",
+          "paragraphs": [
+            "Supply chains have spent a decade optimising for cost; the last three years showed what that cost in resilience.",
+            "This report shows where resilience can be bought back:"
+          ],
+          "bullets": ["Dual sourcing for the top 20 components", "Regional buffer stock"],
+          "sidebar": "Resilience is now a design choice, not an insurance premium"
+        }
+      }
     }
   ]
 }

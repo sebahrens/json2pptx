@@ -80,6 +80,10 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Team bios.** `team-bios` has about 220 readable bio characters per card with 1–4 members and 141 with 5–8, at default font sizes. The fifth member adds a second card row. A headshot changes the photo zone but not this bio target. `BODY_TOO_LONG` names the member and target; move longer biographies to a separate slide.
 
+**Contact directories.** `contact-directory` sizes itself to the content: it steps names from 14pt to 12pt and headshots down to 30pt before it gives up. With one-line titles, all 24 people fit in one or two groups at 4–5 per row, and four groups fit when each is a single row (up to `columns` people); titles that wrap to two lines cost about a third more height. When the block cannot fit, `BODY_TOO_LONG` reports the height the directory needs. Raise `columns`, merge groups, shorten titles, or split the directory. A name wrapping past two lines is reported by index.
+
+**Text sidebars.** `text-sidebar`'s main column holds roughly 1,100 characters of heading, paragraphs and bullets at 14pt and 1,500 once it steps down to 12pt; past that, `BODY_TOO_LONG` gives the measured budget. Keep the sidebar to one statement — it is set at 16–28pt bold and shrinks as it grows.
+
 **Swimlanes.** `swimlane` step text holds the full 80-character schema limit in sparse grids and about 32 characters in an 8-step, 6-lane grid at default sizes. `show_pattern` lists the measured target for each 2–8 step by 2–6 lane combination. Actor labels remain readable through their 40-character limit. `BODY_TOO_LONG` names the lane and step to shorten.
 
 **Numbered steps.** For `numbered-step-strip`, a six-step `chevron` holds about 47 readable label characters at default size; three to five chevrons and all `stacked-box` / `toc` labels hold the 60-character schema limit. Optional step bodies hold 180. `BODY_TOO_LONG` names labels past the six-chevron target; `TEXT_EXCEEDS_SHAPE` remains the stronger signal when the chevron renderer knows a label will break mid-word.

@@ -667,6 +667,28 @@ var rules = []rule{
 		itemMax:   6,
 	},
 
+	// Contact directory — grouped rows of headshot + name + title (≤24 people)
+	{
+		pattern:   "contact-directory",
+		keywords:  []string{"contacts", "key contacts", "contact list", "contact directory", "directory", "who to call", "who to contact", "points of contact", "point of contact", "regional contacts", "office contacts", "people directory"},
+		baseScore: 0.93,
+		rationale: "Key-contacts directory: groups (regions / practices) with rows of circular headshots, names and titles — no bios",
+	},
+
+	// Text sidebar — narrative intro page with one key-message panel
+	{
+		pattern:   "text-sidebar",
+		keywords:  []string{"introduction", "intro page", "intro slide", "foreword", "preface", "key message sidebar", "sidebar message", "narrative intro", "introductory text", "context page", "letter from"},
+		baseScore: 0.93,
+		rationale: "Prose introduction (heading, 1–4 paragraphs, optional bullets) beside a sidebar panel stating one large key message",
+	},
+	{
+		pattern:   "text-sidebar",
+		keywords:  []string{"paragraphs", "prose", "narrative", "sidebar", "overview text"},
+		baseScore: 0.76,
+		rationale: "text-sidebar when a slide is mostly running text with one message worth pulling out",
+	},
+
 	// Quote cluster — 3-8 stakeholder quote bubbles
 	{
 		pattern:   "quote-cluster",
@@ -1399,6 +1421,23 @@ func scoreRuleContextBonus(pattern, intentLower string, hints *ContentHints) flo
 	case "arch-stack":
 		if intentContainsPhrase(intentWords(intentLower), []string{"architecture"}) {
 			bonus += 0.11
+		}
+	case "exec-summary":
+		// One key message in a sidebar is text-sidebar's layout, not a list
+		// of 3-5 lead-ins.
+		if intentContainsPhrase(intentWords(intentLower), []string{"sidebar"}) {
+			bonus -= 0.15
+		}
+	case "text-sidebar":
+		// "key message sidebar" also hits exec-summary's "key message"; the
+		// sidebar is what names this layout. An introduction OF people is a
+		// team slide, not a prose page.
+		words := intentWords(intentLower)
+		if intentContainsPhrase(words, []string{"sidebar"}) {
+			bonus += 0.08
+		}
+		if intentContainsPhrase(words, []string{"team"}) || intentContainsPhrase(words, []string{"people"}) || intentContainsPhrase(words, []string{"contacts"}) {
+			bonus -= 0.2
 		}
 	}
 	return bonus

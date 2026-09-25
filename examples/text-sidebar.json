@@ -1,0 +1,46 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "text-sidebar.pptx",
+  "slides": [
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Why AI-first managers pull ahead"}
+      ],
+      "pattern": {
+        "name": "text-sidebar",
+        "values": {
+          "heading": "Introduction",
+          "paragraphs": [
+            "We meet often with CEOs, CFOs and CIOs to discuss AI — a topic that is both captivating and evolving rapidly. After working with more than 2,500 clients over the past three years, we are **sharing our most recent insights** in a new series designed to help the C-suite navigate agentic AI.",
+            "In this edition we discuss the future of asset management and the role agentic AI will play in separating those who implement it well from those who do not. We address the questions executives ask most:",
+            "This document is a guide for executives who want to **reimagine how alpha is identified**, how products are customised and distributed, and how operations can be streamlined."
+          ],
+          "bullets": [
+            "How do recent advances in agentic AI affect our strategy?",
+            "We have run AI pilots for two years and the ROI is underwhelming — what are the best doing differently?",
+            "What does an end-to-end AI-first asset manager look like?"
+          ],
+          "sidebar": "In this perspective, we outline how AI-first asset managers unlock end-to-end transformation and sustained value creation"
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Foreword"}
+      ],
+      "pattern": {
+        "name": "text-sidebar",
+        "values": {
+          "paragraphs": [
+            "Supply chains have spent a decade optimising for cost. The last three years showed what that optimisation cost in resilience: every disruption travelled further and lasted longer than planning models assumed.",
+            "This report draws on interviews with 140 operations leaders and a benchmark of 60 networks to show where resilience can be bought back without giving up the efficiency gains."
+          ],
+          "sidebar": "Resilience is now a design choice, not an insurance premium"
+        },
+        "overrides": {"sidebar_side": "left", "sidebar_style": "filled", "sidebar_width_pct": 36}
+      }
+    }
+  ]
+}

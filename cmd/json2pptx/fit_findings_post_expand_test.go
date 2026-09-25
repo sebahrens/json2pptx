@@ -501,3 +501,29 @@ func TestProcessFlowStepBudgetReachesFitReportAcrossTemplates(t *testing.T) {
 	values.Steps[2].Label = strings.Repeat("word ", 4)
 	assertBudgetFindingAcrossTemplates(t, "process-flow", values, "steps[2].label", "about 17 word-like or 13 wide unbroken characters")
 }
+
+func TestContactDirectoryOverflowReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.ContactDirectoryValues{}
+	for g := 0; g < 4; g++ {
+		group := patterns.ContactDirectoryGroup{Name: "Region"}
+		for i := 0; i < 6; i++ {
+			group.People = append(group.People, patterns.ContactDirectoryPerson{
+				Name:  "Alexandra Richardson",
+				Title: "Managing Director and Partner, Global Financial Services",
+			})
+		}
+		values.Groups = append(values.Groups, group)
+	}
+	assertBudgetFindingAcrossTemplates(t, "contact-directory", values, "contact-directory groups need", "the content area holds about")
+}
+
+func TestTextSidebarOverflowReachesFitReportAcrossTemplates(t *testing.T) {
+	long := strings.Repeat("Word after word of dense operating detail. ", 12)[:450]
+	values := &patterns.TextSidebarValues{
+		Heading:    "Introduction",
+		Paragraphs: []string{long, long, long, long},
+		Bullets:    []string{strings.Repeat("b ", 70), strings.Repeat("b ", 70)},
+		Sidebar:    "Key message",
+	}
+	assertBudgetFindingAcrossTemplates(t, "text-sidebar", values, "text-sidebar paragraphs and bullets", "the main column holds about")
+}

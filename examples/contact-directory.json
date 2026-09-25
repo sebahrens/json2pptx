@@ -1,0 +1,75 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "contact-directory.pptx",
+  "slides": [
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Key contacts by region"}
+      ],
+      "pattern": {
+        "name": "contact-directory",
+        "values": {
+          "groups": [
+            {
+              "name": "North America",
+              "people": [
+                {"name": "Jane Smith", "title": "Managing Director & Partner, New York"},
+                {"name": "Arun Patel", "title": "Partner, Toronto"},
+                {"name": "Lila Romero", "title": "Principal, Chicago"},
+                {"name": "Tom Becker", "title": "Principal, San Francisco"}
+              ]
+            },
+            {
+              "name": "Europe",
+              "people": [
+                {"name": "Sophie Laurent", "title": "Managing Director & Partner, Paris"},
+                {"name": "Henrik Nilsson", "title": "Partner, Stockholm"},
+                {"name": "Marta Kowalska", "title": "Principal, Warsaw"}
+              ]
+            },
+            {
+              "name": "Asia-Pacific",
+              "people": [
+                {"name": "Kenji Watanabe", "title": "Managing Director & Partner, Tokyo"},
+                {"name": "Priya Raghunathan", "title": "Partner, Singapore"},
+                {"name": "Oliver Chen", "title": "Principal, Sydney"},
+                {"name": "Mei-Ling Huang", "title": "Principal, Shanghai"}
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Who to call"}
+      ],
+      "pattern": {
+        "name": "contact-directory",
+        "values": {
+          "groups": [
+            {
+              "name": "Engagement leadership",
+              "people": [
+                {"name": "Alexandra Richardson-Whitfield", "title": "Senior Partner and Global Head of Asset Management"},
+                {"name": "Arun Patel", "title": "Partner, Data & AI"},
+                {"name": "Lila Romero", "title": "Principal, Operations"}
+              ]
+            },
+            {
+              "name": "Day-to-day team",
+              "people": [
+                {"name": "Tomás Ortega", "title": "Engagement Manager"},
+                {"name": "Grace Okafor", "title": "Consultant, Data & AI"},
+                {"name": "Ben Hartley", "title": "Consultant, Operations"}
+              ]
+            }
+          ]
+        },
+        "overrides": {"columns": 3, "accent": "accent2"}
+      }
+    }
+  ]
+}

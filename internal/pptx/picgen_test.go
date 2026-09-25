@@ -342,6 +342,24 @@ func TestEscapeXMLAttr(t *testing.T) {
 	}
 }
 
+// TestGeneratePic_Geometry verifies the frame preset: rect by default,
+// ellipse when asked (circular headshots), and never an arbitrary string.
+func TestGeneratePic_Geometry(t *testing.T) {
+	for _, tc := range []struct{ geometry, want string }{
+		{"", `prst="rect"`},
+		{"ellipse", `prst="ellipse"`},
+		{"star5", `prst="rect"`},
+	} {
+		pic, err := GeneratePic(PicOptions{ID: 7, PNGRelID: "rId2", ExtentCX: 914400, ExtentCY: 914400, Geometry: tc.geometry})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(pic), tc.want) {
+			t.Errorf("geometry %q: want %s in %s", tc.geometry, tc.want, pic)
+		}
+	}
+}
+
 // TestGeneratePic_SVGBlipConstants verifies the constants match expected values.
 func TestGeneratePic_SVGBlipConstants(t *testing.T) {
 	// These are the official Microsoft values for SVG support in Office

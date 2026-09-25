@@ -43,6 +43,10 @@ type PicOptions struct {
 	// of a percent trimmed from the left, top, right and bottom edges. Used to
 	// cover-fill a frame without distorting the picture. Nil = no crop.
 	SrcRect *SrcRect
+
+	// Geometry is the preset frame shape (a:prstGeom/@prst). Empty means
+	// "rect". "ellipse" clips a square picture to a circle.
+	Geometry string
 }
 
 // SrcRect is an a:srcRect crop (1/1000 %, 100000 = the whole image).
@@ -179,8 +183,12 @@ func GeneratePic(opts PicOptions) ([]byte, error) {
 		buf.WriteString(`    </a:xfrm>`)
 		buf.WriteByte('\n')
 
-		// prstGeom for rectangle shape
-		buf.WriteString(`    <a:prstGeom prst="rect">`)
+		// prstGeom: the frame shape the picture is clipped to.
+		geom := "rect"
+		if opts.Geometry == "ellipse" {
+			geom = "ellipse"
+		}
+		fmt.Fprintf(&buf, `    <a:prstGeom prst="%s">`, geom)
 		buf.WriteByte('\n')
 		buf.WriteString(`      <a:avLst/>`)
 		buf.WriteByte('\n')

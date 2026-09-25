@@ -302,6 +302,9 @@ type mediaRel struct {
 	// crop optionally cover-crops the picture into its frame instead of
 	// stretching it. Nil means no crop was needed or could be computed.
 	crop *pptx.SrcRect
+
+	// geometry is the picture frame's preset shape ("" = rect).
+	geometry string
 }
 
 // nativeSVGInsert tracks a native SVG+PNG insert for a slide.

@@ -125,11 +125,15 @@ type AccentBarInput struct {
 
 // GridImageInput defines an image to embed in a shape grid cell.
 type GridImageInput struct {
-	Path    string              `json:"path,omitempty"`    // File path to the image
-	URL     string              `json:"url,omitempty"`     // HTTP/HTTPS URL to download the image from
-	Alt     string              `json:"alt,omitempty"`     // Alt text for accessibility
-	Overlay *GridOverlayInput   `json:"overlay,omitempty"` // Semi-transparent overlay on top of image
-	Text    *GridImageTextInput `json:"text,omitempty"`    // Text label on top of image
+	Path string `json:"path,omitempty"` // File path to the image
+	URL  string `json:"url,omitempty"`  // HTTP/HTTPS URL to download the image from
+	Alt  string `json:"alt,omitempty"`  // Alt text for accessibility
+	// Geometry is the picture's frame shape: "rect" (default) or "ellipse".
+	// An ellipse clips the cover-cropped picture to a circle when the frame is
+	// square (headshots), without editing the image itself.
+	Geometry string              `json:"geometry,omitempty"`
+	Overlay  *GridOverlayInput   `json:"overlay,omitempty"` // Semi-transparent overlay on top of image
+	Text     *GridImageTextInput `json:"text,omitempty"`    // Text label on top of image
 }
 
 // GridOverlayInput defines a semi-transparent color overlay on an image.

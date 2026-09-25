@@ -1,5 +1,32 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.139.0: `contact-directory` and `text-sidebar` patterns; image `geometry` (`go-slide-creator-s1uvj.5`, `go-slide-creator-s1uvj.11`).**
+  - **`contact-directory`** — key-contacts / "who to call" page:
+    `values.groups[1-4]{name, people[{name, title?, photo?}]}`, at most 24
+    people in total; overrides `accent` / `semantic_accent`, `columns` (3–5,
+    default 4), `name_size`, `title_size`. Each person is a circular headshot
+    (`photo`, the shared `{path | url, alt}` reference, cover-cropped) or an
+    initials disc, beside a bold name and a muted title; one or two rows of
+    people stack a large headshot above a centred name. Reports
+    `BODY_TOO_LONG` when a name wraps past two lines or the directory cannot
+    fit at 12pt with a 30pt headshot. `team-bios` `not_when` now points here
+    for bio-less, grouped or larger directories.
+  - **`text-sidebar`** — narrative introduction / foreword:
+    `values{heading?, paragraphs[1-4], bullets?[0-6], sidebar}`; overrides
+    `accent` / `semantic_accent`, `sidebar_side` (`right` | `left`),
+    `sidebar_width_pct` (25–40, default 32), `body_size`, `sidebar_size`,
+    `sidebar_style` (`tinted` | `filled`). Bullets follow the first paragraph
+    that ends in a colon, else the last one. Reports `BODY_TOO_LONG` when the
+    main column or the key message cannot fit.
+  - **Shape-grid `image.geometry`** — `"rect"` (default) or `"ellipse"`: the
+    picture frame's preset shape, so a contained square headshot renders as
+    a circle. Other values fail validation.
+  - `recommend_pattern` / `recommend_visual` route "contacts", "key
+    contacts", "directory", "who to call" to `contact-directory` and
+    "introduction", "intro page", "foreword", "key message sidebar" to
+    `text-sidebar`. Both patterns are raw-path only (`raw_json2pptx` in a
+    DeckSpec). Existing inputs are unchanged.
+
 - **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
   `render_deck_spec` and `semantic render` now report
   `deterministic_ready`, `deterministic_blocking_reasons[]`, and
