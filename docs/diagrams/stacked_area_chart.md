@@ -52,7 +52,7 @@ Show cumulative trends over time with filled areas stacked on top of each other.
 | `subtitle` | `string` | - | Subtitle below title |
 | `x_label` | `string` | - | X-axis title (alias: `x_axis_title`) |
 | `y_label` | `string` | - | Y-axis title (alias: `y_axis_title`) |
-| `colors` | `string[]` | - | Custom hex color palette |
+| `colors` | `string[]` | - | Hex colors or template scheme names (e.g. `accent1`) |
 
 ## Style Options
 

@@ -6,6 +6,7 @@ package svggen
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/svggen/core"
 )
@@ -105,7 +106,7 @@ func (d *BarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		// Only disable if the request explicitly sets show_grid (Go zero-value means unset).
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Extract axis titles from request data.
 		config.XAxisTitle = extractAxisTitle(req.Data, "x_label", "x_axis_title")
@@ -212,7 +213,7 @@ func (d *LineChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Extract axis titles from request data.
 		config.XAxisTitle = extractAxisTitle(req.Data, "x_label", "x_axis_title")
@@ -286,7 +287,7 @@ func (d *PieChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, 
 		// Note: DefaultPieChartConfig sets ShowLegend=true, so we keep that default
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		chart := NewPieChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -344,7 +345,7 @@ func (d *DonutChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder
 		// Note: DefaultDonutChartConfig sets ShowLegend=true, so we keep that default
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		chart := NewPieChart(builder, config)
 		if err := chart.Draw(chartData); err != nil {
@@ -390,7 +391,7 @@ func (d *AreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Extract axis titles from request data.
 		config.XAxisTitle = extractAxisTitle(req.Data, "x_label", "x_axis_title")
@@ -485,7 +486,7 @@ func (d *RadarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder
 		// Only disable if the request explicitly sets show_grid (Go zero-value means unset).
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Apply per-slide chart_style token overrides.
 		applyChartStyleOverrides(&config.ChartConfig, req.Style)
@@ -534,7 +535,7 @@ func (d *ScatterChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuild
 		// ShowGrid defaults to true in DefaultChartConfig for professional dashboards.
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Extract axis titles from request data.
 		// Supports "x_label"/"y_label" (concise) and "x_axis_title"/"y_axis_title" (explicit).
@@ -741,7 +742,7 @@ func (d *StackedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		config.ShowLegend = true
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Extract axis titles from request data.
 		config.XAxisTitle = extractAxisTitle(req.Data, "x_label", "x_axis_title")
@@ -844,11 +845,30 @@ func extractPalette(palette any) []Color {
 	return nil
 }
 
-// extractChartColors extracts an optional color override array from req.Data["colors"].
-// The field should be an array of hex color strings (e.g. ["#FF0000", "#00FF00"]).
+// extractChartColors extracts optional hex or theme-slot overrides from
+// req.Data["colors"]. The renderer passes its resolved template palette so
+// "accent1" means the template's accent1, not the default palette's accent1.
 // Returns nil when no colors are specified, causing charts to fall back to the
 // style guide palette via resolveColors.
-func extractChartColors(data map[string]any) []Color {
+func extractChartColorsForRequest(req *RequestEnvelope, builder *SVGBuilder) []Color {
+	palette := builder.StyleGuide().Palette
+	// data_palette can reorder the style guide's accent slots. A named scheme
+	// color must still point at the template slot, exactly as native OOXML does.
+	if len(req.Style.ThemeColors) > 0 {
+		palette = NewPaletteFromThemeColorsRaw(req.Style.ThemeColors)
+	}
+	return extractChartColorsWithTheme(req.Data, palette, req.Style.ThemeColors)
+}
+
+func extractChartColors(data map[string]any, palettes ...*Palette) []Color {
+	palette := DefaultPalette()
+	if len(palettes) > 0 && palettes[0] != nil {
+		palette = palettes[0]
+	}
+	return extractChartColorsWithTheme(data, palette, nil)
+}
+
+func extractChartColorsWithTheme(data map[string]any, palette *Palette, theme []ThemeColorInput) []Color {
 	raw, ok := data["colors"]
 	if !ok {
 		return nil
@@ -859,6 +879,11 @@ func extractChartColors(data map[string]any) []Color {
 	}
 	colors := make([]Color, 0, len(strSlice))
 	for _, s := range strSlice {
+		s = strings.TrimSpace(s)
+		if c, ok := chartSchemeColor(strings.ToLower(s), palette, theme); ok {
+			colors = append(colors, c)
+			continue
+		}
 		if c, err := ParseColor(s); err == nil {
 			colors = append(colors, c)
 		}
@@ -867,6 +892,40 @@ func extractChartColors(data map[string]any) []Color {
 		return nil
 	}
 	return colors
+}
+
+func chartSchemeColor(name string, palette *Palette, theme []ThemeColorInput) (Color, bool) {
+	for _, slot := range theme {
+		if strings.EqualFold(slot.Name, name) {
+			if c, err := ParseColor(slot.RGB); err == nil {
+				return c, true
+			}
+			return Color{}, false
+		}
+	}
+	switch name {
+	case "accent1":
+		return palette.Accent1, true
+	case "accent2":
+		return palette.Accent2, true
+	case "accent3":
+		return palette.Accent3, true
+	case "accent4":
+		return palette.Accent4, true
+	case "accent5":
+		return palette.Accent5, true
+	case "accent6":
+		return palette.Accent6, true
+	case "dk1":
+		return palette.TextPrimary, true
+	case "dk2":
+		return palette.TextSecondary, true
+	case "lt1":
+		return palette.Background, true
+	case "lt2":
+		return palette.Surface, true
+	}
+	return Color{}, false
 }
 
 // extractChartData extracts ChartData from a request envelope.
@@ -1558,7 +1617,7 @@ func (d *BubbleChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilde
 		config.VariableSize = true
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Extract axis titles from request data.
 		config.XAxisTitle = extractAxisTitle(req.Data, "x_label", "x_axis_title")
@@ -1785,7 +1844,7 @@ func (d *StackedAreaChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGB
 		config.Stacked = true
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Extract axis titles from request data.
 		config.XAxisTitle = extractAxisTitle(req.Data, "x_label", "x_axis_title")
@@ -1849,7 +1908,7 @@ func (d *GroupedBarChartDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBu
 		config.Stacked = false // Explicit: side-by-side bars
 
 		// Apply color overrides from data.colors (array of hex strings).
-		config.Colors = extractChartColors(req.Data)
+		config.Colors = extractChartColorsForRequest(req, builder)
 
 		// Extract axis titles from request data.
 		config.XAxisTitle = extractAxisTitle(req.Data, "x_label", "x_axis_title")

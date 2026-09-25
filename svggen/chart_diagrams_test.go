@@ -2198,6 +2198,40 @@ func TestRadarChartDiagram_ColorOverride(t *testing.T) {
 }
 
 func TestExtractChartColors(t *testing.T) {
+	t.Run("theme slots resolve against supplied palette", func(t *testing.T) {
+		palette := DefaultPalette()
+		palette.Accent1 = MustParseColor("#123ABC")
+		palette.Accent2 = MustParseColor("#CBA321")
+		colors := extractChartColors(map[string]any{
+			"colors": []any{"AcCeNt1", " #00FF00 ", "accent2", "unknown-slot"},
+		}, palette)
+		if len(colors) != 3 {
+			t.Fatalf("color count = %d, want 3", len(colors))
+		}
+		for i, want := range []string{"#123ABC", "#00FF00", "#CBA321"} {
+			if got := colors[i].Hex(); got != want {
+				t.Errorf("colors[%d] = %s, want %s", i, got, want)
+			}
+		}
+	})
+	t.Run("dark and light scheme slots use the source theme", func(t *testing.T) {
+		colors := extractChartColorsWithTheme(map[string]any{
+			"colors": []any{"dk1", "lt2", "accent2"},
+		}, DefaultPalette(), []ThemeColorInput{
+			{Name: "dk1", RGB: "#101820"},
+			{Name: "lt2", RGB: "#EFEFEF"},
+			{Name: "accent2", RGB: "#CBA321"},
+		})
+		if len(colors) != 3 {
+			t.Fatalf("color count = %d, want 3", len(colors))
+		}
+		for i, want := range []string{"#101820", "#EFEFEF", "#CBA321"} {
+			if got := colors[i].Hex(); got != want {
+				t.Errorf("colors[%d] = %s, want %s", i, got, want)
+			}
+		}
+	})
+
 	t.Run("valid hex colors", func(t *testing.T) {
 		data := map[string]any{
 			"colors": []any{"#FF0000", "#00FF00", "#0000FF"},
@@ -2266,6 +2300,29 @@ func TestExtractChartColors(t *testing.T) {
 			t.Errorf("expected nil for non-array colors, got %v", colors)
 		}
 	})
+}
+
+func TestBarChartDiagram_DataColorsThemeSlotUsesTemplatePalette(t *testing.T) {
+	d := &BarChartDiagram{NewBaseDiagram("bar_chart")}
+	doc, err := d.Render(&RequestEnvelope{
+		Type: "bar_chart",
+		Data: map[string]any{
+			"categories": []any{"A", "B"},
+			"series":     []any{map[string]any{"name": "S1", "values": []any{10.0, 20.0}}},
+			"colors":     []any{"accent2"},
+		},
+		Style: StyleSpec{DisablePaletteEnforcement: true, DataPalette: []string{"#FF1493", "#00CED1"}, ThemeColors: []ThemeColorInput{
+			{Name: "accent1", RGB: "#123ABC"},
+			{Name: "accent2", RGB: "#CBA321"},
+		}},
+		Output: OutputSpec{Width: 800, Height: 600},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !svgContainsColor(string(doc.Content), "#CBA321") {
+		t.Fatal("chart did not render data.colors accent2 from the supplied theme")
+	}
 }
 
 func TestExtractBubbleChartData_SubtitleFootnote(t *testing.T) {

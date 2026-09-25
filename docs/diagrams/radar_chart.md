@@ -49,7 +49,7 @@ Compare multiple variables on a radial grid, useful for profiling and benchmarki
 |-------|------|---------|-------------|
 | `title` | `string` | - | Chart title |
 | `subtitle` | `string` | - | Subtitle below title |
-| `colors` | `string[]` | - | Custom hex color palette |
+| `colors` | `string[]` | - | Hex colors or template scheme names (e.g. `accent1`) |
 
 ## Style Options
 
