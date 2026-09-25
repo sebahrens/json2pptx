@@ -75,6 +75,7 @@ func fixKindVocabulary() []string {
 		"swap_layout",
 		"use_one_of",
 		"use_semantic_color",
+		"differentiate_title",
 		"rewrite_field",
 		"truncation_summary",
 		"replace_color",

@@ -109,6 +109,11 @@ var fixKindRegistry = map[string]FixKindInfo{
 		Guidance:     "Too many accent colors compete on one slide. Decide which single element deserves the accent and set the rest to a neutral role.",
 		Alternatives: []string{"replace_color", "use_semantic_color"},
 	},
+	"differentiate_title": {
+		Kind:     "differentiate_title",
+		Class:    FixClassAdvisory,
+		Guidance: "Rewrite the title at the finding's path so this slide announces a distinct point. Preserve the slide's actual claim; do not merely truncate the shared title or append a slide number. If the slides make the same point, merge them instead.",
+	},
 	"fix_structure": {
 		Kind:     "fix_structure",
 		Class:    FixClassAdvisory,

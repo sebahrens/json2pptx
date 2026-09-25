@@ -1,5 +1,12 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.126.0: duplicate-title rewrite advisory (`go-slide-creator-kl1p5`).**
+  Duplicate content-slide titles now suggest `differentiate_title`, an editorial
+  advisory that identifies the repeated title and its peers. It does not offer
+  a budgetless `shorten_title` call: truncation may leave the duplicate intact
+  or erase the slide's point. `propose_repairs` surfaces guidance instead of an
+  executable repair directive.
+
 - **2026-09-25 — Schema 4.125.0: measured title-wrap repairs (`go-slide-creator-oxagt`).**
   Near-boundary wrapping caused only by substitute font metrics no longer
   produces an actionable `title_wraps` warning. Actionable wrap findings carry

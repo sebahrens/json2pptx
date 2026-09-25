@@ -156,7 +156,7 @@ func makeDuplicateTitleFinding(slideIdx, contentIdx int, phID string, firstSlide
 			Code:    patterns.ErrCodeDuplicateTitle,
 			Message: msg,
 			Fix: &patterns.FixSuggestion{
-				Kind: "shorten_title",
+				Kind: "differentiate_title",
 				Params: map[string]any{
 					"duplicate_of_slide":      firstSlide + 1,
 					"duplicate_slide_numbers": dupNumbersAny,

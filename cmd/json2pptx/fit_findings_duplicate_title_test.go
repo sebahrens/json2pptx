@@ -41,8 +41,8 @@ func TestDuplicateTitle_FlagsRepeatedTitlesOnContentSlides(t *testing.T) {
 		if f.Action != "review" {
 			t.Errorf("finding.action = %q, want review", f.Action)
 		}
-		if f.Fix == nil || f.Fix.Kind != "shorten_title" {
-			t.Errorf("finding.fix kind = %v, want shorten_title", f.Fix)
+		if f.Fix == nil || f.Fix.Kind != "differentiate_title" {
+			t.Fatalf("finding.fix kind = %v, want differentiate_title", f.Fix)
 		}
 		if f.Fix.Params["duplicate_of_slide"] != 2 {
 			t.Errorf("fix.params.duplicate_of_slide = %v, want 2 (1-based)", f.Fix.Params["duplicate_of_slide"])
@@ -65,6 +65,34 @@ func TestDuplicateTitle_FlagsRepeatedTitlesOnContentSlides(t *testing.T) {
 		if strings.HasPrefix(f.Path, "/slides/1/") {
 			t.Errorf("first occurrence (slide 2) should not be annotated, got finding at %s", f.Path)
 		}
+	}
+}
+
+func TestDuplicateTitle_ProposesEditorialGuidanceNotShortening(t *testing.T) {
+	input := &PresentationInput{Slides: []SlideInput{
+		contentSlideWithTitle("Next Steps"),
+		contentSlideWithTitle("Next Steps"),
+	}}
+	findings := collectDuplicateTitleFindings(input)
+	if len(findings) != 1 {
+		t.Fatalf("duplicate findings = %+v", findings)
+	}
+	f := findings[0]
+	plan := proposeRepairs(input, []proposeRepairsFinding{{
+		Path: f.Path, Code: f.Code, Message: f.Message, Action: f.Action, Fix: f.Fix,
+	}})
+	if len(plan.Slides) != 0 || len(plan.Unmapped) != 0 || len(plan.Advisory) != 1 {
+		t.Fatalf("duplicate title should produce one editorial advisory, not repair_slide: %+v", plan)
+	}
+	adv := plan.Advisory[0]
+	if adv.Kind != "differentiate_title" || adv.Path != "/slides/1/content/0" || adv.SlideIndex == nil || *adv.SlideIndex != 1 {
+		t.Errorf("advisory does not target the duplicate title: %+v", adv)
+	}
+	if !strings.Contains(adv.Guidance, "distinct point") || len(adv.Alternatives) != 0 {
+		t.Errorf("guidance must require a distinct rewrite without a truncation shortcut: %+v", adv)
+	}
+	if adv.Params["duplicate_of_slide"] != 1 || adv.Params["duplicate_count"] != 2 {
+		t.Errorf("advisory lost duplicate context: %+v", adv.Params)
 	}
 }
 
