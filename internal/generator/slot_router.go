@@ -224,6 +224,7 @@ func PopulateTableInShape(
 	placeholder types.PlaceholderInfo,
 	theme *types.ThemeInfo,
 	resolver TableStyleResolver,
+	alignTop bool,
 ) (*TableRenderResult, error) {
 	if table == nil {
 		return nil, fmt.Errorf("table spec is nil")
@@ -266,6 +267,7 @@ func PopulateTableInShape(
 		DefaultFont:      placeholder.FontFamily,
 		DefaultSize:      placeholder.FontSize,
 		ColumnAlignments: table.ColumnAlignments,
+		AlignTop:         alignTop,
 	}
 
 	// Generate table XML

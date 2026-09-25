@@ -652,6 +652,26 @@ func alignSiblingBodyColumns(slide *slideXML, content []ContentItem, layoutID st
 	}
 }
 
+// hasPopulatedSiblingBody identifies visuals that should share their top
+// baseline with adjacent content. A lone table keeps its balanced centring.
+func (ctx *singlePassContext) hasPopulatedSiblingBody(slideNum, shapeIdx int) bool {
+	slide := ctx.templateSlideData[slideNum]
+	spec, ok := ctx.slideContentMap[slideNum]
+	if slide == nil || !ok {
+		return false
+	}
+	shapes := slide.CommonSlideData.ShapeTree.Shapes
+	indices := buildPlaceholderMap(shapes)
+	leftIdx, hasLeft := indices["body"]
+	rightIdx, hasRight := indices["body_2"]
+	if !hasLeft || !hasRight || (shapeIdx != leftIdx && shapeIdx != rightIdx) ||
+		!sideBySideBodies(&shapes[leftIdx], &shapes[rightIdx]) {
+		return false
+	}
+	populated, _ := populatedSiblingBodyColumns(shapes, spec.Content, spec.LayoutID, leftIdx, rightIdx)
+	return populated[0] && populated[1]
+}
+
 func populatedSiblingBodyColumns(shapes []shapeXML, content []ContentItem, layoutID string, leftIdx, rightIdx int) ([2]bool, [2]bool) {
 	resolver := newPlaceholderResolver(shapes, layoutID)
 	var populated, visual [2]bool

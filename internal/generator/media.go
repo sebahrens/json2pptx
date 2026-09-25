@@ -255,6 +255,9 @@ func (ctx *singlePassContext) prepareImages() error {
 			}
 
 			shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
+			if item.Type != ContentImage {
+				topAlignVisualPlaceholder(shape)
+			}
 
 			switch item.Type {
 			case ContentDiagram:
@@ -277,6 +280,16 @@ func (ctx *singlePassContext) prepareImages() error {
 	}
 
 	return nil
+}
+
+func topAlignVisualPlaceholder(shape *shapeXML) {
+	if !isContentPlaceholder(shape) || shape.TextBody == nil {
+		return
+	}
+	if shape.TextBody.BodyProperties == nil {
+		shape.TextBody.BodyProperties = &bodyPropertiesXML{}
+	}
+	shape.TextBody.BodyProperties.Anchor = "t"
 }
 
 // processTableContent handles standalone table content items.
@@ -309,7 +322,8 @@ func (ctx *singlePassContext) processTableContent(slideNum, contentIdx int, item
 		},
 	}
 
-	result, err := PopulateTableInShape(tableSpec, placeholder, nil, styleResolver)
+	result, err := PopulateTableInShape(tableSpec, placeholder, nil, styleResolver,
+		ctx.hasPopulatedSiblingBody(slideNum, shapeIdx))
 	if err != nil {
 		reason := fmt.Sprintf("failed to generate table XML: %v", err)
 		ctx.warnings = append(ctx.warnings, reason)
@@ -352,6 +366,26 @@ const minDiagramWidthEMU int64 = 2743200
 // minDiagramHeightEMU is the minimum placeholder height (in EMUs) for a diagram
 // to render at a visible size. 1828800 EMU ≈ 2 inches.
 const minDiagramHeightEMU int64 = 1828800
+
+// containedDiagramFrame fits a chart inside its placeholder without moving it
+// down from the content-zone top. Horizontal centring preserves the aspect fit.
+func containedDiagramFrame(bounds types.BoundingBox, contentW, contentH float64) types.BoundingBox {
+	if bounds.Width <= 0 || bounds.Height <= 0 || contentW <= 0 || contentH <= 0 {
+		return bounds
+	}
+	phW, phH := float64(bounds.Width), float64(bounds.Height)
+	contentRatio, phRatio := contentW/contentH, phW/phH
+	fitW, fitH := phW, phH
+	if contentRatio > phRatio {
+		fitH = phW / contentRatio
+	} else {
+		fitW = phH * contentRatio
+	}
+	return types.BoundingBox{
+		X: bounds.X + int64((phW-fitW)/2), Y: bounds.Y,
+		Width: int64(fitW), Height: int64(fitH),
+	}
+}
 
 // processDiagramContent handles unified diagram content (charts and infographics).
 // This is the preferred code path for all visual diagrams.
@@ -547,35 +581,8 @@ func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, it
 	embedH := diagramBounds.Height
 
 	if renderResult.FitMode == "contain" && renderResult.ContentWidth > 0 && renderResult.ContentHeight > 0 {
-		// For "contain" mode, fit the content's aspect ratio within the placeholder
-		// bounds (in EMUs). The SVG content dimensions define the aspect ratio but
-		// must NOT be converted to EMUs directly — doing so produces an image larger
-		// than the placeholder because the SVG coordinate system doesn't correspond
-		// to physical EMU units.
-		contentRatio := renderResult.ContentWidth / renderResult.ContentHeight
-		phW := float64(diagramBounds.Width)
-		phH := float64(diagramBounds.Height)
-		phRatio := phW / phH
-
-		var fitW, fitH float64
-		if contentRatio > phRatio {
-			// Width-constrained
-			fitW = phW
-			fitH = phW / contentRatio
-		} else {
-			// Height-constrained
-			fitH = phH
-			fitW = phH * contentRatio
-		}
-
-		// Center within the diagram area (not the full placeholder)
-		offsetXEMU := int64((phW - fitW) / 2)
-		offsetYEMU := int64((phH - fitH) / 2)
-
-		embedX = diagramBounds.X + offsetXEMU
-		embedY = diagramBounds.Y + offsetYEMU
-		embedW = int64(fitW)
-		embedH = int64(fitH)
+		frame := containedDiagramFrame(diagramBounds, renderResult.ContentWidth, renderResult.ContentHeight)
+		embedX, embedY, embedW, embedH = frame.X, frame.Y, frame.Width, frame.Height
 	}
 
 	// Quality check: warn when complex diagrams are placed in narrow placeholders

@@ -25,6 +25,7 @@ type TableRenderConfig struct {
 	DefaultSize      int               // Font size in hundredths of point (default: 1800 = 18pt)
 	ColumnAlignments []string          // Per-column alignment: "left", "center", "right"
 	StrictFit        bool              // When true, measure cells and refuse if any overflow (--strict-fit=strict)
+	AlignTop         bool              // Anchor content-sized table at the top of its bounds
 }
 
 // TableRenderResult contains the generated table XML.
@@ -229,12 +230,10 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	rowHeights := rowPlan.RowHeights
 	totalHeight := rowPlan.TotalHeight
 
-	// A content-sized table is centred in its placeholder rather than hung from
-	// the top: rows are sized for their text, so a 5-row table in a full-height
-	// body placeholder left the bottom ~45% of the slide blank and nothing in
-	// the fit report said so — only the pixels did (go-slide-creator-6jv7).
+	// Centring balances empty space on a one-content slide (go-slide-creator-6jv7).
+	// Populated side-by-side body columns instead align table and sibling tops.
 	offsetY := config.Bounds.Y
-	if slack := config.Bounds.Height - totalHeight; slack > 0 {
+	if slack := config.Bounds.Height - totalHeight; slack > 0 && !config.AlignTop {
 		offsetY += slack / 2
 	}
 

@@ -85,7 +85,7 @@ func TestPopulateTable_TruncationRefuses(t *testing.T) {
 		Bounds: types.BoundingBox{X: 0, Y: 0, Width: 8229600, Height: 2400000},
 	}
 
-	result, err := PopulateTableInShape(spec, placeholder, nil, nil)
+	result, err := PopulateTableInShape(spec, placeholder, nil, nil, false)
 	if err != nil {
 		t.Fatalf("PopulateTableInShape: %v", err)
 	}

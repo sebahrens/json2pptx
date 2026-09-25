@@ -116,7 +116,7 @@ func TestPopulateTableInShapeUnknownResolverPreservesStyleControl(t *testing.T) 
 		Style:   types.TableStyle{UseTableStyle: true, StyleID: guid},
 	}
 	placeholder := types.PlaceholderInfo{Bounds: types.BoundingBox{Width: 5486400, Height: 3657600}}
-	result, err := PopulateTableInShape(table, placeholder, nil, stubResolver{resolved: guid})
+	result, err := PopulateTableInShape(table, placeholder, nil, stubResolver{resolved: guid}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -151,7 +151,7 @@ func TestPopulateTableInShape_WithResolver(t *testing.T) {
 		},
 	}
 
-	result, err := PopulateTableInShape(table, placeholder, nil, stubResolver{resolved: customGUID})
+	result, err := PopulateTableInShape(table, placeholder, nil, stubResolver{resolved: customGUID}, false)
 	if err != nil {
 		t.Fatalf("PopulateTableInShape: %v", err)
 	}
@@ -178,7 +178,7 @@ func TestPopulateTableInShape_NilResolverUsesDefault(t *testing.T) {
 		},
 	}
 
-	result, err := PopulateTableInShape(table, placeholder, nil, nil)
+	result, err := PopulateTableInShape(table, placeholder, nil, nil, false)
 	if err != nil {
 		t.Fatalf("PopulateTableInShape: %v", err)
 	}

@@ -213,6 +213,12 @@ MCP tool surface, and Fix.Kind vocabulary. Agents compare `schema_version`
 
 ### Fixed
 
+- **2026-09-25 — Visuals in paired body columns share a top baseline
+  (`go-slide-creator-18p0i`).** Charts retain aspect ratio and horizontal
+  centring but start at the content-zone top. A content-sized table in a
+  populated two-column body layout starts beside its sibling text; a lone
+  short table remains vertically centred to balance whitespace.
+
 - **2026-09-22 — Gantt milestone dates clear the time axis (`go-slide-creator-ff4hq`).**
   Milestone dates use day-first labels (for example `30 Jun`). When a label
   would enter the time-axis band, it sits beside its diamond within the row;
