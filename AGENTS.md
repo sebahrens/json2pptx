@@ -31,8 +31,8 @@ go build ./...
 # Lint
 golangci-lint run ./...
 
-# Format check
-gofmt -l .
+# Format check (tracked Go files only; ignores scratch worktrees)
+git ls-files -z -- '*.go' | xargs -0 gofmt -l
 ```
 
 ## Run Commands

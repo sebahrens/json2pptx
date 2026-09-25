@@ -11,9 +11,9 @@ func TestFunnelPercentageAndConversionOptionsAreIndependent(t *testing.T) {
 		"values": []any{map[string]any{"label": "Visitors", "value": 1000.0}, map[string]any{"label": "Leads", "value": 250.0}},
 	}
 	for _, tt := range []struct {
-		name string
+		name                   string
 		percentage, conversion bool
-		wantPercent bool
+		wantPercent            bool
 	}{
 		{"both off", false, false, false},
 		{"stage-to-stage only", false, true, true},
