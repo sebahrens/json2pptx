@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pipeline"
 	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/policy/inlinemarkup"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -115,6 +116,12 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 
 	// 4. Grid occupancy: raw-grid underfill / known-pattern overcrowding.
 	findings = append(findings, collectGridOccupancyFindings(input)...)
+
+	// 4a. Structural smells on authored grids: stacked tables, crushed
+	// dividers, hex/scheme fill mixing and accent overload. The detectors
+	// existed and were documented, but nothing called them, so the codes
+	// could never reach an agent (go-slide-creator-s1uvj.13).
+	findings = append(findings, collectStructuralSmellFindings(input)...)
 
 	// 4b. Sparse single-row flow guard: a slide-level process-flow /
 	// timeline-horizontal ("dots") with sparse labels and no height cap stretches
@@ -1292,6 +1299,23 @@ var patternRecommendedMax = map[string]int{
 
 // collectGridOccupancyFindings checks authored raw-grid slot underfill and
 // known-pattern overcrowding. Expander padding is not missing authored content.
+// collectStructuralSmellFindings runs pipeline.DetectStructuralSmells on every
+// author-written shape_grid. Pattern and compose expansions are skipped: their
+// fills, gaps and accent rotation are the expander's contract (and are
+// contrast-guarded there), not a choice the author can act on.
+func collectStructuralSmellFindings(input *PresentationInput) []patterns.FitFinding {
+	var findings []patterns.FitFinding
+	for si, slide := range input.Slides {
+		if slide.ShapeGrid == nil || slide.Pattern != nil || slide.Compose != nil {
+			continue
+		}
+		for _, w := range pipeline.DetectStructuralSmells(slide.ShapeGrid, si) {
+			findings = append(findings, patterns.FitFinding{ValidationError: *w, Action: "review"})
+		}
+	}
+	return findings
+}
+
 func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
