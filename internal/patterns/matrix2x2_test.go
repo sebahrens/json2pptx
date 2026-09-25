@@ -610,3 +610,39 @@ func TestMatrix2x2_AxisEndLabels(t *testing.T) {
 		t.Error("expected validation error for over-long x_high")
 	}
 }
+
+// go-slide-creator-s1uvj.42: a quadrants array of the wrong length fell back
+// to the named-field decoder, which dropped it, so the input inspector said
+// "unknown field quadrants" instead of reporting the count.
+func TestMatrix2x2_QuadrantsWrongLengthReportsCount(t *testing.T) {
+	p, _ := Default().Get("matrix-2x2")
+	for _, n := range []int{3, 5} {
+		items := make([]string, n)
+		for i := range items {
+			items[i] = `"Q` + string(rune('A'+i)) + `"`
+		}
+		raw := json.RawMessage(`{"x_axis_label":"Effort","y_axis_label":"Impact","quadrants":[` + strings.Join(items, ",") + `]}`)
+
+		for _, f := range InspectPatternInput(p, raw, nil, nil) {
+			if f.Code == ErrCodeUnknownKey || strings.Contains(f.Message, "unknown field") {
+				t.Errorf("n=%d: inspector reported %s: %s", n, f.Code, f.Message)
+			}
+		}
+
+		v := p.NewValues()
+		if err := json.Unmarshal(raw, v); err != nil {
+			t.Fatalf("n=%d: decode: %v", n, err)
+		}
+		err := p.Validate(v, nil, nil)
+		if err == nil {
+			t.Fatalf("n=%d: expected a count error", n)
+		}
+		msg := err.Error()
+		if !strings.Contains(msg, "quadrants must contain exactly 4 items") || !strings.Contains(msg, "card-grid") {
+			t.Errorf("n=%d: want count error with sibling hint, got %q", n, msg)
+		}
+		if strings.Contains(msg, "top_left.header") {
+			t.Errorf("n=%d: count error should not be buried under missing named quadrants: %q", n, msg)
+		}
+	}
+}

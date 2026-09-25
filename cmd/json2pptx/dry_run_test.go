@@ -735,3 +735,29 @@ func TestValidateSlidesAgainstTemplate_SlideTypeAlternativeToLayoutID(t *testing
 		}
 	})
 }
+
+// go-slide-creator-s1uvj.39: "columns":[-20,60,60] produced a negative cx and
+// still passed `validate`.
+func TestValidateShapeGrid_RejectsNegativeTrackWeights(t *testing.T) {
+	cells := []*GridCellInput{
+		{Shape: &ShapeSpecInput{Geometry: "rect"}},
+		{Shape: &ShapeSpecInput{Geometry: "rect"}},
+		{Shape: &ShapeSpecInput{Geometry: "rect"}},
+	}
+	for _, tc := range []struct {
+		name string
+		grid *ShapeGridInput
+		want string
+	}{
+		{"negative column", &ShapeGridInput{Columns: json.RawMessage(`[-20,60,60]`), Rows: []GridRowInput{{Cells: cells}}}, "columns[0] is -20"},
+		{"all-zero columns", &ShapeGridInput{Columns: json.RawMessage(`[0,0,0]`), Rows: []GridRowInput{{Cells: cells}}}, "sum to 0"},
+		{"negative row height", &ShapeGridInput{Columns: json.RawMessage(`3`), Rows: []GridRowInput{{Height: -5, Cells: cells}}}, "rows[0].height is -5"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, errs, _ := validateShapeGrid(tc.grid, 1)
+			if !strings.Contains(strings.Join(errs, "\n"), tc.want) {
+				t.Errorf("errors %v, want one containing %q", errs, tc.want)
+			}
+		})
+	}
+}

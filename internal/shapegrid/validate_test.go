@@ -1,6 +1,7 @@
 package shapegrid
 
 import (
+	"math"
 	"strings"
 	"testing"
 
@@ -497,5 +498,85 @@ func TestValidate_CompositeRatioOutOfRange(t *testing.T) {
 		if !strings.Contains(err.Error(), "ratio") {
 			t.Errorf("expected error to mention ratio (got %g): %v", ratio, err)
 		}
+	}
+}
+
+// go-slide-creator-s1uvj.38: Validate skipped empty spacer cells by one
+// column regardless of col_span, so it checked a different layout than the
+// one Resolve renders.
+func TestValidate_EmptySpacerHonoursColSpan(t *testing.T) {
+	ok := &Grid{
+		Columns: []float64{100.0 / 3, 100.0 / 3, 100.0 / 3},
+		Rows: []Row{{Cells: []Cell{
+			{ColSpan: 2},
+			{Shape: &ShapeSpec{Geometry: "rect"}},
+		}}},
+	}
+	if err := Validate(ok); err != nil {
+		t.Fatalf("spacer col_span 2 + one shape in 3 columns should be valid: %v", err)
+	}
+	overflow := &Grid{
+		Columns: []float64{100.0 / 3, 100.0 / 3, 100.0 / 3},
+		Rows: []Row{{Cells: []Cell{
+			{ColSpan: 2},
+			{ColSpan: 2, Shape: &ShapeSpec{Geometry: "rect"}},
+		}}},
+	}
+	err := Validate(overflow)
+	if err == nil || !strings.Contains(err.Error(), "col_span 2 exceeds grid width") {
+		t.Fatalf("expected col_span overflow error after a spanning spacer, got %v", err)
+	}
+}
+
+// Trailing empty cells standing in for positions covered by an earlier
+// row_span (arch-stack side rails) must stay valid.
+func TestValidate_TrailingCoveredEmptyCellsAllowed(t *testing.T) {
+	grid := &Grid{
+		Columns: []float64{60, 20, 20},
+		Rows: []Row{
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "rect"}},
+				{RowSpan: 2, Shape: &ShapeSpec{Geometry: "rect"}},
+				{RowSpan: 2, Shape: &ShapeSpec{Geometry: "rect"}},
+			}},
+			{Cells: []Cell{
+				{Shape: &ShapeSpec{Geometry: "rect"}},
+				{},
+				{},
+			}},
+		},
+	}
+	if err := Validate(grid); err != nil {
+		t.Fatalf("covered trailing empty cells should be valid: %v", err)
+	}
+}
+
+// go-slide-creator-s1uvj.39: negative or non-finite track weights produced
+// negative extents that passed validation.
+func TestValidate_RejectsBadTrackWeights(t *testing.T) {
+	shape := []Cell{{Shape: &ShapeSpec{Geometry: "rect"}}}
+	tests := []struct {
+		name string
+		grid *Grid
+		want string
+	}{
+		{"negative column", &Grid{Columns: []float64{-20, 60, 60}, Rows: []Row{{Cells: shape}}}, "columns[0] is -20"},
+		{"NaN column", &Grid{Columns: []float64{50, math.NaN()}, Rows: []Row{{Cells: shape}}}, "columns[1] is NaN"},
+		{"Inf column", &Grid{Columns: []float64{math.Inf(1), 50}, Rows: []Row{{Cells: shape}}}, "columns[0] is +Inf"},
+		{"all-zero columns", &Grid{Columns: []float64{0, 0, 0}, Rows: []Row{{Cells: shape}}}, "columns widths sum to 0"},
+		{"negative row height", &Grid{Columns: []float64{100}, Rows: []Row{{Height: -10, Cells: shape}}}, "rows[0].height is -10"},
+		{"negative flex", &Grid{Columns: []float64{100}, Rows: []Row{{Flex: -1, Cells: shape}}}, "rows[0].flex is -1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := Validate(tt.grid)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("Validate() = %v, want error containing %q", err, tt.want)
+			}
+		})
+	}
+	ok := &Grid{Columns: []float64{0, 60, 40}, Rows: []Row{{Cells: []Cell{{}, {Shape: &ShapeSpec{Geometry: "rect"}}, {}}}}}
+	if err := Validate(ok); err != nil {
+		t.Fatalf("a zero-width column among positive ones is valid: %v", err)
 	}
 }

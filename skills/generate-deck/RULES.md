@@ -7,7 +7,7 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 | # | Rule | Rationale |
 |---|---|---|
 | 1 | Cell col_spans must sum to column count per row | Engine panics on mismatched grids |
-| 2 | `columns: 3` (int) = 3 equal cols; `[10, 90]` = proportional widths. Never `[3]` | `[3]` creates one column at 3% width, not three columns |
+| 2 | `columns: 3` (int) = 3 equal cols; `[10, 90]` = proportional widths. Never `[3]`. Widths (and row `height` / `flex`) must be finite and >= 0 and the widths must not all be 0 — `validate` rejects them | `[3]` creates one column at 3% width, not three columns |
 | 3 | `bounds` uses percentages (0-100), not points or EMU | `{"x": 5, "y": 18, "width": 90, "height": 72}` = 5% from left, 18% from top |
 | 4 | `gap`/`row_gap`/`col_gap` are typographic points, not percentages. Default 8; 1-4 for dense slides | Cumulative: 5-row grid with `row_gap: 10` burns 40pt (~5% height). Tighten gaps before shrinking content |
 | 5 | Row `height` is a percentage of `bounds.height` | Rows without height split remaining space equally |
@@ -228,7 +228,9 @@ current alternatives and value schemas.
 
 **Interaction with `accent_strategy`.** The deck-level `accent_strategy` resolves the base accent per slide (e.g., `section-keyed` assigns one accent per section). `cell_accent_mode` then walks *from* that base within the slide. Example: if `section-keyed` resolves slide 5 to `accent3` and `cell_accent_mode` is `progressive`, cells get `accent3`, `accent4`, `accent5`, `accent6`, `accent1`, `accent2`.
 
-**Which patterns support it.** All grid-shaped patterns (those with multiple peer cells rendered by the shape grid engine) support `cell_accent_mode`. Non-grid patterns (single-cell heroes, axis-bound matrices, fixed-progression layouts) do not expose it because their accent logic is structurally determined. Use `show_pattern` or `list_patterns` to check whether a specific pattern's overrides schema includes `cell_accent_mode`.
+**Which patterns support it.** All grid-shaped patterns (those with multiple peer cells rendered by the shape grid engine) support `cell_accent_mode`. Non-grid patterns (single-cell heroes, axis-bound matrices, fixed-progression layouts) do not expose it because their accent logic is structurally determined. Use `show_pattern` or `list_patterns` to check whether a specific pattern's overrides schema includes `cell_accent_mode`. `pyramid` supports it per tier.
+
+**Only set overrides the schema lists.** `pyramid`, `process-flow` and `process-flow-compact` have no header text, so they do not publish `header_size` and reject it with `unknown_key` (fix `remove_key`); size their labels with `body_size`.
 
 **Anti-patterns:**
 

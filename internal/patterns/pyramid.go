@@ -57,7 +57,8 @@ type PyramidValues struct {
 	Tiers []string `json:"tiers"` // Top to bottom (narrowest to widest)
 }
 
-// PyramidOverrides is the standard text overrides.
+// PyramidOverrides is the standard text overrides. header_size is not
+// supported (tier labels are body text); cell_accent_mode colours each tier.
 type PyramidOverrides = TextOverrides
 
 // PyramidCellOverride is the shared per-cell override.
@@ -101,7 +102,7 @@ func (p *pyramid) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      textOverridesSchemaWithout("header_size"),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -118,6 +119,13 @@ func (p *pyramid) Validate(values, overrides any, cellOverrides map[int]any) err
 
 	const name = "pyramid"
 	var errs []error
+
+	if ovr, ok := overrides.(*PyramidOverrides); ok && ovr != nil {
+		if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
+			errs = append(errs, err)
+		}
+		errs = append(errs, rejectUnusedTextOverrides(name, ovr, "header_size")...)
+	}
 
 	if len(vals.Tiers) < 3 {
 		errs = append(errs, errMinItems(name, "tiers", 3, len(vals.Tiers), ""))
@@ -156,7 +164,7 @@ func (p *pyramid) Expand(ctx ExpandContext, values, overrides any, cellOverrides
 		}
 	}
 
-	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
+	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	bodySize := ResolveSize(ovr.BodySize, 14.0)
 	n := len(vals.Tiers)
 	if n == 0 {
@@ -175,6 +183,10 @@ func (p *pyramid) Expand(ctx ExpandContext, values, overrides any, cellOverrides
 
 	rows := make([]jsonschema.GridRowInput, 0, n)
 	for i, tier := range vals.Tiers {
+		// cell_accent_mode picks each tier's accent (go-slide-creator-s1uvj.41);
+		// the text colour below is chosen against that tier's own fill.
+		accent := ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
+
 		// Gradient the fill: top tier uses the full accent, lower tiers
 		// lighten. Text colour is picked per tier against the effective
 		// (alpha-composited) fill so light bottom tiers get dark text.

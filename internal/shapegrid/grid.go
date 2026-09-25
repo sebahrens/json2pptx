@@ -3,6 +3,7 @@ package shapegrid
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -122,11 +123,6 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				break
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && cell.Composite == nil && !cell.Placeholder {
-				col++
-				continue
-			}
-
 			colSpan := cell.ColSpan
 			if colSpan < 1 {
 				colSpan = 1
@@ -141,6 +137,14 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 				for dc := 0; dc < colSpan && col+dc < numCols; dc++ {
 					occupied[r+dr][col+dc] = true
 				}
+			}
+
+			// An empty spacer cell renders nothing but still claims its
+			// col_span × row_span footprint, so later cells land where the
+			// author placed them (go-slide-creator-s1uvj.38).
+			if cell.Shape == nil && cell.TableSpec == nil && cell.Icon == nil && cell.Image == nil && cell.DiagramSpec == nil && cell.Composite == nil && !cell.Placeholder {
+				col += colSpan
+				continue
 			}
 
 			// Compute cell bounds
@@ -688,6 +692,17 @@ func distributeEMU(pcts []float64, totalEMU int64) []int64 {
 	if totalEMU <= 0 {
 		return make([]int64, n)
 	}
+
+	// Backstop for Validate: a negative or non-finite weight would yield a
+	// negative (or garbage) extent, so treat it as zero
+	// (go-slide-creator-s1uvj.39).
+	clean := make([]float64, n)
+	for i, p := range pcts {
+		if p > 0 && !math.IsInf(p, 0) {
+			clean[i] = p
+		}
+	}
+	pcts = clean
 
 	// Compute the sum of percentages to normalise against.
 	var pctSum float64

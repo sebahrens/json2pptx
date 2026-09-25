@@ -75,7 +75,7 @@ Per-cell overrides are narrowly scoped to text/style/decoration adjustments only
 
 | Allowed key | Type | Description |
 |---|---|---|
-| `accent_bar` | bool | Show accent bar decoration |
+| `accent_bar` | bool | Show accent bar decoration. In patterns that draw the bar by default (`horizontal-bar-with-callouts` callout rows) only an explicit `false` removes it; an absent key or any other override keeps it |
 | `emphasis` | `"bold"` / `"italic"` / `"bold-italic"` | Text emphasis |
 | `align` | `"l"` / `"ctr"` / `"r"` | Horizontal alignment |
 | `vertical_align` | `"t"` / `"ctr"` / `"b"` | Vertical alignment |
@@ -223,6 +223,10 @@ Grid-shaped patterns — those that emit multiple peer cells through the shape g
 4. **Schema** must include `cell_accent_mode` in the overrides object — use the shared helper: `EnumSchema("uniform", "alternate", "progressive").WithDescription(...)`.
 
 `metric-list` (value colour per row) and `labeled-rows` (label-block fill per row) follow this contract.
+
+### Publish only the overrides the pattern reads
+
+A pattern that embeds `TextOverrides` must honour every key its overrides schema publishes. When a standard key has nothing to act on — `pyramid`, `process-flow` and `process-flow-compact` have no header text, so `header_size` would be a silent no-op — publish `textOverridesSchemaWithout("header_size")` and call `rejectUnusedTextOverrides(name, ovr, "header_size")` in `Validate()`, which returns an `UNKNOWN_KEY` error with a `remove_key` fix (go-slide-creator-s1uvj.41). `pyramid` colours its tiers by `cell_accent_mode`, picking each tier's text colour against that tier's own fill.
 
 ### Non-grid patterns (do not expose `cell_accent_mode`)
 
