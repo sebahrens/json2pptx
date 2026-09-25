@@ -43,6 +43,22 @@
   Neither is reachable from a DeckSpec kind; author them with
   `raw_json2pptx`. Existing inputs are unchanged.
 
+- **2026-09-25 — Schema 4.139.0: `state-shift-hub` pattern (`go-slide-creator-s1uvj.6`).**
+  New named pattern for "today vs. future state" slides: a filled accent hub
+  circle holding a short `hub_label`, flanked by 3–6 numbered stage `pairs`
+  (`{title?, before, after, before_title?, after_title?}`). Today items sit
+  right-aligned on the left beside outlined `01`..`06` nodes; future items sit
+  left-aligned on the right beside filled nodes; the nodes lie on an arc
+  concentric with the hub. Optional `left_header` / `right_header` add ruled
+  column headers. Overrides: `accent`, `semantic_accent`, `title_size`,
+  `body_size`, `hub_size` (a ceiling — the hub label shrinks to fit the
+  circle, never below 12pt). No `cell_overrides`. `BODY_TOO_LONG` reports a
+  description that outgrows its measured stage row, and a hub label that does
+  not fit the circle. `recommend_pattern` / `recommend_visual` route "today vs
+  future", "current vs target state", "state shift" and "from-to shifts"
+  intents to it; a plain "current state assessment" still ranks
+  `before-after` first. Raw path only (`raw_json2pptx` in DeckSpec).
+
 - **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
   `render_deck_spec` and `semantic render` now report
   `deterministic_ready`, `deterministic_blocking_reasons[]`, and

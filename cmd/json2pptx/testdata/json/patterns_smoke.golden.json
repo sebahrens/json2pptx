@@ -162,6 +162,17 @@
     ]
   },
   {
+    "pattern_name": "state-shift-hub",
+    "row_count": 5,
+    "cell_counts": [
+      5,
+      11,
+      12,
+      12,
+      10
+    ]
+  },
+  {
     "pattern_name": "exec-summary",
     "row_count": 7,
     "cell_counts": [

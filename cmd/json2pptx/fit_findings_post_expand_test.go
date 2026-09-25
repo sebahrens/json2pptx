@@ -244,6 +244,15 @@ func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testin
 	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 75 title characters")
 }
 
+func TestStateShiftHubDenseDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.StateShiftHubValues{HubLabel: "Today vs. target", LeftHeader: "TODAY", RightHeader: "TARGET"}
+	for i := 0; i < 6; i++ {
+		values.Pairs = append(values.Pairs, patterns.StateShiftPair{Title: "Stage", Before: "Manual work", After: "Automated work"})
+	}
+	values.Pairs[2].After = strings.Repeat("word ", 28)
+	assertBudgetFindingAcrossTemplates(t, "state-shift-hub", values, "pairs[2].after", "stage row with 6 pairs")
+}
+
 func TestExecSummaryDenseSupportWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.ExecSummaryValues{BottomLine: "Act now"}
 	for i := 0; i < 5; i++ {

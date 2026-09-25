@@ -343,6 +343,26 @@
     {
       "layout_id": "content",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "From Today to Agentic"}
+      ],
+      "pattern": {
+        "name": "state-shift-hub",
+        "values": {
+          "hub_label": "Today's state vs. agentic state",
+          "left_header": "TODAY'S STATE",
+          "right_header": "AGENTIC STATE",
+          "pairs": [
+            {"title": "Intake", "before": "Requests triaged by hand", "after": "Agents route every request on arrival"},
+            {"title": "Research", "before": "Days assembling context", "after": "Sourced brief drafted in minutes"},
+            {"title": "Decision", "before": "Weekly committee reviews", "after": "Same-day approvals on analysed options"},
+            {"title": "Follow-up", "before": "Status chased manually", "after": "Agents escalate only the exceptions"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"}
       ],
       "pattern": {

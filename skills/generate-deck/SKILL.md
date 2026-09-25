@@ -67,8 +67,8 @@ executable one.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
-  (including tier-rated `capability-heatmap` and labelled-row `framework-grid`
-  budgets); get the current catalog and per-pattern schema from
+  (including tier-rated `capability-heatmap`, labelled-row `framework-grid`
+  and per-pair-count `state-shift-hub` budgets); get the current catalog and per-pattern schema from
   `list_patterns` / `show_pattern`.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.

@@ -140,6 +140,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Narrowing hierarchy | `pyramid` | Visual narrowing (top < bottom) |
 | Before/after comparison | `before-after` | Temporal transformation |
 | Option/pros-cons comparison | `comparison-2col` | Non-temporal side-by-side |
+| Today vs. future state in numbered stages | `state-shift-hub` | Central accent hub circle (`hub_label`, shrinks to fit, floor 12pt) with 3–6 numbered `pairs` (`before` / `after` + optional shared `title` or per-side `before_title` / `after_title`); today items right-aligned on the left, future items left-aligned on the right, nodes on an arc around the hub; optional `left_header` / `right_header`. Use `before-after` for one before/after block, `journey-maturity-model` for a maturity ladder |
 | Options × criteria evaluation | `table-highlight` | 2–6 options × 2–6 criteria rated with Harvey balls (0–4), RAG (`red`/`amber`/`green`) or ≤24-char text per column (`scale` or per-criterion `{label, scale}`); `highlight_row` tints + bars the recommended option, `highlight_col` tints the decisive criterion; one legend row per symbol scale. **`legend_labels` is `[HIGH, MID, LOW]`** — the full Harvey ball first, the empty one last — and the RAG scale takes its own `legend_labels_rag` in the same order (`[green, amber, red]`, default `["Green", "Amber", "Red"]`). A deck mixing both scales used to reuse the Harvey words for the RAG swatches, so a green dot carried the "does not meet" label (go-slide-creator-z0up). RAG uses conventional status colours (`overrides.rag_colors` swaps them) — the one non-theme palette, because status must read the same on every template |
 | Activities rated by function (capability / automation heatmap) | `capability-heatmap` | 3–8 function columns, each a pointed `homePlate` header (bold title + optional sublabel, `header_shape: "rect"` for flat headers) over 1–6 activity cells filled by `tier` (0 = accent, 1 = light accent tint, 2 = neutral grey, 3 = lightest grey with a hairline), plus a legend of 2–4 tier swatches with label + optional description (`show_legend: false` hides it). Colour carries the rating, so there is no `cell_accent_mode`. Prefer `table-highlight` when every row is scored against the same criteria |
 | Levers grouped by dimension (framework) | `framework-grid` | 2–6 rows, each a bold label on a light accent band followed by 1–4 cards (accent title + short body on a pale wash); the longest row sets the column count and shorter rows leave trailing space empty. `label_width_pct` (10–35, default 18), `title_size`, `body_size`, `cell_accent_mode` (per card column). Prefer `card-grid` when there are no row labels, `stylish-panels` for pillars with bullet lists |
@@ -286,7 +287,30 @@ Rules a new picture-taking pattern must follow:
   column cannot hold.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split, capability-heatmap): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column, rating tier) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split, capability-heatmap, state-shift-hub): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column, rating tier, today-vs-future nodes around a hub) rather than peer ordering.
+
+### Free-positioned shapes: the lattice technique
+
+The shape grid cannot place a shape at an arbitrary x. A pattern that needs
+one — `state-shift-hub` puts its numbered nodes on an arc around the hub, so
+every row's node sits at a different horizontal offset — computes the
+positions in points and turns them into a **lattice**: every x edge the layout
+needs (text-box edges, node edges, hub edges) becomes a column boundary, the
+column gap is a hairline (`0.01`pt, as `pyramid` does), and each shape spans
+the lattice columns between its own edges. Free lattice columns before a shape
+are filled with empty cells (`&GridCellInput{}` — the resolver advances one
+column per empty cell and skips row-span-occupied columns on its own), so emit
+one per FREE column, not one per column.
+
+- Because each shape owns its own lattice rectangle, shapes cannot overlap at
+  whatever size the grid is finally resolved at — the trig only decides where
+  the edges fall. Merge edges closer than ~1pt so no column collapses to zero.
+- Use `fit: "contain"` for circles (hub, nodes): the cell stays rectangular and
+  the shape is drawn square inside it, so a compose cell or a different
+  content area turns the arc slightly but never distorts a circle.
+- Row connectors cannot draw the spokes: a connector only fans out from a
+  row-spanning cell to cells on its RIGHT, so a centred hub would connect to
+  one side only. Let the geometry carry the relationship instead.
 
 Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
 
