@@ -1630,6 +1630,13 @@ func validateDiagramSpec(spec *types.DiagramSpec, slideNum, contentNum int) stri
 	if spec == nil || spec.Type == "" {
 		return ""
 	}
+	if spec.Type == "heatmap" {
+		if scale, present := spec.Data["color_scale"]; present {
+			if err := generator.ValidateHeatmapColorScale(scale); err != nil {
+				return fmt.Sprintf("slide %d, content %d: heatmap data validation: %v", slideNum, contentNum, err)
+			}
+		}
+	}
 
 	req := &svggen.RequestEnvelope{
 		Type: spec.Type,

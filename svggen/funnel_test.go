@@ -1,8 +1,38 @@
 package svggen
 
 import (
+	"strings"
 	"testing"
 )
+
+func TestFunnelPercentageAndConversionOptionsAreIndependent(t *testing.T) {
+	diagram := &FunnelDiagram{NewBaseDiagram("funnel_chart")}
+	data := map[string]any{
+		"values": []any{map[string]any{"label": "Visitors", "value": 1000.0}, map[string]any{"label": "Leads", "value": 250.0}},
+	}
+	for _, tt := range []struct {
+		name string
+		percentage, conversion bool
+		wantPercent bool
+	}{
+		{"both off", false, false, false},
+		{"stage-to-stage only", false, true, true},
+		{"percent-of-first only", true, false, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			data["show_percentage"] = tt.percentage
+			data["show_conversion"] = tt.conversion
+			doc, err := diagram.Render(&RequestEnvelope{Type: "funnel_chart", Data: data, Output: OutputSpec{Width: 800, Height: 600}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			hasPercent := strings.Contains(string(doc.Content), "%")
+			if hasPercent != tt.wantPercent {
+				t.Errorf("percent present = %v, want %v", hasPercent, tt.wantPercent)
+			}
+		})
+	}
+}
 
 func TestFunnelChart_Draw(t *testing.T) {
 	tests := []struct {

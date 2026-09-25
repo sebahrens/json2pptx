@@ -408,6 +408,41 @@ func TestGanttDiagram_Render(t *testing.T) {
 	}
 }
 
+func TestGanttTaskGroupAliasRendersNamedSwimlaneHeaders(t *testing.T) {
+	req := &RequestEnvelope{
+		Type: "gantt",
+		Data: map[string]any{"tasks": []any{
+			map[string]any{"label": "Build API", "start": "2024-01-01", "end": "2024-02-01", "group": "Backend Wing"},
+			map[string]any{"label": "Design UI", "start": "2024-01-05", "end": "2024-02-10", "group": "Design Wing"},
+		}},
+		Output: OutputSpec{Width: 900, Height: 500},
+	}
+	parsed, err := parseGanttData(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsed.Tasks[0].Swimlane != "Backend Wing" || parsed.Tasks[1].Swimlane != "Design Wing" {
+		t.Fatalf("documented group field was not mapped to swimlanes: %+v", parsed.Tasks)
+	}
+	doc, err := (&GanttDiagram{NewBaseDiagram("gantt")}).Render(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svg := string(doc.Content)
+	for _, header := range []string{"Backend Wing", "Design Wing"} {
+		if !strings.Contains(svg, header) {
+			t.Errorf("missing visible swimlane header %q", header)
+		}
+	}
+	chart := NewGanttChart(NewSVGBuilder(900, 500), DefaultGanttConfig(900, 500))
+	if err := chart.Draw(parsed); err != nil {
+		t.Fatal(err)
+	}
+	if chart.config.SwimlaneHeaderWidth != 0 {
+		t.Errorf("auto-sized header width leaked into later draws: %.1f", chart.config.SwimlaneHeaderWidth)
+	}
+}
+
 func TestParseGanttTask(t *testing.T) {
 	tests := []struct {
 		name            string

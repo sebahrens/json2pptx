@@ -97,6 +97,47 @@ func TestHeatmapValueColorWithoutTheme(t *testing.T) {
 	}
 }
 
+func TestHeatmapRedScaleUsesFixedRedRampAndReadableValues(t *testing.T) {
+	colors := heatmapThemes["forest-green"]
+	white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
+	base, err := svggen.ParseColor("#B91C1C")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, value := range []float64{0, 50, 100} {
+		tone := heatmapCellFill(value, 0, 100, "red")
+		if tone.scheme != "#B91C1C" {
+			t.Errorf("value %.0f: base = %s, want fixed red", value, tone.scheme)
+		}
+		cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
+		var xml bytes.Buffer
+		tone.fill().WriteTo(&xml)
+		if !strings.Contains(xml.String(), `val="`+strings.TrimPrefix(cell.Hex(), "#")+`"`) {
+			t.Errorf("value %.0f: fill %s does not contain expected %s", value, xml.String(), cell.Hex())
+		}
+		text := schemeHex(t, heatmapValueColor(tone, colors), colors)
+		if ratio := text.ContrastWith(cell); ratio < svggen.WCAGAANormal {
+			t.Errorf("value %.0f: value contrast %.2f:1 on %s", value, ratio, cell.Hex())
+		}
+	}
+	if got := heatmapCellFill(5, 5, 5, "red").scheme; got != "#B91C1C" {
+		t.Errorf("constant-value red heatmap uses %q", got)
+	}
+}
+
+func TestHeatmapColorScaleRejectsUnsupportedValues(t *testing.T) {
+	for _, value := range []any{"viridis", "", 42, nil} {
+		_, err := parseHeatmapData(map[string]any{"values": []any{[]any{1.0}}, "color_scale": value})
+		if err == nil || !strings.Contains(err.Error(), "color_scale") {
+			t.Errorf("color_scale %v: expected actionable error, got %v", value, err)
+		}
+	}
+	parsed, err := parseHeatmapData(map[string]any{"values": []any{[]any{1.0}}, "color_scale": "red"})
+	if err != nil || parsed.colorScale != "red" {
+		t.Errorf("red scale: parsed %q, error %v", parsed.colorScale, err)
+	}
+}
+
 func TestHeatmapTintAndValueContrastOnSaturatedAccents(t *testing.T) {
 	colors := []types.ThemeColor{
 		{Name: "dk1", RGB: "000000"}, {Name: "lt1", RGB: "FFFFFF"},

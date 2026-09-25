@@ -930,3 +930,56 @@ func TestChartScaleReachesSVGGen(t *testing.T) {
 		t.Error("deck chart did not render a visibly labelled log axis")
 	}
 }
+
+func TestChartDataColorsResolveSchemeNamesWithoutMutatingInput(t *testing.T) {
+	theme := []types.ThemeColor{{Name: "accent1", RGB: "#2E5090"}, {Name: "accent4", RGB: "#0097A7"}}
+	colors := []any{"accent4", "#BADA55", "accentZZ"}
+	spec := &types.DiagramSpec{Type: "bar_chart", Data: map[string]any{"colors": colors}}
+	req := diagramSpecToSVGGen(spec, theme, 0, "")
+	resolved, ok := req.Data["colors"].([]any)
+	if !ok || len(resolved) != 3 || resolved[0] != "#0097A7" || resolved[1] != "#BADA55" || resolved[2] != ChartAccentFallback(2, theme) {
+		t.Fatalf("resolved colors = %#v", req.Data["colors"])
+	}
+	if colors[0] != "accent4" || req.Data == nil {
+		t.Fatalf("conversion mutated author data: %#v", colors)
+	}
+	findings := DiagramStyleColorFindings(spec, theme)
+	if len(findings) != 1 || findings[0].Field != "data.colors[2]" || findings[0].Code != "CUSTOM_COLOR_DROPPED" {
+		t.Fatalf("invalid scheme color was silently ignored: %+v", findings)
+	}
+}
+
+func TestChartDataColorsPreserveSeriesPositionsForInvalidEntries(t *testing.T) {
+	theme := []types.ThemeColor{{Name: "accent1", RGB: "#2E5090"}}
+	spec := &types.DiagramSpec{Type: "bar_chart", Data: map[string]any{"colors": []any{"accent1", 42, "#123456"}}}
+	req := diagramSpecToSVGGen(spec, theme, 0, "")
+	got, ok := req.Data["colors"].([]any)
+	if !ok || len(got) != 3 || got[0] != "#2E5090" || got[1] != ChartAccentFallback(1, theme) || got[2] != "#123456" {
+		t.Fatalf("series colors shifted after invalid entry: %v", got)
+	}
+	findings := DiagramStyleColorFindings(spec, theme)
+	if len(findings) != 1 || findings[0].Field != "data.colors[1]" {
+		t.Fatalf("invalid entry was not reported: %+v", findings)
+	}
+}
+
+func TestChartDataSchemeColorsReachRenderedSVG(t *testing.T) {
+	spec := &types.DiagramSpec{
+		Type: "pie_chart",
+		Data: map[string]any{
+			"categories": []any{"First", "Second"},
+			"values":     []any{60.0, 40.0},
+			"colors":     []any{"accent1", "accent2"},
+		},
+	}
+	theme := []types.ThemeColor{{Name: "accent1", RGB: "#A12B3C"}, {Name: "accent2", RGB: "#3478A2"}}
+	got, err := RenderDiagramSpecWithMetadata(spec, theme, 0, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, color := range []string{"#A12B3C", "#3478A2"} {
+		if !strings.Contains(strings.ToUpper(string(got.SVG)), color) {
+			t.Errorf("rendered SVG does not contain data.colors %s", color)
+		}
+	}
+}

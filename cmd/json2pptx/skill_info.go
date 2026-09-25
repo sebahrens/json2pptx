@@ -1133,8 +1133,8 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		},
 		"funnel": {
 			RequiredKeys: []string{"values"},
-			OptionalKeys: []string{"categories", "neck_width", "gap", "show_percentage"},
-			Description:  "values: [{label, value}] or number[] with categories for labels",
+			OptionalKeys: []string{"categories", "neck_width", "gap", "show_percentage", "show_conversion"},
+			Description:  "values: [{label, value}] or number[] with categories for labels; show_percentage adds percent of first stage (default false), show_conversion adds stage-to-stage percent (default true); set both false to suppress percentages",
 		},
 		"gauge": {
 			RequiredKeys: []string{"value"},
@@ -1220,7 +1220,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		"heatmap": {
 			RequiredKeys: []string{"values"},
 			OptionalKeys: []string{"row_labels", "col_labels", "color_scale"},
-			Description:  "values: number[][] (2D array); row_labels/col_labels: string[]",
+			Description:  "values: number[][] (2D array); row_labels/col_labels: string[]; color_scale: sequential (default), diverging, or red",
 		},
 		"fishbone": {
 			RequiredKeys: []string{"effect"},

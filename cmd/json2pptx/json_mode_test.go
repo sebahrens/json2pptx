@@ -1836,6 +1836,20 @@ func TestValidateDiagramSpec(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "unsupported heatmap scale is reported",
+			spec: &types.DiagramSpec{Type: "heatmap", Data: map[string]any{
+				"values": []any{[]any{1.0}}, "color_scale": "viridis",
+			}},
+			wantErr: true,
+		},
+		{
+			name: "red heatmap scale is accepted",
+			spec: &types.DiagramSpec{Type: "heatmap", Data: map[string]any{
+				"values": []any{[]any{1.0}}, "color_scale": "red",
+			}},
+			wantErr: false,
+		},
+		{
 			name:    "nil spec returns no error",
 			spec:    nil,
 			wantErr: false,

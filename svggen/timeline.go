@@ -1272,8 +1272,21 @@ func (tc *TimelineChart) drawTodayLine(label string, dateRange timelineRange, pl
 	b := tc.builder
 	style := b.StyleGuide()
 
-	now := time.Now()
-	x := dateRange.dateToX(now, plotArea)
+	now := time.Now().In(dateRange.start.Location())
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	if today.Before(dateRange.start) || today.After(dateRange.end) {
+		b.AddFinding(Finding{
+			Code:     FindingPointOutOfRange,
+			Message:  fmt.Sprintf("timeline: show_today requested, but today (%s) is outside the visible date range %s–%s; marker omitted rather than drawn off-canvas", today.Format("2006-01-02"), dateRange.start.Format("2006-01-02"), dateRange.end.Format("2006-01-02")),
+			Severity: "warning",
+			Fix: &FixSuggestion{
+				Kind:   FixKindExplicitScale,
+				Params: map[string]any{"show_today": false, "today": today.Format("2006-01-02")},
+			},
+		})
+		return
+	}
+	x := dateRange.dateToX(today, plotArea)
 
 	// Draw vertical line
 	b.Push()

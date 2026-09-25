@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 	"testing"
 	"time"
 
@@ -117,6 +118,18 @@ func TestBuildSupportedTypes_DataFormatHints(t *testing.T) {
 				t.Errorf("Description = %q, want %q", df.Description, tt.wantDesc)
 			}
 		})
+	}
+}
+
+func TestFunnelHintsDistinguishPercentageFromConversion(t *testing.T) {
+	hint := buildDataFormatHints()["funnel"]
+	for _, key := range []string{"show_percentage", "show_conversion"} {
+		if !slices.Contains(hint.OptionalKeys, key) {
+			t.Errorf("funnel hint omits %s", key)
+		}
+	}
+	if !strings.Contains(hint.Description, "set both false") {
+		t.Errorf("funnel hint does not explain how to suppress percentages: %s", hint.Description)
 	}
 }
 

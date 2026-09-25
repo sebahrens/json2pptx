@@ -333,10 +333,53 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 		Type:     spec.Type,
 		Title:    spec.Title,
 		Subtitle: spec.Subtitle,
-		Data:     spec.Data,
+		Data:     resolveDiagramDataColors(spec.Data, effectiveTheme),
 		Output:   output,
 		Style:    style,
 	}
+}
+
+// resolveDiagramDataColors makes data.colors accept the same scheme names as
+// style.colors without mutating the caller's parsed deck. The SVG renderer
+// consumes hex colors, so theme indirections are resolved at this boundary.
+func resolveDiagramDataColors(data map[string]any, theme []types.ThemeColor) map[string]any {
+	raw, present := data["colors"]
+	if !present {
+		return data
+	}
+	resolve := func(value string, index int) string {
+		if color, ok := ResolveDiagramStyleColor(value, theme); ok {
+			return color
+		}
+		return ChartAccentFallback(index, theme)
+	}
+	var resolved any
+	switch colors := raw.(type) {
+	case []any:
+		items := make([]any, len(colors))
+		for i, value := range colors {
+			if color, ok := value.(string); ok {
+				items[i] = resolve(color, i)
+			} else {
+				items[i] = ChartAccentFallback(i, theme)
+			}
+		}
+		resolved = items
+	case []string:
+		items := make([]string, len(colors))
+		for i, color := range colors {
+			items[i] = resolve(color, i)
+		}
+		resolved = items
+	default:
+		return data
+	}
+	copyData := make(map[string]any, len(data))
+	for key, value := range data {
+		copyData[key] = value
+	}
+	copyData["colors"] = resolved
+	return copyData
 }
 
 // ResolveDiagramStyleColor accepts authored hex colors and resolves semantic
@@ -370,10 +413,10 @@ func ChartAccentFallback(index int, theme []types.ThemeColor) string {
 // DiagramStyleColorFindings reports authored colors the render path cannot
 // resolve; otherwise svggen silently substitutes its default palette.
 func DiagramStyleColorFindings(spec *types.DiagramSpec, themeColors []types.ThemeColor) []svggen.Finding {
-	if spec == nil || spec.Style == nil {
+	if spec == nil {
 		return nil
 	}
-	if len(spec.Style.ThemeColors) > 0 {
+	if spec.Style != nil && len(spec.Style.ThemeColors) > 0 {
 		themeColors = spec.Style.ThemeColors
 	}
 	var findings []svggen.Finding
@@ -383,15 +426,30 @@ func DiagramStyleColorFindings(spec *types.DiagramSpec, themeColors []types.Them
 		}
 		findings = append(findings, svggen.Finding{
 			Field: field, Code: "CUSTOM_COLOR_DROPPED", Severity: "info",
-			Message: fmt.Sprintf("chart style color %q cannot be resolved against the effective theme; the template/default color is used", value),
+			Message: fmt.Sprintf("chart color %q cannot be resolved against the effective theme; the corresponding template/default accent is used", value),
 			Fix:     &svggen.FixSuggestion{Kind: "use_semantic_color", Params: map[string]any{"field": field}},
 		})
 	}
-	for i, color := range spec.Style.Colors {
-		check(color, fmt.Sprintf("style.colors[%d]", i))
+	if spec.Style != nil {
+		for i, color := range spec.Style.Colors {
+			check(color, fmt.Sprintf("style.colors[%d]", i))
+		}
+		if spec.Style.Background != "" {
+			check(spec.Style.Background, "style.background")
+		}
 	}
-	if spec.Style.Background != "" {
-		check(spec.Style.Background, "style.background")
+	if colors, ok := spec.Data["colors"].([]any); ok {
+		for i, value := range colors {
+			if color, ok := value.(string); ok {
+				check(color, fmt.Sprintf("data.colors[%d]", i))
+			} else {
+				check(fmt.Sprintf("%v", value), fmt.Sprintf("data.colors[%d]", i))
+			}
+		}
+	} else if colors, ok := spec.Data["colors"].([]string); ok {
+		for i, color := range colors {
+			check(color, fmt.Sprintf("data.colors[%d]", i))
+		}
 	}
 	return findings
 }

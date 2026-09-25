@@ -47,7 +47,7 @@ Display a matrix of values as color-coded cells, revealing patterns and concentr
 | `subtitle` | `string` | - | Subtitle below title |
 | `row_labels` | `string[]` | - | Row headers. Alias: `y_labels` |
 | `col_labels` | `string[]` | - | Column headers. Aliases: `x_labels`, `column_labels` |
-| `color_scale` | `string` | - | Color scale type (e.g., `"viridis"`) |
+| `color_scale` | `string` | `"sequential"` | `"sequential"` (template accent), `"diverging"` (two accents), or `"red"` (fixed red ramp) |
 
 ## Examples
 

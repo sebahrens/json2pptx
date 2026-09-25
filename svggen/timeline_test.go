@@ -280,6 +280,54 @@ func TestTimeline_Render(t *testing.T) {
 	}
 }
 
+func TestTimelineShowTodayReportsOutOfRangeInsteadOfDrawingOffCanvas(t *testing.T) {
+	diagram := &Timeline{NewBaseDiagram("timeline")}
+	makeRequest := func(start, end string, show bool) *RequestEnvelope {
+		return &RequestEnvelope{
+			Type: "timeline",
+			Data: map[string]any{
+				"show_today": show, "today_label": "Current Marker",
+				"activities": []any{map[string]any{"label": "Phase", "start_date": start, "end_date": end}},
+			},
+			Output: OutputSpec{Width: 800, Height: 400},
+		}
+	}
+	today := time.Now()
+	start, end := today.AddDate(0, -2, 0).Format("2006-01-02"), today.AddDate(0, 2, 0).Format("2006-01-02")
+	for _, show := range []bool{false, true} {
+		builder, doc, err := diagram.RenderWithBuilder(makeRequest(start, end, show))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if visible := strings.Contains(string(doc.Content), "Current Marker"); visible != show {
+			t.Errorf("show_today=%v produced visible marker=%v", show, visible)
+		}
+		if findFindingByCode(builder.Findings(), FindingPointOutOfRange) != nil {
+			t.Errorf("in-range today marker must not report out of range")
+		}
+	}
+	// The data range ends at midnight on its last day. Comparing the current
+	// clock time would incorrectly reject a marker on that same calendar day.
+	todayDate := today.Format("2006-01-02")
+	boundaryBuilder, boundaryDoc, err := diagram.RenderWithBuilder(makeRequest(start, todayDate, true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(boundaryDoc.Content), "Current Marker") || findFindingByCode(boundaryBuilder.Findings(), FindingPointOutOfRange) != nil {
+		t.Errorf("today on the final date should render the marker without an out-of-range finding")
+	}
+	builder, doc, err := diagram.RenderWithBuilder(makeRequest("2020-01-01", "2020-04-01", true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(doc.Content), "Current Marker") {
+		t.Error("out-of-range today marker was drawn off-canvas")
+	}
+	if finding := findFindingByCode(builder.Findings(), FindingPointOutOfRange); finding == nil || !strings.Contains(finding.Message, "show_today") {
+		t.Fatalf("missing actionable show_today finding: %+v", builder.Findings())
+	}
+}
+
 func TestTimelineConfig_Defaults(t *testing.T) {
 	config := DefaultTimelineConfig(800, 400)
 

@@ -192,6 +192,8 @@ func (gc *GanttChart) Draw(data GanttData) error {
 	if len(data.Tasks) == 0 && len(data.Milestones) == 0 {
 		return nil
 	}
+	configuredHeaderWidth := gc.config.SwimlaneHeaderWidth
+	defer func() { gc.config.SwimlaneHeaderWidth = configuredHeaderWidth }()
 
 	b := gc.builder
 	style := b.StyleGuide()
@@ -240,9 +242,13 @@ func (gc *GanttChart) Draw(data GanttData) error {
 	// Collect swimlanes for headers
 	swimlanes := gc.collectSwimlanes(rows)
 
-	// Auto-size label width to fit the longest label (capped at 35% of plot width)
+	// Auto-size label width to fit the longest task label.
 	labelWidth := gc.autoSizeLabelWidth(rows, plotArea, style)
+	if len(swimlanes) > 0 && gc.config.SwimlaneHeaderWidth == 0 {
+		gc.config.SwimlaneHeaderWidth = gc.autoSizeSwimlaneHeaderWidth(swimlanes, plotArea, style)
+	}
 	if len(swimlanes) > 0 && gc.config.SwimlaneHeaderWidth > 0 {
+		gc.config.SwimlaneHeaderWidth = math.Min(gc.config.SwimlaneHeaderWidth, math.Max(0, plotArea.W*0.70-labelWidth))
 		labelWidth += gc.config.SwimlaneHeaderWidth
 	}
 
@@ -1014,6 +1020,25 @@ func (gc *GanttChart) drawBarLabel(label string, barX, barY, barW, barH float64,
 	b.Pop()
 }
 
+// autoSizeSwimlaneHeaderWidth reserves a named band beside task labels. The
+// caller caps the combined label columns so the date bars stay readable.
+func (gc *GanttChart) autoSizeSwimlaneHeaderWidth(swimlanes []string, plotArea Rect, style *StyleGuide) float64 {
+	b := gc.builder
+	origSize, origStyle := b.fontSize, b.fontStyle
+	defer func() {
+		b.SetFontSize(origSize)
+		b.fontStyle = origStyle
+	}()
+	b.SetFontSize(style.Typography.SizeSmall)
+	b.SetFontWeight(style.Typography.WeightBold)
+	width := 0.0
+	for _, name := range swimlanes {
+		measured, _ := b.MeasureText(name)
+		width = math.Max(width, measured)
+	}
+	return math.Min(math.Max(64, width+2*style.Spacing.SM), plotArea.W*0.18)
+}
+
 // autoSizeLabelWidth computes the label column width needed to display the longest
 // row label without truncation. Uses real font metrics (MeasureText) for accuracy.
 // Returns at least the configured LabelWidth, and caps at 40% of the plot area
@@ -1404,7 +1429,7 @@ func parseGanttTask(raw any, index int) GanttTask {
 	}
 	task.Label = mapStr(m, "label", "name")
 	task.Category = mapStr(m, "category", "status")
-	task.Swimlane = mapStr(m, "swimlane", "team")
+	task.Swimlane = mapStr(m, "swimlane", "group", "team")
 
 	if progress, ok := toFloat64(m["progress"]); ok {
 		task.Progress = progress

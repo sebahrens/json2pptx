@@ -62,6 +62,7 @@ At least one of `tasks` or `milestones` must be provided:
 | `tasks[].color` | `string` | - | Custom hex color |
 | `tasks[].category` | `string` | - | Group label |
 | `tasks[].swimlane` | `string` | - | Swimlane assignment |
+| `tasks[].group` | `string` | - | Alias for `swimlane`; grouped tasks get a named header band |
 | `time_unit` | `string` | - | Granularity: `"day"`, `"week"`, `"month"` |
 | `show_progress` | `bool` | `false` | Display progress bars |
 | `show_grid` | `bool` | `false` | Show time grid |

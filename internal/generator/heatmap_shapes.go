@@ -75,7 +75,7 @@ const (
 type heatmapMeta struct {
 	numRows    int
 	numCols    int
-	colorScale string // "sequential" or "diverging"
+	colorScale string // "sequential", "diverging", or "red"
 }
 
 // isHeatmapDiagram returns true if the diagram spec is a heatmap type.
@@ -347,13 +347,18 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	return string(b)
 }
 
-// heatmapCellFill computes a scheme-based fill for a heatmap cell.
+// heatmapCellFill computes a fill for a heatmap cell.
 // Sequential: accent1 retained at 20% (lightest) to 100% (full accent).
 // Diverging: accent2 for low values, lt1 for midpoint, accent1 for high values.
+// Red: a fixed red ramp, independent of the template accent.
 func heatmapCellFill(value, minVal, maxVal float64, colorScale string) heatmapTone {
+	base := "accent1"
+	if colorScale == "red" {
+		base = "#B91C1C"
+	}
 	if maxVal == minVal {
 		// All values the same — use 50% tint.
-		return heatmapTone{scheme: "accent1", lumMod: 50000, lumOff: 50000}
+		return heatmapTone{scheme: base, lumMod: 50000, lumOff: 50000}
 	}
 
 	t := (value - minVal) / (maxVal - minVal)
@@ -378,7 +383,7 @@ func heatmapCellFill(value, minVal, maxVal float64, colorScale string) heatmapTo
 	// Sequential: accent1 from light tint (t=0) to full saturation (t=1).
 	// lumMod ranges from 20000 (very light) to 100000 (full color).
 	lumMod := 20000 + int(t*80000)
-	return heatmapTone{scheme: "accent1", lumMod: lumMod, lumOff: 100000 - lumMod}
+	return heatmapTone{scheme: base, lumMod: lumMod, lumOff: 100000 - lumMod}
 }
 
 // heatmapTone is a heatmap cell's fill: a scheme colour and retained-accent /
@@ -393,6 +398,13 @@ type heatmapTone struct {
 
 // fill renders the tone as a shape fill.
 func (t heatmapTone) fill() pptx.Fill {
+	if len(t.scheme) > 0 && t.scheme[0] == '#' {
+		base, err := svggen.ParseColor(t.scheme)
+		if err == nil {
+			white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
+			return pptx.SolidFill(patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: t.lumMod}, white).Hex()[1:])
+		}
+	}
 	return diagramTintFill(t.scheme, t.lumMod, t.lumOff)
 }
 
@@ -408,13 +420,20 @@ func (t heatmapTone) fill() pptx.Fill {
 // Without theme colours to resolve there is nothing to measure and the
 // historical dk1 stands.
 func heatmapValueColor(tone heatmapTone, themeColors []types.ThemeColor) string {
-	base, err := svggen.ParseColor(resolveSchemeColorToHex(tone.scheme, themeColors))
+	baseHex := tone.scheme
+	if len(baseHex) == 0 || baseHex[0] != '#' {
+		baseHex = resolveSchemeColorToHex(tone.scheme, themeColors)
+	}
+	base, err := svggen.ParseColor(baseHex)
 	if err != nil {
 		return "dk1"
 	}
-	white, wErr := svggen.ParseColor(resolveSchemeColorToHex("lt1", themeColors))
+	// DrawingML tint always blends toward literal white, even when lt1 is an
+	// off-white theme color; only the text candidates use theme roles.
+	white := svggen.Color{R: 255, G: 255, B: 255, A: 1}
+	lightText, wErr := svggen.ParseColor(resolveSchemeColorToHex("lt1", themeColors))
 	if wErr != nil {
-		white = svggen.Color{R: 255, G: 255, B: 255, A: 1}
+		lightText = white
 	}
 	dark, dErr := svggen.ParseColor(resolveSchemeColorToHex("dk1", themeColors))
 	if dErr != nil {
@@ -422,7 +441,7 @@ func heatmapValueColor(tone heatmapTone, themeColors []types.ThemeColor) string 
 	}
 
 	cell := patterns.EffectiveColorMods(base, patterns.ColorMods{Tint: tone.lumMod}, white)
-	if white.ContrastWith(cell) > dark.ContrastWith(cell) {
+	if lightText.ContrastWith(cell) > dark.ContrastWith(cell) {
 		return "lt1"
 	}
 	return "dk1"
@@ -582,11 +601,41 @@ func parseHeatmapData(data map[string]any) (heatmapParsedData, error) {
 	}
 
 	// Parse color scale.
-	if cs, ok := data["color_scale"].(string); ok {
-		parsed.colorScale = cs
+	colorScale, err := heatmapColorScaleFromData(data)
+	if err != nil {
+		return parsed, err
 	}
+	parsed.colorScale = colorScale
 
 	return parsed, nil
+}
+
+func heatmapColorScaleFromData(data map[string]any) (string, error) {
+	raw, present := data["color_scale"]
+	if !present {
+		return "sequential", nil
+	}
+	return parseHeatmapColorScale(raw)
+}
+
+func parseHeatmapColorScale(raw any) (string, error) {
+	cs, ok := raw.(string)
+	if !ok {
+		return "", fmt.Errorf("heatmap color_scale must be a string: sequential, diverging, or red")
+	}
+	switch cs {
+	case "sequential", "diverging", "red":
+		return cs, nil
+	default:
+		return "", fmt.Errorf("unsupported heatmap color_scale %q: use sequential, diverging, or red", cs)
+	}
+}
+
+// ValidateHeatmapColorScale lets input validation reject scales that the
+// native heatmap renderer cannot draw instead of silently omitting the grid.
+func ValidateHeatmapColorScale(raw any) error {
+	_, err := parseHeatmapColorScale(raw)
+	return err
 }
 
 // toStringSliceHeatmap converts an interface{} to []string.
