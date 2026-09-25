@@ -196,6 +196,132 @@ slides:
 	}
 }
 
+func TestSemanticMCP_ParseFailuresDoNotMintDeckHandles(t *testing.T) {
+	mc := handleTestConfig(t)
+	for _, spec := range []string{
+		"meta: [unterminated",
+		"meta:\n  title: Review\nslides:\n  - kind: not_a_kind\n    title: Bad slide\n",
+	} {
+		validated := mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": spec})
+		var response deckSpecEnvelopeResponse
+		structuredInto(t, validated.StructuredContent, &response)
+		if response.OK || response.DeckID != "" {
+			t.Fatalf("invalid spec got a successful validation or deck handle: %+v", response)
+		}
+		if strings.Contains(spec, "not_a_kind") {
+			found := false
+			for _, finding := range response.Findings {
+				if strings.HasSuffix(finding.Code, diagnostics.CodeSemanticUnknownKind) {
+					found = true
+					if finding.NextToolCall == nil || finding.NextToolCall.Tool != "list_slide_kinds" {
+						t.Fatalf("validation unknown-kind finding lacks discovery call: %+v", finding)
+					}
+				}
+			}
+			if !found {
+				t.Fatalf("validation lost SEMANTIC_UNKNOWN_KIND: %+v", response.Findings)
+			}
+		}
+		rendered := mustCall(t, mc.handleRenderDeckSpec, map[string]any{"spec": spec})
+		if !rendered.IsError {
+			t.Fatal("render_deck_spec parse failure must be an MCP error")
+		}
+		var envelope diagnostics.FindingEnvelope
+		structuredInto(t, rendered.StructuredContent, &envelope)
+		if envelope.OK || len(envelope.Findings) == 0 {
+			t.Fatalf("render parse failure has no actionable finding envelope: %+v", envelope)
+		}
+		if strings.Contains(spec, "not_a_kind") {
+			found := false
+			for _, finding := range envelope.Findings {
+				if !strings.HasSuffix(finding.Code, diagnostics.CodeSemanticUnknownKind) {
+					continue
+				}
+				found = true
+				if finding.Evidence["path"] != "slides[0].kind" || finding.NextToolCall == nil || finding.NextToolCall.Tool != "list_slide_kinds" {
+					t.Fatalf("unknown kind finding lacks source path or recovery call: %+v", finding)
+				}
+				if available, ok := finding.Evidence["available"].([]any); !ok || len(available) == 0 {
+					t.Fatalf("unknown kind finding lacks available kinds: %+v", finding)
+				}
+			}
+			if !found {
+				t.Fatalf("missing SEMANTIC_UNKNOWN_KIND finding: %+v", envelope.Findings)
+			}
+		}
+	}
+}
+
+func TestSemanticMCP_InvalidPatchDoesNotReplaceStoredDeck(t *testing.T) {
+	mc := handleTestConfig(t)
+	var validated deckSpecEnvelopeResponse
+	structuredInto(t, mustCall(t, mc.handleValidateDeckSpec, map[string]any{"spec": validSemanticSpec}).StructuredContent, &validated)
+	if validated.DeckID == "" {
+		t.Fatal("valid spec did not get a deck handle")
+	}
+	before, ok := mc.deckHandles.Load(validated.DeckID)
+	if !ok {
+		t.Fatal("new deck handle is not loadable")
+	}
+	result := mustCall(t, mc.handleRenderDeckSpec, map[string]any{
+		"deck_id": validated.DeckID,
+		"patch":   []any{map[string]any{"op": "replace", "path": "/slides/0/kind", "value": "not_a_kind"}},
+	})
+	if !result.IsError {
+		t.Fatal("invalid patch was rendered")
+	}
+	after, ok := mc.deckHandles.Load(validated.DeckID)
+	if !ok {
+		t.Fatal("failed render removed the stored valid deck")
+	}
+	if string(after.Spec) != string(before.Spec) {
+		t.Fatalf("failed render corrupted the stored valid deck: before=%q after=%q", before.Spec, after.Spec)
+	}
+}
+
+func TestSemanticMCP_MissingTemplateHasAvailableNamesAndSuggestion(t *testing.T) {
+	mc := semanticTestConfig(t)
+	spec := strings.Replace(validSemanticSpec, "  template: midnight-blue\n", "", 1)
+	for _, call := range []struct {
+		name string
+		fn   func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+	}{
+		{"validate", mc.handleValidateDeckSpec},
+		{"render", mc.handleRenderDeckSpec},
+	} {
+		t.Run(call.name, func(t *testing.T) {
+			result := mustCall(t, call.fn, map[string]any{"spec": spec, "template": "midnight-blu"})
+			var envelope diagnostics.FindingEnvelope
+			structuredInto(t, result.StructuredContent, &envelope)
+			if envelope.OK {
+				t.Fatalf("missing template was accepted: %+v", envelope)
+			}
+			found := false
+			for _, finding := range envelope.Findings {
+				if !strings.HasSuffix(finding.Code, diagnostics.CodeTemplateNotFound) {
+					continue
+				}
+				found = true
+				if finding.NextToolCall == nil || finding.NextToolCall.Tool != "list_templates" {
+					t.Fatalf("missing template finding has no discovery call: %+v", finding)
+				}
+				if available, ok := finding.Evidence["available_templates"].([]any); !ok || len(available) == 0 {
+					t.Fatalf("missing template finding has no available list: %+v", finding)
+				}
+				if available, ok := finding.Evidence["available"].([]any); !ok || len(available) == 0 {
+					t.Fatalf("missing template finding has no canonical available list: %+v", finding)
+				}
+				if finding.Remediation == nil || finding.Remediation.Primary == nil || finding.Remediation.Primary.Params["did_you_mean"] != "midnight-blue" {
+					t.Fatalf("missing template finding has no typo suggestion: %+v", finding)
+				}
+			}
+			if !found {
+				t.Fatalf("missing TEMPLATE_NOT_FOUND finding: %+v", envelope.Findings)
+			}
+		})
+	}
+}
+
 // TestSemanticMCP_CompileDeckSpec verifies compact-by-default output and the
 // include_compiled_json escape hatch.
 func TestSemanticMCP_CompileDeckSpec(t *testing.T) {

@@ -1,11 +1,25 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 )
+
+func TestTemplateResolutionCodeSeparatesMissingNameFromLoadFailure(t *testing.T) {
+	_, cleanup, missing := resolveTemplatePath("definitely-not-a-template", "../../templates")
+	defer cleanup()
+	if !errors.Is(missing, errTemplateNameNotFound) || templateResolutionCode(missing) != diagnostics.CodeTemplateNotFound {
+		t.Fatalf("missing template classification = %v / %v", missing, templateResolutionCode(missing))
+	}
+	loadFailure := fmt.Errorf("extract embedded template: %w", errors.New("disk full"))
+	if templateResolutionCode(loadFailure) != diagnostics.CodeTemplateError {
+		t.Fatalf("template load failure misreported as a missing name: %v", templateResolutionCode(loadFailure))
+	}
+}
 
 func TestRequiredLayoutTemplateDiagnosticsAndExplanation(t *testing.T) {
 	layouts := titleAndBlankOnly()[:1] // selected template has no true blank canvas

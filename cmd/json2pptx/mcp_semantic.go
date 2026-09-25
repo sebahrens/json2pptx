@@ -239,17 +239,26 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 	}
 
 	ds := semantic.Check(filename, data, strictness)
+	enrichSemanticKindDiagnostics(ds)
+	parsedSpec, parseDiags := semantic.Parse(filename, data)
 	// Check() sees only the spec. The defects an agent ships — wrapped titles,
 	// 100-word bullet walls, placeholder copy — live in the COMPILED deck, so
 	// compile it and run the same collectors validate_input runs
 	// (go-slide-creator-05wn).
-	compiledFindings, resolvedTemplate := mc.compiledSpecFindings(filename, data, strictness, templateName)
-	ds = append(ds, compiledFindings...)
+	resolvedTemplate := templateName
+	if parsedSpec != nil && !parseDiags.HasErrors() {
+		compiledFindings, template := mc.compiledSpecFindings(filename, data, strictness, templateName)
+		ds = append(ds, compiledFindings...)
+		resolvedTemplate = template
+	}
 	envelope := diagnostics.BuildEnvelope(diagnostics.EnvelopeOptions{
 		Subcommand:  "validate_deck_spec",
 		InputSHA256: diagnostics.ComputeInputSHA256(data),
 	}, ds)
-	handleID := mc.rememberDeck(deckID, data, filename, resolvedTemplate)
+	handleID := ""
+	if parsedSpec != nil && !parseDiags.HasErrors() {
+		handleID = mc.rememberDeck(deckID, data, filename, resolvedTemplate)
+	}
 	semanticizeFindings(&envelope, data, handleID)
 
 	// Hand back a handle so the next call in the loop — a render, or a patched
@@ -437,7 +446,7 @@ func semanticRenderToMCP(r semanticRenderResult, explanation *semantic.DeckExpla
 
 func mcpRenderDeckSpecTool() mcp.Tool {
 	return mcp.NewTool("render_deck_spec",
-		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, publishable, blocking_reasons[], quality_summary, diagnostics[], explanation_summary}: success/ok report whether the artifact was WRITTEN and publishable whether it is fit to SHIP — a deck can be written and still carry an action:refuse diagnostic or fail the deterministic quality gate, so gate your "done" on publishable, not success. blocking_reasons say why not. pptx_path locates it, quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a structural or visual verdict — use score_deck / render tools for those), diagnostics carry compile findings plus render-time fit findings mapped back to the semantic source paths you wrote (raw paths retained as fallback), and explanation_summary reports the compiler's planned archetype/template and per-slide kind/role/family/density/pattern. Strict output validation is the default. A blocking failure returns success=false with the reason in error/diagnostics. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
+		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, publishable, blocking_reasons[], quality_summary, diagnostics[], explanation_summary}: success/ok report whether the artifact was WRITTEN and publishable whether it is fit to SHIP — a deck can be written and still carry an action:refuse diagnostic or fail the deterministic quality gate, so gate your "done" on publishable, not success. blocking_reasons say why not. pptx_path locates it, quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a structural or visual verdict — use score_deck / render tools for those), diagnostics carry compile findings plus render-time fit findings mapped back to the semantic source paths you wrote (raw paths retained as fallback), and explanation_summary reports the compiler's planned archetype/template and per-slide kind/role/family/density/pattern. Strict output validation is the default. Parse/template errors use a finding envelope; other failures use success=false. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
 		deckSpecOrHandleArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		deckHandleToolParams()[0],
@@ -522,11 +531,9 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 	spec, parseDiags := semantic.Parse(filename, data)
 	if parseDiags.HasErrors() {
 		mc.logRenderEvent(ctx, mcp.LoggingLevelWarning, "deck spec parse failed", map[string]any{"tool": "render_deck_spec"})
-		res := renderDeckSpecResponse{OK: false, Success: false, Error: "render_deck_spec: spec could not be parsed"}
-		for _, d := range parseDiags.ToDiagnostics() {
-			res.Diagnostics = append(res.Diagnostics, semanticDiagFromCompile(d))
-		}
-		return finish(res)
+		ds := parseDiags.ToDiagnostics()
+		enrichSemanticKindDiagnostics(ds)
+		return api.MCPDiagnosticsError(ds), nil
 	}
 
 	// Every render used to land on <output_dir>/output.pptx, so two calls in one
@@ -590,6 +597,16 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 			return finish(res)
 		}
 		resolvedTemplatePath = path
+	}
+	if resolvedTemplatePath == "" {
+		path, templateCleanup, err := resolveTemplatePath(input.Template, mc.templatesDir)
+		if err != nil {
+			return api.MCPDiagnosticsError([]diagnostics.Diagnostic{
+				*semanticTemplateDiagnostic(input.Template, mc.templatesDir, templateResolutionCode(err), err),
+			}), nil
+		}
+		resolvedTemplatePath = path
+		defer templateCleanup()
 	}
 
 	runRes, cleanup, renderErr := RunPresentation(ctx, input, RenderOptions{
@@ -878,10 +895,10 @@ func (mc *mcpConfig) compiledSpecFindings(filename string, data []byte, strictne
 			resolveCanonicalLayoutIDs(input.Slides, layouts)
 			templateCoverage = requiredLayoutTemplateDiagnostics(spec.Meta.RequiredLayouts, input.Template, layouts)
 		} else {
-			templateDiagnostics = append(templateDiagnostics, *semanticTemplateDiagnostic(input.Template, diagnostics.CodeTemplateError, aerr))
+			templateDiagnostics = append(templateDiagnostics, *semanticTemplateDiagnostic(input.Template, mc.templatesDir, diagnostics.CodeTemplateError, aerr))
 		}
 	} else {
-		templateDiagnostics = append(templateDiagnostics, *semanticTemplateDiagnostic(input.Template, diagnostics.CodeTemplateNotFound, terr))
+		templateDiagnostics = append(templateDiagnostics, *semanticTemplateDiagnostic(input.Template, mc.templatesDir, templateResolutionCode(terr), terr))
 	}
 
 	var sm *semantic.SourceMap

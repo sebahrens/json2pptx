@@ -8,6 +8,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/semantic"
 )
 
 var semanticPathPart = regexp.MustCompile(`^([A-Za-z_][A-Za-z_0-9]*|\[[0-9]+\])`)
@@ -89,26 +90,67 @@ func semanticPatchCall(data []byte, deckID, path, code string) *patterns.ToolCal
 	}
 }
 
+// Make a parser's unknown-kind error actionable without asking the agent to
+// scrape the prose list of kinds from its message. The same enrichment is used
+// by validation and render, whose parse failures have different outer shapes.
+func enrichSemanticKindDiagnostics(ds []diagnostics.Diagnostic) {
+	var available []string
+	for i := range ds {
+		d := &ds[i]
+		if d.Code != diagnostics.CodeSemanticUnknownKind {
+			continue
+		}
+		if available == nil {
+			for _, kind := range semantic.AllSlideKinds() {
+				available = append(available, string(kind))
+			}
+		}
+		if d.Details == nil {
+			d.Details = make(map[string]any)
+		}
+		d.Details["available"] = available
+		d.Fix = &diagnostics.Fix{Kind: "choose_kind", Params: map[string]any{"available": available}}
+		d.NextToolCall = &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{}}
+	}
+}
+
 func semanticizeFindings(envelope *diagnostics.FindingEnvelope, data []byte, deckID string) {
 	for i := range envelope.Findings {
 		f := &envelope.Findings[i]
+		templateNotFound := strings.HasSuffix(f.Code, diagnostics.CodeTemplateNotFound)
+		templateRemediation := f.Remediation
+		if strings.HasSuffix(f.Code, diagnostics.CodeSemanticUnknownKind) {
+			f.NextToolCall = &patterns.ToolCallSuggestion{Tool: "list_slide_kinds", ArgsTemplate: map[string]any{}}
+			continue
+		}
 		f.NextToolCall = nil
 		f.Remediation = nil // raw PresentationInput fix parameters are not DeckSpec edits
 		if path, ok := f.Evidence["path"].(string); ok {
 			f.NextToolCall = semanticPatchCall(data, deckID, path, f.Code)
 			if f.NextToolCall != nil {
 				pointer, _ := semanticPointer(path)
+				params := map[string]any{
+					"path": pointer, "op": "replace",
+					"value": "<rewrite this field to resolve " + f.Code + " while preserving meaning>",
+				}
+				if templateNotFound && templateRemediation != nil && templateRemediation.Primary != nil {
+					if match, ok := templateRemediation.Primary.Params["did_you_mean"]; ok {
+						params["did_you_mean"] = match
+					}
+				}
 				f.Remediation = &diagnostics.Remediation{Primary: &diagnostics.RemediationAction{
 					Action: diagnostics.ActionApplyPatch,
-					Params: map[string]any{
-						"path": pointer, "op": "replace",
-						"value": "<rewrite this field to resolve " + f.Code + " while preserving meaning>",
-					},
+					Params: params,
 				}}
 			}
 		}
 		if f.NextToolCall == nil {
-			f.NextToolCall = &patterns.ToolCallSuggestion{Tool: "describe_finding", ArgsTemplate: map[string]any{"code": f.Code}}
+			if templateNotFound {
+				f.NextToolCall = nextCallListTemplates()
+				f.Remediation = templateRemediation
+			} else {
+				f.NextToolCall = &patterns.ToolCallSuggestion{Tool: "describe_finding", ArgsTemplate: map[string]any{"code": f.Code}}
+			}
 		}
 	}
 }

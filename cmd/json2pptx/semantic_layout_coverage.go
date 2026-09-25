@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/semantic"
 	"github.com/sebahrens/json2pptx/internal/template"
@@ -14,7 +16,7 @@ import (
 func semanticTemplateLayouts(templateName, templatesDir string, cache types.TemplateCache) ([]types.LayoutMetadata, *diagnostics.Diagnostic) {
 	templatePath, cleanup, err := resolveTemplatePath(templateName, templatesDir)
 	if err != nil {
-		return nil, semanticTemplateDiagnostic(templateName, diagnostics.CodeTemplateNotFound, err)
+		return nil, semanticTemplateDiagnostic(templateName, templatesDir, templateResolutionCode(err), err)
 	}
 	defer cleanup()
 	if cache == nil {
@@ -22,21 +24,37 @@ func semanticTemplateLayouts(templateName, templatesDir string, cache types.Temp
 	}
 	analysis, err := getOrAnalyzeTemplate(templatePath, cache)
 	if err != nil {
-		return nil, semanticTemplateDiagnostic(templateName, diagnostics.CodeTemplateError, err)
+		return nil, semanticTemplateDiagnostic(templateName, templatesDir, diagnostics.CodeTemplateError, err)
 	}
 	return analysis.Layouts, nil
 }
 
-func semanticTemplateDiagnostic(templateName string, code diagnostics.Code, err error) *diagnostics.Diagnostic {
-	return &diagnostics.Diagnostic{
+func templateResolutionCode(err error) diagnostics.Code {
+	if errors.Is(err, errTemplateNameNotFound) {
+		return diagnostics.CodeTemplateNotFound
+	}
+	return diagnostics.CodeTemplateError
+}
+
+func semanticTemplateDiagnostic(templateName, templatesDir string, code diagnostics.Code, err error) *diagnostics.Diagnostic {
+	params := map[string]any{"template": templateName}
+	d := &diagnostics.Diagnostic{
 		Code:     string(code),
 		Severity: diagnostics.SeverityError,
 		Path:     "meta.template",
 		Message:  fmt.Sprintf("template %q is unavailable: %v", templateName, err),
-		Fix: &diagnostics.Fix{Kind: "choose_template", Params: map[string]any{
-			"template": templateName,
-		}},
+		Fix:      &diagnostics.Fix{Kind: "choose_template", Params: params},
 	}
+	if code == diagnostics.CodeTemplateNotFound {
+		available := listAvailableTemplates(templatesDir)
+		params["available"] = available
+		d.Details = map[string]any{"available": available, "available_templates": available}
+		if match, _ := generator.ClosestMatch(templateName, available, 4); match != "" {
+			params["did_you_mean"] = match
+		}
+		d.NextToolCall = nextCallListTemplates()
+	}
+	return d
 }
 
 // requiredLayoutTemplateDiagnostics checks the second half of required-layout

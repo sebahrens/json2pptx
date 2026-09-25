@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
 
 func TestSemanticPatchCallOnlyForExistingStringFields(t *testing.T) {
@@ -59,24 +61,21 @@ func TestDeckSpecFindingPatchRoundTrip(t *testing.T) {
 	}
 }
 
-func TestRenderDeckSpecFailureSuggestsSemanticPatch(t *testing.T) {
+func TestRenderDeckSpecMissingTemplateReturnsFindingEnvelope(t *testing.T) {
 	mc := handleTestConfig(t)
 	bad := strings.Replace(handleTestSpec, `"midnight-blue"`, `"missing-template"`, 1)
 	res, err := mc.handleRenderDeckSpec(context.Background(), makeRequest(map[string]any{"spec": bad}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var out renderDeckSpecResponse
+	var out diagnostics.FindingEnvelope
 	structuredInto(t, res.StructuredContent, &out)
-	if out.OK || out.DeckID == "" || len(out.Diagnostics) == 0 {
-		t.Fatalf("expected render diagnostics and handle: %+v", out)
+	if !res.IsError || out.OK || len(out.Findings) == 0 {
+		t.Fatalf("expected render finding envelope: %+v", out)
 	}
-	for _, d := range out.Diagnostics {
-		if d.NextToolCall == nil || d.NextToolCall.Tool == "repair_slide" {
-			t.Errorf("DeckSpec render diagnostic routed to raw repair: %+v", d)
-		}
-		if d.SemanticPath == "meta.template" && d.NextToolCall.Tool != "validate_deck_spec" {
-			t.Errorf("template diagnostic did not offer semantic patch: %+v", d)
+	for _, d := range out.Findings {
+		if d.Evidence["path"] == "meta.template" && (d.NextToolCall == nil || d.NextToolCall.Tool != "list_templates") {
+			t.Errorf("template diagnostic did not offer template discovery: %+v", d)
 		}
 	}
 }

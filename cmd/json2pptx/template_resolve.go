@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/sebahrens/json2pptx/templates"
 )
+
+var errTemplateNameNotFound = errors.New("template name not found")
 
 const (
 	// envTemplatesDir is the environment variable for setting the templates directory.
@@ -166,7 +169,7 @@ func resolveTemplatePath(templateName, flagTemplatesDir string) (string, func(),
 	// 5. Embedded templates
 	data, err := fs.ReadFile(templates.Embedded, filename)
 	if err != nil {
-		return "", noop, fmt.Errorf("template %q not found in any search location or embedded templates", templateName)
+		return "", noop, fmt.Errorf("template %q not found in any search location or embedded templates: %w", templateName, errTemplateNameNotFound)
 	}
 
 	// Extract to a temp file (PPTX libraries need a real file path). The

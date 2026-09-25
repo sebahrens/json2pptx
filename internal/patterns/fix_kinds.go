@@ -98,6 +98,11 @@ var fixKindRegistry = map[string]FixKindInfo{
 		Class:    FixClassAdvisory,
 		Guidance: "The requested template cannot be resolved or parsed. Call list_templates, choose a listed template, and replace meta.template before compiling or rendering.",
 	},
+	"choose_kind": {
+		Kind:     "choose_kind",
+		Class:    FixClassAdvisory,
+		Guidance: "The slide kind is not recognized. Call list_slide_kinds, choose a supported kind, and replace the slide's kind in the semantic spec.",
+	},
 	"choose_template_or_remove_requirement": {
 		Kind:     "choose_template_or_remove_requirement",
 		Class:    FixClassAdvisory,
