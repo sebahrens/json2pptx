@@ -75,7 +75,7 @@ Per-cell overrides are narrowly scoped to text/style/decoration adjustments only
 
 | Allowed key | Type | Description |
 |---|---|---|
-| `accent_bar` | bool | Show accent bar decoration |
+| `accent_bar` | bool | Show accent bar decoration. In patterns that draw the bar by default (`horizontal-bar-with-callouts` callout rows) only an explicit `false` removes it; an absent key or any other override keeps it |
 | `emphasis` | `"bold"` / `"italic"` / `"bold-italic"` | Text emphasis |
 | `align` | `"l"` / `"ctr"` / `"r"` | Horizontal alignment |
 | `vertical_align` | `"t"` / `"ctr"` / `"b"` | Vertical alignment |

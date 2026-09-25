@@ -136,7 +136,7 @@ func TestHorizontalBarCallouts_Validate_UnitTooLong(t *testing.T) {
 func TestHorizontalBarCallouts_Validate_CellOverrideOutOfRange(t *testing.T) {
 	p, _ := Default().Get("horizontal-bar-with-callouts")
 	v := validHBCValues(3)
-	overrides := map[int]any{99: &HorizontalBarCalloutsCellOverride{AccentBar: true}}
+	overrides := map[int]any{99: &HorizontalBarCalloutsCellOverride{FontSize: 12}}
 	if err := p.Validate(v, nil, overrides); err == nil {
 		t.Fatal("expected validation error for out-of-range cell override key")
 	}
@@ -566,4 +566,38 @@ func hbcSubGridColumns(t *testing.T, grid *jsonschema.ShapeGridInput, rowIdx int
 		t.Fatalf("row %d sub-grid columns %s: %v", rowIdx, row.Cells[0].Grid.Columns, err)
 	}
 	return cols
+}
+
+// go-slide-creator-s1uvj.37: any cell override on a callout row used to remove
+// its accent bar, because the bar was only added when no override existed.
+// Only an explicit accent_bar:false may suppress it.
+func TestHorizontalBarCallouts_CellOverrideKeepsAccentBarUnlessFalse(t *testing.T) {
+	p, _ := Default().Get("horizontal-bar-with-callouts")
+	raw := map[int]string{
+		0: `{"accent_bar":true}`,
+		1: `{"font_size":14}`,
+		2: `{"accent_bar":false}`,
+	}
+	cellOverrides := map[int]any{}
+	for i, js := range raw {
+		co := p.NewCellOverride()
+		if err := json.Unmarshal([]byte(js), co); err != nil {
+			t.Fatalf("decode cell_overrides[%d]: %v", i, err)
+		}
+		cellOverrides[i] = co
+	}
+	v := validHBCValues(4)
+	if err := p.Validate(v, nil, cellOverrides); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	grid, err := p.Expand(ExpandContext{SlideWidth: 12192000, SlideHeight: 6858000}, v, nil, cellOverrides)
+	if err != nil {
+		t.Fatalf("Expand failed: %v", err)
+	}
+	want := []bool{true, true, false, true}
+	for i, row := range grid.Rows {
+		if got := row.Cells[1].AccentBar != nil; got != want[i] {
+			t.Errorf("row %d: accent bar present = %v, want %v", i, got, want[i])
+		}
+	}
 }
