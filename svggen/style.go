@@ -1152,9 +1152,19 @@ func (c Color) IsLight() bool {
 
 // Opaque returns the effective opaque color when composited over white.
 // For fully opaque colors (A >= 1.0) the color is returned unchanged.
-// For semi-transparent colors, the RGB channels are alpha-blended over white
-// so that luminance and contrast calculations reflect what the user actually sees.
+// For semi-transparent colors, the RGB channels are alpha-blended over white.
+// This is the on-screen color only when the color really sits on a white
+// canvas; when the backdrop is known (e.g. text on a filled shape), use
+// BlendOver with that backdrop instead.
 func (c Color) Opaque() Color {
+	return c.BlendOver(Color{R: 255, G: 255, B: 255, A: 1.0})
+}
+
+// BlendOver returns the effective opaque color of c when alpha-composited
+// (source-over) onto bg. bg is treated as opaque: callers with a
+// semi-transparent backdrop should flatten it first (e.g. bg.Opaque()).
+// For fully opaque colors (A >= 1.0) c is returned unchanged.
+func (c Color) BlendOver(bg Color) Color {
 	if c.A >= 1.0 {
 		return c
 	}
@@ -1163,9 +1173,9 @@ func (c Color) Opaque() Color {
 		return uint8(float64(fg)*a + float64(bg)*(1-a) + 0.5)
 	}
 	return Color{
-		R: blend(c.R, 255),
-		G: blend(c.G, 255),
-		B: blend(c.B, 255),
+		R: blend(c.R, bg.R),
+		G: blend(c.G, bg.G),
+		B: blend(c.B, bg.B),
 		A: 1.0,
 	}
 }
