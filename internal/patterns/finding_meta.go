@@ -423,9 +423,9 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeCellUnderfilled: {
 		Code:        ErrCodeCellUnderfilled,
-		Summary:     "A shape grid's text cells use well under their character capacity — reported once per slide, not once per cell.",
+		Summary:     "An authored raw shape grid's text cells use well under their character capacity — reported once per slide, not once per cell.",
 		Severity:    "info",
-		WhenEmitted: "Pre-flight finds cells whose wrapped text fills under 35% of their box height (textcapacity measures each paragraph at its own font size) and folds them into ONE finding per slide, listing each in fix.params.cells[]. Metric values and short labels/captions are exempt: a KPI card holding \"$12.4M\" is correct, not underfilled, so a character-count model does not apply to it. The finding is advisory unless the grid as a whole carries under 30% of its text capacity across 3+ cells, in which case the slide really is mostly empty and it escalates to review.",
+		WhenEmitted: "Pre-flight finds authored raw-grid cells whose wrapped text fills under 35% of their box height (textcapacity measures each paragraph at its own font size) and folds them into ONE finding per slide, listing each in fix.params.cells[]. Named patterns and compose segments use visible-ink under-fill checks instead of expander-owned cell capacity. Metric values and short labels/captions are exempt: a KPI card holding \"$12.4M\" is correct, not underfilled. The finding is informational unless the grid as a whole carries under 30% of its text capacity across 3+ cells, in which case it escalates to review.",
 		RemediationSteps: []string{
 			"Check fix.params.slide_mostly_empty first — when false this is advisory and a deliberately airy layout is a fine reason to ignore it.",
 			"When it is true, add detail to the cells listed in fix.params.cells[], or swap to a pattern with fewer/smaller cells.",

@@ -96,6 +96,27 @@ func TestMapFindingUnmappedFallback(t *testing.T) {
 	}
 }
 
+func TestMapFindingUnderfillFallsBackOnlyToSlide(t *testing.T) {
+	sm := NewSourceMap()
+	for _, tc := range []struct {
+		code string
+		path string
+		want string
+	}{
+		{"SLIDE_UNDERUSED", "/slides/2", "slides[2]"},
+		{"SPARSE_FILL", "/slides/2/pattern/rows/0/cells/0/shape", "slides[2]"},
+		{"TEXT_BELOW_READABLE_MIN", "/slides/2/rendered_shapes/17", ""},
+	} {
+		got := MapFinding(sm, RawFinding{Code: tc.code, RawPath: tc.path, Action: "review"})
+		if got.SemanticPath != tc.want {
+			t.Errorf("%s: semantic path = %q, want %q", tc.code, got.SemanticPath, tc.want)
+		}
+		if tc.want != "" && (got.Edit == nil || got.Edit.Kind != EditAddDetailOrMerge) {
+			t.Errorf("%s: missing DeckSpec underfill remedy: %+v", tc.code, got.Edit)
+		}
+	}
+}
+
 // TestMapFindingNonSlidePath covers a deck-level raw path that carries no slide
 // index: the slide index degrades to -1 and no edit is suggested.
 func TestMapFindingNonSlidePath(t *testing.T) {
@@ -131,6 +152,8 @@ func TestSuggestSemanticEdit(t *testing.T) {
 		{"comparison side", "BODY_TOO_LONG", "", "slides[3].left", EditSimplifySide},
 		{"bullet density", "BODY_TOO_LONG", "", "slides[4].points", EditReduceItems},
 		{"title shorten", "HEADLINE_TOO_LONG", "", "slides[5].title", EditShortenText},
+		{"slide underused", "SLIDE_UNDERUSED", "review", "slides[5]", EditAddDetailOrMerge},
+		{"sparse filled block", "SPARSE_FILL", "review", "slides[5].tiers", EditAddDetailOrMerge},
 		{"non-length finding", "MISSING_ALT_TEXT", "info", "slides[0].metrics[0].label", ""},
 		{"unmapped path", "BODY_TOO_LONG", "refuse", "", ""},
 	}

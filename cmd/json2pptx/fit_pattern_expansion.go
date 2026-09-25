@@ -7,9 +7,11 @@
 // skipped the surface the skill tells agents to author through. The geometry
 // detectors already expanded patterns (expandSlidePatternGrid), which is why
 // TEXT_EXCEEDS_SHAPE and SPARSE_FILL fired on pattern slides while
-// fit_overflow, cell_underfilled and TEXT_BELOW_READABLE_MIN never did: the same
-// content authored as a raw shape_grid produced four error-severity findings and
-// as a pattern produced none, on a deck whose body text renders at ~8pt.
+// fit_overflow and TEXT_BELOW_READABLE_MIN never did: the same content authored
+// as a raw shape_grid produced blocking findings and as a pattern produced none,
+// on a deck whose body text renders at ~8pt. Character-capacity
+// cell_underfilled is now raw-grid-only; named patterns use resolved visible
+// ink for under-fill so expander padding does not look like missing content.
 package main
 
 import (

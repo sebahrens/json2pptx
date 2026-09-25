@@ -14,9 +14,9 @@ import "errors"
 //   - SparseFill: a filled shape covering more than 10% of the slide holds
 //     text that occupies under 20% of its area — a large, mostly empty
 //     coloured box.
-//   - SlideUnderused: the ink bounding box of a slide's grid content (filled
-//     shapes, text blocks, media) covers under 45% of the layout's safe
-//     content area.
+//   - SlideUnderused: the union of visible grid ink (filled shapes, text
+//     blocks, media) covers too little of the layout's safe content area, or
+//     a KPI row leaves an excessive vertical band empty.
 const (
 	ErrCodeTextExceedsShape = "TEXT_EXCEEDS_SHAPE"
 	ErrCodeSparseFill       = "SPARSE_FILL"
@@ -56,6 +56,7 @@ func init() {
 		WhenEmitted: "Preflight estimates the wrapped text block area of each filled shape_grid shape and compares it with the shape area.",
 		RemediationSteps: []string{
 			"Add supporting detail to the shape, or cap the grid height (bounds / max_height_pct) so the box shrinks to its text.",
+			"For a DeckSpec slide, add relevant detail, choose a denser slide kind, or merge the slide with a related one; raw grid bounds are not DeckSpec fields.",
 			"Switch to a compact pattern variant (e.g. process-flow-compact, kpi-inline) or an unfilled text layout.",
 		},
 		RelatedCodes: []string{ErrCodeCellUnderfilled, ErrCodeSlideUnderused, ErrCodeSparseLayout},
@@ -64,11 +65,12 @@ func init() {
 		Code:        ErrCodeSlideUnderused,
 		Summary:     "The slide's grid content covers too little of the layout's safe content area.",
 		Severity:    "review",
-		WhenEmitted: "Preflight unions the ink rectangles of every resolved grid cell (filled shapes, estimated text blocks, images, icons, tables, diagrams) and compares the bounding box with the content area below the title. The threshold is 45% for genuinely restrictive author bounds / max_height_pct, and 22% for content-sized patterns or uncapped grids. Explicit full-area bounds are not a cap. fix.params.band_capped_by identifies author, pattern, or none.",
+		WhenEmitted: "Preflight measures the union area of content rectangles from resolved grid cells (filled shapes with content, estimated text blocks, images, icons, tables, diagrams) inside the safe content area; an explicitly text-empty filled card is excluded, while fill-only chrome remains visible. The threshold is 45% for restrictive author bounds / max_height_pct and 29% for content-sized patterns or uncapped grids. A KPI row also fires for a vertical empty band of at least 0.75in. Explicit full-area bounds are not a cap. fix.params.band_capped_by identifies author, pattern, or none.",
 		RemediationSteps: []string{
 			"band_capped_by \"author\": raise or remove restrictive bounds / max_height_pct so the grid fills more of the content area.",
 			"band_capped_by \"pattern\": the height comes from the content, not from a cap — add detail to the block, pair it with a supporting zone using compose, or choose a denser pattern.",
 			"band_capped_by \"none\": no restrictive cap or content-sized pattern set the height — add detail to the raw grid, pair it with supporting content, or merge slides.",
+			"For a DeckSpec slide, act on semantic_path: add relevant detail, choose a denser kind, or merge slides rather than editing generated grid bounds.",
 			"Or merge this slide's content with a neighbour.",
 		},
 		RelatedCodes: []string{ErrCodeSparseLayout, ErrCodeSparseFill, ErrCodePatternUnderfilled, ErrCodeSlideNearlyEmpty},

@@ -80,7 +80,7 @@ func TestComposeHorizontalKeepsCompactCardBesideFullHeightHero(t *testing.T) {
 	if merged.Rows[0].Cells[1].Grid.Rows[0].MaxHeight != 0 {
 		t.Fatal("KPI height cap leaked into the hero segment")
 	}
-	if occ := computeResolvedOccupancy(merged); occ == nil || occ.FilledSlots != occ.TotalSlots {
+	if occ := computeResolvedOccupancy(merged, true); occ == nil || occ.FilledSlots != occ.TotalSlots {
 		t.Fatalf("horizontal segment spans should occupy all parent columns, got %+v", occ)
 	}
 	result, err := resolveShapeGrid(merged, pptx.NewShapeIDAllocator(nil), &pptx.RectEmu{X: ctx.LayoutBounds.X, Y: ctx.LayoutBounds.Y, CX: ctx.LayoutBounds.Width, CY: ctx.LayoutBounds.Height}, nil, ctx.SlideWidth, ctx.SlideHeight, nil)

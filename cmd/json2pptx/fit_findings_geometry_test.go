@@ -163,6 +163,21 @@ func TestGeometry_SparseFillOnBigEmptyCards(t *testing.T) {
 	}
 }
 
+func TestGeometry_ExplicitlyEmptyFilledCardsAreNotContent(t *testing.T) {
+	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"columns":3,"rows":[{"cells":[{"shape":{"geometry":"rect","fill":"accent1","text":""}},{"shape":{"geometry":"rect","fill":"accent1","text":""}},{"shape":{"geometry":"rect","fill":"accent1","text":""}}]}]}}]`)
+	fs := collectGeometryFindings(in, nil, 0, 0, nil)
+	if sparse := findingsByCode(fs, patterns.ErrCodeSparseFill); len(sparse) != 1 {
+		t.Fatalf("empty filled cards need a SPARSE_FILL finding: %+v", fs)
+	}
+	if under := findingsByCode(fs, patterns.ErrCodeSlideUnderused); len(under) != 1 || under[0].Fix.Params["content_area_pct"] != float64(0) {
+		t.Fatalf("empty filled cards must not count as slide content ink: %+v", fs)
+	}
+	decorative := geomSlides(t, `[{"layout_id":"content","shape_grid":{"columns":1,"rows":[{"cells":[{"shape":{"geometry":"rect","fill":"accent1"}}]}]}}]`)
+	if sparse := findingsByCode(collectGeometryFindings(decorative, nil, 0, 0, nil), patterns.ErrCodeSparseFill); len(sparse) != 0 {
+		t.Fatalf("fill-only decorative shape should not be treated as an empty text card: %+v", sparse)
+	}
+}
+
 func TestGeometry_DenseCardsNotSparse(t *testing.T) {
 	long := strings.Repeat("Detailed supporting narrative text that fills the card. ", 12)
 	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"columns":2,"rows":[{"cells":[
@@ -259,13 +274,129 @@ func TestGeometry_ContentSizedPatternBandIsNotUnderused(t *testing.T) {
 	for _, pattern := range []string{
 		`{"name":"process-flow","values":{"steps":[{"label":"Discover"},{"label":"Build"},{"label":"Ship"}]}}`,
 		`{"name":"process-flow-compact","values":{"steps":[{"label":"Discover"},{"label":"Build"},{"label":"Ship"}]}}`,
-		`{"name":"stylish-panels","values":[{"title":"A","body":["one","two"]},{"title":"B","body":["one","two"]},{"title":"C","body":["one","two"]}]}`,
-		`{"name":"kpi-3up","values":[{"big":"41%","small":"Share of revenue"},{"big":"17","small":"New logos"},{"big":"3x","small":"Pipeline growth"}]}`,
 	} {
 		in := geomSlides(t, `[{"layout_id":"content","pattern":`+pattern+`}]`)
 		if fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused); len(fs) != 0 {
 			t.Errorf("a pattern at its own content-derived height was flagged: %+v", fs)
 		}
+	}
+}
+
+func TestGeometry_KPIEmptyVerticalBandReportsDespiteCardArea(t *testing.T) {
+	in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"kpi-3up","values":[{"big":"41%","small":"Share of revenue"},{"big":"17","small":"New logos"},{"big":"3x","small":"Pipeline growth"}]}}]`)
+	fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+	if len(fs) != 1 {
+		t.Fatalf("centered KPI row should report its empty vertical band: %+v", fs)
+	}
+	if gap, ok := fs[0].Fix.Params["largest_empty_band_in"].(float64); !ok || gap < .75 {
+		t.Fatalf("missing measured vertical gap: %+v", fs[0].Fix)
+	}
+}
+
+func TestGeometry_SparsePanelsNowReportVisibleInk(t *testing.T) {
+	in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"stylish-panels","values":[{"title":"A","body":["one","two"]},{"title":"B","body":["one","two"]},{"title":"C","body":["one","two"]}]}}]`)
+	fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+	if len(fs) != 1 || fs[0].Fix.Params["content_area_pct"].(float64) >= 20 {
+		t.Fatalf("sparse panels should report their visible ink, got %+v", fs)
+	}
+}
+
+func TestGeometry_SparseSemanticPatternKindsReportUnderfill(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		values string
+	}{
+		{"team-bios", `{"members":[{"name":"Amara Okafor","role":"Partner","bio":"Leads the work."},{"name":"Jonas Weber","role":"Delivery lead","bio":"Runs the plan."},{"name":"Priya Raman","role":"Data lead","bio":"Owns reporting."}]}`},
+		{"phase-roadmap", `{"phases":[{"name":"Pilot","date_label":"Q1","description":"Prove value"},{"name":"Expand","date_label":"Q2","description":"Scale"},{"name":"Launch","date_label":"Q3","description":"Go live"}]}`},
+		{"agenda", `{"items":["Performance","Risks","Investment"]}`},
+		{"icon-row", `[{"icon":"rocket","caption":"Launch"},{"icon":"trending-up","caption":"Growth"},{"icon":"currency-dollar","caption":"Revenue"}]`},
+		{"quote-cluster", `{"quotes":[{"text":"Faster decisions.","name":"A. Lee"},{"text":"Better data.","name":"J. Smith"},{"text":"Less rework.","name":"P. Kim"}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"`+tc.name+`","values":`+tc.values+`}}]`)
+			fs := findingsByCode(collectGeometryFindings(in, nil, 0, 0, nil), patterns.ErrCodeSlideUnderused)
+			if len(fs) != 1 {
+				t.Fatalf("sparse %s should report slide underfill: %+v", tc.name, fs)
+			}
+		})
+	}
+}
+
+func TestInkCoverageFractionUsesUnionWithinSafeZone(t *testing.T) {
+	safe := pptx.RectEmu{CX: 100, CY: 100}
+	for _, tc := range []struct {
+		name string
+		ink  []pptx.RectEmu
+		want float64
+	}{
+		{"opposite corners", []pptx.RectEmu{{CX: 10, CY: 10}, {X: 90, Y: 90, CX: 10, CY: 10}}, 0.02},
+		{"overlap counted once", []pptx.RectEmu{{CX: 40, CY: 40}, {X: 20, Y: 20, CX: 40, CY: 40}}, 0.28},
+		{"clipped at zone edge", []pptx.RectEmu{{X: 90, Y: 90, CX: 30, CY: 30}}, 0.01},
+		{"outside excluded", []pptx.RectEmu{{X: 120, Y: 120, CX: 20, CY: 20}}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := inkCoverageFraction(tc.ink, safe); math.Abs(got-tc.want) > 1e-9 {
+				t.Errorf("coverage = %g, want %g", got, tc.want)
+			}
+		})
+	}
+}
+
+func TestGeometry_KPIGapBelowThresholdDoesNotFlagFilledSlide(t *testing.T) {
+	safe := pptx.RectEmu{CX: 1000000, CY: 2000000}
+	ink := []pptx.RectEmu{{Y: 500000, CX: 1000000, CY: 1000000}}
+	if got := largestVerticalInkGap(ink, safe); got != 500000 {
+		t.Fatalf("largest gap = %d EMU, want 500000", got)
+	}
+	slide := &SlideInput{Pattern: &PatternInput{Name: "kpi-3up"}}
+	if f := checkSlideUnderused(ink, safe, slide, 0, "kpi-3up", false); f != nil {
+		t.Fatalf("filled KPI slide with sub-threshold gap was flagged: %+v", f)
+	}
+}
+
+func TestGridOccupancyDoesNotCountPatternPadding(t *testing.T) {
+	pattern := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"driver-tree","values":{"root":{"label":"Growth"},"branches":[{"label":"Demand","leaves":["Reach","Convert"]},{"label":"Supply","leaves":["Build","Ship"]}]}}}]`)
+	if fs := findingsByCode(collectFitFindings(pattern, nil, 0, 0, nil), patterns.ErrCodePatternUnderfilled); len(fs) != 0 {
+		t.Fatalf("expander padding is not unused authored capacity: %+v", fs)
+	}
+	raw := geomSlides(t, `[{"layout_id":"content","shape_grid":{"columns":4,"rows":[{"cells":[{"shape":{"geometry":"rect","text":"One"}}]},{"cells":[{"shape":{"geometry":"rect","text":"Two"}}]}]}}]`)
+	if fs := findingsByCode(collectGridOccupancyFindings(raw), patterns.ErrCodePatternUnderfilled); len(fs) != 1 {
+		t.Fatalf("authored raw slots still need occupancy advice: %+v", fs)
+	}
+	grid := raw.Slides[0].ShapeGrid
+	if preview := computeResolvedOccupancy(grid, false); preview == nil || preview.FilledPct != 25 {
+		t.Fatalf("raw preview should keep authored capacity: %+v", preview)
+	}
+	if preview := computeResolvedOccupancy(grid, true); preview == nil || preview.FilledPct != 100 {
+		t.Fatalf("generated preview should exclude padded slots: %+v", preview)
+	}
+	if exposed := computeGridOccupancy(grid, patterns.ExpandContext{}); exposed.FilledPct != 100 {
+		t.Fatalf("validate_pattern should not expose padded slots as omissions: %+v", exposed)
+	}
+}
+
+func TestFrameworkExemplarsDoNotReportGeneratedCellUnderfill(t *testing.T) {
+	for _, name := range []string{"bmc-canvas", "journey-maturity-model", "agenda", "matrix-2x2", "driver-tree"} {
+		t.Run(name, func(t *testing.T) {
+			p, ok := patterns.Default().Get(name)
+			if !ok {
+				t.Fatalf("pattern %q is not registered", name)
+			}
+			ex, ok := p.(patterns.Exemplar)
+			if !ok {
+				t.Fatalf("pattern %q has no exemplar", name)
+			}
+			values, err := json.Marshal(ex.ExemplarValues())
+			if err != nil {
+				t.Fatal(err)
+			}
+			in := geomSlides(t, `[{"layout_id":"content","pattern":{"name":"`+name+`","values":`+string(values)+`}}]`)
+			for _, f := range collectFitFindings(in, nil, 0, 0, nil) {
+				if f.Code == patterns.ErrCodePatternUnderfilled || f.Code == patterns.ErrCodeCellUnderfilled {
+					t.Errorf("generated framework padding reported as missing content: %+v", f)
+				}
+			}
+		})
 	}
 }
 

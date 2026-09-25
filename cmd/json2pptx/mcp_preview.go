@@ -461,7 +461,7 @@ func resolveOneSlide(i int, slide *SlideInput, input *PresentationInput, tctx *p
 
 	// Grid occupancy for preview response.
 	if slide.ShapeGrid != nil && len(slide.ShapeGrid.Rows) > 0 {
-		rs.Occupancy = computeResolvedOccupancy(slide.ShapeGrid)
+		rs.Occupancy = computeResolvedOccupancy(slide.ShapeGrid, slide.Pattern != nil || slide.Compose != nil)
 	}
 
 	return rs
@@ -765,13 +765,18 @@ func appendResolvedGridCells(cells []resolvedShapeGridCell, grid *ShapeGridInput
 }
 
 // computeResolvedOccupancy computes grid slot usage for the preview response.
-func computeResolvedOccupancy(grid *ShapeGridInput) *resolvedOccupancy {
+func computeResolvedOccupancy(grid *ShapeGridInput, generated bool) *resolvedOccupancy {
 	numCols := inferGridColumns(grid)
 	if numCols <= 0 {
 		return nil
 	}
 	totalSlots := len(grid.Rows) * numCols
 	filledSlots := occupiedGridSlots(grid)
+	if generated {
+		// Pattern/compose expanders pad rows to align non-rectangular designs.
+		// Those slots are not user-authored capacity or missing content.
+		totalSlots = filledSlots
+	}
 	if totalSlots <= 0 {
 		return nil
 	}

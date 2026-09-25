@@ -13,6 +13,7 @@ package semantic
 // transport-neutral RawFinding so this package never imports the renderer.
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -74,6 +75,8 @@ const (
 	EditSimplifySide = "simplify_side"
 	// EditSplitPhases recommends spreading roadmap phases across slides.
 	EditSplitPhases = "split_phases"
+	// EditAddDetailOrMerge is a DeckSpec-level remedy for sparse slide ink.
+	EditAddDetailOrMerge = "add_detail_or_merge"
 )
 
 // MapFinding traces a raw finding back to its semantic source using sm and
@@ -82,6 +85,13 @@ const (
 // still recovered from the raw "slides[N]" prefix. RawPath is always retained.
 func MapFinding(sm *SourceMap, in RawFinding) MappedFinding {
 	semPath, slideIdx, mapped := sm.ResolveSemantic(in.RawPath)
+	if semPath == "" && slideIdx >= 0 && (in.Code == "SLIDE_UNDERUSED" || in.Code == "SPARSE_FILL") {
+		// These geometry findings can address generated cells or the whole
+		// slide without a source link. Recover only their slide-level DeckSpec
+		// locator; adding a global slide-root source link would obscure more
+		// precise late-bound mappings for unrelated findings.
+		semPath = fmt.Sprintf("slides[%d]", slideIdx)
+	}
 	return MappedFinding{
 		Code:         in.Code,
 		Message:      in.Message,
@@ -112,7 +122,13 @@ func MapFindings(sm *SourceMap, in []RawFinding) []MappedFinding {
 // the finding is not a length/density failure or the semantic path is unknown
 // (a full source-map miss leaves nothing reliable to recommend).
 func suggestSemanticEdit(code, action, semanticPath string) *SemanticEdit {
-	if semanticPath == "" || !isLengthFinding(code, action) {
+	if semanticPath == "" {
+		return nil
+	}
+	if code == "SLIDE_UNDERUSED" || code == "SPARSE_FILL" {
+		return &SemanticEdit{Kind: EditAddDetailOrMerge, Hint: "Add useful detail, choose a denser slide kind, or merge this slide with a related one."}
+	}
+	if !isLengthFinding(code, action) {
 		return nil
 	}
 	switch {

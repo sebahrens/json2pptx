@@ -698,6 +698,14 @@ func TestCellUnderfilled_AggregatedPerSlide(t *testing.T) {
 	if !strings.HasSuffix(f.Path, "/shape_grid") {
 		t.Errorf("aggregate path = %q, want the slide's shape_grid", f.Path)
 	}
+	// Pattern-generated cells can have the same geometry but no authored
+	// capacity target. Keep raw-grid underfill while omitting this false signal.
+	input.Slides[0].Pattern = &PatternInput{Name: "card-grid"}
+	for _, got := range generateFitReport(input, nil, 0, 0) {
+		if got.Code == patterns.ErrCodeCellUnderfilled {
+			t.Fatalf("pattern-generated cells reported raw-grid underfill: %+v", got)
+		}
+	}
 }
 
 // A KPI card holding "$12.4M" is CORRECT, not underfilled.

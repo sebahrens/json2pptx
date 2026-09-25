@@ -1,11 +1,13 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"image/color"
 	"math"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -36,15 +38,13 @@ const (
 	// applies to a band the AUTHOR capped (bounds / max_height_pct): they chose
 	// the height, so "the cap is too tight" is advice they can act on.
 	slideUnderusedMaxFrac = 0.45
-	// slideUnderusedPatternMaxFrac is the same test for a band nobody capped.
-	// A content-sized pattern derives its own height from its content
-	// (go-slide-creator-7km8), so measuring it against the whole content zone
-	// and demanding 45% flagged the deliberately-shorter slides that change
-	// produced — on three hand-crafted decks every firing was a false positive,
-	// and the fix hint told the agent to remove a cap it never set
-	// (go-slide-creator-up04). Only a band that is a genuine sliver is worth
-	// reporting, and the advice for it is about content, not caps.
-	slideUnderusedPatternMaxFrac = 0.22
+	// Pattern-owned bands are measured by their actual ink, not the enclosing
+	// grid bounds. A 29% threshold catches sparse cards and empty columns while
+	// leaving deliberately compact but well-populated bands alone.
+	slideUnderusedPatternMaxFrac = 0.29
+	// KPI cards can occupy enough *area* while sitting in a short centered row
+	// with a conspicuous empty band above or below them.
+	slideUnderusedKPIGapEMU = 685800 // 0.75in
 	// textExceedsTolerance absorbs rounding/kerning noise before flagging.
 	textExceedsTolerance = 1.02
 
@@ -212,11 +212,23 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 	}
 	txt := parseGeomText(cell.ShapeSpec.Text)
 	filled := shapeIsFilled(cell.ShapeSpec.Fill)
+	if len(txt.paragraphs) == 0 {
+		// An explicitly empty text payload in a filled card is not content.
+		// A fill-only shape with no text field can still be deliberate chrome.
+		if filled && len(cell.ShapeSpec.Text) > 0 {
+			shapeArea := float64(cell.Bounds.CX) * float64(cell.Bounds.CY)
+			if a.slideArea > 0 && shapeArea > float64(a.slideArea)*sparseFillMinShapeSlideFrac {
+				a.sparse = append(a.sparse, sparseFillHit{path: cellPath + "/shape", textFrac: 0, areaFrac: shapeArea / float64(a.slideArea)})
+			}
+			return
+		}
+		if filled {
+			a.ink = append(a.ink, cell.Bounds)
+		}
+		return
+	}
 	if filled {
 		a.ink = append(a.ink, cell.Bounds)
-	}
-	if len(txt.paragraphs) == 0 {
-		return
 	}
 	// Rotated text runs along the shape's height: the line length it has is the
 	// box's height, not its width.
@@ -373,16 +385,10 @@ func heightSensitiveGeometry(geometry string) bool {
 }
 
 func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, heightSensitiveOverflow bool) *patterns.FitFinding {
-	if len(ink) == 0 || safe.CX <= 0 || safe.CY <= 0 || hasBodyPlaceholderContent(slide) {
+	if safe.CX <= 0 || safe.CY <= 0 || hasBodyPlaceholderContent(slide) {
 		return nil
 	}
-	u := ink[0]
-	for _, r := range ink[1:] {
-		u = unionRect(u, r)
-	}
-	// Only the part of the ink box inside the safe area counts.
-	u = intersectRect(u, safe)
-	frac := float64(u.CX) * float64(u.CY) / (float64(safe.CX) * float64(safe.CY))
+	frac := inkCoverageFraction(ink, safe)
 
 	// A restrictive author cap uses the stricter threshold. An uncapped raw
 	// grid needs different advice from a content-sized pattern.
@@ -399,35 +405,110 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 	case "pattern":
 		hint = "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern"
 	}
-	if frac >= threshold {
+	gap := int64(0)
+	if source == "pattern" && strings.HasPrefix(patternName, "kpi-") {
+		gap = largestVerticalInkGap(ink, safe)
+	}
+	if frac >= threshold && gap < slideUnderusedKPIGapEMU {
 		return nil
 	}
 
-	reason := "the grid's ink is sparse despite no restrictive size cap"
+	reason := "the rendered content leaves most of the slide's content zone empty"
 	switch source {
 	case "author":
-		reason = "the bounds / max_height_pct cap on this slide leaves it a thin strip"
+		reason = "the bounds / max_height_pct cap leaves too little rendered content"
 	case "pattern":
-		reason = "the pattern's own content-derived height leaves it a thin strip"
+		reason = "the pattern's visible content occupies too little of the slide"
+	}
+	message := fmt.Sprintf("slide content covers %.0f%% of the safe content area (threshold %.0f%%) — %s", 100*frac, 100*threshold, reason)
+	params := map[string]any{
+		"content_area_pct": math.Round(100 * frac),
+		"threshold_pct":    math.Round(100 * threshold),
+		"band_capped_by":   source,
+		"hint":             hint,
+	}
+	if gap >= slideUnderusedKPIGapEMU {
+		message = fmt.Sprintf("KPI row leaves a %.1fin empty band in the safe content area", float64(gap)/914400)
+		params["largest_empty_band_in"] = round1(float64(gap) / 914400)
 	}
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: patternName,
 			Path:    slidepath.Slide(si),
 			Code:    patterns.ErrCodeSlideUnderused,
-			Message: fmt.Sprintf("slide content covers %.0f%% of the safe content area (threshold %.0f%%) — %s", 100*frac, 100*threshold, reason),
+			Message: message,
 			Fix: &patterns.FixSuggestion{
-				Kind: "add_detail_or_resize",
-				Params: map[string]any{
-					"content_area_pct": math.Round(100 * frac),
-					"threshold_pct":    math.Round(100 * threshold),
-					"band_capped_by":   source,
-					"hint":             hint,
-				},
+				Kind:   "add_detail_or_resize",
+				Params: params,
 			},
 		},
 		Action: "review",
 	}
+}
+
+func largestVerticalInkGap(ink []pptx.RectEmu, safe pptx.RectEmu) int64 {
+	first, last := safe.Y+safe.CY, safe.Y
+	for _, r := range ink {
+		r = intersectRect(r, safe)
+		if r.CY <= 0 {
+			continue
+		}
+		first = minI64(first, r.Y)
+		last = maxI64(last, r.Y+r.CY)
+	}
+	if first == safe.Y+safe.CY && last == safe.Y {
+		return safe.CY
+	}
+	return maxI64(first-safe.Y, safe.Y+safe.CY-last)
+}
+
+// inkCoverageFraction measures the union of *visible* rectangles inside the
+// content zone. A bounding box reports a full slide when two small labels sit
+// at opposite corners, and summing areas double-counts overlapping card/text
+// rectangles. The x-sweep is exact for axis-aligned resolved ink rectangles.
+func inkCoverageFraction(ink []pptx.RectEmu, safe pptx.RectEmu) float64 {
+	if safe.CX <= 0 || safe.CY <= 0 {
+		return 0
+	}
+	clipped := make([]pptx.RectEmu, 0, len(ink))
+	xs := make([]int64, 0, 2*len(ink))
+	for _, r := range ink {
+		r = intersectRect(r, safe)
+		if r.CX <= 0 || r.CY <= 0 {
+			continue
+		}
+		clipped = append(clipped, r)
+		xs = append(xs, r.X, r.X+r.CX)
+	}
+	if len(xs) == 0 {
+		return 0
+	}
+	slices.Sort(xs)
+	var area float64
+	for i := 1; i < len(xs); i++ {
+		if xs[i] == xs[i-1] {
+			continue
+		}
+		var spans [][2]int64
+		for _, r := range clipped {
+			if r.X < xs[i] && r.X+r.CX > xs[i-1] {
+				spans = append(spans, [2]int64{r.Y, r.Y + r.CY})
+			}
+		}
+		slices.SortFunc(spans, func(a, b [2]int64) int { return cmp.Compare(a[0], b[0]) })
+		var covered, end int64
+		for j, span := range spans {
+			if j == 0 || span[0] > end {
+				covered += span[1] - span[0]
+				end = span[1]
+			} else if span[1] > end {
+				covered += span[1] - end
+				end = span[1]
+			}
+		}
+		area += float64(xs[i]-xs[i-1]) * float64(covered)
+	}
+	return area / (float64(safe.CX) * float64(safe.CY))
 }
 
 // bandCapSource identifies a restrictive authored bound, a pattern-owned
@@ -715,12 +796,6 @@ func placeTextBlock(b pptx.RectEmu, t geomText, wPt, hPt float64) pptx.RectEmu {
 		y = b.Y + b.CY - h
 	}
 	return pptx.RectEmu{X: x, Y: y, CX: w, CY: h}
-}
-
-func unionRect(a, b pptx.RectEmu) pptx.RectEmu {
-	x0, y0 := minI64(a.X, b.X), minI64(a.Y, b.Y)
-	x1, y1 := maxI64(a.X+a.CX, b.X+b.CX), maxI64(a.Y+a.CY, b.Y+b.CY)
-	return pptx.RectEmu{X: x0, Y: y0, CX: x1 - x0, CY: y1 - y0}
 }
 
 func intersectRect(a, b pptx.RectEmu) pptx.RectEmu {

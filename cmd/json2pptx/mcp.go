@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -2168,33 +2167,13 @@ type gridOccupancy struct {
 }
 
 // computeGridOccupancy calculates occupancy metrics for an expanded shape grid.
+// The pattern owns its rectangular slot layout; empty padding is not missing
+// author input, so visible-ink height is the meaningful under-fill measure.
 func computeGridOccupancy(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandContext) gridOccupancy {
 	if grid == nil || len(grid.Rows) == 0 {
 		return gridOccupancy{}
 	}
 
-	// Determine column count from the grid's Columns field or infer from max cells per row
-	numCols := 0
-	if len(grid.Columns) > 0 {
-		var n float64
-		if err := json.Unmarshal(grid.Columns, &n); err == nil {
-			numCols = int(n)
-		} else {
-			var arr []float64
-			if err := json.Unmarshal(grid.Columns, &arr); err == nil {
-				numCols = len(arr)
-			}
-		}
-	}
-	if numCols == 0 {
-		for _, row := range grid.Rows {
-			if len(row.Cells) > numCols {
-				numCols = len(row.Cells)
-			}
-		}
-	}
-
-	totalSlots := len(grid.Rows) * numCols
 	filledSlots := 0
 	rowsUsed := 0
 	rowsEmpty := 0
@@ -2215,8 +2194,8 @@ func computeGridOccupancy(grid *jsonschema.ShapeGridInput, ctx patterns.ExpandCo
 	}
 
 	filledPct := 0.0
-	if totalSlots > 0 {
-		filledPct = math.Round(float64(filledSlots)/float64(totalSlots)*1000) / 10
+	if filledSlots > 0 {
+		filledPct = 100
 	}
 
 	// bounds_height_pct: percentage of the layout area height the grid occupies

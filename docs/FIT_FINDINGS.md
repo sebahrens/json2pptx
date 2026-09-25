@@ -441,17 +441,17 @@ The raw-grid fix params include `filled_pct`, `filled_slots`, `grid_rows`, and `
 ### `pattern_underfilled`
 
 **Action:** `review`
-**Pattern:** pattern name (e.g. `kpi-3up`, `card-grid`)
+**Pattern:** `shape_grid` (authored raw grid)
 **Fix kind:** `swap_pattern`
 
-A pattern grid has less than 50% of its slots populated — the content is too sparse for the chosen pattern. The fix suggests using `recommend_pattern` to find a better-fitting pattern for the item count.
+An authored raw grid has less than 50% of its declared slots populated. Pattern and compose expanders may pad rows for alignment, so their slots are not interpreted as missing content; those slides use resolved-ink findings instead. The fix suggests using `recommend_pattern` to find a better-fitting layout for the item count.
 
 ```json
 {
-  "pattern": "kpi-3up",
+  "pattern": "shape_grid",
   "path": "/slides/2/shape_grid",
   "code": "pattern_underfilled",
-  "message": "kpi-3up: 1 of 3 slots filled (33%) — grid is underpopulated",
+  "message": "shape_grid: 1 of 3 slots filled (33%) — grid is underpopulated",
   "fix": { "kind": "swap_pattern", "params": { "filled_pct": 0.33, "filled_slots": 1, "total_slots": 3, "reason": "reshape_grid" } },
   "action": "review",
   "overflow_ratio": 0.33,
@@ -845,33 +845,28 @@ Table has more cells than the TDR (Table Density Ratio) ceiling allows for the c
 
 ### `cell_underfilled`
 
-**Action:** `review`
+**Action:** `info` or `review`
 **Pattern:** `shape_grid`
 **Fix kind:** `add_detail_or_resize`
 
-A shape-grid cell's text content uses less than 60% of its character capacity. Capacity is computed by the `internal/textcapacity` package, which estimates `MaxChars` from the cell's height, width, and font size.
+A raw shape-grid text cell uses under 35% of its measured capacity. Empty cells and short captions/KPI values are exempt because their character counts do not describe visual completeness. Named patterns and compose segments also omit this signal: their expanders, not the author, determine cell sizes and padding; `SLIDE_UNDERUSED`/`SPARSE_FILL` assess their visible ink instead. Capacity is estimated by `internal/textcapacity` from resolved cell geometry and font size.
 
-Two severity bands:
+The finding is aggregated **once per slide** at `/slides/N/shape_grid`, with `fix.params.cells` identifying the sparse cells. It is informational by default. If at least three cells are underfilled and the measured text cells together use under 30% of their total capacity, its action becomes `review` and its severity `warning`.
 
-| Density | Severity | Guidance |
-|---------|----------|----------|
-| 40–59% | `info` | Consider adding detail; not blocking |
-| <40% | `warning` | Strongly consider adding detail or using a smaller grid |
+At or above 35% per cell, no underfill hit is recorded. Text that cannot fit even after autofit produces `fit_overflow` separately.
 
-The 35–110% range is the healthy zone — no finding is emitted. Above 110%, see `fit_overflow`.
-
-`strict_fit` interaction: `cell_underfilled` never blocks generation. Its maximum severity is `warning` and its action is `review`, which is never promoted to `refuse` regardless of `strict_fit` mode.
+`strict_fit` interaction: `cell_underfilled` never blocks generation. Its maximum severity is `warning` and its strongest action is `review`, which is never promoted to `refuse` regardless of `strict_fit` mode.
 
 See also: [PATTERNS.md Cell Capacity Contract](PATTERNS.md) for pattern-level capacity guidance.
 
 ```json
 {
   "pattern": "shape_grid",
-  "path": "/slides/1/shape_grid/rows/0/cells/0/shape/text",
+  "path": "/slides/1/shape_grid",
   "code": "cell_underfilled",
   "severity": "warning",
-  "message": "cell content is 12 chars (28% of capacity) — consider adding detail or smaller grid",
-  "fix": { "kind": "add_detail_or_resize", "params": { "current_density_pct": 28 } },
+  "message": "the shape grid carries only 20% of its text capacity across 3 cells (sparsest 18%) — the slide is mostly empty; add detail or use a smaller grid",
+  "fix": { "kind": "add_detail_or_resize", "params": { "cells": [{ "path": "/slides/1/shape_grid/rows/0/cells/0/shape/text", "chars": 54, "density_pct": 18 }, { "path": "/slides/1/shape_grid/rows/0/cells/1/shape/text", "chars": 42, "density_pct": 21 }, { "path": "/slides/1/shape_grid/rows/0/cells/2/shape/text", "chars": 50, "density_pct": 20 }], "underfilled_cells": 3, "measured_text_cells": 3, "min_density_pct": 18, "slide_fill_pct": 20, "slide_mostly_empty": true } },
   "action": "review"
 }
 ```
@@ -1267,15 +1262,15 @@ A filled shape covering more than **10% of the slide area** holds text whose est
 **Fix kind:** `add_detail_or_resize`
 **Emitted at:** preflight, deterministic geometry
 
-The bounding box of the slide's grid "ink" covers too little of the safe content area (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). Ink is every filled shape, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area); a near-empty placeholder slide is `SLIDE_NEARLY_EMPTY`'s business, not this one.
+The union of the slide's content "ink" covers too little of the safe content area (the layout's content zone below the title, as used for `bounds_relative_to_content_area`). This does not count white space between distant elements or count overlapping rectangles twice. Ink is every filled shape with content, every table / image / icon / diagram / composite cell, accent bars, and — for unfilled text shapes — the estimated text block placed by the text's `align` / `vertical_align`. An explicitly text-empty filled card is not counted as content and can also receive `SPARSE_FILL`; a fill-only shape with no text field can still be deliberate chrome. Slides that also put content into a non-title placeholder are skipped (the grid then shares the area); a near-empty placeholder slide is `SLIDE_NEARLY_EMPTY`'s business, not this one. A centered KPI row also fires when it leaves a vertical empty band of at least 0.75in. On DeckSpec renders, the finding maps to the semantic slide and recommends adding useful detail, choosing a denser kind, or merging slides.
 
 **The threshold depends on whether the author imposed a restrictive size cap** (`fix.params.band_capped_by`):
 
 | `band_capped_by` | threshold | why |
 |---|---|---|
 | `author` | 45% | the slide sets restrictive `bounds` or `max_height_pct`, so loosening the cap is actionable |
-| `pattern` | 22% | the pattern derived its height from its content ([go-slide-creator-7km8](SCHEMA_CHANGELOG.md)), so only a genuine sliver is worth reporting |
-| `none` | 22% | a raw grid or a pattern with explicit full-area bounds has no restrictive cap; add content or combine zones, not raise a nonexistent cap |
+| `pattern` | 29% | the pattern derived its height from its content; visible ink rather than padded slots determines sparsity |
+| `none` | 29% | a raw grid or a pattern with explicit full-area bounds has no restrictive cap; add content or combine zones, not raise a nonexistent cap |
 
 Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to a thin band, or a four-stop `timeline-horizontal` (10% of the zone).
 
@@ -1283,7 +1278,7 @@ Fires for e.g. an insights-only `chart-insights-split`, a `kpi-inline` capped to
 {
   "path": "/slides/3",
   "code": "SLIDE_UNDERUSED",
-  "message": "slide content covers 12% of the safe content area (threshold 45%) — the bounds / max_height_pct cap on this slide leaves it a thin strip",
+  "message": "slide content covers 12% of the safe content area (threshold 45%) — the bounds / max_height_pct cap leaves too little rendered content",
   "fix": { "kind": "add_detail_or_resize", "params": { "content_area_pct": 12, "threshold_pct": 45, "band_capped_by": "author", "hint": "raise or remove the bounds / max_height_pct cap on this slide, add a supporting zone, or merge with another slide" } },
   "action": "review"
 }

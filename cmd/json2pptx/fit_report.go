@@ -351,8 +351,15 @@ func walkShapeGrid(slide SlideInput, slideIdx int, layouts []types.LayoutMetadat
 
 	acc := &gridFitAccum{slideIdx: slideIdx, slideWidth: slideWidth, slideHeight: slideHeight}
 	acc.walk(grid, result, slidepath.ShapeGrid(slideIdx), 0)
-	if f := aggregateUnderfilledFinding(slideIdx, acc.underfilled, acc.measuredTextCells, acc.filledChars, acc.totalCapacity); f != nil {
-		acc.findings = append(acc.findings, *f)
+	// Text-capacity occupancy is meaningful for an author-sized raw grid. A
+	// named pattern's cells are sized and padded by its expander; terse text in
+	// a framework cell is often complete content, not a missing argument.
+	// Pattern slides get the resolved-ink SLIDE_UNDERUSED/SPARSE_FILL checks
+	// instead, while their overflow and readability checks above remain.
+	if slide.Pattern == nil && slide.Compose == nil {
+		if f := aggregateUnderfilledFinding(slideIdx, acc.underfilled, acc.measuredTextCells, acc.filledChars, acc.totalCapacity); f != nil {
+			acc.findings = append(acc.findings, *f)
+		}
 	}
 	return acc.findings
 }

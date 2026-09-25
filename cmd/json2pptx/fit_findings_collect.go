@@ -113,7 +113,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// (go-slide-creator-510u).
 	findings = append(findings, inlinemarkup.Validate(input)...)
 
-	// 4. Grid occupancy: pattern_underfilled / pattern_overcrowded.
+	// 4. Grid occupancy: raw-grid underfill / known-pattern overcrowding.
 	findings = append(findings, collectGridOccupancyFindings(input)...)
 
 	// 4b. Sparse single-row flow guard: a slide-level process-flow /
@@ -1290,8 +1290,8 @@ var patternRecommendedMax = map[string]int{
 	"before-after":    8,
 }
 
-// collectGridOccupancyFindings checks each slide's shape_grid for underfilled
-// or overcrowded patterns, emitting pattern_underfilled / pattern_overcrowded.
+// collectGridOccupancyFindings checks authored raw-grid slot underfill and
+// known-pattern overcrowding. Expander padding is not missing authored content.
 func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFinding {
 	var findings []patterns.FitFinding
 
@@ -1322,15 +1322,20 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 
 		path := slidepath.ShapeGrid(si)
 
-		// Check underfilled.
-		if f := generator.DetectPatternUnderfilled(generator.GridOccupancyInput{
-			SlideIndex:  si,
-			Path:        path,
-			PatternName: patternName,
-			FilledSlots: filledSlots,
-			TotalSlots:  totalSlots,
-		}); f != nil {
-			findings = append(findings, *f)
+		// Pattern expanders use grid slots as an implementation detail: a
+		// driver tree can pad rows to align leaves, and a framework can reserve
+		// a blank cell intentionally. Only raw grids have an authored slot
+		// capacity. Generated grids are assessed by resolved visible ink below.
+		if slide.Pattern == nil && slide.Compose == nil {
+			if f := generator.DetectPatternUnderfilled(generator.GridOccupancyInput{
+				SlideIndex:  si,
+				Path:        path,
+				PatternName: patternName,
+				FilledSlots: filledSlots,
+				TotalSlots:  totalSlots,
+			}); f != nil {
+				findings = append(findings, *f)
+			}
 		}
 
 		// Check overcrowded (only for known patterns with a recommended max).
