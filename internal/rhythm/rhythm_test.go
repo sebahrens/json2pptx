@@ -282,13 +282,13 @@ func TestAnalyze_AccentVarietyRecommendation(t *testing.T) {
 
 	found := false
 	for _, rec := range result.Recommendations {
-		if rec.SlideIndex == 0 && len(rec.RecommendedBreak) > 0 && rec.RecommendedBreak[0] == "cell_accent_mode: progressive" {
+		if rec.SlideIndex == 0 && len(rec.RecommendedBreak) > 0 && rec.RecommendedBreak[0] == "shape_grid.rows[].cells[].shape.fill" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Error("expected accent variety recommendation for 6-cell slide with 1 accent")
+		t.Error("expected per-cell fill recommendation for raw 6-cell slide with 1 accent")
 	}
 }
 
@@ -300,10 +300,52 @@ func TestAnalyze_NoAccentVarietyRecForFewCells(t *testing.T) {
 
 	result := rhythm.Analyze(slides)
 
-	for _, rec := range result.Recommendations {
-		if rec.SlideIndex == 0 && len(rec.RecommendedBreak) > 0 && rec.RecommendedBreak[0] == "cell_accent_mode: progressive" {
-			t.Error("should not recommend accent variety for slide with < 5 cells")
-		}
+	if len(result.Recommendations) != 0 {
+		t.Errorf("should not recommend accent variety for slide with < 5 cells: %+v", result.Recommendations)
+	}
+}
+
+func TestAnalyze_ContentVisualBreaksFalseRun(t *testing.T) {
+	slides := []rhythm.Slide{
+		{SlideType: "content", ContentKinds: []string{"text", "chart", "bullets"}},
+		{SlideType: "content", ContentKinds: []string{"bullets"}},
+		{SlideType: "content", ContentKinds: []string{"bullets"}},
+	}
+	result := rhythm.Analyze(slides)
+	if got := result.PerSlide[0].Pattern; got != "content" {
+		t.Errorf("chart slide pattern = %q, want content", got)
+	}
+	if result.Aggregates.LongestRun != 2 || len(result.Recommendations) != 0 {
+		t.Errorf("chart + bullets + bullets must not form a 3-slide run: %+v", result.Aggregates)
+	}
+	if result.Aggregates.RepetitionIndex != 0.33 {
+		t.Errorf("visual repetition index = %.2f, want .33", result.Aggregates.RepetitionIndex)
+	}
+	charts := []rhythm.Slide{
+		{SlideType: "content", ContentKinds: []string{"chart"}},
+		{SlideType: "content", ContentKinds: []string{"bullets", "chart"}},
+		{SlideType: "content", ContentKinds: []string{"chart", "bullets"}},
+	}
+	if got := rhythm.Analyze(charts).Aggregates.LongestRun; got != 3 {
+		t.Errorf("three content charts should still form a run, got %d", got)
+	}
+}
+
+func TestAnalyze_AccentAdviceMatchesAuthoringSurface(t *testing.T) {
+	accents := []string{"accent1", "accent1", "accent1", "accent1", "accent1"}
+	for _, tc := range []struct {
+		name, want string
+		slide      rhythm.Slide
+	}{
+		{"raw grid", "shape_grid.rows[].cells[].shape.fill", rhythm.Slide{HasShapeGrid: true, CellCount: 5, CellAccents: accents}},
+		{"named pattern", "cell_accent_mode: progressive", rhythm.Slide{HasPattern: true, PatternName: "card-grid", CellCount: 5, CellAccents: accents}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			recs := rhythm.Analyze([]rhythm.Slide{tc.slide}).Recommendations
+			if len(recs) != 1 || len(recs[0].RecommendedBreak) != 1 || recs[0].RecommendedBreak[0] != tc.want {
+				t.Errorf("advice = %+v, want %q", recs, tc.want)
+			}
+		})
 	}
 }
 

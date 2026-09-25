@@ -337,3 +337,30 @@ func TestScoreCandidates_RhythmPenaltyRunLengths(t *testing.T) {
 		})
 	}
 }
+
+func TestScoreCandidates_RhythmPenaltyUsesVisualIdentity(t *testing.T) {
+	chart := SlideInput{SlideType: "content", Content: []ContentInput{{Type: "text"}, {Type: "chart"}}}
+	bullets := SlideInput{SlideType: "content", Content: []ContentInput{{Type: "text"}}}
+	grid := func(cells int) SlideInput {
+		return SlideInput{ShapeGrid: &ShapeGridInput{Rows: []GridRowInput{{Cells: make([]*GridCellInput, cells)}}}}
+	}
+	for _, tc := range []struct {
+		name   string
+		slides []SlideInput
+		index  int
+		want   int
+	}{
+		{"chart breaks bullet run", []SlideInput{chart, bullets, bullets}, 1, 5},
+		{"three charts form run", []SlideInput{chart, chart, chart}, 1, 15},
+		{"chart remains isolated", []SlideInput{chart, bullets, bullets}, 0, 0},
+		{"raw grid geometry breaks run", []SlideInput{grid(3), grid(2), grid(3)}, 1, 0},
+		{"matching raw grids form run", []SlideInput{grid(3), grid(3), grid(3)}, 1, 15},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, _ := rhythmPenaltyAt(tc.slides, tc.index)
+			if got != tc.want {
+				t.Fatalf("rhythm penalty = %d, want %d", got, tc.want)
+			}
+		})
+	}
+}

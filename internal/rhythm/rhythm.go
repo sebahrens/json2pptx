@@ -155,7 +155,8 @@ func Analyze(slides []Slide) *Result {
 // fingerprint extracts the visual fingerprint of a single slide.
 func fingerprint(idx int, s Slide) SlideInfo {
 	info := SlideInfo{
-		SlideIndex: idx,
+		SlideIndex:     idx,
+		DominantVisual: dominantVisual(s),
 	}
 
 	// Determine pattern name.
@@ -175,20 +176,30 @@ func fingerprint(idx int, s Slide) SlideInfo {
 		info.Pattern = shapeGridFingerprint(s)
 	default:
 		// Use slide_type if available, else infer from content.
-		if s.SlideType != "" {
+		if s.SlideType != "" && s.SlideType != "content" {
 			info.Pattern = s.SlideType
 		} else {
 			info.Pattern = "content"
 		}
 	}
 
-	info.DominantVisual = dominantVisual(s)
 	info.DensityClass = densityClass(s)
 	info.AccentRole = primaryAccent(s)
 	info.WithinSlideAccentVariety = countDistinctAccents(s)
 	info.cellCount = s.CellCount
 
 	return info
+}
+
+// FingerprintKey is the canonical visual identity used by both deck rhythm
+// and candidate scoring. Family alone is insufficient: a content chart and
+// a content bullet slide are different, even when both use slide_type=content.
+func FingerprintKey(s Slide) string {
+	return visualFingerprint(fingerprint(0, s))
+}
+
+func visualFingerprint(s SlideInfo) string {
+	return visualFamily(s.Pattern) + "|" + s.DominantVisual
 }
 
 // shapeGridFingerprint names a raw shape_grid by its shape, so two grids count
@@ -218,16 +229,13 @@ func dominantVisual(s Slide) string {
 	if s.HasShapeGrid {
 		return "grid"
 	}
-	for _, kind := range s.ContentKinds {
-		switch kind {
-		case "chart":
-			return "chart"
-		case "diagram":
-			return "diagram"
-		case "table":
-			return "table"
-		case "image":
-			return "image"
+	// Document order is not visual prominence: a caption before a chart
+	// should not change the slide's identity. Keep one stable priority.
+	for _, want := range []string{"chart", "diagram", "table", "image"} {
+		for _, kind := range s.ContentKinds {
+			if kind == want {
+				return want
+			}
 		}
 	}
 	return "text"
@@ -321,16 +329,19 @@ func detectPatternRuns(slides []SlideInfo) []PatternRun {
 
 	var runs []PatternRun
 	current := PatternRun{Name: visualFamily(slides[0].Pattern), Start: 0, Len: 1}
+	currentKey := visualFingerprint(slides[0])
 
 	for i := 1; i < len(slides); i++ {
 		family := visualFamily(slides[i].Pattern)
-		if family == current.Name {
+		key := visualFingerprint(slides[i])
+		if key == currentKey {
 			current.Len++
 		} else {
 			if current.Len >= 2 {
 				runs = append(runs, current)
 			}
 			current = PatternRun{Name: family, Start: i, Len: 1}
+			currentKey = key
 		}
 	}
 	if current.Len >= 2 {
@@ -349,7 +360,7 @@ func computeRepetitionIndex(slides []SlideInfo) float64 {
 
 	unique := map[string]bool{}
 	for _, s := range slides {
-		unique[visualFamily(s.Pattern)] = true
+		unique[visualFingerprint(s)] = true
 	}
 
 	// repetition_index = 1 - (unique_count / total_count)
@@ -467,13 +478,20 @@ func generateRecommendations(inputs []Slide, slides []SlideInfo, runs []PatternR
 		}
 	}
 
-	// Rule: slide has 5+ cells AND within_slide_accent_variety == 1 → recommend progressive accent.
+	// Rule: slide has 5+ cells AND within_slide_accent_variety == 1 →
+	// recommend the fix appropriate to its authoring surface.
 	for _, s := range slides {
 		if s.cellCount >= 5 && s.WithinSlideAccentVariety == 1 {
+			message := fmt.Sprintf("slide %d has %d cells but only 1 accent — set per-cell fill accents for visual hierarchy", s.SlideIndex, s.cellCount)
+			breaks := []string{"shape_grid.rows[].cells[].shape.fill"}
+			if inputs[s.SlideIndex].HasPattern {
+				message = fmt.Sprintf("slide %d has %d cells but only 1 accent — add cell_accent_mode: progressive to the pattern overrides for visual hierarchy", s.SlideIndex, s.cellCount)
+				breaks = []string{"cell_accent_mode: progressive"}
+			}
 			recs = append(recs, Recommendation{
 				SlideIndex:       s.SlideIndex,
-				Message:          fmt.Sprintf("slide %d has %d cells but only 1 accent — add cell_accent_mode: progressive to the pattern overrides for visual hierarchy", s.SlideIndex, s.cellCount),
-				RecommendedBreak: []string{"cell_accent_mode: progressive"},
+				Message:          message,
+				RecommendedBreak: breaks,
 			})
 		}
 	}

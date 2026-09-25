@@ -10,6 +10,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/api"
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/rhythm"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
@@ -465,21 +466,8 @@ func rhythmPenaltyAt(slides []SlideInput, slideIdx int) (int, []string) {
 	}
 }
 
-// slidePatternName returns the pattern-name fingerprint used by the rhythm
-// analyzer for one slide. Mirrors the dispatch in fingerprint() so the
-// candidate scorer and analyze_deck_rhythm stay in sync.
+// slidePatternName uses the rhythm analyzer's canonical visual identity so
+// candidate scoring cannot drift from analyze_deck_rhythm's run detection.
 func slidePatternName(s SlideInput) string {
-	switch {
-	case s.Compose != nil:
-		return "compose"
-	case s.Pattern != nil && s.Pattern.Name != "":
-		return s.Pattern.Name
-	case s.ShapeGrid != nil:
-		return "shape_grid"
-	default:
-		if s.SlideType != "" {
-			return s.SlideType
-		}
-		return "content"
-	}
+	return rhythm.FingerprintKey(toRhythmSlide(s))
 }
