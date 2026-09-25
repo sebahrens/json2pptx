@@ -442,7 +442,7 @@ func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint3
 					FontSize: nineBoxLabelFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    pptx.SchemeFill("dk1"),
+					Color:    diagramPanelTextFill(schemeColor),
 				}},
 			}},
 		},
@@ -465,6 +465,7 @@ func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32,
 			paras[i].Bullet.Color = bulletColor
 		}
 	}
+	diagramPanelBodyColors(paras, schemeColor)
 
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,

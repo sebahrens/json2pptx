@@ -107,3 +107,41 @@ func TestNativeDiagramBuildersEmitAccentTints(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthoredTaxonomyPanelsUseReadableTextAndBullets(t *testing.T) {
+	builders := []struct {
+		name   string
+		header func(string) string
+		body   func(string) string
+	}{
+		{"SWOT", func(c string) string { return generateSWOTHeaderXML("Title", 0, 0, 2000000, 400000, 1, c, 0, 0) }, func(c string) string { return generateSWOTBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, c, 0, 0) }},
+		{"PESTEL", func(c string) string { return generatePESTELHeaderXML("Title", 0, 0, 2000000, 400000, 1, c, 0, 0) }, func(c string) string { return generatePESTELBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, c, 0, 0) }},
+		{"business canvas", func(c string) string { return generateBMCCellHeaderXML("Title", 0, 0, 2000000, 400000, 1, c, 0, 0) }, func(c string) string { return generateBMCCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, c, 0, 0) }},
+		{"nine box", func(c string) string { return generateNineBoxCellLabelXML("Title", 0, 0, 2000000, 400000, 1, c, 0, 0) }, func(c string) string {
+			return generateNineBoxCellBodyXML("- Detail", 0, 0, 2000000, 1000000, 2, c, 0, 0)
+		}},
+	}
+	for _, color := range []struct{ hex, text string }{{"#102030", "FFFFFF"}, {"#F5F5F5", "000000"}} {
+		for _, builder := range builders {
+			t.Run(builder.name+"/"+color.hex, func(t *testing.T) {
+				xml := builder.header(color.hex) + builder.body(color.hex)
+				if !strings.Contains(xml, `srgbClr val="`+strings.TrimPrefix(color.hex, "#")+`"`) {
+					t.Fatalf("authored fill changed: %s", xml)
+				}
+				if got := strings.Count(xml, `srgbClr val="`+color.text+`"`); got < 3 {
+					t.Fatalf("header, body, and bullet must use readable text color; got %d in %s", got, xml)
+				}
+			})
+		}
+	}
+}
+
+func TestDiagramPanelTextFillFallsBackForUnknownColor(t *testing.T) {
+	for _, color := range []string{"accent1", "invalid"} {
+		var xml bytes.Buffer
+		diagramPanelTextFill(color).WriteTo(&xml)
+		if !strings.Contains(xml.String(), `schemeClr val="dk1"`) {
+			t.Errorf("color %q fallback = %s, want theme dark text", color, xml.String())
+		}
+	}
+}

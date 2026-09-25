@@ -295,7 +295,7 @@ func generatePESTELHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, s
 					FontSize: pestelHeaderFontSize,
 					Bold:     true,
 					Dirty:    true,
-					Color:    pptx.SchemeFill("dk1"),
+					Color:    diagramPanelTextFill(schemeColor),
 				}},
 			}},
 		},
@@ -318,6 +318,7 @@ func generatePESTELBodyXML(body string, x, y, cx, cy int64, shapeID uint32, sche
 			paras[i].Bullet.Color = bulletColor
 		}
 	}
+	diagramPanelBodyColors(paras, schemeColor)
 
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
