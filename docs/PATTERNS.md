@@ -126,6 +126,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Big-number KPIs (2–6 items) | `kpi-Nup` | Fixed count, ≤12-char metrics (measured one-line fit warnings); optional per-cell `sub` (delta/trend annotation, aliases `delta`/`trend`/`change`) |
 | Ranked horizontal bars (3–8) with per-bar insight | `horizontal-bar-with-callouts` | One callout per bar, accent-bar bound to the row; omit every `callout` and the column is dropped so the bars span the full width |
 | Single dominant metric | `stat-hero` | One hero number with context |
+| Stat stack / "by the numbers" list | `metric-list` | 3–7 rows read top to bottom: big right-aligned accent `value` (≤12 chars, one shared size shrunk until the longest fits on one line) + bold `label` + optional `detail`, hairline rules; at most one `highlight: true` row (Lighter-80% accent band + accent bar, value ink measured against the band) and an optional full-width accent `callout` banner (text colour by measured contrast). Details hold 120 chars through 4 items, ~90 at 5, none at 6–7. Use `kpi-Nup` for side-by-side cards, `stat-hero` / `hero-detail` for one dominant number |
 | Feature/capability cards | `card-grid` | Multi-line body text per card |
 | Sequential process | `process-flow` | Ordered steps with arrows |
 | Ordered steps / annotated ToC (no branching) | `numbered-step-strip` | 3–6 numbered steps with an optional per-step detail zone; `chevron` ribbon, `stacked-box` scorecard, or `toc` agenda — never emits decision diamonds (use `process-flow` for branching) |
@@ -146,6 +147,7 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Cross-functional swimlanes | `swimlane` | Multiple parallel tracks |
 | Executive summary (problem framing) | `scqa-summary` | 4-row Situation/Complication/Questions/Answer narrative arc |
 | Executive summary (key messages) | `exec-summary` | 3–5 bold lead-in conclusions (≤90 chars) each with one supporting sentence (≤200 chars), rules between rows, optional `bottom_line` ask (a pointing accent flag labelled BOTTOM LINE, then the statement in a tinted box); answer-first rather than an SCQA arc |
+| Keyword-labelled rows (WHY / WHAT / HOW) | `labeled-rows` | 2–6 rows: a label block on the left (`label_style: filled` accent block with bold keyword + optional smaller `sublabel`, or `text` = accent-coloured bold keyword with no fill) beside 1–4 lines of `body` (**bold** allowed), rules between content-sized rows. The keyword shrinks as one shared size until no word breaks mid-word. Bodies hold 300 chars through 4 rows, ~190 at 5–6 rows (and 5–6 rows leave no room for multi-line sublabels). Use `exec-summary` when rows are sentence-length conclusions, `metric-list` when each row leads with a number |
 | Deck section list | `agenda` | Numbered section outline |
 | Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items); the placeholder column is all-or-nothing — a row with no `image_label` still gets an empty placeholder |
 | Team / 'Our People' page | `team-bios` | 1–8 named people with a headshot (or initials placeholder) + role + short bio, up to 4 per row |
@@ -216,6 +218,8 @@ Grid-shaped patterns — those that emit multiple peer cells through the shape g
 2. **Validate** by calling `ValidateCellAccentMode(patternName, ovr.CellAccentMode)` in the pattern's `Validate()` method. This rejects unknown modes with a structured `ValidationError`.
 3. **Resolve per-cell accent** by calling `ResolveCellAccent(baseAccent, cellIndex, cellAccentMode)` in the cell-emission loop of `Expand()`. The function returns the accent string for each cell position given the base accent and mode.
 4. **Schema** must include `cell_accent_mode` in the overrides object — use the shared helper: `EnumSchema("uniform", "alternate", "progressive").WithDescription(...)`.
+
+`metric-list` (value colour per row) and `labeled-rows` (label-block fill per row) follow this contract.
 
 ### Non-grid patterns (do not expose `cell_accent_mode`)
 
@@ -398,6 +402,12 @@ A pattern's JSON schema is the contract an agent sizes its copy against, and a p
 - Keep `maxLength=300` as a hard input bound, not a promise that 300 characters fit every card. The field description directs authors to the per-card budget in `expand_pattern`.
 - Emit a `BODY_TOO_LONG` warning above that same per-card budget. Both `cell_budgets[].max_chars` and the warning account for the selected content area, body font size, card header, icon/chart reservations, and grid dimensions; `actual_chars` counts the body alone. The budget is computed before the supplied body copy sizes a row, so it cannot rise as an author adds text.
 - Derive the budget by MEASUREMENT, not by arithmetic: run the payload at each shape through the same readability prediction the fit report gives an agent. `cmd/json2pptx.TestSchemaMaximaStayReadable` does this for every registered pattern on all four bundled templates and pins the result, so a schema maximum cannot quietly get worse and an improvement cannot be given back.
+
+### Row-list patterns: `metric-list` and `labeled-rows`
+
+Both are content-sized row stacks separated by 0.75pt hairline rule rows, sized like `exec-summary`: they try a descending type scale, keep the largest whose measured natural height fits the content area, and pass surplus height to the content rows (`fillCappedRows`, 68% / 60% minimum fill). Overrides that set a size pin the scale. What they cannot fix is reported from `PostExpandWarnings`: `TEXT_EXCEEDS_SHAPE` for a value (metric-list) or a keyword word (labeled-rows) that still breaks at the floor, and `BODY_TOO_LONG` when the stack is taller than the content area at the smallest scale.
+
+`metric-list` sets `col_gap` to 0.1pt, not 0: a highlighted row tints both of its cells, and a real gap (0 resolves to shapegrid's 8pt default) shows as a white seam through the band. The gutter comes from `inset_left` / `inset_right` on the cell text instead, and each highlighted cell is outlined in its own band colour (lumMod / lumOff, which shape lines honour; tint they do not) so no hairline shows.
 
 ## Text on a tinted fill must be chosen by measurement too
 

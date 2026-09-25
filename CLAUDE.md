@@ -169,7 +169,9 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `kpi-5up` | Five big-number KPI cards with short captions |
 | `kpi-6up` | Six big-number KPI cards with short captions |
 | `kpi-inline` | Horizontal inline KPI bar, height-capped for supporting context |
+| `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
 | `matrix-2x2` | 2×2 quadrant matrix with axis labels |
+| `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and bottom callout banner |
 | `numbered-step-strip` | Ordered numbered steps (3–6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone |
 | `process-flow` | Left-to-right process flow with steps and decision points |
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |

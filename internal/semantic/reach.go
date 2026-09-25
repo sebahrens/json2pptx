@@ -56,6 +56,8 @@ var patternReach = map[string]SlideKind{
 	"icon-row":                     "",
 	"journey-maturity-model":       "",
 	"kpi-inline":                   "",
+	"labeled-rows":                 "",
+	"metric-list":                  "",
 	"process-flow-compact":         "",
 	"process-grid-2row":            "",
 	"pyramid":                      "",
