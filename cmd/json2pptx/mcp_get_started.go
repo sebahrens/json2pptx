@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -70,7 +71,10 @@ type getStartedFastPath struct {
 
 // getStartedResponse is the JSON envelope for get_started.
 type getStartedResponse struct {
-	Task string `json:"task"`
+	Task               string `json:"task"`
+	SkillSchemaVersion string `json:"skill_schema_version"`
+	// SkillWarning tells a host its installed skill predates this server.
+	SkillWarning string `json:"skill_warning,omitempty"`
 	// TaskWarning is set when the caller asked for a task this tool does not
 	// know. The response still carries the "brief" workflow — blocking an
 	// agent's first call helps nobody — but it says so rather than letting a
@@ -293,12 +297,13 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 	}
 
 	resp := getStartedResponse{
-		Task:           normalized,
-		TaskWarning:    taskWarning,
-		FastPath:       fastPath,
-		Sequence:       withArgs(seq),
-		AvailableTasks: getStartedAvailableTasks(),
-		Notes:          notes,
+		Task:               normalized,
+		SkillSchemaVersion: SchemaVersion,
+		TaskWarning:        taskWarning,
+		FastPath:           fastPath,
+		Sequence:           withArgs(seq),
+		AvailableTasks:     getStartedAvailableTasks(),
+		Notes:              notes,
 		Completion: completionProtocol{
 			DraftStatus:    "draft_needs_visual_review",
 			CompleteStatus: "visually_reviewed_current_revision",
@@ -386,6 +391,9 @@ func mcpGetStartedTool() mcp.Tool {
 		mcp.WithBoolean("verbose",
 			mcp.Description("Include quality_workflow, the prose workflow narrative. Omitted by default because it repeats the MCP initialize instructions verbatim, which every client already received; completion_protocol carries the same rule in structured form. Pass true if you did not read the initialize instructions."),
 		),
+		mcp.WithString("skill_version",
+			mcp.Description("Optional schema_version from the installed generate-deck skill frontmatter. If older than this server's skill_schema_version, get_started returns a one-line skill_warning telling you to run make install-skill."),
+		),
 	)
 }
 
@@ -425,6 +433,44 @@ Pass "task" to scope both paths:
 Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`, reviseFastPath, makeDeckNote, reviseInspect, workflowStatement)
 }
 
+// compareSkillSchemaVersions compares strict major.minor.patch version stamps.
+// A stale-skill warning must use numeric ordering: lexical comparison would
+// incorrectly place 4.9.0 after 4.10.0.
+func compareSkillSchemaVersions(installed, current string) (int, error) {
+	parse := func(version string) ([3]int, error) {
+		var parts [3]int
+		fields := strings.Split(version, ".")
+		if len(fields) != len(parts) {
+			return parts, fmt.Errorf("skill_version %q must be major.minor.patch", version)
+		}
+		for i, field := range fields {
+			n, err := strconv.Atoi(field)
+			if err != nil || n < 0 {
+				return parts, fmt.Errorf("skill_version %q must be major.minor.patch", version)
+			}
+			parts[i] = n
+		}
+		return parts, nil
+	}
+	a, err := parse(installed)
+	if err != nil {
+		return 0, err
+	}
+	b, err := parse(current)
+	if err != nil {
+		return 0, err
+	}
+	for i := range a {
+		if a[i] < b[i] {
+			return -1, nil
+		}
+		if a[i] > b[i] {
+			return 1, nil
+		}
+	}
+	return 0, nil
+}
+
 func (mc *mcpConfig) handleGetStarted(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	task := ""
 	if raw, ok := request.GetArguments()["task"]; ok && raw != nil {
@@ -444,6 +490,21 @@ func (mc *mcpConfig) handleGetStarted(ctx context.Context, request mcp.CallToolR
 
 	verbose := request.GetArguments()["verbose"] == true
 	resp := buildGetStartedResponseOpts(task, mc.getStartedRuntime(), verbose)
+	if raw, present := request.GetArguments()["skill_version"]; present {
+		version, ok := raw.(string)
+		if !ok {
+			return argInvalidValue("get_started", diagnostics.CodeInvalidParameter, "skill_version",
+				"skill_version must be a major.minor.patch string", "string", SchemaVersion, nil), nil
+		}
+		comparison, err := compareSkillSchemaVersions(version, SchemaVersion)
+		if err != nil {
+			return argInvalidValue("get_started", diagnostics.CodeInvalidParameter, "skill_version",
+				err.Error(), "major.minor.patch", SchemaVersion, nil), nil
+		}
+		if comparison < 0 {
+			resp.SkillWarning = fmt.Sprintf("skill is stale (%s < %s): run make install-skill", version, SchemaVersion)
+		}
+	}
 
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)
 	if err != nil {

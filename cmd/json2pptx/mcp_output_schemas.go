@@ -1657,8 +1657,10 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
   "type": "object",
   "properties": {
     "schema_version":     {"type": "string"},
+    "skill_schema_version": {"type": "string"},
     "tool_version":       {"type": "string"},
     "changelog_url":      {"type": "string"},
+    "sections_included": {"type": "array", "items": {"type": "string"}},
     "mcp_tools_available": {
       "type": "array",
       "items": {
@@ -1853,7 +1855,7 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
       }
     }
   },
-  "required": ["schema_version", "tool_version", "changelog_url", "mcp_tools_available", "tool_list", "registry", "deprecations", "features", "runtime", "vocabularies", "error_codes", "cli_only_commands"]
+  "required": ["schema_version", "skill_schema_version", "tool_version", "changelog_url", "sections_included"]
 }`)
 
 // --- analyze_deck_rhythm ---
@@ -2123,6 +2125,8 @@ var outputSchemaGetStarted = json.RawMessage(`{
   "properties": {
     "task":            {"type": "string"},
     "task_warning":    {"type": "string", "description": "Present when the requested task was not recognised: the response still carries the brief workflow, and this names the task asked for and the valid ones."},
+    "skill_schema_version": {"type": "string"},
+    "skill_warning": {"type": "string", "description": "Present when skill_version supplied by the caller is older than the server's skill_schema_version."},
     "available_tasks": {"type": "array", "items": {"type": "string"}},
     "fast_path": {
       "type": "object",
@@ -2159,7 +2163,14 @@ var outputSchemaGetStarted = json.RawMessage(`{
       }
     },
     "notes": {"type": "array", "items": {"type": "string"}},
-    "quality_workflow": {"type": "string", "description": "The server's MCP instructions text (5-step quality workflow), echoed verbatim."},
+    "quality_workflow": {"type": "string", "description": "The server's MCP instructions text (5-step quality workflow), echoed when verbose=true."},
+    "runtime": {"type": "object", "properties": {
+      "render_available": {"type": "boolean"},
+      "missing_commands": {"type": "array", "items": {"type": "string"}},
+      "templates_dir": {"type": "string"},
+      "output_dir": {"type": "string"},
+      "settings_write_enabled": {"type": "boolean"}
+    }, "required": ["render_available", "templates_dir", "output_dir", "settings_write_enabled"]},
     "completion_protocol": {
       "type": "object",
       "properties": {
@@ -2170,7 +2181,7 @@ var outputSchemaGetStarted = json.RawMessage(`{
       "required": ["draft_status", "complete_status", "rule"]
     }
   },
-  "required": ["task", "sequence", "available_tasks", "completion_protocol", "quality_workflow"]
+  "required": ["task", "skill_schema_version", "sequence", "available_tasks", "completion_protocol", "runtime"]
 }`)
 
 // --- get_input_schema ---

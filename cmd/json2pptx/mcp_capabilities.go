@@ -25,10 +25,11 @@ import (
 // either shape; the standardized fields enable drift detection across both
 // MCP servers without server-specific code paths.
 type capabilitiesResponse struct {
-	SchemaVersion     string         `json:"schema_version"`
-	ToolVersion       string         `json:"tool_version"`
-	ChangelogURL      string         `json:"changelog_url"`
-	MCPToolsAvailable []mcpToolEntry `json:"mcp_tools_available,omitempty"`
+	SchemaVersion      string         `json:"schema_version"`
+	SkillSchemaVersion string         `json:"skill_schema_version"`
+	ToolVersion        string         `json:"tool_version"`
+	ChangelogURL       string         `json:"changelog_url"`
+	MCPToolsAvailable  []mcpToolEntry `json:"mcp_tools_available,omitempty"`
 	// ToolList is the cross-server-aligned tool catalog: each entry carries
 	// {name, description}. Mirrors svggen-mcp's tool_list. Populated by
 	// calling every registered tool's constructor.
@@ -425,7 +426,7 @@ func buildDeprecatedFields() []capabilitiesDeprecatedField {
 
 func mcpGetCapabilitiesTool() mcp.Tool {
 	return mcp.NewTool("get_capabilities",
-		mcp.WithDescription("Returns schema version, feature flags, and deprecated fields. Compare schema_version across sessions — a major bump means breaking changes.\n\n`sections` selects runtime, features, deprecations, vocabularies, registry, tools, error_codes, cli, or all. Default: runtime, features, deprecations (~8 KB vs ~84 KB for all). tools/list already provides the tool catalogue; CLI commands are not callable over MCP. schema_version, tool_version and changelog_url are always present; runtime.schema_fingerprint is present when runtime is selected (including the default). sections_included echoes the selection."),
+		mcp.WithDescription("Returns schema version, skill_schema_version, feature flags, and deprecated fields. Compare schema_version across sessions — a major bump means breaking changes.\n\n`sections` selects runtime, features, deprecations, vocabularies, registry, tools, error_codes, cli, or all. Default: runtime, features, deprecations (~8 KB vs ~84 KB for all). tools/list already provides the tool catalogue; CLI commands are not callable over MCP. schema_version, skill_schema_version, tool_version and changelog_url are always present; runtime.schema_fingerprint is present when runtime is selected (including the default). sections_included echoes the selection."),
 		mcp.WithArray("sections",
 			mcp.Description("Which capability sections to return: runtime, features, deprecations, vocabularies, registry, tools, error_codes, cli, all. Default: [runtime, features, deprecations]. A comma-separated string is also accepted."),
 			mcp.Items(map[string]any{"type": "string", "enum": capSectionsKnown}),
@@ -462,14 +463,15 @@ func buildCapabilitiesResultFor(ctx context.Context, templatesDir, outputDir str
 
 	deprecations := buildDeprecatedFields()
 	resp := capabilitiesResponse{
-		SchemaVersion:     SchemaVersion,
-		ToolVersion:       Version,
-		ChangelogURL:      "docs/SCHEMA_CHANGELOG.md",
-		MCPToolsAvailable: mcpToolCatalog(),
-		ToolList:          buildToolList(),
-		Registry:          buildRegistry(),
-		DeprecatedFields:  deprecations,
-		Deprecations:      deprecations,
+		SchemaVersion:      SchemaVersion,
+		SkillSchemaVersion: SchemaVersion,
+		ToolVersion:        Version,
+		ChangelogURL:       "docs/SCHEMA_CHANGELOG.md",
+		MCPToolsAvailable:  mcpToolCatalog(),
+		ToolList:           buildToolList(),
+		Registry:           buildRegistry(),
+		DeprecatedFields:   deprecations,
+		Deprecations:       deprecations,
 		Features: capabilitiesFeatures{
 			StrictFit:        []string{"off", "warn", "strict"},
 			CompactResponses: true,

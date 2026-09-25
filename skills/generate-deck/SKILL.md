@@ -1,5 +1,6 @@
 ---
 name: generate-deck
+schema_version: 4.131.0
 description: >
   Generate consulting-quality PowerPoint decks from user prompts using json2pptx.
   Applies constrained generation: 4-phase workflow (Plan → Vary → Render → Repair),
@@ -9,6 +10,10 @@ description: >
 ---
 
 # Deck Generation Skill
+
+On the first `get_started` call, pass this skill's frontmatter `schema_version` as
+`skill_version`. If the server returns `skill_warning`, run `make install-skill`
+before relying on the installed workflow or tool arguments.
 
 For new content-bearing decks, author a semantic **DeckSpec** and render it with
 `render_deck_spec` (CLI `json2pptx semantic render`) — see [Semantic deck specs](#semantic-deck-specs--the-default-authoring-path)

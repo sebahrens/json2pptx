@@ -1,5 +1,15 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.131.0: installed-skill drift detection and projected output schemas (`go-slide-creator-o6i9d`, `go-slide-creator-pzlsj`, `go-slide-creator-9vohe`).**
+  The generate-deck skill frontmatter now carries a test-enforced
+  `schema_version`. `get_capabilities` and `get_started` expose
+  `skill_schema_version`; callers may pass their installed `skill_version` to
+  `get_started` and receive a concise `skill_warning` with the install command
+  when it is older. The published `get_started` output schema now includes its
+  always-present runtime and no longer requires default-omitted
+  `quality_workflow`. The `get_capabilities` output schema now requires only
+  fields present in every section projection.
+
 - **2026-09-25 — Schema 4.130.0: complete MCP authoring argument schemas (`go-slide-creator-scdp9`).**
   Semantic `strict` and `output_validation` inputs now declare their accepted
   enums. `patch`, repair `fixes`, and thumbnail `slide_indices` declare item
