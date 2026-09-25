@@ -228,6 +228,12 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	if hints == nil {
 		hints = &VisualHints{}
 	}
+	// Keep audience as structured scoring context, never as keyword text.
+	resolvedHints := *hints
+	if hints.Audience != "" {
+		resolvedHints.ContentHints.Audience = hints.Audience
+	}
+	hints = &resolvedHints
 	var options *RecommendOptions
 	if len(opts) > 0 && opts[0] != nil {
 		options = opts[0]
@@ -281,6 +287,7 @@ func RecommendVisual(reg *Registry, intent string, hints *VisualHints, maxCandid
 	// multiple patterns on one slide OR when the top pattern candidates have
 	// declared compose-affinity (PatternTaxonomy.ComposesWith).
 	all = append(all, scoreCompose(reg, intentLower, patternCandidates)...)
+	applyChartHint(all, hints, intentLower)
 
 	// Route ordered-steps / ToC intents away from the process_flow diagram. The
 	// process-flow *pattern* is already demoted inside scoreAndDedup; here we
@@ -372,6 +379,7 @@ func recommendVisualOnlyCandidates(reg *Registry, intentLower string, hints *Vis
 			recencyCount, applyVariety))
 	}
 	preferNativeLabelledMatrix(out, intentLower)
+	applyChartHint(out, hints, intentLower)
 
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Score != out[j].Score {
@@ -558,6 +566,42 @@ func adjustVisualPatternScore(name string, score float64, hints *VisualHints) fl
 	return score
 }
 
+// A chart hint prioritizes matching chart candidates without inventing a chart
+// type when no chart keyword matched. It applies to normal and shortlist mode.
+func applyChartHint(candidates []VisualCandidate, hints *VisualHints, intentLower string) {
+	if !hints.HasChart {
+		return
+	}
+	hasMatch := false
+	for _, candidate := range candidates {
+		if candidate.Category == VisualCategoryChart && candidate.Score > 0 && !chartOverloaded(candidate.Name, hints, intentLower) {
+			hasMatch = true
+			break
+		}
+	}
+	if !hasMatch {
+		return
+	}
+	for i := range candidates {
+		candidate := &candidates[i]
+		if candidate.Score <= 0 {
+			continue
+		}
+		if candidate.Category == VisualCategoryChart && !chartOverloaded(candidate.Name, hints, intentLower) {
+			candidate.Score = roundScore(math.Min(1, candidate.Score+0.10))
+			candidate.Rationale += "; chart data is already available"
+		} else if candidate.Category != VisualCategoryChart {
+			candidate.Score = roundScore(math.Max(0, candidate.Score-0.10))
+		}
+		candidate.ConfidenceBand = confidenceBand(candidate.Score)
+	}
+}
+
+func chartOverloaded(name string, hints *VisualHints, intentLower string) bool {
+	return ((name == "pie" || name == "donut") && (hints.DataPoints > 6 || hints.SeriesCount > 1)) ||
+		(name == "gauge" && (hints.DataPoints > 1 || hints.SeriesCount > 1 || hasTimeSeriesIntent(intentLower)))
+}
+
 // scorePlaceholders evaluates placeholder layout rules.
 func scorePlaceholders(intentLower string) []VisualCandidate {
 	var candidates []VisualCandidate
@@ -702,11 +746,14 @@ func scoreChartRule(r chartRule, intentLower string, hints *VisualHints) float64
 	if r.chartType == "pie" && hints.DataPoints > 0 && hints.DataPoints <= 6 && intentContainsPhrase(intentWords(intentLower), []string{"allocation"}) {
 		score += 0.06
 	}
-	if r.chartType == "gauge" && (hints.DataPoints > 1 || hints.SeriesCount > 1 || hasTimeSeriesIntent(intentLower)) {
-		score -= 0.25
+	if r.chartType == "gauge" && chartOverloaded(r.chartType, hints, intentLower) {
+		score -= 0.55 // one-value gauge cannot represent a series or timeline
 	}
 	if r.chartType == "line" && hints.DataPoints >= 6 {
 		score += 0.05
+	}
+	if chartOverloaded(r.chartType, hints, intentLower) {
+		score = math.Min(score, 0.49)
 	}
 	return math.Max(0, math.Min(1, score))
 }

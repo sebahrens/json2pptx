@@ -534,7 +534,7 @@ func assignPatterns(reg *patterns.Registry, brief, audience string, roleSlots []
 		}
 
 		// Use recommend_pattern with variety awareness.
-		slides[i].RecommendedPattern, slides[i].Rationale = recommendForRole(reg, patternList, role, buildIntent(role, brief, audience), usedPatterns, i)
+		slides[i].RecommendedPattern, slides[i].Rationale = recommendForRole(reg, patternList, role, buildIntent(role, brief), audience, usedPatterns, i)
 		if slides[i].RecommendedPattern == "" {
 			// Fallback: pick from taxonomy.
 			slides[i].RecommendedPattern = fallbackPattern(role, patternList, usedPatterns)
@@ -630,9 +630,9 @@ func factDrivenEvidencePattern(signals evidenceSignals, index int) string {
 	return ""
 }
 
-func recommendForRole(reg *patterns.Registry, patternList []patInfo, role, intent string, usedPatterns []string, slideIndex int) (string, string) {
+func recommendForRole(reg *patterns.Registry, patternList []patInfo, role, intent, audience string, usedPatterns []string, slideIndex int) (string, string) {
 	opts := &patterns.RecommendOptions{RecentPatterns: usedPatterns, PreferVariety: true, SlideIndex: slideIndex}
-	rec := patterns.Recommend(reg, intent, nil, len(patternList), opts)
+	rec := patterns.Recommend(reg, intent, &patterns.ContentHints{Audience: audience}, len(patternList), opts)
 	for _, c := range substantiveCandidates(rec) {
 		if role == "evidence" && !patternSupportsNarrativeRole(patternList, c.PatternName, "evidence") {
 			continue
@@ -729,7 +729,7 @@ type patInfo struct {
 }
 
 // buildIntent constructs a recommend_pattern intent string from the role and brief.
-func buildIntent(role, brief, audience string) string {
+func buildIntent(role, brief string) string {
 	if role == "evidence" {
 		// Role words like "supporting" and "details" are recommender keywords;
 		// they must not masquerade as evidence in the author's brief.
@@ -755,9 +755,6 @@ func buildIntent(role, brief, audience string) string {
 	// Add brief context.
 	if brief != "" {
 		parts = append(parts, "for: "+brief)
-	}
-	if audience != "" {
-		parts = append(parts, "audience: "+audience)
 	}
 
 	return strings.Join(parts, "; ")
@@ -966,7 +963,7 @@ func findRepeatReplacement(reg *patterns.Registry, slides []Slide, idx int, seen
 	// all — which is how repeats reached rhythm_check instead of being fixed
 	// (go-slide-creator-whp97).
 	role := slides[idx].NarrativeRole
-	rec := patterns.Recommend(reg, buildIntent(role, "", ""), nil, len(reg.List()), opts)
+	rec := patterns.Recommend(reg, buildIntent(role, ""), nil, len(reg.List()), opts)
 
 	// A comparison slot may only hold the comparison family: a wider search
 	// would "fix" a repeat by putting a ranked bar chart where the deck
@@ -1082,7 +1079,7 @@ func nonEmphasisReplacement(reg *patterns.Registry, slides []Slide, idx int) str
 	for _, s := range slides {
 		recent = append(recent, s.RecommendedPattern)
 	}
-	rec := patterns.Recommend(reg, buildIntent(slides[idx].NarrativeRole, "", ""), nil, 10, &patterns.RecommendOptions{
+	rec := patterns.Recommend(reg, buildIntent(slides[idx].NarrativeRole, ""), nil, 10, &patterns.RecommendOptions{
 		RecentPatterns: recent,
 		PreferVariety:  true,
 		SlideIndex:     idx,
@@ -1156,7 +1153,7 @@ func findBreakPattern(reg *patterns.Registry, slides []Slide, idx int) string {
 		PreferVariety:  true,
 		SlideIndex:     idx,
 	}
-	intent := buildIntent(role, "", "")
+	intent := buildIntent(role, "")
 	rec := patterns.Recommend(reg, intent, nil, 3, opts)
 
 	for _, c := range substantiveCandidates(rec) {
@@ -1432,13 +1429,13 @@ func computeAlternativesForSlot(reg *patterns.Registry, slides []Slide, idx int,
 		recent = append(recent, s.RecommendedPattern)
 	}
 
-	intent := buildIntent(role, brief, audience)
+	intent := buildIntent(role, brief)
 	opts := &patterns.RecommendOptions{
 		RecentPatterns: recent,
 		PreferVariety:  true,
 		SlideIndex:     idx,
 	}
-	rec := patterns.Recommend(reg, intent, nil, MaxAlternatives+2, opts)
+	rec := patterns.Recommend(reg, intent, &patterns.ContentHints{Audience: audience}, MaxAlternatives+2, opts)
 
 	out := make([]Alternative, 0, MaxAlternatives)
 	seen := map[string]bool{current: true}

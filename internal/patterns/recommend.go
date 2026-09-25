@@ -22,6 +22,10 @@ type ContentHints struct {
 	HasMetrics  bool   `json:"has_metrics,omitempty"`
 	Columns     int    `json:"columns,omitempty"`
 	DensityHint string `json:"density_hint,omitempty"` // "low", "medium", "high" — prefer patterns matching this density class
+	// Audience is internal scoring context. VisualHints exposes the public JSON
+	// field; deck planning passes it separately so audience words never enter
+	// the intent keyword matcher.
+	Audience string `json:"-"`
 }
 
 // RecommendOptions carries diversity and context parameters for Recommend.
@@ -1370,22 +1374,34 @@ func scoreRule(r rule, intentLower string, hints *ContentHints) float64 {
 }
 
 func scoreRuleContextBonus(pattern, intentLower string, hints *ContentHints) float64 {
+	audience := intentWords(hints.Audience)
+	bonus := 0.0
+	if intentContainsPhrase(audience, []string{"board"}) || intentContainsPhrase(audience, []string{"executive"}) || intentContainsPhrase(audience, []string{"investor"}) {
+		if pattern == "exec-summary" || pattern == "stat-hero" {
+			bonus += 0.12
+		}
+	}
+	if intentContainsPhrase(audience, []string{"engineering"}) || intentContainsPhrase(audience, []string{"technical"}) {
+		if pattern == "arch-stack" {
+			bonus += 0.12
+		}
+	}
 	switch pattern {
 	case "stat-hero":
 		if hints.ItemCount == 1 {
-			return 0.06
+			bonus += 0.06
 		}
 	case "table-highlight":
 		words := intentWords(intentLower)
 		if intentContainsPhrase(words, []string{"options"}) && intentContainsPhrase(words, []string{"criteria"}) {
-			return 0.15
+			bonus += 0.15
 		}
 	case "arch-stack":
 		if intentContainsPhrase(intentWords(intentLower), []string{"architecture"}) {
-			return 0.11
+			bonus += 0.11
 		}
 	}
-	return 0
+	return bonus
 }
 
 // SuggestSwap finds registered patterns whose item-count constraints accept

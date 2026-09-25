@@ -231,6 +231,69 @@ func TestRecommendVisual_QueryUnderstood(t *testing.T) {
 	}
 }
 
+func TestRecommendVisualStructuredHintsChangeRanking(t *testing.T) {
+	reg := newTestRegistry("comparison-2col", "exec-summary", "arch-stack")
+	shortlist := &RecommendOptions{Candidates: []string{"bar", "comparison-2col"}}
+	baseline := RecommendVisual(reg, "compare revenue by region", nil, 2, shortlist)
+	withChart := RecommendVisual(reg, "compare revenue by region", &VisualHints{ContentHints: ContentHints{HasChart: true}}, 2, shortlist)
+	if withChart.Candidates[0].Name != "bar" {
+		t.Fatalf("has_chart should put the matching chart first: %+v", withChart.Candidates)
+	}
+	if candidateScore(withChart.Candidates, "bar") <= candidateScore(baseline.Candidates, "bar") ||
+		candidateScore(withChart.Candidates, "comparison-2col") >= candidateScore(baseline.Candidates, "comparison-2col") {
+		t.Fatalf("has_chart did not change chart-vs-pattern ranking: baseline=%+v chart=%+v", baseline.Candidates, withChart.Candidates)
+	}
+
+	// A chart hint is not a license to invent a chart type from unrelated text.
+	unrelated := RecommendVisual(reg, "team overview", &VisualHints{ContentHints: ContentHints{HasChart: true}}, 5)
+	for _, c := range unrelated.Candidates {
+		if c.Category == VisualCategoryChart {
+			t.Fatalf("unmatched chart invented for unrelated intent: %+v", unrelated.Candidates)
+		}
+	}
+
+	options := &RecommendOptions{Candidates: []string{"exec-summary", "arch-stack"}}
+	board := RecommendVisual(reg, "platform summary points", &VisualHints{Audience: "board of directors"}, 2, options)
+	engineers := RecommendVisual(reg, "platform summary points", &VisualHints{Audience: "engineering team"}, 2, options)
+	if candidateScore(board.Candidates, "exec-summary") <= candidateScore(engineers.Candidates, "exec-summary") ||
+		candidateScore(engineers.Candidates, "arch-stack") <= candidateScore(board.Candidates, "arch-stack") {
+		t.Fatalf("audience did not refine relevant pattern scores: board=%+v engineering=%+v", board.Candidates, engineers.Candidates)
+	}
+	onboarding := RecommendVisual(reg, "platform summary points", &VisualHints{Audience: "onboarding cohort"}, 2, options)
+	neutral := RecommendVisual(reg, "platform summary points", nil, 2, options)
+	if candidateScore(onboarding.Candidates, "exec-summary") != candidateScore(neutral.Candidates, "exec-summary") {
+		t.Fatalf("onboarding accidentally matched board audience: onboarding=%+v neutral=%+v", onboarding.Candidates, neutral.Candidates)
+	}
+}
+
+func TestRecommendVisualGaugeRejectsMultiPointData(t *testing.T) {
+	options := &RecommendOptions{Candidates: []string{"gauge"}}
+	one := RecommendVisual(nil, "progress toward target", &VisualHints{DataPoints: 1}, 1, options)
+	many := RecommendVisual(nil, "progress toward target", &VisualHints{DataPoints: 8}, 1, options)
+	if one.Candidates[0].Score < 0.5 || many.Candidates[0].Score >= 0.5 {
+		t.Fatalf("one-value gauge must not rank as suitable for eight values: one=%+v many=%+v", one.Candidates, many.Candidates)
+	}
+	withChart := RecommendVisual(nil, "progress toward target", &VisualHints{ContentHints: ContentHints{HasChart: true}, DataPoints: 8}, 1, options)
+	if withChart.Candidates[0].Score >= 0.5 {
+		t.Fatalf("has_chart must not resurrect an overloaded gauge: %+v", withChart.Candidates)
+	}
+	pie := RecommendVisual(nil, "pie share distribution allocation split", &VisualHints{ContentHints: ContentHints{HasChart: true}, DataPoints: 12}, 1, &RecommendOptions{Candidates: []string{"pie", "donut"}})
+	for _, candidate := range pie.Candidates {
+		if candidate.Score >= 0.5 {
+			t.Fatalf("keyword-saturated intent resurrected overloaded %s: %+v", candidate.Name, pie.Candidates)
+		}
+	}
+}
+
+func candidateScore(candidates []VisualCandidate, name string) float64 {
+	for _, candidate := range candidates {
+		if candidate.Name == name {
+			return candidate.Score
+		}
+	}
+	return 0
+}
+
 func TestRecommendVisual_DensityHintBoostsMatchingPatterns(t *testing.T) {
 	// Register two KPI patterns: kpi-3up (low density) and kpi-4up (medium density)
 	reg := NewRegistry()

@@ -21,7 +21,7 @@ Skip `plan_deck` when you already have a detailed slide-by-slide outline or when
 |-----------|------|----------|---------|-------------|
 | `brief` | string | Yes | — | Natural-language description of the deck purpose and content |
 | `slide_budget` | number | No | 10 | Target number of slides (clamped to 3–30) |
-| `audience` | string | No | — | Target audience (influences pattern selection) |
+| `audience` | string | No | — | Target audience; board/executive/investor and engineering/technical contexts refine relevant pattern scores without matching audience words as slide-content keywords |
 | `must_include` | array of strings | No | — | Pattern names that must appear in the plan |
 
 ## Output Schema

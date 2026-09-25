@@ -17,8 +17,34 @@ func TestSubstantiveCandidatesSkipsGenericPromptFallback(t *testing.T) {
 	if len(got) != 1 || got[0].PatternName != "numbered-step-strip" {
 		t.Fatalf("substantive candidates = %+v, want only the scored match", got)
 	}
-	if name, _ := recommendForRole(patterns.Default(), nil, "exposition", "unstructured content request", nil, 0); name != "" {
+	if name, _ := recommendForRole(patterns.Default(), nil, "exposition", "unstructured content request", "", nil, 0); name != "" {
 		t.Errorf("automatic planning selected generic fallback %q", name)
+	}
+}
+
+func TestAudienceDoesNotBecomeIntentKeyword(t *testing.T) {
+	const brief = "Quarterly board review of product milestones and budget"
+	intent := buildIntent("framework", brief)
+	if strings.Contains(intent, "engineering") || strings.Contains(intent, "team") {
+		t.Fatalf("audience leaked into recommendation keywords: %q", intent)
+	}
+	reg := patterns.Default()
+	plan := BuildDeckPlan(reg, Params{Brief: brief, Audience: "engineering team", SlideBudget: 8}, nil)
+	for _, slide := range plan.Slides {
+		if slide.RecommendedPattern == "team-bios" {
+			t.Fatalf("audience alone selected team-bios at slide %d: %+v", slide.SlideIndex, plan.Slides)
+		}
+	}
+	// Audience must still have a positive, structured effect where both
+	// candidate families are genuinely relevant to the slide brief.
+	patternList := make([]patInfo, 0)
+	for _, pattern := range reg.List() {
+		patternList = append(patternList, patInfo{name: pattern.Name(), taxonomy: pattern.Taxonomy()})
+	}
+	board, _ := recommendForRole(reg, patternList, "framework", "platform summary points", "board of directors", nil, 2)
+	engineers, _ := recommendForRole(reg, patternList, "framework", "platform summary points", "engineering team", nil, 2)
+	if board == engineers {
+		t.Fatalf("audience made no difference to an ambiguous slide: board=%q engineering=%q", board, engineers)
 	}
 }
 
