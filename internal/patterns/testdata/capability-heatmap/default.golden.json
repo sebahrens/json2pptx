@@ -1,0 +1,555 @@
+{
+  "col_gap": 6,
+  "row_gap": 4,
+  "columns": 4,
+  "rows": [
+    {
+      "min_height": 50,
+      "max_height": 50,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "homePlate",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 65000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Front office",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Up to 30% capacity unlock",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_left": 7.2,
+              "inset_right": 13
+            },
+            "adjustments": {
+              "adj": 20000
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "homePlate",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 65000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Middle office",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Up to 45% capacity unlock",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_left": 7.2,
+              "inset_right": 13
+            },
+            "adjustments": {
+              "adj": 20000
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "homePlate",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 65000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Operations",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Up to 40% capacity unlock",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_left": 7.2,
+              "inset_right": 13
+            },
+            "adjustments": {
+              "adj": 20000
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "homePlate",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 65000
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Corporate",
+                  "size": 14,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                },
+                {
+                  "content": "Up to 20% capacity unlock",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_left": 7.2,
+              "inset_right": 13
+            },
+            "adjustments": {
+              "adj": 20000
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 54,
+      "max_height": 54,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Research summaries",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Reconciliations",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Trade settlement",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Invoice processing",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 54,
+      "max_height": 54,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 40000,
+              "lumOff": 60000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Pitch preparation",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Risk reporting",
+                  "size": 12,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 40000,
+              "lumOff": 60000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Corporate actions",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 40000,
+              "lumOff": 60000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "HR queries",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 54,
+      "max_height": 54,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "lt1",
+              "lumMod": 85000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Client meetings",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 40000,
+              "lumOff": 60000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Limit monitoring",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "lt1",
+              "lumMod": 85000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Strategy work",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 54,
+      "max_height": 54,
+      "cells": [
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "lt1",
+              "lumMod": 85000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Exception handling",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {}
+      ]
+    },
+    {
+      "min_height": 30,
+      "max_height": 30,
+      "cells": [
+        {
+          "col_span": 4,
+          "grid": {
+            "columns": [
+              1.6,
+              39.2,
+              1.6,
+              30.8,
+              1.6,
+              25.1
+            ],
+            "rows": [
+              {
+                "min_height": 22,
+                "max_height": 22,
+                "cells": [
+                  {
+                    "max_height": 14,
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "accent1",
+                      "line": {
+                        "color": "dk1",
+                        "width": 0.5,
+                        "lumMod": 20000,
+                        "lumOff": 80000
+                      }
+                    }
+                  },
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "none",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "\u003cb\u003eHigh\u003c/b\u003e \u003e50% of time automatable",
+                            "size": 12,
+                            "color": "dk1",
+                            "align": "l"
+                          }
+                        ],
+                        "align": "l",
+                        "vertical_align": "t"
+                      }
+                    }
+                  },
+                  {
+                    "max_height": 14,
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": {
+                        "color": "accent1",
+                        "lumMod": 40000,
+                        "lumOff": 60000
+                      },
+                      "line": {
+                        "color": "dk1",
+                        "width": 0.5,
+                        "lumMod": 20000,
+                        "lumOff": 80000
+                      }
+                    }
+                  },
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "none",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "\u003cb\u003eMedium\u003c/b\u003e 20-50% of time",
+                            "size": 12,
+                            "color": "dk1",
+                            "align": "l"
+                          }
+                        ],
+                        "align": "l",
+                        "vertical_align": "t"
+                      }
+                    }
+                  },
+                  {
+                    "max_height": 14,
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": {
+                        "color": "lt1",
+                        "lumMod": 85000
+                      },
+                      "line": {
+                        "color": "dk1",
+                        "width": 0.5,
+                        "lumMod": 20000,
+                        "lumOff": 80000
+                      }
+                    }
+                  },
+                  {
+                    "shape": {
+                      "geometry": "rect",
+                      "fill": "none",
+                      "text": {
+                        "paragraphs": [
+                          {
+                            "content": "\u003cb\u003eLow\u003c/b\u003e \u003c20% of time",
+                            "size": 12,
+                            "color": "dk1",
+                            "align": "l"
+                          }
+                        ],
+                        "align": "l",
+                        "vertical_align": "t"
+                      }
+                    }
+                  }
+                ]
+              }
+            ],
+            "vertical_align": "bottom"
+          }
+        }
+      ]
+    }
+  ],
+  "vertical_align": "center"
+}

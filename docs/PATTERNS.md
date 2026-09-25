@@ -140,6 +140,8 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Before/after comparison | `before-after` | Temporal transformation |
 | Option/pros-cons comparison | `comparison-2col` | Non-temporal side-by-side |
 | Options × criteria evaluation | `table-highlight` | 2–6 options × 2–6 criteria rated with Harvey balls (0–4), RAG (`red`/`amber`/`green`) or ≤24-char text per column (`scale` or per-criterion `{label, scale}`); `highlight_row` tints + bars the recommended option, `highlight_col` tints the decisive criterion; one legend row per symbol scale. **`legend_labels` is `[HIGH, MID, LOW]`** — the full Harvey ball first, the empty one last — and the RAG scale takes its own `legend_labels_rag` in the same order (`[green, amber, red]`, default `["Green", "Amber", "Red"]`). A deck mixing both scales used to reuse the Harvey words for the RAG swatches, so a green dot carried the "does not meet" label (go-slide-creator-z0up). RAG uses conventional status colours (`overrides.rag_colors` swaps them) — the one non-theme palette, because status must read the same on every template |
+| Activities rated by function (capability / automation heatmap) | `capability-heatmap` | 3–8 function columns, each a pointed `homePlate` header (bold title + optional sublabel, `header_shape: "rect"` for flat headers) over 1–6 activity cells filled by `tier` (0 = accent, 1 = light accent tint, 2 = neutral grey, 3 = lightest grey with a hairline), plus a legend of 2–4 tier swatches with label + optional description (`show_legend: false` hides it). Colour carries the rating, so there is no `cell_accent_mode`. Prefer `table-highlight` when every row is scored against the same criteria |
+| Levers grouped by dimension (framework) | `framework-grid` | 2–6 rows, each a bold label on a light accent band followed by 1–4 cards (accent title + short body on a pale wash); the longest row sets the column count and shorter rows leave trailing space empty. `label_width_pct` (10–35, default 18), `title_size`, `body_size`, `cell_accent_mode` (per card column). Prefer `card-grid` when there are no row labels, `stylish-panels` for pillars with bullet lists |
 | 4-quadrant positioning | `matrix-2x2` | Axis-labeled quadrants; horizontal title ≤16 chars, vertical title ≤60; each axis is an arrow pointing to its high end (right / up) flanked by low/high end labels — optional `x_low` / `x_high` / `y_low` / `y_high` (≤11 chars, default `Low` / `High`) |
 | Phased plan with workstreams | `roadmap-phased` | Named phases × workstreams grid |
 | Single-track phased roadmap | `phase-roadmap` | Phases + timeline bar + dates + per-phase description (+ milestones) |
@@ -280,7 +282,7 @@ Rules a new picture-taking pattern must follow:
   column cannot hold.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split, capability-heatmap): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column, rating tier) rather than peer ordering.
 
 Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
 
@@ -409,6 +411,37 @@ The same rule applies to the text a pattern paints INSIDE a fill it tints itself
 - In `timeline-horizontal` chevrons, measure the label and body against the chevron's usable text width and capped row height. Emit `BODY_TOO_LONG` with the available body-line count when the description would clip; a raw character limit misses narrow seven-stop layouts.
 - Chevron `body_size` controls both the emitted paragraph and its fit budget. Sizes below shape-grid's 12pt rendering floor are measured and emitted at 12pt, including the default derived from `label_size`.
 - Chevron dates use that same 12pt rendering floor for their one-line row height. A date that wraps at the effective font size and template width receives a `BODY_TOO_LONG` fit finding instead of relying on a fixed character count.
+
+## capability-heatmap and framework-grid (column- and row-structured frameworks)
+
+Both patterns size their rows from measured text and then grow them toward a
+fill target, with a ceiling, so a sparse grid does not turn into tall empty
+tiles:
+
+- **`capability-heatmap`** measures every header at the width the `homePlate`
+  leaves (the preset's text rectangle stops half-way into the point, and the
+  emitted right inset — point + 3pt — stacks on it), shrinks one shared header
+  size toward the 12pt floor until no header word breaks, and reports a word
+  that still cannot fit as `TEXT_EXCEEDS_SHAPE`. The point is a fixed 10pt,
+  with `adj` derived from the header's own height. Cell rows share one height
+  (the tallest activity), grow to at most 66pt toward 95% of the content
+  height, and a `BODY_TOO_LONG` warning names the longest activity when the
+  content-sized block already exceeds the content area. Text ink on every
+  tier fill is chosen by `readableTextOn`. The legend is a nested grid with an
+  explicit row height (see go-slide-creator-z0up); each entry's width is
+  proportional to its wording. `cell_overrides` index the headers first, then
+  each column's cells top to bottom.
+- **`framework-grid`** gives every row the tallest row's height (so it reads
+  as a grid), grows rows to at most 1.8× that toward 80% of the content
+  height, and top-anchors every card at one shared inset so titles line up
+  across a row. The card title stays in the column accent only when it clears
+  the bar the render-time contrast pass applies to the WHOLE text body — that
+  pass judges a shape by its smallest run, so a title above a 12pt body needs
+  4.5:1 and only a title-only card at 14pt bold gets 3:1; otherwise the
+  measured theme ink is used. Picking a lower bar would just hand the choice
+  to the fixer, which swaps in a literal colour. `BODY_TOO_LONG` names the
+  tallest row when the grid cannot fit. `cell_overrides` index row by row: the
+  label, then that row's cards.
 
 ## Composition
 
