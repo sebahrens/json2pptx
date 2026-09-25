@@ -3,6 +3,7 @@ package resource
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"net/http"
@@ -94,7 +95,8 @@ func IsURL(s string) bool {
 // ResolveImage downloads the URL, validates it contains image data, and returns
 // the local cached path.
 func (r *Resolver) ResolveImage(rawURL string) (string, error) {
-	data, ext, err := r.download(rawURL)
+	key := cacheKey(kindImage, rawURL)
+	data, ext, err := r.download(key, rawURL)
 	if err != nil {
 		if p, ok := handleCached(err); ok {
 			return p, nil
@@ -111,8 +113,8 @@ func (r *Resolver) ResolveImage(rawURL string) (string, error) {
 		ext = guessImageExt(data)
 	}
 
-	filename := hashFilename(rawURL, ext)
-	return r.cache.put(rawURL, filename, data)
+	filename := hashFilename(key, ext)
+	return r.cache.put(key, filename, data)
 }
 
 // ResolveSVG downloads the URL, validates it contains SVG data, and returns
@@ -122,7 +124,8 @@ func (r *Resolver) ResolveImage(rawURL string) (string, error) {
 // Returns a *SVGValidationError on rejection — call SVGValidationCode(err)
 // to recover the structured diagnostic code.
 func (r *Resolver) ResolveSVG(rawURL string) (string, error) {
-	data, _, err := r.download(rawURL)
+	key := cacheKey(kindSVG, rawURL)
+	data, _, err := r.download(key, rawURL)
 	if err != nil {
 		if p, ok := handleCached(err); ok {
 			return p, nil
@@ -134,17 +137,31 @@ func (r *Resolver) ResolveSVG(rawURL string) (string, error) {
 		return "", fmt.Errorf("URL %q: %w", rawURL, err)
 	}
 
-	filename := hashFilename(rawURL, ".svg")
-	return r.cache.put(rawURL, filename, data)
+	filename := hashFilename(key, ".svg")
+	return r.cache.put(key, filename, data)
+}
+
+// Resource kinds. The cache is keyed by (kind, URL) because a cache hit skips
+// the kind-specific validation: keying by URL alone let ResolveImage(url)
+// followed by ResolveSVG(url) return the image download without ever running
+// validateSVG (go-slide-creator-s1uvj.21).
+const (
+	kindImage = "image"
+	kindSVG   = "svg"
+)
+
+// cacheKey builds the download-cache key for a resource kind and URL.
+func cacheKey(kind, rawURL string) string {
+	return kind + "\x00" + rawURL
 }
 
 // download fetches a URL with caching, size limits, and domain restrictions.
-// Returns the body bytes and the file extension from the URL path.
-func (r *Resolver) download(rawURL string) ([]byte, string, error) {
-	// Check cache first
-	if p := r.cache.get(rawURL); p != "" {
-		// Already downloaded — re-read from cache
-		// (caller will validate content type, but it was validated on first download)
+// key is the (kind, URL) cache key from cacheKey. Returns the body bytes and
+// the file extension from the URL path.
+func (r *Resolver) download(key, rawURL string) ([]byte, string, error) {
+	// Check cache first. Entries are per kind, so a hit was validated by the
+	// same Resolve* method on first download.
+	if p := r.cache.get(key); p != "" {
 		return nil, "", &cachedResult{path: p}
 	}
 
@@ -234,8 +251,9 @@ func isImageContent(data []byte) bool {
 	if bytes.HasPrefix(data, []byte("GIF8")) {
 		return true
 	}
-	// BMP
-	if bytes.HasPrefix(data, []byte("BM")) {
+	// BMP: "BM" alone is too weak (any text starting "BM" passed), so also
+	// require a full file header and a known DIB header size.
+	if isBMPHeader(data) {
 		return true
 	}
 	// WebP
@@ -244,6 +262,20 @@ func isImageContent(data []byte) bool {
 	}
 	// TIFF (little-endian and big-endian)
 	if bytes.HasPrefix(data, []byte{0x49, 0x49, 0x2A, 0x00}) || bytes.HasPrefix(data, []byte{0x4D, 0x4D, 0x00, 0x2A}) {
+		return true
+	}
+	return false
+}
+
+// isBMPHeader reports whether data starts with a plausible BMP header: the
+// "BM" signature, a complete 14-byte file header, and a DIB header size
+// (bytes 14-17, little-endian) matching a known BITMAP*HEADER variant.
+func isBMPHeader(data []byte) bool {
+	if len(data) < 26 || data[0] != 'B' || data[1] != 'M' {
+		return false
+	}
+	switch binary.LittleEndian.Uint32(data[14:18]) {
+	case 12, 40, 52, 56, 108, 124:
 		return true
 	}
 	return false
