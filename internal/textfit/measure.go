@@ -197,49 +197,46 @@ func estimateOverflowChars(face *canvas.FontFace, text string, widthPt float64, 
 	line := 1
 	var currentWidth float64
 
+	// overflowFrom counts the runes of words[j:] plus their separating spaces,
+	// less the first `fitted` runes of words[j] that still fit.
+	overflowFrom := func(j, fitted int) int {
+		remaining := len([]rune(words[j])) - fitted
+		for _, w := range words[j+1:] {
+			remaining += len([]rune(w)) + 1 // +1 for space
+		}
+		return remaining
+	}
+
 	for i, word := range words {
 		wordLine := canvas.NewTextLine(face, word, canvas.Left)
 		wordWidth := wordLine.Bounds().W()
 		wordRunes := len([]rune(word))
 
-		if i == 0 {
-			if wordWidth > widthMM && widthMM > 0 {
-				// Single word wraps by character
-				charsPerLine := int(math.Floor(float64(wordRunes) * widthMM / wordWidth))
-				if charsPerLine < 1 {
-					charsPerLine = 1
-				}
-				fittingChars := charsPerLine * maxLines
-				if fittingChars < wordRunes {
-					// Count remaining runes in this word + all subsequent words
-					remaining := wordRunes - fittingChars
-					for _, w := range words[1:] {
-						remaining += len([]rune(w)) + 1 // +1 for space
-					}
-					return remaining
-				}
-				charLines := int(math.Ceil(float64(wordRunes) / float64(charsPerLine)))
-				line = charLines
-				currentWidth = wordWidth - float64(charLines-1)*widthMM
-			} else {
-				currentWidth = wordWidth
+		if i > 0 {
+			if currentWidth+spaceWidth+wordWidth <= widthMM {
+				currentWidth += spaceWidth + wordWidth
+				continue
 			}
-			continue
-		}
-
-		if currentWidth+spaceWidth+wordWidth > widthMM {
 			line++
 			if line > maxLines {
 				// Everything from this word onward is overflow
-				remaining := wordRunes
-				for _, w := range words[i+1:] {
-					remaining += len([]rune(w)) + 1 // +1 for space
-				}
-				return remaining
+				return overflowFrom(i, 0)
 			}
-			currentWidth = wordWidth
-		} else {
-			currentWidth += spaceWidth + wordWidth
+		}
+		currentWidth = wordWidth
+		if wordWidth > widthMM && widthMM > 0 {
+			// A word wider than the line wraps by character, wherever it sits
+			// in the paragraph (go-slide-creator-s1uvj.12).
+			charsPerLine := int(math.Floor(float64(wordRunes) * widthMM / wordWidth))
+			if charsPerLine < 1 {
+				charsPerLine = 1
+			}
+			charLines := int(math.Ceil(float64(wordRunes) / float64(charsPerLine)))
+			if line+charLines-1 > maxLines {
+				return overflowFrom(i, charsPerLine*(maxLines-line+1))
+			}
+			line += charLines - 1
+			currentWidth = wordWidth - float64(charLines-1)*widthMM
 		}
 	}
 
