@@ -799,6 +799,15 @@ func fallbackPattern(role string, patternList []patInfo, used []string) string {
 	}
 	var candidates []candidate
 	for _, pi := range patternList {
+		// A -compact variant is a height-capped companion for composing
+		// beside other content; with nothing in the brief to say the slot
+		// needs one, it is never the stand-alone default. Equal scores are
+		// common here, so without this guard the pick drifted onto
+		// process-flow-compact as soon as new evidence patterns joined the
+		// registry (go-slide-creator-s1uvj).
+		if strings.HasSuffix(pi.name, "-compact") {
+			continue
+		}
 		score := 0.0
 		for _, tr := range taxRoles {
 			for _, nr := range pi.taxonomy.NarrativeRole {
@@ -1495,6 +1504,15 @@ func taxonomyFallbackCandidates(role string, patternList []patInfo, used []strin
 	}
 	var cands []cand
 	for _, pi := range patternList {
+		// A -compact variant is a height-capped companion for composing
+		// beside other content; with nothing in the brief to say the slot
+		// needs one, it is never the stand-alone default. Equal scores are
+		// common here, so without this guard the pick drifted onto
+		// process-flow-compact as soon as new evidence patterns joined the
+		// registry (go-slide-creator-s1uvj).
+		if strings.HasSuffix(pi.name, "-compact") {
+			continue
+		}
 		score := 0.0
 		for _, tr := range taxRoles {
 			for _, nr := range pi.taxonomy.NarrativeRole {
