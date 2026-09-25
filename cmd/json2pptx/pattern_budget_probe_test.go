@@ -1940,7 +1940,12 @@ func TestNumberedStepBudgetProbe(t *testing.T) {
 		t.Skip("manual numbered-step budget calibration probe")
 	}
 	for _, style := range []string{"chevron", "stacked-box", "toc"} {
-		for steps := 3; steps <= 6; steps++ {
+		// Chevrons share one row and hold 6; stacked-box / toc rows stack and hold 7.
+		maxSteps := 7
+		if style == "chevron" {
+			maxSteps = 6
+		}
+		for steps := 3; steps <= maxSteps; steps++ {
 			for _, bodies := range []bool{false, true} {
 				for _, field := range []string{"label", "body"} {
 					if field == "body" && !bodies {

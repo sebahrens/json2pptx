@@ -170,7 +170,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `kpi-6up` | Six big-number KPI cards with short captions |
 | `kpi-inline` | Horizontal inline KPI bar, height-capped for supporting context |
 | `matrix-2x2` | 2×2 quadrant matrix with axis labels |
-| `numbered-step-strip` | Ordered numbered steps (3–6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone |
+| `numbered-step-strip` | Ordered numbered steps (3–7; chevron ≤6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone and (stacked-box / toc) an optional `steps[].icon` |
 | `process-flow` | Left-to-right process flow with steps and decision points |
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
 | `process-grid-2row` | Two parallel process tracks: dk2 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution) |

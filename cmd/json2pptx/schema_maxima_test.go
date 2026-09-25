@@ -477,6 +477,13 @@ func coherentMaximum(pattern string, v any) any {
 				}
 			}
 		}
+	case "numbered-step-strip":
+		// Seven steps and per-step icons are stacked-box / toc only; chevron
+		// (the first enum value) holds six without icons. Measure the style
+		// that admits the full schema maximum.
+		if m, ok := v.(map[string]any); ok {
+			m["style"] = "stacked-box"
+		}
 	case "timeline-horizontal":
 		// end_date is only legal in gantt style, which lives in overrides.
 		if steps, ok := v.([]any); ok {

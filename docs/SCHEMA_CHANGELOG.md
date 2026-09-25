@@ -1,5 +1,17 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.141.0: seven-step and iconed `numbered-step-strip` (`go-slide-creator-s1uvj.9`).**
+  `numbered-step-strip` `steps` now allows 3–7 items. `stacked-box` and `toc`
+  accept the seventh step; `chevron` stays at six and a seventh step fails
+  with a `MAX_ITEMS` error naming `stacked-box` / `toc`. Steps accept an
+  optional `icon` (the shared IconRef: bundled name shorthand or
+  `{name|path|url|svg_data, fill?, alt?}`), rendered for `stacked-box` / `toc`
+  in an icon column between the number badge and the label, in the step's tip
+  colour (or a readable ink), capped at 26pt. The column is all-or-nothing:
+  steps without an icon get an empty cell. `chevron` rejects icons. With seven
+  rows, `BODY_TOO_LONG` flags bodies over about 140 (`stacked-box`) or 135
+  (`toc`) characters. Output without icons and with ≤6 steps is unchanged.
+
 - **2026-09-25 — Schema 4.140.0: `phase-roadmap` parallel tracks (`go-slide-creator-s1uvj.8`).**
   `phase-roadmap` values accept `parallel_tracks` (0–4 strings, each ≤90
   characters) and `parallel_label` (≤24 characters, default `"In parallel"`).
