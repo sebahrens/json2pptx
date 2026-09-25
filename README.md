@@ -792,7 +792,7 @@ templates:
   cache_dir: ./cache/templates
 storage:
   output_dir: ./output
-  file_retention: 1h
+  file_retention: 1h   # must be positive; the cleaner removes only generated downloads (<32 hex>.pptx)
 svg:
   strategy: png
   scale: 2.0
