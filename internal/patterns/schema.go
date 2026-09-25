@@ -274,6 +274,22 @@ func discoverySchema(p Pattern) *Schema {
 		"height": NumberSchema(0, 100),
 	}, []string{"x", "y", "width", "height"}).WithAdditionalProperties(false).
 		WithDescription("Explicit rectangle as percentages of slide dimensions; takes priority over max_height_pct")
+	// type_scale is a cross-pattern override consumed before each pattern's
+	// typed decoder. Advertise it on every discovery schema, including patterns
+	// that have no other overrides.
+	mode := EnumSchema("compact", "comfortable", "presentation").WithDescription("Measured cell-text growth; compact preserves authored sizes, comfortable is the semantic default, presentation grows up to 80% of usable height")
+	if authoredOverride := root.raw.Properties["overrides"]; authoredOverride != nil {
+		base := authoredOverride.Deref(authored)
+		copyOverride := *base
+		copyOverride.raw.Properties = make(map[string]*Schema, len(base.raw.Properties)+1)
+		for key, value := range base.raw.Properties {
+			copyOverride.raw.Properties[key] = value
+		}
+		copyOverride.raw.Properties["type_scale"] = mode
+		root.raw.Properties["overrides"] = &copyOverride
+	} else {
+		root.raw.Properties["overrides"] = ObjectSchema(map[string]*Schema{"type_scale": mode}, nil).WithAdditionalProperties(false)
+	}
 	if values := root.raw.Properties["values"]; values != nil && values.raw.Type == TypeObject && len(values.raw.Properties) > 0 && len(values.raw.PatternProperties) == 0 {
 		closed := *values
 		closed.WithAdditionalProperties(false)

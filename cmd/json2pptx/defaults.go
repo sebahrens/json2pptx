@@ -7,7 +7,11 @@ import "github.com/sebahrens/json2pptx/internal/jsonschema"
 // validation or conversion. Swap-only semantics: an inline field always wins;
 // a missing field is filled from the default.
 func applyDefaults(input *PresentationInput) {
-	if input == nil || input.Defaults == nil {
+	if input == nil {
+		return
+	}
+	applyTypeScaleDefaults(input)
+	if input.Defaults == nil {
 		return
 	}
 	d := input.Defaults
@@ -23,6 +27,51 @@ func applyDefaults(input *PresentationInput) {
 		// Shape grid: tables embedded in cells, and shape defaults.
 		if s.ShapeGrid != nil {
 			applyShapeGridDefaults(s.ShapeGrid, d)
+		}
+	}
+}
+
+// Type scale is a deck policy, not part of the optional table/cell-style
+// defaults block. Propagate it before pattern expansion so rendering, preview
+// and preflight all resolve the same policy; an explicit pattern override wins.
+func applyTypeScaleDefaults(input *PresentationInput) {
+	if input.TypeScale == "" {
+		return
+	}
+	for i := range input.Slides {
+		slide := &input.Slides[i]
+		if slide.Pattern != nil {
+			slide.Pattern.DefaultTypeScale = input.TypeScale
+		}
+		if slide.Compose != nil {
+			applyComposeTypeScale(slide.Compose, input.TypeScale)
+		}
+		applyGridTypeScale(slide.ShapeGrid, input.TypeScale)
+	}
+}
+
+func applyComposeTypeScale(compose *ComposeInput, mode string) {
+	for i := range compose.Segments {
+		segment := &compose.Segments[i]
+		segment.Pattern.DefaultTypeScale = mode
+		if segment.Compose != nil {
+			applyComposeTypeScale(segment.Compose, mode)
+		}
+	}
+}
+
+func applyGridTypeScale(grid *jsonschema.ShapeGridInput, mode string) {
+	if grid == nil {
+		return
+	}
+	if grid.TypeScale == "" {
+		grid.TypeScale = mode
+	}
+	for i := range grid.Rows {
+		for _, cell := range grid.Rows[i].Cells {
+			if cell != nil && cell.Grid != nil {
+				applyGridTypeScale(cell.Grid, grid.TypeScale)
+			}
 		}
 	}
 }

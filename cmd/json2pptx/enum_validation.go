@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -38,6 +39,7 @@ func checkDeckEnumValues(input *PresentationInput) []*patterns.ValidationError {
 		{"design_mode", input.DesignMode, canonicalDesignModes, designModeAliases},
 		{"accent_strategy", input.AccentStrategy, canonicalAccentStrategies, accentStrategyAliases},
 		{"viewing_mode", input.ViewingMode, canonicalViewingModes, viewingModeAliases},
+		{"type_scale", input.TypeScale, canonicalTypeScales, nil},
 	}
 	for _, e := range deckEnums {
 		if e.value == "" {
@@ -86,8 +88,41 @@ func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError 
 				errs = append(errs, err)
 			}
 		}
+		errs = append(errs, checkGridTypeScaleEnums(slide.ShapeGrid, prefix+"/shape_grid")...)
 	}
 	return errs
+}
+
+func checkGridTypeScaleEnums(grid *jsonschema.ShapeGridInput, path string) []*patterns.ValidationError {
+	if grid == nil {
+		return nil
+	}
+	var out []*patterns.ValidationError
+	if grid.TypeScale != "" {
+		if err := checkEnum(path+"/type_scale", grid.TypeScale, canonicalTypeScales, nil); err != nil {
+			out = append(out, err)
+		}
+	}
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", path, ri, ci)
+			if cell.Shape != nil && cell.Shape.TypeScale != "" {
+				if err := checkEnum(cellPath+"/shape/type_scale", cell.Shape.TypeScale, canonicalTypeScales, nil); err != nil {
+					out = append(out, err)
+				}
+			}
+			if cell.Composite != nil && cell.Composite.Text != nil && cell.Composite.Text.TypeScale != "" {
+				if err := checkEnum(cellPath+"/composite/text/type_scale", cell.Composite.Text.TypeScale, canonicalTypeScales, nil); err != nil {
+					out = append(out, err)
+				}
+			}
+			out = append(out, checkGridTypeScaleEnums(cell.Grid, cellPath+"/grid")...)
+		}
+	}
+	return out
 }
 
 // checkEnum validates a single value against a canonical set plus an optional

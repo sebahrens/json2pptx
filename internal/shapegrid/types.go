@@ -76,11 +76,15 @@ func ParseVerticalAlign(s string) (VerticalAlign, bool) {
 
 // Grid is the domain representation of a shape grid layout.
 type Grid struct {
-	Bounds  pptx.RectEmu // Absolute bounds in EMU (authoritative — never shrunk)
-	Columns []float64    // Column width percentages (sum to 100)
-	Rows    []Row        // Row definitions
-	ColGap  float64      // Column gap in points (1pt = 12700 EMU)
-	RowGap  float64      // Row gap in points (1pt = 12700 EMU)
+	Bounds pptx.RectEmu // Absolute bounds in EMU (authoritative — never shrunk)
+	// TypeScale grows sparse cell text after bounds are resolved. Empty and
+	// "compact" preserve authored sizes; "comfortable" and "presentation"
+	// use progressively larger fill targets and role-specific caps.
+	TypeScale string
+	Columns   []float64 // Column width percentages (sum to 100)
+	Rows      []Row     // Row definitions
+	ColGap    float64   // Column gap in points (1pt = 12700 EMU)
+	RowGap    float64   // Row gap in points (1pt = 12700 EMU)
 	// VAlign controls placement when the resolved rows (fixed heights, auto
 	// heights, and flex rows capped by MaxHeight) sum to less than the
 	// bounds. VAlignStretch (default) re-scales rows to fill; the other
@@ -213,6 +217,7 @@ type ImageText struct {
 // ShapeSpec defines a preset geometry shape with fill, line, and text.
 type ShapeSpec struct {
 	Geometry    string
+	TypeScale   string
 	Fill        json.RawMessage
 	Line        json.RawMessage
 	Text        json.RawMessage

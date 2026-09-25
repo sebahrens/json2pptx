@@ -1,6 +1,7 @@
 {
   "template": "midnight-blue",
   "design_mode": "constrained",
+  "type_scale": "comfortable",
   "slides": [
     {
       "layout_id": "title",

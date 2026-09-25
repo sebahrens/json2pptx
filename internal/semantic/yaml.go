@@ -218,7 +218,7 @@ var topLevelMigrations = map[string]string{
 // DeckMeta's json tags and the schema's DeckMeta.additionalProperties:false, so
 // unknown meta keys are reported rather than silently dropped by the struct
 // decode of rawDeck.Meta.
-var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date", "chrome", "viewing_mode", "accent_strategy", "design_mode", "required_layouts"}
+var knownMetaKeys = []string{"title", "subtitle", "archetype", "template", "audience", "author", "date", "chrome", "viewing_mode", "type_scale", "accent_strategy", "design_mode", "required_layouts"}
 
 var knownStructureKeys = []string{"cover", "auto_agenda", "sections", "closing"}
 var knownSectionKeys = []string{"title", "slides"}

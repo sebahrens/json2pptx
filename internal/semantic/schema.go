@@ -87,6 +87,11 @@ func deckMetaSchema() map[string]any {
 				"description": "Readability policy: \"present\" (default, stricter minimum text sizes) or \"read\".",
 				"enum":        []any{"present", "read"},
 			},
+			"type_scale": map[string]any{
+				"type":        "string",
+				"description": "Grow sparse shape-grid text after measuring its cell: compact (off), comfortable (semantic default), or presentation (up to 80% of usable height; body 18pt, caption 14pt, KPI value 48pt caps).",
+				"enum":        []any{"compact", "comfortable", "presentation"},
+			},
 			"accent_strategy": map[string]any{
 				"type":        "string",
 				"description": "Accent colour rotation across the deck.",

@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.137.0: measured type scale (`go-slide-creator-yfygk`).**
+  DeckSpec `meta.type_scale` and raw top-level `type_scale` accept `compact`,
+  `comfortable`, or `presentation`; semantic decks default to `comfortable`
+  while raw decks remain compact unless opted in. Named patterns accept the
+  same key in `overrides`, and raw shape grids/cells can override it locally.
+  Sparse cell text grows only after resolved-bounds measurement, with role caps
+  and a 70%/80% height budget; render and preflight use the same grown sizes.
+
 - **2026-09-25 — Schema 4.136.0: chart callout-only content and semantic design defaults (`go-slide-creator-v22hn`, `go-slide-creator-an2az`).**
   `chart-insights-split` now accepts an empty `insights` array when a nonempty
   `so_what` carries the sole narrative point. A scalar DeckSpec

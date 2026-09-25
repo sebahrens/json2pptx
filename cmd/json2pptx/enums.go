@@ -81,6 +81,8 @@ var accentStrategyAliases = map[string]string{}
 // or "read" (on-screen / print). Selects the readability policy floors.
 var canonicalViewingModes = []string{"present", "read"}
 
+var canonicalTypeScales = []string{"compact", "comfortable", "presentation"}
+
 var viewingModeAliases = map[string]string{}
 
 // canonicalSlideTypes is the published vocabulary for the slide-level

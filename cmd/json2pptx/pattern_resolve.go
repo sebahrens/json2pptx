@@ -25,6 +25,10 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	if !ok {
 		return nil, nil, unknownPatternInputError(reg, p.Name)
 	}
+	mode, cleanOverrides, _ := patterns.SplitTypeScaleOverride(p.Name, p.Overrides)
+	if mode == "" {
+		mode = p.DefaultTypeScale
+	}
 
 	// Inspect the raw payload against the pattern's own decoder BEFORE anything
 	// else reads it (go-slide-creator-20jm). Two failures are invisible further
@@ -44,10 +48,10 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 
 	// Unmarshal overrides
 	var overrides any
-	if len(p.Overrides) > 0 {
+	if len(cleanOverrides) > 0 {
 		overrides = pat.NewOverrides()
 		if overrides != nil {
-			if err := json.Unmarshal(p.Overrides, overrides); err != nil {
+			if err := json.Unmarshal(cleanOverrides, overrides); err != nil {
 				return nil, nil, fmt.Errorf("pattern %q: invalid overrides: %w", p.Name, err)
 			}
 		}
@@ -132,6 +136,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	if p.Callout != nil {
 		grid = appendCalloutRow(grid, p.Callout)
 	}
+	stampPatternTypeScale(grid, mode)
 
 	// Optional PostExpandWarner interface: patterns can surface structured
 	// warning strings (e.g. CHART_PLACEHOLDER_EMPTY) describing known-degraded
@@ -155,6 +160,30 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	)
 
 	return grid, warnings, nil
+}
+
+// Stamp a pattern's resolved policy on each shape as well as the grid. Compose
+// flattens segment grids and can discard their grid-level fields; per-shape
+// stamps preserve different overrides on adjacent segments.
+func stampPatternTypeScale(grid *jsonschema.ShapeGridInput, mode string) {
+	if grid == nil || mode == "" {
+		return
+	}
+	grid.TypeScale = mode
+	for i := range grid.Rows {
+		for _, cell := range grid.Rows[i].Cells {
+			if cell == nil {
+				continue
+			}
+			if cell.Shape != nil {
+				cell.Shape.TypeScale = mode
+			}
+			if cell.Composite != nil && cell.Composite.Text != nil {
+				cell.Composite.Text.TypeScale = mode
+			}
+			stampPatternTypeScale(cell.Grid, mode)
+		}
+	}
 }
 
 func patternAccentContext(ctx patterns.ExpandContext, p *PatternInput) patterns.ExpandContext {
@@ -307,7 +336,7 @@ func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patte
 				continue
 			}
 			if len(cell.Pattern) > 0 {
-				if err := expandPatternInCell(cell, ctx, cellBounds[[2]int{ri, ci}], ri, ci, reg); err != nil {
+				if err := expandPatternInCell(cell, ctx, cellBounds[[2]int{ri, ci}], ri, ci, grid.TypeScale, reg); err != nil {
 					return err
 				}
 			}
@@ -321,7 +350,7 @@ func expandNestedCellPatternsInBounds(grid *jsonschema.ShapeGridInput, ctx patte
 	return nil
 }
 
-func expandPatternInCell(cell *jsonschema.GridCellInput, ctx patterns.ExpandContext, bounds pptx.RectEmu, ri, ci int, reg *patterns.Registry) error {
+func expandPatternInCell(cell *jsonschema.GridCellInput, ctx patterns.ExpandContext, bounds pptx.RectEmu, ri, ci int, defaultTypeScale string, reg *patterns.Registry) error {
 	if cell.Grid != nil {
 		return fmt.Errorf("grid cell row %d col %d: 'pattern' and 'grid' are mutually exclusive", ri, ci)
 	}
@@ -333,6 +362,7 @@ func expandPatternInCell(cell *jsonschema.GridCellInput, ctx patterns.ExpandCont
 	if err := json.Unmarshal(cell.Pattern, &pi); err != nil {
 		return fmt.Errorf("grid cell row %d col %d: invalid pattern: %w", ri, ci, err)
 	}
+	pi.DefaultTypeScale = defaultTypeScale
 	ctx.LayoutBounds = patterns.LayoutBounds{X: bounds.X, Y: bounds.Y, Width: bounds.CX, Height: bounds.CY}
 	expanded, _, err := expandPattern(&pi, ctx, reg)
 	if err != nil {

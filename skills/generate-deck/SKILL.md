@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.136.0
+schema_version: 4.137.0
 description: >
   Generate consulting-quality PowerPoint decks from user prompts using json2pptx.
   Applies constrained generation: 4-phase workflow (Plan → Vary → Render → Repair),
@@ -130,6 +130,11 @@ once** per slide: when the chosen pattern draws its own attribution (as `chart-i
 under the chart) the chrome source band stands down rather than printing it a second time. Write the
 citation however you like — `"Company filings FY2026"` and `"Source: Company filings FY2026"` both
 render as `Source: Company filings FY2026`, never `Source: Source: …` (go-slide-creator-xg48).
+
+**Type scale.** `meta.type_scale` is `compact` | `comfortable` | `presentation` (semantic default:
+`comfortable`). Sparse shape-grid cells grow only after fit measurement; `presentation` caps body
+at 18pt, captions at 14pt, and KPI values at 48pt while keeping the text within 80% of usable
+height. Set `pattern.overrides.type_scale` to override one pattern; `compact` disables growth.
 
 ```yaml
 meta:

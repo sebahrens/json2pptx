@@ -68,6 +68,7 @@ type PresentationInput struct {
 	DesignMode     string          `json:"design_mode,omitempty"`     // "constrained" (default) or "free"
 	AccentStrategy string          `json:"accent_strategy,omitempty"` // "primary" (default), "rotate", or "section-keyed"
 	ViewingMode    string          `json:"viewing_mode,omitempty"`    // "present" (default: projected, 12pt body / 10pt caption floor) or "read"
+	TypeScale      string          `json:"type_scale,omitempty"`      // "compact", "comfortable", or "presentation"; raw default is compact
 	Footer         *JSONFooter     `json:"footer,omitempty"`
 	Chrome         *ChromeInput    `json:"chrome,omitempty"`
 	ThemeOverride  *ThemeInput     `json:"theme_override,omitempty"`
@@ -507,13 +508,14 @@ type JSONFooter struct {
 // PatternInput is the JSON schema for pattern-based slides.
 // Placed at the same level as shape_grid in SlideInput (XOR — D1).
 type PatternInput struct {
-	Name          string                      `json:"name"`
-	Values        json.RawMessage             `json:"values"`
-	Overrides     json.RawMessage             `json:"overrides,omitempty"`
-	CellOverrides map[string]json.RawMessage  `json:"cell_overrides,omitempty"`
-	Callout       *patterns.PatternCallout    `json:"callout,omitempty"`
-	Bounds        *jsonschema.GridBoundsInput `json:"bounds,omitempty"`
-	MaxHeightPct  float64                     `json:"max_height_pct,omitempty"`
+	Name             string                      `json:"name"`
+	Values           json.RawMessage             `json:"values"`
+	Overrides        json.RawMessage             `json:"overrides,omitempty"`
+	CellOverrides    map[string]json.RawMessage  `json:"cell_overrides,omitempty"`
+	Callout          *patterns.PatternCallout    `json:"callout,omitempty"`
+	Bounds           *jsonschema.GridBoundsInput `json:"bounds,omitempty"`
+	MaxHeightPct     float64                     `json:"max_height_pct,omitempty"`
+	DefaultTypeScale string                      `json:"-"` // inherited deck policy; overrides.type_scale wins
 }
 
 // ComposeInput defines a composition envelope that arranges multiple patterns

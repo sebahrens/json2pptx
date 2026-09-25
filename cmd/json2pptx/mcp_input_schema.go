@@ -95,6 +95,7 @@ var fieldScopeMap = map[string]map[string]string{
 		"design_mode":     "deck",
 		"accent_strategy": "deck",
 		"viewing_mode":    "deck",
+		"type_scale":      "deck",
 		"footer":          "deck",
 		"chrome":          "deck",
 		"theme_override":  "deck",
@@ -168,12 +169,19 @@ var enumMap = map[string]map[string][]string{
 		"design_mode":     canonicalDesignModes,
 		"accent_strategy": canonicalAccentStrategies,
 		"viewing_mode":    canonicalViewingModes,
+		"type_scale":      canonicalTypeScales,
 	},
 	"SlideInput": {
 		"slide_type":       canonicalSlideTypes,
 		"transition":       canonicalTransitions(),
 		"transition_speed": canonicalTransitionSpeeds,
 		"build":            canonicalBuilds,
+	},
+	"ShapeGridInput": {
+		"type_scale": canonicalTypeScales,
+	},
+	"ShapeSpecInput": {
+		"type_scale": canonicalTypeScales,
 	},
 	"ContentInput": {
 		// Content types include "chart" because the contentTypeDiscriminator

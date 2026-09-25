@@ -804,12 +804,13 @@ func resolveGridForStructural(grid *ShapeGridInput, overrideBounds *pptx.RectEmu
 
 	vAlign, _ := shapegrid.ParseVerticalAlign(grid.VerticalAlign)
 	sgGrid := &shapegrid.Grid{
-		Bounds:  bounds,
-		Columns: colWidths,
-		Rows:    convertGridRows(grid.Rows),
-		ColGap:  colGap,
-		RowGap:  rowGap,
-		VAlign:  vAlign,
+		Bounds:    bounds,
+		TypeScale: grid.TypeScale,
+		Columns:   colWidths,
+		Rows:      convertGridRows(grid.Rows),
+		ColGap:    colGap,
+		RowGap:    rowGap,
+		VAlign:    vAlign,
 	}
 
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {

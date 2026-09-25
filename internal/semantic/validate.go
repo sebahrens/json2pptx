@@ -389,6 +389,9 @@ func dedupExact(in []diagnostics.Diagnostic) []diagnostics.Diagnostic {
 // validateMeta enforces deck-level rules: a title is required and a present
 // archetype must be registered. Meta text is scanned for placeholder content.
 func validateMeta(spec *DeckSpec, s *semDiags) {
+	if v := spec.Meta.TypeScale; v != "" && v != "compact" && v != "comfortable" && v != "presentation" {
+		s.hard("meta.type_scale", diagnostics.CodeSemanticRequired, "type_scale must be compact, comfortable, or presentation")
+	}
 	if strings.TrimSpace(spec.Meta.Title) == "" {
 		s.hard("meta.title", diagnostics.CodeSemanticRequired, "deck title (meta.title) is required")
 	} else {

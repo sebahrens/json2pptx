@@ -76,6 +76,7 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 		Template:       firstNonEmptyStr(ir.Template, opts.DefaultTemplate, ir.ArchetypeTemplate),
 		OutputFilename: opts.OutputFilename,
 		DesignMode:     "constrained",
+		TypeScale:      "comfortable",
 	}
 	if opts.AccentStrategy != "" {
 		input.AccentStrategy = opts.AccentStrategy
@@ -86,6 +87,9 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 	}
 	if ir.ViewingMode != "" {
 		input.ViewingMode = ir.ViewingMode
+	}
+	if ir.TypeScale != "" {
+		input.TypeScale = ir.TypeScale
 	}
 	// A compiled deck is constrained; a spec that reaches for the
 	// raw_json2pptx escape hatch can say "free" and mean it

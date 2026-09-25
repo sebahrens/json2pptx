@@ -744,12 +744,13 @@ func resolveShapeGrid(input *ShapeGridInput, alloc *pptx.ShapeIDAllocator, overr
 	}
 
 	grid := &shapegrid.Grid{
-		Bounds:  bounds,
-		Columns: colWidths,
-		Rows:    rows,
-		ColGap:  colGap,
-		RowGap:  rowGap,
-		VAlign:  vAlign,
+		Bounds:    bounds,
+		TypeScale: input.TypeScale,
+		Columns:   colWidths,
+		Rows:      rows,
+		ColGap:    colGap,
+		RowGap:    rowGap,
+		VAlign:    vAlign,
 	}
 
 	// Validate grid structure before rendering (catches overlaps, span errors, etc.)
@@ -957,6 +958,7 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 	if c.Shape != nil {
 		cell.Shape = &shapegrid.ShapeSpec{
 			Geometry:    c.Shape.Geometry,
+			TypeScale:   c.Shape.TypeScale,
 			Fill:        c.Shape.Fill,
 			Line:        c.Shape.Line,
 			Text:        c.Shape.Text,
@@ -1029,6 +1031,7 @@ func convertGridCell(c *GridCellInput) shapegrid.Cell {
 		if c.Composite.Text != nil {
 			comp.Text = &shapegrid.ShapeSpec{
 				Geometry:    c.Composite.Text.Geometry,
+				TypeScale:   c.Composite.Text.TypeScale,
 				Fill:        c.Composite.Text.Fill,
 				Line:        c.Composite.Text.Line,
 				Text:        c.Composite.Text.Text,

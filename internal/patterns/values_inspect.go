@@ -37,16 +37,48 @@ func InspectPatternInput(pat Pattern, values, overrides json.RawMessage, cellOve
 	if pat == nil {
 		return nil
 	}
+	_, cleanOverrides, typeScaleErr := SplitTypeScaleOverride(pat.Name(), overrides)
 	root := pat.Schema()
 	var out []*ValidationError
+	if typeScaleErr != nil {
+		out = append(out, typeScaleErr)
+	}
 	out = append(out, inspectSection(pat.Name(), "values", values, pat.NewValues(), sectionSchema(root, "values"), root)...)
-	out = append(out, inspectSection(pat.Name(), "overrides", overrides, pat.NewOverrides(), sectionSchema(root, "overrides"), root)...)
+	out = append(out, inspectSection(pat.Name(), "overrides", cleanOverrides, pat.NewOverrides(), sectionSchema(root, "overrides"), root)...)
 	for _, key := range sortedRawKeys(cellOverrides) {
 		path := fmt.Sprintf("cell_overrides[%s]", key)
 		out = append(out, inspectSection(pat.Name(), path, cellOverrides[key], pat.NewCellOverride(), cellOverrideSchema(root), root)...)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out
+}
+
+// SplitTypeScaleOverride removes the one override shared by every pattern so
+// each pattern's own typed decoder still rejects all other unknown keys.
+// Invalid modes are findings at the authored override path, not silent no-ops.
+func SplitTypeScaleOverride(pattern string, raw json.RawMessage) (string, json.RawMessage, *ValidationError) {
+	var obj map[string]json.RawMessage
+	if len(raw) == 0 || json.Unmarshal(raw, &obj) != nil || obj == nil {
+		return "", raw, nil // the regular inspector diagnoses malformed sections
+	}
+	value, found := obj["type_scale"]
+	if !found {
+		return "", raw, nil
+	}
+	delete(obj, "type_scale")
+	clean, _ := json.Marshal(obj)
+	if len(obj) == 0 {
+		clean = nil
+	}
+	var mode string
+	if json.Unmarshal(value, &mode) != nil || (mode != "compact" && mode != "comfortable" && mode != "presentation") {
+		return "", clean, &ValidationError{
+			Pattern: pattern, Path: "overrides.type_scale", Code: ErrCodeUnknownEnum,
+			Message: fmt.Sprintf("%s: overrides.type_scale must be compact, comfortable, or presentation", pattern),
+			Fix:     &FixSuggestion{Kind: "use_one_of", Params: map[string]any{"allowed": []string{"compact", "comfortable", "presentation"}}},
+		}
+	}
+	return mode, clean, nil
 }
 
 // sectionSchema returns the sub-schema for one top-level pattern input section.

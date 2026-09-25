@@ -18,6 +18,7 @@ import (
 type ShapeGridInput struct {
 	Bounds                      *GridBoundsInput `json:"bounds,omitempty"`
 	BoundsRelativeToContentArea bool             `json:"-"`
+	TypeScale                   string           `json:"type_scale,omitempty"`
 	Gap                         float64          `json:"gap,omitempty"`     // Gap in points (default 8pt). Applies to both col and row gaps.
 	ColGap                      float64          `json:"col_gap,omitempty"` // Column gap in points (overrides gap)
 	RowGap                      float64          `json:"row_gap,omitempty"` // Row gap in points (overrides gap)
@@ -173,6 +174,7 @@ type IconInput struct {
 // ShapeSpecInput defines a preset geometry shape with fill, line, and text.
 type ShapeSpecInput struct {
 	Geometry    string           `json:"geometry"`
+	TypeScale   string           `json:"type_scale,omitempty"`
 	Fill        json.RawMessage  `json:"fill,omitempty"`
 	Line        json.RawMessage  `json:"line,omitempty"`
 	Text        json.RawMessage  `json:"text,omitempty"`

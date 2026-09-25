@@ -195,7 +195,7 @@ In `design_mode: "constrained"` (the default), raw hex colors are restricted; sw
 
 ## Viewing mode and readability
 
-Top-level `viewing_mode`: `"present"` (default, projected: 12pt body, 10pt captions, 20pt titles) or `"read"` (on-screen/print, lower floors). It never changes rendering; text shrunk below its role's floor is reported as `TEXT_BELOW_READABLE_MIN` (see `docs/FIT_FINDINGS.md`).
+Top-level `viewing_mode`: `"present"` (default, projected: 12pt body, 10pt captions, 20pt titles) or `"read"` (on-screen/print, lower floors). It never changes rendering; text shrunk below its role's floor is reported as `TEXT_BELOW_READABLE_MIN` (see `docs/FIT_FINDINGS.md`). Top-level `type_scale` controls measured growth of sparse `shape_grid` text: `"compact"` (raw default; no growth), `"comfortable"` (up to 70% of usable height, body/caption/KPI caps 16/13/42pt), or `"presentation"` (up to 80%, caps 18/14/48pt). A semantic DeckSpec defaults to `meta.type_scale: "comfortable"`. Pattern-level `overrides.type_scale` wins over the deck policy; a raw `shape_grid.type_scale` or `shape.type_scale` can override it for a grid or cell. Dense text is not enlarged, and authored font sizes are never reduced by this setting.
 
 ## Footer, page numbers, and structure
 

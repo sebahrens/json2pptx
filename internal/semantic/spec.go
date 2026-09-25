@@ -53,6 +53,9 @@ type DeckMeta struct {
 	Chrome *ChromeSpec `json:"chrome,omitempty" yaml:"chrome,omitempty"`
 	// ViewingMode is the readability policy for the deck ("present" or "read").
 	ViewingMode string `json:"viewing_mode,omitempty" yaml:"viewing_mode,omitempty"`
+	// TypeScale controls measured grow-to-fill for shape-grid text. Semantic
+	// decks default to "comfortable"; "compact" preserves authored sizes.
+	TypeScale string `json:"type_scale,omitempty" yaml:"type_scale,omitempty"`
 	// AccentStrategy controls accent rotation ("primary", "rotate",
 	// "section-keyed"). It overrides the compile-option default.
 	AccentStrategy string `json:"accent_strategy,omitempty" yaml:"accent_strategy,omitempty"`

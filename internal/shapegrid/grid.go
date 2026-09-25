@@ -281,6 +281,18 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 	}
 
 	connectors := resolveRowConnectors(grid, cells, rowCellIDs, rowYOffsets, rowHeightsEMU, alloc)
+	for i := range cells {
+		cell := &cells[i]
+		if cell.Kind == CellKindShape && cell.ShapeSpec != nil {
+			mode := cell.ShapeSpec.TypeScale
+			if mode == "" {
+				mode = grid.TypeScale
+			}
+			if mode != "" && mode != "compact" {
+				cell.ShapeSpec = growShapeText(cell.ShapeSpec, cell.Bounds, cell.TextInsets, mode)
+			}
+		}
+	}
 
 	return &ResolveResult{
 		Cells:        cells,
