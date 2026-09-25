@@ -365,7 +365,8 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 	idx := 0
 	insetTop := math.Round(defaultShapeInsetTBPt + fgCardPadPt + (l.rowHPt-l.contentHPt)/2)
 	for _, row := range vals.Rows {
-		cells := make([]*jsonschema.GridCellInput, 1+l.cols)
+		// Label cell, then one per card column.
+		cells := append([]*jsonschema.GridCellInput{nil}, make([]*jsonschema.GridCellInput, l.cols)...)
 		labelText := patternTextObj{
 			Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(row.Label), Size: l.titlePt, Bold: true, Color: labelInk, Align: "l"}},
 			Align:         "l",
@@ -411,10 +412,9 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: l.rowHPt, MaxHeight: l.rowHPt, Cells: cells})
 	}
 
-	cols := make([]float64, 1+l.cols)
-	cols[0] = l.labelPct
-	for j := 1; j <= l.cols; j++ {
-		cols[j] = math.Round((100-l.labelPct)/float64(l.cols)*100) / 100
+	cols := []float64{l.labelPct}
+	for j := 0; j < l.cols; j++ {
+		cols = append(cols, math.Round((100-l.labelPct)/float64(l.cols)*100)/100)
 	}
 	colsJSON, _ := json.Marshal(cols)
 	return &jsonschema.ShapeGridInput{

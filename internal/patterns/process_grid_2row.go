@@ -364,8 +364,8 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 func buildProcessGrid2RowHeaderRow(ctx ExpandContext, headers []string, accent string, size, textW float64) jsonschema.GridRowInput {
 	ink := inkOnLight(ctx, "dk2", 4.5)
 	h := size * contentLineHeight
-	cells := make([]*jsonschema.GridCellInput, 1+len(headers))
-	cells[0] = &jsonschema.GridCellInput{}
+	// Leading empty cell over the row-label column, then one per header.
+	cells := append([]*jsonschema.GridCellInput{{}}, make([]*jsonschema.GridCellInput, len(headers))...)
 	for i, header := range headers {
 		h = math.Max(h, textBlockHeightPt(ctx.Theme.BodyFont, textW*processGrid2RowMeasureSafety, textParagraph{text: header, size: size, bold: true}))
 		cells[1+i] = &jsonschema.GridCellInput{
@@ -389,8 +389,8 @@ func buildProcessGrid2RowOutcomeRow(ctx ExpandContext, outcomes []string, accent
 	tone := inactiveTintTone(accent)
 	ink := readableTextOn(ctx, tone, "dk1")
 	h := size * contentLineHeight
-	cells := make([]*jsonschema.GridCellInput, 1+len(outcomes))
-	cells[0] = &jsonschema.GridCellInput{}
+	// Leading empty cell under the row-label column, then one per outcome.
+	cells := append([]*jsonschema.GridCellInput{{}}, make([]*jsonschema.GridCellInput, len(outcomes))...)
 	for i, outcome := range outcomes {
 		h = math.Max(h, textBlockHeightPt(ctx.Theme.BodyFont, (textW-8)*processGrid2RowMeasureSafety, textParagraph{text: outcome, size: size, bold: true}))
 		cells[1+i] = &jsonschema.GridCellInput{

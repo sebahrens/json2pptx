@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -134,7 +135,14 @@ func patchThemeXML(xml string, override *types.ThemeOverride) (string, themePatc
 			result.invalidColors = append(result.invalidColors, slot)
 			continue
 		}
-		val := strings.ToUpper(strings.TrimPrefix(strings.TrimSpace(hex), "#"))
+		// Re-derive the attribute from the parsed number, so nothing from the
+		// input string itself reaches the XML.
+		rgb, err := strconv.ParseUint(strings.TrimPrefix(strings.TrimSpace(hex), "#"), 16, 32)
+		if err != nil {
+			result.invalidColors = append(result.invalidColors, slot)
+			continue
+		}
+		val := fmt.Sprintf("%06X", rgb)
 		pattern := clrSchemeSlotPattern(slot)
 		if !pattern.MatchString(xml) {
 			result.unmatchedColors = append(result.unmatchedColors, slot)

@@ -440,13 +440,12 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 		}
 	}
 
-	n := len(vals.Items)
 	baseAccent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
 	lay := layoutMetricList(ctx, vals, ovr)
 	labelInk := inkOnLight(ctx, "dk2", 4.5)
 
-	rows := make([]jsonschema.GridRowInput, 0, 2*n+1)
-	itemRow := make([]bool, 0, 2*n+1)
+	var rows []jsonschema.GridRowInput
+	var itemRow []bool
 	for i, it := range vals.Items {
 		if i > 0 {
 			rows = append(rows, hairlineRuleRow(2))

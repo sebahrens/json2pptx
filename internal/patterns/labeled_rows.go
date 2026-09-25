@@ -361,7 +361,7 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	lay := layoutLabeledRows(ctx, vals, ovr)
 	subInkOnLight := inkOnLight(ctx, "dk2", 4.5)
 
-	rows := make([]jsonschema.GridRowInput, 0, 2*len(vals.Rows))
+	var rows []jsonschema.GridRowInput
 	for i, r := range vals.Rows {
 		if i > 0 {
 			rows = append(rows, hairlineRuleRow(2))

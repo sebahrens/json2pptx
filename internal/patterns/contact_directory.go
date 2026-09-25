@@ -599,7 +599,7 @@ func (c *contactDirectory) Expand(ctx ExpandContext, values, overrides any, cell
 				rows = append(rows, cdStackedRows(people, n, lay, lay.rowPt[g][r], lay.textRowPt[g][r], discTone, discInk, nameInk, titleInk)...)
 				continue
 			}
-			cells := make([]*jsonschema.GridCellInput, 0, 2*n)
+			var cells []*jsonschema.GridCellInput
 			for _, p := range people {
 				cells = append(cells,
 					cdPhotoCell(p, discTone, discInk, lay.photoPt),
