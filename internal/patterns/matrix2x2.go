@@ -353,7 +353,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	yLow, yHigh := axisEnds(vals.YLow, vals.YHigh)
 	xAxisCell := &jsonschema.GridCellInput{
 		ColSpan: 2,
-		Grid:    buildMatrix2x2XAxis(vals.XAxisLabel, xLow, xHigh, labelSize, accent, axisText),
+		Grid:    buildMatrix2x2XAxis(vals.XAxisLabel, xLow, xHigh, labelSize, accent),
 	}
 
 	// Empty (unpainted) corner cell
@@ -405,7 +405,7 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	rows := []jsonschema.GridRowInput{
 		// Row 0: corner + x-axis label
 		{
-			Height: 12,
+			Height: 16,
 			Cells:  []*jsonschema.GridCellInput{cornerCell, xAxisCell},
 		},
 		// Row 1: y-axis label + TL + TR
@@ -553,19 +553,30 @@ func matrix2x2EndCell(content string, size float64, align, vAlign string) *jsons
 	}}
 }
 
-// Arrow adjustments: a thick shaft (70% of the band) so the axis label fits
-// inside it, and a short head.
+// Arrow adjustments: a thick shaft and a short head. The horizontal axis
+// title sits beside its arrow so the shaft cannot run through the letters.
 var matrix2x2ArrowAdj = map[string]int64{"adj1": 70000, "adj2": 45000}
 
-// buildMatrix2x2XAxis renders the x axis as [low | → label → | high], the
-// arrow pointing right (towards "high").
-func buildMatrix2x2XAxis(label, low, high string, size float64, accent, textColor string) *jsonschema.ShapeGridInput {
+// buildMatrix2x2XAxis renders the x axis as [low | title → | high], the arrow
+// pointing right (towards "high"). Keeping title and arrow in separate cells
+// prevents the shaft from occluding the title without making its text row too
+// short for the stored autofit scale.
+func buildMatrix2x2XAxis(label, low, high string, size float64, accent string) *jsonschema.ShapeGridInput {
 	endSize := math.Max(size-3, 9)
 	arrow := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 		Geometry:    "rightArrow",
 		Fill:        json.RawMessage(fmt.Sprintf(`"%s"`, accent)),
 		Adjustments: matrix2x2ArrowAdj,
-		Text:        buildMatrix2x2LabelContent(label, size, textColor, "ctr", ""),
+	}}
+	title := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		Geometry: "rect",
+		Fill:     json.RawMessage(`"none"`),
+		Text:     buildMatrix2x2LabelContent(label, size, "dk1", "ctr", ""),
+	}}
+	center := &jsonschema.GridCellInput{Grid: &jsonschema.ShapeGridInput{
+		Columns: json.RawMessage(`[70, 30]`),
+		ColGap:  4,
+		Rows:    []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{title, arrow}}},
 	}}
 	return &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(`[18, 64, 18]`),
@@ -573,7 +584,7 @@ func buildMatrix2x2XAxis(label, low, high string, size float64, accent, textColo
 		RowGap:  0.01,
 		Rows: []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{
 			matrix2x2EndCell(low, endSize, "r", "ctr"),
-			arrow,
+			center,
 			matrix2x2EndCell(high, endSize, "l", "ctr"),
 		}}},
 	}

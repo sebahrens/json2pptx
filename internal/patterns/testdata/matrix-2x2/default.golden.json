@@ -7,7 +7,7 @@
   ],
   "rows": [
     {
-      "height": 12,
+      "height": 16,
       "cells": [
         {
           "shape": {
@@ -49,26 +49,47 @@
                     }
                   },
                   {
-                    "shape": {
-                      "geometry": "rightArrow",
-                      "fill": "accent1",
-                      "text": {
-                        "paragraphs": [
-                          {
-                            "content": "Market Share",
-                            "size": 14,
-                            "bold": true,
-                            "color": "lt1",
-                            "align": "ctr"
-                          }
-                        ],
-                        "align": "ctr",
-                        "vertical_align": "ctr"
-                      },
-                      "adjustments": {
-                        "adj1": 70000,
-                        "adj2": 45000
-                      }
+                    "grid": {
+                      "col_gap": 4,
+                      "columns": [
+                        70,
+                        30
+                      ],
+                      "rows": [
+                        {
+                          "cells": [
+                            {
+                              "shape": {
+                                "geometry": "rect",
+                                "fill": "none",
+                                "text": {
+                                  "paragraphs": [
+                                    {
+                                      "content": "Market Share",
+                                      "size": 14,
+                                      "bold": true,
+                                      "color": "dk1",
+                                      "align": "ctr"
+                                    }
+                                  ],
+                                  "align": "ctr",
+                                  "vertical_align": "ctr"
+                                }
+                              }
+                            },
+                            {
+                              "shape": {
+                                "geometry": "rightArrow",
+                                "fill": "accent1",
+                                "adjustments": {
+                                  "adj1": 70000,
+                                  "adj2": 45000
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      ]
                     }
                   },
                   {

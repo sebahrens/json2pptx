@@ -269,14 +269,14 @@ func TestMatrix2x2(t *testing.T) {
 			t.Errorf("row[2] expected 2 cells, got %d", len(grid.Rows[2].Cells))
 		}
 
-		// Axes are sub-grids: [low | arrow | high] for x, [high / arrow / low]
+		// Axes are sub-grids: [low | title → | high] for x, [high / arrow / low]
 		// for y. The arrows point towards "high" (right, up) — go-slide-creator-2f9d.
 		xAxis := grid.Rows[0].Cells[1].Grid
 		yAxis := grid.Rows[1].Cells[0].Grid
 		if xAxis == nil || yAxis == nil {
 			t.Fatalf("axis cells must be sub-grids, got x=%v y=%v", xAxis, yAxis)
 		}
-		xArrow := xAxis.Rows[0].Cells[1].Shape
+		xArrow := xAxis.Rows[0].Cells[1].Grid.Rows[0].Cells[1].Shape
 		yArrow := yAxis.Rows[1].Cells[0].Shape
 		if xArrow.Geometry != "rightArrow" {
 			t.Errorf("x-axis geometry = %q, want rightArrow", xArrow.Geometry)
@@ -317,7 +317,8 @@ func TestMatrix2x2(t *testing.T) {
 		var xText struct {
 			Vert string `json:"vert"`
 		}
-		if err := json.Unmarshal(xArrow.Text, &xText); err != nil {
+		xTitle := xAxis.Rows[0].Cells[1].Grid.Rows[0].Cells[0].Shape
+		if err := json.Unmarshal(xTitle.Text, &xText); err != nil {
 			t.Fatalf("x-axis text unmarshal: %v", err)
 		}
 		if xText.Vert != "" {
@@ -353,9 +354,9 @@ func TestMatrix2x2(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		// X-axis label should use the overridden accent
+		// X-axis arrow should use the overridden accent.
 		var fill string
-		if err := json.Unmarshal(grid.Rows[0].Cells[1].Grid.Rows[0].Cells[1].Shape.Fill, &fill); err != nil {
+		if err := json.Unmarshal(grid.Rows[0].Cells[1].Grid.Rows[0].Cells[1].Grid.Rows[0].Cells[1].Shape.Fill, &fill); err != nil {
 			t.Fatalf("fill unmarshal: %v", err)
 		}
 		if fill != "accent5" {
@@ -592,6 +593,10 @@ func TestMatrix2x2_AxisEndLabels(t *testing.T) {
 		t.Fatal(err)
 	}
 	x := grid.Rows[0].Cells[1].Grid.Rows[0].Cells
+	center := x[1].Grid.Rows[0].Cells
+	if len(center) != 2 || !strings.Contains(string(center[0].Shape.Text), `"Effort"`) || center[1].Shape.Geometry != "rightArrow" || len(center[1].Shape.Text) != 0 {
+		t.Errorf("horizontal axis title should be beside the text-free arrow: %+v", center)
+	}
 	y := grid.Rows[1].Cells[0].Grid.Rows
 	for want, cell := range map[string]*jsonschema.GridCellInput{
 		"Easy": x[0], "Hard": x[2], "Major": y[0].Cells[0], "Minor": y[2].Cells[0],
