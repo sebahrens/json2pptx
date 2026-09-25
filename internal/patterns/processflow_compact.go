@@ -125,7 +125,7 @@ func (p *processFlowCompact) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      textOverridesSchemaWithout("header_size"),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -148,6 +148,9 @@ func (p *processFlowCompact) Validate(values, overrides any, cellOverrides map[i
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
 			}
+			// Step labels are body text; there is no header for header_size
+			// to size (go-slide-creator-s1uvj.41).
+			errs = append(errs, rejectUnusedTextOverrides(name, ovr, "header_size")...)
 		}
 	}
 

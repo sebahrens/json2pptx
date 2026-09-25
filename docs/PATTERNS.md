@@ -217,6 +217,10 @@ Grid-shaped patterns — those that emit multiple peer cells through the shape g
 3. **Resolve per-cell accent** by calling `ResolveCellAccent(baseAccent, cellIndex, cellAccentMode)` in the cell-emission loop of `Expand()`. The function returns the accent string for each cell position given the base accent and mode.
 4. **Schema** must include `cell_accent_mode` in the overrides object — use the shared helper: `EnumSchema("uniform", "alternate", "progressive").WithDescription(...)`.
 
+### Publish only the overrides the pattern reads
+
+A pattern that embeds `TextOverrides` must honour every key its overrides schema publishes. When a standard key has nothing to act on — `pyramid`, `process-flow` and `process-flow-compact` have no header text, so `header_size` would be a silent no-op — publish `textOverridesSchemaWithout("header_size")` and call `rejectUnusedTextOverrides(name, ovr, "header_size")` in `Validate()`, which returns an `UNKNOWN_KEY` error with a `remove_key` fix (go-slide-creator-s1uvj.41). `pyramid` colours its tiers by `cell_accent_mode`, picking each tier's text colour against that tier's own fill.
+
 ### Non-grid patterns (do not expose `cell_accent_mode`)
 
 These patterns have structurally determined accent logic and do not expose `cell_accent_mode`:

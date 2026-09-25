@@ -3,6 +3,8 @@ package patterns
 import (
 	"fmt"
 	"hash/fnv"
+	"slices"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -305,14 +307,60 @@ func ResolveSize(size, defaultSize float64) float64 {
 // textOverridesSchema returns the JSON Schema for the standard
 // {accent, semantic_accent, header_size, body_size} overrides object.
 func textOverridesSchema() *Schema {
-	return ObjectSchema(
-		map[string]*Schema{
-			"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
-			"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-			"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
-			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
-			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
-		},
-		nil,
-	).WithAdditionalProperties(false)
+	return textOverridesSchemaWithout()
+}
+
+// textOverridesSchemaWithout returns the standard text overrides schema minus
+// the named keys, for patterns that embed TextOverrides but have no use for
+// some of its fields (e.g. no header text for header_size to size). Pair it
+// with rejectUnusedTextOverrides in Validate so the omitted keys are refused
+// rather than silently ignored (go-slide-creator-s1uvj.41).
+func textOverridesSchemaWithout(omit ...string) *Schema {
+	props := map[string]*Schema{
+		"accent":           StringSchema(0).WithDescription("Accent scheme color (default accent1)").WithDefault("accent1"),
+		"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
+		"header_size":      NumberSchema(6, 120).WithDescription("Font size for headers in points"),
+		"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
+		"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
+	}
+	for _, k := range omit {
+		delete(props, k)
+	}
+	return ObjectSchema(props, nil).WithAdditionalProperties(false)
+}
+
+// rejectUnusedTextOverrides returns an UNKNOWN_KEY error for each standard
+// text override the pattern does not read (and so omits from its schema via
+// textOverridesSchemaWithout) but the caller set anyway. Only header_size is
+// supported here, the one standard key some patterns have no text for.
+func rejectUnusedTextOverrides(pattern string, ovr *TextOverrides, unused ...string) []error {
+	if ovr == nil {
+		return nil
+	}
+	allowed := []string{"accent", "semantic_accent", "header_size", "body_size", "cell_accent_mode"}
+	var errs []error
+	for _, key := range unused {
+		set := false
+		switch key {
+		case "header_size":
+			set = ovr.HeaderSize != 0
+		}
+		if !set {
+			continue
+		}
+		var keep []string
+		for _, a := range allowed {
+			if !slices.Contains(unused, a) {
+				keep = append(keep, a)
+			}
+		}
+		errs = append(errs, &ValidationError{
+			Pattern: pattern,
+			Path:    "overrides",
+			Code:    ErrCodeUnknownKey,
+			Message: fmt.Sprintf("%s: overrides.%s is not used by this pattern (it has no header text); allowed overrides: %s — size the text with body_size", pattern, key, strings.Join(keep, ", ")),
+			Fix:     RemoveKeyFix(key, "overrides", keep),
+		})
+	}
+	return errs
 }
