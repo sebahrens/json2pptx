@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
+	"github.com/sebahrens/json2pptx/svggen"
 )
 
 func TestDetectContrastPreflight_HexPair(t *testing.T) {
@@ -41,6 +42,54 @@ func TestDetectContrastPreflight_HexPair(t *testing.T) {
 	if f.Fix.Params["from"] != "#FFFFFF" || f.Fix.Params["to"] != f.Fix.Params["predicted_replacement"] ||
 		f.Fix.Params["target"] != "text" || f.Fix.Params["path"] != pairs[0].Path {
 		t.Errorf("fix must be directly executable against authored text: %+v", f.Fix.Params)
+	}
+}
+
+func TestDetectContrastPreflight_GradientDoesNotClaimSingleColorRepair(t *testing.T) {
+	findings := DetectContrastPreflight([]ContrastPreflightPair{{
+		Path: "/slides/0/content/1", Foreground: "#FFFFFF",
+		Backgrounds: []string{"#00023A", "#A53F51", "#E89756"},
+		Gradient:    true, Source: "placeholder_fill", TextPt: 24,
+	}}, nil)
+	if len(findings) != 1 {
+		t.Fatalf("gradient findings = %+v, want one", findings)
+	}
+	f := findings[0]
+	if f.Code != patterns.ErrCodeContrastUnresolved || f.Action != "refuse" || f.Fix != nil {
+		t.Fatalf("gradient must block without a fake text replacement: %+v", f)
+	}
+	if !strings.Contains(f.Message, "#E89756") || !strings.Contains(f.Message, "required 3.0:1") {
+		t.Errorf("finding lost worst-stop evidence: %s", f.Message)
+	}
+}
+
+func TestDetectContrastPreflight_TranslucentGradientTextIsUnresolved(t *testing.T) {
+	findings := DetectContrastPreflight([]ContrastPreflightPair{{
+		Path: "/slides/0/content/0", Foreground: "#FFFFFF",
+		ForegroundMods: types.BackgroundColorModifiers{HasAlpha: true, Alpha: 50000},
+		Backgrounds:    []string{"#000000", "#111111"}, Gradient: true,
+	}}, nil)
+	if len(findings) != 1 || findings[0].Code != patterns.ErrCodeContrastUnresolved || findings[0].Action != "refuse" {
+		t.Fatalf("alpha varies against gradient; do not emit a safe verdict: %+v", findings)
+	}
+}
+
+func TestDetectContrastPreflight_InterpolatedColorCanFailWhenStopsPass(t *testing.T) {
+	black := svggen.MustParseColor("#000000")
+	for _, stop := range []string{"#ED0000", "#008800"} {
+		if ratio := black.ContrastWith(svggen.MustParseColor(stop)); ratio < 4.5 {
+			t.Fatalf("test endpoint %s is not readable: %.2f", stop, ratio)
+		}
+	}
+	findings := DetectContrastPreflight([]ContrastPreflightPair{{
+		Path: "/slides/0/content/0", Foreground: "#000000",
+		Backgrounds: []string{"#ED0000", "#008800"}, Gradient: true,
+	}}, nil)
+	if len(findings) != 1 || findings[0].Code != patterns.ErrCodeContrastUnresolved {
+		t.Fatalf("unreadable interpolated middle was missed: %+v", findings)
+	}
+	if strings.Contains(findings[0].Message, "#ED0000") || strings.Contains(findings[0].Message, "#008800") {
+		t.Errorf("finding should name an interior color, not a readable endpoint: %s", findings[0].Message)
 	}
 }
 

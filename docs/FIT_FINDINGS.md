@@ -1404,7 +1404,7 @@ Preflight prediction that the renderer's contrast auto-fix pass would replace a 
 
 The detector walks shape-grid cells with authored text colors (on `shape.text` or a paragraph in `shape.text.paragraphs`). Solid fill colors are resolved through the theme; object-form `lumMod` / `lumOff` / `alpha` modifiers are composed over the effective canvas first. Transparent cells (`fill: "none"` or no fill) are checked against the effective slide background: authored color or sufficiently opaque scrim, then layout/master solid fill, then `lt1`. A photo without a sufficiently opaque scrim and unsupported gradient/picture fills have no single measurable color and are skipped. `contrast_check: false` suppresses both predictions and render-time swaps for that slide.
 
-The detector also walks **placeholder text**. Nothing in the JSON names that text's colour — it is the template's, resolved from the layout or master's `txStyles`, including the layout color-map override and OOXML luminance/tint/shade/alpha modifiers. It checks either a background the slide sets itself (`source: "slide_background"`) or a resolvable layout/master solid fill (`source: "template_background"`), matching the renderer's snap-to-palette versus hue-preserving replacement. Preflight applies the same section-number injection rule as generation: a numbered section slide checks its decorative number even when the JSON omits that content item. Unmapped template prompt text is not predicted because generation clears it. The authored background follows the renderer's own rule (`background.color`, or the scrim colour when an overlay is opaque enough to decide what the text sits on); `contrast_check: false` suppresses the finding.
+The detector also walks **placeholder text**. Nothing in the JSON names that text's colour — it is the template's, resolved from the layout or master's `txStyles`, including the layout color-map override and OOXML luminance/tint/shade/alpha modifiers. It checks the placeholder's own solid fill first (`source: "placeholder_fill"`), then a background the slide sets itself (`source: "slide_background"`), then a resolvable layout/master solid fill (`source: "template_background"`), matching the renderer's snap-to-palette versus hue-preserving replacement. A placeholder gradient that fails at any resolved stop emits `contrast_unresolved` instead of claiming a single-color swap. Preflight applies the same section-number injection rule as generation: a numbered section slide checks its decorative number even when the JSON omits that content item. Unmapped template prompt text is not predicted because generation clears it. The authored background follows the renderer's own rule (`background.color`, or the scrim colour when an overlay is opaque enough to decide what the text sits on); `contrast_check: false` suppresses the finding.
 
 When footer/page-number chrome is enabled, preflight also checks its default `tx1` text against the layout's own solid background and color-map override (`source: "chrome"`). It uses the same decision as generation, including template theme overrides and per-layout chrome skips. Chrome has no authored text-color field to repair, so this finding has no `replace_color` suggestion.
 
@@ -1435,6 +1435,14 @@ When footer/page-number chrome is enabled, preflight also checks its default `tx
   "action": "info"
 }
 ```
+
+### `contrast_unresolved`
+
+**Action:** `refuse`
+**Pattern:** *(none — placeholder-gradient preflight)*
+**Fix kind:** *(none — a text-color replacement is not guaranteed to work)*
+
+The resolved placeholder gradient has a stop or interpolated color where the inherited text color fails the size-dependent WCAG AA threshold, or a stop cannot be resolved at all. For example, the modern title-slide subtitle is white on a gradient from navy to orange: dark text would fix the orange end but fail on navy. Where colors are available, the finding names the worst color and ratio; it never offers a `replace_color` fix. Add a sufficiently opaque backdrop behind the text or change the whole gradient, then inspect a rendered slide. It is included in generation findings even without the optional full fit report.
 
 ### `contrast_autofixed`
 

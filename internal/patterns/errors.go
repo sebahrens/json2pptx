@@ -185,7 +185,8 @@ const (
 	// Preflight predictions for render-time behaviour. These mirror the
 	// render-time codes but are emitted from collectFitFindings using only
 	// template geometry, theme colors, and JSON content — no rendering.
-	ErrCodeContrastPredicted = "contrast_predicted"
+	ErrCodeContrastPredicted  = "contrast_predicted"
+	ErrCodeContrastUnresolved = "contrast_unresolved"
 
 	// ErrCodeTextOverImageUnverified marks a slide whose background is a photo
 	// with no scrim over it. The contrast pass reads a solid background fill;
@@ -267,7 +268,8 @@ var (
 	ErrPaginationDefault   = errors.New("pagination using default threshold, no template capacity")
 	ErrColumnWidthDeficit  = errors.New("column widths fell back to global floor")
 
-	ErrContrastPredicted = errors.New("text color is predicted to be auto-replaced for WCAG AA contrast")
+	ErrContrastPredicted  = errors.New("text color is predicted to be auto-replaced for WCAG AA contrast")
+	ErrContrastUnresolved = errors.New("text on a gradient fails contrast and has no safe automatic replacement")
 
 	ErrTextOverImageUnverified = errors.New("text sits on a background image with no scrim, so its contrast cannot be checked")
 
@@ -337,6 +339,7 @@ var codeSentinel = map[string]error{
 	ErrCodePaginationDefault:       ErrPaginationDefault,
 	ErrCodeColumnWidthDeficit:      ErrColumnWidthDeficit,
 	ErrCodeContrastPredicted:       ErrContrastPredicted,
+	ErrCodeContrastUnresolved:      ErrContrastUnresolved,
 	ErrCodeTextOverImageUnverified: ErrTextOverImageUnverified,
 	ErrCodeDiagramAspectMismatch:   ErrDiagramAspectMismatch,
 }

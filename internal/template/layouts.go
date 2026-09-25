@@ -265,6 +265,8 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 			FontSize:      fontSize,
 			FontColor:     fontColor,
 			FontColorMods: fontColorMods,
+			FillStops:     placeholderFillStops(&shape, clrMapOvr),
+			FillGradient:  shape.ShapeProperties.GradientFill != nil,
 		}
 		switch phType {
 		case types.PlaceholderTitle:
@@ -614,7 +616,20 @@ type placeholderXML struct {
 }
 
 type shapePropertiesXML struct {
-	Transform *transformXML `xml:"xfrm"`
+	Transform    *transformXML    `xml:"xfrm"`
+	SolidFill    *solidFillXML    `xml:"solidFill"`
+	GradientFill *gradientFillXML `xml:"gradFill"`
+}
+
+type gradientFillXML struct {
+	Stops []gradientStopXML `xml:"gsLst>gs"`
+}
+
+type gradientStopXML struct {
+	Position    int             `xml:"pos,attr"`
+	SRGBColor   *srgbColorXML   `xml:"srgbClr"`
+	SchemeColor *schemeColorXML `xml:"schemeClr"`
+	InnerXML    []byte          `xml:",innerxml"`
 }
 
 type transformXML struct {

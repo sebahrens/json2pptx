@@ -10,6 +10,7 @@ package generator
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -31,6 +32,12 @@ type ContrastPreflightPair struct {
 	ForegroundMods types.BackgroundColorModifiers
 	// Background is the fill / layout background color (hex or scheme name).
 	Background string
+	// Backgrounds are the ordered colors of a placeholder gradient. A single
+	// replacement cannot be predicted from one stop as if it fixed them all.
+	Backgrounds []string
+	// Gradient marks a placeholder gradient even when its stops could not be
+	// fully resolved, so preflight never falls back to the canvas silently.
+	Gradient bool
 	// Source is a short tag for the message (e.g. "shape_grid", "layout").
 	Source string
 	// TextPt is the text size in points and Bold its weight. They decide which
@@ -127,7 +134,7 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 	for _, p := range pairs {
 		fgHex := resolveContrastColor(p.Foreground, themeColors)
 		bgHex := resolveContrastColor(p.Background, themeColors)
-		if fgHex == "" || bgHex == "" {
+		if fgHex == "" || (bgHex == "" && len(p.Backgrounds) == 0 && !p.Gradient) {
 			continue
 		}
 
@@ -135,9 +142,13 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		if err != nil {
 			continue
 		}
-		bg, err := svggen.ParseColor(bgHex)
-		if err != nil {
+		parsedBackgrounds := resolvePreflightBackgrounds(p, bgHex, themeColors)
+		if len(parsedBackgrounds) == 0 && !p.Gradient {
 			continue
+		}
+		var bg svggen.Color
+		if len(parsedBackgrounds) > 0 {
+			bg = parsedBackgrounds[0]
 		}
 		if p.ForegroundMods != (types.BackgroundColorModifiers{}) {
 			mods := p.ForegroundMods
@@ -156,6 +167,13 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		}
 
 		threshold := contrastThresholdFor(p.TextPt, p.Bold)
+		if p.Gradient {
+			translucentText := p.ForegroundMods.HasAlpha && p.ForegroundMods.Alpha < 100000
+			if finding := gradientContrastFinding(p.Path, fg, parsedBackgrounds, threshold, translucentText); finding != nil {
+				findings = append(findings, *finding)
+			}
+			continue
+		}
 		ratio := fg.ContrastWith(bg)
 		if ratio >= threshold {
 			continue
@@ -209,6 +227,100 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		})
 	}
 	return findings
+}
+
+func resolvePreflightBackgrounds(p ContrastPreflightPair, bgHex string, themeColors []types.ThemeColor) []svggen.Color {
+	refs := p.Backgrounds
+	if p.Gradient && len(refs) == 0 {
+		return nil
+	}
+	if len(refs) == 0 {
+		refs = []string{bgHex}
+	}
+	colors := make([]svggen.Color, 0, len(refs))
+	for _, ref := range refs {
+		hex := resolveContrastColor(ref, themeColors)
+		if hex == "" {
+			return nil
+		}
+		color, err := svggen.ParseColor(hex)
+		if err != nil {
+			return nil
+		}
+		colors = append(colors, color)
+	}
+	return colors
+}
+
+func gradientContrastFinding(path string, fg svggen.Color, stops []svggen.Color, threshold float64, translucentText bool) *patterns.FitFinding {
+	if len(stops) == 0 || translucentText {
+		reason := "placeholder gradient has unresolvable or translucent color stops"
+		if translucentText {
+			reason = "translucent placeholder text has no single foreground color across the gradient"
+		}
+		return &patterns.FitFinding{
+			ValidationError: patterns.ValidationError{Path: path, Code: patterns.ErrCodeContrastUnresolved,
+				Message: reason + "; contrast cannot be verified or safely auto-fixed"},
+			Action: "refuse",
+		}
+	}
+	minRatio := math.Inf(1)
+	worst := stops[0]
+	for i, stop := range stops {
+		if ratio := fg.ContrastWith(stop); ratio < minRatio {
+			minRatio, worst = ratio, stop
+		}
+		if i+1 < len(stops) {
+			ratio, color := minGradientSegmentContrast(fg, stop, stops[i+1])
+			if ratio < minRatio {
+				minRatio, worst = ratio, color
+			}
+		}
+	}
+	if minRatio >= threshold {
+		return nil
+	}
+	return &patterns.FitFinding{
+		ValidationError: patterns.ValidationError{
+			Path: path, Code: patterns.ErrCodeContrastUnresolved,
+			Message: fmt.Sprintf("text %s on placeholder gradient fails contrast at %s (minimum gradient ratio %.2f:1; required %.1f:1); a single text-color replacement is not a verified fix", strings.ToUpper(fg.Hex()), strings.ToUpper(worst.Hex()), minRatio, threshold),
+		},
+		Action: "refuse",
+	}
+}
+
+// minGradientSegmentContrast checks every distinct 8-bit RGB color produced
+// by linear interpolation between two OOXML stops. A channel changes only
+// when it crosses a half-integer boundary, so interval midpoints cover the
+// whole rendered color sequence without an arbitrary sampling step.
+func minGradientSegmentContrast(fg, start, end svggen.Color) (float64, svggen.Color) {
+	breaks := []float64{0, 1}
+	for _, pair := range [][2]uint8{{start.R, end.R}, {start.G, end.G}, {start.B, end.B}} {
+		delta := int(pair[1]) - int(pair[0])
+		if delta < 0 {
+			delta = -delta
+		}
+		for step := 0; step < delta; step++ {
+			breaks = append(breaks, (float64(step)+0.5)/float64(delta))
+		}
+	}
+	sort.Float64s(breaks)
+	minRatio := math.Inf(1)
+	worst := start
+	for i := 0; i+1 < len(breaks); i++ {
+		color := lerpGradientRGB(start, end, (breaks[i]+breaks[i+1])/2)
+		if ratio := fg.ContrastWith(color); ratio < minRatio {
+			minRatio, worst = ratio, color
+		}
+	}
+	return minRatio, worst
+}
+
+func lerpGradientRGB(start, end svggen.Color, t float64) svggen.Color {
+	channel := func(a, b uint8) uint8 {
+		return uint8(math.Round(float64(a) + (float64(b)-float64(a))*t))
+	}
+	return svggen.Color{R: channel(start.R, end.R), G: channel(start.G, end.G), B: channel(start.B, end.B), A: 1}
 }
 
 // resolveContrastColor accepts either a hex color ("#RRGGBB" or "RRGGBB")

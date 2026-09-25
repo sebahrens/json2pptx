@@ -1575,6 +1575,18 @@ func collectContrastPreflightFindings(input *PresentationInput, layouts []types.
 	return findings
 }
 
+// unresolvedGradientContrastFindings keeps unrepairable gradient failures
+// visible in generate responses even when the optional full fit report is off.
+func unresolvedGradientContrastFindings(input *PresentationInput, layouts []types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
+	var out []patterns.FitFinding
+	for _, finding := range generator.DetectContrastPreflight(placeholderContrastPairs(input, layouts, themeColors), themeColors) {
+		if finding.Code == patterns.ErrCodeContrastUnresolved {
+			out = append(out, finding)
+		}
+	}
+	return out
+}
+
 func collectChromeContrastFindings(input *PresentationInput, layouts []types.LayoutMetadata, predictedLayouts []*types.LayoutMetadata, themeColors []types.ThemeColor) []patterns.FitFinding {
 	if footer := footerConfigForInput(input, len(input.Slides)); footer != nil && footer.Enabled {
 		specs := make([]generator.SlideSpec, len(input.Slides))
@@ -1692,14 +1704,7 @@ func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMe
 		return nil
 	}
 	predicted := predictSlideLayouts(input, layouts)
-	sectionNumbers := make([]string, len(input.Slides))
-	sectionNum := 0
-	for si, slide := range input.Slides {
-		if isSectionSlideInput(slide, layouts) {
-			sectionNum++
-			sectionNumbers[si] = fmt.Sprintf("%02d", sectionNum)
-		}
-	}
+	sectionNumbers := contrastSectionNumbers(input, layouts)
 
 	var pairs []generator.ContrastPreflightPair
 	for si := range input.Slides {
@@ -1714,9 +1719,6 @@ func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMe
 			continue
 		}
 		bgHex, authorBackground := effectivePlaceholderBackground(slide, layout, themeColors)
-		if bgHex == "" {
-			continue
-		}
 		source := "template_background"
 		if authorBackground {
 			source = "slide_background"
@@ -1746,6 +1748,10 @@ func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMe
 			if len(extractContentParagraphs(content)) == 0 {
 				continue
 			}
+			pairBackground, gradient, pairSource, pairAuthorBackground := placeholderPairBackground(ph, bgHex, source, authorBackground, themeColors)
+			if pairBackground == "" && !ph.FillGradient {
+				continue
+			}
 			path := slidepath.ContentIndex(si, ci)
 			if ci >= len(slide.Content) {
 				path = slidepath.Content(si, ph.ID)
@@ -1754,16 +1760,61 @@ func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMe
 				Path:           path,
 				Foreground:     fg,
 				ForegroundMods: mods,
-				Background:     bgHex,
-				Source:         source,
+				Background:     pairBackground,
+				Backgrounds:    gradient,
+				Gradient:       ph.FillGradient,
+				Source:         pairSource,
 				// Bold is unknown from placeholder metadata; false is the
 				// conservative reading, matching the unknown-size rule.
 				TextPt:           float64(ph.FontSize) / 100.0,
-				AuthorBackground: authorBackground,
+				AuthorBackground: pairAuthorBackground,
 			})
 		}
 	}
 	return pairs
+}
+
+func placeholderPairBackground(ph *types.PlaceholderInfo, canvas, source string, authorBackground bool, themeColors []types.ThemeColor) (string, []string, string, bool) {
+	colors := resolvedPlaceholderFillColors(ph, themeColors)
+	if len(colors) > 0 {
+		return colors[0], colors, "placeholder_fill", false
+	}
+	if ph.FillGradient {
+		return canvas, nil, "placeholder_fill", false
+	}
+	return canvas, nil, source, authorBackground
+}
+
+func contrastSectionNumbers(input *PresentationInput, layouts []types.LayoutMetadata) []string {
+	numbers := make([]string, len(input.Slides))
+	sectionNum := 0
+	for si, slide := range input.Slides {
+		if isSectionSlideInput(slide, layouts) {
+			sectionNum++
+			numbers[si] = fmt.Sprintf("%02d", sectionNum)
+		}
+	}
+	return numbers
+}
+
+func resolvedPlaceholderFillColors(ph *types.PlaceholderInfo, themeColors []types.ThemeColor) []string {
+	if ph == nil || len(ph.FillStops) == 0 {
+		return nil
+	}
+	colors := make([]string, 0, len(ph.FillStops))
+	for _, stop := range ph.FillStops {
+		// A translucent gradient stop composites over the slide beneath it;
+		// resolving it over theme lt1 would make a confident but false verdict.
+		if ph.FillGradient && stop.Mods.HasAlpha && stop.Mods.Alpha < 100000 {
+			return nil
+		}
+		color := template.ResolveBackgroundRefHexWithMods(stop.Ref, stop.Mods, themeColors)
+		if color == "" {
+			return nil
+		}
+		colors = append(colors, color)
+	}
+	return colors
 }
 
 func effectivePlaceholderBackground(slide *SlideInput, layout *types.LayoutMetadata, themeColors []types.ThemeColor) (string, bool) {

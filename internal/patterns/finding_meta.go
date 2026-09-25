@@ -1014,6 +1014,17 @@ var findingMetaRegistry = map[string]FindingMeta{
 		},
 		RelatedCodes: []string{"contrast_autofixed"},
 	},
+	ErrCodeContrastUnresolved: {
+		Code:        ErrCodeContrastUnresolved,
+		Summary:     "Text on a placeholder gradient fails contrast at one or more stops; no safe automatic replacement has been applied.",
+		Severity:    "refuse",
+		WhenEmitted: "Preflight resolves each placeholder gradient stop through the active theme and finds text below its size-dependent WCAG AA contrast threshold.",
+		RemediationSteps: []string{
+			"Add a sufficiently opaque local backdrop behind the text or darken the full gradient in the template.",
+			"Re-run validation and inspect the rendered slide; a single text-color change may make a different stop unreadable.",
+		},
+		RelatedCodes: []string{ErrCodeContrastPredicted},
+	},
 
 	// ---- String-literal codes (not in errors.go const block) ----
 

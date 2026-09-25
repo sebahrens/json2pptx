@@ -623,6 +623,8 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		// accessibility, and geometry), not only render-time warnings.
 		allFitFindings = append(allFitFindings, collectFitFindings(input, templateLayouts,
 			runRes.SlideWidth, runRes.SlideHeight, &runRes.TemplateTheme)...)
+	} else {
+		allFitFindings = append(allFitFindings, unresolvedGradientContrastFindings(input, templateLayouts, runRes.TemplateTheme.Colors)...)
 	}
 	allFitFindings = append(allFitFindings, synthesisFindings...)
 	allFitFindings = append(allFitFindings, result.FitFindings...)

@@ -208,6 +208,13 @@ type PlaceholderInfo struct {
 	FontFamily string // Font family name (e.g., "Arial", "Calibri")
 	FontSize   int    // Font size in hundredths of a point (e.g., 1400 = 14pt)
 	FontColor  string // Font color as hex string (e.g., "#000000")
+	// FillStops retains the placeholder's own solid or gradient area fill for
+	// contrast preflight. References stay unresolved until the effective deck
+	// theme is known (theme_override can change every accent).
+	FillStops []PlaceholderFillStop `json:"-"`
+	// FillGradient distinguishes a gradient with missing/unresolvable stops
+	// from a placeholder with no area fill at all.
+	FillGradient bool `json:"-"`
 	// FontColorMods and InheritedFontColorMods retain text-color transforms so
 	// preflight can judge the visible color against an authored background.
 	// These are internal analysis metadata, not an author-facing color change.
@@ -248,6 +255,14 @@ type PlaceholderInfo struct {
 
 	// RoleConfidence is the 0.0–1.0 confidence of Role.
 	RoleConfidence float64
+}
+
+// PlaceholderFillStop is one color of a placeholder's own area fill. A solid
+// fill has one stop; gradients have two or more stops ordered by Position.
+type PlaceholderFillStop struct {
+	Position int
+	Ref      string
+	Mods     BackgroundColorModifiers
 }
 
 // IsAutoFilledPlaceholder reports template fields populated by the generator,
