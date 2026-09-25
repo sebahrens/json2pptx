@@ -78,18 +78,41 @@ type mcpConfig struct {
 // generation finishes — closing it earlier invalidates the local paths the
 // slides now reference.
 //
-// Returns (nil, noop, nil) when no URL references are present.
-func (mc *mcpConfig) resolvePresentationURLs(slides []SlideInput) ([]diagnostics.Diagnostic, func(), error) {
+// The returned cacheDir is the directory the downloads live in ("" when no
+// URL references are present); pass it to imageAllowList so a configured
+// ALLOWED_IMAGE_PATHS restriction does not reject the downloaded files.
+//
+// Returns (nil, noop, "", nil) when no URL references are present.
+func (mc *mcpConfig) resolvePresentationURLs(slides []SlideInput) ([]diagnostics.Diagnostic, func(), string, error) {
 	noop := func() {}
 	if !hasURLReferences(slides) {
-		return nil, noop, nil
+		return nil, noop, "", nil
 	}
 	resolver, err := resource.NewResolver(mc.resolverOpts)
 	if err != nil {
-		return nil, noop, err
+		return nil, noop, "", err
 	}
 	findings := resolveURLs(slides, resolver)
-	return findings, resolver.Close, nil
+	return findings, resolver.Close, resolver.Dir(), nil
+}
+
+// imageAllowList builds generator.GenerationRequest.AllowedImagePaths from the
+// configured Images.AllowedBasePaths (ALLOWED_IMAGE_PATHS). An empty
+// configuration returns nil, which keeps image paths unrestricted apart from
+// the traversal check. When a restriction IS configured, the extra
+// directories (e.g. a URL resolver's download cache) are appended so files
+// the engine itself fetched and validated are not rejected.
+func imageAllowList(configured []string, extra ...string) []string {
+	if len(configured) == 0 {
+		return nil
+	}
+	out := append([]string(nil), configured...)
+	for _, dir := range extra {
+		if dir != "" {
+			out = append(out, dir)
+		}
+	}
+	return out
 }
 
 // newServerMCPConfig builds the mcpConfig used by the production stdio server.

@@ -1285,6 +1285,7 @@ func (mc *mcpConfig) renderAutoRepairFinal(
 		StrictFit:             "warn",
 		DataPalette:           dataPalette,
 		ViewingMode:           input.ViewingMode,
+		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths),
 	}
 	genReq.Footer = footerConfigForInput(input, len(slideSpecs))
 	if input.Chrome != nil {

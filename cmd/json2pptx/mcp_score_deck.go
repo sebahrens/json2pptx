@@ -298,6 +298,7 @@ func (mc *mcpConfig) collectRenderFindings(
 		StrictFit:             "warn",
 		DataPalette:           dataPalette,
 		ViewingMode:           input.ViewingMode,
+		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths),
 	}
 
 	// Wire footer/chrome configuration.

@@ -497,8 +497,27 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		return tplPathErr
 	}
 
+	// The URL resolver is created up front (it is only used inside PreConvert)
+	// so its download dir can join the image allow-list: with
+	// ALLOWED_IMAGE_PATHS configured, validated URL downloads must not be
+	// rejected as files outside the allowed roots.
+	var urlResolver *resource.Resolver
+	if hasURLReferences(input.Slides) {
+		resolver, resolverErr := resource.NewResolver(resource.ResolverOptions{})
+		if resolverErr != nil {
+			return writeJSONError(jsonOutputPath, fmt.Errorf("resource resolver: %w", resolverErr))
+		}
+		urlResolver = resolver
+		urlResolverCleanup = func() { resolver.Close() }
+	}
+	var urlCacheDir string
+	if urlResolver != nil {
+		urlCacheDir = urlResolver.Dir()
+	}
+
 	runRes, renderCleanup, renderErr := RunPresentation(context.Background(), input, RenderOptions{
 		OutputDir:            cfg.Storage.OutputDir,
+		AllowedImagePaths:    imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir),
 		TemplatesDir:         cfg.Templates.Dir,
 		ResolvedTemplatePath: resolvedTemplatePath,
 		StrictFit:            strictFit,
@@ -512,14 +531,8 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 		PreConvert: func() error {
 			// Resolve any URL references (icon.url, image.url, background.url) by
 			// downloading them to a session-scoped cache with SSRF protection.
-			if hasURLReferences(input.Slides) {
-				resolver, resolverErr := resource.NewResolver(resource.ResolverOptions{})
-				if resolverErr != nil {
-					preConvertErr = fmt.Errorf("resource resolver: %w", resolverErr)
-					return preConvertErr
-				}
-				urlResolverCleanup = func() { resolver.Close() }
-				if urlFindings := resolveURLs(input.Slides, resolver); len(urlFindings) > 0 {
+			if urlResolver != nil {
+				if urlFindings := resolveURLs(input.Slides, urlResolver); len(urlFindings) > 0 {
 					preConvertErr = iconFindingsToError(urlFindings)
 					return preConvertErr
 				}

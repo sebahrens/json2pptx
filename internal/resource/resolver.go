@@ -79,6 +79,13 @@ func (r *Resolver) Close() {
 	r.cache.cleanup()
 }
 
+// Dir returns the directory downloaded resources are cached in. Callers that
+// restrict local image paths (ALLOWED_IMAGE_PATHS) add it to the allow-list so
+// validated URL downloads are not rejected as out-of-root files.
+func (r *Resolver) Dir() string {
+	return r.cache.dir
+}
+
 // IsURL returns true if s looks like an http/https URL.
 func IsURL(s string) bool {
 	return strings.HasPrefix(s, "http://") || strings.HasPrefix(s, "https://")

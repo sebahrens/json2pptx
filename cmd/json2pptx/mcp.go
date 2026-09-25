@@ -445,7 +445,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	// per-field URL_FETCH_FAILED diagnostics. The cache cleanup is deferred
 	// for the rest of this handler — closing it earlier would invalidate the
 	// local paths now embedded in the slides.
-	urlFindings, urlCleanup, urlErr := mc.resolvePresentationURLs(input.Slides)
+	urlFindings, urlCleanup, urlCacheDir, urlErr := mc.resolvePresentationURLs(input.Slides)
 	defer urlCleanup()
 	if urlErr != nil {
 		return api.MCPSimpleError("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr)), nil
@@ -537,6 +537,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		StrictFit:             strictFit,
 		DataPalette:           resolveDataPalette(templateMetadata, theme.Colors),
 		ViewingMode:           input.ViewingMode,
+		AllowedImagePaths:     imageAllowList(mc.cfg.Images.AllowedBasePaths, urlCacheDir),
 	}
 
 	// Wire footer/chrome configuration.
@@ -1055,7 +1056,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// icon.url, nested shape.icon.url). The downloaded cache is cleaned up
 	// before this handler returns — validate does not need the bytes, only
 	// confirmation that the URL is reachable.
-	urlFindings, urlCleanup, urlErr := mc.resolvePresentationURLs(input.Slides)
+	urlFindings, urlCleanup, _, urlErr := mc.resolvePresentationURLs(input.Slides)
 	defer urlCleanup()
 	if urlErr != nil {
 		return mcpErrorWithNext("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr), nextCallRetry("validate_input", "presentation")), nil
