@@ -98,6 +98,34 @@ func TestSplitInlineTags_UnknownTag(t *testing.T) {
 	}
 }
 
+// go-slide-creator-s1uvj.25: a bare '<' before a real tag made the scanner jump
+// to the next '>' — the closing bracket of the real tag — so the tag was
+// swallowed into literal text and no bold run was produced.
+func TestSplitInlineTags_BareLessThanBeforeTag(t *testing.T) {
+	base := Run{Text: "Latency < 50ms, <b>target met</b>", FontSize: 1400}
+	runs := SplitInlineTags(base)
+	if len(runs) != 2 {
+		t.Fatalf("expected 2 runs, got %d: %+v", len(runs), runs)
+	}
+	if runs[0].Text != "Latency < 50ms, " || runs[0].Bold {
+		t.Errorf("run[0] = %+v", runs[0])
+	}
+	if runs[1].Text != "target met" || !runs[1].Bold {
+		t.Errorf("run[1] = %+v", runs[1])
+	}
+
+	for _, text := range []string{"a < b", "a<b", "x << <i>y</i>", "1 < 2 > 0"} {
+		var got strings.Builder
+		for _, r := range SplitInlineTags(Run{Text: text}) {
+			got.WriteString(r.Text)
+		}
+		want := strings.ReplaceAll(strings.ReplaceAll(text, "<i>", ""), "</i>", "")
+		if got.String() != want {
+			t.Errorf("SplitInlineTags(%q) text = %q, want %q", text, got.String(), want)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // ConvertMarkdownEmphasis tests
 // ---------------------------------------------------------------------------
