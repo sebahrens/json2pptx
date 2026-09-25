@@ -489,9 +489,14 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	applyDefaults(input)
 	resolveInputNamedSettingsForDir(*templatesDir, input)
 
-	// Default SVG knobs from the standard config so charts/diagrams render with
-	// the same native-SVG strategy the CLI generate path uses.
-	cfg := config.DefaultConfig()
+	// Load the standard config (defaults + environment overrides, as generate
+	// does) so charts/diagrams render with the same native-SVG strategy and
+	// ALLOWED_IMAGE_PATHS restricts image roots here too
+	// (go-slide-creator-s1uvj.44).
+	cfg, err := config.Load("")
+	if err != nil {
+		return fmt.Errorf("semantic render: load config: %w", err)
+	}
 	if *templatesDir != "" {
 		cfg.Templates.Dir = *templatesDir
 	}
@@ -500,22 +505,25 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	// paths that need the same guarded resolution `generate` performs, so a deck
 	// using the escape hatch behaves identically under render and generate. The
 	// resolver cache must outlive generation because resolved local paths are
-	// embedded in the slides; the cleanup is deferred here and installed by the
-	// hook. Asset-resolution warnings (non-error findings) are collected and
-	// merged into the success result's warnings, mirroring `generate`.
-	urlResolverCleanup := func() {}
-	defer func() { urlResolverCleanup() }()
+	// embedded in the slides, so its Close is deferred here. Asset-resolution
+	// warnings (non-error findings) are collected and merged into the success
+	// result's warnings, mirroring `generate`.
+	//
+	// The URL resolver is created up front (it is only used inside preConvert)
+	// so its download dir can join the image allow-list: with
+	// ALLOWED_IMAGE_PATHS configured, validated URL downloads must not be
+	// rejected as files outside the allowed roots (mirrors generate).
+	urlResolver, urlCacheDir, closeResolver, err := newSlideURLResolver(input.Slides)
+	if err != nil {
+		return fmt.Errorf("semantic render: %w", err)
+	}
+	defer closeResolver()
 	var preConvertWarnings []string
 	preConvert := func() error {
 		// Resolve URL references (icon.url, image.url, background.url) by
 		// downloading them to a session-scoped cache with SSRF protection.
-		if hasURLReferences(input.Slides) {
-			resolver, resolverErr := resource.NewResolver(resource.ResolverOptions{})
-			if resolverErr != nil {
-				return fmt.Errorf("resource resolver: %w", resolverErr)
-			}
-			urlResolverCleanup = func() { resolver.Close() }
-			if urlFindings := resolveURLs(input.Slides, resolver); len(urlFindings) > 0 {
+		if urlResolver != nil {
+			if urlFindings := resolveURLs(input.Slides, urlResolver); len(urlFindings) > 0 {
 				return iconFindingsToError(urlFindings)
 			}
 		}
@@ -539,15 +547,16 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	}
 
 	runRes, cleanup, renderErr := RunPresentation(context.Background(), input, RenderOptions{
-		OutputDir:        outputDir,
-		TemplatesDir:     cfg.Templates.Dir,
-		OutputValidation: *outputValidation,
-		AccentStrategy:   patterns.AccentStrategy(input.AccentStrategy),
-		SVGStrategy:      string(cfg.SVG.Strategy),
-		SVGScale:         cfg.SVG.Scale,
-		SVGNativeCompat:  string(cfg.SVG.NativeCompatibility),
-		MaxPNGWidth:      cfg.SVG.MaxPNGWidth,
-		PreConvert:       preConvert,
+		OutputDir:         outputDir,
+		AllowedImagePaths: imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir),
+		TemplatesDir:      cfg.Templates.Dir,
+		OutputValidation:  *outputValidation,
+		AccentStrategy:    patterns.AccentStrategy(input.AccentStrategy),
+		SVGStrategy:       string(cfg.SVG.Strategy),
+		SVGScale:          cfg.SVG.Scale,
+		SVGNativeCompat:   string(cfg.SVG.NativeCompatibility),
+		MaxPNGWidth:       cfg.SVG.MaxPNGWidth,
+		PreConvert:        preConvert,
 	})
 	defer cleanup()
 	if renderErr != nil {
@@ -575,6 +584,21 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 	res.Revision = manifest.Revision
 	res.ManifestPath = manifestPath
 	return emitSemanticRenderResult(res, *outputValidation)
+}
+
+// newSlideURLResolver creates the guarded URL resolver a deck needs, or returns
+// a nil resolver and empty dir when its slides reference no URLs. dir is the
+// resolver's download cache, which must join the image allow-list; closeFn is
+// always non-nil.
+func newSlideURLResolver(slides []SlideInput) (resolver *resource.Resolver, dir string, closeFn func(), err error) {
+	if !hasURLReferences(slides) {
+		return nil, "", func() {}, nil
+	}
+	resolver, err = resource.NewResolver(resource.ResolverOptions{})
+	if err != nil {
+		return nil, "", func() {}, fmt.Errorf("resource resolver: %w", err)
+	}
+	return resolver, resolver.Dir(), resolver.Close, nil
 }
 
 // emitSemanticRenderResult prints a completed render result and decides the
