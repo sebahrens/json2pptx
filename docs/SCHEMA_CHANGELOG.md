@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-25 — Pattern `cell_overrides` text keys honoured everywhere (`go-slide-creator-s1uvj.36`).**
+  `font_size`, `emphasis`, `align`, `vertical_align` and `color` were accepted
+  by every pattern that takes `cell_overrides` but applied only by the KPI
+  family. They now restyle the cell's primary text in all such patterns (the
+  index-to-text-target table is in docs/PATTERNS.md D15); `hero-detail` index 0
+  now honours them, and a `vertical_align: "b"` override survives content
+  re-centring. No schema shape changes.
+
 - **2026-09-25 — Schema 4.147.0: pie/donut negative slices excluded (`go-slide-creator-s1uvj.30`).**
   A negative pie or donut value shrank the total, so the remaining arcs
   overlapped and their labels summed past 100% (`[-1, 2, 3]` read 50% + 75%),
