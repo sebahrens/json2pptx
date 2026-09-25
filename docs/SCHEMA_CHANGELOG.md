@@ -1,6 +1,6 @@
 # Schema Changelog
 
-- **2026-09-25 — Pie/donut negative slices excluded (`go-slide-creator-s1uvj.30`).**
+- **2026-09-25 — Schema 4.147.0: pie/donut negative slices excluded (`go-slide-creator-s1uvj.30`).**
   A negative pie or donut value shrank the total, so the remaining arcs
   overlapped and their labels summed past 100% (`[-1, 2, 3]` read 50% + 75%),
   and an all-negative pie drew a full circle. Negative values are now excluded
@@ -9,57 +9,7 @@
   params `{negative_count, labels, indices}`). A pie with no positive total
   draws nothing and reports `chart.zero_sum_pie`.
 
-- **2026-09-25 — Schema 4.139.0: `metric-list` and `labeled-rows` patterns (`go-slide-creator-s1uvj.1`, `go-slide-creator-s1uvj.2`).**
-  Two new named patterns, both content-sized row stacks with hairline rules.
-  `metric-list` takes `values.items[]` (3–7 × `{value ≤12, label ≤60,
-  detail? ≤120, highlight?}`, at most one highlighted) and an optional
-  `values.callout` (≤140) rendered as a full-width accent banner; overrides
-  `accent`, `semantic_accent`, `value_size`, `label_size`, `value_width_pct`
-  (15–50, default 28) and `cell_accent_mode`. `labeled-rows` takes
-  `values.rows[]` (2–6 × `{label ≤24, sublabel? ≤60, body ≤300}`); overrides
-  `accent`, `semantic_accent`, `label_style` (`filled` default | `text`),
-  `label_width_pct` (12–40, default 22), `label_size`, `body_size` and
-  `cell_accent_mode`. Both report measured `TEXT_EXCEEDS_SHAPE` and
-  `BODY_TOO_LONG` warnings, and `recommend_pattern` / `recommend_visual` route
-  "metric list", "stat stack", "by the numbers", "why what how", "labeled
-  rows" and "row labels" intents to them. Neither is reachable from a DeckSpec
-  kind yet; author them through raw `PresentationInput`.
-
-- **2026-09-25 — New patterns `capability-heatmap` and `framework-grid` (`go-slide-creator-s1uvj.3`, `go-slide-creator-s1uvj.4`).**
-  `capability-heatmap` takes `values: {tiers: [{label, description?}] (2-4),
-  columns: [{header, sublabel?, cells: [{text, tier}] (1-6)}] (3-8)}`; each
-  cell's `tier` must index `tiers` (0 = highest, filled with the accent). Its
-  overrides are `accent`, `semantic_accent`, `header_size`, `cell_size`,
-  `show_legend` (default true) and `header_shape` (`homePlate` default, or
-  `rect`). `framework-grid` takes `values: {rows: [{label, cards: [{title,
-  body?}] (1-4)}] (2-6)}` with overrides `accent`, `semantic_accent`,
-  `label_width_pct` (10-35), `title_size`, `body_size` and
-  `cell_accent_mode`. Both emit `BODY_TOO_LONG` when their measured rows
-  cannot fit the content area; the heatmap also emits `TEXT_EXCEEDS_SHAPE`
-  for a header word too wide for its column. `recommend_pattern` /
-  `recommend_visual` route capability-map, automation-potential, heatmap and
-  value-chain-matrix intents to the heatmap, and framework /
-  change-management / levers-by-dimension intents to the framework grid.
-  Neither is reachable from a DeckSpec kind; author them with
-  `raw_json2pptx`. Existing inputs are unchanged.
-
-- **2026-09-25 — Schema 4.139.0: `state-shift-hub` pattern (`go-slide-creator-s1uvj.6`).**
-  New named pattern for "today vs. future state" slides: a filled accent hub
-  circle holding a short `hub_label`, flanked by 3–6 numbered stage `pairs`
-  (`{title?, before, after, before_title?, after_title?}`). Today items sit
-  right-aligned on the left beside outlined `01`..`06` nodes; future items sit
-  left-aligned on the right beside filled nodes; the nodes lie on an arc
-  concentric with the hub. Optional `left_header` / `right_header` add ruled
-  column headers. Overrides: `accent`, `semantic_accent`, `title_size`,
-  `body_size`, `hub_size` (a ceiling — the hub label shrinks to fit the
-  circle, never below 12pt). No `cell_overrides`. `BODY_TOO_LONG` reports a
-  description that outgrows its measured stage row, and a hub label that does
-  not fit the circle. `recommend_pattern` / `recommend_visual` route "today vs
-  future", "current vs target state", "state shift" and "from-to shifts"
-  intents to it; a plain "current state assessment" still ranks
-  `before-after` first. Raw path only (`raw_json2pptx` in DeckSpec).
-
-- **2026-09-25 — Schema 4.139.0: `contact-directory` and `text-sidebar` patterns; image `geometry` (`go-slide-creator-s1uvj.5`, `go-slide-creator-s1uvj.11`).**
+- **2026-09-25 — Schema 4.146.0: `contact-directory` and `text-sidebar` patterns; image `geometry` (`go-slide-creator-s1uvj.5`, `go-slide-creator-s1uvj.11`).**
   - **`contact-directory`** — key-contacts / "who to call" page:
     `values.groups[1-4]{name, people[{name, title?, photo?}]}`, at most 24
     people in total; overrides `accent` / `semantic_accent`, `columns` (3–5,
@@ -85,6 +35,56 @@
     "introduction", "intro page", "foreword", "key message sidebar" to
     `text-sidebar`. Both patterns are raw-path only (`raw_json2pptx` in a
     DeckSpec). Existing inputs are unchanged.
+
+- **2026-09-25 — Schema 4.145.0: `state-shift-hub` pattern (`go-slide-creator-s1uvj.6`).**
+  New named pattern for "today vs. future state" slides: a filled accent hub
+  circle holding a short `hub_label`, flanked by 3–6 numbered stage `pairs`
+  (`{title?, before, after, before_title?, after_title?}`). Today items sit
+  right-aligned on the left beside outlined `01`..`06` nodes; future items sit
+  left-aligned on the right beside filled nodes; the nodes lie on an arc
+  concentric with the hub. Optional `left_header` / `right_header` add ruled
+  column headers. Overrides: `accent`, `semantic_accent`, `title_size`,
+  `body_size`, `hub_size` (a ceiling — the hub label shrinks to fit the
+  circle, never below 12pt). No `cell_overrides`. `BODY_TOO_LONG` reports a
+  description that outgrows its measured stage row, and a hub label that does
+  not fit the circle. `recommend_pattern` / `recommend_visual` route "today vs
+  future", "current vs target state", "state shift" and "from-to shifts"
+  intents to it; a plain "current state assessment" still ranks
+  `before-after` first. Raw path only (`raw_json2pptx` in DeckSpec).
+
+- **2026-09-25 — Schema 4.144.0: new patterns `capability-heatmap` and `framework-grid` (`go-slide-creator-s1uvj.3`, `go-slide-creator-s1uvj.4`).**
+  `capability-heatmap` takes `values: {tiers: [{label, description?}] (2-4),
+  columns: [{header, sublabel?, cells: [{text, tier}] (1-6)}] (3-8)}`; each
+  cell's `tier` must index `tiers` (0 = highest, filled with the accent). Its
+  overrides are `accent`, `semantic_accent`, `header_size`, `cell_size`,
+  `show_legend` (default true) and `header_shape` (`homePlate` default, or
+  `rect`). `framework-grid` takes `values: {rows: [{label, cards: [{title,
+  body?}] (1-4)}] (2-6)}` with overrides `accent`, `semantic_accent`,
+  `label_width_pct` (10-35), `title_size`, `body_size` and
+  `cell_accent_mode`. Both emit `BODY_TOO_LONG` when their measured rows
+  cannot fit the content area; the heatmap also emits `TEXT_EXCEEDS_SHAPE`
+  for a header word too wide for its column. `recommend_pattern` /
+  `recommend_visual` route capability-map, automation-potential, heatmap and
+  value-chain-matrix intents to the heatmap, and framework /
+  change-management / levers-by-dimension intents to the framework grid.
+  Neither is reachable from a DeckSpec kind; author them with
+  `raw_json2pptx`. Existing inputs are unchanged.
+
+- **2026-09-25 — Schema 4.143.0: `metric-list` and `labeled-rows` patterns (`go-slide-creator-s1uvj.1`, `go-slide-creator-s1uvj.2`).**
+  Two new named patterns, both content-sized row stacks with hairline rules.
+  `metric-list` takes `values.items[]` (3–7 × `{value ≤12, label ≤60,
+  detail? ≤120, highlight?}`, at most one highlighted) and an optional
+  `values.callout` (≤140) rendered as a full-width accent banner; overrides
+  `accent`, `semantic_accent`, `value_size`, `label_size`, `value_width_pct`
+  (15–50, default 28) and `cell_accent_mode`. `labeled-rows` takes
+  `values.rows[]` (2–6 × `{label ≤24, sublabel? ≤60, body ≤300}`); overrides
+  `accent`, `semantic_accent`, `label_style` (`filled` default | `text`),
+  `label_width_pct` (12–40, default 22), `label_size`, `body_size` and
+  `cell_accent_mode`. Both report measured `TEXT_EXCEEDS_SHAPE` and
+  `BODY_TOO_LONG` warnings, and `recommend_pattern` / `recommend_visual` route
+  "metric list", "stat stack", "by the numbers", "why what how", "labeled
+  rows" and "row labels" intents to them. Neither is reachable from a DeckSpec
+  kind yet; author them through raw `PresentationInput`.
 
 - **2026-09-25 — Schema 4.142.0: `process-grid-2row` column headers and outcomes (`go-slide-creator-s1uvj.10`).**
   `process-grid-2row` values accept `column_headers` (3–6 strings, ≤24
