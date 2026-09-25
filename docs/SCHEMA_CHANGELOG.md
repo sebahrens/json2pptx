@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.130.0: complete MCP authoring argument schemas (`go-slide-creator-scdp9`).**
+  Semantic `strict` and `output_validation` inputs now declare their accepted
+  enums. `patch`, repair `fixes`, and thumbnail `slide_indices` declare item
+  shapes; both visual recommenders declare `content_hints` fields. The three
+  handle-aware DeckSpec tools publish a top-level `oneOf` requiring exactly one
+  of `spec` or `deck_id`, plus `patch` → `deck_id`. These declarations match
+  existing handler behavior and let schema-aware clients catch invalid calls
+  before sending them.
+
 - **2026-09-25 — Schema 4.129.0: strict MCP argument values and semantic spec strings (`go-slide-creator-paxnw`, `go-slide-creator-jg51i`).**
   MCP tool calls now reject a supplied argument whose top-level value has the
   wrong declared type or is outside its declared enum, returning a structured

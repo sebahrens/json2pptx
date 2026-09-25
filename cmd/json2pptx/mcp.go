@@ -1168,6 +1168,24 @@ func marshalValidateResult(ctx context.Context, output dryRunOutput) (*mcp.CallT
 
 // --- Pattern tool definitions ---
 
+// recommendContentHintsProperties mirrors patterns.ContentHints and
+// patterns.VisualHints so tool clients can validate the structured hints.
+func recommendContentHintsProperties(visual bool) map[string]any {
+	props := map[string]any{
+		"item_count":   map[string]any{"type": "integer", "minimum": 0},
+		"has_chart":    map[string]any{"type": "boolean"},
+		"has_metrics":  map[string]any{"type": "boolean"},
+		"columns":      map[string]any{"type": "integer", "minimum": 0},
+		"density_hint": map[string]any{"type": "string", "enum": []string{"low", "medium", "high"}},
+	}
+	if visual {
+		props["data_points"] = map[string]any{"type": "integer", "minimum": 0}
+		props["series_count"] = map[string]any{"type": "integer", "minimum": 0}
+		props["audience"] = map[string]any{"type": "string"}
+	}
+	return props
+}
+
 func mcpRecommendPatternTool() mcp.Tool {
 	return mcp.NewTool("recommend_pattern",
 		mcp.WithDescription("Recommend NAMED PATTERNS for a content intent — patterns only. Charts and diagrams are outside its universe; use recommend_visual to rank all categories together. When a chart or diagram scores competitively the response says so in beyond_patterns, caps the confidence band at medium, and points next_tool_call at recommend_visual. Unsupported Sankey requests return empty candidates and unsupported_visual: sankey. Returns up to 3 ranked candidates with scores, rationales, confidence bands, and expansion previews. When prefer_variety is true and recent_patterns is provided, previously-used patterns are penalized and a diversity bonus candidate may be injected. When candidates is supplied, scores ONLY those pattern names against intent/hints and returns all of them ranked (no threshold cutoff, no truncation, no near-misses), except unsupported visuals."),
@@ -1178,6 +1196,7 @@ func mcpRecommendPatternTool() mcp.Tool {
 		),
 		mcp.WithObject("content_hints",
 			mcp.Description("Optional structured hints to refine ranking. Properties: item_count (int), has_chart (bool), has_metrics (bool), columns (int)."),
+			mcp.Properties(recommendContentHintsProperties(false)),
 		),
 		mcp.WithArray("recent_patterns",
 			mcp.Description("Pattern names used on preceding slides in this deck, in order. Used with prefer_variety to penalize repeated patterns."),
@@ -1603,6 +1622,7 @@ func mcpRecommendVisualTool() mcp.Tool {
 		),
 		mcp.WithObject("content_hints",
 			mcp.Description("Optional structured hints to refine ranking. Properties: item_count (int), has_chart (bool), has_metrics (bool), columns (int), data_points (int), series_count (int), audience (string)."),
+			mcp.Properties(recommendContentHintsProperties(true)),
 		),
 		mcp.WithArray("recent_patterns",
 			mcp.Description("Pattern names used on preceding slides in this deck, in order. Used with prefer_variety to penalize repeated patterns."),
@@ -2478,6 +2498,7 @@ Cost note: the JSON metadata stays small (<5KB for typical decks), but image pay
 		),
 		mcp.WithArray("slide_indices",
 			mcp.Description("Render ONLY these 0-based slides, e.g. [4, 9] — the narrowing knob for a repair loop, where re-pulling all 15 thumbnails to look at one changed slide is the whole cost. Pass render_deck_spec / validate_deck_spec's changed_slides verbatim. Returns one image block per index, ascending, with slide_count telling you how big the deck is and selected echoing what came back. An index the deck does not have is an error, not a silent omission. Mutually exclusive with max_slides."),
+			mcp.Items(map[string]any{"type": "integer", "minimum": 0}),
 		),
 		mcp.WithBoolean("force",
 			mcp.Description("If true, bypass the render cache and re-convert even if a cached result exists. Default: false."),

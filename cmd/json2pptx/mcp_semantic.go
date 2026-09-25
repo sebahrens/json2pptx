@@ -206,10 +206,43 @@ func withDeckSpecSchema() mcp.PropertyOption {
 	}
 }
 
+// withSpecOrDeckIDChoice adds the top-level XOR that ToolInputSchema cannot
+// represent directly. Keep InputSchema populated for in-process tooling; the
+// raw form is what MCP clients receive over tools/list.
+func withSpecOrDeckIDChoice(tool mcp.Tool) mcp.Tool {
+	schema := map[string]any{
+		"type":       "object",
+		"properties": tool.InputSchema.Properties,
+		"oneOf": []any{
+			map[string]any{"required": []string{"spec"}},
+			map[string]any{"required": []string{"deck_id"}},
+		},
+		"dependentRequired": map[string]any{"patch": []string{"deck_id"}},
+	}
+	if len(tool.InputSchema.Required) > 0 {
+		schema["required"] = tool.InputSchema.Required
+	}
+	if len(tool.InputSchema.Defs) > 0 {
+		schema["$defs"] = tool.InputSchema.Defs
+	}
+	if tool.InputSchema.AdditionalProperties != nil {
+		schema["additionalProperties"] = tool.InputSchema.AdditionalProperties
+	}
+	raw, err := json.Marshal(schema)
+	if err != nil {
+		panic(fmt.Sprintf("%s input schema: %v", tool.Name, err))
+	}
+	tool.RawInputSchema = raw
+	// mcp-go selects RawInputSchema only when the structured Type is empty.
+	// Keep Properties for in-process argument discovery and parity checks.
+	tool.InputSchema.Type = ""
+	return tool
+}
+
 // --- validate_deck_spec -----------------------------------------------------
 
 func mcpValidateDeckSpecTool() mcp.Tool {
-	return mcp.NewTool("validate_deck_spec",
+	return withSpecOrDeckIDChoice(mcp.NewTool("validate_deck_spec",
 		mcp.WithDescription(`Validate a semantic DeckSpec before compile or render. Returns the shared finding envelope and catches unknown kinds, missing payload fields, and rhythm or density issues. ok=false means an error finding; warnings and info keep ok=true. Mirrors `+"`json2pptx semantic validate`"+`.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaValidateDeckSpec)),
 		deckSpecFullSchemaArg("The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
@@ -217,11 +250,12 @@ func mcpValidateDeckSpecTool() mcp.Tool {
 		deckHandleToolParams()[1],
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict. Controls whether rhythm/density advisories are info, warnings, or errors."),
+			mcp.Enum("off", "warn", "strict"),
 		),
 		mcp.WithString("template",
 			mcp.Description("Default template when meta.template is absent; retained on the deck_id for rendering."),
 		),
-	)
+	))
 }
 
 func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -310,6 +344,7 @@ func mcpCompileDeckSpecTool() mcp.Tool {
 		deckSpecArg("The semantic DeckSpec to compile, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict."),
+			mcp.Enum("off", "warn", "strict"),
 		),
 		mcp.WithString("template",
 			mcp.Description("Default template used when the spec pins none (spec template > this > archetype default). Use list_templates to discover names."),
@@ -447,7 +482,7 @@ func semanticRenderToMCP(r semanticRenderResult, explanation *semantic.DeckExpla
 }
 
 func mcpRenderDeckSpecTool() mcp.Tool {
-	return mcp.NewTool("render_deck_spec",
+	return withSpecOrDeckIDChoice(mcp.NewTool("render_deck_spec",
 		mcp.WithDescription(`Compile a compact semantic deck spec (DeckSpec) and render it straight to a .pptx — the recommended one-call path for producing a NEW deck. Returns {success, pptx_path, publishable, blocking_reasons[], quality_summary, diagnostics[], explanation_summary}: success/ok report whether the artifact was WRITTEN and publishable whether it is fit to SHIP — a deck can be written and still carry an action:refuse diagnostic or fail the deterministic quality gate, so gate your "done" on publishable, not success. blocking_reasons say why not. pptx_path locates it, quality_summary is an input heuristic over the compiled slides (score on the shared 0-100 scale, basis="input"; not a structural or visual verdict — use score_deck / render tools for those), diagnostics carry compile findings plus render-time fit findings mapped back to the semantic source paths you wrote (raw paths retained as fallback), and explanation_summary reports the compiler's planned archetype/template and per-slide kind/role/family/density/pattern. Strict output validation is the default. Parse/template errors use a finding envelope; other failures use success=false. Mirrors the `+"`json2pptx semantic render`"+` CLI; the raw-model equivalent is generate_presentation over a compiled PresentationInput.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckSpec)),
 		deckSpecOrHandleArg("The semantic DeckSpec to render, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
@@ -455,6 +490,7 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 		deckHandleToolParams()[1],
 		mcp.WithString("strict",
 			mcp.Description("Advisory-rule strictness: off, warn (default), or strict."),
+			mcp.Enum("off", "warn", "strict"),
 		),
 		mcp.WithString("template",
 			mcp.Description("Default template used when the spec pins none (spec template > this > archetype default). Use list_templates to discover names."),
@@ -467,11 +503,12 @@ func mcpRenderDeckSpecTool() mcp.Tool {
 		),
 		mcp.WithString("output_validation",
 			mcp.Description("Post-generation output validation: off, warn, or strict (default). strict refuses to emit a deck with text overflow."),
+			mcp.Enum("off", "warn", "strict"),
 		),
 		mcp.WithString("output_filename",
 			mcp.Description("Filename for the rendered .pptx inside the server's output directory. Path components are stripped and a .pptx suffix is added if missing. Omit it and the name is derived from meta.title plus a short digest of the spec, so two different specs never collide and re-rendering the same spec is idempotent. The response reports overwrote:true when the render replaced an existing file."),
 		),
-	)
+	))
 }
 
 func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
@@ -647,13 +684,13 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 // --- explain_deck_spec ------------------------------------------------------
 
 func mcpExplainDeckSpecTool() mcp.Tool {
-	return mcp.NewTool("explain_deck_spec",
+	return withSpecOrDeckIDChoice(mcp.NewTool("explain_deck_spec",
 		mcp.WithDescription(`Explain the compiler's planned decisions for a semantic deck spec (DeckSpec) WITHOUT compiling or rendering. Returns {title, archetype, template, rhythm, rhythm_warnings[], slides[{index, kind, role, visual_family, density, title, takeaway, pattern, layout, alternatives[{pattern,layout,reason}]}]}: the resolved archetype/template, deck-rhythm advisories, selected composition, and supported alternatives for each slide. Use during planning to preview how the spec reads and which visuals it will pick. A spec that cannot be parsed returns a structured error envelope. Mirrors the `+"`json2pptx semantic explain`"+` CLI.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExplainDeckSpec)),
 		deckSpecOrHandleArg("The semantic DeckSpec to explain, as a JSON object ({meta:{…}, slides:[{kind, …}]}). A raw YAML/JSON string is also accepted."),
 		deckHandleToolParams()[0],
 		deckHandleToolParams()[1],
-	)
+	))
 }
 
 func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

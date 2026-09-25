@@ -150,6 +150,8 @@ Non-applied outcomes:
 		mcp.WithArray("fixes",
 			mcp.Description(`Array of fix directives: [{"kind":"reduce_text","params":{"max_items":5}}, ...]. Each directive has a "kind" (string) and optional "params" (object).`),
 			mcp.Required(),
+			mcp.Items(map[string]any{"type": "object", "required": []string{"kind"}, "additionalProperties": false,
+				"properties": map[string]any{"kind": map[string]any{"type": "string"}, "params": map[string]any{"type": "object"}}}),
 		),
 	)
 }

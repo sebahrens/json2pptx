@@ -596,6 +596,15 @@ const deckPatchParamDescription = `Optional edits to apply to the deck named by 
 func deckHandleToolParams() []mcp.ToolOption {
 	return []mcp.ToolOption{
 		mcp.WithString("deck_id", mcp.Description(deckIDParamDescription)),
-		mcp.WithArray("patch", mcp.Description(deckPatchParamDescription)),
+		mcp.WithArray("patch", mcp.Description(deckPatchParamDescription),
+			mcp.Items(map[string]any{
+				"type": "object", "required": []string{"op", "path"}, "additionalProperties": false,
+				"properties": map[string]any{
+					"op":    map[string]any{"type": "string", "enum": []string{specPatchReplace, specPatchAdd, specPatchRemove}},
+					"path":  map[string]any{"type": "string"},
+					"value": map[string]any{},
+				},
+			}),
+		),
 	}
 }

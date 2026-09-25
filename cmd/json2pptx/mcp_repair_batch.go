@@ -83,6 +83,12 @@ Returns the patched deck JSON, one outcome per directive (including slide_index,
 		mcp.WithArray("fixes",
 			mcp.Required(),
 			mcp.Description(`Ordered array of {slide_index, kind, params?} directives. slide_index is a 0-based slide offset; kind is one of the repair_slide fix kinds; params follows the same per-kind schema repair_slide accepts.`),
+			mcp.Items(map[string]any{"type": "object", "required": []string{"slide_index", "kind"}, "additionalProperties": false,
+				"properties": map[string]any{
+					"slide_index": map[string]any{"type": "integer", "minimum": 0},
+					"kind":        map[string]any{"type": "string"},
+					"params":      map[string]any{"type": "object"},
+				}}),
 		),
 	)
 }
