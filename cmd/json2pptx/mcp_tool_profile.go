@@ -36,25 +36,21 @@ const (
 	// coreToolListByteBudget is the max marshalled tools/list size (bytes) for
 	// the core profile.
 	//
-	// The full closed DeckSpec schema — per-kind oneOf variants, each closed with
-	// additionalProperties:false — is ~17KB and used to be embedded in every spec
-	// tool: twice in this listing and four times in the full one, saying the same
-	// thing each time. It now lives on validate_deck_spec alone, the tool the
-	// workflow says to call before rendering; the others carry the outline (meta
-	// + slides[].kind) and point at list_slide_kinds (go-slide-creator-uhaq).
-	// That took the listing from 99KB to 85KB and removed the reason it kept
-	// growing by ~2.4KB per new slide kind.
+	// The closed DeckSpec schema lives only on validate_deck_spec; the other
+	// semantic tools carry an outline and point at list_slide_kinds
+	// (go-slide-creator-uhaq). Repeated list-entry object schemas within that
+	// remaining copy now share $defs references (go-slide-creator-cfo3g), taking
+	// its compact form from 30,211 to 21,132 bytes and the core listing from
+	// 102,032 to 93,582 bytes without changing the accepted payload contract.
 	//
 	// The budget has been raised four times before that (72 -> 80 -> 88 -> 96 ->
 	// 104KB) as deck chrome, examine_template and the option_matrix / table /
 	// architecture kinds arrived; it came back down to 92KB there. The full
-	// profile is ~313KB.
+	// profile is ~323KB today.
 	//
-	// 92 -> 100KB: the agenda, team, stat, timeline and matrix_2x2 kinds. Each
-	// new kind still costs ~2.4KB of validate_deck_spec's closed schema — the
-	// one tool that kept it — so this buys roughly three more before the next
-	// raise. If that becomes a habit rather than an event, move the closed
-	// schema behind list_slide_kinds entirely rather than raising again.
+	// 92 -> 100KB: the agenda, team, stat, timeline and matrix_2x2 kinds. New
+	// kinds still add unique fields to validate_deck_spec's input schema; keep
+	// the budget fixed and watch TestCoreToolProfileBudget as the registry grows.
 	coreToolListByteBudget = 100 * 1024
 )
 

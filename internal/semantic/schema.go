@@ -3,6 +3,7 @@ package semantic
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/layout"
@@ -396,9 +397,55 @@ func CompactSchemaAt(base string) map[string]any {
 	out, _ := stripAnnotations(Schema(), false).(map[string]any)
 	delete(out, "$schema")
 	compactSchemaDefinitions(out)
+	hoistRepeatedItemSchemas(out)
 	minifySchemaDefinitionNames(out)
 	rewriteSchemaRefs(out, strings.TrimSuffix(base, "/"))
 	return out
+}
+
+// hoistRepeatedItemSchemas shares the closed list-entry objects that recur
+// across slide kinds. Only the MCP-embedded compact schema uses these refs;
+// Schema and KindItemSchema keep their readable, self-contained definitions.
+func hoistRepeatedItemSchemas(root map[string]any) {
+	defs, _ := root["$defs"].(map[string]any)
+	if defs == nil {
+		return
+	}
+	type site struct {
+		parent map[string]any
+		item   map[string]any
+	}
+	groups := map[string][]site{}
+	for _, kind := range AllSlideKinds() {
+		variant, _ := defs[kindDefName(kind)].(map[string]any)
+		properties, _ := variant["properties"].(map[string]any)
+		for _, value := range properties {
+			field, _ := value.(map[string]any)
+			item, _ := field["items"].(map[string]any)
+			if item == nil {
+				continue
+			}
+			encoded, err := json.Marshal(item)
+			if err == nil {
+				groups[string(encoded)] = append(groups[string(encoded)], site{parent: field, item: item})
+			}
+		}
+	}
+	keys := make([]string, 0, len(groups))
+	for key, sites := range groups {
+		if len(sites) > 1 && len(key) > 80 {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	for i, key := range keys {
+		name := fmt.Sprintf("I%d", i)
+		sites := groups[key]
+		defs[name] = sites[0].item
+		for _, site := range sites {
+			site.parent["items"] = map[string]any{"$ref": "#/$defs/" + name}
+		}
+	}
 }
 
 func minifySchemaDefinitionNames(root map[string]any) {

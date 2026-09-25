@@ -221,6 +221,75 @@ func TestCompactSchemaAtRebasesEveryDefinitionReference(t *testing.T) {
 	if slide["unevaluatedProperties"] != false {
 		t.Fatalf("structured slide union is not closed: %+v", slide)
 	}
+	const prefix = "#/properties/spec/$defs/"
+	var walk func(any)
+	walk = func(value any) {
+		switch v := value.(type) {
+		case map[string]any:
+			if ref, ok := v["$ref"].(string); ok {
+				name := strings.TrimPrefix(ref, prefix)
+				if name == ref || defs[name] == nil {
+					t.Errorf("unresolved compact schema ref %q", ref)
+				}
+			}
+			for _, child := range v {
+				walk(child)
+			}
+		case []any:
+			for _, child := range v {
+				walk(child)
+			}
+		}
+	}
+	walk(schema)
+}
+
+func TestHoistedItemSchemasPreserveEveryKindField(t *testing.T) {
+	build := func() map[string]any {
+		root := stripAnnotations(Schema(), false).(map[string]any)
+		delete(root, "$schema")
+		compactSchemaDefinitions(root)
+		return root
+	}
+	before, after := build(), build()
+	hoistRepeatedItemSchemas(after)
+	beforeBytes, _ := json.Marshal(before)
+	afterBytes, _ := json.Marshal(after)
+	if saved := len(beforeBytes) - len(afterBytes); saved < 5000 {
+		t.Fatalf("repeated item schemas saved only %d bytes", saved)
+	}
+	t.Logf("compact DeckSpec schema: %d -> %d bytes", len(beforeBytes), len(afterBytes))
+	beforeDefs := before["$defs"].(map[string]any)
+	afterDefs := after["$defs"].(map[string]any)
+	shared := 0
+	for name := range afterDefs {
+		if strings.HasPrefix(name, "I") {
+			shared++
+		}
+	}
+	if shared == 0 {
+		t.Fatal("no shared item definitions were emitted")
+	}
+	for _, kind := range AllSlideKinds() {
+		name := kindDefName(kind)
+		beforeProps := beforeDefs[name].(map[string]any)["properties"].(map[string]any)
+		afterProps := afterDefs[name].(map[string]any)["properties"].(map[string]any)
+		for fieldName, value := range beforeProps {
+			beforeField := value.(map[string]any)
+			beforeItem, hasItem := beforeField["items"]
+			if !hasItem {
+				continue
+			}
+			afterField := afterProps[fieldName].(map[string]any)
+			afterItem := afterField["items"]
+			if ref, ok := afterItem.(map[string]any)["$ref"].(string); ok {
+				afterItem = afterDefs[strings.TrimPrefix(ref, "#/$defs/")]
+			}
+			if !reflect.DeepEqual(beforeItem, afterItem) {
+				t.Errorf("%s.%s changed when item schema was hoisted", kind, fieldName)
+			}
+		}
+	}
 }
 
 func TestCompactInlineSchemaKeepsStructure(t *testing.T) {

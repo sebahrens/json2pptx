@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.128.0: shared DeckSpec list-entry schemas (`go-slide-creator-cfo3g`).**
+  The compact closed schema embedded in `validate_deck_spec` now hoists
+  repeated item-object definitions into `$defs` references. Its schema payload
+  fell from 30,211 to 21,132 bytes, and the core MCP `tools/list` fell from
+  102,032 to 93,582 bytes. All refs resolve after nesting under `spec`; the
+  accepted DeckSpec fields and the public `semantic schema` output are
+  unchanged. The schema fingerprint is unchanged because this is an existing
+  tool's input-schema serialization, not a new tool or raw input field.
+
 - **2026-09-25 — Schema 4.127.0: compact slide-kind discovery (`go-slide-creator-s9g1f`).**
   `list_slide_kinds{}` now returns kind summaries, required/typical fields,
   aliases, and one copy-ready example without every kind's large JSON Schema
