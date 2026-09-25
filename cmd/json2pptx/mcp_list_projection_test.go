@@ -259,10 +259,16 @@ func TestListTemplates_FieldsCompact(t *testing.T) {
 		if tmpl.CanonicalLayoutAvailability == nil {
 			t.Errorf("template %q: slim discovery omitted canonical availability", tmpl.Name)
 		}
+		if shipped[tmpl.Name] && len(tmpl.CanonicalLayoutIDs) == 0 {
+			t.Errorf("template %q: compact discovery omitted concrete canonical layout IDs", tmpl.Name)
+		}
 		if tmpl.Name == "modern" && tmpl.CanonicalLayoutAvailability != nil {
 			if !slices.Contains(tmpl.CanonicalLayoutAvailability.Available, "image-right") ||
 				!slices.Contains(tmpl.CanonicalLayoutAvailability.Unavailable, "agenda") {
 				t.Errorf("modern availability contradicts its layouts: %+v", tmpl.CanonicalLayoutAvailability)
+			}
+			if tmpl.CanonicalLayoutIDs["image-right"] != "slideLayout2" {
+				t.Errorf("modern compact image-right binding = %q", tmpl.CanonicalLayoutIDs["image-right"])
 			}
 		}
 	}

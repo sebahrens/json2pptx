@@ -55,6 +55,9 @@ func TestListTemplatesDefaultIsCompact(t *testing.T) {
 	if def.Templates[0].ThemeColors != nil || len(def.Templates[0].Layouts) != 0 {
 		t.Error("the default carries per-template detail; that is the full projection")
 	}
+	if len(def.Templates[0].CanonicalLayoutIDs) == 0 {
+		t.Error("the default omitted concrete canonical layout IDs")
+	}
 
 	// The default must equal the explicit compact projection, byte for byte.
 	explicit, err := mc.handleListTemplates(context.Background(), makeRequest(map[string]any{"fields": "compact"}))
@@ -85,8 +88,10 @@ func TestListTemplatesDefaultIsCompact(t *testing.T) {
 	if defSize >= fullSize/4 {
 		t.Errorf("default %d B is not meaningfully smaller than full %d B", defSize, fullSize)
 	}
-	if defSize > 10*1024 {
-		t.Errorf("default payload is %d B, over the 10 KB budget", defSize)
+	// Concrete canonical IDs add a small per-template map to the formerly
+	// 10 KB list projection; keep the full all-template response under 16 KB.
+	if defSize > 16*1024 {
+		t.Errorf("default payload is %d B, over the 16 KB budget", defSize)
 	}
 }
 

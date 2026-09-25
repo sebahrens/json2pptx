@@ -145,7 +145,7 @@ Every shape grid cell has a measurable text capacity. `density_pct` is a **heigh
 
 ### Workflow Integration
 
-**Phase 1 PLAN.** When choosing patterns, estimate content volume per cell. A 3-cell grid with single-sentence items fits `kpi-3up`; multi-paragraph items need `card-grid` or a 2-column layout. Use `recommend_pattern` with your content volume in mind. For a quick capacity check, read `placeholders[].max_chars` from the compact `list_templates` response — this gives a rough character budget per placeholder without needing `expand_pattern`.
+**Phase 1 PLAN.** When choosing patterns, estimate content volume per cell. A 3-cell grid with single-sentence items fits `kpi-3up`; multi-paragraph items need `card-grid` or a 2-column layout. Use `recommend_pattern` with your content volume in mind. For a quick capacity check, call `list_templates` with legacy `mode="compact"` (or `fields="full"`) and read `layout_summaries[].placeholders[].max_chars`; the default `fields="compact"` omits those per-layout budgets.
 
 **Phase 2 VARY.** After building JSON, call `expand_pattern` to read `cell_budgets[]` before generating. Each entry contains:
 

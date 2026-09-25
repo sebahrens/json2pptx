@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sebahrens/json2pptx/internal/examine"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -20,33 +21,72 @@ import (
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
-func TestAnalyzeTemplateForSkillInfo_FiltersOtherPlaceholders(t *testing.T) {
-	templatePath := "../../templates/forest-green.pptx"
-
+func TestTemplateDiscoveryPlaceholderParity(t *testing.T) {
 	cache := template.NewMemoryCache(24 * time.Hour)
-	info, err := analyzeTemplateForSkillInfo(templatePath, cache, "full")
-	if err != nil {
-		t.Fatalf("analyzeTemplateForSkillInfo failed: %v", err)
-	}
-
-	// Verify no placeholder has type "other" in any layout
-	for _, layout := range info.Layouts {
-		for _, ph := range layout.Placeholders {
-			if ph.Type == "other" {
-				t.Errorf("layout %q contains placeholder %q with type %q; "+
-					"internal OOXML metadata placeholders should be filtered out",
-					layout.Name, ph.ID, ph.Type)
+	var sawUtility, sawSectionNumber bool
+	for _, templatePath := range testutil.TestTemplatePaths() {
+		t.Run(filepath.Base(templatePath), func(t *testing.T) {
+			compact, err := analyzeTemplateForSkillInfoOpts(templatePath, cache, "compact", skillInfoOptions{NoPreview: true})
+			if err != nil {
+				t.Fatal(err)
 			}
-		}
+			full, err := analyzeTemplateForSkillInfoOpts(templatePath, cache, "full", skillInfoOptions{NoPreview: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			reader, err := template.OpenTemplate(templatePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer reader.Close()
+			report, err := examine.Examine(reader, examine.Options{TemplatePath: templatePath})
+			if err != nil {
+				t.Fatal(err)
+			}
+			compactByID := make(map[string]skillLayoutSummary, len(compact.LayoutSummaries))
+			fullByID := make(map[string]skillLayoutInfo, len(full.Layouts))
+			for _, layout := range compact.LayoutSummaries {
+				compactByID[layout.ID] = layout
+			}
+			for _, layout := range full.Layouts {
+				fullByID[layout.ID] = layout
+			}
+			for _, layout := range report.Layouts {
+				cs, ok := compactByID[layout.ID]
+				if !ok {
+					t.Errorf("examine layout %q missing from compact listing", layout.ID)
+					continue
+				}
+				fs, ok := fullByID[layout.ID]
+				if !ok {
+					t.Errorf("examine layout %q missing from full listing", layout.ID)
+					continue
+				}
+				if len(cs.Placeholders) != len(layout.Placeholders) || len(fs.Placeholders) != len(layout.Placeholders) {
+					t.Errorf("%s: placeholder count examine=%d compact=%d full=%d", layout.ID,
+						len(layout.Placeholders), len(cs.Placeholders), len(fs.Placeholders))
+					continue
+				}
+				for i, want := range layout.Placeholders {
+					if want.Type == "other" {
+						sawUtility = true
+					}
+					if want.Role == "section_number" {
+						sawSectionNumber = true
+					}
+					c, f := cs.Placeholders[i], fs.Placeholders[i]
+					if c.ID != want.ID || c.Type != want.Type || c.Role != want.Role || c.AutoFilled != want.AutoFilled {
+						t.Errorf("%s placeholder %d compact=%+v, examine=%+v", layout.ID, i, c, want)
+					}
+					if f.ID != want.ID || f.Type != want.Type || f.Role != want.Role || f.AutoFilled != want.AutoFilled {
+						t.Errorf("%s placeholder %d full=%+v, examine=%+v", layout.ID, i, f, want)
+					}
+				}
+			}
+		})
 	}
-
-	// Verify we still have some placeholders (sanity check)
-	totalPhs := 0
-	for _, layout := range info.Layouts {
-		totalPhs += len(layout.Placeholders)
-	}
-	if totalPhs == 0 {
-		t.Error("expected at least one placeholder across all layouts after filtering")
+	if !sawUtility || !sawSectionNumber {
+		t.Errorf("parity corpus lacks a utility placeholder (%v) or section number (%v)", sawUtility, sawSectionNumber)
 	}
 }
 
@@ -1120,11 +1160,8 @@ func TestTemplateInfoCanonicalLayoutAvailability(t *testing.T) {
 					t.Errorf("%s incorrectly advertised as available: %v", name, unavailable)
 				}
 			}
-			if mode == "compact" && info.CanonicalLayoutIDs["image-right"] != "slideLayout2" {
+			if info.CanonicalLayoutIDs["image-right"] != "slideLayout2" {
 				t.Errorf("image-right binding = %q, want slideLayout2", info.CanonicalLayoutIDs["image-right"])
-			}
-			if mode == "list" && len(info.CanonicalLayoutIDs) != 0 {
-				t.Errorf("slim projection should not carry concrete bindings: %v", info.CanonicalLayoutIDs)
 			}
 		})
 	}

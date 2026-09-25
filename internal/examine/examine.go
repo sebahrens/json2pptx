@@ -393,10 +393,7 @@ func buildCanonicalCoverage(layouts []types.LayoutMetadata) (map[string]Canonica
 // in z-order.
 func buildLayoutReport(l *types.LayoutMetadata, slideW, slideH int64) LayoutReport {
 	ct := template.EffectiveCanonicalType(l)
-	phs := make([]PlaceholderReport, len(l.Placeholders))
-	for i := range l.Placeholders {
-		phs[i] = buildPlaceholderReport(&l.Placeholders[i], i)
-	}
+	phs := ProjectLayoutPlaceholders(l)
 
 	tags := l.Tags
 	if tags == nil {
@@ -421,6 +418,18 @@ func buildLayoutReport(l *types.LayoutMetadata, slideW, slideH int64) LayoutRepo
 		ContentZone:         zone,
 		Placeholders:        phs,
 	}
+}
+
+// ProjectLayoutPlaceholders is the shared physical-placeholder projection for
+// examine-template and list_templates/skill-info. It preserves utility chrome
+// (footer, date, page number) and never inserts a second alias entry for a
+// section number; its canonical role is carried by Role instead.
+func ProjectLayoutPlaceholders(l *types.LayoutMetadata) []PlaceholderReport {
+	phs := make([]PlaceholderReport, len(l.Placeholders))
+	for i := range l.Placeholders {
+		phs[i] = buildPlaceholderReport(&l.Placeholders[i], i)
+	}
+	return phs
 }
 
 // buildPlaceholderReport projects a placeholder, carrying its document order as

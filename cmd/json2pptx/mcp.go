@@ -129,12 +129,12 @@ func listTemplatesToolDescription() string {
 	}
 	return `List available presentation templates with their layouts, theme colors, and capabilities.
 
-Every projection includes name, aspect_ratio, layout_count, table_styles, canonical_layout_availability, color_roles (including contrast-safe and near-background accents), title_font, body_font, and authored semantic_accents and metadata_version when present. Detailed compact/full modes additionally include canonical_layout_ids, sha256, theme_colors (scheme→hex), surface_tints, data_palette, accent_usage_guide (when authored), canonical_coverage, derivable_layouts, layout_names, and layout_summaries. Full mode adds layouts with per-layout canonical_type/canonical_family/canonical_confidence, placeholder roles, font size and exact bounds.
+Every projection includes name, aspect_ratio, layout_count, table_styles, canonical_layout_availability, canonical_layout_ids, color_roles (including contrast-safe and near-background accents), title_font, body_font, and authored semantic_accents and metadata_version when present. The legacy mode="compact" and fields="full" additionally include sha256, theme_colors (scheme→hex), surface_tints, data_palette, accent_usage_guide (when authored), canonical_coverage, derivable_layouts, layout_names, and layout_summaries. Full mode adds layouts with per-layout canonical_type/canonical_family/canonical_confidence, placeholder roles, font size and exact bounds.
 Response also includes supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities) ONLY with fields="full" — it is static per-server data that dwarfed the per-template payload, so the default compact projection omits it. ` + hints + `
 
 Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. The response always includes total_count and page_size; next_cursor is present only when more templates remain.
 
-Projection (token-economy): compact is the DEFAULT — identity, capacity, canonical availability, fonts, color roles, and semantic accents, with no per-template theme_colors / layouts and no supported_types. Use fields="full" for surface tints, data palette, concrete canonical_layout_ids, and the whole layout payload.
+Projection (token-economy): compact is the DEFAULT — identity, capacity, concrete canonical layout IDs, fonts, color roles, and semantic accents, with no per-template theme_colors / layouts and no supported_types. Use fields="full" for surface tints, data palette, layout summaries, and the whole layout payload.
 
 Filtering: pass filter="<substring>" to limit the response to templates whose name contains the substring (case-insensitive). Composes with pagination — filter applies before cursor/page_size.`
 }
@@ -157,7 +157,7 @@ func mcpListTemplatesTool() mcp.Tool {
 			mcp.Enum("list", "compact", "full"),
 		),
 		mcp.WithString("fields",
-			mcp.Description("Field projection: compact (identity, capacity, canonical availability, fonts, color roles, semantic accents) or full (surface tints, data palette, canonical_layout_ids, layout detail). "+listFieldsOmitted+" Explicit legacy mode is honored."),
+			mcp.Description("Field projection: compact (identity, capacity, concrete canonical layout IDs, fonts, color roles, semantic accents) or full (surface tints, data palette, layout detail). "+listFieldsOmitted+" Explicit legacy mode is honored."),
 			mcp.Enum(listFieldsCompact, listFieldsFull),
 		),
 		mcp.WithString("filter",

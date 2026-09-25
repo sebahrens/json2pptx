@@ -16,7 +16,7 @@ import (
 	"log/slog"
 	"math"
 
-	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/examine"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -579,6 +579,7 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 	}
 	canonicalIDs := layout.ResolveAllCanonicalLayouts(analysis.Layouts)
 	info.CanonicalLayoutAvailability = canonicalLayoutAvailability(canonicalIDs)
+	info.CanonicalLayoutIDs = canonicalIDs
 
 	// Always include table_styles (empty array, never null).
 	reader, err := template.OpenTemplate(templatePath)
@@ -650,20 +651,18 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 			CanonicalType: string(template.EffectiveCanonicalType(&analysis.Layouts[i])),
 		}
 
-		// Compact placeholder entries (id + type + role + max_chars only)
-		phs := make([]skillPlaceholderCompact, 0, len(l.Placeholders))
-		for k := range l.Placeholders {
-			ph := &l.Placeholders[k]
-			if ph.Type == types.PlaceholderOther {
-				continue
-			}
-			phs = append(phs, skillPlaceholderCompact{
+		// Compact and full projections share examine-template's physical
+		// placeholder list, including utility chrome and no synthetic aliases.
+		projected := examine.ProjectLayoutPlaceholders(&l)
+		phs := make([]skillPlaceholderCompact, len(projected))
+		for k, ph := range projected {
+			phs[k] = skillPlaceholderCompact{
 				ID:         ph.ID,
-				Type:       string(ph.Type),
-				AutoFilled: types.IsAutoFilledPlaceholder(ph.ID),
-				Role:       string(ph.Role),
-				MaxChars:   generator.ReportedMaxChars(ph),
-			})
+				Type:       ph.Type,
+				AutoFilled: ph.AutoFilled,
+				Role:       ph.Role,
+				MaxChars:   ph.MaxChars,
+			}
 		}
 		if len(phs) > 0 {
 			summary.Placeholders = phs
@@ -676,7 +675,6 @@ func analyzeTemplateForSkillInfoOpts(templatePath string, cache types.TemplateCa
 		}
 		layoutSummaries[i] = summary
 	}
-	info.CanonicalLayoutIDs = canonicalIDs
 	info.LayoutNames = layoutNames
 	info.LayoutSummaries = layoutSummaries
 
@@ -703,39 +701,26 @@ func buildSkillSideEffects(noPreview bool, disableWith string) *skillSideEffects
 func buildFullLayoutInfos(layouts []types.LayoutMetadata, previews *layoutpreview.Result) []skillLayoutInfo {
 	result := make([]skillLayoutInfo, len(layouts))
 	for i, l := range layouts {
-		phs := make([]skillPlaceholderInfo, 0, len(l.Placeholders))
-		var sectionNumberPH *skillPlaceholderInfo
-		for k := range l.Placeholders {
-			ph := &l.Placeholders[k]
-			if ph.Type == types.PlaceholderOther {
-				continue
-			}
-			pi := skillPlaceholderInfo{
+		projected := examine.ProjectLayoutPlaceholders(&l)
+		phs := make([]skillPlaceholderInfo, len(projected))
+		for k, ph := range projected {
+			raw := &l.Placeholders[k]
+			phs[k] = skillPlaceholderInfo{
 				ID:             ph.ID,
-				Type:           string(ph.Type),
-				AutoFilled:     types.IsAutoFilledPlaceholder(ph.ID),
-				Role:           string(ph.Role),
+				Type:           ph.Type,
+				AutoFilled:     ph.AutoFilled,
+				Role:           ph.Role,
 				RoleConfidence: ph.RoleConfidence,
-				MaxChars:       generator.ReportedMaxChars(ph),
-				X:              ph.Bounds.X,
-				Y:              ph.Bounds.Y,
-				Width:          ph.Bounds.Width,
-				Height:         ph.Bounds.Height,
-				FontFamily:     ph.FontFamily,
-				FontSize:       ph.FontSize,
-				FontSizePt:     fontHundredthsToPt(ph.FontSize),
-				FontColor:      ph.FontColor,
+				MaxChars:       ph.MaxChars,
+				X:              ph.Bounds.XEMU,
+				Y:              ph.Bounds.YEMU,
+				Width:          ph.Bounds.WEMU,
+				Height:         ph.Bounds.HEMU,
+				FontFamily:     raw.FontFamily,
+				FontSize:       raw.FontSize,
+				FontSizePt:     fontHundredthsToPt(raw.FontSize),
+				FontColor:      raw.FontColor,
 			}
-			phs = append(phs, pi)
-			if strings.EqualFold(ph.ID, "Section Number") {
-				alias := pi
-				alias.ID = "section_number"
-				alias.Type = "section_number"
-				sectionNumberPH = &alias
-			}
-		}
-		if sectionNumberPH != nil {
-			phs = append(phs, *sectionNumberPH)
 		}
 		tags := l.Tags
 		if tags == nil {

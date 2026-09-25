@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.133.0: template placeholder parity and compact layout IDs (`go-slide-creator-6ofcx`).**
+  `list_templates` and `skill-info` now use examine-template's physical
+  placeholder projection. Full and legacy compact layout details include
+  footer/date/page-number placeholders and no duplicate Section Number alias.
+  The default compact MCP listing now includes concrete
+  `canonical_layout_ids` without adding the heavy layout details. The deck
+  skill now distinguishes that slim default from legacy `mode="compact"`,
+  which carries layout summaries (`go-slide-creator-zz4v4`).
+
 - **2026-09-25 — Schema 4.132.0: complete pattern discovery placement fields (`go-slide-creator-izxpe`).**
   `show_pattern` and other pattern-discovery schemas now declare
   `bounds` and `max_height_pct`. Structured `values` objects with declared

@@ -104,7 +104,7 @@ var outputSchemaListTemplates = json.RawMessage(`{
         "available": {"type": "array", "items": {"type": "string"}},
         "unavailable": {"type": "array", "items": {"type": "string"}}
       }, "required": ["available", "unavailable"]},
-      "canonical_layout_ids": {"type": "object", "description": "Available canonical alias to concrete layout ID in detailed projections."}
+      "canonical_layout_ids": {"type": "object", "description": "Available canonical alias to concrete layout ID in every projection, including compact."}
     }}},
     "supported_types": {"type": "object"},
     "input_formats":   {"type": "array", "items": {"type": "string"}},
