@@ -25,6 +25,24 @@
   rows" and "row labels" intents to them. Neither is reachable from a DeckSpec
   kind yet; author them through raw `PresentationInput`.
 
+- **2026-09-25 — New patterns `capability-heatmap` and `framework-grid` (`go-slide-creator-s1uvj.3`, `go-slide-creator-s1uvj.4`).**
+  `capability-heatmap` takes `values: {tiers: [{label, description?}] (2-4),
+  columns: [{header, sublabel?, cells: [{text, tier}] (1-6)}] (3-8)}`; each
+  cell's `tier` must index `tiers` (0 = highest, filled with the accent). Its
+  overrides are `accent`, `semantic_accent`, `header_size`, `cell_size`,
+  `show_legend` (default true) and `header_shape` (`homePlate` default, or
+  `rect`). `framework-grid` takes `values: {rows: [{label, cards: [{title,
+  body?}] (1-4)}] (2-6)}` with overrides `accent`, `semantic_accent`,
+  `label_width_pct` (10-35), `title_size`, `body_size` and
+  `cell_accent_mode`. Both emit `BODY_TOO_LONG` when their measured rows
+  cannot fit the content area; the heatmap also emits `TEXT_EXCEEDS_SHAPE`
+  for a header word too wide for its column. `recommend_pattern` /
+  `recommend_visual` route capability-map, automation-potential, heatmap and
+  value-chain-matrix intents to the heatmap, and framework /
+  change-management / levers-by-dimension intents to the framework grid.
+  Neither is reachable from a DeckSpec kind; author them with
+  `raw_json2pptx`. Existing inputs are unchanged.
+
 - **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
   `render_deck_spec` and `semantic render` now report
   `deterministic_ready`, `deterministic_blocking_reasons[]`, and

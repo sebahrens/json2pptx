@@ -425,6 +425,58 @@
           ]
         }
       }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Automation Potential by Function"}
+      ],
+      "pattern": {
+        "name": "capability-heatmap",
+        "values": {
+          "tiers": [
+            {"label": "High", "description": ">50% of time automatable"},
+            {"label": "Medium", "description": "20-50%"},
+            {"label": "Low", "description": "<20%"}
+          ],
+          "columns": [
+            {"header": "Front office", "sublabel": "Up to 30% capacity unlock", "cells": [
+              {"text": "Research summaries", "tier": 0}, {"text": "Pitch preparation", "tier": 1}, {"text": "Client meetings", "tier": 2}
+            ]},
+            {"header": "Middle office", "sublabel": "Up to 45% capacity unlock", "cells": [
+              {"text": "Reconciliations", "tier": 0}, {"text": "Risk reporting", "tier": 0}, {"text": "Exception handling", "tier": 2}
+            ]},
+            {"header": "Operations", "cells": [
+              {"text": "Trade settlement", "tier": 0}, {"text": "Corporate actions", "tier": 1}
+            ]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Change Management Framework"}
+      ],
+      "pattern": {
+        "name": "framework-grid",
+        "values": {
+          "rows": [
+            {"label": "People", "cards": [
+              {"title": "Leadership", "body": "Visible sponsor at every level"},
+              {"title": "Skills", "body": "Role-based academies"},
+              {"title": "Incentives", "body": "Goals tied to adoption"}
+            ]},
+            {"label": "Process", "cards": [
+              {"title": "Governance", "body": "Single change board"},
+              {"title": "Ways of working", "body": "Redesigned workflows"}
+            ]},
+            {"label": "Technology", "cards": [
+              {"title": "Platforms", "body": "Shared data and AI platform"}
+            ]}
+          ]
+        }
+      }
     }
   ]
 }

@@ -1,0 +1,352 @@
+{
+  "col_gap": 8,
+  "row_gap": 8,
+  "columns": [
+    18,
+    27.33,
+    27.33,
+    27.33
+  ],
+  "rows": [
+    {
+      "min_height": 83,
+      "max_height": 83,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "People",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Leadership",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Visible sponsor at every level",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_top": 26
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Skills",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Role-based academies and coaching",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_top": 26
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Incentives",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Goals tied to adoption",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_top": 26
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 83,
+      "max_height": 83,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Process",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Governance",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Single change board, monthly cadence",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_top": 26
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Ways of working",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Redesigned end-to-end workflows",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_top": 26
+            }
+          }
+        },
+        {}
+      ]
+    },
+    {
+      "min_height": 83,
+      "max_height": 83,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Technology",
+                  "size": 14,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Platforms",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Shared data and AI platform",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_top": 26
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Tooling",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Copilots in daily tools",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_top": 26
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Data",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Owned, trusted, reusable",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t",
+              "inset_top": 26
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "vertical_align": "center"
+}

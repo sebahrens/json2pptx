@@ -109,6 +109,30 @@ func syntheticValues(pat patterns.Pattern, cols, rows int) any {
 			}
 		}
 		return &patterns.ProcessFlowValues{Steps: steps}
+	case "capability-heatmap":
+		// cols = function columns; rows = grid rows (header + cells + legend).
+		cells := max(rows-2, 1)
+		v := &patterns.CapabilityHeatmapValues{Tiers: []patterns.CapabilityHeatmapTier{{Label: "High"}, {Label: "Medium"}, {Label: "Low"}}}
+		for i := 0; i < cols; i++ {
+			col := patterns.CapabilityHeatmapColumn{Header: "Function", Sublabel: "Up to 30% unlock"}
+			for j := 0; j < cells; j++ {
+				col.Cells = append(col.Cells, patterns.CapabilityHeatmapCell{Text: "Activity name", Tier: j % 3})
+			}
+			v.Columns = append(v.Columns, col)
+		}
+		return v
+	case "framework-grid":
+		// cols includes the row-label column; cards per row = cols - 1.
+		cards := max(cols-1, 1)
+		v := &patterns.FrameworkGridValues{}
+		for i := 0; i < rows; i++ {
+			row := patterns.FrameworkGridRow{Label: "Dimension"}
+			for j := 0; j < cards; j++ {
+				row.Cards = append(row.Cards, patterns.FrameworkGridCard{Title: "Lever", Body: "Short explanation"})
+			}
+			v.Rows = append(v.Rows, row)
+		}
+		return v
 	case "process-grid-2row":
 		// cols includes the row-label column; phases per row = cols - 1.
 		n := cols - 1

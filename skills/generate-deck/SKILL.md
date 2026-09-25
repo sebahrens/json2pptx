@@ -66,9 +66,10 @@ executable one.
   visual inspection, resumable calls, and idempotency.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules.
-- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance; get
-  the current catalog and per-pattern schema from `list_patterns` /
-  `show_pattern`.
+- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
+  (including tier-rated `capability-heatmap` and labelled-row `framework-grid`
+  budgets); get the current catalog and per-pattern schema from
+  `list_patterns` / `show_pattern`.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

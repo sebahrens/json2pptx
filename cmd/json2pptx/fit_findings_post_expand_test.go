@@ -501,3 +501,36 @@ func TestProcessFlowStepBudgetReachesFitReportAcrossTemplates(t *testing.T) {
 	values.Steps[2].Label = strings.Repeat("word ", 4)
 	assertBudgetFindingAcrossTemplates(t, "process-flow", values, "steps[2].label", "about 17 word-like or 13 wide unbroken characters")
 }
+
+func TestCapabilityHeatmapOverfullWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.CapabilityHeatmapValues{Tiers: []patterns.CapabilityHeatmapTier{{Label: "High"}, {Label: "Low"}}}
+	for i := 0; i < 8; i++ {
+		col := patterns.CapabilityHeatmapColumn{Header: "Function"}
+		for j := 0; j < 6; j++ {
+			col.Cells = append(col.Cells, patterns.CapabilityHeatmapCell{Text: strings.Repeat("activity ", 6), Tier: j % 2})
+		}
+		values.Columns = append(values.Columns, col)
+	}
+	assertBudgetFindingAcrossTemplates(t, "capability-heatmap", values, "columns[0].cells[0].text", "content area holds")
+}
+
+func TestCapabilityHeatmapUnbreakableHeaderReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.CapabilityHeatmapValues{Tiers: []patterns.CapabilityHeatmapTier{{Label: "High"}, {Label: "Low"}}}
+	for i := 0; i < 8; i++ {
+		values.Columns = append(values.Columns, patterns.CapabilityHeatmapColumn{Header: "Sales", Cells: []patterns.CapabilityHeatmapCell{{Text: "Lead scoring"}}})
+	}
+	values.Columns[3].Header = "Supercalifragilistic"
+	assertPatternFindingAcrossTemplates(t, patterns.ErrCodeTextExceedsShape, "capability-heatmap", values, "Supercalifragilistic", "mid-word")
+}
+
+func TestFrameworkGridOverfullWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.FrameworkGridValues{}
+	for i := 0; i < 6; i++ {
+		row := patterns.FrameworkGridRow{Label: "Dimension"}
+		for j := 0; j < 4; j++ {
+			row.Cards = append(row.Cards, patterns.FrameworkGridCard{Title: "Lever", Body: strings.Repeat("word ", 32)})
+		}
+		values.Rows = append(values.Rows, row)
+	}
+	assertBudgetFindingAcrossTemplates(t, "framework-grid", values, "rows[0]", "content area holds")
+}

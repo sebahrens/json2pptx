@@ -414,6 +414,41 @@ var rules = []rule{
 		rationale: "Value-chain pattern for left-to-right operational sequences with per-step descriptions",
 	},
 
+	// Capability heatmap — activities under 3-8 functions, coloured by tier
+	{
+		pattern:   "capability-heatmap",
+		keywords:  []string{"capability heatmap", "capability heat map", "capability map", "automation heatmap", "automation potential", "automation potential by function", "ai potential by function", "ai potential", "heatmap by function", "activity heatmap", "value chain matrix", "function heatmap"},
+		baseScore: 0.92,
+		rationale: "Function columns with pointed headers over activity cells filled by rating tier (2-4 levels), with a tier legend",
+		itemMin:   3,
+		itemMax:   8,
+	},
+	{
+		pattern: "capability-heatmap",
+		// A bare "heatmap" usually means a numeric intensity chart; the
+		// pattern sits just under recommend_visual's heatmap diagram (0.88)
+		// and above card-grid's 0.80 fallback.
+		keywords:  []string{"heatmap", "heat map", "by function", "capability assessment"},
+		baseScore: 0.82,
+		rationale: "Capability-heatmap when activities grouped by function are rated on a short scale and colour carries the rating",
+	},
+
+	// Framework grid — labelled dimension rows of titled lever cards
+	{
+		pattern:   "framework-grid",
+		keywords:  []string{"framework grid", "change management framework", "levers by dimension", "levers per dimension", "people process technology", "people, process, technology", "operating model framework", "dimension rows", "transformation framework"},
+		baseScore: 0.92,
+		rationale: "Framework grid: 2-6 labelled dimension rows, each with 1-4 titled lever cards",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "framework-grid",
+		keywords:  []string{"framework", "levers", "building blocks", "dimensions"},
+		baseScore: 0.80,
+		rationale: "Framework-grid when a framework groups short titled levers under named dimension rows",
+	},
+
 	// Waterfall bridge — P&L walk / cost-driver decomposition
 	{
 		pattern:   "waterfall-bridge",

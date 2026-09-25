@@ -1,0 +1,90 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "capability-heatmap.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Automation Potential by Function"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Capability heatmaps: activities rated by tier under each function"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Middle office and operations hold the largest AI capacity unlock"}
+      ],
+      "pattern": {
+        "name": "capability-heatmap",
+        "values": {
+          "tiers": [
+            {"label": "High", "description": ">50% of time automatable"},
+            {"label": "Medium", "description": "20-50% of time automatable"},
+            {"label": "Low", "description": "<20% of time automatable"}
+          ],
+          "columns": [
+            {"header": "Front office", "sublabel": "Up to 30% capacity unlock", "cells": [
+              {"text": "Research summaries", "tier": 0},
+              {"text": "Pitch book preparation", "tier": 0},
+              {"text": "RFP responses", "tier": 1},
+              {"text": "Client meetings", "tier": 2}
+            ]},
+            {"header": "Middle office", "sublabel": "Up to 45% capacity unlock", "cells": [
+              {"text": "Reconciliations", "tier": 0},
+              {"text": "Risk reporting", "tier": 0},
+              {"text": "Limit monitoring", "tier": 1},
+              {"text": "Model validation", "tier": 1},
+              {"text": "Exception handling", "tier": 2}
+            ]},
+            {"header": "Operations", "sublabel": "Up to 40% capacity unlock", "cells": [
+              {"text": "Trade settlement", "tier": 0},
+              {"text": "Corporate actions", "tier": 1},
+              {"text": "Client onboarding", "tier": 1}
+            ]},
+            {"header": "Corporate", "sublabel": "Up to 25% capacity unlock", "cells": [
+              {"text": "Invoice processing", "tier": 0},
+              {"text": "HR queries", "tier": 1},
+              {"text": "Financial planning", "tier": 2},
+              {"text": "Strategy work", "tier": 2}
+            ]},
+            {"header": "Technology", "sublabel": "Up to 35% capacity unlock", "cells": [
+              {"text": "Code generation", "tier": 0},
+              {"text": "Testing", "tier": 0},
+              {"text": "Incident triage", "tier": 1},
+              {"text": "Architecture", "tier": 2}
+            ]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Eight functions on a four-level scale, rectangular headers"}
+      ],
+      "pattern": {
+        "name": "capability-heatmap",
+        "values": {
+          "tiers": [
+            {"label": "Transform", "description": "Redesign end to end"},
+            {"label": "Augment", "description": "AI copilots in the loop"},
+            {"label": "Assist", "description": "Point tools"},
+            {"label": "Retain", "description": "Human-led"}
+          ],
+          "columns": [
+            {"header": "Sales", "cells": [{"text": "Lead scoring", "tier": 0}, {"text": "Proposals", "tier": 1}, {"text": "Negotiation", "tier": 3}]},
+            {"header": "Marketing", "cells": [{"text": "Content drafts", "tier": 0}, {"text": "Campaign analytics", "tier": 1}]},
+            {"header": "Service", "cells": [{"text": "Tier-1 chat", "tier": 0}, {"text": "Case routing", "tier": 0}, {"text": "Escalations", "tier": 2}]},
+            {"header": "Finance", "cells": [{"text": "Close", "tier": 1}, {"text": "Forecasting", "tier": 1}, {"text": "Audit prep", "tier": 2}]},
+            {"header": "HR", "cells": [{"text": "Screening", "tier": 1}, {"text": "Onboarding", "tier": 2}]},
+            {"header": "Legal", "cells": [{"text": "Contract review", "tier": 1}, {"text": "Litigation", "tier": 3}]},
+            {"header": "IT", "cells": [{"text": "Ticket triage", "tier": 0}, {"text": "Code review", "tier": 1}, {"text": "Security", "tier": 2}]},
+            {"header": "Supply chain", "cells": [{"text": "Demand planning", "tier": 0}, {"text": "Supplier risk", "tier": 1}, {"text": "Logistics", "tier": 2}]}
+          ]
+        },
+        "overrides": {"header_shape": "rect", "accent": "accent2"}
+      }
+    }
+  ]
+}

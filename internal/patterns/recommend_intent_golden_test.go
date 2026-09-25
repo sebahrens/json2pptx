@@ -31,6 +31,13 @@ func TestRecommendIntentTopOneGolden(t *testing.T) {
 		{"stat stack of proof points", nil, "metric-list"},
 		{"why what how summary", &ContentHints{ItemCount: 3}, "labeled-rows"},
 		{"labeled rows of benefits", nil, "labeled-rows"},
+		{"automation potential by function", nil, "capability-heatmap"},
+		{"capability map of AI potential across five functions", &ContentHints{ItemCount: 5}, "capability-heatmap"},
+		{"value chain matrix rated high medium low", nil, "capability-heatmap"},
+		{"heatmap", nil, "capability-heatmap"},
+		{"change management framework", nil, "framework-grid"},
+		{"growth levers by dimension", &ContentHints{ItemCount: 3}, "framework-grid"},
+		{"framework", nil, "framework-grid"},
 	}
 	for _, tc := range patternCases {
 		t.Run("pattern/"+tc.intent, func(t *testing.T) {
