@@ -184,7 +184,7 @@ func TestGeneratePyramidGroupXML(t *testing.T) {
 		{title: "Physiological", body: "Food, water"},
 	}
 
-	xml := generatePyramidGroupXML(panels, bounds, 10000)
+	xml := generatePyramidGroupXML(panels, bounds, 10000, "Arial")
 	if xml == "" {
 		t.Fatal("generatePyramidGroupXML returned empty string")
 	}
@@ -227,7 +227,7 @@ func TestGeneratePyramidGroupXML_SingleLevel(t *testing.T) {
 		{title: "Only Level"},
 	}
 
-	xml := generatePyramidGroupXML(panels, bounds, 10000)
+	xml := generatePyramidGroupXML(panels, bounds, 10000, "Arial")
 	if xml == "" {
 		t.Fatal("generatePyramidGroupXML returned empty string for single level")
 	}
@@ -250,7 +250,7 @@ func TestGeneratePyramidGroupXML_ManyLevels(t *testing.T) {
 		})
 	}
 
-	xml := generatePyramidGroupXML(panels, bounds, 10000)
+	xml := generatePyramidGroupXML(panels, bounds, 10000, "Arial")
 	if xml == "" {
 		t.Fatal("generatePyramidGroupXML returned empty string for 10 levels")
 	}
@@ -264,9 +264,110 @@ func TestGeneratePyramidGroupXML_ManyLevels(t *testing.T) {
 
 func TestGeneratePyramidGroupXML_Empty(t *testing.T) {
 	bounds := types.BoundingBox{X: 0, Y: 0, Width: 8000000, Height: 5000000}
-	result := generatePyramidGroupXML(nil, bounds, 10000)
+	result := generatePyramidGroupXML(nil, bounds, 10000, "Arial")
 	if result != "" {
 		t.Error("expected empty string for nil panels")
+	}
+}
+
+func TestPyramidAllocatesHeightToNarrowTextHeavyApex(t *testing.T) {
+	bounds := types.BoundingBox{X: 500000, Y: 1000000, Width: 8000000, Height: 5000000}
+	panels := []nativePanelData{
+		{title: "Vision", body: "Be the trusted platform for regulated industries"},
+		{title: "Strategy", body: "Expand deliberately"},
+		{title: "Capabilities", body: "Build core services"},
+		{title: "Initiatives", body: "Quarterly targets"},
+	}
+	heights, gap := pyramidLevelHeights(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
+	if heights[0] <= heights[len(heights)-1] {
+		t.Fatalf("text-heavy narrow apex = %d EMU, base = %d EMU; apex should receive more height", heights[0], heights[len(heights)-1])
+	}
+	var used int64
+	for _, height := range heights {
+		if height <= 0 {
+			t.Fatalf("non-positive tier height in %v", heights)
+		}
+		used += height
+	}
+	if used+int64(len(panels)-1)*gap != bounds.Height {
+		t.Errorf("tier heights and gaps consume %d EMU, want placeholder height %d", used+int64(len(panels)-1)*gap, bounds.Height)
+	}
+
+	// Assert the public OOXML geometry uses the allocation, not merely the
+	// helper's return value. This catches a regression to equal-height shapes.
+	group := generatePyramidGroupXML(panels, bounds, 10000, "Arial")
+	var output struct {
+		Shapes []struct {
+			ShapeProperties struct {
+				Transform struct {
+					Offset struct {
+						Y int64 `xml:"y,attr"`
+					} `xml:"off"`
+					Extent struct {
+						Height int64 `xml:"cy,attr"`
+					} `xml:"ext"`
+				} `xml:"xfrm"`
+			} `xml:"spPr"`
+		} `xml:"sp"`
+	}
+	if err := xml.Unmarshal([]byte(group), &output); err != nil {
+		t.Fatal(err)
+	}
+	if len(output.Shapes) != len(heights) {
+		t.Fatalf("OOXML contains %d tiers, want %d", len(output.Shapes), len(heights))
+	}
+	wantY := bounds.Y
+	for i, shape := range output.Shapes {
+		if shape.ShapeProperties.Transform.Offset.Y != wantY {
+			t.Errorf("OOXML tier %d begins at %d, want %d", i, shape.ShapeProperties.Transform.Offset.Y, wantY)
+		}
+		if shape.ShapeProperties.Transform.Extent.Height != heights[i] {
+			t.Errorf("OOXML tier %d height = %d, allocated %d", i, shape.ShapeProperties.Transform.Extent.Height, heights[i])
+		}
+		wantY += heights[i] + gap
+	}
+	if wantY-gap != bounds.Y+bounds.Height {
+		t.Errorf("OOXML pyramid ends at %d, placeholder ends at %d", wantY-gap, bounds.Y+bounds.Height)
+	}
+}
+
+func TestPyramidTierHeightsStayWithinShortPlaceholder(t *testing.T) {
+	bounds := types.BoundingBox{Width: 8000000, Height: 300000}
+	panels := []nativePanelData{{title: "A"}, {title: "B"}, {title: "C"}, {title: "D"}}
+	heights, gap := pyramidLevelHeights(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
+	if gap != 0 {
+		t.Errorf("short placeholder gap = %d, want 0", gap)
+	}
+	var used int64
+	for _, height := range heights {
+		if height < 0 {
+			t.Fatalf("negative tier height in %v", heights)
+		}
+		used += height
+	}
+	if used != bounds.Height {
+		t.Errorf("short placeholder uses %d EMU, want %d", used, bounds.Height)
+	}
+}
+
+func TestPyramidLongApexDoesNotCollapseBase(t *testing.T) {
+	bounds := types.BoundingBox{Width: 8000000, Height: 2500000}
+	panels := []nativePanelData{
+		{title: "Vision", body: strings.Repeat("regulated industries and trusted platforms ", 80)},
+		{title: "Middle"},
+		{title: "Base"},
+	}
+	heights, gap := pyramidLevelHeights(panels, bounds, pyramidLabelFontSize, pyramidDescFontSize, "Arial")
+	minimum := 2*pyramidTextInset + int64(11*1.2*float64(types.EMUPerPoint))
+	if heights[1] < minimum || heights[2] < minimum {
+		t.Errorf("long apex starved other tiers below one readable line: %v", heights)
+	}
+	var used int64
+	for _, height := range heights {
+		used += height
+	}
+	if used+int64(len(panels)-1)*gap != bounds.Height {
+		t.Errorf("tier allocation uses %d EMU, want %d", used+int64(len(panels)-1)*gap, bounds.Height)
 	}
 }
 

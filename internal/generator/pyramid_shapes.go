@@ -3,6 +3,8 @@ package generator
 import (
 	"fmt"
 	"log/slog"
+	"math"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -170,17 +172,10 @@ func parsePyramidDiagramData(data map[string]any) ([]pyramidLevel, error) {
 // =============================================================================
 
 // generatePyramidGroupXML produces the complete <p:grpSp> XML for a pyramid diagram.
-func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32) string {
+func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox, shapeIDBase uint32, fontName string) string {
 	numLevels := len(panels)
 	if numLevels == 0 {
 		return ""
-	}
-
-	// Calculate level dimensions.
-	totalGaps := int64(numLevels-1) * pyramidGapEMU
-	levelHeight := (bounds.Height - totalGaps) / int64(numLevels)
-	if levelHeight < 0 {
-		levelHeight = bounds.Height / int64(numLevels)
 	}
 
 	centerX := bounds.X + bounds.Width/2
@@ -192,23 +187,22 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 		labelFontSize = pyramidLabelFontSizeSmall
 		descFontSize = pyramidDescFontSizeSmall
 	}
+	if fontName == "" {
+		fontName = "Arial"
+	}
+	levelHeights, levelGap := pyramidLevelHeights(panels, bounds, labelFontSize, descFontSize, fontName)
 
 	var children [][]byte
 	shapeIdx := uint32(0)
+	levelY := bounds.Y
 
 	for i, panel := range panels {
 		// Compute width ratio: top level uses pyramidTopWidthRatio, bottom uses 1.0.
-		var widthRatio float64
-		if numLevels == 1 {
-			widthRatio = 1.0
-		} else {
-			widthRatio = pyramidTopWidthRatio + (1.0-pyramidTopWidthRatio)*float64(i)/float64(numLevels-1)
-		}
+		widthRatio := pyramidLevelWidthRatio(i, numLevels)
 		levelWidth := int64(float64(bounds.Width) * widthRatio)
 
 		// Position: centered horizontally, stacked vertically.
 		levelX := centerX - levelWidth/2
-		levelY := bounds.Y + int64(i)*(levelHeight+pyramidGapEMU)
 
 		// Compute trapezoid adj value: controls how much the top edge is inset.
 		// For a true trapezoid look, the top edge should be narrower than bottom.
@@ -255,7 +249,7 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 		b, err := pptx.GenerateShape(pptx.ShapeOptions{
 			ID:       shapeIDBase + shapeIdx,
 			Name:     fmt.Sprintf("Pyramid Level %d", i+1),
-			Bounds:   pptx.RectEmu{X: levelX, Y: levelY, CX: levelWidth, CY: levelHeight},
+			Bounds:   pptx.RectEmu{X: levelX, Y: levelY, CX: levelWidth, CY: levelHeights[i]},
 			Geometry: pptx.GeomTrapezoid,
 			Adjustments: []pptx.AdjustValue{
 				{Name: "adj", Value: adjValue},
@@ -272,9 +266,11 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 		})
 		if err != nil {
 			slog.Warn("pyramid: level shape failed", "error", err, "level", i)
+			levelY += levelHeights[i] + levelGap
 			continue
 		}
 		children = append(children, b)
+		levelY += levelHeights[i] + levelGap
 	}
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
@@ -289,6 +285,92 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 		return ""
 	}
 	return string(b)
+}
+
+func pyramidLevelWidthRatio(levelIndex, numLevels int) float64 {
+	if numLevels <= 1 {
+		return 1
+	}
+	return pyramidTopWidthRatio + (1-pyramidTopWidthRatio)*float64(levelIndex)/float64(numLevels-1)
+}
+
+// pyramidLevelHeights gives narrow, text-heavy tiers more of the fixed
+// placeholder height. Text is measured at its authored font size against the
+// trapezoid's midpoint width, not the much wider bounding rectangle.
+func pyramidLevelHeights(panels []nativePanelData, bounds types.BoundingBox, labelSize, descSize int, fontName string) ([]int64, int64) {
+	n := len(panels)
+	if n == 0 {
+		return nil, 0
+	}
+	gap := pyramidGapEMU
+	minimumTierHeight := 2*pyramidTextInset + int64(math.Ceil(float64(labelSize)/100*1.2*float64(types.EMUPerPoint)))
+	if bounds.Height <= int64(n-1)*gap+int64(n)*minimumTierHeight {
+		gap = 0
+	}
+	available := bounds.Height - int64(n-1)*gap
+	if available < 0 {
+		available = 0
+	}
+	weights := make([]int64, n)
+	var totalWeight int64
+	for i, panel := range panels {
+		widthRatio := pyramidLevelWidthRatio(i, n)
+		levelWidth := int64(float64(bounds.Width) * widthRatio)
+		adj := pyramidTrapezoidAdj(i, n, widthRatio)
+		// At half height the sides have expanded halfway from the top edge.
+		midWidth := int64(float64(levelWidth) * (1 - float64(adj)/100000))
+		textWidth := midWidth - 2*pyramidTextInset
+		if textWidth < 1 {
+			textWidth = 1
+		}
+		need := 2 * pyramidTextInset
+		if strings.TrimSpace(panel.title) != "" {
+			need += measureNativeText(panel.title, fontName, float64(labelSize)/100, textWidth)
+		}
+		if strings.TrimSpace(panel.body) != "" {
+			need += measureNativeText(panel.body, fontName, float64(descSize)/100, textWidth)
+		}
+		if need < 1 {
+			need = 1
+		}
+		weights[i] = need
+		totalWeight += need
+	}
+	heights := make([]int64, n)
+	if totalWeight <= available {
+		// Distribute extra breathing room equally; measured differences remain.
+		extra := (available - totalWeight) / int64(n)
+		for i := range heights {
+			heights[i] = weights[i] + extra
+		}
+	} else {
+		// A dense diagram cannot fit at the authored sizes. Reserve enough
+		// space for one label line in every tier, then allocate the rest by
+		// unmet need. Otherwise an extreme apex could collapse the base.
+		floor := minimumTierHeight
+		if evenShare := available / int64(n); floor > evenShare {
+			floor = evenShare
+		}
+		remaining := available - int64(n)*floor
+		var totalSurplus int64
+		for _, weight := range weights {
+			if weight > floor {
+				totalSurplus += weight - floor
+			}
+		}
+		for i := range heights {
+			heights[i] = floor
+			if totalSurplus > 0 && weights[i] > floor {
+				heights[i] += int64(math.Floor(float64(remaining) * float64(weights[i]-floor) / float64(totalSurplus)))
+			}
+		}
+	}
+	var assigned int64
+	for _, height := range heights {
+		assigned += height
+	}
+	heights[n-1] += available - assigned
+	return heights, gap
 }
 
 // pyramidTrapezoidAdj computes the OOXML trapezoid adj value for a given level.

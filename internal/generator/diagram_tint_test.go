@@ -95,7 +95,7 @@ func TestNativeDiagramBuildersEmitAccentTints(t *testing.T) {
 		{"house", func() string {
 			return string(generateHouseSingleFloorShape(1, panels[0], 0, 0, 2000000, 500000, 1200, 1000))
 		}},
-		{"pyramid", func() string { return generatePyramidGroupXML(panels, bounds, 1) }},
+		{"pyramid", func() string { return generatePyramidGroupXML(panels, bounds, 1, "Arial") }},
 		{"stylish panels", func() string { return generateStylishPanelsGroupXML(panels, bounds, 1) }},
 	}
 	for _, tt := range tests {

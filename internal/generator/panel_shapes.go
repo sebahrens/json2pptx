@@ -972,7 +972,7 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 				)
 			case inserts[i].pyramidMode:
 				inserts[i].groupXML = generatePyramidGroupXML(
-					inserts[i].panels, inserts[i].bounds, nextShapeID,
+					inserts[i].panels, inserts[i].bounds, nextShapeID, ctx.themeFontName,
 				)
 			case inserts[i].houseDiagramMode:
 				inserts[i].groupXML = generateHouseDiagramGroupXML(
