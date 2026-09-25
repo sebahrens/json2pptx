@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-25 — Schema 4.125.0: measured title-wrap repairs (`go-slide-creator-oxagt`).**
+  Near-boundary wrapping caused only by substitute font metrics no longer
+  produces an actionable `title_wraps` warning. Actionable wrap findings carry
+  a measured `fix.params.max_chars` budget; informational wraps no longer offer
+  destructive shortening. A parameterless `shorten_title` now returns
+  `missing_title_budget` instead of applying a fixed 50-character default that
+  could leave the title unchanged.
+
 - **2026-09-25 — Schema 4.124.0: modern MCP text summaries and producer failure flags (`go-slide-creator-vn2bl`, `go-slide-creator-tkls4`).**
   Every tool result now includes a text content block alongside complete
   `structuredContent`. Modern-protocol sessions get a bounded JSON synopsis

@@ -355,6 +355,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		RelatedCodes:  []string{"kind_not_supported"},
 	},
 
+	"missing_title_budget": {
+		Code:        "missing_title_budget",
+		Summary:     "A title-shortening repair needs a measured or explicit character budget.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "repair_slide receives shorten_title without max_chars, max_length, or max_words. The former 50-character default could leave a short but wrapped title unchanged, creating a repair loop.",
+		RemediationSteps: []string{
+			"Use max_chars from the title_wraps or TITLE_OVERFLOW finding's fix.params.",
+			"Or supply an explicit max_length after reviewing the title and its placeholder.",
+			"Do not retry the same parameterless fix; it will not change the title.",
+		},
+		RelatedCodes: []string{"title_wraps", "TITLE_OVERFLOW", "semantic_review_required"},
+	},
+
 	"duplicate_title": {
 		Code:        "duplicate_title",
 		Summary:     "Two or more slides carry the same title.",

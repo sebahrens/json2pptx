@@ -1720,6 +1720,18 @@ func TestApplyShortenTitle_RefusesFragments(t *testing.T) {
 		}}}
 	}
 
+	t.Run("missing measured budget refuses rather than retrying a no-op", func(t *testing.T) {
+		title := "Q2 FY26 Business Review"
+		in := deckWith(title)
+		f := applyShortenTitle(in, 0, nil)
+		if f.Applied || f.Code != "missing_title_budget" {
+			t.Fatalf("missing budget must be an explicit non-applied result: %+v", f)
+		}
+		if got := *in.Slides[0].Content[0].TextValue; got != title {
+			t.Errorf("missing-budget repair changed title to %q", got)
+		}
+	})
+
 	t.Run("the reported title is refused, not mangled", func(t *testing.T) {
 		// Applying HEADLINE_TOO_LONG's directive verbatim rewrote this to
 		// "Digital Transformation Programme: A Comprehensive" and the deck's

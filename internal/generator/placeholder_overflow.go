@@ -2,6 +2,7 @@ package generator
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/textfit"
@@ -187,13 +188,18 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 	if mErr == nil && m.Lines == 2 && measuredEMU <= 2*singleLineEMU && maxLines >= 2 && input.HeightEMU >= 2*singleLineEMU {
 		return nil
 	}
+	// A substituted font is only a proxy for the font PowerPoint will render.
+	// Small width differences at a line boundary must not become a destructive
+	// shortening suggestion (Lato -> Liberation Sans is a real example).
+	if mErr == nil && borderlineSubstitutedTitle(input, m, fontSizePt) {
+		return nil
+	}
 
 	// Determine whether the title merely wraps or exceeds the truncation cap.
 	action := "info"
 	if input.HeightEMU < measuredEMU {
 		action = "review"
 	}
-	fixKind := "shorten_title"
 	msg := fmt.Sprintf(
 		"title wraps to multiple lines (%.0fpt font, %.1f\" wide placeholder)",
 		fontSizePt,
@@ -209,13 +215,14 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 		)
 	}
 
+	fix := titleWrapFix(input, fontSizePt, singleLineEMU, maxLines, action, mErr)
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: "placeholder",
 			Path:    input.Path,
 			Code:    patterns.ErrCodeTitleWraps,
 			Message: msg,
-			Fix:     &patterns.FixSuggestion{Kind: fixKind},
+			Fix:     fix,
 		},
 		Action: action,
 		Measured: &patterns.Extent{
@@ -228,6 +235,55 @@ func DetectTitleWraps(input TitleWrapsInput) *patterns.FitFinding {
 		},
 		OverflowRatio: float64(measuredEMU) / float64(singleLineEMU),
 	}
+}
+
+func borderlineSubstitutedTitle(input TitleWrapsInput, m textfit.RunMeasurement, fontSizePt float64) bool {
+	if !m.FontSubstituted || m.Lines != 2 || input.MaxLines > 0 || strings.Contains(input.Title, "\n") {
+		return false
+	}
+	lineWidth, err := textfit.MeasureLineWidth(input.Title, input.FontName, fontSizePt)
+	usableWidth := input.WidthEMU - int64(2*7.2*12700)
+	return err == nil && usableWidth > 0 && float64(lineWidth) <= float64(usableWidth)*1.03
+}
+
+func titleWrapFix(input TitleWrapsInput, fontSizePt float64, singleLineEMU int64, maxLines int, action string, measureErr error) *patterns.FixSuggestion {
+	if action == "info" || measureErr != nil {
+		return nil
+	}
+	allowedLines := int(input.HeightEMU / singleLineEMU)
+	if allowedLines < 1 {
+		allowedLines = 1
+	}
+	if allowedLines > maxLines {
+		allowedLines = maxLines
+	}
+	budget := titleWrapCharBudget(input.Title, input.FontName, fontSizePt, input.WidthEMU, allowedLines)
+	if budget <= 0 || budget >= len([]rune(input.Title)) {
+		return nil
+	}
+	return &patterns.FixSuggestion{Kind: "shorten_title", Params: map[string]any{"max_chars": budget}}
+}
+
+// titleWrapCharBudget finds the longest complete-word prefix that fits the
+// title's measured line budget. The emitted repair budget must be smaller than
+// the current title; a fixed 50-character default can be a no-op here.
+func titleWrapCharBudget(title, fontName string, fontSizePt float64, widthEMU int64, maxLines int) int {
+	words := strings.Fields(title)
+	lo, hi := 0, len(words)
+	for lo < hi {
+		mid := lo + (hi-lo+1)/2
+		prefix := strings.Join(words[:mid], " ")
+		m, err := textfit.MeasureRun(prefix, fontName, fontSizePt, widthEMU, maxLines)
+		if err != nil || m.Lines > maxLines {
+			hi = mid - 1
+		} else {
+			lo = mid
+		}
+	}
+	if lo == 0 {
+		return 0
+	}
+	return len([]rune(strings.Join(words[:lo], " ")))
 }
 
 // autofitPresent returns true when the autofit mode indicates PowerPoint will

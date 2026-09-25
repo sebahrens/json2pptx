@@ -199,6 +199,65 @@ func TestDetectTitleWraps_SingleLine(t *testing.T) {
 	}
 }
 
+func TestDetectTitleWraps_SubstitutedFontBorderline(t *testing.T) {
+	const title = "Q2 FY26 Business Review"
+	const width = int64(10 * 914400)
+	m, err := textfit.MeasureRun(title, "Lato", 60, width, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	measuredWidth, err := textfit.MeasureLineWidth(title, "Lato", 60)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if float64(measuredWidth) > float64(width-int64(14.4*12700))*1.03 {
+		t.Skip("substituted font is not a borderline-width reproduction on this host")
+	}
+	if !m.FontSubstituted || m.Lines != 2 {
+		t.Skip("reproduction requires Lato to be substituted and borderline-wrap on this host")
+	}
+	finding := DetectTitleWraps(TitleWrapsInput{Title: title, WidthEMU: width, HeightEMU: 900000, FontSizeHPt: 6000, FontName: "Lato"})
+	if finding != nil && finding.Action != "info" {
+		t.Fatalf("borderline wrap under font substitution must not be actionable: %+v", finding)
+	}
+	if finding != nil && finding.Fix != nil {
+		t.Fatalf("borderline wrap under font substitution must not suggest a truncating fix: %+v", finding.Fix)
+	}
+}
+
+func TestDetectTitleWraps_SubstitutedFontToleranceBoundary(t *testing.T) {
+	const title = "Revenue growth and margin expansion"
+	const font = "unavailable-title-font-for-testing"
+	lineWidth, err := textfit.MeasureLineWidth(title, font, 36)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name       string
+		ratio      float64
+		wantAction string
+	}{
+		{name: "two percent over", ratio: 1.02},
+		{name: "six percent over", ratio: 1.06, wantAction: "review"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			width := int64(float64(lineWidth)/tc.ratio) + int64(14.4*12700)
+			measurement, err := textfit.MeasureRun(title, font, 36, width, 0)
+			if err != nil || !measurement.FontSubstituted || measurement.Lines != 2 {
+				t.Fatalf("invalid substituted-wrap fixture: measurement=%+v, err=%v", measurement, err)
+			}
+			finding := DetectTitleWraps(TitleWrapsInput{Title: title, WidthEMU: width, HeightEMU: testTitleHeightEMU, FontSizeHPt: 3600, FontName: font})
+			if tc.wantAction == "" {
+				if finding != nil {
+					t.Fatalf("small substitute-font discrepancy must not warn: %+v", finding)
+				}
+			} else if finding == nil || finding.Action != tc.wantAction {
+				t.Fatalf("real wrap must remain actionable: %+v", finding)
+			}
+		})
+	}
+}
+
 func TestDetectTitleWraps_MultiLine(t *testing.T) {
 	// Long title that forces wrapping → finding emitted with code title_wraps, action review.
 	input := TitleWrapsInput{
@@ -230,6 +289,13 @@ func TestDetectTitleWraps_MultiLine(t *testing.T) {
 	}
 	if finding.Allowed == nil {
 		t.Error("Allowed extent should be non-nil")
+	}
+	if finding.Fix == nil || finding.Fix.Kind != "shorten_title" {
+		t.Fatalf("actionable wrap must provide a shortening directive: %+v", finding.Fix)
+	}
+	budget, ok := finding.Fix.Params["max_chars"].(int)
+	if !ok || budget <= 0 || budget >= len([]rune(input.Title)) {
+		t.Errorf("measured max_chars = %v, want a positive budget below title length", finding.Fix.Params["max_chars"])
 	}
 }
 
@@ -285,6 +351,9 @@ func TestDetectTitleWraps_ThreeLinesRemainInformational(t *testing.T) {
 	finding := DetectTitleWraps(TitleWrapsInput{Title: title, WidthEMU: width, HeightEMU: 3 * testTitleHeightEMU, FontSizeHPt: 3600, FontName: "Arial"})
 	if finding == nil || finding.Action != "info" {
 		t.Errorf("three lines in a roomy title box should be informational, got %+v", finding)
+	}
+	if finding != nil && finding.Fix != nil {
+		t.Errorf("informational wrap must not suggest destructive repair: %+v", finding.Fix)
 	}
 }
 

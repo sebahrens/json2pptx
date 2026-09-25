@@ -776,7 +776,12 @@ func applyShortenTitle(input *PresentationInput, slideIdx int, params map[string
 		maxLength = intParam(params, "max_chars", 0)
 	}
 	if maxWords <= 0 && maxLength <= 0 {
-		maxLength = 50 // historical default
+		return appliedFix{
+			Kind:    "shorten_title",
+			Applied: false,
+			Code:    "missing_title_budget",
+			Message: "shorten_title needs max_chars from the measured title-wrap finding (or an explicit max_length); no title text was changed",
+		}
 	}
 
 	for i := range slide.Content {
