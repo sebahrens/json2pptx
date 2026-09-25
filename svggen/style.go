@@ -524,14 +524,14 @@ func (t *Typography) ScaleForDimensions(width, height float64) *Typography {
 	// Font sizes are now actual rendered pt values (no pipeline reduction).
 	// Floors prevent text from becoming illegible on small canvases;
 	// caps prevent oversized text on large canvases.
-	// Body text floors at 11pt and label/annotation text at 9pt minimum
+	// Body text floors at 11pt and label/annotation text at 10pt minimum
 	// to ensure legibility across all chart types and canvas sizes.
 	const (
 		minTitle    = 13.0 // Chart titles must remain prominent
 		minSubtitle = 11.0 // Subtitles/section headers
 		minHeading  = 11.0 // Legend text, section headings
 		minBody     = 11.0 // Pie/donut outside labels, axis titles
-		minSmall    = 9.0  // Axis tick labels, value labels
+		minSmall    = 10.0 // Axis tick labels, value labels
 		minCaption  = 10.0 // Diagram badges, footnotes — 10pt floor for presentation readability
 
 		maxTitle    = 24.0 // Large canvas titles

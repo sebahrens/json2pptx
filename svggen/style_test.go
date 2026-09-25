@@ -855,9 +855,9 @@ func TestTypography_ScaleForDimensions_MinimumFontSizes(t *testing.T) {
 	// and SizeCaption would be 10*0.5=5pt, both below minimums
 	scaled := typ.ScaleForDimensions(100, 75) // triggers 0.5x scale
 
-	// SizeSmall should be clamped to minimum of 9pt
-	if scaled.SizeSmall < 9.0 {
-		t.Errorf("SizeSmall = %v, want >= 9.0 (minimum)", scaled.SizeSmall)
+	// SizeSmall should be clamped to minimum of 10pt
+	if scaled.SizeSmall < 10.0 {
+		t.Errorf("SizeSmall = %v, want >= 10.0 (minimum)", scaled.SizeSmall)
 	}
 
 	// SizeCaption should be clamped to minimum of 10pt
@@ -872,11 +872,32 @@ func TestTypography_ScaleForDimensions_MinimumFontSizes(t *testing.T) {
 
 	// At 1x scale, the defaults (10 and 10) should be at or above floors
 	scaledNormal := typ.ScaleForDimensions(800, 600)
-	if scaledNormal.SizeSmall < 9.0 {
-		t.Errorf("SizeSmall at 1x = %v, want >= 9.0 (minimum enforced)", scaledNormal.SizeSmall)
+	if scaledNormal.SizeSmall < 10.0 {
+		t.Errorf("SizeSmall at 1x = %v, want >= 10.0 (minimum enforced)", scaledNormal.SizeSmall)
 	}
 	if scaledNormal.SizeCaption < 10.0 {
 		t.Errorf("SizeCaption at 1x = %v, want >= 10.0 (minimum enforced)", scaledNormal.SizeCaption)
+	}
+}
+
+func TestChartSmallTextFloorByViewingMode(t *testing.T) {
+	for _, tc := range []struct {
+		name, preset, mode string
+		want               float64
+	}{
+		{"compact preset report", "half_16x9", "dense-report", 10},
+		{"compact preset presentation", "half_16x9", "live-presentation", 12},
+		{"full slide presentation", "slide_16x9", "live-presentation", 12},
+		{"geometric fallback report", "unknown", "dense-report", 10},
+		{"geometric fallback presentation", "unknown", "live-presentation", 12},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			builder := NewSVGBuilder(400, 300)
+			scaleTypographyForBuilder(builder, 400, 300, tc.preset, tc.mode)
+			if got := builder.StyleGuide().Typography.SizeSmall; got < tc.want {
+				t.Errorf("axis/value label size = %.1fpt, want at least %.1fpt", got, tc.want)
+			}
+		})
 	}
 }
 

@@ -43,13 +43,12 @@ const (
 	// ~0.04" = 36576 EMU — tight gap for dense grids.
 	heatmapGap int64 = 36576
 
-	// heatmapCellFontSize is the cell value font size (hundredths of a point).
-	// 900 = 9pt — small to fit in dense grid cells.
-	heatmapCellFontSize int = 900
-
-	// heatmapCellFontSizeLarge is for sparse grids (≤4 cells per dimension).
-	// 1100 = 11pt
-	heatmapCellFontSizeLarge int = 1100
+	// A compact cell still uses 10pt; cells at least 60pt in both dimensions
+	// use a presentation-readable 12pt value label.
+	heatmapCellFontSize      int   = 1000
+	heatmapCellFontSizeLarge int   = 1200
+	heatmapLargeCellDim      int64 = 60 * 12700
+	heatmapLegendHeight      int64 = 320040
 
 	// heatmapHeaderFontSize is the row/column header font size (hundredths of a point).
 	// 1000 = 10pt
@@ -257,9 +256,9 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	// Determine if cells are large enough for value text.
 	showValues := cellW >= heatmapMinCellDim && cellH >= heatmapMinCellDim
 
-	// Choose font size based on grid density.
+	// Choose font size from the actual cell size, not the row/column count.
 	cellFontSize := heatmapCellFontSize
-	if numRows <= 4 && numCols <= 4 {
+	if cellW >= heatmapLargeCellDim && cellH >= heatmapLargeCellDim {
 		cellFontSize = heatmapCellFontSizeLarge
 	}
 
@@ -331,6 +330,39 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 			)
 			children = append(children, []byte(cellXML))
 		}
+	}
+
+	// Five theme-aware swatches make the direction and actual endpoints of the
+	// colour scale explicit. Geometry reserves this band below every grid.
+	legendY := bounds.Y + bounds.Height - heatmapLegendHeight
+	gridW := bounds.Width - rowLabelW
+	legendLabelW := gridW / 4
+	if legendLabelW > heatmapRowLabelWidth {
+		legendLabelW = heatmapRowLabelWidth
+	}
+	barW := gridW - 2*legendLabelW
+	if barW > 2200000 {
+		barW = 2200000
+	}
+	if barW > 5*heatmapGap {
+		barX := gridX + (bounds.Width-rowLabelW-barW)/2
+		for i := 0; i < 5; i++ {
+			shapeIdx++
+			value := minVal + (maxVal-minVal)*float64(i)/4
+			b, err := pptx.GenerateShape(pptx.ShapeOptions{
+				ID: shapeIDBase + shapeIdx, Name: "Heatmap Scale",
+				Bounds:   pptx.RectEmu{X: barX + int64(i)*barW/5, Y: legendY + 70000, CX: barW/5 - heatmapGap/2, CY: 130000},
+				Geometry: pptx.GeomRect, Fill: heatmapCellFill(value, minVal, maxVal, colorScale).fill(),
+				Line: pptx.Line{Width: 0, Fill: pptx.NoFill()},
+			})
+			if err == nil {
+				children = append(children, b)
+			}
+		}
+		shapeIdx++
+		children = append(children, []byte(generateHeatmapLabelXML(formatHeatmapVal(minVal), barX-legendLabelW, legendY, legendLabelW-heatmapGap, heatmapLegendHeight, shapeIDBase+shapeIdx, heatmapHeaderFontSize, "r", false)))
+		shapeIdx++
+		children = append(children, []byte(generateHeatmapLabelXML(formatHeatmapVal(maxVal), barX+barW+heatmapGap, legendY, legendLabelW-heatmapGap, heatmapLegendHeight, shapeIDBase+shapeIdx, heatmapHeaderFontSize, "l", false)))
 	}
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}

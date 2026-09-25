@@ -7,9 +7,31 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
+
+func TestChartViewingModeControlsRenderedAxisText(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "bar_chart", Width: 828, Height: 342, Data: map[string]any{
+		"categories": []string{"A", "B"},
+		"series":     []map[string]any{{"name": "Values", "values": []float64{3, 5}}},
+	}}
+	report, err := renderDiagramSpecFull(spec, nil, 0, true, "", tokens.ViewingModeReport)
+	if err != nil {
+		t.Fatal(err)
+	}
+	presentation, err := renderDiagramSpecFull(spec, nil, 0, true, "", tokens.ViewingModePresentation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(report.SVG, presentation.SVG) {
+		t.Error("viewing_mode did not change rendered chart typography")
+	}
+	if !strings.Contains(string(presentation.SVG), "font-size:16px") {
+		t.Error("projected chart has no 12pt (16px) axis/value labels")
+	}
+}
 
 func TestChartBackgroundTransparentUnlessAuthored(t *testing.T) {
 	theme := []types.ThemeColor{

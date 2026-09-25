@@ -132,7 +132,7 @@ func TestHeatmapGeometryMatchesTheDrawnGrid(t *testing.T) {
 		t.Errorf("label bands = %d x %d, want the reserved constants", g.rowLabelW, g.colLabelH)
 	}
 	wantCellW := (heatmapTestBounds.Width - heatmapRowLabelWidth - 13*heatmapGap) / 14
-	wantCellH := (heatmapTestBounds.Height - heatmapColLabelHeight - 13*heatmapGap) / 14
+	wantCellH := (heatmapTestBounds.Height - heatmapColLabelHeight - heatmapLegendHeight - 13*heatmapGap) / 14
 	if g.cellW != wantCellW || g.cellH != wantCellH {
 		t.Errorf("cells = %dx%d, want %dx%d", g.cellW, g.cellH, wantCellW, wantCellH)
 	}

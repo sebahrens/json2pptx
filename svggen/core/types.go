@@ -172,6 +172,9 @@ type SemanticAccentSpec struct {
 
 // StyleSpec defines theming and appearance options.
 type StyleSpec struct {
+	// ViewingMode is supplied by the PPTX generator, not by chart JSON.
+	// Projected slides need larger axis and value labels than dense reports.
+	ViewingMode string `json:"-" yaml:"-"`
 	// Palette is the color scheme name or custom colors.
 	// Built-in palettes: "corporate", "vibrant", "muted", "monochrome".
 	// Custom: array of hex colors ["#336699", "#993366", ...].

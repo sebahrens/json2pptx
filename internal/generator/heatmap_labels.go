@@ -42,7 +42,7 @@ func heatmapGeometryFor(bounds types.BoundingBox, numRows, numCols int, hasRowLa
 		return g
 	}
 	gridW := bounds.Width - g.rowLabelW
-	gridH := bounds.Height - g.colLabelH
+	gridH := bounds.Height - g.colLabelH - heatmapLegendHeight
 	g.cellW = (gridW - int64(numCols-1)*heatmapGap) / int64(numCols)
 	g.cellH = (gridH - int64(numRows-1)*heatmapGap) / int64(numRows)
 	return g

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -53,7 +54,7 @@ type DiagramRenderResult struct {
 // The themeColors parameter allows injecting template colors for consistent styling.
 // Returns PNG bytes suitable for embedding in a PPTX document.
 func RenderDiagramSpec(spec *types.DiagramSpec, themeColors []types.ThemeColor) ([]byte, error) {
-	result, err := renderDiagramSpecFull(spec, themeColors, 0, false, "")
+	result, err := renderDiagramSpecFull(spec, themeColors, 0, false, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -76,11 +77,11 @@ func RenderDiagramSpec(spec *types.DiagramSpec, themeColors []types.ThemeColor) 
 // tdewolff/canvas mutex bottleneck for diagrams. The caller must supply a fallback PNG
 // (e.g., the 1x1 transparent constant) when embedding with native SVG strategy.
 func RenderDiagramSpecWithMetadata(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, svgOnly bool) (*DiagramRenderResult, error) {
-	return renderDiagramSpecFull(spec, themeColors, maxPNGWidth, svgOnly, "")
+	return renderDiagramSpecFull(spec, themeColors, maxPNGWidth, svgOnly, "", "")
 }
 
 // renderDiagramSpecFull is the internal implementation that accepts strictFit.
-func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, svgOnly bool, strictFit string) (*DiagramRenderResult, error) {
+func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeColor, maxPNGWidth int, svgOnly bool, strictFit string, viewingMode tokens.ViewingMode) (*DiagramRenderResult, error) {
 	if spec == nil {
 		return nil, fmt.Errorf("diagram spec is required")
 	}
@@ -91,6 +92,7 @@ func renderDiagramSpecFull(spec *types.DiagramSpec, themeColors []types.ThemeCol
 
 	// Convert DiagramSpec to svggen RequestEnvelope
 	req := diagramSpecToSVGGen(spec, themeColors, maxPNGWidth, strictFit)
+	req.Style.ViewingMode = string(viewingMode)
 
 	// Determine which formats to request from svggen.
 	// When svgOnly is true (native SVG strategy), skip PNG rasterization entirely.

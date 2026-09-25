@@ -1256,7 +1256,7 @@ func RenderWithHelper(req *RequestEnvelope, draw DrawFunc) (*SVGBuilder, *SVGDoc
 	// The content will be properly sized, and the offset is used for positioning
 	builder := NewSVGBuilder(contentW, contentH)
 	applyStyleToBuilder(builder, req.Style)
-	scaleTypographyForBuilder(builder, contentW, contentH, req.Output.Preset)
+	scaleTypographyForBuilder(builder, contentW, contentH, req.Output.Preset, req.Style.ViewingMode)
 
 	if err := draw(builder, req); err != nil {
 		return nil, nil, err
@@ -1342,7 +1342,7 @@ func RenderWithHelperDimensions(req *RequestEnvelope, defaultWidth, defaultHeigh
 
 	builder := NewSVGBuilder(contentW, contentH)
 	applyStyleToBuilder(builder, req.Style)
-	scaleTypographyForBuilder(builder, contentW, contentH, req.Output.Preset)
+	scaleTypographyForBuilder(builder, contentW, contentH, req.Output.Preset, req.Style.ViewingMode)
 
 	if err := draw(builder, req); err != nil {
 		return nil, nil, err
@@ -1399,7 +1399,7 @@ func applyFitModeWithSource(fitMode string, srcW, srcH, containerW, containerH f
 // If a known layout preset is provided, uses hand-tuned PresetTypography values
 // for deterministic, professionally calibrated font sizes.
 // Falls back to ScaleForDimensions (geometric mean with caps) for unknown presets.
-func scaleTypographyForBuilder(builder *SVGBuilder, width, height float64, preset string) {
+func scaleTypographyForBuilder(builder *SVGBuilder, width, height float64, preset, viewingMode string) {
 	style := builder.StyleGuide()
 	if style == nil || style.Typography == nil {
 		return
@@ -1413,12 +1413,24 @@ func scaleTypographyForBuilder(builder *SVGBuilder, width, height float64, prese
 			t.FontFamily = style.Typography.FontFamily
 			t.FallbackFonts = style.Typography.FallbackFonts
 			style.Typography = t
+			applySmallTextFloor(style.Typography, viewingMode)
 			return
 		}
 	}
 
 	// Fallback: geometric mean scaling with min/max caps.
 	style.Typography = style.Typography.ScaleForDimensions(width, height)
+	applySmallTextFloor(style.Typography, viewingMode)
+}
+
+func applySmallTextFloor(typography *Typography, viewingMode string) {
+	floor := 10.0
+	if viewingMode == "live-presentation" {
+		floor = 12.0
+	}
+	if typography.SizeSmall < floor {
+		typography.SizeSmall = floor
+	}
 }
 
 // getOutputDimensionsWithDefaults extracts dimensions with custom defaults.

@@ -255,6 +255,27 @@ func TestGenerateHeatmapGroupXML_Basic(t *testing.T) {
 	if !strings.Contains(result, `schemeClr val="dk1"`) {
 		t.Error("text should use dk1 scheme color")
 	}
+	if !strings.Contains(result, `sz="1200"`) {
+		t.Error("large cells should display values at 12pt")
+	}
+	if got := strings.Count(result, `name="Heatmap Scale"`); got != 5 {
+		t.Errorf("colour key has %d swatches, want 5", got)
+	}
+	if !strings.Contains(result, ">5</a:t>") || !strings.Contains(result, ">9</a:t>") {
+		t.Error("colour key must show the actual minimum and maximum")
+	}
+}
+
+func TestGenerateHeatmapGroupXML_CompactCellText(t *testing.T) {
+	parsed := heatmapParsedData{minVal: 1, maxVal: 4, values: [][]float64{{1, 2}, {3, 4}}}
+	panels := []nativePanelData{{title: "__heatmap_meta__", body: encodeHeatmapMeta(parsed)}, {title: "1"}, {title: "2"}, {title: "3"}, {title: "4"}}
+	result := generateHeatmapGroupXML(panels, types.BoundingBox{Width: 1000000, Height: 1200000}, 100, heatmapMeta{numRows: 2, numCols: 2}, nil)
+	if !strings.Contains(result, `sz="1000"`) {
+		t.Error("compact visible values should use 10pt, not the former 9pt")
+	}
+	if strings.Contains(result, `sz="900"`) {
+		t.Error("heatmap emitted a 9pt value")
+	}
 }
 
 func TestGenerateHeatmapGroupXML_Empty(t *testing.T) {
