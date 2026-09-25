@@ -21,9 +21,11 @@ const (
 
 // EnsureContrast adjusts fg so that its contrast ratio against bg meets or
 // exceeds minRatio. If the pair already meets the requirement, fg is returned
-// unchanged. Semi-transparent colors are composited over white before the
-// contrast check (via Opaque) so the calculation reflects actual on-screen
-// appearance.
+// unchanged. The check measures what is actually drawn: a semi-transparent bg
+// is flattened over the white canvas (via Opaque), and a semi-transparent fg
+// is then composited over that flattened bg (via BlendOver) -- not over white,
+// which would overstate translucent light text on a dark fill
+// (go-slide-creator-s1uvj.43).
 //
 // The algorithm first tries to push fg toward black or white (whichever
 // direction yields better contrast) in small incremental steps. If the
@@ -36,9 +38,9 @@ const (
 // back as #D6D6D6 at 30%, i.e. 1.45:1), and a low alpha often cannot reach the
 // ratio at all (go-slide-creator-s1uvj.35). A compliant color keeps its alpha.
 func EnsureContrast(fg, bg Color, minRatio float64) Color {
-	// Composite semi-transparent colors over white for accurate contrast.
-	fgOpaque := fg.Opaque()
+	// Flatten bg onto the white canvas, then composite fg over the real bg.
 	bgOpaque := bg.Opaque()
+	fgOpaque := fg.BlendOver(bgOpaque)
 
 	// Already compliant -- return fg unmodified.
 	if fgOpaque.ContrastWith(bgOpaque) >= minRatio {

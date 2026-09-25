@@ -437,6 +437,48 @@ func TestWCAGConstants(t *testing.T) {
 	}
 }
 
+// TestEnsureContrast_TranslucentFgMeasuredOverRealBackground is a regression
+// test for go-slide-creator-s1uvj.43: a translucent foreground must be
+// composited over the actual background, not over white, before its contrast
+// is measured. Half-transparent white on #404040 renders as ~#A0A0A0, only
+// ~3.96:1 against the fill; blending over white instead made it read as pure
+// white (~10:1), so EnsureContrast returned it unchanged.
+func TestEnsureContrast_TranslucentFgMeasuredOverRealBackground(t *testing.T) {
+	fg := Color{R: 255, G: 255, B: 255, A: 0.5}
+	bg := MustParseColor("#404040")
+
+	if got := fg.BlendOver(bg).ContrastWith(bg); got >= WCAGAANormal {
+		t.Fatalf("precondition: composited fg contrast = %.2f, want < %.1f", got, WCAGAANormal)
+	}
+
+	result := EnsureContrast(fg, bg, WCAGAANormal)
+	if ratio := result.BlendOver(bg).ContrastWith(bg); ratio < WCAGAANormal {
+		t.Errorf("translucent fg on dark fill: on-screen contrast = %.2f, want >= %.1f (result %s alpha %.2f)",
+			ratio, WCAGAANormal, result.Hex(), result.A)
+	}
+
+	// A translucent fg that is compliant once composited over the real
+	// background keeps its alpha and is returned unchanged.
+	light := Color{R: 255, G: 255, B: 255, A: 0.9}
+	if got := EnsureContrast(light, bg, WCAGAANormal); got != light {
+		t.Errorf("compliant translucent fg changed: got %+v, want %+v", got, light)
+	}
+}
+
+func TestColorBlendOver(t *testing.T) {
+	fg := Color{R: 255, G: 255, B: 255, A: 0.5}
+	if got := fg.BlendOver(MustParseColor("#000000")).Hex(); got != "#808080" {
+		t.Errorf("white@0.5 over black = %s, want #808080", got)
+	}
+	if got := fg.BlendOver(MustParseColor("#FFFFFF")); got != fg.Opaque() {
+		t.Errorf("BlendOver(white) = %v, want Opaque() %v", got, fg.Opaque())
+	}
+	opaque := MustParseColor("#123456")
+	if got := opaque.BlendOver(MustParseColor("#000000")); got != opaque {
+		t.Errorf("opaque color should be unchanged, got %v", got)
+	}
+}
+
 // abs returns the absolute value of an int.
 func abs(x int) int {
 	if x < 0 {
