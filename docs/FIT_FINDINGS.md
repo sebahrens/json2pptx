@@ -1439,10 +1439,10 @@ When footer/page-number chrome is enabled, preflight also checks its default `tx
 ### `contrast_unresolved`
 
 **Action:** `refuse`
-**Pattern:** *(none — placeholder-gradient preflight)*
+**Pattern:** *(none — placeholder-fill preflight)*
 **Fix kind:** *(none — a text-color replacement is not guaranteed to work)*
 
-The resolved placeholder gradient has a stop or interpolated color where the inherited text color fails the size-dependent WCAG AA threshold, or a stop cannot be resolved at all. For example, the modern title-slide subtitle is white on a gradient from navy to orange: dark text would fix the orange end but fail on navy. Where colors are available, the finding names the worst color and ratio; it never offers a `replace_color` fix. Add a sufficiently opaque backdrop behind the text or change the whole gradient, then inspect a rendered slide. It is included in generation findings even without the optional full fit report.
+The placeholder's own fill cannot be verified or auto-fixed safely. A gradient may have a stop or interpolated color where inherited text fails WCAG AA, or a gradient stop may be unresolvable. A translucent solid fill over an unmeasurable canvas also cannot produce a trustworthy ratio. For example, the modern title-slide subtitle is white on a gradient from navy to orange: dark text would fix the orange end but fail on navy. Where gradient colors are available, the finding names the worst color and ratio; it never offers a `replace_color` fix. Add a sufficiently opaque backdrop behind the text or change the whole gradient, then inspect a rendered slide. It is included in generation findings even without the optional full fit report.
 
 ### `contrast_autofixed`
 

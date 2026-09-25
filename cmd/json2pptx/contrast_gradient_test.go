@@ -50,7 +50,7 @@ func TestModernSubtitleGradientPreflightBlocksFalseContrastFix(t *testing.T) {
 	if unresolved == nil || unresolved.Action != "refuse" || unresolved.Fix != nil {
 		t.Fatalf("modern subtitle must yield a blocking unresolved contrast finding: %+v", findings)
 	}
-	withoutFullReport := unresolvedGradientContrastFindings(input, analysis.Layouts, analysis.Theme.Colors)
+	withoutFullReport := unresolvedPlaceholderContrastFindings(input, analysis.Layouts, analysis.Theme.Colors)
 	if len(withoutFullReport) != 1 || withoutFullReport[0].Code != patterns.ErrCodeContrastUnresolved {
 		t.Fatalf("generate without fit_report lost the blocking finding: %+v", withoutFullReport)
 	}
@@ -129,6 +129,41 @@ func TestPlaceholderOwnSolidFillWinsOverWhiteCanvas(t *testing.T) {
 	}
 }
 
+func TestPlaceholderSolidAlphaPreflightUsesVisibleCanvas(t *testing.T) {
+	fill := types.PlaceholderFillStop{Ref: "#FF0000", Mods: types.BackgroundColorModifiers{HasAlpha: true, Alpha: 50000}}
+	layouts := []types.LayoutMetadata{{ID: "slideLayout1", BackgroundHex: "#FFFFFF", Placeholders: []types.PlaceholderInfo{{
+		ID: "subtitle", InheritedFontColor: "#FFFFFF", FillSolid: true, FillStops: []types.PlaceholderFillStop{fill},
+	}}}}
+	for _, tc := range []struct {
+		name, canvas, image, wantBackground, wantCode string
+	}{
+		{"dark canvas", "#000000", "", "#800000", ""},
+		{"light canvas", "#FFFFFF", "", "#FF8080", patterns.ErrCodeContrastPredicted},
+		{"photo canvas", "", "photo.png", "", patterns.ErrCodeContrastUnresolved},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			slide := SlideInput{SlideType: "title", LayoutID: "slideLayout1",
+				Content: []ContentInput{{PlaceholderID: "subtitle", Type: "text", TextValue: strPtr("Readable")}}}
+			if tc.canvas != "" {
+				slide.Background = &BackgroundInput{Color: tc.canvas}
+			} else if tc.image != "" {
+				slide.Background = &BackgroundInput{Image: tc.image}
+			}
+			pairs := placeholderContrastPairs(&PresentationInput{Slides: []SlideInput{slide}}, layouts, nil)
+			if len(pairs) != 1 || pairs[0].Background != tc.wantBackground {
+				t.Fatalf("visible pair = %+v, want background %s", pairs, tc.wantBackground)
+			}
+			findings := generator.DetectContrastPreflight(pairs, nil)
+			if tc.wantCode == "" && len(findings) != 0 {
+				t.Fatalf("readable fill reported: %+v", findings)
+			}
+			if tc.wantCode != "" && (len(findings) != 1 || findings[0].Code != tc.wantCode) {
+				t.Fatalf("fill findings = %+v, want %s", findings, tc.wantCode)
+			}
+		})
+	}
+}
+
 func TestUnresolvablePlaceholderGradientDoesNotFallBackToCanvas(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -149,7 +184,7 @@ func TestUnresolvablePlaceholderGradientDoesNotFallBackToCanvas(t *testing.T) {
 				SlideType: "title", LayoutID: "slideLayout1",
 				Content: []ContentInput{{PlaceholderID: "subtitle", Type: "text", TextValue: strPtr("Unknown fill")}},
 			}}}
-			findings := unresolvedGradientContrastFindings(input, layouts, nil)
+			findings := unresolvedPlaceholderContrastFindings(input, layouts, nil)
 			if len(findings) != 1 || findings[0].Action != "refuse" || findings[0].Code != patterns.ErrCodeContrastUnresolved {
 				t.Fatalf("gradient must not inherit the readable canvas verdict: %+v", findings)
 			}

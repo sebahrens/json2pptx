@@ -104,8 +104,10 @@ func ResolveBackgroundRefHex(ref string, colors []types.ThemeColor) string {
 
 // ResolveBackgroundRefHexWithMods resolves the visible background after OOXML
 // luminance, tint, shade, and alpha transforms. Keeping the ref and modifiers
-// separate lets theme_override re-resolve both at preflight time.
-func ResolveBackgroundRefHexWithMods(ref string, mods types.BackgroundColorModifiers, colors []types.ThemeColor) string {
+// separate lets theme_override re-resolve both at preflight time. When the
+// caller supplies a canvas, translucent fills composite over that canvas;
+// an empty canvas means the visible backdrop cannot be measured.
+func ResolveBackgroundRefHexWithMods(ref string, mods types.BackgroundColorModifiers, colors []types.ThemeColor, canvas ...string) string {
 	baseHex := ResolveBackgroundRefHex(ref, colors)
 	if baseHex == "" {
 		return ""
@@ -118,6 +120,20 @@ func ResolveBackgroundRefHexWithMods(ref string, mods types.BackgroundColorModif
 	if hex := ResolveBackgroundRefHex("lt1", colors); hex != "" {
 		if color, parseErr := svggen.ParseColor(hex); parseErr == nil {
 			background = color
+		}
+	}
+	if len(canvas) > 0 {
+		if canvas[0] == "" && mods.HasAlpha && mods.Alpha < 100000 {
+			return "" // Transparent fill over a photo has no one measurable color.
+		}
+		if canvas[0] != "" {
+			color, parseErr := svggen.ParseColor(canvas[0])
+			if parseErr != nil && mods.HasAlpha && mods.Alpha < 100000 {
+				return ""
+			}
+			if parseErr == nil {
+				background = color
+			}
 		}
 	}
 	if mods.HasLumMod && mods.LumMod == 0 && mods.LumOff == 0 {

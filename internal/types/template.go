@@ -212,6 +212,7 @@ type PlaceholderInfo struct {
 	// contrast preflight. References stay unresolved until the effective deck
 	// theme is known (theme_override can change every accent).
 	FillStops []PlaceholderFillStop `json:"-"`
+	FillSolid bool                  `json:"-"`
 	// FillGradient distinguishes a gradient with missing/unresolvable stops
 	// from a placeholder with no area fill at all.
 	FillGradient bool `json:"-"`

@@ -269,7 +269,7 @@ var (
 	ErrColumnWidthDeficit  = errors.New("column widths fell back to global floor")
 
 	ErrContrastPredicted  = errors.New("text color is predicted to be auto-replaced for WCAG AA contrast")
-	ErrContrastUnresolved = errors.New("text on a gradient fails contrast and has no safe automatic replacement")
+	ErrContrastUnresolved = errors.New("placeholder text contrast cannot be verified or safely auto-fixed")
 
 	ErrTextOverImageUnverified = errors.New("text sits on a background image with no scrim, so its contrast cannot be checked")
 

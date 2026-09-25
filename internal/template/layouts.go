@@ -266,6 +266,7 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 			FontColor:     fontColor,
 			FontColorMods: fontColorMods,
 			FillStops:     placeholderFillStops(&shape, clrMapOvr),
+			FillSolid:     shape.ShapeProperties.SolidFill != nil,
 			FillGradient:  shape.ShapeProperties.GradientFill != nil,
 		}
 		switch phType {

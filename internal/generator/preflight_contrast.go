@@ -38,6 +38,9 @@ type ContrastPreflightPair struct {
 	// Gradient marks a placeholder gradient even when its stops could not be
 	// fully resolved, so preflight never falls back to the canvas silently.
 	Gradient bool
+	// UnresolvedBackground marks an own fill that cannot be measured, rather
+	// than allowing a misleading comparison with the canvas behind it.
+	UnresolvedBackground bool
 	// Source is a short tag for the message (e.g. "shape_grid", "layout").
 	Source string
 	// TextPt is the text size in points and Bold its weight. They decide which
@@ -134,12 +137,20 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 	for _, p := range pairs {
 		fgHex := resolveContrastColor(p.Foreground, themeColors)
 		bgHex := resolveContrastColor(p.Background, themeColors)
-		if fgHex == "" || (bgHex == "" && len(p.Backgrounds) == 0 && !p.Gradient) {
+		if fgHex == "" || (bgHex == "" && len(p.Backgrounds) == 0 && !p.Gradient && !p.UnresolvedBackground) {
 			continue
 		}
 
 		fg, err := svggen.ParseColor(fgHex)
 		if err != nil {
+			continue
+		}
+		if p.UnresolvedBackground {
+			findings = append(findings, patterns.FitFinding{
+				ValidationError: patterns.ValidationError{Path: p.Path, Code: patterns.ErrCodeContrastUnresolved,
+					Message: "placeholder fill cannot be resolved against the visible canvas; text contrast cannot be verified or safely auto-fixed"},
+				Action: "refuse",
+			})
 			continue
 		}
 		parsedBackgrounds := resolvePreflightBackgrounds(p, bgHex, themeColors)
@@ -150,21 +161,7 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		if len(parsedBackgrounds) > 0 {
 			bg = parsedBackgrounds[0]
 		}
-		if p.ForegroundMods != (types.BackgroundColorModifiers{}) {
-			mods := p.ForegroundMods
-			if mods.HasLumMod && mods.LumMod == 0 && mods.LumOff == 0 {
-				fg = svggen.MustParseColor("#000000")
-			}
-			alpha := 1.0
-			if mods.HasAlpha {
-				alpha = float64(mods.Alpha) / 100000
-			}
-			fg = patterns.EffectiveColorMods(fg, patterns.ColorMods{
-				LumMod: mods.LumMod, LumOff: mods.LumOff, Tint: mods.Tint,
-				Shade: mods.Shade, Alpha: alpha, HasAlpha: mods.HasAlpha,
-			}, bg)
-			fgHex = strings.ToUpper(fg.Hex())
-		}
+		fg, fgHex = applyPreflightForegroundMods(fg, fgHex, p.ForegroundMods, bg)
 
 		threshold := contrastThresholdFor(p.TextPt, p.Bold)
 		if p.Gradient {
@@ -227,6 +224,24 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		})
 	}
 	return findings
+}
+
+func applyPreflightForegroundMods(fg svggen.Color, fgHex string, mods types.BackgroundColorModifiers, bg svggen.Color) (svggen.Color, string) {
+	if mods == (types.BackgroundColorModifiers{}) {
+		return fg, fgHex
+	}
+	if mods.HasLumMod && mods.LumMod == 0 && mods.LumOff == 0 {
+		fg = svggen.MustParseColor("#000000")
+	}
+	alpha := 1.0
+	if mods.HasAlpha {
+		alpha = float64(mods.Alpha) / 100000
+	}
+	fg = patterns.EffectiveColorMods(fg, patterns.ColorMods{
+		LumMod: mods.LumMod, LumOff: mods.LumOff, Tint: mods.Tint,
+		Shade: mods.Shade, Alpha: alpha, HasAlpha: mods.HasAlpha,
+	}, bg)
+	return fg, strings.ToUpper(fg.Hex())
 }
 
 func resolvePreflightBackgrounds(p ContrastPreflightPair, bgHex string, themeColors []types.ThemeColor) []svggen.Color {

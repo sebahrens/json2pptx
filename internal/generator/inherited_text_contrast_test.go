@@ -195,6 +195,17 @@ func TestInheritedTextContrast_UsesPlaceholderSolidFillBeforeSlideCanvas(t *test
 	}
 }
 
+func TestPlaceholderSolidFillAlphaUsesVisibleSlideCanvas(t *testing.T) {
+	layout := []byte(`<p:sldLayout><p:cSld><p:spTree><p:sp><p:nvSpPr><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr><p:spPr><a:solidFill><a:srgbClr val="FF0000"><a:alpha val="50000"/></a:srgbClr></a:solidFill></p:spPr></p:sp></p:spTree></p:cSld></p:sldLayout>`)
+	idx := 1
+	ph := &placeholderXML{Type: "body", Index: &idx}
+	for _, tc := range []struct{ canvas, want string }{{"#000000", "#800000"}, {"#FFFFFF", "#FF8080"}, {"", ""}} {
+		if got := layoutPlaceholderSolidFill(layout, ph, modernLikeTheme(), tc.canvas, nil); got != tc.want {
+			t.Errorf("render fill on %s = %s, want %s", tc.canvas, got, tc.want)
+		}
+	}
+}
+
 func TestExplicitTextContrast_UsesPlaceholderSolidFillWithoutSlideCanvas(t *testing.T) {
 	layout := []byte(`<p:sldLayout><p:cSld><p:spTree>
 		<p:sp><p:nvSpPr><p:cNvPr id="3" name="Body"/><p:nvPr><p:ph type="body" idx="1"/></p:nvPr></p:nvSpPr>

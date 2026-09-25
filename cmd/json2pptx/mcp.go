@@ -587,7 +587,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	if fitReport, _ := request.GetArguments()["fit_report"].(bool); fitReport {
 		fitFindings = collectFitFindings(&input, templateLayouts, slideWidth, slideHeight, &analysis.Theme)
 	} else {
-		fitFindings = unresolvedGradientContrastFindings(&input, templateLayouts, analysis.Theme.Colors)
+		fitFindings = unresolvedPlaceholderContrastFindings(&input, templateLayouts, analysis.Theme.Colors)
 	}
 
 	// Append render-time fit findings from the generator (overflow, truncation, clamping).

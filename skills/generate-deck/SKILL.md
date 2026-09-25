@@ -1106,7 +1106,7 @@ Deterministic geometry findings run on every shape_grid and pattern-expanded gri
 
 For the full finding-code catalog (`fit_overflow`, `cell_underfilled`, `placeholder_overflow`, `chart.*` family, render-time codes like `contrast_autofixed`, `text_trimmed`, `diagram_clamped`, etc.) and the `fix.kind` enums, see [FINDINGS.md](FINDINGS.md).
 
-`contrast_unresolved` (`action: refuse`) means placeholder text fails WCAG AA at a resolved gradient stop. No single text-color auto-fix is promised: a dark replacement can fix a light stop while failing a dark one. Add a local backdrop or adjust the entire template gradient, then inspect the rendered slide. Generation reports this even without `fit_report`.
+`contrast_unresolved` (`action: refuse`) means placeholder text fails WCAG AA somewhere on a gradient, or its own fill cannot be resolved against the visible canvas. No single text-color auto-fix is promised: a dark replacement can fix a light gradient stop while failing a dark one. Add a local backdrop or adjust the template fill, then inspect the rendered slide. Generation reports this even without `fit_report`.
 
 ---
 

@@ -32,6 +32,15 @@ func TestResolveLayoutBackgroundHexAppliesLumMod(t *testing.T) {
 	}
 }
 
+func TestResolveBackgroundRefHexWithModsCompositesAgainstProvidedCanvas(t *testing.T) {
+	mods := types.BackgroundColorModifiers{HasAlpha: true, Alpha: 50000}
+	for _, tc := range []struct{ canvas, want string }{{"#000000", "#800000"}, {"#FFFFFF", "#FF8080"}, {"", ""}} {
+		if got := ResolveBackgroundRefHexWithMods("#FF0000", mods, nil, tc.canvas); got != tc.want {
+			t.Errorf("50%% red over %q = %q, want %q", tc.canvas, got, tc.want)
+		}
+	}
+}
+
 func TestResolveLayoutBackgroundHexAppliesOtherModifiers(t *testing.T) {
 	for _, tc := range []struct {
 		name, base, modifier, want string
