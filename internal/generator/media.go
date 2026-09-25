@@ -399,13 +399,13 @@ func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, it
 
 	// Native SWOT shapes: intercept swot diagrams before SVG rendering.
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isSWOTDiagram(diagramSpec) {
-		ctx.processSWOTNativeShapes(slideNum, item, shapeIdx)
+		ctx.processSWOTNativeShapes(slideNum, contentIdx, item, shapeIdx)
 		return
 	}
 
 	// Native PESTEL shapes: intercept pestel diagrams before SVG rendering.
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isPESTELDiagram(diagramSpec) {
-		ctx.processPESTELNativeShapes(slideNum, item, shapeIdx)
+		ctx.processPESTELNativeShapes(slideNum, contentIdx, item, shapeIdx)
 		return
 	}
 
@@ -459,7 +459,7 @@ func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, it
 
 	// Native House Diagram shapes: intercept house_diagram diagrams before SVG rendering.
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isHouseDiagram(diagramSpec) {
-		ctx.processHouseDiagramNativeShapes(slideNum, item, shapeIdx)
+		ctx.processHouseDiagramNativeShapes(slideNum, contentIdx, item, shapeIdx)
 		return
 	}
 

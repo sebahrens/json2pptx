@@ -391,11 +391,12 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeSparseLayout,
 		Summary:     "Visible slide content covers less than 40% of the resolved grid area.",
 		Severity:    "review",
-		WhenEmitted: "Pre-flight measures filled cells, non-text visuals, and wrapped text ink against the resolved grid bounds and finds under 40% visible coverage.",
+		WhenEmitted: "Pre-flight measures filled cells, non-text visuals, and wrapped text ink against resolved grid bounds; native framework rendering measures diagram text ink against its allocated region. Both emit below 40% coverage.",
 		RemediationSteps: []string{
 			"Add more content to the grid (more cells, longer text, supporting bullets).",
 			"Or swap to a smaller pattern via recommend_pattern with the current item count.",
 			"Or set bounds.height to shrink the allocated region.",
+			"For a native SWOT, PESTEL, KPI-dashboard or house diagram, add supporting detail or use a shorter diagram region; its sparse finding recommends add_detail_or_resize.",
 		},
 		RelatedCodes: []string{ErrCodePatternUnderfilled, ErrCodeCellUnderfilled},
 	},

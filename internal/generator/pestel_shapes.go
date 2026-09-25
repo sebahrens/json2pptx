@@ -79,7 +79,7 @@ func isPESTELDiagram(spec *types.DiagramSpec) bool {
 
 // processPESTELNativeShapes parses PESTEL data from a DiagramSpec and registers
 // a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processPESTELNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
+func (ctx *singlePassContext) processPESTELNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
 	diagramSpec, ok := item.Value.(*types.DiagramSpec)
 	if !ok {
 		slog.Warn("pestel native shapes: invalid diagram spec", "slide", slideNum)
@@ -103,6 +103,7 @@ func (ctx *singlePassContext) processPESTELNativeShapes(slideNum int, item Conte
 	slide := ctx.templateSlideData[slideNum]
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
 	placeholderBounds := getPlaceholderBounds(shape, nil)
+	placeholderBounds = ctx.fitNativeFramework(slideNum, contentIdx, "pestel", placeholderBounds, panels, houseDiagramMeta{})
 
 	slog.Info("native pestel shapes: registered",
 		"slide", slideNum,
@@ -222,6 +223,12 @@ func generatePESTELGroupXML(panels []nativePanelData, bounds types.BoundingBox, 
 
 	// Header height within each cell
 	headerCY := int64(float64(cellH) * pestelHeaderHeightRatio)
+	for _, p := range panels {
+		headerCY = max(headerCY, taxonomyTitleHeight(p.title, cellW, pestelBodyInset, pestelHeaderFontSize, ""))
+	}
+	if headerCY > cellH {
+		headerCY = cellH
+	}
 	bodyCY := cellH - headerCY
 
 	var children [][]byte

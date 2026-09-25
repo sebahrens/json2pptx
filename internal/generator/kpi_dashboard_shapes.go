@@ -142,6 +142,7 @@ func (ctx *singlePassContext) processKPIDashboardNativeShapes(slideNum, contentI
 	slide := ctx.templateSlideData[slideNum]
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
 	placeholderBounds := getPlaceholderBounds(shape, nil)
+	placeholderBounds = ctx.fitNativeFramework(slideNum, contentIdx, "kpi_dashboard", placeholderBounds, panels, houseDiagramMeta{})
 
 	slog.Info("native kpi dashboard shapes: registered",
 		"slide", slideNum,

@@ -424,6 +424,8 @@ Visible content covers less than 40% of the resolved grid area — the slide is 
 
 The raw-grid fix params include `filled_pct`, `filled_slots`, `grid_rows`, and `grid_cols`, so `recommend_pattern` can use the actual structure. The measured/allowed extents retain area-equivalent heights (visible area divided by grid width), not raw newline estimates.
 
+Native SWOT, PESTEL, KPI-dashboard, and house diagrams also use this code when measured text ink occupies under 40% of their allocated height. Their cards are automatically content-sized and vertically centred where possible. These findings use the diagram type as `pattern` and recommend `add_detail_or_resize`, not a shape-grid repair; adding meaningful detail or choosing a shorter diagram region resolves the remaining whitespace.
+
 ```json
 {
   "pattern": "shape_grid",

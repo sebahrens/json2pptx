@@ -86,7 +86,7 @@ func isSWOTDiagram(spec *types.DiagramSpec) bool {
 
 // processSWOTNativeShapes parses SWOT data from a DiagramSpec and registers
 // a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processSWOTNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
+func (ctx *singlePassContext) processSWOTNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
 	diagramSpec, ok := item.Value.(*types.DiagramSpec)
 	if !ok {
 		slog.Warn("swot native shapes: invalid diagram spec", "slide", slideNum)
@@ -121,6 +121,7 @@ func (ctx *singlePassContext) processSWOTNativeShapes(slideNum int, item Content
 	slide := ctx.templateSlideData[slideNum]
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
 	placeholderBounds := getPlaceholderBounds(shape, nil)
+	placeholderBounds = ctx.fitNativeFramework(slideNum, contentIdx, "swot", placeholderBounds, panels, houseDiagramMeta{})
 
 	slog.Info("native swot shapes: registered",
 		"slide", slideNum,
@@ -155,6 +156,12 @@ func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, sh
 
 	// Header height within each quadrant
 	headerCY := int64(float64(quadH) * swotHeaderHeightRatio)
+	for _, p := range panels {
+		headerCY = max(headerCY, taxonomyTitleHeight(p.title, quadW, swotBodyInset, swotHeaderFontSize, ""))
+	}
+	if headerCY > quadH {
+		headerCY = quadH
+	}
 	bodyCY := quadH - headerCY
 
 	// Quadrant positions: [top-left, top-right, bottom-left, bottom-right]

@@ -97,7 +97,7 @@ func isHouseDiagram(spec *types.DiagramSpec) bool {
 
 // processHouseDiagramNativeShapes parses house diagram data from a DiagramSpec
 // and registers a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processHouseDiagramNativeShapes(slideNum int, item ContentItem, shapeIdx int) {
+func (ctx *singlePassContext) processHouseDiagramNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
 	diagramSpec, ok := item.Value.(*types.DiagramSpec)
 	if !ok {
 		slog.Warn("house diagram native shapes: invalid diagram spec", "slide", slideNum)
@@ -119,6 +119,7 @@ func (ctx *singlePassContext) processHouseDiagramNativeShapes(slideNum int, item
 	slide := ctx.templateSlideData[slideNum]
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
 	placeholderBounds := getPlaceholderBounds(shape, nil)
+	placeholderBounds = ctx.fitNativeFramework(slideNum, contentIdx, "house_diagram", placeholderBounds, panels, meta)
 
 	slog.Info("native house diagram shapes: registered",
 		"slide", slideNum,
@@ -360,8 +361,15 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 	}
 
 	// Layout calculation: roof, floors, foundation with gaps.
-	roofH := int64(float64(bounds.Height) * houseRoofHeightRatio)
-	foundH := int64(float64(bounds.Height) * houseFoundationHeightRatio)
+	labelFont, itemFont := houseTextFonts(meta)
+	roofH, foundH := houseEndBandHeights(panels, bounds.Width, labelFont, "")
+	// Keep the familiar architectural proportions when the authored region is
+	// generous. A content-sized group uses the measured end bands so a long
+	// foundation label never stretches the pillars.
+	if bounds.Height > houseContentHeight(panels, meta, bounds, "").box {
+		roofH = max(roofH, int64(float64(bounds.Height)*houseRoofHeightRatio))
+		foundH = max(foundH, int64(float64(bounds.Height)*houseFoundationHeightRatio))
+	}
 
 	nFloors := len(meta.floors)
 	if nFloors == 0 {
@@ -375,18 +383,6 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 		totalFloorH = bounds.Height / 4
 	}
 	floorH := totalFloorH / int64(nFloors)
-
-	// Count total pillars to choose font size.
-	totalSections := 0
-	for _, f := range meta.floors {
-		totalSections += f.sectionCount
-	}
-	labelFont := houseLabelFontSize
-	itemFont := houseItemFontSize
-	if totalSections >= 6 {
-		labelFont = houseLabelFontSizeSmall
-		itemFont = houseItemFontSizeSmall
-	}
 
 	var children [][]byte
 	shapeIdx := uint32(0)
