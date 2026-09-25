@@ -60,7 +60,7 @@ This skill is split into focused sub-files. SKILL.md (this file) covers precondi
 
 | File | Contents |
 |---|---|
-| [TOOLS.md](TOOLS.md) | Full `json2pptx-mcp` tool catalogue with MANDATORY / SKIPPABLE markers per phase, plus contract-drift, pagination, schema-introspection, and gated-write semantics |
+| [TOOLS.md](TOOLS.md) | Full `json2pptx-mcp` tool catalogue with raw-path MANDATORY / SKIPPABLE markers per phase, plus contract-drift, pagination, schema-introspection, and gated-write semantics |
 | [WORKFLOW.md](WORKFLOW.md) | 4-phase workflow deep dive (Plan, Vary, Render, Repair), visual inspection, `next_tool_call`, response_fingerprint, idempotency_key |
 | [FINDINGS.md](FINDINGS.md) | All finding codes (layout + chart), the `fix.kind` enum, the `repair_slide` apply-only superset, strict-fit promotion ladder |
 | [RULES.md](RULES.md) | Rules 1–20 (shape grid, charts, content/layout, contrast, silent traps, table density), anti-patterns, cell accent variety |
@@ -624,7 +624,7 @@ The smallest complete input showing the content-as-array shape and key deck/slid
 
 ## MCP Tools (most-used)
 
-The five tools below cover the precondition workflow (`recommend_visual` → `show_pattern` → `expand_pattern` → `validate_input` → `generate_presentation`) plus `repair_slide` for fix-up. For the full tool catalogue — including session/discovery (`get_started`, `get_capabilities`, `get_input_schema`, `list_templates`, `resolve_theme`, `examine_template`, …), rhythm/scoring (`analyze_deck_rhythm`, `score_candidates`, `score_deck`), preview/render (`preview_presentation_plan`, `preview_slide_wireframe`, `render_slide_image`, `render_deck_thumbnails`, `inspect_slide_images`), the gated write tools (`register_template_setting`, `delete_template_setting`), and the MANDATORY / SKIPPABLE markers per phase — see **[TOOLS.md](TOOLS.md)**. The six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented under [Connected MCP servers](#connected-mcp-servers).
+The five tools below cover the raw PresentationInput precondition workflow (`recommend_visual` → `show_pattern` → `expand_pattern` → `validate_input` → `generate_presentation`) plus `repair_slide` for fix-up. DeckSpec authors instead use `validate_deck_spec` → `render_deck_spec`. For the full tool catalogue — including session/discovery (`get_started`, `get_capabilities`, `get_input_schema`, `list_templates`, `resolve_theme`, `examine_template`, …), rhythm/scoring (`analyze_deck_rhythm`, `score_candidates`, `score_deck`), preview/render (`preview_presentation_plan`, `preview_slide_wireframe`, `render_slide_image`, `render_deck_thumbnails`, `inspect_slide_images`), the gated write tools (`register_template_setting`, `delete_template_setting`), and the raw-path MANDATORY / SKIPPABLE markers per phase — see **[TOOLS.md](TOOLS.md)**. The six `svggen-mcp` tools (`render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`, `get_capabilities`, `get_started`) are documented under [Connected MCP servers](#connected-mcp-servers).
 
 | Tool | Phase | When to call |
 |---|---|---|
@@ -948,16 +948,22 @@ When building a slide and unsure which visual approach to use, follow this decis
 
 ## Workflow: Plan → Vary → Render → Repair
 
-### PRECONDITION: Validate Before You Generate
+### Workflow contract
 
-**You MUST NOT call `generate_presentation` until all of the following have succeeded for the current deck:**
+<!-- workflow-contract:start -->
+Default for content-bearing decks: author real content as a DeckSpec; call `list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`. Revise a DeckSpec with `deck_id` + `patch` on `validate_deck_spec` / `render_deck_spec`. Use the raw PresentationInput path only when the spec cannot express a needed feature or the source deck is already raw; on that path, inspect chosen patterns with `show_pattern` / `expand_pattern`, then call `validate_input` (with `fit_report: true`) before `generate_presentation`. `make_deck` creates an exemplar skeleton, never a publishable deck. On either path, render every slide of the final revision and inspect its image before approval.
+<!-- workflow-contract:end -->
 
-1. **Visual discovery.** For each slide, call `recommend_visual` to determine the best visual approach. If you already know the slide needs a named pattern, `recommend_pattern` or `list_patterns` is sufficient. Do not guess pattern names from memory.
-2. **Schema inspection.** For each chosen pattern, call `show_pattern` to retrieve the value schema and `example_values`.
-3. **Density pre-flight.** For each pattern slide, call `expand_pattern` with your populated values to confirm density is in the 35–110% optimal band (a height ratio: >110% means the cell will be autofit-shrunk, <35% that it reads as mostly empty).
+### Raw-path precondition: Validate Before You Generate
+
+**When using raw PresentationInput, you MUST NOT call `generate_presentation` until all of the following applicable checks have succeeded for the current deck.** DeckSpec authors use `validate_deck_spec` before `render_deck_spec`; they do not need to convert to raw JSON merely to run these tools.
+
+1. **Visual discovery.** For raw slides whose visual approach is undecided, call `recommend_visual`. If you already know the slide needs a named pattern, `recommend_pattern` or `list_patterns` is sufficient. Do not guess pattern names from memory.
+2. **Schema inspection.** For each chosen raw pattern, call `show_pattern` to retrieve the value schema and `example_values`.
+3. **Density pre-flight.** For each raw pattern slide, call `expand_pattern` with your populated values to confirm density is in the 35–110% optimal band (a height ratio: >110% means the cell will be autofit-shrunk, <35% that it reads as mostly empty).
 4. **Input validation.** Once the full deck JSON is assembled, call `validate_input` (with `fit_report: true`) to catch schema errors, unknown keys, scope mistakes, and fit issues.
 
-The six most common first-attempt failures (wrong content shape for a pattern, missing geometry fields, misspelled overrides, wrong row format, scope confusion, field-name typos) are all caught by steps 1–4 above before any PPTX is produced. Skipping these is a workflow violation; at minimum, always run `validate_input`.
+The six most common raw-path first-attempt failures (wrong content shape for a pattern, missing geometry fields, misspelled overrides, wrong row format, scope confusion, field-name typos) are caught by these checks before any PPTX is produced. Skipping `validate_input` on the raw path is a workflow violation; on the DeckSpec path, use `validate_deck_spec` instead.
 
 **The sequence in practice:**
 

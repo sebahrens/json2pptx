@@ -17,12 +17,17 @@ import (
 // ---------------------------------------------------------------------------
 // get_started — first-call discovery tool
 //
-// Surfaces a recommended single-call fast path (a workflow facade) plus an
-// ordered, task-keyed sequence of MCP primitives so agents do not have to
+// Surfaces a recommended DeckSpec fast path plus an ordered, task-keyed
+// sequence of raw MCP primitives so agents do not have to
 // reverse-engineer the workflow from the flat tool catalog returned by
 // get_capabilities. Each step pairs an MCP tool name with a one-line
 // "when to call" hint, in the order an agent should invoke them.
 // ---------------------------------------------------------------------------
+
+// canonicalWorkflowStatement is copied into the three author-facing guides
+// between workflow-contract markers. TestCanonicalWorkflowDocs keeps those
+// copies identical to the runtime contract.
+const canonicalWorkflowStatement = "Default for content-bearing decks: author real content as a DeckSpec; call `list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`. Revise a DeckSpec with `deck_id` + `patch` on `validate_deck_spec` / `render_deck_spec`. Use the raw PresentationInput path only when the spec cannot express a needed feature or the source deck is already raw; on that path, inspect chosen patterns with `show_pattern` / `expand_pattern`, then call `validate_input` (with `fit_report: true`) before `generate_presentation`. `make_deck` creates an exemplar skeleton, never a publishable deck. On either path, render every slide of the final revision and inspect its image before approval."
 
 // getStartedStep is a single step in the recommended call sequence.
 type getStartedStep struct {
@@ -47,10 +52,9 @@ func withArgs(steps []getStartedStep) []getStartedStep {
 	return steps
 }
 
-// getStartedFastPath names the single-call workflow facade an agent should
-// reach for first, before falling back to the manual primitive Sequence. It is
-// the "best-deck path": one tool call that internally orchestrates the same
-// primitives the Sequence lists step by step.
+// getStartedFastPath names the recommended workflow an agent should reach for
+// first, before falling back to the raw primitive Sequence. The DeckSpec path
+// has a short validation/render/inspection chain, not a single-call facade.
 type getStartedFastPath struct {
 	Tool       string `json:"tool"`
 	WhenToCall string `json:"when_to_call"`
@@ -58,7 +62,7 @@ type getStartedFastPath struct {
 	// list_slide_kinds → validate_deck_spec → render_deck_spec →
 	// render_deck_thumbnails). Omitted when the fast path is a single call.
 	Steps []getStartedStep `json:"steps,omitempty"`
-	// FallsBackTo is the manual primitive workflow this facade collapses — always
+	// FallsBackTo is the manual raw-primitive workflow — always
 	// the tool names in this response's Sequence — so an agent knows exactly which
 	// controllable path to drop to when it needs per-step control.
 	FallsBackTo []string `json:"falls_back_to"`
@@ -74,8 +78,8 @@ type getStartedResponse struct {
 	TaskWarning string `json:"task_warning,omitempty"`
 	// FastPath is the recommended fast path for this task — the DeckSpec path
 	// ending in render_deck_spec for both brief (author it) and revise (patch the
-	// deck_id the server already holds). Present only for tasks that have a facade;
-	// omitted for validate-only (pure diagnostics, no facade). Sequence remains
+	// deck_id the server already holds). Omitted for validate-only (pure
+	// diagnostics). Sequence remains
 	// the controllable manual path agents drop to when they need per-step control.
 	FastPath       *getStartedFastPath `json:"fast_path,omitempty"`
 	Sequence       []getStartedStep    `json:"sequence"`
@@ -115,9 +119,9 @@ type completionProtocol struct {
 	Rule           string `json:"rule"`
 }
 
-// fastPathFor returns the workflow-facade fast path for a task, or nil when the
-// task has no facade. FallsBackTo is the tool names in seq, so the facade and
-// the manual path it collapses stay in lockstep automatically.
+// fastPathFor returns the recommended fast path for a task, or nil when the
+// task has no fast path. FallsBackTo is the tool names in seq, so the
+// recommended and manual paths stay in lockstep automatically.
 func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 	tools := make([]string, len(seq))
 	for i, s := range seq {
@@ -220,9 +224,9 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 			"make_deck is a skeleton/wireframe tool, not a deck builder: it fills every slide with pattern exemplar placeholder copy, so it always reports gate_passed=false, uses_exemplar_content=true, and \"exemplar_content\" in blocking_reasons. Never ship its output.",
 			"COMPLETION: " + mcpCompletionRule,
 			"NO VISION PROVIDER? Render every slide with render_deck_thumbnails (image content blocks), inspect each image yourself, then record the verdict with submit_visual_review {pptx_path, pptx_revision, slides:[{index, verdict, image_path|image_sha256, findings?}], reviewer: host|manual}. Submit the paths/content_hashes render_deck_thumbnails returned for THIS pptx: each image is checked against the server's own render of that slide, and a recycled or foreign image is rejected. Only a complete, current-revision review with verified images and no P0/P1 findings marks the deck visually_reviewed_current_revision; an unverifiable review is recorded as reviewed_unverified_images.",
-			"This is the canonical new-deck workflow. Each step's output informs the next.",
+			"The numbered sequence is the controllable raw-deck fallback; its steps do not add requirements to the DeckSpec fast path.",
 			"For decks of 1-4 slides you may skip plan_deck and go straight to recommend_visual.",
-			"validate_input is mandatory per SKILL.md preconditions — skipping it is a workflow violation even when preview_presentation_plan succeeds.",
+			"On the raw PresentationInput path, validate_input is mandatory before generate_presentation; the DeckSpec path uses validate_deck_spec instead.",
 			"DECK CHROME AND SECTIONS. On the fast_path (DeckSpec): `meta.chrome` {confidentiality, client_name, project_code, footer_date, section_crumb, page_numbers:{enabled, format, skip}} — footer_date defaults to meta.date — plus `meta.viewing_mode` and `meta.accent_strategy`; every slide kind also takes `notes` (speaker notes) and `source` (footnote line). Use `structure` ({cover, closing, auto_agenda, sections:[{title, slides[]}]}) instead of flat `slides` when chapters should generate an agenda, sequential dividers, and section crumbs. On the raw path (generate_presentation), the same block is top-level `chrome` and the same mutually exclusive `structure` form expands before rendering. See get_capabilities.features.{deck_chrome, page_numbers, section_structure, section_crumb}.",
 		}
 	case "revise":
@@ -393,25 +397,31 @@ func mcpGetStartedTool() mcp.Tool {
 func getStartedToolDescription() string {
 	reviseFastPath := "render_deck_spec (deck_id + patch for DeckSpec revisions)"
 	makeDeckNote := " make_deck is a skeleton/wireframe only (exemplar placeholder copy; gate always fails)."
+	workflowStatement := canonicalWorkflowStatement
 	if !toolIsAdvertised("make_deck") {
 		makeDeckNote = ""
+		// Core tools/list has a 100 KiB budget and must not name hidden tools.
+		// Keep the same contract, but project only the callable path here.
+		workflowStatement = "Default for content-bearing decks: author real content as a DeckSpec; call `list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`, then render and inspect every slide. Use raw JSON only when DeckSpec cannot express the feature; call `validate_input` before `generate_presentation`."
 	}
 	reviseInspect := "read_presentation (inspection-only; not fed downstream) → "
 	if !toolIsAdvertised("read_presentation") {
 		reviseInspect = ""
 	}
-	return fmt.Sprintf(`Returns the recommended workflow for a stated task: a single-call fast path (a workflow facade) plus the ordered manual primitive sequence it composes. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
+	return fmt.Sprintf(`Returns the recommended workflow for a stated task: a DeckSpec-first fast path plus a separate ordered raw-primitive sequence. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
+
+%[4]s
 
 The response carries two complementary paths:
-- fast_path: the recommended path — for "brief" the DeckSpec path ending in render_deck_spec (steps: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails), for "revise" %[1]s.%[2]s A passing deterministic gate is never completion: render all slides and inspect every image (completion_protocol.rule). Its falls_back_to lists the manual primitives. Omitted for "validate-only" (pure diagnostics, no facade).
-- sequence: the controllable manual path — the ordered primitives to drive by hand when you need per-slide or per-step control.
+- fast_path: the recommended path — for "brief" the DeckSpec path ending in render_deck_spec (steps: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails), for "revise" %[1]s.%[2]s A passing deterministic gate is never completion: render all slides and inspect every image (completion_protocol.rule). Its falls_back_to lists raw primitives. Omitted for "validate-only" (pure diagnostics).
+- sequence: the controllable raw path — use its ordered primitives when DeckSpec cannot express a needed feature or the source deck is already raw.
 
 Pass "task" to scope both paths:
 - "brief" (default): authoring a new deck — fast_path render_deck_spec (DeckSpec); manual sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
 - "revise": modifying an existing PPTX — fast_path %[1]s; manual sequence get_capabilities → %[3]svalidate_input → preview_presentation_plan → repair_slide → generate_presentation → score_deck.
 - "validate-only": just checking a deck JSON is valid (no fast_path) — get_capabilities → list_templates → validate_input → preview_presentation_plan.
 
-Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`, reviseFastPath, makeDeckNote, reviseInspect)
+Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`, reviseFastPath, makeDeckNote, reviseInspect, workflowStatement)
 }
 
 func (mc *mcpConfig) handleGetStarted(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {

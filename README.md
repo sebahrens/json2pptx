@@ -405,7 +405,7 @@ collapse a whole chain into one call:
 
 | Tool | Purpose | CLI |
 |------|---------|-----|
-| `make_deck` | ONE call from a natural-language outline to a DRAFT, auto-repaired PPTX skeleton (chains `plan_deck` → expand patterns → `auto_repair`). Recommended cold-start entry point. Fills slides with pattern exemplar placeholder content, so the response reports `content_status: "exemplar_skeleton"` / `publishable: false` — replace the content and run visual QA before shipping. | MCP-only |
+| `make_deck` | ONE call from a natural-language outline to a DRAFT, auto-repaired PPTX skeleton (chains `plan_deck` → expand patterns → `auto_repair`). Optional wireframe aid, not the recommended content-bearing path. Fills slides with pattern exemplar placeholder content, so the response reports `content_status: "exemplar_skeleton"` / `publishable: false` — replace the content and run visual QA before shipping. | MCP-only |
 | `auto_repair` | Server-side convergence loop (`generate` → inspect → `repair`) against a configurable quality gate. | MCP-only |
 
 **Discovery / introspection** (`phase: discovery`, read-only)
@@ -494,21 +494,26 @@ collapse a whole chain into one call:
 
 ### Example Workflow
 
-**Fast path (one call).** When the agent does not need to hand-author per-slide
-content, `make_deck` collapses the entire chain into a single tool call:
+<!-- workflow-contract:start -->
+Default for content-bearing decks: author real content as a DeckSpec; call `list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`. Revise a DeckSpec with `deck_id` + `patch` on `validate_deck_spec` / `render_deck_spec`. Use the raw PresentationInput path only when the spec cannot express a needed feature or the source deck is already raw; on that path, inspect chosen patterns with `show_pattern` / `expand_pattern`, then call `validate_input` (with `fit_report: true`) before `generate_presentation`. `make_deck` creates an exemplar skeleton, never a publishable deck. On either path, render every slide of the final revision and inspect its image before approval.
+<!-- workflow-contract:end -->
+
+**Recommended content-bearing path.** Write a compact DeckSpec with the user's
+real copy, validate it, render it, and inspect the resulting slides:
 
 ```
 You:     "Build a board presentation about our Q1 results.
           Include revenue charts, team growth, and strategic priorities.
           Use midnight-blue template, 10 slides."
 
-Claude:  [calls make_deck -> plans, fills patterns, generates, and auto-repairs
-          to a quality gate -> output/make_deck.pptx]
+Claude:  [calls list_slide_kinds -> authors a DeckSpec with the real Q1 figures
+          -> validate_deck_spec -> render_deck_spec -> render_deck_thumbnails
+          -> inspects every slide and revises any findings]
 ```
 
-**Controllable path (manual primitives).** Drive each step yourself when you want
-control over copy, patterns, and layout — this is the `sequence` `get_started`
-returns for `task=brief`:
+**Raw path (manual primitives).** Use this when DeckSpec cannot express a needed
+feature or the source deck is already raw JSON; this is the `sequence`
+`get_started` returns for `task=brief`:
 
 ```
 Claude:  [calls plan_deck -> structured slide outline]
