@@ -443,14 +443,13 @@ func compareSkillSchemaVersions(installed, current string) (int, error) {
 		if len(fields) != len(parts) {
 			return parts, fmt.Errorf("skill_version %q must be major.minor.patch", version)
 		}
-		for i, field := range fields {
-			n, err := strconv.Atoi(field)
-			if err != nil || n < 0 {
-				return parts, fmt.Errorf("skill_version %q must be major.minor.patch", version)
-			}
-			parts[i] = n
+		major, majorErr := strconv.Atoi(fields[0])
+		minor, minorErr := strconv.Atoi(fields[1])
+		patch, patchErr := strconv.Atoi(fields[2])
+		if majorErr != nil || minorErr != nil || patchErr != nil || major < 0 || minor < 0 || patch < 0 {
+			return parts, fmt.Errorf("skill_version %q must be major.minor.patch", version)
 		}
-		return parts, nil
+		return [3]int{major, minor, patch}, nil
 	}
 	a, err := parse(installed)
 	if err != nil {
