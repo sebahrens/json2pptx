@@ -112,6 +112,10 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 				errs = append(errs, fmt.Errorf("row %d col %d: invalid fit mode %q; valid values are \"contain\", \"fit-width\", or \"fit-height\" (omit for default stretch behavior)", r, ci, cell.Fit))
 			}
 
+			if cell.Image != nil && cell.Image.Geometry != "" && cell.Image.Geometry != "rect" && cell.Image.Geometry != "ellipse" {
+				errs = append(errs, fmt.Errorf("row %d col %d: invalid image geometry %q; valid values are \"rect\" or \"ellipse\" (omit for rect)", r, ci, cell.Image.Geometry))
+			}
+
 			// Empty spacer cells are not skipped: they claim their
 			// col_span × row_span footprint exactly as Resolve does, so span
 			// and overlap checks see the same layout that renders

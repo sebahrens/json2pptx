@@ -312,7 +312,7 @@ func visualFamily(name string) string {
 	}
 	base := strings.TrimSuffix(name, "-compact")
 	switch base {
-	case "card-grid", "stylish-panels", "icon-row", "team-bios", "framework-grid":
+	case "card-grid", "stylish-panels", "icon-row", "team-bios", "framework-grid", "contact-directory":
 		return "card-grid"
 	case "process-flow", "process-grid-2row", "numbered-step-strip", "swimlane", "value-chain":
 		return "process-flow"

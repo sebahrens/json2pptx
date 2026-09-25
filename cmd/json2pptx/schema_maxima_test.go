@@ -356,6 +356,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"card-grid":                    2.4,
 	"chart-insights-split":         6.2,
 	"comparison-2col":              4.2,
+	"contact-directory":            2.8, // 24 people in 4 groups with 60-char titles overflow one slide; the pattern reports BODY_TOO_LONG
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
 	"exec-summary":                 7.2,
@@ -396,6 +397,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"swimlane":            5.5,
 	"table-highlight":     6.7,
 	"team-bios":           5.5,
+	"text-sidebar":        6.0,
 	"timeline-horizontal": 5.5,
 	"value-chain":         8.2,
 	"waterfall-bridge":    7.2,
@@ -483,6 +485,22 @@ func coherentMaximum(pattern string, v any) any {
 				}
 				if detail, ok := option["detail"].(string); ok && len([]rune(detail)) > limit {
 					option["detail"] = string([]rune(detail)[:limit])
+				}
+			}
+		}
+	case "contact-directory":
+		// Each group's people array may hold 24, but the directory as a whole
+		// holds 24: share them evenly across the maximal four groups.
+		if m, ok := v.(map[string]any); ok {
+			groups, _ := m["groups"].([]any)
+			if n := len(groups); n > 0 {
+				per := 24 / n
+				for _, raw := range groups {
+					if g, isMap := raw.(map[string]any); isMap {
+						if people, isList := g["people"].([]any); isList && len(people) > per {
+							g["people"] = people[:per]
+						}
+					}
 				}
 			}
 		}

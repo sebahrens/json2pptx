@@ -156,6 +156,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `card-grid` | Parameterized N×M grid of titled cards |
 | `chart-insights-split` | Left chart panel + right insights column (65/35 split, 75/25 when the insights are sparse) with optional headline number and so-what callout, a series/unit caption and auto data labels; falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
 | `comparison-2col` | Two-column comparison with optional headers |
+| `contact-directory` | Key-contacts directory: 1–4 groups (regions / practices), each an accent heading over a rule, then up to 24 people in rows of 3–5 — circular headshot (`photo`) or initials disc + bold name + muted title; sparse directories stack a large headshot above a centred name |
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
 | `dual-org-ladder` | Two parallel org columns with 2–6 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
 | `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |
@@ -191,6 +192,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
 | `table-highlight` | Options × criteria evaluation matrix (2–6 × 2–6) scored with Harvey balls (0–4), RAG dots or short text, with a highlighted recommended row / decisive column and a legend (content-sized rows) |
 | `team-bios` | Team / 'Our People' grid of 1–8 members with a headshot (`members[].photo`) or initials placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
+| `text-sidebar` | Narrative intro / foreword page: main column (optional heading, 1–4 paragraphs, 0–6 bullets) beside a tinted or accent-filled sidebar panel with one large bold key message (`sidebar_side`, `sidebar_style`, `sidebar_width_pct`) |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
 | `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
 | `waterfall-bridge` | Waterfall / bridge bar chart of 3–10 columns showing P&L walks or cost-driver decomposition; floating delta bars with auto-computed subtotals, optional `caption` for the scale |

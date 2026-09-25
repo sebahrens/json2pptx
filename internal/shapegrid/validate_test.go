@@ -27,6 +27,25 @@ func TestValidate_EmptyColumns(t *testing.T) {
 	}
 }
 
+func TestValidate_ImageGeometry(t *testing.T) {
+	for _, tc := range []struct {
+		geometry string
+		ok       bool
+	}{{"", true}, {"rect", true}, {"ellipse", true}, {"star5", false}} {
+		grid := &Grid{
+			Columns: []float64{100},
+			Rows:    []Row{{Cells: []Cell{{Image: &ImageSpec{Path: "a.png", Geometry: tc.geometry}}}}},
+		}
+		err := Validate(grid)
+		if tc.ok && err != nil {
+			t.Errorf("geometry %q: unexpected error %v", tc.geometry, err)
+		}
+		if !tc.ok && (err == nil || !strings.Contains(err.Error(), "image geometry")) {
+			t.Errorf("geometry %q: want an image geometry error, got %v", tc.geometry, err)
+		}
+	}
+}
+
 func TestValidate_ColSpanExceedsGrid(t *testing.T) {
 	grid := &Grid{
 		Columns: []float64{50, 50},

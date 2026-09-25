@@ -154,10 +154,12 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Deck section list | `agenda` | Numbered section outline |
 | Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items); the placeholder column is all-or-nothing — a row with no `image_label` still gets an empty placeholder |
 | Team / 'Our People' page | `team-bios` | 1–8 named people with a headshot (or initials placeholder) + role + short bio, up to 4 per row |
+| Key contacts / directory | `contact-directory` | 1–4 groups (regions, offices, practices), each an accent heading over a rule, then up to 24 people in rows of `columns` (3–5, default 4): circular headshot (`photo`, drawn with image `geometry: "ellipse"`) or initials disc + bold name + muted title — no bios (use `team-bios` for those). One or two rows of people stack a large headshot above a centred name; denser directories put the headshot left of the text and step type (14→12pt) and headshot size down until the measured block fits, else report `BODY_TOO_LONG` with the height needed |
 | Joint-venture / engagement-team paired roles | `dual-org-ladder` | Two parallel columns of 2–6 paired role cards with an org-name header above each column (optional connector line per row) |
 | Icon + caption row | `icon-row` | Visual categories, 3–5 items |
 | Photo / case study beside text | `image-text-split` | One `image` (`path` resolved against the deck dir, or `url`) beside eyebrow + heading + body + ≤5 bullets and 0–3 result `metrics`; `image_side` left/right, `image_width_pct` 30–60. Without an image it draws a dashed placeholder (`image_label`). Implements `ImageAssetPattern` so hosts resolve its image like a shape_grid image cell |
 | Callout / testimonial | `pull-quote` | Attributed quotation, optionally beside a headshot |
+| Narrative intro / foreword | `text-sidebar` | Main column (optional heading, 1–4 paragraphs, 0–6 bullets placed after the first paragraph ending in a colon) beside a sidebar panel with one large bold key message (≤200 chars). `sidebar_style` `tinted` (pale accent surface + top accent bar) or `filled` (solid accent); the sidebar ink is measured against the fill at the 3:1 large-text bar. `sidebar_side`, `sidebar_width_pct` (25–40), `body_size`, `sidebar_size`. Short copy is promoted to 16pt and centred; long copy steps down to 12pt, then reports `BODY_TOO_LONG` |
 | Stakeholder quote cluster | `quote-cluster` | 3–8 attributed quote bubbles in a 3-column grid (voice-of-customer slides) |
 
 ### Refined-consulting bias in the recommender (J2P-STYLE-008)
@@ -260,7 +262,7 @@ not a defect to engineer away: ten columns across a 13.3" slide leave about
 
 ### Pictures in pattern values
 
-Three patterns take a real picture in their `values`, all through the same
+Four patterns take a real picture in their `values`, all through the same
 `{path | url, alt}` reference (`PhotoSchema` / `validatePatternPhoto` in
 `internal/patterns/pattern_photo.go`):
 
@@ -269,6 +271,7 @@ Three patterns take a real picture in their `values`, all through the same
 | `image-text-split` | `values.image` | Dashed wireframe placeholder labelled with `image_label` |
 | `team-bios` | `values.members[].photo` | Initials tile (`photo_label`, else initials derived from `name`) |
 | `pull-quote` | `values.image` (+ `overrides.image_side`, `overrides.image_width_pct`) | No picture column at all — the quote keeps the full width |
+| `contact-directory` | `values.groups[].people[].photo` | Initials disc (pale accent tint, measured ink) |
 
 Rules a new picture-taking pattern must follow:
 
@@ -279,6 +282,7 @@ Rules a new picture-taking pattern must follow:
 - The `Field` of each ref is the JSON pointer under `values`
   (`"image"`, `"members/0/photo"`), which the host prefixes with
   `/slides/N/pattern/values/` when it reports a finding against it.
+- A circular headshot is the image cell's `geometry: "ellipse"` with `fit: "contain"` (a square frame clipped to a circle), not a pre-cropped file — `contact-directory` does this.
 - Validate the reference with `validatePatternPhoto`: a reference with neither
   `path` nor `url` renders nothing at all, and `overlay` / `text` belong to
   shape_grid image cells, not to pattern values.
@@ -291,7 +295,7 @@ Rules a new picture-taking pattern must follow:
   column cannot hold.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split, capability-heatmap, state-shift-hub): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column, rating tier, today-vs-future nodes around a hub) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split, capability-heatmap, state-shift-hub, contact-directory, text-sidebar): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column, rating tier, today-vs-future nodes around a hub, contact groups, the one key-message panel) rather than peer ordering.
 
 ### Free-positioned shapes: the lattice technique
 

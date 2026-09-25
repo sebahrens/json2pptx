@@ -50,6 +50,7 @@ var patternReach = map[string]SlideKind{
 	"before-after":                 "",
 	"before-after-compact":         "",
 	"capability-heatmap":           "",
+	"contact-directory":            "",
 	"driver-tree":                  "",
 	"dual-org-ladder":              "",
 	"framework-grid":               "",
@@ -67,6 +68,7 @@ var patternReach = map[string]SlideKind{
 	"scqa-summary":                 "",
 	"state-shift-hub":              "",
 	"swimlane":                     "",
+	"text-sidebar":                 "",
 	"value-chain":                  "",
 }
 
