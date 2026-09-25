@@ -365,17 +365,17 @@ func buildProcessGrid2RowHeaderRow(ctx ExpandContext, headers []string, accent s
 	ink := inkOnLight(ctx, "dk2", 4.5)
 	h := size * contentLineHeight
 	// Leading empty cell over the row-label column, then one per header.
-	cells := append([]*jsonschema.GridCellInput{{}}, make([]*jsonschema.GridCellInput, len(headers))...)
-	for i, header := range headers {
+	cells := []*jsonschema.GridCellInput{{}}
+	for _, header := range headers {
 		h = math.Max(h, textBlockHeightPt(ctx.Theme.BodyFont, textW*processGrid2RowMeasureSafety, textParagraph{text: header, size: size, bold: true}))
-		cells[1+i] = &jsonschema.GridCellInput{
+		cells = append(cells, &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     json.RawMessage(`"none"`),
 				Text:     buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(header), size, true, ink),
 			},
 			AccentBar: &jsonschema.AccentBarInput{Position: "bottom", Color: accent, Width: processGrid2RowUnderlinePt},
-		}
+		})
 	}
 	rowPt := math.Round(h + 2*defaultShapeInsetTBPt + processGrid2RowUnderlinePt + 2)
 	return jsonschema.GridRowInput{MinHeight: rowPt, MaxHeight: rowPt, Cells: cells}
@@ -390,17 +390,17 @@ func buildProcessGrid2RowOutcomeRow(ctx ExpandContext, outcomes []string, accent
 	ink := readableTextOn(ctx, tone, "dk1")
 	h := size * contentLineHeight
 	// Leading empty cell under the row-label column, then one per outcome.
-	cells := append([]*jsonschema.GridCellInput{{}}, make([]*jsonschema.GridCellInput, len(outcomes))...)
-	for i, outcome := range outcomes {
+	cells := []*jsonschema.GridCellInput{{}}
+	for _, outcome := range outcomes {
 		h = math.Max(h, textBlockHeightPt(ctx.Theme.BodyFont, (textW-8)*processGrid2RowMeasureSafety, textParagraph{text: outcome, size: size, bold: true}))
-		cells[1+i] = &jsonschema.GridCellInput{
+		cells = append(cells, &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry:    "roundRect",
 				Adjustments: map[string]int64{"adj": 35000}, // rounded pill ends
 				Fill:        tone.fillJSON(),
 				Text:        buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(outcome), size, true, ink),
 			},
-		}
+		})
 	}
 	rowPt := math.Round(h + 2*defaultShapeInsetTBPt + 8)
 	return jsonschema.GridRowInput{MinHeight: rowPt, MaxHeight: rowPt, Cells: cells}

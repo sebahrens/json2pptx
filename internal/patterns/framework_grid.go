@@ -365,25 +365,25 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 	idx := 0
 	insetTop := math.Round(defaultShapeInsetTBPt + fgCardPadPt + (l.rowHPt-l.contentHPt)/2)
 	for _, row := range vals.Rows {
-		// Label cell, then one per card column.
-		cells := append([]*jsonschema.GridCellInput{nil}, make([]*jsonschema.GridCellInput, l.cols)...)
 		labelText := patternTextObj{
 			Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(row.Label), Size: l.titlePt, Bold: true, Color: labelInk, Align: "l"}},
 			Align:         "l",
 			VerticalAlign: "ctr",
 		}
-		cells[0] = &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
+		// Label cell, then one cell per card column.
+		label := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     labelTone.fillJSON(),
 			Line:     json.RawMessage(`"none"`),
 			Text:     labelText.json(),
 		}}
-		fgApplyCellOverride(cells[0], cellOverrides, idx, base)
+		fgApplyCellOverride(label, cellOverrides, idx, base)
+		cells := []*jsonschema.GridCellInput{label}
 		idx++
 
 		for j := 0; j < l.cols; j++ {
 			if j >= len(row.Cards) {
-				cells[1+j] = &jsonschema.GridCellInput{}
+				cells = append(cells, &jsonschema.GridCellInput{})
 				continue
 			}
 			card := row.Cards[j]
@@ -398,7 +398,7 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 			// across the row; the inset centres the row's tallest card, which
 			// splits the stretch evenly above and below it.
 			text := patternTextObj{Paragraphs: paras, Align: "l", VerticalAlign: "t", InsetTop: insetTop}.json()
-			cells[1+j] = &jsonschema.GridCellInput{
+			cell := &jsonschema.GridCellInput{
 				Shape: &jsonschema.ShapeSpecInput{
 					Geometry: "rect",
 					Fill:     tone.fillJSON(),
@@ -406,7 +406,8 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 					Text:     text,
 				},
 			}
-			fgApplyCellOverride(cells[1+j], cellOverrides, idx, accent)
+			fgApplyCellOverride(cell, cellOverrides, idx, accent)
+			cells = append(cells, cell)
 			idx++
 		}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: l.rowHPt, MaxHeight: l.rowHPt, Cells: cells})
