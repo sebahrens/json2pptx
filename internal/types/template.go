@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -392,6 +393,17 @@ type ThemeColor struct {
 	RGB  string // Hex color value (e.g., "#FF0000")
 }
 
+// themeOverrideHexPattern is the accepted shape of a theme_override colour:
+// six hex digits with an optional leading '#'.
+var themeOverrideHexPattern = regexp.MustCompile(`^#?[0-9A-Fa-f]{6}$`)
+
+// IsThemeOverrideHex reports whether s is a valid theme_override colour value
+// (six hex digits, optional leading '#'). Anything else would be written
+// verbatim into the theme part's srgbClr val attribute.
+func IsThemeOverrideHex(s string) bool {
+	return themeOverrideHexPattern.MatchString(strings.TrimSpace(s))
+}
+
 // ApplyOverride merges a ThemeOverride into this ThemeInfo, returning a new copy
 // and warnings for non-embedded font overrides or unrecognized color keys.
 // Only non-empty override values replace template defaults.
@@ -433,8 +445,16 @@ func (t ThemeInfo) ApplyOverride(o *ThemeOverride) (ThemeInfo, []string) {
 	if len(o.Colors) > 0 {
 		for i, c := range result.Colors {
 			if hex, ok := o.Colors[c.Name]; ok {
-				result.Colors[i].RGB = hex
 				matched[c.Name] = true
+				if !IsThemeOverrideHex(hex) {
+					// Input validation rejects these; this is the defensive
+					// apply-time guard (go-slide-creator-s1uvj.24).
+					warnings = append(warnings, fmt.Sprintf(
+						"theme_override.colors.%s: %q is not a 6-digit hex color like #1A2B3C (ignored)",
+						c.Name, hex))
+					continue
+				}
+				result.Colors[i].RGB = hex
 			}
 		}
 	}

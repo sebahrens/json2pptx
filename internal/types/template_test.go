@@ -774,3 +774,19 @@ func TestApplyOverride_FontWarningMessage(t *testing.T) {
 		t.Errorf("warning should mention field path, got: %s", w)
 	}
 }
+
+// go-slide-creator-s1uvj.24: an invalid override colour must not replace the
+// template's value in the in-memory palette.
+func TestApplyOverride_InvalidColorIgnored(t *testing.T) {
+	base := ThemeInfo{Colors: []ThemeColor{{Name: "accent1", RGB: "#2E5090"}, {Name: "accent2", RGB: "#C0504D"}}}
+	got, warnings := base.ApplyOverride(&ThemeOverride{Colors: map[string]string{"accent1": "navy", "accent2": "#112233"}})
+	if got.Colors[0].RGB != "#2E5090" {
+		t.Errorf("accent1 = %q, want template value kept", got.Colors[0].RGB)
+	}
+	if got.Colors[1].RGB != "#112233" {
+		t.Errorf("accent2 = %q, want #112233", got.Colors[1].RGB)
+	}
+	if len(warnings) != 1 || !strings.Contains(warnings[0], "theme_override.colors.accent1") {
+		t.Errorf("warnings = %v, want one invalid-colour warning for accent1", warnings)
+	}
+}
