@@ -1,0 +1,600 @@
+{
+  "schema_version": 1,
+  "review_type": "Focused informed before/after repair review, not a blinded benchmark rating",
+  "scope": "business-template7 and modern9 native layouts",
+  "actual_viewed_counts": {
+    "templates": 2,
+    "layouts": 16,
+    "before_pngs": 16,
+    "after_pngs": 16,
+    "total_full_size_pngs": 32
+  },
+  "method": "Every before/after PNG viewed via view_image with original detail; PNG-only byte and pixel comparisons supplement direct inspection.",
+  "source_repo_or_keys_read": false,
+  "additional_render_performed": false,
+  "earlier_audits_preserved": true,
+  "decision": {
+    "targeted_subtitle_concerns_resolved": true,
+    "focused_repair_accepted": true,
+    "regressions_observed": 0,
+    "full_visual_approval": false,
+    "reason": "The three target contrast concerns are resolved in these probes, without observed text/font/geometry/crop changes or unrelated artwork changes. Unexercised content/image coverage remains."
+  },
+  "comparison_summary": {
+    "byte_identical_pairs": 13,
+    "changed_pairs": 3,
+    "changed_regions": [
+      "business-template3 subtitle glyphs only",
+      "modern2 left portion of subtitle gradient bar",
+      "modern4 brown/burgundy portion of subtitle gradient bar"
+    ]
+  },
+  "contrast_measurements": {
+    "method": "sRGB relative luminance on rendered PNG RGB samples; white foreground against each background pixel across a clean horizontal row of the full gradient. These are raster sample checks, not a complete accessibility certification.",
+    "business_subtitle_core": {
+      "template": "business-template",
+      "layout_id": "slideLayout3",
+      "comparison_box": [
+        49,
+        124,
+        218,
+        144
+      ],
+      "before_darkest_subtitle_core": {
+        "rgb": [
+          163,
+          117,
+          192
+        ],
+        "contrast_on_white": 3.5817986214566604
+      },
+      "after_darkest_subtitle_core": {
+        "rgb": [
+          31,
+          29,
+          47
+        ],
+        "contrast_on_white": 16.469885680106838
+      }
+    },
+    "modern_gradient_scans": [
+      {
+        "layout_id": "slideLayout2",
+        "before": {
+          "scan_y": 440,
+          "x_range": [
+            119,
+            646
+          ],
+          "minimum_ratio": 2.365343371224442,
+          "worst_x": 119,
+          "worst_rgb": [
+            230,
+            150,
+            91
+          ]
+        },
+        "after": {
+          "scan_y": 440,
+          "x_range": [
+            119,
+            646
+          ],
+          "minimum_ratio": 6.123010411644785,
+          "worst_x": 369,
+          "worst_rgb": [
+            165,
+            63,
+            81
+          ]
+        }
+      },
+      {
+        "layout_id": "slideLayout4",
+        "before": {
+          "scan_y": 406,
+          "x_range": [
+            161,
+            1117
+          ],
+          "minimum_ratio": 2.2732108734331757,
+          "worst_x": 162,
+          "worst_rgb": [
+            233,
+            154,
+            91
+          ]
+        },
+        "after": {
+          "scan_y": 406,
+          "x_range": [
+            161,
+            1117
+          ],
+          "minimum_ratio": 6.123010411644785,
+          "worst_x": 881,
+          "worst_rgb": [
+            165,
+            63,
+            81
+          ]
+        }
+      }
+    ],
+    "interpretation": "Business darkest rendered subtitle core improves from about3.58:1 to16.47:1 on white. Modern full-width gradient scans improve from minima about2.37:1 and2.27:1 to6.12:1 in both revised bars."
+  },
+  "remaining_coverage_limits": [
+    "modern1,2,6 image placeholders are not populated; image fit/crop and interaction with text remain untested, not confirmed renderer losses.",
+    "Only short generic Latin title/subtitle/bullet probes were exercised; dense payload, long wrapping, Unicode and other renderers not reviewed.",
+    "No source-template code or source files read; fonts and geometry assessed visually, not from editable source metadata.",
+    "Antialiased glyph edge colors change with foreground/background colors; pixel identity of glyph edges is not claimed.",
+    "Contrast measurements use clean raster background rows and darkest text cores, not formal evaluation of all text/font-size contexts.",
+    "Original unrelated audit findings remain outside this focused review."
+  ],
+  "layouts": [
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout1",
+      "layout_name": "Closing",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout1.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/business-template/slideLayout1.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black Closing/subtitle and light-gray right ring retain appearance and safe spacing. No new weak region or overlap.",
+      "pixel_comparison": {
+        "template": "business-template",
+        "layout_id": "slideLayout1",
+        "dimensions": [
+          1280,
+          719
+        ],
+        "before_sha256": "8d1b092c296aebadf76f8a61eaa7faa8af75f40c8160260aa4b49c7ffb333435",
+        "after_sha256": "8d1b092c296aebadf76f8a61eaa7faa8af75f40c8160260aa4b49c7ffb333435",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout2",
+      "layout_name": "Section Divider",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout2.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/business-template/slideLayout2.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black Section and large lavender01 remain readable on subtle gray bands. Numeral and background unchanged.",
+      "pixel_comparison": {
+        "template": "business-template",
+        "layout_id": "slideLayout2",
+        "dimensions": [
+          1280,
+          719
+        ],
+        "before_sha256": "08488ad9d49b55c27e4cf7f7674bbee76474dbc56917939691d85ee23c6b1195",
+        "after_sha256": "08488ad9d49b55c27e4cf7f7674bbee76474dbc56917939691d85ee23c6b1195",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout3",
+      "layout_name": "One Content",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout3.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/business-template/slideLayout3.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Former pale lavender subtitle is now dark charcoal-purple on white and clearly legible. Same wording and apparent font/geometry; title and three square bullets unchanged. No new weak text region.",
+      "pixel_comparison": {
+        "template": "business-template",
+        "layout_id": "slideLayout3",
+        "dimensions": [
+          1280,
+          719
+        ],
+        "before_sha256": "264a064fd32e5cb9631784463aeeda8a4adaacb9d0bf20910fb837988478d09d",
+        "after_sha256": "c3052f3bb24e41b938663b4a3127f58e2d2525fdd67e84214c0bc1ddfd8af545",
+        "changed_pixel_bbox": [
+          49,
+          124,
+          218,
+          144
+        ]
+      },
+      "status": "targeted_contrast_repair_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout4",
+      "layout_name": "Title Slide",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout4.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/business-template/slideLayout4.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black title/subtitle retain positions and legibility on light-gray bands. Background unchanged.",
+      "pixel_comparison": {
+        "template": "business-template",
+        "layout_id": "slideLayout4",
+        "dimensions": [
+          1280,
+          719
+        ],
+        "before_sha256": "6805cb18d3cc942ee7dc39ca854ae82cb762196096eecbc9feaaf2c0d2231b94",
+        "after_sha256": "6805cb18d3cc942ee7dc39ca854ae82cb762196096eecbc9feaaf2c0d2231b94",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout5",
+      "layout_name": "Two Content",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout5.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/business-template/slideLayout5.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Title and both three-bullet bodies retain spacing, typography and readable contrast; no overlap.",
+      "pixel_comparison": {
+        "template": "business-template",
+        "layout_id": "slideLayout5",
+        "dimensions": [
+          1280,
+          719
+        ],
+        "before_sha256": "c7002996d5b359054cbe62178db212ae6e18db14854a618268cce7c754d96d3a",
+        "after_sha256": "c7002996d5b359054cbe62178db212ae6e18db14854a618268cce7c754d96d3a",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout6.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/business-template/slideLayout6.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Intentionally blank white canvas preserved.",
+      "pixel_comparison": {
+        "template": "business-template",
+        "layout_id": "slideLayout6",
+        "dimensions": [
+          1280,
+          719
+        ],
+        "before_sha256": "35559c5805ece807662b9aa2be9619616c69d74acf55e5dab10081da9f24e778",
+        "after_sha256": "35559c5805ece807662b9aa2be9619616c69d74acf55e5dab10081da9f24e778",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout7.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/business-template/slideLayout7.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black title retains font, position and safe edges; empty white body preserved.",
+      "pixel_comparison": {
+        "template": "business-template",
+        "layout_id": "slideLayout7",
+        "dimensions": [
+          1280,
+          719
+        ],
+        "before_sha256": "34984c9f387f10d1437a57e9bf9e2cf8d793461fd1568d1798ce922622d5ceaa",
+        "after_sha256": "34984c9f387f10d1437a57e9bf9e2cf8d793461fd1568d1798ce922622d5ceaa",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Only",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout1.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout1.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "White serif title remains clear on black, with same apparent font/geometry. Empty image area still unexercised.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout1",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "d429d02def302beb954144a77cff0c45ae666d22127af5a6e66039fe311f08bc",
+        "after_sha256": "d429d02def302beb954144a77cff0c45ae666d22127af5a6e66039fe311f08bc",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": [
+        "Image placeholder unexercised."
+      ]
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout2",
+      "layout_name": "Title + subtitle + picture",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout2.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout2.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black two-line title unchanged. Gradient bar keeps its apparent geometry; light-orange start becomes dark brown, transitioning through burgundy to navy. White subtitle retains wording and apparent font/placement and reads clearly from first through last glyph. Entire bar inspected, including unoccupied right side; no newly light or weak background region observed.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout2",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "8de17e3df6ed1fcb5f95d182110671f58e9fdb660c57fdce5d9ba38e61af08b4",
+        "after_sha256": "9f6bd354f85a9689bf9c0b5902fc2fae6a0a579b2f0a0f361e1a943612fa5acb",
+        "changed_pixel_bbox": [
+          117,
+          435,
+          384,
+          509
+        ],
+        "before_gradient_white_contrast_scan": {
+          "scan_y": 440,
+          "x_range": [
+            119,
+            646
+          ],
+          "minimum_ratio": 2.365343371224442,
+          "worst_x": 119,
+          "worst_rgb": [
+            230,
+            150,
+            91
+          ]
+        },
+        "after_gradient_white_contrast_scan": {
+          "scan_y": 440,
+          "x_range": [
+            119,
+            646
+          ],
+          "minimum_ratio": 6.123010411644785,
+          "worst_x": 369,
+          "worst_rgb": [
+            165,
+            63,
+            81
+          ]
+        }
+      },
+      "status": "targeted_contrast_repair_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": [
+        "Image placeholder unexercised."
+      ]
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout3",
+      "layout_name": "One Content",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout3.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout3.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black title/body and orange bullet squares unchanged. Unrelated bottom-right orange-to-navy artwork keeps its colors, crop and geometry; no text lies over it.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout3",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "ca24d79f07538acf7040353486ee4711b7599606b26acce6a6727e3b34d86de0",
+        "after_sha256": "ca24d79f07538acf7040353486ee4711b7599606b26acce6a6727e3b34d86de0",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout4",
+      "layout_name": "Title Slide",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout4.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout4.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black title unchanged. Same wide gradient bar geometry; dark brown replaces light-orange portion and transitions into burgundy/navy. White tracked subtitle retains wording and apparent font/position and reads clearly. Entire bar inspected, including transition and unoccupied right side; no new weak region observed.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout4",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "7b3d35a52b01cef3653458b6e4810324e7511b31a7d3489c44a4e286dca35c77",
+        "after_sha256": "3133bb864ea0923b093cc8cc8243a2e03a423fdba139ad3823ddb9ecc2ed5c22",
+        "changed_pixel_bbox": [
+          159,
+          402,
+          886,
+          475
+        ],
+        "before_gradient_white_contrast_scan": {
+          "scan_y": 406,
+          "x_range": [
+            161,
+            1117
+          ],
+          "minimum_ratio": 2.2732108734331757,
+          "worst_x": 162,
+          "worst_rgb": [
+            233,
+            154,
+            91
+          ]
+        },
+        "after_gradient_white_contrast_scan": {
+          "scan_y": 406,
+          "x_range": [
+            161,
+            1117
+          ],
+          "minimum_ratio": 6.123010411644785,
+          "worst_x": 881,
+          "worst_rgb": [
+            165,
+            63,
+            81
+          ]
+        }
+      },
+      "status": "targeted_contrast_repair_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout5",
+      "layout_name": "Section Divider",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout5.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout5.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black SECTION and burgundy01 retain fonts, positions, contrast and clearance.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout5",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "bf695429cb689b00abd44296cd80db7530b34d9427458bbc57ad21fe0075c5cf",
+        "after_sha256": "bf695429cb689b00abd44296cd80db7530b34d9427458bbc57ad21fe0075c5cf",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout6",
+      "layout_name": "Closing",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout6.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout6.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "White Closing/subtitle retain legibility and placement on black. Empty image area still unexercised.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout6",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "25205243337279264c6f1c410889d4873a65ed8b1c234173ef729f060ab6fa1b",
+        "after_sha256": "25205243337279264c6f1c410889d4873a65ed8b1c234173ef729f060ab6fa1b",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": [
+        "Image placeholder unexercised."
+      ]
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout7",
+      "layout_name": "Two Content",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout7.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout7.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black title and both bodies, orange bullet squares, column spacing and white canvas unchanged.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout7",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "91ca1a908addae8f31010923fc460c16fb09898a73211f8621b0088e52d5c16b",
+        "after_sha256": "91ca1a908addae8f31010923fc460c16fb09898a73211f8621b0088e52d5c16b",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout8",
+      "layout_name": "Blank",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout8.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout8.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Intentionally blank white canvas preserved.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout8",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "6b073d866b7530d680af0feb9d69e34a7efe2e874fec0ac77d1aebb47d9587ee",
+        "after_sha256": "6b073d866b7530d680af0feb9d69e34a7efe2e874fec0ac77d1aebb47d9587ee",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout9",
+      "layout_name": "Blank + Title",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout9.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v3/templates/modern/slideLayout9.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Black serif title and empty white body unchanged.",
+      "pixel_comparison": {
+        "template": "modern",
+        "layout_id": "slideLayout9",
+        "dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "d63afc0cfa3b477a1367174f31e15c0b8d5fd3351424b27c0862180935de74c9",
+        "after_sha256": "d63afc0cfa3b477a1367174f31e15c0b8d5fd3351424b27c0862180935de74c9",
+        "changed_pixel_bbox": null
+      },
+      "status": "unchanged_no_regression_observed",
+      "findings": [],
+      "coverage_gaps": []
+    }
+  ],
+  "source_engine_commit": "5938bf14dc108e47db90b816ce12a365e1a3c1ec",
+  "source_state": "Working-tree native subtitle-contrast repairs, prior to commit",
+  "review_date": "2026-09-26"
+}

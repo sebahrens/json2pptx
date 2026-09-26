@@ -1,6 +1,6 @@
 //go:build ignore
 
-// Run with: go test scripts/repair_modern_closing_rule.go scripts/repair_modern_closing_rule_test.go
+// Run with: go test scripts/repair_reviewed_templates.go scripts/repair_reviewed_templates_test.go
 package main
 
 import (
@@ -104,6 +104,61 @@ func TestRepairClosingRule(t *testing.T) {
 			again, err := os.ReadFile(path)
 			if err != nil || !bytes.Equal(after, again) {
 				t.Fatal("idempotent repair rewrote archive")
+			}
+		})
+	}
+}
+
+func TestReviewedPartsFailBeforeAnyMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		entries []string
+		b       string
+	}{
+		{"later-part-mismatch", []string{"a.xml", "b.xml"}, "unexpected"},
+		{"missing-part", []string{"a.xml"}, ""},
+		{"duplicate-part", []string{"a.xml", "a.xml", "b.xml"}, "old marker"},
+		{"missing-guard", []string{"a.xml", "b.xml"}, "old"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			t.Chdir(dir)
+			path := filepath.Join(dir, "source.pptx")
+			var archive bytes.Buffer
+			w := zip.NewWriter(&archive)
+			for _, name := range tc.entries {
+				e, err := w.Create(name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				body := "old marker"
+				if name == "b.xml" {
+					body = tc.b
+				}
+				if _, err := io.WriteString(e, body); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			before := append([]byte(nil), archive.Bytes()...)
+			if err := os.WriteFile(path, before, 0600); err != nil {
+				t.Fatal(err)
+			}
+			repairs := map[string]reviewedPartRepair{
+				"a.xml": {old: "old", replacement: "new", guards: []string{"marker"}},
+				"b.xml": {old: "old", replacement: "new", guards: []string{"marker"}},
+			}
+			if err := repairReviewedParts(path, "preimage.pptx", repairs); err == nil {
+				t.Fatal("unexpected source accepted")
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || !bytes.Equal(before, after) {
+				t.Fatal("failed multipart repair changed source")
+			}
+			if _, err := os.Stat(filepath.Join("output", "template-repair-20260926", "preimage.pptx")); !os.IsNotExist(err) {
+				t.Fatal("failed validation created a preimage or partial repair")
 			}
 		})
 	}

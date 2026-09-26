@@ -19,7 +19,7 @@ func TestModernSubtitleRetainsGradientStopsForPreflight(t *testing.T) {
 			t.Errorf("stop %d = %+v, want %s at %d", i, stop, wantRefs[i], wantPositions[i])
 		}
 	}
-	if !stops[2].Mods.HasLumMod || stops[2].Mods.LumMod != 97000 || stops[2].Mods.LumOff != 3000 {
+	if !stops[2].Mods.HasLumMod || stops[2].Mods.LumMod != 50000 || stops[2].Mods.LumOff != 0 {
 		t.Errorf("orange stop lost its luminance modifiers: %+v", stops[2].Mods)
 	}
 }
