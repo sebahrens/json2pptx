@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "issue": "go-slide-creator-3qzo4.39",
+  "scope": "modern-template native Closing connector repair; no aggregate visual approval",
+  "template": "templates/modern-template.pptx",
+  "original_template_sha256": "4d5cd51ab6e08f9008b9f43c6389a88e439baf9561a8bbc19426be1b74e26b83",
+  "repaired_template_sha256": "e64347872ff4ebe51296e0dbab1aadbcccb5abb2df79db151148ea432d551534",
+  "rendering_source_sha256": "6ebde0c2a6b670d3a56165317d419fa94d8a9a0380e22321723daa13babad3c9",
+  "package_integrity": {
+    "parts": 75,
+    "original_part_order_preserved": true,
+    "only_changed_part": "ppt/slideLayouts/slideLayout5.xml",
+    "removed_object": "Straight Connector 10, id11, x4985657 y3300000 cx0 cy320000",
+    "all_other_part_payloads_byte_identical": true,
+    "remaining_layout_xml_byte_preserved": true
+  },
+  "render_evidence": {
+    "directory": "output/modern-closing-connector-repair-20260926-v1",
+    "native_layout_count": 7,
+    "unaffected_layouts_pixel_identical": 6,
+    "resolution": [1280, 720],
+    "closing_changed_pixel_bbox": [522, 346, 525, 381],
+    "original_source_profiles": ["representative", "dense"],
+    "fit_modes": ["default", "warn", "off", "strict"],
+    "verified_decks": 8,
+    "all_original_text_and_native_layout_preserved": true,
+    "profile_verification_sha256": "03ab5a2a7687c52da4f1af188b512dcf5bea2c009768e37faf7ec7fd5a7f78c4"
+  },
+  "single_reviewer_followup": {
+    "report": "output/blind-closing-followup-20260926-v1/review.json",
+    "sha256": "33d48d42008fb6f22943b837d6c80c5336e4672e747b490a487d5e5289d2384a",
+    "individually_inspected_pages": 2,
+    "safe": 2,
+    "unsafe": 0,
+    "minor_cautions": "Tracked separately in go-slide-creator-3qzo4.66; not discarded as SAFE",
+    "aggregate_approval": false
+  },
+  "local_gates": ["template-check PASS", "examine-template --gate PASS (structural; optional PNG skipped)", "all eight permanent source-preservation regression cases PASS with race detection", "shipped-preview and MCP preview-reference regressions PASS", "quality-package lint: zero issues"],
+  "review": {
+    "testing": "Explicit required-part presence, parsed Closing presence, complete source strings, all fit modes and no inherited/emitted connector checked. Rendering remains separate evidence, not inferred from structural tests.",
+    "adversarial": "Missing layout/parts cannot make the test vacuously pass. Repair preserved all unrelated package parts and native artwork. Does not change renderer-wide connector behavior or remove connectors from other templates."
+  },
+  "remaining_work": "Post-push CI/full-suite monitoring; separate minor Closing design cautions and all other visual issues remain open."
+}
