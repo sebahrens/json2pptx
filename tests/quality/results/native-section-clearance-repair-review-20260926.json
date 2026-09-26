@@ -1,0 +1,800 @@
+{
+  "all_layout_regression": {
+    "decoded_pixel_comparison": {
+      "changed_pixels": [
+        "modern-template/slideLayout2-dense",
+        "modern-template/slideLayout2-representative"
+      ],
+      "first_count": 309,
+      "first_manifest": "output/native-content-corpus-20260926-v6/manifest.json",
+      "matched_pixels": 307,
+      "method": "PNG decoded to canonical RGBA; SHA256 includes dimensions and all pixels",
+      "missing_ids": null,
+      "second_count": 309,
+      "second_manifest": "output/native-content-corpus-20260926-v7/manifest.json"
+    },
+    "native_layout_ids": 108,
+    "preexisting_source_omission_probes": 47,
+    "probes": 309,
+    "templates": 14,
+    "visual_corpus_approved": false
+  },
+  "cause": "Native oversized section-number frame and bottom-anchored title frame overlapped; separate text roles instead of a title-length-specific nudge",
+  "independent_review": {
+    "approved_eligible_scope": false,
+    "approved_refused_stress": false,
+    "approved_unrelated_pages": false,
+    "conclusion": "Not approved as a complete eligible packet: four eligible pages retain observed number/title collisions. Eight eligible pages have no observed issue. The two original source mismatches were metadata-only and are resolved against corrected actual-source briefs, with no observed eligible source loss. Both refused stress pages have visible clipping/collision and are not suitable output. No unrelated-page or editability approval.",
+    "corrected_brief_reinspected_ids": [
+      "page-001",
+      "page-003"
+    ],
+    "corrected_brief_reinspection_count": 2,
+    "editability_assessed": false,
+    "eligible_ids": [
+      "page-001",
+      "page-002",
+      "page-003",
+      "page-004",
+      "page-005",
+      "page-006",
+      "page-007",
+      "page-008",
+      "page-009",
+      "page-010",
+      "page-011",
+      "page-012"
+    ],
+    "inspected_ids": [
+      "page-001",
+      "page-002",
+      "page-003",
+      "page-004",
+      "page-005",
+      "page-006",
+      "page-007",
+      "page-008",
+      "page-009",
+      "page-010",
+      "page-011",
+      "page-012",
+      "page-013",
+      "page-014"
+    ],
+    "inspected_image_count": 14,
+    "metadata_correction": {
+      "actual_source_loss_eligible_ids": [],
+      "actual_visible_source_clipping_refused_stress_ids": [
+        "page-013",
+        "page-014"
+      ],
+      "corrected_expectations": {
+        "number": "07",
+        "tagline": "Delivery overview",
+        "title": "Service performance"
+      },
+      "finding": "Both affected full-size PNGs were re-opened and show complete SERVICE PERFORMANCE,07 and Delivery overview. The original discrepancies were packet metadata errors, not observed source loss or proven renderer defects.",
+      "metadata_only_mismatch_count": 2,
+      "metadata_only_mismatch_ids": [
+        "page-001",
+        "page-003"
+      ],
+      "original_incorrect_expectations": {
+        "number": "06",
+        "title": "Quarterly operating review"
+      },
+      "source": "Corrected packet cites actual retained generator inputs; no configuration key or production code inspected."
+    },
+    "method": "Every full-size PNG visually inspected; suspicious brief/title/number comparisons re-opened individually. Source brief compared to visible text rather than accepted as rendered fact.",
+    "original_packet_preserved": "pages.json",
+    "packet": "pages-corrected.json",
+    "pages": [
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Section title, upper/right number and lower tagline form a coherent hierarchy over the purple glow. No decorative-content collision observed.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Black text on white/purple glow is readable.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Full SERVICE PERFORMANCE title,07 and Delivery overview are visible and match corrected actual-source brief. Original Quarterly operating review/06 expectations were metadata-only errors, not source loss.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Title, number and tagline well separated.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "page-001",
+        "inspected_original_size": true,
+        "issues": [],
+        "metadata_only_original_brief_mismatch": true,
+        "observed_source": {
+          "number": "07",
+          "tagline": "Delivery overview",
+          "title": "Service performance",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v7/modern-template/slideLayout2-representative.png",
+        "png_sha256": "500198d793e1f5500405bfe74694e90fba098a1c50d37aa8e009be993a804155",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "07",
+          "tagline": "Delivery overview",
+          "title": "Service performance"
+        },
+        "source_brief_provenance": "Actual retained generator input from source corpus manifest; original hand-entered packet brief was wrong",
+        "suitable_output": true,
+        "verdict": "No observed defect against corrected actual-source brief."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Section title, upper/right number and lower tagline form a coherent hierarchy over the purple glow. No decorative-content collision observed.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Three large title lines and tagline are readable with high contrast.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Number07 sits clearly above title; three-line title ends before tagline.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "page-002",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_source": {
+          "number": "07",
+          "tagline": "Delivery overview",
+          "title": "Quarterly operating review and service delivery priorities",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v7/modern-template/slideLayout2-dense.png",
+        "png_sha256": "3814a781735c1ddf6c1cca3021913cc1b491d1770f3407e9fc850b1320b01c70",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "07",
+          "tagline": "Delivery overview",
+          "title": "Quarterly operating review and service delivery priorities"
+        },
+        "source_brief_provenance": "Actual retained generator input from source corpus manifest; original hand-entered packet brief was wrong",
+        "suitable_output": true,
+        "verdict": "No observed defect against source brief."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Section title, upper/right number and lower tagline form a coherent hierarchy over the purple glow. No decorative-content collision observed.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Black title/number/tagline are readable.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Full SERVICE PERFORMANCE title,07 and Delivery overview are visible and match corrected actual-source brief. Original Quarterly operating review/06 expectations were metadata-only errors, not source loss.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Number07 is farther down than page-001 but clear of the two-line title.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "page-003",
+        "inspected_original_size": true,
+        "issues": [],
+        "metadata_only_original_brief_mismatch": true,
+        "observed_source": {
+          "number": "07",
+          "tagline": "Delivery overview",
+          "title": "Service performance",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v6/modern-template/slideLayout2-representative.png",
+        "png_sha256": "ac859647a4763f7c18a4d030baa6db86ccf070a9adcca1310c1558c7d52d2def",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "07",
+          "tagline": "Delivery overview",
+          "title": "Service performance"
+        },
+        "source_brief_provenance": "Actual retained generator input from source corpus manifest; original hand-entered packet brief was wrong",
+        "suitable_output": true,
+        "verdict": "No observed defect against corrected actual-source brief."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Number/title relationship is visually disrupted by collision; purple glow itself does not create a contrast failure.",
+            "status": "defect"
+          },
+          "readability_contrast": {
+            "observation": "All title words,07 and tagline remain distinguishable, though number/title contact weakens separation.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words. The collision remains a separate spacing/readability defect.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Bottom of07 touches/overlaps the top edge of OPERATING in title's first line.",
+            "status": "defect"
+          }
+        },
+        "id": "page-004",
+        "inspected_original_size": true,
+        "issues": [
+          {
+            "cause": "Cause not determined from blind pixels; observed collision/clipping only.",
+            "description": "07 collides with the first title line near OPERATING.",
+            "severity": "major",
+            "type": "number_title_collision"
+          }
+        ],
+        "observed_source": {
+          "number": "07",
+          "tagline": "Delivery overview",
+          "title": "Quarterly operating review and service delivery priorities",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v6/modern-template/slideLayout2-dense.png",
+        "png_sha256": "fe0338f5341bd0e0ea14df348df4ccf6401d8822ff2e08b41214c8a7f799a954",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "07",
+          "tagline": "Delivery overview",
+          "title": "Quarterly operating review and service delivery priorities"
+        },
+        "source_brief_provenance": "Actual retained generator input from source corpus manifest; original hand-entered packet brief was wrong",
+        "suitable_output": false,
+        "verdict": "Eligible-scope page has outstanding observed issue."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Section title, upper/right number and lower tagline form a coherent hierarchy over the purple glow. No decorative-content collision observed.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Large title and88/tagline have high contrast.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Explicit two-line source title wraps to three rendered lines; number88 remains clear above. Full final line fits canvas.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "page-005",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Service delivery priorities\nand operating model",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-02-B.png",
+        "png_sha256": "117c6c23548cc5031a3dce50f8e290fbc2f5dabc5fbdbf030ddb8eca00ff6f53",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Service delivery priorities\nand operating model"
+        },
+        "suitable_output": true,
+        "verdict": "No observed defect against source brief."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Number/title relationship is visually disrupted by collision; purple glow itself does not create a contrast failure.",
+            "status": "defect"
+          },
+          "readability_contrast": {
+            "observation": "Number88 and SERVICE DELIVERY overlap heavily, making intersecting characters hard to read.",
+            "status": "defect"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words. The collision remains a separate spacing/readability defect.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Number88 crosses first title line; title wraps to four lines. Remaining title/tagline fit.",
+            "status": "defect"
+          }
+        },
+        "id": "page-006",
+        "inspected_original_size": true,
+        "issues": [
+          {
+            "cause": "Cause not determined from blind pixels; observed collision/clipping only.",
+            "description": "88 overlaps DELIVERY in the first title line.",
+            "severity": "major",
+            "type": "number_title_collision"
+          }
+        ],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Service delivery priorities\nand operating model",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-02-A.png",
+        "png_sha256": "419d6f2902b7853c15d98e826cc60861661e1745f8c48e504bad63d95282d3d8",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Service delivery priorities\nand operating model"
+        },
+        "suitable_output": false,
+        "verdict": "Eligible-scope page has outstanding observed issue."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Number/title relationship is visually disrupted by collision; purple glow itself does not create a contrast failure.",
+            "status": "defect"
+          },
+          "readability_contrast": {
+            "observation": "First title line and88 intersect at REVIEW, reducing readability there; remaining three lines/tagline readable.",
+            "status": "defect"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words. The collision remains a separate spacing/readability defect.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Number88 overlaps/touches end of OPERATING REVIEW. Four source lines otherwise fit before tagline.",
+            "status": "defect"
+          }
+        },
+        "id": "page-007",
+        "inspected_original_size": true,
+        "issues": [
+          {
+            "cause": "Cause not determined from blind pixels; observed collision/clipping only.",
+            "description": "88 collides with REVIEW in first title line.",
+            "severity": "major",
+            "type": "number_title_collision"
+          }
+        ],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Operating review\nService delivery\nRegional priorities\nReporting ownership",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-04-A.png",
+        "png_sha256": "cb209071dcd3c79b515c8ce3670236aa8f1e55f0ee79571c12da8e543902bd3c",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Operating review\nService delivery\nRegional priorities\nReporting ownership"
+        },
+        "suitable_output": false,
+        "verdict": "Eligible-scope page has outstanding observed issue."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Section title, upper/right number and lower tagline form a coherent hierarchy over the purple glow. No decorative-content collision observed.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Four title lines readable; slightly smaller than neighbouring large headings but not tiny.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Number88 sits clearly above title; four lines and tagline separated without clipping.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "page-008",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Operating review\nService delivery\nRegional priorities\nReporting ownership",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-04-B.png",
+        "png_sha256": "511fc243d512286af7fcda81c37405efe657dfcef350f841008b89bace839e2e",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Operating review\nService delivery\nRegional priorities\nReporting ownership"
+        },
+        "suitable_output": true,
+        "verdict": "No observed defect against source brief."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Section title, upper/right number and lower tagline form a coherent hierarchy over the purple glow. No decorative-content collision observed.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Single title line,88 and tagline clear.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "88 sits above single title line with a wide gap; all text contained.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "page-009",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Service delivery",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-01-A.png",
+        "png_sha256": "24589b746d8e1561a2fe19c45d6845a840806341a3f395d197ebdb5f282eca25",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Service delivery"
+        },
+        "suitable_output": true,
+        "verdict": "No observed defect against source brief."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Section title, upper/right number and lower tagline form a coherent hierarchy over the purple glow. No decorative-content collision observed.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Single title line,88 and tagline clear.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "88 placed higher; title and tagline separated and contained.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "page-010",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Service delivery",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-01-B.png",
+        "png_sha256": "ac17509f618476d60a104d2a8d4950913615777080d70c403f41d2b030ceee40",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Service delivery"
+        },
+        "suitable_output": true,
+        "verdict": "No observed defect against source brief."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Section title, upper/right number and lower tagline form a coherent hierarchy over the purple glow. No decorative-content collision observed.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Three-line long title,88 and tagline readable.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "88 clearly above first title line; complete title fits before tagline.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "page-011",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Quarterly operating review and service delivery priorities",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-03-B.png",
+        "png_sha256": "d5a722ebe6ac6ed7913afb439d1b20997f4c44603c4b352c5abab38edc3ce797",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Quarterly operating review and service delivery priorities"
+        },
+        "suitable_output": true,
+        "verdict": "No observed defect against source brief."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Number/title relationship is visually disrupted by collision; purple glow itself does not create a contrast failure.",
+            "status": "defect"
+          },
+          "readability_contrast": {
+            "observation": "All title words and88 distinguishable, but near-contact weakens title/number separation.",
+            "status": "no_observed_contrast_or_legibility_failure"
+          },
+          "source_completeness": {
+            "observation": "Expected title text, number and tagline are all present; uppercase/wrapping differences do not omit words. The collision remains a separate spacing/readability defect.",
+            "status": "matches_brief_as_observed"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Bottom of88 touches/overlaps top of OPERATING in first title line.",
+            "status": "defect"
+          }
+        },
+        "id": "page-012",
+        "inspected_original_size": true,
+        "issues": [
+          {
+            "cause": "Cause not determined from blind pixels; observed collision/clipping only.",
+            "description": "88 collides with the first title line near OPERATING.",
+            "severity": "major",
+            "type": "number_title_collision"
+          }
+        ],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Quarterly operating review and service delivery priorities",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-03-A.png",
+        "png_sha256": "a7665b12615b4ce9e98e691252a96eccaab7e020f54fb53d475b885bbf78595e",
+        "scope": "eligible_output",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Quarterly operating review and service delivery priorities"
+        },
+        "suitable_output": false,
+        "verdict": "Eligible-scope page has outstanding observed issue."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Number/title relationship is visually disrupted by collision; purple glow itself does not create a contrast failure.",
+            "status": "defect"
+          },
+          "readability_contrast": {
+            "observation": "Many title lines densely fill slide; upper title clipped and88 overlays body text, making affected text unreadable.",
+            "status": "defect"
+          },
+          "source_completeness": {
+            "observation": "Full repeated expected title is not visible because it extends beyond top edge.88 and Delivery overview remain visible.",
+            "status": "visually_incomplete"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Title extends above canvas and number88 crosses multiple title lines. Tagline remains clear.",
+            "status": "defect"
+          }
+        },
+        "id": "page-013",
+        "inspected_original_size": true,
+        "issues": [
+          {
+            "cause": "Cause not determined from blind pixels; observed collision/clipping only.",
+            "description": "Overcapacity title extends above slide and is clipped; full twelve-repeat source cannot be read.",
+            "severity": "major",
+            "type": "refused_stress_clipping"
+          },
+          {
+            "cause": "Cause not determined from blind pixels; observed collision/clipping only.",
+            "description": "88 overlays multiple dense title lines.",
+            "severity": "major",
+            "type": "number_title_collision"
+          }
+        ],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Only a clipped portion of repeated title is visible.",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-05-A.png",
+        "png_sha256": "c87e4d840bfecf1f4bb7191983d96435afa1e3eb445aab240053cad0cfc4daac",
+        "scope": "explicitly_refused_overcapacity_stress",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership "
+        },
+        "suitable_output": false,
+        "verdict": "Refused stress only: inspected, visibly defective, not suitable output."
+      },
+      {
+        "four_lens": {
+          "composition_visual_fidelity": {
+            "limitation": "No original-template identity/reference supplied; exact inherited-template fidelity unproven.",
+            "observation": "Number/title relationship is visually disrupted by collision; purple glow itself does not create a contrast failure.",
+            "status": "defect"
+          },
+          "readability_contrast": {
+            "observation": "Upper title clipped;88 overlays dense title text and reduces readability.",
+            "status": "defect"
+          },
+          "source_completeness": {
+            "observation": "Full repeated expected title is not visible because it extends beyond top edge.88 and Delivery overview remain visible.",
+            "status": "visually_incomplete"
+          },
+          "spacing_collision_clipping": {
+            "observation": "Dense repeated title extends above canvas;88 is positioned higher but still crosses title lines. Tagline visible.",
+            "status": "defect"
+          }
+        },
+        "id": "page-014",
+        "inspected_original_size": true,
+        "issues": [
+          {
+            "cause": "Cause not determined from blind pixels; observed collision/clipping only.",
+            "description": "Overcapacity title extends above slide and is clipped; full twelve-repeat source cannot be read.",
+            "severity": "major",
+            "type": "refused_stress_clipping"
+          },
+          {
+            "cause": "Cause not determined from blind pixels; observed collision/clipping only.",
+            "description": "88 overlays multiple dense title lines.",
+            "severity": "major",
+            "type": "number_title_collision"
+          }
+        ],
+        "observed_source": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Only a clipped portion of repeated title is visible.",
+          "title_case": "Uppercase rendering"
+        },
+        "operator_source_artifact": "/Users/seb/projects/json2pptx/output/section-clearance-stress-20260926/case-05-B.png",
+        "png_sha256": "9b418ed8e36144148305138107087d6451778565f853b3125d3967f8e1600e85",
+        "scope": "explicitly_refused_overcapacity_stress",
+        "source_brief": {
+          "number": "88",
+          "tagline": "Delivery overview",
+          "title": "Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership Regional service delivery priorities and reporting ownership "
+        },
+        "suitable_output": false,
+        "verdict": "Refused stress only: inspected, visibly defective, not suitable output."
+      }
+    ],
+    "refused_stress_ids": [
+      "page-013",
+      "page-014"
+    ],
+    "review_type": "Single-reviewer opaque section-page four-lens review",
+    "scope": "Only supplied section packet and fourteen PNGs. No mapping key, configuration or production code read.",
+    "summary": {
+      "eligible_actual_source_loss_pages": 0,
+      "eligible_no_observed_issue_pages": 8,
+      "eligible_number_title_collision_pages": 4,
+      "eligible_pages": 12,
+      "eligible_source_brief_mismatch_pages": 0,
+      "metadata_only_original_brief_mismatch_pages": 2,
+      "refused_stress_pages": 2,
+      "refused_stress_with_visible_clipping_and_collision": 2
+    },
+    "unreviewed_ids": []
+  },
+  "issue": "go-slide-creator-3qzo4.13",
+  "operator_current_eligible_inspected_ids": [
+    "page-001",
+    "page-002",
+    "page-005",
+    "page-008",
+    "page-010",
+    "page-011"
+  ],
+  "operator_disposition": "Four original eligible number/title collisions absent from corresponding repaired variants. All six current eligible variants independently inspected and suitable within this scope. Both excessive-title artifacts remain refused and visibly defective, not approved. No overall contact-sheet/corpus, image readability, source omission, or feature-wide approval.",
+  "operator_original_collision_ids": [
+    "page-004",
+    "page-006",
+    "page-007",
+    "page-012"
+  ],
+  "overcapacity_disposition": {
+    "after_suggested_max_chars": 182,
+    "before_and_after_finding": "TITLE_TRUNCATED action refuse severity error",
+    "publishable": false,
+    "source_chars": 732,
+    "visible_overflow_not_approved": true
+  },
+  "package_preservation": {
+    "after": "templates/modern-template.pptx",
+    "after_sha256": "4d5cd51ab6e08f9008b9f43c6389a88e439baf9561a8bbc19426be1b74e26b83",
+    "before": "output/template-repair-20260926/modern-template-section-before.pptx",
+    "before_sha256": "95ce31b37e204c0c237afec647763875569c1615e89c0ebab54bb12a24487563",
+    "changed_parts": [
+      "ppt/slideLayouts/slideLayout2.xml"
+    ],
+    "method": "Compare every decompressed package-entry byte; no part added or removed",
+    "parts": 75,
+    "unchanged_media_assets": 5,
+    "unchanged_parts": 74
+  },
+  "rendered_source_revision": {
+    "base_commit": "a62ba29faa16d2fa2974537f01f6cbda8473b7b0",
+    "engine_source_sha256": "a09902d53c9ac5e9ac4169f6e6d87f51a91208c8e989d7b88bd799b754654b50",
+    "harness_sha256": "b4c9349dd4f0451ffc8b266b7b0ae26ec9b372277efcd798695761d918bbd023",
+    "manifest": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v7/manifest.json",
+    "note": "Source hashes identify actual v7 rendering snapshot. Subsequent generator test-only additions exercise title variants without changing production behavior.",
+    "uncommitted_template_repair": true
+  },
+  "repair": {
+    "actual_dense_title_fitted_font_pt": 55,
+    "interframe_gap_cm": 0.5,
+    "interframe_gap_emu": 180000,
+    "native_number_font_pt": 96,
+    "native_title_font_pt": 65,
+    "note": "Template font definitions unchanged; existing fit logic bakes55pt for dense title in corrected region. Four-line fit remains above28pt floor.",
+    "number_anchor": "top",
+    "number_frame_height_emu": 1600000,
+    "title_bottom_edge_unchanged": true,
+    "title_frame_height_emu": 2268577,
+    "title_frame_y_emu": 2352408
+  },
+  "schema_version": 1,
+  "verification": {
+    "build": "PASS",
+    "focused_title_fit_race": "PASS14.533s",
+    "full_generator_short_race": "PASS90.626s",
+    "full_quality_short_race": "PASS31.589s",
+    "full_template_short_race": "PASS13.952s",
+    "lint": "0 issues",
+    "new_commit_ci": "Pending push and terminal outcomes; issue not closed",
+    "repair_script_race": "PASS1.341s",
+    "structural_template_examine_gate": "PASS; gate PNG phase skipped due unavailable toolchain; actual v7 all309 corpus separately rendered using bundled LibreOffice"
+  }
+}

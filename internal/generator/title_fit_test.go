@@ -18,6 +18,62 @@ import (
 
 const longConsultingTitle = "Procurement is fragmented across 14 business units, leaving an estimated $38-52M of annual savings uncaptured"
 
+func TestModernDividerSeparatedRolesFitOrRefuse(t *testing.T) {
+	for _, tc := range []struct {
+		name, title string
+		refuse      bool
+	}{
+		{"short", "Service delivery", false},
+		{"two_lines", "Service delivery priorities\nand operating model", false},
+		{"dense", "Quarterly operating review and service delivery priorities", false},
+		{"four_lines", "Operating review\nService delivery\nRegional priorities\nReporting ownership", false},
+		{"over_capacity", strings.Repeat("Regional service delivery priorities and reporting ownership ", 12), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out := filepath.Join(t.TempDir(), "section.pptx")
+			result, _, err := generateSinglePass(context.Background(), GenerationRequest{
+				TemplatePath: "../../templates/modern-template.pptx", OutputPath: out, ExcludeTemplateSlides: true,
+				Slides: []SlideSpec{{LayoutID: "slideLayout2", Content: []ContentItem{
+					{PlaceholderID: "title", Type: ContentSectionTitle, Value: tc.title},
+					{PlaceholderID: "Section Number", Type: ContentText, Value: "88"},
+					{PlaceholderID: "body", Type: ContentText, Value: "Delivery overview"},
+				}}},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			slide := readZipFileString(t, out, "ppt/slides/slide1.xml")
+			for _, line := range strings.Split(tc.title, "\n") {
+				if !strings.Contains(slide, line) {
+					t.Fatal("authored title lost text")
+				}
+			}
+			if !strings.Contains(slide, ">88</a:t>") || !strings.Contains(slide, "Delivery overview") {
+				t.Fatal("number/tagline lost")
+			}
+			refused := false
+			for _, f := range result.FitFindings {
+				if f.Code == patterns.ErrCodeTitleTruncated && f.Action == "refuse" {
+					refused = true
+				}
+			}
+			if refused != tc.refuse {
+				t.Fatalf("refused=%v, want=%v; findings=%+v", refused, tc.refuse, result.FitFindings)
+			}
+			titleXML := slide[:strings.Index(slide, `name="body"`)]
+			for _, match := range regexp.MustCompile(`<a:rPr[^>]*\bsz="(\d+)"`).FindAllStringSubmatch(titleXML, -1) {
+				size, err := strconv.Atoi(match[1])
+				if err != nil {
+					t.Fatal(err)
+				}
+				if size < SectionTitleMinHPt {
+					t.Fatalf("title below readable floor: %d", size)
+				}
+			}
+		})
+	}
+}
+
 func TestDetectSectionTitleFloor(t *testing.T) {
 	base := TitleFitInput{
 		WidthEMU: 4968816, HeightEMU: 1461188,

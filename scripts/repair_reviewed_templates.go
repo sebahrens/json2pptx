@@ -19,6 +19,7 @@ func main() {
 		func() error { return repairClosingRule("templates/modern-template.pptx") },
 		func() error { return repairBusinessSubtitle("templates/business-template.pptx") },
 		func() error { return repairModernSubtitle("templates/modern.pptx") },
+		func() error { return repairModernSection("templates/modern-template.pptx") },
 	} {
 		if err := repair(); err != nil {
 			panic(err)
@@ -29,6 +30,77 @@ func main() {
 type reviewedPartRepair struct {
 	old, replacement string
 	guards           []string
+}
+
+// The original oversized, implicitly centered number frame overlaps the
+// bottom-anchored title. Give each text role its own region, retaining title
+// bottom edge, fonts, colors, artwork and a 0.5cm inter-frame clearance.
+func repairModernSection(path string) error {
+	const part = "ppt/slideLayouts/slideLayout2.xml"
+	r, err := zip.OpenReader(path)
+	if err != nil {
+		return err
+	}
+	var source []byte
+	for _, entry := range r.File {
+		if entry.Name != part {
+			continue
+		}
+		if source != nil {
+			_ = r.Close()
+			return fmt.Errorf("duplicate reviewed part %s", part)
+		}
+		f, err := entry.Open()
+		if err != nil {
+			_ = r.Close()
+			return err
+		}
+		source, err = io.ReadAll(f)
+		closeErr := f.Close()
+		if err != nil {
+			_ = r.Close()
+			return fmt.Errorf("read section layout: %w", err)
+		}
+		if closeErr != nil {
+			_ = r.Close()
+			return fmt.Errorf("close section layout: %w", closeErr)
+		}
+	}
+	if err := r.Close(); err != nil {
+		return err
+	}
+	if source == nil {
+		return fmt.Errorf("reviewed part %s missing", part)
+	}
+	substitutions := [][2]string{
+		{`<a:off x="1450428" y="990601"/><a:ext cx="9145991" cy="3630384"/>`, `<a:off x="1450428" y="2352408"/><a:ext cx="9145991" cy="2268577"/>`},
+		{`<a:off x="7886700" y="572408"/><a:ext cx="3182938" cy="3417887"/>`, `<a:off x="7886700" y="572408"/><a:ext cx="3182938" cy="1600000"/>`},
+		{`<p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr marL="11113" indent="-11113">`, `<p:txBody><a:bodyPr anchor="t"/><a:lstStyle><a:lvl1pPr marL="11113" indent="-11113">`},
+	}
+	original, repaired := true, true
+	for _, pair := range substitutions {
+		original = original && bytes.Count(source, []byte(pair[0])) == 1 && !bytes.Contains(source, []byte(pair[1]))
+		repaired = repaired && bytes.Count(source, []byte(pair[1])) == 1 && !bytes.Contains(source, []byte(pair[0]))
+	}
+	guards := []string{`name="title"`, `name="Section Number"`, `<a:defRPr sz="6500">`, `<a:defRPr sz="9600">`, `<a:bodyPr anchor="b">`}
+	for _, guard := range guards {
+		if !bytes.Contains(source, []byte(guard)) {
+			return fmt.Errorf("section layout missing reviewed marker %q", guard)
+		}
+	}
+	if repaired {
+		return nil
+	}
+	if !original {
+		return fmt.Errorf("section layout differs from reviewed source; refusing partial or unexpected repair")
+	}
+	updated := append([]byte(nil), source...)
+	for _, pair := range substitutions {
+		updated = bytes.Replace(updated, []byte(pair[0]), []byte(pair[1]), 1)
+	}
+	return repairReviewedParts(path, "modern-template-section-before.pptx", map[string]reviewedPartRepair{
+		part: {old: string(source), replacement: string(updated), guards: guards},
+	})
 }
 
 func repairClosingRule(path string) error {
