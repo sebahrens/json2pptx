@@ -613,7 +613,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		}
 	})
 
-	t.Run("fit_report=true with overflow populates findings sorted by severity", func(t *testing.T) {
+	t.Run("fit_report=true cannot publish a table with missing rows", func(t *testing.T) {
 		overflowJSON := `{
 			"template": "midnight-blue",
 			"slides": [{
@@ -642,46 +642,98 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 			}]
 		}`
 
-		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
-			"presentation": mustParseJSON(overflowJSON),
-			"fit_report":   true,
-			"strict_fit":   "off",
-		}))
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+		for _, mode := range []string{"", "warn", "off", "strict"} {
+			t.Run(fmt.Sprintf("mode=%q", mode), func(t *testing.T) {
+				mc := testMCPConfig(t)
+				params := map[string]any{"presentation": mustParseJSON(overflowJSON), "fit_report": true}
+				if mode != "" {
+					params["strict_fit"] = mode
+				}
+				result, err := mc.handleGenerate(context.Background(), makeRequest(params))
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				requireStructuredError(t, result, patterns.ErrCodeTableRowsTruncated)
+				envelope := structuredErrorEnvelope(t, result)
+				sawRepair := false
+				for _, finding := range envelope.Diagnostics {
+					if finding.Code == patterns.ErrCodeTableRowsTruncated {
+						sawRepair = finding.Path == "/slides/0/content/1" && finding.Fix != nil
+					}
+				}
+				if !sawRepair {
+					t.Fatalf("table-loss repair missing: %+v", envelope.Diagnostics)
+				}
+				files, err := os.ReadDir(mc.outputDir)
+				if err != nil || len(files) != 0 {
+					t.Fatalf("refusal leaked artifacts: %v %v", files, err)
+				}
+			})
 		}
-		if result.IsError {
-			t.Fatalf("unexpected tool error: %v", result.Content)
-		}
+	})
 
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp JSONOutput
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
+	t.Run("source complete warnings remain structured without fit_report", func(t *testing.T) {
+		mc := testMCPConfig(t)
+		headers := make([]string, 10)
+		rows := make([][]string, 6)
+		for c := range headers {
+			headers[c] = fmt.Sprintf("H%d", c)
 		}
-		if !resp.Success {
-			t.Error("expected success=true")
-		}
-		if len(resp.FitFindings) == 0 {
-			t.Skip("no fit findings generated — thresholds may need adjustment")
-		}
-
-		// Verify sorting: ActionRank should be non-increasing among slide-level
-		// findings (template-level findings like layout_synthesized are appended
-		// separately and not subject to per-slide ordering).
-		var slideFindings []patterns.FitFinding
-		for _, f := range resp.FitFindings {
-			if strings.HasPrefix(f.Path, "slides[") {
-				slideFindings = append(slideFindings, f)
+		for r := range rows {
+			rows[r] = make([]string, len(headers))
+			for c := range headers {
+				rows[r][c] = fmt.Sprintf("R%dC%d", r, c)
 			}
 		}
+		deck := map[string]any{"template": "midnight-blue", "slides": []any{map[string]any{"layout_id": "slideLayout2", "content": []any{map[string]any{"placeholder_id": "body", "type": "table", "table_value": map[string]any{"headers": headers, "rows": rows}}}}}}
+		result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{"presentation": deck, "output_filename": "complete-table.pptx", "strict_fit": "warn"}))
+		if err != nil || result.IsError {
+			t.Fatalf("complete warning fixture refused: %v %v", err, result)
+		}
+		var resp JSONOutput
+		if err := json.Unmarshal([]byte(textContent(result)), &resp); err != nil {
+			t.Fatal(err)
+		}
+		if !resp.Success || len(resp.FitFindings) == 0 {
+			t.Fatalf("warning report missing without fit_report: success=%t codes=%v", resp.Success, fitFindingCodes(resp.FitFindings))
+		}
+		var slideFindings []patterns.FitFinding
+		for _, finding := range resp.FitFindings {
+			if strings.HasPrefix(finding.Path, "/slides/") {
+				slideFindings = append(slideFindings, finding)
+			}
+		}
+		if len(slideFindings) == 0 {
+			t.Fatalf("no current-path slide findings: %+v", resp.FitFindings)
+		}
+		ranks := make(map[int]bool)
+		sawDensity := false
+		for _, finding := range slideFindings {
+			ranks[patterns.ActionRank(finding.Action)] = true
+			sawDensity = sawDensity || finding.Code == patterns.ErrCodeDensityExceeded
+		}
+		if !sawDensity || len(ranks) < 2 {
+			t.Fatalf("fixture must exercise density and mixed severity: %+v", slideFindings)
+		}
 		for i := 1; i < len(slideFindings); i++ {
-			prev := patterns.ActionRank(slideFindings[i-1].Action)
-			curr := patterns.ActionRank(slideFindings[i].Action)
-			if curr > prev {
-				t.Errorf("findings not sorted by ActionRank desc: [%d]=%s (rank %d) before [%d]=%s (rank %d)",
-					i-1, slideFindings[i-1].Action, prev,
-					i, slideFindings[i].Action, curr)
+			if patterns.ActionRank(slideFindings[i].Action) > patterns.ActionRank(slideFindings[i-1].Action) {
+				t.Fatalf("findings not severity sorted: %+v", slideFindings)
+			}
+		}
+		slideXML := readZipText(t, filepath.Join(mc.outputDir, "complete-table.pptx"), "ppt/slides/slide")
+		if got := strings.Count(slideXML, "<a:tr "); got != len(rows)+1 {
+			t.Fatalf("native table row count = %d, want %d including header", got, len(rows)+1)
+		}
+		for _, header := range headers {
+			if !strings.Contains(slideXML, ">"+header+"<") {
+				t.Fatalf("missing header %q", header)
+			}
+		}
+		for _, row := range rows {
+			for _, cell := range row {
+				if !strings.Contains(slideXML, ">"+cell+"<") {
+					t.Fatalf("warning output lost cell %q", cell)
+				}
 			}
 		}
 	})
@@ -728,10 +780,9 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		}
 	})
 
-	t.Run("strict_fit=warn surfaces structured findings without fit_report", func(t *testing.T) {
-		// Regression: previously, warn-mode strict_fit findings were only
-		// written to stderr by checkStrictFit. MCP clients had no structured
-		// channel for them unless they separately passed fit_report=true.
+	t.Run("default warn refuses actual table loss without fit_report", func(t *testing.T) {
+		// Keep the original adverse input: warning mode must not publish
+		// an incomplete deck even when fit_report is absent.
 		longText := strings.Repeat("This is a very long cell that overflows ", 10)
 		row := make([]map[string]string, 10)
 		for i := range row {
@@ -777,31 +828,7 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.IsError {
-			t.Fatalf("warn mode should not refuse; got tool error: %v", result.Content)
-		}
-
-		text := result.Content[0].(mcp.TextContent).Text
-		var resp JSONOutput
-		if err := json.Unmarshal([]byte(text), &resp); err != nil {
-			t.Fatalf("failed to parse response: %v", err)
-		}
-		if !resp.Success {
-			t.Error("expected success=true in warn mode")
-		}
-		// Look for a fit-overflow or density-exceeded finding — these come
-		// from strict_fit warn-mode evaluation.
-		sawFitFinding := false
-		for _, f := range resp.FitFindings {
-			if f.Code == patterns.ErrCodeFitOverflow || f.Code == patterns.ErrCodeDensityExceeded {
-				sawFitFinding = true
-				break
-			}
-		}
-		if !sawFitFinding {
-			t.Errorf("strict_fit=warn should surface fit_overflow/density_exceeded in fit_findings; got %d findings, codes: %v",
-				len(resp.FitFindings), fitFindingCodes(resp.FitFindings))
-		}
+		requireStructuredError(t, result, patterns.ErrCodeTableRowsTruncated)
 	})
 
 	t.Run("strict_fit=strict refuses on overflow", func(t *testing.T) {

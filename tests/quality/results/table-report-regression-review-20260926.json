@@ -1,0 +1,38 @@
+{
+  "issue": "go-slide-creator-3qzo4.49",
+  "scope": "MCP table reporting regression; not full visual approval",
+  "original_adverse_tables_preserved": true,
+  "refusal_modes": ["default", "warn", "off", "strict"],
+  "refusal_assertions": [
+    "Structured table_rows_truncated diagnostic",
+    "Current /slides/0/content/1 path and repair present",
+    "No output artifacts",
+    "Strict envelopes may contain additional valid findings"
+  ],
+  "separate_source_complete_warning_control": {
+    "data_rows": 6,
+    "columns": 10,
+    "fit_report": "absent",
+    "mode": "warn",
+    "assertions": [
+      "Success and nonempty structured report",
+      "Density finding on current JSON Pointer path",
+      "At least two distinct action ranks",
+      "Descending severity order",
+      "All 60 unique cells and 10 headers present",
+      "Seven native table rows including header"
+    ]
+  },
+  "targeted_race_suite": {"status": "pass", "duration_seconds": 30.990},
+  "build": "pass",
+  "lint": {"status": "pass", "issues": 0},
+  "review": {
+    "reviewer": "testing",
+    "findings": [],
+    "residual_risks": [
+      "Integrated replacement suite and CI still pending",
+      "Mechanical source preservation is not visual readability approval"
+    ],
+    "testing_gaps": []
+  }
+}
