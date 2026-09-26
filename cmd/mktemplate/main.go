@@ -829,6 +829,12 @@ func twoColumnLayout(def templateDef) string {
 }
 
 func sectionLayout(def templateDef) string {
+	// Forest's inherited underline sits above the section composition. Match
+	// the title's vertical centring so the large numeral clears that rule.
+	numberAnchor := ""
+	if def.Name == "forest-green" {
+		numberAnchor = ` anchor="ctr"`
+	}
 	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" preserve="1" userDrawn="1">` +
 		`<p:cSld name="Section Divider">` +
@@ -846,7 +852,7 @@ func sectionLayout(def templateDef) string {
 		`<p:sp><p:nvSpPr><p:cNvPr id="3" name="Section Number"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>` +
 		`<p:nvPr><p:ph type="body" sz="quarter" idx="1" hasCustomPrompt="1"/></p:nvPr></p:nvSpPr>` +
 		`<p:spPr><a:xfrm><a:off x="7886700" y="1268413"/><a:ext cx="3182938" cy="3417887"/></a:xfrm></p:spPr>` +
-		`<p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr marL="11113" indent="-11113" algn="r"><a:buNone/><a:defRPr sz="13600"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle>` +
+		`<p:txBody><a:bodyPr` + numberAnchor + `/><a:lstStyle><a:lvl1pPr marL="11113" indent="-11113" algn="r"><a:buNone/><a:defRPr sz="13600"><a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle>` +
 		`<a:p><a:pPr lvl="0"/><a:r><a:rPr lang="en-US"/><a:t>#</a:t></a:r></a:p></p:txBody></p:sp>` +
 		`</p:spTree></p:cSld>` +
 		`<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr>` +
@@ -854,6 +860,13 @@ func sectionLayout(def templateDef) string {
 }
 
 func closingLayout(def templateDef) string {
+	titleFrame := `<a:off x="1485900" y="685800"/><a:ext cx="9486900" cy="1851025"/>`
+	subtitleFrame := `<a:off x="1485900" y="2667000"/><a:ext cx="9486900" cy="1371600"/>`
+	if def.Name == "forest-green" || def.Name == "midnight-blue" {
+		// Keep the previously reviewed title-slide geometry when regenerating.
+		titleFrame = `<a:off x="1524000" y="1122363"/><a:ext cx="9144000" cy="2387600"/>`
+		subtitleFrame = `<a:off x="1524000" y="3602038"/><a:ext cx="9144000" cy="1655762"/>`
+	}
 	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"` + hideMasterChromeAttr(def) + ` preserve="1" userDrawn="1">` +
 		`<p:cSld name="Closing">` +
@@ -863,14 +876,14 @@ func closingLayout(def templateDef) string {
 		// Center title
 		`<p:sp><p:nvSpPr><p:cNvPr id="2" name="title"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>` +
 		`<p:nvPr><p:ph type="ctrTitle"/></p:nvPr></p:nvSpPr>` +
-		`<p:spPr><a:xfrm><a:off x="1485900" y="685800"/><a:ext cx="9486900" cy="1851025"/></a:xfrm></p:spPr>` +
+		`<p:spPr><a:xfrm>` + titleFrame + `</a:xfrm></p:spPr>` +
 		`<p:txBody><a:bodyPr anchor="b"><a:noAutofit/></a:bodyPr>` +
 		`<a:lstStyle><a:lvl1pPr algn="ctr"><a:defRPr sz="6600"><a:solidFill><a:schemeClr val="dk2"/></a:solidFill></a:defRPr></a:lvl1pPr></a:lstStyle>` +
 		`<a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>` +
 		// Subtitle
 		`<p:sp><p:nvSpPr><p:cNvPr id="3" name="subtitle"/><p:cNvSpPr><a:spLocks noGrp="1"/></p:cNvSpPr>` +
 		`<p:nvPr><p:ph type="subTitle" idx="1"/></p:nvPr></p:nvSpPr>` +
-		`<p:spPr><a:xfrm><a:off x="1485900" y="2667000"/><a:ext cx="9486900" cy="1371600"/></a:xfrm></p:spPr>` +
+		`<p:spPr><a:xfrm>` + subtitleFrame + `</a:xfrm></p:spPr>` +
 		`<p:txBody><a:bodyPr><a:normAutofit/></a:bodyPr>` +
 		`<a:lstStyle><a:lvl1pPr marL="0" indent="0" algn="ctr"><a:buNone/><a:defRPr sz="2400"/></a:lvl1pPr></a:lstStyle>` +
 		`<a:p><a:endParaRPr lang="en-US"/></a:p></p:txBody></p:sp>` +
