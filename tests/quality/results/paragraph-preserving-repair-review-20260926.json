@@ -1,0 +1,37 @@
+{
+  "scope": "Integrated preflight and actual publication paragraph-loss repair; no visual approval or change to source-loss refusal policy",
+  "issue": "go-slide-creator-3qzo4.62",
+  "reviews": [
+    {
+      "reviewer": "testing",
+      "findings": [],
+      "testing_gaps": [],
+      "residual_risks": ["Full repository race suite and pushed-commit CI remain separate gates; targeted internal/api invocation matched no tests and is not API behavior evidence."]
+    },
+    {
+      "reviewer": "adversarial",
+      "findings": [],
+      "testing_gaps": [],
+      "resolved_scenarios": [
+        "Nested children and aligned columns: derive largest joint group, then execute existing split primitive and compare every original string.",
+        "Flattened paragraphs or ellipsis counts: never infer source groups or budget from fitted text/counts.",
+        "Malformed/noncanonical numeric paths: no executable repair for invalid source identity, including +0, 00 and -0.",
+        "10,000-item indivisible group: linear boundary analysis rather than retrying all possible budgets.",
+        "Serialized CLI/MCP remedy: split_bullets and positive max_items retained through diagnostic action translation; execute serialized action without source loss.",
+        "Unsupported compound, empty, orphan, blank, unconverted or unequal source: manual continuation guidance, no destructive fix.",
+        "All fit modes and existing output: refusal remains nonzero and artifact-free; original input/destination preserved, fitting controls still publish."
+      ],
+      "residual_risks": ["A structural split is not proof of visual fit; every resulting page must be rendered and reviewed.", "Numeric internal navigation and fixed slide counts still require explicit authoring/authorization; existing repair guards and continuation guidance remain in force."]
+    }
+  ],
+  "evidence": [
+    {"path":"output/main-source-preserving-repair-controls-20260926-v1.jsonl","generator_race_pass_seconds":24.04,"cli_race_pass_seconds":4.329},
+    {"path":"output/main-source-preserving-wire-controls-20260926-v2.jsonl","sha256":"59286e1bc3f6b969f9b119b0a3204ddad16c626d1431fd91c06f6887056e5c85","cli_race_pass_seconds":1.79},
+    {"path":"output/main-source-preserving-publication-contract-20260926-v1.jsonl","sha256":"17c83f7bd7d2244d2511e863829b505751957bdfe3aa6c88642012dee84c1a14","generator_race_pass_seconds":58.176,"cli_race_pass_seconds":59.125},
+    {"path":"output/main-source-preserving-final-controls-20260926-v1.jsonl","sha256":"634e47c83800ec6dfd2368c2e59af30458244b2baef9eafb0ab57d3045ecdc65","generator_race_pass_seconds":2.165,"cli_race_pass_seconds":1.704,"includes_raw_skill_budget_check":true}
+  ],
+  "lint": "pass, zero issues",
+  "build": "verified separately before publication",
+  "private_template": "Ignored p-style original unchanged, SHA256 9df06238508e65b63ed8900a3d182e014987f5fd799468eb4bfdab64e96f998d",
+  "aggregate_visual_approval": false
+}

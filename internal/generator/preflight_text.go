@@ -147,13 +147,9 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 				Path: input.Path,
 				Code: patterns.ErrCodeTextTrimmed,
 				Message: fmt.Sprintf(
-					"predicted: trailing paragraphs will be trimmed to fit placeholder (%d paragraphs, overflow at max scaling)",
+					"predicted: trailing paragraphs will be trimmed to fit placeholder (%d paragraphs, overflow at max scaling); preserve every required paragraph on continuation slides or choose a suitable layout, then render every page; do not exceed a fixed slide count without authorization",
 					paraCount,
 				),
-				Fix: &patterns.FixSuggestion{
-					Kind:   "reduce_text",
-					Params: map[string]any{"paragraphs": paraCount},
-				},
 			},
 			Action: "refuse",
 		})
@@ -167,13 +163,9 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 				Path: input.Path,
 				Code: patterns.ErrCodeReadabilityTrimmed,
 				Message: fmt.Sprintf(
-					"predicted: paragraphs will be trimmed for readability (font would scale to %d%%, threshold %d%%)",
+					"predicted: paragraphs will be trimmed for readability (font would scale to %d%%, threshold %d%%); preserve every required paragraph on continuation slides or choose a suitable layout, then render every page; do not exceed a fixed slide count without authorization",
 					result.FontScale/1000, readabilityMinScale/1000,
 				),
-				Fix: &patterns.FixSuggestion{
-					Kind:   "reduce_text",
-					Params: map[string]any{"paragraphs": paraCount, "predicted_font_scale_pct": result.FontScale / 1000},
-				},
 			},
 			Action: "refuse",
 		})

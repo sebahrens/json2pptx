@@ -128,6 +128,9 @@ func TestCLIActualSourceLossRetainsRepairWithoutPublishing(t *testing.T) {
 				if kind == "table" && (finding.Fix.Params["split_at_row"] != float64(7) || finding.Fix.Params["hidden_rows"] != float64(73)) {
 					t.Fatalf("table split parameters lost: %+v", finding)
 				}
+				if kind == "bullets" && (finding.Fix.Kind != "split_bullets" || finding.Fix.Params["max_items"] != float64(1)) {
+					t.Fatalf("CLI lost source-preserving paragraph repair: %+v", finding)
+				}
 				preserved, err := os.ReadFile(destination)
 				if err != nil || string(preserved) != "existing-deck" {
 					t.Fatalf("destination changed: %q %v", preserved, err)

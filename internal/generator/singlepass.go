@@ -327,7 +327,7 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 	// archive is renamed, preserving any existing destination on failure.
 	for _, finding := range ctx.fitFindings {
 		if finding.Code == patterns.ErrCodeTextTrimmed || finding.Code == patterns.ErrCodeReadabilityTrimmed || finding.Code == patterns.ErrCodeTableRowsTruncated {
-			loss := finding.ValidationError
+			loss := SourcePreservingParagraphRepair(finding.ValidationError, req.Slides)
 			prefix := "generation refused"
 			if ctx.strictFit == "strict" {
 				prefix = "strict-fit"

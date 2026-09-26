@@ -2,6 +2,7 @@ package generator
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -30,6 +31,10 @@ func TestDirectStrictGeneratorDoesNotPublishParagraphLoss(t *testing.T) {
 					}
 				}
 				request := GenerationRequest{TemplatePath: filepath.Join(testutil.RepoRoot(), "templates", "abstract.pptx"), OutputPath: output, StrictFit: mode, ExcludeTemplateSlides: true, Slides: []SlideSpec{{LayoutID: "slideLayout3", Content: []ContentItem{{PlaceholderID: "body", Type: ContentBullets, Value: bullets}}}}}
+				before, err := json.Marshal(request.Slides)
+				if err != nil {
+					t.Fatal(err)
+				}
 				result, err := Generate(context.Background(), request)
 				if result != nil || !errors.Is(err, patterns.ErrTextTrimmed) {
 					t.Fatalf("direct strict source loss published: result=%+v err=%v", result, err)
@@ -37,6 +42,13 @@ func TestDirectStrictGeneratorDoesNotPublishParagraphLoss(t *testing.T) {
 				var loss *patterns.ValidationError
 				if !errors.As(err, &loss) || loss.Code != patterns.ErrCodeTextTrimmed || loss.Path == "" {
 					t.Fatalf("structured loss finding missing: %v", err)
+				}
+				if loss.Fix == nil || loss.Fix.Kind != "split_bullets" || loss.Fix.Params["max_items"] != 1 {
+					t.Fatalf("actual refusal suggests source deletion or invalid split: %+v", loss)
+				}
+				after, marshalErr := json.Marshal(request.Slides)
+				if marshalErr != nil || string(before) != string(after) {
+					t.Fatal("refusal changed authored source")
 				}
 				files, err := os.ReadDir(dir)
 				if err != nil {
@@ -89,6 +101,9 @@ func TestActualParagraphLossIsBlocking(t *testing.T) {
 					if finding.Action != "refuse" || finding.Path != config.findingPath {
 						t.Fatalf("actual text loss not blocking: %+v", finding)
 					}
+					if finding.Fix != nil || !strings.Contains(finding.Message, "split it across slides") {
+						t.Fatalf("low-level loss invents a source-deleting repair: %+v", finding)
+					}
 					return
 				}
 			}
@@ -114,6 +129,9 @@ func TestPredictedParagraphLossIsBlocking(t *testing.T) {
 					}
 					if finding.Action != "refuse" {
 						t.Fatalf("predicted source loss not blocking: %+v", finding)
+					}
+					if finding.Fix != nil || !strings.Contains(finding.Message, "preserve every required paragraph") || !strings.Contains(finding.Message, "fixed slide count") {
+						t.Fatalf("context-free prediction offers destructive or unproven repair: %+v", finding)
 					}
 					return
 				}

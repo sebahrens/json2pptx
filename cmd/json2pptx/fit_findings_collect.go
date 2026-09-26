@@ -1596,7 +1596,7 @@ func collectTextAutofitPreflightFindings(input *PresentationInput, layouts []typ
 		}
 	}
 
-	return findings
+	return sourcePreservingPreflightParagraphRepairs(findings, input)
 }
 
 // collectContrastPreflightFindings walks shape_grid cells that author both a

@@ -61,6 +61,9 @@ func TestHandleGenerateRuntimeSourceLossRetainsStructuredRepair(t *testing.T) {
 						t.Fatalf("source-loss repair parameters missing: %+v", params)
 					}
 				}
+				if kind == "bullets" && (envelope.Diagnostics[0].Fix.Kind != string(diagnostics.ActionSplitSlide) || envelope.Diagnostics[0].Fix.Params["kind"] != "split_bullets" || envelope.Diagnostics[0].Fix.Params["max_items"] != float64(1)) {
+					t.Fatalf("MCP lost source-preserving paragraph repair: %+v", envelope.Diagnostics[0].Fix)
+				}
 				data, err := os.ReadFile(output)
 				if err != nil || string(data) != "existing-deck" {
 					t.Fatalf("refusal replaced destination: %q %v", data, err)

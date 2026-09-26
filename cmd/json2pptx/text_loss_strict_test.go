@@ -33,6 +33,9 @@ func TestStrictFitBlocksPredictedParagraphLossWithoutChangingSource(t *testing.T
 			if finding == nil || finding.Action != "refuse" {
 				t.Fatalf("missing text-loss refusal: %+v", findings)
 			}
+			if finding.Fix == nil || finding.Fix.Kind != "split_bullets" || finding.Fix.Params["max_items"] != 1 {
+				t.Fatalf("prediction lost source-preserving repair: %+v", finding)
+			}
 			after, err := json.Marshal(input)
 			if err != nil {
 				t.Fatal(err)
