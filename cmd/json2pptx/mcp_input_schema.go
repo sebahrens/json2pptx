@@ -13,6 +13,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 
 	"github.com/sebahrens/json2pptx/internal/api"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -194,6 +195,7 @@ var enumMap = map[string]map[string][]string{
 	"GridImageInput": {
 		"geometry": {"rect", "ellipse"},
 	},
+	"ImageInput": {"fit": generator.ValidImageFits()},
 	"BackgroundInput": {
 		"fit": canonicalBackgroundFits,
 	},

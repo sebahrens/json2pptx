@@ -13,7 +13,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
-	"github.com/sebahrens/json2pptx/internal/utils"
 )
 
 // complexDiagramTypes lists diagram types that are inherently complex and
@@ -1269,6 +1268,12 @@ func (ctx *singlePassContext) processImageContent(slideNum int, item ContentItem
 	}
 
 	// Warn when image has no alt-text (accessibility compliance).
+	if err := ValidateImageFit(imgContent.Fit); err != nil {
+		ctx.warnings = append(ctx.warnings, err.Error())
+		ctx.mediaFailures = append(ctx.mediaFailures, MediaFailure{SlideNum: slideNum, PlaceholderID: item.PlaceholderID, ContentType: "image", Reason: err.Error(), Fallback: "skipped"})
+		return
+	}
+
 	if imgContent.Alt == "" {
 		ctx.warnings = append(ctx.warnings,
 			fmt.Sprintf("slide %d: image in placeholder %q has no alt text — consider adding alt text for accessibility",
@@ -1311,18 +1316,18 @@ func (ctx *singlePassContext) processImageContent(slideNum int, item ContentItem
 
 	// Handle SVG files with appropriate strategy
 	if IsSVGFile(imagePath) {
-		ctx.processSVGImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx)
+		ctx.processSVGImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, imgContent.Fit)
 		return
 	}
 
 	// Process regular (non-SVG) image
-	ctx.processRegularImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx)
+	ctx.processRegularImage(slideNum, imagePath, imgContent.Alt, placeholderBounds, shape, shapeIdx, imgContent.Fit)
 }
 
 // processSVGImage handles SVG files based on the configured conversion strategy.
-func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int) {
+func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int, fit string) {
 	if ctx.svgConverter.GetStrategy() == SVGStrategyNative {
-		ctx.processNativeSVG(slideNum, imagePath, alt, placeholderBounds, shapeIdx)
+		ctx.processNativeSVG(slideNum, imagePath, alt, placeholderBounds, shapeIdx, fit)
 		return
 	}
 
@@ -1334,11 +1339,11 @@ func (ctx *singlePassContext) processSVGImage(slideNum int, imagePath string, al
 	}
 
 	// Process as regular image with converted path
-	ctx.processRegularImage(slideNum, convertedPath, alt, placeholderBounds, shape, shapeIdx)
+	ctx.processRegularImage(slideNum, convertedPath, alt, placeholderBounds, shape, shapeIdx, fit)
 }
 
 // processNativeSVG handles native SVG embedding with PNG fallback.
-func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shapeIdx int) {
+func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shapeIdx int, fit string) {
 	if !ctx.svgConverter.IsPNGAvailable() {
 		ctx.warnings = append(ctx.warnings, fmt.Sprintf("SVG file %s: rsvg-convert not available, using placeholder", imagePath))
 		ctx.insertSVGFallbackImage(slideNum, placeholderBounds, shapeIdx)
@@ -1355,9 +1360,9 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, a
 	ctx.svgCleanupFuncs = append(ctx.svgCleanupFuncs, cleanup)
 
 	// Crop the native SVG and its PNG fallback to the same placeholder frame.
-	crop, ok := utils.CoverCropForFile(pngPath, placeholderBounds.Width, placeholderBounds.Height)
-	if !ok {
-		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to read SVG fallback dimensions for %s", imagePath))
+	placeholderBounds, crop, err := imagePlacement(pngPath, placeholderBounds, fit)
+	if err != nil {
+		ctx.recordImagePlacementFailure(slideNum, shapeIdx, err)
 		return
 	}
 
@@ -1375,7 +1380,7 @@ func (ctx *singlePassContext) processNativeSVG(slideNum int, imagePath string, a
 		offsetY:        placeholderBounds.Y,
 		extentCX:       placeholderBounds.Width,
 		extentCY:       placeholderBounds.Height,
-		crop:           imageCoverCrop(crop),
+		crop:           crop,
 		placeholderIdx: shapeIdx,
 		behindText:     true,
 	})
@@ -1407,10 +1412,10 @@ func (ctx *singlePassContext) convertSVGToRaster(imagePath string, placeholderBo
 }
 
 // processRegularImage handles non-SVG images (PNG, JPG, etc.) or converted SVGs.
-func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int) {
-	crop, ok := utils.CoverCropForFile(imagePath, placeholderBounds.Width, placeholderBounds.Height)
-	if !ok {
-		ctx.warnings = append(ctx.warnings, fmt.Sprintf("failed to read image dimensions for %s", imagePath))
+func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string, alt string, placeholderBounds types.BoundingBox, shape *shapeXML, shapeIdx int, fit string) {
+	placeholderBounds, crop, err := imagePlacement(imagePath, placeholderBounds, fit)
+	if err != nil {
+		ctx.recordImagePlacementFailure(slideNum, shapeIdx, err)
 		return
 	}
 
@@ -1428,8 +1433,14 @@ func (ctx *singlePassContext) processRegularImage(slideNum int, imagePath string
 		extentCX:       placeholderBounds.Width,
 		extentCY:       placeholderBounds.Height,
 		placeholderIdx: shapeIdx,
-		crop:           imageCoverCrop(crop),
+		crop:           crop,
 	})
+}
+
+func (ctx *singlePassContext) recordImagePlacementFailure(slideNum, shapeIdx int, err error) {
+	reason := fmt.Sprintf("image placeholder %d: %v", shapeIdx, err)
+	ctx.warnings = append(ctx.warnings, reason)
+	ctx.mediaFailures = append(ctx.mediaFailures, MediaFailure{SlideNum: slideNum, ContentType: "image", Reason: reason, Fallback: "skipped"})
 }
 
 // allocateMediaSlot registers an image file and returns its media filename.

@@ -1437,12 +1437,14 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				item.Value = generator.ImageContent{
 					Path: img.Path,
 					Alt:  img.Alt,
+					Fit:  img.Fit,
 				}
 			} else {
 				// Legacy path: parse from Value json.RawMessage
 				var img struct {
 					Path string `json:"path"`
 					Alt  string `json:"alt"`
+					Fit  string `json:"fit,omitempty"`
 				}
 				if err := json.Unmarshal(ci.Value, &img); err != nil {
 					return nil, fmt.Errorf("slide %d, content %d: invalid image value: %w", slideNum, j+1, err)
@@ -1453,6 +1455,7 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 				item.Value = generator.ImageContent{
 					Path: img.Path,
 					Alt:  img.Alt,
+					Fit:  img.Fit,
 				}
 			}
 
@@ -1460,6 +1463,11 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 			return nil, fmt.Errorf("slide %d, content %d: unknown type %q (must be text, bullets, body_and_bullets, bullet_groups, table, image, chart, or diagram)", slideNum, j+1, ci.Type)
 		}
 
+		if image, ok := item.Value.(generator.ImageContent); ok {
+			if err := generator.ValidateImageFit(image.Fit); err != nil {
+				return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+			}
+		}
 		items = append(items, item)
 	}
 
@@ -1806,6 +1814,7 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			var img struct {
 				Path string `json:"path"`
 				Alt  string `json:"alt"`
+				Fit  string `json:"fit,omitempty"`
 			}
 			if err := json.Unmarshal(jsonItem.Value, &img); err != nil {
 				return nil, fmt.Errorf("slide %d, content %d: invalid image value: %w", slideNum, j+1, err)
@@ -1813,9 +1822,13 @@ func convertJSONContent(jsonContent []JSONContentItem, slideNum int, slideType t
 			if img.Path == "" {
 				return nil, fmt.Errorf("slide %d, content %d: image path is required", slideNum, j+1)
 			}
+			if err := generator.ValidateImageFit(img.Fit); err != nil {
+				return nil, fmt.Errorf("slide %d, content %d: %w", slideNum, j+1, err)
+			}
 			item.Value = generator.ImageContent{
 				Path: img.Path,
 				Alt:  img.Alt,
+				Fit:  img.Fit,
 			}
 
 		case "chart":

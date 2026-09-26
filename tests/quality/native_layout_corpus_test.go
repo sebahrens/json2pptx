@@ -4,7 +4,9 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
@@ -85,6 +87,33 @@ func nativeReferenceImage() string {
 	return filepath.Join(testutil.RepoRoot(), "tests", "quality", "evidence", "connectors", "midnight-blue", "powerpoint-slide-4.png")
 }
 
+// Commit IDs alone cannot identify an uncommitted renderer repair. Fingerprint
+// tracked and new Go sources; templates and the harness are hashed separately.
+func nativeEngineSourceHash(t *testing.T) string {
+	t.Helper()
+	cmd := exec.Command("git", "ls-files", "-z", "-c", "-o", "--exclude-standard", "--", "internal", "cmd", "svggen", "go.mod", "go.sum")
+	cmd.Dir = testutil.RepoRoot()
+	body, err := cmd.Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := strings.Split(strings.TrimSuffix(string(body), "\x00"), "\x00")
+	sort.Strings(paths)
+	hash := sha256.New()
+	for _, path := range paths {
+		if !strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "go.mod") && !strings.HasSuffix(path, "go.sum") {
+			continue
+		}
+		body, err := os.ReadFile(filepath.Join(testutil.RepoRoot(), path))
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Fprintf(hash, "%s:%d:", path, len(body))
+		_, _ = hash.Write(body)
+	}
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
 func makeNativeProbes(layout types.LayoutMetadata, imagePath string) []nativeProbe {
 	profiles := []string{"representative", "dense"}
 	evidenceBody := false
@@ -125,7 +154,9 @@ func makeNativeProbes(layout types.LayoutMetadata, imagePath string) []nativePro
 					item.Type, item.Value = generator.ContentText, value
 					p.ExpectedText = append(p.ExpectedText, value)
 				case types.PlaceholderImage:
-					item.Type, item.Value = generator.ContentImage, generator.ImageContent{Path: imagePath, Alt: "Native image probe " + ph.ID}
+					// This source is a complete diagram screenshot, not a decorative
+					// photo: preserve its labels and edges in the native frame.
+					item.Type, item.Value = generator.ContentImage, generator.ImageContent{Path: imagePath, Alt: "Native image probe " + ph.ID, Fit: "contain"}
 					p.ExpectedPictures++
 				case types.PlaceholderBody, types.PlaceholderContent:
 					if layout.CanonicalType == types.CanonicalLayoutSectionDivider {
@@ -370,6 +401,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	engineHash := nativeEngineSourceHash(t)
 	harnessHash, err := render.HashFile(filepath.Join(testutil.RepoRoot(), "tests", "quality", "native_layout_corpus_test.go"))
 	if err != nil {
 		t.Fatal(err)
@@ -534,6 +566,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 	manifest := struct {
 		SchemaVersion      int                      `json:"schema_version"`
 		EngineCommit       string                   `json:"engine_commit"`
+		EngineSourceHash   string                   `json:"engine_source_sha256"`
 		HarnessHash        string                   `json:"harness_sha256"`
 		ReferenceImageHash string                   `json:"reference_image_sha256"`
 		Renderer           string                   `json:"renderer_entrypoint"`
@@ -543,13 +576,22 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		TemplateCount      int                      `json:"template_count"`
 		Templates          []nativeTemplateEvidence `json:"templates"`
 		Limits             []string                 `json:"limits"`
-	}{2, strings.TrimSpace(string(commit)), harnessHash, imageHash, renderer, rendererHash, 96, time.Now().UTC().Format(time.RFC3339), len(paths), evidence, []string{"Renderer probes, not new agent authoring or blind benchmark ratings", "Charts use the generator's current default rendering pipeline; picture insertion does not prove label readability or editability", "Only Western accented characters exercised; no CJK/RTL approval", "Generation failures retain explicit ledger entries; no visual score or approval for missing pages", "Independent visual inspection required; complete PNGs and marker presence are not visual approval"}}
+	}{
+		SchemaVersion: 3, EngineCommit: strings.TrimSpace(string(commit)),
+		EngineSourceHash: engineHash, HarnessHash: harnessHash,
+		ReferenceImageHash: imageHash, Renderer: renderer, RendererHash: rendererHash,
+		DPI: 96, CreatedAt: time.Now().UTC().Format(time.RFC3339), TemplateCount: len(paths), Templates: evidence,
+		Limits: []string{"Renderer probes, not new agent authoring or blind benchmark ratings", "Charts use the generator's current default rendering pipeline; picture insertion does not prove label readability or editability", "Only Western accented characters exercised; no CJK/RTL approval", "Generation failures retain explicit ledger entries; no visual score or approval for missing pages", "Independent visual inspection required; complete PNGs and marker presence are not visual approval"},
+	}
 	body, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(out, "manifest.json"), body, 0644); err != nil {
 		t.Fatal(err)
+	}
+	if nativeEngineSourceHash(t) != engineHash {
+		t.Error("engine source changed during render; evidence revision is not stable")
 	}
 	for _, e := range evidence {
 		for _, f := range e.Failures {

@@ -296,6 +296,19 @@ Image embedded in a placeholder. Value: `ImageInput` (via `image_value` or `valu
 
 Supports `path` (local file) or `url` (HTTP/HTTPS download).
 
+Native image placeholders use `fit: "cover"` by default: the image keeps its
+aspect ratio but may lose its outer edges. Use `fit: "contain"` for screenshots,
+diagrams or other required source evidence so the whole image remains visible,
+centered within the native frame without stretching. Do not cover-crop labels
+or required facts. Inspect the rendered page: contain preserves the image but
+does not guarantee that template text over the picture has readable contrast.
+If the source labels become too small at the fitted scale, choose a larger native
+frame or a different layout. A complete but unreadable diagram is not acceptable.
+
+```json
+{"placeholder_id": "image", "type": "image", "image_value": {"path": "assets/process.png", "alt": "Complete process diagram", "fit": "contain"}}
+```
+
 ## Footer Configuration
 
 Enable slide footers at the presentation level:

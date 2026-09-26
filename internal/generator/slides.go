@@ -258,6 +258,7 @@ type MediaFailure struct {
 type ImageContent struct {
 	Path   string             // File path to image
 	Alt    string             // Alt text for accessibility
+	Fit    string             // "cover" (default) or "contain" to retain all source evidence
 	Bounds *types.BoundingBox // Optional bounds override
 }
 

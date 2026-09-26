@@ -69,7 +69,7 @@ A slide's `content` array is a list of typed items, each targeting a placeholder
 - `type: "table"`            → requires `table_value`
 - `type: "chart"`            → requires `chart_value`
 - `type: "diagram"`          → requires `diagram_value`
-- `type: "image"`            → requires `image_value`
+- `type: "image"`            → requires `image_value`; native `fit: "cover"` (default) crops edges, while `fit: "contain"` preserves the whole screenshot or evidence diagram without distortion. Legacy `value` image objects also accept `fit`. Check text/image contrast separately; see [native image guidance](../skills/template-deck/TEMPLATE_GUIDE.md#image).
 
 A `table_value`'s `headers` define its column count. Each row may use `col_span` / `row_span` on a cell (`{"content":"Total","col_span":2}`); a row that covers fewer columns than `headers` is padded with empty cells (a column still covered by a `row_span` from above keeps its merge), and a row that covers more columns is rejected by `validate` and `generate` alike (`INVALID_PARAMETER`, path `.../table_value.rows`). Other `*_value` fields are forbidden for the chosen type. The legacy raw `value` field is still accepted (unconstrained) for backward compatibility. `table_value`, `chart_value`, `diagram_value` and a `shape_grid` cell's `diagram` / `table` each take an optional `alt` — one sentence a screen reader announces, written into the shape's `cNvPr/@descr`; without it the engine derives one from the payload and reports `MISSING_ALT_TEXT` (advisory, see [FIT_FINDINGS.md](FIT_FINDINGS.md#missing_alt_text)).
 

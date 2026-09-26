@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -122,6 +124,32 @@ func checkInputEnumValues(input *PresentationInput) []*patterns.ValidationError 
 			}
 		}
 		errs = append(errs, checkGridTypeScaleEnums(slide.ShapeGrid, prefix+"/shape_grid")...)
+		errs = append(errs, checkNativeImageFitEnums(slide.Content, prefix)...)
+	}
+	return errs
+}
+
+func checkNativeImageFitEnums(contents []ContentInput, prefix string) []*patterns.ValidationError {
+	var errs []*patterns.ValidationError
+	for ci, content := range contents {
+		if content.Type != "image" {
+			continue
+		}
+		image := content.ImageValue
+		field := "image_value"
+		if image == nil && len(content.Value) > 0 {
+			var legacy ImageInput
+			if json.Unmarshal(content.Value, &legacy) != nil {
+				continue
+			}
+			image = &legacy
+			field = "value"
+		}
+		if image != nil && image.Fit != "" {
+			if err := checkEnum(fmt.Sprintf("%s/content/%d/%s/fit", prefix, ci, field), image.Fit, generator.ValidImageFits(), nil); err != nil {
+				errs = append(errs, err)
+			}
+		}
 	}
 	return errs
 }

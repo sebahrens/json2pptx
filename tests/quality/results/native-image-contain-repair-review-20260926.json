@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "issue": "go-slide-creator-3qzo4.14",
+  "scope": "Native picture-placeholder contain mode and source-aware screenshot authoring; default photo cover behavior unchanged",
+  "rendered_source_revision": {
+    "base_commit": "b86768142a79c889212bacb95b4975f5c1e64ebf",
+    "uncommitted_repair": true,
+    "engine_source_sha256": "f16b71210bdf923e3fb6a0686e08b00eeafe6003ad8e24986c1eda6d97c58aa9",
+    "harness_sha256": "73c5e15f9f728e0e09a8aebcc74eb843437e044c3743fad8dd553dbaafd851df",
+    "manifest": "output/native-content-corpus-20260926-v5/manifest.json",
+    "note": "Hashes identify the actual source snapshot used for rendering, not a claim that the base commit contains the repair. A subsequent test-only assertion strengthens failure attribution without changing rendered production behavior."
+  },
+  "all_layout_regression": {
+    "templates": 14,
+    "native_layout_ids": 108,
+    "probes": 309,
+    "retained_pngs": 309,
+    "generation_or_render_failures": 0,
+    "unchanged_decoded_pixels": 307,
+    "changed_decoded_pixels": 2,
+    "missing_comparison_ids": 0,
+    "comparison": "output/native-content-corpus-20260926-v5/pixel-comparison.json",
+    "method": "Every PNG decoded to canonical RGBA; SHA256 includes dimensions and every pixel",
+    "preexisting_source_omission_probes": 47,
+    "visual_corpus_approved": false
+  },
+  "independent_review": {
+    "reviewers": 1,
+    "inspection_count": 5,
+    "inspection_scope": "Both full-size before/after pairs plus original source image, with configuration key withheld",
+    "unreviewed_paths": [],
+    "raw_review": "output/native-content-corpus-20260926-v5/contain-review/review.json",
+    "source_title": "4. Swimlane — cross-team handoffs",
+    "source_lane_labels": ["Sales Rep", "Legal", "Finance"],
+    "source_task_labels": ["Qualify lead", "Submit proposal", "Review terms", "Approve contract", "Book revenue"],
+    "source_arrows": 2,
+    "pairs": [
+      {
+        "template": "modern",
+        "probe": "slideLayout2-representative",
+        "opaque_id": "cebd5356118831d82549",
+        "after_png_sha256": "0312ea76b7bad06612bbbfe312cd52f5772113efd81b61b7941b46977163326c",
+        "before": "Partial source title and missing outer lane labels, right/bottom tasks and vertical arrow",
+        "after": "Complete source title, all three lane labels, all five task labels and both arrows retained; no observed distortion or new main-text clipping",
+        "remaining_concern": "Diagram labels approximately6–7 raster pixels high at1280x720; presentation-distance readability remains inadequate. Subtitle banner tightly contacts source picture-edge rail but does not hide source tasks."
+      },
+      {
+        "template": "modern",
+        "probe": "slideLayout2-dense",
+        "opaque_id": "63e2795fa1e3c7b4fd56",
+        "after_png_sha256": "293165219b6bc13c4b3dd8e53fb32a1b9abe238879ec401545bd6540ddabfd8d",
+        "before": "Partial source title and missing outer lane labels, right/bottom tasks and vertical arrow",
+        "after": "Complete source diagram retained without observed distortion; main four-line title and subtitle remain complete",
+        "remaining_concern": "Diagram labels approximately6–7 raster pixels high; do not approve projected readability solely because contain preserves source content."
+      }
+    ],
+    "crop_completeness_resolved_pairs": 2,
+    "new_main_text_failures": 0,
+    "observed_distortion": 0,
+    "small_image_readability_followup": "go-slide-creator-3qzo4.15"
+  },
+  "verification": {
+    "full_generator_short_race_suite": "PASS76.189s",
+    "full_quality_short_race_suite": "PASS28.301s",
+    "schema_enum_image_fit_race_suite": "PASS57.959s",
+    "targeted_image_fit_race_suite": "PASS including native SVG and raster SVG contain/cover parity",
+    "unsafe_gradient_and_repaired_subtitle_ci": "All workflows successful for96dc5189",
+    "new_repair_ci": "Pending push/terminal outcomes; issue not closed on local evidence alone"
+  },
+  "operator_disposition": "Crop/data-loss capability repaired and separately verified. Other307 rendered pages preserve previous pixels and findings. No broad visual approval: source omissions, image/text contrast, chart identity, section-number collision, typography and small-source-image readability remain open."
+}
