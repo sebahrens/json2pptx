@@ -1,0 +1,2932 @@
+{
+  "schema_version": 1,
+  "scope": "Modern native slideLayout3 decorative footer composition repair; not a whole-corpus approval",
+  "issue": "go-slide-creator-3qzo4.25",
+  "source_diagnosis": "Rectangle 7 was decorative, bottom-flush and fully within the actual 12192000x6858000EMU canvas. The blind cropped-block observation was an aesthetic defect, not image cropping or out-of-bounds geometry.",
+  "repair": {
+    "old_geometry": {
+      "x": 5291586,
+      "y": 6303963,
+      "width": 4287186,
+      "height": 554037
+    },
+    "new_geometry": {
+      "x": 0,
+      "y": 6781800,
+      "width": 12192000,
+      "height": 76200
+    },
+    "preservation": "Original gradient, style, shape identity, all text/table/chart frames and all other package parts unchanged"
+  },
+  "proof": {
+    "package": {
+      "parts": 87,
+      "changed_parts": [
+        "ppt/slideLayouts/slideLayout3.xml"
+      ],
+      "only_exact_geometry_replacement": true,
+      "before_sha256": "17bf8b4e6b556039462d7c545d9db47e57f1814ae59543293b7eff39322e036d",
+      "after_sha256": "b4a51dee844d2996ddf48056e45b88ab2b5a42b3a816bcdb416c31b3e470052b"
+    },
+    "comparisons": [
+      {
+        "old_directory": "native-content-corpus-20260926-v11",
+        "new_directory": "native-content-corpus-20260926-v12",
+        "pages": 309,
+        "native_layouts": 108,
+        "changed_pixel_pages": [
+          "slideLayout3-representative",
+          "slideLayout3-dense",
+          "slideLayout3-table",
+          "slideLayout3-chart",
+          "slideLayout3-table-stress"
+        ],
+        "unchanged_pixel_pages": 304,
+        "changed_slide_xml_count": 5,
+        "changed_slide_xml_only_exact_artwork_geometry": true,
+        "failure_arrays_unchanged": true,
+        "remaining_failed_pages": 47,
+        "failure_details": [
+          {
+            "template": "abstract",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09"
+            ]
+          },
+          {
+            "template": "abstract",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R07",
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "abstract",
+            "id": "slideLayout5-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "abstract",
+            "id": "slideLayout5-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "blue-corporate",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "blue-corporate",
+            "id": "slideLayout5-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "blue-corporate",
+            "id": "slideLayout5-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "business-template",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "business-template",
+            "id": "slideLayout5-table-stress",
+            "failures": [
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "forest-green",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "forest-green",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "forest-green",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "midnight-blue",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "midnight-blue",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "midnight-blue",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "modern-template",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B04",
+              "missing source text: C1-B05",
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B04",
+              "missing source text: C2-B05",
+              "missing source text: C2-B06",
+              "missing source text: C2-B07",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "modern-template",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R07",
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R07",
+              "missing source text: C2-R08",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "modern-template",
+            "id": "slideLayout4-dense",
+            "failures": [
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09"
+            ]
+          },
+          {
+            "template": "modern-template",
+            "id": "slideLayout4-table-stress",
+            "failures": [
+              "missing source text: C1-R07",
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "modern-yellow",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R07",
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "modern-yellow",
+            "id": "slideLayout5-dense",
+            "failures": [
+              "missing source text: C1-B05",
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B07",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "modern-yellow",
+            "id": "slideLayout5-table-stress",
+            "failures": [
+              "missing source text: C1-R07",
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R07",
+              "missing source text: C2-R08",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "modern-yellow",
+            "id": "slideLayout4-dense",
+            "failures": [
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09"
+            ]
+          },
+          {
+            "template": "modern-yellow",
+            "id": "slideLayout4-table-stress",
+            "failures": [
+              "missing source text: C1-R05",
+              "missing source text: C1-R06",
+              "missing source text: C1-R07",
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "modern",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09"
+            ]
+          },
+          {
+            "template": "modern",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R07",
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "modern",
+            "id": "slideLayout7-dense",
+            "failures": [
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B06",
+              "missing source text: C2-B07",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "modern",
+            "id": "slideLayout7-table-stress",
+            "failures": [
+              "missing source text: C1-R07",
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R07",
+              "missing source text: C2-R08",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "p-style",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "p-style",
+            "id": "slideLayout5-table-stress",
+            "failures": [
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R08",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "warm-coral",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "warm-coral",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "warm-coral",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "portability-21x9",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "portability-21x9",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "portability-4x3",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "portability-4x3",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "portability-4x3",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "portability-side-logo",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "portability-side-logo",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "portability-side-logo",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "portability-two-master",
+            "id": "slideLayout2-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "portability-two-master",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "portability-two-master",
+            "id": "slideLayout3-table-stress",
+            "failures": [
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          },
+          {
+            "template": "portability-two-master",
+            "id": "slideLayout9-table-stress",
+            "failures": [
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23"
+            ]
+          },
+          {
+            "template": "portability-two-master",
+            "id": "slideLayout10-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "portability-two-master",
+            "id": "slideLayout10-table-stress",
+            "failures": [
+              "missing source text: C1-R08",
+              "missing source text: C1-R09",
+              "missing source text: C1-R10",
+              "missing source text: C1-R11",
+              "missing source text: C1-R12",
+              "missing source text: C1-R13",
+              "missing source text: C1-R14",
+              "missing source text: C1-R15",
+              "missing source text: C1-R16",
+              "missing source text: C1-R17",
+              "missing source text: C1-R18",
+              "missing source text: C1-R19",
+              "missing source text: C1-R20",
+              "missing source text: C1-R21",
+              "missing source text: C1-R22",
+              "missing source text: C1-R23",
+              "missing source text: C2-R08",
+              "missing source text: C2-R09",
+              "missing source text: C2-R10",
+              "missing source text: C2-R11",
+              "missing source text: C2-R12",
+              "missing source text: C2-R13",
+              "missing source text: C2-R14",
+              "missing source text: C2-R15",
+              "missing source text: C2-R16",
+              "missing source text: C2-R17",
+              "missing source text: C2-R18",
+              "missing source text: C2-R19",
+              "missing source text: C2-R20",
+              "missing source text: C2-R21",
+              "missing source text: C2-R22",
+              "missing source text: C2-R23"
+            ]
+          }
+        ],
+        "engine_source_sha256": "cdadd324eb865772bd389787852a41f048834029c4e4dd8293909471ed7f93ff",
+        "harness_sha256": "95d56523a6d68fdfb7846b8c65f628de9828d8dd3d2e86ba8c26a95d601e314e",
+        "manifest_sha256": "280f0a75bfa1e125859154a97585235041822371874ca9c861dad35155b6e10f",
+        "renderer_entrypoint": "/Users/seb/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice",
+        "dpi": 96
+      },
+      {
+        "old_directory": "native-table-continuations-20260926-v1",
+        "new_directory": "native-table-continuations-20260926-v2",
+        "pages": 402,
+        "native_layouts": 108,
+        "changed_pixel_pages": [
+          "slideLayout3-representative",
+          "slideLayout3-dense",
+          "slideLayout3-table",
+          "slideLayout3-chart",
+          "slideLayout3-table-continuation-01",
+          "slideLayout3-table-continuation-02",
+          "slideLayout3-table-continuation-03",
+          "slideLayout3-table-continuation-04"
+        ],
+        "unchanged_pixel_pages": 394,
+        "changed_slide_xml_count": 8,
+        "changed_slide_xml_only_exact_artwork_geometry": true,
+        "failure_arrays_unchanged": true,
+        "remaining_failed_pages": 16,
+        "failure_details": [
+          {
+            "template": "abstract",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09"
+            ]
+          },
+          {
+            "template": "abstract",
+            "id": "slideLayout5-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "blue-corporate",
+            "id": "slideLayout5-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "forest-green",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "midnight-blue",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "modern-template",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B04",
+              "missing source text: C1-B05",
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B04",
+              "missing source text: C2-B05",
+              "missing source text: C2-B06",
+              "missing source text: C2-B07",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "modern-template",
+            "id": "slideLayout4-dense",
+            "failures": [
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09"
+            ]
+          },
+          {
+            "template": "modern-yellow",
+            "id": "slideLayout5-dense",
+            "failures": [
+              "missing source text: C1-B05",
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B07",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "modern-yellow",
+            "id": "slideLayout4-dense",
+            "failures": [
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09"
+            ]
+          },
+          {
+            "template": "modern",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09"
+            ]
+          },
+          {
+            "template": "modern",
+            "id": "slideLayout7-dense",
+            "failures": [
+              "missing source text: C1-B06",
+              "missing source text: C1-B07",
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B06",
+              "missing source text: C2-B07",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "warm-coral",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "portability-4x3",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "portability-side-logo",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "portability-two-master",
+            "id": "slideLayout3-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          },
+          {
+            "template": "portability-two-master",
+            "id": "slideLayout10-dense",
+            "failures": [
+              "missing source text: C1-B08",
+              "missing source text: C1-B09",
+              "missing source text: C2-B08",
+              "missing source text: C2-B09"
+            ]
+          }
+        ],
+        "engine_source_sha256": "cdadd324eb865772bd389787852a41f048834029c4e4dd8293909471ed7f93ff",
+        "harness_sha256": "95d56523a6d68fdfb7846b8c65f628de9828d8dd3d2e86ba8c26a95d601e314e",
+        "manifest_sha256": "d9a5f7dc7fc631ec78d9f66df068eadb1d59c081e04ac8f69733dd72081ada81",
+        "renderer_entrypoint": "/Users/seb/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice",
+        "dpi": 96
+      }
+    ]
+  },
+  "blind_review": {
+    "status": "COMPLETE_WITH_RETAINED_CONTENT_DEFECTS",
+    "review_sha256": "de0ee73f5f6831f9d8587e04ef2f48792fa4de232e4d1eaabc63bd77df6c15c6",
+    "case_brief_sha256": "cfbcb6ebcd9b6c9b62b0f2e1d10c07f9bb668983e2ae07ec08643e5b1d131c0c",
+    "verdict": {
+      "review_type": "Single authorised blind modern-footer four-lens visual/content review",
+      "scope": "Only this packet cases.json,rubric.md,and all18 full-size PNGs; no external key/repo/manifests/identity joins/previous verdict access. No rendering or extra reviewer.",
+      "inspected_case_count": 12,
+      "inspected_page_count": 18,
+      "inspected_files": [
+        "F001-page-1.png",
+        "F002-page-1.png",
+        "F003-page-1.png",
+        "F004-page-1.png",
+        "F005-page-1.png",
+        "F006-page-1.png",
+        "F007-page-1.png",
+        "F008-page-1.png",
+        "F008-page-2.png",
+        "F008-page-3.png",
+        "F008-page-4.png",
+        "F009-page-1.png",
+        "F009-page-2.png",
+        "F009-page-3.png",
+        "F009-page-4.png",
+        "F010-page-1.png",
+        "F011-page-1.png",
+        "F012-page-1.png"
+      ],
+      "unreviewed_ids": [],
+      "method": "All18 PNGs viewed at original size. F002,F003,F005 titles re-opened individually. Repeated heading regions appeared suppressed in image display; read-only decoding confirmed title region x65–949,y90–189 is pixel-identical to visibly inspected F001 heading in F002,F003,F005,F006 (zero differing RGB channels). No pixels edited; no false title-loss allegation made from display suppression.",
+      "summary": {
+        "cases": 12,
+        "pages": 18,
+        "overall_safe_ids": [
+          "F003",
+          "F004",
+          "F005",
+          "F008"
+        ],
+        "overall_unsafe_ids": [
+          "F001",
+          "F002",
+          "F006",
+          "F007",
+          "F009",
+          "F010",
+          "F011",
+          "F012"
+        ],
+        "artwork_safe_ids": [
+          "F001",
+          "F003",
+          "F004",
+          "F005",
+          "F008",
+          "F011"
+        ],
+        "artwork_unsafe_ids": [
+          "F002",
+          "F006",
+          "F007",
+          "F009",
+          "F010",
+          "F012"
+        ],
+        "source_row_loss_ids": [
+          "F001",
+          "F010"
+        ],
+        "source_bullet_loss_ids": [
+          "F007",
+          "F011"
+        ],
+        "chart_identity_or_value_failure_ids": [],
+        "title_loss_ids": []
+      },
+      "cases": [
+        {
+          "id": "F001",
+          "status": "UNSAFE",
+          "overall_status": "UNSAFE",
+          "artwork_status": "SAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "INCOMPLETE",
+          "pages": [
+            {
+              "file": "F001-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F001-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R00",
+                  "C1-R01",
+                  "C1-R02",
+                  "C1-R03",
+                  "C1-R04",
+                  "C1-R05",
+                  "C1-R06",
+                  "C1-R07",
+                  "C1-R08",
+                  "C1-R09",
+                  "C1-R10",
+                  "C1-R11",
+                  "C1-R12",
+                  "C1-R13",
+                  "C1-R14",
+                  "C1-R15",
+                  "C1-R16",
+                  "C1-R17",
+                  "C1-R18",
+                  "C1-R19",
+                  "C1-R20",
+                  "C1-R21",
+                  "C1-R22",
+                  "C1-R23"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "INCOMPLETE",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "defect",
+                  "observation": "Title and single table Case/Owner/Days headers visible. C1-R00–R06,Team1–7,Days2–8 correctly associated; remaining17 identifiers absent, summary not source presence."
+                },
+                "readability_contrast": {
+                  "status": "defect",
+                  "observation": "Title and black/white header have strong contrast, but tiny table body type creates normal-distance reading failure."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "defect",
+                  "observation": "Title/table separated and aligned; data grid not clipped/overlapped. Very large title and spacious cells paired with tiny body text weaken hierarchy."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "required_rows_omitted",
+                  "severity": "major",
+                  "description": "Only C1-R00–R06 visible. C1-R07–R23 (17 required rows) replaced by '...and17 more rows'; no supplied continuation."
+                },
+                {
+                  "type": "small_table_type",
+                  "severity": "major",
+                  "description": "Body table type approximately11–13px in large/tall cells; too small for reliable normal presentation-distance reading."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Each source item checked against actual full-size pixels.",
+          "verdict": "Not safe within supplied brief; retain every page-specific defect even when artwork is SAFE."
+        },
+        {
+          "id": "F002",
+          "status": "UNSAFE",
+          "overall_status": "UNSAFE",
+          "artwork_status": "UNSAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+          "pages": [
+            {
+              "file": "F002-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F002-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review"
+                ],
+                "required_native_tables": 0,
+                "required_chart_labels": [
+                  "Q1",
+                  "Q2",
+                  "Q3",
+                  "Q4",
+                  "C1 cases",
+                  "Cases (count)",
+                  "12",
+                  "18",
+                  "15",
+                  "24"
+                ]
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Full required title present. Visible chart metric C1 cases and unit Cases (count); Q1→12,Q2→18,Q3→15,Q4→24 printed and ordered correctly. Bar heights consistent with linear0–30 axis; all labels/values included."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Large black title readable. Metric/units, quarter labels, printed numbers and axis ticks readable though smaller than title; adequate dark-on-white contrast and distinct red bars."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading above chart with clear separation, data labels clear above bars; axes/units/quarters contained without clipping, collision or overlap."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "correct_as_observed",
+                "metric": "C1 cases",
+                "units": "Cases (count)",
+                "categories": [
+                  "Q1",
+                  "Q2",
+                  "Q3",
+                  "Q4"
+                ],
+                "visible_values": [
+                  12,
+                  18,
+                  15,
+                  24
+                ],
+                "numerical_fidelity": "Printed values and heights agree with required values/order on0–30axis.",
+                "editability": "unverified"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Chart identity/units/quarters/value fidelity assessed independently of artwork.",
+          "verdict": "Not safe within supplied brief; retain every page-specific defect even when artwork is SAFE."
+        },
+        {
+          "id": "F003",
+          "status": "SAFE",
+          "overall_status": "SAFE",
+          "artwork_status": "SAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+          "pages": [
+            {
+              "file": "F003-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F003-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-B00",
+                  "C1-B01",
+                  "C1-B02",
+                  "C1-B03"
+                ],
+                "required_native_tables": 0
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all four identifiers C1-B00–B03 visible in order, each followed by Service owner confirms the reporting deadline. No source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Four large black bullet lines and title readable; orange bullet squares visible on white, no body contrast failure."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading and four body lines separated, consistent bullet alignment/spacing and ample whitespace; no clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [],
+              "overall_safe_to_use": true,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Each source item checked against actual full-size pixels.",
+          "verdict": "Safe within supplied visual/source brief; no editability or unrelated approval."
+        },
+        {
+          "id": "F004",
+          "status": "SAFE",
+          "overall_status": "SAFE",
+          "artwork_status": "SAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+          "pages": [
+            {
+              "file": "F004-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F004-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R00",
+                  "C1-R01",
+                  "C1-R02",
+                  "C1-R03",
+                  "C1-R04",
+                  "C1-R05"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R00–R05 rows visible with correct Team1–6,Days2–7 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [],
+              "overall_safe_to_use": true,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Each source item checked against actual full-size pixels.",
+          "verdict": "Safe within supplied visual/source brief; no editability or unrelated approval."
+        },
+        {
+          "id": "F005",
+          "status": "SAFE",
+          "overall_status": "SAFE",
+          "artwork_status": "SAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+          "pages": [
+            {
+              "file": "F005-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F005-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review"
+                ],
+                "required_native_tables": 0,
+                "required_chart_labels": [
+                  "Q1",
+                  "Q2",
+                  "Q3",
+                  "Q4",
+                  "C1 cases",
+                  "Cases (count)",
+                  "12",
+                  "18",
+                  "15",
+                  "24"
+                ]
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Full required title present. Visible chart metric C1 cases and unit Cases (count); Q1→12,Q2→18,Q3→15,Q4→24 printed and ordered correctly. Bar heights consistent with linear0–30 axis; all labels/values included."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Large black title readable. Metric/units, quarter labels, printed numbers and axis ticks readable though smaller than title; adequate dark-on-white contrast and distinct red bars."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading above chart with clear separation, data labels clear above bars; axes/units/quarters contained without clipping, collision or overlap."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "correct_as_observed",
+                "metric": "C1 cases",
+                "units": "Cases (count)",
+                "categories": [
+                  "Q1",
+                  "Q2",
+                  "Q3",
+                  "Q4"
+                ],
+                "visible_values": [
+                  12,
+                  18,
+                  15,
+                  24
+                ],
+                "numerical_fidelity": "Printed values and heights agree with required values/order on0–30axis.",
+                "editability": "unverified"
+              },
+              "issues": [],
+              "overall_safe_to_use": true,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Chart identity/units/quarters/value fidelity assessed independently of artwork.",
+          "verdict": "Safe within supplied visual/source brief; no editability or unrelated approval."
+        },
+        {
+          "id": "F006",
+          "status": "UNSAFE",
+          "overall_status": "UNSAFE",
+          "artwork_status": "UNSAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+          "pages": [
+            {
+              "file": "F006-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F006-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-B00",
+                  "C1-B01",
+                  "C1-B02",
+                  "C1-B03"
+                ],
+                "required_native_tables": 0
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all four identifiers C1-B00–B03 visible in order, each followed by Service owner confirms the reporting deadline. No source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Four large black bullet lines and title readable; orange bullet squares visible on white, no body contrast failure."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading and four body lines separated, consistent bullet alignment/spacing and ample whitespace; no clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Each source item checked against actual full-size pixels.",
+          "verdict": "Not safe within supplied brief; retain every page-specific defect even when artwork is SAFE."
+        },
+        {
+          "id": "F007",
+          "status": "UNSAFE",
+          "overall_status": "UNSAFE",
+          "artwork_status": "UNSAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "INCOMPLETE",
+          "pages": [
+            {
+              "file": "F007-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F007-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review and service delivery priorities",
+                  "C1-B00",
+                  "C1-B01",
+                  "C1-B02",
+                  "C1-B03",
+                  "C1-B04",
+                  "C1-B05",
+                  "C1-B06",
+                  "C1-B07",
+                  "C1-B08",
+                  "C1-B09"
+                ],
+                "required_native_tables": 0
+              },
+              "source_presence_verdict": "INCOMPLETE",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "defect",
+                  "observation": "Full two-line required long title present. C1-B00–B07 visible in order; C1-B08/B09 not visible. Existing long item text fits single lines without edge clipping, but required source list incomplete."
+                },
+                "readability_contrast": {
+                  "status": "defect",
+                  "observation": "Black heading/body on white has adequate contrast, but dense single-line tiny bullet type is not comfortably readable at normal presentation distance."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "defect",
+                  "observation": "Long title fits two lines; eight displayed bullets align with spacing, no visible content/footer collision or clipping. Large heading/tiny data hierarchy weak."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                },
+                {
+                  "type": "required_bullets_omitted",
+                  "severity": "major",
+                  "description": "Only C1-B00–B07 visible; required C1-B08 and C1-B09 absent, with ellipsis after eighth item."
+                },
+                {
+                  "type": "small_dense_bullet_type",
+                  "severity": "major",
+                  "description": "Long bullet text is approximately10–12px (second item especially small), hard to read at presentation distance and far below dominant heading scale."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Each source item checked against actual full-size pixels.",
+          "verdict": "Not safe within supplied brief; retain every page-specific defect even when artwork is SAFE."
+        },
+        {
+          "id": "F008",
+          "status": "SAFE",
+          "overall_status": "SAFE",
+          "artwork_status": "SAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+          "pages": [
+            {
+              "file": "F008-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F008-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R00",
+                  "Team 1",
+                  "2",
+                  "C1-R01",
+                  "Team 2",
+                  "3",
+                  "C1-R02",
+                  "Team 3",
+                  "4",
+                  "C1-R03",
+                  "Team 4",
+                  "5",
+                  "C1-R04",
+                  "Team 5",
+                  "6",
+                  "C1-R05",
+                  "Team 6",
+                  "7"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R00–R05 rows visible with correct Team1–6,Days2–7 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [],
+              "overall_safe_to_use": true,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            },
+            {
+              "file": "F008-page-2.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F008-page-2.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R06",
+                  "Team 7",
+                  "8",
+                  "C1-R07",
+                  "Team 8",
+                  "9",
+                  "C1-R08",
+                  "Team 9",
+                  "10",
+                  "C1-R09",
+                  "Team 10",
+                  "11",
+                  "C1-R10",
+                  "Team 11",
+                  "12",
+                  "C1-R11",
+                  "Team 12",
+                  "13"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R06–R11 rows visible with correct Team7–12,Days8–13 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [],
+              "overall_safe_to_use": true,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            },
+            {
+              "file": "F008-page-3.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F008-page-3.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R12",
+                  "Team 13",
+                  "14",
+                  "C1-R13",
+                  "Team 14",
+                  "15",
+                  "C1-R14",
+                  "Team 15",
+                  "16",
+                  "C1-R15",
+                  "Team 16",
+                  "17",
+                  "C1-R16",
+                  "Team 17",
+                  "18",
+                  "C1-R17",
+                  "Team 18",
+                  "19"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R12–R17 rows visible with correct Team13–18,Days14–19 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [],
+              "overall_safe_to_use": true,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            },
+            {
+              "file": "F008-page-4.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F008-page-4.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R18",
+                  "Team 19",
+                  "20",
+                  "C1-R19",
+                  "Team 20",
+                  "21",
+                  "C1-R20",
+                  "Team 21",
+                  "22",
+                  "C1-R21",
+                  "Team 22",
+                  "23",
+                  "C1-R22",
+                  "Team 23",
+                  "24",
+                  "C1-R23",
+                  "Team 24",
+                  "25"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R18–R23 rows visible with correct Team19–24,Days20–25 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [],
+              "overall_safe_to_use": true,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "All24 ordered rows and correct owner/day associations checked across four pages; page boundaries R05→R06,R11→R12,R17→R18 continuous.",
+          "verdict": "Safe within supplied visual/source brief; no editability or unrelated approval."
+        },
+        {
+          "id": "F009",
+          "status": "UNSAFE",
+          "overall_status": "UNSAFE",
+          "artwork_status": "UNSAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+          "pages": [
+            {
+              "file": "F009-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F009-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R00",
+                  "Team 1",
+                  "2",
+                  "C1-R01",
+                  "Team 2",
+                  "3",
+                  "C1-R02",
+                  "Team 3",
+                  "4",
+                  "C1-R03",
+                  "Team 4",
+                  "5",
+                  "C1-R04",
+                  "Team 5",
+                  "6",
+                  "C1-R05",
+                  "Team 6",
+                  "7"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R00–R05 rows visible with correct Team1–6,Days2–7 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            },
+            {
+              "file": "F009-page-2.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F009-page-2.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R06",
+                  "Team 7",
+                  "8",
+                  "C1-R07",
+                  "Team 8",
+                  "9",
+                  "C1-R08",
+                  "Team 9",
+                  "10",
+                  "C1-R09",
+                  "Team 10",
+                  "11",
+                  "C1-R10",
+                  "Team 11",
+                  "12",
+                  "C1-R11",
+                  "Team 12",
+                  "13"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R06–R11 rows visible with correct Team7–12,Days8–13 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            },
+            {
+              "file": "F009-page-3.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F009-page-3.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R12",
+                  "Team 13",
+                  "14",
+                  "C1-R13",
+                  "Team 14",
+                  "15",
+                  "C1-R14",
+                  "Team 15",
+                  "16",
+                  "C1-R15",
+                  "Team 16",
+                  "17",
+                  "C1-R16",
+                  "Team 17",
+                  "18",
+                  "C1-R17",
+                  "Team 18",
+                  "19"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R12–R17 rows visible with correct Team13–18,Days14–19 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            },
+            {
+              "file": "F009-page-4.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F009-page-4.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R18",
+                  "Team 19",
+                  "20",
+                  "C1-R19",
+                  "Team 20",
+                  "21",
+                  "C1-R20",
+                  "Team 21",
+                  "22",
+                  "C1-R21",
+                  "Team 22",
+                  "23",
+                  "C1-R22",
+                  "Team 23",
+                  "24",
+                  "C1-R23",
+                  "Team 24",
+                  "25"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R18–R23 rows visible with correct Team19–24,Days20–25 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "All24 ordered rows and correct owner/day associations checked across four pages; page boundaries R05→R06,R11→R12,R17→R18 continuous.",
+          "verdict": "Not safe within supplied brief; retain every page-specific defect even when artwork is SAFE."
+        },
+        {
+          "id": "F010",
+          "status": "UNSAFE",
+          "overall_status": "UNSAFE",
+          "artwork_status": "UNSAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "INCOMPLETE",
+          "pages": [
+            {
+              "file": "F010-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F010-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R00",
+                  "C1-R01",
+                  "C1-R02",
+                  "C1-R03",
+                  "C1-R04",
+                  "C1-R05",
+                  "C1-R06",
+                  "C1-R07",
+                  "C1-R08",
+                  "C1-R09",
+                  "C1-R10",
+                  "C1-R11",
+                  "C1-R12",
+                  "C1-R13",
+                  "C1-R14",
+                  "C1-R15",
+                  "C1-R16",
+                  "C1-R17",
+                  "C1-R18",
+                  "C1-R19",
+                  "C1-R20",
+                  "C1-R21",
+                  "C1-R22",
+                  "C1-R23"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "INCOMPLETE",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "defect",
+                  "observation": "Title and single table Case/Owner/Days headers visible. C1-R00–R06,Team1–7,Days2–8 correctly associated; remaining17 identifiers absent, summary not source presence."
+                },
+                "readability_contrast": {
+                  "status": "defect",
+                  "observation": "Title and black/white header have strong contrast, but tiny table body type creates normal-distance reading failure."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "defect",
+                  "observation": "Title/table separated and aligned; data grid not clipped/overlapped. Very large title and spacious cells paired with tiny body text weaken hierarchy."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                },
+                {
+                  "type": "required_rows_omitted",
+                  "severity": "major",
+                  "description": "Only C1-R00–R06 visible. C1-R07–R23 (17 required rows) replaced by '...and17 more rows'; no supplied continuation."
+                },
+                {
+                  "type": "small_table_type",
+                  "severity": "major",
+                  "description": "Body table type approximately11–13px in large/tall cells; too small for reliable normal presentation-distance reading."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Each source item checked against actual full-size pixels.",
+          "verdict": "Not safe within supplied brief; retain every page-specific defect even when artwork is SAFE."
+        },
+        {
+          "id": "F011",
+          "status": "UNSAFE",
+          "overall_status": "UNSAFE",
+          "artwork_status": "SAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "INCOMPLETE",
+          "pages": [
+            {
+              "file": "F011-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F011-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review and service delivery priorities",
+                  "C1-B00",
+                  "C1-B01",
+                  "C1-B02",
+                  "C1-B03",
+                  "C1-B04",
+                  "C1-B05",
+                  "C1-B06",
+                  "C1-B07",
+                  "C1-B08",
+                  "C1-B09"
+                ],
+                "required_native_tables": 0
+              },
+              "source_presence_verdict": "INCOMPLETE",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "defect",
+                  "observation": "Full two-line required long title present. C1-B00–B07 visible in order; C1-B08/B09 not visible. Existing long item text fits single lines without edge clipping, but required source list incomplete."
+                },
+                "readability_contrast": {
+                  "status": "defect",
+                  "observation": "Black heading/body on white has adequate contrast, but dense single-line tiny bullet type is not comfortably readable at normal presentation distance."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "defect",
+                  "observation": "Long title fits two lines; eight displayed bullets align with spacing, no visible content/footer collision or clipping. Large heading/tiny data hierarchy weak."
+                },
+                "artwork_composition": {
+                  "status": "SAFE",
+                  "observation": "Thin full-width gradient line along bottom edge is contained as an edge accent, visually subordinate and separated from content; no distracting artwork defect observed."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "required_bullets_omitted",
+                  "severity": "major",
+                  "description": "Only C1-B00–B07 visible; required C1-B08 and C1-B09 absent, with ellipsis after eighth item."
+                },
+                {
+                  "type": "small_dense_bullet_type",
+                  "severity": "major",
+                  "description": "Long bullet text is approximately10–12px (second item especially small), hard to read at presentation distance and far below dominant heading scale."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "SAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Each source item checked against actual full-size pixels.",
+          "verdict": "Not safe within supplied brief; retain every page-specific defect even when artwork is SAFE."
+        },
+        {
+          "id": "F012",
+          "status": "UNSAFE",
+          "overall_status": "UNSAFE",
+          "artwork_status": "UNSAFE",
+          "confidence": "High for scoped rendered content and visual verdict; native structure/renderer cause unverified.",
+          "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+          "pages": [
+            {
+              "file": "F012-page-1.png",
+              "inspected_original_size": true,
+              "required_source": {
+                "file": "F012-page-1.png",
+                "required_visible_text": [
+                  "Quarterly operating review",
+                  "C1-R00",
+                  "C1-R01",
+                  "C1-R02",
+                  "C1-R03",
+                  "C1-R04",
+                  "C1-R05"
+                ],
+                "required_native_tables": 1
+              },
+              "source_presence_verdict": "COMPLETE_AS_OBSERVED",
+              "four_lens": {
+                "source_fidelity_completeness": {
+                  "status": "no_observed_omission",
+                  "observation": "Required title and all specified C1-R00–R05 rows visible with correct Team1–6,Days2–7 associations. Case/Owner/Days headers present. Six rows per page correctly align; no source omission observed."
+                },
+                "readability_contrast": {
+                  "status": "no_observed_defect",
+                  "observation": "Title and six-row table comfortably readable with black body and white-on-black headers. Day values clear at right; sufficient contrast."
+                },
+                "hierarchy_spacing_collisions": {
+                  "status": "no_observed_defect",
+                  "observation": "Heading/table separated, rows consistently aligned and inset, days right-aligned; no visible data clipping/collision."
+                },
+                "artwork_composition": {
+                  "status": "UNSAFE",
+                  "observation": "Large bottom-cropped gradient block is visually distracting; no evidence it masks data, so source completeness assessed separately."
+                }
+              },
+              "chart_assessment": {
+                "status": "not_applicable"
+              },
+              "issues": [
+                {
+                  "type": "bottom_cropped_gradient_artwork",
+                  "severity": "moderate",
+                  "description": "Large isolated orange-to-purple rectangle occupies lower centre/right and ends at bottom canvas edge, visibly cropped. Distracting unfinished-looking block rather than a contained/edge-integrated accent; intended artwork ownership and renderer cause unverified."
+                }
+              ],
+              "overall_safe_to_use": false,
+              "artwork_status": "UNSAFE",
+              "unverified_properties": [
+                "Native/editable table or chart objects cannot be established from pixels",
+                "Exact intended original-template fidelity/artwork ownership",
+                "Renderer/configuration cause of observed defects"
+              ]
+            }
+          ],
+          "case_observations": "Each source item checked against actual full-size pixels.",
+          "verdict": "Not safe within supplied brief; retain every page-specific defect even when artwork is SAFE."
+        }
+      ],
+      "approved_packet": false,
+      "approved_unrelated_pages": false,
+      "editability_assessed": false,
+      "limitations": "SAFE artwork does not imply source/content approval. Native table count/type and editability remain unverified from images.",
+      "conclusion": "Four cases overall SAFE and eight UNSAFE. Six cases artwork SAFE and six UNSAFE. Two row-loss and two bullet-loss cases remain source failures; chart labels/units/values correct in both chart cases."
+    }
+  },
+  "post_review_identity_join": [
+    {
+      "id": "F001",
+      "variant": "revised",
+      "profile": "table-stress",
+      "directory": "native-content-corpus-20260926-v12",
+      "pages": [
+        {
+          "id": "slideLayout3-table-stress",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v12/modern/slideLayout3-table-stress.png",
+          "sha256": "9d765e835d8fa7025c735d077f8b47c1785049e4ba841cd4da6b4fd00dfea346"
+        }
+      ]
+    },
+    {
+      "id": "F002",
+      "variant": "original",
+      "profile": "chart",
+      "directory": "native-content-corpus-20260926-v11",
+      "pages": [
+        {
+          "id": "slideLayout3-chart",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v11/modern/slideLayout3-chart.png",
+          "sha256": "746517a0af2d1282f39af4df9117c817a2a7b4a6357e255a4fc73212807ec90f"
+        }
+      ]
+    },
+    {
+      "id": "F003",
+      "variant": "revised",
+      "profile": "representative",
+      "directory": "native-content-corpus-20260926-v12",
+      "pages": [
+        {
+          "id": "slideLayout3-representative",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v12/modern/slideLayout3-representative.png",
+          "sha256": "2e0a619d66365d4eeebb74424e7f515b8a7aa17754e670ecf2b60b0a964e18a2"
+        }
+      ]
+    },
+    {
+      "id": "F004",
+      "variant": "revised",
+      "profile": "table",
+      "directory": "native-content-corpus-20260926-v12",
+      "pages": [
+        {
+          "id": "slideLayout3-table",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v12/modern/slideLayout3-table.png",
+          "sha256": "257b5c99c368717432db04990355a25f03f548b4e5eb8ec58c7ab2760961347c"
+        }
+      ]
+    },
+    {
+      "id": "F005",
+      "variant": "revised",
+      "profile": "chart",
+      "directory": "native-content-corpus-20260926-v12",
+      "pages": [
+        {
+          "id": "slideLayout3-chart",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v12/modern/slideLayout3-chart.png",
+          "sha256": "7e87dc3a2d3b3624ec0d99e02e5bf2c0a3f606290f5a47d9350b060ac6d49dc7"
+        }
+      ]
+    },
+    {
+      "id": "F006",
+      "variant": "original",
+      "profile": "representative",
+      "directory": "native-content-corpus-20260926-v11",
+      "pages": [
+        {
+          "id": "slideLayout3-representative",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v11/modern/slideLayout3-representative.png",
+          "sha256": "ad28d917e1925737eabfb57aa05aa98106d546c2c20c06bd51db735e895c5db8"
+        }
+      ]
+    },
+    {
+      "id": "F007",
+      "variant": "original",
+      "profile": "dense",
+      "directory": "native-content-corpus-20260926-v11",
+      "pages": [
+        {
+          "id": "slideLayout3-dense",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v11/modern/slideLayout3-dense.png",
+          "sha256": "f26c151c9e790c5a7ccd45931af39a7e94a15b55af5ede26c814ca8f9456e11c"
+        }
+      ]
+    },
+    {
+      "id": "F008",
+      "variant": "revised",
+      "profile": "continuation",
+      "directory": "native-table-continuations-20260926-v2",
+      "pages": [
+        {
+          "id": "slideLayout3-table-continuation-01",
+          "path": "/Users/seb/projects/json2pptx/output/native-table-continuations-20260926-v2/modern/slideLayout3-table-continuation-01.png",
+          "sha256": "2af2d542ec4821c0f7b0ca6e1acdb159ab24dbd24d1970273bb015cf83b5be06"
+        },
+        {
+          "id": "slideLayout3-table-continuation-02",
+          "path": "/Users/seb/projects/json2pptx/output/native-table-continuations-20260926-v2/modern/slideLayout3-table-continuation-02.png",
+          "sha256": "c382bffd59dbc63a1d64348b15ab21615a449299b46b79cd58961b33d3361cc9"
+        },
+        {
+          "id": "slideLayout3-table-continuation-03",
+          "path": "/Users/seb/projects/json2pptx/output/native-table-continuations-20260926-v2/modern/slideLayout3-table-continuation-03.png",
+          "sha256": "e7c316fd3fb018012f987657571aaa0361365be840e8731719b0468ed04695dc"
+        },
+        {
+          "id": "slideLayout3-table-continuation-04",
+          "path": "/Users/seb/projects/json2pptx/output/native-table-continuations-20260926-v2/modern/slideLayout3-table-continuation-04.png",
+          "sha256": "e5713e4a2f9465667d4142efd4b92e30aaf98a3195b7d92ecea9297c1a0859c1"
+        }
+      ]
+    },
+    {
+      "id": "F009",
+      "variant": "original",
+      "profile": "continuation",
+      "directory": "native-table-continuations-20260926-v1",
+      "pages": [
+        {
+          "id": "slideLayout3-table-continuation-01",
+          "path": "/Users/seb/projects/json2pptx/output/native-table-continuations-20260926-v1/modern/slideLayout3-table-continuation-01.png",
+          "sha256": "054185757571373c40d241ae3f91159d047b2266910b3e97b2d2dc5dfae90ec0"
+        },
+        {
+          "id": "slideLayout3-table-continuation-02",
+          "path": "/Users/seb/projects/json2pptx/output/native-table-continuations-20260926-v1/modern/slideLayout3-table-continuation-02.png",
+          "sha256": "b3c29411f3b3faf993c4901ab6130426f08d09bce21c2feaa3999cb46b1f20f6"
+        },
+        {
+          "id": "slideLayout3-table-continuation-03",
+          "path": "/Users/seb/projects/json2pptx/output/native-table-continuations-20260926-v1/modern/slideLayout3-table-continuation-03.png",
+          "sha256": "3735a8685ae47a0dc9035d261ecd2fdff7d571981a75c14a310c5cccdcfc925d"
+        },
+        {
+          "id": "slideLayout3-table-continuation-04",
+          "path": "/Users/seb/projects/json2pptx/output/native-table-continuations-20260926-v1/modern/slideLayout3-table-continuation-04.png",
+          "sha256": "4a474ab741fefb08ab2ce43f20f4afc609ec24dfccbd62764b2710234dce27b5"
+        }
+      ]
+    },
+    {
+      "id": "F010",
+      "variant": "original",
+      "profile": "table-stress",
+      "directory": "native-content-corpus-20260926-v11",
+      "pages": [
+        {
+          "id": "slideLayout3-table-stress",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v11/modern/slideLayout3-table-stress.png",
+          "sha256": "d873a4fa81e53c0040e0be94b6b64cb6acb88d41c7631c294d7495346b385d0b"
+        }
+      ]
+    },
+    {
+      "id": "F011",
+      "variant": "revised",
+      "profile": "dense",
+      "directory": "native-content-corpus-20260926-v12",
+      "pages": [
+        {
+          "id": "slideLayout3-dense",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v12/modern/slideLayout3-dense.png",
+          "sha256": "285d71427faf9be2535ea13d19cf4d13c81228583c9118fb8676b2daedaf9664"
+        }
+      ]
+    },
+    {
+      "id": "F012",
+      "variant": "original",
+      "profile": "table",
+      "directory": "native-content-corpus-20260926-v11",
+      "pages": [
+        {
+          "id": "slideLayout3-table",
+          "path": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v11/modern/slideLayout3-table.png",
+          "sha256": "5ec4ce0361a381ff4be5ef38760af078bd4c7120db787887182dbca570aca862"
+        }
+      ]
+    }
+  ],
+  "local_gates": {
+    "repair_script_race": "PASS 1.355s including original, idempotence, wrong gradient, repaired wrong gradient, unexpected geometry, duplicate and missing parts; byte-preserving rejection and exact backup",
+    "committed_template_regression": "Red on original geometry, green after repair",
+    "template_and_quality_short_race": "PASS 14.136s / 34.659s",
+    "lint": "PASS 0 issues",
+    "build": "PASS",
+    "template_check": "PASS",
+    "examination_gate": "PASS 9 layouts; SVG diagnostics only, PNG review comes from the separate full corpus",
+    "full_root_local_race": "NOT_RUN",
+    "native_content_render": "309 pages rendered; FAIL47 unchanged source-loss pages",
+    "native_continuation_render": "402 pages rendered; FAIL16 unchanged dense-text source-loss pages"
+  },
+  "technical_reviews": [
+    {
+      "reviewer": "testing",
+      "findings": [],
+      "residual_risks": [
+        "Normal CI asserts band geometry, not visual quality; visual verdict is scoped to the exact reviewed pixels"
+      ],
+      "testing_gaps": [
+        "PowerPoint editability not assessed from PNGs"
+      ]
+    },
+    {
+      "reviewer": "reliability",
+      "findings": [],
+      "residual_risks": [
+        "Existing repair helper is an offline single-writer utility, not a concurrency-safe authoring service"
+      ],
+      "testing_gaps": []
+    },
+    {
+      "reviewer": "adversarial",
+      "findings": [],
+      "residual_risks": [
+        "Source/style guards are reviewed-source checks, not a general-purpose layout repair algorithm"
+      ],
+      "testing_gaps": []
+    }
+  ],
+  "outcome": {
+    "revised_artwork_safe_cases": 6,
+    "original_artwork_unsafe_cases": 6,
+    "revised_overall_safe_cases": 4,
+    "revised_overall_unsafe_cases": 2,
+    "continuation_group_safe": true,
+    "whole_audit_complete": false,
+    "ci": "Pending publication of this repair"
+  },
+  "limitations": [
+    "Dense bullet omission and original unsplit table row omission remain unchanged and unsafe",
+    "Prior approved continuation layouts are unaffected pixel-for-pixel; this adds scoped approval for modern slideLayout3 only",
+    "Ignored p-style included locally, not bundled into CI",
+    "Frozen browser rating sheets and prior blind evidence unchanged",
+    "No broad feature, CJK/RTL, application editability or cache-correctness approval"
+  ]
+}

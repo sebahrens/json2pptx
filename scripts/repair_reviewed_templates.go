@@ -20,6 +20,7 @@ func main() {
 		func() error { return repairBusinessSubtitle("templates/business-template.pptx") },
 		func() error { return repairModernSubtitle("templates/modern.pptx") },
 		func() error { return repairModernSection("templates/modern-template.pptx") },
+		func() error { return repairModernFooterAccent("templates/modern.pptx") },
 	} {
 		if err := repair(); err != nil {
 			panic(err)
@@ -30,6 +31,19 @@ func main() {
 type reviewedPartRepair struct {
 	old, replacement string
 	guards           []string
+}
+
+// The original decorative rectangle is flush with the canvas bottom, not an
+// image crop. Keep its exact gradient/style as a slim, full-width footer band
+// rather than an isolated tall block; text and table regions are untouched.
+func repairModernFooterAccent(path string) error {
+	return repairReviewedParts(path, "modern-footer-accent-before.pptx", map[string]reviewedPartRepair{
+		"ppt/slideLayouts/slideLayout3.xml": {
+			old:         `<a:off x="5291586" y="6303963"/><a:ext cx="4287186" cy="554037"/>`,
+			replacement: `<a:off x="0" y="6781800"/><a:ext cx="12192000" cy="76200"/>`,
+			guards:      []string{`name="Rectangle 7"`, `<a:gradFill flip="none" rotWithShape="1">`, `<a:schemeClr val="accent5"/>`, `<a:tileRect r="-100000" b="-100000"/>`},
+		},
+	})
 }
 
 // The original oversized, implicitly centered number frame overlaps the
@@ -160,16 +174,16 @@ func repairReviewedParts(path, backupName string, repairs map[string]reviewedPar
 		if err != nil {
 			return err
 		}
+		for _, guard := range repair.guards {
+			if !bytes.Contains(body, []byte(guard)) {
+				return fmt.Errorf("%s missing reviewed marker %q", entry.Name, guard)
+			}
+		}
 		if bytes.Count(body, []byte(repair.replacement)) == 1 && !bytes.Contains(body, []byte(repair.old)) {
 			continue // Already repaired, without rewriting this part.
 		}
 		if bytes.Count(body, []byte(repair.old)) != 1 {
 			return fmt.Errorf("%s differs from reviewed source; refusing to patch", entry.Name)
-		}
-		for _, guard := range repair.guards {
-			if !bytes.Contains(body, []byte(guard)) {
-				return fmt.Errorf("%s missing reviewed marker %q", entry.Name, guard)
-			}
 		}
 		updates[entry.Name] = bytes.Replace(body, []byte(repair.old), []byte(repair.replacement), 1)
 	}
