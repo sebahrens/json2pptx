@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -585,7 +586,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 			for _, f := range e.Findings {
 				_ = enc.Encode(f)
 			}
-			return writeJSONError(jsonOutputPath, e.Err)
+			return writeJSONErrorWithFindings(jsonOutputPath, e.Err, e.Findings)
 		case *OutputValidationFailure:
 			blocking := e.Report.Blocking()
 			msgs := make([]string, 0, len(blocking))
@@ -1919,13 +1920,23 @@ func convertBulletGroupsInput(input *BulletGroupsInput) generator.BulletGroupsCo
 
 // writeJSONError writes an error response to JSON output or returns the error.
 func writeJSONError(jsonOutputPath string, err error) error {
+	var findings []patterns.FitFinding
+	var loss *patterns.ValidationError
+	if errors.As(err, &loss) && loss != nil && (loss.Code == patterns.ErrCodeTextTrimmed || loss.Code == patterns.ErrCodeReadabilityTrimmed || loss.Code == patterns.ErrCodeTableRowsTruncated) {
+		findings = []patterns.FitFinding{{ValidationError: *loss, Action: "refuse"}}
+	}
+	return writeJSONErrorWithFindings(jsonOutputPath, err, findings)
+}
+
+func writeJSONErrorWithFindings(jsonOutputPath string, err error, findings []patterns.FitFinding) error {
 	if jsonOutputPath == "" {
 		return err
 	}
 
 	output := JSONOutput{
-		Success: false,
-		Error:   err.Error(),
+		Success:     false,
+		Error:       err.Error(),
+		FitFindings: findings,
 	}
 
 	if writeErr := writeJSONOutput(jsonOutputPath, output); writeErr != nil {

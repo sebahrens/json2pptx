@@ -1,0 +1,28 @@
+{
+  "issue": "go-slide-creator-3qzo4.55",
+  "scope": "CLI JSON error diagnostics, not visual approval or full-suite completion",
+  "red_test": {"status": "fail", "duration_seconds": 0.688, "reason": "All three wrapped source-loss codes lost fit_findings"},
+  "final_targeted_race_suite": {"status": "pass", "duration_seconds": 35.632},
+  "real_refusal_cases": {
+    "kinds": ["table", "bullets"],
+    "modes": ["default", "warn", "off", "strict"],
+    "assertions": [
+      "Original source-loss code, authored path, refuse action and repair retained",
+      "Table split and hidden-row parameters retained",
+      "Failure returned; success false; no new output path advertised",
+      "Existing destination byte-preserved; no leaked artifacts",
+      "Authored input byte-preserved"
+    ]
+  },
+  "positive_controls": "Fitting paragraphs publish successfully in every mode with every required sentence present in slide XML",
+  "error_controls": ["All three wrapped source-loss codes", "Unrelated ordinary error", "Unrelated typed fit error", "Wrapped nil typed error", "No-report path", "JSON report write failure"],
+  "strict_preflight": "Existing preflight findings retained in error report",
+  "build": "pass",
+  "lint": {"status": "pass", "issues": 0},
+  "preview_packages_race": {"templatepreview": "pass 9.932s", "layoutpreview": "pass 11.085s"},
+  "preview_refresh": "Not required: changed production file is outside render-source fingerprint; authoritative freshness tests pass",
+  "reviews": [
+    {"reviewer": "testing", "findings": [], "testing_gaps": [], "residual_risks": ["Real integration fixtures emit text_trimmed and table_rows_truncated; readability_trimmed is covered by a wrapped typed-error serialization test"]},
+    {"reviewer": "reliability", "findings": [], "testing_gaps": [], "residual_risks": ["Integrated replacement suite and CI pending; quality metrics harness remains unrepaired"]}
+  ]
+}

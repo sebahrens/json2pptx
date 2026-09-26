@@ -1,5 +1,13 @@
 # Schema Changelog
 
+- **2026-09-26 — CLI source-loss error diagnostics retained (`go-slide-creator-3qzo4.55`).**
+  CLI JSON error reports now retain actual source-loss code, authored path,
+  `refuse` action, and repair parameters in the existing `fit_findings` array.
+  Strict preflight refusals retain their findings too. Failure returns,
+  `success:false`, error text, and destination preservation remain unchanged;
+  unrelated failures do not acquire source-loss findings. No new schema fields
+  or finding codes.
+
 - **2026-09-26 — Actual source-loss publication guard in all fit modes (`go-slide-creator-3qzo4.41`, `go-slide-creator-3qzo4.45`).**
   Direct generation now refuses actual paragraph or table-row loss before
   publishing in default, `warn`, `off`, and `strict` modes. Previously the

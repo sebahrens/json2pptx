@@ -2,6 +2,12 @@
 
 ## Repair actual source loss
 
+CLI JSON error reports retain source-loss findings in the existing `fit_findings`
+array, including the code, authored path, `refuse` action, and original repair
+parameters. Strict preflight refusals retain their findings there too. The error
+report still has `success:false`, the command still fails, and no new output path
+is advertised. Unrelated errors do not acquire source-loss findings.
+
 Runtime `text_trimmed`, `readability_trimmed`, and `table_rows_truncated`
 refuse publication in every fit mode, retaining the authored content path and
 repair guidance. `warn` and `off` do not authorize dropping required content.
