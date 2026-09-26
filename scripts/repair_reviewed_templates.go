@@ -8,10 +8,12 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func main() {
@@ -21,6 +23,7 @@ func main() {
 		func() error { return repairModernSubtitle("templates/modern.pptx") },
 		func() error { return repairModernSection("templates/modern-template.pptx") },
 		func() error { return repairModernFooterAccent("templates/modern.pptx") },
+		func() error { return repairModernBulletIndentation("templates/modern.pptx") },
 	} {
 		if err := repair(); err != nil {
 			panic(err)
@@ -31,6 +34,62 @@ func main() {
 type reviewedPartRepair struct {
 	old, replacement string
 	guards           []string
+}
+
+// These local list styles override the master's nesting margins. Their parent
+// and child text origins were identical despite correctly emitted paragraph
+// levels. Keep hanging indents, glyphs, colors and typography unchanged.
+func repairModernBulletIndentation(path string) error {
+	known := map[string][2]string{
+		"ppt/slideLayouts/slideLayout3.xml": {"044aa360163a84c079b2cb947a4b0867f9105f6afd8019f356c600fc05a0fcec", "6fd46f7550d00f099b8b4eae5eed6251343b42e10ba6f581d96065c9e7da161c"},
+		"ppt/slideLayouts/slideLayout7.xml": {"0c8f36cdb9ca7620cd5fa4180611ae184faa15f1f6510743513d269c809f6a93", "34e8e22ba2bef917de01bfa694f9535dfe4f714d126dc6b63e6ac9df4f6c884c"},
+	}
+	z, err := zip.OpenReader(path)
+	if err != nil {
+		return err
+	}
+	defer z.Close()
+	repairs := map[string]reviewedPartRepair{}
+	for _, entry := range z.File {
+		hashes, selected := known[entry.Name]
+		if !selected {
+			continue
+		}
+		if _, seen := repairs[entry.Name]; seen {
+			return fmt.Errorf("duplicate reviewed part %s", entry.Name)
+		}
+		r, err := entry.Open()
+		if err != nil {
+			return err
+		}
+		data, err := io.ReadAll(r)
+		_ = r.Close()
+		if err != nil {
+			return err
+		}
+		sum := fmt.Sprintf("%x", sha256.Sum256(data))
+		if sum != hashes[0] && sum != hashes[1] {
+			return fmt.Errorf("%s differs from reviewed bullet styles; refusing to patch", entry.Name)
+		}
+		before, after := string(data), string(data)
+		for level := 2; level <= 5; level++ {
+			old := fmt.Sprintf(`<a:lvl%dpPr marL="228600" indent="-228600">`, level)
+			updated := fmt.Sprintf(`<a:lvl%dpPr marL="%d" indent="-228600">`, level, level*228600)
+			before = strings.ReplaceAll(before, updated, old)
+			after = strings.ReplaceAll(after, old, updated)
+		}
+		if fmt.Sprintf("%x", sha256.Sum256([]byte(before))) != hashes[0] || fmt.Sprintf("%x", sha256.Sum256([]byte(after))) != hashes[1] {
+			return fmt.Errorf("%s bullet margin transformation differs from reviewed result", entry.Name)
+		}
+		repairs[entry.Name] = reviewedPartRepair{old: before, replacement: after}
+	}
+	if len(repairs) != len(known) {
+		return fmt.Errorf("reviewed bullet layout missing")
+	}
+	if err := z.Close(); err != nil {
+		return err
+	}
+	return repairReviewedParts(path, "modern-bullet-indentation-before.pptx", repairs)
 }
 
 // The original decorative rectangle is flush with the canvas bottom, not an
