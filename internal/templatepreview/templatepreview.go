@@ -10,6 +10,7 @@ package templatepreview
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/png"
@@ -20,6 +21,7 @@ import (
 
 	"golang.org/x/image/draw"
 
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/layoutpreview"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -47,21 +49,30 @@ func Resolve(templatePath, layoutID string) string {
 		return ""
 	}
 	name := strings.TrimSuffix(filepath.Base(templatePath), ".pptx")
+	source, err := os.ReadFile(templatePath) //nolint:gosec // requested template
+	if err != nil {
+		return ""
+	}
+	templateHash := hashBytes(source)
 	onDisk := filepath.Join(filepath.Dir(templatePath), RelPath(name, layoutID))
-	if info, err := os.Stat(onDisk); err == nil && !info.IsDir() {
+	if diskPreviewIsCurrent(templatePath, onDisk, layoutID, templateHash) {
 		if abs, err := filepath.Abs(onDisk); err == nil {
 			return abs
 		}
 		return onDisk
 	}
-	return extractEmbedded(name, layoutID)
+	return extractEmbedded(name, layoutID, templateHash, templatePath)
 }
 
 // extractEmbedded writes the embedded preview for (name, layoutID) into the
 // user cache dir (once) and returns its path, or "" when none is embedded.
-func extractEmbedded(name, layoutID string) string {
+func extractEmbedded(name, layoutID, templateHash, templatePath string) string {
 	data, err := templates.Embedded.ReadFile(filepath.ToSlash(RelPath(name, layoutID)))
 	if err != nil {
+		return ""
+	}
+	metadata, err := templates.Embedded.ReadFile(filepath.ToSlash(filepath.Join(DirName, name, manifestName)))
+	if err != nil || !validManifest(metadata, data, templateHash, layoutID) || !previewSourcesAreCurrent(templatePath, metadata) {
 		return ""
 	}
 	base, err := os.UserCacheDir()
@@ -87,6 +98,7 @@ type Options struct {
 	DPI                   int    // render density before downscaling (default 60)
 	LibreOfficeProfileDir string // private LibreOffice profile (avoids profile collisions)
 	CacheDir              string // layoutpreview cache dir (default: temp dir)
+	SourceRoot            string // optional repository root for rendering-source provenance
 }
 
 // GenerateAll renders a thumbnail for every layout of every *.pptx template in
@@ -128,6 +140,18 @@ func GenerateAll(templatesDir, outDir string, opts Options) (map[string]int, err
 }
 
 func generateTemplate(tplPath, outDir, cacheDir string, opts Options) (int, error) {
+	metadata := previewManifest{Schema: 1, Recipe: previewRecipe, Width: opts.Width, DPI: opts.DPI, Images: map[string]string{}, Content: map[string][]generator.ContentItem{}}
+	bytes, err := os.ReadFile(tplPath) //nolint:gosec // configured template
+	if err != nil {
+		return 0, err
+	}
+	metadata.TemplateHash = hashBytes(bytes)
+	if opts.SourceRoot != "" {
+		metadata.SourceHash, err = RenderingSourceHash(opts.SourceRoot)
+		if err != nil {
+			return 0, err
+		}
+	}
 	reader, err := template.OpenTemplate(tplPath)
 	if err != nil {
 		return 0, err
@@ -149,6 +173,7 @@ func generateTemplate(tplPath, outDir, cacheDir string, opts Options) (int, erro
 	if res == nil {
 		return 0, fmt.Errorf("layout previews unavailable (LibreOffice + ImageMagick required)")
 	}
+	metadata.CacheKey = res.CacheIdentity
 	if err := os.RemoveAll(outDir); err != nil {
 		return 0, err
 	}
@@ -157,6 +182,7 @@ func generateTemplate(tplPath, outDir, cacheDir string, opts Options) (int, erro
 	}
 	n := 0
 	for _, l := range layouts {
+		metadata.Content[l.ID] = layoutpreview.SampleContent(l)
 		src, ok := res.Paths[l.ID]
 		if !ok {
 			continue
@@ -164,7 +190,19 @@ func generateTemplate(tplPath, outDir, cacheDir string, opts Options) (int, erro
 		if err := downscalePNG(src, filepath.Join(outDir, l.ID+".png"), opts.Width); err != nil {
 			return n, fmt.Errorf("%s: %w", l.ID, err)
 		}
+		pngBytes, err := os.ReadFile(filepath.Join(outDir, l.ID+".png")) //nolint:gosec // generated PNG
+		if err != nil {
+			return n, err
+		}
+		metadata.Images[l.ID] = hashBytes(pngBytes)
 		n++
+	}
+	data, err := json.MarshalIndent(metadata, "", "  ")
+	if err != nil {
+		return n, err
+	}
+	if err := os.WriteFile(filepath.Join(outDir, manifestName), append(data, '\n'), 0644); err != nil { //nolint:gosec // generated metadata
+		return n, err
 	}
 	return n, nil
 }

@@ -4,6 +4,21 @@
 template families. It keeps authoring runs, blind rendering evidence, reviewer
 ratings, and the release decision in one report.
 
+## Native layout preview freshness
+
+Run `make template-previews` after changing template bytes or rendering code.
+It refreshes built-in, optional local and portability thumbnails and records
+template, rendering-source, recipe and PNG hashes in each `manifest.json`.
+Local discovery refuses stale or mismatched previews, including unrelated
+embedded previews for custom templates sharing a built-in filename. Repository
+tests verify the source fingerprint as well as every image. Installed builds
+use manifests verified by those tests. Local `p-style` previews remain ignored.
+
+For retained review evidence, use a new `-output` directory and a retained
+`-cache-dir`; the latter keeps full-resolution source PNGs. Thumbnail freshness
+does not establish deck readability or editability. Do not overwrite frozen
+benchmark sheets or transfer ratings to changed images.
+
 ## Default template set
 
 The default set uses two bundled templates plus the purpose-built

@@ -29,11 +29,11 @@ func TestSampleContentKeepsSectionDividerPreviewCompact(t *testing.T) {
 		{PlaceholderID: "Section Number", Type: generator.ContentText, Value: "01"},
 		{PlaceholderID: "body", Type: generator.ContentText, Value: "Overview"},
 	}
-	if got := sampleContent(layout); !reflect.DeepEqual(got, want) {
+	if got := SampleContent(layout); !reflect.DeepEqual(got, want) {
 		t.Errorf("section preview content = %#v, want %#v", got, want)
 	}
 	ordinary := types.LayoutMetadata{Name: "One Content", Placeholders: []types.PlaceholderInfo{{ID: "body", Type: types.PlaceholderBody}}}
-	got := sampleContent(ordinary)
+	got := SampleContent(ordinary)
 	if len(got) != 1 || got[0].Type != generator.ContentBullets {
 		t.Errorf("ordinary content preview lost sample bullets: %#v", got)
 	}

@@ -69,7 +69,7 @@ func previewCacheIdentity(templateHash, engineHash, officeHash, rasterHash strin
 	// layout inventory/classification for the same template bytes.
 	slides := make([]generator.SlideSpec, len(analysis.Layouts))
 	for i, layout := range analysis.Layouts {
-		slides[i] = generator.SlideSpec{LayoutID: layout.ID, Content: sampleContent(layout)}
+		slides[i] = generator.SlideSpec{LayoutID: layout.ID, Content: SampleContent(layout)}
 	}
 	data, err := json.Marshal(struct {
 		Schema, Template, Engine, Office, Raster string

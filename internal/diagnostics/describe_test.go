@@ -16,6 +16,21 @@ var describeSeverities = map[string]bool{
 	"info":            true,
 }
 
+func TestDescribeBulletContinuationNavigationRefusal(t *testing.T) {
+	for _, code := range []string{"navigation_requires_authoring", "FIT.navigation_requires_authoring"} {
+		meta, ok := Describe(code)
+		if !ok || meta.Severity != "refuse" || meta.Code != "navigation_requires_authoring" {
+			t.Fatalf("navigation refusal not described: %q %+v", code, meta)
+		}
+		remedy := strings.Join(meta.RemediationSteps, " ")
+		for _, requirement := range []string{"sibling slides", "numeric destinations", "source text", "render", "Do not bypass"} {
+			if !strings.Contains(remedy, requirement) {
+				t.Errorf("navigation refusal missing guidance %q", requirement)
+			}
+		}
+	}
+}
+
 // TestDescribeCoversAllDiagnosticCodes is the drift gate: every code declared in
 // codes.go (AllCodes) must resolve through Describe. Adding a code to the
 // taxonomy without a describe entry — here or in the patterns registry — fails

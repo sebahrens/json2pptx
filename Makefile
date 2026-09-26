@@ -398,6 +398,7 @@ portability-fixtures:
 
 template-previews:
 	go run ./cmd/templatepreviews -templates-dir templates -output templates/previews
+	go run ./cmd/templatepreviews -templates-dir tests/quality/fixtures/portability/templates -output tests/quality/fixtures/portability/templates/previews
 
 # ─── Run / Clean / Release ────────────────────────────────────────────
 

@@ -23,7 +23,8 @@ import (
 
 // Result holds the preview PNG paths keyed by layout ID.
 type Result struct {
-	Paths map[string]string // layout ID -> absolute path to PNG file
+	Paths         map[string]string // layout ID -> absolute path to PNG file
+	CacheIdentity string            // template, recipe, runtime and density identity
 }
 
 // Options configures preview generation.
@@ -102,6 +103,7 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 	markerPath := filepath.Join(previewDir, ".done")
 	if _, err := os.Stat(markerPath); err == nil {
 		if result, _ := collectCachedPreviews(previewDir, analysis); result != nil {
+			result.CacheIdentity = hash
 			return result, nil
 		}
 		// Stale marker with no PNGs — regenerate
@@ -126,6 +128,7 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 	if result == nil {
 		return nil, fmt.Errorf("no layout previews generated")
 	}
+	result.CacheIdentity = hash
 	// Only a complete, readable set may be marked reusable.
 	if err := os.WriteFile(markerPath, []byte(time.Now().Format(time.RFC3339)), 0644); err != nil {
 		return nil, fmt.Errorf("mark layout previews complete: %w", err)
@@ -148,7 +151,7 @@ func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, 
 	for i, layout := range analysis.Layouts {
 		slides[i] = generator.SlideSpec{
 			LayoutID: layout.ID,
-			Content:  sampleContent(layout),
+			Content:  SampleContent(layout),
 		}
 	}
 
@@ -256,9 +259,9 @@ func imageMagickBin() string {
 	return path
 }
 
-// sampleContent builds placeholder content items for a layout so the preview
+// SampleContent builds placeholder content items for a layout so the preview
 // renders visible text in each placeholder region rather than a blank slide.
-func sampleContent(layout types.LayoutMetadata) []generator.ContentItem {
+func SampleContent(layout types.LayoutMetadata) []generator.ContentItem {
 	var items []generator.ContentItem
 	isSectionDivider := layout.CanonicalType == types.CanonicalLayoutSectionDivider
 	for _, ph := range layout.Placeholders {

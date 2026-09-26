@@ -23,6 +23,8 @@ func main() {
 	output := flag.String("output", "templates/previews", "Output directory for <template>/<layoutID>.png thumbnails")
 	width := flag.Int("width", templatepreview.DefaultWidth, "Thumbnail width in pixels")
 	dpi := flag.Int("dpi", 60, "Render density before downscaling")
+	sourceRoot := flag.String("source-root", ".", "Repository root for rendering-source provenance")
+	cacheDir := flag.String("cache-dir", "", "Optional retained full-resolution preview cache")
 	flag.Parse()
 
 	profile, err := os.MkdirTemp("", "templatepreviews-lo-*")
@@ -32,7 +34,7 @@ func main() {
 	defer func() { _ = os.RemoveAll(profile) }()
 
 	counts, err := templatepreview.GenerateAll(*templatesDir, *output, templatepreview.Options{
-		Width: *width, DPI: *dpi, LibreOfficeProfileDir: profile,
+		Width: *width, DPI: *dpi, LibreOfficeProfileDir: profile, SourceRoot: *sourceRoot, CacheDir: *cacheDir,
 	})
 	names := make([]string, 0, len(counts))
 	for n := range counts {

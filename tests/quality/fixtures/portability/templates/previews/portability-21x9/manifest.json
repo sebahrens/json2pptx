@@ -1,0 +1,141 @@
+{
+  "schema_version": 1,
+  "recipe": "native-layout-thumbnail-v2",
+  "template_sha256": "91d3852bdd655fa14418545d5043ca309f367d86449aca341a31c4758e477135",
+  "rendering_source_sha256": "c1a574baf42f18727d70f5f95dde7002db3380504be59c45d3aeaad7f855afcd",
+  "render_cache_identity": "5f8099de47b4317d40cd90ddfcc80ea935964876dfdcd118b8961309a79cc7c2",
+  "width": 320,
+  "dpi": 60,
+  "png_sha256": {
+    "slideLayout1": "d516ebe4e690991a533b89b49f535806427e8e208bdb38700532bf326dadb178",
+    "slideLayout2": "db16f7ef72b4f07dd88a0720bc2c30cf62291956db3847a56f00f4552ecfeaca",
+    "slideLayout3": "fb3242e2b05e729ed97e9b9fe7bb1b2ff6dfcd9c7669d9498b27063e658e3d9d",
+    "slideLayout4": "35344b5a04d6d6cb656f50aca65cc840935e9de4beb2ec7657857507929c6882",
+    "slideLayout5": "df1186119d65b5ce0d2d4ef5c31504b9572effb89f45de91acc2f4eb49e23053",
+    "slideLayout6": "e92fb408da15cad37ffb133dad0087d5fd5850fc51abe8b0cb73df06af0732d1",
+    "slideLayout7": "388796285d7ba3f761496a9a9d9b0db42477eaca57bc23e470415715949b2655"
+  },
+  "source_content": {
+    "slideLayout1": [
+      {
+        "PlaceholderID": "title",
+        "Type": "text",
+        "Value": "Title Slide",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      },
+      {
+        "PlaceholderID": "subtitle",
+        "Type": "text",
+        "Value": "Subtitle placeholder",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      }
+    ],
+    "slideLayout2": [
+      {
+        "PlaceholderID": "title",
+        "Type": "text",
+        "Value": "One Content",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      },
+      {
+        "PlaceholderID": "body",
+        "Type": "bullets",
+        "Value": [
+          "First bullet point",
+          "Second bullet point",
+          "Third bullet point"
+        ],
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      }
+    ],
+    "slideLayout3": [
+      {
+        "PlaceholderID": "title",
+        "Type": "text",
+        "Value": "Two Content",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      },
+      {
+        "PlaceholderID": "body",
+        "Type": "bullets",
+        "Value": [
+          "First bullet point",
+          "Second bullet point",
+          "Third bullet point"
+        ],
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      },
+      {
+        "PlaceholderID": "body_2",
+        "Type": "bullets",
+        "Value": [
+          "First bullet point",
+          "Second bullet point",
+          "Third bullet point"
+        ],
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      }
+    ],
+    "slideLayout4": [
+      {
+        "PlaceholderID": "title",
+        "Type": "text",
+        "Value": "Section",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      },
+      {
+        "PlaceholderID": "Section Number",
+        "Type": "text",
+        "Value": "01",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      }
+    ],
+    "slideLayout5": [
+      {
+        "PlaceholderID": "title",
+        "Type": "text",
+        "Value": "Closing",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      },
+      {
+        "PlaceholderID": "subtitle",
+        "Type": "text",
+        "Value": "Subtitle placeholder",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      }
+    ],
+    "slideLayout6": null,
+    "slideLayout7": [
+      {
+        "PlaceholderID": "title",
+        "Type": "text",
+        "Value": "Blank + Title",
+        "FontSize": 0,
+        "TextColor": "",
+        "Link": null
+      }
+    ]
+  }
+}

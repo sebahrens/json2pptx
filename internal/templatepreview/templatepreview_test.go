@@ -17,8 +17,12 @@ import (
 // and optional local test-template previews are valid on disk when available.
 // Regenerate with `make template-previews`.
 func TestPreviewsShipForAllBundledTemplates(t *testing.T) {
-	templatesDir := filepath.Join("..", "..", "templates")
 	paths := testutil.TestTemplatePaths()
+	portability, err := filepath.Glob(filepath.Join(testutil.RepoRoot(), "tests", "quality", "fixtures", "portability", "templates", "*.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths = append(paths, portability...)
 	if len(paths) == 0 {
 		t.Fatal("no bundled templates")
 	}
@@ -27,6 +31,7 @@ func TestPreviewsShipForAllBundledTemplates(t *testing.T) {
 		builtin[name] = true
 	}
 	for _, tplPath := range paths {
+		templatesDir := filepath.Dir(tplPath)
 		name := strings.TrimSuffix(filepath.Base(tplPath), ".pptx")
 		r, err := template.OpenTemplate(tplPath)
 		if err != nil {
@@ -38,6 +43,13 @@ func TestPreviewsShipForAllBundledTemplates(t *testing.T) {
 			t.Fatalf("%s: %v", name, err)
 		}
 		want := map[string]bool{}
+		want[manifestName] = true
+		metadata, err := os.ReadFile(filepath.Join(templatesDir, DirName, name, manifestName))
+		if err != nil {
+			t.Errorf("%s: missing provenance: %v", name, err)
+		} else if !previewSourcesAreCurrent(tplPath, metadata) {
+			t.Errorf("%s: stale rendering-source provenance; regenerate previews", name)
+		}
 		for _, l := range layouts {
 			want[l.ID+".png"] = true
 			rel := RelPath(name, l.ID)
@@ -106,6 +118,16 @@ func TestDownscalePNG(t *testing.T) {
 // its preview from the embedded copy.
 func TestResolveEmbeddedFallback(t *testing.T) {
 	tmp := filepath.Join(t.TempDir(), "midnight-blue.pptx")
+	if Resolve(tmp, "slideLayout2") != "" {
+		t.Fatal("missing template received an unrelated embedded preview")
+	}
+	data, err := templates.Embedded.ReadFile("midnight-blue.pptx")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(tmp, data, 0600); err != nil {
+		t.Fatal(err)
+	}
 	got := Resolve(tmp, "slideLayout2")
 	if got == "" {
 		t.Fatal("expected embedded preview to be materialised")
@@ -115,5 +137,11 @@ func TestResolveEmbeddedFallback(t *testing.T) {
 	}
 	if Resolve(tmp, "slideLayout999") != "" || Resolve("", "slideLayout2") != "" {
 		t.Error("unknown layouts / empty paths must resolve to empty")
+	}
+	if err := os.WriteFile(tmp, []byte("different template with same filename"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if Resolve(tmp, "slideLayout2") != "" {
+		t.Fatal("custom template with builtin filename received unrelated embedded preview")
 	}
 }
