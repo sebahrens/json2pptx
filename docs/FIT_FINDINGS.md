@@ -1,5 +1,18 @@
 # Fit Findings
 
+## Repair actual source loss
+
+Runtime `text_trimmed`, `readability_trimmed`, and `table_rows_truncated`
+refuse publication in every fit mode, retaining the authored content path and
+repair guidance. `warn` and `off` do not authorize dropping required content.
+The public table `split_slide` remediation retains the renderer's
+`split_at_row`, `visible_rows`, and `hidden_rows` parameters.
+
+Preserve all required source content and the requested total slide count.
+Use explicit continuations only when that count allows them; otherwise revise
+the layout or return the capacity constraint. A refused input or an older
+destination file is not a newly generated, visually approved deck.
+
 Direct generation rejects actual paragraph or table-row loss detected during rendering, before publishing the output file, in every `strict_fit` mode (default, `warn`, `off`, and `strict`). These actual-source checks are independent of optional preflight warning policy. A `table_rows_truncated` error includes the content path and `split_at_row` guidance. Refusal preserves an existing destination and removes the temporary archive. MCP exposes the original source-loss code and content path in its existing finding envelope, with the public `split_slide` remediation action and original row-split parameters. A fitting table still renders as a native editable table. Generation success alone is not a readability, editability, or visual-approval verdict.
 
 Fit findings are structured diagnostics emitted when generated slide content may not render correctly — text overflowing placeholders, shapes falling outside slide bounds, or tables exceeding density limits. They are surfaced via the MCP `generate_presentation` tool (text-fit findings detected by `strict_fit` are merged into `fit_findings` unconditionally when `strict_fit != "off"`; the full preflight detector set runs when `fit_report=true`) and the CLI `json2pptx generate -json` and `validate -fit-report` commands (the JSON output's `fit_findings` always includes the active `strict_fit` findings).

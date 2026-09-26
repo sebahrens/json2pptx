@@ -1,0 +1,34 @@
+{
+  "issues": ["go-slide-creator-3qzo4.52", "go-slide-creator-3qzo4.54"],
+  "scope": "Authoring-guide size and finding-code consistency",
+  "bundle_bytes_before": 103090,
+  "bundle_bytes_after": 102264,
+  "unchanged_budget_bytes": 102400,
+  "policy_preserved": [
+    "Actual source loss refuses every fit mode, including warn and off",
+    "Preserve required content and requested slide count",
+    "Refused inputs and stale outputs are not approved",
+    "Live describe_finding supplies repair guidance",
+    "Detailed policy remains in docs/FIT_FINDINGS.md"
+  ],
+  "doctor_exceptions_removed": ["text_trimmed", "readability_trimmed"],
+  "assertions_weakened": false,
+  "targeted_race_suite": {"status": "pass", "duration_seconds": 1.736},
+  "build": "pass",
+  "lint": {"status": "pass", "issues": 0},
+  "generic_skill_validator": {
+    "status": "unavailable",
+    "reason": "PyYAML unavailable in both tested Python runtimes",
+    "fallback": "Repository-specific budget, local-link and skill-sync doctor checks pass"
+  },
+  "review": {
+    "reviewer": "testing",
+    "findings": [],
+    "residual_risks": [
+      "Integrated replacement suite and CI remain outstanding",
+      "Bundle has only 136 bytes of headroom",
+      "Pre-existing installed-skill relative reference defect tracked separately as go-slide-creator-3qzo4.53"
+    ],
+    "testing_gaps": []
+  }
+}

@@ -65,10 +65,8 @@ var knownFitDocDrift = map[string]string{
 	"hex_fill_non_brand":           "validation code also used in fit report",
 	"no_autofit_overflow":          "render-time code, SKILL.md only",
 	"pagination_default_threshold": "render-time code, SKILL.md only",
-	"readability_trimmed":          "render-time code, SKILL.md only",
 	"table_font_scaled":            "render-time code, SKILL.md only",
 	"text_overflow":                "render-time code, SKILL.md only",
-	"text_trimmed":                 "render-time code, SKILL.md only",
 }
 
 // ---------------------------------------------------------------------------

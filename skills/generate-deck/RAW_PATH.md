@@ -1,20 +1,16 @@
 # Raw PresentationInput path
 
-Read this only when the requested slide cannot be expressed by DeckSpec, when
-editing an existing raw deck, or when making a targeted low-level repair.
-These preconditions do **not** apply to ordinary semantic DeckSpec authoring.
-Use [SKILL.md](SKILL.md) for the final-revision visual-inspection rule.
+For features DeckSpec cannot express, existing raw decks, or low-level repairs.
+Ordinary DeckSpec authoring and final visual review follow [SKILL.md](SKILL.md).
 
 ## Discover, validate, generate
 
-Call `get_started` first and check its `runtime`. For a raw slide, use
-`recommend_visual` if the visual form is undecided, then `list_patterns`
-and `show_pattern` for the selected pattern's live value schema and
-`example_values`. Pattern `values` can be an object *or* an array;
-do not guess. `expand_pattern` returns the editable `shape_grid`, density
-warnings and cell budgets. Preserve its `source: "pattern:<name>"` stamp
-when editing an expanded grid: it marks template-derived font sizing;
-removing it can make those same sizes invalid in constrained mode.
+Call `get_started` first; check `runtime`. Use `recommend_visual` if undecided,
+then `list_patterns` and `show_pattern` for live schemas and `example_values`.
+Pattern `values` may be an object or array. `expand_pattern` returns editable
+`shape_grid`, density warnings and cell budgets. Keep its
+`source: "pattern:<name>"` stamp: template-derived sizes may otherwise fail
+constrained mode.
 
 Run `validate_input` with `fit_report:true` before
 `generate_presentation`. Use `strict_unknown_keys` when authoring fresh
@@ -53,16 +49,9 @@ empty. If a finding code is unfamiliar, use `describe_finding`; for
 repairable kinds query
 `get_capabilities().vocabularies.repair_fix_kinds`.
 
-Actual paragraph or table-row loss refuses publication in every fit mode,
-including `warn` and `off`. These modes do not authorize deleting required
-source content. Runtime `text_trimmed`, `readability_trimmed`, and
-`table_rows_truncated` errors retain the authored content path and repair
-guidance. For a table, the public `split_slide` remediation retains the
-renderer’s `split_at_row`, `visible_rows`, and `hidden_rows` parameters.
-Keep all required source content when repairing. Use explicit continuations
-only when the requested total slide count allows them; otherwise revise the
-layout or return the capacity constraint. Never treat a refused input or an
-older destination file as a newly generated, visually approved deck.
+Actual source loss refuses every fit mode, including `warn` and `off`.
+Preserve required content and the requested slide count; refused inputs and
+stale outputs are not approved. Use `describe_finding` for repair guidance.
 
 Apply precise `repair_slide` fixes to a single raw slide. For findings on
 several slides, `propose_repairs` plus `repair_slides_batch` avoids repeated
