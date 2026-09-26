@@ -2,6 +2,7 @@ package qualitybench
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"image"
 	"image/color"
@@ -28,7 +29,8 @@ var officeCandidates = []string{"libreoffice", "soffice", "/Applications/LibreOf
 type Renderer struct {
 	JSON2PPTX       string // path to the json2pptx binary
 	TemplatesDir    string
-	Density         int // raster DPI (default 60 — thumbnails only)
+	TemplateName    string // optional CLI override recorded in an existing run
+	Density         int    // raster DPI (default 60 — thumbnails only)
 	office          string
 	raster          string
 	rasterIsPoppler bool
@@ -63,9 +65,38 @@ func (r *Renderer) Generate(ctx context.Context, deckJSON []byte, outPPTX string
 	if err := os.WriteFile(jsonPath, deckJSON, 0o600); err != nil {
 		return err
 	}
+	return r.GenerateFromFile(ctx, jsonPath, outPPTX)
+}
+
+// GenerateFromFile preserves relative resource resolution for a frozen input.
+// Moving the input next to a new output would change template_path/image paths.
+func (r *Renderer) GenerateFromFile(ctx context.Context, jsonPath, outPPTX string) error {
+	body, err := os.ReadFile(jsonPath) // #nosec G304 -- operator-selected authoring input
+	if err != nil {
+		return fmt.Errorf("read authoring input: %w", err)
+	}
+	var format struct {
+		Meta   json.RawMessage `json:"meta"`
+		Slides []struct {
+			Kind string `json:"kind"`
+		} `json:"slides"`
+	}
+	if err := json.Unmarshal(body, &format); err != nil {
+		return fmt.Errorf("parse authoring input: %w", err)
+	}
 	args := []string{"generate", "-json", jsonPath, "-output", outPPTX, "-output-validation", "warn"}
+	semanticInput := len(format.Meta) > 0
+	for _, slide := range format.Slides {
+		semanticInput = semanticInput || slide.Kind != ""
+	}
+	if semanticInput {
+		args = []string{"semantic", "render", "-spec", jsonPath, "-output", outPPTX, "-output-validation", "warn"}
+	}
 	if r.TemplatesDir != "" {
 		args = append(args, "-templates-dir", r.TemplatesDir)
+	}
+	if r.TemplateName != "" {
+		args = append(args, "-template", r.TemplateName)
 	}
 	// #nosec G204 -- the json2pptx binary path is operator-configured.
 	out, err := exec.CommandContext(ctx, r.JSON2PPTX, args...).CombinedOutput()

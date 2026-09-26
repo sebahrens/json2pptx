@@ -9,7 +9,7 @@
 //	    repetition/configuration, then renders its .pptx artifacts to blind
 //	    contact sheets. No provider call happens unless -agent is given.
 //	go run ./cmd/qualitybench -report results.json -ratings ratings.csv
-//	    Applies two-reviewer blind ratings and prints the release decision.
+//	    Applies human blind ratings and prints the release decision.
 package main
 
 import (
@@ -45,9 +45,17 @@ func run() error {
 		agent, agentModel, agentVersion, out, resultsDir, templatesDir, templatesSpec, briefsPath, bin, reportPath, ratingsPath string
 		prepareAgentRatings, compareAgentRatings, agentReviewers, agentReviewDir, comparisonOut                                 string
 		dryRun                                                                                                                  bool
+		reviewUI                                                                                                                bool
+		listen                                                                                                                  string
+		refreshReport                                                                                                           string
+		prepareBlindReview                                                                                                      string
 		reps, parallel, agentReviewRuns                                                                                         int
 	)
 	flag.BoolVar(&dryRun, "dry-run", false, "render deterministic reference decks (no agent, no provider call)")
+	flag.BoolVar(&reviewUI, "review-ui", false, "serve the blind human-rating UI for -out (no Excel required)")
+	flag.StringVar(&listen, "listen", "127.0.0.1:8765", "loopback address for -review-ui")
+	flag.StringVar(&refreshReport, "refresh-report", "", "regenerate frozen agent inputs from this report into a new -out directory")
+	flag.StringVar(&prepareBlindReview, "prepare-blind-review", "", "prepare a newly anonymized single-reviewer packet from this report")
 	flag.StringVar(&agent, "agent", "", "agent executable plus optional space-separated arguments")
 	flag.StringVar(&agentModel, "agent-model", "", "canonical model identity recorded for every agent run")
 	flag.StringVar(&agentVersion, "agent-version", "", "canonical agent/CLI version recorded for every agent run")
@@ -59,7 +67,7 @@ func run() error {
 	flag.StringVar(&bin, "json2pptx", "", "json2pptx binary (default: build ./cmd/json2pptx into a temp dir)")
 	flag.IntVar(&reps, "repetitions", 2, "agent-mode repetitions per configuration")
 	flag.IntVar(&parallel, "parallel", 1, "maximum concurrent agent runs (agent mode only)")
-	flag.StringVar(&reportPath, "report", "", "results JSON to apply -ratings to")
+	flag.StringVar(&reportPath, "report", "", "results JSON for -ratings, or safe matching-deck context for -review-ui")
 	flag.StringVar(&ratingsPath, "ratings", "", "comma-separated filled reviewer CSVs to apply to -report")
 	flag.StringVar(&prepareAgentRatings, "prepare-agent-ratings", "", "blank ratings template used to prepare a blinded multi-agent review")
 	flag.StringVar(&compareAgentRatings, "compare-agent-ratings", "", "multi-agent review manifest whose completed ballots should be compared")
@@ -68,6 +76,22 @@ func run() error {
 	flag.StringVar(&agentReviewDir, "agent-review-dir", "output/quality-benchmark/agent-reviews", "directory for blank agent rating packets")
 	flag.StringVar(&comparisonOut, "comparison-out", "", "comparison output directory (default: manifest directory/comparison)")
 	flag.Parse()
+	if prepareBlindReview != "" {
+		return prepareBlindReviewPacket(prepareBlindReview, agentReviewDir)
+	}
+	if reviewUI {
+		return serveReviewUI(out, listen, reportPath)
+	}
+	if refreshReport != "" {
+		if bin == "" {
+			var err error
+			bin, err = buildJSON2PPTX()
+			if err != nil {
+				return err
+			}
+		}
+		return refreshContactSheets(refreshReport, out, templatesDir, bin)
+	}
 
 	if prepareAgentRatings != "" {
 		return prepareAgentReviewPackets(prepareAgentRatings, agentReviewers, agentReviewRuns, agentReviewDir)

@@ -85,18 +85,48 @@ func TestApplyRatingsKeepsReleaseBarHonest(t *testing.T) {
 	}
 }
 
-func TestApplyRatingsRequiresTwoDistinctHumanReviewers(t *testing.T) {
+func TestApplyRatingsAcceptsOneBlindReviewerAndDeduplicates(t *testing.T) {
 	report := &Report{Evidence: []Evidence{{Request: Request{RunID: "r", Configuration: "redesigned"}}}}
 	ratings := []Rating{
 		{RunID: "r", Reviewer: "alice", ReviewerType: "human", Usability: 5},
 		{RunID: "r", Reviewer: "alice", ReviewerType: "human", Usability: 5},
 		{RunID: "r", Reviewer: "vision-rater", ReviewerType: "llm", Usability: 5},
 	}
-	if got := ApplyRatings(report, ratings).RatedPairs; got != 0 {
-		t.Fatalf("rated pairs = %d, want 0 until a second human reviewer rates", got)
-	}
-	ratings = append(ratings, Rating{RunID: "r", Reviewer: "bob", ReviewerType: "human", Usability: 5})
 	if got := ApplyRatings(report, ratings).RatedPairs; got != 1 {
-		t.Fatalf("rated pairs = %d, want 1 with two distinct human reviewers", got)
+		t.Fatalf("rated decks = %d, want 1 with one human reviewer", got)
+	}
+	if got := ApplyRatings(report, ratings[2:]); got.RatedPairs != 1 || len(got.ReviewerTypes) != 1 || got.ReviewerTypes[0] != "llm" {
+		t.Fatalf("blind AI rating should be eligible and labelled: %+v", got)
+	}
+	if got := ApplyRatings(report, []Rating{{RunID: "r", Reviewer: "pixels", ReviewerType: "heuristic", Usability: 5}}).RatedPairs; got != 0 {
+		t.Fatal("heuristic score must not count as blind review")
+	}
+}
+
+func TestSingleHumanCanReachReleaseDecision(t *testing.T) {
+	report := &Report{Evidence: []Evidence{{Request: Request{RunID: "b", Configuration: "baseline"}}, {Request: Request{RunID: "n", Configuration: "redesigned"}}}}
+	ratings := []Rating{{RunID: "b", Reviewer: "human", ReviewerType: "human", Usability: 4}, {RunID: "n", Reviewer: "human", ReviewerType: "human", Usability: 5}}
+	if got := ApplyRatings(report, ratings); got.ReleaseDecision != "pass" || got.RatedPairs != 2 || got.Disagreements != 0 {
+		t.Fatalf("one human should satisfy the gate: %+v", got)
+	}
+	ratings[1].CriticalTemplateDefect = true
+	if got := ApplyRatings(report, ratings); got.ReleaseDecision == "pass" {
+		t.Fatal("one reviewer must still enforce the defect gate")
+	}
+	if got := ApplyRatings(report, ratings[:1]); got.ReleaseDecision == "pass" {
+		t.Fatal("partial human review must not pass")
+	}
+}
+
+func TestSingleAIReviewIsLabelledAndFailedRunsBlockApproval(t *testing.T) {
+	report := &Report{Evidence: []Evidence{{Request: Request{RunID: "b", Configuration: "baseline"}}, {Request: Request{RunID: "n", Configuration: "redesigned"}}}}
+	ratings := []Rating{{RunID: "b", Reviewer: "blind-ai", ReviewerType: "llm", Usability: 4}, {RunID: "n", Reviewer: "blind-ai", ReviewerType: "llm", Usability: 5}}
+	s := ApplyRatings(report, ratings)
+	if s.ReleaseDecision != "pass" || len(s.ReviewerTypes) != 1 || s.ReviewerTypes[0] != "llm" || len(report.Ratings) != 2 {
+		t.Fatalf("AI review provenance missing: %+v", report)
+	}
+	report.Evidence[1].Error = "generation failed"
+	if s := ApplyRatings(report, ratings); s.ReleaseDecision == "pass" || s.FailedRuns != 1 {
+		t.Fatalf("failed artifact passed release gate: %+v", s)
 	}
 }

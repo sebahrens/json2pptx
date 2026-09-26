@@ -52,7 +52,7 @@ func (d DryRun) Run(ctx context.Context) (*Report, string, error) {
 		}
 	}
 	report.Summary.Runs = len(report.Evidence)
-	report.Summary.ReleaseDecision = "inconclusive: dry-run reference decks only; agent runs plus two blind reviewer ratings are required"
+	report.Summary.ReleaseDecision = "inconclusive: dry-run reference decks only; agent runs plus one blind review are required"
 	if err := AttachBlindContactSheets(ctx, report, d.Renderer, d.OutputDir); err != nil {
 		return nil, "", err
 	}

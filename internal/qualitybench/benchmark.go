@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -59,11 +60,14 @@ type Summary struct {
 	LostCriticalFacts, CriticalTemplateDefects, Disagreements int
 	PairedImprovement                                         bool
 	ReleaseDecision                                           string
+	FailedRuns                                                int
+	ReviewerTypes                                             []string
 }
 type Report struct {
 	GeneratedAt time.Time  `json:"generated_at"`
 	Evidence    []Evidence `json:"evidence"`
 	Summary     Summary    `json:"summary"`
+	Ratings     []Rating   `json:"ratings,omitempty"`
 }
 
 type Runner struct {
@@ -124,7 +128,7 @@ func (r Runner) Run(ctx context.Context) (*Report, error) {
 	})
 	report := &Report{GeneratedAt: time.Now().UTC(), Evidence: evidence}
 	report.Summary.Runs = len(report.Evidence)
-	report.Summary.ReleaseDecision = "inconclusive: blind ratings from two reviewers are required"
+	report.Summary.ReleaseDecision = "inconclusive: ratings from one blind reviewer (human or llm) are required"
 	return report, nil
 }
 
@@ -189,26 +193,52 @@ func (r Runner) invoke(ctx context.Context, req Request) Evidence {
 
 func ApplyRatings(report *Report, ratings []Rating) Summary {
 	s := Summary{Runs: len(report.Evidence)}
-	byRun := map[string][]Rating{}
-	for _, r := range ratings {
-		if r.Reviewer == "" || (r.ReviewerType != "" && !strings.EqualFold(r.ReviewerType, "human")) {
-			continue
-		}
-		byRun[r.RunID] = append(byRun[r.RunID], r)
-	}
+	byRun, types := acceptedBlindRatings(ratings)
+	s.ReviewerTypes = types
 	configByRun := map[string]string{}
 	for _, ev := range report.Evidence {
 		configByRun[ev.Request.RunID] = ev.Request.Configuration
+		if ev.Error != "" {
+			s.FailedRuns++
+		}
 	}
+	return summarizeBlindRatings(report, ratings, byRun, configByRun, s)
+}
+
+func acceptedBlindRatings(ratings []Rating) (map[string][]Rating, []string) {
+	byRun := map[string][]Rating{}
+	reviewerTypes := map[string]bool{}
+	for _, r := range ratings {
+		kind := strings.ToLower(strings.TrimSpace(r.ReviewerType))
+		if kind == "" {
+			kind = "human"
+		}
+		if strings.TrimSpace(r.Reviewer) == "" || (kind != "human" && kind != "llm") {
+			continue
+		}
+		reviewerTypes[kind] = true
+		byRun[r.RunID] = append(byRun[r.RunID], r)
+	}
+	var types []string
+	for kind := range reviewerTypes {
+		types = append(types, kind)
+	}
+	sort.Strings(types)
+	return byRun, types
+}
+
+func summarizeBlindRatings(report *Report, ratings []Rating, byRun map[string][]Rating, configByRun map[string]string, s Summary) Summary {
 	var baseTotal, newTotal, baseN, newN int
 	for _, candidates := range byRun {
 		pair := distinctReviewerPair(candidates)
-		if len(pair) < 2 {
+		if len(pair) < 1 {
 			continue
 		}
 		s.RatedPairs++
 		usableVotes := 0
-		for _, r := range pair[:2] {
+		avg := 0
+		for _, r := range pair {
+			avg += r.Usability
 			if r.Usability >= 4 {
 				usableVotes++
 			}
@@ -219,19 +249,18 @@ func ApplyRatings(report *Report, ratings []Rating) Summary {
 				s.CriticalTemplateDefects++
 			}
 		}
-		if usableVotes == 2 {
+		if usableVotes == len(pair) {
 			s.Usable++
 		}
-		if abs(pair[0].Usability-pair[1].Usability) >= 2 {
+		if len(pair) > 1 && abs(pair[0].Usability-pair[1].Usability) >= 2 {
 			s.Disagreements++
 		}
-		avg := pair[0].Usability + pair[1].Usability
 		if configByRun[pair[0].RunID] == "redesigned" {
 			newTotal += avg
-			newN += 2
+			newN += len(pair)
 		} else if configByRun[pair[0].RunID] == "baseline" {
 			baseTotal += avg
-			baseN += 2
+			baseN += len(pair)
 		}
 	}
 	if baseN > 0 && newN > 0 {
@@ -242,10 +271,11 @@ func ApplyRatings(report *Report, ratings []Rating) Summary {
 		s.WilsonLow, s.WilsonHigh = wilson(s.Usable, s.RatedPairs)
 	}
 	s.ReleaseDecision = "hold: target not achieved or evidence incomplete"
-	if s.RatedPairs == len(report.Evidence) && s.UsableRate >= .80 && s.LostCriticalFacts == 0 && s.CriticalTemplateDefects == 0 && s.PairedImprovement {
+	if s.FailedRuns == 0 && s.RatedPairs == len(report.Evidence) && s.UsableRate >= .80 && s.LostCriticalFacts == 0 && s.CriticalTemplateDefects == 0 && s.PairedImprovement {
 		s.ReleaseDecision = "pass"
 	}
 	report.Summary = s
+	report.Ratings = append([]Rating(nil), ratings...)
 	return s
 }
 

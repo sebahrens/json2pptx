@@ -1,0 +1,7 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),M=require('./model.js');
+const full=()=>Object.fromEntries([...M.scores.map(k=>[k,4]),...M.defects.map(k=>[k,false])]);
+test('completion requires explicit scores and defect answers',()=>{assert.equal(M.complete(full()),true);assert.equal(M.complete({}),false);for(const k of [...M.scores,...M.defects]){const r=full();delete r[k];assert.equal(M.complete(r),false);}assert.equal(M.complete({...full(),usability:6}),false);});
+test('CSV preserves reviewer characters and rejects partial ballots',()=>{const csv=M.csv(['a'],'Seb, "one"', {a:full()});assert.match(csv,/"Seb, ""one"""/);assert.match(csv,/"human"/);assert.match(csv,/"false","false"\r\n$/);assert.throws(()=>M.csv(['a','b'],'seb',{a:full()}));assert.throws(()=>M.csv(['a'],' ',{a:full()}));});
+test('next unrated wraps and preserves position on finished ballots',()=>{assert.equal(M.nextUnrated(['a','b','c'],{b:full(),c:full()},1),0);assert.equal(M.nextUnrated(['a'],{a:full()},0),0);});
+test('backup validation isolates datasets and reviewers and validates every field',()=>{const b={version:1,dataset:'d',reviewer:'seb',index:0,ratings:{a:{readability:3}}};assert.equal(M.validateBackup(b,'d',['a'],'seb'),b);for(const changed of [{dataset:'other'},{reviewer:'other'},{index:1},{ratings:{unknown:full()}},{ratings:{a:{usability:'4'}}},{ratings:{a:{lost_critical_fact:'false'}}},{ratings:{a:{injected:true}}}])assert.throws(()=>M.validateBackup({...b,...changed},'d',['a'],'seb'));});
