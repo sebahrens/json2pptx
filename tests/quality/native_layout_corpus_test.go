@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/generator"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/render"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/testutil"
@@ -46,10 +47,13 @@ type nativeProbe struct {
 
 type nativeProbeEvidence struct {
 	nativeProbe
-	SlideIndex int      `json:"slide_index"`
-	PNGPath    string   `json:"png_path,omitempty"`
-	PNGHash    string   `json:"png_sha256,omitempty"`
-	Failures   []string `json:"failures,omitempty"`
+	SlideIndex       int                       `json:"slide_index"`
+	OutputSlideIndex *int                      `json:"output_slide_index,omitempty"`
+	GenerationStatus string                    `json:"generation_status"`
+	Refusal          *patterns.ValidationError `json:"refusal,omitempty"`
+	PNGPath          string                    `json:"png_path,omitempty"`
+	PNGHash          string                    `json:"png_sha256,omitempty"`
+	Failures         []string                  `json:"failures,omitempty"`
 }
 
 type nativeTemplateEvidence struct {
@@ -66,6 +70,30 @@ type nativeTemplateEvidence struct {
 func nativeCorpusPaths(t *testing.T) []string {
 	t.Helper()
 	paths := testutil.TestTemplatePaths()
+	if dir := os.Getenv("NATIVE_LAYOUT_TEMPLATE_DIR"); dir != "" {
+		if !filepath.IsAbs(dir) {
+			t.Fatal("NATIVE_LAYOUT_TEMPLATE_DIR must be absolute")
+		}
+		expected := map[string]bool{}
+		for _, path := range paths {
+			expected[filepath.Base(path)] = true
+		}
+		var err error
+		paths, err = filepath.Glob(filepath.Join(dir, "*.pptx"))
+		if err != nil || len(paths) == 0 {
+			t.Fatalf("explicit template corpus unavailable: %v", err)
+		}
+		for _, path := range paths {
+			name := filepath.Base(path)
+			if !expected[name] {
+				t.Fatalf("explicit corpus has unexpected template %s", name)
+			}
+			delete(expected, name)
+		}
+		if len(expected) != 0 {
+			t.Fatalf("explicit corpus omits local templates: %v", expected)
+		}
+	}
 	fixtures, err := filepath.Glob(filepath.Join(testutil.RepoRoot(), "tests", "quality", "fixtures", "portability", "templates", "*.pptx"))
 	if err != nil {
 		t.Fatal(err)
@@ -95,28 +123,36 @@ func nativeReferenceImage() string {
 }
 
 // Commit IDs alone cannot identify an uncommitted renderer repair. Fingerprint
-// tracked and new Go sources; templates and the harness are hashed separately.
+// all Go sources in the actual module tree, including ignored archive candidates;
+// templates and the harness are hashed separately. Parent Git indexes do not
+// inventory newly added files inside an ignored candidate tree.
 func nativeEngineSourceHash(t *testing.T) string {
 	t.Helper()
-	cmd := exec.Command("git", "ls-files", "-z", "-c", "-o", "--exclude-standard", "--", "internal", "cmd", "svggen", "go.mod", "go.sum")
-	cmd.Dir = testutil.RepoRoot()
-	body, err := cmd.Output()
+	hash, err := nativeEngineTreeHash(testutil.RepoRoot())
 	if err != nil {
 		t.Fatal(err)
 	}
-	paths := strings.Split(strings.TrimSuffix(string(body), "\x00"), "\x00")
+	return hash
+}
+
+// Include helper files too: hashing only the entrypoint misses changes to
+// publication classification and source-completeness assertions.
+func nativeHarnessSourceHash(t *testing.T) string {
+	t.Helper()
+	paths, err := filepath.Glob(filepath.Join(testutil.RepoRoot(), "tests", "quality", "*.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	sort.Strings(paths)
 	hash := sha256.New()
 	for _, path := range paths {
-		if !strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "go.mod") && !strings.HasSuffix(path, "go.sum") {
-			continue
-		}
-		body, err := os.ReadFile(filepath.Join(testutil.RepoRoot(), path))
+		body, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		fmt.Fprintf(hash, "%s:%d:", path, len(body))
-		_, _ = hash.Write(body)
+		hash.Write([]byte(filepath.Base(path) + "\x00"))
+		hash.Write(body)
+		hash.Write([]byte{0})
 	}
 	return hex.EncodeToString(hash.Sum(nil))
 }
@@ -440,6 +476,10 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		t.Fatal("rendering required:", missing)
 	}
 	imagePath := nativeReferenceImage()
+	mode := os.Getenv("NATIVE_LAYOUT_STRICT_FIT")
+	if mode != "" && mode != "warn" && mode != "off" && mode != "strict" {
+		t.Fatal("NATIVE_LAYOUT_STRICT_FIT must be omitted, warn, off or strict")
+	}
 	photoBackdrop := os.Getenv("NATIVE_LAYOUT_PHOTO_BACKDROP") == "1"
 	tableContinuations := os.Getenv("NATIVE_LAYOUT_TABLE_CONTINUATIONS") == "1"
 	bulletContinuations := os.Getenv("NATIVE_LAYOUT_BULLET_CONTINUATIONS") == "1"
@@ -456,10 +496,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		t.Fatal(err)
 	}
 	engineHash := nativeEngineSourceHash(t)
-	harnessHash, err := render.HashFile(filepath.Join(testutil.RepoRoot(), "tests", "quality", "native_layout_corpus_test.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	harnessHash := nativeHarnessSourceHash(t)
 	renderer, err := render.OfficeCommand()
 	if err != nil {
 		t.Fatal(err)
@@ -525,20 +562,46 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 				}
 			}
 		}
+		// Preserve every original probe and its original index in the ledger.
+		// Output indices refer only to independently source-complete probes.
+		var accepted []generator.SlideSpec
+		for i := range e.Probes {
+			p := &e.Probes[i]
+			status, loss, classifyErr := classifyNativePublication(t, path, p.nativeProbe, mode)
+			p.GenerationStatus, p.Refusal = status, loss
+			if classifyErr != nil {
+				p.GenerationStatus = "generation_failed"
+				p.Failures = append(p.Failures, classifyErr.Error())
+				continue
+			}
+			if status == nativeRefused {
+				continue
+			}
+		}
+		acceptedIndices := nativeAcceptedProbeIndices(e.Probes)
+		for _, i := range acceptedIndices {
+			accepted = append(accepted, slides[i])
+		}
+		if len(accepted) == 0 {
+			e.DeckPath = ""
+			evidence = append(evidence, e)
+			continue
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		e.Generation, err = generator.Generate(ctx, generator.GenerationRequest{TemplatePath: path, OutputPath: e.DeckPath, Slides: slides, ExcludeTemplateSlides: true, AllowedImagePaths: []string{testutil.RepoRoot()}})
+		e.Generation, err = generator.Generate(ctx, generator.GenerationRequest{TemplatePath: path, OutputPath: e.DeckPath, StrictFit: mode, Slides: accepted, ExcludeTemplateSlides: true, AllowedImagePaths: []string{testutil.RepoRoot()}})
 		cancel()
 		if err != nil {
 			e.Failures = append(e.Failures, "generation: "+err.Error())
 			evidence = append(evidence, e)
 			continue
 		}
-		if e.Generation.SlideCount != len(e.Probes) {
+		if e.Generation.SlideCount != len(accepted) {
 			e.Failures = append(e.Failures, "generation slide count differs from expected native probes")
 		}
 		for _, failure := range e.Generation.MediaFailures {
-			if failure.SlideNum > 0 && failure.SlideNum <= len(e.Probes) {
-				e.Probes[failure.SlideNum-1].Failures = append(e.Probes[failure.SlideNum-1].Failures, "media: "+failure.Reason)
+			if failure.SlideNum > 0 && failure.SlideNum <= len(acceptedIndices) {
+				p := &e.Probes[acceptedIndices[failure.SlideNum-1]]
+				p.Failures = append(p.Failures, "media: "+failure.Reason)
 			} else {
 				e.Failures = append(e.Failures, "unmapped media failure: "+failure.Reason)
 			}
@@ -558,7 +621,11 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		}
 		for i := range e.Probes {
 			p := &e.Probes[i]
-			part := parts[fmt.Sprintf("ppt/slides/slide%d.xml", i+1)]
+			if p.OutputSlideIndex == nil {
+				continue
+			}
+			outputIndex := *p.OutputSlideIndex
+			part := parts[fmt.Sprintf("ppt/slides/slide%d.xml", outputIndex+1)]
 			if part == nil {
 				p.Failures = append(p.Failures, "generated slide missing")
 				continue
@@ -574,13 +641,13 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 				p.Failures = append(p.Failures, err.Error())
 				continue
 			}
-			p.Failures = append(p.Failures, checkNativeProbeSlide(body, p.nativeProbe)...)
+			p.Failures = append(p.Failures, checkNativeProbeSlide(body, nativeCompleteSourceProbe(p.nativeProbe))...)
 			if p.ExpectedBackgroundSource != "" {
-				if err := checkNativeBackgroundSource(z, i+1, p.ExpectedBackgroundSource); err != nil {
+				if err := checkNativeBackgroundSource(z, outputIndex+1, p.ExpectedBackgroundSource); err != nil {
 					p.Failures = append(p.Failures, err.Error())
 				}
 			}
-			rels := parts[fmt.Sprintf("ppt/slides/_rels/slide%d.xml.rels", i+1)]
+			rels := parts[fmt.Sprintf("ppt/slides/_rels/slide%d.xml.rels", outputIndex+1)]
 			if rels == nil {
 				p.Failures = append(p.Failures, "slide relationships missing")
 			} else {
@@ -602,15 +669,15 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		cancel()
 		if err != nil {
 			e.Failures = append(e.Failures, "render: "+err.Error())
-		} else if deck.Truncated || len(deck.Slides) != len(e.Probes) {
-			e.Failures = append(e.Failures, fmt.Sprintf("incomplete raster set: got %d, expected %d", len(deck.Slides), len(e.Probes)))
+		} else if deck.Truncated || len(deck.Slides) != len(acceptedIndices) {
+			e.Failures = append(e.Failures, fmt.Sprintf("incomplete raster set: got %d, expected %d", len(deck.Slides), len(acceptedIndices)))
 		} else {
 			dir := filepath.Join(out, name)
 			if err := os.Mkdir(dir, 0755); err != nil {
 				t.Fatal(err)
 			}
 			for i, img := range deck.Slides {
-				p := &e.Probes[i]
+				p := &e.Probes[acceptedIndices[i]]
 				var body []byte
 				if img.Path != "" {
 					body, err = os.ReadFile(img.Path)
@@ -644,6 +711,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 	}
 	manifest := struct {
 		SchemaVersion      int                      `json:"schema_version"`
+		StrictFit          string                   `json:"strict_fit"`
 		EngineCommit       string                   `json:"engine_commit"`
 		EngineSourceHash   string                   `json:"engine_source_sha256"`
 		HarnessHash        string                   `json:"harness_sha256"`
@@ -656,7 +724,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		Templates          []nativeTemplateEvidence `json:"templates"`
 		Limits             []string                 `json:"limits"`
 	}{
-		SchemaVersion: 3, EngineCommit: strings.TrimSpace(string(commit)),
+		SchemaVersion: 4, StrictFit: mode, EngineCommit: strings.TrimSpace(string(commit)),
 		EngineSourceHash: engineHash, HarnessHash: harnessHash,
 		ReferenceImageHash: imageHash, Renderer: renderer, RendererHash: rendererHash,
 		DPI: 96, CreatedAt: time.Now().UTC().Format(time.RFC3339), TemplateCount: len(paths), Templates: evidence,
@@ -677,6 +745,9 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 	}
 	if nativeEngineSourceHash(t) != engineHash {
 		t.Error("engine source changed during render; evidence revision is not stable")
+	}
+	if nativeHarnessSourceHash(t) != harnessHash {
+		t.Error("harness source changed during render; evidence revision is not stable")
 	}
 	for _, e := range evidence {
 		for _, f := range e.Failures {
