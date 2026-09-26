@@ -1,8 +1,12 @@
 package main
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -15,8 +19,68 @@ import (
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
+// Keep the deliberately unsafe gradient as a test-only variant. A shipped
+// template repair must not remove coverage of preflight/refusal behavior.
+func unsafeModernGradientDir(t *testing.T) string {
+	t.Helper()
+	r, err := zip.OpenReader(filepath.Join(testutil.TemplatesDir(), "modern.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	dir := t.TempDir()
+	f, err := os.Create(filepath.Join(dir, "modern.pptx"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	w := zip.NewWriter(f)
+	patched := 0
+	for _, entry := range r.File {
+		if entry.Name != "ppt/slideLayouts/slideLayout2.xml" && entry.Name != "ppt/slideLayouts/slideLayout4.xml" {
+			if err := w.Copy(entry); err != nil {
+				t.Fatal(err)
+			}
+			continue
+		}
+		src, err := entry.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		body, err := io.ReadAll(src)
+		_ = src.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		const repaired = `<a:lumMod val="50000"/><a:lumOff val="0"/>`
+		const unsafe = `<a:lumMod val="97000"/><a:lumOff val="3000"/>`
+		if bytes.Count(body, []byte(repaired)) != 1 {
+			t.Fatalf("%s no longer matches the reviewed repaired gradient", entry.Name)
+		}
+		body = bytes.Replace(body, []byte(repaired), []byte(unsafe), 1)
+		dst, err := w.CreateHeader(&entry.FileHeader)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := dst.Write(body); err != nil {
+			t.Fatal(err)
+		}
+		patched++
+	}
+	if patched != 2 {
+		t.Fatalf("unsafe fixture patched %d layout parts, want2", patched)
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.Close(); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
 func TestModernSubtitleGradientPreflightBlocksFalseContrastFix(t *testing.T) {
-	analysis, err := getOrAnalyzeTemplate(filepath.Join(testutil.TemplatesDir(), "modern.pptx"), template.NewMemoryCache(0))
+	analysis, err := getOrAnalyzeTemplate(filepath.Join(unsafeModernGradientDir(t), "modern.pptx"), template.NewMemoryCache(0))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +121,7 @@ func TestModernSubtitleGradientPreflightBlocksFalseContrastFix(t *testing.T) {
 }
 
 func TestGenerateWithoutFitReportStillReportsModernGradient(t *testing.T) {
-	mc := &mcpConfig{templatesDir: testutil.TemplatesDir(), outputDir: t.TempDir(), cache: template.NewMemoryCache(0)}
+	mc := &mcpConfig{templatesDir: unsafeModernGradientDir(t), outputDir: t.TempDir(), cache: template.NewMemoryCache(0)}
 	deck := mustParseJSON(`{"template":"modern","slides":[{"slide_type":"title","layout_id":"slideLayout2","content":[{"placeholder_id":"subtitle","type":"text","text_value":"A subtitle"}]}]}`)
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 		"presentation": deck, "strict_fit": "off", "fit_report": false,
@@ -78,7 +142,7 @@ func TestGenerateWithoutFitReportStillReportsModernGradient(t *testing.T) {
 }
 
 func TestStrictGenerateRefusesModernGradientContrast(t *testing.T) {
-	mc := &mcpConfig{templatesDir: testutil.TemplatesDir(), outputDir: t.TempDir(), cache: template.NewMemoryCache(0)}
+	mc := &mcpConfig{templatesDir: unsafeModernGradientDir(t), outputDir: t.TempDir(), cache: template.NewMemoryCache(0)}
 	deck := mustParseJSON(`{"template":"modern","slides":[{"slide_type":"title","layout_id":"slideLayout2","content":[{"placeholder_id":"subtitle","type":"text","text_value":"A subtitle"}]}]}`)
 	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{
 		"presentation": deck, "strict_fit": "strict", "fit_report": false,
@@ -89,7 +153,7 @@ func TestStrictGenerateRefusesModernGradientContrast(t *testing.T) {
 }
 
 func TestValidateModernGradientIsNotFalseGreen(t *testing.T) {
-	mc := &mcpConfig{templatesDir: testutil.TemplatesDir(), outputDir: t.TempDir(), cache: template.NewMemoryCache(0)}
+	mc := &mcpConfig{templatesDir: unsafeModernGradientDir(t), outputDir: t.TempDir(), cache: template.NewMemoryCache(0)}
 	deck := mustParseJSON(`{"template":"modern","slides":[{"slide_type":"title","layout_id":"slideLayout2","content":[{"placeholder_id":"subtitle","type":"text","text_value":"A subtitle"}]}]}`)
 	result, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{
 		"presentation": deck, "fit_report": true,
@@ -105,6 +169,28 @@ func TestValidateModernGradientIsNotFalseGreen(t *testing.T) {
 	}
 	if out.Valid || !strings.Contains(textContent(result), patterns.ErrCodeContrastUnresolved) {
 		t.Fatalf("validate must report unsafe gradient instead of valid=true: %s", textContent(result))
+	}
+}
+
+func TestRepairedModernGradientPassesValidateAndStrictGenerate(t *testing.T) {
+	mc := &mcpConfig{templatesDir: testutil.TemplatesDir(), outputDir: t.TempDir(), cache: template.NewMemoryCache(0)}
+	deck := mustParseJSON(`{"template":"modern","slides":[{"slide_type":"title","layout_id":"slideLayout2","content":[{"placeholder_id":"subtitle","type":"text","text_value":"A subtitle"}]}]}`)
+	validated, err := mc.handleValidate(context.Background(), makeRequest(map[string]any{"presentation": deck, "fit_report": true}))
+	if err != nil || validated == nil {
+		t.Fatalf("validate failed: %v", err)
+	}
+	var out struct {
+		Valid bool `json:"valid"`
+	}
+	if err := json.Unmarshal([]byte(textContent(validated)), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !out.Valid || strings.Contains(textContent(validated), patterns.ErrCodeContrastUnresolved) {
+		t.Fatalf("repaired gradient falsely refused: %s", textContent(validated))
+	}
+	generated, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{"presentation": deck, "strict_fit": "strict", "fit_report": false}))
+	if err != nil || generated == nil || generated.IsError || strings.Contains(textContent(generated), patterns.ErrCodeContrastUnresolved) {
+		t.Fatalf("strict repaired-gradient generation failed: %v %v", err, generated)
 	}
 }
 
