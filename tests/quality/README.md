@@ -151,3 +151,24 @@ go build -o bin/json2pptx ./cmd/json2pptx
 go test ./tests/quality -run TestPortability -v          # geometry (needs the binary)
 PORTABILITY_RENDER_INTEGRATION=1 go test ./tests/quality -run TestPortability -v  # + LibreOffice render
 ```
+
+## All-native-layout evidence and table continuations
+
+`TestNativeLayoutRenderedCorpus` discovers every native layout in all local
+templates, including ignored `p-style.pptx` when present and the portability
+fixtures. Set `NATIVE_LAYOUT_CORPUS_OUT` to a new absolute directory to retain
+decks, full-size PNGs, source hashes and a failure manifest. Never overwrite
+historical evidence or interpret successful rendering as visual approval.
+
+For a separate table authoring experiment, also set
+`NATIVE_LAYOUT_TABLE_CONTINUATIONS=1`. Each table-stress probe becomes ordered
+six-row pages, with every table on the slide using the same row window. Native
+layout, headers, styles and source cells remain unchanged. The original adverse
+corpus must remain available separately. This does not change production
+pagination or repair unrelated dense-text failures; the full evidence test
+continues to fail whenever source content is missing.
+
+`TestNativeTableContinuations` runs in ordinary local test suites and checks
+source cells/order, native layout and table metadata across every affected
+layout, plus atomic rejection of unsupported fixtures. Fresh continuation
+PNGs still require independent full-size visual review.

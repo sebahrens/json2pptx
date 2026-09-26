@@ -436,6 +436,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 	}
 	imagePath := nativeReferenceImage()
 	photoBackdrop := os.Getenv("NATIVE_LAYOUT_PHOTO_BACKDROP") == "1"
+	tableContinuations := os.Getenv("NATIVE_LAYOUT_TABLE_CONTINUATIONS") == "1"
 	if photoBackdrop && os.Getenv("NATIVE_LAYOUT_IMAGE_SOURCE") == "" {
 		t.Fatal("photo-only backdrop pass requires an explicitly supplied photographic source; never dim the default required screenshot")
 	}
@@ -499,8 +500,17 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				e.Probes = append(e.Probes, nativeProbeEvidence{nativeProbe: p, SlideIndex: len(slides)})
-				slides = append(slides, p.Slide)
+				pages := []nativeProbe{p}
+				if tableContinuations && p.Profile == "table-stress" {
+					pages, err = authorNativeTableContinuations(p, 6)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				for _, page := range pages {
+					e.Probes = append(e.Probes, nativeProbeEvidence{nativeProbe: page, SlideIndex: len(slides)})
+					slides = append(slides, page.Slide)
+				}
 			}
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
@@ -639,6 +649,9 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		ReferenceImageHash: imageHash, Renderer: renderer, RendererHash: rendererHash,
 		DPI: 96, CreatedAt: time.Now().UTC().Format(time.RFC3339), TemplateCount: len(paths), Templates: evidence,
 		Limits: []string{"Renderer probes, not new agent authoring or blind benchmark ratings", "Charts use the generator's current default rendering pipeline; picture insertion does not prove label readability or editability", "Only Western accented characters exercised; no CJK/RTL approval", "Generation failures retain explicit ledger entries; no visual score or approval for missing pages", "Independent visual inspection required; complete PNGs and marker presence are not visual approval"},
+	}
+	if tableContinuations {
+		manifest.Limits = append(manifest.Limits, "Authoring alternative: native table-stress probes use coordinated six-row windows on all tables; original adverse evidence remains separate and is not approved")
 	}
 	body, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
