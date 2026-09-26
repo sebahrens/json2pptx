@@ -258,7 +258,7 @@ func pyramidColumns(n int) []float64 {
 		return []float64{100}
 	}
 	side := (100 - pyramidTopWidthPct) / float64(2*(n-1))
-	cols := make([]float64, 0, 2*n-1)
+	var cols []float64
 	for k := 0; k < n-1; k++ {
 		cols = append(cols, side)
 	}

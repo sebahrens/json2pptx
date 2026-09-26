@@ -610,7 +610,7 @@ func alignCardHeaderLines(cells []*jsonschema.GridCellInput, font string, textWP
 		for i := range filler {
 			filler[i] = cardParagraph{Size: header.Size, Color: header.Color, Align: header.Align}
 		}
-		paras := make([]cardParagraph, 0, len(ref.obj.Paragraphs)+pad)
+		var paras []cardParagraph
 		paras = append(paras, ref.obj.Paragraphs[:ref.index+1]...)
 		paras = append(paras, filler...)
 		paras = append(paras, ref.obj.Paragraphs[ref.index+1:]...)
