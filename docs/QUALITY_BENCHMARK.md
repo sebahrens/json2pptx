@@ -200,3 +200,37 @@ The preregistered pass bar is at least 80% usable, zero lost critical facts,
 zero critical template defects, complete paired ratings, and higher redesigned
 usability than baseline. An unrated or partially rated report remains `hold` or
 `inconclusive`.
+
+## All-native-layout renderer probes
+
+`TestNativeLayoutProbeInventory` runs in ordinary local tests. It includes every
+native layout of all discovered local test templates, including ignored
+`templates/p-style.pptx` when present, and every portability fixture. It does not
+limit coverage to the benchmark's template tiers or canonical layout roles.
+Representative and dense profiles use distinct column markers and populate
+every native image placeholder. Applicable body slots also receive six-row
+tables, charts and oversized 24-row tables.
+
+Retain the actual rendered evidence with a new absolute output directory:
+
+```bash
+NATIVE_LAYOUT_CORPUS_OUT=/absolute/new/corpus \
+  go test ./tests/quality -run '^TestNativeLayoutRenderedCorpus$' \
+  -count=1 -v -timeout=30m
+```
+
+Put the bundled LibreOffice override directory on `PATH` for this command. Do
+not use desktop LibreOffice. Rendering is uncached and has no slide-count cap.
+The manifest retains source hashes, exact native layout IDs, complete inputs,
+generation diagnostics, PNG hashes and renderer/harness provenance. Existing
+output directories are refused to preserve historical evidence.
+
+Source omissions fail the opt-in audit even when the renderer warns about
+truncation. Such a failure requires attribution: content exceeding the native
+slot's capacity is not by itself proof of a defective template. Split the source
+content, use strict refusal or repair the measured cause; never approve lost
+facts merely because a warning exists. Complete marker/picture counts also do
+not establish visual readability, correct image crop or chart editability.
+Review all full-size pages independently before approving them. These probes
+are separate from agent-authored blind benchmark ratings; Western accented text
+does not establish CJK or RTL coverage.
