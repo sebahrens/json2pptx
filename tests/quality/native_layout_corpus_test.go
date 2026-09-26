@@ -181,9 +181,17 @@ func makeNativeProbes(layout types.LayoutMetadata, imagePath string) []nativePro
 						p.ExpectedTables++
 					} else if nativeEvidenceSlot(layout, ph) && profile == "chart" {
 						labels := []string{"Q1", "Q2", "Q3", "Q4"}
-						item.Type, item.Value = generator.ContentDiagram, &types.DiagramSpec{Type: "bar_chart", Alt: "Illustrative quarterly service volume", Data: map[string]any{"categories": labels, "series": []any{map[string]any{"name": prefix + " cases", "values": []float64{12, 18, 15, 24}}}}}
+						metric := prefix + " cases"
+						item.Type, item.Value = generator.ContentDiagram, &types.DiagramSpec{
+							Type: "bar_chart", Title: metric, Alt: "Illustrative quarterly service volume",
+							Data: map[string]any{"categories": labels, "y_label": "Cases (count)", "series": []any{map[string]any{"name": metric, "values": []float64{12, 18, 15, 24}}}},
+							// Exact labels make numeric fidelity observable in this QA probe;
+							// they are not a universal authoring requirement for every chart.
+							Style: &types.DiagramStyle{ShowValues: true},
+						}
 						p.ExpectedPictures++
 						p.ExpectedDiagramLabels = append(p.ExpectedDiagramLabels, labels...)
+						p.ExpectedDiagramLabels = append(p.ExpectedDiagramLabels, metric, "Cases (count)", "12", "18", "15", "24")
 					} else {
 						count := 4
 						if profile == "dense" {
@@ -369,8 +377,31 @@ func TestNativeProbeEvidenceProfilesPreserveDistinctColumns(t *testing.T) {
 				t.Fatalf("distinct complete table rows missing: %+v", p)
 			}
 		case "chart":
-			if p.ExpectedPictures != 3 || len(p.ExpectedDiagramLabels) != 8 {
+			if p.ExpectedPictures != 3 || len(p.ExpectedDiagramLabels) != 20 {
 				t.Fatalf("chart/image expectations lost: %+v", p)
+			}
+			charts := 0
+			for _, item := range p.Slide.Content {
+				if item.Type != generator.ContentDiagram {
+					continue
+				}
+				charts++
+				diagram := item.Value.(*types.DiagramSpec)
+				metric := fmt.Sprintf("C%d cases", charts)
+				if diagram.Title != metric || diagram.Data["y_label"] != "Cases (count)" || diagram.Style == nil || !diagram.Style.ShowValues {
+					t.Fatalf("chart metric, units or exact value labels missing: %+v", diagram)
+				}
+				if got := diagram.Data["categories"].([]string); strings.Join(got, ",") != "Q1,Q2,Q3,Q4" {
+					t.Fatalf("categories changed: %v", got)
+				}
+				series := diagram.Data["series"].([]any)[0].(map[string]any)
+				values := series["values"].([]float64)
+				if series["name"] != metric || fmt.Sprint(values) != "[12 18 15 24]" {
+					t.Fatalf("source measure or values changed: %+v", series)
+				}
+			}
+			if charts != 2 {
+				t.Fatalf("distinct column charts lost: %d", charts)
 			}
 		default:
 			t.Fatalf("unexpected profile %q", p.Profile)

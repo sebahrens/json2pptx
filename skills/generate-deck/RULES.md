@@ -41,6 +41,7 @@ The numeric ranges above are the published surface of the canonical design token
 | 8 | `series[i].values` length must equal `len(categories)` | Mismatched arrays produce corrupted charts |
 | 9 | Chart types use underscores: `stacked_bar`, `grouped_bar` | Hyphens (`stacked-bar`) silently fail |
 | 10 | Don't mix data formats. Single: `{"Q1": 10}`; Multi: `{categories, series}`; Waterfall: `{points}` | Pick one format per chart |
+| 10a | Identify the measure and its supplied units visibly in the chart title, axis label, direct label or legend. For raw `bar_chart` diagrams, use `title` and `data.y_label` (or `data.y_axis_title`). Check the selected chart's live schema for other types. Do not invent units. | A single-series `series.name` or `alt` alone does not guarantee a visible metric label; a category axis and numbers can render correctly while leaving the measure unidentified. A redundant legend is unnecessary when the title or axis already identifies it. |
 
 ## Slide Takeaway (the "so what" line)
 

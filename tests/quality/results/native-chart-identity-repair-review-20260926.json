@@ -1,0 +1,2508 @@
+{
+  "all_layout_regression": {
+    "decoded_pixel_comparison": {
+      "changed_pixels": [
+        "portability-two-master/slideLayout3-chart",
+        "forest-green/slideLayout3-chart",
+        "modern/slideLayout7-chart",
+        "modern-template/slideLayout3-chart",
+        "portability-4x3/slideLayout2-chart",
+        "modern-yellow/slideLayout4-chart",
+        "business-template/slideLayout3-chart",
+        "modern/slideLayout3-chart",
+        "abstract/slideLayout5-chart",
+        "abstract/slideLayout3-chart",
+        "midnight-blue/slideLayout2-chart",
+        "portability-side-logo/slideLayout2-chart",
+        "portability-two-master/slideLayout2-chart",
+        "portability-side-logo/slideLayout3-chart",
+        "portability-21x9/slideLayout2-chart",
+        "midnight-blue/slideLayout3-chart",
+        "blue-corporate/slideLayout2-chart",
+        "p-style/slideLayout2-chart",
+        "portability-4x3/slideLayout3-chart",
+        "portability-two-master/slideLayout10-chart",
+        "p-style/slideLayout5-chart",
+        "warm-coral/slideLayout2-chart",
+        "blue-corporate/slideLayout5-chart",
+        "modern-template/slideLayout4-chart",
+        "modern-yellow/slideLayout5-chart",
+        "modern-yellow/slideLayout3-chart",
+        "forest-green/slideLayout2-chart",
+        "portability-21x9/slideLayout3-chart",
+        "warm-coral/slideLayout3-chart",
+        "portability-two-master/slideLayout9-chart",
+        "business-template/slideLayout5-chart"
+      ],
+      "first_count": 309,
+      "first_manifest": "output/native-content-corpus-20260926-v5/manifest.json",
+      "matched_pixels": 278,
+      "method": "PNG decoded to canonical RGBA; SHA256 includes dimensions and all pixels",
+      "missing_ids": null,
+      "second_count": 309,
+      "second_manifest": "output/native-content-corpus-20260926-v6/manifest.json"
+    },
+    "native_layout_ids": 108,
+    "preexisting_source_omission_probes": 47,
+    "probes": 309,
+    "templates": 14,
+    "visual_corpus_approved": false
+  },
+  "cause": "Authoring/probe supplied a hidden single-series name but no visible metric title or unit axis; existing renderer already supports these fields",
+  "independent_review": {
+    "approved_scope": "Current chart visual packet only",
+    "approved_unrelated_pages": false,
+    "editability_assessed": false,
+    "inspected_ids": [
+      "chart-001",
+      "chart-002",
+      "chart-003",
+      "chart-004",
+      "chart-005",
+      "chart-006",
+      "chart-007",
+      "chart-008",
+      "chart-009",
+      "chart-010",
+      "chart-011",
+      "chart-012",
+      "chart-013",
+      "chart-014",
+      "chart-015",
+      "chart-016",
+      "chart-017",
+      "chart-018",
+      "chart-019",
+      "chart-020",
+      "chart-021",
+      "chart-022",
+      "chart-023",
+      "chart-024",
+      "chart-025",
+      "chart-026",
+      "chart-027",
+      "chart-028",
+      "chart-029",
+      "chart-030",
+      "chart-031"
+    ],
+    "inspected_image_count": 31,
+    "limitations": [
+      "Pictures cannot establish native chart editability, data binding or hidden workbook values.",
+      "Correct printed values plus visually consistent heights establish visible numerical fidelity; this is not an audit of invisible underlying data.",
+      "Original-resolution screen legibility does not guarantee projected readability at every room size or viewing distance.",
+      "Unrelated pages and earlier outstanding non-chart corpus issues are not approved by this review."
+    ],
+    "method": "Every PNG opened individually at original resolution; each chart on each page checked for visible labels, printed values, axis heights, units, metric identity and four visual lenses. Expected labels were compared to actual pixels, not assumed to render.",
+    "observed_chart_count": 46,
+    "packet": "pages.json",
+    "pages": [
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single taupe chart inside diagonal-line frame; centered metric title; no clipping. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-001",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "72d0b23465aa12c8892a7ece2f53a62996a832aa2abfca830661fe1b6ef36ae3",
+        "result": "no_observed_visual_defect",
+        "source_probe": "abstract/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two evenly aligned taupe charts, each with its own metric title and unit axis. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-002",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "545a33b9aac474380b34235b844942a9c56ba244f23625584a5617ec76c19a83",
+        "result": "no_observed_visual_defect",
+        "source_probe": "abstract/slideLayout5-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single green chart on pale blue patterned background; strong label contrast. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-003",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "2be8106f524789f39ab348d582fd80fe1e845634349d82efe22fa26c7e308479",
+        "result": "no_observed_visual_defect",
+        "source_probe": "blue-corporate/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two green charts on pale blue background; both panel names and labels visible. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-004",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "990b89651364649f321cbcef324a7f777d228a627655c9fbfd1b4e3cfd692062",
+        "result": "no_observed_visual_defect",
+        "source_probe": "blue-corporate/slideLayout5-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single purple chart below title/subtitle; broad plot with separated data labels. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-005",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "cc9ccd4ceb0834271b398191edc32320514a27ff4a885779370c4baa7e04ea4d",
+        "result": "no_observed_visual_defect",
+        "source_probe": "business-template/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two purple plots aligned beneath title, with wide separating gutter. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-006",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "f5426e8080013f8640f918540d4c6a67c52f62e361c0aa0107debd2396091f52",
+        "result": "no_observed_visual_defect",
+        "source_probe": "business-template/slideLayout5-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single dark-green plot below green separator; unit label clear of ticks. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-007",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "e476fd2186636dccd8495914c807d208cdab4a68c2ecb97ba77e637826691480",
+        "result": "no_observed_visual_defect",
+        "source_probe": "forest-green/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two dark-green panels; names and labels separated from plots. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-008",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "e34847720198c083771a46d3b6425f191c9e945210cd23ac4185a89cd4d01942",
+        "result": "no_observed_visual_defect",
+        "source_probe": "forest-green/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single blue chart with outer blue/yellow rail; chart unit/labels contained. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-009",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "e37dd16d1bca9876ea5f946d2854ce4724e34b9bea3c9a5ed2f62133a1fff7af",
+        "result": "no_observed_visual_defect",
+        "source_probe": "midnight-blue/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two blue charts, generous gutter; all numeric data labels readable. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-010",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "de5c59bee16a8b9a15239ca8a949fb38b0867aa410394766f03b40529d67a656",
+        "result": "no_observed_visual_defect",
+        "source_probe": "midnight-blue/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two red serif-styled panels below large uppercase title; clear data-label headroom. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-011",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "df375c242e2c6231c2b231abc43ce76498396b1d5e31944b9b0d01aa78964d0e",
+        "result": "no_observed_visual_defect",
+        "source_probe": "modern-template/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single red serif plot with ample whitespace and no label collisions. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-012",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "f603689acefa9c371638c3ecafe37b3928e3c5c7c759b95c178661558f11a81c",
+        "result": "no_observed_visual_defect",
+        "source_probe": "modern-template/slideLayout4-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single blue plot beside cropped decorative yellow circle; unit/title/data labels outside the decoration. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-013",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "7661cfcc701b0cb5b16503421a3128ad046cf6b1612025c97b4edc0f0a57b575",
+        "result": "no_observed_visual_defect",
+        "source_probe": "modern-yellow/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Left blue plot narrower than right because of yellow-circle composition; still all labels retained and separated. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-014",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "8c125f5c4857ea985be0e43f0750b57942c5b1eb8024dd0ba851520102983fe9",
+        "result": "no_observed_visual_defect",
+        "source_probe": "modern-yellow/slideLayout5-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Blue chart inset in pale panel in lower-left under large decorative curved form; labels smaller than full-width charts but legible at original size. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-015",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "53fe0b9e03607190fa80bb763a1335b3e1354bc974a024d30cdd14b6b3a181b7",
+        "result": "no_observed_visual_defect",
+        "source_probe": "modern-yellow/slideLayout4-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single red chart above gradient footer; plot/numeric labels clear of footer. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-016",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "d4c4b70ee5f5a2ea6f1211abb56c7f15e3ec15b3c97db586f3c8f21add334172",
+        "result": "no_observed_visual_defect",
+        "source_probe": "modern/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two red chart panels above gradient footer; readable labels, no plot overlap. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-017",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "31a8c6961ee891c606ce92ccdfe04d5ffcce23b5b2fc8c6db022107641c33c2d",
+        "result": "no_observed_visual_defect",
+        "source_probe": "modern/slideLayout7-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single orange chart spanning lower body; unit and numeric labels clear. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-018",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "e2bdbf4f76490f6791ab927f31fd9802196ed6a6d030a608c7e37d8a71d05947",
+        "result": "no_observed_visual_defect",
+        "source_probe": "p-style/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two orange plots with matched scale and aligned baselines; roomy gutter. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-019",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "575e8d8f934ce83bc21d3dbf4e96cb37bcff1ce95049a95c6ad6c672c6d8a52a",
+        "result": "no_observed_visual_defect",
+        "source_probe": "p-style/slideLayout5-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single orange plot beneath orange header stripe; readable black chart annotations. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-020",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "15e88270a2fee47612e3740b43b8c9966106af76eada5acb3346948b3a4d0aff",
+        "result": "no_observed_visual_defect",
+        "source_probe": "warm-coral/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two orange plots under top accent; both units and values visible, evenly separated. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-021",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "da2f40ce1c2ac4dc0aae2fe5174471f1e0ed292f63f3e55901b0af1b4fe8bf5d",
+        "result": "no_observed_visual_defect",
+        "source_probe": "warm-coral/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Wide blue single plot on wide slide with left accent rails; all text remains legible. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-022",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "00ce4ba57e394d9e9726b1bb8f64489c1d321878fc52ba688c240ed244a2cef6",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-21x9/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two wide blue plots on wide slide; matched scales and aligned baselines. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-023",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "828d115f42535c9f041bfc6e0d8b1772e193df4cb4be418f8513acb4c7c5f0c9",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-21x9/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Blue single plot in narrow slide with left rails; unit clear of accent and ticks. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-024",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "19dccc829f961f0e6b2abb252b97c1b21f45c91e90ac3be95010556a05235445",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-4x3/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two narrow blue plots on narrow slide; still adequate label separation and clear titles. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-025",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "dfcf637cf4901534dd4f6a1075227612ae9d7b71945b7dec7129230cdf5b79d7",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-4x3/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single full-body blue plot with outer rail; strong black label contrast. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-026",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "d04e03e616a4c21974a9c63035765415e5b73edb3c3d8c4593dd2a25e969f0ce",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-side-logo/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two blue panels with outer rail; title and unit per panel, no label loss. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-027",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "5705b73a14f95cfb21d24c52628bfd2853f2ce4963d190fbe683852d1ba14f53",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-side-logo/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single blue plot with outer rail; metric title centered and all labels inside canvas. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-028",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "0350491058033b6b4be824bd59a655356acdd6488f9c977fc1f15d3c9543a6de",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-two-master/slideLayout2-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two blue panels with outer rail; clear numeric headroom and consistent axes. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-029",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "4ec12c91069b60f0b691e0de73c4e742f62227873f84eea964e2c6b65ca4c4b3",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-two-master/slideLayout3-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Single blue plot to right of inset blue/yellow rails; unit/data labels not obstructed. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 1 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-030",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 1,
+        "png_sha256": "1e1f83feb7e69efdc2f0fabeb8e5c3f0f6311ab9cc8c6f733935228a041f9899",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-two-master/slideLayout9-chart"
+      },
+      {
+        "charts": [
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C1 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "first/left"
+          },
+          {
+            "annotations_complete": true,
+            "numeric_fidelity": "Printed values match expected category mapping exactly. Bar heights agree visually with the axes; Q4 \u003e Q2 \u003e Q3 \u003e Q1.",
+            "observed_category_labels": [
+              "Q1",
+              "Q2",
+              "Q3",
+              "Q4"
+            ],
+            "observed_metric_label": "C2 cases",
+            "observed_printed_data_labels": [
+              12,
+              18,
+              15,
+              24
+            ],
+            "observed_unit_label": "Cases (count)",
+            "observed_y_axis": "0–30, ticks at 5-unit intervals",
+            "panel": "second/right"
+          }
+        ],
+        "expected_visible_chart_labels": [
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C1 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24",
+          "Q1",
+          "Q2",
+          "Q3",
+          "Q4",
+          "C2 cases",
+          "Cases (count)",
+          "12",
+          "18",
+          "15",
+          "24"
+        ],
+        "four_lens": {
+          "composition_spacing_clipping": {
+            "observation": "Two blue panels to right of inset rails; labels fully retained and aligned. No observed chart-title/unit/tick/data-label clipping, overlap or off-canvas annotations.",
+            "status": "no_observed_defect"
+          },
+          "readability_contrast": {
+            "observation": "Metric titles, rotated unit labels, category names, axis ticks and printed values are readable at original resolution with dark text on light background. Data labels are above bars, not hidden inside low-contrast fills.",
+            "status": "no_observed_defect"
+          },
+          "source_completeness_table_chart_labels": {
+            "observation": "All 2 chart(s) visibly display the expected metric identity, case-count unit, four quarter labels and four printed source values. No omission, swapped quarter/value, unexpected percentage/currency unit or mismatch observed.",
+            "status": "complete_as_observed"
+          },
+          "visual_fidelity_chrome_image_placement": {
+            "limitation": "No original template reference supplied; exact inherited-template fidelity is not established.",
+            "observation": "Charts remain within visible content regions; decorative chrome does not obscure chart annotations. No observed distorted bars, cropped plot boundary or missing axes.",
+            "status": "no_observed_defect"
+          }
+        },
+        "id": "chart-031",
+        "inspected_original_size": true,
+        "issues": [],
+        "observed_chart_count": 2,
+        "png_sha256": "d4e54d877829282674d111cb103bc78fe8c4a4c9af4b1069f466842c5933eb0a",
+        "result": "no_observed_visual_defect",
+        "source_probe": "portability-two-master/slideLayout10-chart"
+      }
+    ],
+    "review_type": "Single-reviewer current opaque chart-page visual review",
+    "scope": "Only the current chart-review packet and 31 PNGs. No parent mapping key, production code or configuration read.",
+    "summary": {
+      "issue_pages": 0,
+      "pages_with_complete_visible_metric_identity": 31,
+      "pages_with_complete_visible_units": 31,
+      "pages_with_correct_printed_category_values": 31,
+      "pages_with_observed_chart_label_clipping_or_overlap": 0,
+      "pages_with_observed_contrast_failure": 0,
+      "pages_with_observed_numerical_mismatch": 0
+    },
+    "unreviewed_ids": [],
+    "verdict": "No observed visual defect in the 31 current chart pages. Visible chart metric/unit identity and printed numeric labels meet this packet's expectations."
+  },
+  "issue": "go-slide-creator-3qzo4.12",
+  "operator_disposition": "All31 current chart pages independently inspected;46 charts visibly retain metric,case-count unit,Q1-Q4 and12,18,15,24. Other278 pages retain prior pixels/findings. No overall corpus approval or chart editability claim. Exact data labels are QA-probe-only; agent rule requires visible identity from supplied units without forcing redundant legends.",
+  "rendered_source_revision": {
+    "base_commit": "6d794b0e33b2dd397dde26539fd5bffc8a04fd8a",
+    "dpi": 96,
+    "engine_source_sha256": "198c45f91003864e0999032a5435bd46a880d200e36b993ed568160c2c8a5c9f",
+    "harness_sha256": "b4c9349dd4f0451ffc8b266b7b0ae26ec9b372277efcd798695761d918bbd023",
+    "manifest": "/Users/seb/projects/json2pptx/output/native-content-corpus-20260926-v6/manifest.json",
+    "uncommitted_probe_change": true
+  },
+  "schema_version": 1,
+  "verification": {
+    "build": "PASS",
+    "generic_skill_validator": "Attempted, unavailable: PyYAML missing. Existing schema_version frontmatter is outside that generic validator's supported fields; repo schema/skill doctor tests used instead.",
+    "lint": "0 issues",
+    "repo_schema_and_skill_doctor_race": "PASS1.838s",
+    "native_probe_contracts_race": "PASS2.909s",
+    "new_commit_ci": "Pending push and terminal workflows; issue stays open until every workflow succeeds",
+    "quality_short_race": "PASS30.816s",
+    "svggen_axis_title_race": "PASS1.650s"
+  }
+}
