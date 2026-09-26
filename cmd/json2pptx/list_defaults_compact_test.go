@@ -30,6 +30,8 @@ func structuredJSON(t *testing.T, res *mcpgo.CallToolResult, v any) {
 }
 
 func TestListTemplatesDefaultIsCompact(t *testing.T) {
+	// Read-only templates, a private cache and a test-owned output directory.
+	t.Parallel()
 	mc := &mcpConfig{
 		templatesDir: "../../templates",
 		outputDir:    t.TempDir(),

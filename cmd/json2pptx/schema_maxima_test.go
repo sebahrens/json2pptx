@@ -99,6 +99,8 @@ func TestSchemaMaximaTemplateNamesIncludesLocalPStyle(t *testing.T) {
 // content that renders below the readable floor is one an agent cannot size its
 // copy against by reading the contract.
 func TestSchemaMaximaStayReadable(t *testing.T) {
+	// Measurements are local; the internal shaping pool remains bounded to four.
+	t.Parallel()
 	templateNames := schemaMaximaTemplateNames(t)
 	t.Logf("schema-maxima templates: %v", templateNames)
 	geometries := make([]schemaMaximaGeometry, 0, len(templateNames))
