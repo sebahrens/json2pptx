@@ -1,8 +1,11 @@
 package layoutpreview
 
 import (
+	"bytes"
+	"image"
+	"image/png"
 	"os"
-	"os/exec"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -41,7 +44,7 @@ func TestGenerate(t *testing.T) {
 	if _, err := os.Stat(templatePath); err != nil {
 		t.Skip("template not found")
 	}
-	if _, err := exec.LookPath("libreoffice"); err != nil {
+	if !hasLibreOffice() {
 		t.Skip("libreoffice not available")
 	}
 	if !hasImageMagick() {
@@ -86,8 +89,8 @@ func TestGenerate(t *testing.T) {
 		t.Logf("  %s: %d bytes", id, info.Size())
 	}
 
-	if len(result.Paths) == 0 {
-		t.Error("expected at least one preview PNG")
+	if len(result.Paths) != len(analysis.Layouts) {
+		t.Error("every layout must have a preview")
 	}
 }
 
@@ -96,7 +99,7 @@ func TestGenerateCache(t *testing.T) {
 	if _, err := os.Stat(templatePath); err != nil {
 		t.Skip("template not found")
 	}
-	if _, err := exec.LookPath("libreoffice"); err != nil {
+	if !hasLibreOffice() {
 		t.Skip("libreoffice not available")
 	}
 	if !hasImageMagick() {
@@ -143,6 +146,34 @@ func TestGenerateCache(t *testing.T) {
 
 	if len(result2.Paths) != len(result1.Paths) {
 		t.Errorf("cache mismatch: first=%d, second=%d", len(result1.Paths), len(result2.Paths))
+	}
+}
+
+func TestCachedPreviewsRequireEveryLayoutAndReadablePNG(t *testing.T) {
+	dir := t.TempDir()
+	analysis := &types.TemplateAnalysis{Layouts: []types.LayoutMetadata{{ID: "one"}, {ID: "two"}}}
+	var body bytes.Buffer
+	if err := png.Encode(&body, image.NewRGBA(image.Rect(0, 0, 2, 2))); err != nil {
+		t.Fatal(err)
+	}
+	one, two := filepath.Join(dir, "one.png"), filepath.Join(dir, "two.png")
+	if err := os.WriteFile(one, body.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := collectCachedPreviews(dir, analysis); err == nil || result != nil {
+		t.Fatal("missing second layout accepted as complete")
+	}
+	if err := os.WriteFile(two, []byte("broken"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := collectCachedPreviews(dir, analysis); err == nil || result != nil {
+		t.Fatal("corrupt second layout accepted as complete")
+	}
+	if err := os.WriteFile(two, body.Bytes(), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if result, err := collectCachedPreviews(dir, analysis); err != nil || len(result.Paths) != 2 {
+		t.Fatalf("complete set rejected: %+v %v", result, err)
 	}
 }
 

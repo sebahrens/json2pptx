@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"image/png"
 	"io"
 	"os"
 	"os/exec"
@@ -117,10 +118,18 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 		return nil, err
 	}
 
-	// Write marker
-	_ = os.WriteFile(markerPath, []byte(time.Now().Format(time.RFC3339)), 0644)
-
-	return collectCachedPreviews(previewDir, analysis)
+	result, err := collectCachedPreviews(previewDir, analysis)
+	if err != nil {
+		return nil, fmt.Errorf("incomplete layout previews: %w", err)
+	}
+	if result == nil {
+		return nil, fmt.Errorf("no layout previews generated")
+	}
+	// Only a complete, readable set may be marked reusable.
+	if err := os.WriteFile(markerPath, []byte(time.Now().Format(time.RFC3339)), 0644); err != nil {
+		return nil, fmt.Errorf("mark layout previews complete: %w", err)
+	}
+	return result, nil
 }
 
 // generateAllPreviews creates a PPTX with one slide per layout, converts to PDF,
@@ -179,8 +188,7 @@ func generateAllPreviews(templatePath string, analysis *types.TemplateAnalysis, 
 		cmd.Stdout = io.Discard
 		cmd.Stderr = io.Discard
 		if err := cmd.Run(); err != nil {
-			// Non-fatal: skip this layout's preview
-			continue
+			return fmt.Errorf("rasterize layout %s (page %d): %w", layout.ID, i+1, err)
 		}
 	}
 
@@ -191,9 +199,16 @@ func collectCachedPreviews(previewDir string, analysis *types.TemplateAnalysis) 
 	result := &Result{Paths: make(map[string]string)}
 	for _, layout := range analysis.Layouts {
 		pngPath := filepath.Join(previewDir, layout.ID+".png")
-		if _, err := os.Stat(pngPath); err == nil {
-			result.Paths[layout.ID] = pngPath
+		f, err := os.Open(pngPath) // #nosec G304 -- expected layout ID in configured preview cache
+		if err != nil {
+			return nil, fmt.Errorf("layout %s preview missing: %w", layout.ID, err)
 		}
+		_, err = png.Decode(f)
+		_ = f.Close()
+		if err != nil {
+			return nil, fmt.Errorf("layout %s preview unreadable: %w", layout.ID, err)
+		}
+		result.Paths[layout.ID] = pngPath
 	}
 	if len(result.Paths) == 0 {
 		return nil, nil
