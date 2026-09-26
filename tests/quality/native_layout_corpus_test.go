@@ -83,6 +83,12 @@ func nativeCorpusPaths(t *testing.T) []string {
 }
 
 func nativeReferenceImage() string {
+	// Optional supplemental source-aware passes never replace the default
+	// required screenshot cases. The output directory must still be new, and
+	// each probe records the actual image path and the manifest its byte hash.
+	if source := os.Getenv("NATIVE_LAYOUT_IMAGE_SOURCE"); source != "" {
+		return source
+	}
 	// Existing real application screenshot, not a newly invented decorative asset.
 	return filepath.Join(testutil.RepoRoot(), "tests", "quality", "evidence", "connectors", "midnight-blue", "powerpoint-slide-4.png")
 }
@@ -154,8 +160,8 @@ func makeNativeProbes(layout types.LayoutMetadata, imagePath string) []nativePro
 					item.Type, item.Value = generator.ContentText, value
 					p.ExpectedText = append(p.ExpectedText, value)
 				case types.PlaceholderImage:
-					// This source is a complete diagram screenshot, not a decorative
-					// photo: preserve its labels and edges in the native frame.
+					// Preserve the complete source in every pass. Default cases use
+					// a required screenshot; supplemental passes may use a photo.
 					item.Type, item.Value = generator.ContentImage, generator.ImageContent{Path: imagePath, Alt: "Native image probe " + ph.ID, Fit: "contain"}
 					p.ExpectedPictures++
 				case types.PlaceholderBody, types.PlaceholderContent:

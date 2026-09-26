@@ -1,0 +1,697 @@
+{
+  "schema_version": 1,
+  "scope": "Source-aware native photo contrast review; not full audit approval",
+  "rendered_base_commit": "64e4d53fd2e24db3cdee0f12ca50bf086d538a20",
+  "rendered_engine_source_sha256": "f6fa46b9bbeb5f700dd6658ca85ff805bd9d7c794bccba5f4ac9f4e135a87a61",
+  "source_note": "Supplemental source-selection harness change included at render time; documentation arithmetic test added afterwards, no production engine code changed.",
+  "current_manifest": "output/native-photo-content-corpus-20260926-v1/manifest.json",
+  "current_manifest_sha256": "34263843ee8d08643784aad701b610198519c7d5e3440899ee8eac46b1db2b3f",
+  "screenshot_baseline": "output/native-content-corpus-20260926-v8/manifest.json",
+  "coverage": {
+    "templates": 14,
+    "native_layouts": 108,
+    "pages": 309,
+    "unchanged_pixels": 303,
+    "changed_pages": 6,
+    "known_source_omission_pages": 47,
+    "generation_or_render_failures": 0
+  },
+  "photo_origin": "templates/modern.pptx:ppt/media/image1.png",
+  "photo_sha256": "55b050442b1070468ac7fdd54f39cd36ad146fa1f8be5b7cf3b01c6be0c839f1",
+  "original_screenshot_cases": "Retained untouched; supplemental source-aware pass does not replace adverse required-evidence cases",
+  "blind_review_provenance": {
+    "reviewers": 1,
+    "full_pages": 12,
+    "source_images": 2,
+    "packet_sha256": "c79d012a69bb10417d1d89b05d9b9cba92bf4a889d85e96b899dd45e31241f89",
+    "review_sha256": "98f5c09bea9bc61bebb4c5c9565ffdfb5696e0649456d18dfb4a022d8cba0ec2",
+    "configuration_key": "outside packet; joined only after reviewer completed"
+  },
+  "post_review_identity_join": [
+    {
+      "id": "001",
+      "variant": 1,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout2-dense",
+      "slide_index": 10
+    },
+    {
+      "id": "002",
+      "variant": 0,
+      "directory": "native-content-corpus-20260926-v8",
+      "native_id": "slideLayout1-representative",
+      "slide_index": 11
+    },
+    {
+      "id": "003",
+      "variant": 1,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout6-dense",
+      "slide_index": 18
+    },
+    {
+      "id": "004",
+      "variant": 0,
+      "directory": "native-content-corpus-20260926-v8",
+      "native_id": "slideLayout2-representative",
+      "slide_index": 9
+    },
+    {
+      "id": "005",
+      "variant": 1,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout1-dense",
+      "slide_index": 12
+    },
+    {
+      "id": "006",
+      "variant": 0,
+      "directory": "native-content-corpus-20260926-v8",
+      "native_id": "slideLayout6-representative",
+      "slide_index": 17
+    },
+    {
+      "id": "007",
+      "variant": 1,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout2-representative",
+      "slide_index": 9
+    },
+    {
+      "id": "008",
+      "variant": 0,
+      "directory": "native-content-corpus-20260926-v8",
+      "native_id": "slideLayout2-dense",
+      "slide_index": 10
+    },
+    {
+      "id": "009",
+      "variant": 1,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout6-representative",
+      "slide_index": 17
+    },
+    {
+      "id": "010",
+      "variant": 0,
+      "directory": "native-content-corpus-20260926-v8",
+      "native_id": "slideLayout1-dense",
+      "slide_index": 12
+    },
+    {
+      "id": "011",
+      "variant": 1,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout1-representative",
+      "slide_index": 11
+    },
+    {
+      "id": "012",
+      "variant": 0,
+      "directory": "native-content-corpus-20260926-v8",
+      "native_id": "slideLayout6-dense",
+      "slide_index": 18
+    }
+  ],
+  "blind_review": {
+    "review_type": "Single authorised opaque visual reviewer; photographic and diagram-role packet",
+    "packet": "pages.json",
+    "scope": "Only pages.json, twelve page PNGs and two source PNGs in this packet inspected. No code, configurations, keys, outside manifests or extra reviewers.",
+    "skill_context": "Presentation visual-review workflow previously read; review-only restriction, no additional outside files read for this packet.",
+    "inspected_page_count": 12,
+    "inspected_source_image_count": 2,
+    "inspected_image_count": 14,
+    "inspected_ids": [
+      "001",
+      "002",
+      "003",
+      "004",
+      "005",
+      "006",
+      "007",
+      "008",
+      "009",
+      "010",
+      "011",
+      "012"
+    ],
+    "inspected_source_images": [
+      "source-1.png",
+      "source-2.png"
+    ],
+    "unreviewed_ids": [],
+    "method": "Every PNG viewed at original size. Pages002,004,012 individually re-opened to validate contrast, overlay and small-source labels. Safe-to-use means visually suitable for the brief at supplied slide size, not editability or unrelated approval.",
+    "source_reference": {
+      "diagram": {
+        "title": "4. Swimlane — cross-team handoffs",
+        "lane_labels": [
+          "Sales Rep",
+          "Legal",
+          "Finance"
+        ],
+        "task_labels": [
+          "Qualify lead",
+          "Submit proposal",
+          "Review terms",
+          "Approve contract",
+          "Book revenue"
+        ],
+        "arrows": 2,
+        "proportions": "16:9"
+      },
+      "photograph": {
+        "description": "Greyscale bright network nodes and bokeh, darker left, bright centre/right",
+        "proportions": "16:9",
+        "labels": "None"
+      }
+    },
+    "summary": {
+      "safe_to_use_ids": [
+        "001",
+        "007"
+      ],
+      "unsafe_ids": [
+        "002",
+        "003",
+        "004",
+        "005",
+        "006",
+        "008",
+        "009",
+        "010",
+        "011",
+        "012"
+      ],
+      "safe_to_use_count": 2,
+      "unsafe_count": 10,
+      "photo_text_contrast_pages": 4,
+      "diagram_overlay_pages": 4,
+      "diagram_source_labels_too_small_pages": 2,
+      "proven_source_crop_or_distortion_pages": 0
+    },
+    "approved_packet": false,
+    "approved_unrelated_pages": false,
+    "editability_assessed": false,
+    "pages": [
+      {
+        "id": "001",
+        "file": "001.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities",
+          "Internal review of service delivery, ownership and reporting requirements"
+        ],
+        "source_image": "source-2.png",
+        "source_role": "Photographic illustration: inspect text readability against actual pixels; preserve source image proportions",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "no_observed_defect",
+            "observation": "Large black title on white and white subtitle on gradient banner are fully readable."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_defect",
+            "observation": "Four title lines remain clear of image and subtitle. Banner slightly overlaps photo edge deliberately; no text collision."
+          },
+          "source_completeness": {
+            "status": "no_observed_omission",
+            "observation": "Both exact expected strings are fully visible (uppercase styling). Photograph preserves proportions and recognizable full source framing."
+          },
+          "artwork_composition": {
+            "status": "no_observed_defect",
+            "observation": "Balanced left text/right photo composition. No distortion, unsafe contrast or lost photographic role observed."
+          }
+        },
+        "source_label_readability": "Not applicable: photographic source has no labels.",
+        "issues": [],
+        "safe_to_use": true,
+        "verdict": "Safe to use within this visual brief; no observed defect.",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "002",
+        "file": "002.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review"
+        ],
+        "source_image": "source-1.png",
+        "source_role": "Required diagram evidence: preserve every source label and edge, with readable labels",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "Expected white title becomes invisible across white diagram background; only QU... and REVIEW portions are legible over blue/grey regions."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "defect",
+            "observation": "Large slide title overlays diagram lane boundary and evidence field rather than occupying a separate text area."
+          },
+          "source_completeness": {
+            "status": "visual_accessibility_failure_no_proven_underlying_omission",
+            "observation": "Source title, Sales Rep/Legal/Finance, five task labels and both arrows remain present/readable. Expected slide title is not fully visually readable; cannot prove text omission versus white-on-white loss."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Full source proportions and edges retained, but diagram-as-background conflicts with white title treatment."
+          }
+        },
+        "source_label_readability": "All eight lane/task labels readable; no source label crop observed.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "title_contrast",
+            "description": "Large portions of Quarterly operating review disappear on white diagram background.",
+            "cause": "Not determined from opaque rendered pixels."
+          },
+          {
+            "severity": "major",
+            "type": "evidence_overlay",
+            "description": "Slide title overlays diagram lane/evidence region.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "003",
+        "file": "003.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities",
+          "Internal review of service delivery, ownership and reporting requirements"
+        ],
+        "source_image": "source-2.png",
+        "source_role": "Photographic illustration: inspect text readability against actual pixels; preserve source image proportions",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "White OPERATING, SERVICE and portions of PRIORITIES cross bright nodes and pale bokeh; thin letter strokes lose local contrast. Long small subtitle crosses brighter centre/right background and loses contrast there."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_defect",
+            "observation": "Title and subtitle separate and contained; no observed clipping or text/text collision."
+          },
+          "source_completeness": {
+            "status": "no_observed_omission",
+            "observation": "Full expected title and subtitle can be traced. No proven omitted words; readability loss is separate from source omission. Photograph appears proportionally scaled."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Busy bright photographic structures behind key title/subtitle compete with text; visual hierarchy is compromised."
+          }
+        },
+        "source_label_readability": "Not applicable: photographic source has no labels.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "photo_text_contrast",
+            "description": "White title and long subtitle lose local contrast against bright nodes/bokeh.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "004",
+        "file": "004.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review",
+          "Illustrative test data for review"
+        ],
+        "source_image": "source-1.png",
+        "source_role": "Required diagram evidence: preserve every source label and edge, with readable labels",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "Main title and subtitle readable. Diagram lane/task labels are only a few pixels high at page size: some can be deciphered with effort, not comfortably read as required evidence."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_defect",
+            "observation": "Main title and banner are separated from diagram labels. Banner overlays narrow source left decorative stripe but not any label or arrow."
+          },
+          "source_completeness": {
+            "status": "visual_accessibility_failure_no_proven_underlying_omission",
+            "observation": "Diagram title, three lane labels, five task labels and two arrows all retained without substantive crop; readability requirement is not met at this scale. Both expected slide strings present."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Proportional diagram placement, but tiny evidence relative to large main heading undermines required source role."
+          }
+        },
+        "source_label_readability": "Too small for reliable slide-reading: Sales Rep, Legal, Finance, Qualify lead, Submit proposal, Review terms, Approve contract, Book revenue.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "source_labels_too_small",
+            "description": "All required diagram lane/task labels are reduced to tiny text in half-page image.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "005",
+        "file": "005.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities"
+        ],
+        "source_image": "source-2.png",
+        "source_role": "Photographic illustration: inspect text readability against actual pixels; preserve source image proportions",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "White OPERATING/SERVICE/PRIORITIES cross bright source structures; several thin strokes blend into highlights."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_defect",
+            "observation": "Three title lines contained and separate; no clipping or text/text collision observed."
+          },
+          "source_completeness": {
+            "status": "no_observed_omission",
+            "observation": "Full expected title can be traced; photograph preserves proportions/framing. No proven missing source content."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Bright busy full-image background competes with large white title."
+          }
+        },
+        "source_label_readability": "Not applicable: photographic source has no labels.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "photo_text_contrast",
+            "description": "White heading loses contrast over bright network nodes and bokeh.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "006",
+        "file": "006.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review",
+          "Illustrative test data for review"
+        ],
+        "source_image": "source-1.png",
+        "source_role": "Required diagram evidence: preserve every source label and edge, with readable labels",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "Much of white title disappears on white source; subtitle fades after its blue-lane portion into near-white middle row."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "defect",
+            "observation": "Title overlays Sales Rep lane/Qualify lead; subtitle overlaps Legal lane and evidence row."
+          },
+          "source_completeness": {
+            "status": "visual_accessibility_failure_no_proven_underlying_omission",
+            "observation": "Diagram edges and arrows retained, but overlay impairs Sales Rep and Qualify lead; expected title/subtitle not fully readable. Cannot infer underlying text absence from pixels."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Diagram background and white title/subtitle treatment are incompatible; evidence/text layering damages both roles."
+          }
+        },
+        "source_label_readability": "Sales Rep and Qualify lead impaired by white title overlay; Legal shares subtitle region. Remaining labels readable.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "title_subtitle_contrast",
+            "description": "Expected title and subtitle are largely unreadable against white/light-grey source.",
+            "cause": "Not determined from opaque rendered pixels."
+          },
+          {
+            "severity": "major",
+            "type": "source_label_occlusion",
+            "description": "White title interferes with Sales Rep and Qualify lead; subtitle overlaps Legal region.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "007",
+        "file": "007.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review",
+          "Illustrative test data for review"
+        ],
+        "source_image": "source-2.png",
+        "source_role": "Photographic illustration: inspect text readability against actual pixels; preserve source image proportions",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "no_observed_defect",
+            "observation": "Black title and white subtitle on gradient readable."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_defect",
+            "observation": "Title/image/banner clear, slight banner/photo edge overlay does not harm text."
+          },
+          "source_completeness": {
+            "status": "no_observed_omission",
+            "observation": "Both exact expected strings present. Photograph retains full framing and proportions."
+          },
+          "artwork_composition": {
+            "status": "no_observed_defect",
+            "observation": "Coherent two-column image/text layout with high-contrast banner; no observed defect."
+          }
+        },
+        "source_label_readability": "Not applicable: photographic source has no labels.",
+        "issues": [],
+        "safe_to_use": true,
+        "verdict": "Safe to use within this visual brief; no observed defect.",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "008",
+        "file": "008.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities",
+          "Internal review of service delivery, ownership and reporting requirements"
+        ],
+        "source_image": "source-1.png",
+        "source_role": "Required diagram evidence: preserve every source label and edge, with readable labels",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "Full main title and subtitle readable; embedded diagram lane/task labels too tiny for reliable evidence reading."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_defect",
+            "observation": "Four title lines do not clip or collide with image. Banner overlaps source decorative stripe only."
+          },
+          "source_completeness": {
+            "status": "visual_accessibility_failure_no_proven_underlying_omission",
+            "observation": "Full source title, all three lane labels, five tasks and two arrows retained. Expected strings complete; required readable source labels fail due scale."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Proportional diagram retained but tiny evidence competes poorly with dominant heading."
+          }
+        },
+        "source_label_readability": "All eight lane/task labels too small for reliable slide-reading.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "source_labels_too_small",
+            "description": "Half-page source diagram reduces required lane/task labels to tiny text.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "009",
+        "file": "009.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review",
+          "Illustrative test data for review"
+        ],
+        "source_image": "source-2.png",
+        "source_role": "Photographic illustration: inspect text readability against actual pixels; preserve source image proportions",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "OPERATING crosses bright top-centre bokeh/node area; parts of white thin strokes lose contrast. REVIEW and subtitle on dark left are readable."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_defect",
+            "observation": "Two title lines and short subtitle well separated and contained."
+          },
+          "source_completeness": {
+            "status": "no_observed_omission",
+            "observation": "Both exact strings visible; photographic framing/proportions retained, no proven omission."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Bright highlight behind OPERATING weakens title hierarchy despite otherwise coherent spacing."
+          }
+        },
+        "source_label_readability": "Not applicable: photographic source has no labels.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "photo_text_contrast",
+            "description": "White OPERATING loses local contrast on bright photo highlights.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "010",
+        "file": "010.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities"
+        ],
+        "source_image": "source-1.png",
+        "source_role": "Required diagram evidence: preserve every source label and edge, with readable labels",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "Much of first title line vanishes into white source. Remaining white lines are faint against pale row, obscuring title readability."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "defect",
+            "observation": "Long title covers lane boundaries, diagonal arrow region and Review terms label."
+          },
+          "source_completeness": {
+            "status": "visual_accessibility_failure_no_proven_underlying_omission",
+            "observation": "Full source edges and arrows retained; Review terms is partially overpainted and difficult to read. Full expected heading not visually readable; text absence unproven."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Evidence diagram is disrupted by huge overlaid title; no proportional distortion observed."
+          }
+        },
+        "source_label_readability": "Review terms impaired by overlay; other task/lane labels visible, Sales Rep close to title.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "title_contrast",
+            "description": "White title is invisible/faint across white and pale-grey diagram background.",
+            "cause": "Not determined from opaque rendered pixels."
+          },
+          {
+            "severity": "major",
+            "type": "source_label_occlusion",
+            "description": "DELIVERY PRIORITIES overlays and partially masks Review terms.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "011",
+        "file": "011.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review"
+        ],
+        "source_image": "source-2.png",
+        "source_role": "Photographic illustration: inspect text readability against actual pixels; preserve source image proportions",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "OPERATING crosses bright network/bokeh highlights and loses local thin-stroke contrast; QUARTERLY and REVIEW more readable."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_defect",
+            "observation": "Two title lines contained with ample surrounding room; no text collision."
+          },
+          "source_completeness": {
+            "status": "no_observed_omission",
+            "observation": "Full expected title present; photo framing/proportions retained."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Photo highlight coincides with key title word, creating competing visual emphasis."
+          }
+        },
+        "source_label_readability": "Not applicable: photographic source has no labels.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "photo_text_contrast",
+            "description": "White OPERATING blends with bright source nodes and bokeh.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      },
+      {
+        "id": "012",
+        "file": "012.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities",
+          "Internal review of service delivery, ownership and reporting requirements"
+        ],
+        "source_image": "source-1.png",
+        "source_role": "Required diagram evidence: preserve every source label and edge, with readable labels",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "White long heading largely invisible on white; subtitle fades across pale row after blue lane."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "defect",
+            "observation": "Title overlaps source diagram title and upper lane/task labels; subtitle overlaps Legal/evidence row."
+          },
+          "source_completeness": {
+            "status": "visual_accessibility_failure_no_proven_underlying_omission",
+            "observation": "Source diagram title is overpainted by white lettering; Sales Rep, Qualify lead and Submit proposal partly obscured. Two arrows and full outer source remain. Exact expected title/subtitle not fully visually readable; no claim of underlying text absence."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Foreground text corrupts required diagram evidence while background retains proportions."
+          }
+        },
+        "source_label_readability": "Source title, Sales Rep, Qualify lead and Submit proposal visibly impaired; Legal shares subtitle region. Remaining lower labels readable.",
+        "issues": [
+          {
+            "severity": "major",
+            "type": "title_subtitle_contrast",
+            "description": "White heading/subtitle disappear across white/light-grey source areas.",
+            "cause": "Not determined from opaque rendered pixels."
+          },
+          {
+            "severity": "major",
+            "type": "source_label_occlusion",
+            "description": "White title damages source title and upper lane/task label readability.",
+            "cause": "Not determined from opaque rendered pixels."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief: unresolved observed visual defect(s).",
+        "limitations": "No original template reference/identity; exact template fidelity and editability unproven. Visual text access is not evidence of underlying object deletion."
+      }
+    ]
+  },
+  "unresolved": "Four photo pages require actual composition repair; screenshot overlay/tiny labels and47 source-omission pages remain open. No broad approval."
+}

@@ -77,7 +77,7 @@ The `Section Number` placeholder on section divider layouts has specific require
 - **Name**: `cNvPr` name must be `"Section Number"` (case-sensitive in the XML, matched case-insensitively by the resolver)
 - **Position**: Upper-right quadrant of the slide
 - **Minimum width**: 2,743,200 EMU (3 inches) — must fit two-digit numbers
-- **Default font size**: ≥ 13,600 half-points (≥ 100pt) — large display numeral
+- **Font size**: Large display type appropriate to the template. Sizes are hundredths of a point: 9,600 = 96pt; 13,600 = 136pt. The structural role heuristic uses 9,000 (90pt), not a mandatory conformance minimum. Preserve existing template typography; `template-check` does not enforce a section-number font-size threshold.
 - **Alignment**: Right-aligned
 - **Color**: Should use an accent color from the theme (typically `accent1`)
 
@@ -105,11 +105,11 @@ never tagged `content`, even if its tagline body is large enough to hold text.
 ## Typography Constraints
 
 ### Body Text
-- Default font size for body placeholders: **18–24pt** (2,400–3,200 half-points)
+- Default font size for body placeholders: **18–24pt** (1,800–2,400 hundredths of a point)
 - The generator's text fitting system (overflow levels P0–P5) assumes this range. Templates with body fonts outside this range may produce unexpected fit behavior.
 
 ### Title Text
-- Default font size for title placeholders: **28–44pt** (3,600–5,600 half-points)
+- Default font size for title placeholders: **28–44pt** (2,800–4,400 hundredths of a point)
 - No strict enforcement — varies by layout role.
 
 ### Fonts
@@ -134,9 +134,9 @@ Every template's theme (`ppt/theme/theme1.xml`) must define:
 
 ## Aspect Ratio
 
-- Default: **16:9** (9,144,000 × 6,858,000 EMU)
-- Also supported: **4:3** (9,144,000 × 6,858,000 EMU adjusted)
-- Declare non-standard ratios in the metadata file (see below)
+- Common **16:9** canvas: 12,192,000 × 6,858,000 EMU
+- Also supported: **4:3** (9,144,000 × 6,858,000 EMU)
+- The actual canvas comes from `p:sldSz` in `ppt/presentation.xml`, including non-standard ratios. Do not infer it from a layout name or the optional metadata file.
 
 ## Metadata (Optional)
 
