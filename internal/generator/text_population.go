@@ -7,7 +7,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // populateShapeText sets text content in a shape based on the content item type.
@@ -164,12 +166,14 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	// explicit buNone to suppress the bullet, similar to setBulletGroupsParagraphs.
 	textPProps := suppressBulletInParagraphProps(templatePProps)
 
-	// Section titles (maxFontSizeHPt=0): don't force left alignment in the inline
-	// paragraph properties. Let the lstStyle alignment prevail so templates like
-	// some templates can center section divider titles via lstStyle algn="ctr".
-	// Other templates that don't specify algn default to left per OOXML spec.
-	if maxFontSizeHPt == 0 {
+	// Display text follows native alignment, including explicit paragraph
+	// overrides. An absent override inherits the layout/list/master alignment.
+	// Ordinary body text retains the deliberate left-alignment policy above.
+	if maxFontSizeHPt == 0 || preservesNativeTextAlignment(shape, placeholderID) {
 		textPProps.Algn = ""
+		if templatePProps != nil {
+			textPProps.Algn = templatePProps.Algn
+		}
 	}
 
 	// Strip inherited bold from paragraph defRPr so only inline <b>bold</b> renders bold.
@@ -232,6 +236,21 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	applySmartAutofitWithOptions(shape, opts...)
 
 	return nil
+}
+
+func preservesNativeTextAlignment(shape *shapeXML, id string) bool {
+	if isTitleShape(shape) || isTitlePlaceholder(id) {
+		return true
+	}
+	canonical := strings.ToLower(strings.TrimSpace(id))
+	if canonical == "subtitle" || strings.HasPrefix(canonical, "subtitle_") ||
+		types.IsAutoFilledPlaceholder(id) || placeholderrole.IsSectionNumberAlias(id) ||
+		types.IsAutoFilledPlaceholder(shape.NonVisualProperties.ConnectionNonVisual.Name) {
+		return true
+	}
+	ph := shape.NonVisualProperties.NvPr.Placeholder
+	return ph != nil && (ph.Type == "subTitle" ||
+		(ph.Type == "body" && extractFontSizeFromShape(shape) >= placeholderrole.SectionNumberMinFontSize))
 }
 
 // fitSectionTitle establishes prominence before applying the final width cap.

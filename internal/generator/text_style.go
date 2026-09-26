@@ -23,9 +23,9 @@ func extractTemplateTextStyle(paragraphs []paragraphXML) (*paragraphPropertiesXM
 	var pProps *paragraphPropertiesXML
 	var rProps *runPropertiesXML
 
-	// Clone paragraph properties if present (check for Level attribute or Inner content)
+	// Attribute-only properties (for example algn="r") are meaningful too.
 	firstPara := &paragraphs[0]
-	if firstPara.Properties != nil && (firstPara.Properties.Level != nil || firstPara.Properties.Inner != "") {
+	if firstPara.Properties != nil {
 		pProps = cloneParagraphProperties(firstPara.Properties)
 	}
 
