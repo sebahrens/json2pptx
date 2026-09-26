@@ -43,8 +43,24 @@
     "identity_key_joined_only_after_final_review": true
   },
   "private_template": {"path": "templates/p-style.pptx", "sha256": "9df06238508e65b63ed8900a3d182e014987f5fd799468eb4bfdab64e96f998d", "unchanged_and_gitignored": true},
+  "permanent_regression_coverage": {
+    "test": "tests/quality/native_readable_continuation_test.go",
+    "reviewed_cases_with_private_template": 15,
+    "pages_across_four_fit_modes": 240,
+    "unique_complete_source_sentences": 180,
+    "checks": ["Complete source strings and order", "Native layout relationships and relative nesting", "Written or inherited body font remains at least authored 18pt after stored autofit", "Original and authored inputs remain unchanged", "All ppt/ payloads identical across default, warn, off and strict modes"],
+    "negative_controls": "Missing or duplicated full source, flattened nesting, changed native base, missing or small fonts, explicit zero overrides, autofit shrinking and invalid XML are rejected",
+    "final_targeted_race_log": "output/readable-continuation-final-controls-20260926-v1.jsonl",
+    "final_targeted_race_sha256": "75979337dcbc8791669a4c383b393e3ff3acb7f19c240d771c93f4144e76a6ad",
+    "quality_integration_log": "output/quality-readable-continuation-integration-20260926-v1.jsonl",
+    "quality_integration_sha256": "e1e5f3348ff10c39e0396087d50c4e78ce2065860f3c38831af0fc648700f5a9",
+    "quality_integration_pass_seconds": 576.68,
+    "integration_scope": "Full short/race quality suite passed with initial explicit-font checks; final inherited-font resolution and cross-mode payload parity then passed targeted race tests. No production rendering changes.",
+    "ci_without_private_template": "13 public reviewed cases and 150 source sentences; absent ignored p-style is not claimed as tested in CI",
+    "visual_approval_limit": "Structural/font tests do not replace retained full-resolution blind review or resolve remaining minor cautions"
+  },
   "remaining_work": [
-    "go-slide-creator-3qzo4.44: integrate coherent source-preserving authoring guidance and regression coverage; original dense single-page outputs remain unsafe",
+    "go-slide-creator-3qzo4.44: guidance and permanent regression coverage integrated; original dense single-page outputs remain unsafe and minor cautions remain open",
     "go-slide-creator-3qzo4.69: resolve all 12 retained minor cautions, then re-render and re-review affected cases",
     "All other source-loss refusals, image/subtitle failures, template repairs and authoring failures remain separately open"
   ],
