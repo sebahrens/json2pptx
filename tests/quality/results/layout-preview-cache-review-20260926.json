@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "issue": "go-slide-creator-3qzo4.10",
+  "scope": "Generated native-layout preview cache freshness; not visual approval of decks or shipped thumbnails",
+  "implementation": {
+    "schema": "layout-preview-v2",
+    "identity_inputs": [
+      "Full template SHA256",
+      "Current generator executable SHA256, memoized within its process",
+      "Resolved LibreOffice entrypoint path, bytes and reported version",
+      "Resolved rasterizer entrypoint path, bytes and reported version",
+      "Effective DPI, with default and nonpositive values normalized to96",
+      "Ordered native layout IDs and effective sample-content recipe"
+    ],
+    "migration": "Legacy template-only cache directories are not reused or deleted",
+    "version_probe": "Five-second context deadline and one-second pipe wait bound; failed, cancelled or empty version is an error, not permission to reuse stale PNGs"
+  },
+  "local_gates": {
+    "initial_targeted_race": "PASS internal/layoutpreview1.512s",
+    "actual_render_and_cache_regression": "PASS under bundled LibreOffice: same request keeps paths and file timestamps;72to144DPI uses different cache paths and doubles width/height for every layout",
+    "short_race": "PASS layoutpreview9.837s templatepreview3.800s quality34.386s",
+    "discovery_race": "PASS CLI8.906s",
+    "final_preview_race": "PASS layoutpreview9.011s templatepreview3.504s",
+    "lint": "PASS0issues",
+    "build": "PASS",
+    "diff_check": "PASS",
+    "full_root_local_race": "NOT_RUN"
+  },
+  "technical_reviews": [
+    {
+      "reviewer": "testing",
+      "findings": [],
+      "resolved_gaps": [
+        "Cache test previously asserted only image count; now checks reuse and unmodified timestamps",
+        "Real DPI separation and actual decoded PNG dimensions checked",
+        "Generator, template, renderer, recipe and DPI identity changes checked independently",
+        "Unchanged wrapper with changed target version tested",
+        "Missing/unexecutable renderer, missing template, failed/empty/cancelled version probes fail closed",
+        "Engine fingerprint checked against actual executable bytes"
+      ],
+      "residual_risks": [
+        "Unit identity separation and rendering controls are not full-deck visual or editability approval"
+      ]
+    },
+    {
+      "reviewer": "adversarial",
+      "findings": [],
+      "resolved_scenarios": [
+        "Same template with rebuilt generator reuses outdated PNGs: executable identity included",
+        "Same template requested at different density reuses wrong-resolution PNGs: effective DPI included",
+        "Wrapper entrypoint unchanged while renderer upgraded: reported version included",
+        "Same template with a changed native preview recipe collides: effective slide specifications included",
+        "Renderer identification fails and stale evidence is returned: error propagated"
+      ],
+      "residual_risks": [
+        "Font installation or other ambient rendering-environment changes are not individually fingerprinted",
+        "Live replacement of an executable before its first fingerprint is outside this cache contract"
+      ]
+    },
+    {
+      "reviewer": "reliability",
+      "findings": [],
+      "residual_risks": [
+        "Existing full LibreOffice conversion and rasterization process behavior is unchanged; this change bounds version identification only"
+      ]
+    }
+  ],
+  "remaining_defects": [
+    {
+      "issue": "go-slide-creator-3qzo4.29",
+      "evidence": "Manually inspected templates/previews/modern/slideLayout3.png still shows old isolated footer block. Stored thumbnail last changed at b76f28bd, before template repairs; templatepreview.Resolve returns it directly. Existing shipped-thumbnail tests check presence and dimensions, not freshness.",
+      "status": "OPEN; no stored thumbnails changed by this cache repair"
+    }
+  ],
+  "outcome": {
+    "whole_visual_audit_complete": false,
+    "ci": "Pending publication",
+    "frozen_benchmark_ratings_changed": false,
+    "p_style": "Remains ignored and included in local quality tests when present"
+  }
+}

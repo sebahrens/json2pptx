@@ -69,7 +69,7 @@ func TestGenerate(t *testing.T) {
 	}
 
 	tmpDir := t.TempDir()
-	opts := &Options{CacheDir: tmpDir, DPI: 72}
+	opts := &Options{CacheDir: tmpDir, DPI: 72, LibreOfficeProfileDir: t.TempDir()}
 
 	result, err := Generate(templatePath, analysis, opts)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestGenerateCache(t *testing.T) {
 	}
 
 	tmpDir := t.TempDir()
-	opts := &Options{CacheDir: tmpDir, DPI: 72}
+	opts := &Options{CacheDir: tmpDir, DPI: 72, LibreOfficeProfileDir: t.TempDir()}
 
 	// First call generates
 	result1, err := Generate(templatePath, analysis, opts)
@@ -133,6 +133,14 @@ func TestGenerateCache(t *testing.T) {
 	}
 	if result1 == nil {
 		t.Fatal("first result is nil")
+	}
+	timestamps := map[string]int64{}
+	for id, path := range result1.Paths {
+		info, err := os.Stat(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		timestamps[id] = info.ModTime().UnixNano()
 	}
 
 	// Second call should hit cache
@@ -146,6 +154,41 @@ func TestGenerateCache(t *testing.T) {
 
 	if len(result2.Paths) != len(result1.Paths) {
 		t.Errorf("cache mismatch: first=%d, second=%d", len(result1.Paths), len(result2.Paths))
+	}
+	for id, path := range result2.Paths {
+		info, err := os.Stat(path)
+		if err != nil || path != result1.Paths[id] || info.ModTime().UnixNano() != timestamps[id] {
+			t.Fatalf("identical render did not reuse unchanged preview: %s %v", id, err)
+		}
+	}
+	// Same template, different density must produce a distinct cache and pixels
+	// at the requested resolution, not reuse the old readable but wrong PNGs.
+	opts.DPI = 144
+	result3, err := Generate(templatePath, analysis, opts)
+	if err != nil || result3 == nil {
+		t.Fatalf("higher-resolution Generate: %v", err)
+	}
+	for id, path := range result3.Paths {
+		if path == result1.Paths[id] {
+			t.Fatalf("different DPI reused preview path: %s", id)
+		}
+		bounds := func(path string) image.Config {
+			t.Helper()
+			f, err := os.Open(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer f.Close()
+			config, err := png.DecodeConfig(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return config
+		}
+		low, high := bounds(result1.Paths[id]), bounds(path)
+		if high.Width != low.Width*2 || high.Height != low.Height*2 {
+			t.Fatalf("%s: DPI doubled but dimensions %dx%d -> %dx%d", id, low.Width, low.Height, high.Width, high.Height)
+		}
 	}
 }
 

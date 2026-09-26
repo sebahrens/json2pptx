@@ -89,10 +89,11 @@ func Generate(templatePath string, analysis *types.TemplateAnalysis, opts *Optio
 	cacheDir := opts.cacheDir()
 	templateName := strings.TrimSuffix(filepath.Base(templatePath), ".pptx")
 
-	// Compute a cache key from template file content hash
-	hash, err := fileHash(templatePath)
+	// Reuse only previews from the same template, generator, recipe, renderer
+	// and effective resolution. Legacy template-only caches are left untouched.
+	hash, err := currentPreviewCacheIdentity(templatePath, analysis, opts)
 	if err != nil {
-		return nil, fmt.Errorf("hash template: %w", err)
+		return nil, fmt.Errorf("identify preview cache: %w", err)
 	}
 
 	previewDir := filepath.Join(cacheDir, templateName, hash)
@@ -226,7 +227,7 @@ func fileHash(path string) (string, error) {
 	if _, err := io.Copy(h, f); err != nil {
 		return "", err
 	}
-	return hex.EncodeToString(h.Sum(nil))[:16], nil
+	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
 // The render binaries are resolved by internal/render, the single place that
