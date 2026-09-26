@@ -24,6 +24,19 @@ native framework layouts. It emits `RENDER.diagram.text_overlap`,
 `RENDER.diagram.text_below_readable_min`, or the existing heatmap label finding
 before PowerPoint autofit shrinks text to an unreadable size.
 
+### `table_rows_truncated`
+
+The native table renderer reports this finding when authored rows would be absent
+from the generated deck. Its action is `refuse`, with error severity and the
+authored content item's JSON Pointer (for example, `/slides/0/content/0`).
+The `split_at_row` fix supplies `split_at_row`, `visible_rows`, and `hidden_rows`
+parameters. Split the source into complete tables rather than deleting the hidden
+rows. A successful fitting table remains native and editable.
+
+Actual row loss blocks publication in strict mode; refusal preserves an existing
+destination and removes the temporary output. Predicted findings are useful repair
+guidance, but do not replace the renderer's actual-content check.
+
 ## Output-Validation Findings — Separate Category
 
 This document catalogs **fit findings** (`patterns.FitFinding`) emitted by the layout/textfit/chart preflight and runtime. They are distinct from **output-validation findings** (`pptx.Finding`) emitted by `internal/pptx.OutputValidator` after the `.pptx` is serialized, and from **visual-QA findings** emitted by the `slide-visual-qa` Haiku skill from rendered screenshots:

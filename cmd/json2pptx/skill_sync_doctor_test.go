@@ -67,7 +67,6 @@ var knownFitDocDrift = map[string]string{
 	"pagination_default_threshold": "render-time code, SKILL.md only",
 	"readability_trimmed":          "render-time code, SKILL.md only",
 	"table_font_scaled":            "render-time code, SKILL.md only",
-	"table_rows_truncated":         "render-time code, SKILL.md only",
 	"text_overflow":                "render-time code, SKILL.md only",
 	"text_trimmed":                 "render-time code, SKILL.md only",
 }
