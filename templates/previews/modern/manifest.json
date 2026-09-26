@@ -2,8 +2,8 @@
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
   "template_sha256": "025839a5db46be67c20069c361f7c4097465dbade6135581121ed409311a69e3",
-  "rendering_source_sha256": "4f25a12f885e22ba0c2a9bf464d856330945cae2e9773a0fcbdd789c2f296db6",
-  "render_cache_identity": "99dca48a889c3901b87e0e276ffeb56ca4fd6c14f8f96fdcbd6a93e1970dfe70",
+  "rendering_source_sha256": "f58b530bf2c50601d52e9b4b310b31ce0aaf4433f2ba61eec2eab5aef1b840cc",
+  "render_cache_identity": "d211d676c07fe1eef26f5e5cf144cd7a3ca627c35e9a02af351919b7410f8dd8",
   "width": 320,
   "dpi": 60,
   "png_sha256": {

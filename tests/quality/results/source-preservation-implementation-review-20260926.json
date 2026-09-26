@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-26",
+  "scope": "Integrated native paragraph/table publication guard and MCP runtime-loss diagnostics; not all-layout visual closure",
+  "reviews": [
+    {
+      "reviewer": "adversarial",
+      "depth": "quick",
+      "findings": [],
+      "residual_risks": ["The publication guard recognizes native paragraph/table loss codes, not every possible source-loss mechanism across all features", "Source-complete slides can remain unreadable or obscure required image details"],
+      "testing_gaps": [],
+      "evidence": ["All four modes exercise each original native probe; refusal must leave neither a result nor a published/temporary file", "Existing-destination tests verify refusal before final rename", "Caller tests check the public split_slide action and original renderer row parameters, avoiding the internal/public vocabulary mismatch"]
+    },
+    {
+      "reviewer": "testing",
+      "findings": [],
+      "residual_risks": ["The complete integrated repository run and replacement CI are not yet green"],
+      "testing_gaps": ["MCP end-to-end runtime refusal cases exercise actual paragraph overflow and table-row loss; readability_trimmed has renderer unit coverage but no separate actual MCP fixture"],
+      "evidence": ["Integrated production files and regression tests exactly match hashed isolated candidate sources", "The unchanged original native probe generator feeds strengthened full-sentence/cell/native-object assertions", "The candidate matrix covers 1236 mode/probe runs across 14 local templates and 108 native layouts, including ignored p-style", "Main targeted generator race PASS118.863s and MCP/documentation race PASS25.271s"]
+    },
+    {
+      "reviewer": "reliability",
+      "findings": [],
+      "residual_risks": ["Concurrent writes to the same destination and unrelated media/feature failures are outside the tested scope"],
+      "testing_gaps": [],
+      "evidence": ["Recognized structured source-loss errors propagate rather than becoming GENERATION_FAILED", "Unrelated generator errors retain the existing generic failure path", "Existing destinations remain byte-identical on refusal; temporary archives are removed", "Preview installation required exact thumbnail hashes and decoded RGBA equality before updating provenance"]
+    }
+  ],
+  "visual_approval": false,
+  "remaining_visual_work": "Original readability/image failures and authoring failures remain open; refused cases have no new slide to approve"
+}

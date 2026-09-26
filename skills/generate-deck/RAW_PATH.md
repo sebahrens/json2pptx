@@ -53,6 +53,17 @@ empty. If a finding code is unfamiliar, use `describe_finding`; for
 repairable kinds query
 `get_capabilities().vocabularies.repair_fix_kinds`.
 
+Actual paragraph or table-row loss refuses publication in every fit mode,
+including `warn` and `off`. These modes do not authorize deleting required
+source content. Runtime `text_trimmed`, `readability_trimmed`, and
+`table_rows_truncated` errors retain the authored content path and repair
+guidance. For a table, the public `split_slide` remediation retains the
+renderer’s `split_at_row`, `visible_rows`, and `hidden_rows` parameters.
+Keep all required source content when repairing. Use explicit continuations
+only when the requested total slide count allows them; otherwise revise the
+layout or return the capacity constraint. Never treat a refused input or an
+older destination file as a newly generated, visually approved deck.
+
 Apply precise `repair_slide` fixes to a single raw slide. For findings on
 several slides, `propose_repairs` plus `repair_slides_batch` avoids repeated
 round trips. A finding can recommend an advisory kind whose remedy is an

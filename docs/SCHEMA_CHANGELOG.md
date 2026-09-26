@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-09-26 — Actual source-loss publication guard in all fit modes (`go-slide-creator-3qzo4.41`, `go-slide-creator-3qzo4.45`).**
+  Direct generation now refuses actual paragraph or table-row loss before
+  publishing in default, `warn`, `off`, and `strict` modes. Previously the
+  compatibility modes could publish incomplete drafts. This intentional
+  behavior change preserves existing destinations and removes temporary
+  archives. MCP retains the original source-loss code, authored content path,
+  and remediation parameters in the existing finding envelope. There are no
+  new input fields or finding codes, and no implicit change to slide count.
+
 - **2026-09-25 — Pattern `cell_overrides` text keys honoured everywhere (`go-slide-creator-s1uvj.36`).**
   `font_size`, `emphasis`, `align`, `vertical_align` and `color` were accepted
   by every pattern that takes `cell_overrides` but applied only by the KPI

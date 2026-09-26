@@ -1,6 +1,6 @@
 # Fit Findings
 
-With `strict_fit: "strict"`, direct generation also rejects actual paragraph or table-row loss detected during rendering, before publishing the output file. A `table_rows_truncated` error includes the content path and `split_at_row` guidance. Refusal preserves an existing destination and removes the temporary archive. A fitting table still renders as a native editable table. Default, `warn`, and `off` modes remain compatibility drafts and can omit content; their successful generation is not a completeness or visual-approval verdict.
+Direct generation rejects actual paragraph or table-row loss detected during rendering, before publishing the output file, in every `strict_fit` mode (default, `warn`, `off`, and `strict`). These actual-source checks are independent of optional preflight warning policy. A `table_rows_truncated` error includes the content path and `split_at_row` guidance. Refusal preserves an existing destination and removes the temporary archive. MCP exposes the original source-loss code and content path in its existing finding envelope, with the public `split_slide` remediation action and original row-split parameters. A fitting table still renders as a native editable table. Generation success alone is not a readability, editability, or visual-approval verdict.
 
 Fit findings are structured diagnostics emitted when generated slide content may not render correctly — text overflowing placeholders, shapes falling outside slide bounds, or tables exceeding density limits. They are surfaced via the MCP `generate_presentation` tool (text-fit findings detected by `strict_fit` are merged into `fit_findings` unconditionally when `strict_fit != "off"`; the full preflight detector set runs when `fit_report=true`) and the CLI `json2pptx generate -json` and `validate -fit-report` commands (the JSON output's `fit_findings` always includes the active `strict_fit` findings).
 
@@ -33,7 +33,7 @@ The `split_at_row` fix supplies `split_at_row`, `visible_rows`, and `hidden_rows
 parameters. Split the source into complete tables rather than deleting the hidden
 rows. A successful fitting table remains native and editable.
 
-Actual row loss blocks publication in strict mode; refusal preserves an existing
+Actual row loss blocks publication in every fit mode; refusal preserves an existing
 destination and removes the temporary output. Predicted findings are useful repair
 guidance, but do not replace the renderer's actual-content check.
 
