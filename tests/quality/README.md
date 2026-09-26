@@ -168,6 +168,17 @@ corpus must remain available separately. This does not change production
 pagination or repair unrelated dense-text failures; the full evidence test
 continues to fail whenever source content is missing.
 
+For a separate production bullet-repair pass, set
+`NATIVE_LAYOUT_BULLET_CONTINUATIONS=1`. All dense native bullet layouts use the
+same `deckinput.SplitBulletSlide` primitive exposed by `repair_slide` as
+`split_bullets`, with three items per column per page and nested groups intact.
+This can be combined with the table-continuation flag. Every original bullet
+string must survive in order, and every displayed marker remains checked. The
+original unsplit dense corpus remains separate and unsafe where content is lost.
+The ordinary `TestNativeBulletContinuations` checks every local native layout,
+including `p-style.pptx` when present. Rendered completeness is still not visual
+approval, and a count budget does not guarantee fit for arbitrary bullet lengths.
+
 `TestNativeTableContinuations` runs in ordinary local test suites and checks
 source cells/order, native layout and table metadata across every affected
 layout, plus atomic rejection of unsupported fixtures. Fresh continuation

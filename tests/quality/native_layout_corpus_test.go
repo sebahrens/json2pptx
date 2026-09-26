@@ -437,6 +437,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 	imagePath := nativeReferenceImage()
 	photoBackdrop := os.Getenv("NATIVE_LAYOUT_PHOTO_BACKDROP") == "1"
 	tableContinuations := os.Getenv("NATIVE_LAYOUT_TABLE_CONTINUATIONS") == "1"
+	bulletContinuations := os.Getenv("NATIVE_LAYOUT_BULLET_CONTINUATIONS") == "1"
 	if photoBackdrop && os.Getenv("NATIVE_LAYOUT_IMAGE_SOURCE") == "" {
 		t.Fatal("photo-only backdrop pass requires an explicitly supplied photographic source; never dim the default required screenshot")
 	}
@@ -503,6 +504,12 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 				pages := []nativeProbe{p}
 				if tableContinuations && p.Profile == "table-stress" {
 					pages, err = authorNativeTableContinuations(p, 6)
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+				if bulletContinuations && p.Profile == "dense" {
+					pages, err = nativeBulletContinuations(p, 3)
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -652,6 +659,9 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 	}
 	if tableContinuations {
 		manifest.Limits = append(manifest.Limits, "Authoring alternative: native table-stress probes use coordinated six-row windows on all tables; original adverse evidence remains separate and is not approved")
+	}
+	if bulletContinuations {
+		manifest.Limits = append(manifest.Limits, "Explicit production split_bullets repair: dense native bullet columns use coordinated three-item windows with intact nested groups; original unsplit dense evidence remains separate and is not approved")
 	}
 	body, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {

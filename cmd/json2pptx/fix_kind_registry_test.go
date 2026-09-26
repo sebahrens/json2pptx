@@ -101,10 +101,13 @@ func TestRepairFixKindsMatchApplySwitch(t *testing.T) {
 	if end < 0 {
 		t.Fatal("applyRepairFix default clause not found")
 	}
-	caseRE := regexp.MustCompile(`case "([a-z_]+)":`)
+	caseRE := regexp.MustCompile(`case ([^:\n]+):`)
+	kindRE := regexp.MustCompile(`"([a-z_]+)"`)
 	var cases []string
 	for _, m := range caseRE.FindAllStringSubmatch(body[start:start+end], -1) {
-		cases = append(cases, m[1])
+		for _, kind := range kindRE.FindAllStringSubmatch(m[1], -1) {
+			cases = append(cases, kind[1])
+		}
 	}
 	sort.Strings(cases)
 

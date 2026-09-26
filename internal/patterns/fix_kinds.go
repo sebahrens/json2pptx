@@ -74,6 +74,7 @@ var fixKindRegistry = map[string]FixKindInfo{
 	"set_pattern_style":  {Kind: "set_pattern_style", Class: FixClassExecutable},
 	"shorten_title":      {Kind: "shorten_title", Class: FixClassExecutable},
 	"split_at_row":       {Kind: "split_at_row", Class: FixClassExecutable},
+	"split_bullets":      {Kind: "split_bullets", Class: FixClassExecutable},
 	"split_pattern":      {Kind: "split_pattern", Class: FixClassExecutable},
 	"swap_layout":        {Kind: "swap_layout", Class: FixClassExecutable},
 	"swap_pattern":       {Kind: "swap_pattern", Class: FixClassExecutable},

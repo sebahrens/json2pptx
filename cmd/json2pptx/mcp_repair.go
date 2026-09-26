@@ -104,6 +104,7 @@ Text / title fits:
 
 Layout / pagination:
 - split_at_row: Split a table across pages using the split_slide envelope. Params: path (string, optional), row (int, rows per page), title_suffix (string, optional), repeat_headers (bool, optional).
+- split_bullets: Preserve all plain bullet columns verbatim across sibling slides, keeping nested children with parents. Params: max_items (positive int, per-column page budget). Requires equal nonempty column lengths; no path targeting or compound bullet content. Refuses decks with numeric internal slide links to prevent redirecting navigation. Repeats other content and keeps notes/source on page one. Render every resulting page to verify actual fit.
 - swap_layout: Change the slide's layout_id. Params: layout_id (string, required).
 
 Color / theme:
@@ -199,6 +200,7 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 	}
 
 	// Apply each fix to the target slide.
+	originalSlideCount := len(input.Slides)
 	var applied []appliedFix
 	for _, fix := range fixes {
 		result := applyRepairFix(&input, slideIdx, fix)
@@ -218,9 +220,9 @@ func (mc *mcpConfig) handleRepairSlide(ctx context.Context, request mcp.CallTool
 				slideWidth, slideHeight := template.ParseSlideDimensions(reader)
 				theme := template.ParseTheme(reader)
 				allFindings := collectFitFindings(&input, layouts, slideWidth, slideHeight, &theme)
-				// Filter to only findings for the repaired slide (and any slides
-				// created by split_at_row, which follow the original index).
-				newFindings = filterFindingsForSlide(allFindings, slideIdx)
+				// Splits emit contiguous sibling pages. Include every emitted
+				// page, not just the first, but exclude unaffected deck siblings.
+				newFindings = filterFindingsForRepairPages(allFindings, slideIdx, len(input.Slides)-originalSlideCount+1)
 			}
 		}
 	}
@@ -282,8 +284,8 @@ func applyRepairFix(input *PresentationInput, slideIdx int, fix repairFixInput) 
 		return applyReduceText(input, slideIdx, fix.Params)
 	case "shorten_title":
 		return applyShortenTitle(input, slideIdx, fix.Params)
-	case "split_at_row":
-		return applySplitAtRow(input, slideIdx, fix.Params)
+	case "split_at_row", "split_bullets":
+		return applyNativeContentSplit(input, slideIdx, fix)
 	case "swap_layout":
 		return applySwapLayout(input, slideIdx, fix.Params)
 	case "use_one_of":
@@ -1451,6 +1453,17 @@ func filterFindingsForSlide(findings []patterns.FitFinding, slideIdx int) []patt
 	for _, f := range findings {
 		if slidepath.HasPrefix(f.Path, prefix) {
 			filtered = append(filtered, f)
+		}
+	}
+	return filtered
+}
+
+func filterFindingsForRepairPages(findings []patterns.FitFinding, first, count int) []patterns.FitFinding {
+	var filtered []patterns.FitFinding
+	for _, finding := range findings {
+		index := slidepath.SlideIndex(finding.Path)
+		if index >= first && index < first+count {
+			filtered = append(filtered, finding)
 		}
 	}
 	return filtered

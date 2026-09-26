@@ -839,7 +839,7 @@ func expectedImprovement(kind string) string {
 		return "improve spacing and content distribution"
 	case "replace_color", "use_semantic_color":
 		return "improve readable contrast and theme fidelity"
-	case "split_at_row", "split_pattern":
+	case "split_at_row", "split_bullets", "split_pattern":
 		return "reduce density without discarding content"
 	case "reduce_text", "reduce_cell_text", "shorten_title", "reduce_items", "resize_list":
 		return "reduce text density while preserving protected facts"
