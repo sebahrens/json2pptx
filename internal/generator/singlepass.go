@@ -323,11 +323,11 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 		return nil, ctx.warnings, err
 	}
 	// Predictions are not authoritative: direct callers and inherited styles
-	// can bypass preflight. Refuse actual paragraph loss before the temporary
+	// can bypass preflight. Refuse actual paragraph or table-row loss before the temporary
 	// archive is renamed, preserving any existing destination on failure.
 	if ctx.strictFit == "strict" {
 		for _, finding := range ctx.fitFindings {
-			if finding.Code == patterns.ErrCodeTextTrimmed || finding.Code == patterns.ErrCodeReadabilityTrimmed {
+			if finding.Code == patterns.ErrCodeTextTrimmed || finding.Code == patterns.ErrCodeReadabilityTrimmed || finding.Code == patterns.ErrCodeTableRowsTruncated {
 				loss := finding.ValidationError
 				return nil, ctx.warnings, fmt.Errorf("strict-fit: generated source loss: %w", &loss)
 			}
