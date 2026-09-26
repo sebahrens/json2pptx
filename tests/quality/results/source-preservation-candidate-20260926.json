@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "date": "2026-09-26",
+  "issues": [
+    "go-slide-creator-3qzo4.41",
+    "go-slide-creator-3qzo4.45"
+  ],
+  "scope": "Isolated candidate validation; not shipped, not visual approval",
+  "published": false,
+  "visual_approval": false,
+  "templates": 14,
+  "native_layouts": 108,
+  "original_probe_cases": 309,
+  "mode_probe_runs": 1236,
+  "modes": [
+    {
+      "mode": "default",
+      "tested": 309,
+      "accepted_source_complete": 262,
+      "explicitly_refused": 47,
+      "original_omission_set_exact_match": true
+    },
+    {
+      "mode": "warn",
+      "tested": 309,
+      "accepted_source_complete": 262,
+      "explicitly_refused": 47,
+      "original_omission_set_exact_match": true
+    },
+    {
+      "mode": "off",
+      "tested": 309,
+      "accepted_source_complete": 262,
+      "explicitly_refused": 47,
+      "original_omission_set_exact_match": true
+    },
+    {
+      "mode": "strict",
+      "tested": 309,
+      "accepted_source_complete": 262,
+      "explicitly_refused": 47,
+      "original_omission_set_exact_match": true
+    }
+  ],
+  "refused_probe_identities": [
+    "abstract/slideLayout3-dense",
+    "abstract/slideLayout3-table-stress",
+    "abstract/slideLayout5-dense",
+    "abstract/slideLayout5-table-stress",
+    "blue-corporate/slideLayout2-table-stress",
+    "blue-corporate/slideLayout5-dense",
+    "blue-corporate/slideLayout5-table-stress",
+    "business-template/slideLayout3-table-stress",
+    "business-template/slideLayout5-table-stress",
+    "forest-green/slideLayout2-table-stress",
+    "forest-green/slideLayout3-dense",
+    "forest-green/slideLayout3-table-stress",
+    "midnight-blue/slideLayout2-table-stress",
+    "midnight-blue/slideLayout3-dense",
+    "midnight-blue/slideLayout3-table-stress",
+    "modern-template/slideLayout3-dense",
+    "modern-template/slideLayout3-table-stress",
+    "modern-template/slideLayout4-dense",
+    "modern-template/slideLayout4-table-stress",
+    "modern-yellow/slideLayout3-table-stress",
+    "modern-yellow/slideLayout4-dense",
+    "modern-yellow/slideLayout4-table-stress",
+    "modern-yellow/slideLayout5-dense",
+    "modern-yellow/slideLayout5-table-stress",
+    "modern/slideLayout3-dense",
+    "modern/slideLayout3-table-stress",
+    "modern/slideLayout7-dense",
+    "modern/slideLayout7-table-stress",
+    "p-style/slideLayout2-table-stress",
+    "p-style/slideLayout5-table-stress",
+    "portability-21x9/slideLayout2-table-stress",
+    "portability-21x9/slideLayout3-table-stress",
+    "portability-4x3/slideLayout2-table-stress",
+    "portability-4x3/slideLayout3-dense",
+    "portability-4x3/slideLayout3-table-stress",
+    "portability-side-logo/slideLayout2-table-stress",
+    "portability-side-logo/slideLayout3-dense",
+    "portability-side-logo/slideLayout3-table-stress",
+    "portability-two-master/slideLayout10-dense",
+    "portability-two-master/slideLayout10-table-stress",
+    "portability-two-master/slideLayout2-table-stress",
+    "portability-two-master/slideLayout3-dense",
+    "portability-two-master/slideLayout3-table-stress",
+    "portability-two-master/slideLayout9-table-stress",
+    "warm-coral/slideLayout2-table-stress",
+    "warm-coral/slideLayout3-dense",
+    "warm-coral/slideLayout3-table-stress"
+  ],
+  "baseline_coverage_sha256": "433dddc61c284efbc3c97f8662c26c437378ba66d8e2f802fa2fb1301d591a4a",
+  "original_probe_harness_sha256": "fe5c4308583a6fcd68951f81aaac51bedb029cf68b59b577e27438f82fdfc453",
+  "original_probe_harness_unchanged": true,
+  "candidate_sources_sha256": {
+    "internal/generator/singlepass.go": "52672b9163f2dae2057a7c82dc7fcd3e2452aae6e1319708b7a24cead8a7d191",
+    "internal/generator/table_loss_policy_test.go": "9033e5619581c094fcff89e7c8e2f018733e9efe87657c9bcf0b5567353db6bf",
+    "internal/generator/text_loss_policy_test.go": "15e9c8579485a94307e53f5d9a53b96f7b8f2f531c01bcd0850a6bc032f205dc",
+    "tests/quality/native_source_preservation_test.go": "1aa624b189d95dde382c7b7c73a5287a520e10aa2469d8af695f09cb20a132ed",
+    "cmd/json2pptx/mcp.go": "9114409057a7124f979c6c4bd916299958c513b5da53a375b46bc1366db703d0",
+    "cmd/json2pptx/source_loss_publication_test.go": "890ed46c0ec66fded6745a245446f3f77f8726bfaeb70c5f28e3ca289307372f"
+  },
+  "evidence_logs": [
+    {
+      "path": "output/source-preservation-native-matrix-20260926.jsonl",
+      "sha256": "c1fb617cbf52562381962025362cfd8e666c8f3e1d7143ec8eaf0640aea18dfb",
+      "terminal_package_result": "PASS"
+    },
+    {
+      "path": "output/source-preservation-generator-race-20260926.jsonl",
+      "sha256": "5ceb4d6f7ab00d1d7fd07aeb6289643d2bf997bc0c296aa1be478b2d7526549b",
+      "terminal_package_result": "PASS"
+    },
+    {
+      "path": "output/source-preservation-mcp-table-paragraph-20260926.jsonl",
+      "sha256": "4cc171caf5573f131ef12a4ab4c3a26da6bda7aa1d15ac21818e8a73fbf88251",
+      "terminal_package_result": "PASS"
+    }
+  ],
+  "assertions": [
+    "Published probes retain full authored sentences/table cell text, original markers and native object counts",
+    "Recognized source-loss refusals have code/path, no result and no published or temporary output",
+    "Caller default/warn/off table and paragraph failures retain structured diagnostics and preserve existing destinations",
+    "Table remediation uses public split_slide action with original row/visible/hidden parameters"
+  ],
+  "limitations": [
+    "Refused inputs produce no slide to visually approve",
+    "Existing 19 source-complete readability failures and 6 required-image visual failures remain unresolved",
+    "No CJK/RTL, all-feature or whole-deck approval",
+    "Main integration, preview freshness and replacement full validation/CI remain required"
+  ]
+}
