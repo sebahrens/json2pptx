@@ -471,6 +471,7 @@ func computeZone(phs []PlaceholderReport, slideW, slideH int64) ZoneReport {
 	bottom := int64(float64(slideH) * 0.95)
 
 	haveSide := false
+	haveDisclosure := false
 	var sideLeft, sideRight int64
 	for i := range phs {
 		ph := &phs[i]
@@ -491,6 +492,11 @@ func computeZone(phs []PlaceholderReport, slideW, slideH int64) ZoneReport {
 			if b.YEMU < bottom && b.YEMU > slideH/2 {
 				bottom = b.YEMU
 			}
+		case string(types.PlaceholderRoleDisclosure):
+			haveDisclosure = true
+			// Explicit legal text is protected content, not an ordinary body
+			// slot. Reserve its band whether authored above or below content.
+			top, bottom = reserveDisclosureBand(b, slideH, top, bottom)
 		case string(types.PlaceholderRoleBody),
 			string(types.PlaceholderRoleImage),
 			string(types.PlaceholderRoleChart):
@@ -510,10 +516,23 @@ func computeZone(phs []PlaceholderReport, slideW, slideH int64) ZoneReport {
 		left, right = sideLeft, sideRight
 	}
 	if top >= bottom {
-		top = int64(float64(slideH) * 0.05)
-		bottom = int64(float64(slideH) * 0.95)
+		if haveDisclosure {
+			// No usable content band remains. An empty zone is honest;
+			// generic margins would advertise protected legal text as free.
+			top = bottom
+		} else {
+			top = int64(float64(slideH) * 0.05)
+			bottom = int64(float64(slideH) * 0.95)
+		}
 	}
 	return ZoneReport{LeftEMU: left, TopEMU: top, RightEMU: right, BottomEMU: bottom}
+}
+
+func reserveDisclosureBand(bounds BoundsReport, slideHeight, top, bottom int64) (int64, int64) {
+	if bounds.YEMU < slideHeight/2 {
+		return max(top, bounds.YEMU+bounds.HEMU), bottom
+	}
+	return top, min(bottom, bounds.YEMU)
 }
 
 // buildDerivable maps template.DerivableLayouts into the report shape.

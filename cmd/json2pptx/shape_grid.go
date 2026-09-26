@@ -118,7 +118,7 @@ func resolveVirtualLayout(layouts []types.LayoutMetadata, slideWidth, slideHeigh
 // layout has neither.
 func firstBodyOrContentBounds(layout *types.LayoutMetadata) (pptx.RectEmu, bool) {
 	for _, ph := range layout.Placeholders {
-		if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
+		if !types.IsDisclosurePlaceholder(ph) && (ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent) {
 			return pptx.RectEmu{
 				X:  ph.Bounds.X,
 				Y:  ph.Bounds.Y,
@@ -155,7 +155,7 @@ func fallbackContentZone(layout *types.LayoutMetadata, content pptx.RectEmu, sli
 		}
 	}
 
-	return shapegrid.ContentZone{
+	zone := shapegrid.ContentZone{
 		TitleBottom: titleBottom,
 		FooterTop:   footerTop,
 		LeftMargin:  content.X,
@@ -163,6 +163,8 @@ func fallbackContentZone(layout *types.LayoutMetadata, content pptx.RectEmu, sli
 		SlideWidth:  sw,
 		SlideHeight: sh,
 	}
+	reserveDisclosureGridZone(layout, &zone)
+	return zone
 }
 
 // pickBlankLayout tries the blank (with title) layout first, then blank-title.
@@ -231,6 +233,7 @@ func pickBlankLayout(blank, blankTitle *types.LayoutMetadata, slideWidth, slideH
 			SlideWidth:  sw,
 			SlideHeight: sh,
 		}
+		reserveDisclosureGridZone(layout, zone)
 
 		return &virtualLayoutResult{
 			LayoutID: layout.ID,
@@ -325,13 +328,31 @@ func titleOnlyContentZone(layout *types.LayoutMetadata, slideWidth, slideHeight 
 	if rightEdge < title.X+title.CX {
 		rightEdge = title.X + title.CX
 	}
-	return &shapegrid.ContentZone{
+	zone := &shapegrid.ContentZone{
 		TitleBottom: title.Y + title.CY,
 		FooterTop:   footerTop,
 		LeftMargin:  title.X,
 		RightEdge:   rightEdge,
 		SlideWidth:  sw,
 		SlideHeight: sh,
+	}
+	reserveDisclosureGridZone(layout, zone)
+	return zone
+}
+
+func reserveDisclosureGridZone(layout *types.LayoutMetadata, zone *shapegrid.ContentZone) {
+	for _, ph := range layout.Placeholders {
+		if !types.IsDisclosurePlaceholder(ph) {
+			continue
+		}
+		if ph.Bounds.Y < zone.SlideHeight/2 {
+			zone.TitleBottom = max(zone.TitleBottom, ph.Bounds.Y+ph.Bounds.Height)
+		} else if ph.Bounds.Y < zone.FooterTop {
+			zone.FooterTop = ph.Bounds.Y
+		}
+	}
+	if zone.TitleBottom > zone.FooterTop {
+		zone.TitleBottom = zone.FooterTop
 	}
 }
 

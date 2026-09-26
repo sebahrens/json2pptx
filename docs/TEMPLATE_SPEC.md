@@ -63,6 +63,7 @@ Placeholders are identified by the `cNvPr` name attribute in the slide layout XM
 |---------------|---------------------|---------|
 | `title` | `type="title"` or `type="ctrTitle"` | Slide title |
 | `subtitle` | `type="subTitle"` | Subtitle (title and closing slides) |
+| `legal_disclosure` | `subTitle`, `body`, `obj`, or implicit text placeholder | Explicit legal/disclosure text, separate from ordinary subtitle/body capacity |
 | `body` | `type="body"` (idx 1) | Primary content area |
 | `body_2` | `type="body"` (idx 2) | Second column (two-column layouts) |
 | `Section Number` | `type="body"` (by name) | Section number display on divider layouts |
@@ -71,6 +72,14 @@ Placeholders are identified by the `cNvPr` name attribute in the slide layout XM
 | `sldNum` | `type="sldNum"` | Slide number field (utility, not content) |
 
 ### Section Number Placeholder
+
+An explicitly named `legal_disclosure` (or `Legal Disclosure`, matched
+case-insensitively with surrounding whitespace ignored) retains its native
+OOXML type, font and geometry. It does not satisfy a mandatory ordinary
+subtitle/body requirement. Supply a separate ordinary subtitle on Title Slide
+and Closing layouts. Small fonts or incidental names such as `legal notes`
+do not imply this role. Inspection reports its role as `disclosure` and
+reserves its text band from the content zone.
 
 The `Section Number` placeholder on section divider layouts has specific requirements:
 

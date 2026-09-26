@@ -13,6 +13,25 @@ package placeholderrole
 
 import "strings"
 
+// IsDisclosureAlias recognizes explicit legal-disclosure identifiers only.
+// Neither a small font nor a name merely containing "legal" implies this role.
+func IsDisclosureAlias(id string) bool {
+	switch strings.ToLower(strings.TrimSpace(id)) {
+	case "legal_disclosure", "legal disclosure":
+		return true
+	}
+	return false
+}
+
+// IsDisclosureTextType limits the explicit name signal to text placeholders.
+func IsDisclosureTextType(phType string) bool {
+	switch phType {
+	case "subTitle", "body", "obj", "":
+		return true
+	}
+	return false
+}
+
 // SectionNumberMinFontSize is the font-size threshold (hundredths of a point)
 // above which a body placeholder is treated as a decorative section number.
 // Observed across templates: titles top out near 80pt while section numbers run

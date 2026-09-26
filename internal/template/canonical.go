@@ -68,8 +68,17 @@ func EffectiveCanonicalType(layout *types.LayoutMetadata) types.CanonicalLayoutT
 // title) classify with high confidence, while chrome subtypes (date, footer,
 // page number) and decorative bodies (eyebrow, section number) rely on name and
 // font-size hints and report lower confidence.
+// IsDisclosurePlaceholder recognizes the explicit legal text identifier without
+// inferring semantics from small fonts or incidental names.
+func IsDisclosurePlaceholder(ph types.PlaceholderInfo) bool {
+	return types.IsDisclosurePlaceholder(ph)
+}
+
 func ClassifyPlaceholderRole(ph types.PlaceholderInfo, _ *types.LayoutMetadata) (types.PlaceholderRole, float64) {
 	id := strings.ToLower(strings.TrimSpace(ph.ID))
+	if IsDisclosurePlaceholder(ph) {
+		return types.PlaceholderRoleDisclosure, 1.0
+	}
 
 	switch ph.Type {
 	case types.PlaceholderImage:
@@ -189,6 +198,9 @@ func scanCapabilities(layouts []types.LayoutMetadata) layoutCapabilities {
 			c.hasBlank = true
 		}
 		for _, ph := range l.Placeholders {
+			if IsDisclosurePlaceholder(ph) {
+				continue
+			}
 			switch ph.Type {
 			case types.PlaceholderTitle:
 				c.hasTitleHolder = true

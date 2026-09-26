@@ -118,6 +118,7 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 		frame.FooterTop = h - edgeMargin
 	}
 
+	top, bottom = reserveDisclosureChromeBand(layout, h, gap, top, bottom)
 	y := bottom
 	if hasSource {
 		y -= sourceH
@@ -161,6 +162,23 @@ func ResolveChromeFrame(layout, reference *types.LayoutMetadata, slideWidth, sli
 		}
 	}
 	return frame
+}
+
+func reserveDisclosureChromeBand(layout *types.LayoutMetadata, slideHeight, gap, top, bottom int64) (int64, int64) {
+	if layout == nil {
+		return top, bottom
+	}
+	for _, ph := range layout.Placeholders {
+		if !IsDisclosurePlaceholder(ph) {
+			continue
+		}
+		if ph.Bounds.Y < slideHeight/2 {
+			top = max(top, ph.Bounds.Y+ph.Bounds.Height+gap)
+		} else {
+			bottom = min(bottom, ph.Bounds.Y-gap)
+		}
+	}
+	return top, bottom
 }
 
 func excludeSideDecor(layout *types.LayoutMetadata, left, right, top, bottom, slideWidth, slideHeight int64) (int64, int64) {
@@ -218,7 +236,7 @@ func contentSpan(layout *types.LayoutMetadata, slideWidth int64) (int64, int64, 
 	found := false
 	for i := range layout.Placeholders {
 		ph := &layout.Placeholders[i]
-		if ph.Role == types.PlaceholderRoleSectionNumber || ph.Bounds.Width <= 0 {
+		if IsDisclosurePlaceholder(*ph) || ph.Role == types.PlaceholderRoleSectionNumber || ph.Bounds.Width <= 0 {
 			continue
 		}
 		switch ph.Type {

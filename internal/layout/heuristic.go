@@ -908,6 +908,9 @@ func requiredContentPlaceholders(slide types.SlideDefinition) int {
 func countContentPlaceholders(layout types.LayoutMetadata) int {
 	count := 0
 	for _, ph := range layout.Placeholders {
+		if types.IsDisclosurePlaceholder(ph) {
+			continue
+		}
 		switch ph.Type {
 		case types.PlaceholderBody, types.PlaceholderContent,
 			types.PlaceholderImage, types.PlaceholderChart, types.PlaceholderTable:
@@ -1519,7 +1522,7 @@ func calculateBulletGroupsLength(groups []types.BulletGroup) int {
 func findPlaceholder(layout types.LayoutMetadata, phType types.PlaceholderType) *types.PlaceholderInfo {
 	// First, try to find exact match
 	for i := range layout.Placeholders {
-		if layout.Placeholders[i].Type == phType {
+		if !types.IsDisclosurePlaceholder(layout.Placeholders[i]) && layout.Placeholders[i].Type == phType {
 			return &layout.Placeholders[i]
 		}
 	}
@@ -1528,7 +1531,7 @@ func findPlaceholder(layout types.LayoutMetadata, phType types.PlaceholderType) 
 	// This handles templates with non-standard placeholder types (type="unknown", etc.)
 	if phType == types.PlaceholderBody {
 		for i := range layout.Placeholders {
-			if layout.Placeholders[i].Type == types.PlaceholderContent {
+			if !types.IsDisclosurePlaceholder(layout.Placeholders[i]) && layout.Placeholders[i].Type == types.PlaceholderContent {
 				return &layout.Placeholders[i]
 			}
 		}
@@ -1546,7 +1549,7 @@ func findBodyPlaceholders(layout types.LayoutMetadata) []types.PlaceholderInfo {
 
 	// First pass: collect only PlaceholderBody (primary content areas)
 	for _, ph := range layout.Placeholders {
-		if ph.Type == types.PlaceholderBody {
+		if !types.IsDisclosurePlaceholder(ph) && ph.Type == types.PlaceholderBody {
 			bodyPHs = append(bodyPHs, ph)
 		}
 	}
@@ -1560,7 +1563,7 @@ func findBodyPlaceholders(layout types.LayoutMetadata) []types.PlaceholderInfo {
 	// Fallback: include PlaceholderContent, but filter out common non-content placeholders
 	// by checking the ID contains keywords like "date", "footer", "slide number"
 	for _, ph := range layout.Placeholders {
-		if ph.Type == types.PlaceholderContent {
+		if !types.IsDisclosurePlaceholder(ph) && ph.Type == types.PlaceholderContent {
 			// Skip date, footer, and slide number placeholders
 			lowerID := strings.ToLower(ph.ID)
 			if strings.Contains(lowerID, "date") ||
@@ -1807,6 +1810,9 @@ func penalizeNarrowDiagramSlot(layout types.LayoutMetadata, slide types.SlideDef
 func contentPlaceholdersFromLayout(layout types.LayoutMetadata) []types.PlaceholderInfo {
 	var content []types.PlaceholderInfo
 	for _, ph := range layout.Placeholders {
+		if types.IsDisclosurePlaceholder(ph) {
+			continue
+		}
 		switch ph.Type {
 		case types.PlaceholderBody, types.PlaceholderContent,
 			types.PlaceholderImage, types.PlaceholderChart, types.PlaceholderTable:

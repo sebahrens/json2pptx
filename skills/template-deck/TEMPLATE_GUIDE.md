@@ -36,6 +36,7 @@ All placeholders use **normalized canonical IDs**. The binary automatically norm
 |---|---|---|
 | `title` | `title`, `ctrTitle` | Slide title (one per layout) |
 | `subtitle` | `subTitle` | Subtitle (typically on title slides) |
+| `legal_disclosure` | Native text type retained | Explicit disclosure text, separate from ordinary subtitle/body |
 | `body` | `body` (or implicit) | Primary body/content area (leftmost) |
 | `body_2` | `body` | Second body placeholder (by X position) |
 | `body_3` | `body` | Third body placeholder |
@@ -46,6 +47,13 @@ All placeholders use **normalized canonical IDs**. The binary automatically norm
 **Numbering rule:** The first placeholder in each role has no suffix. Subsequent placeholders are suffixed `_2`, `_3`, etc., ordered left-to-right by X offset (top-to-bottom as tiebreaker).
 
 **Utility placeholders** (`dt`, `ftr`, `sldNum`, `hdr`) retain their original OOXML names and are not content-addressable.
+
+When discovery exposes `legal_disclosure` with role `disclosure`, address it
+explicitly and preserve the required wording and native styling. Use the
+separate `subtitle` for the main subtitle. Do not substitute bullets, tables
+or charts into the legal slot or infer this role from a small font. A missing
+legal slot needs a suitable layout or template repair, not fuzzy fallback.
+An empty reported content zone means no free content band remains.
 
 ### Legacy OOXML names (aliases)
 

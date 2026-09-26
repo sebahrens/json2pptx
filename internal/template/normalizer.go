@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/placeholderrole"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -102,6 +103,14 @@ func NormalizePlaceholderNames(shapes []shapeXML) NormalizationResult { //nolint
 		}
 
 		ref := shapeRef{shapeIdx: i, x: x, y: y}
+		name := shapes[i].NonVisualProperties.ConnectionNonVisual.Name
+		if placeholderrole.IsDisclosureAlias(name) && placeholderrole.IsDisclosureTextType(ph.Type) {
+			if name != "legal_disclosure" {
+				shapes[i].NonVisualProperties.ConnectionNonVisual.Name = "legal_disclosure"
+				result.Renames = append(result.Renames, PlaceholderRename{OldName: name, NewName: "legal_disclosure"})
+			}
+			continue
+		}
 
 		switch ph.Type {
 		case "title", "ctrTitle":

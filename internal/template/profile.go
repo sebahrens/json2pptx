@@ -17,7 +17,8 @@ import (
 // v2: resolved footer regions + per-layout chrome geometry.
 // v3: effective solid layout/master background for contrast preflight.
 // v4: master/layout decorative regions and side-art chrome exclusions.
-const ProfileParserVersion = "4"
+// v5: explicitly named legal-disclosure roles are distinct from subtitles/body.
+const ProfileParserVersion = "5"
 
 type ProfileDiagnostic struct {
 	Code     string `json:"code"`

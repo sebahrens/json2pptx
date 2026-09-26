@@ -265,6 +265,10 @@ func SampleContent(layout types.LayoutMetadata) []generator.ContentItem {
 	var items []generator.ContentItem
 	isSectionDivider := layout.CanonicalType == types.CanonicalLayoutSectionDivider
 	for _, ph := range layout.Placeholders {
+		if types.IsDisclosurePlaceholder(ph) {
+			items = append(items, generator.ContentItem{PlaceholderID: ph.ID, Type: generator.ContentText, Value: "Illustrative disclosure for review"})
+			continue
+		}
 		if ph.Role == types.PlaceholderRoleSectionNumber || types.IsAutoFilledPlaceholder(ph.ID) {
 			items = append(items, generator.ContentItem{
 				PlaceholderID: ph.ID,

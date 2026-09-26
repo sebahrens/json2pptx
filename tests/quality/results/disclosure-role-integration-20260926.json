@@ -1,0 +1,65 @@
+{
+  "status": "local_guards_pass_ci_pending",
+  "scope": "Explicit legal_disclosure text role isolation; not aggregate visual approval or private-template promotion",
+  "base_revision": "e60df3e60271e0ded3aed7630760f0c1cdc590d0",
+  "rendering_source_sha256": "9fdf282cfa5424782768c38f1a8efb8c2103f17062c751eee65e126ccefda59b",
+  "private_template": {
+    "path": "templates/p-style.pptx",
+    "sha256": "9df06238508e65b63ed8900a3d182e014987f5fd799468eb4bfdab64e96f998d",
+    "unchanged": true,
+    "gitignored": true,
+    "included_in_local_corpus": true
+  },
+  "local_evidence": [
+    {
+      "path": "output/disclosure-main-integration-controls-20260926-v2.jsonl",
+      "sha256": "9d183dada5f83deaacfe72383561cc72f91b9b50a4574841f24db49e23aaafa5",
+      "result": "pass",
+      "scope": "Full generator and quality short/race packages after core isolation, before final routing follow-up"
+    },
+    {
+      "path": "output/disclosure-main-routing-package-controls-20260926-v1.jsonl",
+      "sha256": "bcf21f5124e5ab13197d674398101f86924a93486ba3c68b50b7bd4e98dfa9e7",
+      "result": "pass",
+      "scope": "Final whole layout, pipeline, template and examine race packages"
+    },
+    {
+      "path": "output/disclosure-main-final-targeted-controls-20260926-v1.jsonl",
+      "sha256": "dc081f581db700ae1e7b1029aad2d03815363c123723472f45008f1ad40875a8",
+      "result": "pass",
+      "scope": "219 named final CLI, generator, preview and quality guard checks; dense continuations and MCP parity included"
+    },
+    {
+      "path": "output/disclosure-main-preview-freshness-controls-20260926-v1.jsonl",
+      "result": "pass",
+      "scope": "Final committed preview freshness, discovery and visual recommendation race controls"
+    }
+  ],
+  "preview_audit": {
+    "path": "output/disclosure-main-thumbnail-refresh-20260926-v2/audit.json",
+    "sha256": "fe334a706c4fb0c984c70381dd437241d0739b6040e4438a5bc1c8d86f488112",
+    "templates": 14,
+    "layouts": 108,
+    "all_png_bytes_and_decoded_pixels_unchanged": true,
+    "only_manifest_source_and_cache_identity_refreshed": true
+  },
+  "copied_private_closing_candidate": {
+    "template_sha256": "8262e51753d8c1f49942504a6d7fea0d4113381632584c445dcb2473f0530b3e",
+    "verification": "output/pstyle-disclosure-main-render-20260926-v1/verification.json",
+    "verification_sha256": "50f973bc2427444ca9bfa7f2874448735c4b4572fab56763c4a553c2d0a13ec4",
+    "result": "pass",
+    "fit_modes": ["default", "warn", "off", "strict"],
+    "required_text_complete": true,
+    "native_disclosure_pt": 11,
+    "separate_subtitle_pt": 22,
+    "both_pages_pixel_identical_to_prior_single_blind_review_candidate": true,
+    "installed_as_original_private_template": false
+  },
+  "limitations": [
+    "No claim that the final whole root suite is green; unrelated macOS renderer startup defects remain tracked.",
+    "Private Title visual defects and private Closing candidate promotion remain separate open work.",
+    "Historical failed/refused corpus probes and original unsafe dense pages are retained, not approved by thumbnail parity.",
+    "Skill quick validator unavailable because its Python environment lacks PyYAML; repository skill controls passed."
+  ],
+  "beads": ["go-slide-creator-3qzo4.48", "go-slide-creator-3qzo4.72", "go-slide-creator-3qzo4.73", "go-slide-creator-3qzo4.74"]
+}

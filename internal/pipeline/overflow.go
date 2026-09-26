@@ -60,7 +60,7 @@ func findBodyPlaceholder(layoutID string, layouts []types.LayoutMetadata) *types
 		}
 		for j := range layouts[i].Placeholders {
 			ph := &layouts[i].Placeholders[j]
-			if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
+			if !types.IsDisclosurePlaceholder(*ph) && (ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent) {
 				return ph
 			}
 		}

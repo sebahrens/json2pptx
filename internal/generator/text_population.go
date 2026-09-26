@@ -210,7 +210,9 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 	if maxFontSizeHPt > 0 {
 		capLstStyleFontSizeIfUnset(shape, maxFontSizeHPt)
 	}
-	floorLstStyleFontSize(shape, 1200) // 12pt min
+	if classifyShapeRole(shape) != RoleDisclosure {
+		floorLstStyleFontSize(shape, 1200) // 12pt min for ordinary text
+	}
 
 	if maxFontSizeHPt == 0 {
 		fitSectionTitle(shape, text, isTitleShape(shape) || isTitlePlaceholder(placeholderID))

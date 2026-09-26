@@ -193,6 +193,9 @@ func anyLayoutHasChartPlaceholder(layouts []types.LayoutMetadata) bool {
 func countContentPHs(layout types.LayoutMetadata) int {
 	count := 0
 	for _, ph := range layout.Placeholders {
+		if types.IsDisclosurePlaceholder(ph) {
+			continue
+		}
 		switch ph.Type {
 		case types.PlaceholderBody, types.PlaceholderContent,
 			types.PlaceholderImage, types.PlaceholderChart, types.PlaceholderTable:

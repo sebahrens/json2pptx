@@ -112,6 +112,9 @@ func countPlaceholders(placeholders []types.PlaceholderInfo) placeholderCounts {
 	minVisibleTitleMaxChars := 0
 
 	for _, ph := range placeholders {
+		if IsDisclosurePlaceholder(ph) {
+			continue
+		}
 		switch ph.Type {
 		case types.PlaceholderTitle:
 			counts.title++
@@ -292,7 +295,7 @@ func imageBesideText(placeholders []types.PlaceholderInfo) (left, found bool) {
 		}
 		for _, typ := range []types.PlaceholderType{types.PlaceholderBody, types.PlaceholderContent, types.PlaceholderSubtitle, types.PlaceholderTitle} {
 			for _, text := range placeholders {
-				if text.Type != typ || text.Bounds.Width <= 0 || text.Bounds.Height <= 0 || text.Bounds.Y < 0 {
+				if IsDisclosurePlaceholder(text) || text.Type != typ || text.Bounds.Width <= 0 || text.Bounds.Height <= 0 || text.Bounds.Y < 0 {
 					continue
 				}
 				if image.Bounds.Y+image.Bounds.Height <= text.Bounds.Y || text.Bounds.Y+text.Bounds.Height <= image.Bounds.Y {
@@ -452,7 +455,7 @@ func areSideBySide(placeholders []types.PlaceholderInfo, type1, type2 types.Plac
 	var targets []types.PlaceholderInfo
 
 	for _, ph := range placeholders {
-		if ph.Type == type1 || ph.Type == type2 {
+		if !IsDisclosurePlaceholder(ph) && (ph.Type == type1 || ph.Type == type2) {
 			targets = append(targets, ph)
 		}
 	}
@@ -622,6 +625,10 @@ func layoutSignature(placeholders []types.PlaceholderInfo, counts placeholderCou
 
 	parts := make(map[string]int)
 	for _, ph := range placeholders {
+		if IsDisclosurePlaceholder(ph) {
+			parts["disclosure"]++
+			continue
+		}
 		switch ph.Type {
 		case types.PlaceholderTitle:
 			switch {

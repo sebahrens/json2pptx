@@ -283,6 +283,7 @@ type PlaceholderRole string
 const (
 	PlaceholderRoleTitle         PlaceholderRole = "title"
 	PlaceholderRoleSubtitle      PlaceholderRole = "subtitle"
+	PlaceholderRoleDisclosure    PlaceholderRole = "disclosure"
 	PlaceholderRoleEyebrow       PlaceholderRole = "eyebrow"
 	PlaceholderRoleSectionNumber PlaceholderRole = "section_number"
 	PlaceholderRoleBody          PlaceholderRole = "body"

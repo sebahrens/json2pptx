@@ -179,7 +179,7 @@ func checkContentTitleBodyHierarchy(layouts []types.LayoutMetadata) []Conformanc
 		}
 		var titleSize, bodySize int
 		for _, ph := range layout.Placeholders {
-			if ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
+			if IsDisclosurePlaceholder(ph) || ph.Bounds.Width <= 0 || ph.Bounds.Height <= 0 {
 				continue
 			}
 			switch ph.Type {
@@ -354,7 +354,7 @@ func checkPlaceholders(ml MandatoryLayout, layout types.LayoutMetadata) []Confor
 	if ml.MinBody > 0 {
 		bodyCount := 0
 		for _, ph := range layout.Placeholders {
-			if ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent {
+			if !IsDisclosurePlaceholder(ph) && (ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent) {
 				bodyCount++
 			}
 		}
@@ -380,6 +380,9 @@ func checkPlaceholders(ml MandatoryLayout, layout types.LayoutMetadata) []Confor
 // matchesPlaceholderRequirement checks if a placeholder matches a requirement
 // string.
 func matchesPlaceholderRequirement(ph types.PlaceholderInfo, req string) bool {
+	if IsDisclosurePlaceholder(ph) {
+		return false
+	}
 	switch req {
 	case "title":
 		return ph.Type == types.PlaceholderTitle

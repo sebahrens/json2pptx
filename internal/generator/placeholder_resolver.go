@@ -187,6 +187,7 @@ const (
 	RoleBodyTertiary                          // Third body-type placeholder
 	RoleAccentLarge                           // Body placeholder with very large font (Big Statement number)
 	RoleCaption                               // Small body placeholder (caption strip)
+	RoleDisclosure                            // Explicitly named legal disclosure; never subtitle/body fallback
 )
 
 // semanticAliases maps common placeholder_id conventions to semantic roles.
@@ -202,6 +203,7 @@ var semanticAliases = map[string]PlaceholderSemanticRole{
 	"body_3":                RoleBodyTertiary,
 	"subtitle":              RoleSubtitle,
 	"title":                 RoleTitle,
+	"legal_disclosure":      RoleDisclosure,
 }
 
 // classifyShapeRole determines the semantic role of a shape based on its
@@ -210,6 +212,9 @@ func classifyShapeRole(shape *shapeXML) PlaceholderSemanticRole {
 	ph := shape.NonVisualProperties.NvPr.Placeholder
 	if ph == nil {
 		return RoleUnknown
+	}
+	if placeholderrole.IsDisclosureAlias(shape.NonVisualProperties.ConnectionNonVisual.Name) && placeholderrole.IsDisclosureTextType(ph.Type) {
+		return RoleDisclosure
 	}
 
 	switch ph.Type {
@@ -252,6 +257,11 @@ func shapeYPosition(shape *shapeXML) int64 {
 // isContentPlaceholder returns true if the shape is a body, obj, or typeless
 // (implicit) placeholder — the kinds that receive user content.
 func isContentPlaceholder(shape *shapeXML) bool {
+	// An explicitly named legal slot is addressable, but never an ordinary
+	// positional or title fallback even when its OOXML type is body or obj.
+	if classifyShapeRole(shape) == RoleDisclosure {
+		return false
+	}
 	ph := shape.NonVisualProperties.NvPr.Placeholder
 	if ph == nil {
 		return false
@@ -325,13 +335,13 @@ func (r *placeholderResolver) resolveSectionNumber() (int, bool) {
 
 	// Priority 2: body idx=1 on a section layout
 	if strings.Contains(strings.ToLower(r.layoutID), "section") {
-		if shapeIdx, ok := r.byIdx[1]; ok {
+		if shapeIdx, ok := r.byIdx[1]; ok && classifyShapeRole(&r.shapes[shapeIdx]) != RoleDisclosure {
 			return shapeIdx, true
 		}
 	}
 
 	// Priority 3: body idx=1 unconditionally
-	if shapeIdx, ok := r.byIdx[1]; ok {
+	if shapeIdx, ok := r.byIdx[1]; ok && classifyShapeRole(&r.shapes[shapeIdx]) != RoleDisclosure {
 		return shapeIdx, true
 	}
 
@@ -358,6 +368,17 @@ func (r *placeholderResolver) ResolveWithFallback(placeholderID string) (int, Re
 	// Tier 1: Exact match (existing behavior)
 	if idx, ok := r.Resolve(placeholderID); ok {
 		return idx, TierExact, true
+	}
+
+	// Legal text requires an explicit legal slot. Do not guess an incidental
+	// near-name shape or an ordinary content position when that slot is absent.
+	if placeholderrole.IsDisclosureAlias(placeholderID) {
+		for i := range r.shapes {
+			if classifyShapeRole(&r.shapes[i]) == RoleDisclosure {
+				return i, TierSemantic, true
+			}
+		}
+		return 0, 0, false
 	}
 
 	// Tier 2: Semantic role match
@@ -451,6 +472,9 @@ func (r *placeholderResolver) resolveByFuzzyName(placeholderID string) (int, boo
 	bestDist := 1<<31 - 1
 
 	for i := range r.shapes {
+		if classifyShapeRole(&r.shapes[i]) == RoleDisclosure {
+			continue
+		}
 		name := r.shapes[i].NonVisualProperties.ConnectionNonVisual.Name
 		if name == "" {
 			continue

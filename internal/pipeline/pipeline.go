@@ -501,6 +501,9 @@ func findFallbackLayout(layouts []types.LayoutMetadata) string {
 	for _, l := range layouts {
 		hasTitle, hasBody := false, false
 		for _, ph := range l.Placeholders {
+			if types.IsDisclosurePlaceholder(ph) {
+				continue
+			}
 			switch ph.Type {
 			case types.PlaceholderTitle:
 				hasTitle = true

@@ -28,6 +28,15 @@ func BlankContentRect(layout *types.LayoutMetadata, slideWidth, slideHeight int6
 	bottom := int64(float64(slideHeight) * 0.95)
 	if layout != nil {
 		for _, ph := range layout.Placeholders {
+			if IsDisclosurePlaceholder(ph) {
+				if ph.Bounds.Y < slideHeight/2 {
+					if end := ph.Bounds.Y + ph.Bounds.Height; end > top {
+						top = end
+					}
+				} else if ph.Bounds.Y < bottom {
+					bottom = ph.Bounds.Y
+				}
+			}
 			switch ph.Role {
 			case types.PlaceholderRoleFooter, types.PlaceholderRoleDate, types.PlaceholderRolePageNumber:
 				if ph.Bounds.Y > slideHeight/2 && ph.Bounds.Y < bottom {

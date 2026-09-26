@@ -27,6 +27,9 @@ type SlotPopulationResult struct {
 func FilterContentPlaceholders(placeholders []types.PlaceholderInfo) []types.PlaceholderInfo {
 	var content []types.PlaceholderInfo
 	for _, ph := range placeholders {
+		if types.IsDisclosurePlaceholder(ph) {
+			continue
+		}
 		// Include body and content placeholders
 		// Exclude: title, subtitle, date, footer, slide number, header, other
 		switch ph.Type {

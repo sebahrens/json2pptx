@@ -138,7 +138,12 @@ func makeNativeProbes(layout types.LayoutMetadata, imagePath string) []nativePro
 		bodyNumber := 0
 		for _, ph := range layout.Placeholders {
 			item := generator.ContentItem{PlaceholderID: ph.ID}
-			if ph.Role == types.PlaceholderRoleSectionNumber || types.IsAutoFilledPlaceholder(ph.ID) {
+			if template.IsDisclosurePlaceholder(ph) {
+				// Synthetic source text, not an invented real legal claim.
+				value := "Illustrative disclosure for review"
+				item.Type, item.Value = generator.ContentText, value
+				p.ExpectedText = append(p.ExpectedText, value)
+			} else if ph.Role == types.PlaceholderRoleSectionNumber || types.IsAutoFilledPlaceholder(ph.ID) {
 				item.Type, item.Value = generator.ContentText, "07"
 				p.ExpectedText = append(p.ExpectedText, "07")
 			} else {
@@ -237,7 +242,7 @@ func makeNativeProbes(layout types.LayoutMetadata, imagePath string) []nativePro
 }
 
 func nativeEvidenceSlot(layout types.LayoutMetadata, ph types.PlaceholderInfo) bool {
-	return layout.CanonicalType != types.CanonicalLayoutSectionDivider && ph.Role != types.PlaceholderRoleSectionNumber && !types.IsAutoFilledPlaceholder(ph.ID) && (ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent) && ph.Bounds.Width >= 1371600 && ph.Bounds.Height >= 914400
+	return layout.CanonicalType != types.CanonicalLayoutSectionDivider && ph.Role != types.PlaceholderRoleSectionNumber && !template.IsDisclosurePlaceholder(ph) && !types.IsAutoFilledPlaceholder(ph.ID) && (ph.Type == types.PlaceholderBody || ph.Type == types.PlaceholderContent) && ph.Bounds.Width >= 1371600 && ph.Bounds.Height >= 914400
 }
 
 // Content presence is independent of the renderer's fit warnings: a diagnostic
