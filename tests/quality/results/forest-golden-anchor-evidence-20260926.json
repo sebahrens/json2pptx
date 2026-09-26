@@ -1,0 +1,36 @@
+{
+  "scope": "Update only forest-green deterministic golden after the reviewed section numeral vertical-anchor repair",
+  "before_sha256": "f4956242c1ed7dd7e8f96a7acd508fb753db84b46724981ce2455333f2ae6f11",
+  "after_sha256": "a119b990ddcac117b298bad1ce140f64d7e9bb48aa7e975ce161e7d38eb30a11",
+  "independent_reproduction": {
+    "source_date_epoch": "1700000000",
+    "timezone": "UTC",
+    "input": "examples/basic-deck.json",
+    "before_template": "output/forest-section-clearance-20260926-v2/before/forest-green.pptx",
+    "after_template": "templates/forest-green.pptx",
+    "retained_outputs": "output/forest-golden-rebaseline-20260926-v1",
+    "both_reference_hashes_reproduced_exactly": true,
+    "changed_generated_parts": [
+      "ppt/slideLayouts/slideLayout4.xml",
+      "ppt/slides/slide6.xml"
+    ],
+    "layout_change": "Only Section Number a:bodyPr changes from empty to anchor=ctr",
+    "slide_change": "Only Section Number a:bodyPr gains anchor=ctr; wrap=square and normAutofit remain unchanged",
+    "other_parts_byte_identical": true
+  },
+  "visual_review": {
+    "report": "tests/quality/results/forest-section-and-closing-regeneration-review-20260926.json",
+    "reviewed_cases": 42,
+    "reviewed_images": 126,
+    "historical_ratings_preserved": true
+  },
+  "ci_failure": {
+    "run": 36251726698,
+    "job": 108430892889,
+    "failing_test": "TestDeterministicCorpus/forest-green",
+    "actual_matches_independent_reproduction": true,
+    "consecutive_outputs_identical": true
+  },
+  "other_goldens_changed": false,
+  "deterministic_assertions_or_thresholds_weakened": false
+}
