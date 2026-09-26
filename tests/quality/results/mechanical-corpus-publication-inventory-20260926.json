@@ -1,0 +1,46 @@
+{
+  "source_commit": "9ded30a13586e0ded23794faec765b5c360e7c54",
+  "issue": "go-slide-creator-3qzo4.51",
+  "related_issue": "go-slide-creator-3qzo4.55",
+  "scope": "Exact root-level fixture/example globs and generation arguments used by TestMechanicalMetrics, not all-template visual coverage",
+  "template_override": "midnight-blue",
+  "fit_mode": "warn",
+  "input_modified": false,
+  "counts": {
+    "quality_fixtures": 10,
+    "root_examples": 43,
+    "total": 53,
+    "generated": 51,
+    "refused": 2,
+    "unexecuted": 0,
+    "visually_approved_by_this_inventory": 0
+  },
+  "raw_manifest": {
+    "path": "output/quality-generation-inventory-20260926-v1/manifest.json",
+    "sha256": "f929d9fb322bec328aa9e8a7e78f3cc0660d0c22722cd37b14c42cefec28e799"
+  },
+  "refusals": [
+    {
+      "input": "tests/quality/fixtures/dense-table-16x6.json",
+      "sha256": "c9379a66122bb5ca3e525d93293800f088e714d158f0e40f2af22cebb329dae6",
+      "reported_hidden_rows": 7,
+      "total_data_rows": 16,
+      "output_artifacts": 0
+    },
+    {
+      "input": "tests/quality/fixtures/multiline-cells-table.json",
+      "sha256": "d631f632d60d8e1bd21de7d874a33f82582c7685aab8fe707b6b6092241c4737",
+      "reported_hidden_rows": 2,
+      "total_data_rows": 5,
+      "output_artifacts": 0
+    }
+  ],
+  "limitations": [
+    "Source-loss classification above comes from retained CLI error text, not typed diagnostics",
+    "CLI currently discards structured runtime error code/path/repair; repair tracked separately",
+    "Generation success is not proof of source completeness, readability or visual approval",
+    "Harness still fails at the first refusal; this inventory does not mark that defect fixed",
+    "Original adverse fixtures remain unchanged"
+  ],
+  "next_required_work": "Preserve typed CLI loss diagnostics and make metric results explicitly distinguish successful generation, source-loss refusal, and unexpected process failure without approving missing decks. Keep positive full-source controls and original adverse inputs."
+}
