@@ -1,0 +1,192 @@
+{
+  "scope": "All14 available filesystem templates including ignored p-style and portability fixtures",
+  "engine_commit": "cff1ccdc plus Closing source-template repair",
+  "visual_approval": false,
+  "note": "Structural conformance passes do not override independently observed visual defects. Multi-master duplication and4x3 fixed-inch width warnings are recorded, not grounds to remove valid layouts.",
+  "templates": [
+    {
+      "path": "templates/abstract.pptx",
+      "sha256": "342fd2baeae3f21ff81aa83990c97e2562016ff492e61e976e211dcaad19acd0",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/blue-corporate.pptx",
+      "sha256": "22909f6ebc1c0894ce4c594e5473615e66d4b605777c9e6ce5df9e2773ce9dbd",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/business-template.pptx",
+      "sha256": "49a925b8d2c88e649d004a3394cd97d89f4c78f6ec85f69e8345128c4ad815a0",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/forest-green.pptx",
+      "sha256": "98cc4b64095af2b82b7dd83c1091fe83638b869a6652a6c48c37eed70f5bc233",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/midnight-blue.pptx",
+      "sha256": "2d125de20e95e33f4485b179a14691f684244e8b111dd59c4b976855856b3999",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/modern.pptx",
+      "sha256": "991e6ca41e0d8408fcbee480590855139de571265ca130bdd252b96323aa8e1c",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/modern-template.pptx",
+      "sha256": "95ce31b37e204c0c237afec647763875569c1615e89c0ebab54bb12a24487563",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/modern-yellow.pptx",
+      "sha256": "f895bd5dcbffd99f08d4238ca82eb9bb5064b3dd3862a8b4f4996de294587ead",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/p-style.pptx",
+      "sha256": "9df06238508e65b63ed8900a3d182e014987f5fd799468eb4bfdab64e96f998d",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "templates/warm-coral.pptx",
+      "sha256": "ba7afb584b9fda3df8bbb7bb2c8b879dcdb38499a1a409423251d56c0d658981",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "tests/quality/fixtures/portability/templates/portability-21x9.pptx",
+      "sha256": "91d3852bdd655fa14418545d5043ca309f367d86449aca341a31c4758e477135",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "tests/quality/fixtures/portability/templates/portability-4x3.pptx",
+      "sha256": "0a3d073215e2285b54b3dcb24a81c7bd5aabc0192b3d057228845916c6754919",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": [
+        {
+          "category": "typography",
+          "check": "Section Number: minimum width (3 inches)",
+          "status": "warn",
+          "detail": "Width is 2.6 inches (need ≥3.0)"
+        }
+      ]
+    },
+    {
+      "path": "tests/quality/fixtures/portability/templates/portability-side-logo.pptx",
+      "sha256": "faaa7411659fedfbf0c0b77471da727b4b722f4f336fad0a44ba9c71d2cc7490",
+      "pass": true,
+      "checks": 31,
+      "nonpassing_checks": []
+    },
+    {
+      "path": "tests/quality/fixtures/portability/templates/portability-two-master.pptx",
+      "sha256": "4ad993ca255f876f76b7c27a4593809a1ba0e183f85b2a2b04417efb8b69b380",
+      "pass": true,
+      "checks": 44,
+      "nonpassing_checks": [
+        {
+          "category": "layout",
+          "check": "Layout name matches canonical role: Title Slide",
+          "status": "warn",
+          "detail": "rename suggested: \"Title Slide (Master 2)\" → \"Title Slide\" (structurally a Title Slide; signature=subtitle+title, confidence=0.95)"
+        },
+        {
+          "category": "layout",
+          "check": "Layout name matches canonical role: One Content",
+          "status": "warn",
+          "detail": "rename suggested: \"One Content (Master 2)\" → \"One Content\" (structurally a One Content; signature=body+title, confidence=0.85)"
+        },
+        {
+          "category": "layout",
+          "check": "Layout name matches canonical role: Two Content",
+          "status": "warn",
+          "detail": "rename suggested: \"Two Content (Master 2)\" → \"Two Content\" (structurally a Two Content; signature=body*2+title[side-by-side], confidence=0.95)"
+        },
+        {
+          "category": "layout",
+          "check": "Layout name matches canonical role: Section Divider",
+          "status": "warn",
+          "detail": "rename suggested: \"Section Divider (Master 2)\" → \"Section Divider\" (structurally a Section Divider; signature=body+title, confidence=0.90)"
+        },
+        {
+          "category": "layout",
+          "check": "Layout name matches canonical role: Closing",
+          "status": "warn",
+          "detail": "rename suggested: \"Closing (Master 2)\" → \"Closing\" (structurally a Closing; signature=subtitle+title, confidence=0.90)"
+        },
+        {
+          "category": "layout",
+          "check": "Layout name matches canonical role: Blank",
+          "status": "warn",
+          "detail": "rename suggested: \"Blank (Master 2)\" → \"Blank\" (structurally a Blank; signature=blank, confidence=1.00)"
+        },
+        {
+          "category": "layout",
+          "check": "Layout name matches canonical role: Blank + Title",
+          "status": "warn",
+          "detail": "rename suggested: \"Blank + Title (Master 2)\" → \"Blank + Title\" (structurally a Blank + Title; signature=title, confidence=0.90)"
+        },
+        {
+          "category": "layout",
+          "check": "Duplicate layout signature",
+          "status": "warn",
+          "detail": "2 layouts share role Title Slide + signature subtitle+title: [Title Slide Title Slide (Master 2)] — consider removing duplicates and renaming the canonical one"
+        },
+        {
+          "category": "layout",
+          "check": "Duplicate layout signature",
+          "status": "warn",
+          "detail": "2 layouts share role One Content + signature body+title: [One Content One Content (Master 2)] — consider removing duplicates and renaming the canonical one"
+        },
+        {
+          "category": "layout",
+          "check": "Duplicate layout signature",
+          "status": "warn",
+          "detail": "2 layouts share role Two Content + signature body*2+title[side-by-side]: [Two Content Two Content (Master 2)] — consider removing duplicates and renaming the canonical one"
+        },
+        {
+          "category": "layout",
+          "check": "Duplicate layout signature",
+          "status": "warn",
+          "detail": "2 layouts share role Section Divider + signature body+title: [Section Divider Section Divider (Master 2)] — consider removing duplicates and renaming the canonical one"
+        },
+        {
+          "category": "layout",
+          "check": "Duplicate layout signature",
+          "status": "warn",
+          "detail": "2 layouts share role Closing + signature subtitle+title: [Closing Closing (Master 2)] — consider removing duplicates and renaming the canonical one"
+        },
+        {
+          "category": "layout",
+          "check": "Duplicate layout signature",
+          "status": "warn",
+          "detail": "2 layouts share role Blank + Title + signature title: [Blank + Title Blank + Title (Master 2)] — consider removing duplicates and renaming the canonical one"
+        }
+      ]
+    }
+  ]
+}

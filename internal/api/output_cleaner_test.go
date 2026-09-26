@@ -63,7 +63,9 @@ func TestOutputCleaner_onlyRemovesGeneratedDownloads(t *testing.T) {
 	unrelated := []string{
 		filepath.Join(dir, "report.pptx"),
 		filepath.Join(dir, "config.yaml"),
-		filepath.Join(dir, "0123456789ABCDEF0123456789ABCDEF.pptx"),
+		// Use a different value too: a case-only change aliases generated on
+		// case-insensitive filesystems and cannot be an unrelated file.
+		filepath.Join(dir, "ABCDEF0123456789ABCDEF0123456789.pptx"),
 		filepath.Join(dir, "0123456789abcdef0123456789abcdef.pptx.bak"),
 	}
 	past := time.Now().Add(-2 * time.Hour)

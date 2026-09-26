@@ -1,0 +1,2708 @@
+{
+  "schema_version": 1,
+  "scope": "Fresh-context visual audit of all108 native layouts from14 unique templates, using only verified-coverage.json and each referenced PNG.",
+  "engine_commit": "7280c531",
+  "fixture_revision": "working-tree QA artwork fix",
+  "source_inventory": {
+    "engine_commit": "7280c531",
+    "fixture_revision": "working-tree QA artwork fix",
+    "renderer": "/Users/seb/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice",
+    "templates": [
+      {
+        "name": "abstract",
+        "sha256": "342fd2baeae3f21ff81aa83990c97e2562016ff492e61e976e211dcaad19acd0",
+        "preview_root": "templates",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "blue-corporate",
+        "sha256": "22909f6ebc1c0894ce4c594e5473615e66d4b605777c9e6ce5df9e2773ce9dbd",
+        "preview_root": "templates",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout3",
+          "slideLayout2",
+          "slideLayout1",
+          "slideLayout5",
+          "slideLayout4",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "business-template",
+        "sha256": "49a925b8d2c88e649d004a3394cd97d89f4c78f6ec85f69e8345128c4ad815a0",
+        "preview_root": "templates",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "forest-green",
+        "sha256": "98cc4b64095af2b82b7dd83c1091fe83638b869a6652a6c48c37eed70f5bc233",
+        "preview_root": "templates",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "midnight-blue",
+        "sha256": "2d125de20e95e33f4485b179a14691f684244e8b111dd59c4b976855856b3999",
+        "preview_root": "templates",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "modern",
+        "sha256": "991e6ca41e0d8408fcbee480590855139de571265ca130bdd252b96323aa8e1c",
+        "preview_root": "templates",
+        "layout_count": 9,
+        "layout_ids": [
+          "slideLayout9",
+          "slideLayout8",
+          "slideLayout3",
+          "slideLayout2",
+          "slideLayout1",
+          "slideLayout5",
+          "slideLayout4",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "modern-template",
+        "sha256": "00569a805ecc390bba86caedbd7fb9240f72c0a1408da4cc1d08d0cb77817865",
+        "preview_root": "templates",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout3",
+          "slideLayout2",
+          "slideLayout1",
+          "slideLayout5",
+          "slideLayout4",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "modern-yellow",
+        "sha256": "f895bd5dcbffd99f08d4238ca82eb9bb5064b3dd3862a8b4f4996de294587ead",
+        "preview_root": "templates",
+        "layout_count": 8,
+        "layout_ids": [
+          "slideLayout8",
+          "slideLayout3",
+          "slideLayout2",
+          "slideLayout1",
+          "slideLayout5",
+          "slideLayout4",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "p-style",
+        "sha256": "9df06238508e65b63ed8900a3d182e014987f5fd799468eb4bfdab64e96f998d",
+        "preview_root": "templates",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout3",
+          "slideLayout2",
+          "slideLayout1",
+          "slideLayout5",
+          "slideLayout4",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "warm-coral",
+        "sha256": "ba7afb584b9fda3df8bbb7bb2c8b879dcdb38499a1a409423251d56c0d658981",
+        "preview_root": "templates",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "portability-21x9",
+        "sha256": "91d3852bdd655fa14418545d5043ca309f367d86449aca341a31c4758e477135",
+        "preview_root": "fixtures",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "portability-4x3",
+        "sha256": "0a3d073215e2285b54b3dcb24a81c7bd5aabc0192b3d057228845916c6754919",
+        "preview_root": "fixtures",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "portability-side-logo",
+        "sha256": "890d3a4da59b06aaa3161832f3b474a2542037304c7ab03142190f8f52fa238e",
+        "preview_root": "fixtures",
+        "layout_count": 7,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7"
+        ]
+      },
+      {
+        "name": "portability-two-master",
+        "sha256": "4ad993ca255f876f76b7c27a4593809a1ba0e183f85b2a2b04417efb8b69b380",
+        "preview_root": "fixtures",
+        "layout_count": 14,
+        "layout_ids": [
+          "slideLayout1",
+          "slideLayout2",
+          "slideLayout3",
+          "slideLayout4",
+          "slideLayout5",
+          "slideLayout6",
+          "slideLayout7",
+          "slideLayout8",
+          "slideLayout9",
+          "slideLayout10",
+          "slideLayout11",
+          "slideLayout12",
+          "slideLayout13",
+          "slideLayout14"
+        ]
+      }
+    ]
+  },
+  "counts": {
+    "templates": 14,
+    "native_layouts": 108,
+    "full_size_pngs_actually_viewed": 108,
+    "layouts_with_visual_concerns": 11,
+    "confirmed_visual_concerns": 11,
+    "medium": 4,
+    "low": 7,
+    "image_exercise_gaps": 3,
+    "missing_expected_text_layouts": 0,
+    "uninspected_layouts": 0
+  },
+  "decision": "Withheld: unresolved visual concerns and image/dense-content/source-fidelity coverage gaps.",
+  "limitations": [
+    "No repository code, source PPTX, unfiltered coverage, prior reviews or cause investigation read.",
+    "No causal diagnosis of renderer, template, routing code or skill behavior is supported by this restricted visual audit.",
+    "Contrast findings are visually confirmed concerns, not formal WCAG ratio measurements.",
+    "Image placeholders in modern1/2/6 were not populated; empty image regions are probe coverage gaps, not established renderer losses.",
+    "Short generic probes do not approve dense payload, long titles, Unicode, charts, populated footer/date/page fields or discriminated column routing.",
+    "Visible artwork described independently per layout; source-equivalence cannot be proven without source comparison."
+  ],
+  "prioritized_summary": [
+    {
+      "priority": 1,
+      "action": "Move/shorten decorative rule or reposition subtitle on modern-template Closing.",
+      "findings": [
+        {
+          "template": "modern-template",
+          "layout_id": "slideLayout5",
+          "severity": "medium",
+          "category": "overlap",
+          "region": "vertical rule x523 y346-525 and subtitle x517 y499-518",
+          "description": "Decorative vertical rule crosses beginning of Subtitle placeholder, impairing clean reading.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout5.png"
+        }
+      ]
+    },
+    {
+      "priority": 2,
+      "action": "Darken business-template content subtitle and improve white-on-orange subtitle contrast in modern image/title layouts; measure ratios.",
+      "findings": [
+        {
+          "template": "business-template",
+          "layout_id": "slideLayout3",
+          "severity": "medium",
+          "category": "accessibility",
+          "region": "subtitle at x48 y125",
+          "description": "Small lavender subtitle is visibly low contrast against white; needs darker text or verified accessible contrast.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout3.png"
+        },
+        {
+          "template": "modern",
+          "layout_id": "slideLayout2",
+          "severity": "medium",
+          "category": "accessibility",
+          "region": "subtitle gradient bar x117-649 y435-508",
+          "description": "White subtitle starts on light orange, producing visibly weak contrast.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout2.png"
+        },
+        {
+          "template": "modern",
+          "layout_id": "slideLayout4",
+          "severity": "medium",
+          "category": "accessibility",
+          "region": "subtitle x170-561 y427-450",
+          "description": "White subtitle lies wholly over light-orange gradient, visibly weak contrast.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout4.png"
+        }
+      ]
+    },
+    {
+      "priority": 3,
+      "action": "Populate modern image layouts1/2/6 and repeat fit/crop/text-interaction inspection.",
+      "findings": [
+        {
+          "template": "modern",
+          "layout_id": "slideLayout2",
+          "severity": "coverage",
+          "category": "image_probe",
+          "region": "image placeholder",
+          "description": "No image supplied; image fit/crop and text interaction not assessed.",
+          "classification": "coverage_gap",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout2.png"
+        },
+        {
+          "template": "modern",
+          "layout_id": "slideLayout1",
+          "severity": "coverage",
+          "category": "image_probe",
+          "region": "image placeholder",
+          "description": "Text-only probe supplies no image; placement/cropping and interaction with title remain untested.",
+          "classification": "coverage_gap",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout1.png"
+        },
+        {
+          "template": "modern",
+          "layout_id": "slideLayout6",
+          "severity": "coverage",
+          "category": "image_probe",
+          "region": "image placeholder",
+          "description": "No image supplied; image fit/crop and text interaction not assessed.",
+          "classification": "coverage_gap",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout6.png"
+        }
+      ]
+    },
+    {
+      "priority": 4,
+      "action": "Improve forest-green right bullet gap and p-style Closing subtitle size; verify whether side-logo diagnostic pixelation is acceptable source artwork.",
+      "findings": [
+        {
+          "template": "forest-green",
+          "layout_id": "slideLayout3",
+          "severity": "low",
+          "category": "spacing",
+          "region": "right body bullet starts x665-680 y373-460",
+          "description": "Right-column bullet glyphs nearly touch First/Second/Third, unlike the left column's clear gap.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout3.png"
+        },
+        {
+          "template": "p-style",
+          "layout_id": "slideLayout3",
+          "severity": "low",
+          "category": "accessibility",
+          "region": "subtitle lower-center x546 y663-675",
+          "description": "Subtitle is about14px tall at1280px render, markedly smaller than other subtitle probes and difficult at presentation distance.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout3.png"
+        },
+        {
+          "template": "portability-side-logo",
+          "layout_id": "slideLayout2",
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA at x1205-1265 y490-596",
+          "description": "Logo outline and tiny QA lettering are visibly pixelated at full-size rendering; fidelity to source cannot be determined.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout2.png"
+        },
+        {
+          "template": "portability-side-logo",
+          "layout_id": "slideLayout3",
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA x1205-1265 y490-596",
+          "description": "Pixelated diamond and QA lettering visible; source quality unknown.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout3.png"
+        },
+        {
+          "template": "portability-side-logo",
+          "layout_id": "slideLayout4",
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA x1205-1265 y490-596",
+          "description": "Pixelated diamond and QA lettering visible; source quality unknown.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout4.png"
+        },
+        {
+          "template": "portability-side-logo",
+          "layout_id": "slideLayout6",
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA x1205-1265 y490-596",
+          "description": "Pixelated diamond and QA lettering visible; source quality unknown.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout6.png"
+        },
+        {
+          "template": "portability-side-logo",
+          "layout_id": "slideLayout7",
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA x1205-1265 y490-596",
+          "description": "Pixelated diamond and QA lettering visible; source quality unknown.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout7.png"
+        }
+      ]
+    }
+  ],
+  "layouts": [
+    {
+      "template": "abstract",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/abstract/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black serif title/subtitle clearly readable.",
+        "composition_spacing_overlap_edge_clearance": "Lower-right text clears polygon artwork; generous margins.",
+        "template_fidelity_inherited_chrome_artwork": "Upper-left wire polygons visible.",
+        "content_completeness_placeholder_routing": "Title and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "abstract",
+      "layout_id": "slideLayout2",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/abstract/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black SECTION/01 legible on taupe.",
+        "composition_spacing_overlap_edge_clearance": "Number below title; diagonal lines clear text.",
+        "template_fidelity_inherited_chrome_artwork": "Taupe fill and diagonal artwork visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "abstract",
+      "layout_id": "slideLayout3",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/abstract/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "All three black body lines readable; body has no visible bullet markers.",
+        "composition_spacing_overlap_edge_clearance": "Title at upper-left; body well separated from edge artwork.",
+        "template_fidelity_inherited_chrome_artwork": "Thin diagonal border artwork visible.",
+        "content_completeness_placeholder_routing": "Title and three body lines complete; bullet-marker style differs from Two Content, not established renderer loss."
+      },
+      "findings": []
+    },
+    {
+      "template": "abstract",
+      "layout_id": "slideLayout4",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/abstract/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "White title/subtitle high contrast.",
+        "composition_spacing_overlap_edge_clearance": "Central-left text clear of left artwork.",
+        "template_fidelity_inherited_chrome_artwork": "Black fill and white angular lines visible.",
+        "content_completeness_placeholder_routing": "Closing and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "abstract",
+      "layout_id": "slideLayout5",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/abstract/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Title and both bulleted columns clear.",
+        "composition_spacing_overlap_edge_clearance": "Aligned columns, wide gutter, safe margins.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white layout visible; fidelity source unavailable.",
+        "content_completeness_placeholder_routing": "Title and three bullets in each column complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "abstract",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/abstract/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "White empty canvas intentional.",
+        "template_fidelity_inherited_chrome_artwork": "Plain blank visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank."
+      },
+      "findings": []
+    },
+    {
+      "template": "abstract",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/abstract/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Large black serif title readable.",
+        "composition_spacing_overlap_edge_clearance": "Upper-left title safe; remaining canvas intentionally empty.",
+        "template_fidelity_inherited_chrome_artwork": "Plain title-only layout visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "blue-corporate",
+      "layout_id": "slideLayout3",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/blue-corporate/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "White Section and oversized 01 legible.",
+        "composition_spacing_overlap_edge_clearance": "Upper-right numeral overlaps decorative field without hiding text; safe edges.",
+        "template_fidelity_inherited_chrome_artwork": "Blue petals and circles present.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "blue-corporate",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/blue-corporate/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Dark title and three bullet lines legible on pale blue.",
+        "composition_spacing_overlap_edge_clearance": "Left-aligned body clears corner petals.",
+        "template_fidelity_inherited_chrome_artwork": "Pale-blue corner artwork visible.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "blue-corporate",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/blue-corporate/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "White serif title and tracked subtitle legible on blue.",
+        "composition_spacing_overlap_edge_clearance": "Title at mid-left, subtitle above; no clipping.",
+        "template_fidelity_inherited_chrome_artwork": "Blue circle/petal field intact.",
+        "content_completeness_placeholder_routing": "Title and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "blue-corporate",
+      "layout_id": "slideLayout5",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/blue-corporate/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Dark title and both three-bullet groups legible.",
+        "composition_spacing_overlap_edge_clearance": "Two columns aligned with broad gutter.",
+        "template_fidelity_inherited_chrome_artwork": "Pale-blue plain fill visible.",
+        "content_completeness_placeholder_routing": "Title and both bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "blue-corporate",
+      "layout_id": "slideLayout4",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/blue-corporate/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "White Closing and tracked subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Title top-left and subtitle middle-left; ample clearance.",
+        "template_fidelity_inherited_chrome_artwork": "Full blue circle field visible.",
+        "content_completeness_placeholder_routing": "Closing and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "blue-corporate",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/blue-corporate/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Pale-blue empty canvas intentional.",
+        "template_fidelity_inherited_chrome_artwork": "Pale blue blank visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank."
+      },
+      "findings": []
+    },
+    {
+      "template": "blue-corporate",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/blue-corporate/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Dark tracked title readable.",
+        "composition_spacing_overlap_edge_clearance": "Title safely upper-left.",
+        "template_fidelity_inherited_chrome_artwork": "Pale-blue fill visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout1",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title/subtitle high contrast.",
+        "composition_spacing_overlap_edge_clearance": "Left text clear of large right ring.",
+        "template_fidelity_inherited_chrome_artwork": "Light gray right ring intact.",
+        "content_completeness_placeholder_routing": "Closing and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout2",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black Section readable; lavender 01 large enough to read.",
+        "composition_spacing_overlap_edge_clearance": "Title left and numeral right safely separated.",
+        "template_fidelity_inherited_chrome_artwork": "Subtle horizontal gray bands visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout3",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title/body clear; small pale lavender subtitle has weak contrast on white.",
+        "composition_spacing_overlap_edge_clearance": "Subtitle below title; body three squares well spaced.",
+        "template_fidelity_inherited_chrome_artwork": "White content canvas.",
+        "content_completeness_placeholder_routing": "Title, subtitle, three bullets complete."
+      },
+      "findings": [
+        {
+          "severity": "medium",
+          "category": "accessibility",
+          "region": "subtitle at x48 y125",
+          "description": "Small lavender subtitle is visibly low contrast against white; needs darker text or verified accessible contrast.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout3.png"
+        }
+      ]
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout4",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title/subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Mid-left title and lower subtitle separated.",
+        "template_fidelity_inherited_chrome_artwork": "Light gray horizontal bands visible.",
+        "content_completeness_placeholder_routing": "Title and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout5",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title and square bullets readable.",
+        "composition_spacing_overlap_edge_clearance": "Both bodies aligned; ample gutter.",
+        "template_fidelity_inherited_chrome_artwork": "White canvas visible.",
+        "content_completeness_placeholder_routing": "Title and both three-line bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "White blank intentional.",
+        "template_fidelity_inherited_chrome_artwork": "White fill.",
+        "content_completeness_placeholder_routing": "Intentionally blank."
+      },
+      "findings": []
+    },
+    {
+      "template": "business-template",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/business-template/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title clear.",
+        "composition_spacing_overlap_edge_clearance": "Safe upper-left position.",
+        "template_fidelity_inherited_chrome_artwork": "White fill.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "forest-green",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Dark-green title/subtitle clear on white.",
+        "composition_spacing_overlap_edge_clearance": "Mid-left text with safe margins.",
+        "template_fidelity_inherited_chrome_artwork": "Plain title canvas visible.",
+        "content_completeness_placeholder_routing": "Title and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "forest-green",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Dark-green title and bullets legible.",
+        "composition_spacing_overlap_edge_clearance": "Body safely below green rule.",
+        "template_fidelity_inherited_chrome_artwork": "Green rule and blue lower-right triangle visible.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "forest-green",
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Text readable but right bullet markers nearly touch words.",
+        "composition_spacing_overlap_edge_clearance": "Columns aligned; right hanging indent noticeably tighter than left.",
+        "template_fidelity_inherited_chrome_artwork": "Green rule and blue corner triangle visible.",
+        "content_completeness_placeholder_routing": "Both bodies complete."
+      },
+      "findings": [
+        {
+          "severity": "low",
+          "category": "spacing",
+          "region": "right body bullet starts x665-680 y373-460",
+          "description": "Right-column bullet glyphs nearly touch First/Second/Third, unlike the left column's clear gap.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout3.png"
+        }
+      ]
+    },
+    {
+      "template": "forest-green",
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Section and green 01 readable.",
+        "composition_spacing_overlap_edge_clearance": "Numeral sits only a few pixels below rule; no intersection with glyphs.",
+        "template_fidelity_inherited_chrome_artwork": "Green rule and blue corner remain visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "forest-green",
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Dark-green Closing/subtitle clear.",
+        "composition_spacing_overlap_edge_clearance": "Left-centered content safely spaced.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white title-style canvas.",
+        "content_completeness_placeholder_routing": "Closing and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "forest-green",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Empty body intentional; chrome remains.",
+        "template_fidelity_inherited_chrome_artwork": "Green rule and blue corner visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank with inherited chrome."
+      },
+      "findings": []
+    },
+    {
+      "template": "forest-green",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Dark-green title readable.",
+        "composition_spacing_overlap_edge_clearance": "Safe title placement above rule.",
+        "template_fidelity_inherited_chrome_artwork": "Green rule and blue corner visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "midnight-blue",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/midnight-blue/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/subtitle clear.",
+        "composition_spacing_overlap_edge_clearance": "Mid-left text safely positioned.",
+        "template_fidelity_inherited_chrome_artwork": "Plain title canvas.",
+        "content_completeness_placeholder_routing": "Title and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "midnight-blue",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/midnight-blue/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/body and large square bullets clear.",
+        "composition_spacing_overlap_edge_clearance": "Body has good hanging indent and spacing; clear of left rails.",
+        "template_fidelity_inherited_chrome_artwork": "Blue and yellow left rails intact.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "midnight-blue",
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/midnight-blue/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy text and square glyphs clear.",
+        "composition_spacing_overlap_edge_clearance": "Both columns aligned with adequate gutter and marker gaps.",
+        "template_fidelity_inherited_chrome_artwork": "Left blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Both three-bullet bodies and title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "midnight-blue",
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/midnight-blue/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy Section and blue 01 legible.",
+        "composition_spacing_overlap_edge_clearance": "Separated left title/right numeral with ample edges.",
+        "template_fidelity_inherited_chrome_artwork": "Left blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "midnight-blue",
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/midnight-blue/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy Closing/subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Left text spacious.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Closing and subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "midnight-blue",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/midnight-blue/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Empty canvas with safe rail chrome.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank with chrome."
+      },
+      "findings": []
+    },
+    {
+      "template": "midnight-blue",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/midnight-blue/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title clear.",
+        "composition_spacing_overlap_edge_clearance": "Title safely upper-left beyond rails.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout9",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout9.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black serif title readable.",
+        "composition_spacing_overlap_edge_clearance": "Upper-left with safe clearance.",
+        "template_fidelity_inherited_chrome_artwork": "White fill.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout8",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout8.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Blank white intentional.",
+        "template_fidelity_inherited_chrome_artwork": "White fill.",
+        "content_completeness_placeholder_routing": "Intentionally blank."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout3",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title/body legible; orange square markers visible.",
+        "composition_spacing_overlap_edge_clearance": "Body spaced evenly; gradient block clipped at slide bottom as intentional bleed.",
+        "template_fidelity_inherited_chrome_artwork": "Bottom-right gradient artwork visible.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout2",
+      "layout_name": "Title + subtitle + picture",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black two-line title clear; white subtitle weak on orange portion of gradient.",
+        "composition_spacing_overlap_edge_clearance": "Title wraps at PICTURE without clipping; bar below separated.",
+        "template_fidelity_inherited_chrome_artwork": "Orange-to-navy subtitle bar visible; right image area unexercised.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete; image gap."
+      },
+      "findings": [
+        {
+          "severity": "medium",
+          "category": "accessibility",
+          "region": "subtitle gradient bar x117-649 y435-508",
+          "description": "White subtitle starts on light orange, producing visibly weak contrast.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout2.png"
+        },
+        {
+          "severity": "coverage",
+          "category": "image_probe",
+          "region": "image placeholder",
+          "description": "No image supplied; image fit/crop and text interaction not assessed.",
+          "classification": "coverage_gap",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout2.png"
+        }
+      ]
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Only",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "coverage_gap",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "White serif title clear on black.",
+        "composition_spacing_overlap_edge_clearance": "Title safely left of vacant image area.",
+        "template_fidelity_inherited_chrome_artwork": "Black field visible; image not exercised.",
+        "content_completeness_placeholder_routing": "Title complete; image coverage gap."
+      },
+      "findings": [
+        {
+          "severity": "coverage",
+          "category": "image_probe",
+          "region": "image placeholder",
+          "description": "Text-only probe supplies no image; placement/cropping and interaction with title remain untested.",
+          "classification": "coverage_gap",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout1.png"
+        }
+      ]
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout5",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black SECTION and burgundy 01 readable.",
+        "composition_spacing_overlap_edge_clearance": "Opposite-corner composition spacious.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout4",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title clear; white tracked subtitle weak on orange.",
+        "composition_spacing_overlap_edge_clearance": "Title and bar well separated, safe margins.",
+        "template_fidelity_inherited_chrome_artwork": "Wide orange-to-navy bar visible.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": [
+        {
+          "severity": "medium",
+          "category": "accessibility",
+          "region": "subtitle x170-561 y427-450",
+          "description": "White subtitle lies wholly over light-orange gradient, visibly weak contrast.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout4.png"
+        }
+      ]
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout6",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "coverage_gap",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "White title/subtitle clear on black.",
+        "composition_spacing_overlap_edge_clearance": "Left content safely spaced; vacant image region.",
+        "template_fidelity_inherited_chrome_artwork": "Black field; no image exercised.",
+        "content_completeness_placeholder_routing": "Closing/subtitle complete; image gap."
+      },
+      "findings": [
+        {
+          "severity": "coverage",
+          "category": "image_probe",
+          "region": "image placeholder",
+          "description": "No image supplied; image fit/crop and text interaction not assessed.",
+          "classification": "coverage_gap",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout6.png"
+        }
+      ]
+    },
+    {
+      "template": "modern",
+      "layout_id": "slideLayout7",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black body/title readable; orange bullet squares visible.",
+        "composition_spacing_overlap_edge_clearance": "Columns aligned and adequately separated.",
+        "template_fidelity_inherited_chrome_artwork": "White canvas.",
+        "content_completeness_placeholder_routing": "Title and both three-line bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-template",
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black serif text and dots clear.",
+        "composition_spacing_overlap_edge_clearance": "Aligned columns with broad gutter.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Title and both three-bullet bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-template",
+      "layout_id": "slideLayout2",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black Section, Overview and 01 readable.",
+        "composition_spacing_overlap_edge_clearance": "Overview left of title alignment but no overlap; numeral upper-right.",
+        "template_fidelity_inherited_chrome_artwork": "Violet glow visible behind lower-left text.",
+        "content_completeness_placeholder_routing": "Section, 01 and Overview complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-template",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black serif title/subtitle legible over violet glow.",
+        "composition_spacing_overlap_edge_clearance": "Text clear of vertical rule at x151.",
+        "template_fidelity_inherited_chrome_artwork": "Violet radial glow and left rule visible.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-template",
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black text readable except rule intersects first subtitle glyphs.",
+        "composition_spacing_overlap_edge_clearance": "Vertical rule at x523 runs through subtitle start at y507.",
+        "template_fidelity_inherited_chrome_artwork": "Violet radial glow and black rule visible.",
+        "content_completeness_placeholder_routing": "Closing and subtitle complete but visually obstructed."
+      },
+      "findings": [
+        {
+          "severity": "medium",
+          "category": "overlap",
+          "region": "vertical rule x523 y346-525 and subtitle x517 y499-518",
+          "description": "Decorative vertical rule crosses beginning of Subtitle placeholder, impairing clean reading.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout5.png"
+        }
+      ]
+    },
+    {
+      "template": "modern-template",
+      "layout_id": "slideLayout4",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title and body clear.",
+        "composition_spacing_overlap_edge_clearance": "Body safely below title with even leading.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-template",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Blank white intentional.",
+        "template_fidelity_inherited_chrome_artwork": "White fill.",
+        "content_completeness_placeholder_routing": "Intentionally blank."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-template",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-template/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black serif title readable.",
+        "composition_spacing_overlap_edge_clearance": "Safe upper-left placement.",
+        "template_fidelity_inherited_chrome_artwork": "White fill.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-yellow",
+      "layout_id": "slideLayout8",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-yellow/slideLayout8.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black Closing/subtitle readable across yellow/white.",
+        "composition_spacing_overlap_edge_clearance": "Text crosses disk boundary intentionally; no glyph hidden.",
+        "template_fidelity_inherited_chrome_artwork": "Yellow disk/shadow visible.",
+        "content_completeness_placeholder_routing": "Closing/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-yellow",
+      "layout_id": "slideLayout3",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-yellow/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title and bullets readable.",
+        "composition_spacing_overlap_edge_clearance": "Body starts beyond disk edge; no overlap.",
+        "template_fidelity_inherited_chrome_artwork": "Yellow disk/shadow visible.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-yellow",
+      "layout_id": "slideLayout2",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-yellow/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black Section and blue 01 readable.",
+        "composition_spacing_overlap_edge_clearance": "Title below sloped yellow band; numeral within band safe.",
+        "template_fidelity_inherited_chrome_artwork": "Yellow sloped panel visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-yellow",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-yellow/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title/subtitle high contrast.",
+        "composition_spacing_overlap_edge_clearance": "Text safely right of yellow disk.",
+        "template_fidelity_inherited_chrome_artwork": "Yellow left disk/shadow visible.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-yellow",
+      "layout_id": "slideLayout5",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-yellow/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title/both bodies clear.",
+        "composition_spacing_overlap_edge_clearance": "Both columns safely separated and outside disk.",
+        "template_fidelity_inherited_chrome_artwork": "Yellow disk visible.",
+        "content_completeness_placeholder_routing": "Title and both three-bullet bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-yellow",
+      "layout_id": "slideLayout4",
+      "layout_name": "Statement",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-yellow/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black three-line body readable on light gray.",
+        "composition_spacing_overlap_edge_clearance": "Body within gray panel; no clipping.",
+        "template_fidelity_inherited_chrome_artwork": "Large top white ellipse, yellow disk, gray body panel visible.",
+        "content_completeness_placeholder_routing": "Statement has body only as manifest; three lines complete, no title expected."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-yellow",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-yellow/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Empty canvas except disk intentional.",
+        "template_fidelity_inherited_chrome_artwork": "Yellow disk/shadow visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank with artwork."
+      },
+      "findings": []
+    },
+    {
+      "template": "modern-yellow",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/modern-yellow/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title clear.",
+        "composition_spacing_overlap_edge_clearance": "Top-left title above disk.",
+        "template_fidelity_inherited_chrome_artwork": "Yellow disk visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "p-style",
+      "layout_id": "slideLayout3",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Closing large and readable; subtitle unusually tiny.",
+        "composition_spacing_overlap_edge_clearance": "Subtitle lower-center about 20px above bottom; no clipping.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Closing/subtitle complete."
+      },
+      "findings": [
+        {
+          "severity": "low",
+          "category": "accessibility",
+          "region": "subtitle lower-center x546 y663-675",
+          "description": "Subtitle is about14px tall at1280px render, markedly smaller than other subtitle probes and difficult at presentation distance.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout3.png"
+        }
+      ]
+    },
+    {
+      "template": "p-style",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title and round bullets readable.",
+        "composition_spacing_overlap_edge_clearance": "Left body safely positioned with even leading.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "p-style",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black serif title readable; sans subtitle much smaller.",
+        "composition_spacing_overlap_edge_clearance": "Title upper-left; subtitle near bottom with about 65px clearance.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "p-style",
+      "layout_id": "slideLayout5",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black title/both bodies readable.",
+        "composition_spacing_overlap_edge_clearance": "Both columns aligned and safe.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Title and both three-bullet bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "p-style",
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black Section and rust 01 clear on peach.",
+        "composition_spacing_overlap_edge_clearance": "Numeral near top-right with sufficient edge margin; Section near lower-left.",
+        "template_fidelity_inherited_chrome_artwork": "Peach field visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "p-style",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "White blank intentional.",
+        "template_fidelity_inherited_chrome_artwork": "White fill.",
+        "content_completeness_placeholder_routing": "Intentionally blank."
+      },
+      "findings": []
+    },
+    {
+      "template": "p-style",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/p-style/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Black serif title readable.",
+        "composition_spacing_overlap_edge_clearance": "Safe upper-left placement.",
+        "template_fidelity_inherited_chrome_artwork": "White fill.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "warm-coral",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/warm-coral/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Dark-brown title/subtitle clear.",
+        "composition_spacing_overlap_edge_clearance": "Mid-left text safe below top stripe.",
+        "template_fidelity_inherited_chrome_artwork": "Coral top stripe visible.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "warm-coral",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/warm-coral/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Brown title and dash bullets readable.",
+        "composition_spacing_overlap_edge_clearance": "Body evenly spaced below title.",
+        "template_fidelity_inherited_chrome_artwork": "Coral stripe visible.",
+        "content_completeness_placeholder_routing": "Title and three dash bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "warm-coral",
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/warm-coral/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Brown title and both dash-bullet bodies clear.",
+        "composition_spacing_overlap_edge_clearance": "Columns aligned with generous marker gaps.",
+        "template_fidelity_inherited_chrome_artwork": "Coral stripe visible.",
+        "content_completeness_placeholder_routing": "Title and both bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "warm-coral",
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/warm-coral/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Brown Section and coral 01 readable.",
+        "composition_spacing_overlap_edge_clearance": "Left title/right number clear of stripe.",
+        "template_fidelity_inherited_chrome_artwork": "Coral stripe visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "warm-coral",
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/warm-coral/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Brown Closing/subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Closing sits slightly higher than title-slide probe, safe.",
+        "template_fidelity_inherited_chrome_artwork": "Coral stripe visible.",
+        "content_completeness_placeholder_routing": "Closing/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "warm-coral",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/warm-coral/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Empty white body intentional.",
+        "template_fidelity_inherited_chrome_artwork": "Coral stripe visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank with chrome."
+      },
+      "findings": []
+    },
+    {
+      "template": "warm-coral",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/warm-coral/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Brown serif title readable.",
+        "composition_spacing_overlap_edge_clearance": "Title safe beneath stripe.",
+        "template_fidelity_inherited_chrome_artwork": "Coral stripe visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-21x9",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-21x9/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/subtitle legible at wide aspect.",
+        "composition_spacing_overlap_edge_clearance": "Mid-left text safe with extensive right whitespace.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white title canvas.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-21x9",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-21x9/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/square bullets clear; body smaller but readable.",
+        "composition_spacing_overlap_edge_clearance": "Body safely below title and beyond rails.",
+        "template_fidelity_inherited_chrome_artwork": "Full-height blue/yellow rails.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-21x9",
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-21x9/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/bodies clear.",
+        "composition_spacing_overlap_edge_clearance": "Columns aligned in wide canvas; generous gutter.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails intact.",
+        "content_completeness_placeholder_routing": "Both bodies/title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-21x9",
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-21x9/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Section and blue 01 clear.",
+        "composition_spacing_overlap_edge_clearance": "Separated left title/right number at safe edges.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-21x9",
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-21x9/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy Closing/subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Upper-middle-left content safe.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white closing canvas.",
+        "content_completeness_placeholder_routing": "Closing/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-21x9",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-21x9/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Empty wide canvas intentional.",
+        "template_fidelity_inherited_chrome_artwork": "Full-height rails visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank with rails."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-21x9",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-21x9/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title clear.",
+        "composition_spacing_overlap_edge_clearance": "Safe top-left beyond rails.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-4x3",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-4x3/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Large navy title/subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Mid-left positions safe in tall canvas.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white title canvas.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-4x3",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-4x3/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Large navy title and square-bullet body legible.",
+        "composition_spacing_overlap_edge_clearance": "Three lines evenly spaced, ample edges.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow left rails full height.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-4x3",
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-4x3/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/both bodies clear.",
+        "composition_spacing_overlap_edge_clearance": "Wide column gutter despite4x3; no clipping.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Title and both bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-4x3",
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-4x3/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy Section and blue 01 clear.",
+        "composition_spacing_overlap_edge_clearance": "Numeral upper-right, Section middle-left; safe.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-4x3",
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-4x3/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy Closing/subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Upper-left content safe in tall canvas.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white canvas.",
+        "content_completeness_placeholder_routing": "Closing/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-4x3",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-4x3/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Empty tall canvas intentional.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank with rails."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-4x3",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-4x3/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Large navy title readable.",
+        "composition_spacing_overlap_edge_clearance": "Title safe beyond rails.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-side-logo",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Safe mid-left content.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white title canvas; side logo absent on this layout, source comparison unavailable.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-side-logo",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/body clear; side-logo QA lettering visibly jagged.",
+        "composition_spacing_overlap_edge_clearance": "Body well clear of logo at right edge.",
+        "template_fidelity_inherited_chrome_artwork": "Blue/yellow rails and right diamond/QA artwork visible.",
+        "content_completeness_placeholder_routing": "Title and three bullets complete."
+      },
+      "findings": [
+        {
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA at x1205-1265 y490-596",
+          "description": "Logo outline and tiny QA lettering are visibly pixelated at full-size rendering; fidelity to source cannot be determined.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout2.png"
+        }
+      ]
+    },
+    {
+      "template": "portability-side-logo",
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/both bodies clear; logo jagged.",
+        "composition_spacing_overlap_edge_clearance": "Columns safely clear of logo.",
+        "template_fidelity_inherited_chrome_artwork": "Rails and right-side diamond/QA visible.",
+        "content_completeness_placeholder_routing": "Title/both bodies complete."
+      },
+      "findings": [
+        {
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA x1205-1265 y490-596",
+          "description": "Pixelated diamond and QA lettering visible; source quality unknown.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout3.png"
+        }
+      ]
+    },
+    {
+      "template": "portability-side-logo",
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Section and 01 clear; tiny QA jagged.",
+        "composition_spacing_overlap_edge_clearance": "Title/numeral safely clear of right logo.",
+        "template_fidelity_inherited_chrome_artwork": "Rails and diamond/QA visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": [
+        {
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA x1205-1265 y490-596",
+          "description": "Pixelated diamond and QA lettering visible; source quality unknown.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout4.png"
+        }
+      ]
+    },
+    {
+      "template": "portability-side-logo",
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy Closing/subtitle readable.",
+        "composition_spacing_overlap_edge_clearance": "Safe upper-left content.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white closing canvas; logo absent, source comparison unavailable.",
+        "content_completeness_placeholder_routing": "Closing/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-side-logo",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No content text expected; logo pixelated.",
+        "composition_spacing_overlap_edge_clearance": "Blank body intentional with right logo clearance.",
+        "template_fidelity_inherited_chrome_artwork": "Rails and right logo visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank with chrome."
+      },
+      "findings": [
+        {
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA x1205-1265 y490-596",
+          "description": "Pixelated diamond and QA lettering visible; source quality unknown.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout6.png"
+        }
+      ]
+    },
+    {
+      "template": "portability-side-logo",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "visual_concerns",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title clear; logo jagged.",
+        "composition_spacing_overlap_edge_clearance": "Safe top-left title and right chrome.",
+        "template_fidelity_inherited_chrome_artwork": "Rails and right logo visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": [
+        {
+          "severity": "low",
+          "category": "artwork_quality",
+          "region": "right-side diamond/QA x1205-1265 y490-596",
+          "description": "Pixelated diamond and QA lettering visible; source quality unknown.",
+          "classification": "confirmed_visual_concern",
+          "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-side-logo/slideLayout7.png"
+        }
+      ]
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout1.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/subtitle clear.",
+        "composition_spacing_overlap_edge_clearance": "Mid-left title safe.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white Master1 title canvas.",
+        "content_completeness_placeholder_routing": "Title/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout2.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/square bullets clear.",
+        "composition_spacing_overlap_edge_clearance": "Three-line body evenly spaced below title.",
+        "template_fidelity_inherited_chrome_artwork": "Master1 blue/yellow rails at slide edge.",
+        "content_completeness_placeholder_routing": "Title/three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout3.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title/both square-bullet bodies clear.",
+        "composition_spacing_overlap_edge_clearance": "Aligned columns and broad gutter.",
+        "template_fidelity_inherited_chrome_artwork": "Master1 edge rails visible.",
+        "content_completeness_placeholder_routing": "Title/both bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout4.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Section/blue 01 legible.",
+        "composition_spacing_overlap_edge_clearance": "Safe left title/right number.",
+        "template_fidelity_inherited_chrome_artwork": "Master1 edge rails visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout5.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy Closing/subtitle clear.",
+        "composition_spacing_overlap_edge_clearance": "Upper-left positions spacious.",
+        "template_fidelity_inherited_chrome_artwork": "Plain white Master1 closing canvas.",
+        "content_completeness_placeholder_routing": "Closing/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout6.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Empty body intentional.",
+        "template_fidelity_inherited_chrome_artwork": "Master1 blue/yellow edge rails visible.",
+        "content_completeness_placeholder_routing": "Intentionally blank with chrome."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout7.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy title readable.",
+        "composition_spacing_overlap_edge_clearance": "Title beyond left rails safe.",
+        "template_fidelity_inherited_chrome_artwork": "Master1 edge rails visible.",
+        "content_completeness_placeholder_routing": "Blank + Title complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout8",
+      "layout_name": "Title Slide (Master 2)",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout8.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy long title/subtitle clear.",
+        "composition_spacing_overlap_edge_clearance": "Shifted right/up relative to Master1, fits safely.",
+        "template_fidelity_inherited_chrome_artwork": "Plain Master2 title canvas.",
+        "content_completeness_placeholder_routing": "Title Slide (Master 2)/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout9",
+      "layout_name": "One Content (Master 2)",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout9.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy long title/body clear.",
+        "composition_spacing_overlap_edge_clearance": "Content offset beyond inset rails; no overlap.",
+        "template_fidelity_inherited_chrome_artwork": "Master2 rails inset at x128-161 and end above bottom.",
+        "content_completeness_placeholder_routing": "Title/three bullets complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout10",
+      "layout_name": "Two Content (Master 2)",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout10.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy long title/both bodies readable.",
+        "composition_spacing_overlap_edge_clearance": "Offset columns aligned; right body safe.",
+        "template_fidelity_inherited_chrome_artwork": "Master2 inset rails visible.",
+        "content_completeness_placeholder_routing": "Title/both three-line bodies complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout11",
+      "layout_name": "Section Divider (Master 2)",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout11.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Section and blue 01 readable.",
+        "composition_spacing_overlap_edge_clearance": "Title/numeral offset inward safely.",
+        "template_fidelity_inherited_chrome_artwork": "Master2 inset rails visible.",
+        "content_completeness_placeholder_routing": "Section and 01 complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout12",
+      "layout_name": "Closing (Master 2)",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout12.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy long Closing/subtitle clear.",
+        "composition_spacing_overlap_edge_clearance": "Shifted right, adequate edges.",
+        "template_fidelity_inherited_chrome_artwork": "Plain Master2 closing canvas.",
+        "content_completeness_placeholder_routing": "Closing (Master 2)/subtitle complete."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout13",
+      "layout_name": "Blank (Master 2)",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout13.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "No text expected.",
+        "composition_spacing_overlap_edge_clearance": "Empty body intentional.",
+        "template_fidelity_inherited_chrome_artwork": "Master2 inset rails visible and intentionally stop above bottom.",
+        "content_completeness_placeholder_routing": "Intentionally blank with Master2 chrome."
+      },
+      "findings": []
+    },
+    {
+      "template": "portability-two-master",
+      "layout_id": "slideLayout14",
+      "layout_name": "Blank + Title (Master 2)",
+      "evidence_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/fixtures/portability-two-master/slideLayout14.png",
+      "inspection": {
+        "viewed_full_size": true,
+        "width_px": 1280,
+        "method": "view_image original; independent direct visual inspection"
+      },
+      "status": "no_defect_observed_in_text_probe",
+      "full_visual_approval": false,
+      "lenses": {
+        "readability_accessibility": "Navy long title readable.",
+        "composition_spacing_overlap_edge_clearance": "Title clear of inset rails with safe right margin.",
+        "template_fidelity_inherited_chrome_artwork": "Master2 inset rails visible.",
+        "content_completeness_placeholder_routing": "Blank + Title (Master 2) complete."
+      },
+      "findings": []
+    }
+  ],
+  "source_report": "output/all-layout-review-20260926/audit.json"
+}
