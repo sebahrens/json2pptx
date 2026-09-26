@@ -1,0 +1,32 @@
+{
+  "status": "local_integration_pass_ci_pending",
+  "captured_before_private_template_promotion": true,
+  "source_commit": "794761c97f1715fd79978aa307832257b240691e",
+  "scope": "All available native layout publication coverage; not visual approval",
+  "templates": 14,
+  "native_layouts": 108,
+  "original_probes_per_mode": 309,
+  "rendered_unreviewed_per_mode": 262,
+  "explicit_source_loss_refusals_per_mode": 47,
+  "refusals_have_typed_repair_and_no_artifacts": true,
+  "original_and_compact_output_indices_distinct": true,
+  "all_inputs_inventory_and_outcomes_identical_across_modes": true,
+  "all_262_accepted_images_have_identical_decoded_pixels_across_modes": true,
+  "manifests": [
+    {"mode": "default", "path": "output/native-refusal-aware-main-default-20260927-v1/manifest.json", "sha256": "24cf9b1a6c800c43b227e7858944d67e14d80c18159f4b3161cb2fc4fcc83be0"},
+    {"mode": "warn", "path": "output/native-refusal-aware-main-warn-20260927-v1/manifest.json", "sha256": "85aa2b1659a01127cc00924534e1ac6d8873ab4ebe1371f08b668ec3277be10e"},
+    {"mode": "off", "path": "output/native-refusal-aware-main-off-20260927-v1/manifest.json", "sha256": "40de42af01e7e8d36140a3704337f6f611173c5dc4aac9f8b30a8cb80f049b4a"},
+    {"mode": "strict", "path": "output/native-refusal-aware-main-strict-20260927-v1/manifest.json", "sha256": "c63f8ad86699fbfb39591a9433c58f6336e9ccc7493e90d728694eab460982d2"}
+  ],
+  "independent_readonly_audit": {"path": "output/native-main-publication-audit-20260927-v1.py", "sha256": "42084e7672acb67214e90d6160a67969247c35e41d88ccc7cbd0ba43f8503cb0", "result": "pass"},
+  "targeted_race_controls": {"path": "output/native-publication-main-controls-20260927-v3.jsonl", "sha256": "8c1cff98bb17f231fa53123218a419160c58e22b87c68c91ecf3b9144e01ca68", "result": "pass", "seconds": 3.937},
+  "whole_quality_short_race_package": {"path": "output/native-publication-main-quality-race-20260927-v1.jsonl", "sha256": "0c7671b024c65a77dfce85542ba3cb7b61c7501c551bf80a8abb0c5a476211eb", "result": "pass", "seconds": 527.168},
+  "private_template": {"path": "templates/p-style.pptx", "sha256": "9df06238508e65b63ed8900a3d182e014987f5fd799468eb4bfdab64e96f998d", "unchanged": true, "gitignored": true, "included_in_all_local_modes": true},
+  "limits": [
+    "Fresh pages remain generated_unreviewed; no historical rating is relabeled as current.",
+    "All 47 refused probes remain explicit unapproved cases and need source-complete authoring alternatives.",
+    "Private repair candidates are not installed by this corpus run.",
+    "This verifies the full quality package, not a green final whole-root suite; unrelated renderer-startup defects remain separately tracked."
+  ],
+  "bead": "go-slide-creator-3qzo4.61"
+}

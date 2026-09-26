@@ -1,5 +1,8 @@
 {
-  "status": "local_guards_pass_ci_pending",
+  "status": "local_guards_and_exact_production_ci_pass",
+  "captured_before_private_template_promotion": true,
+  "production_commit": "e575d1bf381383ef072dd9fa8b31268b6d1a9305",
+  "ci": {"CI": 36274554961, "Template Gate": 36274554985, "CodeQL": 36274554955, "Docker": 36274554949, "all_terminal_success": true},
   "scope": "Explicit legal_disclosure text role isolation; not aggregate visual approval or private-template promotion",
   "base_revision": "e60df3e60271e0ded3aed7630760f0c1cdc590d0",
   "rendering_source_sha256": "9fdf282cfa5424782768c38f1a8efb8c2103f17062c751eee65e126ccefda59b",
