@@ -1,0 +1,443 @@
+{
+  "schema_version": 1,
+  "review_type": "Focused informed source-template repair review; not a blinded benchmark",
+  "template": "forest-green",
+  "actual_viewed_counts": {
+    "unique_layout_pairs": 7,
+    "unique_before_pngs": 7,
+    "unique_after_pngs": 7,
+    "unique_full_size_pngs": 15,
+    "view_image_calls_including_reinspection": 17,
+    "additional_intermediate_pngs": 1
+  },
+  "method": "Direct view_image original inspection of all14 PNGs, with an extra before/after slideLayout3 reinspection; PNG-only hashes and pixel scans supplement visual observations.",
+  "source_configuration_or_keys_read": false,
+  "additional_rendering": false,
+  "decision": {
+    "right_column_gap_in_revised_slideLayout3": "adequate on final direct inspection",
+    "focused_revised_render_accepted": true,
+    "regressions_observed": 0,
+    "blanket_dense_media_approval": false,
+    "full_visual_approval": false,
+    "baseline_change_proof": "No spacing improvement demonstrated: all three PNGs have the same validated right bullet clearance. Earlier tight-gap visual concern is not substantiated by PNG pixel evidence."
+  },
+  "findings": [
+    {
+      "severity": "coverage",
+      "category": "baseline_evidence_discrepancy",
+      "layout_id": "slideLayout3",
+      "description": "Original display initially appeared tight, but PNG-only scans validate34/33/32px gaps in both original and revised images. A third intermediate image was directly viewed and also has adequate visible clearance; white-composited scans show its first bullet ending x671 and first word beginning x706, matching both other files. Earlier tight-gap visual classification is not substantiated and should not be treated as a confirmed source defect or a demonstrated repair."
+    }
+  ],
+  "comparison_summary": {
+    "byte_identical_pairs": 0,
+    "changed_pairs": 7,
+    "interpretation": "All pairs have raster differences. Visual comparison finds no apparent change to wording, wrapping, font family/size, colors or unrelated artwork placement. Source font identity and rendering cause cannot be determined."
+  },
+  "intermediate_comparison": {
+    "path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v4/forest-green/layouts/slideLayout3__two-content.png",
+    "viewed_full_size": true,
+    "observation": "Visible clearance is adequate. Original RGB and both intermediate/revised palette PNGs all have first bullet ink ending x671 and first word beginning x706 at the inspected first-line band. PNG format/compression differences alone do not establish a spacing repair.",
+    "white_composited_first_line_gap_px": 34,
+    "source_or_cause_diagnosis": "Not supported; PNG-only scope."
+  },
+  "limits": [
+    "Revised gap is adequate; validated pixel evidence supports no spacing improvement versus original. Initial tight-gap visual classification is not substantiated.",
+    "Only three short body lines and short titles/subtitles exercised; no dense, long-wrapped or nested bullet payload approval.",
+    "No media payloads exercised; no blanket image/crop/media approval.",
+    "No source repo or configuration inspected; cannot diagnose source or renderer causes, or establish source font metadata.",
+    "Observed minor raster edge differences across all7 pairs are not byte-preservation; no visual regression was found."
+  ],
+  "layouts": [
+    {
+      "layout_id": "slideLayout1",
+      "layout_name": "Title Slide",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout1.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v5/forest-green/4ce5808a165a0a88/slideLayout1.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Dark-green title and subtitle remain complete, readable and in the same apparent positions on white. Minor raster glyph edge differences; no new clipping or overlap.",
+      "pixel_comparison": {
+        "layout_id": "slideLayout1",
+        "before_dimensions": [
+          1280,
+          720
+        ],
+        "after_dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "b9f913f7e843ed7d4f5e9547e7403e15c05d4fdaef719afdb2dea20eac52974b",
+        "after_sha256": "099fcd4feb33ab17a211b9be1d85fcca1cfe0f10c15c5bf3103316e3df3c3e6a",
+        "changed_pixel_bbox": [
+          170,
+          290,
+          483,
+          418
+        ]
+      },
+      "findings": [],
+      "status": "no_visual_regression_observed"
+    },
+    {
+      "layout_id": "slideLayout2",
+      "layout_name": "One Content",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout2.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v5/forest-green/4ce5808a165a0a88/slideLayout2.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Title and three bullets remain readable with unchanged apparent spacing and positions. Green rule and blue lower-right triangle retain their composition; no wrap or artwork regression observed.",
+      "pixel_comparison": {
+        "layout_id": "slideLayout2",
+        "before_dimensions": [
+          1280,
+          720
+        ],
+        "after_dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "2f8a2dd17909b1615c53b4cb87fcbf374408672913ad259ad68496daf0b9d71d",
+        "after_sha256": "364c0d27eb32de1336c8178bcce0471ccde5bbac6602001c3ecb8104192256f3",
+        "changed_pixel_bbox": [
+          87,
+          88,
+          1280,
+          720
+        ]
+      },
+      "findings": [],
+      "status": "no_visual_regression_observed"
+    },
+    {
+      "layout_id": "slideLayout3",
+      "layout_name": "Two Content",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout3.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v5/forest-green/4ce5808a165a0a88/slideLayout3.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Final direct reinspection of revised image shows a clear space between each right-column round bullet and First/Second/Third. All three lines remain unwrapped and complete; left column, title, colors, green rule and blue corner retain their apparent geometry. Pixel scan confirms revised right gaps34/33/32px. Baseline pixel data and displayed baseline disagree, so numerical before-to-after gap improvement cannot be established.",
+      "pixel_comparison": {
+        "layout_id": "slideLayout3",
+        "before_dimensions": [
+          1280,
+          720
+        ],
+        "after_dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "a0b6a407437632deb28060442e127c1c1ea05a3979845165607a642c16f04dc4",
+        "after_sha256": "6182b1e858e3e21dd61c48be83e393bcbb81eef6aa7e88bfac5b32299cc2e714",
+        "changed_pixel_bbox": [
+          87,
+          88,
+          1280,
+          720
+        ],
+        "before_right_bullet_gap": [
+          {
+            "y_range": [
+              366,
+              387
+            ],
+            "ink_column_runs": [
+              [
+                664,
+                671
+              ],
+              [
+                706,
+                715
+              ],
+              [
+                718,
+                720
+              ],
+              [
+                724,
+                730
+              ],
+              [
+                733,
+                739
+              ]
+            ],
+            "gap_between_first_two_runs_px": 34
+          },
+          {
+            "y_range": [
+              410,
+              431
+            ],
+            "ink_column_runs": [
+              [
+                664,
+                671
+              ],
+              [
+                705,
+                714
+              ],
+              [
+                718,
+                728
+              ],
+              [
+                730,
+                739
+              ]
+            ],
+            "gap_between_first_two_runs_px": 33
+          },
+          {
+            "y_range": [
+              453,
+              475
+            ],
+            "ink_column_runs": [
+              [
+                664,
+                671
+              ],
+              [
+                704,
+                716
+              ],
+              [
+                719,
+                729
+              ],
+              [
+                733,
+                735
+              ],
+              [
+                739,
+                739
+              ]
+            ],
+            "gap_between_first_two_runs_px": 32
+          }
+        ],
+        "after_right_bullet_gap": [
+          {
+            "y_range": [
+              366,
+              387
+            ],
+            "ink_column_runs": [
+              [
+                665,
+                671
+              ],
+              [
+                706,
+                715
+              ],
+              [
+                718,
+                721
+              ],
+              [
+                725,
+                731
+              ],
+              [
+                733,
+                739
+              ]
+            ],
+            "gap_between_first_two_runs_px": 34
+          },
+          {
+            "y_range": [
+              410,
+              431
+            ],
+            "ink_column_runs": [
+              [
+                665,
+                671
+              ],
+              [
+                705,
+                715
+              ],
+              [
+                718,
+                728
+              ],
+              [
+                731,
+                739
+              ]
+            ],
+            "gap_between_first_two_runs_px": 33
+          },
+          {
+            "y_range": [
+              453,
+              475
+            ],
+            "ink_column_runs": [
+              [
+                665,
+                671
+              ],
+              [
+                704,
+                715
+              ],
+              [
+                719,
+                728
+              ],
+              [
+                732,
+                735
+              ],
+              [
+                739,
+                739
+              ]
+            ],
+            "gap_between_first_two_runs_px": 32
+          }
+        ]
+      },
+      "findings": [
+        "Adequate revised bullet gap; baseline evidence discrepancy remains."
+      ],
+      "status": "revised_gap_adequate_baseline_change_unquantified"
+    },
+    {
+      "layout_id": "slideLayout4",
+      "layout_name": "Section Divider",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout4.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v5/forest-green/4ce5808a165a0a88/slideLayout4.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Section and01 remain readable, with numeral just below the green rule. Same apparent positions/colors; corner triangle and rule remain visible without new overlap.",
+      "pixel_comparison": {
+        "layout_id": "slideLayout4",
+        "before_dimensions": [
+          1280,
+          720
+        ],
+        "after_dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "6869989bbe81b2972ffb1ac9eb156ff81cc5cfd9cc709f1fd295d2f9bcb97298",
+        "after_sha256": "a0400d00d7853f91a6258ad51852a739a4da8fd14c9ba0dfba4c84299cb3197d",
+        "changed_pixel_bbox": [
+          87,
+          178,
+          1280,
+          720
+        ]
+      },
+      "findings": [],
+      "status": "no_visual_regression_observed"
+    },
+    {
+      "layout_id": "slideLayout5",
+      "layout_name": "Closing",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout5.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v5/forest-green/4ce5808a165a0a88/slideLayout5.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Closing and subtitle remain complete and readable, at the same apparent positions. No unexpected artwork or changed wrapping.",
+      "pixel_comparison": {
+        "layout_id": "slideLayout5",
+        "before_dimensions": [
+          1280,
+          720
+        ],
+        "after_dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "7c63fb029c5279d4ed6f50a09254b84904d674fcf42e5c28e6915909bc44c4cb",
+        "after_sha256": "8154396b4506f343c4a970b58e3e06d2b0507de666916545cf5710a631ea94fd",
+        "changed_pixel_bbox": [
+          170,
+          283,
+          430,
+          418
+        ]
+      },
+      "findings": [],
+      "status": "no_visual_regression_observed"
+    },
+    {
+      "layout_id": "slideLayout6",
+      "layout_name": "Blank",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout6.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v5/forest-green/4ce5808a165a0a88/slideLayout6.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Empty white body remains intentionally blank; green rule and blue corner retained.",
+      "pixel_comparison": {
+        "layout_id": "slideLayout6",
+        "before_dimensions": [
+          1280,
+          720
+        ],
+        "after_dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "98710c83fca1d3ee4abe81a68fc5596e0def1639c8ffc295eafd746cacb374fc",
+        "after_sha256": "557dc69fddb7bbad89161a9390a25882138f198b378f6e1517b36a509c1d5d7c",
+        "changed_pixel_bbox": [
+          87,
+          178,
+          1280,
+          720
+        ]
+      },
+      "findings": [],
+      "status": "no_visual_regression_observed"
+    },
+    {
+      "layout_id": "slideLayout7",
+      "layout_name": "Blank + Title",
+      "before_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926/templates/forest-green/slideLayout7.png",
+      "after_path": "/Users/seb/projects/json2pptx/output/all-layout-review-20260926-v5/forest-green/4ce5808a165a0a88/slideLayout7.png",
+      "before_viewed_full_size": true,
+      "after_viewed_full_size": true,
+      "observation": "Blank + Title retains readable title, safe margins, green rule and corner artwork; no new clipping.",
+      "pixel_comparison": {
+        "layout_id": "slideLayout7",
+        "before_dimensions": [
+          1280,
+          720
+        ],
+        "after_dimensions": [
+          1280,
+          720
+        ],
+        "before_sha256": "92419574c037bcddb0d686533ee7b5c9a7192c09e48759283f195a0eddc7d3c3",
+        "after_sha256": "c07ece21eabf4bd3811d9f1d1218c9a82fc3e41fddf7e3c7fe4f4207bf65f515",
+        "changed_pixel_bbox": [
+          87,
+          85,
+          1280,
+          720
+        ]
+      },
+      "findings": [],
+      "status": "no_visual_regression_observed"
+    }
+  ],
+  "operator_disposition": {
+    "date": "2026-09-26",
+    "decision": "Initial spacing finding retracted; no native template or renderer repair retained",
+    "basis": "Main reviewer independently inspected enlarged crops of the original and candidate PNGs; both show clear gap. Pixel measurements corroborate. Experimental native and generator changes discarded.",
+    "restored_template_git_blob": "98a5039d6c1e7ce4af9bde0a651b203cb6cce0fb",
+    "source_engine_commit": "e29bf5de4703dd303d19c29b7c486c4cdb05294e",
+    "experimental_artifacts_not_production": true
+  }
+}
