@@ -31,16 +31,17 @@ import (
 // layout receives representative and dense text. Evidence profiles target only
 // appropriate native body slots; pictures fill every native image placeholder.
 type nativeProbe struct {
-	ID                    string              `json:"id"`
-	LayoutID              string              `json:"layout_id"`
-	LayoutName            string              `json:"layout_name"`
-	Profile               string              `json:"profile"`
-	Slide                 generator.SlideSpec `json:"input"`
-	ExpectedText          []string            `json:"expected_text"`
-	ExpectedPictures      int                 `json:"expected_pictures"`
-	ExpectedTables        int                 `json:"expected_tables"`
-	ExpectedDiagramLabels []string            `json:"expected_diagram_labels,omitempty"`
-	NotApplicable         []string            `json:"not_applicable,omitempty"`
+	ID                       string              `json:"id"`
+	LayoutID                 string              `json:"layout_id"`
+	LayoutName               string              `json:"layout_name"`
+	Profile                  string              `json:"profile"`
+	Slide                    generator.SlideSpec `json:"input"`
+	ExpectedText             []string            `json:"expected_text"`
+	ExpectedPictures         int                 `json:"expected_pictures"`
+	ExpectedBackgroundSource string              `json:"expected_background_source,omitempty"`
+	ExpectedTables           int                 `json:"expected_tables"`
+	ExpectedDiagramLabels    []string            `json:"expected_diagram_labels,omitempty"`
+	NotApplicable            []string            `json:"not_applicable,omitempty"`
 }
 
 type nativeProbeEvidence struct {
@@ -434,6 +435,15 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		t.Fatal("rendering required:", missing)
 	}
 	imagePath := nativeReferenceImage()
+	photoBackdrop := os.Getenv("NATIVE_LAYOUT_PHOTO_BACKDROP") == "1"
+	if photoBackdrop && os.Getenv("NATIVE_LAYOUT_IMAGE_SOURCE") == "" {
+		t.Fatal("photo-only backdrop pass requires an explicitly supplied photographic source; never dim the default required screenshot")
+	}
+	if photoBackdrop {
+		if err := validateNativePhotoSource(imagePath); err != nil {
+			t.Fatal(err)
+		}
+	}
 	imageHash, err := render.HashFile(imagePath)
 	if err != nil {
 		t.Fatal(err)
@@ -484,6 +494,11 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		for _, layout := range layouts {
 			e.NativeLayouts = append(e.NativeLayouts, layout.ID)
 			for _, p := range makeNativeProbes(layout, imagePath) {
+				if photoBackdrop && name == "modern" && (layout.ID == "slideLayout1" || layout.ID == "slideLayout6") {
+					if err := authorNativePhotoBackdrop(&p); err != nil {
+						t.Fatal(err)
+					}
+				}
 				e.Probes = append(e.Probes, nativeProbeEvidence{nativeProbe: p, SlideIndex: len(slides)})
 				slides = append(slides, p.Slide)
 			}
@@ -538,6 +553,11 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 				continue
 			}
 			p.Failures = append(p.Failures, checkNativeProbeSlide(body, p.nativeProbe)...)
+			if p.ExpectedBackgroundSource != "" {
+				if err := checkNativeBackgroundSource(z, i+1, p.ExpectedBackgroundSource); err != nil {
+					p.Failures = append(p.Failures, err.Error())
+				}
+			}
 			rels := parts[fmt.Sprintf("ppt/slides/_rels/slide%d.xml.rels", i+1)]
 			if rels == nil {
 				p.Failures = append(p.Failures, "slide relationships missing")

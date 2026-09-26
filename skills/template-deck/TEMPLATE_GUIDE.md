@@ -591,8 +591,8 @@ Any slide can have a custom background image:
 
 ```json
 {
-  "layout_id": "One Content",
-  "background": {"image": "assets/hero.jpg", "fit": "cover"},
+  "layout_id": "title",
+  "background": {"image": "assets/hero.jpg", "fit": "cover", "overlay": {"color": "dk1", "alpha": 0.6}},
   "content": [
     {"placeholder_id": "title", "type": "text", "text_value": "Title Over Image"}
   ]
@@ -600,6 +600,19 @@ Any slide can have a custom background image:
 ```
 
 Use `"url"` instead of `"image"` to download from a URL. Fit modes: `"cover"` (default, fills slide), `"stretch"`, `"tile"`.
+
+For an illustrative full-slide photo with text crossing bright detail, a
+background overlay can improve contrast while retaining the original image
+bytes. Inspect the selected native layout first. When using this alternative,
+omit the authored `image` placeholder item: native pictures paint above the
+background overlay and would hide its effect. Keep the native text placeholders
+and exact wording. The example's opacity is a tested starting point, not a
+contrast guarantee; theme colors and photo highlights vary. Render and inspect
+every title/subtitle and image edge again. `cover` can crop a mismatched aspect
+ratio; the overlay also reduces highlight brightness and fine-detail visibility.
+Do not use this photographic treatment for required diagrams, screenshots or
+images whose original tones must remain faithful. Choose a non-overlapping,
+sufficiently large image layout for those sources instead.
 
 ## Font Size Override
 

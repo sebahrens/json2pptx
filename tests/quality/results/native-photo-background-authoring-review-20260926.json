@@ -1,0 +1,559 @@
+{
+  "schema_version": 1,
+  "scope": "Photo-only supported authoring alternative on modern native layouts1/6; not native-image-placeholder repair or whole-audit approval",
+  "rendered_base_commit": "df60dd9bcb53afee81e677833f3675996dd4d60d",
+  "engine_source_sha256": "496bd1e9b4e16059ef0159a2bf39cdf896775cb3ae053dac55ad000597863a4d",
+  "harness_sha256": "97030cc67fa9d0e0b3bbf5ec54c77986abc3b641139e0094845e568789453762",
+  "source_note": "The optional photo-only harness transformation is included in the rendered source hash; canonical usage guidance was updated afterwards. No production renderer/template changes.",
+  "current_manifest": "output/native-photo-background-corpus-20260926-v2/manifest.json",
+  "current_manifest_sha256": "5b1c3dc868072a38741f5879579f29d0e1a32de3c16cd7602626df72fa92f6b8",
+  "original_photo_manifest": "output/native-photo-content-corpus-20260926-v1/manifest.json",
+  "original_photo_manifest_sha256": "34263843ee8d08643784aad701b610198519c7d5e3440899ee8eac46b1db2b3f",
+  "required_screenshot_regression_manifest": "output/native-content-corpus-20260926-v9/manifest.json",
+  "required_screenshot_regression_manifest_sha256": "d914a0f4724b9ebaa0090e803744d6ba637b6ab185b51eb175e5e8203fcb8abe",
+  "photo_origin": "templates/modern.pptx:ppt/media/image1.png",
+  "source_sha256": "55b050442b1070468ac7fdd54f39cd36ad146fa1f8be5b7cf3b01c6be0c839f1",
+  "authoring": {
+    "api": "slide.background.image with overlay",
+    "fit": "cover",
+    "overlay_color": "dk1",
+    "overlay_alpha": 0.6,
+    "native_image_item": "omitted only in the explicit photographic authoring alternative",
+    "native_layout_id_and_exact_text": "preserved",
+    "exact_native_text_shape_xml": "All four title/subtitle shape XMLs match original photo pass byte-for-byte after XML serialization, including font, bounds and paragraph settings",
+    "template_layouts_and_masters": "All package layout/master entries byte-identical across photo before/after decks",
+    "source_bytes": "resolved slide-background relationship and embedded media checked byte-for-byte",
+    "aspect_ratio": "Original photo width/height cross-multiplied against actual presentation sldSz: equal aspect ratio",
+    "limitations": "Source highlights and fine detail are visibly dimmer; not for evidence requiring original tonal fidelity. This same-aspect-ratio source showed no observed crop; cover may crop other aspect ratios."
+  },
+  "regression": {
+    "templates": 14,
+    "native_layouts": 108,
+    "pages_per_pass": 309,
+    "photo_pass_changed_pages": 4,
+    "photo_pass_unchanged_decoded_pixels": 305,
+    "default_required_screenshot_changed_pages": 0,
+    "default_required_screenshot_unchanged_decoded_pixels": 309,
+    "known_source_omission_pages_each_pass": 47,
+    "generation_or_render_failures": 0,
+    "source_presence_gate": "Both complete rendered suites intentionally fail for the same47 known omissions; no relaxed threshold or visual blanket approval"
+  },
+  "rejected_experiment": {
+    "manifest": "output/native-photo-background-corpus-20260926-v1/manifest.json",
+    "explanation": "First authoring experiment exposed a p:pic-only counting mismatch for four p:bg images. Retained unchanged; subsequent harness checks background relationship and exact embedded bytes separately, retaining original native-picture assertions."
+  },
+  "blind_review_provenance": {
+    "reviewers": 1,
+    "full_pages": 8,
+    "source_images": 1,
+    "packet_sha256": "74c9b00de80ccd2f55dd3766a13e89e30484592ce8c23340e385d78c256111b6",
+    "review_sha256": "3779d542e00ce8c9aee0fb0e3b0c64e305ecba656aa5b5e8a63951015696f78e",
+    "configuration_key": "outside packet, joined only after completed visual review"
+  },
+  "post_review_identity_join": [
+    {
+      "id": "001",
+      "variant": 1,
+      "directory": "native-photo-background-corpus-20260926-v2",
+      "native_id": "slideLayout1-dense",
+      "slide_index": 12
+    },
+    {
+      "id": "002",
+      "variant": 0,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout6-representative",
+      "slide_index": 17
+    },
+    {
+      "id": "003",
+      "variant": 1,
+      "directory": "native-photo-background-corpus-20260926-v2",
+      "native_id": "slideLayout6-dense",
+      "slide_index": 18
+    },
+    {
+      "id": "004",
+      "variant": 0,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout1-representative",
+      "slide_index": 11
+    },
+    {
+      "id": "005",
+      "variant": 1,
+      "directory": "native-photo-background-corpus-20260926-v2",
+      "native_id": "slideLayout1-representative",
+      "slide_index": 11
+    },
+    {
+      "id": "006",
+      "variant": 0,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout6-dense",
+      "slide_index": 18
+    },
+    {
+      "id": "007",
+      "variant": 0,
+      "directory": "native-photo-content-corpus-20260926-v1",
+      "native_id": "slideLayout1-dense",
+      "slide_index": 12
+    },
+    {
+      "id": "008",
+      "variant": 1,
+      "directory": "native-photo-background-corpus-20260926-v2",
+      "native_id": "slideLayout6-representative",
+      "slide_index": 17
+    }
+  ],
+  "blind_review": {
+    "review_type": "Single authorised blind full-size photographic-background review",
+    "packet": "pages.json",
+    "scope": "Only this packet pages.json, eight numbered PNGs and source.png. No external keys, code, manifests or identity joins read. No extra reviewer.",
+    "inspected_page_count": 8,
+    "inspected_source_image_count": 1,
+    "inspected_image_count": 9,
+    "inspected_ids": [
+      "001",
+      "002",
+      "003",
+      "004",
+      "005",
+      "006",
+      "007",
+      "008"
+    ],
+    "inspected_source_images": [
+      "source.png"
+    ],
+    "unreviewed_ids": [],
+    "method": "All nine PNGs actually viewed at original size; each page judged separately against exact supplied wording and source image, not supplied hashes or presumed improvement.",
+    "summary": {
+      "safe_to_use_count": 4,
+      "safe_to_use_ids": [
+        "001",
+        "003",
+        "005",
+        "008"
+      ],
+      "unsafe_count": 4,
+      "unsafe_ids": [
+        "002",
+        "004",
+        "006",
+        "007"
+      ],
+      "contrast_defect_count": 4,
+      "spacing_collision_clipping_defect_count": 0,
+      "observed_text_omission_count": 0,
+      "observed_source_crop_or_distortion_count": 0,
+      "disclosed_darker_source_tonal_rendering_ids": [
+        "001",
+        "003",
+        "005",
+        "008"
+      ]
+    },
+    "pages": [
+      {
+        "id": "001",
+        "file": "001.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities"
+        ],
+        "text_check": [
+          {
+            "expected": "Quarterly operating review and service delivery priorities",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "Readable"
+          }
+        ],
+        "source_image": "source.png",
+        "source_role": "Photographic illustration. Preserve proportions and image detail; assess actual text readability and completeness.",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "no_observed_defect",
+            "observation": "Full three-line white title is readable across all words, including OPERATING, SERVICE and PRIORITIES. Background nodes remain darker than letter strokes."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_spacing_or_collision_defect",
+            "observation": "Three-line title contained with consistent leading and ample margins; no clipping or collision."
+          },
+          "source_fidelity_completeness": {
+            "status": "complete_with_disclosed_tonal_limitation",
+            "observation": "All expected words present; no proven source text loss. Full source framing and 16:9 proportions appear retained, with no observed stretch or crop. Source is visibly darker than source.png: nodes/connecting lines/bokeh remain identifiable, but original highlight brightness and fine-detail visibility are reduced. Exact tonal fidelity is not retained; for the stated photographic-illustration role this is disclosed rather than classified as a destructive geometry/content defect."
+          },
+          "artwork_composition": {
+            "status": "no_observed_defect_for_illustration_role",
+            "observation": "Title dominates while network/bokeh photograph remains recognizable as supporting illustration."
+          }
+        },
+        "source_image_integrity_limitations": "Full source framing and 16:9 proportions appear retained, with no observed stretch or crop. Source is visibly darker than source.png: nodes/connecting lines/bokeh remain identifiable, but original highlight brightness and fine-detail visibility are reduced. Exact tonal fidelity is not retained; for the stated photographic-illustration role this is disclosed rather than classified as a destructive geometry/content defect.",
+        "source_label_readability": "Not applicable: anonymous photo has no source labels.",
+        "issues": [],
+        "safe_to_use": true,
+        "verdict": "Visually safe for stated photographic-illustration role, with darker tonal rendering disclosed.",
+        "limitations": "No editability assessment or template identity/reference available; preservation of image proportions is visual, not an object-level proof."
+      },
+      {
+        "id": "002",
+        "file": "002.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review",
+          "Illustrative test data for review"
+        ],
+        "text_check": [
+          {
+            "expected": "Quarterly operating review",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "See readability lens: some text remains visually traceable but has deficient local contrast."
+          },
+          {
+            "expected": "Illustrative test data for review",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "See readability lens: some text remains visually traceable but has deficient local contrast."
+          }
+        ],
+        "source_image": "source.png",
+        "source_role": "Photographic illustration. Preserve proportions and image detail; assess actual text readability and completeness.",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "OPERATING crosses bright top-centre bokeh/nodes, with thin white strokes blending locally into highlights. REVIEW and short subtitle on dark left remain readable."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_spacing_or_collision_defect",
+            "observation": "Two-line heading and short subtitle are separate and contained; no clipping/text collision."
+          },
+          "source_fidelity_completeness": {
+            "status": "no_observed_crop_distortion_or_omission",
+            "observation": "All expected words present; no proven source text loss. Full source framing and 16:9 proportions appear retained; no observed stretch/crop. Source network nodes, connecting lines and bokeh remain recognizable at full size. Foreground title necessarily covers portions of illustration."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Bright nodes compete with OPERATING and weaken heading hierarchy."
+          }
+        },
+        "source_image_integrity_limitations": "Full source framing and 16:9 proportions appear retained; no observed stretch/crop. Source network nodes, connecting lines and bokeh remain recognizable at full size. Foreground title necessarily covers portions of illustration.",
+        "source_label_readability": "Not applicable: anonymous photo has no source labels.",
+        "issues": [
+          {
+            "type": "photo_text_contrast",
+            "severity": "major",
+            "description": "White OPERATING loses local contrast over bright background highlights.",
+            "cause": "Observed pixels only; configuration/implementation cause not determined."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief until observed text contrast defect is resolved.",
+        "limitations": "No editability assessment or template identity/reference available; preservation of image proportions is visual, not an object-level proof."
+      },
+      {
+        "id": "003",
+        "file": "003.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities",
+          "Internal review of service delivery, ownership and reporting requirements"
+        ],
+        "text_check": [
+          {
+            "expected": "Quarterly operating review and service delivery priorities",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "Readable"
+          },
+          {
+            "expected": "Internal review of service delivery, ownership and reporting requirements",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "Readable"
+          }
+        ],
+        "source_image": "source.png",
+        "source_role": "Photographic illustration. Preserve proportions and image detail; assess actual text readability and completeness.",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "no_observed_defect",
+            "observation": "All three title lines and full long subtitle are legible. White text separates from dimmed nodes/bokeh, including centre/right subtitle words."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_spacing_or_collision_defect",
+            "observation": "Three-line heading ends well above single-line subtitle; no clipping or text collision."
+          },
+          "source_fidelity_completeness": {
+            "status": "complete_with_disclosed_tonal_limitation",
+            "observation": "All expected words present; no proven source text loss. Full source framing and 16:9 proportions appear retained, with no observed stretch or crop. Source is visibly darker than source.png: nodes/connecting lines/bokeh remain identifiable, but original highlight brightness and fine-detail visibility are reduced. Exact tonal fidelity is not retained; for the stated photographic-illustration role this is disclosed rather than classified as a destructive geometry/content defect."
+          },
+          "artwork_composition": {
+            "status": "no_observed_defect_for_illustration_role",
+            "observation": "Strong heading/subtitle hierarchy with visually subordinate yet identifiable photographic network."
+          }
+        },
+        "source_image_integrity_limitations": "Full source framing and 16:9 proportions appear retained, with no observed stretch or crop. Source is visibly darker than source.png: nodes/connecting lines/bokeh remain identifiable, but original highlight brightness and fine-detail visibility are reduced. Exact tonal fidelity is not retained; for the stated photographic-illustration role this is disclosed rather than classified as a destructive geometry/content defect.",
+        "source_label_readability": "Not applicable: anonymous photo has no source labels.",
+        "issues": [],
+        "safe_to_use": true,
+        "verdict": "Visually safe for stated photographic-illustration role, with darker tonal rendering disclosed.",
+        "limitations": "No editability assessment or template identity/reference available; preservation of image proportions is visual, not an object-level proof."
+      },
+      {
+        "id": "004",
+        "file": "004.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review"
+        ],
+        "text_check": [
+          {
+            "expected": "Quarterly operating review",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "See readability lens: some text remains visually traceable but has deficient local contrast."
+          }
+        ],
+        "source_image": "source.png",
+        "source_role": "Photographic illustration. Preserve proportions and image detail; assess actual text readability and completeness.",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "OPERATING crosses bright network/bokeh highlights; thin strokes merge locally into highlights. QUARTERLY and REVIEW on darker background are more legible."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_spacing_or_collision_defect",
+            "observation": "Two title lines contained with ample margins; no text collision/clipping."
+          },
+          "source_fidelity_completeness": {
+            "status": "no_observed_crop_distortion_or_omission",
+            "observation": "All expected words present; no proven source text loss. Full source framing and 16:9 proportions appear retained; no observed stretch/crop. Source network nodes, connecting lines and bokeh remain recognizable at full size. Foreground title necessarily covers portions of illustration."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Photographic highlights coincide with important heading word and compete for attention."
+          }
+        },
+        "source_image_integrity_limitations": "Full source framing and 16:9 proportions appear retained; no observed stretch/crop. Source network nodes, connecting lines and bokeh remain recognizable at full size. Foreground title necessarily covers portions of illustration.",
+        "source_label_readability": "Not applicable: anonymous photo has no source labels.",
+        "issues": [
+          {
+            "type": "photo_text_contrast",
+            "severity": "major",
+            "description": "White OPERATING blends with bright nodes and pale bokeh behind the heading.",
+            "cause": "Observed pixels only; configuration/implementation cause not determined."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief until observed text contrast defect is resolved.",
+        "limitations": "No editability assessment or template identity/reference available; preservation of image proportions is visual, not an object-level proof."
+      },
+      {
+        "id": "005",
+        "file": "005.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review"
+        ],
+        "text_check": [
+          {
+            "expected": "Quarterly operating review",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "Readable"
+          }
+        ],
+        "source_image": "source.png",
+        "source_role": "Photographic illustration. Preserve proportions and image detail; assess actual text readability and completeness.",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "no_observed_defect",
+            "observation": "Both title lines readable including OPERATING; white strokes remain distinct against dimmed photograph."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_spacing_or_collision_defect",
+            "observation": "Two-line heading contained with consistent spacing and ample surrounding room."
+          },
+          "source_fidelity_completeness": {
+            "status": "complete_with_disclosed_tonal_limitation",
+            "observation": "All expected words present; no proven source text loss. Full source framing and 16:9 proportions appear retained, with no observed stretch or crop. Source is visibly darker than source.png: nodes/connecting lines/bokeh remain identifiable, but original highlight brightness and fine-detail visibility are reduced. Exact tonal fidelity is not retained; for the stated photographic-illustration role this is disclosed rather than classified as a destructive geometry/content defect."
+          },
+          "artwork_composition": {
+            "status": "no_observed_defect_for_illustration_role",
+            "observation": "Heading dominates, background network remains discernible without competing highlights."
+          }
+        },
+        "source_image_integrity_limitations": "Full source framing and 16:9 proportions appear retained, with no observed stretch or crop. Source is visibly darker than source.png: nodes/connecting lines/bokeh remain identifiable, but original highlight brightness and fine-detail visibility are reduced. Exact tonal fidelity is not retained; for the stated photographic-illustration role this is disclosed rather than classified as a destructive geometry/content defect.",
+        "source_label_readability": "Not applicable: anonymous photo has no source labels.",
+        "issues": [],
+        "safe_to_use": true,
+        "verdict": "Visually safe for stated photographic-illustration role, with darker tonal rendering disclosed.",
+        "limitations": "No editability assessment or template identity/reference available; preservation of image proportions is visual, not an object-level proof."
+      },
+      {
+        "id": "006",
+        "file": "006.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities",
+          "Internal review of service delivery, ownership and reporting requirements"
+        ],
+        "text_check": [
+          {
+            "expected": "Quarterly operating review and service delivery priorities",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "See readability lens: some text remains visually traceable but has deficient local contrast."
+          },
+          {
+            "expected": "Internal review of service delivery, ownership and reporting requirements",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "See readability lens: some text remains visually traceable but has deficient local contrast."
+          }
+        ],
+        "source_image": "source.png",
+        "source_role": "Photographic illustration. Preserve proportions and image detail; assess actual text readability and completeness.",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "OPERATING, SERVICE and portions of PRIORITIES cross bright photo highlights; thin white strokes lose contrast. Long subtitle crosses brighter centre/right region and loses local contrast there."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_spacing_or_collision_defect",
+            "observation": "Three-line title and single-line subtitle contained and well separated; no clipping or text/text collision."
+          },
+          "source_fidelity_completeness": {
+            "status": "no_observed_crop_distortion_or_omission",
+            "observation": "All expected words present; no proven source text loss. Full source framing and 16:9 proportions appear retained; no observed stretch/crop. Source network nodes, connecting lines and bokeh remain recognizable at full size. Foreground title necessarily covers portions of illustration."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Busy bright structures compete with title and long subtitle, compromising hierarchy despite sound spacing."
+          }
+        },
+        "source_image_integrity_limitations": "Full source framing and 16:9 proportions appear retained; no observed stretch/crop. Source network nodes, connecting lines and bokeh remain recognizable at full size. Foreground title necessarily covers portions of illustration.",
+        "source_label_readability": "Not applicable: anonymous photo has no source labels.",
+        "issues": [
+          {
+            "type": "photo_text_contrast",
+            "severity": "major",
+            "description": "White title and long subtitle lose local contrast against bright network nodes and bokeh.",
+            "cause": "Observed pixels only; configuration/implementation cause not determined."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief until observed text contrast defect is resolved.",
+        "limitations": "No editability assessment or template identity/reference available; preservation of image proportions is visual, not an object-level proof."
+      },
+      {
+        "id": "007",
+        "file": "007.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review and service delivery priorities"
+        ],
+        "text_check": [
+          {
+            "expected": "Quarterly operating review and service delivery priorities",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "See readability lens: some text remains visually traceable but has deficient local contrast."
+          }
+        ],
+        "source_image": "source.png",
+        "source_role": "Photographic illustration. Preserve proportions and image detail; assess actual text readability and completeness.",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "defect",
+            "observation": "OPERATING/SERVICE/PRIORITIES cross bright source structures and parts of thin letter strokes blend into highlights."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_spacing_or_collision_defect",
+            "observation": "Three title lines contained with consistent leading; no clipping or text/text collision."
+          },
+          "source_fidelity_completeness": {
+            "status": "no_observed_crop_distortion_or_omission",
+            "observation": "All expected words present; no proven source text loss. Full source framing and 16:9 proportions appear retained; no observed stretch/crop. Source network nodes, connecting lines and bokeh remain recognizable at full size. Foreground title necessarily covers portions of illustration."
+          },
+          "artwork_composition": {
+            "status": "defect",
+            "observation": "Bright full-bleed photo competes with key heading words."
+          }
+        },
+        "source_image_integrity_limitations": "Full source framing and 16:9 proportions appear retained; no observed stretch/crop. Source network nodes, connecting lines and bokeh remain recognizable at full size. Foreground title necessarily covers portions of illustration.",
+        "source_label_readability": "Not applicable: anonymous photo has no source labels.",
+        "issues": [
+          {
+            "type": "photo_text_contrast",
+            "severity": "major",
+            "description": "White heading loses local contrast over bright network nodes and bokeh.",
+            "cause": "Observed pixels only; configuration/implementation cause not determined."
+          }
+        ],
+        "safe_to_use": false,
+        "verdict": "Unsafe for supplied brief until observed text contrast defect is resolved.",
+        "limitations": "No editability assessment or template identity/reference available; preservation of image proportions is visual, not an object-level proof."
+      },
+      {
+        "id": "008",
+        "file": "008.png",
+        "inspected_original_size": true,
+        "expected_text": [
+          "Quarterly operating review",
+          "Illustrative test data for review"
+        ],
+        "text_check": [
+          {
+            "expected": "Quarterly operating review",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "Readable"
+          },
+          {
+            "expected": "Illustrative test data for review",
+            "visible_wording": "Matches all supplied words; uppercase heading styling only.",
+            "omission_observed": false,
+            "readability": "Readable"
+          }
+        ],
+        "source_image": "source.png",
+        "source_role": "Photographic illustration. Preserve proportions and image detail; assess actual text readability and completeness.",
+        "four_lens": {
+          "readability_contrast": {
+            "status": "no_observed_defect",
+            "observation": "Both title lines and short subtitle legible; white text distinct from dimmed photo."
+          },
+          "hierarchy_spacing_collisions": {
+            "status": "no_observed_spacing_or_collision_defect",
+            "observation": "Two-line title and subtitle separated, contained and free of observed collision."
+          },
+          "source_fidelity_completeness": {
+            "status": "complete_with_disclosed_tonal_limitation",
+            "observation": "All expected words present; no proven source text loss. Full source framing and 16:9 proportions appear retained, with no observed stretch or crop. Source is visibly darker than source.png: nodes/connecting lines/bokeh remain identifiable, but original highlight brightness and fine-detail visibility are reduced. Exact tonal fidelity is not retained; for the stated photographic-illustration role this is disclosed rather than classified as a destructive geometry/content defect."
+          },
+          "artwork_composition": {
+            "status": "no_observed_defect_for_illustration_role",
+            "observation": "Clear title/subtitle hierarchy, with recognizable subdued network artwork."
+          }
+        },
+        "source_image_integrity_limitations": "Full source framing and 16:9 proportions appear retained, with no observed stretch or crop. Source is visibly darker than source.png: nodes/connecting lines/bokeh remain identifiable, but original highlight brightness and fine-detail visibility are reduced. Exact tonal fidelity is not retained; for the stated photographic-illustration role this is disclosed rather than classified as a destructive geometry/content defect.",
+        "source_label_readability": "Not applicable: anonymous photo has no source labels.",
+        "issues": [],
+        "safe_to_use": true,
+        "verdict": "Visually safe for stated photographic-illustration role, with darker tonal rendering disclosed.",
+        "limitations": "No editability assessment or template identity/reference available; preservation of image proportions is visual, not an object-level proof."
+      }
+    ],
+    "approved_packet": false,
+    "approved_unrelated_pages": false,
+    "editability_assessed": false,
+    "conclusion": "Four pages meet this scoped visual illustration brief with darker source tonal rendering disclosed; four retain major local text contrast defects. No broad approval or exact original-tonal fidelity claim."
+  },
+  "remaining": "Original native-picture photo pages and required-diagram overlay/tiny-label cases are retained as adverse cases, not approved. The supported photo alternative does not resolve47 text/table omissions, agent benchmark failures, other open typography issues or cache/freshness defects."
+}
