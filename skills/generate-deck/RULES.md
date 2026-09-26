@@ -41,13 +41,13 @@ The numeric ranges above are the published surface of the canonical design token
 | 8 | `series[i].values` length must equal `len(categories)` | Mismatched arrays produce corrupted charts |
 | 9 | Chart types use underscores: `stacked_bar`, `grouped_bar` | Hyphens (`stacked-bar`) silently fail |
 | 10 | Don't mix data formats. Single: `{"Q1": 10}`; Multi: `{categories, series}`; Waterfall: `{points}` | Pick one format per chart |
-| 10a | Identify the measure and its supplied units visibly in the chart title, axis label, direct label or legend. For raw `bar_chart` diagrams, use `title` and `data.y_label` (or `data.y_axis_title`). Check the selected chart's live schema for other types. Do not invent units. | A single-series `series.name` or `alt` alone does not guarantee a visible metric label; a category axis and numbers can render correctly while leaving the measure unidentified. A redundant legend is unnecessary when the title or axis already identifies it. |
+| 10a | Visibly label the measure and supplied units; never invent units. Raw `bar_chart`: `title` and `data.y_label`/`data.y_axis_title`; otherwise check the live schema. | Use a title, axis, direct label or legend. `series.name`/`alt` alone may be invisible; an identified measure needs no redundant legend. |
 
 ## Slide Takeaway (the "so what" line)
 
 | # | Rule | Rationale |
 |---|---|---|
-| 11a | Chart and matrix slides MUST set `slide.takeaway` (a single sentence — the headline answer). | A chart or 2x2 without a takeaway forces the audience to guess the argument. The validator emits `takeaway_missing` warning when chart/matrix slides leave it empty. The takeaway renders as 14pt bold dark text in a distinct band in the lower zone of the slide (a subtle accent-tinted fill framed by a thin accent rule), above the source note. The band gives the headline its own light background, so it reads on dark templates too. Band geometry comes from the layout: it spans the body placeholder's column and sits above the footer placeholders; body/chart/table placeholders shrink to stop above it. If a layout has no room for it, the band is skipped and preflight emits `chrome_band_no_fit`. |
+| 11a | Chart and matrix slides MUST set `slide.takeaway` (one sentence — the headline answer). | Omission emits `takeaway_missing`. It renders as 14pt bold dark text on an accent-tinted band above the source/footer, spanning the body column; content frames shrink above it. Without room, the band is skipped and preflight emits `chrome_band_no_fit`. |
 
 ```json
 {
