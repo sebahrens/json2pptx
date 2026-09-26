@@ -145,6 +145,9 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	if len(input.slideSpec.Content) > 0 || input.slideSpec.Eyebrow != "" {
 		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex, input.slideSpec.Eyebrow)
 	}
+	// Contrast findings must describe visible output, not template prompts that
+	// the final cleanup removes. Preserve mapped shapes and native utility text.
+	clearSlideUnmappedPlaceholders(slide, input.slideSpec.Content)
 
 	// Enforce WCAG AA text contrast against the layout background.
 	// Some templates (e.g. section dividers) use accent scheme colors for
@@ -744,68 +747,70 @@ func bodyAnchor(shape *shapeXML) string {
 // Non-placeholder shapes (decorative elements, logos) are never touched.
 func (ctx *singlePassContext) clearUnmappedPlaceholders() {
 	for slideNum, slide := range ctx.templateSlideData {
-		// Build resolver to translate idx:N placeholder IDs to canonical shape names.
-		resolver := newPlaceholderResolver(slide.CommonSlideData.ShapeTree.Shapes)
+		clearSlideUnmappedPlaceholders(slide, ctx.slideContentMap[slideNum].Content)
+	}
+}
 
-		// Build set of canonical shape names that were targeted by content items.
-		// Uses ResolveWithFallback so that content using legacy names (e.g.,
-		// "Content Placeholder 2") or idx:N syntax correctly marks the resolved
-		// shape as populated, even when matched via semantic/fuzzy/positional tier.
-		populated := make(map[string]bool)
-		if spec, ok := ctx.slideContentMap[slideNum]; ok {
-			for _, item := range spec.Content {
-				if shapeIdx, _, ok := resolver.ResolveWithFallback(item.PlaceholderID); ok {
-					shapeName := slide.CommonSlideData.ShapeTree.Shapes[shapeIdx].NonVisualProperties.ConnectionNonVisual.Name
-					populated[shapeName] = true
-				}
-			}
+func clearSlideUnmappedPlaceholders(slide *slideXML, content []ContentItem) {
+	// Build resolver to translate idx:N placeholder IDs to canonical shape names.
+	resolver := newPlaceholderResolver(slide.CommonSlideData.ShapeTree.Shapes)
+
+	// Build set of canonical shape names that were targeted by content items.
+	// Uses ResolveWithFallback so that content using legacy names (e.g.,
+	// "Content Placeholder 2") or idx:N syntax correctly marks the resolved
+	// shape as populated, even when matched via semantic/fuzzy/positional tier.
+	populated := make(map[string]bool)
+	for _, item := range content {
+		if shapeIdx, _, ok := resolver.ResolveWithFallback(item.PlaceholderID); ok {
+			shapeName := slide.CommonSlideData.ShapeTree.Shapes[shapeIdx].NonVisualProperties.ConnectionNonVisual.Name
+			populated[shapeName] = true
+		}
+	}
+
+	shapes := slide.CommonSlideData.ShapeTree.Shapes
+	for i := range shapes {
+		shape := &shapes[i]
+		ph := shape.NonVisualProperties.NvPr.Placeholder
+		if ph == nil {
+			continue // Not a placeholder — decorative shape, skip
 		}
 
-		shapes := slide.CommonSlideData.ShapeTree.Shapes
-		for i := range shapes {
-			shape := &shapes[i]
-			ph := shape.NonVisualProperties.NvPr.Placeholder
-			if ph == nil {
-				continue // Not a placeholder — decorative shape, skip
-			}
+		// Determine if this placeholder should be cleared when unmapped.
+		shouldClear := false
+		switch ph.Type {
+		case "body", "subTitle", "obj", "":
+			// Content placeholders are always cleared if unmapped
+			shouldClear = true
+		case "title", "ctrTitle":
+			// Title placeholders are always cleared if unmapped.
+			// Without this, empty title shapes cause PowerPoint to render
+			// the layout's prompt text (e.g., "Click to add title") which
+			// leaks into the visible output.
+			shouldClear = true
+		default:
+			// dt, ftr, sldNum, pic, chart, tbl, etc. — preserve
+		}
 
-			// Determine if this placeholder should be cleared when unmapped.
-			shouldClear := false
-			switch ph.Type {
-			case "body", "subTitle", "obj", "":
-				// Content placeholders are always cleared if unmapped
-				shouldClear = true
-			case "title", "ctrTitle":
-				// Title placeholders are always cleared if unmapped.
-				// Without this, empty title shapes cause PowerPoint to render
-				// the layout's prompt text (e.g., "Click to add title") which
-				// leaks into the visible output.
-				shouldClear = true
-			default:
-				// dt, ftr, sldNum, pic, chart, tbl, etc. — preserve
-			}
+		if !shouldClear {
+			continue
+		}
 
-			if !shouldClear {
-				continue
-			}
+		// After normalization, the canonical shape name is the single lookup key.
+		shapeName := shape.NonVisualProperties.ConnectionNonVisual.Name
+		if !populated[shapeName] && shape.TextBody != nil && len(shape.TextBody.Paragraphs) > 0 {
+			// Clear text content by replacing with a single empty paragraph.
+			// This preserves the shape XML structure (needed for layout inheritance)
+			// while removing the template sample text and hasCustomPrompt content
+			// (e.g., the "0" section number placeholder).
+			shape.TextBody.Paragraphs = []paragraphXML{emptyParagraph()}
 
-			// After normalization, the canonical shape name is the single lookup key.
-			shapeName := shape.NonVisualProperties.ConnectionNonVisual.Name
-			if !populated[shapeName] && shape.TextBody != nil && len(shape.TextBody.Paragraphs) > 0 {
-				// Clear text content by replacing with a single empty paragraph.
-				// This preserves the shape XML structure (needed for layout inheritance)
-				// while removing the template sample text and hasCustomPrompt content
-				// (e.g., the "0" section number placeholder).
-				shape.TextBody.Paragraphs = []paragraphXML{emptyParagraph()}
-
-				// Strip hasCustomPrompt from the slide's placeholder element.
-				// This attribute is layout-only (ECMA-376 §19.3.1.36) — when
-				// present in a slide, it causes PowerPoint to display the
-				// layout's custom prompt text (e.g., "0" in 350pt orange for
-				// section numbers) even though the slide's text body is empty.
-				if ph.HasCustomPrompt != "" {
-					ph.HasCustomPrompt = ""
-				}
+			// Strip hasCustomPrompt from the slide's placeholder element.
+			// This attribute is layout-only (ECMA-376 §19.3.1.36) — when
+			// present in a slide, it causes PowerPoint to display the
+			// layout's custom prompt text (e.g., "0" in 350pt orange for
+			// section numbers) even though the slide's text body is empty.
+			if ph.HasCustomPrompt != "" {
+				ph.HasCustomPrompt = ""
 			}
 		}
 	}
