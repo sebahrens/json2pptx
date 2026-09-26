@@ -155,7 +155,7 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 					Params: map[string]any{"paragraphs": paraCount},
 				},
 			},
-			Action: "review",
+			Action: "refuse",
 		})
 	}
 
@@ -175,7 +175,7 @@ func DetectTextAutofitPreflight(input TextAutofitPreflightInput) []patterns.FitF
 					Params: map[string]any{"paragraphs": paraCount, "predicted_font_scale_pct": result.FontScale / 1000},
 				},
 			},
-			Action: "info",
+			Action: "refuse",
 		})
 	}
 

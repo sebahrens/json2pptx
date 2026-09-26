@@ -506,13 +506,13 @@ func trimOverflowParagraphs(shape *shapeXML, params textfit.Params, cfg *autofit
 					ValidationError: patterns.ValidationError{
 						Path:    cfg.findingPath,
 						Code:    patterns.ErrCodeTextTrimmed,
-						Message: fmt.Sprintf("trimmed %d trailing paragraphs to fit placeholder (%d remaining)", removed, len(paras)+1),
+						Message: fmt.Sprintf("trimmed %d trailing paragraphs to fit placeholder (%d remaining including ellipsis); removed source content is absent from the deck, split it across slides", removed, len(paras)+1),
 						Fix: &patterns.FixSuggestion{
 							Kind:   "reduce_text",
 							Params: map[string]any{"removed_count": removed, "remaining_count": len(paras) + 1},
 						},
 					},
-					Action: "review",
+					Action: "refuse",
 				})
 			}
 
@@ -637,10 +637,10 @@ func trimForReadability(shape *shapeXML, params textfit.Params, targetMinFontSca
 					ValidationError: patterns.ValidationError{
 						Path:    cfg.findingPath,
 						Code:    patterns.ErrCodeReadabilityTrimmed,
-						Message: fmt.Sprintf("trimmed %d paragraphs for readability (fontScale improved to %d%%)", removed, result.FontScale/1000),
+						Message: fmt.Sprintf("trimmed %d paragraphs for readability (fontScale improved to %d%%); removed source content is absent from the deck, split it across slides", removed, result.FontScale/1000),
 						Fix:     &patterns.FixSuggestion{Kind: "reduce_text"},
 					},
-					Action: "info",
+					Action: "refuse",
 				})
 			}
 

@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/tokens"
@@ -320,6 +321,17 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 
 	if err := ctx.runPipelinePhases(); err != nil {
 		return nil, ctx.warnings, err
+	}
+	// Predictions are not authoritative: direct callers and inherited styles
+	// can bypass preflight. Refuse actual paragraph loss before the temporary
+	// archive is renamed, preserving any existing destination on failure.
+	if ctx.strictFit == "strict" {
+		for _, finding := range ctx.fitFindings {
+			if finding.Code == patterns.ErrCodeTextTrimmed || finding.Code == patterns.ErrCodeReadabilityTrimmed {
+				loss := finding.ValidationError
+				return nil, ctx.warnings, fmt.Errorf("strict-fit: generated source loss: %w", &loss)
+			}
+		}
 	}
 
 	result, err := ctx.finalizePPTX(len(req.Slides))

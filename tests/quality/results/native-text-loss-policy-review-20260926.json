@@ -1,0 +1,517 @@
+{
+  "schema_version": 1,
+  "scope": "Paragraph-loss strict-fit safety and all-native diagnostic regression, not content-preserving visual repair or audit approval",
+  "rendered_base_commit": "365d93069fb3588fd69cc82e06e6a015584c8225",
+  "engine_source_sha256": "b7a8e867c27e2bbaf5456de03d3cecbb980ccbe9042c81dd3ac9757a15f57144",
+  "harness_sha256": "97030cc67fa9d0e0b3bbf5ec54c77986abc3b641139e0094845e568789453762",
+  "current_manifest": "output/native-content-corpus-20260926-v11/manifest.json",
+  "current_manifest_sha256": "1859b8657a854a90064bfc3e2646cbea8396f49d2fd482ddfe8767b9b528353a",
+  "baseline_manifest": "output/native-content-corpus-20260926-v9/manifest.json",
+  "baseline_manifest_sha256": "d914a0f4724b9ebaa0090e803744d6ba637b6ab185b51eb175e5e8203fcb8abe",
+  "coverage": {
+    "templates": 14,
+    "native_layouts": 108,
+    "full_size_pages": 309,
+    "pixel_comparison": "All309 decoded RGBA buffers compared with v9: identical",
+    "generation_or_render_failures": 0,
+    "source_omission_pages": 47,
+    "blocking_text_loss_findings": 28
+  },
+  "behavior": {
+    "preflight": "Both predicted paragraph-loss codes are refuse findings; strict-fit blocks before generation",
+    "actual_generation": "Direct generator checks actual paragraph-loss findings before atomic output rename, preserving existing destination and removing temporary output on refusal",
+    "warning_off_compatibility": "Draft output remains available with explicit refuse-class source-loss findings; not approved or content-complete",
+    "no_loss_control": "Short complete source succeeds in direct strict generation",
+    "structured_error": "ValidationError code/path retained; errors.Is preserves ErrTextTrimmed"
+  },
+  "findings": [
+    {
+      "template": "abstract",
+      "pattern": "",
+      "path": "/slides/5/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 3 trailing paragraphs to fit placeholder (8 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 8,
+          "removed_count": 3
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "abstract",
+      "pattern": "",
+      "path": "/slides/12/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "abstract",
+      "pattern": "",
+      "path": "/slides/12/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "blue-corporate",
+      "pattern": "",
+      "path": "/slides/10/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "blue-corporate",
+      "pattern": "",
+      "path": "/slides/10/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "forest-green",
+      "pattern": "",
+      "path": "/slides/8/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "forest-green",
+      "pattern": "",
+      "path": "/slides/8/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "midnight-blue",
+      "pattern": "",
+      "path": "/slides/8/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "midnight-blue",
+      "pattern": "",
+      "path": "/slides/8/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern-template",
+      "pattern": "",
+      "path": "/slides/1/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 6 trailing paragraphs to fit placeholder (5 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 5,
+          "removed_count": 6
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern-template",
+      "pattern": "",
+      "path": "/slides/1/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 6 trailing paragraphs to fit placeholder (5 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 5,
+          "removed_count": 6
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern-template",
+      "pattern": "",
+      "path": "/slides/12/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 4 trailing paragraphs to fit placeholder (7 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 7,
+          "removed_count": 4
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern-yellow",
+      "pattern": "",
+      "path": "/slides/12/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 5 trailing paragraphs to fit placeholder (6 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 6,
+          "removed_count": 5
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern-yellow",
+      "pattern": "",
+      "path": "/slides/12/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 3 trailing paragraphs to fit placeholder (8 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 8,
+          "removed_count": 3
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern-yellow",
+      "pattern": "",
+      "path": "/slides/17/content/0",
+      "code": "text_trimmed",
+      "message": "trimmed 4 trailing paragraphs to fit placeholder (7 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 7,
+          "removed_count": 4
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern",
+      "pattern": "",
+      "path": "/slides/5/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern",
+      "pattern": "",
+      "path": "/slides/20/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 4 trailing paragraphs to fit placeholder (7 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 7,
+          "removed_count": 4
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "modern",
+      "pattern": "",
+      "path": "/slides/20/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 4 trailing paragraphs to fit placeholder (7 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 7,
+          "removed_count": 4
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "warm-coral",
+      "pattern": "",
+      "path": "/slides/8/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "warm-coral",
+      "pattern": "",
+      "path": "/slides/8/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "portability-4x3",
+      "pattern": "",
+      "path": "/slides/8/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "portability-4x3",
+      "pattern": "",
+      "path": "/slides/8/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "portability-side-logo",
+      "pattern": "",
+      "path": "/slides/8/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "portability-side-logo",
+      "pattern": "",
+      "path": "/slides/8/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "portability-two-master",
+      "pattern": "",
+      "path": "/slides/8/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "portability-two-master",
+      "pattern": "",
+      "path": "/slides/8/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "portability-two-master",
+      "pattern": "",
+      "path": "/slides/28/content/1",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    },
+    {
+      "template": "portability-two-master",
+      "pattern": "",
+      "path": "/slides/28/content/2",
+      "code": "text_trimmed",
+      "message": "trimmed 2 trailing paragraphs to fit placeholder (9 remaining including ellipsis); removed source content is absent from the deck, split it across slides",
+      "fix": {
+        "kind": "reduce_text",
+        "params": {
+          "remaining_count": 9,
+          "removed_count": 2
+        }
+      },
+      "action": "refuse",
+      "severity": "error"
+    }
+  ],
+  "local_checks": {
+    "generator_short_race_seconds": 159.812,
+    "patterns_short_race_seconds": 11.373,
+    "quality_short_race_seconds": 31.48,
+    "targeted_mcp_strict_docs_budget_race_seconds": 18.04,
+    "score_envelope_strict_race_seconds": 59.726,
+    "pinned_lint_issues": 0,
+    "build": "pass"
+  },
+  "technical_review_performed_by": "Main agent using testing, adversarial and reliability review skills; no additional visual reviewers or subagents",
+  "technical_review": [
+    {
+      "reviewer": "testing",
+      "findings": [],
+      "residual_risks": [
+        "Strict refusal is not pagination or a repaired visual composition. Warning/off modes still retain incomplete legacy draft behavior."
+      ],
+      "testing_gaps": [
+        "Full CLI suite deferred to monitored CI; targeted MCP/strict, envelope/score and affected package race suites exercised locally."
+      ]
+    },
+    {
+      "reviewer": "adversarial",
+      "findings": [],
+      "residual_risks": [
+        "Predicted fit can differ from actual inherited styles; the direct-generator guard covers actual trimming. Pixel-only clipping without a fitting diagnostic remains separately subject to visual review."
+      ],
+      "testing_gaps": []
+    },
+    {
+      "reviewer": "reliability",
+      "findings": [],
+      "residual_risks": [
+        "No automatic retries or content deletion introduced. Existing atomic temporary-file cleanup behavior is reused."
+      ],
+      "testing_gaps": []
+    }
+  ],
+  "visual_review": "No additional reviewer: pixels match the previously independently inspected corpus exactly. Existing per-page defects and source-presence failures remain authoritative; no new visual approval.",
+  "remaining": "All47 source-omission pages still fail independent marker-presence checks. Required content needs safe, complete continuation compositions; tiny labels, required-image/text overlap and other tracked audit defects remain unresolved."
+}

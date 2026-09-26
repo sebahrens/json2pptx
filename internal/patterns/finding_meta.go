@@ -892,11 +892,11 @@ var findingMetaRegistry = map[string]FindingMeta{
 	ErrCodeTextTrimmed: {
 		Code:        ErrCodeTextTrimmed,
 		Summary:     "Trailing paragraphs were trimmed to fit inside the placeholder.",
-		Severity:    "review",
+		Severity:    "refuse",
 		WhenEmitted: "Render-time text fitting drops trailing paragraphs because they would not fit at the minimum font scale.",
 		RemediationSteps: []string{
-			"Trim the text upstream so all paragraphs fit.",
-			"Or split the content across two slides.",
+			"Removed paragraphs are absent from the deck. Preserve required content by distributing it across continuation slides, then regenerate and inspect every page.",
+			"Shorten upstream only when meaning and required facts remain complete; do not treat deletion of required paragraphs as a fit repair.",
 		},
 		RelatedCodes: []string{ErrCodePlaceholderOverflow, ErrCodeTextOverflow, ErrCodeReadabilityTrimmed},
 	},
@@ -914,10 +914,10 @@ var findingMetaRegistry = map[string]FindingMeta{
 	ErrCodeReadabilityTrimmed: {
 		Code:        ErrCodeReadabilityTrimmed,
 		Summary:     "Paragraphs were trimmed to keep the resulting font size readable.",
-		Severity:    "review",
+		Severity:    "refuse",
 		WhenEmitted: "Render-time text fitting trims paragraphs to avoid shrinking text below the readability floor.",
 		RemediationSteps: []string{
-			"Trim or split the content so all paragraphs fit at a readable font size.",
+			"Removed paragraphs are absent from the deck. Split required content across continuation slides so all paragraphs fit at a readable font size, then regenerate and inspect every page.",
 		},
 		RelatedCodes: []string{ErrCodeTextTrimmed, ErrCodePlaceholderOverflow},
 	},
