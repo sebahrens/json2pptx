@@ -621,3 +621,30 @@ Override the template default font size on any text-based content item:
 ```json
 {"placeholder_id": "title", "type": "text", "text_value": "Big Title", "font_size": 72}
 ```
+
+### Dense source text and readable continuations
+
+Complete source text can still be unreadable: a successful generation or a
+`max_chars` estimate does not establish usable body type. When required wording
+cannot be shortened, preserve its full sentences, order and nested hierarchy.
+Choose a roomier native layout or author continuation pages when the requested
+slide count permits. Do not silently add pages to a fixed-count deck.
+
+For equally sized plain bullet columns, `repair_slide` supports
+`split_bullets` with `max_items`: a positive per-column item budget, not a line
+budget. It keeps parent/child groups together and coordinates column boundaries.
+Unsupported compound lists or oversized groups need explicit sibling slides.
+Keep non-bullet composition and native layout; retain notes/source on page one.
+
+For the tested dense native-layout cases, an intentional `font_size: 18` body
+override plus a three-item budget produced readable continuations without
+discarding source. These are starting values, not universal requirements or
+proof of fit. JSON font sizes are in points. Use absolute sizing only when
+intentional (`design_mode: "free"`); preserve required template/user typography,
+and never apply a body override to titles or legal disclosures indiscriminately.
+
+Regenerate and inspect every continuation at full slide resolution. Verify the
+actual emitted type size after autofit, complete wording (including numbers,
+units and qualifiers), indentation, wrapping and spacing. Adjust the layout or
+budget if needed. Safe continuation pages do not approve the original dense
+single-page version.
