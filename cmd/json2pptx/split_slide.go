@@ -32,13 +32,23 @@ func init() {
 
 // expandSplitSlide validates and expands a SplitSlideInput into N regular SlideInputs.
 func expandSplitSlide(s SplitSlideInput) ([]SlideInput, error) {
+	tableIdx, _ := findTableContent(s.Base.Content)
+	return expandSplitSlideAtTable(s, tableIdx)
+}
+
+// expandSplitSlideAtTable is shared by the declarative first-table envelope and
+// path-targeted repair. A selected second table must not silently become first.
+func expandSplitSlideAtTable(s SplitSlideInput, tableIdx int) ([]SlideInput, error) {
 	if err := validateSplitSlide(s); err != nil {
 		return nil, err
 	}
 
-	tableIdx, table := findTableContent(s.Base.Content)
-	if tableIdx < 0 {
-		return nil, fmt.Errorf("split_slide: base must contain a table content item")
+	if tableIdx < 0 || tableIdx >= len(s.Base.Content) {
+		return nil, fmt.Errorf("split_slide: selected table content index is invalid")
+	}
+	_, table := findTableContent(s.Base.Content[tableIdx : tableIdx+1])
+	if table == nil {
+		return nil, fmt.Errorf("split_slide: selected content item must contain a valid table")
 	}
 
 	rows := table.Rows
@@ -67,22 +77,15 @@ func expandSplitSlide(s SplitSlideInput) ([]SlideInput, error) {
 	slides := make([]SlideInput, total)
 
 	for i, chunk := range chunks {
-		slide := SlideInput{
-			LayoutID:        s.Base.LayoutID,
-			SlideType:       s.Base.SlideType,
-			Background:      s.Base.Background,
-			ShapeGrid:       s.Base.ShapeGrid,
-			Pattern:         s.Base.Pattern,
-			Transition:      s.Base.Transition,
-			TransitionSpeed: s.Base.TransitionSpeed,
-			Build:           s.Base.Build,
-			ContrastCheck:   s.Base.ContrastCheck,
-		}
+		// Retain authored composition and internal layout/section context;
+		// partial literals silently discarded fields whenever the schema grew.
+		slide := s.Base
 
 		// First page gets speaker notes and source
-		if i == 0 {
-			slide.SpeakerNotes = s.Base.SpeakerNotes
-			slide.Source = s.Base.Source
+		if i > 0 {
+			slide.SpeakerNotes = ""
+			slide.Source = ""
+			slide.SourceLink = nil
 		}
 
 		// Build content — replace table rows with this chunk
@@ -90,7 +93,10 @@ func expandSplitSlide(s SplitSlideInput) ([]SlideInput, error) {
 		for j, ci := range s.Base.Content {
 			if j == tableIdx {
 				newTable := *table
-				newTable.Rows = chunk
+				newTable.Rows = make([][]TableCellInput, len(chunk))
+				for ri, row := range chunk {
+					newTable.Rows[ri] = append([]TableCellInput(nil), row...)
+				}
 				if !s.Split.RepeatHeaders && i > 0 {
 					newTable.Headers = nil
 				}

@@ -960,7 +960,7 @@ func applySplitAtRow(input *PresentationInput, slideIdx int, params map[string]a
 		},
 	}
 
-	expanded, err := expandSplitSlide(splitInput)
+	expanded, err := expandSplitSlideAtTable(splitInput, tableIdx)
 	if err != nil {
 		return appliedFix{Kind: "split_at_row", Applied: false, Message: fmt.Sprintf("split failed: %v", err)}
 	}

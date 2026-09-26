@@ -1,0 +1,54 @@
+{
+  "scope": "Selected table continuation repair and base-slide metadata preservation",
+  "review_method": "Main-agent testing, adversarial, and agent-native perspectives; not an independent visual verdict",
+  "base_commit": "d6a33a28494a7a2cfbd2e3ababf4b7540e56194a",
+  "issues": ["go-slide-creator-3qzo4.22", "go-slide-creator-3qzo4.23"],
+  "reproduced_before_fix": [
+    "Requesting the second six-row table with a two-row page budget returned one page because the first two-row table was selected instead.",
+    "Expansion discarded authored eyebrow, headline, takeaway, composition, overlays and source hyperlink, plus internal column and section context."
+  ],
+  "implementation": [
+    "Path-targeted repair delegates its resolved table index to the existing expansion implementation; the declarative envelope still selects the first table.",
+    "Expansion retains the entire base slide and replaces selected table rows and optional title suffix. Existing first-page-only source and speaker-note behavior includes the source hyperlink.",
+    "Selected table row slices are copied. Other metadata pointers remain shared; this is not a general deep-clone operation."
+  ],
+  "reviewers": [
+    {
+      "reviewer": "testing",
+      "findings": [],
+      "evidence": [
+        "Typed and legacy second-table inputs retain exact row order, original content position and the untouched first table.",
+        "Actual repair_slide MCP response contains three correctly patched pages and retains authored context, conclusion and first-page source hyperlink.",
+        "Named-placeholder path and partial final page are covered; editing expanded row storage leaves source row storage unchanged.",
+        "Invalid paths, zero row budget and row-span boundary violations fail without changing source JSON.",
+        "Existing declarative expansion and first/default repair tests are included in the targeted race suite."
+      ],
+      "residual_risks": ["Whole-repository local race suite was not rerun for this patch; CI remains a required gate."],
+      "testing_gaps": ["Fresh rendered continuation decks still need independent visual review."]
+    },
+    {
+      "reviewer": "adversarial",
+      "findings": [],
+      "evidence": [
+        "Resolved numeric and named targets survive the caller-to-expander boundary instead of silently falling back to the first table.",
+        "A cross-page merged cell is rejected before slide-array replacement.",
+        "A partial SlideInput literal no longer removes newly added authored or internal fields during pagination."
+      ],
+      "residual_risks": [
+        "Splitting one table repeats non-target content. Multiple overflowing tables require coordinated authoring; independently splitting each table is not a proven visual solution.",
+        "Shared metadata pointers are retained, not deep-cloned. Later in-place mutation of that metadata is outside the row-storage guarantee.",
+        "Legacy title values and visual title-suffix fitting are not newly repaired by this change."
+      ],
+      "testing_gaps": ["No claim that the retained 47 native-corpus source-loss pages are visually repaired."]
+    }
+  ],
+  "agent_native_review": {
+    "capability": "repair_slide split_at_row",
+    "verdict": "PASS for changed target-selection and metadata-return behavior",
+    "evidence": "Actual agent-facing tool response is parsed back into PresentationInput and checked for exact selected rows and retained authored metadata.",
+    "schema_change": false
+  },
+  "visual_approval": false,
+  "existing_adverse_evidence_retained": "output/native-content-corpus-20260926-v11",
+  "audit_complete": false
+}
