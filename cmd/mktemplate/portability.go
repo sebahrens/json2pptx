@@ -11,8 +11,7 @@ package main
 //	21x9        16002000x6858000 ultrawide canvas, geometry scaled
 //	two-master  a second slide master (own theme + 7 layouts) whose body column
 //	            is inset and whose footer row sits higher than master 1's
-//	side-logo   a logo picture on the master in the right-hand margin, level
-//	            with the lower content / takeaway band
+//	side-logo   legacy fixture name; the blue theme has no side logo
 //
 // Usage:
 //
@@ -23,9 +22,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"image"
-	"image/color"
-	"image/png"
 	"io"
 	"os"
 	"path/filepath"
@@ -39,16 +35,6 @@ var portabilityVariants = []string{"4x3", "21x9", "two-master", "side-logo"}
 
 // portabilityBase is the theme every fixture is derived from.
 const portabilityBase = "midnight-blue"
-
-// Side-logo geometry (16:9 canvas): a portrait logo in the right margin,
-// right of the body column (which ends at x=11353800) and level with the
-// lower content area where the takeaway band sits.
-const (
-	sideLogoX  = 11430000
-	sideLogoY  = 4572000
-	sideLogoCX = 640080
-	sideLogoCY = 1600200
-)
 
 // generatePortabilityFixtures writes one fixture per variant into dir as
 // portability-<variant>.pptx.
@@ -105,10 +91,8 @@ func generateVariant(def templateDef, variant, outPath string) error {
 	case "two-master":
 		order = addSecondMaster(parts, order)
 	case "side-logo":
-		order, err = addSideLogo(parts, order)
-		if err != nil {
-			return err
-		}
+		// Preserve the historical selector for existing benchmark inputs, but
+		// deliberately keep the blue theme logo-free as requested by the user.
 	default:
 		return fmt.Errorf("unknown variant %q (want one of %s)", variant, strings.Join(portabilityVariants, ", "))
 	}
@@ -250,31 +234,4 @@ func addSecondMaster(parts map[string][]byte, order []string) []string {
 		[]byte(`</Relationships>`),
 		[]byte(`<Relationship Id="rId20" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster2.xml"/></Relationships>`), 1)
 	return append(order, added...)
-}
-
-// addSideLogo places a logo picture on master 1 in the right-hand margin.
-func addSideLogo(parts map[string][]byte, order []string) ([]string, error) {
-	img := image.NewRGBA(image.Rect(0, 0, 28, 70))
-	for y := 0; y < 70; y++ {
-		for x := 0; x < 28; x++ {
-			img.Set(x, y, color.RGBA{0x2E, 0x50, 0x90, 0xFF})
-		}
-	}
-	var png1 bytes.Buffer
-	if err := png.Encode(&png1, img); err != nil {
-		return nil, err
-	}
-	parts["ppt/media/logo1.png"] = png1.Bytes()
-	parts["ppt/slideMasters/_rels/slideMaster1.xml.rels"] = bytes.Replace(parts["ppt/slideMasters/_rels/slideMaster1.xml.rels"],
-		[]byte(`</Relationships>`),
-		[]byte(`<Relationship Id="rId20" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo1.png"/></Relationships>`), 1)
-	pic := fmt.Sprintf(`<p:pic><p:nvPicPr><p:cNvPr id="20" name="Logo" descr="Company logo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr userDrawn="1"/></p:nvPicPr>`+
-		`<p:blipFill><a:blip r:embed="rId20"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>`+
-		`<p:spPr><a:xfrm><a:off x="%d" y="%d"/><a:ext cx="%d" cy="%d"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`,
-		sideLogoX, sideLogoY, sideLogoCX, sideLogoCY)
-	parts["ppt/slideMasters/slideMaster1.xml"] = bytes.Replace(parts["ppt/slideMasters/slideMaster1.xml"],
-		[]byte(`</p:spTree>`), []byte(pic+`</p:spTree>`), 1)
-	parts["[Content_Types].xml"] = bytes.Replace(parts["[Content_Types].xml"],
-		[]byte(`<Default Extension="json"`), []byte(`<Default Extension="png" ContentType="image/png"/><Default Extension="json"`), 1)
-	return append(order, "ppt/media/logo1.png"), nil
 }

@@ -59,6 +59,15 @@ func TestPortabilityFixturesGenerate(t *testing.T) {
 		if !bytes.Equal(committed, fresh) {
 			t.Errorf("%s: committed fixture is stale; run make portability-fixtures", v)
 		}
+		if v == "side-logo" {
+			parts, _, err := readZipParts(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if bytes.Contains(parts["ppt/slideMasters/slideMaster1.xml"], []byte(`name="Logo"`)) || len(parts["ppt/media/logo1.png"]) != 0 {
+				t.Fatal("blue theme must not contain a side logo or replacement mark")
+			}
+		}
 	}
 	if err := generateVariant(templates[0], "bogus", filepath.Join(dir, "x.pptx")); err == nil {
 		t.Error("unknown variant must fail")

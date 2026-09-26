@@ -12,6 +12,11 @@ The default set uses two bundled templates plus the purpose-built
 `templates/` directory, so day-to-day template tuning does not train against
 the held-out case.
 
+The `portability-side-logo` filename is retained for compatibility with frozen
+benchmark inputs. The current blue fixture is deliberately logo-free following
+the user's design request; it must not be counted as side-artwork collision
+coverage. Historical scored sheets retain their original pixels.
+
 Template entries accept either form:
 
 ```text

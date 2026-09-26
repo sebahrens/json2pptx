@@ -34,7 +34,8 @@ var portabilityMatrix = []portabilityCase{
 	{Template: "portability-4x3", Deck: "deck.json", WidthEMU: 9144000, HeightEMU: 6858000, Masters: 1},
 	{Template: "portability-21x9", Deck: "deck.json", WidthEMU: 16002000, HeightEMU: 6858000, Masters: 1},
 	{Template: "portability-two-master", Deck: "deck-two-master.json", WidthEMU: 12192000, HeightEMU: 6858000, Masters: 2},
-	{Template: "portability-side-logo", Deck: "deck.json", WidthEMU: 12192000, HeightEMU: 6858000, Masters: 1, SideLogo: true},
+	// Historical filename retained for frozen inputs; user requested no logo on blue.
+	{Template: "portability-side-logo", Deck: "deck.json", WidthEMU: 12192000, HeightEMU: 6858000, Masters: 1},
 }
 
 func portabilityRoot(t *testing.T) (root, fixtures string) {
