@@ -8,7 +8,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-func TestModernClosingRuleClearsSubtitle(t *testing.T) {
+func TestModernClosingPreservesSubtitleWithoutStrayRule(t *testing.T) {
 	r, err := OpenTemplate(filepath.Join("..", "..", "templates", "modern-template.pptx"))
 	if err != nil {
 		t.Fatal(err)
@@ -46,16 +46,12 @@ func TestModernClosingRuleClearsSubtitle(t *testing.T) {
 	if err := xml.Unmarshal(body, &doc); err != nil {
 		t.Fatal(err)
 	}
-	if len(doc.Connectors) != 1 {
-		t.Fatal("expected the existing decorative rule, not its removal")
+	if len(doc.Connectors) != 0 {
+		t.Fatal("Closing must not contain the isolated caret-like decorative rule")
 	}
-	tr := doc.Connectors[0].Properties.Transform
-	if tr.Offset == nil || tr.Extents == nil || tr.Extents.CY <= 0 {
-		t.Fatal("rule geometry missing")
-	}
-	const halfCM = 180000
-	if gap := subtitle.Bounds.Y - (tr.Offset.Y + tr.Extents.CY); gap < halfCM {
-		t.Fatalf("rule intrudes into subtitle clearance: gap=%d EMU, want >=%d", gap, halfCM)
+	want := types.BoundingBox{X: 4830857, Y: 3800000, Width: 7014009, Height: 1200000}
+	if subtitle.Bounds != want || subtitle.FontSize != 1800 {
+		t.Fatalf("native subtitle changed: bounds=%+v size=%d, want %+v at 18pt", subtitle.Bounds, subtitle.FontSize, want)
 	}
 }
 

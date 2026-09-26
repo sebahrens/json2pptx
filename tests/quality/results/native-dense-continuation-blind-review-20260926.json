@@ -1,0 +1,52 @@
+{
+  "scope": "Source-preserving continuation experiment for every one of the 15 unsafe dense-body cases; not approval of the original single-page probes or aggregate completion",
+  "engine_commit": "7a348a1d0fcb497d623c588db69d9132a9291b24",
+  "rendering_source_sha256": "6ebde0c2a6b670d3a56165317d419fa94d8a9a0380e22321723daa13babad3c9",
+  "original_full_inventory": {"templates": 14, "native_layouts": 108, "original_probes": 309},
+  "repair_case_count": 15,
+  "complete_continuation_series": 15,
+  "pages": 60,
+  "source_bullet_sentences": 180,
+  "authoring_changes": [
+    "Production SplitBulletSlide with max_items 3; four pages per original case",
+    "Explicit 18pt native bullet body text on continuation pages",
+    "Native layout, complete title, all exact bullet strings, source order and parent/child grouping retained"
+  ],
+  "all_original_inputs_unchanged": true,
+  "actual_emitted_font_and_structure_checks": {
+    "verification": "output/dense-readable-continuations-20260926-v1/verification-v2.json",
+    "sha256": "067932937a955004d6901919466866b4ea25b853da7cfc4aac78ad37c10557a7",
+    "minimum_body_pt_after_stored_autofit": 18,
+    "complete_source_once_per_series": true,
+    "native_layout_relationships_preserved": true,
+    "relative_nested_levels_and_stable_native_base_level_checked": true,
+    "initial_audit_limit": "The first verifier assumed all native root levels were zero and failed on p-style's native level 2. It is not passing evidence; v2 checks relative authored hierarchy and stable native base levels."
+  },
+  "single_authorized_reviewer": {
+    "report": "output/blind-dense-continuations-20260926-v1/review.json",
+    "sha256": "f3be7588dc63df2196adc69c8a19dddb85066e4895c1be3fdea49f5b1be8206a",
+    "individually_inspected_full_resolution_pages": 60,
+    "unreviewed_pages": 0,
+    "safe": 60,
+    "unsafe": 0,
+    "missing_source_sentences": 0,
+    "minor_cautions": 12,
+    "minor_caution_pages": 11,
+    "four_lenses": ["source_completeness", "readability_contrast", "hierarchy_spacing_collisions", "artwork_composition"]
+  },
+  "independent_review_audit": {
+    "report": "output/dense-readable-continuations-20260926-v1/review-audit.json",
+    "sha256": "4a9583f0cfdc67267ec776970edb3bc893ee27ece834c11e907af3b55eb7a0aa",
+    "all_60_original_packet_hashes_match": true,
+    "required_text_checklists_and_four_lenses_complete": true,
+    "native_canvas_dimensions_verified_for_every_page": true,
+    "identity_key_joined_only_after_final_review": true
+  },
+  "private_template": {"path": "templates/p-style.pptx", "sha256": "9df06238508e65b63ed8900a3d182e014987f5fd799468eb4bfdab64e96f998d", "unchanged_and_gitignored": true},
+  "remaining_work": [
+    "go-slide-creator-3qzo4.44: integrate coherent source-preserving authoring guidance and regression coverage; original dense single-page outputs remain unsafe",
+    "go-slide-creator-3qzo4.69: resolve all 12 retained minor cautions, then re-render and re-review affected cases",
+    "All other source-loss refusals, image/subtitle failures, template repairs and authoring failures remain separately open"
+  ],
+  "aggregate_approval": false
+}
