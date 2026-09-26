@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -44,37 +45,77 @@ func TestStrictFitBlocksPredictedParagraphLossWithoutChangingSource(t *testing.T
 }
 
 func TestNativeParagraphLossStrictGenerateRefusesBeforeWriting(t *testing.T) {
-	output := t.TempDir()
-	mc := &mcpConfig{templatesDir: "../../templates", outputDir: output, cache: template.NewMemoryCache(24 * time.Hour)}
 	bullets := make([]string, 10)
 	for i := range bullets {
 		bullets[i] = fmt.Sprintf("P%02d %s", i, strings.Repeat("Required service owner confirms reporting deadlines and unresolved handoffs. ", 12))
 	}
 	deck := map[string]any{"template": "abstract", "slides": []any{map[string]any{"layout_id": "content", "content": []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Required source evidence"}, map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": bullets}}}}}
-	result, err := mc.handleGenerate(context.Background(), makeRequest(map[string]any{"presentation": deck, "strict_fit": "strict"}))
+	before, err := json.Marshal(deck)
 	if err != nil {
 		t.Fatal(err)
 	}
-	requireStructuredError(t, result, patterns.ErrCodeTextTrimmed)
-	files, err := os.ReadDir(output)
-	if err != nil {
-		t.Fatal(err)
+	for _, mode := range []string{"", "warn", "off", "strict"} {
+		for _, existing := range []bool{false, true} {
+			t.Run(fmt.Sprintf("mode=%q/existing=%t", mode, existing), func(t *testing.T) {
+				output := t.TempDir()
+				destination := filepath.Join(output, "deck.pptx")
+				if existing {
+					if err := os.WriteFile(destination, []byte("existing-deck"), 0600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				mc := &mcpConfig{templatesDir: "../../templates", outputDir: output, cache: template.NewMemoryCache(24 * time.Hour)}
+				params := map[string]any{"presentation": deck, "output_filename": "deck.pptx"}
+				if mode != "" {
+					params["strict_fit"] = mode
+				}
+				result, err := mc.handleGenerate(context.Background(), makeRequest(params))
+				if err != nil {
+					t.Fatal(err)
+				}
+				requireStructuredError(t, result, patterns.ErrCodeTextTrimmed)
+				files, err := os.ReadDir(output)
+				wantFiles := 0
+				if existing {
+					wantFiles = 1
+					data, readErr := os.ReadFile(destination)
+					if readErr != nil || string(data) != "existing-deck" {
+						t.Fatalf("refusal changed destination: %q %v", data, readErr)
+					}
+				}
+				if err != nil || len(files) != wantFiles {
+					t.Fatalf("source-loss refusal leaked artifacts: %v %v", files, err)
+				}
+				after, err := json.Marshal(deck)
+				if err != nil || !reflect.DeepEqual(before, after) {
+					t.Fatalf("refusal changed authored source: %v", err)
+				}
+			})
+		}
 	}
-	if len(files) != 0 {
-		t.Fatalf("strict source-loss refusal wrote output: %v", files)
-	}
-	result, err = mc.handleGenerate(context.Background(), makeRequest(map[string]any{"presentation": deck, "strict_fit": "warn"}))
-	if err != nil || result.IsError {
-		t.Fatalf("warning compatibility changed: err=%v result=%v", err, result)
-	}
-	var generated JSONOutput
-	if err := json.Unmarshal([]byte(textContent(result)), &generated); err != nil {
-		t.Fatal(err)
-	}
-	if !generated.Success {
-		t.Fatal("warning mode did not produce its compatibility draft")
-	}
-	if finding := firstFindingCode(generated.FitFindings, patterns.ErrCodeTextTrimmed); finding == nil || finding.Action != "refuse" {
-		t.Fatalf("warning draft hides paragraph loss: %+v", generated.FitFindings)
+}
+
+func TestNativeFittingParagraphsGenerateWithoutChangingSource(t *testing.T) {
+	bullets := []string{"Owner confirms reporting deadlines.", "Reviewer resolves outstanding handoffs."}
+	for _, mode := range []string{"", "warn", "off", "strict"} {
+		t.Run(fmt.Sprintf("mode=%q", mode), func(t *testing.T) {
+			output := t.TempDir()
+			mc := &mcpConfig{templatesDir: "../../templates", outputDir: output, cache: template.NewMemoryCache(24 * time.Hour)}
+			deck := map[string]any{"template": "abstract", "slides": []any{map[string]any{"layout_id": "content", "content": []any{map[string]any{"placeholder_id": "title", "type": "text", "text_value": "Complete source evidence"}, map[string]any{"placeholder_id": "body", "type": "bullets", "bullets_value": bullets}}}}}
+			params := map[string]any{"presentation": deck, "output_filename": "complete.pptx"}
+			if mode != "" {
+				params["strict_fit"] = mode
+			}
+			result, err := mc.handleGenerate(context.Background(), makeRequest(params))
+			if err != nil || result.IsError {
+				t.Fatalf("fitting source refused: %v %v", err, result)
+			}
+			slide := readZipText(t, filepath.Join(output, "complete.pptx"), "ppt/slides/slide")
+			for _, text := range append([]string{"Complete source evidence"}, bullets...) {
+				if !strings.Contains(slide, text) {
+					t.Fatalf("published deck omitted required source %q", text)
+				}
+			}
+		})
 	}
 }

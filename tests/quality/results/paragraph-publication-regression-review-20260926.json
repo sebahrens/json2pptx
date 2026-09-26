@@ -1,0 +1,27 @@
+{
+  "issue": "go-slide-creator-3qzo4.50",
+  "scope": "Paragraph publication regression only; not full visual closure",
+  "original_adverse_input_preserved": true,
+  "refusal_modes": ["default", "warn", "off", "strict"],
+  "destination_states": ["absent", "existing"],
+  "assertions": [
+    "Structured text_trimmed refusal",
+    "No leaked output artifacts",
+    "Existing destination byte-preserved",
+    "Authored source unchanged",
+    "Separate fitting source succeeds in every mode",
+    "Every fitting source sentence present in published slide XML"
+  ],
+  "targeted_race_suite": {"status": "pass", "duration_seconds": 58.642},
+  "build": "pass",
+  "lint": {"status": "pass", "issues": 0},
+  "review": {
+    "reviewer": "testing",
+    "findings": [],
+    "residual_risks": [
+      "Full-suite replacement and CI remain outstanding",
+      "XML source preservation does not prove visual readability"
+    ],
+    "testing_gaps": []
+  }
+}
