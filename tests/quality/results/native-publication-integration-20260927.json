@@ -1,7 +1,12 @@
 {
-  "status": "local_integration_pass_ci_pending",
+  "status": "local_integration_and_exact_commit_ci_pass",
   "captured_before_private_template_promotion": true,
   "source_commit": "794761c97f1715fd79978aa307832257b240691e",
+  "ci": {
+    "CI": {"run_id": 36274775888, "conclusion": "success"},
+    "Docker": {"run_id": 36274775831, "conclusion": "success"},
+    "CodeQL": {"run_id": 36274775546, "conclusion": "success"}
+  },
   "scope": "All available native layout publication coverage; not visual approval",
   "templates": 14,
   "native_layouts": 108,

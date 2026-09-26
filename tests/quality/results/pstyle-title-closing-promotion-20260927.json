@@ -1,5 +1,5 @@
 {
-  "status": "promoted_locally_whole_suite_verification_running",
+  "status": "promoted_locally_whole_root_short_race_pass",
   "scope": "Local private Title and Closing source repairs, not aggregate layout approval",
   "live_template": "templates/p-style.pptx",
   "live_sha256": "1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1",
@@ -39,8 +39,54 @@
   "preview_refresh": {"layouts": 7, "width": 320, "dpi": 60, "all_installed_png_hashes_match_manifest": true, "whole_templatepreview_race_package_pass_seconds": 9.851, "backup": "output/pstyle-title-candidate-20260927-v1/original-previews"},
   "whole_suite_checks": {
     "cancelled_prerequisite_attempt_not_evidence": "output/pstyle-promoted-root-race-20260927-v1.jsonl",
-    "running_race": "output/pstyle-promoted-root-race-20260927-v2.jsonl",
-    "running_non_short": "output/pstyle-promoted-root-full-20260927-v1.jsonl"
+    "race": {
+      "path": "output/pstyle-promoted-root-race-20260927-v2.jsonl",
+      "sha256": "974af4f86c9a0c981a181ad0e355be72290aa6092265670c3cbed96036be4e88",
+      "command": "go test ./... -short -race -timeout=15m -json",
+      "exit_code": 0,
+      "whole_root_result": "pass",
+      "named_pstyle_passes": 180,
+      "named_pstyle_failures": 0,
+      "named_pstyle_optional_metadata_skips": 2,
+      "cli_seconds": 837.763,
+      "quality_seconds": 572.773
+    },
+    "non_short": {
+      "path": "output/pstyle-promoted-root-full-20260927-v1.jsonl",
+      "sha256": "ec5177feb8f73ecdd81eae2fb42ab6186fea4497e68773e3f496479fbdb5121f",
+      "exit_code": 1,
+      "whole_root_result": "fail_unrelated_renderer_startup_checks",
+      "named_pstyle_passes": 312,
+      "named_pstyle_failures": 0,
+      "named_pstyle_optional_metadata_skips": 2,
+      "unresolved_failure_beads": ["go-slide-creator-3qzo4.35", "go-slide-creator-3qzo4.56", "go-slide-creator-3qzo4.57", "go-slide-creator-3qzo4.58"]
+    },
+    "affected_package_recheck": {
+      "path": "output/pstyle-promoted-renderer-recheck-20260927-v1.jsonl",
+      "sha256": "5567e4b63c778da91c8ae7a78be8cd6084437b96e6ffc81a625a51c1bed91f90",
+      "exit_code": 0,
+      "result": "pass_not_proof_of_flake_resolution"
+    },
+    "cancelled_sandbox_permission_attempt_not_evidence": {
+      "path": "output/pstyle-promoted-root-full-20260927-v2.jsonl",
+      "sha256": "ba5ce4ac75ca7ac6b636e8eb847eccb1d9e25f4bb7c6c54306391fc4b9be6dd9",
+      "reason": "Explicitly cancelled after localhost test-server bind operation not permitted; authorized uncached run followed."
+    },
+    "authorized_uncached_non_short": {
+      "path": "output/pstyle-promoted-root-full-20260927-v3.jsonl",
+      "sha256": "784744edb26c735db68c994d2a9fa2fcb53475ace5b42814efdbb0e35c656c6c",
+      "command": "go test ./... -count=1 -timeout=15m -json",
+      "exit_code": 1,
+      "named_pstyle_passes": 312,
+      "named_pstyle_failures": 0,
+      "named_pstyle_optional_metadata_skips": 2,
+      "only_failing_test": "TestRealCommandRunnerLibreOfficeTimeoutKillsWorker",
+      "failure_bead": "go-slide-creator-3qzo4.56",
+      "cli_seconds": 128.356,
+      "quality_seconds": 63.23,
+      "limits": "The non-short whole-root suite is not green; the intermittent renderer-worker fixture startup failure remains open."
+    },
+    "optional_metadata_skip_reason": "No optional SurfaceTints or DataPalette metadata; these checks do not indicate a template failure."
   },
-  "remaining_scope": "Bead .5 remains open until post-promotion checks complete. Only the p-style Title portion of .32 is repaired; other composition cautions, source-image defects, refusals and original authoring failures remain open."
+  "remaining_scope": "Closing source repair and post-promotion template checks are complete. Whole-root non-short startup failures remain separately tracked. Only the p-style Title portion of .32 is repaired; other composition cautions, source-image defects, refusals and original authoring failures remain open."
 }
