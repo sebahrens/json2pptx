@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "issue": "go-slide-creator-3qzo4.43",
+  "engine_commit": "2f9965530dbd6a5e6a2f531f5f3f2d690e44ac54",
+  "production_source_commit": "f521eb4aea7f8d10c50abc0c339490fb547ba809",
+  "scope": "Direct generator publication contract; not visual approval or an authored continuation alternative",
+  "entrypoint": "internal/generator.Generate",
+  "template": "templates/abstract.pptx",
+  "layout_id": "slideLayout3",
+  "placeholder_id": "body",
+  "source_rows": 80,
+  "source_columns": 3,
+  "source_marker_pattern": "REQUIRED-R%02d, indexes 0 through 79",
+  "exclude_template_slides": true,
+  "reproduction": "GOCACHE=/tmp/json2pptx-go-build go run output/probe-direct-table-loss-20260926.go",
+  "harness_sha256": "8e3f438e97bc3e0a87dc8bef7390ff08b0b4381e293745fbea52c6b1f29fba45",
+  "retained_log": "output/direct-table-policy-20260926.jsonl",
+  "retained_log_sha256": "aaab22a9fcb71fb42b43e1962e8b42fae199d055629ee516344de48bab51dc2a",
+  "retained_outputs": "output/direct-table-policy-20260926-245309329",
+  "results": [
+    {"mode": "default", "published": true, "generation_error": null, "missing_required_rows": 73},
+    {"mode": "warn", "published": true, "generation_error": null, "missing_required_rows": 73},
+    {"mode": "off", "published": true, "generation_error": null, "missing_required_rows": 73},
+    {"mode": "strict", "published": true, "generation_error": null, "missing_required_rows": 73}
+  ],
+  "verification": {
+    "examined_part": "ppt/slides/slide1.xml",
+    "present_row_indexes": [0, 1, 2, 3, 4, 5, 6],
+    "missing_row_index_range_inclusive": [7, 79],
+    "actual_finding_code": "table_rows_truncated",
+    "actual_finding_action": "refuse",
+    "actual_finding_severity": "error",
+    "actual_finding_path": "/slides/0/content/0",
+    "actual_fix": {"kind": "split_at_row", "split_at_row": 7, "hidden_rows": 73, "visible_rows": 7}
+  },
+  "cause": [
+    "PopulateTableInShape builds TableRenderConfig without the request's strict-fit setting",
+    "The final direct strict source-loss guard checks text_trimmed and readability_trimmed, not table_rows_truncated"
+  ],
+  "repair_requirements": [
+    "Do not publish an incomplete table as successful strict output",
+    "Return a structured source-loss error with content path and split guidance",
+    "Preserve an existing destination and clean the temporary archive on refusal",
+    "Cover actual output publication, fitting tables, and independent required-row assertions",
+    "Default-mode loss and lossless authorized continuation coverage remain open under go-slide-creator-3qzo4.41"
+  ],
+  "visual_approval": false,
+  "status": "reproduced; repair pending"
+}
