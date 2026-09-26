@@ -1,0 +1,28 @@
+{
+  "issue": "go-slide-creator-3qzo4.51",
+  "scope": "Mechanical metrics publication outcomes; no visual approvals",
+  "original_inputs_modified": false,
+  "baseline_modified": false,
+  "contract": {
+    "expected_adverse_inputs": 2,
+    "checks": ["Original input SHA256", "Exit status exactly 1", "success:false and no output path", "Single typed table_rows_truncated finding", "Original path and split_at_row fix", "Exact visible/split/hidden row counts", "Zero output artifacts"],
+    "unexpected_errors": "fail",
+    "unexpected_adverse_success": "fail",
+    "success_status": "generated_unreviewed",
+    "refusal_status": "source_loss_refused"
+  },
+  "complete_metric_corpus": {"total": 53, "generated_unreviewed": 51, "source_loss_refused": 2, "unexecuted": 0, "visually_approved": 0},
+  "adversarial_contract_cases": {"total": 26, "valid_controls": 2, "invalid_outcomes_rejected": 24},
+  "csv_status_roundtrip": "pass; preserves both outcome labels and multiline error text",
+  "final_focused_race_suite": {"status": "pass", "duration_seconds": 23.901},
+  "build": "pass",
+  "lint": {"status": "pass", "issues": 0},
+  "frozen_evidence": [
+    {"path": "output/mechanical-corpus-refusal-contract-20260926-v1/results.csv", "sha256": "b7d3a01efd87f41e651075bedc238a71f0ab70aeda1ffba249f01947d59076b5"},
+    {"path": "output/mechanical-corpus-refusal-contract-20260926-v1/findings_histogram.csv", "sha256": "9594201bc40aa8beba8c62461852f3c404becc022206f83e135fb796f2f1493e"}
+  ],
+  "reviews": [
+    {"reviewer": "testing", "findings": [], "testing_gaps": [], "residual_risks": ["A generated artifact is not a source-completeness or visual-readability verdict"]},
+    {"reviewer": "adversarial", "findings": [], "testing_gaps": [], "residual_risks": ["Known negative contract changes require investigation, not automatic reclassification", "Integrated full-suite replacement and CI still required"]}
+  ]
+}

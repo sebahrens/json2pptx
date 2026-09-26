@@ -45,8 +45,10 @@ type metrics struct {
 	UnfittableRate   float64 // unfittable / total findings
 	ShrinkRate       float64 // shrink actions / total findings
 	// Per-code histogram (from --fit-report NDJSON with --verbose-fit).
-	CodeCounts   map[string]int // finding code → count
-	ActionCounts map[string]int // action → count
+	CodeCounts       map[string]int // finding code → count
+	ActionCounts     map[string]int // action → count
+	GenerationStatus string         // generated_unreviewed or source_loss_refused; never visual approval
+	GenerationError  string
 }
 
 // fitFinding is defined in loop_driver.go (shared within the package).
@@ -308,29 +310,35 @@ func computeMetrics(t *testing.T, jsonPath, binary string) metrics {
 
 	// Collect render-time findings from generate -json-output.
 	jsonOutPath := filepath.Join(t.TempDir(), name+"-gen.json")
+	outputDir := t.TempDir()
 	genCmd := exec.Command(binary, "generate", //nolint:gosec // test code with controlled args
 		"-json", jsonPath,
 		"-template", "midnight-blue",
 		"-templates-dir", filepath.Join(findProjectRoot(t), "templates"),
-		"-output", t.TempDir(),
+		"-output", outputDir,
 		"-json-output", jsonOutPath,
 		"-strict-fit=warn",
 	)
-	if out, err := genCmd.CombinedOutput(); err != nil {
-		t.Fatalf("generate fixture %s: %v: %s", name, err, strings.TrimSpace(string(out)))
-	}
+	console, runErr := genCmd.CombinedOutput()
 
 	genData, err := os.ReadFile(jsonOutPath)
 	if err != nil || len(genData) == 0 {
 		t.Fatalf("read generation envelope for %s: bytes=%d err=%v", name, len(genData), err)
 	}
 	{
-		var genOut struct {
-			FitFindings []fitFinding `json:"fit_findings"`
-		}
+		var genOut generationReport
 		if err := json.Unmarshal(genData, &genOut); err != nil {
 			t.Fatalf("parse generation envelope for %s: %v", name, err)
 		}
+		relative, err := filepath.Rel(findProjectRoot(t), jsonPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		status, err := classifyPublication(relative, data, genOut, runErr, outputDir)
+		if err != nil {
+			t.Fatalf("generate fixture %s: %v: %s", name, err, strings.TrimSpace(string(console)))
+		}
+		m.GenerationStatus, m.GenerationError = status, genOut.Error
 		for _, f := range genOut.FitFindings {
 			if f.Code != "" {
 				m.CodeCounts[f.Code]++
@@ -416,6 +424,7 @@ func writeCSV(t *testing.T, path string, all []metrics) {
 		"name", "slide_count", "tdr_violations", "hex_fill_count", "total_fill_count",
 		"hex_fill_ratio", "tiny_divider_count", "small_font_count", "mixed_fill_slides",
 		"fit_overflow_count", "density_exceeded", "unfittable_rate", "shrink_rate",
+		"generation_status", "generation_error",
 	}
 	if err := w.Write(header); err != nil {
 		t.Fatalf("write CSV header: %v", err)
@@ -436,6 +445,7 @@ func writeCSV(t *testing.T, path string, all []metrics) {
 			strconv.Itoa(m.DensityExceeded),
 			fmt.Sprintf("%.3f", m.UnfittableRate),
 			fmt.Sprintf("%.3f", m.ShrinkRate),
+			m.GenerationStatus, m.GenerationError,
 		}
 		if err := w.Write(row); err != nil {
 			t.Fatalf("write CSV row: %v", err)
