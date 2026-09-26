@@ -39,12 +39,43 @@ func isPrivateIP(ip net.IP) bool {
 	if v4 := ip.To4(); v4 != nil {
 		ip = v4
 	}
+	// Class-based checks cover addresses the CIDR list misses, notably the
+	// unspecified IPv6 address "::" (dialing [::]:port reaches localhost)
+	// and multicast in both families.
+	if ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsInterfaceLocalMulticast() || ip.IsMulticast() {
+		return true
+	}
+	// NAT64 (64:ff9b::/96) and 6to4 (2002::/16) embed an IPv4 address that a
+	// translating gateway would forward to; block when that IPv4 is private.
+	if embedded := embeddedIPv4(ip); embedded != nil {
+		return isPrivateIP(embedded)
+	}
 	for _, block := range privateRanges {
 		if block.Contains(ip) {
 			return true
 		}
 	}
 	return false
+}
+
+// nat64Prefix is the well-known NAT64 prefix 64:ff9b::/96 (RFC 6052).
+var nat64Prefix = net.IP{0x00, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0}
+
+// embeddedIPv4 returns the IPv4 address embedded in a NAT64 (64:ff9b::/96)
+// or 6to4 (2002::/16) IPv6 address, or nil for any other address.
+func embeddedIPv4(ip net.IP) net.IP {
+	if ip.To4() != nil || len(ip) != net.IPv6len {
+		return nil
+	}
+	if ip[0] == 0x20 && ip[1] == 0x02 {
+		return net.IPv4(ip[2], ip[3], ip[4], ip[5]).To4()
+	}
+	if ip[:12].Equal(nat64Prefix) {
+		return net.IPv4(ip[12], ip[13], ip[14], ip[15]).To4()
+	}
+	return nil
 }
 
 // safeDialContext returns a net.Dialer.DialContext wrapper that resolves DNS

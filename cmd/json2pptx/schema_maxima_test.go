@@ -341,19 +341,26 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 // TestSchemaMaximaStayReadable fails both when a number gets worse and when it
 // improves without the pin following, so the ground a fix wins cannot be given
 // back (go-slide-creator-0g6p).
+// The schema-maximum payload is an unbroken run of "W"s. Until
+// go-slide-creator-s1uvj.12 textfit character-wrapped an over-wide word only
+// when it opened its paragraph, so a maximum that followed a bullet or label
+// prefix measured as one line; the pins below were re-measured with the fix.
 var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8,
 	"agenda-with-images":           6.0,
 	"arch-stack":                   0,
-	"before-after":                 0.0,
-	"before-after-compact":         10.1,
-	"bmc-canvas":                   3.8,
+	"before-after":                 5.0,
+	"before-after-compact":         5.0,
+	"bmc-canvas":                   2.4,
+	"capability-heatmap":           5.0,
 	"card-grid":                    2.4,
-	"chart-insights-split":         9.4,
+	"chart-insights-split":         6.2,
 	"comparison-2col":              4.2,
+	"contact-directory":            2.8, // 24 people in 4 groups with 60-char titles overflow one slide; the pattern reports BODY_TOO_LONG
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
 	"exec-summary":                 7.2,
+	"framework-grid":               3.6,
 	"hero-detail":                  6.7,
 	"horizontal-bar-with-callouts": 6.0,
 	"icon-row":                     0.0,
@@ -365,14 +372,20 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"kpi-5up":                      0.0,
 	"kpi-6up":                      0.0,
 	"kpi-inline":                   5.8,
+	"labeled-rows":                 5.3,
 	"matrix-2x2":                   10.1,
+	"metric-list":                  8.4,
 	"numbered-step-strip":          7.0,
 	"phase-roadmap":                6.2,
 	// Layout-aware standalone readability measurement exposed a schema-legal
 	// payload below the floor; go-slide-creator-tp23k tracks its text budget.
 	"process-flow":         0,
 	"process-flow-compact": 9.1,
-	"process-grid-2row":    0.0,
+	// Optional column_headers + outcomes rows (go-slide-creator-s1uvj.10) take
+	// height from the two tracks; at the all-"W" schema maximum the 40-char row
+	// labels in the 12% label column then autofit to ~10.4pt. Without the
+	// extra rows the maximum still renders with nothing below the floor.
+	"process-grid-2row": 10.4,
 	// A long italic quote is prose, not a KPI value. With the 12pt prose floor,
 	// the schema-maximum quote remains readable beside its optional headshot;
 	// genuine sub-12pt shrink still produces a finding (tp23k.2).
@@ -380,13 +393,15 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"pyramid":             9.2,
 	"quote-cluster":       6.7,
 	"roadmap-phased":      5.0,
-	"scqa-summary":        7.4,
+	"scqa-summary":        4.8,
 	"stat-hero":           7.4,
-	"strategy-house":      8.2,
-	"stylish-panels":      6.4,
+	"state-shift-hub":     4.6,
+	"strategy-house":      4.6,
+	"stylish-panels":      2.8,
 	"swimlane":            5.5,
 	"table-highlight":     6.7,
 	"team-bios":           5.5,
+	"text-sidebar":        6.0,
 	"timeline-horizontal": 5.5,
 	"value-chain":         8.2,
 	"waterfall-bridge":    7.2,
@@ -476,6 +491,29 @@ func coherentMaximum(pattern string, v any) any {
 					option["detail"] = string([]rune(detail)[:limit])
 				}
 			}
+		}
+	case "contact-directory":
+		// Each group's people array may hold 24, but the directory as a whole
+		// holds 24: share them evenly across the maximal four groups.
+		if m, ok := v.(map[string]any); ok {
+			groups, _ := m["groups"].([]any)
+			if n := len(groups); n > 0 {
+				per := 24 / n
+				for _, raw := range groups {
+					if g, isMap := raw.(map[string]any); isMap {
+						if people, isList := g["people"].([]any); isList && len(people) > per {
+							g["people"] = people[:per]
+						}
+					}
+				}
+			}
+		}
+	case "numbered-step-strip":
+		// Seven steps and per-step icons are stacked-box / toc only; chevron
+		// (the first enum value) holds six without icons. Measure the style
+		// that admits the full schema maximum.
+		if m, ok := v.(map[string]any); ok {
+			m["style"] = "stacked-box"
 		}
 	case "timeline-horizontal":
 		// end_date is only legal in gantt style, which lives in overrides.

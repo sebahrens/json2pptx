@@ -139,6 +139,7 @@ type IconInsert struct {
 type ImageInsert struct {
 	Path     string // File path to the image
 	Alt      string // Alt text for accessibility
+	Geometry string // Frame preset: "" / "rect" or "ellipse" (circular headshots)
 	OffsetX  int64  // X position in EMU
 	OffsetY  int64  // Y position in EMU
 	ExtentCX int64  // Width in EMU

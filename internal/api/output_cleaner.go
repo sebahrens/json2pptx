@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sync"
 	"time"
 )
@@ -28,7 +29,8 @@ type OutputCleanerConfig struct {
 	OutputDir string
 
 	// Retention is the maximum age of output files before they are removed.
-	// Files older than this are deleted. Must be positive.
+	// Generated download files older than this are deleted. Zero or negative
+	// falls back to DefaultFileRetention, the same expiry convert advertises.
 	Retention time.Duration
 
 	// Interval is how often the cleanup runs.
@@ -47,6 +49,14 @@ func NewOutputCleaner(cfg OutputCleanerConfig) *OutputCleaner {
 		interval = 5 * time.Minute
 	}
 
+	// A non-positive retention used to put the cutoff at (or after) "now",
+	// deleting every download immediately while convert still advertised a
+	// DefaultFileRetention expiry (go-slide-creator-s1uvj.22).
+	retention := cfg.Retention
+	if retention <= 0 {
+		retention = DefaultFileRetention
+	}
+
 	logger := cfg.Logger
 	if logger == nil {
 		logger = slog.Default()
@@ -54,7 +64,7 @@ func NewOutputCleaner(cfg OutputCleanerConfig) *OutputCleaner {
 
 	return &OutputCleaner{
 		outputDir: cfg.OutputDir,
-		retention: cfg.Retention,
+		retention: retention,
 		interval:  interval,
 		stopCh:    make(chan struct{}),
 		doneCh:    make(chan struct{}),
@@ -135,7 +145,10 @@ func (c *OutputCleaner) cleanup() {
 	}
 }
 
-// cleanExpiredFiles removes files in the output directory older than the retention period.
+// cleanExpiredFiles removes generated download files in the output directory
+// older than the retention period. Only names produced by convert
+// (validDownloadFilename: 32 hex chars + ".pptx") are candidates; anything else
+// an operator keeps in OUTPUT_DIR is left alone (go-slide-creator-s1uvj.22).
 // Returns the number of files removed and any error encountered.
 func (c *OutputCleaner) cleanExpiredFiles() (int, error) {
 	entries, err := os.ReadDir(c.outputDir)
@@ -147,7 +160,7 @@ func (c *OutputCleaner) cleanExpiredFiles() (int, error) {
 	cleaned := 0
 
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() || !isGeneratedOutputName(entry.Name()) {
 			continue
 		}
 
@@ -170,6 +183,17 @@ func (c *OutputCleaner) cleanExpiredFiles() (int, error) {
 	}
 
 	return cleaned, nil
+}
+
+// orphanedGeneratorTemp matches the atomic-write temp file the generator
+// creates next to a download (".<name>.*.tmp", see singlepass.go) and leaves
+// behind only if the process dies mid-write.
+var orphanedGeneratorTemp = regexp.MustCompile(`^\.[0-9a-f]{32}\.pptx\.[0-9]+\.tmp$`)
+
+// isGeneratedOutputName reports whether name is a file convert produced: a
+// download (validDownloadFilename) or its orphaned generator temp file.
+func isGeneratedOutputName(name string) bool {
+	return validDownloadFilename.MatchString(name) || orphanedGeneratorTemp.MatchString(name)
 }
 
 // CleanupNow triggers an immediate cleanup outside the normal interval.

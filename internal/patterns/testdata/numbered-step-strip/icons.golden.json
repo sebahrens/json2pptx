@@ -1,0 +1,178 @@
+{
+  "gap": 8,
+  "row_gap": 6,
+  "columns": [
+    1,
+    0.7,
+    8
+  ],
+  "rows": [
+    {
+      "auto_height": true,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "01",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "max_height": 26,
+          "icon": {
+            "name": "flag",
+            "fill": "accent1"
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Discover",
+                  "size": 13,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "Map the current state and surface the constraints.",
+                  "size": 10,
+                  "color": "dk2",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "auto_height": true,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "02",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Design",
+                  "size": 13,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "Shape the target operating model and the roadmap.",
+                  "size": 10,
+                  "color": "dk2",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "left",
+            "color": "accent1",
+            "width": 4
+          }
+        }
+      ]
+    },
+    {
+      "auto_height": true,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "accent1",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "03",
+                  "size": 18,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "max_height": 26,
+          "icon": {
+            "name": "target",
+            "fill": "accent1"
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Deliver",
+                  "size": 13,
+                  "bold": true,
+                  "color": "dk1",
+                  "align": "l"
+                },
+                {
+                  "content": "Stand up the capability and migrate the workload.",
+                  "size": 10,
+                  "color": "dk2",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

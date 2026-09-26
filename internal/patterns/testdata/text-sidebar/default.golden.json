@@ -1,0 +1,101 @@
+{
+  "col_gap": 28,
+  "columns": [
+    68,
+    32
+  ],
+  "rows": [
+    {
+      "min_height": 261.2,
+      "max_height": 261.2,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Introduction",
+                  "size": 20,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "l",
+                  "space_after": 10
+                },
+                {
+                  "content": "We meet often with CEOs, CFOs and CIOs to discuss AI — a topic that is both captivating and evolving rapidly. After working with more than 2,500 clients over the past three years, we are \u003cb\u003esharing our most recent insights\u003c/b\u003e in a new series for the C-suite.",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 8
+                },
+                {
+                  "content": "In this edition we discuss the future of asset management and the role agentic AI will play in separating those who successfully implement it from those who do not. We address the questions executives ask most:",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 8
+                },
+                {
+                  "content": "• How do recent advances in agentic AI affect our strategy?",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 4
+                },
+                {
+                  "content": "• We have run AI pilots for two years and the ROI is underwhelming — what are the best doing differently?",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l",
+                  "space_after": 4
+                },
+                {
+                  "content": "• What does an end-to-end AI-first operating model look like?",
+                  "size": 14,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "t"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": {
+              "color": "accent1",
+              "tint": 12000
+            },
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "In this perspective, we outline how AI-first asset managers unlock end-to-end transformation and sustained value creation",
+                  "size": 20,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr",
+              "inset_left": 18,
+              "inset_right": 18,
+              "inset_top": 18,
+              "inset_bottom": 18
+            }
+          },
+          "accent_bar": {
+            "position": "top",
+            "color": "accent1",
+            "width": 4
+          }
+        }
+      ]
+    }
+  ]
+}

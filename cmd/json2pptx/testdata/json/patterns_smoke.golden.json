@@ -162,6 +162,17 @@
     ]
   },
   {
+    "pattern_name": "state-shift-hub",
+    "row_count": 5,
+    "cell_counts": [
+      5,
+      11,
+      12,
+      12,
+      10
+    ]
+  },
+  {
     "pattern_name": "exec-summary",
     "row_count": 7,
     "cell_counts": [
@@ -188,6 +199,66 @@
   },
   {
     "pattern_name": "image-text-split",
+    "row_count": 1,
+    "cell_counts": [
+      2
+    ]
+  },
+  {
+    "pattern_name": "metric-list",
+    "row_count": 6,
+    "cell_counts": [
+      2,
+      1,
+      2,
+      1,
+      2,
+      1
+    ]
+  },
+  {
+    "pattern_name": "labeled-rows",
+    "row_count": 5,
+    "cell_counts": [
+      2,
+      1,
+      2,
+      1,
+      2
+    ]
+  },
+  {
+    "pattern_name": "capability-heatmap",
+    "row_count": 5,
+    "cell_counts": [
+      3,
+      3,
+      3,
+      3,
+      1
+    ]
+  },
+  {
+    "pattern_name": "framework-grid",
+    "row_count": 3,
+    "cell_counts": [
+      4,
+      4,
+      4
+    ]
+  },
+  {
+    "pattern_name": "contact-directory",
+    "row_count": 4,
+    "cell_counts": [
+      1,
+      8,
+      1,
+      5
+    ]
+  },
+  {
+    "pattern_name": "text-sidebar",
     "row_count": 1,
     "cell_counts": [
       2

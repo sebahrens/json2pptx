@@ -343,6 +343,26 @@
     {
       "layout_id": "content",
       "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "From Today to Agentic"}
+      ],
+      "pattern": {
+        "name": "state-shift-hub",
+        "values": {
+          "hub_label": "Today's state vs. agentic state",
+          "left_header": "TODAY'S STATE",
+          "right_header": "AGENTIC STATE",
+          "pairs": [
+            {"title": "Intake", "before": "Requests triaged by hand", "after": "Agents route every request on arrival"},
+            {"title": "Research", "before": "Days assembling context", "after": "Sourced brief drafted in minutes"},
+            {"title": "Decision", "before": "Weekly committee reviews", "after": "Same-day approvals on analysed options"},
+            {"title": "Follow-up", "before": "Status chased manually", "after": "Agents escalate only the exceptions"}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
         {"placeholder_id": "title", "type": "text", "text_value": "Executive Summary"}
       ],
       "pattern": {
@@ -390,6 +410,132 @@
           "body": "Replenishment was rebuilt around store-level demand signals.",
           "bullets": ["Daily forecasts for 18,000 SKUs", "Automated orders for 60% of volume"],
           "metrics": [{"value": "-34%", "label": "stock-outs"}, {"value": "$12M", "label": "working capital"}]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "By the Numbers"}
+      ],
+      "pattern": {
+        "name": "metric-list",
+        "values": {
+          "items": [
+            {"value": "3.8x", "label": "Higher TSR for AI leaders", "detail": "Leaders compound returns across the cycle", "highlight": true},
+            {"value": "~30%", "label": "Share of value already generated", "detail": "Up 2.2x from 2023"},
+            {"value": "16→33%", "label": "Agentic share of AI value", "detail": "Expected to double by 2028"}
+          ],
+          "callout": "Most firms have not moved beyond pilots"
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Why, What, How"}
+      ],
+      "pattern": {
+        "name": "labeled-rows",
+        "values": {
+          "rows": [
+            {"label": "WHY", "sublabel": "act now", "body": "Growth came from markets, not operations, and fee pressure continues."},
+            {"label": "WHAT", "sublabel": "the target state", "body": "An AI-first operating model with **2x to 5x** research coverage."},
+            {"label": "HOW", "sublabel": "to start", "body": "Reimagine two or three workflows end to end, owned by the business."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Automation Potential by Function"}
+      ],
+      "pattern": {
+        "name": "capability-heatmap",
+        "values": {
+          "tiers": [
+            {"label": "High", "description": ">50% of time automatable"},
+            {"label": "Medium", "description": "20-50%"},
+            {"label": "Low", "description": "<20%"}
+          ],
+          "columns": [
+            {"header": "Front office", "sublabel": "Up to 30% capacity unlock", "cells": [
+              {"text": "Research summaries", "tier": 0}, {"text": "Pitch preparation", "tier": 1}, {"text": "Client meetings", "tier": 2}
+            ]},
+            {"header": "Middle office", "sublabel": "Up to 45% capacity unlock", "cells": [
+              {"text": "Reconciliations", "tier": 0}, {"text": "Risk reporting", "tier": 0}, {"text": "Exception handling", "tier": 2}
+            ]},
+            {"header": "Operations", "cells": [
+              {"text": "Trade settlement", "tier": 0}, {"text": "Corporate actions", "tier": 1}
+            ]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Change Management Framework"}
+      ],
+      "pattern": {
+        "name": "framework-grid",
+        "values": {
+          "rows": [
+            {"label": "People", "cards": [
+              {"title": "Leadership", "body": "Visible sponsor at every level"},
+              {"title": "Skills", "body": "Role-based academies"},
+              {"title": "Incentives", "body": "Goals tied to adoption"}
+            ]},
+            {"label": "Process", "cards": [
+              {"title": "Governance", "body": "Single change board"},
+              {"title": "Ways of working", "body": "Redesigned workflows"}
+            ]},
+            {"label": "Technology", "cards": [
+              {"title": "Platforms", "body": "Shared data and AI platform"}
+            ]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Key Contacts"}
+      ],
+      "pattern": {
+        "name": "contact-directory",
+        "values": {
+          "groups": [
+            {"name": "North America", "people": [
+              {"name": "Jane Smith", "title": "Managing Director, New York"},
+              {"name": "Arun Patel", "title": "Partner, Toronto"},
+              {"name": "Lila Romero", "title": "Principal, Chicago"},
+              {"name": "Tom Becker", "title": "Principal, San Francisco"}
+            ]},
+            {"name": "Europe", "people": [
+              {"name": "Sophie Laurent", "title": "Managing Director, Paris"},
+              {"name": "Henrik Nilsson", "title": "Partner, Stockholm"}
+            ]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Introduction"}
+      ],
+      "pattern": {
+        "name": "text-sidebar",
+        "values": {
+          "heading": "Introduction",
+          "paragraphs": [
+            "Supply chains have spent a decade optimising for cost; the last three years showed what that cost in resilience.",
+            "This report shows where resilience can be bought back:"
+          ],
+          "bullets": ["Dual sourcing for the top 20 components", "Regional buffer stock"],
+          "sidebar": "Resilience is now a design choice, not an insurance premium"
         }
       }
     }

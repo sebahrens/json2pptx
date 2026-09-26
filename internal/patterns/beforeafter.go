@@ -403,6 +403,7 @@ func applyBeforeAfterCellOverride(cell *jsonschema.GridCellInput, cellOverrides 
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

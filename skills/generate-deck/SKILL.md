@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.138.0
+schema_version: 4.147.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -41,7 +41,12 @@ patterns with `list_patterns` and the chosen pattern's live value schema with
 `recommend_visual` (when visual choice is unclear) → `expand_pattern` (when
 using a pattern) → `validate_input` → `generate_presentation` → render and
 inspect. Read [RAW_PATH.md](RAW_PATH.md) before authoring raw JSON. Its
-preconditions are **not** universal DeckSpec requirements.
+preconditions are **not** universal DeckSpec requirements. Two raw-only
+patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts
+/ "who to call": grouped rows of circular headshots, names and titles, up to
+24 people) and `text-sidebar` (prose introduction or foreword beside one large
+key-message panel). A shape-grid `image` cell accepts `geometry: "ellipse"` for
+a circular picture frame.
 
 For both paths, a passing `quality_gate` or `deterministic_ready` field is a
 precondition, not proof that anybody looked at the slides. On a fresh semantic
@@ -66,9 +71,10 @@ executable one.
   visual inspection, resumable calls, and idempotency.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules.
-- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance; get
-  the current catalog and per-pattern schema from `list_patterns` /
-  `show_pattern`.
+- [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
+  (including tier-rated `capability-heatmap`, labelled-row `framework-grid`
+  and per-pair-count `state-shift-hub` budgets); get the current catalog and per-pattern schema from
+  `list_patterns` / `show_pattern`.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

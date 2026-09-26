@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
@@ -73,6 +74,11 @@ func (ctx *singlePassContext) applyThemeOverrideToThemeParts() {
 				"theme_override.colors: %s not found in %s — those slots keep the template's values",
 				strings.Join(applied.unmatchedColors, ", "), f.Name))
 		}
+		if len(applied.invalidColors) > 0 {
+			ctx.warnings = append(ctx.warnings, fmt.Sprintf(
+				"theme_override.colors: %s not a 6-digit hex color — those slots keep the template's values",
+				strings.Join(applied.invalidColors, ", ")))
+		}
 		if applied.changed() {
 			ctx.syntheticFiles[f.Name] = []byte(patched)
 			slog.Info("theme override applied to theme part",
@@ -91,6 +97,7 @@ type themePatchResult struct {
 	majorFont       bool
 	minorFont       bool
 	unmatchedColors []string
+	invalidColors   []string
 }
 
 func (r themePatchResult) changed() bool {
@@ -122,26 +129,51 @@ func patchThemeXML(xml string, override *types.ThemeOverride) (string, themePatc
 		if !ok || strings.TrimSpace(hex) == "" {
 			continue
 		}
-		val := strings.ToUpper(strings.TrimPrefix(strings.TrimSpace(hex), "#"))
+		if !types.IsThemeOverrideHex(hex) {
+			// Input validation rejects these; never write a malformed value
+			// into the theme part (go-slide-creator-s1uvj.24).
+			result.invalidColors = append(result.invalidColors, slot)
+			continue
+		}
+		// Re-derive the attribute from the parsed number, so nothing from the
+		// input string itself reaches the XML.
+		rgb, err := strconv.ParseUint(strings.TrimPrefix(strings.TrimSpace(hex), "#"), 16, 32)
+		if err != nil {
+			result.invalidColors = append(result.invalidColors, slot)
+			continue
+		}
+		val := fmt.Sprintf("%06X", rgb)
 		pattern := clrSchemeSlotPattern(slot)
 		if !pattern.MatchString(xml) {
 			result.unmatchedColors = append(result.unmatchedColors, slot)
 			continue
 		}
-		xml = pattern.ReplaceAllString(xml, `${1}<a:srgbClr val="`+val+`"/>${2}`)
+		xml = replaceBetweenGroups(pattern, xml, `<a:srgbClr val="`+val+`"/>`)
 		result.colors++
 	}
 
 	if override.TitleFont != "" && majorFontLatinPattern.MatchString(xml) {
-		xml = majorFontLatinPattern.ReplaceAllString(xml, `${1}`+escapeXMLAttrValue(override.TitleFont)+`${2}`)
+		xml = replaceBetweenGroups(majorFontLatinPattern, xml, escapeXMLAttrValue(override.TitleFont))
 		result.majorFont = true
 	}
 	if override.BodyFont != "" && minorFontLatinPattern.MatchString(xml) {
-		xml = minorFontLatinPattern.ReplaceAllString(xml, `${1}`+escapeXMLAttrValue(override.BodyFont)+`${2}`)
+		xml = replaceBetweenGroups(minorFontLatinPattern, xml, escapeXMLAttrValue(override.BodyFont))
 		result.minorFont = true
 	}
 
 	return xml, result
+}
+
+// replaceBetweenGroups replaces every match of pattern (which must have exactly
+// two capture groups, the prefix and suffix to keep) with prefix + literal +
+// suffix. The literal is inserted verbatim: unlike ReplaceAllString, a '$' in
+// an author-supplied font name is never expanded as a group reference
+// (go-slide-creator-s1uvj.24).
+func replaceBetweenGroups(pattern *regexp.Regexp, s, literal string) string {
+	return pattern.ReplaceAllStringFunc(s, func(match string) string {
+		m := pattern.FindStringSubmatch(match)
+		return m[1] + literal + m[2]
+	})
 }
 
 // escapeXMLAttrValue escapes a font name for use inside a double-quoted XML

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -13,6 +14,8 @@ import (
 // ---------------------------------------------------------------------------
 // process-grid-2row pattern — two parallel tracks of phase boxes with a dk2
 // row-label column on the left. Each row carries an equal number of phases.
+// Optional column_headers add a header row with an accent underline above
+// both tracks; optional outcomes add a row of accent pills beneath them.
 // ---------------------------------------------------------------------------
 
 func init() {
@@ -78,13 +81,34 @@ type ProcessGrid2RowValues struct {
 	Row2Label  string   `json:"row2_label"`
 	Row2Phases []string `json:"row2_phases"`
 	Row2Color  string   `json:"row2_color,omitempty"`
+	// ColumnHeaders names each phase column (one per phase) in a header row
+	// with an accent underline above both tracks.
+	ColumnHeaders []string `json:"column_headers,omitempty"`
+	// Outcomes gives each phase column a result, rendered as a row of accent
+	// pills beneath the tracks.
+	Outcomes []string `json:"outcomes,omitempty"`
 }
+
+// Column header / outcome limits and geometry.
+const (
+	processGrid2RowHeaderMaxChars  = 24
+	processGrid2RowOutcomeMaxChars = 32
+	processGrid2RowLabelColPct     = 12.0
+	processGrid2RowGapPt           = 6.0
+	processGrid2RowUnderlinePt     = 3.0
+	// processGrid2RowMeasureSafety narrows the measured width so a header or
+	// outcome that nearly fills its column is sized for a second line rather
+	// than squeezed when the renderer's font runs wider than the metrics.
+	processGrid2RowMeasureSafety = 0.85
+)
 
 // ProcessGrid2RowOverrides is the standard text overrides.
 type ProcessGrid2RowOverrides = TextOverrides
 
 // ProcessGrid2RowCellOverride is the shared per-cell override; indexed
-// row-major as: row1_label, row1_phase[0..N-1], row2_label, row2_phase[0..N-1].
+// row-major as: row1_label, row1_phase[0..N-1], row2_label, row2_phase[0..N-1],
+// then column_headers[0..N-1] and outcomes[0..N-1] when present (appended so
+// the track indices never move).
 type ProcessGrid2RowCellOverride = CellOverride
 
 // ---------------------------------------------------------------------------
@@ -107,6 +131,10 @@ func (p *processGrid2Row) Schema() *Schema {
 			"row2_label":  StringSchema(40).WithDescription("Label for the bottom row (rendered in the dk2 left column)"),
 			"row2_phases": phasesSchema,
 			"row2_color":  StringSchema(0).WithDescription("Scheme color for the bottom-row phase boxes; defaults to a darker tone of row1_color so the two tracks read as parallel rather than unrelated").WithDefault(""),
+			"column_headers": ArraySchema(StringSchema(processGrid2RowHeaderMaxChars), 3, 6).
+				WithDescription("Optional per-column headers (one per phase; length must equal the phase count) rendered as a header row with an accent underline above both tracks"),
+			"outcomes": ArraySchema(StringSchema(processGrid2RowOutcomeMaxChars), 3, 6).
+				WithDescription("Optional per-column outcomes (one per phase; length must equal the phase count) rendered as a row of accent pills under the tracks, e.g. \"5-10% wallet share\""),
 		},
 		[]string{"row1_label", "row1_phases", "row2_label", "row2_phases"},
 	).WithAdditionalProperties(false)
@@ -187,13 +215,42 @@ func (p *processGrid2Row) Validate(values, overrides any, cellOverrides map[int]
 		}
 	}
 
-	// Total cells: 2 row labels + row1_phases + row2_phases.
-	totalCells := 2 + len(vals.Row1Phases) + len(vals.Row2Phases)
+	errs = append(errs, validateProcessGrid2RowColumnList(name, "column_headers", vals.ColumnHeaders, processGrid2RowHeaderMaxChars, vals)...)
+	errs = append(errs, validateProcessGrid2RowColumnList(name, "outcomes", vals.Outcomes, processGrid2RowOutcomeMaxChars, vals)...)
+
+	// Total cells: 2 row labels + row1_phases + row2_phases (+ headers + outcomes).
+	totalCells := 2 + len(vals.Row1Phases) + len(vals.Row2Phases) + len(vals.ColumnHeaders) + len(vals.Outcomes)
 	if coErr := validateCellOverrideKeys(name, cellOverrides, totalCells, ""); coErr != nil {
 		errs = append(errs, coErr)
 	}
 
 	return errors.Join(errs...)
+}
+
+// validateProcessGrid2RowColumnList checks an optional one-per-phase-column
+// list (column_headers / outcomes): it must match both tracks' phase count,
+// and each entry must be non-blank and within limit.
+func validateProcessGrid2RowColumnList(name, field string, items []string, limit int, vals *ProcessGrid2RowValues) []error {
+	if len(items) == 0 {
+		return nil
+	}
+	var errs []error
+	n := len(vals.Row1Phases)
+	if len(items) != n || len(vals.Row2Phases) != n {
+		errs = append(errs, newValidationError(name, field, ErrCodeCountMismatch,
+			fmt.Sprintf("process-grid-2row: %s needs one entry per phase column — row1_phases and row2_phases must have the same length and %s must match it (row1 has %d, row2 has %d, %s has %d)",
+				field, field, n, len(vals.Row2Phases), field, len(items)),
+			ResizeListFix(field, n)))
+	}
+	for i, item := range items {
+		path := fmt.Sprintf("%s[%d]", field, i)
+		if strings.TrimSpace(item) == "" {
+			errs = append(errs, errRequired(name, path))
+		} else if runeLen(item) > limit {
+			errs = append(errs, errMaxLength(name, path, limit, runeLen(item)))
+		}
+	}
+	return errs
 }
 
 func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -235,8 +292,8 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	// Column widths: row-label column ~12%, phase columns split the rest.
 	numCols := 1 + n
 	cols := make([]float64, numCols)
-	cols[0] = 12
-	phaseWidth := 88.0 / float64(n)
+	cols[0] = processGrid2RowLabelColPct
+	phaseWidth := (100 - processGrid2RowLabelColPct) / float64(n)
 	for i := 1; i < numCols; i++ {
 		cols[i] = phaseWidth
 	}
@@ -264,17 +321,89 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 		cellIdx++
 	}
 
+	rows := []jsonschema.GridRowInput{
+		{Cells: row1Cells},
+		{Cells: row2Cells},
+	}
+
+	// Optional header and outcome rows: content-sized, so the two tracks keep
+	// flexing over whatever height is left. Their cell_overrides indices come
+	// after the tracks so existing indices stay stable.
+	contentW, _ := contentAreaPt(ctx)
+	colTextW := contentW*phaseWidth/100 - processGrid2RowGapPt - 2*defaultShapeInsetLRPt
+	if len(vals.ColumnHeaders) == n {
+		headerRow := buildProcessGrid2RowHeaderRow(ctx, vals.ColumnHeaders, baseAccent, math.Max(phaseSize, labelSize-2), colTextW)
+		for i := range vals.ColumnHeaders {
+			applyProcessGrid2RowOverride(headerRow.Cells[1+i], cellOverrides, cellIdx, baseAccent)
+			cellIdx++
+		}
+		rows = append([]jsonschema.GridRowInput{headerRow}, rows...)
+	}
+	if len(vals.Outcomes) == n {
+		outcomeRow := buildProcessGrid2RowOutcomeRow(ctx, vals.Outcomes, baseAccent, phaseSize, colTextW)
+		for i := range vals.Outcomes {
+			applyProcessGrid2RowOverride(outcomeRow.Cells[1+i], cellOverrides, cellIdx, baseAccent)
+			cellIdx++
+		}
+		rows = append(rows, outcomeRow)
+	}
+
 	grid := &jsonschema.ShapeGridInput{
 		Columns: json.RawMessage(colsJSON),
-		Gap:     6,
-		RowGap:  6,
-		Rows: []jsonschema.GridRowInput{
-			{Cells: row1Cells},
-			{Cells: row2Cells},
-		},
+		Gap:     processGrid2RowGapPt,
+		RowGap:  processGrid2RowGapPt,
+		Rows:    rows,
 	}
 
 	return grid, nil
+}
+
+// buildProcessGrid2RowHeaderRow is the optional column-header row: bold
+// headers in a readable ink over an accent underline, above both tracks. The
+// first cell (over the row-label column) is empty.
+func buildProcessGrid2RowHeaderRow(ctx ExpandContext, headers []string, accent string, size, textW float64) jsonschema.GridRowInput {
+	ink := inkOnLight(ctx, "dk2", 4.5)
+	h := size * contentLineHeight
+	// Leading empty cell over the row-label column, then one per header.
+	cells := []*jsonschema.GridCellInput{{}}
+	for _, header := range headers {
+		h = math.Max(h, textBlockHeightPt(ctx.Theme.BodyFont, textW*processGrid2RowMeasureSafety, textParagraph{text: header, size: size, bold: true}))
+		cells = append(cells, &jsonschema.GridCellInput{
+			Shape: &jsonschema.ShapeSpecInput{
+				Geometry: "rect",
+				Fill:     json.RawMessage(`"none"`),
+				Text:     buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(header), size, true, ink),
+			},
+			AccentBar: &jsonschema.AccentBarInput{Position: "bottom", Color: accent, Width: processGrid2RowUnderlinePt},
+		})
+	}
+	rowPt := math.Round(h + 2*defaultShapeInsetTBPt + processGrid2RowUnderlinePt + 2)
+	return jsonschema.GridRowInput{MinHeight: rowPt, MaxHeight: rowPt, Cells: cells}
+}
+
+// buildProcessGrid2RowOutcomeRow is the optional outcome row: one pill per
+// phase column on the accent's light tint (so it reads as a result, distinct
+// from the solid track boxes above), text colour measured against the tint.
+// The first cell (under the row-label column) is empty.
+func buildProcessGrid2RowOutcomeRow(ctx ExpandContext, outcomes []string, accent string, size, textW float64) jsonschema.GridRowInput {
+	tone := inactiveTintTone(accent)
+	ink := readableTextOn(ctx, tone, "dk1")
+	h := size * contentLineHeight
+	// Leading empty cell under the row-label column, then one per outcome.
+	cells := []*jsonschema.GridCellInput{{}}
+	for _, outcome := range outcomes {
+		h = math.Max(h, textBlockHeightPt(ctx.Theme.BodyFont, (textW-8)*processGrid2RowMeasureSafety, textParagraph{text: outcome, size: size, bold: true}))
+		cells = append(cells, &jsonschema.GridCellInput{
+			Shape: &jsonschema.ShapeSpecInput{
+				Geometry:    "roundRect",
+				Adjustments: map[string]int64{"adj": 35000}, // rounded pill ends
+				Fill:        tone.fillJSON(),
+				Text:        buildProcessGrid2RowTextContent(pptx.ConvertMarkdownEmphasis(outcome), size, true, ink),
+			},
+		})
+	}
+	rowPt := math.Round(h + 2*defaultShapeInsetTBPt + 8)
+	return jsonschema.GridRowInput{MinHeight: rowPt, MaxHeight: rowPt, Cells: cells}
 }
 
 // ---------------------------------------------------------------------------
@@ -360,6 +489,7 @@ func applyProcessGrid2RowOverride(cell *jsonschema.GridCellInput, cellOverrides 
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

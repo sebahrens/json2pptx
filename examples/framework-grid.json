@@ -1,0 +1,74 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "framework-grid.pptx",
+  "accent_strategy": "primary",
+  "slides": [
+    {
+      "layout_id": "title",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Change Management Framework"},
+        {"placeholder_id": "subtitle", "type": "text", "text_value": "Framework grids: labelled dimensions with titled levers"}
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Adoption needs people, process and technology levers together"}
+      ],
+      "pattern": {
+        "name": "framework-grid",
+        "values": {
+          "rows": [
+            {"label": "People", "cards": [
+              {"title": "Leadership", "body": "Visible sponsor at every level of the organisation"},
+              {"title": "Skills", "body": "Role-based academies and on-the-job coaching"},
+              {"title": "Incentives", "body": "Goals and bonuses tied to adoption"},
+              {"title": "Communication", "body": "Monthly story of wins and lessons"}
+            ]},
+            {"label": "Process", "cards": [
+              {"title": "Governance", "body": "Single change board with a monthly cadence"},
+              {"title": "Ways of working", "body": "Redesigned end-to-end workflows"}
+            ]},
+            {"label": "Technology", "cards": [
+              {"title": "Platforms", "body": "Shared data and AI platform"},
+              {"title": "Tooling", "body": "Copilots embedded in daily tools"},
+              {"title": "Data", "body": "Owned, trusted and reusable"}
+            ]},
+            {"label": "Measurement", "cards": [
+              {"title": "Adoption KPIs", "body": "Weekly active use by role"},
+              {"title": "Value tracking", "body": "Benefits signed off by finance"}
+            ]}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Growth levers by dimension, one accent per column"}
+      ],
+      "pattern": {
+        "name": "framework-grid",
+        "values": {
+          "rows": [
+            {"label": "Customers", "cards": [
+              {"title": "New segments"},
+              {"title": "Retention"},
+              {"title": "Share of wallet"}
+            ]},
+            {"label": "Products", "cards": [
+              {"title": "Premium tier"},
+              {"title": "Bundles"}
+            ]},
+            {"label": "Channels", "cards": [
+              {"title": "Partners"},
+              {"title": "Self-serve"},
+              {"title": "Inside sales"}
+            ]}
+          ]
+        },
+        "overrides": {"cell_accent_mode": "progressive", "label_width_pct": 22}
+      }
+    }
+  ]
+}

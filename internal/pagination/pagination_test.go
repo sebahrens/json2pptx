@@ -632,3 +632,47 @@ func TestPaginatedTitle(t *testing.T) {
 		}
 	}
 }
+
+// A split slide keeps its presentation settings on every page, and its
+// trailing "bottom line" paragraph on the last page (go-slide-creator-s1uvj.15).
+func TestPaginate_PreservesTransitionBuildAndTrailingBody(t *testing.T) {
+	bullets := make([]string, 12)
+	for i := range bullets {
+		bullets[i] = "Bullet point"
+	}
+	pres := &types.PresentationDefinition{
+		Metadata: types.Metadata{Title: "Test", Autopaginate: boolPtr(true)},
+		Slides: []types.SlideDefinition{{
+			Title:           "Big",
+			Type:            types.SlideTypeContent,
+			Transition:      "fade",
+			TransitionSpeed: "slow",
+			Build:           "bullets",
+			Content: types.SlideContent{
+				Bullets:          bullets,
+				Body:             "Lead",
+				BodyAfterBullets: "Bottom line: act now.",
+			},
+		}},
+	}
+
+	Paginate(pres)
+
+	if len(pres.Slides) != 2 {
+		t.Fatalf("expected 2 slides, got %d", len(pres.Slides))
+	}
+	for i, s := range pres.Slides {
+		if s.Transition != "fade" || s.TransitionSpeed != "slow" || s.Build != "bullets" {
+			t.Errorf("page %d: transition=%q speed=%q build=%q, want fade/slow/bullets", i, s.Transition, s.TransitionSpeed, s.Build)
+		}
+	}
+	if got := pres.Slides[0].Content.BodyAfterBullets; got != "" {
+		t.Errorf("first page BodyAfterBullets = %q, want empty", got)
+	}
+	if got := pres.Slides[1].Content.BodyAfterBullets; got != "Bottom line: act now." {
+		t.Errorf("last page BodyAfterBullets = %q, want the trailing paragraph", got)
+	}
+	if pres.Slides[0].Content.Body != "Lead" || pres.Slides[1].Content.Body != "" {
+		t.Errorf("lead body should stay on the first page only")
+	}
+}

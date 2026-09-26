@@ -18,8 +18,11 @@ import (
 // semantics, with a built-in detail zone. Three render styles:
 //
 //   chevron     — 3-6 connected chevrons in a single row (optional description row)
-//   stacked-box — table-like rows: narrow colored number/tip column + no-border body
-//   toc         — high-polish numbered agenda (badge + title, optional body)
+//   stacked-box — 3-7 table-like rows: narrow colored number/tip column + no-border body
+//   toc         — 3-7 high-polish numbered agenda rows (badge + title, optional body)
+//
+// stacked-box and toc steps may carry an optional icon, drawn in its own
+// column between the number badge and the label.
 //
 // The scorecard principle applies: a compact primary lane carries the ordinal
 // label, an optional detail zone carries the per-step explanation. Unlike
@@ -38,13 +41,13 @@ func (n *numberedStepStrip) Description() string {
 	return "Ordered numbered steps without flowchart diamonds, in chevron / stacked-box / toc styles, each with an optional per-step detail zone"
 }
 func (n *numberedStepStrip) UseWhen() string {
-	return "Ordered steps or a table of contents that need numbering and an optional short explanation per item but NOT decision branching (3-6 steps); use stacked-box for a scorecard look, chevron for a compact ribbon, toc to replace a plain agenda"
+	return "Ordered steps or a table of contents that need numbering and an optional short explanation per item but NOT decision branching (3-7 steps; chevron holds at most 6); use stacked-box for a scorecard look, chevron for a compact ribbon, toc to replace a plain agenda"
 }
 func (n *numberedStepStrip) NotWhen() string {
 	return "The flow has decision points/branches (use process-flow with type:decision), steps belong to different actors (use swimlane), stops are calendar dates (use timeline-horizontal), or items are unordered categories (use icon-row or card-grid)"
 }
 func (n *numberedStepStrip) Version() int      { return 1 }
-func (n *numberedStepStrip) CellsHint() string { return "3-6" }
+func (n *numberedStepStrip) CellsHint() string { return "3-7" }
 func (n *numberedStepStrip) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:           "structural",
@@ -97,7 +100,20 @@ type NumberedStepStripStep struct {
 	Recommended bool   `json:"recommended,omitempty"` // highlight a selected step in stacked-box style
 	Number      string `json:"number,omitempty"`      // optional ordinal override (e.g. "01", "A"); defaults to %02d
 	TipColor    string `json:"tip_color,omitempty"`   // optional scheme color for this step's number/tip lane
+	// Icon is drawn between the number badge and the label (stacked-box and
+	// toc styles). Bundled-name string shorthand or {name|path|url|svg_data}.
+	Icon *IconRef `json:"icon,omitempty"`
 }
+
+// Step-count limits: stacked-box and toc rows stack vertically and hold 7;
+// chevrons share one row and hold 6.
+const (
+	numberedStepStripMaxSteps        = 7
+	numberedStepStripMaxChevronSteps = 6
+	// numberedStepIconMaxPt caps the rendered icon so it stays a glyph beside
+	// the label rather than a picture filling a tall row.
+	numberedStepIconMaxPt = 26.0
+)
 
 // NumberedStepStripValues holds the render style and the ordered steps.
 type NumberedStepStripValues struct {
@@ -123,10 +139,11 @@ func (n *numberedStepStrip) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":       StringSchema(60).WithDescription("Short ordinal step label. Six-step chevrons hold about 47 readable characters per label at default size; all other supported styles/counts hold 60"),
-			"body":        StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone"),
+			"body":        StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone; about 140 readable characters with seven stacked-box rows or 135 with seven toc rows"),
 			"recommended": BooleanSchema().WithDescription("Highlight this row with an accent fill and Recommended badge (stacked-box style)"),
 			"number":      StringSchema(6).WithDescription("Optional ordinal override (e.g. \"01\", \"A\"); defaults to the 1-based index"),
 			"tip_color":   StringSchema(0).WithDescription("Optional scheme color for this step's number / tip lane (default: rotating accent)"),
+			"icon":        IconRefSchema("Optional icon drawn between the number badge and the label (stacked-box and toc styles only; rejected for chevron). Bundled name string shorthand or {name|path|url|svg_data, fill?, alt?} object."),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -136,7 +153,7 @@ func (n *numberedStepStrip) Schema() *Schema {
 			"style": EnumSchema(numberedStepStripChevron, numberedStepStripStackedBox, numberedStepStripTOC).
 				WithDescription("Render style: chevron (connected ribbon), stacked-box (scorecard rows), or toc (numbered agenda)").
 				WithDefault(numberedStepStripStackedBox),
-			"steps": ArraySchema(stepSchema, 3, 6).WithDescription("Ordered steps (3-6)"),
+			"steps": ArraySchema(stepSchema, 3, numberedStepStripMaxSteps).WithDescription("Ordered steps: 3-7 for stacked-box and toc, 3-6 for chevron"),
 		},
 		[]string{"steps"},
 	).WithAdditionalProperties(false)
@@ -183,27 +200,15 @@ func (n *numberedStepStrip) Validate(values, overrides any, cellOverrides map[in
 	if len(vals.Steps) < 3 {
 		errs = append(errs, errMinItems(name, "steps", 3, len(vals.Steps), ""))
 	}
-	if len(vals.Steps) > 6 {
-		errs = append(errs, errMaxItems(name, "steps", 6, len(vals.Steps), "(hint: split across two slides or use agenda for a longer list)"))
+	if len(vals.Steps) > numberedStepStripMaxSteps {
+		errs = append(errs, errMaxItems(name, "steps", numberedStepStripMaxSteps, len(vals.Steps), "(hint: split across two slides or use agenda for a longer list)"))
+	} else if vals.Style == numberedStepStripChevron && len(vals.Steps) > numberedStepStripMaxChevronSteps {
+		errs = append(errs, errMaxItems(name, "steps", numberedStepStripMaxChevronSteps, len(vals.Steps),
+			"(hint: chevron style holds at most 6 steps; use style \"stacked-box\" or \"toc\" for 7)"))
 	}
 
 	for i, step := range vals.Steps {
-		if step.Recommended && vals.Style != "" && vals.Style != numberedStepStripStackedBox {
-			errs = append(errs, newValidationError(name, fmt.Sprintf("steps[%d].recommended", i), ErrCodeInvalidShape,
-				"recommended is supported only by stacked-box style", nil))
-		}
-		labelPath := fmt.Sprintf("steps[%d].label", i)
-		if strings.TrimSpace(step.Label) == "" {
-			errs = append(errs, errRequired(name, labelPath))
-		} else if runeLen(step.Label) > 60 {
-			errs = append(errs, errMaxLength(name, labelPath, 60, runeLen(step.Label)))
-		}
-		if runeLen(step.Body) > 180 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].body", i), 180, runeLen(step.Body)))
-		}
-		if runeLen(step.Number) > 6 {
-			errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].number", i), 6, runeLen(step.Number)))
-		}
+		errs = append(errs, validateNumberedStep(name, vals.Style, i, step)...)
 	}
 
 	if coErr := validateCellOverrideKeys(name, cellOverrides, len(vals.Steps), ""); coErr != nil {
@@ -213,6 +218,37 @@ func (n *numberedStepStrip) Validate(values, overrides any, cellOverrides map[in
 	return errors.Join(errs...)
 }
 
+// validateNumberedStep checks one step's fields against the strip's style.
+func validateNumberedStep(name, style string, i int, step NumberedStepStripStep) []error {
+	var errs []error
+	if step.Recommended && style != "" && style != numberedStepStripStackedBox {
+		errs = append(errs, newValidationError(name, fmt.Sprintf("steps[%d].recommended", i), ErrCodeInvalidShape,
+			"recommended is supported only by stacked-box style", nil))
+	}
+	labelPath := fmt.Sprintf("steps[%d].label", i)
+	if strings.TrimSpace(step.Label) == "" {
+		errs = append(errs, errRequired(name, labelPath))
+	} else if runeLen(step.Label) > 60 {
+		errs = append(errs, errMaxLength(name, labelPath, 60, runeLen(step.Label)))
+	}
+	if runeLen(step.Body) > 180 {
+		errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].body", i), 180, runeLen(step.Body)))
+	}
+	if runeLen(step.Number) > 6 {
+		errs = append(errs, errMaxLength(name, fmt.Sprintf("steps[%d].number", i), 6, runeLen(step.Number)))
+	}
+	if step.Icon != nil && !step.Icon.IsEmpty() {
+		iconPath := fmt.Sprintf("steps[%d].icon", i)
+		if style == numberedStepStripChevron {
+			errs = append(errs, newValidationError(name, iconPath, ErrCodeInvalidShape,
+				"icon is supported only by stacked-box and toc styles", nil))
+		} else {
+			errs = append(errs, validateIconRef(name, iconPath, *step.Icon)...)
+		}
+	}
+	return errs
+}
+
 // PostExpandWarnings reports the chevron labels that still wrap mid-word after
 // the strip has given up all the notch depth it can and shrunk the label to the
 // readable floor. At that point the label itself is too long for the number of
@@ -220,8 +256,11 @@ func (n *numberedStepStrip) Validate(values, overrides any, cellOverrides map[in
 // step (go-slide-creator-e97v).
 func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
 	vals, ok := values.(*NumberedStepStripValues)
-	if !ok || vals == nil || vals.Style != numberedStepStripChevron {
+	if !ok || vals == nil {
 		return nil
+	}
+	if vals.Style != numberedStepStripChevron {
+		return numberedStepSevenRowWarnings(vals)
 	}
 	var warnings []string
 	if len(vals.Steps) == 6 {
@@ -252,6 +291,33 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 		"%s: numbered-step-strip chevron %s %s %s not fit on one line at %d steps even at %.0fpt — the renderer breaks %s mid-word; shorten %s or use fewer steps",
 		ErrCodeTextExceedsShape, noun, listFirstN(fit.unfit, 3), verb,
 		len(vals.Steps), fit.labelPt, pronoun, pronoun))
+}
+
+// Readable body targets for seven stacked rows, measured by
+// TestNumberedStepBudgetProbe across the bundled templates at default sizes
+// (three to six rows hold the full 180-character schema limit).
+const (
+	numberedStepSevenStackedBodyBudget = 140
+	numberedStepSevenTOCBodyBudget     = 135
+)
+
+// numberedStepSevenRowWarnings reports stacked-box / toc bodies past the
+// seven-row readable target.
+func numberedStepSevenRowWarnings(vals *NumberedStepStripValues) []string {
+	if len(vals.Steps) < numberedStepStripMaxSteps {
+		return nil
+	}
+	style, budget := numberedStepStripStackedBox, numberedStepSevenStackedBodyBudget
+	if vals.Style == numberedStepStripTOC {
+		style, budget = numberedStepStripTOC, numberedStepSevenTOCBodyBudget
+	}
+	var warnings []string
+	for i, step := range vals.Steps {
+		if length := runeLen(strings.TrimSpace(step.Body)); length > budget {
+			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].body is %d characters; seven %s rows hold about %d readable body characters per step — shorten the body or use six steps", ErrCodeBodyTooLong, i, length, style, budget))
+		}
+	}
+	return warnings
 }
 
 func (n *numberedStepStrip) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
@@ -664,6 +730,7 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 	bodySize := ResolveSize(ovr.BodySize, 10.0)
 	cellAccentMode := ovr.CellAccentMode
 
+	withIcons := numberedStepsHaveIcons(vals)
 	rows := make([]jsonschema.GridRowInput, len(vals.Steps))
 	for i, step := range vals.Steps {
 		tip := step.TipColor
@@ -697,17 +764,50 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 		}
 		applyNumberedStepOverride(bodyCell, cellOverrides, i, baseAccent)
 
+		cells := []*jsonschema.GridCellInput{numberCell, bodyCell}
+		if withIcons {
+			cells = []*jsonschema.GridCellInput{numberCell, numberedStepIconCell(ctx, step, tip), bodyCell}
+		}
 		rows[i] = jsonschema.GridRowInput{
 			AutoHeight: true,
-			Cells:      []*jsonschema.GridCellInput{numberCell, bodyCell},
+			Cells:      cells,
 		}
 	}
 
+	cols := json.RawMessage(`[1, 8]`)
+	if withIcons {
+		cols = json.RawMessage(`[1, 0.7, 8]`)
+	}
 	return &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`[1, 8]`),
+		Columns: cols,
 		Gap:     8,
 		RowGap:  6,
 		Rows:    rows,
+	}
+}
+
+// numberedStepsHaveIcons reports whether any step carries an icon; the icon
+// column is all-or-nothing so labels stay left-aligned down the list.
+func numberedStepsHaveIcons(vals *NumberedStepStripValues) bool {
+	for _, s := range vals.Steps {
+		if s.Icon != nil && !s.Icon.IsEmpty() {
+			return true
+		}
+	}
+	return false
+}
+
+// numberedStepIconCell is the icon column cell for one step: the icon drawn
+// in the step's tip colour (or a readable ink when that colour is too pale on
+// the slide), capped at numberedStepIconMaxPt and centred on the row. A step
+// without an icon gets an empty cell so the column stays aligned.
+func numberedStepIconCell(ctx ExpandContext, step NumberedStepStripStep, tip string) *jsonschema.GridCellInput {
+	if step.Icon == nil || step.Icon.IsEmpty() {
+		return &jsonschema.GridCellInput{}
+	}
+	return &jsonschema.GridCellInput{
+		MaxHeight: numberedStepIconMaxPt,
+		Icon:      step.Icon.Resolve(iconFillOn(ctx, json.RawMessage(`"none"`), tip), ""),
 	}
 }
 
@@ -723,6 +823,7 @@ func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStrip
 	bodySize := ResolveSize(ovr.BodySize, 10.0)
 	cellAccentMode := ovr.CellAccentMode
 
+	withIcons := numberedStepsHaveIcons(vals)
 	rows := make([]jsonschema.GridRowInput, len(vals.Steps))
 	for i, step := range vals.Steps {
 		badge := step.TipColor
@@ -749,14 +850,22 @@ func (n *numberedStepStrip) expandTOC(ctx ExpandContext, vals *NumberedStepStrip
 		}
 		applyNumberedStepOverride(titleCell, cellOverrides, i, baseAccent)
 
+		cells := []*jsonschema.GridCellInput{numberCell, titleCell}
+		if withIcons {
+			cells = []*jsonschema.GridCellInput{numberCell, numberedStepIconCell(ctx, step, badge), titleCell}
+		}
 		rows[i] = jsonschema.GridRowInput{
 			AutoHeight: true,
-			Cells:      []*jsonschema.GridCellInput{numberCell, titleCell},
+			Cells:      cells,
 		}
 	}
 
+	cols := json.RawMessage(`[1, 6]`)
+	if withIcons {
+		cols = json.RawMessage(`[1, 0.6, 6]`)
+	}
 	return &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`[1, 6]`),
+		Columns: cols,
 		Gap:     10,
 		RowGap:  6,
 		Rows:    rows,
@@ -835,6 +944,7 @@ func applyNumberedStepOverride(cell *jsonschema.GridCellInput, cellOverrides map
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

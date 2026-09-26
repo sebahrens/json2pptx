@@ -159,6 +159,12 @@ type Comparison2colOverrides struct {
 	// hex). When omitted, body rows are zebra-striped between two surface tints
 	// as a grouping cue; setting row_fill disables striping.
 	RowFill string `json:"row_fill,omitempty"`
+	// Connectors reserves a narrow gutter between the columns and draws a
+	// per-row accent connector (a small accent circle with a chevron, joined
+	// to both cells by an accent rule) so each left cell reads as leading to
+	// its right cell ("from → to" comparisons). Left cells gain a left accent
+	// stripe and right cells an accent tint. Default false: unchanged layout.
+	Connectors bool `json:"connectors,omitempty"`
 }
 
 // Comparison2colCellOverride is an alias for the shared CellOverride struct.
@@ -191,22 +197,39 @@ func comparisonBodyBudget(bodyRows int, headers bool) int {
 	}
 }
 
-func (c *comparison2col) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+// comparisonConnectorBudgetPct is the share of the plain two-column budget a
+// cell keeps when overrides.connectors reserves the centre gutter: each text
+// column narrows from 50% to comparisonConnectorColPct of the grid width.
+const comparisonConnectorBudgetPct = 88
+
+func (c *comparison2col) PostExpandWarnings(_ ExpandContext, values, overrides any) []string {
 	v, ok := values.(*Comparison2colValues)
 	if !ok || v == nil {
 		return nil
 	}
 	headers := v.Headers != [2]string{} || v.HeaderLeft != "" || v.HeaderRight != ""
 	budget := comparisonBodyBudget(len(v.Rows), headers)
+	connectors := false
+	if ovr, ok := overrides.(*Comparison2colOverrides); ok && ovr != nil && ovr.Connectors {
+		connectors = true
+		budget = budget * comparisonConnectorBudgetPct / 100
+	}
 	var warnings []string
 	for i, row := range v.Rows {
 		for _, field := range []struct{ name, text string }{{"left", row.Left}, {"right", row.Right}} {
 			if n := runeLen(field.text); n > budget {
-				warnings = append(warnings, fmt.Sprintf("%s: comparison-2col rows[%d].%s is %d characters; %d body rows with headers=%t hold about %d characters per cell before text shrinks below the readable minimum — shorten the cell or use fewer rows", ErrCodeBodyTooLong, i, field.name, n, len(v.Rows), headers, budget))
+				warnings = append(warnings, fmt.Sprintf("%s: comparison-2col rows[%d].%s is %d characters; %d body rows with headers=%t%s hold about %d characters per cell before text shrinks below the readable minimum — shorten the cell or use fewer rows", ErrCodeBodyTooLong, i, field.name, n, len(v.Rows), headers, connectorNote(connectors), budget))
 			}
 		}
 	}
 	return warnings
+}
+
+func connectorNote(connectors bool) string {
+	if connectors {
+		return " and connectors"
+	}
+	return ""
 }
 
 func (c *comparison2col) Schema() *Schema {
@@ -242,6 +265,7 @@ func (c *comparison2col) Schema() *Schema {
 			"body_size":        NumberSchema(6, 120).WithDescription("Font size for body text in points"),
 			"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-cell accent variation: uniform (default, all cells same accent), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 			"row_fill":         StringSchema(0).WithDescription("Uniform background fill for body rows (scheme name like 'lt2' or hex like '#F5F0E8'). Omit to zebra-stripe body rows between two surface tints as a grouping cue; setting this paints every body row the same color."),
+			"connectors":       BooleanSchema().WithDescription("Reserve a narrow centre gutter and draw a per-row accent connector (circle + chevron joined to both cells) so each left cell reads as leading to its right cell. Left cells gain a left accent stripe, right cells an accent tint. Text columns narrow to 45% each, so per-cell budgets drop to about 88% of the plain values.").WithDefault(false),
 		},
 		nil,
 	).WithAdditionalProperties(false)
@@ -355,6 +379,19 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 	stripeFillA := ctx.ResolveSurface("subtle", "lt1") // even body rows
 	stripeFillB := ctx.ResolveSurface("paper", "lt2")  // odd body rows
 	uniformFill := ovr.RowFill
+	if striped && ovr.Connectors {
+		// Connector rows are already grouped by the connector rule, so the
+		// left column takes one neutral (non-white) surface instead of zebra
+		// bands; the right column carries the accent tint.
+		striped = false
+		uniformFill = stripeFillA
+		if uniformFill == "lt1" {
+			uniformFill = stripeFillB
+		}
+		if uniformFill == "lt1" {
+			uniformFill = "lt2"
+		}
+	}
 
 	hasHeaders := vals.HeaderLeft != "" || vals.HeaderRight != ""
 	cellIdx := 0 // running cell index for cell_overrides
@@ -389,10 +426,18 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, rightAccent)
 		cellIdx++
 
-		rows = append(rows, jsonschema.GridRowInput{
-			Cells: []*jsonschema.GridCellInput{leftCell, rightCell},
-		})
+		headerCells := []*jsonschema.GridCellInput{leftCell, rightCell}
+		if ovr.Connectors {
+			headerCells = []*jsonschema.GridCellInput{leftCell, {}, rightCell}
+		}
+		rows = append(rows, jsonschema.GridRowInput{Cells: headerCells})
 	}
+
+	// Connector mode: right cells sit on an accent tint (their text colour is
+	// measured against the tinted fill) and left cells gain an accent stripe.
+	rightTint := inactiveTintTone(baseAccent)
+	rightTintJSON := rightTint.fillJSON()
+	rightTextColor := readableTextOn(ctx, rightTint, "dk1")
 
 	// Body rows — apply inline markdown emphasis (**bold**, *italic*)
 	for bi, row := range vals.Rows {
@@ -410,7 +455,11 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		rowFillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, rowFill))
 
 		leftText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Left), bodySize, false, "dk1", "l")
-		rightText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Right), bodySize, false, "dk1", "l")
+		rightColor := "dk1"
+		if ovr.Connectors {
+			rightColor = rightTextColor
+		}
+		rightText := buildComparison2colTextContent(pptx.ConvertMarkdownEmphasis(row.Right), bodySize, false, rightColor, "l")
 
 		leftCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
@@ -431,11 +480,23 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 				Text:     rightText,
 			},
 		}
+		if ovr.Connectors {
+			leftCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: baseAccent, Width: 4}
+			rightCell.Shape.Fill = rightTintJSON
+			rightCell.Shape.Line = nil
+		}
 		applyComparison2colCellOverride(rightCell, cellOverrides, cellIdx, baseAccent)
 		cellIdx++
 
+		if !ovr.Connectors {
+			rows = append(rows, jsonschema.GridRowInput{
+				Cells: []*jsonschema.GridCellInput{leftCell, rightCell},
+			})
+			continue
+		}
 		rows = append(rows, jsonschema.GridRowInput{
-			Cells: []*jsonschema.GridCellInput{leftCell, rightCell},
+			Cells:     []*jsonschema.GridCellInput{leftCell, comparison2colConnectorCell(ctx, baseAccent), rightCell},
+			Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: baseAccent, Width: 1.5},
 		})
 	}
 
@@ -444,8 +505,41 @@ func (c *comparison2col) Expand(ctx ExpandContext, values, overrides any, cellOv
 		Gap:     8,
 		Rows:    rows,
 	}
+	if ovr.Connectors {
+		grid.Columns = json.RawMessage(fmt.Sprintf(`[%d, %d, %d]`, comparisonConnectorColPct, 100-2*comparisonConnectorColPct, comparisonConnectorColPct))
+		grid.ColGap = comparisonConnectorColGap
+	}
 
 	return grid, nil
+}
+
+// Connector-mode geometry: each text column keeps comparisonConnectorColPct of
+// the grid width and the centre gutter takes the rest. The column gap is kept
+// small so the accent rule visibly joins each cell to the connector badge.
+const (
+	comparisonConnectorColPct    = 45
+	comparisonConnectorColGap    = 2
+	comparisonConnectorBadgeSize = 24.0 // pt; the badge is a circle this tall, centred on its row
+)
+
+// comparison2colConnectorCell is the gutter cell of one connector row: a small
+// accent circle carrying a chevron, vertically centred on the row. The row's
+// line connector joins it to the left and right cells.
+func comparison2colConnectorCell(ctx ExpandContext, accent string) *jsonschema.GridCellInput {
+	fill := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
+	return &jsonschema.GridCellInput{
+		MaxHeight: comparisonConnectorBadgeSize,
+		Fit:       "contain",
+		Shape: &jsonschema.ShapeSpecInput{
+			Geometry: "ellipse",
+			Fill:     fill,
+			Icon: &jsonschema.IconInput{
+				Name:  "chevron-right",
+				Fill:  iconFillOn(ctx, fill, accent),
+				Scale: 0.7,
+			},
+		},
+	}
 }
 
 // buildComparison2colTextContent creates a JSON text object for a comparison cell.
@@ -484,6 +578,7 @@ func applyComparison2colCellOverride(cell *jsonschema.GridCellInput, cellOverrid
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

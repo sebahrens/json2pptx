@@ -189,6 +189,11 @@ type OutputContext struct {
 	// Checked before the template ZIP in readLayoutFile and getMasterPositionsForLayout.
 	syntheticFiles map[string][]byte
 
+	// notesMaster is the notes master every notes slide relates to, set by
+	// prepareNotesMaster when the deck has speaker notes
+	// (go-slide-creator-s1uvj.28).
+	notesMaster *notesMasterState
+
 	// Warnings accumulated during generation
 	warnings []string
 
@@ -302,6 +307,9 @@ type mediaRel struct {
 	// crop optionally cover-crops the picture into its frame instead of
 	// stretching it. Nil means no crop was needed or could be computed.
 	crop *pptx.SrcRect
+
+	// geometry is the picture frame's preset shape ("" = rect).
+	geometry string
 }
 
 // nativeSVGInsert tracks a native SVG+PNG insert for a slide.

@@ -137,6 +137,9 @@ func (tc *TreemapChart) Draw(data TreemapData) error {
 	if len(data.Nodes) == 0 {
 		return fmt.Errorf("treemap chart requires at least one node")
 	}
+	if err := validateTreemapValues(data.Nodes); err != nil {
+		return err
+	}
 
 	b := tc.builder
 	style := b.StyleGuide()
@@ -591,6 +594,36 @@ func (d *TreemapDiagram) Validate(req *RequestEnvelope) error {
 		return fmt.Errorf("treemap chart requires 'nodes', 'items', or 'values' array in data. Expected: {\"nodes\": [{\"label\": \"Category A\", \"value\": 100, \"children\": [...]}]} or {\"categories\": [\"A\", \"B\"], \"values\": [100, 60]}")
 	}
 
+	// Malformed data is reported by the renderer; only a well-formed tree is
+	// checked for values the layout cannot draw.
+	if data, err := parseTreemapData(req); err == nil {
+		if err := validateTreemapValues(data.Nodes); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// validateTreemapValues rejects negative leaf values. The squarified layout
+// turns each value into an area share of the total; a negative value became a
+// negative area and its tile was drawn off the canvas
+// (go-slide-creator-s1uvj.33). Zero values are allowed.
+func validateTreemapValues(nodes []*TreemapNode) error {
+	for _, n := range nodes {
+		if n == nil {
+			continue
+		}
+		if len(n.Children) > 0 {
+			if err := validateTreemapValues(n.Children); err != nil {
+				return err
+			}
+			continue
+		}
+		if n.Value < 0 {
+			return fmt.Errorf("treemap chart values must not be negative: node %q has value %v (a treemap shows shares of a whole; use a bar or waterfall chart for signed data)", n.Label, n.Value)
+		}
+	}
 	return nil
 }
 

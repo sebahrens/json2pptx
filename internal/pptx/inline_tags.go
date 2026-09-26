@@ -109,6 +109,16 @@ func SplitInlineTags(base Run) []Run {
 		}
 		tagEnd += tagStart
 
+		// A '<' inside the candidate means the first '<' is a bare
+		// less-than, not a tag opener: emit it literally and rescan from the
+		// next byte so a real tag after it is not swallowed
+		// (go-slide-creator-s1uvj.25).
+		if strings.IndexByte(text[tagStart+1:tagEnd], '<') != -1 {
+			emit("<")
+			pos = tagStart + 1
+			continue
+		}
+
 		tag := strings.ToLower(strings.TrimSpace(text[tagStart+1 : tagEnd]))
 
 		if counter := state.counterFor(tag); counter != nil {

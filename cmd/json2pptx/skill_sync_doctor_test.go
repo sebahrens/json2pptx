@@ -62,13 +62,10 @@ var knownFitDocDrift = map[string]string{
 	// Render-time codes — documented in SKILL.md table but missing from
 	// FIT_FINDINGS.md.
 	"column_width_deficit":         "render-time code, SKILL.md only",
-	"divider_too_thin":             "pre-flight code, SKILL.md only",
 	"hex_fill_non_brand":           "validation code also used in fit report",
-	"mixed_fill_scheme":            "pre-flight code, SKILL.md only",
 	"no_autofit_overflow":          "render-time code, SKILL.md only",
 	"pagination_default_threshold": "render-time code, SKILL.md only",
 	"readability_trimmed":          "render-time code, SKILL.md only",
-	"stacked_tables":               "pre-flight code, SKILL.md only",
 	"table_font_scaled":            "render-time code, SKILL.md only",
 	"table_rows_truncated":         "render-time code, SKILL.md only",
 	"text_overflow":                "render-time code, SKILL.md only",

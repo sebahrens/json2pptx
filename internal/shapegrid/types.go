@@ -191,10 +191,12 @@ type IconSpec struct {
 
 // ImageSpec defines an image to embed in a grid cell.
 type ImageSpec struct {
-	Path    string       // File path to the image (PNG, JPG, etc.)
-	Alt     string       // Alt text / description for accessibility
-	Overlay *OverlaySpec // Optional semi-transparent overlay on top of image
-	Text    *ImageText   // Optional text label rendered on top of image (and overlay)
+	Path string // File path to the image (PNG, JPG, etc.)
+	Alt  string // Alt text / description for accessibility
+	// Geometry is the picture frame's preset shape: "" / "rect" or "ellipse".
+	Geometry string
+	Overlay  *OverlaySpec // Optional semi-transparent overlay on top of image
+	Text     *ImageText   // Optional text label rendered on top of image (and overlay)
 }
 
 // OverlaySpec defines a semi-transparent color overlay rendered on top of an image.

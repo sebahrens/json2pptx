@@ -91,3 +91,43 @@ func TestRenderedFilledCharts_HaveZeroTick(t *testing.T) {
 func hasAxisTick(svg, label string) bool {
 	return strings.Contains(svg, ">"+label+"<")
 }
+
+// go-slide-creator-s1uvj.34: calculateYDomain returned early for constant data
+// (min == max) with a ±10% band around the value, before the FillArea zero
+// inclusion ran. An area of [40,40,40] therefore sat on a 36–44 axis and the
+// filled band looked like a sliver instead of 40 units.
+func TestFilledCharts_ConstantValuesBaselineAtZero(t *testing.T) {
+	constant := ChartData{
+		Categories: []string{"Q1", "Q2", "Q3"},
+		Series:     []ChartSeries{{Name: "Flat", Values: []float64{40, 40, 40}}},
+	}
+	cfg := DefaultAreaChartConfig(900, 500)
+	lc := NewLineChart(NewSVGBuilder(900, 500), cfg.LineChartConfig)
+	min, max := lc.calculateYDomain(constant)
+	if min > 0 {
+		t.Errorf("area y-domain for constant 40s starts at %v; a filled band must be measured from zero", min)
+	}
+	if max < 40 {
+		t.Errorf("area y-domain max = %v, must cover the 40 data points", max)
+	}
+
+	for _, ct := range []string{"area_chart", "stacked_area_chart"} {
+		t.Run(ct, func(t *testing.T) {
+			doc, err := Render(&RequestEnvelope{
+				Type: ct,
+				Data: map[string]any{
+					"categories": []any{"Q1", "Q2", "Q3"},
+					"series": []any{
+						map[string]any{"name": "Flat", "values": []any{40.0, 40.0, 40.0}},
+					},
+				},
+			})
+			if err != nil {
+				t.Fatalf("render: %v", err)
+			}
+			if !hasAxisTick(string(doc.Content), "0") {
+				t.Errorf("%s with constant values does not render a zero tick", ct)
+			}
+		})
+	}
+}

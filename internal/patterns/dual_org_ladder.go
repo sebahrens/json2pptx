@@ -277,8 +277,14 @@ func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverr
 		},
 	}
 	if co, ok := cellOverrides[0]; ok {
-		if cellOvr, ok2 := co.(*DualOrgLadderCellOverride); ok2 && cellOvr.AccentBar {
-			headerRow.Cells[0].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accentA, Width: 3}
+		if cellOvr, ok2 := co.(*DualOrgLadderCellOverride); ok2 {
+			// Index 0 is the header row: the text keys restyle both org
+			// headers; the accent bar marks the left one.
+			applyCellTextOverride(headerRow.Cells[0], cellOvr)
+			applyCellTextOverride(headerRow.Cells[1], cellOvr)
+			if cellOvr.AccentBar {
+				headerRow.Cells[0].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accentA, Width: 3}
+			}
 		}
 	}
 
@@ -298,9 +304,13 @@ func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverr
 		}
 		// Cell override key i+1 (header is index 0).
 		if co, ok := cellOverrides[i+1]; ok {
-			if cellOvr, ok2 := co.(*DualOrgLadderCellOverride); ok2 && cellOvr.AccentBar {
-				gridRow.Cells[0].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accentA, Width: 3}
-				gridRow.Cells[1].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: barBColor(accentA, accentB, usePeerToneForB), Width: 3}
+			if cellOvr, ok2 := co.(*DualOrgLadderCellOverride); ok2 {
+				applyCellTextOverride(gridRow.Cells[0], cellOvr)
+				applyCellTextOverride(gridRow.Cells[1], cellOvr)
+				if cellOvr.AccentBar {
+					gridRow.Cells[0].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accentA, Width: 3}
+					gridRow.Cells[1].AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: barBColor(accentA, accentB, usePeerToneForB), Width: 3}
+				}
 			}
 		}
 		bodyRows[i] = gridRow

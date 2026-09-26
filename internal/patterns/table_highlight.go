@@ -366,7 +366,7 @@ func parseTableHighlightScore(raw TableHighlightScore, scale string) (thNormaliz
 		}
 		return thNormalizedScore{}, false
 	case thScaleText:
-		if s == "" || len(s) > thTextCellMax {
+		if s == "" || runeLen(s) > thTextCellMax {
 			return thNormalizedScore{}, false
 		}
 		return thNormalizedScore{kind: thScaleText, text: s}, true
@@ -809,6 +809,8 @@ func (l *thLayout) optionCells(i int, cellOverrides map[int]any) []*jsonschema.G
 	}
 	nameCell := thTextCell(rowTone, nameInk, "l", paras)
 	co, hasCO := cellOverrides[i].(*TableHighlightCellOverride)
+	// Index i is option row i; its name cell is the primary text (D15 text keys).
+	applyCellTextOverride(nameCell, co)
 	if i == l.hlRow || (hasCO && co.AccentBar) {
 		nameCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: l.accent, Width: 4}
 	}

@@ -879,7 +879,7 @@ See also: [PATTERNS.md Cell Capacity Contract](PATTERNS.md) for pattern-level ca
 **Pattern:** `shape_grid`
 **Fix kind:** `consolidate_accents`
 
-Emitted by `DetectStructuralSmells` (via `validate_input`, dry-run, and the pipeline's per-slide checks) when a single slide's `shape_grid` uses more than two distinct accent semantic fills (`accent1` … `accent6`). The cap is two so that a slide can still draw a paired comparison (current vs. proposed, before vs. after) without losing focus, but three or more accents on one slide reads as visual noise — the audience cannot tell which item is the argument.
+Emitted by `DetectStructuralSmells`, which the shared fit collection (`validate -fit-report`, `validate_input`, dry-run and `generate_presentation`) runs on every **authored** `shape_grid` — pattern and compose expansions are exempt, since their fills are the expander's contract — when a single slide's `shape_grid` uses more than two distinct accent semantic fills (`accent1` … `accent6`). The cap is two so that a slide can still draw a paired comparison (current vs. proposed, before vs. after) without losing focus, but three or more accents on one slide reads as visual noise — the audience cannot tell which item is the argument.
 
 Mechanics:
 
@@ -905,6 +905,30 @@ Mechanics:
   "action": "review"
 }
 ```
+
+### `stacked_tables`
+
+**Action:** `review`
+**Pattern:** `shape_grid`
+**Fix kind:** `increase_gap`
+
+Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored grids only) when two consecutive rows both hold a table and the grid's effective row gap (`row_gap`, else `gap`, else the 8pt default) is below 4pt, so the tables read as one run-on table. `params` carries `current_pt` and `minimum_pt`. Raise `row_gap`, merge the tables, or split the slide.
+
+### `divider_too_thin`
+
+**Action:** `review`
+**Pattern:** `shape_grid`
+**Fix kind:** `increase_gap` or `increase_row_height`
+
+Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap is below 3pt (`increase_gap`, one finding per crushed row pair) or whose row has an explicit `height` below 4% of the slide (`increase_row_height`).
+
+### `mixed_fill_scheme`
+
+**Action:** `review`
+**Pattern:** `shape_grid`
+**Fix kind:** `use_semantic_color`
+
+Emitted by `DetectStructuralSmells` when one authored grid mixes hex fills (other than black/white) with semantic scheme fills. Hex fills do not follow a template swap, so the slide stops being portable. Convert the hex fills to scheme names.
 
 ### `CHROME_COLLISION`
 

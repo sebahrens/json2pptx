@@ -75,7 +75,7 @@ Per-cell overrides are narrowly scoped to text/style/decoration adjustments only
 
 | Allowed key | Type | Description |
 |---|---|---|
-| `accent_bar` | bool | Show accent bar decoration |
+| `accent_bar` | bool | Show accent bar decoration. In patterns that draw the bar by default (`horizontal-bar-with-callouts` callout rows) only an explicit `false` removes it; an absent key or any other override keeps it |
 | `emphasis` | `"bold"` / `"italic"` / `"bold-italic"` | Text emphasis |
 | `align` | `"l"` / `"ctr"` / `"r"` | Horizontal alignment |
 | `vertical_align` | `"t"` / `"ctr"` / `"b"` | Vertical alignment |
@@ -83,6 +83,34 @@ Per-cell overrides are narrowly scoped to text/style/decoration adjustments only
 | `color` | string | Text color (scheme ref, e.g. `"dk1"`) |
 
 **MUST NOT** accept arbitrary nested `shape_grid` fragments or geometry changes. Cells are addressed by zero-based index as string keys (`"0"`, `"1"`, ...). The pattern's `Validate` must reject unknown override keys with an error citing the D15 whitelist.
+
+**Every advertised key must change the output.** A pattern whose schema uses `CellOverrideDefSchema()` must honour all six keys. The five text keys go through the shared `applyCellTextOverride(cell, ovr)` helper (`cell_override.go`), which rewrites the target cell's primary text — a shape's `text`, a composite cell's text shape, or an image cell's overlay label:
+
+- `font_size`, `emphasis`, `color` apply to **every** paragraph of that text (a header/body cell loses its size hierarchy under `font_size`). `emphasis: "bold"` clears italic and `"italic"` clears bold; `"bold-italic"` sets both.
+- `align` sets the text default **and** each paragraph's own `align` (a paragraph align wins over the default, so the default alone would be a no-op).
+- `vertical_align` sets the anchor. The sparse-card re-centring pass (`anchorSparseText`) keeps an explicit `"b"`.
+
+Call the helper where the cell is built, before any content-sized row measurement, so a larger `font_size` grows the row. If a pattern truly cannot honour a key, give it a narrowed cellOverride schema and make `Validate` reject that key as `unknown_key` — never accept and ignore it. `TestCellOverrideKeys_ChangeExpandOrAreRejected` (`cell_override_text_test.go`) enforces this for every registered pattern: each advertised key must change the `Expand` output (and the text values must appear in it), and each unadvertised D15 key must be rejected.
+
+Where an index addresses a composite of several shapes, the text keys land on the primary text shape; the accent bar keeps its existing placement:
+
+| Pattern | Index → text target |
+|---|---|
+| `agenda`, `agenda-with-images` | item → title cell (not the number badge) |
+| `dual-org-ladder` | `0` → both org headers; `i+1` → both role cards of row `i` |
+| `exec-summary` | point → bold lead-in cell (not the support sentence) |
+| `hero-detail` | `0` → hero stat (now also takes `accent_bar`); `i+1` → detail card `i` |
+| `horizontal-bar-with-callouts` | bar → its callout; the bar label when the row has no callout |
+| `journey-maturity-model` | stage → stage header |
+| `labeled-rows` | row → label block (label + sublabel) |
+| `metric-list` | item → big value (not label/detail) |
+| `stylish-panels` | panel → body (not the ribbon header) |
+| `table-highlight` | option → option-name cell (not the score cells) |
+| `team-bios` | member → name/role/bio text cell (not the photo) |
+| `timeline-horizontal` | stop → label cell (`dots`), chevron (`chevron`), bar (`gantt`) |
+| `value-chain`, `waterfall-bridge` | step / column → label cell |
+
+All other patterns apply the text keys to the one shape the index addresses (banner / pillar / foundation / roof in `strategy-house`, a quadrant in `matrix-2x2`, a card in `card-grid`, and so on). The `kpi-*` family already did this through the same helper (formerly `applyKPICellTextOverrides`).
 
 ## card-grid styles + surface overrides
 
@@ -126,10 +154,11 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Big-number KPIs (2–6 items) | `kpi-Nup` | Fixed count, ≤12-char metrics (measured one-line fit warnings); optional per-cell `sub` (delta/trend annotation, aliases `delta`/`trend`/`change`) |
 | Ranked horizontal bars (3–8) with per-bar insight | `horizontal-bar-with-callouts` | One callout per bar, accent-bar bound to the row; omit every `callout` and the column is dropped so the bars span the full width |
 | Single dominant metric | `stat-hero` | One hero number with context |
+| Stat stack / "by the numbers" list | `metric-list` | 3–7 rows read top to bottom: big right-aligned accent `value` (≤12 chars, one shared size shrunk until the longest fits on one line) + bold `label` + optional `detail`, hairline rules; at most one `highlight: true` row (Lighter-80% accent band + accent bar, value ink measured against the band) and an optional full-width accent `callout` banner (text colour by measured contrast). Details hold 120 chars through 4 items, ~90 at 5, none at 6–7. Use `kpi-Nup` for side-by-side cards, `stat-hero` / `hero-detail` for one dominant number |
 | Feature/capability cards | `card-grid` | Multi-line body text per card |
 | Sequential process | `process-flow` | Ordered steps with arrows |
-| Ordered steps / annotated ToC (no branching) | `numbered-step-strip` | 3–6 numbered steps with an optional per-step detail zone; `chevron` ribbon, `stacked-box` scorecard, or `toc` agenda — never emits decision diamonds (use `process-flow` for branching) |
-| Two parallel process tracks | `process-grid-2row` | Two rows × 3–6 phase columns sharing the same N columns; dk2 row-label column on the left, per-row accent fill |
+| Ordered steps / annotated ToC (no branching) | `numbered-step-strip` | 3–7 numbered steps (chevron ≤6) with an optional per-step detail zone and, in `stacked-box` / `toc`, an optional `steps[].icon` between the number badge and the label; `chevron` ribbon, `stacked-box` scorecard, or `toc` agenda — never emits decision diamonds (use `process-flow` for branching) |
+| Two parallel process tracks | `process-grid-2row` | Two rows × 3–6 phase columns sharing the same N columns; dk2 row-label column on the left, per-row accent fill; optional `column_headers` (≤24 chars, accent-underlined header row) and `outcomes` (≤32 chars, tinted pills under the tracks), each one per phase column |
 | Porter / supply value chain | `value-chain` | 4–10 step columns with bold label + 1–3 line description |
 | Maturity ladder / current-state journey | `journey-maturity-model` | 3–6 stage columns with numbered headers, description, and optional 'where we are' marker |
 | P&L walk / cost-driver bridge | `waterfall-bridge` | 3–10 columns of total + delta + subtotal bars; floating deltas with auto-computed subtotals, grey bridge lines between bar levels; `unit` currency symbols render as a prefix (`"$m"` → `$210m`), value labels move outside bars too thin to hold them and sit against the bar rather than clear of it; optional `caption` states the scale once, since a bridge draws no value axis |
@@ -138,21 +167,27 @@ The pair is symmetrical: `UseWhen` says "choose me when X", `NotWhen` says "do N
 | Layer/stack diagram | `arch-stack` | Vertical tier ordering |
 | Narrowing hierarchy | `pyramid` | Visual narrowing (top < bottom) |
 | Before/after comparison | `before-after` | Temporal transformation |
-| Option/pros-cons comparison | `comparison-2col` | Non-temporal side-by-side |
+| Option/pros-cons comparison | `comparison-2col` | Non-temporal side-by-side; `overrides.connectors: true` adds a centre gutter with a per-row accent connector badge (left cells get an accent stripe, right cells an accent tint) for "from → to" shifts |
+| Today vs. future state in numbered stages | `state-shift-hub` | Central accent hub circle (`hub_label`, shrinks to fit, floor 12pt) with 3–6 numbered `pairs` (`before` / `after` + optional shared `title` or per-side `before_title` / `after_title`); today items right-aligned on the left, future items left-aligned on the right, nodes on an arc around the hub; optional `left_header` / `right_header`. Use `before-after` for one before/after block, `journey-maturity-model` for a maturity ladder |
 | Options × criteria evaluation | `table-highlight` | 2–6 options × 2–6 criteria rated with Harvey balls (0–4), RAG (`red`/`amber`/`green`) or ≤24-char text per column (`scale` or per-criterion `{label, scale}`); `highlight_row` tints + bars the recommended option, `highlight_col` tints the decisive criterion; one legend row per symbol scale. **`legend_labels` is `[HIGH, MID, LOW]`** — the full Harvey ball first, the empty one last — and the RAG scale takes its own `legend_labels_rag` in the same order (`[green, amber, red]`, default `["Green", "Amber", "Red"]`). A deck mixing both scales used to reuse the Harvey words for the RAG swatches, so a green dot carried the "does not meet" label (go-slide-creator-z0up). RAG uses conventional status colours (`overrides.rag_colors` swaps them) — the one non-theme palette, because status must read the same on every template |
+| Activities rated by function (capability / automation heatmap) | `capability-heatmap` | 3–8 function columns, each a pointed `homePlate` header (bold title + optional sublabel, `header_shape: "rect"` for flat headers) over 1–6 activity cells filled by `tier` (0 = accent, 1 = light accent tint, 2 = neutral grey, 3 = lightest grey with a hairline), plus a legend of 2–4 tier swatches with label + optional description (`show_legend: false` hides it). Colour carries the rating, so there is no `cell_accent_mode`. Prefer `table-highlight` when every row is scored against the same criteria |
+| Levers grouped by dimension (framework) | `framework-grid` | 2–6 rows, each a bold label on a light accent band followed by 1–4 cards (accent title + short body on a pale wash); the longest row sets the column count and shorter rows leave trailing space empty. `label_width_pct` (10–35, default 18), `title_size`, `body_size`, `cell_accent_mode` (per card column). Prefer `card-grid` when there are no row labels, `stylish-panels` for pillars with bullet lists |
 | 4-quadrant positioning | `matrix-2x2` | Axis-labeled quadrants; horizontal title ≤16 chars, vertical title ≤60; each axis is an arrow pointing to its high end (right / up) flanked by low/high end labels — optional `x_low` / `x_high` / `y_low` / `y_high` (≤11 chars, default `Low` / `High`) |
 | Phased plan with workstreams | `roadmap-phased` | Named phases × workstreams grid |
-| Single-track phased roadmap | `phase-roadmap` | Phases + timeline bar + dates + per-phase description (+ milestones) |
+| Single-track phased roadmap | `phase-roadmap` | Phases + timeline bar + dates + per-phase description (+ milestones); optional `parallel_tracks` (0–4 cross-cutting workstreams, ≤90 chars) render as full-width tinted bars below the phases with a `parallel_label` (default "In parallel") at left, their height taken from the phase-box row |
 | Cross-functional swimlanes | `swimlane` | Multiple parallel tracks |
 | Executive summary (problem framing) | `scqa-summary` | 4-row Situation/Complication/Questions/Answer narrative arc |
 | Executive summary (key messages) | `exec-summary` | 3–5 bold lead-in conclusions (≤90 chars) each with one supporting sentence (≤200 chars), rules between rows, optional `bottom_line` ask (a pointing accent flag labelled BOTTOM LINE, then the statement in a tinted box); answer-first rather than an SCQA arc |
+| Keyword-labelled rows (WHY / WHAT / HOW) | `labeled-rows` | 2–6 rows: a label block on the left (`label_style: filled` accent block with bold keyword + optional smaller `sublabel`, or `text` = accent-coloured bold keyword with no fill) beside 1–4 lines of `body` (**bold** allowed), rules between content-sized rows. The keyword shrinks as one shared size until no word breaks mid-word. Bodies hold 300 chars through 4 rows, ~190 at 5–6 rows (and 5–6 rows leave no room for multi-line sublabels). Use `exec-summary` when rows are sentence-length conclusions, `metric-list` when each row leads with a number |
 | Deck section list | `agenda` | Numbered section outline |
 | Visual deck preview | `agenda-with-images` | Numbered agenda rows with image/quote placeholders alongside the title (3–6 items); the placeholder column is all-or-nothing — a row with no `image_label` still gets an empty placeholder |
 | Team / 'Our People' page | `team-bios` | 1–8 named people with a headshot (or initials placeholder) + role + short bio, up to 4 per row |
+| Key contacts / directory | `contact-directory` | 1–4 groups (regions, offices, practices), each an accent heading over a rule, then up to 24 people in rows of `columns` (3–5, default 4): circular headshot (`photo`, drawn with image `geometry: "ellipse"`) or initials disc + bold name + muted title — no bios (use `team-bios` for those). One or two rows of people stack a large headshot above a centred name; denser directories put the headshot left of the text and step type (14→12pt) and headshot size down until the measured block fits, else report `BODY_TOO_LONG` with the height needed |
 | Joint-venture / engagement-team paired roles | `dual-org-ladder` | Two parallel columns of 2–6 paired role cards with an org-name header above each column (optional connector line per row) |
 | Icon + caption row | `icon-row` | Visual categories, 3–5 items |
 | Photo / case study beside text | `image-text-split` | One `image` (`path` resolved against the deck dir, or `url`) beside eyebrow + heading + body + ≤5 bullets and 0–3 result `metrics`; `image_side` left/right, `image_width_pct` 30–60. Without an image it draws a dashed placeholder (`image_label`). Implements `ImageAssetPattern` so hosts resolve its image like a shape_grid image cell |
 | Callout / testimonial | `pull-quote` | Attributed quotation, optionally beside a headshot |
+| Narrative intro / foreword | `text-sidebar` | Main column (optional heading, 1–4 paragraphs, 0–6 bullets placed after the first paragraph ending in a colon) beside a sidebar panel with one large bold key message (≤200 chars). `sidebar_style` `tinted` (pale accent surface + top accent bar) or `filled` (solid accent); the sidebar ink is measured against the fill at the 3:1 large-text bar. `sidebar_side`, `sidebar_width_pct` (25–40), `body_size`, `sidebar_size`. Short copy is promoted to 16pt and centred; long copy steps down to 12pt, then reports `BODY_TOO_LONG` |
 | Stakeholder quote cluster | `quote-cluster` | 3–8 attributed quote bubbles in a 3-column grid (voice-of-customer slides) |
 
 ### Refined-consulting bias in the recommender (J2P-STYLE-008)
@@ -217,6 +252,12 @@ Grid-shaped patterns — those that emit multiple peer cells through the shape g
 3. **Resolve per-cell accent** by calling `ResolveCellAccent(baseAccent, cellIndex, cellAccentMode)` in the cell-emission loop of `Expand()`. The function returns the accent string for each cell position given the base accent and mode.
 4. **Schema** must include `cell_accent_mode` in the overrides object — use the shared helper: `EnumSchema("uniform", "alternate", "progressive").WithDescription(...)`.
 
+`metric-list` (value colour per row) and `labeled-rows` (label-block fill per row) follow this contract.
+
+### Publish only the overrides the pattern reads
+
+A pattern that embeds `TextOverrides` must honour every key its overrides schema publishes. When a standard key has nothing to act on — `pyramid`, `process-flow` and `process-flow-compact` have no header text, so `header_size` would be a silent no-op — publish `textOverridesSchemaWithout("header_size")` and call `rejectUnusedTextOverrides(name, ovr, "header_size")` in `Validate()`, which returns an `UNKNOWN_KEY` error with a `remove_key` fix (go-slide-creator-s1uvj.41). `pyramid` colours its tiers by `cell_accent_mode`, picking each tier's text colour against that tier's own fill.
+
 ### Non-grid patterns (do not expose `cell_accent_mode`)
 
 These patterns have structurally determined accent logic and do not expose `cell_accent_mode`:
@@ -249,7 +290,7 @@ not a defect to engineer away: ten columns across a 13.3" slide leave about
 
 ### Pictures in pattern values
 
-Three patterns take a real picture in their `values`, all through the same
+Four patterns take a real picture in their `values`, all through the same
 `{path | url, alt}` reference (`PhotoSchema` / `validatePatternPhoto` in
 `internal/patterns/pattern_photo.go`):
 
@@ -258,6 +299,7 @@ Three patterns take a real picture in their `values`, all through the same
 | `image-text-split` | `values.image` | Dashed wireframe placeholder labelled with `image_label` |
 | `team-bios` | `values.members[].photo` | Initials tile (`photo_label`, else initials derived from `name`) |
 | `pull-quote` | `values.image` (+ `overrides.image_side`, `overrides.image_width_pct`) | No picture column at all — the quote keeps the full width |
+| `contact-directory` | `values.groups[].people[].photo` | Initials disc (pale accent tint, measured ink) |
 
 Rules a new picture-taking pattern must follow:
 
@@ -268,6 +310,7 @@ Rules a new picture-taking pattern must follow:
 - The `Field` of each ref is the JSON pointer under `values`
   (`"image"`, `"members/0/photo"`), which the host prefixes with
   `/slides/N/pattern/values/` when it reports a finding against it.
+- A circular headshot is the image cell's `geometry: "ellipse"` with `fit: "contain"` (a square frame clipped to a circle), not a pre-cropped file — `contact-directory` does this.
 - Validate the reference with `validatePatternPhoto`: a reference with neither
   `path` nor `url` renders nothing at all, and `overlay` / `text` belong to
   shape_grid image cells, not to pattern values.
@@ -280,7 +323,30 @@ Rules a new picture-taking pattern must follow:
   column cannot hold.
 - **Axis-bound matrices** (matrix-2x2): quadrant fills are semantically tied to axis positions, not peer cells.
 - **Fixed-progression patterns** (pyramid): tier fills follow a structural hierarchy, not a peer-cell walk.
-- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column) rather than peer ordering.
+- **Content-structured layouts** (bmc-canvas, agenda, agenda-with-images, roadmap-phased, phase-roadmap, scqa-summary, swimlane, timeline-horizontal, team-bios, quote-cluster, dual-org-ladder, table-highlight, image-text-split, capability-heatmap, state-shift-hub, contact-directory, text-sidebar): cell fills are determined by content structure (lanes, phases, sections, member cards, quote bubbles, org-paired rows, highlighted table row/column, rating tier, today-vs-future nodes around a hub, contact groups, the one key-message panel) rather than peer ordering.
+
+### Free-positioned shapes: the lattice technique
+
+The shape grid cannot place a shape at an arbitrary x. A pattern that needs
+one — `state-shift-hub` puts its numbered nodes on an arc around the hub, so
+every row's node sits at a different horizontal offset — computes the
+positions in points and turns them into a **lattice**: every x edge the layout
+needs (text-box edges, node edges, hub edges) becomes a column boundary, the
+column gap is a hairline (`0.01`pt, as `pyramid` does), and each shape spans
+the lattice columns between its own edges. Free lattice columns before a shape
+are filled with empty cells (`&GridCellInput{}` — the resolver advances one
+column per empty cell and skips row-span-occupied columns on its own), so emit
+one per FREE column, not one per column.
+
+- Because each shape owns its own lattice rectangle, shapes cannot overlap at
+  whatever size the grid is finally resolved at — the trig only decides where
+  the edges fall. Merge edges closer than ~1pt so no column collapses to zero.
+- Use `fit: "contain"` for circles (hub, nodes): the cell stays rectangular and
+  the shape is drawn square inside it, so a compose cell or a different
+  content area turns the arc slightly but never distorts a circle.
+- Row connectors cannot draw the spokes: a connector only fans out from a
+  row-spanning cell to cells on its RIGHT, so a centred hub would connect to
+  one side only. Let the geometry carry the relationship instead.
 
 Each non-grid pattern should document in its `UseWhen`/`NotWhen` text or code comments why it does not expose the override.
 
@@ -399,6 +465,12 @@ A pattern's JSON schema is the contract an agent sizes its copy against, and a p
 - Emit a `BODY_TOO_LONG` warning above that same per-card budget. Both `cell_budgets[].max_chars` and the warning account for the selected content area, body font size, card header, icon/chart reservations, and grid dimensions; `actual_chars` counts the body alone. The budget is computed before the supplied body copy sizes a row, so it cannot rise as an author adds text.
 - Derive the budget by MEASUREMENT, not by arithmetic: run the payload at each shape through the same readability prediction the fit report gives an agent. `cmd/json2pptx.TestSchemaMaximaStayReadable` does this for every registered pattern on all four bundled templates and pins the result, so a schema maximum cannot quietly get worse and an improvement cannot be given back.
 
+### Row-list patterns: `metric-list` and `labeled-rows`
+
+Both are content-sized row stacks separated by 0.75pt hairline rule rows, sized like `exec-summary`: they try a descending type scale, keep the largest whose measured natural height fits the content area, and pass surplus height to the content rows (`fillCappedRows`, 68% / 60% minimum fill). Overrides that set a size pin the scale. What they cannot fix is reported from `PostExpandWarnings`: `TEXT_EXCEEDS_SHAPE` for a value (metric-list) or a keyword word (labeled-rows) that still breaks at the floor, and `BODY_TOO_LONG` when the stack is taller than the content area at the smallest scale.
+
+`metric-list` sets `col_gap` to 0.1pt, not 0: a highlighted row tints both of its cells, and a real gap (0 resolves to shapegrid's 8pt default) shows as a white seam through the band. The gutter comes from `inset_left` / `inset_right` on the cell text instead, and each highlighted cell is outlined in its own band colour (lumMod / lumOff, which shape lines honour; tint they do not) so no hairline shows.
+
 ## Text on a tinted fill must be chosen by measurement too
 
 The same rule applies to the text a pattern paints INSIDE a fill it tints itself. `timeline-horizontal` tints each bar of its gantt and chevron chains — shade 70000 at the first stop through tint 40000 at the last — and hardcoded `lt1` inside every one of them, so the lightest bar measured **1.54:1** in a real midnight-blue render and its date label was invisible (go-slide-creator-5qotm).
@@ -409,6 +481,37 @@ The same rule applies to the text a pattern paints INSIDE a fill it tints itself
 - In `timeline-horizontal` chevrons, measure the label and body against the chevron's usable text width and capped row height. Emit `BODY_TOO_LONG` with the available body-line count when the description would clip; a raw character limit misses narrow seven-stop layouts.
 - Chevron `body_size` controls both the emitted paragraph and its fit budget. Sizes below shape-grid's 12pt rendering floor are measured and emitted at 12pt, including the default derived from `label_size`.
 - Chevron dates use that same 12pt rendering floor for their one-line row height. A date that wraps at the effective font size and template width receives a `BODY_TOO_LONG` fit finding instead of relying on a fixed character count.
+
+## capability-heatmap and framework-grid (column- and row-structured frameworks)
+
+Both patterns size their rows from measured text and then grow them toward a
+fill target, with a ceiling, so a sparse grid does not turn into tall empty
+tiles:
+
+- **`capability-heatmap`** measures every header at the width the `homePlate`
+  leaves (the preset's text rectangle stops half-way into the point, and the
+  emitted right inset — point + 3pt — stacks on it), shrinks one shared header
+  size toward the 12pt floor until no header word breaks, and reports a word
+  that still cannot fit as `TEXT_EXCEEDS_SHAPE`. The point is a fixed 10pt,
+  with `adj` derived from the header's own height. Cell rows share one height
+  (the tallest activity), grow to at most 66pt toward 95% of the content
+  height, and a `BODY_TOO_LONG` warning names the longest activity when the
+  content-sized block already exceeds the content area. Text ink on every
+  tier fill is chosen by `readableTextOn`. The legend is a nested grid with an
+  explicit row height (see go-slide-creator-z0up); each entry's width is
+  proportional to its wording. `cell_overrides` index the headers first, then
+  each column's cells top to bottom.
+- **`framework-grid`** gives every row the tallest row's height (so it reads
+  as a grid), grows rows to at most 1.8× that toward 80% of the content
+  height, and top-anchors every card at one shared inset so titles line up
+  across a row. The card title stays in the column accent only when it clears
+  the bar the render-time contrast pass applies to the WHOLE text body — that
+  pass judges a shape by its smallest run, so a title above a 12pt body needs
+  4.5:1 and only a title-only card at 14pt bold gets 3:1; otherwise the
+  measured theme ink is used. Picking a lower bar would just hand the choice
+  to the fixer, which swaps in a literal colour. `BODY_TOO_LONG` names the
+  tallest row when the grid cannot fit. `cell_overrides` index row by row: the
+  label, then that row's cards.
 
 ## Composition
 

@@ -111,8 +111,10 @@ func checkNaNInf(svg string) []svgQualityIssue {
 	cleaned := stripBase64FromSVG(svg)
 	cleaned = stripTextContentFromSVG(cleaned)
 
-	// Check for NaN in attribute values
-	nanRe := regexp.MustCompile(`(?:x|y|cx|cy|r|width|height|x1|y1|x2|y2|rx|ry)\s*=\s*"[^"]*\bNaN\b[^"]*"`)
+	// Check for NaN in attribute values. No \b around the token: in path
+	// data it is glued to command letters ("MNaNNaN"), where a word boundary
+	// never matches (go-slide-creator-s1uvj.31).
+	nanRe := regexp.MustCompile(`(?:x|y|cx|cy|r|width|height|x1|y1|x2|y2|rx|ry)\s*=\s*"[^"]*NaN[^"]*"`)
 	nanMatches := nanRe.FindAllString(cleaned, -1)
 	for _, m := range nanMatches {
 		issues = append(issues, svgQualityIssue{
@@ -122,7 +124,7 @@ func checkNaNInf(svg string) []svgQualityIssue {
 	}
 
 	// Also check for NaN in path data
-	pathNanRe := regexp.MustCompile(`d\s*=\s*"[^"]*\bNaN\b[^"]*"`)
+	pathNanRe := regexp.MustCompile(`d\s*=\s*"[^"]*NaN[^"]*"`)
 	for _, m := range pathNanRe.FindAllString(cleaned, -1) {
 		issues = append(issues, svgQualityIssue{
 			Category: "NaN",
@@ -131,7 +133,7 @@ func checkNaNInf(svg string) []svgQualityIssue {
 	}
 
 	// Check for Inf
-	infRe := regexp.MustCompile(`(?:x|y|cx|cy|r|width|height|x1|y1|x2|y2|rx|ry)\s*=\s*"[^"]*[+-]?Inf\b[^"]*"`)
+	infRe := regexp.MustCompile(`(?:x|y|cx|cy|r|width|height|x1|y1|x2|y2|rx|ry)\s*=\s*"[^"]*Inf(?:inity)?(?:[^a-z"][^"]*)?"`)
 	infMatches := infRe.FindAllString(cleaned, -1)
 	for _, m := range infMatches {
 		issues = append(issues, svgQualityIssue{
@@ -141,7 +143,7 @@ func checkNaNInf(svg string) []svgQualityIssue {
 	}
 
 	// Broader NaN/Inf check in style attributes
-	styleNanRe := regexp.MustCompile(`style\s*=\s*"[^"]*\bNaN\b[^"]*"`)
+	styleNanRe := regexp.MustCompile(`style\s*=\s*"[^"]*NaN[^"]*"`)
 	for _, m := range styleNanRe.FindAllString(cleaned, -1) {
 		issues = append(issues, svgQualityIssue{
 			Category: "NaN",

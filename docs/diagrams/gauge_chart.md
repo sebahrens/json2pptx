@@ -48,13 +48,13 @@ Display a single KPI value against thresholds on a semicircular dial.
 | `title` | `string` | - | Chart title |
 | `subtitle` | `string` | - | Subtitle below title |
 | `min` | `number` | `0` | Minimum scale value |
-| `max` | `number` | `100` | Maximum scale value (auto-detects 0-1 range) |
+| `max` | `number` | `100` | Maximum scale value (auto-detects 0-1 range); must be greater than `min`, otherwise the request is rejected |
 | `label` | `string` | - | Value label |
 | `unit` | `string` | - | Unit suffix (e.g., `"%"`, `"ms"`) |
 | `start_angle` | `number` | - | Gauge arc start angle |
 | `end_angle` | `number` | - | Gauge arc end angle |
 | `thresholds` | `object[]` | - | Color bands on the gauge |
-| `thresholds[].value` | `number` | - | Upper bound of this band |
+| `thresholds[].value` | `number` | - | Upper bound of this band; values beyond `max` are clamped so the last band stops at `max`, and bands at or below `min` are skipped |
 | `thresholds[].color` | `string` | - | Hex color for this band |
 | `thresholds[].label` | `string` | - | Band label |
 

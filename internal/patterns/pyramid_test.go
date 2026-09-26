@@ -201,3 +201,67 @@ func TestPyramid_ValidateTooMany(t *testing.T) {
 		t.Error("expected validation error for > 5 tiers")
 	}
 }
+
+// go-slide-creator-s1uvj.41: pyramid, process-flow and process-flow-compact
+// published header_size in their overrides schema but never read it, and
+// pyramid ignored cell_accent_mode.
+func TestPyramid_CellAccentModeColoursTiers(t *testing.T) {
+	p := &pyramid{}
+	vals := &PyramidValues{Tiers: []string{"A", "B", "C", "D"}}
+	ovr := &PyramidOverrides{CellAccentMode: "progressive"}
+	if err := p.Validate(vals, ovr, nil); err != nil {
+		t.Fatalf("Validate: %v", err)
+	}
+	grid, err := p.Expand(testThemeCtx(), vals, ovr, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for i, row := range grid.Rows {
+		shape := row.Cells[len(row.Cells)-1].Shape
+		var fill struct {
+			Color string `json:"color"`
+		}
+		if err := json.Unmarshal(shape.Fill, &fill); err != nil {
+			t.Fatalf("tier %d fill %s: %v", i, shape.Fill, err)
+		}
+		seen[fill.Color] = true
+	}
+	if len(seen) != len(vals.Tiers) {
+		t.Errorf("progressive cell_accent_mode should give each tier its own accent, got %v", seen)
+	}
+
+	if err := p.Validate(vals, &PyramidOverrides{CellAccentMode: "rainbow"}, nil); err == nil {
+		t.Error("expected invalid cell_accent_mode to be rejected")
+	}
+}
+
+func TestTextOverrides_UnusedHeaderSizeRejected(t *testing.T) {
+	cases := []struct {
+		pattern string
+		values  any
+	}{
+		{"pyramid", &PyramidValues{Tiers: []string{"A", "B", "C"}}},
+		{"process-flow", &ProcessFlowValues{Steps: []ProcessFlowStep{{Label: "A"}, {Label: "B"}, {Label: "C"}}}},
+		{"process-flow-compact", &ProcessFlowValues{Steps: []ProcessFlowStep{{Label: "A"}, {Label: "B"}, {Label: "C"}}}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.pattern, func(t *testing.T) {
+			p, ok := Default().Get(tc.pattern)
+			if !ok {
+				t.Fatalf("pattern %s not registered", tc.pattern)
+			}
+			schemaJSON, _ := json.Marshal(p.Schema())
+			if strings.Contains(string(schemaJSON), `"header_size"`) {
+				t.Errorf("%s overrides schema still publishes header_size", tc.pattern)
+			}
+			if err := p.Validate(tc.values, &TextOverrides{BodySize: 12}, nil); err != nil {
+				t.Errorf("body_size must stay valid: %v", err)
+			}
+			err := p.Validate(tc.values, &TextOverrides{HeaderSize: 18}, nil)
+			if err == nil || !strings.Contains(err.Error(), "overrides.header_size is not used") {
+				t.Errorf("want header_size rejected, got %v", err)
+			}
+		})
+	}
+}

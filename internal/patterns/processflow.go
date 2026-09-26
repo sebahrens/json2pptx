@@ -101,7 +101,8 @@ type ProcessFlowValues struct {
 	Steps []ProcessFlowStep `json:"steps"`
 }
 
-// ProcessFlowOverrides is the standard text overrides.
+// ProcessFlowOverrides is the standard text overrides. header_size is not
+// supported (step labels are body text) and is rejected by Validate.
 type ProcessFlowOverrides = TextOverrides
 
 // ProcessFlowCellOverride is the shared per-cell override.
@@ -178,7 +179,7 @@ func (p *processFlow) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
 			"values":         valuesSchema,
-			"overrides":      textOverridesSchema(),
+			"overrides":      textOverridesSchemaWithout("header_size"),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
 		[]string{"values"},
@@ -202,6 +203,9 @@ func (p *processFlow) Validate(values, overrides any, cellOverrides map[int]any)
 			if err := ValidateCellAccentMode(name, ovr.CellAccentMode); err != nil {
 				errs = append(errs, err)
 			}
+			// Step labels are body text; there is no header for header_size
+			// to size (go-slide-creator-s1uvj.41).
+			errs = append(errs, rejectUnusedTextOverrides(name, ovr, "header_size")...)
 		}
 	}
 
@@ -284,11 +288,14 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		}
 
 		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*ProcessFlowCellOverride); ok2 && cellOvr.AccentBar {
-				cell.AccentBar = &jsonschema.AccentBarInput{
-					Position: "left",
-					Color:    accent,
-					Width:    4,
+			if cellOvr, ok2 := co.(*ProcessFlowCellOverride); ok2 {
+				applyCellTextOverride(cell, cellOvr)
+				if cellOvr.AccentBar {
+					cell.AccentBar = &jsonschema.AccentBarInput{
+						Position: "left",
+						Color:    accent,
+						Width:    4,
+					}
 				}
 			}
 		}

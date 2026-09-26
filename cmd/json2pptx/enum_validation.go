@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/layout"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
+	"github.com/sebahrens/json2pptx/internal/types"
 )
 
 // ---------------------------------------------------------------------------
@@ -48,6 +50,37 @@ func checkDeckEnumValues(input *PresentationInput) []*patterns.ValidationError {
 		if err := checkEnum(e.field, e.value, e.allowed, e.aliases); err != nil {
 			errs = append(errs, err)
 		}
+	}
+	return append(errs, checkThemeOverrideColors(input.ThemeOverride)...)
+}
+
+// checkThemeOverrideColors rejects theme_override colours that are not six
+// hex digits. They are written into the theme part's srgbClr val attribute, so
+// "#abc", "navy" or a value carrying quotes/markup produced an invalid or
+// ill-formed theme1.xml while validate reported VALID
+// (go-slide-creator-s1uvj.24).
+func checkThemeOverrideColors(override *ThemeInput) []*patterns.ValidationError {
+	if override == nil || len(override.Colors) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(override.Colors))
+	for k := range override.Colors {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var errs []*patterns.ValidationError
+	for _, k := range keys {
+		v := override.Colors[k]
+		if types.IsThemeOverrideHex(v) {
+			continue
+		}
+		path := "theme_override/colors/" + k
+		errs = append(errs, &patterns.ValidationError{
+			Pattern: "input",
+			Path:    path,
+			Code:    "invalid_color",
+			Message: fmt.Sprintf("invalid color %q for %s: theme_override colors must be 6-digit hex like #1A2B3C (3-digit shorthand and color names are not accepted)", v, path),
+		})
 	}
 	return errs
 }

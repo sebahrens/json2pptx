@@ -59,6 +59,22 @@ func TestValidate(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		// go-slide-creator-s1uvj.22: a non-positive retention made the
+		// output cleaner delete every file immediately.
+		{
+			name: "zero file retention",
+			modify: func(c *Config) {
+				c.Storage.FileRetention = 0
+			},
+			wantErr: true,
+		},
+		{
+			name: "negative file retention",
+			modify: func(c *Config) {
+				c.Storage.FileRetention = -time.Minute
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {

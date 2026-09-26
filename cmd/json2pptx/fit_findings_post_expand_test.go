@@ -244,6 +244,15 @@ func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testin
 	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 75 title characters")
 }
 
+func TestStateShiftHubDenseDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.StateShiftHubValues{HubLabel: "Today vs. target", LeftHeader: "TODAY", RightHeader: "TARGET"}
+	for i := 0; i < 6; i++ {
+		values.Pairs = append(values.Pairs, patterns.StateShiftPair{Title: "Stage", Before: "Manual work", After: "Automated work"})
+	}
+	values.Pairs[2].After = strings.Repeat("word ", 28)
+	assertBudgetFindingAcrossTemplates(t, "state-shift-hub", values, "pairs[2].after", "stage row with 6 pairs")
+}
+
 func TestExecSummaryDenseSupportWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.ExecSummaryValues{BottomLine: "Act now"}
 	for i := 0; i < 5; i++ {
@@ -500,4 +509,63 @@ func TestProcessFlowStepBudgetReachesFitReportAcrossTemplates(t *testing.T) {
 	}
 	values.Steps[2].Label = strings.Repeat("word ", 4)
 	assertBudgetFindingAcrossTemplates(t, "process-flow", values, "steps[2].label", "about 17 word-like or 13 wide unbroken characters")
+}
+
+func TestCapabilityHeatmapOverfullWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.CapabilityHeatmapValues{Tiers: []patterns.CapabilityHeatmapTier{{Label: "High"}, {Label: "Low"}}}
+	for i := 0; i < 8; i++ {
+		col := patterns.CapabilityHeatmapColumn{Header: "Function"}
+		for j := 0; j < 6; j++ {
+			col.Cells = append(col.Cells, patterns.CapabilityHeatmapCell{Text: strings.Repeat("activity ", 6), Tier: j % 2})
+		}
+		values.Columns = append(values.Columns, col)
+	}
+	assertBudgetFindingAcrossTemplates(t, "capability-heatmap", values, "columns[0].cells[0].text", "content area holds")
+}
+
+func TestCapabilityHeatmapUnbreakableHeaderReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.CapabilityHeatmapValues{Tiers: []patterns.CapabilityHeatmapTier{{Label: "High"}, {Label: "Low"}}}
+	for i := 0; i < 8; i++ {
+		values.Columns = append(values.Columns, patterns.CapabilityHeatmapColumn{Header: "Sales", Cells: []patterns.CapabilityHeatmapCell{{Text: "Lead scoring"}}})
+	}
+	values.Columns[3].Header = "Supercalifragilistic"
+	assertPatternFindingAcrossTemplates(t, patterns.ErrCodeTextExceedsShape, "capability-heatmap", values, "Supercalifragilistic", "mid-word")
+}
+
+func TestFrameworkGridOverfullWarningReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.FrameworkGridValues{}
+	for i := 0; i < 6; i++ {
+		row := patterns.FrameworkGridRow{Label: "Dimension"}
+		for j := 0; j < 4; j++ {
+			row.Cards = append(row.Cards, patterns.FrameworkGridCard{Title: "Lever", Body: strings.Repeat("word ", 32)})
+		}
+		values.Rows = append(values.Rows, row)
+	}
+	assertBudgetFindingAcrossTemplates(t, "framework-grid", values, "rows[0]", "content area holds")
+}
+
+func TestContactDirectoryOverflowReachesFitReportAcrossTemplates(t *testing.T) {
+	values := &patterns.ContactDirectoryValues{}
+	for g := 0; g < 4; g++ {
+		group := patterns.ContactDirectoryGroup{Name: "Region"}
+		for i := 0; i < 6; i++ {
+			group.People = append(group.People, patterns.ContactDirectoryPerson{
+				Name:  "Alexandra Richardson",
+				Title: "Managing Director and Partner, Global Financial Services",
+			})
+		}
+		values.Groups = append(values.Groups, group)
+	}
+	assertBudgetFindingAcrossTemplates(t, "contact-directory", values, "contact-directory groups need", "the content area holds about")
+}
+
+func TestTextSidebarOverflowReachesFitReportAcrossTemplates(t *testing.T) {
+	long := strings.Repeat("Word after word of dense operating detail. ", 12)[:450]
+	values := &patterns.TextSidebarValues{
+		Heading:    "Introduction",
+		Paragraphs: []string{long, long, long, long},
+		Bullets:    []string{strings.Repeat("b ", 70), strings.Repeat("b ", 70)},
+		Sidebar:    "Key message",
+	}
+	assertBudgetFindingAcrossTemplates(t, "text-sidebar", values, "text-sidebar paragraphs and bullets", "the main column holds about")
 }

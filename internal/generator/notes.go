@@ -140,8 +140,10 @@ func xmlEscapeString(s string) string {
 }
 
 // generateNotesSlideRels creates the relationships file for a notes slide.
-// A notes slide must reference back to its parent slide.
-func generateNotesSlideRels(slideNum int) ([]byte, error) {
+// A notes slide must reference back to its parent slide and, per ECMA-376,
+// to its notes master (notesMasterTarget, relative to ppt/notesSlides/;
+// empty only when no notes master could be resolved).
+func generateNotesSlideRels(slideNum int, notesMasterTarget string) ([]byte, error) {
 	rels := pptx.RelationshipsXML{
 		XMLName: xml.Name{Space: pptx.NsPackageRels, Local: "Relationships"},
 		Xmlns:   pptx.NsPackageRels,
@@ -152,6 +154,13 @@ func generateNotesSlideRels(slideNum int) ([]byte, error) {
 				Target: fmt.Sprintf("../slides/slide%d.xml", slideNum),
 			},
 		},
+	}
+	if notesMasterTarget != "" {
+		rels.Relationships = append(rels.Relationships, pptx.RelationshipXML{
+			ID:     "rId2",
+			Type:   pptx.RelTypeNotesMaster,
+			Target: notesMasterTarget,
+		})
 	}
 
 	relsOutput, err := xml.Marshal(rels)
@@ -191,7 +200,7 @@ func (ctx *singlePassContext) writeNotesSlides() error {
 		}
 
 		// Write the notesSlide relationships
-		relsData, err := generateNotesSlideRels(slideNum)
+		relsData, err := generateNotesSlideRels(slideNum, ctx.notesMasterRelTarget())
 		if err != nil {
 			return fmt.Errorf("failed to generate notes rels for slide %d: %w", slideNum, err)
 		}

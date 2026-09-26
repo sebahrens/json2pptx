@@ -191,6 +191,9 @@ var enumMap = map[string]map[string][]string{
 		// tracked as a separate task.
 		"type": {"text", "bullets", "body_and_bullets", "body_and_lead", "bullet_groups", "table", "chart", "diagram", "image"},
 	},
+	"GridImageInput": {
+		"geometry": {"rect", "ellipse"},
+	},
 	"BackgroundInput": {
 		"fit": canonicalBackgroundFits,
 	},

@@ -40,7 +40,7 @@ func (k *kpiNup) Description() string {
 }
 
 func (k *kpiNup) UseWhen() string {
-	return fmt.Sprintf("Exactly %d big-number KPIs with short captions; prefer stat-hero for a single dominant metric, card-grid when items need multi-line body text", k.cfg.Count)
+	return fmt.Sprintf("Exactly %d big-number KPIs with short captions; prefer stat-hero for a single dominant metric, card-grid when items need multi-line body text, metric-list when 3–7 numbers read top to bottom each with a label and detail line", k.cfg.Count)
 }
 
 func (k *kpiNup) NotWhen() string {
@@ -217,7 +217,7 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 					Width:    4,
 				}
 			}
-			shape.Text = applyKPICellTextOverrides(shape.Text, cellOvr)
+			shape.Text = applyCellTextOverrideToText(shape.Text, cellOvr)
 		}
 
 		gridCells[i] = gc

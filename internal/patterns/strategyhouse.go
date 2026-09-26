@@ -426,7 +426,7 @@ func buildStrategyHouseRoofText(badges []string, accent string) json.RawMessage 
 }
 
 func buildStrategyHousePillarText(title string, body []string, titleSize, bodySize float64, accent string) json.RawMessage {
-	paras := make([]strategyHouseParagraph, 0, 1+len(body))
+	var paras []strategyHouseParagraph
 	paras = append(paras, strategyHouseParagraph{
 		Content: pptx.ConvertMarkdownEmphasis(title),
 		Size:    titleSize,
@@ -469,6 +469,7 @@ func applyStrategyHouseOverride(cell *jsonschema.GridCellInput, cellOverrides ma
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "top",

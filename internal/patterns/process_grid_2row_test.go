@@ -257,3 +257,94 @@ func TestProcessGrid2Row_Taxonomy(t *testing.T) {
 		t.Error("expected NarrativeRole to be non-empty")
 	}
 }
+
+func TestProcessGrid2Row_HeadersAndOutcomes_Validate(t *testing.T) {
+	p, _ := Default().Get("process-grid-2row")
+	v := validProcessGrid2RowValues(4)
+	v.ColumnHeaders = []string{"Segment", "Prospect", "Meet", "Retain"}
+	v.Outcomes = []string{"+5% wallet", "+5% win", "+15% coverage", "-3% attrition"}
+	if err := p.Validate(v, nil, nil); err != nil {
+		t.Fatalf("matching headers/outcomes: %v", err)
+	}
+	// Addressable cells extend by N headers + N outcomes.
+	last := 2 + 4 + 4 + 4 + 4 - 1
+	if err := p.Validate(v, nil, map[int]any{last: &ProcessGrid2RowCellOverride{AccentBar: true}}); err != nil {
+		t.Errorf("cell override on the last outcome: %v", err)
+	}
+
+	short := validProcessGrid2RowValues(4)
+	short.ColumnHeaders = []string{"A", "B", "C"}
+	if err := p.Validate(short, nil, nil); err == nil || !strings.Contains(err.Error(), "column_headers needs one entry per phase") {
+		t.Errorf("3 headers for 4 phases: want count mismatch, got %v", err)
+	}
+	uneven := validProcessGrid2RowValues(4)
+	uneven.Row2Phases = uneven.Row2Phases[:3]
+	uneven.Outcomes = []string{"a", "b", "c", "d"}
+	if err := p.Validate(uneven, nil, nil); err == nil || !strings.Contains(err.Error(), "outcomes needs one entry per phase") {
+		t.Errorf("outcomes with unequal rows: want count mismatch, got %v", err)
+	}
+	long := validProcessGrid2RowValues(3)
+	long.Outcomes = []string{strings.Repeat("x", 61), "b", ""}
+	err := p.Validate(long, nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "outcomes[0]") || !strings.Contains(err.Error(), "outcomes[2]") {
+		t.Errorf("want max-length on outcomes[0] and required on outcomes[2], got %v", err)
+	}
+}
+
+func TestProcessGrid2Row_HeadersAndOutcomes_Expand(t *testing.T) {
+	p, _ := Default().Get("process-grid-2row")
+	plain, err := p.Expand(ExpandContext{}, validProcessGrid2RowValues(4), nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plain.Rows) != 2 {
+		t.Fatalf("without headers/outcomes want 2 rows, got %d", len(plain.Rows))
+	}
+
+	v := validProcessGrid2RowValues(4)
+	v.ColumnHeaders = []string{"Segment", "Prospect", "Meet", "Retain"}
+	v.Outcomes = []string{"+5% wallet", "+5% win", "+15% coverage", "-3% attrition"}
+	cellOverrides := map[int]any{0: &ProcessGrid2RowCellOverride{AccentBar: true}}
+	grid, err := p.Expand(fullThemeCtx(), v, nil, cellOverrides)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(grid.Rows) != 4 {
+		t.Fatalf("want header + 2 tracks + outcomes, got %d rows", len(grid.Rows))
+	}
+	header, outcomes := grid.Rows[0], grid.Rows[3]
+	for _, r := range []struct {
+		name string
+		row  int
+	}{{"header", 0}, {"outcomes", 3}} {
+		row := grid.Rows[r.row]
+		if row.MinHeight <= 0 || row.MinHeight != row.MaxHeight {
+			t.Errorf("%s row must be content-sized, got min=%v max=%v", r.name, row.MinHeight, row.MaxHeight)
+		}
+		if len(row.Cells) != 5 || row.Cells[0].Shape != nil {
+			t.Errorf("%s row: want an empty label-column cell + 4 cells, got %d", r.name, len(row.Cells))
+		}
+	}
+	for i, c := range header.Cells[1:] {
+		if c.AccentBar == nil || c.AccentBar.Position != "bottom" {
+			t.Errorf("header %d lacks the accent underline", i)
+		}
+		if !strings.Contains(string(c.Shape.Text), v.ColumnHeaders[i]) {
+			t.Errorf("header %d text = %s", i, c.Shape.Text)
+		}
+	}
+	for i, c := range outcomes.Cells[1:] {
+		if c.Shape.Geometry != "roundRect" || !strings.Contains(string(c.Shape.Fill), "lumMod") {
+			t.Errorf("outcome %d is not a tinted pill: %s %s", i, c.Shape.Geometry, c.Shape.Fill)
+		}
+	}
+	// Track indices are unchanged: override 0 still targets the row-1 label.
+	if grid.Rows[1].Cells[0].AccentBar == nil {
+		t.Error("cell_overrides[0] must still land on row1_label")
+	}
+	// Tracks keep flexing over the remaining height.
+	if grid.Rows[1].MaxHeight != 0 || grid.Rows[2].MaxHeight != 0 {
+		t.Error("track rows must stay flex rows")
+	}
+	assertPatternGolden(t, grid, "testdata/process-grid-2row/headers_outcomes.golden.json")
+}

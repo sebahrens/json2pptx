@@ -127,6 +127,8 @@ func runServe() error {
 		CommitSHA:        CommitSHA,
 		BuildTime:        BuildTime,
 		FileRetention:    cfg.Storage.FileRetention,
+		// Empty = unrestricted, as before; ALLOWED_IMAGE_PATHS opts in.
+		AllowedImagePaths: cfg.Images.AllowedBasePaths,
 	})
 
 	// Start output file cleanup daemon (enforces FileRetention policy)

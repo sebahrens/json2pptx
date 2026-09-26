@@ -99,6 +99,13 @@ type Matrix2x2Values struct {
 	TopRight    Matrix2x2Quadrant `json:"top_right"`
 	BottomLeft  Matrix2x2Quadrant `json:"bottom_left"`
 	BottomRight Matrix2x2Quadrant `json:"bottom_right"`
+
+	// Quadrants holds a positional quadrants array whose length is not 4.
+	// UnmarshalJSON maps a 4-item array onto the named slots; any other
+	// length is kept here (not dropped) so Validate can report the count
+	// instead of the input inspector calling "quadrants" an unknown field
+	// (go-slide-creator-s1uvj.42). Nil in every valid input.
+	Quadrants []Matrix2x2Quadrant `json:"quadrants,omitempty"`
 }
 
 // UnmarshalJSON supports positional quadrants array: {"quadrants": [TL, TR, BL, BR]}
@@ -125,7 +132,8 @@ func (v *Matrix2x2Values) UnmarshalJSON(data []byte) error {
 		v.BottomRight = withArray.Quadrants[3]
 		return nil
 	}
-	// Fall back to named fields.
+	// Fall back to named fields. The alias carries Quadrants too, so a
+	// positional array of the wrong length is kept for Validate to report.
 	type alias Matrix2x2Values
 	var a alias
 	if err := json.Unmarshal(data, &a); err != nil {
@@ -286,7 +294,15 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		}
 	}
 
-	// Validate each quadrant
+	// A positional quadrants array must map one-to-one onto the four slots;
+	// report its length rather than four missing named quadrants.
+	if vals.Quadrants != nil {
+		errs = append(errs, errCountMismatch(name, "quadrants", 4, len(vals.Quadrants),
+			"([top_left, top_right, bottom_left, bottom_right]; hint: for more or fewer than four items use card-grid)"))
+	}
+
+	// Validate each quadrant (skipped when a wrong-length quadrants array
+	// left the named slots empty — the count error above says why).
 	quads := []struct {
 		name string
 		q    Matrix2x2Quadrant
@@ -295,6 +311,9 @@ func (m *matrix2x2) Validate(values, overrides any, cellOverrides map[int]any) e
 		{"top_right", vals.TopRight},
 		{"bottom_left", vals.BottomLeft},
 		{"bottom_right", vals.BottomRight},
+	}
+	if vals.Quadrants != nil {
+		quads = nil
 	}
 	for _, qd := range quads {
 		headerPath := qd.name + ".header"
@@ -495,6 +514,7 @@ func applyMatrix2x2CellOverride(cell *jsonschema.GridCellInput, cellOverrides ma
 	if !coOk {
 		return
 	}
+	applyCellTextOverride(cell, cellOvr)
 	if cellOvr.AccentBar {
 		cell.AccentBar = &jsonschema.AccentBarInput{
 			Position: "left",

@@ -56,7 +56,7 @@ jobs:
         run: go build ./...
 
       - name: Test with coverage
-        run: go test ./... -short -v -race -coverprofile=coverage.out -covermode=atomic -timeout=15m
+        run: go test ./... -short -v -race -coverprofile=coverage.out -covermode=atomic -timeout=25m
 
       - name: Check coverage threshold
         run: |

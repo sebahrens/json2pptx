@@ -28,7 +28,7 @@ func (t *teamBios) UseWhen() string {
 	return "Team or 'Our People' slide with 1–8 members, each with a headshot (members[].photo) or an initials placeholder above name + role + short bio; prefer card-grid when items are generic features rather than people, agenda-with-images for narrative agenda rows"
 }
 func (t *teamBios) NotWhen() string {
-	return "Items are generic feature cards without a person photo (use card-grid), more than 8 members (split across slides), or items are numbered agenda sections (use agenda-with-images)"
+	return "Items are generic feature cards without a person photo (use card-grid), a key-contacts / directory page of names and titles without bios, grouped by region or with more than 8 people (use contact-directory), more than 8 members with bios (split across slides), or items are numbered agenda sections (use agenda-with-images)"
 }
 func (t *teamBios) Version() int      { return 2 }
 func (t *teamBios) CellsHint() string { return "1-8" }
@@ -304,11 +304,14 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 
 				// Cell overrides apply to the text cell (where name/role/bio live).
 				if co, ok := cellOverrides[memberIdx]; ok {
-					if cellOvr, ok2 := co.(*TeamBiosCellOverride); ok2 && cellOvr.AccentBar {
-						textCells[col].AccentBar = &jsonschema.AccentBarInput{
-							Position: "left",
-							Color:    accent,
-							Width:    3,
+					if cellOvr, ok2 := co.(*TeamBiosCellOverride); ok2 {
+						applyCellTextOverride(textCells[col], cellOvr)
+						if cellOvr.AccentBar {
+							textCells[col].AccentBar = &jsonschema.AccentBarInput{
+								Position: "left",
+								Color:    accent,
+								Width:    3,
+							}
 						}
 					}
 				}

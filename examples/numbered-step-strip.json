@@ -1,0 +1,48 @@
+{
+  "template": "midnight-blue",
+  "output_filename": "numbered-step-strip.pptx",
+  "slides": [
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Seven steps to start or accelerate the AI-first journey"}
+      ],
+      "pattern": {
+        "name": "numbered-step-strip",
+        "values": {
+          "style": "stacked-box",
+          "steps": [
+            {"label": "Set the ambition and tone from the top", "icon": "flag", "body": "CEO sponsorship, a board mandate, a three-year target and a protected budget."},
+            {"label": "Pick two or three workflows and go all-in", "icon": "target", "body": "Research and distribution carry the highest impact; redesign them end to end."},
+            {"label": "Invest in activation along with technology", "icon": "school", "body": "Build literacy from the C-suite to analysts: prompting, verification, collaboration."},
+            {"label": "Fix the data agents need", "icon": "database", "body": "Make the data behind each workflow clean and connected so outputs are reliable."},
+            {"label": "Build governance in from day one", "icon": "shield-check", "body": "Senior committee, auditable agent design, human-in-the-loop boundaries."},
+            {"label": "Tie AI outcomes to incentives", "icon": "coin", "body": "If it is not in a scorecard or review it will not happen at scale."},
+            {"label": "Design the organization of the future", "icon": "users", "body": "Leaner teams where people oversee a broader scope of AI-supported workflows."}
+          ]
+        }
+      }
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {"placeholder_id": "title", "type": "text", "text_value": "Agenda"}
+      ],
+      "pattern": {
+        "name": "numbered-step-strip",
+        "values": {
+          "style": "toc",
+          "steps": [
+            {"label": "Where we stand today", "icon": "map-pin"},
+            {"label": "What an AI-first firm looks like", "icon": "building"},
+            {"label": "Value at stake", "icon": "chart-bar"},
+            {"label": "Operating model shifts", "icon": "arrows-exchange"},
+            {"label": "Talent and culture", "icon": "users"},
+            {"label": "Roadmap", "icon": "route"},
+            {"label": "Decisions we need today", "icon": "checklist"}
+          ]
+        }
+      }
+    }
+  ]
+}

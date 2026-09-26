@@ -381,19 +381,20 @@ func wrapText(face *canvas.FontFace, text string, widthPt float64) int {
 		wordWidth := wordLine.Bounds().W()
 
 		if i > 0 {
-			if currentWidth+spaceWidth+wordWidth > widthMM {
-				lines++
-				currentWidth = wordWidth
-			} else {
+			if currentWidth+spaceWidth+wordWidth <= widthMM {
 				currentWidth += spaceWidth + wordWidth
+				continue
 			}
-		} else {
-			currentWidth = wordWidth
-			// Single word wider than available width — it wraps by character
-			if wordWidth > widthMM && widthMM > 0 {
-				lines = int(math.Ceil(wordWidth / widthMM))
-				currentWidth = wordWidth - float64(lines-1)*widthMM
-			}
+			lines++
+		}
+		currentWidth = wordWidth
+		// A word wider than the available width wraps by character, wherever
+		// it sits in the paragraph — a URL after "See" needs as many lines as
+		// the bare URL (go-slide-creator-s1uvj.12).
+		if wordWidth > widthMM && widthMM > 0 {
+			extra := int(math.Ceil(wordWidth/widthMM)) - 1
+			lines += extra
+			currentWidth = wordWidth - float64(extra)*widthMM
 		}
 	}
 

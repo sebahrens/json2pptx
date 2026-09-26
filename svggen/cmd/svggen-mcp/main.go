@@ -1520,6 +1520,7 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingLabelTruncated,
 		svggen.FindingLegendOverflowDropped,
 		svggen.FindingNegativeOnLog,
+		svggen.FindingNegativePieSlice,
 		svggen.FindingOrgChartDepthPruned,
 		svggen.FindingOverflowSuppressed,
 		svggen.FindingPercentScaleAmbiguous,

@@ -1,0 +1,486 @@
+{
+  "col_gap": 8,
+  "row_gap": 6,
+  "columns": [
+    10.4,
+    14.6,
+    10.4,
+    14.6,
+    10.4,
+    14.6,
+    10.4,
+    14.6
+  ],
+  "rows": [
+    {
+      "min_height": 34,
+      "max_height": 34,
+      "cells": [
+        {
+          "col_span": 8,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 0,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "North America",
+                  "size": 20
+                }
+              ],
+              "vertical_align": "b"
+            }
+          },
+          "accent_bar": {
+            "position": "bottom",
+            "color": "accent1",
+            "width": 1
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 120,
+      "max_height": 120,
+      "cells": [
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0.5,
+              "inset_left": 0.5,
+              "inset_right": 0.5,
+              "inset_top": 0.5,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "JS",
+                  "size": 24
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 4,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Jane Smith",
+                  "size": 18
+                },
+                {
+                  "align": "l",
+                  "color": "dk2",
+                  "content": "Managing Director \u0026 Partner, New York",
+                  "size": 14
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0.5,
+              "inset_left": 0.5,
+              "inset_right": 0.5,
+              "inset_top": 0.5,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "AP",
+                  "size": 24
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 4,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Arun Patel",
+                  "size": 18
+                },
+                {
+                  "align": "l",
+                  "color": "dk2",
+                  "content": "Partner, Toronto",
+                  "size": 14
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0.5,
+              "inset_left": 0.5,
+              "inset_right": 0.5,
+              "inset_top": 0.5,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "LR",
+                  "size": 24
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 4,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Lila Romero",
+                  "size": 18
+                },
+                {
+                  "align": "l",
+                  "color": "dk2",
+                  "content": "Principal, Chicago",
+                  "size": 14
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0.5,
+              "inset_left": 0.5,
+              "inset_right": 0.5,
+              "inset_top": 0.5,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "TB",
+                  "size": 24
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 4,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Tom Becker",
+                  "size": 18
+                },
+                {
+                  "align": "l",
+                  "color": "dk2",
+                  "content": "Principal, San Francisco",
+                  "size": 14
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 40,
+      "max_height": 40,
+      "cells": [
+        {
+          "col_span": 8,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 0,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "Europe",
+                  "size": 20
+                }
+              ],
+              "vertical_align": "b"
+            }
+          },
+          "accent_bar": {
+            "position": "bottom",
+            "color": "accent1",
+            "width": 1
+          }
+        }
+      ]
+    },
+    {
+      "min_height": 103,
+      "max_height": 103,
+      "cells": [
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0.5,
+              "inset_left": 0.5,
+              "inset_right": 0.5,
+              "inset_top": 0.5,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "SL",
+                  "size": 24
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 4,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Sophie Laurent",
+                  "size": 18
+                },
+                {
+                  "align": "l",
+                  "color": "dk2",
+                  "content": "Managing Director \u0026 Partner, Paris",
+                  "size": 14
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0.5,
+              "inset_left": 0.5,
+              "inset_right": 0.5,
+              "inset_top": 0.5,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "HN",
+                  "size": 24
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 4,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Henrik Nilsson",
+                  "size": 18
+                },
+                {
+                  "align": "l",
+                  "color": "dk2",
+                  "content": "Partner, Stockholm",
+                  "size": 14
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": {
+              "color": "accent1",
+              "lumMod": 20000,
+              "lumOff": 80000
+            },
+            "text": {
+              "align": "ctr",
+              "inset_bottom": 0.5,
+              "inset_left": 0.5,
+              "inset_right": 0.5,
+              "inset_top": 0.5,
+              "paragraphs": [
+                {
+                  "align": "ctr",
+                  "bold": true,
+                  "color": "accent1",
+                  "content": "MK",
+                  "size": 24
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "text": {
+              "align": "l",
+              "inset_left": 4,
+              "inset_right": 2,
+              "paragraphs": [
+                {
+                  "align": "l",
+                  "bold": true,
+                  "color": "dk1",
+                  "content": "Marta Kowalska",
+                  "size": 18
+                },
+                {
+                  "align": "l",
+                  "color": "dk2",
+                  "content": "Principal, Warsaw",
+                  "size": 14
+                }
+              ],
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {
+          "col_span": 2,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none"
+          }
+        }
+      ]
+    }
+  ]
+}

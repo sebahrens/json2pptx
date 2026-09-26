@@ -65,7 +65,7 @@ func (e *execSummary) Description() string {
 	return "Executive summary of 3-5 bold lead-in statements, each with a supporting sentence, separated by thin rules; optional bottom-line bar"
 }
 func (e *execSummary) UseWhen() string {
-	return "Executive summary or key-messages slide stating 3–5 conclusions as bold lead-ins with one supporting sentence each (answer-first / pyramid-principle style); prefer scqa-summary when the story must follow Situation / Complication / Questions / Answer, pull-quote for a single takeaway, card-grid when items are parallel features rather than conclusions"
+	return "Executive summary or key-messages slide stating 3–5 conclusions as bold lead-ins with one supporting sentence each (answer-first / pyramid-principle style); prefer scqa-summary when the story must follow Situation / Complication / Questions / Answer, pull-quote for a single takeaway, card-grid when items are parallel features rather than conclusions, labeled-rows when each row is a keyword label (WHY / WHAT / HOW) with body text, metric-list when each row leads with a number"
 }
 func (e *execSummary) NotWhen() string {
 	return "The narrative is an explicit SCQA arc (use scqa-summary), there is one headline message (use pull-quote or stat-hero), items are a deck section list (use agenda), or there are fewer than 3 / more than 5 messages (split or merge)"
@@ -305,8 +305,11 @@ func (e *execSummary) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		leadCell := execSummaryTextCell([]chartInsightsParagraph{
 			{Content: pptx.ConvertMarkdownEmphasis(p.Lead), Size: leadSize, Bold: true, Color: leadInk, Align: "l"},
 		}, "t", baselineInsetPt(tallest, leadSize))
-		if co, ok := cellOverrides[i].(*ExecSummaryCellOverride); ok && co.AccentBar {
-			leadCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 4}
+		if co, ok := cellOverrides[i].(*ExecSummaryCellOverride); ok {
+			applyCellTextOverride(leadCell, co)
+			if co.AccentBar {
+				leadCell.AccentBar = &jsonschema.AccentBarInput{Position: "left", Color: accent, Width: 4}
+			}
 		}
 		cells = append(cells, leadCell)
 		cells = append(cells, execSummaryTextCell([]chartInsightsParagraph{

@@ -761,13 +761,11 @@ Set environment variables directly or via a `.env` file. See `.env.example` for 
 | `SVG_SCALE` | `2.0` | Scale factor for PNG conversion |
 | `SVG_NATIVE_COMPATIBILITY` | `warn` | `warn`, `fallback`, `strict`, `ignore` |
 | `SVG_PNG_CONVERTER` | `auto` | `auto`, `rsvg-convert`, or `resvg` |
-| `SERVER_AUTH_MODE` | | HTTP API auth mode |
-| `ALLOWED_ORIGINS` | | CORS allowlist |
-| `CONVERT_RATE_LIMIT` | | Rate limit for `/convert` |
-| `CONVERT_TIMEOUT` | | Per-request timeout for `/convert` |
-| `ALLOWED_IMAGE_PATHS` | | Allowed local image roots |
+| `ALLOWED_IMAGE_PATHS` | | Comma-separated local image roots. When set, `serve`, `mcp`, `generate` and `semantic render` refuse image / background paths outside them (URL downloads stay allowed). Empty = any path (traversal still rejected) |
 | `JSON2PPTX_ALLOW_SETTINGS_WRITE` | `0` | Set to `1` to enable `register_template_setting` / `delete_template_setting` |
 | `PPROF_PORT` / `PPROF_BIND` | | pprof endpoint |
+
+The HTTP API (`serve`) has no built-in authentication, CORS policy, rate limiting or per-request timeout setting. Run it behind a reverse proxy or gateway that provides them when exposing it beyond localhost.
 
 ### SVG Conversion Strategies
 
@@ -794,7 +792,7 @@ templates:
   cache_dir: ./cache/templates
 storage:
   output_dir: ./output
-  file_retention: 1h
+  file_retention: 1h   # must be positive; the cleaner removes only generated downloads (<32 hex>.pptx)
 svg:
   strategy: png
   scale: 2.0

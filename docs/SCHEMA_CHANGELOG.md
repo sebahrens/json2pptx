@@ -1,5 +1,149 @@
 # Schema Changelog
 
+- **2026-09-25 — Pattern `cell_overrides` text keys honoured everywhere (`go-slide-creator-s1uvj.36`).**
+  `font_size`, `emphasis`, `align`, `vertical_align` and `color` were accepted
+  by every pattern that takes `cell_overrides` but applied only by the KPI
+  family. They now restyle the cell's primary text in all such patterns (the
+  index-to-text-target table is in docs/PATTERNS.md D15); `hero-detail` index 0
+  now honours them, and a `vertical_align: "b"` override survives content
+  re-centring. No schema shape changes.
+
+- **2026-09-25 — Schema 4.147.0: pie/donut negative slices excluded (`go-slide-creator-s1uvj.30`).**
+  A negative pie or donut value shrank the total, so the remaining arcs
+  overlapped and their labels summed past 100% (`[-1, 2, 3]` read 50% + 75%),
+  and an all-negative pie drew a full circle. Negative values are now excluded
+  before totalling and reported as the new **`chart.negative_pie_slice`**
+  (warning, promoted to refuse under strict fit; fix kind `replace_value`,
+  params `{negative_count, labels, indices}`). A pie with no positive total
+  draws nothing and reports `chart.zero_sum_pie`.
+
+- **2026-09-25 — Schema 4.146.0: `contact-directory` and `text-sidebar` patterns; image `geometry` (`go-slide-creator-s1uvj.5`, `go-slide-creator-s1uvj.11`).**
+  - **`contact-directory`** — key-contacts / "who to call" page:
+    `values.groups[1-4]{name, people[{name, title?, photo?}]}`, at most 24
+    people in total; overrides `accent` / `semantic_accent`, `columns` (3–5,
+    default 4), `name_size`, `title_size`. Each person is a circular headshot
+    (`photo`, the shared `{path | url, alt}` reference, cover-cropped) or an
+    initials disc, beside a bold name and a muted title; one or two rows of
+    people stack a large headshot above a centred name. Reports
+    `BODY_TOO_LONG` when a name wraps past two lines or the directory cannot
+    fit at 12pt with a 30pt headshot. `team-bios` `not_when` now points here
+    for bio-less, grouped or larger directories.
+  - **`text-sidebar`** — narrative introduction / foreword:
+    `values{heading?, paragraphs[1-4], bullets?[0-6], sidebar}`; overrides
+    `accent` / `semantic_accent`, `sidebar_side` (`right` | `left`),
+    `sidebar_width_pct` (25–40, default 32), `body_size`, `sidebar_size`,
+    `sidebar_style` (`tinted` | `filled`). Bullets follow the first paragraph
+    that ends in a colon, else the last one. Reports `BODY_TOO_LONG` when the
+    main column or the key message cannot fit.
+  - **Shape-grid `image.geometry`** — `"rect"` (default) or `"ellipse"`: the
+    picture frame's preset shape, so a contained square headshot renders as
+    a circle. Other values fail validation.
+  - `recommend_pattern` / `recommend_visual` route "contacts", "key
+    contacts", "directory", "who to call" to `contact-directory` and
+    "introduction", "intro page", "foreword", "key message sidebar" to
+    `text-sidebar`. Both patterns are raw-path only (`raw_json2pptx` in a
+    DeckSpec). Existing inputs are unchanged.
+
+- **2026-09-25 — Schema 4.145.0: `state-shift-hub` pattern (`go-slide-creator-s1uvj.6`).**
+  New named pattern for "today vs. future state" slides: a filled accent hub
+  circle holding a short `hub_label`, flanked by 3–6 numbered stage `pairs`
+  (`{title?, before, after, before_title?, after_title?}`). Today items sit
+  right-aligned on the left beside outlined `01`..`06` nodes; future items sit
+  left-aligned on the right beside filled nodes; the nodes lie on an arc
+  concentric with the hub. Optional `left_header` / `right_header` add ruled
+  column headers. Overrides: `accent`, `semantic_accent`, `title_size`,
+  `body_size`, `hub_size` (a ceiling — the hub label shrinks to fit the
+  circle, never below 12pt). No `cell_overrides`. `BODY_TOO_LONG` reports a
+  description that outgrows its measured stage row, and a hub label that does
+  not fit the circle. `recommend_pattern` / `recommend_visual` route "today vs
+  future", "current vs target state", "state shift" and "from-to shifts"
+  intents to it; a plain "current state assessment" still ranks
+  `before-after` first. Raw path only (`raw_json2pptx` in DeckSpec).
+
+- **2026-09-25 — Schema 4.144.0: new patterns `capability-heatmap` and `framework-grid` (`go-slide-creator-s1uvj.3`, `go-slide-creator-s1uvj.4`).**
+  `capability-heatmap` takes `values: {tiers: [{label, description?}] (2-4),
+  columns: [{header, sublabel?, cells: [{text, tier}] (1-6)}] (3-8)}`; each
+  cell's `tier` must index `tiers` (0 = highest, filled with the accent). Its
+  overrides are `accent`, `semantic_accent`, `header_size`, `cell_size`,
+  `show_legend` (default true) and `header_shape` (`homePlate` default, or
+  `rect`). `framework-grid` takes `values: {rows: [{label, cards: [{title,
+  body?}] (1-4)}] (2-6)}` with overrides `accent`, `semantic_accent`,
+  `label_width_pct` (10-35), `title_size`, `body_size` and
+  `cell_accent_mode`. Both emit `BODY_TOO_LONG` when their measured rows
+  cannot fit the content area; the heatmap also emits `TEXT_EXCEEDS_SHAPE`
+  for a header word too wide for its column. `recommend_pattern` /
+  `recommend_visual` route capability-map, automation-potential, heatmap and
+  value-chain-matrix intents to the heatmap, and framework /
+  change-management / levers-by-dimension intents to the framework grid.
+  Neither is reachable from a DeckSpec kind; author them with
+  `raw_json2pptx`. Existing inputs are unchanged.
+
+- **2026-09-25 — Schema 4.143.0: `metric-list` and `labeled-rows` patterns (`go-slide-creator-s1uvj.1`, `go-slide-creator-s1uvj.2`).**
+  Two new named patterns, both content-sized row stacks with hairline rules.
+  `metric-list` takes `values.items[]` (3–7 × `{value ≤12, label ≤60,
+  detail? ≤120, highlight?}`, at most one highlighted) and an optional
+  `values.callout` (≤140) rendered as a full-width accent banner; overrides
+  `accent`, `semantic_accent`, `value_size`, `label_size`, `value_width_pct`
+  (15–50, default 28) and `cell_accent_mode`. `labeled-rows` takes
+  `values.rows[]` (2–6 × `{label ≤24, sublabel? ≤60, body ≤300}`); overrides
+  `accent`, `semantic_accent`, `label_style` (`filled` default | `text`),
+  `label_width_pct` (12–40, default 22), `label_size`, `body_size` and
+  `cell_accent_mode`. Both report measured `TEXT_EXCEEDS_SHAPE` and
+  `BODY_TOO_LONG` warnings, and `recommend_pattern` / `recommend_visual` route
+  "metric list", "stat stack", "by the numbers", "why what how", "labeled
+  rows" and "row labels" intents to them. Neither is reachable from a DeckSpec
+  kind yet; author them through raw `PresentationInput`.
+
+- **2026-09-25 — Schema 4.142.0: `process-grid-2row` column headers and outcomes (`go-slide-creator-s1uvj.10`).**
+  `process-grid-2row` values accept `column_headers` (3–6 strings, ≤24
+  characters) and `outcomes` (3–6 strings, ≤32 characters). When given, each
+  must have one entry per phase column, which requires `row1_phases` and
+  `row2_phases` to have equal length; a mismatch is a `count_mismatch` error
+  with a resize fix. Headers render as a content-sized row of bold 12pt
+  labels with a 3pt accent underline above both tracks; outcomes render as a
+  content-sized row of rounded pills on the accent's light tint beneath them.
+  The cell under / over the row-label column stays empty. `cell_overrides`
+  indices for the tracks are unchanged; headers, then outcomes, are appended
+  after `row2_phases`. Omitting both leaves the output unchanged. The
+  schema-maxima readability pin for the pattern moves to 10.4pt: at the
+  all-"W" maximum the 40-character row labels autofit once both extra rows
+  take their height.
+
+- **2026-09-25 — Schema 4.141.0: seven-step and iconed `numbered-step-strip` (`go-slide-creator-s1uvj.9`).**
+  `numbered-step-strip` `steps` now allows 3–7 items. `stacked-box` and `toc`
+  accept the seventh step; `chevron` stays at six and a seventh step fails
+  with a `max_items` error naming `stacked-box` / `toc`. Steps accept an
+  optional `icon` (the shared IconRef: bundled name shorthand or
+  `{name|path|url|svg_data, fill?, alt?}`), rendered for `stacked-box` / `toc`
+  in an icon column between the number badge and the label, in the step's tip
+  colour (or a readable ink), capped at 26pt. The column is all-or-nothing:
+  steps without an icon get an empty cell. `chevron` rejects icons. With seven
+  rows, `BODY_TOO_LONG` flags bodies over about 140 (`stacked-box`) or 135
+  (`toc`) characters. Output without icons and with ≤6 steps is unchanged.
+
+- **2026-09-25 — Schema 4.140.0: `phase-roadmap` parallel tracks (`go-slide-creator-s1uvj.8`).**
+  `phase-roadmap` values accept `parallel_tracks` (0–4 strings, each ≤90
+  characters) and `parallel_label` (≤24 characters, default `"In parallel"`).
+  Tracks render below the descriptions as full-width, content-sized bars on
+  the accent's light tint, with the bold label at the left spanning all of
+  them behind an accent stripe. The block's height is taken from the phase-box
+  row (20% of the content height, floored at 11%), so the rest of the roadmap
+  and any callout keep their space. `cell_overrides` indices continue after
+  the descriptions: the label, then one bar per track. Omitted or empty
+  `parallel_tracks` leaves the output unchanged; `parallel_label` is ignored
+  without tracks.
+
+- **2026-09-25 — Schema 4.139.0: `comparison-2col` row connectors (`go-slide-creator-s1uvj.7`).**
+  `comparison-2col` accepts `overrides.connectors` (boolean, default
+  `false`). When true, the grid becomes `[45, 10, 45]`: the centre gutter
+  holds a 24pt accent circle with a chevron, vertically centred on each body
+  row and joined to both cells by an accent rule. Left cells take one neutral
+  surface (or `row_fill`) with a left accent stripe; right cells take the
+  accent's light tint with measured text colour. The header row keeps its
+  two accent header cells over an empty gutter. `cell_overrides` indices
+  still count only the left/right cells. Per-cell `BODY_TOO_LONG` budgets drop
+  to 88% of the plain values. Output with the flag off is byte-identical.
+
 - **2026-09-25 — Schema 4.138.0: semantic publication verdict requires visual approval (`go-slide-creator-uxfx8.1`).**
   `render_deck_spec` and `semantic render` now report
   `deterministic_ready`, `deterministic_blocking_reasons[]`, and

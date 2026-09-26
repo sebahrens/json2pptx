@@ -79,6 +79,11 @@ func TestTableHighlight_ParseScore(t *testing.T) {
 		{"-", thScaleHarvey, "na", 0, "", true},
 		{"$2.1M", thScaleText, thScaleText, 0, "", true},
 		{strings.Repeat("x", thTextCellMax+1), thScaleText, "", 0, "", false},
+		// go-slide-creator-s1uvj.40: the budget counts characters, not bytes —
+		// 20 characters / 25 bytes must fit the 24-character text budget.
+		{"Très élevé à élevé!!", thScaleText, thScaleText, 0, "", true},
+		{strings.Repeat("é", thTextCellMax), thScaleText, thScaleText, 0, "", true},
+		{strings.Repeat("é", thTextCellMax+1), thScaleText, "", 0, "", false},
 	}
 	for _, tc := range cases {
 		got, ok := parseTableHighlightScore(TableHighlightScore(tc.raw), tc.scale)

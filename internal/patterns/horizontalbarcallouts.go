@@ -149,8 +149,18 @@ type HorizontalBarCalloutsOverrides struct {
 }
 
 // HorizontalBarCalloutsCellOverride is the standard per-cell override; indexed
-// by bar.
-type HorizontalBarCalloutsCellOverride = CellOverride
+// by bar. It mirrors CellOverride key-for-key, except that AccentBar is a
+// *bool: this pattern draws the callout accent bar by default, so it must tell
+// an explicit accent_bar:false (suppress) apart from an absent key (keep the
+// default) — a plain bool with omitempty cannot (go-slide-creator-s1uvj.37).
+type HorizontalBarCalloutsCellOverride struct {
+	AccentBar     *bool   `json:"accent_bar,omitempty"`
+	Emphasis      string  `json:"emphasis,omitempty"`
+	Align         string  `json:"align,omitempty"`
+	VerticalAlign string  `json:"vertical_align,omitempty"`
+	FontSize      float64 `json:"font_size,omitempty"`
+	Color         string  `json:"color,omitempty"`
+}
 
 // ---------------------------------------------------------------------------
 // Interface methods
@@ -349,28 +359,30 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 		restPct := barAreaPct - fillPct
 
 		barCell := buildHorizontalBarRowCell(bar, accent, vals.Unit, labelSize, valueSize, labelColPct, fillPct, restPct, barAreaWidthPt)
+		textOvr := hbcTextOverride(cellOverrides[i])
+		if strings.TrimSpace(bar.Callout) == "" || !withCallouts {
+			// No insight to restyle: the text keys land on the bar's label.
+			applyCellTextOverride(barCell.Grid.Rows[0].Cells[0], textOvr)
+		}
 		if !withCallouts {
 			rows[i] = jsonschema.GridRowInput{Cells: []*jsonschema.GridCellInput{barCell}}
 			continue
 		}
 
 		calloutCell := buildHorizontalBarCalloutCell(bar.Callout, calloutSize)
+		applyCellTextOverride(calloutCell, textOvr)
 
 		// The accent bar is the visual bond between a bar and its insight, so it
 		// only renders where there is an insight to bind to: on a callout-less
-		// row it is a coloured dash anchored to nothing. Users who set
-		// accent_bar:false in cell_overrides suppress it for that row.
-		if strings.TrimSpace(bar.Callout) != "" {
-			if co, coOk := cellOverrides[i]; coOk {
-				if cellOvr, ok2 := co.(*HorizontalBarCalloutsCellOverride); ok2 && !cellOvr.AccentBar {
-					calloutCell.AccentBar = nil
-				}
-			} else {
-				calloutCell.AccentBar = &jsonschema.AccentBarInput{
-					Position: "left",
-					Color:    accent,
-					Width:    2,
-				}
+		// row it is a coloured dash anchored to nothing. It is on by default;
+		// only an explicit accent_bar:false in cell_overrides suppresses it for
+		// that row — any other override (font_size, color, …) keeps it
+		// (go-slide-creator-s1uvj.37).
+		if strings.TrimSpace(bar.Callout) != "" && hbcAccentBarEnabled(cellOverrides[i]) {
+			calloutCell.AccentBar = &jsonschema.AccentBarInput{
+				Position: "left",
+				Color:    accent,
+				Width:    2,
 			}
 		}
 
@@ -392,6 +404,33 @@ func (h *horizontalBarCallouts) Expand(ctx ExpandContext, values, overrides any,
 		Rows:    rows,
 	}
 	return grid, nil
+}
+
+// hbcAccentBarEnabled reports whether a callout row keeps its accent bar:
+// true unless the row's cell override explicitly sets accent_bar:false.
+func hbcAccentBarEnabled(co any) bool {
+	cellOvr, ok := co.(*HorizontalBarCalloutsCellOverride)
+	if !ok || cellOvr == nil || cellOvr.AccentBar == nil {
+		return true
+	}
+	return *cellOvr.AccentBar
+}
+
+// hbcTextOverride converts a row's cell override to the shared CellOverride
+// carrying only its D15 text keys (accent_bar is handled by
+// hbcAccentBarEnabled). Returns nil when the row has no override.
+func hbcTextOverride(co any) *CellOverride {
+	cellOvr, ok := co.(*HorizontalBarCalloutsCellOverride)
+	if !ok || cellOvr == nil {
+		return nil
+	}
+	return &CellOverride{
+		Emphasis:      cellOvr.Emphasis,
+		Align:         cellOvr.Align,
+		VerticalAlign: cellOvr.VerticalAlign,
+		FontSize:      cellOvr.FontSize,
+		Color:         cellOvr.Color,
+	}
 }
 
 // ---------------------------------------------------------------------------

@@ -151,6 +151,9 @@ func NewGaugeChart(builder *SVGBuilder, config GaugeChartConfig) *GaugeChart {
 
 // Draw renders the gauge chart.
 func (gc *GaugeChart) Draw(data GaugeData) error {
+	if err := validateGaugeRange(gc.config.MinValue, gc.config.MaxValue); err != nil {
+		return err
+	}
 	b := gc.builder
 	style := b.StyleGuide()
 
@@ -432,47 +435,69 @@ func (gc *GaugeChart) drawBackgroundArc(centerX, centerY, outerRadius, innerRadi
 	b.Pop()
 }
 
-// drawThresholdZones draws colored zones on the gauge.
-func (gc *GaugeChart) drawThresholdZones(centerX, centerY, outerRadius, innerRadius, startAngle, endAngle float64) {
-	b := gc.builder
+// gaugeZone is one colored band of the dial, as fractions of the sweep.
+type gaugeZone struct {
+	startRatio, endRatio float64
+	color                Color
+	remainder            bool // the unfilled band after the last threshold
+}
 
+// thresholdZones maps the configured thresholds onto fractions of the dial.
+// Thresholds outside [min, max] are clamped to the dial and the walk stops at
+// max: an unclamped ratio above 1 swept a zone past the end of the dial and
+// round through the gap at its foot (go-slide-creator-s1uvj.32). Zones that
+// clamp to nothing (below min, or out of order) are skipped.
+func (gc *GaugeChart) thresholdZones() []gaugeZone {
 	totalRange := gc.config.MaxValue - gc.config.MinValue
-	totalAngle := endAngle - startAngle
-
 	prevValue := gc.config.MinValue
+	var zones []gaugeZone
 
 	for _, threshold := range gc.config.Thresholds {
-		// Calculate angle range for this zone
-		startRatio := (prevValue - gc.config.MinValue) / totalRange
-		endRatio := (threshold.Value - gc.config.MinValue) / totalRange
-
-		zoneStartAngle := startAngle + startRatio*totalAngle
-		zoneEndAngle := startAngle + endRatio*totalAngle
-
-		b.Push()
-		b.SetFillColor(threshold.Color)
-		b.SetStrokeWidth(0)
-
-		gc.drawArc(centerX, centerY, outerRadius, innerRadius, zoneStartAngle, zoneEndAngle)
-
-		b.Pop()
-
-		prevValue = threshold.Value
+		if prevValue >= gc.config.MaxValue {
+			break
+		}
+		value := math.Min(threshold.Value, gc.config.MaxValue)
+		if value <= prevValue {
+			continue
+		}
+		zones = append(zones, gaugeZone{
+			startRatio: (prevValue - gc.config.MinValue) / totalRange,
+			endRatio:   (value - gc.config.MinValue) / totalRange,
+			color:      threshold.Color,
+		})
+		prevValue = value
 	}
 
 	// Fill remaining area if thresholds don't cover the full range
 	if prevValue < gc.config.MaxValue {
-		startRatio := (prevValue - gc.config.MinValue) / totalRange
-		zoneStartAngle := startAngle + startRatio*totalAngle
+		zones = append(zones, gaugeZone{
+			startRatio: (prevValue - gc.config.MinValue) / totalRange,
+			endRatio:   1,
+			remainder:  true,
+		})
+	}
+	return zones
+}
 
-		style := b.StyleGuide()
-		remainFill := lerpColors(style.Palette.Background.Opaque(), style.Palette.Border.Opaque(), 0.30)
-		remainFill = EnsureContrast(remainFill, style.Palette.Background, WCAGAALarge)
+// drawThresholdZones draws colored zones on the gauge.
+func (gc *GaugeChart) drawThresholdZones(centerX, centerY, outerRadius, innerRadius, startAngle, endAngle float64) {
+	b := gc.builder
+	totalAngle := endAngle - startAngle
+
+	for _, zone := range gc.thresholdZones() {
+		fill := zone.color
+		if zone.remainder {
+			style := b.StyleGuide()
+			fill = lerpColors(style.Palette.Background.Opaque(), style.Palette.Border.Opaque(), 0.30)
+			fill = EnsureContrast(fill, style.Palette.Background, WCAGAALarge)
+		}
+
 		b.Push()
-		b.SetFillColor(remainFill)
+		b.SetFillColor(fill)
 		b.SetStrokeWidth(0)
 
-		gc.drawArc(centerX, centerY, outerRadius, innerRadius, zoneStartAngle, endAngle)
+		gc.drawArc(centerX, centerY, outerRadius, innerRadius,
+			startAngle+zone.startRatio*totalAngle, startAngle+zone.endRatio*totalAngle)
 
 		b.Pop()
 	}
@@ -706,7 +731,52 @@ func (d *GaugeDiagram) Validate(req *RequestEnvelope) error {
 		return fmt.Errorf("gauge chart requires 'value' field in data. Expected: {\"value\": 75} (optionally with \"min\", \"max\", \"thresholds\")")
 	}
 
+	// An empty or inverted range has no geometry: every value-to-angle ratio
+	// divides by max-min, which wrote NaN coordinates into the needle, tick
+	// and threshold paths (go-slide-creator-s1uvj.31).
+	value, _ := req.Data["value"].(float64)
+	if v, ok := req.Data["value"].(int); ok {
+		value = float64(v)
+	}
+	minValue, maxValue := resolveGaugeRange(req.Data, value, DefaultGaugeChartConfig(0, 0))
+	if err := validateGaugeRange(minValue, maxValue); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// validateGaugeRange rejects a gauge scale whose max is not greater than its
+// min; such a range cannot be mapped onto the dial.
+func validateGaugeRange(minValue, maxValue float64) error {
+	if !(maxValue > minValue) {
+		return fmt.Errorf("gauge chart requires max greater than min, got min=%v max=%v", minValue, maxValue)
+	}
+	return nil
+}
+
+// resolveGaugeRange returns the effective scale for a gauge request: explicit
+// "min"/"max" override the config defaults, and a value in [0,1] with neither
+// given selects a 0–1 scale.
+func resolveGaugeRange(data map[string]any, value float64, config GaugeChartConfig) (minValue, maxValue float64) {
+	minValue, maxValue = config.MinValue, config.MaxValue
+	_, hasMin := data["min"]
+	_, hasMax := data["max"]
+	if v, ok := data["min"].(float64); ok {
+		minValue = v
+	}
+	if v, ok := data["max"].(float64); ok {
+		maxValue = v
+	}
+
+	// Auto-detect 0-1 scale: if no explicit min/max was provided and
+	// the value is in [0,1], assume a 0-1 range instead of the default
+	// 0-100. This prevents fractional values like 0.73 from rendering
+	// as needle-near-zero on a 0-100 scale.
+	if !hasMin && !hasMax && value >= 0 && value <= 1 {
+		minValue, maxValue = 0, 1
+	}
+	return minValue, maxValue
 }
 
 // Render generates an SVG document from the request envelope.
@@ -727,24 +797,8 @@ func (d *GaugeDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SV
 		config.ValueFormatSpec = req.Style.ValueFormat
 		config.ShowValues = req.Style.ShowValues
 
-		// Apply custom min/max, tracking whether they were explicitly set.
-		_, hasMin := req.Data["min"]
-		_, hasMax := req.Data["max"]
-		if minVal, ok := req.Data["min"].(float64); ok {
-			config.MinValue = minVal
-		}
-		if maxVal, ok := req.Data["max"].(float64); ok {
-			config.MaxValue = maxVal
-		}
-
-		// Auto-detect 0-1 scale: if no explicit min/max was provided and
-		// the value is in [0,1], assume a 0-1 range instead of the default
-		// 0-100. This prevents fractional values like 0.73 from rendering
-		// as needle-near-zero on a 0-100 scale.
-		if !hasMin && !hasMax && data.Value >= 0 && data.Value <= 1 {
-			config.MinValue = 0
-			config.MaxValue = 1
-		}
+		// Apply custom min/max (or the auto-detected 0-1 scale).
+		config.MinValue, config.MaxValue = resolveGaugeRange(req.Data, data.Value, config)
 		if startAngle, ok := req.Data["start_angle"].(float64); ok {
 			config.StartAngle = startAngle
 		}

@@ -68,6 +68,10 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 		return nil, fmt.Errorf("table must have at least one header")
 	}
 
+	if err := table.CheckRowWidths(); err != nil {
+		return nil, err
+	}
+
 	numCols := len(table.Headers)
 	numRows := len(table.Rows) + 1 // +1 for header row
 
@@ -311,7 +315,7 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 			xml.WriteString(generateSummaryRow(row, rowIdx, rowHeight, config))
 		} else {
 			isTotals := (config.Style.TotalsRow && rowIdx == lastDataRowIdx) || isTotalRow(row)
-			xml.WriteString(generateDataRow(row, rowIdx, rowHeight, config, isTotals))
+			xml.WriteString(generateDataRow(row, numCols, rowIdx, rowHeight, config, isTotals))
 		}
 	}
 
@@ -842,12 +846,19 @@ func generateHeaderCell(text string, colIdx int, config TableRenderConfig) strin
 }
 
 // generateDataRow generates a data row XML, handling merges.
-func generateDataRow(row []types.TableCell, rowIdx int, height int64, config TableRenderConfig, isTotalsRow bool) string {
+func generateDataRow(row []types.TableCell, numCols, rowIdx int, height int64, config TableRenderConfig, isTotalsRow bool) string {
 	var xml strings.Builder
 	fmt.Fprintf(&xml, `<a:tr h="%d">`, height)
 
 	for colIdx, cell := range row {
 		xml.WriteString(generateDataCell(cell, rowIdx, colIdx, config, isTotalsRow))
+	}
+	// Pad a short row with empty cells so every <a:tr> carries one <a:tc>
+	// per <a:gridCol>; a ragged row otherwise failed OOXML_INVALID_TABLE
+	// (go-slide-creator-s1uvj.26). JSON input is already padded by
+	// ToTableSpec; this covers TableSpecs built directly.
+	for colIdx := types.RowGridWidth(row); colIdx < numCols; colIdx++ {
+		xml.WriteString(generateDataCell(types.TableCell{ColSpan: 1, RowSpan: 1}, rowIdx, colIdx, config, isTotalsRow))
 	}
 
 	xml.WriteString(`</a:tr>`)

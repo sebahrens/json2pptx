@@ -1273,6 +1273,24 @@ func TestValueChainBudgetProbe(t *testing.T) {
 	}
 }
 
+// Run with JSON2PPTX_STATE_SHIFT_BUDGET_PROBE=1 to measure the readable
+// description budget per pair count (every pair titled, headers present).
+func TestStateShiftHubBudgetProbe(t *testing.T) {
+	if os.Getenv("JSON2PPTX_STATE_SHIFT_BUDGET_PROBE") == "" {
+		t.Skip("set JSON2PPTX_STATE_SHIFT_BUDGET_PROBE=1")
+	}
+	for pairs := 3; pairs <= 6; pairs++ {
+		budget := probeReadableBudget(t, "state-shift-hub", 140, func(length int) any {
+			v := &patterns.StateShiftHubValues{HubLabel: "Today's state vs. agentic state", LeftHeader: "TODAY'S STATE", RightHeader: "AGENTIC STATE"}
+			for i := 0; i < pairs; i++ {
+				v.Pairs = append(v.Pairs, patterns.StateShiftPair{Title: "Stage title", Before: budgetProbeCopy(length), After: budgetProbeCopy(length)})
+			}
+			return v
+		})
+		t.Logf("pairs=%d description budget=%d", pairs, budget)
+	}
+}
+
 func TestStrategyHouseBudgetProbe(t *testing.T) {
 	if os.Getenv("JSON2PPTX_STRATEGY_HOUSE_BUDGET_PROBE") == "" {
 		t.Skip("set JSON2PPTX_STRATEGY_HOUSE_BUDGET_PROBE=1")
@@ -1940,7 +1958,12 @@ func TestNumberedStepBudgetProbe(t *testing.T) {
 		t.Skip("manual numbered-step budget calibration probe")
 	}
 	for _, style := range []string{"chevron", "stacked-box", "toc"} {
-		for steps := 3; steps <= 6; steps++ {
+		// Chevrons share one row and hold 6; stacked-box / toc rows stack and hold 7.
+		maxSteps := 7
+		if style == "chevron" {
+			maxSteps = 6
+		}
+		for steps := 3; steps <= maxSteps; steps++ {
 			for _, bodies := range []bool{false, true} {
 				for _, field := range []string{"label", "body"} {
 					if field == "body" && !bodies {

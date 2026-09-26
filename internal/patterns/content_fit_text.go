@@ -61,8 +61,16 @@ const sparseTextCentreFrac = 0.55
 
 // anchorSparseText centres the text of a card whose estimated text height is
 // small relative to the card height; denser cards keep their top anchor.
+// A bottom anchor is never a pattern default, only an author's
+// cell_overrides vertical_align, so it is kept (go-slide-creator-s1uvj.36).
 func anchorSparseText(text json.RawMessage, textHPt, boxHPt float64) json.RawMessage {
 	if boxHPt <= 0 || textHPt >= boxHPt*sparseTextCentreFrac {
+		return text
+	}
+	var anchor struct {
+		VerticalAlign string `json:"vertical_align"`
+	}
+	if json.Unmarshal(text, &anchor) == nil && anchor.VerticalAlign == "b" {
 		return text
 	}
 	return withVerticalAlign(text, "ctr")

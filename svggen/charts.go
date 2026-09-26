@@ -765,16 +765,27 @@ func (bc *BarChart) calculateDomain(data ChartData) (min, max float64) {
 	max = 0
 
 	if bc.config.Stacked {
-		// For stacked bars, calculate max stack height
+		// Stacked bars diverge from zero: positive segments stack upward and
+		// negative segments stack downward (see drawStackedBars), so the
+		// domain spans the deepest negative stack to the tallest positive
+		// stack. Using the net sum hid negative segments below the axis
+		// (go-slide-creator-s1uvj.29).
 		for i := range data.Categories {
-			stackSum := 0.0
+			posSum, negSum := 0.0, 0.0
 			for _, series := range data.Series {
 				if i < len(series.Values) {
-					stackSum += series.Values[i]
+					if v := series.Values[i]; v > 0 {
+						posSum += v
+					} else {
+						negSum += v
+					}
 				}
 			}
-			if stackSum > max {
-				max = stackSum
+			if posSum > max {
+				max = posSum
+			}
+			if negSum < min {
+				min = negSum
 			}
 		}
 	} else {
@@ -1065,9 +1076,19 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 
 	baseY := plotArea.Y + adjustedYScale.Scale(0)
 
-	// Track cumulative values per category for stacking
+	// Track cumulative values per category for stacking. Positive and
+	// negative segments keep separate running totals so the stack diverges
+	// from zero: positives grow upward, negatives grow downward
+	// (go-slide-creator-s1uvj.29).
 	numCategories := len(data.Categories)
-	cumulative := make([]float64, numCategories)
+	posCumulative := make([]float64, numCategories)
+	negCumulative := make([]float64, numCategories)
+	cumulativeFor := func(pos, neg []float64, v float64) []float64 {
+		if v > 0 {
+			return pos
+		}
+		return neg
+	}
 
 	b.Push()
 
@@ -1086,7 +1107,8 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 			cat := data.Categories[catIdx]
 			x := adjustedXScale.Scale(cat)
 
-			// Bottom of this segment = cumulative so far
+			// Bottom of this segment = same-sign cumulative so far
+			cumulative := cumulativeFor(posCumulative, negCumulative, v)
 			segBottom := cumulative[catIdx]
 			// Top of this segment = cumulative + current value
 			segTop := segBottom + v
@@ -1122,7 +1144,8 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 		b.SetFontSize(labelFontSize)
 		b.SetFontWeight(style.Typography.WeightNormal)
 
-		cumulativeForLabels := make([]float64, numCategories)
+		posForLabels := make([]float64, numCategories)
+		negForLabels := make([]float64, numCategories)
 
 		for seriesIdx, series := range data.Series {
 			segColor := colors[seriesIdx%len(colors)]
@@ -1139,6 +1162,7 @@ func (bc *BarChart) drawStackedBars(data ChartData, plotArea Rect, xScale *Categ
 				cat := data.Categories[catIdx]
 				x := adjustedXScale.Scale(cat)
 
+				cumulativeForLabels := cumulativeFor(posForLabels, negForLabels, v)
 				segBottom := cumulativeForLabels[catIdx]
 				segTop := segBottom + v
 
@@ -1663,6 +1687,19 @@ func (lc *LineChart) calculateYDomain(data ChartData) (min, max float64) {
 		}
 	}
 
+	// A filled mark is read against the axis: the band's area IS the claim
+	// ("this much of the total"), and on a stacked area the bands are a
+	// part-to-whole. Truncating the axis makes a 40-unit base look like zero
+	// and overstates the trend, so area and stacked_area always baseline at
+	// zero — matching stacked_bar, which already did (go-slide-creator-6wfe).
+	// A plain line chart keeps the zoomed axis: it encodes value by position,
+	// not by area. This runs before the constant-data case below so a flat
+	// area (e.g. [40,40,40]) still baselines at zero (go-slide-creator-s1uvj.34).
+	if lc.config.FillArea {
+		min = math.Min(0, min)
+		max = math.Max(0, max)
+	}
+
 	// Handle degenerate case where all values are identical.
 	if min == max {
 		if min == 0 {
@@ -1674,18 +1711,6 @@ func (lc *LineChart) calculateYDomain(data ChartData) (min, max float64) {
 			offset = 1
 		}
 		return min - offset, max + offset
-	}
-
-	// A filled mark is read against the axis: the band's area IS the claim
-	// ("this much of the total"), and on a stacked area the bands are a
-	// part-to-whole. Truncating the axis makes a 40-unit base look like zero
-	// and overstates the trend, so area and stacked_area always baseline at
-	// zero — matching stacked_bar, which already did (go-slide-creator-6wfe).
-	// A plain line chart keeps the zoomed axis: it encodes value by position,
-	// not by area.
-	if lc.config.FillArea {
-		min = math.Min(0, min)
-		max = math.Max(0, max)
 	}
 
 	// Add small top padding (~5%) so the highest data point doesn't touch
@@ -2679,6 +2704,14 @@ func (pc *PieChart) Draw(data ChartData) error {
 		labels = data.Series[0].Labels
 	}
 
+	// Negative slices have no area in a part-to-whole chart. Counting them
+	// shrank the total, so the remaining arcs overlapped and their labels
+	// summed past 100% (go-slide-creator-s1uvj.30). Exclude them — together
+	// with their labels, colors and explode flags — before anything is
+	// totalled, measured or drawn, and report what was dropped.
+	colors := pc.getColors(style, len(values))
+	values, labels, colors, exploded := pc.excludeNegativeSlices(values, labels, colors)
+
 	// Detect zero-sum condition: all values zero or all negative.
 	total := 0.0
 	for _, v := range values {
@@ -2708,8 +2741,6 @@ func (pc *PieChart) Draw(data ChartData) error {
 		}
 		labelConfig.ValueFmt = NewValueFormatter(spec, labelValues, "", false)
 	}
-
-	colors := pc.getColors(style, len(values))
 
 	// Calculate layout
 	plotArea := pc.config.PlotArea()
@@ -2896,7 +2927,7 @@ func (pc *PieChart) Draw(data ChartData) error {
 	arcConfig.ValueFmt = labelConfig.ValueFmt
 	arcConfig.LabelValuesAreRaw = labelConfig.LabelValuesAreRaw
 	arcConfig.ExplodeOffset = pc.config.ExplodeOffset
-	arcConfig.ExplodedSlices = pc.config.ExplodedSlices
+	arcConfig.ExplodedSlices = exploded
 	arcConfig.Colors = colors
 
 	arcs := NewArcSeries(b, arcConfig)
@@ -2951,6 +2982,66 @@ func (pc *PieChart) Draw(data ChartData) error {
 	}
 
 	return nil
+}
+
+// excludeNegativeSlices drops negative slice values, keeping labels, colors
+// and ExplodedSlices indices aligned with the surviving slices, and emits
+// FindingNegativePieSlice naming what was dropped. Zero-valued slices are
+// kept: they are handled (and reported, when every slice is zero) by the
+// zero-sum path.
+func (pc *PieChart) excludeNegativeSlices(values []float64, labels []string, colors []Color) ([]float64, []string, []Color, []int) {
+	newIndex := make(map[int]int, len(values))
+	var (
+		keptValues []float64
+		keptLabels []string
+		keptColors []Color
+		dropped    []string
+		droppedIdx []int
+	)
+	for i, v := range values {
+		label := fmt.Sprintf("Slice %d", i+1)
+		if i < len(labels) && labels[i] != "" {
+			label = labels[i]
+		}
+		if v < 0 {
+			dropped = append(dropped, label)
+			droppedIdx = append(droppedIdx, i)
+			continue
+		}
+		newIndex[i] = len(keptValues)
+		keptValues = append(keptValues, v)
+		keptLabels = append(keptLabels, label)
+		if len(colors) > 0 {
+			keptColors = append(keptColors, colors[i%len(colors)])
+		}
+	}
+	if len(dropped) == 0 {
+		return values, labels, colors, pc.config.ExplodedSlices
+	}
+
+	pc.builder.AddFinding(Finding{
+		Field: "data.series[0].values",
+		Code:  FindingNegativePieSlice,
+		Message: fmt.Sprintf("pie chart has %d negative slice value(s) (%s) — excluded, "+
+			"because a part-to-whole chart cannot show a negative share; use a bar or waterfall chart for signed values",
+			len(dropped), strings.Join(dropped, ", ")),
+		Severity: "warning",
+		Fix: &FixSuggestion{
+			Kind:   FixKindReplaceValue,
+			Params: map[string]any{"negative_count": len(dropped), "labels": dropped, "indices": droppedIdx},
+		},
+	})
+
+	var exploded []int
+	for _, idx := range pc.config.ExplodedSlices {
+		if n, ok := newIndex[idx]; ok {
+			exploded = append(exploded, n)
+		}
+	}
+	if len(keptColors) == 0 {
+		keptColors = colors
+	}
+	return keptValues, keptLabels, keptColors, exploded
 }
 
 // pieLegendItems builds LegendItem slice from values/labels/colors.

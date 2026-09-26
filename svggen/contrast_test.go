@@ -65,14 +65,44 @@ func TestEnsureContrast_SameColor(t *testing.T) {
 	}
 }
 
-func TestEnsureContrast_PreservesAlpha(t *testing.T) {
-	// The adjusted color should preserve the original alpha.
-	fg := Color{R: 255, G: 255, B: 255, A: 0.7}
-	bg := MustParseColor("#FFFFFF")
+// An adjusted semi-transparent color is returned opaque. The search solves for
+// the composited (on-screen) color; re-applying fg's alpha afterwards blended
+// that solution back toward the background, so the drawn text missed the
+// target ratio: EnsureWCAGAA({0,0,0,0.3}, white) returned #D6D6D6 at 30%
+// alpha, which composites to 1.45:1 (go-slide-creator-s1uvj.35). Low alpha
+// often cannot reach the ratio at all (black at 30% over white is only ~2:1),
+// so the returned color is the opaque solution.
+func TestEnsureContrast_AdjustedSemiTransparentIsOpaque(t *testing.T) {
+	white := MustParseColor("#FFFFFF")
+	for _, tc := range []struct {
+		name   string
+		fg, bg Color
+		ratio  float64
+	}{
+		{"black 30% on white, AA", Color{R: 0, G: 0, B: 0, A: 0.3}, white, WCAGAANormal},
+		{"white 70% on white, AA", Color{R: 255, G: 255, B: 255, A: 0.7}, white, WCAGAANormal},
+		{"mid gray 50% on white, AA large", Color{R: 128, G: 128, B: 128, A: 0.5}, white, WCAGAALarge},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result := EnsureContrast(tc.fg, tc.bg, tc.ratio)
+			if got := result.Opaque().ContrastWith(tc.bg.Opaque()); got < tc.ratio {
+				t.Errorf("composited contrast = %.2f (color %s alpha %.2f), want >= %.1f",
+					got, result.Hex(), result.A, tc.ratio)
+			}
+			if result.A != 1 {
+				t.Errorf("adjusted color alpha = %.3f, want 1 (opaque)", result.A)
+			}
+		})
+	}
+}
 
-	result := EnsureContrast(fg, bg, WCAGAANormal)
-	if math.Abs(result.A-0.7) > 0.001 {
-		t.Errorf("alpha should be preserved: got %.3f, want 0.700", result.A)
+// A semi-transparent color that already composites to a compliant contrast is
+// returned unchanged, alpha included.
+func TestEnsureContrast_CompliantSemiTransparentUnchanged(t *testing.T) {
+	fg := Color{R: 0, G: 0, B: 0, A: 0.9}
+	bg := MustParseColor("#FFFFFF")
+	if result := EnsureContrast(fg, bg, WCAGAANormal); result != fg {
+		t.Errorf("compliant color changed: got %+v, want %+v", result, fg)
 	}
 }
 
@@ -404,6 +434,48 @@ func TestWCAGConstants(t *testing.T) {
 	}
 	if WCAGAAALarge != 4.5 {
 		t.Errorf("WCAGAAALarge = %f, want 4.5", WCAGAAALarge)
+	}
+}
+
+// TestEnsureContrast_TranslucentFgMeasuredOverRealBackground is a regression
+// test for go-slide-creator-s1uvj.43: a translucent foreground must be
+// composited over the actual background, not over white, before its contrast
+// is measured. Half-transparent white on #404040 renders as ~#A0A0A0, only
+// ~3.96:1 against the fill; blending over white instead made it read as pure
+// white (~10:1), so EnsureContrast returned it unchanged.
+func TestEnsureContrast_TranslucentFgMeasuredOverRealBackground(t *testing.T) {
+	fg := Color{R: 255, G: 255, B: 255, A: 0.5}
+	bg := MustParseColor("#404040")
+
+	if got := fg.BlendOver(bg).ContrastWith(bg); got >= WCAGAANormal {
+		t.Fatalf("precondition: composited fg contrast = %.2f, want < %.1f", got, WCAGAANormal)
+	}
+
+	result := EnsureContrast(fg, bg, WCAGAANormal)
+	if ratio := result.BlendOver(bg).ContrastWith(bg); ratio < WCAGAANormal {
+		t.Errorf("translucent fg on dark fill: on-screen contrast = %.2f, want >= %.1f (result %s alpha %.2f)",
+			ratio, WCAGAANormal, result.Hex(), result.A)
+	}
+
+	// A translucent fg that is compliant once composited over the real
+	// background keeps its alpha and is returned unchanged.
+	light := Color{R: 255, G: 255, B: 255, A: 0.9}
+	if got := EnsureContrast(light, bg, WCAGAANormal); got != light {
+		t.Errorf("compliant translucent fg changed: got %+v, want %+v", got, light)
+	}
+}
+
+func TestColorBlendOver(t *testing.T) {
+	fg := Color{R: 255, G: 255, B: 255, A: 0.5}
+	if got := fg.BlendOver(MustParseColor("#000000")).Hex(); got != "#808080" {
+		t.Errorf("white@0.5 over black = %s, want #808080", got)
+	}
+	if got := fg.BlendOver(MustParseColor("#FFFFFF")); got != fg.Opaque() {
+		t.Errorf("BlendOver(white) = %v, want Opaque() %v", got, fg.Opaque())
+	}
+	opaque := MustParseColor("#123456")
+	if got := opaque.BlendOver(MustParseColor("#000000")); got != opaque {
+		t.Errorf("opaque color should be unchanged, got %v", got)
 	}
 }
 

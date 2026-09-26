@@ -1,0 +1,571 @@
+{
+  "col_gap": 0.01,
+  "row_gap": 6,
+  "columns": [
+    26.096,
+    0.97,
+    3.405,
+    0.715,
+    0.254,
+    4.121,
+    1.939,
+    25,
+    1.939,
+    4.121,
+    0.254,
+    0.715,
+    3.405,
+    0.97,
+    26.096
+  ],
+  "rows": [
+    {
+      "min_height": 34,
+      "max_height": 34,
+      "cells": [
+        {
+          "col_span": 6,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "TODAY'S STATE",
+                  "size": 12,
+                  "bold": true,
+                  "color": "dk2",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "bottom",
+            "color": "dk2",
+            "width": 1.5
+          }
+        },
+        {},
+        {},
+        {},
+        {
+          "col_span": 6,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "AGENTIC STATE",
+                  "size": 12,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          },
+          "accent_bar": {
+            "position": "bottom",
+            "color": "accent1",
+            "width": 1.5
+          }
+        }
+      ]
+    },
+    {
+      "max_height": 68,
+      "cells": [
+        {
+          "col_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Intake",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r",
+                  "space_after": 2
+                },
+                {
+                  "content": "Requests arrive by email and are triaged by hand",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "lt1",
+            "line": {
+              "color": "accent1",
+              "width": 1.75
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "01",
+                  "size": 12,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_top": 0.5
+            }
+          }
+        },
+        {},
+        {
+          "row_span": 4,
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "line": {
+              "color": "accent1",
+              "lumMod": 40000,
+              "lumOff": 60000,
+              "width": 6
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Today's state vs. agentic state",
+                  "size": 20,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "01",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_top": 0.5
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "col_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Intake",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Agents classify and route every request on arrival",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "max_height": 68,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Research",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r",
+                  "space_after": 2
+                },
+                {
+                  "content": "Analysts spend days assembling context",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {
+          "col_span": 2,
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "lt1",
+            "line": {
+              "color": "accent1",
+              "width": 1.75
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "02",
+                  "size": 12,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_top": 0.5
+            }
+          }
+        },
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "col_span": 2,
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "02",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_top": 0.5
+            }
+          }
+        },
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Research",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Agents draft a sourced brief in minutes",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "max_height": 68,
+      "cells": [
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Decision",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r",
+                  "space_after": 2
+                },
+                {
+                  "content": "Committees wait for weekly meetings",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {
+          "col_span": 2,
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "lt1",
+            "line": {
+              "color": "accent1",
+              "width": 1.75
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "03",
+                  "size": 12,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_top": 0.5
+            }
+          }
+        },
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {
+          "col_span": 2,
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "03",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_top": 0.5
+            }
+          }
+        },
+        {},
+        {
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Decision",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Owners approve pre-analysed options same day",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "max_height": 68,
+      "cells": [
+        {
+          "col_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Follow-up",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "r",
+                  "space_after": 2
+                },
+                {
+                  "content": "Status is chased manually",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "r"
+                }
+              ],
+              "align": "r",
+              "vertical_align": "ctr"
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "lt1",
+            "line": {
+              "color": "accent1",
+              "width": 1.75
+            },
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "04",
+                  "size": 12,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_top": 0.5
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "fit": "contain",
+          "shape": {
+            "geometry": "ellipse",
+            "fill": "accent1",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "04",
+                  "size": 12,
+                  "bold": true,
+                  "color": "lt1",
+                  "align": "ctr"
+                }
+              ],
+              "align": "ctr",
+              "vertical_align": "ctr",
+              "inset_top": 0.5
+            }
+          }
+        },
+        {},
+        {},
+        {
+          "col_span": 3,
+          "shape": {
+            "geometry": "rect",
+            "fill": "none",
+            "line": "none",
+            "text": {
+              "paragraphs": [
+                {
+                  "content": "Follow-up",
+                  "size": 14,
+                  "bold": true,
+                  "color": "accent1",
+                  "align": "l",
+                  "space_after": 2
+                },
+                {
+                  "content": "Agents track progress and escalate exceptions",
+                  "size": 12,
+                  "color": "dk1",
+                  "align": "l"
+                }
+              ],
+              "align": "l",
+              "vertical_align": "ctr"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -104,7 +104,7 @@ func TestGenerateNotesSlideRels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			data, err := generateNotesSlideRels(tt.slideNum)
+			data, err := generateNotesSlideRels(tt.slideNum, "")
 			if err != nil {
 				t.Fatalf("generateNotesSlideRels() error = %v", err)
 			}

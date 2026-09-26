@@ -60,6 +60,10 @@ type ConvertRequest struct {
 	// StrictFit controls how chart/diagram fit findings affect generation.
 	// Values: "off", "warn" (default), "strict".
 	StrictFit string
+	// AllowedImagePaths restricts local image paths to these roots
+	// (config Images.AllowedBasePaths). Empty means unrestricted apart from
+	// the traversal check.
+	AllowedImagePaths []string
 }
 
 // ConvertResult contains the output of a conversion operation.
@@ -188,6 +192,7 @@ func (p *DefaultPipeline) Convert(ctx context.Context, req ConvertRequest) (*Con
 		ExcludeTemplateSlides: req.ExcludeTemplateSlides,
 		ThemeOverride:         presentation.Metadata.ThemeOverride,
 		StrictFit:             req.StrictFit,
+		AllowedImagePaths:     req.AllowedImagePaths,
 	}
 	if effectiveAnalysis.Synthesis != nil {
 		genReq.SyntheticFiles = effectiveAnalysis.Synthesis.SyntheticFiles

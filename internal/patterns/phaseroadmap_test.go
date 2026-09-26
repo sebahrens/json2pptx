@@ -461,3 +461,97 @@ func TestPhaseRoadmap_Golden_Default(t *testing.T) {
 
 	assertPatternGolden(t, grid, filepath.Join("testdata", "phase-roadmap", "default.golden.json"))
 }
+
+func phaseRoadmapWithTracks(k int) *PhaseRoadmapValues {
+	v := validPhaseRoadmapValues()
+	for i := 0; i < k; i++ {
+		v.ParallelTracks = append(v.ParallelTracks, "Governance, change management, and upskilling track "+string(rune('A'+i)))
+	}
+	return v
+}
+
+func TestPhaseRoadmap_ParallelTracks_Validate(t *testing.T) {
+	p, _ := Default().Get("phase-roadmap")
+	if err := p.Validate(phaseRoadmapWithTracks(4), nil, nil); err != nil {
+		t.Fatalf("4 tracks should validate: %v", err)
+	}
+	err := p.Validate(phaseRoadmapWithTracks(5), nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "parallel_tracks") {
+		t.Fatalf("5 tracks: want parallel_tracks max-items error, got %v", err)
+	}
+	v := phaseRoadmapWithTracks(1)
+	v.ParallelTracks[0] = strings.Repeat("x", 91)
+	if err := p.Validate(v, nil, nil); err == nil || !strings.Contains(err.Error(), "parallel_tracks[0]") {
+		t.Fatalf("91-char track: want max-length error, got %v", err)
+	}
+	v = phaseRoadmapWithTracks(1)
+	v.ParallelTracks[0] = ""
+	if err := p.Validate(v, nil, nil); err == nil {
+		t.Fatal("empty track: want required error")
+	}
+	v = phaseRoadmapWithTracks(1)
+	v.ParallelLabel = strings.Repeat("y", 25)
+	if err := p.Validate(v, nil, nil); err == nil || !strings.Contains(err.Error(), "parallel_label") {
+		t.Fatalf("25-char label: want max-length error, got %v", err)
+	}
+	// Label + 2 bars extend the addressable cell range.
+	v = phaseRoadmapWithTracks(2)
+	last := phaseRoadmapCellCount(v) - 1
+	if err := p.Validate(v, nil, map[int]any{last: &PhaseRoadmapCellOverride{AccentBar: true}}); err != nil {
+		t.Fatalf("cell override on last track bar: %v", err)
+	}
+	if got, want := phaseRoadmapCellCount(v), phaseRoadmapCellCount(validPhaseRoadmapValues())+3; got != want {
+		t.Errorf("cell count with 2 tracks = %d, want %d", got, want)
+	}
+}
+
+func TestPhaseRoadmap_ParallelTracks_Expand(t *testing.T) {
+	p, _ := Default().Get("phase-roadmap")
+
+	empty := validPhaseRoadmapValues()
+	empty.ParallelTracks = []string{}
+	empty.ParallelLabel = "Ignored"
+	plain, _ := p.Expand(ExpandContext{}, validPhaseRoadmapValues(), nil, nil)
+	withEmpty, _ := p.Expand(ExpandContext{}, empty, nil, nil)
+	a, _ := json.Marshal(plain)
+	b, _ := json.Marshal(withEmpty)
+	if string(a) != string(b) {
+		t.Fatal("empty parallel_tracks changed the output")
+	}
+
+	for k := 1; k <= 4; k++ {
+		grid, err := p.Expand(ExpandContext{}, phaseRoadmapWithTracks(k), nil, nil)
+		if err != nil {
+			t.Fatalf("k=%d Expand: %v", k, err)
+		}
+		if got := grid.Rows[0].Height; got >= plain.Rows[0].Height || got < phaseRoadmapMinHeaderPct {
+			t.Errorf("k=%d phase row height = %v%%, want below %v%% and at least %v%%", k, got, plain.Rows[0].Height, phaseRoadmapMinHeaderPct)
+		}
+		last := grid.Rows[len(grid.Rows)-1]
+		if len(last.Cells) != 1 || last.Cells[0].Grid == nil || last.Cells[0].ColSpan != 4 {
+			t.Fatalf("k=%d last row is not a full-width track block: %+v", k, last)
+		}
+		sub := last.Cells[0].Grid
+		if len(sub.Rows) != k {
+			t.Fatalf("k=%d track rows = %d", k, len(sub.Rows))
+		}
+		label := sub.Rows[0].Cells[0]
+		if label.RowSpan != k || !strings.Contains(string(label.Shape.Text), phaseRoadmapDefaultLabel) {
+			t.Errorf("k=%d label cell = %+v, want default label spanning %d rows", k, label, k)
+		}
+		if last.MinHeight <= 0 || last.MinHeight != last.MaxHeight {
+			t.Errorf("k=%d track block must have a fixed measured height, got min=%v max=%v", k, last.MinHeight, last.MaxHeight)
+		}
+	}
+
+	v := phaseRoadmapWithTracks(3)
+	v.ParallelLabel = "Enablers"
+	grid, err := p.Expand(ExpandContext{}, v, nil, nil)
+	if err != nil {
+		t.Fatalf("Expand: %v", err)
+	}
+	if !strings.Contains(string(grid.Rows[len(grid.Rows)-1].Cells[0].Grid.Rows[0].Cells[0].Shape.Text), "Enablers") {
+		t.Error("custom parallel_label not rendered")
+	}
+	assertPatternGolden(t, grid, filepath.Join("testdata", "phase-roadmap", "parallel_tracks.golden.json"))
+}

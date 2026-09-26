@@ -19,6 +19,7 @@ into a text grid.
 - **View a pattern's value schema:** `show_pattern` (MCP) or `json2pptx patterns show <name>` (CLI). Grid-shaped patterns include a `text_budget_guide` block with per-configuration `body_max_chars` and `header_max_chars` — use these to size content before calling `expand_pattern`. The response also includes `example_values` — canonical example values showing the expected shape and realistic content for the `values` parameter. Use these as a template when populating pattern values.
 - **Validate before generating:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI) checks values and content fit. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) to check against the intended template; CLI `--json` returns the standard findings envelope and exits non-zero for blocking findings.
 - **Preview expansion + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI). Returns `density_warnings` for any embedded tables that exceed TDR ceilings (Rule 20) — run this before `generate_presentation` to catch density issues without paying generation cost. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) for template-aware layout bounds; the response `bounds_source` field indicates `"template"` or `"default_fallback"`. When all populated cells are consistently suboptimal, the response includes `layout_suggestions[]` with alternative patterns and overrides.
+- **Per-cell styling:** `cell_overrides` (`{"<index>": {...}}`, index meaning in each pattern's `show_pattern` schema) accepts `accent_bar`, `font_size`, `emphasis`, `align`, `vertical_align` and `color` on every pattern that takes it. The text keys restyle that cell's primary text — every paragraph of it, so `font_size` flattens a header/body size hierarchy — e.g. the objective banner at index 0 of `strategy-house`, the title (not the number badge) of an `agenda` row, the big value of a `metric-list` item. Use pattern-level `overrides` for deck-consistent sizes; reserve `cell_overrides` for one emphasised cell.
 - **Cold-start helper:** `recommend_visual` (MCP) ranks across all visual categories for a slide intent — use as the primary entry point. `recommend_pattern` is the pattern-only subset if you already know you need a named pattern.
 
 Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):
@@ -74,17 +75,35 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Driver tree.** At default sizes and without units, `driver-tree` supports up to 14 total leaf rows. Leaf copy holds about 120 characters through seven rows; at 8–9 rows it holds 120 without annotations or 101 with them; at 10–14 rows it holds 75 without annotations or 51 with them. A branch spanning one row in a 10–14-row tree holds about 38 label characters without annotations or 32 with them. Annotation limits also vary by branch span; the `show_pattern` schema gives the table. Use the `BODY_TOO_LONG` finding for the exact field and target, and check the fit report when units or font overrides are present.
 
-**Two-column comparisons.** For `comparison-2col`, count body rows plus one when the optional headers are present. At default font sizes, each body cell holds about 200 characters through four effective rows, 196 at five, 131 at six or seven, and 66 at eight or more. The 60-character header limit remains readable at all supported row counts. `BODY_TOO_LONG` identifies the row and left/right cell to shorten.
+**Two-column comparisons.** For `comparison-2col`, count body rows plus one when the optional headers are present. At default font sizes, each body cell holds about 200 characters through four effective rows, 196 at five, 131 at six or seven, and 66 at eight or more. The 60-character header limit remains readable at all supported row counts. `BODY_TOO_LONG` identifies the row and left/right cell to shorten. For a "from → to" shift (traditional vs. new model), set `overrides.connectors: true`: a narrow centre gutter carries a per-row accent circle with a chevron joined to both cells, left cells gain an accent stripe on a neutral surface and right cells an accent tint. The text columns narrow to 45% each, so plan about 88% of the per-cell budgets above.
 
 **Phased roadmaps.** `roadmap-phased` activity pills shrink as phase columns and workstream rows increase. At default font sizes, an 8-phase, 6-workstream grid holds about 32 characters per activity; a 2-phase, 2-workstream grid holds the full 80. `show_pattern` lists the measured target for each 2–8 phase by 2–6 workstream combination. `BODY_TOO_LONG` identifies the exact workstream and phase item to shorten.
 
+**Single-track roadmaps.** `phase-roadmap` accepts up to four `values.parallel_tracks` (one line, ≤90 chars each) for workstreams that run alongside every phase; they render as full-width tinted bars under a `values.parallel_label` (default "In parallel", ≤24 chars).
+
+**Two-track process grids.** `process-grid-2row` accepts `values.column_headers` (≤24 chars) and `values.outcomes` (≤32 chars, rendered as accent pills); each list needs one entry per phase and both rows must have the same phase count, else validation fails.
+
 **Team bios.** `team-bios` has about 220 readable bio characters per card with 1–4 members and 141 with 5–8, at default font sizes. The fifth member adds a second card row. A headshot changes the photo zone but not this bio target. `BODY_TOO_LONG` names the member and target; move longer biographies to a separate slide.
+
+**Metric lists.** `metric-list` holds 120-character `detail` lines through four items and about 90 at five; at six or seven items omit details (and, at seven, the `callout`). `TEXT_EXCEEDS_SHAPE` names a value that still wraps.
+
+**Labeled rows.** `labeled-rows` (WHY / WHAT / HOW) holds 300-character bodies through four rows and about 190 at five or six; `BODY_TOO_LONG` reports the overflow.
+
+**Contact directories.** `contact-directory` fits 24 people with one-line titles in one or two groups at 4–5 per row; four groups fit only as single rows. Wrapped titles cost about a third more height; past that it reports `BODY_TOO_LONG`.
+
+**Text sidebars.** `text-sidebar`'s main column holds about 1,100 characters at 14pt and 1,500 at 12pt; keep the sidebar to one statement.
 
 **Swimlanes.** `swimlane` step text holds the full 80-character schema limit in sparse grids and about 32 characters in an 8-step, 6-lane grid at default sizes. `show_pattern` lists the measured target for each 2–8 step by 2–6 lane combination. Actor labels remain readable through their 40-character limit. `BODY_TOO_LONG` names the lane and step to shorten.
 
-**Numbered steps.** For `numbered-step-strip`, a six-step `chevron` holds about 47 readable label characters at default size; three to five chevrons and all `stacked-box` / `toc` labels hold the 60-character schema limit. Optional step bodies hold 180. `BODY_TOO_LONG` names labels past the six-chevron target; `TEXT_EXCEEDS_SHAPE` remains the stronger signal when the chevron renderer knows a label will break mid-word.
+**Numbered steps.** For `numbered-step-strip`, a six-step `chevron` holds about 47 readable label characters at default size; three to five chevrons and all `stacked-box` / `toc` labels hold the 60-character schema limit. Optional step bodies hold 180 through six steps. `stacked-box` and `toc` accept a seventh step (bodies then hold about 140 and 135 characters); `chevron` stays at six and a seventh step fails validation with a pointer to those styles. `stacked-box` and `toc` steps also accept an optional `icon` (bundled name or `{name|path|url|svg_data}` object) drawn in its own column between the number badge and the label; the column appears when any step has an icon, and `chevron` rejects icons. `BODY_TOO_LONG` names labels past the six-chevron target; `TEXT_EXCEEDS_SHAPE` remains the stronger signal when the chevron renderer knows a label will break mid-word.
+
+**State-shift hub.** `state-shift-hub` descriptions hold about 140 characters with 3 pairs, 120 with 4, 80 with 5 and 40 with 6; keep `hub_label` near 40 characters.
 
 **Inline KPIs.** `kpi-inline` has a compact height. Captions hold the 40-character schema limit without icons or with up to four KPIs. With icons in five or six cells, the number and optional delta share space with the caption: an eight-character number in a five-KPI bar leaves about 16 caption characters without a delta and none with one. `show_pattern` describes the dense cases; `BODY_TOO_LONG` names the affected KPI and suggests shortening copy or dropping the delta/icon.
+
+**Capability heatmaps.** `capability-heatmap` cells index `tiers` (0 = solid accent). Keep activities to 1–3 short words at 7–8 columns; too-wide header words draw `TEXT_EXCEEDS_SHAPE`, overfull grids `BODY_TOO_LONG`.
+
+**Framework grids.** `framework-grid` rows all take the tallest row's height; keep card bodies near 60 characters at four cards per row.
 
 ---
 

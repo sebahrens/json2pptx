@@ -315,6 +315,24 @@ var rules = []rule{
 		rationale: "Height-capped before/after for supporting context",
 	},
 
+	// State-shift hub — numbered today/future stage pairs around a central hub
+	{
+		pattern:   "state-shift-hub",
+		keywords:  []string{"today vs future", "today vs. future", "today versus future", "today vs tomorrow", "current vs target", "current vs. target", "current versus target", "current vs target state", "state shift", "state-shift", "shift from today", "agentic state", "from-to shifts", "from-to stages"},
+		baseScore: 0.92,
+		rationale: "Central hub circle with 3-6 numbered today/future stage pairs orbiting it (left = today, right = future)",
+		itemMin:   3,
+		itemMax:   6,
+	},
+	{
+		pattern:   "state-shift-hub",
+		keywords:  []string{"from-to", "today", "target state", "future state", "shifts"},
+		baseScore: 0.74,
+		rationale: "State-shift hub when a today-vs-future contrast breaks into 3-6 numbered stage pairs",
+		itemMin:   3,
+		itemMax:   6,
+	},
+
 	// Process flow
 	{
 		pattern:   "process-flow",
@@ -412,6 +430,41 @@ var rules = []rule{
 		keywords:  []string{"value chain", "supply chain", "operations chain"},
 		baseScore: 0.82,
 		rationale: "Value-chain pattern for left-to-right operational sequences with per-step descriptions",
+	},
+
+	// Capability heatmap — activities under 3-8 functions, coloured by tier
+	{
+		pattern:   "capability-heatmap",
+		keywords:  []string{"capability heatmap", "capability heat map", "capability map", "automation heatmap", "automation potential", "automation potential by function", "ai potential by function", "ai potential", "heatmap by function", "activity heatmap", "value chain matrix", "function heatmap"},
+		baseScore: 0.92,
+		rationale: "Function columns with pointed headers over activity cells filled by rating tier (2-4 levels), with a tier legend",
+		itemMin:   3,
+		itemMax:   8,
+	},
+	{
+		pattern: "capability-heatmap",
+		// A bare "heatmap" usually means a numeric intensity chart; the
+		// pattern sits just under recommend_visual's heatmap diagram (0.88)
+		// and above card-grid's 0.80 fallback.
+		keywords:  []string{"heatmap", "heat map", "by function", "capability assessment"},
+		baseScore: 0.82,
+		rationale: "Capability-heatmap when activities grouped by function are rated on a short scale and colour carries the rating",
+	},
+
+	// Framework grid — labelled dimension rows of titled lever cards
+	{
+		pattern:   "framework-grid",
+		keywords:  []string{"framework grid", "change management framework", "levers by dimension", "levers per dimension", "people process technology", "people, process, technology", "operating model framework", "dimension rows", "transformation framework"},
+		baseScore: 0.92,
+		rationale: "Framework grid: 2-6 labelled dimension rows, each with 1-4 titled lever cards",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "framework-grid",
+		keywords:  []string{"framework", "levers", "building blocks", "dimensions"},
+		baseScore: 0.80,
+		rationale: "Framework-grid when a framework groups short titled levers under named dimension rows",
 	},
 
 	// Waterfall bridge — P&L walk / cost-driver decomposition
@@ -667,6 +720,28 @@ var rules = []rule{
 		itemMax:   6,
 	},
 
+	// Contact directory — grouped rows of headshot + name + title (≤24 people)
+	{
+		pattern:   "contact-directory",
+		keywords:  []string{"contacts", "key contacts", "contact list", "contact directory", "directory", "who to call", "who to contact", "points of contact", "point of contact", "regional contacts", "office contacts", "people directory"},
+		baseScore: 0.93,
+		rationale: "Key-contacts directory: groups (regions / practices) with rows of circular headshots, names and titles — no bios",
+	},
+
+	// Text sidebar — narrative intro page with one key-message panel
+	{
+		pattern:   "text-sidebar",
+		keywords:  []string{"introduction", "intro page", "intro slide", "foreword", "preface", "key message sidebar", "sidebar message", "narrative intro", "introductory text", "context page", "letter from"},
+		baseScore: 0.93,
+		rationale: "Prose introduction (heading, 1–4 paragraphs, optional bullets) beside a sidebar panel stating one large key message",
+	},
+	{
+		pattern:   "text-sidebar",
+		keywords:  []string{"paragraphs", "prose", "narrative", "sidebar", "overview text"},
+		baseScore: 0.76,
+		rationale: "text-sidebar when a slide is mostly running text with one message worth pulling out",
+	},
+
 	// Quote cluster — 3-8 stakeholder quote bubbles
 	{
 		pattern:   "quote-cluster",
@@ -802,6 +877,43 @@ var rules = []rule{
 		keywords:  []string{"photo", "image", "picture", "screenshot", "spotlight", "showcase"},
 		baseScore: 0.76,
 		rationale: "image-text-split when a single visual needs a short narrative next to it",
+	},
+
+	// metric-list — vertical stack of 3-7 big values with a label each
+	{
+		pattern:   "metric-list",
+		keywords:  []string{"metric list", "metrics list", "stat stack", "stats stack", "stacked stats", "stacked metrics", "by the numbers", "numbers list", "list of numbers", "proof points", "metric column", "stat column", "number stack"},
+		baseScore: 0.93,
+		rationale: "Vertical stack of 3–7 big accent values, each with a one-line label and optional detail, optionally closed by a callout banner",
+		itemMin:   3,
+		itemMax:   7,
+	},
+	{
+		pattern:      "metric-list",
+		keywords:     []string{"metrics", "stats", "statistics", "numbers", "figures", "data points"},
+		baseScore:    0.72,
+		rationale:    "metric-list when several numbers each need a label and a line of context, read top to bottom rather than as side-by-side cards",
+		itemMin:      5,
+		itemMax:      7,
+		needsMetrics: true,
+	},
+
+	// labeled-rows — keyword label block beside body text, 2-6 rows
+	{
+		pattern:   "labeled-rows",
+		keywords:  []string{"why what how", "why / what / how", "why-what-how", "labeled rows", "labelled rows", "row labels", "label rows", "keyword rows", "labeled list", "labelled list", "adopt adapt", "label and description rows", "rows with labels"},
+		baseScore: 0.93,
+		rationale: "2–6 rows, each a keyword label block (WHY / WHAT / HOW, Smarter / Faster / Leaner) beside 1–4 lines of body text",
+		itemMin:   2,
+		itemMax:   6,
+	},
+	{
+		pattern:   "labeled-rows",
+		keywords:  []string{"themes", "benefits", "dimensions"},
+		baseScore: 0.70,
+		rationale: "labeled-rows when each theme is a short keyword followed by a sentence or two of explanation",
+		itemMin:   2,
+		itemMax:   6,
 	},
 
 	// exec-summary — 3-5 bold lead-in statements with support (answer-first)
@@ -1399,6 +1511,23 @@ func scoreRuleContextBonus(pattern, intentLower string, hints *ContentHints) flo
 	case "arch-stack":
 		if intentContainsPhrase(intentWords(intentLower), []string{"architecture"}) {
 			bonus += 0.11
+		}
+	case "exec-summary":
+		// One key message in a sidebar is text-sidebar's layout, not a list
+		// of 3-5 lead-ins.
+		if intentContainsPhrase(intentWords(intentLower), []string{"sidebar"}) {
+			bonus -= 0.15
+		}
+	case "text-sidebar":
+		// "key message sidebar" also hits exec-summary's "key message"; the
+		// sidebar is what names this layout. An introduction OF people is a
+		// team slide, not a prose page.
+		words := intentWords(intentLower)
+		if intentContainsPhrase(words, []string{"sidebar"}) {
+			bonus += 0.08
+		}
+		if intentContainsPhrase(words, []string{"team"}) || intentContainsPhrase(words, []string{"people"}) || intentContainsPhrase(words, []string{"contacts"}) {
+			bonus -= 0.2
 		}
 	}
 	return bonus

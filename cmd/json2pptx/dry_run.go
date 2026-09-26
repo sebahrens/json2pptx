@@ -172,7 +172,7 @@ type dryRunPlaceholder struct {
 // after parsing so the CLI flag wins over the JSON field. When strictUnknownKeys
 // is true, unknown JSON keys are reported as errors (matching MCP
 // strict_unknown_keys=true semantics) instead of warnings.
-func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool) error {
+func runJSONDryRun(jsonPath, templateOverride, templatesDir, configPath, designModeOverride string, strictUnknownKeys bool) error {
 	output := dryRunOutput{
 		Valid:      true,
 		Slides:     []dryRunSlide{},
@@ -220,6 +220,13 @@ func runJSONDryRun(jsonPath, templatesDir, configPath, designModeOverride string
 			})
 			return writeDryRunOutput(output)
 		}
+	}
+
+	// CLI --template override wins over the JSON field, exactly as
+	// parseJSONInput applies it for the real run, so a dry run validates the
+	// template the render would use (go-slide-creator-s1uvj.20).
+	if templateOverride != "" {
+		input.Template = strings.TrimSuffix(templateOverride, ".pptx")
 	}
 
 	// CLI --design-mode override wins over the JSON field.
@@ -752,6 +759,19 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 							output.Valid = false
 							output.Diagnostics = append(output.Diagnostics, *d)
 						}
+						// A row wider than the headers cannot render (the
+						// header count defines the table grid) and generate
+						// refuses it; short rows are padded
+						// (go-slide-creator-s1uvj.26).
+						if err := table.ToTableSpec().CheckRowWidths(); err != nil {
+							output.Valid = false
+							output.Diagnostics = append(output.Diagnostics, diagnostics.Diagnostic{
+								Code:     diagnostics.CodeInvalidParameter,
+								Path:     tablePath + ".rows",
+								Message:  fmt.Sprintf("slide %d: %v", i+1, err),
+								Severity: diagnostics.SeverityError,
+							})
+						}
 						// Validate style_id against template's declared table styles.
 						// Advisory only — an unknown (but well-formed) style_id does
 						// not invalidate the deck (Valid is left unchanged).
@@ -1138,14 +1158,28 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 	}
 
 	// Validate columns
+	var colWeights []float64
 	if len(grid.Columns) > 0 {
 		var n float64
 		if err := json.Unmarshal(grid.Columns, &n); err != nil {
 			var arr []float64
 			if err := json.Unmarshal(grid.Columns, &arr); err != nil {
 				errors = append(errors, fmt.Sprintf("slide %d: shape_grid columns must be a number or array of numbers", slideNum))
+			} else {
+				colWeights = arr
 			}
 		}
+	}
+
+	// Negative / non-finite column widths and row weights resolve to
+	// negative extents; reject them here as shapegrid.Validate does at
+	// generation time (go-slide-creator-s1uvj.39).
+	weightGrid := &shapegrid.Grid{Columns: colWeights, Rows: make([]shapegrid.Row, len(grid.Rows))}
+	for i, row := range grid.Rows {
+		weightGrid.Rows[i] = shapegrid.Row{Height: row.Height, Flex: row.Flex, MinHeight: row.MinHeight, MaxHeight: row.MaxHeight}
+	}
+	for _, err := range shapegrid.ValidateTrackWeights(weightGrid) {
+		errors = append(errors, fmt.Sprintf("slide %d: %v", slideNum, err))
 	}
 
 	for rowIdx, row := range grid.Rows {

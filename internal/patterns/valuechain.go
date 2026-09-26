@@ -226,11 +226,14 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 		descCell := &jsonschema.GridCellInput{Shape: descShape}
 
 		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*ValueChainCellOverride); ok2 && cellOvr.AccentBar {
-				labelCell.AccentBar = &jsonschema.AccentBarInput{
-					Position: "left",
-					Color:    accent,
-					Width:    4,
+			if cellOvr, ok2 := co.(*ValueChainCellOverride); ok2 {
+				applyCellTextOverride(labelCell, cellOvr)
+				if cellOvr.AccentBar {
+					labelCell.AccentBar = &jsonschema.AccentBarInput{
+						Position: "left",
+						Color:    accent,
+						Width:    4,
+					}
 				}
 			}
 		}

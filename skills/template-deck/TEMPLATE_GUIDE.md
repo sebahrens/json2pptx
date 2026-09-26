@@ -331,7 +331,7 @@ Override template colors and fonts at the presentation level:
 
 | Field | Type | Description |
 |---|---|---|
-| `colors` | `map[string]string` | Override theme color slots (e.g., `accent1`-`accent6`, `dk1`, `lt1`) |
+| `colors` | `map[string]string` | Override theme color slots (e.g., `accent1`-`accent6`, `dk1`, `lt1`); values must be 6-digit hex (`#RRGGBB`), otherwise validation fails with `invalid_color` |
 | `title_font` | `string` | Override title font family |
 | `body_font` | `string` | Override body font family |
 

@@ -158,6 +158,49 @@ func TestTemplatePathContainment(t *testing.T) {
 	}
 }
 
+// go-slide-creator-s1uvj.18: a template NAME containing ".." escaped the
+// templates dir via filepath.Join, reaching any .pptx on disk without the
+// base_dir guard that template_path enforces.
+func TestGenerateRejectsTemplateNameTraversal(t *testing.T) {
+	byoDir, _ := byoTemplate(t)
+	templatesDir := t.TempDir()
+	rel, err := filepath.Rel(templatesDir, filepath.Join(byoDir, "client-brand"))
+	if err != nil {
+		t.Fatalf("rel: %v", err)
+	}
+	if !strings.Contains(rel, "..") {
+		t.Fatalf("expected a traversal path, got %q", rel)
+	}
+	mc := &mcpConfig{templatesDir: templatesDir, outputDir: t.TempDir()}
+
+	result, err := mc.handleGenerate(t.Context(), byoRequest(map[string]any{
+		"presentation":    byoDeck(t, "template", rel),
+		"output_filename": "escape.pptx",
+	}))
+	if err != nil {
+		t.Fatalf("transport error: %v", err)
+	}
+	if !result.IsError {
+		t.Fatalf("template name %q escaped the templates dir: %s", rel, textContent(result))
+	}
+
+	for _, name := range []string{"../x", `..\x`, "a/b", "/etc/x", "foo..bar"} {
+		if _, cleanup, rerr := resolveTemplatePath(name, templatesDir); rerr == nil {
+			cleanup()
+			t.Errorf("resolveTemplatePath(%q) accepted an unsafe name", name)
+		}
+	}
+	// Legitimate names still resolve, with or without the .pptx suffix.
+	for _, name := range []string{"midnight-blue", "midnight-blue.pptx"} {
+		_, cleanup, rerr := resolveTemplatePath(name, templatesDir)
+		if rerr != nil {
+			t.Errorf("resolveTemplatePath(%q) = %v, want success", name, rerr)
+			continue
+		}
+		cleanup()
+	}
+}
+
 // template and template_path are alternatives, not a fallback chain: silently
 // preferring one would make the other's value a lie.
 func TestTemplateAndTemplatePathAreExclusive(t *testing.T) {

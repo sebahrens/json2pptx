@@ -297,11 +297,14 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 		markerCells[i] = &jsonschema.GridCellInput{Shape: markerShape}
 
 		if co, coOk := cellOverrides[i]; coOk {
-			if cellOvr, ok2 := co.(*JourneyMaturityCellOverride); ok2 && cellOvr.AccentBar {
-				headerCell.AccentBar = &jsonschema.AccentBarInput{
-					Position: "left",
-					Color:    baseAccent,
-					Width:    4,
+			if cellOvr, ok2 := co.(*JourneyMaturityCellOverride); ok2 {
+				applyCellTextOverride(headerCell, cellOvr)
+				if cellOvr.AccentBar {
+					headerCell.AccentBar = &jsonschema.AccentBarInput{
+						Position: "left",
+						Color:    baseAccent,
+						Width:    4,
+					}
 				}
 			}
 		}

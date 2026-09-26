@@ -71,6 +71,11 @@ type RenderOptions struct {
 	// Partial drops failing slides instead of aborting (CLI --partial).
 	Partial bool
 
+	// AllowedImagePaths restricts local image / background paths to these
+	// roots (config Images.AllowedBasePaths plus any URL download cache).
+	// Empty means unrestricted apart from the traversal check.
+	AllowedImagePaths []string
+
 	// SVG strategy / scaling knobs mirrored from config.Config.SVG so the
 	// runner does not depend on a particular config plumbing.
 	SVGStrategy     string
@@ -284,6 +289,7 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 		StrictFit:             strictFit,
 		DataPalette:           dataPalette,
 		ViewingMode:           input.ViewingMode,
+		AllowedImagePaths:     opts.AllowedImagePaths,
 	}
 
 	// Wire the same merged footer/chrome configuration used by every render path.

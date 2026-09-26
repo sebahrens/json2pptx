@@ -123,6 +123,7 @@ This means defaults participate in all downstream validation (fit-report, strict
 
 - **Per-deck only**: defaults apply within a single JSON input file. There is no cross-deck inheritance in V1.
 - **No cascade**: defaults do not cascade into nested structures beyond the immediate target. For example, `cell_style` applies to `shape_grid` cell shapes but does not reach into a table embedded inside that cell — use `table_style` for that.
+- **Nested sub-grids count**: a `shape_grid` cell whose content is a nested `grid` is still part of the shape grid, so `cell_style` and `table_style` reach the shapes and tables inside it, at any depth.
 
 ## Namespace: `@template-default` Sentinel
 

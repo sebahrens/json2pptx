@@ -324,7 +324,12 @@ func TestIsImageContent(t *testing.T) {
 		{"png", []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}, true},
 		{"jpeg", []byte{0xFF, 0xD8, 0xFF, 0xE0}, true},
 		{"gif", []byte("GIF89a"), true},
-		{"bmp", []byte("BM\x00\x00"), true},
+		{"bmp", bmpHeader(40), true},
+		{"bmp-core", bmpHeader(12), true},
+		// go-slide-creator-s1uvj.21: a bare "BM" prefix is not a BMP.
+		{"bare-bm", []byte("BM\x00\x00"), false},
+		{"bm-svg", []byte("BM<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>"), false},
+		{"bmp-bad-dib", bmpHeader(99), false},
 		{"webp", append([]byte("RIFF\x00\x00\x00\x00WEBP"), make([]byte, 10)...), true},
 		{"html", []byte("<html>"), false},
 		{"empty", []byte{}, false},
@@ -348,5 +353,43 @@ func TestHashFilename(t *testing.T) {
 	f3 := hashFilename("https://example.com/a.png", ".png")
 	if f1 != f3 {
 		t.Error("same URL should produce same filename")
+	}
+}
+
+// bmpHeader returns a minimal 26+ byte BMP file header + DIB header size.
+func bmpHeader(dibSize uint32) []byte {
+	b := make([]byte, 54)
+	copy(b, "BM")
+	b[14] = byte(dibSize)
+	b[15] = byte(dibSize >> 8)
+	b[16] = byte(dibSize >> 16)
+	b[17] = byte(dibSize >> 24)
+	return b
+}
+
+// TestResolveSVG_CacheHitFromImageStillValidated guards
+// go-slide-creator-s1uvj.21: the download cache was keyed by URL alone and a
+// hit returned before kind-specific validation, so ResolveImage(url) followed
+// by ResolveSVG(url) skipped validateSVG (the DOCTYPE / entity gate).
+func TestResolveSVG_CacheHitFromImageStillValidated(t *testing.T) {
+	png := []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A, 0, 0, 0, 0}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write(png)
+	}))
+	defer srv.Close()
+
+	resolver := testResolver(t, ResolverOptions{})
+	url := srv.URL + "/asset.svg"
+	imgPath, err := resolver.ResolveImage(url)
+	if err != nil {
+		t.Fatalf("ResolveImage: %v", err)
+	}
+	if svgPath, err := resolver.ResolveSVG(url); err == nil {
+		t.Fatalf("ResolveSVG returned cached image %q (from %q) without SVG validation", svgPath, imgPath)
+	}
+	// The image entry is still served from cache.
+	again, err := resolver.ResolveImage(url)
+	if err != nil || again != imgPath {
+		t.Fatalf("ResolveImage cache hit = %q, %v; want %q", again, err, imgPath)
 	}
 }

@@ -3,6 +3,7 @@ package shapegrid
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 )
 
@@ -18,6 +19,8 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 	if len(grid.Columns) == 0 {
 		errs = append(errs, fmt.Errorf("shape_grid: empty columns; set \"columns\" to a number (e.g. 3) or an array of percentages (e.g. [30, 40, 30])"))
 	}
+
+	errs = append(errs, ValidateTrackWeights(grid)...)
 
 	numCols := len(grid.Columns)
 	numRows := len(grid.Rows)
@@ -109,8 +112,19 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 				errs = append(errs, fmt.Errorf("row %d col %d: invalid fit mode %q; valid values are \"contain\", \"fit-width\", or \"fit-height\" (omit for default stretch behavior)", r, ci, cell.Fit))
 			}
 
-			if cell.Shape == nil && cell.TableSpec == nil && cell.DiagramSpec == nil && cell.Icon == nil && cell.Image == nil && cell.Composite == nil {
-				col++
+			if cell.Image != nil && cell.Image.Geometry != "" && cell.Image.Geometry != "rect" && cell.Image.Geometry != "ellipse" {
+				errs = append(errs, fmt.Errorf("row %d col %d: invalid image geometry %q; valid values are \"rect\" or \"ellipse\" (omit for rect)", r, ci, cell.Image.Geometry))
+			}
+
+			// Empty spacer cells are not skipped: they claim their
+			// col_span × row_span footprint exactly as Resolve does, so span
+			// and overlap checks see the same layout that renders
+			// (go-slide-creator-s1uvj.38). Trailing empty cells past the last
+			// free column (patterns emit nil cells for positions covered by an
+			// earlier row_span) render nothing and are ignored, as Resolve
+			// stops at the grid edge.
+			isEmpty := cell.Shape == nil && cell.TableSpec == nil && cell.DiagramSpec == nil && cell.Icon == nil && cell.Image == nil && cell.Composite == nil && !cell.Placeholder
+			if isEmpty && col >= numCols {
 				continue
 			}
 
@@ -148,4 +162,41 @@ func Validate(grid *Grid) error { //nolint:gocognit,gocyclo
 	}
 
 	return errors.Join(errs...)
+}
+
+// ValidateTrackWeights rejects column widths and row height/flex weights
+// that cannot describe a layout: negative or non-finite values (a negative
+// column width produced a negative cx that later stages accepted) and a
+// columns array whose widths sum to zero (go-slide-creator-s1uvj.39).
+func ValidateTrackWeights(grid *Grid) []error {
+	var errs []error
+	bad := func(v float64) bool { return math.IsNaN(v) || math.IsInf(v, 0) || v < 0 }
+
+	var colSum float64
+	for i, c := range grid.Columns {
+		if bad(c) {
+			errs = append(errs, fmt.Errorf("shape_grid: columns[%d] is %g; column widths must be finite and >= 0 (percentages such as [30, 40, 30], or a number for equal columns)", i, c))
+			continue
+		}
+		colSum += c
+	}
+	if len(grid.Columns) > 0 && len(errs) == 0 && colSum == 0 {
+		errs = append(errs, fmt.Errorf("shape_grid: columns widths sum to 0; give at least one column a positive width (e.g. [30, 40, 30]) or use a number for equal columns"))
+	}
+
+	for r, row := range grid.Rows {
+		if bad(row.Height) {
+			errs = append(errs, fmt.Errorf("shape_grid: rows[%d].height is %g; row height must be a finite percentage >= 0 (0 = flex row)", r, row.Height))
+		}
+		if bad(row.Flex) {
+			errs = append(errs, fmt.Errorf("shape_grid: rows[%d].flex is %g; flex must be finite and >= 0", r, row.Flex))
+		}
+		if bad(row.MinHeight) {
+			errs = append(errs, fmt.Errorf("shape_grid: rows[%d].min_height is %g; min_height must be finite and >= 0 points", r, row.MinHeight))
+		}
+		if bad(row.MaxHeight) {
+			errs = append(errs, fmt.Errorf("shape_grid: rows[%d].max_height is %g; max_height must be finite and >= 0 points", r, row.MaxHeight))
+		}
+	}
+	return errs
 }

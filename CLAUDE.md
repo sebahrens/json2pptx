@@ -152,12 +152,15 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `before-after` | Two-column before/after with transition chevron |
 | `before-after-compact` | Compact before/after, height-capped at ~60% for brief content |
 | `bmc-canvas` | Formal 9-cell Business Model Canvas (Osterwalder) |
+| `capability-heatmap` | Capability / automation heatmap: 3–8 function columns with pointed headers (bold title + optional sublabel) over 1–6 activity cells each, filled by rating tier (2–4 levels, darkest = highest, text ink measured per fill) with a tier legend; shorter columns leave the bottom empty |
 | `card-grid` | Parameterized N×M grid of titled cards |
 | `chart-insights-split` | Left chart panel + right insights column (65/35 split, 75/25 when the insights are sparse) with optional headline number and so-what callout, a series/unit caption and auto data labels; falls back to insights-only when chart is omitted, emitting `CHART_PLACEHOLDER_EMPTY` |
-| `comparison-2col` | Two-column comparison with optional headers |
+| `comparison-2col` | Two-column comparison with optional headers; `overrides.connectors` draws a per-row accent connector badge in a centre gutter ("from → to" shifts) |
+| `contact-directory` | Key-contacts directory: 1–4 groups (regions / practices), each an accent heading over a rule, then up to 24 people in rows of 3–5 — circular headshot (`photo`) or initials disc + bold name + muted title; sparse directories stack a large headshot above a centred name |
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
 | `dual-org-ladder` | Two parallel org columns with 2–6 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
 | `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |
+| `framework-grid` | Framework of 2–6 labelled dimension rows (bold label on a tinted band) each followed by 1–4 small cards (accent title + short body); the longest row sets the column count and shorter rows leave trailing space empty |
 | `hero-detail` | One dominant metric with 2–4 supporting detail bullets; use `stat-hero` for the metric alone or `kpi-3up` for equally weighted metrics |
 | `horizontal-bar-with-callouts` | Ranked horizontal bars (3–8) on the left with a per-bar accent-anchored insight callout on the right; callouts are optional and the column is dropped when none are given |
 | `icon-row` | Horizontal row of icon+caption pairs |
@@ -169,23 +172,27 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `kpi-5up` | Five big-number KPI cards with short captions |
 | `kpi-6up` | Six big-number KPI cards with short captions |
 | `kpi-inline` | Horizontal inline KPI bar, height-capped for supporting context |
+| `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
 | `matrix-2x2` | 2×2 quadrant matrix with axis labels |
-| `numbered-step-strip` | Ordered numbered steps (3–6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone |
+| `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and bottom callout banner |
+| `numbered-step-strip` | Ordered numbered steps (3–7; chevron ≤6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone and (stacked-box / toc) an optional `steps[].icon` |
 | `process-flow` | Left-to-right process flow with steps and decision points |
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |
-| `process-grid-2row` | Two parallel process tracks: dk2 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution) |
+| `process-grid-2row` | Two parallel process tracks: dk2 row-label column on the left + 3–6 equal-width phase boxes per row (e.g., Design / Production, Strategy / Execution), with optional per-column `column_headers` and `outcomes` pills |
 | `pull-quote` | Italic quote block with attribution and an optional headshot column (`values.image`) |
-| `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones |
+| `phase-roadmap` | Single-track phased roadmap: phase boxes + timeline bar + date labels + per-phase descriptions + optional milestones and 0–4 full-width `parallel_tracks` bars ("In parallel" workstreams) |
 | `pyramid` | Stacked trapezoid hierarchy (3-5 tiers) |
 | `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quote bubbles (voice-of-customer slides), with alternating tinted fills |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |
 | `scqa-summary` | 4-row SCQA executive summary (Situation / Complication / Questions / Answer) |
+| `state-shift-hub` | Central accent hub circle (short label) with 3–6 numbered today/future stage pairs on an arc around it: today items right-aligned on the left, future items left-aligned on the right, optional column headers |
 | `stat-hero` | Single oversized statistic with label and optional context |
 | `strategy-house` | Strategy-house framework: objective banner + 3-5 pillars + foundation row (optional roof badges) |
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |
 | `swimlane` | Horizontal swimlane diagram with actors and steps |
 | `table-highlight` | Options × criteria evaluation matrix (2–6 × 2–6) scored with Harvey balls (0–4), RAG dots or short text, with a highlighted recommended row / decisive column and a legend (content-sized rows) |
 | `team-bios` | Team / 'Our People' grid of 1–8 members with a headshot (`members[].photo`) or initials placeholder + name + role + short bio (up to 4 per row); emits `BODY_TOO_LONG` when a bio exceeds the ~2-line budget |
+| `text-sidebar` | Narrative intro / foreword page: main column (optional heading, 1–4 paragraphs, 0–6 bullets) beside a tinted or accent-filled sidebar panel with one large bold key message (`sidebar_side`, `sidebar_style`, `sidebar_width_pct`) |
 | `timeline-horizontal` | Linear horizontal timeline with stops |
 | `value-chain` | Horizontal value chain of 4–10 step columns (bold label + per-step description, optional highlight) |
 | `waterfall-bridge` | Waterfall / bridge bar chart of 3–10 columns showing P&L walks or cost-driver decomposition; floating delta bars with auto-computed subtotals, optional `caption` for the scale |
