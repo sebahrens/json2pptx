@@ -178,6 +178,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 	// trace used to be a server log line (go-slide-creator-puki).
 	findings = append(findings, collectDiagramIconFindings(input)...)
 	findings = append(findings, collectBackgroundFindings(input)...)
+	findings = append(findings, collectNativeImageContrastFindings(input, layouts)...)
 
 	// 9. Accessibility lint: alt text on images / icons sourced from
 	// path/url/svg_data, and on charts, diagrams and tables. Bundled icon names
@@ -1049,6 +1050,21 @@ func findPlaceholderByID(id string, phs []types.PlaceholderInfo) *types.Placehol
 }
 
 func findContrastPlaceholderByID(id string, layout *types.LayoutMetadata) *types.PlaceholderInfo {
+	if layout == nil {
+		return nil
+	}
+	if strings.HasPrefix(id, "idx:") {
+		index, err := strconv.Atoi(strings.TrimPrefix(id, "idx:"))
+		if err != nil {
+			return nil
+		}
+		for i := range layout.Placeholders {
+			if layout.Placeholders[i].Index == index {
+				return &layout.Placeholders[i]
+			}
+		}
+		return nil
+	}
 	if placeholderrole.IsSectionNumberAlias(id) {
 		// Match the generator's section-number resolver: a named frame wins
 		// even when another shape has an exact alias name.
@@ -1787,11 +1803,15 @@ func placeholderContrastPairs(input *PresentationInput, layouts []types.LayoutMe
 			source = "slide_background"
 		}
 		contents := injectSectionNumber(slide.Content, layout, sectionNumbers[si])
+		imageFrames := authoredNativeImageFrames(slide, layout)
 		for ci := range contents {
 			content := &contents[ci]
 			ph := findContrastPlaceholderByID(content.PlaceholderID, layout)
 			if ph == nil {
 				continue
+			}
+			if generator.NativeImageOverlapsText(*ph, imageFrames) {
+				continue // Unknown image pixels are not the canvas behind them.
 			}
 			// A layout that leaves its placeholder colour to the master's
 			// txStyles states no FontColor, and the preflight used to skip it

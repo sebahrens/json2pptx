@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "scope": "Native image contrast diagnostic, not visual approval or full audit closure",
+  "base_commit": "efe33009e480e5ceb24f11300bca25bc384a416f",
+  "rendered_engine_source_sha256": "8b3c4fcd7888b661247ca7d1dccbc3645158c2a6d1a95a7705a1a326d7efdf5f",
+  "source_note": "Includes uncommitted production repair at render time. Additional legacy text population unit cases were added after rendering; no production code changed after rendering.",
+  "baseline_manifest": "output/native-content-corpus-20260926-v7/manifest.json",
+  "baseline_manifest_sha256": "b14f011b88a5ab8843ec51c840be9cf1031c54b8d24cccf2d2f46e8632fb5e69",
+  "current_manifest": "output/native-content-corpus-20260926-v8/manifest.json",
+  "current_manifest_sha256": "6222594c119ddf843c9fdcf71f495f1875eae00eb0796bb5b04274f6e9232d42",
+  "coverage": {
+    "templates": 14,
+    "native_layouts": 108,
+    "rendered_pages": 309,
+    "local_ignored_p_style_included": true,
+    "generation_or_render_failures": 0,
+    "pages_with_source_omissions": 47
+  },
+  "pixel_regression": {
+    "method": "Match relative PNG paths; decode both with Pillow to RGBA; compare dimensions and complete pixel bytes, ignoring PNG metadata",
+    "compared_pages": 309,
+    "pixel_identical_pages": 309,
+    "changed_pages": [],
+    "missing_baseline_pages": []
+  },
+  "new_diagnostics": {
+    "code": "TEXT_OVER_IMAGE_UNVERIFIED",
+    "action": "review",
+    "fix_kind": "review",
+    "template": "modern",
+    "regions": 8,
+    "pages": 6,
+    "authored_paths": [
+      "/slides/9/content/0", "/slides/10/content/0",
+      "/slides/11/content/1", "/slides/12/content/1",
+      "/slides/17/content/1", "/slides/17/content/2",
+      "/slides/18/content/1", "/slides/18/content/2"
+    ],
+    "meaning": "Possible native image frame coverage with unknown pixels; contain whitespace can make this conservative. Canvas color cannot verify contrast or safely choose a replacement text color."
+  },
+  "checks": {
+    "full_generator_race": "passed, 89.272s",
+    "full_patterns_race": "passed, 9.893s",
+    "full_quality_race": "passed, 30.711s",
+    "targeted_command_contrast_skill_and_determinism_race": "passed, 26.105s",
+    "lint": "pinned v2.8.0: zero issues",
+    "build": "passed",
+    "rendered_corpus": "failed as expected on the 47 retained known source-omission pages; not an approval"
+  },
+  "remaining": [
+    "Required screenshot evidence under white photo-layout titles remains visually unsafe despite the new diagnostic.",
+    "Complete source labels at tiny contained image sizes remain a readability concern.",
+    "Known omitted dense bullets/table rows remain failures; no acceptance rule was weakened.",
+    "No new blind visual verdict claimed: all 309 actual pixel arrays are unchanged. Earlier visual findings remain applicable.",
+    "No CJK/RTL, chart editability, or full agent-authoring coverage approval."
+  ]
+}

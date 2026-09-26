@@ -130,12 +130,19 @@ var schemeClrInFillRegexp = regexp.MustCompile(
 // This function mutates the slide's shapes in place. slideIndex is the 0-based
 // index into the input slides array, recorded on each swap for finding paths.
 func enforceTextContrastInSlide(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool, layoutXML ...[]byte) []ContrastSwap {
+	return enforceTextContrastInSlideExcept(slide, bgHex, themeColors, slideIndex, override, authorBackground, nil, layoutXML...)
+}
+
+func enforceTextContrastInSlideExcept(slide *slideXML, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, authorBackground bool, excluded map[int]bool, layoutXML ...[]byte) []ContrastSwap {
 	if slide == nil {
 		return nil
 	}
 
 	var swaps []ContrastSwap
 	for i := range slide.CommonSlideData.ShapeTree.Shapes {
+		if excluded[i] {
+			continue
+		}
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
 		effectiveBG := bgHex
 		shapeAuthorBackground := authorBackground

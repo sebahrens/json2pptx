@@ -286,12 +286,19 @@ func pinRunColors(shape *shapeXML, hex string) {
 // master, and without either file there is nothing to resolve and nothing is
 // changed.
 func enforceInheritedTextContrast(slide *slideXML, layoutXML, masterXML []byte, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string) []ContrastSwap {
+	return enforceInheritedTextContrastExcept(slide, layoutXML, masterXML, bgHex, themeColors, slideIndex, override, nil)
+}
+
+func enforceInheritedTextContrastExcept(slide *slideXML, layoutXML, masterXML []byte, bgHex string, themeColors []types.ThemeColor, slideIndex int, override map[string]string, excluded map[int]bool) []ContrastSwap {
 	if slide == nil || len(layoutXML) == 0 {
 		return nil
 	}
 
 	var swaps []ContrastSwap
 	for i := range slide.CommonSlideData.ShapeTree.Shapes {
+		if excluded[i] {
+			continue
+		}
 		shape := &slide.CommonSlideData.ShapeTree.Shapes[i]
 		ph := shape.NonVisualProperties.NvPr.Placeholder
 		if ph == nil || !shapeHasText(shape) || !shapeNamesNoColor(shape) {

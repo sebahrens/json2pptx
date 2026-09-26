@@ -151,6 +151,7 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	// body text that have poor contrast on the layout's background fill.
 	// Skip when the slide opts out via contrast_check: false.
 	if input.slideSpec.ContrastCheck == nil || *input.slideSpec.ContrastCheck {
+		imageExclusions := ctx.nativeImageContrastExclusions(slide, input.slideSpec, input.slideIndex)
 		// A slide that sets its own background — a dark statement fill, or a
 		// scrim over a photo — decides what its text sits on; the layout's fill
 		// is underneath it and no longer what the audience sees
@@ -168,16 +169,17 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 		// The layout's color map override applies to the slide's own scheme
 		// colors too, not just its background (go-slide-creator-hln7).
 		override := parseLayoutColorMapOverride(layoutData)
-		swaps := enforceTextContrastInSlide(slide, bgHex, ctx.themeColors, input.slideIndex, override, authorBackground, layoutData)
+		swaps := enforceTextContrastInSlideExcept(slide, bgHex, ctx.themeColors, input.slideIndex, override, authorBackground, imageExclusions, layoutData)
 		ctx.contrastSwaps = append(ctx.contrastSwaps, swaps...)
 
 		// Text that names no color at all was invisible to the pass above:
 		// there was nothing to rewrite, so five white bullets on a white
 		// section divider drew no fix and no finding. Resolve what the
 		// placeholder INHERITS and fix that too (go-slide-creator-ucmgr).
-		ctx.contrastSwaps = append(ctx.contrastSwaps, enforceInheritedTextContrast(
+		ctx.contrastSwaps = append(ctx.contrastSwaps, enforceInheritedTextContrastExcept(
 			slide, layoutData, masterData,
 			bgHex, ctx.themeColors, input.slideIndex, override,
+			imageExclusions,
 		)...)
 	}
 
