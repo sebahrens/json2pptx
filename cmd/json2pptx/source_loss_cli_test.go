@@ -69,6 +69,8 @@ func TestWriteJSONErrorDoesNotInventSourceLoss(t *testing.T) {
 }
 
 func TestCLIActualSourceLossRetainsRepairWithoutPublishing(t *testing.T) {
+	// Each case owns its input, report and destination; templates are read-only.
+	t.Parallel()
 	for _, kind := range []string{"table", "bullets"} {
 		for _, mode := range []string{"", "warn", "off", "strict"} {
 			t.Run(kind+"/mode="+mode, func(t *testing.T) {
@@ -144,6 +146,7 @@ func TestCLIActualSourceLossRetainsRepairWithoutPublishing(t *testing.T) {
 }
 
 func TestCLIFittingParagraphsStillPublishCompleteSource(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"", "warn", "off", "strict"} {
 		t.Run("mode="+mode, func(t *testing.T) {
 			dir := t.TempDir()

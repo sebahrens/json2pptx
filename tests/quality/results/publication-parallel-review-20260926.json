@@ -1,0 +1,24 @@
+{
+  "issue": "go-slide-creator-3qzo4.59",
+  "scope": "Test scheduling only; no production renderer, template, source input, assertion, mode or timeout changes.",
+  "cause_evidence": {
+    "full_root_log": "output/race-root-repaired-publication-contract-20260926.jsonl",
+    "cli_package_elapsed_seconds": 900.857,
+    "interpretation": "Aggregate package timeout; the active paragraph subtest had run for only three seconds. This does not establish an individual test hang."
+  },
+  "change": "Five independent publication test parents use t.Parallel. Cases within each parent remain serial; caches and destinations are test-owned, and templates are read-only.",
+  "focused_race_verification": {
+    "log": "output/race-publication-parallel-20260926.jsonl",
+    "sha256": "291d598fcca3979821d4c8dd11856cc8817d953748ffe86b54d82d9bb85c178b",
+    "outcome": "pass",
+    "elapsed_seconds": 56.146,
+    "parent_tests": 5,
+    "cases": 30
+  },
+  "gates": {"build": "pass", "lint": "pass", "format": "pass", "diff_check": "pass"},
+  "testing_review": {
+    "findings": [],
+    "residual_risks": ["Full-package completion within the unchanged 15-minute limit remains unproven until the integrated rerun finishes."]
+  },
+  "visual_approval": false
+}

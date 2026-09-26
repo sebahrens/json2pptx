@@ -45,6 +45,9 @@ func TestStrictFitBlocksPredictedParagraphLossWithoutChangingSource(t *testing.T
 }
 
 func TestNativeParagraphLossStrictGenerateRefusesBeforeWriting(t *testing.T) {
+	// Keep cases within this test serial because they share the authored deck.
+	// Other publication tests have independent caches and output directories.
+	t.Parallel()
 	bullets := make([]string, 10)
 	for i := range bullets {
 		bullets[i] = fmt.Sprintf("P%02d %s", i, strings.Repeat("Required service owner confirms reporting deadlines and unresolved handoffs. ", 12))
@@ -96,6 +99,7 @@ func TestNativeParagraphLossStrictGenerateRefusesBeforeWriting(t *testing.T) {
 }
 
 func TestNativeFittingParagraphsGenerateWithoutChangingSource(t *testing.T) {
+	t.Parallel()
 	bullets := []string{"Owner confirms reporting deadlines.", "Reviewer resolves outstanding handoffs."}
 	for _, mode := range []string{"", "warn", "off", "strict"} {
 		t.Run(fmt.Sprintf("mode=%q", mode), func(t *testing.T) {

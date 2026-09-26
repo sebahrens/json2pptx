@@ -16,6 +16,7 @@ import (
 )
 
 func TestHandleGenerateRuntimeSourceLossRetainsStructuredRepair(t *testing.T) {
+	t.Parallel()
 	bullets := make([]any, 10)
 	for i := range bullets {
 		bullets[i] = fmt.Sprintf("P%02d %s", i, strings.Repeat("Required ownership and reporting evidence. ", 24))
