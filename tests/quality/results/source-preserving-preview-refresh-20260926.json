@@ -1,0 +1,22 @@
+{
+  "issue": "go-slide-creator-3qzo4.65",
+  "scope": "Fresh native preview regeneration after source-preserving paragraph repair, not aggregate visual approval",
+  "before_source_fingerprint": "f58b530bf2c50601d52e9b4b310b31ce0aaf4433f2ba61eec2eab5aef1b840cc",
+  "after_source_fingerprint": "6ebde0c2a6b670d3a56165317d419fa94d8a9a0380e22321723daa13babad3c9",
+  "templates": 14,
+  "layouts": 108,
+  "pixel_identical_layouts": 108,
+  "byte_identical_layouts": 108,
+  "changed_pixels": [],
+  "template_hashes_unchanged": true,
+  "sample_source_content_unchanged": true,
+  "layout_inventory_unchanged": true,
+  "private_pstyle_included_and_still_ignored": true,
+  "private_pstyle_sha256": "9df06238508e65b63ed8900a3d182e014987f5fd799468eb4bfdab64e96f998d",
+  "evidence_directory": "output/source-preserving-preview-refresh-20260926-v1",
+  "comparison": "comparison.json; original manifest image hashes, fresh image hashes, decoded RGBA and byte equality checked for every layout",
+  "full_resolution_render_caches": ["full-built-in", "full-portability"],
+  "original_preview_copies": ["before-built-in", "before-portability"],
+  "limits": "Historical blind reviews and their unsafe/caution findings remain artifact-specific and unchanged. Preview samples do not approve dense inputs, refused probes, full decks or editability.",
+  "aggregate_visual_approval": false
+}

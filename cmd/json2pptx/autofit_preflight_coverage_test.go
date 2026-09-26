@@ -160,16 +160,34 @@ func TestAutofitPreflightMeasuresExplicitContentFontSize(t *testing.T) {
 		Bounds: types.BoundingBox{Width: 3000000, Height: 1500000},
 	}}}}
 	got := collectTextAutofitPreflightFindings(input, layouts)
-	want := generator.DetectTextAutofitPreflight(generator.TextAutofitPreflightInput{
-		Path: "/slides/0/content/0", Paragraphs: bullets, WidthEMU: 3000000, HeightEMU: 1500000,
-		FontSizeHPt: 2400, FontName: "Arial", ViewingMode: tokens.ViewingModePresentation,
-		TextRole: tokens.TextRoleBody, ExtraSpacingPt: generator.InheritedParagraphSpacingPt(0),
-	})
+	measure := func(fontSize int) []patterns.FitFinding {
+		return generator.DetectTextAutofitPreflight(generator.TextAutofitPreflightInput{
+			Path: "/slides/0/content/0", Paragraphs: bullets, WidthEMU: 3000000, HeightEMU: 1500000,
+			FontSizeHPt: fontSize, FontName: "Arial", ViewingMode: tokens.ViewingModePresentation,
+			TextRole: tokens.TextRoleBody, ExtraSpacingPt: generator.InheritedParagraphSpacingPt(0),
+		})
+	}
+	want := measure(2400)
+	templateOnly := measure(1400)
 	if len(want) == 0 {
 		t.Fatal("fixture needs at least one fit finding to verify the measured size")
 	}
+	if reflect.DeepEqual(want, templateOnly) {
+		t.Fatal("fixture must distinguish authored 24pt from template 14pt")
+	}
+	// The collector adds source-aware continuation metadata after measuring.
+	// Keep the exact measurement comparison and a negative template-size control,
+	// while testing the executable repair separately from font prediction.
+	want = sourcePreservingPreflightParagraphRepairs(want, input)
+	templateOnly = sourcePreservingPreflightParagraphRepairs(templateOnly, input)
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("collector did not measure authored 24pt size:\n got %+v\nwant %+v", got, want)
+	}
+	if reflect.DeepEqual(got, templateOnly) {
+		t.Fatal("collector ignored authored font override")
+	}
+	if got[0].Fix == nil || got[0].Fix.Kind != "split_bullets" || got[0].Fix.Params["max_items"] != 1 {
+		t.Fatalf("source-preserving repair missing from authored-font prediction: %+v", got)
 	}
 }
 
