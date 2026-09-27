@@ -736,24 +736,43 @@ func formatCompactDecimals(v float64, decimals int) string {
 	if v < 0 {
 		sign = "-"
 	}
-	switch {
-	case abs >= 1e12:
-		return sign + scaled(abs/1e12, "T")
-	case abs >= 1e9:
-		return sign + scaled(abs/1e9, "B")
-	case abs >= 1e6:
-		return sign + scaled(abs/1e6, "M")
-	case abs >= 1e3:
-		return sign + scaled(abs/1e3, "K")
-	default:
-		if decimals >= 0 {
-			return sign + fmt.Sprintf("%.*f", decimals, abs)
+	// Round at the candidate unit first: a value that rounds up to 1000 of
+	// one unit is promoted to the next (999999 -> "1M", not "1000K";
+	// go-slide-creator-csclk.15).
+	roundsTo1000 := func(value float64) bool {
+		d := decimals
+		if d < 0 {
+			d = 1
 		}
-		if abs == math.Trunc(abs) {
-			return fmt.Sprintf("%s%.0f", sign, abs)
-		}
-		return fmt.Sprintf("%s%g", sign, abs)
+		p := math.Pow(10, float64(d))
+		return math.Round(value*p)/p >= 1000
 	}
+	units := []struct {
+		div  float64
+		name string
+	}{{1e3, "K"}, {1e6, "M"}, {1e9, "B"}, {1e12, "T"}}
+	idx := -1
+	for i, u := range units {
+		if abs >= u.div {
+			idx = i
+		}
+	}
+	if idx == -1 && decimals >= 0 && roundsTo1000(abs) {
+		idx = 0
+	}
+	for idx >= 0 && idx < len(units)-1 && roundsTo1000(abs/units[idx].div) {
+		idx++
+	}
+	if idx >= 0 {
+		return sign + scaled(abs/units[idx].div, units[idx].name)
+	}
+	if decimals >= 0 {
+		return sign + fmt.Sprintf("%.*f", decimals, abs)
+	}
+	if abs == math.Trunc(abs) {
+		return fmt.Sprintf("%s%.0f", sign, abs)
+	}
+	return fmt.Sprintf("%s%g", sign, abs)
 }
 
 // trimTrailingZero removes a trailing ".0" from a formatted number string.

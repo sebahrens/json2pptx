@@ -1098,6 +1098,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Set style.value_format.prefix to the intended symbol or code, such as $, €, £, or USD.",
 		},
 	},
+	"chart.waterfall_total_mismatch": {
+		Code:        "chart.waterfall_total_mismatch",
+		Summary:     "A waterfall total or subtotal does not equal the running sum before it.",
+		Severity:    "review",
+		WhenEmitted: "svggen finds a total/subtotal point whose value differs from the running sum of the preceding bars by more than 0.5%; the bar is drawn at the authored value, so the walk does not add up.",
+		RemediationSteps: []string{
+			"Correct the total/subtotal value to the running sum.",
+			"Or add the missing increase/decrease step that explains the difference.",
+		},
+	},
 	"chart.zero_sum_pie": {
 		Code:        "chart.zero_sum_pie",
 		Summary:     "A pie/donut chart's slices sum to zero, producing a blank chart.",

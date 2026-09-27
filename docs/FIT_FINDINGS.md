@@ -807,6 +807,24 @@ The chart's data map is empty — the output would be a blank chart placeholder.
 }
 ```
 
+### `chart.waterfall_total_mismatch`
+
+**Action:** `review`
+**Pattern:** `waterfall`
+**Fix kind:** `replace_value` (params: `index`, `authored`, `running_sum`)
+
+A waterfall `total` or `subtotal` point disagrees with the running sum of the bars before it by more than 0.5%. The bar is still drawn at the authored value, so the walk visibly does not add up. Correct the total, or add the increase/decrease step that explains the gap. (Increase/decrease direction always comes from `type`, not the sign of `value`.)
+
+```json
+{
+  "code": "chart.waterfall_total_mismatch",
+  "field": "points[2].value",
+  "message": "waterfall total \"T\" is 99 but the bars before it sum to 15 (off by 84); the bar is drawn at the authored value",
+  "fix": { "kind": "replace_value", "params": { "index": 2, "authored": 99, "running_sum": 15 } },
+  "severity": "warning"
+}
+```
+
 ### `CHART_PLACEHOLDER_EMPTY`
 
 **Action:** `review`

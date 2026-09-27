@@ -70,7 +70,8 @@ executable one.
 - [WORKFLOW.md](WORKFLOW.md): detailed Plan → Vary → Render → Repair workflow,
   visual inspection, resumable calls, and idempotency.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
-  anti-pattern rules.
+  anti-pattern rules. Chart data rules (waterfall `type` sets the sign;
+  `chart.waterfall_total_mismatch`) are in docs/INPUT_FORMAT.md.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
   (including tier-rated `capability-heatmap`, labelled-row `framework-grid`
   and per-pair-count `state-shift-hub` budgets); get the current catalog and per-pattern schema from

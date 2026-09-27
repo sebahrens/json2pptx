@@ -122,6 +122,12 @@ const (
 	// prefix. The renderer uses "¤" so currency is not byte-identical to plain
 	// formatting, while asking the author to provide the intended symbol/code.
 	FindingCurrencyPrefixDefaulted = "chart.currency_prefix_defaulted"
+
+	// FindingWaterfallTotalMismatch is emitted when a waterfall total or
+	// subtotal disagrees with the running sum of the bars before it by more
+	// than rounding (0.5%). The bar is drawn at the authored value, so the walk
+	// visibly does not add up (go-slide-creator-csclk.11).
+	FindingWaterfallTotalMismatch = "chart.waterfall_total_mismatch"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.

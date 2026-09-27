@@ -461,7 +461,25 @@ func (d *RadarChartDiagram) Validate(req *RequestEnvelope) error {
 
 	// One value per axis: a radar with a short series draws a polygon that
 	// closes through the origin (go-slide-creator-pcrp).
-	return validateSeriesValues(seriesSlice, len(catSlice), "radar_chart")
+	if err := validateSeriesValues(seriesSlice, len(catSlice), "radar_chart"); err != nil {
+		return err
+	}
+	// The radial scale starts at the centre (0): a negative value was clamped
+	// there silently, indistinguishable from 0 (go-slide-creator-csclk.16).
+	for i, s := range seriesSlice {
+		nums, _ := toFloat64Slice(s["values"])
+		for j, v := range nums {
+			if v < 0 {
+				return &ValidationError{
+					Field:   fmt.Sprintf("data.series[%d].values[%d]", i, j),
+					Code:    ErrCodeConstraint,
+					Message: fmt.Sprintf("radar_chart values must be >= 0 (%s has %v on %q); the radial axis starts at the centre — shift the scores or use a bar chart for signed data", seriesName(s, i), v, catSlice[j]),
+					Value:   v,
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // Render generates an SVG document for the radar chart.
@@ -1073,6 +1091,14 @@ func extractAnnotations(data map[string]any) []Annotation {
 func extractDataLabels(data map[string]any) *DataLabelConfig {
 	raw, ok := data["data_labels"]
 	if !ok {
+		return nil
+	}
+	// data_labels: true turns labels on with defaults; false leaves them off
+	// (go-slide-creator-csclk.10 — a bool used to be silently ignored).
+	if on, isBool := raw.(bool); isBool {
+		if on {
+			return &DataLabelConfig{}
+		}
 		return nil
 	}
 	m, ok := raw.(map[string]any)
@@ -1819,7 +1845,27 @@ type StackedAreaChartDiagram struct{ BaseDiagram }
 
 // Validate checks that the request data is valid for a stacked area chart.
 func (d *StackedAreaChartDiagram) Validate(req *RequestEnvelope) error {
-	return validateCategoriesAndSeries(req.Data, "stacked_area_chart", true, 1)
+	if err := validateCategoriesAndSeries(req.Data, "stacked_area_chart", true, 1); err != nil {
+		return err
+	}
+	// Stacked areas fill each running total down to the baseline, so a
+	// negative value shrinks the total and its band is painted under the
+	// previous one — invisible (go-slide-creator-csclk.6).
+	seriesSlice, _ := toSeriesSlice(req.Data["series"])
+	for i, s := range seriesSlice {
+		nums, _ := toFloat64Slice(s["values"])
+		for j, v := range nums {
+			if v < 0 {
+				return &ValidationError{
+					Field:   fmt.Sprintf("data.series[%d].values[%d]", i, j),
+					Code:    ErrCodeConstraint,
+					Message: fmt.Sprintf("stacked_area_chart values must be >= 0 (%s has %v); a negative band cannot be drawn in a stacked area — use stacked_bar_chart for signed stacks", seriesName(s, i), v),
+					Value:   v,
+				}
+			}
+		}
+	}
+	return nil
 }
 
 // Render generates an SVG document for the stacked area chart.

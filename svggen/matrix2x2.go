@@ -696,10 +696,14 @@ func reserveMatrixCaptionBand(x, y, size float64, plot Rect, bands [4]placedLabe
 // range, reporting each coordinate it had to move.
 func (mc *Matrix2x2Chart) clampPointToAxes(point Matrix2x2Point) Matrix2x2Point {
 	clampAxis := func(v, min, max float64, axis string) float64 {
-		if v >= min && v <= max {
+		// A reversed axis (x_min > x_max, as the BCG preset uses) is valid:
+		// clamp to its numeric span, not to [min, max] literally, which
+		// pinned every point to one edge (go-slide-creator-csclk.14).
+		lo, hi := math.Min(min, max), math.Max(min, max)
+		if v >= lo && v <= hi {
 			return v
 		}
-		clamped := math.Min(math.Max(v, min), max)
+		clamped := math.Min(math.Max(v, lo), hi)
 		mc.builder.AddFinding(Finding{
 			Code: FindingPointOutOfRange,
 			Message: fmt.Sprintf(

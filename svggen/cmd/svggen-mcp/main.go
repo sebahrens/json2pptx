@@ -1528,6 +1528,7 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingPointOutOfRange,
 		svggen.FindingScatterLabelSkipped,
 		svggen.FindingTickThinned,
+		svggen.FindingWaterfallTotalMismatch,
 		svggen.FindingZeroSumPie,
 	}
 	sort.Strings(findingCodes)

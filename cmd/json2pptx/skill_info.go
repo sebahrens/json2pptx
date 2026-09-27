@@ -1147,7 +1147,7 @@ func buildDataFormatHints() map[string]skillDataFormat {
 		"funnel": {
 			RequiredKeys: []string{"values"},
 			OptionalKeys: []string{"categories", "neck_width", "gap", "show_percentage", "show_conversion"},
-			Description:  "values: [{label, value}] or number[] with categories for labels; show_percentage adds percent of first stage (default false), show_conversion adds stage-to-stage percent (default true); set both false to suppress percentages",
+			Description:  "values: [{label, value}] or number[] with categories for labels; show_percentage adds percent of the largest stage (the first stage in a narrowing funnel; default false), show_conversion adds stage-to-stage percent (default true); set both false to suppress percentages",
 		},
 		"gauge": {
 			RequiredKeys: []string{"value"},

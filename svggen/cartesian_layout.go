@@ -29,10 +29,33 @@ type CartesianLayout struct {
 	LegendHeight float64
 }
 
+// yTickCountForHeight caps the y-axis tick count so labels at least 1.6 line
+// heights apart fit the plot height: a short embedded chart kept 5-6 ticks in
+// ~70px and their labels overlapped (go-slide-creator-csclk.19).
+func yTickCountForHeight(style *StyleGuide, plotH float64) int {
+	const defaultTicks = 5
+	if style == nil || style.Typography == nil || style.Typography.SizeSmall <= 0 || plotH <= 0 {
+		return defaultTicks
+	}
+	n := int(plotH / (1.6 * style.Typography.SizeSmall))
+	if n < 2 {
+		n = 2
+	}
+	if n > defaultTicks {
+		n = defaultTicks
+	}
+	return n
+}
+
+// xLabelGlyphEm is how far below its anchor a top-anchored x tick label's
+// glyphs reach, in ems of the label font.
+const xLabelGlyphEm = 1.8
+
 // ComputeCartesianLayout calculates standard layout dimensions from a chart
 // config, style guide, and content metadata. This replaces the 4 duplicated
 // layout blocks across BarChart.Draw, LineChart.Draw, ScatterChart.Draw,
 // and WaterfallChart.Draw.
+
 func ComputeCartesianLayout(config ChartConfig, style *StyleGuide, title, subtitle, footnote string, seriesCount int) CartesianLayout {
 	plotArea := config.PlotArea()
 
@@ -62,6 +85,23 @@ func ComputeCartesianLayout(config ChartConfig, style *StyleGuide, title, subtit
 	plotArea.H -= headerHeight + footerHeight
 	if config.LegendPosition == LegendPositionBottom {
 		plotArea.H -= legendHeight
+	}
+
+	// The bottom margin must hold the x-axis ticks and one line of tick
+	// labels (plus the gap above a bottom legend). When placement typography
+	// enlarges the fonts inside a short embedded canvas, the fixed margin no
+	// longer does and the category labels were drawn below the viewBox
+	// (go-slide-creator-csclk.19).
+	// A "top"-anchored label's glyphs extend about 1.75em below its anchor in
+	// the emitted SVG (ascent offset plus descent), so budget that rather than
+	// one bare line height.
+	xAxisCfg := DefaultAxisConfig(AxisPositionBottom)
+	needBottom := xAxisCfg.TickSize + math.Max(xAxisCfg.TickPadding, 3) + xLabelGlyphEm*style.Typography.SizeSmall
+	if legendHeight > 0 && config.LegendPosition == LegendPositionBottom {
+		needBottom += style.Spacing.SM
+	}
+	if extra := needBottom - config.MarginBottom; extra > 0 {
+		plotArea.H -= extra
 	}
 
 	return CartesianLayout{
@@ -181,7 +221,7 @@ func DrawCartesianGrid(b *SVGBuilder, plotArea Rect, yScale *LinearScale, xScale
 
 	// Horizontal grid lines from y-axis ticks
 	if yScale != nil {
-		yTicks := yScale.Ticks(5)
+		yTicks := yScale.Ticks(yTickCountForHeight(b.StyleGuide(), plotArea.H))
 		for _, v := range yTicks {
 			y := plotArea.Y + yScale.Scale(v)
 			if y < plotArea.Y-0.5 || y > plotArea.Y+plotArea.H+0.5 {
@@ -218,6 +258,7 @@ func DrawCartesianYAxis(b *SVGBuilder, plotArea Rect, yScale *LinearScale, title
 	yAxisConfig.Title = title
 	yAxisConfig.RangeExtent = plotArea.H
 	yAxisConfig.ValueFmt = vf
+	yAxisConfig.TickCount = yTickCountForHeight(b.StyleGuide(), plotArea.H)
 	yAxis := NewAxis(b, yAxisConfig)
 	yAxis.DrawLinearAxis(yScale, plotArea.X, plotArea.Y)
 }
