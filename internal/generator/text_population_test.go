@@ -1108,7 +1108,7 @@ func TestBodyPropertiesXML_AttributePreservation(t *testing.T) {
 	})
 }
 
-func TestCenterIfSparse(t *testing.T) {
+func TestNativeBulletPopulationPreservesVerticalAnchor(t *testing.T) {
 	makeShape := func(anchor string, inner string, paraCount int) *shapeXML {
 		paras := make([]paragraphXML, paraCount)
 		for i := range paras {
@@ -1125,74 +1125,26 @@ func TestCenterIfSparse(t *testing.T) {
 		}
 	}
 
-	t.Run("sparse bullets get centered", func(t *testing.T) {
-		shape := makeShape("t", `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>`, 3)
-		centerIfSparse(shape, 3)
-		if shape.TextBody.BodyProperties.Anchor != "ctr" {
-			t.Errorf("Anchor = %q, want %q", shape.TextBody.BodyProperties.Anchor, "ctr")
+	for _, anchor := range []string{"", "t", "ctr", "b"} {
+		for _, count := range []int{1, 3, 8, 9, 12} {
+			t.Run(fmt.Sprintf("%s/%d", anchor, count), func(t *testing.T) {
+				shape := makeShape(anchor, `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>`, 1)
+				bullets := make([]string, count)
+				for i := range bullets {
+					bullets[i] = fmt.Sprintf("Required point %d", i+1)
+				}
+				if err := setBulletParagraphs(shape, "body", bullets, 0); err != nil {
+					t.Fatal(err)
+				}
+				if shape.TextBody.BodyProperties.Anchor != anchor {
+					t.Fatalf("native anchor %q changed to %q", anchor, shape.TextBody.BodyProperties.Anchor)
+				}
+				if len(shape.TextBody.Paragraphs) != count {
+					t.Fatal("required bullet paragraphs lost")
+				}
+			})
 		}
-	})
-
-	t.Run("dense bullets stay top-aligned", func(t *testing.T) {
-		shape := makeShape("t", `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>`, 12)
-		centerIfSparse(shape, 12)
-		if shape.TextBody.BodyProperties.Anchor != "t" {
-			t.Errorf("Anchor = %q, want %q", shape.TextBody.BodyProperties.Anchor, "t")
-		}
-	})
-
-	t.Run("scaled-down content stays top-aligned", func(t *testing.T) {
-		shape := makeShape("t", `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" fontScale="60000"/>`, 5)
-		centerIfSparse(shape, 5)
-		if shape.TextBody.BodyProperties.Anchor != "t" {
-			t.Errorf("Anchor = %q, want %q (fontScale=60000 means dense)", shape.TextBody.BodyProperties.Anchor, "t")
-		}
-	})
-
-	t.Run("lightly scaled content gets centered", func(t *testing.T) {
-		shape := makeShape("t", `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" fontScale="90000"/>`, 5)
-		centerIfSparse(shape, 5)
-		if shape.TextBody.BodyProperties.Anchor != "ctr" {
-			t.Errorf("Anchor = %q, want %q (fontScale=90000 is light)", shape.TextBody.BodyProperties.Anchor, "ctr")
-		}
-	})
-
-	t.Run("already centered stays centered", func(t *testing.T) {
-		shape := makeShape("ctr", `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>`, 3)
-		centerIfSparse(shape, 3)
-		if shape.TextBody.BodyProperties.Anchor != "ctr" {
-			t.Errorf("Anchor = %q, want %q", shape.TextBody.BodyProperties.Anchor, "ctr")
-		}
-	})
-
-	t.Run("bottom-aligned stays bottom", func(t *testing.T) {
-		shape := makeShape("b", `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>`, 3)
-		centerIfSparse(shape, 3)
-		if shape.TextBody.BodyProperties.Anchor != "b" {
-			t.Errorf("Anchor = %q, want %q", shape.TextBody.BodyProperties.Anchor, "b")
-		}
-	})
-
-	t.Run("nil body properties is safe", func(t *testing.T) {
-		shape := &shapeXML{TextBody: &textBodyXML{}}
-		centerIfSparse(shape, 3) // should not panic
-	})
-
-	t.Run("boundary at 8 paragraphs centers", func(t *testing.T) {
-		shape := makeShape("t", `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>`, 8)
-		centerIfSparse(shape, 8)
-		if shape.TextBody.BodyProperties.Anchor != "ctr" {
-			t.Errorf("Anchor = %q, want %q", shape.TextBody.BodyProperties.Anchor, "ctr")
-		}
-	})
-
-	t.Run("9 paragraphs stays top-aligned", func(t *testing.T) {
-		shape := makeShape("t", `<a:normAutofit xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>`, 9)
-		centerIfSparse(shape, 9)
-		if shape.TextBody.BodyProperties.Anchor != "t" {
-			t.Errorf("Anchor = %q, want %q", shape.TextBody.BodyProperties.Anchor, "t")
-		}
-	})
+	}
 }
 
 // TestTwoColumnOverflow verifies that text in a narrow left-column placeholder

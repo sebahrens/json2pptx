@@ -518,8 +518,8 @@ func setBulletParagraphs(shape *shapeXML, placeholderID string, value interface{
 		applySmartAutofitWithOptions(shape, autofitOpts...)
 	}
 
-	// Vertically center sparse bullet lists to avoid excessive top-floating whitespace.
-	centerIfSparse(shape, len(bullets))
+	// Preserve native vertical alignment: paragraph count does not measure ink
+	// height or the intended relationship between the title and body.
 
 	return nil
 }
@@ -651,8 +651,7 @@ func setBodyAndBulletsParagraphs(shape *shapeXML, placeholderID string, value in
 		applySmartAutofitWithOptions(shape, autofitOpts...)
 	}
 
-	// Vertically center sparse body+bullet content to avoid excessive top-floating whitespace.
-	centerIfSparse(shape, len(shape.TextBody.Paragraphs))
+	// Keep the template's vertical anchor for the complete heading/body group.
 
 	return nil
 }

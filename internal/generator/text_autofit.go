@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"math"
 	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -712,39 +711,4 @@ func enforceTextWrap(shape *shapeXML) {
 	if bp.Wrap == "" {
 		bp.Wrap = "square"
 	}
-}
-
-// fontScaleRe extracts the fontScale value from normAutofit XML.
-var fontScaleRe = regexp.MustCompile(`fontScale="(\d+)"`)
-
-// centerIfSparse sets vertical anchor to "ctr" when bullet content is sparse
-// (few items with no significant font scaling). This prevents small bullet lists
-// from floating at the top of the placeholder with excessive whitespace below,
-// which looks unprofessional in consulting-style presentations.
-func centerIfSparse(shape *shapeXML, paragraphCount int) {
-	if shape.TextBody == nil || shape.TextBody.BodyProperties == nil {
-		return
-	}
-	bp := shape.TextBody.BodyProperties
-
-	// Only center sparse content (≤ 8 paragraphs)
-	if paragraphCount > 8 {
-		return
-	}
-
-	// Don't override if already centered or bottom-aligned
-	if bp.Anchor == "ctr" || bp.Anchor == "b" {
-		return
-	}
-
-	// Check if font scaling was applied — if content needed significant
-	// shrinking, it's dense and should stay top-aligned to avoid overflow
-	// at the bottom when centered.
-	if m := fontScaleRe.FindStringSubmatch(bp.Inner); len(m) > 1 {
-		if scale, err := strconv.Atoi(m[1]); err == nil && scale < 85000 {
-			return // Dense content needed shrinking, keep top-aligned
-		}
-	}
-
-	bp.Anchor = "ctr"
 }

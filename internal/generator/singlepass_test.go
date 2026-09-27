@@ -601,13 +601,13 @@ func TestPopulateTextInSlide_SiblingColumnAlignment(t *testing.T) {
 		wantRight   string
 	}{
 		{"five_vs_one_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(5)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(1)}, false, "t", "t"},
-		{"balanced_sparse_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(2)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(2)}, false, "ctr", "ctr"},
+		{"balanced_sparse_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(2)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(2)}, false, "t", "t"},
 		{"unequal_single_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: []string{"A succinct point"}}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: []string{"A much longer point that wraps several times in this same-width column and must not float below its sibling"}}, false, "t", "t"},
 		{"dense_left_bullets", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(9)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(1)}, false, "t", "t"},
 		{"chart_sibling", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(1)}, ContentItem{PlaceholderID: "body_2", Type: ContentDiagram}, false, "t", "ctr"},
 		{"table_sibling", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(1)}, ContentItem{PlaceholderID: "body_2", Type: ContentTable}, false, "t", "ctr"},
-		{"stacked_bodies_unchanged", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(5)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(1)}, true, "ctr", "ctr"},
-		{"unpopulated_sibling", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(1)}, ContentItem{}, false, "ctr", "t"},
+		{"stacked_bodies_unchanged", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(5)}, ContentItem{PlaceholderID: "body_2", Type: ContentBullets, Value: bullets(1)}, true, "t", "t"},
+		{"unpopulated_sibling", ContentItem{PlaceholderID: "body", Type: ContentBullets, Value: bullets(1)}, ContentItem{}, false, "t", "t"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

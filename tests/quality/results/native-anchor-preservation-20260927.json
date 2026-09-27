@@ -1,0 +1,74 @@
+{
+  "issue": "go-slide-creator-3qzo4.92",
+  "base_commit": "0098d38876f73115ccc423a2b729ed728444a512",
+  "published": false,
+  "repair": "Preserve native vertical anchors for bullets and body_and_bullets; remove paragraph-count-based forced centering.",
+  "coverage": {
+    "templates": 14,
+    "native_layouts": 108,
+    "probes": 309,
+    "accepted_pixel_identical_to_reviewed_candidate": 247,
+    "unchanged_readability_refusals": 15,
+    "unchanged_source_loss_refusals": 47,
+    "private_p_style_included_locally_and_gitignored": true,
+    "all_source_templates_unchanged": true,
+    "all_authored_probe_inputs_unchanged": true
+  },
+  "fingerprints": {
+    "engine_source_sha256": "705fa60ec0958ee3a52e986c895103828e59ab0bcf07a69f504a6c2534b888fd",
+    "harness_sha256": "fce908e7bb98b4cf81929639696c6aeec2e128a77b3c8babb2a7188d7fc0e3c1",
+    "preview_rendering_source_sha256": "33d65413dfba58a0021cdf9b748f6aecc3a5d03aa85f3b0c9d6c1c8dd60fdb82"
+  },
+  "regressions": {
+    "actual_generated_package_cases": 8,
+    "native_anchors": ["default", "top", "center", "bottom"],
+    "content_types": ["bullets", "body_and_bullets"],
+    "population_cases": 20,
+    "original_implementation_negative_control": "Fails the four default/top actual-package cases; explicit center and bottom controls pass.",
+    "exact_required_text_and_order_preserved": true,
+    "focused_race_seconds": 3.478,
+    "intentional_golden_hashes_updated": 4
+  },
+  "previews": {
+    "validated_and_installed": 108,
+    "changed_pngs": 31,
+    "complete_source_content_preserved": true,
+    "private_p_style_preview_remains_gitignored": true,
+    "post_installation_provenance_mcp_and_determinism_gates_pass": true,
+    "golden_hash_drift_after_rebaseline": false
+  },
+  "sole_blind_review": {
+    "case_study_before_after_pages_inspected": 80,
+    "case_study_review_sha256": "2b9ada67e96f9f5024579c5ae70dfc7170b4f7709a62aac85d9ec2bc5ea7fc2c",
+    "changed_native_layout_before_after_pages_inspected": 62,
+    "native_layout_review_sha256": "ab4bc041814fabe94f1942fa33344e26910d848650acbdba584cf24dddb9650b",
+    "unreviewed": 0,
+    "packet_original_bytes_and_required_text_checks_verified": true,
+    "installed_case_pages_pixel_identical_to_reviewed_candidate": 40,
+    "complete_case_copies_verified_from_actual_packages": 80,
+    "minimum_effective_case_body_pt": 18,
+    "aggregate_visual_approval": false
+  },
+  "gates": {
+    "integration_corpus": {"passed": true, "seconds": 313.981},
+    "full_short_race": {"passed": true, "cli_seconds": 791.157, "generator_seconds": 243.692, "quality_seconds": 541.022},
+    "pinned_lint": {"passed": true, "issues": 0},
+    "build_format_and_diff_check": {"passed": true}
+  },
+  "evidence_sha256": {
+    "output/native-anchor-installed-native-corpus-20260927-v1/manifest.json": "0bd789132645a034a8bc6a2fe5921f802b38f7b509ac363b30b8b93ee1a40c3d",
+    "output/native-anchor-installed-native-audit-20260927-v1.json": "1ca6ee4d457d949cc3f965e9a345dbc6e68e82fd359e636ec91d23209ba7042b",
+    "output/native-anchor-installed-preview-audit-20260927-v1.json": "40ec2f6f655353c4cd418c2d8093cad938823b11557bb0926fcdd3a1acde2ba6",
+    "output/sovereign-anchor-installed-source-audit-20260927-v1.json": "7eed3c7cea237e9eee5b78b42e4fefaba0638969ec28594e838b8127c8e634d0",
+    "output/native-anchor-installed-preview-golden-gates-20260927-v2.log": "7ab1f82023f1e3973a2fabb7ba033cd4276718237956814be179c1347524e21c",
+    "output/native-anchor-installed-integration-corpus-20260927-v1.log": "1d72f7ff7ab29b06259dc5e63091d3e1cb6a609f1f5919ce8c40f6a9399eb12a",
+    "output/native-anchor-installed-focused-20260927-v2.log": "a5c4cd1a126c3506abb2ad8ebf4a159a856c680bb7b1f70c8884b1f18fdb8be6",
+    "output/native-anchor-installed-root-race-20260927-v1.log": "d074366770674a0a1838337270037de6c2af1f7256b1cfdde56e6df2ecb2a286"
+  },
+  "remaining_findings": [
+    "Native-anchor fidelity resolves detached bodies, not all composition defects: top-heavy balance, title/body gaps, loose leading and wrapping remain tracked in go-slide-creator-3qzo4.69.",
+    "Yellow Statement artwork has a separately reviewed isolated repair under go-slide-creator-3qzo4.94; it is not part of this renderer change.",
+    "No refused dense source is counted as visual approval.",
+    "New generated-package tests directly exercise layout anchors; master-only center/bottom inheritance is not independently covered by those eight cases."
+  ]
+}
