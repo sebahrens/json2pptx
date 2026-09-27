@@ -423,15 +423,15 @@ func TestForResolvedGrid_InsetsClampWithoutPanic(t *testing.T) {
 	}
 }
 
-func TestForResolvedGrid_NoInsetsUnchanged(t *testing.T) {
-	// Without any overlay or authored insets the budget is computed against the
-	// full cell bounds, preserving prior behavior.
+func TestForResolvedGrid_NoInsetsUsesOOXMLDefaults(t *testing.T) {
+	// A body without authored insets still has OOXML's 7.2pt horizontal and
+	// 3.6pt vertical padding on each side. Report its usable text rectangle.
 	d := ForResolvedGrid(gridWithText(`{"content": "Some descriptive card body text"}`))[0]
-	if d.WidthEMU != 3*emuInch {
-		t.Errorf("WidthEMU=%d, want %d (full cell width)", d.WidthEMU, 3*emuInch)
+	if want := 3*emuInch - 2*91440; d.WidthEMU != want {
+		t.Errorf("WidthEMU=%d, want %d (default-padded width)", d.WidthEMU, want)
 	}
-	if d.HeightEMU != 2*emuInch {
-		t.Errorf("HeightEMU=%d, want %d (full cell height)", d.HeightEMU, 2*emuInch)
+	if want := 2*emuInch - 2*45720; d.HeightEMU != want {
+		t.Errorf("HeightEMU=%d, want %d (default-padded height)", d.HeightEMU, want)
 	}
 }
 

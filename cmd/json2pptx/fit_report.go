@@ -411,7 +411,7 @@ func (a *gridFitAccum) walk(grid *ShapeGridInput, result *shapegrid.ResolveResul
 		if cell != nil && cell.Table != nil {
 			a.findings = append(a.findings, measureTable(cell.Table, slidepath.Join(pathPrefix, "table"), a.slideIdx)...)
 		}
-		if i < len(densities) && densities[i].MaxChars > 0 {
+		if i < len(densities) && (densities[i].MaxChars > 0 || densities[i].ActualChars > 0) {
 			cellFindings, counted, under := cellDensityFindings(densities[i], pathPrefix)
 			a.findings = append(a.findings, cellFindings...)
 			if counted {
