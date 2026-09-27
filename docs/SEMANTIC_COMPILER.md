@@ -44,8 +44,11 @@ slides:
     takeaway: Add enterprise sales capacity now to convert EMEA pipeline.
     recommendation: Add four enterprise AEs in Q3.
     options:
-      - Hold current coverage and accept slower EMEA conversion.
-      - Add four enterprise AEs in Q3 (recommended).
+      - label: Hold current coverage
+        detail: Accept slower EMEA conversion.
+      - label: Add four enterprise AEs
+        detail: Hire in Q3 to convert the EMEA pipeline.
+        recommended: true
 ```
 
 Initial archetypes:

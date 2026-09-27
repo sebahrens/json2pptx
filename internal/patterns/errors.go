@@ -578,7 +578,7 @@ func errMaxItems(pattern, path string, maxCount, actual int, hint string) *Valid
 func ErrCalloutUnsupportedFor(pattern string, supportedPatterns []string) *ValidationError {
 	return &ValidationError{
 		Pattern: pattern,
-		Path:    "pattern.callout",
+		Path:    "callout", // pattern-relative; the harvester roots it at /slides/i/pattern
 		Code:    ErrCodeCalloutUnsupported,
 		Message: fmt.Sprintf("%s: does not support callout", pattern),
 		Fix: &FixSuggestion{

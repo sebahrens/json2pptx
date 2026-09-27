@@ -48,3 +48,34 @@ func TestBundledSemanticExamplesValidateClean(t *testing.T) {
 		})
 	}
 }
+
+// TestDocSemanticSnippetsValidateClean guards the semantic quick-start YAML
+// blocks embedded in README.md and docs/SEMANTIC_COMPILER.md (go-slide-creator-
+// csclk.57): agents copy these verbatim, so every ```yaml block that declares
+// top-level `meta:` + `slides:` must validate without error findings.
+func TestDocSemanticSnippetsValidateClean(t *testing.T) {
+	for _, doc := range []string{"README.md", filepath.Join("docs", "SEMANTIC_COMPILER.md")} {
+		data, err := os.ReadFile(filepath.Join("..", "..", doc))
+		if err != nil {
+			t.Fatal(err)
+		}
+		found := 0
+		for i, block := range strings.Split(string(data), "```yaml\n")[1:] {
+			end := strings.Index(block, "\n```")
+			if end < 0 {
+				continue
+			}
+			snippet := block[:end+1]
+			if !strings.HasPrefix(snippet, "meta:") || !strings.Contains(snippet, "\nslides:") {
+				continue
+			}
+			found++
+			if ds := Check("snippet.yaml", []byte(snippet), StrictnessWarn); diagnostics.HasErrors(ds) {
+				t.Errorf("%s yaml block %d produced error findings: %v", doc, i, ds)
+			}
+		}
+		if found == 0 {
+			t.Errorf("%s: no semantic yaml snippet found", doc)
+		}
+	}
+}

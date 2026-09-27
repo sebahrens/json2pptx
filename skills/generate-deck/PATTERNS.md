@@ -33,8 +33,7 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
       {"big": "$127M", "small": "Revenue"},
       {"big": "43%",   "small": "Gross margin"},
       {"big": "2.1x",  "small": "YoY growth"}
-    ],
-    "callout": {"text": "Takeaway", "emphasis": "accent1"}
+    ]
   }
 }
 ```
@@ -43,7 +42,7 @@ KPI `values` is a JSON **array** of cells (one per metric). Each cell is an obje
 
 Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 
-**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content).
+**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content). KPI patterns (`kpi-2up` … `kpi-6up`) do **not** support callouts — validate refuses the deck with `callout_unsupported`; check `supports_callout` in `show_pattern` first.
 
 ### Picking a Grid Configuration with `text_budget_guide`
 

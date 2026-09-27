@@ -261,8 +261,11 @@ slides:
     takeaway: Add enterprise sales capacity now to convert EMEA pipeline.
     recommendation: Add four enterprise AEs in Q3.
     options:
-      - Hold current coverage and accept slower EMEA conversion.
-      - Add four enterprise AEs in Q3 (recommended).
+      - label: Hold current coverage
+        detail: Accept slower EMEA conversion.
+      - label: Add four enterprise AEs
+        detail: Hire in Q3 to convert the EMEA pipeline.
+        recommended: true
 ```
 
 Deck-level intent lives under `meta`; each slide is a `kind`-tagged payload whose remaining fields are that kind's content. Use `list_slide_kinds` / `json2pptx semantic schema` for the per-kind fields, and [examples/semantic/qbr.yaml](examples/semantic/qbr.yaml) for a fuller, test-verified spec.
@@ -339,19 +342,13 @@ curl -X POST http://localhost:8080/api/v1/convert \
   -d '{
     "template": "midnight-blue",
     "slides": [
-      {"slide_type": "title",
-       "content": [
-         {"placeholder_id": "title",    "type": "text", "text_value": "My Presentation"},
-         {"placeholder_id": "subtitle", "type": "text", "text_value": "Welcome"}
-       ]},
-      {"slide_type": "content",
-       "content": [
-         {"placeholder_id": "title", "type": "text",    "text_value": "Key Points"},
-         {"placeholder_id": "body",  "type": "bullets", "bullets_value": ["First point", "Second point"]}
-       ]}
+      {"type": "title",   "title": "My Presentation", "content": {"body": "Welcome"}},
+      {"type": "content", "title": "Key Points",      "content": {"bullets": ["First point", "Second point"]}}
     ]
   }'
 ```
+
+The HTTP convert endpoint takes a simplified text/bullet slide shape (`type`, `title`, `content.body` / `content.bullets`), not the raw `PresentationInput` JSON used by the CLI and MCP. See [docs/api/README.md](docs/api/README.md#convert-slides).
 
 <a id="mcp-integration"></a>
 
