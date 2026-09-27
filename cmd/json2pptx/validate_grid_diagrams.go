@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
@@ -89,6 +90,19 @@ func gridDiagramValidationDiagnostics(grid *ShapeGridInput, slideIdx int, label,
 	var out []diagnostics.Diagnostic
 	check := func(spec *types.DiagramSpec, path, where string) {
 		if spec == nil || spec.Type == "" {
+			return
+		}
+		// Heatmaps render natively (not via svggen): check the grid shape
+		// the native renderer needs (go-slide-creator-csclk.18).
+		if spec.Type == "heatmap" {
+			if err := generator.ValidateHeatmapData(spec.Data); err != nil {
+				out = append(out, diagnostics.Diagnostic{
+					Code:     diagnostics.CodeInvalidGrid,
+					Path:     path,
+					Message:  fmt.Sprintf("slide %d: %s: %s: %v", slideIdx+1, label, where, err),
+					Severity: diagnostics.SeverityError,
+				})
+			}
 			return
 		}
 		if svggen.DefaultRegistry().Get(spec.Type) == nil {

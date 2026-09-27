@@ -906,6 +906,15 @@ func validateSlidesAgainstTemplate(output *dryRunOutput, slides []SlideInput, an
 					}
 				}
 			}
+
+			// A grid-cell table row wider than its headers cannot render and
+			// generate refuses it, exactly as for placeholder tables; check
+			// every grid-cell table, nested sub-grids included
+			// (go-slide-creator-csclk.5).
+			if rd := gridTableRowWidthDiagnostics(slideInput.ShapeGrid, slidepath.ShapeGrid(i), i); len(rd) > 0 {
+				output.Valid = false
+				output.Diagnostics = append(output.Diagnostics, rd...)
+			}
 		}
 
 		// Pattern values: generate validates every named pattern against the
@@ -1267,6 +1276,36 @@ func validateShapeFillColor(raw json.RawMessage, slideNum, row, cell int, warnin
 		checkHex(obj.Color)
 	}
 	return valWarnings
+}
+
+// gridTableRowWidthDiagnostics reports every table in grid (recursing into
+// cell sub-grids) whose rows span more columns than its headers define, the
+// same CheckRowWidths refusal generate raises (go-slide-creator-csclk.5).
+func gridTableRowWidthDiagnostics(grid *ShapeGridInput, gridPath string, slideIdx int) []diagnostics.Diagnostic {
+	if grid == nil {
+		return nil
+	}
+	var out []diagnostics.Diagnostic
+	for rowIdx, row := range grid.Rows {
+		for cellIdx, cell := range row.Cells {
+			if cell == nil {
+				continue
+			}
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", gridPath, rowIdx, cellIdx)
+			if cell.Table != nil {
+				if err := cell.Table.ToTableSpec().CheckRowWidths(); err != nil {
+					out = append(out, diagnostics.Diagnostic{
+						Code:     diagnostics.CodeInvalidParameter,
+						Path:     cellPath + "/table.rows",
+						Message:  fmt.Sprintf("slide %d: %v", slideIdx+1, err),
+						Severity: diagnostics.SeverityError,
+					})
+				}
+			}
+			out = append(out, gridTableRowWidthDiagnostics(cell.Grid, cellPath+"/grid", slideIdx)...)
+		}
+	}
+	return out
 }
 
 // validateTableStyleID checks whether an authored style_id is declared in the

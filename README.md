@@ -648,7 +648,7 @@ for each under "MCP-only tools".
 | `capabilities` | Show schema version, tools (with classification), features, and vocabularies |
 | `get-started` | Print the recommended fast path + manual sequence for a task (brief/revise/validate-only) |
 | `describe-finding` | Print the agent-facing description for a single finding code |
-| `input-schema` | Print the JSON input schema (full or compact) |
+| `input-schema` | Print the JSON input schema |
 | `resolve-theme` | Resolve theme colors and fonts for a template |
 | `recommend-pattern` | Recommend patterns matching an intent |
 | `recommend-visual` | Recommend visual approaches for a slide intent |

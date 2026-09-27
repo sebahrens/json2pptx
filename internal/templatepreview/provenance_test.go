@@ -3,8 +3,13 @@ package templatepreview
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 func TestPreviewManifestRejectsStaleOrMismatchedEvidence(t *testing.T) {
@@ -41,6 +46,37 @@ func TestPreviewManifestRejectsStaleOrMismatchedEvidence(t *testing.T) {
 	}
 }
 
+// TestRenderingPackageDirsMatchImports keeps the hashed package allowlist equal
+// to cmd/templatepreviews' real in-repo import set, so a new rendering
+// dependency cannot escape provenance (go-slide-creator-csclk.1).
+func TestRenderingPackageDirsMatchImports(t *testing.T) {
+	goBin, err := exec.LookPath("go")
+	if err != nil {
+		t.Skip("go toolchain not on PATH")
+	}
+	root := testutil.RepoRoot()
+	cmd := exec.Command(goBin, "list", "-deps", "-f", "{{if not .Standard}}{{.Dir}}{{end}}", "./cmd/templatepreviews") //nolint:gosec // fixed arguments
+	cmd.Dir = root
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list: %v", err)
+	}
+	var got []string
+	for _, dir := range strings.Fields(string(out)) {
+		rel, err := filepath.Rel(root, dir)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			continue // third-party module
+		}
+		got = append(got, filepath.ToSlash(rel))
+	}
+	sort.Strings(got)
+	want := append([]string(nil), RenderingPackageDirs...)
+	sort.Strings(want)
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("RenderingPackageDirs out of sync with `go list -deps ./cmd/templatepreviews`:\n got  %v\n want %v", got, want)
+	}
+}
+
 func TestRenderingSourceHashTracksCodeNotGeneratedAssets(t *testing.T) {
 	root := t.TempDir()
 	for path, data := range map[string]string{
@@ -61,14 +97,17 @@ func TestRenderingSourceHashTracksCodeNotGeneratedAssets(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"internal/templatepreview/recipe_test.go", "internal/templatepreview/generated.png"} {
+	for _, path := range []string{"internal/templatepreview/recipe_test.go", "internal/templatepreview/generated.png", "internal/api/unrelated.go"} {
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(root, path)), 0755); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.WriteFile(filepath.Join(root, path), []byte("not rendering source"), 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
 	same, err := RenderingSourceHash(root)
 	if err != nil || same != before {
-		t.Fatal("tests/generated images caused circular provenance")
+		t.Fatal("tests, generated images or a non-rendering package changed provenance")
 	}
 	meta, err := json.Marshal(previewManifest{SourceHash: before})
 	if err != nil {

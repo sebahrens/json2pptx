@@ -32,7 +32,7 @@ func runValidate() error { //nolint:gocognit
 	format := fs.String("format", "", "Output format: json (MCP-identical dryRunOutput), ndjson, or human (default)")
 	strictUnknownKeys := fs.Bool("strict-unknown-keys", false, "Fail-fast on misspelled/unknown JSON keys: when true, unknown keys are validation errors; when false (default), they are warnings. Mirrors MCP validate_input strict_unknown_keys.")
 	placeholderPolicy := fs.String("placeholder-policy", "warn", "Unresolved __FILL__ skeleton-placeholder policy: off (skip), warn (default; report tokens with JSON paths), or strict (treat unresolved tokens as errors). Mirrors MCP validate_input placeholder_policy.")
-	baseDir := fs.String("base-dir", "", "Absolute directory used to resolve relative asset paths (icons, images, backgrounds). Defaults to each input file's own directory (matching `generate`); stdin falls back to the process CWD. Mirrors MCP validate_input base_dir.")
+	baseDir := fs.String("base-dir", "", "Absolute directory used to resolve relative asset paths (icons, images, backgrounds). Defaults to each input file's own directory (matching generate); stdin falls back to the process CWD. Mirrors MCP validate_input base_dir.")
 	_ = fs.Bool("partial", false, "Accepted for CLI compatibility (validation always reports per-slide diagnostics)")
 
 	fs.Usage = func() {

@@ -158,7 +158,7 @@ Commands:
   capabilities        Show schema version, tools, features, and vocabularies
   get-started         Print the recommended MCP-call sequence for a task (brief|revise|validate-only)
   describe-finding    Print the agent-facing description for a single finding code
-  input-schema        Print the JSON input schema (full or compact)
+  input-schema        Print the JSON input schema
   resolve-theme       Resolve theme colors and fonts for a template
   recommend-pattern   Recommend patterns matching an intent
   preview             Preview generation plan without rendering

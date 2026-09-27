@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -182,6 +183,9 @@ func replaceBetweenGroups(pattern *regexp.Regexp, s, literal string) string {
 func escapeXMLAttrValue(s string) string {
 	var b strings.Builder
 	for _, r := range s {
+		if IsFontNameControlRune(r) {
+			continue // not representable in XML 1.0 (or pointless in a name)
+		}
 		switch r {
 		case '&':
 			b.WriteString("&amp;")
@@ -198,4 +202,11 @@ func escapeXMLAttrValue(s string) string {
 		}
 	}
 	return b.String()
+}
+
+// IsFontNameControlRune reports whether r may not appear in a theme font name:
+// control characters (XML 1.0 cannot represent most of the C0 range at all)
+// and the non-characters U+FFFE / U+FFFF (go-slide-creator-csclk.4).
+func IsFontNameControlRune(r rune) bool {
+	return unicode.IsControl(r) || r == 0xFFFE || r == 0xFFFF
 }

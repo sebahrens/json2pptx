@@ -292,6 +292,13 @@ func runPatternsValidate() error {
 		}
 		return err
 	}
+	if boundsSource == "default_fallback" && !*jsonOut {
+		// Without --template no template is loaded, whatever --templates-dir
+		// holds; say so, or the sizing warnings against generic bounds read as
+		// template findings (go-slide-creator-csclk.115). Text mode only, so --json
+		// output stays a single parseable document.
+		fmt.Fprintln(os.Stderr, "note: no --template given; fit checks use generic 16:9 default bounds, not a template's layout (pass --template NAME for template-aware sizing)")
+	}
 	ds := patternValidationDiagnostics(pi, expandCtx, boundsSource, reg)
 	return emitPatternCLIValidation(name, content, *templateName, *jsonOut, ds)
 }

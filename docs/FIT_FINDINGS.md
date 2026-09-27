@@ -946,7 +946,7 @@ Mechanics:
 **Pattern:** `shape_grid`
 **Fix kind:** `increase_gap`
 
-Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored grids only) when two consecutive rows both hold a table and the grid's effective row gap (`row_gap`, else `gap`, else the 8pt default) is below 4pt, so the tables read as one run-on table. `params` carries `current_pt` and `minimum_pt`. Raise `row_gap`, merge the tables, or split the slide.
+Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored grids only) when two consecutive rows both hold a table and the grid's effective row gap (`row_gap`, else `gap`, else the 8pt default) is below 4pt, so the tables read as one run-on table. `params` carries `current_pt` and `minimum_pt`. Raise `row_gap`, merge the tables, or split the slide. Nested cell sub-grids are checked too; their findings carry the nested path (`.../cells/N/grid/rows/a:b`).
 
 ### `divider_too_thin`
 
@@ -954,7 +954,7 @@ Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored g
 **Pattern:** `shape_grid`
 **Fix kind:** `increase_gap` or `increase_row_height`
 
-Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap is below 3pt (`increase_gap`, one finding per crushed row pair) or whose row has an explicit `height` below 4% of the slide (`increase_row_height`).
+Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap is below 3pt (`increase_gap`, one finding per crushed row pair) or whose row has an explicit `height` below 4% of the slide (`increase_row_height`). Nested cell sub-grids are checked with their own gap and paths. `mixed_fill_scheme` and `accent_overload` also count fills inside nested sub-grids.
 
 ### `mixed_fill_scheme`
 
