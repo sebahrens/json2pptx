@@ -51,6 +51,12 @@ type CacheConfig struct {
 	// Default: 1000.
 	MaxEntries int
 
+	// MaxBytes caps the approximate total size (SVG + PNG + PDF bytes) of
+	// cached results. Oldest entries are evicted until a new entry fits;
+	// a single result larger than MaxBytes is not cached.
+	// Default: 256 MiB.
+	MaxBytes int64
+
 	// CleanupInterval is how often to run background cleanup.
 	// Default: 1 minute.
 	CleanupInterval time.Duration
@@ -61,8 +67,21 @@ func DefaultCacheConfig() CacheConfig {
 	return CacheConfig{
 		TTL:             5 * time.Minute,
 		MaxEntries:      1000,
+		MaxBytes:        256 << 20,
 		CleanupInterval: 1 * time.Minute,
 	}
+}
+
+// resultBytes returns the approximate retained size of a render result.
+func resultBytes(r *RenderResult) int64 {
+	if r == nil {
+		return 0
+	}
+	var n int64
+	if r.SVG != nil {
+		n += int64(len(r.SVG.Content))
+	}
+	return n + int64(len(r.PNG)) + int64(len(r.PDF))
 }
 
 // CacheStats provides statistics about cache performance.
@@ -105,6 +124,7 @@ type RenderCache struct {
 	// This provides O(1) eviction instead of O(n) linear scan.
 	evictList  *list.List               // Doubly-linked list for insertion-order tracking
 	evictIndex map[string]*list.Element // Map cache key -> list element for O(1) lookup
+	totalBytes int64                    // Approximate retained bytes; guarded by mu
 
 	// Atomic counters for lock-free stats tracking
 	hits      atomic.Uint64
@@ -127,6 +147,9 @@ func NewRenderCacheWithClock(cfg CacheConfig, clock Clock) *RenderCache {
 	}
 	if cfg.CleanupInterval <= 0 {
 		cfg.CleanupInterval = DefaultCacheConfig().CleanupInterval
+	}
+	if cfg.MaxBytes <= 0 {
+		cfg.MaxBytes = DefaultCacheConfig().MaxBytes
 	}
 
 	cache := &RenderCache{
@@ -169,12 +192,7 @@ func (c *RenderCache) GetByKey(key string) *RenderResult {
 
 	if entry.isExpiredAt(c.clock.Now()) {
 		c.mu.Lock()
-		delete(c.entries, key)
-		// Remove from eviction list
-		if elem, ok := c.evictIndex[key]; ok {
-			c.evictList.Remove(elem)
-			delete(c.evictIndex, key)
-		}
+		c.removeLocked(key)
 		c.mu.Unlock()
 		c.misses.Add(1)
 		return nil
@@ -197,20 +215,21 @@ func (c *RenderCache) Set(req *RequestEnvelope, result *RenderResult) {
 func (c *RenderCache) SetByKey(key string, result *RenderResult) {
 	now := c.clock.Now()
 
+	size := resultBytes(result)
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Check if entry already exists (update case)
-	if _, exists := c.entries[key]; exists {
-		// Remove old entry from eviction list, will re-add at front
-		if elem, ok := c.evictIndex[key]; ok {
-			c.evictList.Remove(elem)
-			delete(c.evictIndex, key)
-		}
+	// Drop any existing entry for this key (update case); re-added at front.
+	c.removeLocked(key)
+
+	// A result larger than the whole byte budget is never cached.
+	if size > c.config.MaxBytes {
+		return
 	}
 
-	// Evict if at capacity
-	if len(c.entries) >= c.config.MaxEntries {
+	// Evict until both the entry and byte caps have room.
+	for c.evictList.Len() > 0 && (len(c.entries) >= c.config.MaxEntries || c.totalBytes+size > c.config.MaxBytes) {
 		c.evictOldestLocked()
 	}
 
@@ -222,6 +241,7 @@ func (c *RenderCache) SetByKey(key string, result *RenderResult) {
 		key:       key,
 	}
 	c.entries[key] = entry
+	c.totalBytes += size
 
 	// Add to front of eviction list (newest entries at front)
 	elem := c.evictList.PushFront(entry)
@@ -235,9 +255,16 @@ func (c *RenderCache) Invalidate(req *RequestEnvelope) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	delete(c.entries, key)
+	c.removeLocked(key)
+}
 
-	// Remove from eviction list
+// removeLocked deletes key from every cache structure and releases its bytes.
+// Must be called with the write lock held.
+func (c *RenderCache) removeLocked(key string) {
+	if entry, ok := c.entries[key]; ok {
+		c.totalBytes -= resultBytes(entry.Result)
+		delete(c.entries, key)
+	}
 	if elem, ok := c.evictIndex[key]; ok {
 		c.evictList.Remove(elem)
 		delete(c.evictIndex, key)
@@ -252,6 +279,7 @@ func (c *RenderCache) Clear() {
 	c.entries = make(map[string]*CacheEntry)
 	c.evictList = list.New()
 	c.evictIndex = make(map[string]*list.Element)
+	c.totalBytes = 0
 }
 
 // Stats returns current cache statistics.
@@ -322,9 +350,7 @@ func (c *RenderCache) evictOldestLocked() {
 	}
 
 	// Remove from all data structures
-	delete(c.entries, entry.key)
-	c.evictList.Remove(elem)
-	delete(c.evictIndex, entry.key)
+	c.removeLocked(entry.key)
 	c.evictions.Add(1)
 }
 
@@ -351,14 +377,7 @@ func (c *RenderCache) cleanupExpired() {
 	now := c.clock.Now()
 	for key, entry := range c.entries {
 		if now.After(entry.ExpiresAt) {
-			delete(c.entries, key)
-
-			// Remove from eviction list
-			if elem, ok := c.evictIndex[key]; ok {
-				c.evictList.Remove(elem)
-				delete(c.evictIndex, key)
-			}
-
+			c.removeLocked(key)
 			c.evictions.Add(1)
 		}
 	}

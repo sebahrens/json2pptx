@@ -276,7 +276,7 @@ func (p *DefaultPipeline) convertSlides(
 	templateAnalysis *types.TemplateAnalysis,
 	partial bool,
 ) ([]generator.SlideSpec, []string, []SlideError, error) {
-	return ConvertSlidesPartial(presentation, templateAnalysis, partial)
+	return convertSlidesPartialCtx(ctx, presentation, templateAnalysis, partial)
 }
 
 // SlideError describes a per-slide failure during conversion.
@@ -315,6 +315,17 @@ func ConvertSlidesPartial(
 	templateAnalysis *types.TemplateAnalysis,
 	partial bool,
 ) ([]generator.SlideSpec, []string, []SlideError, error) {
+	return convertSlidesPartialCtx(context.Background(), presentation, templateAnalysis, partial)
+}
+
+// convertSlidesPartialCtx is ConvertSlidesPartial that stops between slides
+// once ctx is cancelled, so a timed-out request does not keep converting.
+func convertSlidesPartialCtx(
+	ctx context.Context,
+	presentation *types.PresentationDefinition,
+	templateAnalysis *types.TemplateAnalysis,
+	partial bool,
+) ([]generator.SlideSpec, []string, []SlideError, error) {
 	assignSectionNumbers(presentation.Slides)
 
 	specs := make([]generator.SlideSpec, 0, len(presentation.Slides))
@@ -336,6 +347,9 @@ func ConvertSlidesPartial(
 	var previousLayoutID string
 
 	for i, slide := range presentation.Slides {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, nil, err
+		}
 		// Apply default transition from frontmatter when slide has no per-slide override
 		if slide.Transition == "" && presentation.Metadata.Transition != "" {
 			slide.Transition = presentation.Metadata.Transition

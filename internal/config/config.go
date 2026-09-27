@@ -41,6 +41,10 @@ type ServerConfig struct {
 	ReadTimeout     time.Duration `yaml:"read_timeout"`
 	WriteTimeout    time.Duration `yaml:"write_timeout"`
 	ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
+	// MaxSlidesPerRequest caps slides per /convert request (0 = default 500).
+	MaxSlidesPerRequest int `yaml:"max_slides_per_request"`
+	// MaxConcurrentConverts bounds concurrent /convert requests (0 = default 4).
+	MaxConcurrentConverts int `yaml:"max_concurrent_converts"`
 	// PprofPort is the port for the pprof debug server. 0 disables pprof.
 	PprofPort int    `yaml:"pprof_port"`
 	PprofBind string `yaml:"pprof_bind"`
@@ -70,9 +74,11 @@ type StorageConfig struct {
 func DefaultConfig() Config {
 	return Config{
 		Server: ServerConfig{
-			Port:            8080,
-			ReadTimeout:     30 * time.Second,
-			WriteTimeout:    60 * time.Second,
+			Port:        8080,
+			ReadTimeout: 30 * time.Second,
+			// Must exceed the /convert timeout (2m) so slow converts get a
+			// 504 response instead of a dropped connection.
+			WriteTimeout:    150 * time.Second,
 			ShutdownTimeout: 10 * time.Second,
 			PprofPort:       0,
 			PprofBind:       "127.0.0.1",

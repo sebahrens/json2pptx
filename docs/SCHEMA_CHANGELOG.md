@@ -1,5 +1,27 @@
 # Schema Changelog
 
+- **2026-09-27 — Server robustness caps (`go-slide-creator-csclk.78`, `.81`–`.84`, `.123`, `.131`, `.132`).**
+  - MCP: one tool call's arguments may carry at most 2 MiB of text; larger
+    calls return `INVALID_PARAMETER` before any handler runs.
+  - MCP: `deck_id` handles, loop resume tokens and idempotency entries sweep
+    expired entries on insert and cap each store at 256 live entries.
+  - MCP: `validate_deck_spec` / `render_deck_spec` / `explain_deck_spec` store
+    a patched spec by compare-and-swap; a call that lost a race with another
+    patch on the same `deck_id` returns `STALE_REVISION` instead of silently
+    dropping the other edit.
+  - MCP: `generate_presentation` without `output_filename` now defaults to
+    `presentation-<8 hex of the input digest>.pptx` (was `output.pptx`) and
+    serializes writes per output path, so `content_hash` matches the file.
+  - HTTP `/api/v1/convert`: at most `server.max_slides_per_request` (500)
+    slides per request (400 `INVALID_REQUEST`), at most
+    `server.max_concurrent_converts` (4) concurrent conversions (503
+    `RATE_LIMITED`), conversion stops between slides once the request is
+    cancelled, and the default `write_timeout` is 150s (a shorter value is
+    raised to 2m30s) so timeouts return 504 rather than a dropped connection.
+  - svggen HTTP server: `output.width` / `output.height` are capped at 10000,
+    `output.scale` must be 0.5–10, PNG output is capped at 64M pixels, and the
+    render cache is capped at 256 MiB (`CacheConfig.MaxBytes`).
+
 - **2026-09-26 — CLI source-loss error diagnostics retained (`go-slide-creator-3qzo4.55`).**
   CLI JSON error reports now retain actual source-loss code, authored path,
   `refuse` action, and repair parameters in the existing `fit_findings` array.

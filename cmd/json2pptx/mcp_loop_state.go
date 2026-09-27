@@ -203,6 +203,7 @@ func (s *loopSessionStore) Save(cp *loopCheckpoint) string {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	pruneTTLEntries(s.entries, s.now(), maxSessionStoreEntries, func(e loopSessionEntry) time.Time { return e.expiresAt })
 	s.entries[token] = loopSessionEntry{
 		checkpoint: cp,
 		expiresAt:  s.now().Add(s.ttl),
