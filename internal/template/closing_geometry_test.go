@@ -51,7 +51,7 @@ func TestModernClosingPreservesSubtitleWithoutStrayRule(t *testing.T) {
 	}
 	// The reviewed composition repair groups the subtitle with the title and
 	// narrows its measure; retain native 18pt styling and editable placeholder.
-	want := types.BoundingBox{X: 4830857, Y: 3450000, Width: 4800000, Height: 1200000}
+	want := types.BoundingBox{X: 1000000, Y: 3450000, Width: 4800000, Height: 1200000}
 	if subtitle.Bounds != want || subtitle.FontSize != 1800 {
 		t.Fatalf("native subtitle changed: bounds=%+v size=%d, want %+v at 18pt", subtitle.Bounds, subtitle.FontSize, want)
 	}

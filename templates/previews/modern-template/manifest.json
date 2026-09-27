@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
-  "template_sha256": "e11129f55be4a647dab87e1230af4949f277bdec48cb1aa410cdd0af7465df34",
+  "template_sha256": "667a37466d6456a2936a1fc5a97d33dbfd0fdf48d6c2a2e6b97693b482828d20",
   "rendering_source_sha256": "832e4dcd8d0b6e404476903c4817cec3b1209efb994f37545e1e7d8227b452da",
-  "render_cache_identity": "6b0f06e202cc5abc5ecc0768cb5779e9cd6577c80249fc98e12ee87fb50b6bfe",
+  "render_cache_identity": "b15e64b79586a46216f3ad6fd9073dd2f77b0e99d1cfb16312b17363cb8dee93",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
@@ -11,7 +11,7 @@
     "slideLayout2": "07d2ddb68f0cc22dcd2942bb4988a826b13da2298768c4ed15a190a7ecc342d2",
     "slideLayout3": "061e07e49af221ee7ef0afa722c0b30a96a3f45711add84fce521793925015c7",
     "slideLayout4": "e3cd8cf3258d6c8951ed1b16396541fa3b1ae2d6077eed7fc67ee47aef9d8f50",
-    "slideLayout5": "9e724b912e20ff2940c9df5cba55bedbe9cd362e940ded0e71e74f7bc46309a8",
+    "slideLayout5": "e20ad250616c079e5b93af2bc31c2cb0757c3b9e6e7c14e5986b28f14dfcb64b",
     "slideLayout6": "39da2706e5eba5abaef2ef3c59abad774e93ffac679a19f51112c6ddac4e273b",
     "slideLayout7": "cede53ed9b398ca3bf7cf93e09b2d223fd144c849a9145516ee3547139b07cda"
   },

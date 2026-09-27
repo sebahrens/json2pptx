@@ -47,17 +47,32 @@ func TestModernClosingPreservesNativeStylesAndGroupedText(t *testing.T) {
 				shape = attrs["name"]
 				found[shape] = true
 			}
+			if shape == "Picture 7" && start.Name.Local == "alphaModFix" {
+				checked["art opacity"] = true
+				if attrs["amt"] != "15000" {
+					t.Error("Closing artwork opacity differs from the blind-reviewed revision")
+				}
+			}
 			if shape != "title" && shape != "subtitle" {
 				continue
 			}
 			if start.Name.Local == "ext" && parent == "xfrm" {
 				checked[shape+" width"] = true
-				want := "6500000"
+				want := "10330857"
 				if shape == "subtitle" {
 					want = "4800000"
 				}
 				if attrs["cx"] != want {
 					t.Errorf("%s width=%s; want %s", shape, attrs["cx"], want)
+				}
+			}
+			if start.Name.Local == "off" && parent == "xfrm" {
+				checked[shape+" x"] = true
+				if attrs["x"] != "1000000" {
+					t.Errorf("%s left edge does not match the reviewed aligned group", shape)
+				}
+				if shape == "title" && attrs["y"] != "1500000" {
+					t.Error("native title vertical position changed")
 				}
 			}
 			if shape == "subtitle" && start.Name.Local == "bodyPr" {
@@ -83,7 +98,7 @@ func TestModernClosingPreservesNativeStylesAndGroupedText(t *testing.T) {
 				}
 			}
 		}
-		for _, field := range []string{"title width", "subtitle width", "subtitle anchor", "subtitle y", "title size", "subtitle size"} {
+		for _, field := range []string{"title width", "subtitle width", "title x", "subtitle x", "subtitle anchor", "subtitle y", "title size", "subtitle size", "art opacity"} {
 			if !checked[field] {
 				t.Errorf("missing native %s", field)
 			}
@@ -115,8 +130,15 @@ func TestModernClosingPreservesNativeStylesAndGroupedText(t *testing.T) {
 				t.Fatal(err)
 			}
 			check(output)
-			if !strings.Contains(readZipFileString(t, output, "ppt/slides/slide1.xml"), title) {
+			slide := readZipFileString(t, output, "ppt/slides/slide1.xml")
+			if !strings.Contains(slide, title) {
 				t.Fatal("required title was lost or mutated")
+			}
+			if !strings.Contains(slide, "Internal review of service delivery, ownership and reporting requirements") {
+				t.Fatal("required subtitle was lost or mutated")
+			}
+			if strings.Contains(slide, `sz="4050"`) {
+				t.Fatal("reviewed wider native title still shrinks below its 45pt default")
 			}
 		})
 	}

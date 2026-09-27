@@ -1,0 +1,52 @@
+{
+  "issues": ["go-slide-creator-3qzo4.66", "go-slide-creator-3qzo4.102", "go-slide-creator-3qzo4.104"],
+  "status": "local_gates_passed_publication_and_exact_sha_ci_pending",
+  "published": false,
+  "source_template_sha256": "e11129f55be4a647dab87e1230af4949f277bdec48cb1aa410cdd0af7465df34",
+  "installed_template_sha256": "667a37466d6456a2936a1fc5a97d33dbfd0fdf48d6c2a2e6b97693b482828d20",
+  "source_changes": {
+    "only_part": "ppt/slideLayouts/slideLayout5.xml",
+    "artwork": "Existing image4.png unchanged; native alphaModFix=15000. No generated replacement artwork.",
+    "title": "x=1000000, width=10330857; old right edge11330857 retained. Native y/height/45pt/font/caps/wording preserved.",
+    "subtitle": "x=1000000 aligned with title. Native y3450000, width4800000, height1200000, top anchor and18pt preserved.",
+    "all_other_parts": "Strict ZIP payload comparison unchanged, including original embedded Lora Regular/Bold, masters, themes, media, crops and relationships.",
+    "effective_emitted_size": "Dense title no longer needs explicit40.5pt shrink; inherits native45pt. This is an intentional fit consequence, not a claim of unchanged emitted size.",
+    "separate_alt_text_issue": "bl6j6 remains unresolved; stale description deliberately not bundled."
+  },
+  "review": {
+    "sole_reviewer": true,
+    "opaque_originals": 4,
+    "unreviewed": 0,
+    "source_complete": 4,
+    "after_safe": 2,
+    "after_findings": [],
+    "resolved": ["UNEVEN_TITLE_RAG", "MOTTLED_BACKGROUND_PATCH"],
+    "joined_audit": "output/blind-closing-native-lora-wide-20260927-v1/joined-review-audit.json",
+    "joined_audit_sha256": "69a9366a569f15098842fdde46d1692f9941f8d94b20a8388d19eed4aafcb83c",
+    "limitations": "Supplied wording and four visual lenses only. Projection-distance readability and office editability/font identity not established by PNG review; separate source/generated audits establish native fidelity. No aggregate visual approval."
+  },
+  "local_evidence": {
+    "directory": "output/modern-closing-native-lora-wide-candidate-20260927-v1",
+    "candidate_corpus": "PASS41.169s,14templates108layouts309unchangedprobes;245unrelatedgeneratedpixels unchanged,2Closingchanged;62refusals unchanged.",
+    "installed_corpus": "PASS38.741s;all247 generatedpixels/everydeckZIPpayload identical reviewedcandidate;62refusals unchanged;privatepstyleincluded/sourceunchanged.",
+    "installed_audit_sha256": "0692fe1fb157ed2521abbbb7e2b4b2dc6c4c28aef0b9c32c9813854ce5d5a29b",
+    "generator_regressions": "PASS8.662s race, actual Closing generation and embeddedfonts preservation; strengthened originalsource regression EXPECTEDFAIL0.753s beforeinstallation.",
+    "candidate_conformance": "All31checksPASS",
+    "preview": "PASS10.931s race;manifest exactsource/hash andall7PNGhashesverified. OnlymodernClosingPNG changes;productionrendering-sourcehash unchanged832e4dcd...",
+    "golden": "Onlymodern-template changes tof87509ea315d5bf58f7c107ca7be627ad41ea64565a7956e89731e4d3111d9f3",
+    "lint_build": "Post-test-correction build90242PASS. Lint84759 originalFAIL retained due standalone scratch overlay. After hash-preserving scratch rename, pinnedlint14392 TERMINALPASS0issues.",
+    "known_failure": "TemplatepackageFAIL12.239s:TestModernClosingPreservesSubtitleWithoutStrayRule stillpinsoldsubtitlex4830857. Actualreviewedx1000000;onlythisexpectationneedscorrection,allothernativechecks retained.",
+    "isolated_test_correction": "PASS13.165s full templatepackage race using Go overlay; onlysubtitleexpectedX4830857->1000000 changes,allsize/y/width/height/editability/no-stray-rule assertions unchanged. Productiontestfileunmodifiedwhilefullroot64879live.",
+    "original_full_root_race": "Session64879 TERMINALFAIL exit1. Complete64line log inspected: only stale subtitleX expectation failed; CLI809.573s generator262.047s quality561.390s allPASS. Original failure retained in installed-root-race.log.",
+    "corrected_geometry_full_root_race": "Session81895 TERMINALFAIL. Complete log read: all production packages PASS, CLI754.753s quality528.179s template13.226s preview10.624s; only standalone scratch overlay compile failure .104. Original retained final-root-race.log.",
+    "scratch_fixture_repair": "After terminal, renamed saved closing_geometry_test.go to closing_geometry_test.go.fixture and updated overlay JSON. Identical before/after SHA58a4ca87b872740c7d263b173fed4282b29c07c815f05e67434e8b2fa6f818e8; no deletion or production test weakening.",
+    "full_root_race": "Corrected complete race suite83786 TERMINALPASSexit0: CLI756.468s quality529.243s; allremainingpackages PASS(cacheusedwherevalid). Complete retained final-root-race-v2.log read. Lint14392 TERMINALPASS0issues/build90242PASS/diffcheckPASS. Productiontemplate667a andpreviewe20ad exactauditedhashes unchanged."
+  },
+  "code_review": {
+    "reviewer": "testing",
+    "findings": [],
+    "testing_gaps": [],
+    "residual_risks": ["Exact geometry pins intentionally protect visually reviewed template composition; they do not prove arbitrary content lengths or all renderer behavior.", "Generated/source font, artwork and complete wording checks supplement, not replace, actual pixel review."]
+  },
+  "completion": "Keep all three scoped beads active until publication and all exact-SHA CI workflows terminalgreen. Corrected complete local gates passed. Broader Poppins/body-font, visual/baseline/source-suitability and stale artwork alt-text issues remain open."
+}
