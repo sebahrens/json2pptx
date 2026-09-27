@@ -1,0 +1,53 @@
+{
+  "issue": "go-slide-creator-3qzo4.69",
+  "status": "Partial improvement installed; remaining visual findings stay open",
+  "template": "business-template",
+  "layout": "slideLayout5",
+  "source_before_sha256": "307ae68e874b563750873ce3925d7cc241b912c047d1b713bfc09d806421f3dc",
+  "source_after_sha256": "004e65103b0463177e43fe0bc11b41e7887a060de7ada3391cedb016ed0980cd",
+  "change": "Both editable body placeholders override inherited 90% leading with 110% at native levels 1 and 2",
+  "native_font_sizes_preserved_pt": [18, 16],
+  "changed_zip_parts": ["ppt/slideLayouts/slideLayout5.xml"],
+  "all_other_payloads_preserved": true,
+  "geometry_master_legal_text_and_assets_preserved": true,
+  "preview": "Only business-template slideLayout5 pixels and its provenance manifest changed",
+  "sole_blind_review": {
+    "continuations": "output/blind-business-leading-20260927-v1/packet/review.json",
+    "continuation_pages_before_after": 8,
+    "all_four_after_continuations": "SAFE with no remaining issues; full required wording checked",
+    "native_followup": "output/blind-business-leading-native-fulltext-20260927-v2/packet/review.json",
+    "native_pages_before_after": 4,
+    "full_bullet_sentences_verified": 56,
+    "full_titles_verified": 4,
+    "unreviewed_pages": 0,
+    "residual_findings": [
+      "Representative native paragraphs retain isolated-word wraps",
+      "Single-page dense native body remains UNSAFE from tiny text",
+      "Dense native leading still carries a minor comfort caution"
+    ]
+  },
+  "installed_audit": {
+    "manifest": "output/business-leading-installed-corpus-20260927-v1/manifest.json",
+    "manifest_sha256": "9ebe2cc8bf8629c8eaf04d03cf187ad32337068b4849070fbef2fca3583850e1",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "reviewed_candidate_pixel_identical_pages": 262,
+    "unchanged_refusals": 47,
+    "inputs_and_generation_statuses_preserved": true
+  },
+  "local_checks": {
+    "business_source_and_generated_style_race": "PASS",
+    "all_15_readable_continuation_cases_race": "PASS",
+    "conformance_corpus_race": "PASS",
+    "preview_provenance_and_MCP_race": "PASS",
+    "all_layout_render": "PASS (47.029s)",
+    "lint_build_format_diff": "PASS"
+  },
+  "testing_review": {
+    "reviewer": "testing",
+    "findings": [],
+    "testing_gaps": [],
+    "residual_risks": ["No aggregate visual approval; this change does not solve dense-page font sizing"]
+  }
+}
