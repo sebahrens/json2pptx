@@ -228,7 +228,8 @@ func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*
 		if c.Direction == "horizontal" {
 			units[i] = inferColumnCount(grid)
 		} else {
-			units[i] = len(grid.Rows)
+			// Vertical segments are one parent row each (a nested sub-grid).
+			units[i] = 1
 		}
 		totalUnits += units[i]
 	}
@@ -243,17 +244,17 @@ func composeSegmentBounds(c *ComposeInput, ctx patterns.ExpandContext, grids []*
 		b := base
 		if c.Direction == "horizontal" {
 			b.X, b.Width = axisStart, length
-			// Horizontal segments render as nested grids inside parent cells.
-			// Their 4pt inset is part of the real content frame and must also
-			// constrain pattern text sizing during expansion.
-			if b.Width > 2*subGridInsetEMU && b.Height > 2*subGridInsetEMU {
-				b.X += subGridInsetEMU
-				b.Y += subGridInsetEMU
-				b.Width -= 2 * subGridInsetEMU
-				b.Height -= 2 * subGridInsetEMU
-			}
 		} else {
 			b.Y, b.Height = axisStart, length
+		}
+		// Segments render as nested grids inside parent cells. Their 4pt
+		// inset is part of the real content frame and must also constrain
+		// pattern text sizing during expansion.
+		if b.Width > 2*subGridInsetEMU && b.Height > 2*subGridInsetEMU {
+			b.X += subGridInsetEMU
+			b.Y += subGridInsetEMU
+			b.Width -= 2 * subGridInsetEMU
+			b.Height -= 2 * subGridInsetEMU
 		}
 		result[i] = b
 		axisStart += length + gap
@@ -538,46 +539,24 @@ func resolveSegmentSizes(segments []SegmentInput) []float64 {
 	return sizes
 }
 
-// mergeVertical stacks grids vertically. Each segment's rows get explicit
-// height values proportional to the segment's size percentage. All grids
-// are reconciled to use the same column count via col_span padding.
+// mergeVertical stacks grids vertically. Each segment is a full-width
+// sub-grid in its own parent row whose height is the segment's size share, so
+// it keeps its own column widths, column gap, row gap and row min/max heights
+// (go-slide-creator-csclk.103) — flattening the segments into one shared grid
+// forced equal columns on every segment and distorted uneven-track patterns
+// (label gutters, connector columns, photo/text pairs).
 func mergeVertical(grids []*jsonschema.ShapeGridInput, sizes []float64, gap float64) (*jsonschema.ShapeGridInput, error) {
-	// Find the maximum column count across all grids
-	maxCols := 1
-	gridCols := make([]int, len(grids))
-	for i, g := range grids {
-		cols := inferColumnCount(g)
-		gridCols[i] = cols
-		if cols > maxCols {
-			maxCols = cols
-		}
-	}
-
-	// Merge all rows with proportional heights
 	var mergedRows []jsonschema.GridRowInput
 	for i, g := range grids {
-		segRows := g.Rows
-		if len(segRows) == 0 {
+		if g == nil || len(g.Rows) == 0 {
 			continue
 		}
-
-		// Compute per-row height within this segment
-		segPct := sizes[i]
-		rowHeights := distributeRowHeights(segRows, segPct)
-
-		for j, row := range segRows {
-			newRow := row
-			newRow.Height = rowHeights[j]
-			newRow.AutoHeight = false // explicit heights in compose mode
-
-			// Reconcile columns: if this grid has fewer columns than max,
-			// expand the last cell in each row to span the difference.
-			if gridCols[i] < maxCols {
-				newRow.Cells = reconcileCells(row.Cells, gridCols[i], maxCols)
-			}
-
-			mergedRows = append(mergedRows, newRow)
-		}
+		child := *g
+		child.Bounds = nil // The parent cell owns this segment's rectangle.
+		mergedRows = append(mergedRows, jsonschema.GridRowInput{
+			Height: sizes[i],
+			Cells:  []*jsonschema.GridCellInput{{Grid: &child}},
+		})
 	}
 
 	resolvedGap := gap
@@ -586,7 +565,7 @@ func mergeVertical(grids []*jsonschema.ShapeGridInput, sizes []float64, gap floa
 	}
 
 	merged := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(fmt.Sprintf(`%d`, maxCols)),
+		Columns: json.RawMessage(`1`),
 		Rows:    mergedRows,
 		RowGap:  resolvedGap,
 	}
@@ -763,83 +742,6 @@ func inferColumnCount(g *jsonschema.ShapeGridInput) int {
 		}
 	}
 	return maxCells
-}
-
-// distributeRowHeights distributes a segment's height percentage across its rows.
-// If rows have explicit heights, they are scaled proportionally. Otherwise, equal distribution.
-func distributeRowHeights(rows []jsonschema.GridRowInput, segmentPct float64) []float64 {
-	n := len(rows)
-	heights := make([]float64, n)
-
-	// Check if any row has explicit height
-	var explicitTotal float64
-	for _, r := range rows {
-		explicitTotal += r.Height
-	}
-
-	if explicitTotal > 0 {
-		// Scale explicit heights to fit within segmentPct
-		for i, r := range rows {
-			if r.Height > 0 {
-				heights[i] = (r.Height / explicitTotal) * segmentPct
-			} else {
-				// Rows without explicit height get equal share of remainder
-				heights[i] = segmentPct / float64(n)
-			}
-		}
-	} else {
-		// Equal distribution
-		perRow := segmentPct / float64(n)
-		for i := range heights {
-			heights[i] = math.Round(perRow*100) / 100
-		}
-	}
-
-	return heights
-}
-
-// reconcileCells adjusts a row's cells to fit a wider column count by expanding
-// the last cell's ColSpan.
-func reconcileCells(cells []*jsonschema.GridCellInput, currentCols, targetCols int) []*jsonschema.GridCellInput {
-	if len(cells) == 0 {
-		return cells
-	}
-
-	// Calculate current total column occupation
-	totalOccupied := 0
-	for _, c := range cells {
-		span := 1
-		if c != nil && c.ColSpan > 1 {
-			span = c.ColSpan
-		}
-		totalOccupied += span
-	}
-
-	diff := targetCols - totalOccupied
-	if diff <= 0 {
-		return cells
-	}
-
-	// Expand the last cell to fill the extra columns
-	result := make([]*jsonschema.GridCellInput, len(cells))
-	copy(result, cells)
-
-	lastIdx := len(result) - 1
-	if result[lastIdx] == nil {
-		result[lastIdx] = &jsonschema.GridCellInput{}
-	} else {
-		// Copy to avoid mutating the original
-		copied := *result[lastIdx]
-		result[lastIdx] = &copied
-	}
-
-	currentSpan := 1
-	if result[lastIdx].ColSpan > 1 {
-		currentSpan = result[lastIdx].ColSpan
-	}
-	result[lastIdx].ColSpan = currentSpan + diff
-
-	return result
 }
 
 // allSizesImplicit returns true when every segment has SizePct == 0

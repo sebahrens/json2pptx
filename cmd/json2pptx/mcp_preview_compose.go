@@ -71,8 +71,8 @@ func buildExpandedCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patt
 }
 
 // buildVerticalSegments computes per-segment metadata for vertical compose.
-// Each segment owns a contiguous row range of the merged grid spanning all
-// columns; bounds_pct stack from top to bottom by cumulative size_pct.
+// Each segment owns one row of the merged grid (a nested sub-grid) spanning
+// all columns; bounds_pct stack from top to bottom by cumulative size_pct.
 // The bannerOffset and calloutOffset arguments account for envelope-level
 // banner/callout rows prepended/appended to the merged grid so segment row
 // ranges remain accurate when those decorations are present.
@@ -89,9 +89,11 @@ func buildVerticalSegments(c *ComposeInput, expandedGrids []*jsonschema.ShapeGri
 	yPct := 0.0
 	for i := range c.Segments {
 		segGrid := expandedGrids[i]
+		// Each non-empty vertical segment is one parent row (a nested
+		// sub-grid) of the merged grid.
 		segRows := 0
-		if segGrid != nil {
-			segRows = len(segGrid.Rows)
+		if segGrid != nil && len(segGrid.Rows) > 0 {
+			segRows = 1
 		}
 		cellCount := countContentCells(segGrid)
 		seg := resolvedComposeSegment{

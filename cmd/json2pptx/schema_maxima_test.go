@@ -440,7 +440,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"card-grid":                    2.4,
 	"chart-insights-split":         6.2,
 	"comparison-2col":              4.2,
-	"contact-directory":            4.2, // Still refused by the generated-font floor; not a readable schema budget.
+	"contact-directory":            5.6, // Still refused by the generated-font floor; not a readable schema budget.
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
 	"exec-summary":                 7.2,

@@ -194,6 +194,12 @@ var rules = []rule{
 		baseScore: 0.78,
 		rationale: "Pair each risk with its mitigation in two aligned columns",
 	},
+	{
+		pattern:   "comparison-2col",
+		keywords:  []string{"from-to rows", "from-to shifts", "row-mapped", "arrow per row", "one arrow per row"},
+		baseScore: 0.88,
+		rationale: "Row-mapped from → to shifts: comparison-2col with overrides.connectors draws an accent connector badge per row in a centre gutter",
+	},
 
 	// BMC
 	{
@@ -372,9 +378,9 @@ var rules = []rule{
 		pattern:   "numbered-step-strip",
 		keywords:  []string{"numbered steps", "ordered steps", "process steps", "step strip", "key steps", "stages", "how it works", "three steps", "four steps", "five steps", "phases without dates", "our approach", "the process in steps"},
 		baseScore: 0.93,
-		rationale: "Ordered numbered steps (3-6) without decision diamonds, with an optional per-step detail zone (chevron / stacked-box / toc styles)",
+		rationale: "Ordered numbered steps (3-7; chevron 3-6) without decision diamonds, with an optional per-step detail zone (chevron / stacked-box / toc styles)",
 		itemMin:   3,
-		itemMax:   6,
+		itemMax:   7,
 	},
 	{
 		pattern:   "numbered-step-strip",
@@ -382,7 +388,7 @@ var rules = []rule{
 		baseScore: 0.82,
 		rationale: "High-polish numbered table-of-contents (toc style) with optional per-item descriptions",
 		itemMin:   3,
-		itemMax:   6,
+		itemMax:   7,
 	},
 	{
 		// Ordered-steps intent family (J2P-RECO-006): selection logic, criteria
@@ -395,7 +401,7 @@ var rules = []rule{
 		baseScore: 0.90,
 		rationale: "Ordered selection / criteria / approval steps without branching — a numbered strip, not a decision-diamond flowchart",
 		itemMin:   3,
-		itemMax:   6,
+		itemMax:   7,
 	},
 
 	// Process grid 2-row — double-track processes with two parallel rows sharing N columns
@@ -588,6 +594,14 @@ var rules = []rule{
 		itemMin:   3,
 		itemMax:   6,
 	},
+	{
+		pattern:   "phase-roadmap",
+		keywords:  []string{"in-parallel workstreams", "in parallel workstreams", "workstreams in parallel", "cross-cutting workstreams", "parallel_tracks"},
+		baseScore: 0.90,
+		rationale: "Phased roadmap whose cross-cutting workstreams run in parallel under the phases: phase-roadmap parallel_tracks draws full-width \"In parallel\" bars",
+		itemMin:   3,
+		itemMax:   6,
+	},
 
 	// Architecture stack
 	{
@@ -726,6 +740,8 @@ var rules = []rule{
 		keywords:  []string{"contacts", "key contacts", "contact list", "contact directory", "directory", "who to call", "who to contact", "points of contact", "point of contact", "regional contacts", "office contacts", "people directory"},
 		baseScore: 0.93,
 		rationale: "Key-contacts directory: groups (regions / practices) with rows of circular headshots, names and titles — no bios",
+		itemMin:   1,
+		itemMax:   24,
 	},
 
 	// Text sidebar — narrative intro page with one key-message panel
