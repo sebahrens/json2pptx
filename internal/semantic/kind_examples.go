@@ -54,7 +54,7 @@ var kindExamples = map[SlideKind]map[string]any{
 		"value":    "$2.4B",
 		"unit":     "TAM",
 		"label":    "Addressable clearing-services market by FY27",
-		"context":  "Up from $1.6B in FY24, driven by the T+1 settlement mandate.",
+		"context":  "Up from $1.6B in FY24 on the T+1 mandate.",
 		"source":   "Oliver Wyman market model, 2026",
 		"takeaway": "The market is large enough to fund the build twice over.",
 	},
