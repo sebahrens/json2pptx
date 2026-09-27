@@ -338,12 +338,12 @@ func TestAttachNextToolCalls(t *testing.T) {
 		t.Errorf("findings[0] tool = %q, want repair_slide", findings[0].NextToolCall.Tool)
 	}
 
-	// Finding 1: review + adopt_pattern → recommend_pattern
+	// Finding 1: review + adopt_pattern → recommend_visual
 	if findings[1].NextToolCall == nil {
 		t.Fatal("findings[1].NextToolCall is nil")
 	}
-	if findings[1].NextToolCall.Tool != "recommend_pattern" {
-		t.Errorf("findings[1] tool = %q, want recommend_pattern", findings[1].NextToolCall.Tool)
+	if findings[1].NextToolCall.Tool != "recommend_visual" {
+		t.Errorf("findings[1] tool = %q, want recommend_visual", findings[1].NextToolCall.Tool)
 	}
 
 	// Finding 2: info → skipped

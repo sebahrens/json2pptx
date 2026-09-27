@@ -1424,15 +1424,8 @@ func attachNextToolCallsToValidationErrors(errs []patternValidationError, patter
 			continue
 		}
 		switch e.Fix.Kind {
-		case "swap_pattern":
-			itemCount := 0
-			e.NextToolCall = patterns.RecommendToolCall(itemCount)
-		case "adopt_pattern":
-			itemCount := 0
-			if n, ok := e.Fix.Params["filled_slots"].(int); ok {
-				itemCount = n
-			}
-			e.NextToolCall = patterns.RecommendToolCall(itemCount)
+		case "swap_pattern", "adopt_pattern":
+			e.NextToolCall = patterns.RecommendToolCall(patterns.FixItemCount(e.Fix))
 		default:
 			tc := patterns.RepairToolCall(-1, e.Fix)
 			if tc != nil {

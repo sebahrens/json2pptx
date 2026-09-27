@@ -190,6 +190,10 @@ func TestDetectMixedFillScheme_Positive(t *testing.T) {
 	for _, w := range warnings {
 		if errors.Is(w, patterns.ErrMixedFillScheme) {
 			found = true
+			// repair_slide requires value; the fix must be applicable as emitted.
+			if w.Fix == nil || w.Fix.Params["value"] != "accent1" {
+				t.Errorf("use_semantic_color fix must carry value accent1, got %+v", w.Fix)
+			}
 			break
 		}
 	}

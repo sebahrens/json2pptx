@@ -674,7 +674,9 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		return finish(res)
 	}
 
-	res := semanticRenderToMCP(buildSemanticRenderSuccess(input, compileResult, runRes, startTime), &explanation)
+	built := buildSemanticRenderSuccess(input, compileResult, runRes, startTime)
+	recordDeterministicGate(built.OutputPath, built.DeterministicBlockingReasons)
+	res := semanticRenderToMCP(built, &explanation)
 	// Hand back a handle for the rendered spec, and say which slides the patch
 	// that produced this render changed, so the agent re-pulls only those
 	// thumbnails (go-slide-creator-voxp).

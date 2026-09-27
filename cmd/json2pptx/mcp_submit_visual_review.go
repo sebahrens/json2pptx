@@ -9,6 +9,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
 
@@ -36,7 +37,37 @@ const (
 	// artifact's own rendered pixels. It is deliberately NOT the completion
 	// status (go-slide-creator-jltp).
 	visualReviewUnverifiedStatus = "reviewed_unverified_images"
+	// visualReviewBlockedStatus is recorded when the visual review approves
+	// the deck but the deterministic gate of the render that produced this
+	// artifact did not pass (P0 content, gate failures): the deck is not done
+	// however it looks (go-slide-creator-csclk.127).
+	visualReviewBlockedStatus = "reviewed_deterministic_blockers"
 )
+
+// deterministicGates remembers, per artifact sha256, the deterministic
+// blocking reasons of the render_deck_spec call that wrote that artifact, so
+// submit_visual_review can refuse to call a deck with P0 blockers complete.
+var deterministicGates sync.Map // sha256 -> []string
+
+// recordDeterministicGate records the deterministic gate outcome for the PPTX
+// at pptxPath. A nil/empty reasons slice records a passing gate.
+func recordDeterministicGate(pptxPath string, reasons []string) {
+	artifact, err := describeArtifact(pptxPath, "pptx")
+	if err != nil {
+		return
+	}
+	deterministicGates.Store(artifact.SHA256, append([]string{}, reasons...))
+}
+
+// lookupDeterministicGate returns the recorded deterministic blocking reasons
+// for an artifact and whether the gate outcome is known at all.
+func lookupDeterministicGate(sha string) ([]string, bool) {
+	v, ok := deterministicGates.Load(sha)
+	if !ok {
+		return nil, false
+	}
+	return v.([]string), true
+}
 
 func mcpSubmitVisualReviewTool() mcp.Tool {
 	return mcp.NewTool("submit_visual_review",
@@ -48,7 +79,7 @@ The review is validated by ReviewRecord.ValidateCompletion: EVERY slide must be 
 
 The images are evidence, so they are checked against the artifact's own pixels: each slide's pixel hash must equal this server's render of that slide of this exact PPTX (any density it was rendered at counts). Submitting another slide's image, or another deck's, is rejected with INVALID_PARAMETER naming which slide the image really is. Render with render_deck_thumbnails (or render_slide_image per slide) and submit the returned path / content_hash. When this server has no render of the artifact to compare against, the review is still recorded but image_verification.status is "unverifiable", evidence.pixels_rendered stays false, and the status is "reviewed_unverified_images" — never the completion status, and no manifest evidence is written.
 
-On success the response carries quality evidence with inspection_backend=host|manual; status is "visually_reviewed_current_revision" only when every slide is approved with no P0/P1 finding, the artifact passes structural output validation, AND image_verification.status is "verified". When <pptx_path>.authoring.json exists for this artifact and the images verified, its visual_evidence is updated.`),
+On success the response carries quality evidence with inspection_backend=host|manual; status is "visually_reviewed_current_revision" only when every slide is approved with no P0/P1 finding, the artifact passes structural output validation, AND image_verification.status is "verified" AND, when this server rendered the artifact with render_deck_spec, that render's deterministic gate passed — otherwise status is "reviewed_deterministic_blockers" with blocking_reasons, and publishable is false. When <pptx_path>.authoring.json exists for this artifact and the images verified, its visual_evidence is updated.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaSubmitVisualReview)),
 		mcp.WithString("pptx_path", mcp.Required(), mcp.Description("Path to the reviewed PPTX file.")),
 		mcp.WithString("pptx_revision", mcp.Required(), mcp.Description("sha256 (content_hash) of the PPTX that was reviewed; must match the current file.")),
@@ -139,7 +170,12 @@ type submitVisualReviewOutput struct {
 	ImageVerification *imageVerification        `json:"image_verification"`
 	ManifestPath      string                    `json:"manifest_path,omitempty"`
 	ManifestUpdated   bool                      `json:"manifest_updated"`
-	Notes             []string                  `json:"notes,omitempty"`
+	// Publishable is present when this server knows the deterministic gate of
+	// the render that wrote the artifact: the gate passed AND the review is
+	// complete (status visually_reviewed_current_revision).
+	Publishable     *bool    `json:"publishable,omitempty"`
+	BlockingReasons []string `json:"blocking_reasons,omitempty"`
+	Notes           []string `json:"notes,omitempty"`
 }
 
 // errVisualReviewRejected marks a review that failed completion validation
@@ -294,6 +330,20 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 		// it, and say so in the status rather than calling the deck done.
 		out.Status = visualReviewUnverifiedStatus
 		out.Notes = append(out.Notes, howToVerify)
+	}
+
+	// A visual verdict never overrides the deterministic gate: a deck the
+	// render reported publishable:false for P0 content is not complete
+	// however the slides look (go-slide-creator-csclk.127).
+	if gateReasons, known := lookupDeterministicGate(artifact.SHA256); known {
+		if len(gateReasons) > 0 {
+			if out.Status == visualReviewCompleteStatus {
+				out.Status = visualReviewBlockedStatus
+			}
+			out.BlockingReasons = gateReasons
+		}
+		publishable := out.Status == visualReviewCompleteStatus
+		out.Publishable = &publishable
 	}
 
 	// An unverified review never becomes durable evidence in the manifest.

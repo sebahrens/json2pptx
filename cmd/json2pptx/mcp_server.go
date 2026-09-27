@@ -161,6 +161,9 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 		// Alias normalisation runs BEFORE the strict check so a sibling name is
 		// rewritten rather than rejected (go-slide-creator-r1m3).
 		server.WithToolHandlerMiddleware(argAliasMiddleware()),
+		// A panicking handler must not take the stdio server down with it
+		// (go-slide-creator-csclk.117): recover it into an isError result.
+		server.WithToolHandlerMiddleware(panicRecoveryMiddleware()),
 		server.WithToolHandlerMiddleware(strictArgsMiddleware(func(name string) *server.ServerTool {
 			return s.GetTool(name)
 		})),
@@ -256,7 +259,7 @@ func runMCP() error {
 	api.SetTextFallbackMode(resolveTextFallbackMode(*textFallback))
 
 	// Responses are always compact JSON; the server still advertises
-	// experimental.compact_responses: true and still honours the client
+	// experimental.compact_responses: {} and still honours the client
 	// capability and the deprecated MCP_COMPACT_RESPONSES=1 environment
 	// variable, but neither changes anything.
 	hooks := &server.Hooks{}
@@ -264,7 +267,7 @@ func runMCP() error {
 		if result.Capabilities.Experimental == nil {
 			result.Capabilities.Experimental = make(map[string]any)
 		}
-		result.Capabilities.Experimental["compact_responses"] = true
+		result.Capabilities.Experimental["compact_responses"] = map[string]any{}
 		// The session interface exposes client info and capabilities but not
 		// the negotiated protocol version, so record it here: it decides
 		// whether the text fallback is worth sending.
@@ -307,5 +310,23 @@ func resolveTextFallbackMode(flagValue string) api.TextFallbackMode {
 		return api.TextFallbackNever
 	default:
 		return api.TextFallbackAuto
+	}
+}
+
+// panicRecoveryMiddleware converts a panic in a tool handler into an
+// INTERNAL isError result so one bad call cannot kill the MCP server process.
+func panicRecoveryMiddleware() server.ToolHandlerMiddleware {
+	return func(next server.ToolHandlerFunc) server.ToolHandlerFunc {
+		return func(ctx context.Context, request mcp.CallToolRequest) (result *mcp.CallToolResult, err error) {
+			defer func() {
+				if r := recover(); r != nil {
+					slog.Error("tool handler panic", "tool", request.Params.Name, "panic", r)
+					result = api.MCPSimpleError(diagnostics.CodeInternal,
+						fmt.Sprintf("internal error in %s: %v", request.Params.Name, r))
+					err = nil
+				}
+			}()
+			return next(ctx, request)
+		}
 	}
 }

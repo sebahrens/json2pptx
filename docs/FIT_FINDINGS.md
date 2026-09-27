@@ -126,12 +126,12 @@ Findings with action `refuse`, `shrink_or_split`, or `review` include a `next_to
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `tool` | string | MCP tool name, e.g. `"repair_slide"` or `"recommend_pattern"` |
+| `tool` | string | MCP tool name, e.g. `"repair_slide"` or `"recommend_visual"` |
 | `args_template` | object | Template for the tool arguments — agents can invoke directly or merge with additional context |
 
 Routing logic:
 - Fix kinds in the `repair_slide` vocabulary (`reduce_text`, `split_at_row`, `shorten_title`, `replace_color`, `use_semantic_color`, `split_pattern`, `swap_layout`, `use_one_of`) → `next_tool_call.tool = "repair_slide"`
-- `swap_pattern` and `adopt_pattern` fix kinds → `next_tool_call.tool = "recommend_pattern"`
+- `swap_pattern` and `adopt_pattern` fix kinds → `next_tool_call.tool = "recommend_visual"` with `args_template: {intent: "<...>", content_hints: {item_count: N}}` in every tool profile (`item_count` is omitted when the fix carries no count)
 - Findings with action `"info"` never have `next_tool_call`
 
 Example:
@@ -456,7 +456,7 @@ Only fires when a title-anchored content zone was resolved for the slide (`Layou
 
 Visible content covers less than 40% of the resolved grid area — the slide is mostly empty. Filled cells and non-text visuals count at their drawn size; unfilled text uses its measured wrapped height. A full-bleed painted card row is not sparse merely because each label is short.
 
-The raw-grid fix params include `filled_pct`, `filled_slots`, `grid_rows`, and `grid_cols`, so `recommend_pattern` can use the actual structure. The measured/allowed extents retain area-equivalent heights (visible area divided by grid width), not raw newline estimates.
+The raw-grid fix params include `filled_pct`, `filled_slots`, `grid_rows`, and `grid_cols`, so `recommend_visual` can use the actual structure. The measured/allowed extents retain area-equivalent heights (visible area divided by grid width), not raw newline estimates.
 
 Native SWOT, PESTEL, KPI-dashboard, and house diagrams also use this code when measured text ink occupies under 40% of their allocated height. Their cards are automatically content-sized and vertically centred where possible. These findings use the diagram type as `pattern` and recommend `add_detail_or_resize`, not a shape-grid repair; adding meaningful detail or choosing a shorter diagram region resolves the remaining whitespace.
 
@@ -480,7 +480,7 @@ Native SWOT, PESTEL, KPI-dashboard, and house diagrams also use this code when m
 **Pattern:** `shape_grid` (authored raw grid)
 **Fix kind:** `swap_pattern`
 
-An authored raw grid has less than 50% of its declared slots populated. Pattern and compose expanders may pad rows for alignment, so their slots are not interpreted as missing content; those slides use resolved-ink findings instead. The fix suggests using `recommend_pattern` to find a better-fitting layout for the item count.
+An authored raw grid has less than 50% of its declared slots populated. Pattern and compose expanders may pad rows for alignment, so their slots are not interpreted as missing content; those slides use resolved-ink findings instead. The fix suggests using `recommend_visual` to find a better-fitting layout for the item count.
 
 ```json
 {
@@ -491,7 +491,7 @@ An authored raw grid has less than 50% of its declared slots populated. Pattern 
   "fix": { "kind": "swap_pattern", "params": { "filled_pct": 0.33, "filled_slots": 1, "total_slots": 3, "reason": "reshape_grid" } },
   "action": "review",
   "overflow_ratio": 0.33,
-  "next_tool_call": { "tool": "recommend_pattern", "args_template": { "item_count": 1 } }
+  "next_tool_call": { "tool": "recommend_visual", "args_template": { "intent": "<one sentence: what this slide should show>", "content_hints": { "item_count": 1 } } }
 }
 ```
 
@@ -505,16 +505,18 @@ A pattern grid exceeds the pattern's recommended maximum cell count. The fix sug
 
 The limit counts **grid cells**, not the pattern's items: a pattern that draws each item as a stack of cells (`timeline-horizontal`'s dots layout emits a date, a dot and a label per stop) carries a limit scaled accordingly.
 
+On a raw `shape_grid` slide the params carry `first` / `second` (the cell split point). On a named-pattern slide they are omitted: those counts are in grid cells, while `repair_slide` splits a pattern slide by its `pattern.values` array, so it halves that list instead.
+
 ```json
 {
   "pattern": "card-grid",
   "path": "/slides/3/shape_grid",
   "code": "pattern_overcrowded",
   "message": "card-grid: 12 cells exceeds recommended max of 8 — consider splitting",
-  "fix": { "kind": "split_pattern", "params": { "filled_slots": 12, "recommended_max": 8, "first": 6, "second": 6, "title_part_2": "(continued)" } },
+  "fix": { "kind": "split_pattern", "params": { "filled_slots": 12, "recommended_max": 8, "title_part_2": "(continued)" } },
   "action": "review",
   "overflow_ratio": 1.5,
-  "next_tool_call": { "tool": "repair_slide", "args_template": { "slide_index": 3, "fixes": [{ "kind": "split_pattern", "params": { "first": 6, "title_part_2": "(continued)" } }] } }
+  "next_tool_call": { "tool": "repair_slide", "args_template": { "slide_index": 3, "fixes": [{ "kind": "split_pattern", "params": { "title_part_2": "(continued)" } }] } }
 }
 ```
 
@@ -538,7 +540,7 @@ The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (whos
   "message": "slide 4: process-flow is a single horizontal row of 4 sparse cells (avg 6 chars) with no height cap — boxes stretch to fill the slide; switch to numbered-step-strip / process-grid-2row / phase-roadmap, or set max_height_pct",
   "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "item_count": 4, "avg_chars": 6, "reason": "single_row_sparse", "suggested": [{ "to": "numbered-step-strip", "rationale": "ordered steps with a per-step detail zone fill the vertical space" }] } },
   "action": "review",
-  "next_tool_call": { "tool": "recommend_pattern", "args_template": { "item_count": 0 } }
+  "next_tool_call": { "tool": "recommend_visual", "args_template": { "intent": "<one sentence: what this slide should show>", "content_hints": { "item_count": 4 } } }
 }
 ```
 
@@ -962,7 +964,7 @@ Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap
 **Pattern:** `shape_grid`
 **Fix kind:** `use_semantic_color`
 
-Emitted by `DetectStructuralSmells` when one authored grid mixes hex fills (other than black/white) with semantic scheme fills. Hex fills do not follow a template swap, so the slide stops being portable. Convert the hex fills to scheme names.
+Emitted by `DetectStructuralSmells` when one authored grid mixes hex fills (other than black/white) with semantic scheme fills. Hex fills do not follow a template swap, so the slide stops being portable. Convert the hex fills to scheme names. `fix.params.value` carries a scheme color the grid already uses, so the `repair_slide` call in `next_tool_call` rewrites every hex fill in the grid to it; pass a different `value` (or a per-cell `path`) to choose another.
 
 ### `CHROME_COLLISION`
 
@@ -1754,7 +1756,7 @@ Findings are printed to stderr grouped by slide. Exit code is nonzero only if an
 
 ### Compact Responses
 
-Responses are always compact JSON; the server still advertises `experimental.compact_responses: true` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
+Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
 
 ## Visual-QA Aesthetic Findings
 

@@ -449,6 +449,14 @@ func extractMCPTextContent(result *mcp.CallToolResult) string {
 	if result == nil {
 		return ""
 	}
+	// Prefer the structured payload: for protocol >= 2025-06-18 clients the
+	// text block is only a synopsis and lacks fields such as output_path
+	// (go-slide-creator-csclk.118).
+	if result.StructuredContent != nil {
+		if b, err := json.Marshal(result.StructuredContent); err == nil {
+			return string(b)
+		}
+	}
 	for _, c := range result.Content {
 		if tc, ok := c.(mcp.TextContent); ok {
 			return tc.Text

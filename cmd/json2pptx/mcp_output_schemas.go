@@ -56,7 +56,7 @@ var outputSchemaGenerate = json.RawMessage(`{
       "type": "object",
       "properties": {
         "code":        {"type": "string"},
-        "slide_index": {"type": "integer"},
+        "slide_index": {"type": "integer", "description": "Absent on deck-level findings (e.g. DECK_MONOTONY)."},
         "path":        {"type": "string"},
         "message":     {"type": "string"},
         "action":      {"type": "string"},
@@ -71,7 +71,7 @@ var outputSchemaGenerate = json.RawMessage(`{
           "required": ["tool", "args_template"]
         }
       },
-      "required": ["code", "slide_index", "message", "action", "severity"]
+      "required": ["code", "message", "action", "severity"]
     }
   }
 }`)
@@ -109,7 +109,7 @@ var outputSchemaListTemplates = json.RawMessage(`{
       "body_font_size_pt": {"type": "number", "description": "Nominal generated body size on the canonical content layout at five paragraphs, before content-specific autofit."},
       "template_body_font_size_pt": {"type": "number", "description": "Original template body size on the canonical content layout before density normalization."}
     }}},
-    "supported_types": {"type": "object"},
+    "supported_types": {"type": "object", "description": "Omitted from the default compact projection."},
     "input_formats":   {"type": "array", "items": {"type": "string"}},
     "output_formats":  {"type": "array", "items": {"type": "string"}},
     "total_count":     {"type": "integer", "description": "Total number of templates discovered (after filter), irrespective of the current page."},
@@ -118,7 +118,7 @@ var outputSchemaListTemplates = json.RawMessage(`{
     "warnings":        {"type": "array", "items": {"type": "string"}, "description": "Advisory hints, when applicable; omitted fields alone do not produce a warning."},
     "side_effects":    {"type": "object", "description": "Disk side effects of this call: whether layout-preview PNG cache files were (or could be) written, the cache directory, whether read-only mode was active, and the opt-out (read_only=true).", "properties": {"preview_cache_writes": {"type": "boolean"}, "read_only": {"type": "boolean"}, "preview_cache_dir": {"type": "string"}, "disable_with": {"type": "string"}}}
   },
-  "required": ["tool", "templates", "supported_types", "input_formats", "output_formats"]
+  "required": ["tool", "templates", "input_formats", "output_formats"]
 }`)
 
 // --- get_data_format_hints ---
@@ -529,26 +529,32 @@ var outputSchemaListIcons = json.RawMessage(`{
 
 // --- get_shape_catalog ---
 var outputSchemaGetShapeCatalog = json.RawMessage(`{
-  "type": "array",
-  "items": {
-    "type": "object",
-    "properties": {
-      "category":    {"type": "string"},
-      "description": {"type": "string"},
-      "shapes": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "name":           {"type": "string"},
-            "adjust_handles": {"type": "array", "items": {"type": "string"}}
-          },
-          "required": ["name"]
-        }
+  "type": "object",
+  "properties": {
+    "categories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category":    {"type": "string"},
+          "description": {"type": "string"},
+          "shapes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name":           {"type": "string"},
+                "adjust_handles": {"type": "array", "items": {"type": "string"}}
+              },
+              "required": ["name"]
+            }
+          }
+        },
+        "required": ["category", "description", "shapes"]
       }
-    },
-    "required": ["category", "description", "shapes"]
-  }
+    }
+  },
+  "required": ["categories"]
 }`)
 
 // --- preview_icon ---
@@ -2068,7 +2074,9 @@ var outputSchemaSubmitVisualReview = json.RawMessage(`{
   "type": "object",
   "properties": {
     "ok":               {"type": "boolean"},
-    "status":           {"type": "string", "enum": ["visually_reviewed_current_revision", "reviewed_unverified_images", "draft_needs_visual_review"], "description": "visually_reviewed_current_revision only when evidence.approved (every slide approved, no P0/P1 finding, structurally valid artifact) AND image_verification.status is verified. reviewed_unverified_images: the review approves the deck but its images could not be matched against this artifact's own render — not a completion status."},
+    "status":           {"type": "string", "enum": ["visually_reviewed_current_revision", "reviewed_unverified_images", "reviewed_deterministic_blockers", "draft_needs_visual_review"], "description": "visually_reviewed_current_revision only when evidence.approved (every slide approved, no P0/P1 finding, structurally valid artifact) AND image_verification.status is verified AND the deterministic gate of the render that wrote this artifact (when this server rendered it) passed. reviewed_unverified_images: the review approves the deck but its images could not be matched against this artifact's own render — not a completion status. reviewed_deterministic_blockers: the review would complete, but render_deck_spec reported deterministic blockers for this artifact (see blocking_reasons) — not a completion status."},
+    "publishable":      {"type": "boolean", "description": "Present when this server rendered the artifact with render_deck_spec and so knows its deterministic gate: true only when that gate passed and status is visually_reviewed_current_revision."},
+    "blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "The artifact's deterministic blocking reasons from render_deck_spec, when any. Fix them, re-render and review the new revision."},
     "verdict":          {"type": "string", "enum": ["approved", "changes_requested", "inconclusive"]},
     "reviewer":         {"type": "string", "enum": ["host", "manual"]},
     "pptx_path":        {"type": "string"},

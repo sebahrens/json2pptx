@@ -16,7 +16,7 @@ import (
 // indent it when reading raw transcripts by hand.
 //
 // Responses are always compact JSON; the server still advertises
-// experimental.compact_responses: true and still honours the client capability
+// experimental.compact_responses: {} and still honours the client capability
 // and the deprecated MCP_COMPACT_RESPONSES=1 environment variable, but neither
 // changes anything.
 func MarshalMCPResponse(ctx context.Context, v any) ([]byte, error) {
@@ -44,6 +44,11 @@ func isCompactSession(ctx context.Context) bool {
 	v, exists := caps.Experimental["compact_responses"]
 	if !exists {
 		return false
+	}
+	// The MCP schema types experimental capabilities as objects, so a spec-
+	// conformant client sends {}; older clients sent true.
+	if _, isObj := v.(map[string]any); isObj {
+		return true
 	}
 	b, ok := v.(bool)
 	return ok && b

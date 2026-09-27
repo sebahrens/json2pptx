@@ -618,7 +618,7 @@ func TestAttachNextToolCallsToValidationErrors(t *testing.T) {
 		}
 	})
 
-	t.Run("swap_pattern gets recommend_pattern suggestion", func(t *testing.T) {
+	t.Run("swap_pattern gets recommend_visual suggestion", func(t *testing.T) {
 		errs := []patternValidationError{
 			{
 				Field:   "pattern",
@@ -631,8 +631,8 @@ func TestAttachNextToolCallsToValidationErrors(t *testing.T) {
 		if errs[0].NextToolCall == nil {
 			t.Fatal("expected NextToolCall to be populated")
 		}
-		if errs[0].NextToolCall.Tool != "recommend_pattern" {
-			t.Errorf("tool = %q, want recommend_pattern", errs[0].NextToolCall.Tool)
+		if errs[0].NextToolCall.Tool != "recommend_visual" {
+			t.Errorf("tool = %q, want recommend_visual", errs[0].NextToolCall.Tool)
 		}
 	})
 

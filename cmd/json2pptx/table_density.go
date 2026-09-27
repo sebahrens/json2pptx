@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -12,16 +13,36 @@ import (
 
 // mcpTableDensityGuideTool returns the MCP tool definition for table_density_guide.
 func mcpTableDensityGuideTool() mcp.Tool {
-	return mcp.NewTool("table_density_guide",
-		mcp.WithDescription("Get table density and sizing recommendations for shape_grid tables. Returns structured density tiers with font sizes, max rows/columns, and TDR ceiling per tier. Optionally scoped to a specific template (includes its table_styles) or style_id."),
+	return withStyleIDRequiresTemplate(mcp.NewTool("table_density_guide",
+		mcp.WithDescription("Get table density and sizing recommendations for shape_grid tables. Returns structured density tiers with font sizes, max rows/columns, and TDR ceiling per tier. Optionally scoped to a specific template (includes its table_styles), or to one of that template's table styles with style_id — style_id requires template."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaTableDensityGuide)),
 		mcp.WithString("template",
 			mcp.Description("Template name to get template-specific recommendations and table_styles (optional)."),
 		),
 		mcp.WithString("style_id",
-			mcp.Description("Table style ID to get density profile for a specific style (optional). Use list_templates to discover available style IDs."),
+			mcp.Description("Table style ID to get density profile for a specific style (optional; requires template, whose table_styles it is looked up in). Use list_templates to discover available style IDs."),
 		),
-	)
+	))
+}
+
+// withStyleIDRequiresTemplate publishes the style_id -> template dependency,
+// which ToolInputSchema cannot express, as dependentRequired in the raw input
+// schema (go-slide-creator-csclk.129). Properties stay populated for
+// in-process argument discovery.
+func withStyleIDRequiresTemplate(tool mcp.Tool) mcp.Tool {
+	schema := map[string]any{
+		"type":              "object",
+		"properties":        tool.InputSchema.Properties,
+		"dependentRequired": map[string]any{"style_id": []string{"template"}},
+	}
+	raw, err := json.Marshal(schema)
+	if err != nil {
+		panic(fmt.Sprintf("%s input schema: %v", tool.Name, err))
+	}
+	tool.RawInputSchema = raw
+	// mcp-go selects RawInputSchema only when the structured Type is empty.
+	tool.InputSchema.Type = ""
+	return tool
 }
 
 // densityTier describes a single row in the table density reference.

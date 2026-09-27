@@ -170,3 +170,15 @@ func TestRasterizeSVGToPNG(t *testing.T) {
 		t.Error("expected error for non-SVG input")
 	}
 }
+
+// An empty <svg/> has zero size; rasterizing it used to panic with "raster
+// size is zero" and kill the MCP server (go-slide-creator-csclk.117).
+func TestLoadIconZeroSizeSVGDoesNotPanic(t *testing.T) {
+	empty := "<svg xmlns='http://www.w3.org/2000/svg'/>"
+	if img := LoadIcon(empty, 64); img != nil {
+		t.Errorf("zero-size SVG should not rasterize, got %v", img.Bounds())
+	}
+	if _, err := RasterizeSVGToPNG([]byte(empty), 64); err == nil {
+		t.Error("RasterizeSVGToPNG: want an error for a zero-size SVG")
+	}
+}
