@@ -621,7 +621,8 @@ func buildHorizontalBarCalloutText(text string, size float64) json.RawMessage {
 }
 
 // formatHorizontalBarValue renders a bar's value label through the shared
-// numeric formatter: thousands separators, at most one decimal, and the unit
+// numeric formatter: thousands separators, one decimal (more only when a small
+// value would otherwise print as 0), and the unit
 // placed on the correct side of the number with a separator. It used to
 // concatenate the raw value and the unit, so a currency/magnitude unit — the
 // consulting default — produced "1240.5EUR M" (go-slide-creator-d6zo).

@@ -101,9 +101,9 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Inline KPIs.** `kpi-inline` has a compact height. Captions hold the 40-character schema limit without icons or with up to four KPIs. With icons in five or six cells, the number and optional delta share space with the caption: an eight-character number in a five-KPI bar leaves about 16 caption characters without a delta and none with one. `show_pattern` describes the dense cases; `BODY_TOO_LONG` names the affected KPI and suggests shortening copy or dropping the delta/icon.
 
-**Capability heatmaps.** `capability-heatmap` cells index `tiers` (0 = solid accent). Keep activities to 1–3 short words at 7–8 columns; too-wide header words draw `TEXT_EXCEEDS_SHAPE`, overfull grids `BODY_TOO_LONG`.
+**Capability heatmaps.** `capability-heatmap` cells index `tiers` (0 = solid accent). Keep activities to 1–3 short words at 7–8 columns; too-wide header words draw `TEXT_EXCEEDS_SHAPE`, overfull grids `BODY_TOO_LONG`. `header_size` / `cell_size` must be 12–40pt (lower values are rejected, not clamped).
 
-**Framework grids.** `framework-grid` rows all take the tallest row's height; keep card bodies near 60 characters at four cards per row.
+**Framework grids.** `framework-grid` rows all take the tallest row's height; keep card bodies near 60 characters at four cards per row. `title_size` / `body_size` must be 12–40pt.
 
 ---
 

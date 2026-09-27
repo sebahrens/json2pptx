@@ -182,6 +182,22 @@ func TestRotateFallsBackWhenNoThemeAccentCanCarryLightText(t *testing.T) {
 	}
 }
 
+// Pastel-accent templates fall back to their dark brand colour, not literal
+// black (go-slide-creator-csclk.93).
+func TestRotateFallsBackToDk2BeforeBlack(t *testing.T) {
+	ctx := ExpandContext{AccentStrategy: AccentStrategyRotate, AutoAccent: true,
+		Theme: types.ThemeInfo{Colors: []types.ThemeColor{
+			{Name: "lt1", RGB: "FFFFFF"}, {Name: "dk2", RGB: "44546A"}, {Name: "accent1", RGB: "EEEEEE"},
+		}},
+	}
+	if got := ctx.ResolveAccent("", ""); got != "dk2" {
+		t.Errorf("no safe theme accent but readable dk2: fill = %s, want dk2", got)
+	}
+	if got := ctx.ResolveCellAccent("dk2", 1, CellAccentAlternate); got != "dk2" {
+		t.Errorf("dk2 fallback fill should stay uniform, got %s", got)
+	}
+}
+
 func TestResolveSurface(t *testing.T) {
 	meta := &types.TemplateMetadata{
 		SurfaceTints: map[string]string{

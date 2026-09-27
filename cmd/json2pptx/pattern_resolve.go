@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"math"
 	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
@@ -11,6 +12,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 )
 
 // PatternInput is the JSON schema for pattern-based slides.
@@ -134,7 +136,7 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 
 	// Post-expand callout decorator (D18): append full-width callout row
 	if p.Callout != nil {
-		grid = appendCalloutRow(grid, p.Callout)
+		grid = appendCalloutRow(grid, p.Callout, expandCtx)
 	}
 	stampPatternTypeScale(grid, mode)
 
@@ -240,7 +242,7 @@ func patternExpansionBounds(ctx patterns.ExpandContext, pct *GridBoundsInput, re
 // appendCalloutRow appends a full-width callout row to the expanded grid.
 // The callout spans all columns and uses AutoHeight for text-driven sizing.
 // Callout cells are NOT addressable via cell_overrides (D18).
-func appendCalloutRow(grid *jsonschema.ShapeGridInput, callout *patterns.PatternCallout) *jsonschema.ShapeGridInput {
+func appendCalloutRow(grid *jsonschema.ShapeGridInput, callout *patterns.PatternCallout, ctx patterns.ExpandContext) *jsonschema.ShapeGridInput {
 	// Determine column count from the grid
 	numCols := 1
 	if len(grid.Rows) > 0 {
@@ -270,9 +272,37 @@ func appendCalloutRow(grid *jsonschema.ShapeGridInput, callout *patterns.Pattern
 		AutoHeight: true,
 		Cells:      []*jsonschema.GridCellInput{calloutCell},
 	}
+	// The auto-height estimate counts only explicit newlines, so a callout
+	// that wraps (a decision's "recommendation — takeaway") got a one-line
+	// strip and its second line clipped (go-slide-creator-csclk.98). Measure
+	// the wrap at the band's width and floor the row at that height.
+	calloutRow.MinHeight = calloutMinHeightPt(callout.Text, bold, ctx)
 
 	grid.Rows = append(grid.Rows, calloutRow)
 	return grid
+}
+
+// calloutMinHeightPt returns the height a 14pt callout band needs to hold its
+// text wrapped at the pattern's width, or 0 when it fits on one line (the
+// auto-height estimate already covers one line) or cannot be measured.
+func calloutMinHeightPt(text string, bold bool, ctx patterns.ExpandContext) float64 {
+	const sizePt, insetLRPt, insetTBPt = 14.0, 7.2, 3.6
+	widthEMU := ctx.LayoutBounds.Width
+	if widthEMU <= 0 {
+		widthEMU = shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight).CX
+	}
+	m, err := textfit.MeasureStyledRuns(textfit.StyledMeasureParams{
+		Runs:     []textfit.StyledRun{{Text: text, Bold: bold}},
+		FontName: ctx.Theme.BodyFont,
+		FontPt:   sizePt,
+		WidthEMU: widthEMU,
+		InsetsPt: [4]float64{insetLRPt, insetTBPt, insetLRPt, insetTBPt},
+	})
+	if err != nil || m.Lines <= 1 {
+		return 0
+	}
+	// One spare line's worth of leading absorbs renderer metric drift.
+	return math.Ceil((float64(m.Lines)+0.25)*sizePt*1.2 + 2*insetTBPt)
 }
 
 // buildCalloutTextContent creates a JSON text object for a callout cell.

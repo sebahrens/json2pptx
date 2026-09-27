@@ -144,8 +144,15 @@ func (c ExpandContext) rotatedAccent() (chosen, requested, reason string) {
 		}
 		return candidate, requested, ""
 	}
-	// If no theme accent qualifies, a literal contrast-safe fill preserves
-	// readability. ResolveCellAccent keeps non-accent fallback colours uniform.
+	// If no theme accent qualifies, prefer the template's own dark brand colour
+	// (dk2, a.k.a. tx2) over a literal: pastel-accent templates such as
+	// blue-corporate otherwise paint every accent fill jet black
+	// (go-slide-creator-csclk.93).
+	if dk2, ok := resolveThemeColor(c, "dk2"); ok && dk2.ContrastWith(ink) >= svggen.WCAGAANormal {
+		return "dk2", requested, "no theme accent is safe for lt1 body text; selected dk2"
+	}
+	// Otherwise a literal contrast-safe fill preserves readability.
+	// ResolveCellAccent keeps non-accent fallback colours uniform.
 	black := svggen.MustParseColor("#000000")
 	white := svggen.MustParseColor("#FFFFFF")
 	fallback := "#000000"

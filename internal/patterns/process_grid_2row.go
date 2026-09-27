@@ -9,6 +9,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // ---------------------------------------------------------------------------
@@ -273,6 +274,22 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	labelSize := ResolveSize(ovr.HeaderSize, 14.0)
 	phaseSize := ResolveSize(ovr.BodySize, 12.0)
 
+	// The row labels sit in a narrow fixed column: shrink one shared size
+	// until no label word breaks mid-word ("PRODUCTI / ON",
+	// go-slide-creator-csclk.113), never below the renderer's floor.
+	rowLabelSize := labelSize
+	{
+		areaW, _ := contentAreaPt(ctx)
+		labelTextW := math.Max((areaW*processGrid2RowLabelColPct/100-processGrid2RowGapPt-2*defaultShapeInsetLRPt)*0.9, 1)
+		for _, label := range []string{vals.Row1Label, vals.Row2Label} {
+			for _, w := range strings.Fields(label) {
+				if s := fitSingleLineSize(w, ctx.Theme.BodyFont, true, rowLabelSize, shapegrid.MinTextSizePt, labelTextW); s < rowLabelSize {
+					rowLabelSize = s
+				}
+			}
+		}
+	}
+
 	row1Color := vals.Row1Color
 	if row1Color == "" {
 		row1Color = "accent1"
@@ -302,7 +319,7 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	cellIdx := 0
 
 	row1Cells := make([]*jsonschema.GridCellInput, numCols)
-	row1Cells[0] = buildProcessGrid2RowLabelCell(ctx, vals.Row1Label, labelSize)
+	row1Cells[0] = buildProcessGrid2RowLabelCell(ctx, vals.Row1Label, rowLabelSize)
 	applyProcessGrid2RowOverride(row1Cells[0], cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 	for i, phase := range vals.Row1Phases {
@@ -312,7 +329,7 @@ func (p *processGrid2Row) Expand(ctx ExpandContext, values, overrides any, cellO
 	}
 
 	row2Cells := make([]*jsonschema.GridCellInput, numCols)
-	row2Cells[0] = buildProcessGrid2RowLabelCell(ctx, vals.Row2Label, labelSize)
+	row2Cells[0] = buildProcessGrid2RowLabelCell(ctx, vals.Row2Label, rowLabelSize)
 	applyProcessGrid2RowOverride(row2Cells[0], cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 	for i, phase := range vals.Row2Phases {

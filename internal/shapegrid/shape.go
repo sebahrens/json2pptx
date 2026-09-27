@@ -64,6 +64,12 @@ var schemeColorNames = pptx.SchemeColorNames
 // Optional extraInsets are added to the text body insets (e.g., to make room for
 // an icon overlay positioned beside or above the text).
 func GenerateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, extraInsets ...[4]int64) ([]byte, error) {
+	return generateShapeXML(spec, id, bounds, 0, extraInsets...)
+}
+
+// generateShapeXML is GenerateShapeXML with an optional pre-computed autofit
+// shrink (0 = let the shape measure its own).
+func generateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, autofitScale float64, extraInsets ...[4]int64) ([]byte, error) {
 	opts := pptx.ShapeOptions{
 		ID:       id,
 		Bounds:   bounds,
@@ -118,6 +124,7 @@ func GenerateShapeXML(spec *ShapeSpec, id uint32, bounds pptx.RectEmu, extraInse
 				tb.Insets[i] += ei[i]
 			}
 		}
+		pptx.SetAutofitScale(tb, autofitScale)
 		opts.Text = tb
 	}
 

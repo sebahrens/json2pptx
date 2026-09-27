@@ -949,6 +949,21 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbo
 	samples := []thNormalizedScore{{kind: thScaleHarvey, level: 4}, {kind: thScaleHarvey, level: 2}, {kind: thScaleHarvey, level: 0}}
 	if kind == thScaleRAG {
 		samples = []thNormalizedScore{{kind: thScaleRAG, rag: "green"}, {kind: thScaleRAG, rag: "amber"}, {kind: thScaleRAG, rag: "red"}}
+	} else if thHarveyUsesQuarters(v) {
+		// Quarter / three-quarter balls in the matrix need their own legend
+		// entries (go-slide-creator-csclk.100). The three authored labels stay
+		// on the full / half / empty balls; the in-between balls take the
+		// default wording only when the author left the labels at default.
+		samples = []thNormalizedScore{{kind: thScaleHarvey, level: 4}, {kind: thScaleHarvey, level: 3}, {kind: thScaleHarvey, level: 2}, {kind: thScaleHarvey, level: 1}, {kind: thScaleHarvey, level: 0}}
+		mostly, slightly := "Mostly meets", "Slightly meets"
+		if len(v.LegendLabels) == 3 {
+			mostly, slightly = "", ""
+		}
+		labels = []string{labels[0], mostly, labels[1], slightly, labels[2]}
+	}
+	labelPct := thLegendLabelPct
+	if n := float64(len(samples)); n*(thLegendSwatchPct+labelPct) > 100 {
+		labelPct = 100/n - thLegendSwatchPct
 	}
 
 	var cells []*jsonschema.GridCellInput
@@ -962,7 +977,7 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbo
 			VerticalAlign: "ctr",
 		})
 		cells = append(cells, &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: textJSON}})
-		cols = append(cols, thLegendSwatchPct, thLegendLabelPct)
+		cols = append(cols, thLegendSwatchPct, labelPct)
 	}
 	used := 0.0
 	for _, c := range cols {
@@ -984,6 +999,21 @@ func thLegendCell(ctx ExpandContext, v *TableHighlightValues, kind string, symbo
 			Rows: []jsonschema.GridRowInput{{MinHeight: thLegendRowPt, MaxHeight: thLegendRowPt, Cells: cells}},
 		},
 	}
+}
+
+// thHarveyUsesQuarters reports whether any Harvey cell scores 1 or 3.
+func thHarveyUsesQuarters(v *TableHighlightValues) bool {
+	for _, o := range v.Options {
+		for j, raw := range o.Scores {
+			if v.scaleFor(j) != thScaleHarvey {
+				continue
+			}
+			if sc, ok := parseTableHighlightScore(raw, thScaleHarvey); ok && sc.kind == thScaleHarvey && (sc.level == 1 || sc.level == 3) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // thLegendLabelsFor returns the three legend words for one scale, in

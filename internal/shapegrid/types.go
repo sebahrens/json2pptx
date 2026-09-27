@@ -236,20 +236,23 @@ type LinkSpec struct {
 // ResolvedCell is the output of grid resolution: a cell with its absolute
 // position, size, kind, and associated specification.
 type ResolvedCell struct {
-	Kind        CellKind
-	Bounds      pptx.RectEmu // Shape bounds (may differ from cell bounds when fit mode is applied)
-	CellBounds  pptx.RectEmu // Original cell bounds before fit adjustment
-	IconBounds  pptx.RectEmu // Icon overlay bounds (contained square within shape bounds); zero when no icon overlay
-	TextInsets  [4]int64     // Extra text insets [L,T,R,B] in EMU to avoid icon overlap (added to any JSON-specified insets)
-	ID          uint32
-	RowIdx      int                // Zero-based row index in the source grid
-	ColIdx      int                // Zero-based column index in the source grid
-	Group       bool               // Wrap cell content in a p:grpSp group shape
-	ShapeSpec   *ShapeSpec         // Set when Kind == CellKindShape
-	TableSpec   *types.TableSpec   // Set when Kind == CellKindTable
-	IconSpec    *IconSpec          // Set when Kind == CellKindIcon
-	ImageSpec   *ImageSpec         // Set when Kind == CellKindImage
-	DiagramSpec *types.DiagramSpec // Set when Kind == CellKindDiagram
+	Kind       CellKind
+	Bounds     pptx.RectEmu // Shape bounds (may differ from cell bounds when fit mode is applied)
+	CellBounds pptx.RectEmu // Original cell bounds before fit adjustment
+	IconBounds pptx.RectEmu // Icon overlay bounds (contained square within shape bounds); zero when no icon overlay
+	TextInsets [4]int64     // Extra text insets [L,T,R,B] in EMU to avoid icon overlap (added to any JSON-specified insets)
+	// AutofitScale, when in (0,1), is the normAutofit shrink shared by this
+	// cell's same-size siblings in its row; 0 lets the shape measure its own.
+	AutofitScale float64
+	ID           uint32
+	RowIdx       int                // Zero-based row index in the source grid
+	ColIdx       int                // Zero-based column index in the source grid
+	Group        bool               // Wrap cell content in a p:grpSp group shape
+	ShapeSpec    *ShapeSpec         // Set when Kind == CellKindShape
+	TableSpec    *types.TableSpec   // Set when Kind == CellKindTable
+	IconSpec     *IconSpec          // Set when Kind == CellKindIcon
+	ImageSpec    *ImageSpec         // Set when Kind == CellKindImage
+	DiagramSpec  *types.DiagramSpec // Set when Kind == CellKindDiagram
 }
 
 // ResolvedConnector is a connector line between two adjacent cells in a row.

@@ -149,7 +149,7 @@ func expandCompose(c *ComposeInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// row 0 (which may have multiple cells); the banner prepend that follows
 	// uses inferColumnCount so it is robust against single-cell rows.
 	if c.Callout != nil {
-		merged = appendCalloutRow(merged, c.Callout)
+		merged = appendCalloutRow(merged, c.Callout, ctx)
 	}
 	if c.Banner != nil {
 		merged = prependBannerRow(merged, c.Banner)

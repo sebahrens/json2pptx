@@ -74,7 +74,8 @@ executable one.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
   (including tier-rated `capability-heatmap`, labelled-row `framework-grid`
   and per-pair-count `state-shift-hub` budgets); get the current catalog and per-pattern schema from
-  `list_patterns` / `show_pattern`.
+  `list_patterns` / `show_pattern`. Pattern text-size overrides honour the
+  schema range (12pt floor): out-of-range sizes are rejected, not clamped.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):

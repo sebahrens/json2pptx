@@ -490,6 +490,11 @@ func TestPhaseRoadmap_ParallelTracks_Validate(t *testing.T) {
 		t.Fatal("empty track: want required error")
 	}
 	v = phaseRoadmapWithTracks(1)
+	v.ParallelTracks[0] = "   "
+	if err := p.Validate(v, nil, nil); err == nil {
+		t.Fatal("whitespace-only track: want required error")
+	}
+	v = phaseRoadmapWithTracks(1)
 	v.ParallelLabel = strings.Repeat("y", 25)
 	if err := p.Validate(v, nil, nil); err == nil || !strings.Contains(err.Error(), "parallel_label") {
 		t.Fatalf("25-char label: want max-length error, got %v", err)

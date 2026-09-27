@@ -347,6 +347,14 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 	if negativeAccent == "" {
 		negativeAccent = ctx.SemanticAccentOr("negative", "accent2")
 	}
+	if ovr.NegativeAccent == "" && waterfallFillsCollide(ctx, baseAccent, negativeAccent) {
+		// Decreases must not read as totals. business-template's accent1 and
+		// accent2 are near-identical purples, so the default negative fill was
+		// indistinguishable from the total bars (go-slide-creator-csclk.97).
+		if pick, ok := pickDistinctFill(ctx, fillTone{Color: baseAccent}, fillDistinctnessMin, waterfallNegativeFallbacks...); ok {
+			negativeAccent = pick
+		}
+	}
 	subtotalAccent := ovr.SubtotalAccent
 	if subtotalAccent == "" {
 		subtotalAccent = ctx.SemanticAccentOr("neutral", "accent3")
@@ -366,6 +374,14 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 	barAreaPt := waterfallBarAreaPt(ctx)
 	barCells := make([]*jsonschema.GridCellInput, n)
 	labelCells := make([]*jsonschema.GridCellInput, n)
+
+	// One shared label precision for the whole bridge so small deltas never
+	// print as "+0" and distinct totals never print alike.
+	labelValues := make([]float64, len(resolved))
+	for i, col := range resolved {
+		labelValues[i] = col.value
+	}
+	labelDecimals := LabelDecimals(labelValues)
 
 	for i, col := range resolved {
 		// Choose bar fill by type.
@@ -415,7 +431,7 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 			bottomPct = bottomPct * 100 / total
 		}
 
-		valueText := formatWaterfallBridgeValue(col.value, vals.Unit, col.typ == wbTypeDelta)
+		valueText := FormatMagnitudeLabelDecimals(col.value, vals.Unit, col.typ == wbTypeDelta, labelDecimals)
 		barCells[i] = &jsonschema.GridCellInput{
 			Grid: buildWaterfallColumnGrid(ctx, wbColumnLayout{
 				fill:      fill,
@@ -587,6 +603,37 @@ func buildWaterfallBridgeLabelText(label string, size float64) json.RawMessage {
 	}
 	data, _ := json.Marshal(textObj)
 	return data
+}
+
+// waterfallNegativeFallbacks are tried, in order, when the negative-delta fill
+// collides with the totals accent.
+var waterfallNegativeFallbacks = []string{"accent2", "accent3", "accent4", "accent5", "accent6", "dk2"}
+
+// waterfallFillsCollide reports whether two fills would read as the same bar
+// colour: the same slot, or near-equal luminance with a hue gap under 45°
+// (two greys also collide). Unresolvable colours never collide.
+func waterfallFillsCollide(ctx ExpandContext, a, b string) bool {
+	if a == b {
+		return true
+	}
+	ca, aok := resolveThemeColor(ctx, a)
+	cb, bok := resolveThemeColor(ctx, b)
+	if !aok || !bok {
+		return false
+	}
+	if ca.ContrastWith(cb) >= 1.5 {
+		return false
+	}
+	ha, sa, _ := toHSL(ca)
+	hb, sb, _ := toHSL(cb)
+	if sa < 0.15 || sb < 0.15 {
+		return sa < 0.15 && sb < 0.15
+	}
+	dh := math.Abs(ha - hb)
+	if dh > 0.5 {
+		dh = 1 - dh
+	}
+	return dh < 1.0/8
 }
 
 // formatWaterfallBridgeValue renders a numeric value with optional unit suffix
