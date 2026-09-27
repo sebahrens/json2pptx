@@ -1,20 +1,20 @@
 {
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
-  "template_sha256": "f895bd5dcbffd99f08d4238ca82eb9bb5064b3dd3862a8b4f4996de294587ead",
+  "template_sha256": "e20b5ac074d7903b931d000048854208ab8265915b94916dee1004e46c0e8094",
   "rendering_source_sha256": "35f14a4c4b1d01ab2fbe82541e5dfc049423f527fad0885b2906aff46024e871",
-  "render_cache_identity": "f9af86282543933bbe1929ada0ce0bac2df81f145a201c021888dbdd2f728f1c",
+  "render_cache_identity": "0611907fc1d75c8bb2060d97d47e9d7c7aba20f009e6b9f2c4753305adae7218",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
-    "slideLayout1": "00011bc3e20fc2c675f9b1a3a84677e13cd634b73d9da8a90b39c11aa245584f",
+    "slideLayout1": "8f746f7b0700760d8d456b454af40b3ba078a1d38174a122c3e45acca14bd1bd",
     "slideLayout2": "271172749e5a1b9215a958d7d75732f524fd9bcd0a0e63d1065be626a8452bc0",
-    "slideLayout3": "a83a3538fc3553606e37e1a974b15faa96053b21c3b6287e2f1d152f2c0ddc85",
-    "slideLayout4": "4bd95690fe55c07047ffa9443b12ef252dbcb16b3dbb558842ff71df6d411fc0",
-    "slideLayout5": "4253723d8048a4630b89fef5708f18669d5e2874350fa2e3ea7f207ccf27cddf",
-    "slideLayout6": "d2303f03fd0e7718efd2380bcce3eb93593f7ab22be7b9c51aa9690e6d5769c9",
-    "slideLayout7": "9ec5ad19a9eec7b09269116125f7c98b798f5609dee75da6161ca9360ddf20c0",
-    "slideLayout8": "c2bfd288a03cf7e2ef24bff13f5326415400e12d4530bcaa6407ea96418cfe5a"
+    "slideLayout3": "5e6514be1e6ed343e0654492ad08545f7e295d97c0ea7c1b06e9952c581d1376",
+    "slideLayout4": "e0b20a731610d2197df4c64818c72611dc2287a99328b65ce490daedb6372924",
+    "slideLayout5": "67bb03ed7eb9dd4cb6c45c5603b4865003d8bab005a69967faaf8a8ee3986ee4",
+    "slideLayout6": "bbea29d623737676c0f8009f32f4f6bce8d67e5908d3dfe50d605546dd305dda",
+    "slideLayout7": "7f3d3378021e245d004066c643f2484f3a5d130909be824d5d2d20d986438120",
+    "slideLayout8": "db570645b932da2c00caee172cd9817219be613cb24f10dd7bedfa6c6497a7ab"
   },
   "source_content": {
     "slideLayout1": [

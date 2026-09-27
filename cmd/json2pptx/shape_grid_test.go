@@ -566,15 +566,7 @@ func TestModernYellowGridGeometryAvoidsMasterDisc(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var discRight int64
-	for _, decor := range p.ReferenceLayout().DecorRegions {
-		if decor.Source == "master" && decor.Name == "Freeform 3" {
-			discRight = decor.X + decor.Width
-		}
-	}
-	if discRight == 0 {
-		t.Fatal("missing master disc")
-	}
+	discRight := yellowNativeDiscRight(t, r)
 	for _, slide := range []SlideInput{
 		{ShapeGrid: &ShapeGridInput{}, SlideType: "blank"},
 		{ShapeGrid: &ShapeGridInput{Bounds: &GridBoundsInput{X: 7, Y: 21, Width: 86, Height: 68}}, LayoutID: "blank"},

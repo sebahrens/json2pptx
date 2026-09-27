@@ -2830,7 +2830,7 @@
       }
     },
     {
-      "layout_id": "two-column",
+      "layout_id": "content",
       "content": [
         {
           "placeholder_id": "title",
@@ -2844,20 +2844,68 @@
             "body": "European Pioneers",
             "bullets": [
               "Bleu (France): Orange + Capgemini JV for Microsoft Azure under French domestic operational control; EUR 1B+ invested since 2022; ANSSI SecNumCloud certified 2024. Lesson: Partnership model can achieve top-tier certification within 2 years.",
-              "Delos (Germany): SAP + Arvato sovereign Microsoft 365; EUR 500M invested; operational since 2024; BSI C5 certified. Lesson: Enterprise SaaS sovereignty is achievable without rebuilding the application layer.",
+              "Delos (Germany): SAP + Arvato sovereign Microsoft 365; EUR 500M invested; operational since 2024; BSI C5 certified. Lesson: Enterprise SaaS sovereignty is achievable without rebuilding the application layer."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Case Studies: Sovereign AI Infrastructure Initiatives Proving the Model"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "body_and_bullets",
+          "body_and_bullets_value": {
+            "body": "European Pioneers",
+            "bullets": [
               "S3NS (France): Thales + Google JV; Thales controls encryption keys and operations; targeting SecNumCloud 2025. Lesson: Key management separation is the critical sovereignty control point.",
               "GXFS (Gaia-X): Federation services across 22 countries; 380+ members. Lesson: Interoperability standards must precede infrastructure buildout."
             ]
           }
+        }
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Case Studies: Sovereign AI Infrastructure Initiatives Proving the Model"
         },
         {
-          "placeholder_id": "body_2",
+          "placeholder_id": "body",
           "type": "body_and_bullets",
           "body_and_bullets_value": {
             "body": "Global Benchmarks",
             "bullets": [
               "China Government Cloud: $47B since 2021; 90% of gov workloads now domestic; Huawei/Alibaba/Tencent sovereign stack. Lesson: Anchor tenant mandate drives rapid adoption — we need the same commitment.",
-              "UAE (G42): Mubadala-backed; Cerebras partnership for 36 exaFLOPS; Falcon LLM trained domestically in 18 months. Lesson: Smaller nations can leapfrog with focused GPU investment and a single champion entity.",
+              "UAE (G42): Mubadala-backed; Cerebras partnership for 36 exaFLOPS; Falcon LLM trained domestically in 18 months. Lesson: Smaller nations can leapfrog with focused GPU investment and a single champion entity."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "layout_id": "content",
+      "content": [
+        {
+          "placeholder_id": "title",
+          "type": "text",
+          "text_value": "Case Studies: Sovereign AI Infrastructure Initiatives Proving the Model"
+        },
+        {
+          "placeholder_id": "body",
+          "type": "body_and_bullets",
+          "body_and_bullets_value": {
+            "body": "Global Benchmarks",
+            "bullets": [
               "India (MeghRaj/NIC): 700+ e-gov apps on domestic cloud; citizen data mandate since 2019. Lesson: Sector-by-sector mandates create predictable demand for sovereign providers.",
               "Japan (GIGA Cloud): NTT + NEC; JPY 900B budget through 2025; ISMAP certification framework. Lesson: National certification frameworks accelerate vendor readiness."
             ]

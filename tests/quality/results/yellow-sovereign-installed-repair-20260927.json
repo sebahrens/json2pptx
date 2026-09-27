@@ -1,0 +1,56 @@
+{
+  "scope": "Localized native yellow artwork repair and source-complete sovereign case-study continuation repair; not whole-goal approval",
+  "base_commit": "cf764586767b5ed973f33c33e9190fdc4343c33b",
+  "issues": ["go-slide-creator-3qzo4.90", "go-slide-creator-3qzo4.91", "go-slide-creator-3qzo4.93"],
+  "published": false,
+  "yellow_template_sha256": "e20b5ac074d7903b931d000048854208ab8265915b94916dee1004e46c0e8094",
+  "yellow_change": "Retain native Freeform 3 custom path; move disc left into gutter, reduce fill and shadow opacity. Other native theme/master/layout payloads preserved.",
+  "minimum_body_disc_clearance_cm": 1.287744,
+  "clearance_excludes_shadow_bounds": true,
+  "sovereign_change": "Replace one overcrowded two-column case-study slide with four full-width native content continuations. Preserve all eight complete cases in original order and all other 24 slides; 25 slides becomes 28.",
+  "source_fixture": "tests/quality/source_references/sovereign-case-study-source.json",
+  "source_audit": {
+    "path": "output/sovereign-case-study-installed-source-audit-20260927-v1.json",
+    "sha256": "97762abdd11fcfcacf350c6cd7834a23ff4f1d958f8b80371af4be695ec83318",
+    "rendered_pages": 40,
+    "templates": 10,
+    "minimum_stored_body_pt": 18,
+    "ignored_p_style_included": true
+  },
+  "all_native_layout_gate": {
+    "manifest": "output/yellow-sovereign-installed-native-corpus-20260927-v5/manifest.json",
+    "manifest_sha256": "7dc3443dcee8a7eef50fc18d2685cbc1c25be011b36eedf99947be8b33ff5f81",
+    "audit": "output/yellow-sovereign-installed-native-audit-20260927-v5.json",
+    "audit_sha256": "fa142b1066298e94f4ea123d9cba8aa4a20a73d56eeb0d9dc4d295e880e1b64a",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "accepted_pages_pixel_identical_to_reviewed_candidate": 247,
+    "native_yellow_pages_changed_from_base": 17,
+    "readability_refusals_not_visually_approved": 15,
+    "source_loss_refusals_not_visually_approved": 47
+  },
+  "blind_review": {
+    "reviewers": 1,
+    "yellow_review_sha256": "1280dab61d89b92e00d96a8e7bfc849ea4be9d6d94f53952610f477496cbc490",
+    "sovereign_review_sha256": "c2dfe63ab7e682e0dfef60b87467ae62794cdddb71afbcde5cb8b10fbe57e737",
+    "sovereign_pages_reviewed": 40,
+    "sovereign_pages_skipped": 0,
+    "sovereign_major_issues": 0,
+    "remaining_sovereign_minor_composition_occurrences": 25,
+    "conditional_utility_size_cautions": 40,
+    "remaining_visual_findings_tracked_in": "go-slide-creator-3qzo4.69",
+    "not_all_layouts_issue_free": true
+  },
+  "gates": {
+    "per_page_complete_source_race": "passed 8.372s after source-reference relocation",
+    "preview_conformance_collision_inventory_race": "passed",
+    "pinned_lint": "passed, 0 issues",
+    "build": "passed",
+    "format_and_diff_check": "passed",
+    "installed_root_race": "v4 passed: command package 778.291s, quality package 520.756s; output/yellow-sovereign-installed-root-race-20260927-v4.log SHA256 f8e5b3ea6cbbbd0e44e42ce592391da75a9de2cd78a0b742096473919c1fc815. Earlier v2 failures and v3 stopped rerun retained as diagnostic history.",
+    "installed_integration_corpus": "passed 319.134s, output/sovereign-installed-integration-corpus-20260927-v1.log, SHA256 9fe690598c02d52cfcedc51ab09dff83edb8eaf4ebe30ad9545f917c05b1d8b5",
+    "isolated_candidate_integration_corpus": "passed 290.041s",
+    "published_corrective_ci": "not yet published"
+  }
+}

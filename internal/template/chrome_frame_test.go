@@ -3,6 +3,7 @@ package template
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/xml"
 	"io"
 	"os"
 	"path/filepath"
@@ -79,21 +80,35 @@ func TestModernYellowMasterDiscExcludedFromContent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Read the artwork independently of the profile's opaque-obstacle filter.
+	// The repaired disc is translucent, but its geometry must still clear text.
+	master, err := r.ReadFile("ppt/slideMasters/slideMaster1.xml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc decorDocument
+	if err := xml.Unmarshal(master, &doc); err != nil {
+		t.Fatal(err)
+	}
+	var disc *types.DecorRegion
+	for _, shape := range doc.Shapes {
+		if shape.NV.CNV.Name != "Freeform 3" {
+			continue
+		}
+		if disc != nil || shape.Properties.Xfrm == nil || shape.Properties.Xfrm.Off == nil || shape.Properties.Xfrm.Ext == nil {
+			t.Fatal("missing or duplicate native disc geometry")
+		}
+		x := shape.Properties.Xfrm
+		disc = &types.DecorRegion{X: x.Off.X, Y: x.Off.Y, Width: x.Ext.CX, Height: x.Ext.CY}
+	}
+	if disc == nil || disc.Width <= 0 || disc.Height <= 0 || disc.X+disc.Width != 300000 {
+		t.Fatalf("native gutter disc geometry drifted: %+v", disc)
+	}
 	for _, role := range []types.CanonicalLayoutType{types.CanonicalLayoutOneContent, types.CanonicalLayoutTwoContent} {
 		id := p.RoleBindings[role]
 		layout := p.Layout(id)
 		if layout == nil {
 			t.Fatalf("missing layout for %s", role)
-		}
-		var disc *types.DecorRegion
-		for i := range layout.DecorRegions {
-			if layout.DecorRegions[i].Source == "master" && layout.DecorRegions[i].Name == "Freeform 3" {
-				disc = &layout.DecorRegions[i]
-				break
-			}
-		}
-		if disc == nil {
-			t.Fatalf("%s missing master disc", role)
 		}
 		for _, bands := range []bool{false, true} {
 			frame := p.ChromeFrame(id, bands, bands)
@@ -103,6 +118,19 @@ func TestModernYellowMasterDiscExcludedFromContent(t *testing.T) {
 			if bands && frame.Takeaway.X < disc.X+disc.Width {
 				t.Errorf("%s takeaway starts inside disc", role)
 			}
+		}
+	}
+}
+
+func TestResolveChromeFrameExcludesOpaqueSideArtwork(t *testing.T) {
+	layout := &types.LayoutMetadata{
+		Placeholders: []types.PlaceholderInfo{{Type: types.PlaceholderBody, Bounds: types.BoundingBox{X: 792164, Y: 2051050, Width: 10961222, Height: 3692525}}},
+		DecorRegions: []types.DecorRegion{{Source: "master", Name: "synthetic opaque disc", X: 0, Y: 1898247, Width: 2079706, Height: 4140000}},
+	}
+	for _, bands := range []bool{false, true} {
+		frame := ResolveChromeFrame(layout, nil, 12192000, 6858000, bands, bands)
+		if frame.Content.X <= 2079706 || (bands && frame.Takeaway.X <= 2079706) {
+			t.Fatalf("opaque side artwork overlaps content or takeaway: %+v", frame)
 		}
 	}
 }
