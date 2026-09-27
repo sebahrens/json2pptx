@@ -40,7 +40,7 @@ func localizeNativeQNameBindings(source []byte) ([]byte, error) {
 				}
 			}
 			scopes = append(scopes, bindings)
-			declarations, err := nativeQNameDeclarations(element.Attr, bindings, local)
+			declarations, err := nativeQNameDeclarations(element, bindings, local)
 			if err != nil {
 				return nil, err
 			}
@@ -66,14 +66,22 @@ func localizeNativeQNameBindings(source []byte) ([]byte, error) {
 	return out.Bytes(), nil
 }
 
-func nativeQNameDeclarations(attrs []xml.Attr, bindings map[string]string, local map[string]bool) ([]byte, error) {
+func nativeQNameDeclarations(element xml.StartElement, bindings map[string]string, local map[string]bool) ([]byte, error) {
+	const compatibilityURI = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 	var declarations bytes.Buffer
-	for _, attr := range attrs {
+	for _, attr := range element.Attr {
 		if attr.Name.Space == "xmlns" || attr.Name.Local == "xmlns" {
 			continue
 		}
 		for _, value := range strings.Fields(attr.Value) {
 			prefix, name, ok := strings.Cut(value, ":")
+			// These schema-defined attributes contain namespace prefixes,
+			// not QName strings. Other unqualified literals stay opaque.
+			prefixList := (element.Name.Space == compatibilityURI && element.Name.Local == "Choice" && attr.Name.Space == "" && attr.Name.Local == "Requires") ||
+				(attr.Name.Space == compatibilityURI && (attr.Name.Local == "Ignorable" || attr.Name.Local == "MustUnderstand"))
+			if prefixList && !strings.Contains(value, ":") {
+				prefix, name, ok = value, "prefix-list", true
+			}
 			uri := bindings[prefix]
 			if !ok || name == "" || strings.ContainsAny(name, ":/") || uri == "" || local[prefix] || prefix == "xml" {
 				continue

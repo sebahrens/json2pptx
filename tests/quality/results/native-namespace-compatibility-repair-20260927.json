@@ -1,0 +1,96 @@
+{
+  "issues": [
+    "go-slide-creator-3qzo4.81",
+    "go-slide-creator-3qzo4.95",
+    "go-slide-creator-3qzo4.96"
+  ],
+  "base_commit": "9b7ed36d2270941638846d47263f6736c7cbceca",
+  "published": false,
+  "repair": "Preserve reserved-prefix extension values and schema-defined markup-compatibility prefix-list bindings; split decoder responsibilities without semantic changes.",
+  "source_sha256": {
+    "internal/generator/native_style_namespaces.go": "2315ec39634dfb1865bee80e3809ab4006992b1152410f47348b94d4edc264fe",
+    "internal/generator/native_qname_bindings.go": "95e579e1aabb39cdb6ef327bbb4d708cb7494cd8b95e3c47acccb6d30317943f",
+    "internal/generator/native_qname_emission_test.go": "52d2a4bbeba040455f421efd90c928c838422964f6aa5f0d05903a02a0fa4f1a"
+  },
+  "coverage": {
+    "templates": 14,
+    "native_layouts": 108,
+    "probes": 309,
+    "accepted_pixel_identical": 247,
+    "unchanged_refusals": 62,
+    "preview_png_bytes_identical": 108,
+    "private_p_style_included_and_gitignored": true,
+    "aggregate_visual_approval": false
+  },
+  "regression": {
+    "original_three_ordinary_prefix_cases_retained": true,
+    "reserved_prefix_run_shape_override_cases": 9,
+    "markup_compatibility_run_shape_override_cases": 6,
+    "localizer_control_cases": 7,
+    "literal_and_URL_values_unchanged": true,
+    "relationship_attribute_URI_checked": true,
+    "actual_hyperlink_targets_not_claimed": true,
+    "negative_controls_fail_on_original_source": true
+  },
+  "gates": {
+    "installed_pinned_lint": {
+      "passed": true,
+      "issues": 0
+    },
+    "installed_namespace_race": {
+      "passed": true,
+      "seconds": 4.215
+    },
+    "installed_integration_corpus": {
+      "passed": true,
+      "seconds": 305.009
+    },
+    "installed_default_native_corpus": {
+      "passed": true,
+      "seconds": 42.294
+    },
+    "additional_strict_continuation_corpus": {
+      "passed": true,
+      "seconds": 72.905
+    },
+    "installed_preview_conformance_discovery": {
+      "passed": true
+    },
+    "build_format_diff_check": {
+      "passed": true
+    },
+    "installed_full_root_race": {
+      "passed": true,
+      "cli_seconds": 772.495,
+      "generator_cached": true,
+      "prior_uncached_generator_seconds": 241.766,
+      "quality_seconds": 518.009,
+      "templatepreview_seconds": 10.984,
+      "log": "output/qname-reserved-scope-repair-20260927-v1/refactored-installed-root-race-v2.log"
+    }
+  },
+  "failed_gate": {
+    "log": "output/qname-reserved-scope-repair-20260927-v1/refactored-installed-root-race.log",
+    "reason": "Started before refreshed preview manifests were installed; stale provenance failure in internal/templatepreview",
+    "issue": "go-slide-creator-3z88n",
+    "retained": true
+  },
+  "evidence_limits": [
+    "Earlier overlay lint runs did not lint the candidate and are invalid; actual installed pinned lint supplies the valid result.",
+    "First final root race failed on stale preview provenance; corrected frozen-manifest full gate passed. Both results are retained.",
+    "Raw byte equality against the prior corpus failed on embedded font timestamps/checksums and font-face ordering; these separate defects remain tracked in sahrf and 8n8iu.",
+    "Pixel identity preserves rather than waives all outstanding visual findings.",
+    "Refused probes do not count as visual approval.",
+    "Publication requires the final root race result and all pushed-SHA CI workflows."
+  ],
+  "installed_engine_source_sha256": "10ecc95861a56a54b5bcd6073186b0327cb99501a479f45d4e08faebd0c6cef9",
+  "harness_sha256": "fce908e7bb98b4cf81929639696c6aeec2e128a77b3c8babb2a7188d7fc0e3c1",
+  "evidence_sha256": {
+    "output/qname-reserved-scope-repair-20260927-v1/refactored-installed-root-race.log": "e56956a208688839903a0f31215d1300d02192bffd750ff0cccb45e5b677d2ef",
+    "output/qname-reserved-scope-repair-20260927-v1/refactored-installed-root-race-v2.log": "001320c9cd973bf3c7f45f1bd73e2876f41a5d934cc781b43452c1a66622c06a",
+    "output/qname-reserved-scope-repair-20260927-v1/refactored-installed-integration.log": "2d06c9ad6289f2dcb2842a3ce95ab49cad4a97a8c11b7ed3571865e5697134df",
+    "output/qname-reserved-scope-repair-20260927-v1/refactored-installed-lint.log": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "output/qname-reserved-scope-repair-20260927-v1/refactored-installed-pixel-audit.json": "492f8596b3651455039aa6d9f816dba4190438b86d1fd312b61daade42209685",
+    "output/qname-refactored-installed-preview-audit-20260927-v1.json": "369d49d91a43367367f13d925a3169305cb26a051138dafaf06c02754322ed9c"
+  }
+}
