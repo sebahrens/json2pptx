@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
-  "template_sha256": "e0d65072af4afc1dbb49927029cb1ba174a52b088c7e4b757a1d7e3ba5b6cf2a",
+  "template_sha256": "bdd46e311a3c5e5af2c9cf7a5db6781cc66b0a7685395b834b877cefb18844e5",
   "rendering_source_sha256": "d542c458178b44ff936e3d413a9aebba7f2ed347ed557244b87a05464bb36e08",
   "render_cache_identity": "5a49f1a2ad4f3d9a99fbbf176688dd40e384c8a6239f3dc6e74d7d733525e9d4",
   "width": 320,
@@ -13,7 +13,7 @@
     "slideLayout4": "379cfa3eb79dea4dde81b3eb9dcd1bf1d3010aef0de02c1679ee353daf8d59de",
     "slideLayout5": "0ff9408f98d1f30a1aa2e310d82a7664dc238c7c729270ae3a22796d67b8a2f2",
     "slideLayout6": "c77565669f1dbde44ff10b681783dbd2b1962c9f192815b4a8ea6512c7e0f3bb",
-    "slideLayout7": "267b85c5b26635107298460eb740c247d802065e4806a628dd570a4b09f31e38"
+    "slideLayout7": "8aa5afa25bfff0ab794de706b8440e48d1cfa4981bf4be9a6aec73575e4a7039"
   },
   "source_content": {
     "slideLayout1": [

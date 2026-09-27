@@ -13,6 +13,209 @@ import (
 	"testing"
 )
 
+func TestRepairBlueReusableTitle(t *testing.T) {
+	const original = `<p:sldLayout type="titleOnly"><p:cSld name="Blank + Title"><p:sp name="title"><p:ph type="title"/><a:bodyPr anchor="t"/><a:off x="841248" y="841248"/><a:ext cx="10479024" cy="557784"/><a:defRPr sz="2000" cap="all" spc="300" baseline="0"/></p:sp></p:cSld></p:sldLayout>`
+	const part = "ppt/slideLayouts/slideLayout7.xml"
+	const backup = "output/template-repair-20260926/blue-reusable-title-before.pptx"
+	for _, invalid := range []string{"", "role", "font", "frame", "partial"} {
+		t.Run(invalid, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			body := original
+			switch invalid {
+			case "role":
+				body = strings.Replace(body, `type="titleOnly"`, `type="title"`, 1)
+			case "font":
+				body = strings.Replace(body, `sz="2000"`, `sz="2100"`, 1)
+			case "frame":
+				body = strings.Replace(body, `cy="557784"`, `cy="557785"`, 1)
+			case "partial":
+				body = strings.Replace(body, `sz="2000"`, `sz="2800"`, 1)
+			}
+			var buf bytes.Buffer
+			w := zip.NewWriter(&buf)
+			for name, data := range map[string]string{part: body, "ppt/media/art.svg": "unchanged artwork"} {
+				f, err := w.Create(name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err = io.WriteString(f, data); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			before := bytes.Clone(buf.Bytes())
+			if err := os.WriteFile("source.pptx", before, 0600); err != nil {
+				t.Fatal(err)
+			}
+			err := repairBlueReusableTitle("source.pptx")
+			if (err != nil) != (invalid != "") {
+				t.Fatalf("repair=%v, invalid=%q", err, invalid)
+			}
+			after, err := os.ReadFile("source.pptx")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if invalid != "" {
+				if !bytes.Equal(before, after) {
+					t.Fatal("invalid source changed")
+				}
+				if _, err := os.Stat(backup); !os.IsNotExist(err) {
+					t.Fatal("invalid source created backup")
+				}
+				return
+			}
+			preimage, err := os.ReadFile(backup)
+			if err != nil || !bytes.Equal(preimage, before) {
+				t.Fatal("preimage lost")
+			}
+			r, err := zip.OpenReader("source.pptx")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, e := range r.File {
+				f, err := e.Open()
+				if err != nil {
+					t.Fatal(err)
+				}
+				data, err := io.ReadAll(f)
+				_ = f.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := "unchanged artwork"
+				if e.Name == part {
+					want = strings.Replace(strings.Replace(original, `sz="2000"`, `sz="2800"`, 1), `cy="557784"`, `cy="1016000"`, 1)
+				}
+				if string(data) != want {
+					t.Fatalf("unexpected part change: %s", e.Name)
+				}
+			}
+			_ = r.Close()
+			if err := repairBlueReusableTitle("source.pptx"); err != nil {
+				t.Fatal(err)
+			}
+			again, err := os.ReadFile("source.pptx")
+			if err != nil || !bytes.Equal(after, again) {
+				t.Fatal("repeat rewrote source")
+			}
+		})
+	}
+}
+
+func TestRepairNativeCompositionParts(t *testing.T) {
+	const columnStyle = `<a:lvl1pPr><a:spcAft><a:spcPts val="1200"/></a:spcAft><a:defRPr sz="1500"/></a:lvl1pPr><a:lvl2pPr><a:defRPr sz="1200"/></a:lvl2pPr><a:lvl3pPr><a:defRPr sz="1200"/></a:lvl3pPr>`
+	const repairedColumnStyle = `<a:lvl1pPr><a:spcAft><a:spcPts val="1200"/></a:spcAft><a:defRPr sz="2000"/></a:lvl1pPr><a:lvl2pPr><a:defRPr sz="2000"/></a:lvl2pPr><a:lvl3pPr><a:defRPr sz="2000"/></a:lvl3pPr><a:lvl4pPr><a:defRPr sz="1800"/></a:lvl4pPr>`
+	for _, tc := range []struct {
+		name, part, original, after, backup string
+		repair                              func(string) error
+	}{
+		{"yellow", "ppt/slideLayouts/slideLayout8.xml",
+			`name="Closing" name="title" name="subtitle" sz="6000" sz="2400" <a:bodyPr anchor="b"/><a:off x="1524000" y="2286000"/><a:ext cx="9144000" cy="1600200"/><a:off x="1524000" y="4000500"/><a:ext cx="9144000" cy="800100"/>`,
+			`name="Closing" name="title" name="subtitle" sz="6000" sz="2400" <a:bodyPr anchor="b"/><a:off x="397665" y="2286000"/><a:ext cx="11396670" cy="1600200"/><a:off x="397665" y="4000500"/><a:ext cx="11396670" cy="800100"/>`,
+			"yellow-closing-grouping-before.pptx", repairYellowClosingGrouping},
+		{"columns", "ppt/slideLayouts/slideLayout5.xml",
+			`name="Two Content" name="body" name="body_2" cx="5583528" cy="4000502" sz="1200"` + columnStyle + columnStyle,
+			`name="Two Content" name="body" name="body_2" cx="5583528" cy="4000502" sz="1200"` + repairedColumnStyle + repairedColumnStyle,
+			"p-style-column-hierarchy-before.pptx", repairPStyleColumnHierarchy},
+	} {
+		for _, invalid := range []string{"", "missing", "duplicate", "unexpected", "partial"} {
+			t.Run(tc.name+"/"+invalid, func(t *testing.T) {
+				t.Chdir(t.TempDir())
+				body := tc.original
+				if invalid == "unexpected" {
+					body = strings.Replace(body, `name="`, `name="unexpected-`, 1)
+				}
+				if invalid == "partial" {
+					if tc.name == "yellow" {
+						body = strings.Replace(body, `x="1524000"`, `x="397665"`, 1)
+					} else {
+						body = strings.Replace(body, `sz="1500"`, `sz="1800"`, 1)
+					}
+				}
+				var buf bytes.Buffer
+				w := zip.NewWriter(&buf)
+				parts := []struct{ name, data string }{{"ppt/media/art.svg", "unchanged artwork"}}
+				if invalid != "missing" {
+					parts = append(parts, struct{ name, data string }{tc.part, body})
+				}
+				if invalid == "duplicate" {
+					parts = append(parts, struct{ name, data string }{tc.part, body})
+				}
+				for _, part := range parts {
+					f, err := w.Create(part.name)
+					if err != nil {
+						t.Fatal(err)
+					}
+					if _, err := io.WriteString(f, part.data); err != nil {
+						t.Fatal(err)
+					}
+				}
+				if err := w.Close(); err != nil {
+					t.Fatal(err)
+				}
+				before := bytes.Clone(buf.Bytes())
+				if err := os.WriteFile("source.pptx", before, 0600); err != nil {
+					t.Fatal(err)
+				}
+				err := tc.repair("source.pptx")
+				if (err != nil) != (invalid != "") {
+					t.Fatalf("repair=%v invalid=%q", err, invalid)
+				}
+				after, err := os.ReadFile("source.pptx")
+				if err != nil {
+					t.Fatal(err)
+				}
+				backup := filepath.Join("output/template-repair-20260926", tc.backup)
+				if invalid != "" {
+					if !bytes.Equal(before, after) {
+						t.Fatal("invalid source mutated")
+					}
+					if _, err := os.Stat(backup); !os.IsNotExist(err) {
+						t.Fatal("invalid source created backup")
+					}
+					return
+				}
+				preimage, err := os.ReadFile(backup)
+				if err != nil || !bytes.Equal(preimage, before) {
+					t.Fatal("preimage lost")
+				}
+				r, err := zip.OpenReader("source.pptx")
+				if err != nil {
+					t.Fatal(err)
+				}
+				for _, e := range r.File {
+					f, err := e.Open()
+					if err != nil {
+						t.Fatal(err)
+					}
+					data, err := io.ReadAll(f)
+					_ = f.Close()
+					if err != nil {
+						t.Fatal(err)
+					}
+					want := "unchanged artwork"
+					if e.Name == tc.part {
+						want = tc.after
+					}
+					if string(data) != want {
+						t.Fatalf("unexpected part: %s", e.Name)
+					}
+				}
+				_ = r.Close()
+				if err := tc.repair("source.pptx"); err != nil {
+					t.Fatal(err)
+				}
+				again, err := os.ReadFile("source.pptx")
+				if err != nil || !bytes.Equal(after, again) {
+					t.Fatal("repeat rewrote source")
+				}
+			})
+		}
+	}
+}
+
 func TestRepairPStyleTitleAnchor(t *testing.T) {
 	const markers = `<p:sp name="title"><a:off x="401904" y="1963495"/><a:ext cx="5664555" cy="1828800"/><a:defRPr sz="4800" b="0"/></p:sp><p:sp name="subtitle"><a:off x="401904" y="4000000"/><a:ext cx="5664555" cy="1100000"/></p:sp>`
 	for _, invalid := range []string{"", "missing-slide", "wrong-geometry", "wrong-font", "duplicate-layout", "partial-width", "partial-anchor"} {
