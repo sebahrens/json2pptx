@@ -370,6 +370,44 @@ func TestHeatmapCellFill_Diverging(t *testing.T) {
 	_ = fill
 }
 
+// go-slide-creator-csclk.18: a diverging range spanning zero is centred on 0,
+// ragged grids and label-count mismatches are rejected, and huge legend
+// endpoints format compactly.
+func TestHeatmap_Csclk18(t *testing.T) {
+	zero := heatmapCellFill(0, -10, 50, "diverging")
+	if zero.lumMod != 20000 {
+		t.Errorf("0 in [-10..50] diverging lumMod = %d, want the neutral 20000", zero.lumMod)
+	}
+
+	rows := func(r ...[]any) []any {
+		out := make([]any, len(r))
+		for i := range r {
+			out[i] = r[i]
+		}
+		return out
+	}
+	bad := []map[string]any{
+		{"values": rows([]any{5.0, 5.0, 5.0}, []any{5.0, 5.0})},
+		{"values": rows([]any{1.0, 2.0}, []any{3.0, 4.0}), "row_labels": []any{"only one"}},
+		{"values": rows([]any{1.0, 2.0}, []any{3.0, 4.0}), "col_labels": []any{"a", "b", "c", "d"}},
+	}
+	for i, d := range bad {
+		if ValidateHeatmapData(d) == nil {
+			t.Errorf("case %d: expected rejection", i)
+		}
+	}
+	if err := ValidateHeatmapData(map[string]any{"values": rows([]any{1.0, 2.0}), "row_labels": []any{"r"}, "col_labels": []any{"a", "b"}}); err != nil {
+		t.Errorf("valid heatmap rejected: %v", err)
+	}
+
+	if got := formatHeatmapLegendVal(-1e12); got != "-1T" {
+		t.Errorf("formatHeatmapLegendVal(-1e12) = %q, want -1T", got)
+	}
+	if got := formatHeatmapLegendVal(50); got != "50" {
+		t.Errorf("formatHeatmapLegendVal(50) = %q, want 50", got)
+	}
+}
+
 func TestAllocatePanelIconRelIDs_HeatmapMode(t *testing.T) {
 	parsed := heatmapParsedData{
 		rowLabels:  []string{"Alice", "Bob"},

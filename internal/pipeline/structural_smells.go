@@ -61,10 +61,30 @@ func DetectStructuralSmells(grid *jsonschema.ShapeGridInput, slideIdx int) []*pa
 	}
 
 	var warnings []*patterns.ValidationError
-	warnings = append(warnings, detectStackedTables(grid, slideIdx)...)
-	warnings = append(warnings, detectDividerTooThin(grid, slideIdx)...)
+	warnings = append(warnings, detectRowSmells(grid, slidepath.ShapeGrid(slideIdx), slideIdx)...)
 	warnings = append(warnings, detectMixedFillScheme(grid, slideIdx)...)
 	warnings = append(warnings, detectAccentOverload(grid, slideIdx)...)
+	return warnings
+}
+
+// detectRowSmells runs the row-spacing detectors on grid and, recursively, on
+// every nested cell sub-grid, which is just as author-controlled as the
+// top-level grid (go-slide-creator-csclk.8). gridPath is the JSON path of grid.
+func detectRowSmells(grid *jsonschema.ShapeGridInput, gridPath string, slideIdx int) []*patterns.ValidationError {
+	if grid == nil || len(grid.Rows) == 0 {
+		return nil
+	}
+	var warnings []*patterns.ValidationError
+	warnings = append(warnings, detectStackedTables(grid, gridPath, slideIdx)...)
+	warnings = append(warnings, detectDividerTooThin(grid, gridPath, slideIdx)...)
+	for ri, row := range grid.Rows {
+		for ci, cell := range row.Cells {
+			if cell != nil && cell.Grid != nil {
+				sub := fmt.Sprintf("%s/rows/%d/cells/%d/grid", gridPath, ri, ci)
+				warnings = append(warnings, detectRowSmells(cell.Grid, sub, slideIdx)...)
+			}
+		}
+	}
 	return warnings
 }
 
@@ -91,7 +111,7 @@ func rowHasTable(row jsonschema.GridRowInput) bool {
 
 // detectStackedTables flags consecutive rows that both contain tables when the
 // computed gap between them is less than minTableGapPt.
-func detectStackedTables(grid *jsonschema.ShapeGridInput, slideIdx int) []*patterns.ValidationError {
+func detectStackedTables(grid *jsonschema.ShapeGridInput, gridPath string, slideIdx int) []*patterns.ValidationError {
 	gap := effectiveRowGap(grid)
 	var warnings []*patterns.ValidationError
 
@@ -100,7 +120,7 @@ func detectStackedTables(grid *jsonschema.ShapeGridInput, slideIdx int) []*patte
 			continue
 		}
 		if gap < minTableGapPt {
-			path := slidepath.GridRowRange(slideIdx, i, i+1)
+			path := fmt.Sprintf("%s/rows/%d:%d", gridPath, i, i+1)
 			warnings = append(warnings, &patterns.ValidationError{
 				Pattern: "shape_grid",
 				Path:    path,
@@ -123,14 +143,14 @@ func detectStackedTables(grid *jsonschema.ShapeGridInput, slideIdx int) []*patte
 // detectDividerTooThin flags consecutive rows where the computed gap between
 // them is less than minDividerGapPt, or where a row's height percentage is
 // below minDividerHeightPct (indicating a near-invisible divider row).
-func detectDividerTooThin(grid *jsonschema.ShapeGridInput, slideIdx int) []*patterns.ValidationError {
+func detectDividerTooThin(grid *jsonschema.ShapeGridInput, gridPath string, slideIdx int) []*patterns.ValidationError {
 	gap := effectiveRowGap(grid)
 	var warnings []*patterns.ValidationError
 
 	// Check row gaps.
 	if gap < minDividerGapPt && len(grid.Rows) > 1 {
 		for i := 0; i < len(grid.Rows)-1; i++ {
-			path := slidepath.GridRowRange(slideIdx, i, i+1)
+			path := fmt.Sprintf("%s/rows/%d:%d", gridPath, i, i+1)
 			warnings = append(warnings, &patterns.ValidationError{
 				Pattern: "shape_grid",
 				Path:    path,
@@ -150,7 +170,7 @@ func detectDividerTooThin(grid *jsonschema.ShapeGridInput, slideIdx int) []*patt
 	// Check for rows with height < minDividerHeightPct (divider-like rows).
 	for i, row := range grid.Rows {
 		if row.Height > 0 && row.Height < minDividerHeightPct {
-			path := slidepath.GridRow(slideIdx, i)
+			path := fmt.Sprintf("%s/rows/%d", gridPath, i)
 			warnings = append(warnings, &patterns.ValidationError{
 				Pattern: "shape_grid",
 				Path:    path,
@@ -177,30 +197,21 @@ func detectMixedFillScheme(grid *jsonschema.ShapeGridInput, slideIdx int) []*pat
 	var hasHex, hasSemantic bool
 	var hexExample, semanticExample string
 
-	for _, row := range grid.Rows {
-		for _, cell := range row.Cells {
-			if cell == nil || cell.Shape == nil || len(cell.Shape.Fill) == 0 {
-				continue
-			}
-			color := extractFillColor(cell.Shape.Fill)
-			if color == "" {
-				continue
-			}
-			if hexColorPattern.MatchString(color) {
-				if !brandAllowlist[strings.ToLower(color)] {
-					if !hasHex {
-						hexExample = color
-					}
-					hasHex = true
+	walkAccentFills(grid, func(color string) {
+		if hexColorPattern.MatchString(color) {
+			if !brandAllowlist[strings.ToLower(color)] {
+				if !hasHex {
+					hexExample = color
 				}
-			} else {
-				if !hasSemantic {
-					semanticExample = color
-				}
-				hasSemantic = true
+				hasHex = true
 			}
+		} else {
+			if !hasSemantic {
+				semanticExample = color
+			}
+			hasSemantic = true
 		}
-	}
+	})
 
 	if hasHex && hasSemantic {
 		path := slidepath.ShapeGrid(slideIdx)
@@ -277,9 +288,15 @@ func detectAccentOverload(grid *jsonschema.ShapeGridInput, slideIdx int) []*patt
 // cell's shape. Object-form fills (with tint/shade modifiers) yield their
 // base `color` value, so tinted accents count as the same hue as the bare
 // scheme name.
+//
+// Nested cell sub-grids are walked too: their fills land on the same slide
+// (go-slide-creator-csclk.8).
 func walkAccentFills(grid *jsonschema.ShapeGridInput, visit func(name string)) {
 	for _, row := range grid.Rows {
 		for _, cell := range row.Cells {
+			if cell != nil && cell.Grid != nil {
+				walkAccentFills(cell.Grid, visit)
+			}
 			if cell == nil || cell.Shape == nil || len(cell.Shape.Fill) == 0 {
 				continue
 			}

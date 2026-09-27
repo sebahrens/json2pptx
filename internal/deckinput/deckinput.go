@@ -86,7 +86,8 @@ type ChromeInput struct {
 	Confidentiality string `json:"confidentiality,omitempty"`
 	// ClientName is the client or company name (e.g., "Acme Corp").
 	ClientName string `json:"client_name,omitempty"`
-	// ProjectCode is the project identifier (e.g., "Aurora").
+	// ProjectCode is the project identifier (e.g., "Aurora"). The footer
+	// renders it as "Project <code>" unless it already starts with "Project".
 	ProjectCode string `json:"project_code,omitempty"`
 	// FooterDate is the date string shown in the footer (e.g., "May 2026").
 	FooterDate string `json:"footer_date,omitempty"`

@@ -147,7 +147,7 @@ func chromeSchema() map[string]any {
 		"properties": map[string]any{
 			"confidentiality": map[string]any{"type": "string", "description": "Classification stamp, e.g. \"Strictly confidential\"."},
 			"client_name":     map[string]any{"type": "string", "description": "Client or company name."},
-			"project_code":    map[string]any{"type": "string", "description": "Project identifier."},
+			"project_code":    map[string]any{"type": "string", "description": "Project identifier (e.g. \"Aurora\"); rendered as \"Project <code>\" in the footer unless it already starts with \"Project\"."},
 			"footer_date":     map[string]any{"type": "string", "description": "Date shown in the footer; defaults to meta.date."},
 			"section_crumb":   map[string]any{"type": "boolean", "description": "Show the running section title in the footer."},
 			"page_numbers": map[string]any{

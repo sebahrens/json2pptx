@@ -71,6 +71,33 @@ func TestBusinessNativeFooterPreservesReadableStyleAndLegalText(t *testing.T) {
 	}
 }
 
+// go-slide-creator-csclk.89: with deck chrome on, a slide where the chrome is
+// suppressed (title/closing) must not fall back to the template's literal
+// footer text while every other slide carries the deck footer.
+func TestSkippedChromeSlideDropsTemplateFooterText(t *testing.T) {
+	output := filepath.Join(t.TempDir(), "chrome-skip.pptx")
+	_, _, err := generateSinglePass(context.Background(), GenerationRequest{
+		TemplatePath: "../../templates/business-template.pptx", OutputPath: output, ExcludeTemplateSlides: true,
+		Footer: &FooterConfig{Enabled: true, LeftText: "Deck chrome"},
+		Slides: []SlideSpec{
+			{LayoutID: "slideLayout3", SkipFooter: true, Content: []ContentItem{{PlaceholderID: "title", Type: ContentText, Value: "Cover"}}},
+			{LayoutID: "slideLayout3", Content: []ContentItem{{PlaceholderID: "title", Type: ContentText, Value: "Body"}}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for slide, want := range map[string]string{"ppt/slides/slide1.xml": "", "ppt/slides/slide2.xml": "Deck chrome"} {
+		xmlText := readZipFileString(t, output, slide)
+		if strings.Contains(xmlText, "Confidential 2024") {
+			t.Errorf("%s keeps the template's stale footer text", slide)
+		}
+		if want != "" && !strings.Contains(xmlText, want) {
+			t.Errorf("%s lost the deck footer %q", slide, want)
+		}
+	}
+}
+
 func TestBusinessTitleBackgroundPreservesQuietNativeAccentFill(t *testing.T) {
 	templatePath := "../../templates/business-template.pptx"
 	check := func(path string) {
