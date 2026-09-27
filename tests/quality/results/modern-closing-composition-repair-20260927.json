@@ -1,0 +1,42 @@
+{
+  "scope": "Installed modern-template Closing composition/artwork improvement; residual texture finding remains open",
+  "bead": "go-slide-creator-3qzo4.66",
+  "source_sha256_before": "e64347872ff4ebe51296e0dbab1aadbcccb5abb2df79db151148ea432d551534",
+  "template_sha256_after": "dd47b93e27d55df1c8564f6f78d06dce62d6b59bb1515bdb1f1b92836314e761",
+  "changed_template_parts": ["ppt/slideLayouts/slideLayout5.xml", "ppt/media/image4.png"],
+  "preserved": ["All other package payloads", "Native fonts and sizes", "Master capitalization", "Theme and relationships", "Editable text and required wording", "Picture geometry", "All other layouts"],
+  "changes": {"title_width_emu": 6500000, "subtitle_width_emu": 4800000, "subtitle_y_emu": 3450000, "subtitle_anchor": "t"},
+  "artwork": {
+    "mode": "Built-in image generation",
+    "saved_path": "output/modern-closing-smooth-promotion-20260927-v1/smooth-glow.png",
+    "embedded_path": "templates/modern-template.pptx:ppt/media/image4.png",
+    "sha256": "342e7a398e3e74a36f1d2c29cc98c440e7bcaef676f95afd641e589dcfcc132f",
+    "prompt": "A transparent PNG decorative soft lavender light wash for a minimalist professional PowerPoint closing slide. Wide landscape approximately 1.89:1. A very soft pale lavender diffuse glow centered at the top of the canvas, spreading horizontally and gently fading downward into complete transparency well before the bottom edge. Subtle elegant atmospheric light only; no objects. The bottom quarter and corners are empty and fully transparent. Smooth continuous diffusion and clean antialiased transparent fading; no visible circle boundary, no rings, no gradients with contour lines, no ripple or banding, no grain or noise, no jagged alpha edge. Pale lavender hue around #B9B0EE at top center, delicate low-opacity periphery. No text, no logo, no watermark, no solid backdrop, no checkerboard pixels.",
+    "known_deviation": "Bottom-quarter alpha reaches1/255; no blue fringe visible in native white-slide renders. Minor mottled texture persists and is not waived."
+  },
+  "render_audit": {
+    "templates": 14, "layouts": 108, "probes": 309,
+    "changed_pages": 2, "unchanged_other_accepted_pages": 260, "unchanged_typed_refusals": 47,
+    "installed_accepted_pages_identical_to_reviewed_candidate": 262,
+    "installed_manifest_sha256": "699682a6b10bbfbade9e4d657975c6d4db7b826de00eda5d17418963be1f0609",
+    "candidate_manifest_sha256": "32cdf7b44fedf4973111b2a463d2c19ce044c117725d6efba50b65e2fb79d062"
+  },
+  "blind_review": {
+    "reviewer_count": 1, "inspected_pages": 4, "unreviewed_pages": 0, "source_complete_pages": 4,
+    "joined_receipt": "output/blind-native-composition-followup-20260927-smooth-v1/joined-review-audit.json",
+    "after_verdicts": "Both SAFE_WITH_MINOR_CAUTIONS",
+    "resolved_findings": ["Visible concentric rings", "Loose title/subtitle grouping", "Isolated-word wrapping"],
+    "remaining_findings": ["Minor mottled lavender texture on both revised pages"],
+    "aggregate_visual_approval": false
+  },
+  "gates": {
+    "generated_native_style_and_geometry_regressions": "PASS",
+    "conformance": "PASS",
+    "installed_full_corpus": "PASS:41.885s",
+    "preview_and_mcp_provenance": "PASS",
+    "deterministic_golden": "PASS; only modern-template hash changed",
+    "lint": "PASS:0issues",
+    "logs": "output/modern-closing-smooth-promotion-20260927-v1/"
+  },
+  "status": "Partial improvement installed; exact publication CI pending and residual artwork caution remains tracked"
+}
