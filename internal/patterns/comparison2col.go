@@ -178,8 +178,10 @@ func (c *comparison2col) NewValues() any       { return &Comparison2colValues{} 
 func (c *comparison2col) NewOverrides() any    { return &Comparison2colOverrides{} }
 func (c *comparison2col) NewCellOverride() any { return &Comparison2colCellOverride{} }
 
-// Measured by TestComparisonBudgetProbe across the four bundled templates at
-// default text sizes. A header row consumes the same height as one body row.
+// Measured by TestComparisonBudgetProbe against the written size (no run
+// stored below its role floor) on every shipped template at default text
+// sizes (go-slide-creator-n1muf). A header row consumes the same height as one
+// body row; eleven rows (ten plus headers) hold no readable copy.
 func comparisonBodyBudget(bodyRows int, headers bool) int {
 	effectiveRows := bodyRows
 	if headers {
@@ -192,8 +194,10 @@ func comparisonBodyBudget(bodyRows int, headers bool) int {
 		return 196
 	case effectiveRows <= 7:
 		return 131
-	default:
+	case effectiveRows <= 10:
 		return 66
+	default:
+		return 0
 	}
 }
 
@@ -209,6 +213,9 @@ func (c *comparison2col) PostExpandWarnings(_ ExpandContext, values, overrides a
 	}
 	headers := v.Headers != [2]string{} || v.HeaderLeft != "" || v.HeaderRight != ""
 	budget := comparisonBodyBudget(len(v.Rows), headers)
+	if budget == 0 {
+		return []string{fmt.Sprintf("%s: comparison-2col has %d body rows plus headers; the shortest shipped content area holds at most 10 readable rows including the header — use 9 body rows or drop the headers", ErrCodeBodyTooLong, len(v.Rows))}
+	}
 	connectors := false
 	if ovr, ok := overrides.(*Comparison2colOverrides); ok && ovr != nil && ovr.Connectors {
 		connectors = true
@@ -242,7 +249,7 @@ func (c *comparison2col) Schema() *Schema {
 			},
 			[]string{"left", "right"},
 		).WithAdditionalProperties(false),
-	).WithDescription("Row: string \"Left | Right\" or {left, right}. Approximate chars per cell by body rows plus one if headers: 1-4: 200, 5: 196, 6-7: 131, 8-11: 66")
+	).WithDescription("Row: string \"Left | Right\" or {left, right}. Approximate chars per cell by body rows plus one if headers: 1-4: 200, 5: 196, 6-7: 131, 8-10: 66; 10 body rows with headers do not fit readably")
 
 	headersSchema := ArraySchema(StringSchema(60), 2, 2).
 		WithDescription("Column headers [left, right] (preferred over header_left/header_right)")

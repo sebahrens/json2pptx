@@ -629,13 +629,13 @@ func TestNumberedStepStrip_SevenSteps(t *testing.T) {
 	}
 	warner := p.(PostExpandWarner)
 	long := sevenSteps("toc")
-	long.Steps[3].Body = strings.Repeat("x", 136)
+	long.Steps[3].Body = strings.Repeat("x", 117)
 	if w := warner.PostExpandWarnings(ExpandContext{}, long, nil); len(w) != 1 || !strings.Contains(w[0], "steps[3].body") {
-		t.Errorf("seven toc rows with a 136-char body: want one BODY_TOO_LONG, got %v", w)
+		t.Errorf("seven toc rows with a 117-char body: want one BODY_TOO_LONG, got %v", w)
 	}
 	long.Style = "stacked-box"
 	if w := warner.PostExpandWarnings(ExpandContext{}, long, nil); len(w) != 0 {
-		t.Errorf("seven stacked-box rows hold 140 chars, got %v", w)
+		t.Errorf("seven stacked-box rows hold 120 chars, got %v", w)
 	}
 	eight := sevenSteps("stacked-box")
 	eight.Steps = append(eight.Steps, NumberedStepStripStep{Label: "Eighth"})

@@ -195,8 +195,8 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 		map[string]*Schema{
 			"chart":          chartSchema,
 			"insights_title": StringSchema(40).WithDescription("Label above the bullet list (default \"Key Insights\")").WithDefault("Key Insights"),
-			"insights":       ArraySchema(StringSchema(160), 0, 6).WithDescription("Up to 6 narrative takeaway bullets; may be empty when so_what carries the sole insight"),
-			"source":         StringSchema(120).WithDescription("Optional source/footnote below the chart; target about 108 characters with one insight and no headline/callout, or 95 when the right column has more content"),
+			"insights":       ArraySchema(StringSchema(160), 0, 6).WithDescription("Up to 6 narrative takeaway bullets; may be empty when so_what carries the sole insight. With a chart, average about 160 characters per insight up to 4 (135 at 5, 91 at 6); with a headline or so-what, 136/85/85/42 at 3/4/5/6. Break long unbroken runs"),
+			"source":         StringSchema(120).WithDescription("Optional source/footnote below the chart; target about 92 characters with one insight and no headline/callout, or 80 when the right column has more content"),
 			"headline": ObjectSchema(map[string]*Schema{
 				"value": StringSchema(cisHeadlineValueMax).WithDescription("Headline figure, e.g. \"+75%\""),
 				"label": StringSchema(cisHeadlineLabelMax).WithDescription("What the figure means"),
@@ -294,20 +294,67 @@ func (cis *chartInsightsSplit) PostExpandWarnings(ctx ExpandContext, values, ove
 	if !ok || v == nil {
 		return nil
 	}
+	extras := v.Headline != nil || strings.TrimSpace(v.SoWhat) != ""
+	warnings := cisInsightWarnings(v, extras)
 	if v.Chart != nil {
-		budget := 95
-		if len(v.Insights) == 1 && v.Headline == nil && strings.TrimSpace(v.SoWhat) == "" {
-			budget = 108
+		budget := 80
+		if len(v.Insights) == 1 && !extras {
+			budget = 92
 		}
 		if runeLen(v.Source) > budget {
-			return []string{fmt.Sprintf("%s: chart-insights-split source has %d characters; the chart source line holds about %d readable characters with this insights column — shorten the source or move detail to slide notes", ErrCodeBodyTooLong, runeLen(v.Source), budget)}
+			warnings = append(warnings, fmt.Sprintf("%s: chart-insights-split source has %d characters; the chart source line holds about %d readable characters with this insights column — shorten the source or move detail to slide notes", ErrCodeBodyTooLong, runeLen(v.Source), budget))
 		}
+		return warnings
+	}
+	return append(warnings,
+		ErrCodeChartPlaceholderEmpty+
+			": chart-insights-split rendered insights-only; provide a chart spec to fill the left panel")
+}
+
+// Insight budgets by bullet count (index 0 = one insight), measured against
+// the written size (no run stored below its role floor) on every shipped
+// template with every insight at the same length (go-slide-creator-n1muf).
+// Indexed [chart][extras]; extras = headline or so-what present.
+var (
+	cisInsightWordBudgets = [2][2][6]int{
+		{{160, 160, 160, 160, 160, 160}, {160, 160, 160, 160, 160, 135}},
+		{{160, 160, 160, 160, 135, 91}, {160, 160, 136, 85, 85, 42}},
+	}
+	cisInsightUnbrokenBudgets = [2][2][6]int{
+		{{160, 160, 160, 160, 143, 74}, {160, 160, 146, 70, 70, 70}},
+		{{160, 160, 119, 71, 47, 24}, {160, 96, 48, 23, 23, 22}},
+	}
+)
+
+func cisInsightWarnings(v *ChartInsightsSplitValues, extras bool) []string {
+	n := len(v.Insights)
+	if n < 1 || n > 6 {
 		return nil
 	}
-	return []string{
-		ErrCodeChartPlaceholderEmpty +
-			": chart-insights-split rendered insights-only; provide a chart spec to fill the left panel",
+	c, e := 0, 0
+	if v.Chart != nil {
+		c = 1
 	}
+	if extras {
+		e = 1
+	}
+	words, wide := cisInsightWordBudgets[c][e][n-1], cisInsightUnbrokenBudgets[c][e][n-1]
+	var warnings []string
+	total := 0
+	for i, insight := range v.Insights {
+		total += runeLen(insight)
+		longest := 0
+		for _, word := range strings.Fields(insight) {
+			longest = max(longest, runeLen(word))
+		}
+		if longest > wide {
+			warnings = append(warnings, fmt.Sprintf("%s: chart-insights-split insights[%d] contains a %d-character unbroken word; %d insights hold about %d wide characters each in this layout — add word breaks or shorten the insight", ErrCodeBodyTooLong, i, longest, n, wide))
+		}
+	}
+	if total > words*n {
+		warnings = append(warnings, fmt.Sprintf("%s: chart-insights-split insights use %d characters across %d bullets; this layout holds about %d characters per insight on average — shorten insights or use fewer", ErrCodeBodyTooLong, total, n, words))
+	}
+	return warnings
 }
 
 func (cis *chartInsightsSplit) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {

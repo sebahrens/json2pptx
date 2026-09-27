@@ -14,7 +14,7 @@ func TestComparisonBodyBudgetUsesEffectiveRows(t *testing.T) {
 		{1, false, 200}, {3, true, 200}, {4, false, 200},
 		{4, true, 196}, {5, false, 196}, {5, true, 131},
 		{6, false, 131}, {7, false, 131}, {7, true, 66},
-		{8, false, 66}, {10, true, 66},
+		{8, false, 66}, {10, false, 66}, {9, true, 66}, {10, true, 0},
 	} {
 		if got := comparisonBodyBudget(tc.rows, tc.headers); got != tc.want {
 			t.Errorf("comparisonBodyBudget(%d, %t) = %d, want %d", tc.rows, tc.headers, got, tc.want)
@@ -22,7 +22,7 @@ func TestComparisonBodyBudgetUsesEffectiveRows(t *testing.T) {
 	}
 	schema := (&comparison2col{}).Schema()
 	row := schema.raw.Properties["values"].raw.Properties["rows"].raw.Items
-	if !strings.Contains(row.raw.Description, "8-11: 66") {
+	if !strings.Contains(row.raw.Description, "8-10: 66") {
 		t.Errorf("schema omits the dense-row copy target: %q", row.raw.Description)
 	}
 	objectRow := row.raw.OneOf[1]

@@ -13,10 +13,12 @@ func TestMatrix2x2PairedQuadrantBudget(t *testing.T) {
 		body   string
 		warn   bool
 	}{
-		{"wide_pair_over_budget", strings.Repeat("W", 80), strings.Repeat("W", 177), true},
-		{"wide_pair_at_budget", strings.Repeat("W", 80), strings.Repeat("W", 176), false},
-		{"shorter_header", strings.Repeat("W", 79), strings.Repeat("W", 200), false},
-		{"word_like_header", strings.Repeat("word ", 16), strings.Repeat("W", 200), false},
+		{"wide_pair_over_budget", strings.Repeat("W", 80), strings.Repeat("W", 63), true},
+		{"wide_pair_at_budget", strings.Repeat("W", 80), strings.Repeat("W", 62), false},
+		{"short_header_wide_body", "Stars", strings.Repeat("W", 188), false},
+		{"short_header_over", "Stars", strings.Repeat("W", 189), true},
+		{"word_like_header", strings.Repeat("word ", 16), strings.Repeat("W", 156), false},
+		{"word_like_header_over", strings.Repeat("word ", 16), strings.Repeat("W", 157), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			values := &Matrix2x2Values{TopLeft: Matrix2x2Quadrant{Header: tc.header, Body: tc.body}}
@@ -28,7 +30,7 @@ func TestMatrix2x2PairedQuadrantBudget(t *testing.T) {
 				return
 			}
 			if len(got) != 1 || !strings.Contains(got[0], "top_left.header/body") ||
-				!strings.Contains(got[0], "about 176 wide characters") {
+				!strings.Contains(got[0], "wide characters for its body") {
 				t.Fatalf("warnings = %v, want paired quadrant budget", got)
 			}
 		})

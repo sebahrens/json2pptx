@@ -11,7 +11,7 @@ func TestNumberedStepSixChevronBudgetAndExistingOverflowSignal(t *testing.T) {
 	for i := 0; i < 6; i++ {
 		values.Steps = append(values.Steps, NumberedStepStripStep{Label: "Step", Body: "Detail"})
 	}
-	values.Steps[2].Label = strings.Repeat("word ", 9) + "ab" // 47 characters
+	values.Steps[2].Label = strings.Repeat("word ", 9) // 45 characters
 	for _, warning := range pat.PostExpandWarnings(testThemeCtx(), values, nil) {
 		if strings.Contains(warning, "steps[2].label") && strings.HasPrefix(warning, ErrCodeBodyTooLong) {
 			t.Fatalf("at budget warned: %q", warning)
@@ -21,7 +21,7 @@ func TestNumberedStepSixChevronBudgetAndExistingOverflowSignal(t *testing.T) {
 	warnings := pat.PostExpandWarnings(testThemeCtx(), values, nil)
 	found := false
 	for _, warning := range warnings {
-		if strings.HasPrefix(warning, ErrCodeBodyTooLong+":") && strings.Contains(warning, "steps[2].label") && strings.Contains(warning, "about 47") {
+		if strings.HasPrefix(warning, ErrCodeBodyTooLong+":") && strings.Contains(warning, "steps[2].label") && strings.Contains(warning, "about 45") {
 			found = true
 		}
 	}
@@ -34,7 +34,7 @@ func TestNumberedStepSixChevronBudgetAndExistingOverflowSignal(t *testing.T) {
 	}
 	step := pat.Schema().raw.Properties["values"].raw.Properties["steps"].raw.Items
 	label := step.raw.Properties["label"]
-	if label.raw.MaxLength == nil || *label.raw.MaxLength != 60 || !strings.Contains(label.raw.Description, "about 47") {
+	if label.raw.MaxLength == nil || *label.raw.MaxLength != 60 || !strings.Contains(label.raw.Description, "about 45") {
 		t.Errorf("schema loses sparse maximum or chevron guidance: %+v", label.raw)
 	}
 }

@@ -68,13 +68,13 @@ func TestProcessFlowCompactPointedLabelBudgets(t *testing.T) {
 	for i := range v.Steps {
 		v.Steps[i] = ProcessFlowStep{Label: "Stage", Type: "chevron"}
 	}
-	v.Steps[3].Label = strings.Repeat("word ", 7) // 35 word-like characters
+	v.Steps[3].Label = strings.Repeat("word ", 6) + "w" // 31 word-like characters
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured word-like target should fit: %v", got)
 	}
 	v.Steps[3].Label += "w"
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "steps[3].label") || !strings.Contains(got[0], "about 35 word-like or 13 wide") {
+	if len(got) != 1 || !strings.Contains(got[0], "steps[3].label") || !strings.Contains(got[0], "about 31 word-like or 13 wide") {
 		t.Fatalf("dense chevron warning: %v", got)
 	}
 	v.Steps[3].Label = strings.Repeat("W", 14)

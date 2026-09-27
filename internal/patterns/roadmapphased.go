@@ -84,16 +84,18 @@ func (r *roadmapPhased) NewValues() any       { return &RoadmapPhasedValues{} }
 func (r *roadmapPhased) NewOverrides() any    { return &RoadmapPhasedOverrides{} }
 func (r *roadmapPhased) NewCellOverride() any { return &RoadmapPhasedCellOverride{} }
 
-// Measured with TestRoadmapPhasedBudgetProbe against all four bundled
-// templates. Rows are phase counts 2..8, columns workstream counts 2..6.
+// Measured with TestRoadmapPhasedBudgetProbe against the written size (no run
+// stored below its role floor) on every shipped template
+// (go-slide-creator-n1muf). Rows are phase counts 2..8, columns workstream
+// counts 2..6.
 var roadmapPhasedItemBudgets = [7][5]int{
 	{80, 80, 80, 80, 80},
-	{80, 80, 80, 80, 78},
-	{80, 80, 80, 80, 60},
-	{80, 80, 80, 62, 42},
-	{80, 80, 62, 47, 40},
-	{80, 80, 60, 45, 40},
-	{80, 61, 41, 32, 32},
+	{80, 80, 80, 70, 70},
+	{80, 80, 76, 51, 50},
+	{80, 80, 60, 40, 40},
+	{80, 75, 46, 31, 30},
+	{80, 52, 32, 22, 22},
+	{80, 50, 31, 21, 20},
 }
 
 func roadmapPhasedItemBudget(phases, workstreams int) int {
@@ -124,7 +126,7 @@ func (r *roadmapPhased) Schema() *Schema {
 	workstreamSchema := ObjectSchema(
 		map[string]*Schema{
 			"name":  StringSchema(40).WithDescription("Workstream name"),
-			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One activity per phase (empty = none). Approximate readable chars per pill by phase count x workstream count (workstreams 2/3/4/5/6): phases 2: 80/80/80/80/80; 3: 80/80/80/80/78; 4: 80/80/80/80/60; 5: 80/80/80/62/42; 6: 80/80/62/47/40; 7: 80/80/60/45/40; 8: 80/61/41/32/32"),
+			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One activity per phase (empty = none). Approximate readable chars per pill by phase count x workstream count (workstreams 2/3/4/5/6): phases 2: 80/80/80/80/80; 3: 80/80/80/70/70; 4: 80/80/76/51/50; 5: 80/80/60/40/40; 6: 80/75/46/31/30; 7: 80/52/32/22/22; 8: 80/50/31/21/20"),
 		},
 		[]string{"name", "items"},
 	).WithAdditionalProperties(false)

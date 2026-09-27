@@ -160,6 +160,18 @@ func (m *matrix2x2) NewValues() any       { return &Matrix2x2Values{} }
 func (m *matrix2x2) NewOverrides() any    { return &Matrix2x2Overrides{} }
 func (m *matrix2x2) NewCellOverride() any { return &Matrix2x2CellOverride{} }
 
+// matrixBodyRunBudget is the unbroken body run a quadrant holds beside header.
+func matrixBodyRunBudget(header string, headerRun int) int {
+	switch {
+	case headerRun > 68:
+		return 62
+	case runeLen(header) >= 40:
+		return 156
+	default:
+		return 188
+	}
+}
+
 func (m *matrix2x2) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*Matrix2x2Values)
 	if !ok || v == nil {
@@ -181,8 +193,14 @@ func (m *matrix2x2) PostExpandWarnings(_ ExpandContext, values, _ any) []string 
 		for _, word := range strings.Fields(quadrant.value.Body) {
 			bodyRun = max(bodyRun, runeLen(word))
 		}
-		if headerRun >= 80 && bodyRun > 176 {
-			warnings = append(warnings, fmt.Sprintf("%s: matrix-2x2 %s.header/body contain %d/%d-character unbroken runs; a maximum-width header leaves about 176 wide characters for its body — add word breaks or shorten the paired copy", ErrCodeBodyTooLong, quadrant.name, headerRun, bodyRun))
+		// Budgets measured against the written size on every shipped
+		// template (go-slide-creator-n1muf): a body's unbroken run holds
+		// about 188 characters beside a short header, 156 beside a long
+		// worded header, and 62 beside a header with an unbroken run over
+		// 68 characters (which also leaves no room for longer worded copy).
+		budget := matrixBodyRunBudget(quadrant.value.Header, headerRun)
+		if bodyRun > budget || (headerRun > 68 && runeLen(quadrant.value.Body) > 62) {
+			warnings = append(warnings, fmt.Sprintf("%s: matrix-2x2 %s.header/body contain %d/%d-character unbroken runs; this header leaves about %d wide characters for its body — add word breaks or shorten the paired copy", ErrCodeBodyTooLong, quadrant.name, headerRun, bodyRun, budget))
 		}
 	}
 	return warnings
@@ -195,7 +213,7 @@ func (m *matrix2x2) Schema() *Schema {
 	quadrantObjSchema := ObjectSchema(
 		map[string]*Schema{
 			"header": StringSchema(80).WithDescription("Quadrant header text"),
-			"body":   StringSchema(200).WithDescription("Quadrant body text; with an 80-character unbroken header, target about 176 wide unbroken body characters or add word breaks"),
+			"body":   StringSchema(200).WithDescription("Quadrant body text; keep unbroken runs near 188 characters (156 beside a long header; 62 and at most 62 characters of copy beside a header with an unbroken run over 68) or add word breaks"),
 			"icon":   IconRefSchema(""),
 		},
 		[]string{"header"},

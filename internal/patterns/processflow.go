@@ -131,11 +131,13 @@ func processFlowLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
 			return 80, 80
 		}
 	}
+	// Rectangular steps: unbroken runs measured against the written size on
+	// every shipped template (go-slide-creator-n1muf).
 	if steps == 7 {
-		return 80, 76
+		return 80, 73
 	}
 	if steps >= 8 {
-		return 80, 64
+		return 80, 62
 	}
 	return 80, 80
 }

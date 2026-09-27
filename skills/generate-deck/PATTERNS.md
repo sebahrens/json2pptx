@@ -62,17 +62,17 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Business Model Canvas.** `bmc-canvas` has nine fixed cells of different sizes. Its `show_pattern` schema describes the per-bullet copy target for each cell and bullet count at default font sizes. The narrow middle cells (`key_activities`, `key_resources`, `customer_relations`, `channels`) hold about 125 characters with one bullet, 25 each with three, and 22 each with four or five. Use at most five bullets in these cells and in the bottom cost/revenue cells. `BODY_TOO_LONG` warnings name the cell and measured target. The 200-character schema maximum permits copy in spacious cells; it is not a readable target for every cell.
 
-**Driver tree.** `driver-tree` supports up to 14 leaf rows. Leaf copy holds about 120 characters through nine rows (101 with annotations) and 75 at 10–14 (51 with annotations); `show_pattern` gives branch and annotation limits. `BODY_TOO_LONG` names the field; check the fit report when units or font overrides are present.
+**Driver tree.** `driver-tree` supports up to 12 leaf rows. Leaf copy holds about 120 characters through five rows, 62 at 8–12 (45 with annotations); `show_pattern` gives the full table. `BODY_TOO_LONG` names the field; check the fit report when units or font overrides are present.
 
-**Two-column comparisons.** For `comparison-2col`, count body rows plus one when the optional headers are present. At default font sizes, each body cell holds about 200 characters through four effective rows, 196 at five, 131 at six or seven, and 66 at eight or more. The 60-character header limit remains readable at all supported row counts. `BODY_TOO_LONG` identifies the row and left/right cell to shorten. For a "from → to" shift (traditional vs. new model), set `overrides.connectors: true`: a narrow centre gutter carries a per-row accent circle with a chevron joined to both cells, left cells gain an accent stripe on a neutral surface and right cells an accent tint. The text columns narrow to 45% each, so plan about 88% of the per-cell budgets above.
+**Two-column comparisons.** For `comparison-2col`, count body rows plus one when the optional headers are present. At default font sizes, each body cell holds about 200 characters through four effective rows, 196 at five, 131 at six or seven, 66 at eight to ten; ten body rows plus headers do not fit. `BODY_TOO_LONG` identifies the row and left/right cell to shorten. For a "from → to" shift (traditional vs. new model), set `overrides.connectors: true`: a narrow centre gutter carries a per-row accent circle with a chevron joined to both cells, left cells gain an accent stripe on a neutral surface and right cells an accent tint. The text columns narrow to 45% each, so plan about 88% of the per-cell budgets above.
 
-**Phased roadmaps.** `roadmap-phased` activities hold 80 characters at 2 phases × 2 workstreams and about 32 at 8 × 6. `show_pattern` lists the measured target for each 2–8 phase by 2–6 workstream combination. `BODY_TOO_LONG` identifies the exact workstream and phase item to shorten.
+**Phased roadmaps.** `roadmap-phased` activities hold 80 characters at 2 phases × 2 workstreams and about 20 at 8 × 6. `show_pattern` lists the measured target for each 2–8 phase by 2–6 workstream combination. `BODY_TOO_LONG` identifies the exact workstream and phase item to shorten.
 
 **Single-track roadmaps.** `phase-roadmap` accepts up to four `values.parallel_tracks` (one line, ≤90 chars each) for workstreams that run alongside every phase; they render as full-width tinted bars under a `values.parallel_label` (default "In parallel", ≤24 chars).
 
 **Two-track process grids.** `process-grid-2row` accepts `values.column_headers` (≤24 chars) and `values.outcomes` (≤32 chars, rendered as accent pills); each list needs one entry per phase and both rows must have the same phase count, else validation fails.
 
-**Team bios.** `team-bios` has about 220 readable bio characters per card with 1–4 members and 141 with 5–8, at default font sizes. The fifth member adds a second card row. A headshot changes the photo zone but not this bio target. `BODY_TOO_LONG` names the member and target; move longer biographies to a separate slide.
+**Team bios.** `team-bios` has about 220 readable bio characters per card with 1–4 members and 90 with 5–8, at default font sizes. The fifth member adds a second card row. A headshot changes the photo zone but not this bio target. `BODY_TOO_LONG` names the member and target; move longer biographies to a separate slide.
 
 **Metric lists.** `metric-list` holds 120-character `detail` lines through four items and about 90 at five; at six or seven items omit details (and, at seven, the `callout`). `TEXT_EXCEEDS_SHAPE` names a value that still wraps.
 
@@ -82,9 +82,9 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Text sidebars.** `text-sidebar`'s main column holds about 1,100 characters at 14pt and 1,500 at 12pt; keep the sidebar to one statement.
 
-**Swimlanes.** `swimlane` steps hold 80 characters in sparse grids and about 32 at 8 steps × 6 lanes (`show_pattern` lists each combination); actor labels hold 40. `BODY_TOO_LONG` names the lane and step.
+**Swimlanes.** `swimlane` steps hold 80 characters in sparse grids and about 21 at 8 steps × 6 lanes (`show_pattern` lists each combination); actor labels hold 40 (32 with six lanes). `BODY_TOO_LONG` names the lane and step.
 
-**Numbered steps.** `numbered-step-strip` labels hold 60 characters (about 47 in a six-step `chevron`); bodies hold 180 through six steps. Only `stacked-box` / `toc` accept a seventh step (bodies ~140) and an optional per-step `icon` (bundled name or `{name|path|url|svg_data}`); `chevron` rejects both. `BODY_TOO_LONG` names long labels; `TEXT_EXCEEDS_SHAPE` flags a mid-word chevron break.
+**Numbered steps.** `numbered-step-strip` labels hold 60 characters (about 45 in a six-step `chevron`); bodies hold ~178 (chevron), 120 / 116 (six-plus stacked-box / toc). Only `stacked-box` / `toc` accept a seventh step and an optional per-step `icon` (bundled name or `{name|path|url|svg_data}`); `chevron` rejects both. `BODY_TOO_LONG` names long labels; `TEXT_EXCEEDS_SHAPE` flags a mid-word chevron break.
 
 **State-shift hub.** `state-shift-hub` descriptions hold about 100 characters with 3 pairs, 62 with 4, 40 with 5 and 30 with 6; keep `hub_label` near 40 characters.
 

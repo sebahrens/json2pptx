@@ -35,7 +35,7 @@ func TestRoadmapPhasedItemBudgetsMatchProbe(t *testing.T) {
 	pat := &roadmapPhased{}
 	schema := pat.Schema()
 	items := schema.raw.Properties["values"].raw.Properties["workstreams"].raw.Items.raw.Properties["items"]
-	if !strings.Contains(items.raw.Description, "8: 80/61/41/32/32") || items.raw.Items.raw.MaxLength == nil || *items.raw.Items.raw.MaxLength != 80 {
+	if !strings.Contains(items.raw.Description, "8: 80/50/31/21/20") || items.raw.Items.raw.MaxLength == nil || *items.raw.Items.raw.MaxLength != 80 {
 		t.Errorf("schema omits budget table or reduces sparse-cell maximum: %+v", items.raw)
 	}
 }
@@ -43,7 +43,7 @@ func TestRoadmapPhasedItemBudgetsMatchProbe(t *testing.T) {
 func TestRoadmapPhasedWarnsOnlyOverBudgetActivityPills(t *testing.T) {
 	pat := &roadmapPhased{}
 	v := budgetRoadmap(8, 6)
-	v.Workstreams[1].Items[3] = strings.Repeat("A", 32)
+	v.Workstreams[1].Items[3] = strings.Repeat("A", 20)
 	atBudget := pat.PostExpandWarnings(ExpandContext{}, v, nil)
 	v.Workstreams[1].Items[3] += "x"
 	overBudget := pat.PostExpandWarnings(ExpandContext{}, v, nil)
@@ -52,5 +52,5 @@ func TestRoadmapPhasedWarnsOnlyOverBudgetActivityPills(t *testing.T) {
 	assertDenseGridWarnings(t, atBudget, overBudget,
 		pat.PostExpandWarnings(ExpandContext{}, v, nil),
 		pat.PostExpandWarnings(ExpandContext{}, nil, nil),
-		"workstreams[1].items[3]", "8-phase x 6-workstream", "about 32")
+		"workstreams[1].items[3]", "8-phase x 6-workstream", "about 20")
 }

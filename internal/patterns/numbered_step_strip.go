@@ -138,8 +138,8 @@ func (n *numberedStepStrip) NewCellOverride() any { return &NumberedStepStripCel
 func (n *numberedStepStrip) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
-			"label":       StringSchema(60).WithDescription("Short ordinal step label. Six-step chevrons hold about 47 readable characters per label at default size; all other supported styles/counts hold 60"),
-			"body":        StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone; about 140 readable characters with seven stacked-box rows or 135 with seven toc rows"),
+			"label":       StringSchema(60).WithDescription("Short ordinal step label. Six-step chevrons hold about 45 readable characters per label at default size; all other supported styles/counts hold 60"),
+			"body":        StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone; about 178 readable characters in a chevron detail zone, 120 with six or seven stacked-box rows, 116 with six or seven toc rows"),
 			"recommended": BooleanSchema().WithDescription("Highlight this row with an accent fill and Recommended badge (stacked-box style)"),
 			"number":      StringSchema(6).WithDescription("Optional ordinal override (e.g. \"01\", \"A\"); defaults to the 1-based index"),
 			"tip_color":   StringSchema(0).WithDescription("Optional scheme color for this step's number / tip lane (default: rotating accent)"),
@@ -263,11 +263,12 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 		return numberedStepSevenRowWarnings(vals)
 	}
 	var warnings []string
-	if len(vals.Steps) == 6 {
-		for i, step := range vals.Steps {
-			if length := runeLen(step.Label); length > 47 {
-				warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].label is %d characters; a six-step chevron holds about 47 readable label characters — shorten the label or use fewer steps", ErrCodeBodyTooLong, i, length))
-			}
+	for i, step := range vals.Steps {
+		if length := runeLen(step.Label); len(vals.Steps) == 6 && length > numberedStepSixChevronLabelBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].label is %d characters; a six-step chevron holds about %d readable label characters — shorten the label or use fewer steps", ErrCodeBodyTooLong, i, length, numberedStepSixChevronLabelBudget))
+		}
+		if length := runeLen(strings.TrimSpace(step.Body)); length > numberedStepChevronBodyBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].body is %d characters; a chevron detail zone holds about %d readable characters — shorten the body", ErrCodeBodyTooLong, i, length, numberedStepChevronBodyBudget))
 		}
 	}
 	ovr, _ := overrides.(*NumberedStepStripOverrides)
@@ -293,18 +294,21 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 		len(vals.Steps), fit.labelPt, pronoun, pronoun))
 }
 
-// Readable body targets for seven stacked rows, measured by
-// TestNumberedStepBudgetProbe across the bundled templates at default sizes
-// (three to six rows hold the full 180-character schema limit).
+// Readable targets measured by TestNumberedStepBudgetProbe against the
+// written size (no run stored below its role floor) on every shipped template
+// at default sizes (go-slide-creator-n1muf): six or seven stacked-box / toc
+// rows, a six-step chevron label, and any chevron detail body.
 const (
-	numberedStepSevenStackedBodyBudget = 140
-	numberedStepSevenTOCBodyBudget     = 135
+	numberedStepSevenStackedBodyBudget = 120
+	numberedStepSevenTOCBodyBudget     = 116
+	numberedStepSixChevronLabelBudget  = 45
+	numberedStepChevronBodyBudget      = 178
 )
 
 // numberedStepSevenRowWarnings reports stacked-box / toc bodies past the
-// seven-row readable target.
+// six- and seven-row readable target.
 func numberedStepSevenRowWarnings(vals *NumberedStepStripValues) []string {
-	if len(vals.Steps) < numberedStepStripMaxSteps {
+	if len(vals.Steps) < numberedStepStripMaxSteps-1 {
 		return nil
 	}
 	style, budget := numberedStepStripStackedBox, numberedStepSevenStackedBodyBudget
@@ -314,7 +318,7 @@ func numberedStepSevenRowWarnings(vals *NumberedStepStripValues) []string {
 	var warnings []string
 	for i, step := range vals.Steps {
 		if length := runeLen(strings.TrimSpace(step.Body)); length > budget {
-			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].body is %d characters; seven %s rows hold about %d readable body characters per step — shorten the body or use six steps", ErrCodeBodyTooLong, i, length, style, budget))
+			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].body is %d characters; %d %s rows hold about %d readable body characters per step — shorten the body or use fewer steps", ErrCodeBodyTooLong, i, length, len(vals.Steps), style, budget))
 		}
 	}
 	return warnings

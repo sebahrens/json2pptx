@@ -127,11 +127,11 @@ func (t *teamBios) NewValues() any       { return &TeamBiosValues{} }
 func (t *teamBios) NewOverrides() any    { return &TeamBiosOverrides{} }
 func (t *teamBios) NewCellOverride() any { return &TeamBiosCellOverride{} }
 
-// Measured with TestTeamBiosBudgetProbe across all four bundled templates at
+// Measured with TestTeamBiosBudgetProbe against the written size on every shipped template at
 // default sizes. A fifth member adds a second card row and halves text height.
 func teamBiosReadableBioBudget(members int) int {
 	if members > 4 {
-		return 141
+		return 90
 	}
 	return teamBiosBioMaxChars
 }
@@ -141,7 +141,7 @@ func (t *teamBios) Schema() *Schema {
 		map[string]*Schema{
 			"name":        StringSchema(teamBiosNameMaxChars).WithDescription("Person's full name (rendered bold)"),
 			"role":        StringSchema(teamBiosRoleMaxChars).WithDescription("Role or title (rendered in accent color)"),
-			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio. Approximate readable limit: 220 characters with 1-4 members, 141 with 5-8; longer bios emit BODY_TOO_LONG."),
+			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio. Approximate readable limit: 220 characters with 1-4 members, 90 with 5-8; longer bios emit BODY_TOO_LONG."),
 			"photo":       PhotoSchema("Headshot, cover-cropped to a centered square photo frame; omit it to draw a square initials tile (alt defaults to the member's name and role)", teamBiosPhotoAltMaxChars),
 			"photo_label": StringSchema(teamBiosPhotoMaxChars).WithDescription("Label centred in the initials placeholder when no photo is given; defaults to initials derived from name"),
 		},

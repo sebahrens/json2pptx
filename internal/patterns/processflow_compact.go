@@ -72,16 +72,20 @@ func processFlowCompactLabelBudget(steps int, pointed bool) (wordLike, unbroken 
 		case 7:
 			return 40, 18
 		case 8:
-			return 35, 13
+			return 31, 13
 		default:
 			return 80, 80
 		}
 	}
-	if steps == 7 {
-		return 80, 76
-	}
-	if steps >= 8 {
-		return 80, 64
+	// Measured against the written size on every shipped template
+	// (go-slide-creator-n1muf).
+	switch {
+	case steps == 6:
+		return 80, 69
+	case steps == 7:
+		return 80, 57
+	case steps >= 8:
+		return 72, 48
 	}
 	return 80, 80
 }
@@ -109,7 +113,7 @@ func (p *processFlowCompact) PostExpandWarnings(_ ExpandContext, values, _ any) 
 func (p *processFlowCompact) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
-			"label": StringSchema(80).WithDescription("Step label text; compact chevron/arrow labels tighten to about 41/40/35 word-like characters at 6/7/8 steps, less for wide unbroken text"),
+			"label": StringSchema(80).WithDescription("Step label text; compact chevron/arrow labels tighten to about 41/40/31 word-like characters at 6/7/8 steps (rectangular steps about 72 at 8), less for wide unbroken text"),
 			"type":  EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: rectangle (step), diamond (decision), chevron, or right-arrow (arrow)").WithDefault("step"),
 		},
 		[]string{"label"},

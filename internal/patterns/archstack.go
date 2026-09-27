@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -85,11 +86,51 @@ func (a *archStack) NewValues() any       { return &ArchStackValues{} }
 func (a *archStack) NewOverrides() any    { return &ArchStackOverrides{} }
 func (a *archStack) NewCellOverride() any { return &ArchStackCellOverride{} }
 
+// archStackDescriptionBudgets returns the worded and unbroken-word budgets
+// for every tier description, measured against the written size (no run
+// stored below its role floor) on every shipped template with all tiers
+// populated (go-slide-creator-n1muf). Rails narrow the tier band.
+func archStackDescriptionBudgets(tiers, rails int) (words, wide int) {
+	rails = min(max(rails, 0), 3)
+	switch {
+	case tiers <= 4:
+		return 120, 120
+	case tiers == 5:
+		return 120, [4]int{120, 68, 65, 61}[rails]
+	case rails == 3:
+		return 117, 53
+	default:
+		return 120, [4]int{71, 58, 55, 53}[rails]
+	}
+}
+
+func (a *archStack) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
+	v, ok := values.(*ArchStackValues)
+	if !ok || v == nil {
+		return nil
+	}
+	words, wide := archStackDescriptionBudgets(len(v.Tiers), len(v.SideRails))
+	var warnings []string
+	for i, tier := range v.Tiers {
+		longest := 0
+		for _, word := range strings.Fields(tier.Description) {
+			longest = max(longest, runeLen(word))
+		}
+		switch {
+		case longest > wide:
+			warnings = append(warnings, fmt.Sprintf("%s: arch-stack tiers[%d].description contains a %d-character unbroken word; %d tiers with %d rails hold about %d wide characters per description — add word breaks, shorten the copy, or drop a rail", ErrCodeBodyTooLong, i, longest, len(v.Tiers), len(v.SideRails), wide))
+		case runeLen(tier.Description) > words:
+			warnings = append(warnings, fmt.Sprintf("%s: arch-stack tiers[%d].description is %d characters; %d tiers with %d rails hold about %d readable characters per description — shorten the copy", ErrCodeBodyTooLong, i, runeLen(tier.Description), len(v.Tiers), len(v.SideRails), words))
+		}
+	}
+	return warnings
+}
+
 func (a *archStack) Schema() *Schema {
 	tierSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":       StringSchema(60).WithDescription("Tier/layer name"),
-			"description": StringSchema(120).WithDescription("Technologies or details for this tier"),
+			"description": StringSchema(120).WithDescription("Technologies or details for this tier; with 5 tiers and rails keep unbroken runs near 68/65/61 characters (1/2/3 rails), with 6 tiers near 71/58/55/53 (0-3 rails) and copy to about 117 with 3 rails"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)

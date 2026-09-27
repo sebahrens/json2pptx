@@ -1,5 +1,24 @@
 # Schema Changelog
 
+- **2026-09-27 — Schema 4.150.0: written-size budgets for every probed pattern (`go-slide-creator-n1muf`).**
+  Every pattern budget calibrated by `probeReadableBudget` is now the written
+  size on all nine shipped templates plus local p-style, so published copy
+  targets never exceed what writes at or above the role floor. Schema
+  descriptions, `BODY_TOO_LONG` messages and budget pins changed for
+  horizontal-bar-with-callouts (now also labels), agenda-with-images,
+  before-after-compact, phase-roadmap, timeline-horizontal (dots),
+  stylish-panels (plus a single-bullet cap), hero-detail, table-highlight
+  (six option rows warn), quote-cluster (from four quotes), dual-org-ladder,
+  exec-summary (leads and supports), waterfall-bridge (unit), stat-hero
+  (combined label/context/source ≤120), scqa-summary, value-chain,
+  state-shift-hub, strategy-house, journey-maturity-model, process-flow and
+  process-flow-compact, arch-stack (new warnings), pyramid,
+  chart-insights-split (new insight budgets; source 92/80), matrix-2x2,
+  driver-tree (at most 12 leaf rows), comparison-2col (ten rows plus headers
+  warn), roadmap-phased, team-bios, swimlane (plus six-lane actors) and
+  numbered-step-strip. kpi-inline is unchanged. The input fingerprint is
+  unchanged.
+
 - **2026-09-27 — Schema 4.149.0: written-size copy budgets (`go-slide-creator-n1muf`).**
   Generation refuses `shape_grid` text written below its role floor, so
   pattern copy budgets are now calibrated against the written size on every

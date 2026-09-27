@@ -28,7 +28,7 @@ func TestSwimlaneStepBudgetsMatchProbe(t *testing.T) {
 	}
 	pat := &swimlane{}
 	steps := pat.Schema().raw.Properties["values"].raw.Properties["lanes"].raw.Items.raw.Properties["steps"]
-	if !strings.Contains(steps.raw.Description, "8: 80/80/62/42/32") || steps.raw.Items.raw.MaxLength == nil || *steps.raw.Items.raw.MaxLength != 80 {
+	if !strings.Contains(steps.raw.Description, "8: 80/61/41/31/21") || steps.raw.Items.raw.MaxLength == nil || *steps.raw.Items.raw.MaxLength != 80 {
 		t.Errorf("schema loses dense guidance or sparse maximum: %+v", steps.raw)
 	}
 }
@@ -36,7 +36,7 @@ func TestSwimlaneStepBudgetsMatchProbe(t *testing.T) {
 func TestSwimlaneWarningsNameStepAndShape(t *testing.T) {
 	pat := &swimlane{}
 	v := budgetSwimlane(8, 6)
-	v.Lanes[2].Steps[4] = strings.Repeat("S", 32)
+	v.Lanes[2].Steps[4] = strings.Repeat("S", 21)
 	atBudget := pat.PostExpandWarnings(ExpandContext{}, v, nil)
 	v.Lanes[2].Steps[4] += "x"
 	overBudget := pat.PostExpandWarnings(ExpandContext{}, v, nil)
@@ -45,5 +45,5 @@ func TestSwimlaneWarningsNameStepAndShape(t *testing.T) {
 	assertDenseGridWarnings(t, atBudget, overBudget,
 		pat.PostExpandWarnings(ExpandContext{}, v, nil),
 		pat.PostExpandWarnings(ExpandContext{}, nil, nil),
-		"lanes[2].steps[4]", "8-step x 6-lane", "about 32")
+		"lanes[2].steps[4]", "8-step x 6-lane", "about 21")
 }

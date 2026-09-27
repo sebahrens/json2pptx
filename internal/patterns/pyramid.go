@@ -77,7 +77,9 @@ func (p *pyramid) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	if !ok || v == nil || len(v.Tiers) < 4 {
 		return nil
 	}
-	budget := 116
+	// Measured against the written size on every shipped template
+	// (go-slide-creator-n1muf).
+	budget := 96
 	if len(v.Tiers) >= 5 {
 		budget = 70
 	}
@@ -94,7 +96,7 @@ func (p *pyramid) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 func (p *pyramid) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"tiers": ArraySchema(StringSchema(120), 3, 5).WithDescription("Tier labels, top (narrowest) to bottom (widest); top tier with 4/5 tiers holds about 116/70 wide unbroken characters; add word breaks for longer copy"),
+			"tiers": ArraySchema(StringSchema(120), 3, 5).WithDescription("Tier labels, top (narrowest) to bottom (widest); top tier with 4/5 tiers holds about 96/70 wide unbroken characters; add word breaks for longer copy"),
 		},
 		[]string{"tiers"},
 	).WithAdditionalProperties(false)
