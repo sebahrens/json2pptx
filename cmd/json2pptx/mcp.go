@@ -468,7 +468,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	if baseDirErr != nil {
 		return baseDirErr, nil
 	}
-	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir)
+	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths, urlCacheDir)...)
 	if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
 		return api.MCPDiagnosticsError(assetErrors), nil
 	}
@@ -1060,7 +1060,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	// icon.url, nested shape.icon.url). The downloaded cache is cleaned up
 	// before this handler returns — validate does not need the bytes, only
 	// confirmation that the URL is reachable.
-	urlFindings, urlCleanup, _, urlErr := mc.resolvePresentationURLs(input.Slides)
+	urlFindings, urlCleanup, urlCacheDir, urlErr := mc.resolvePresentationURLs(input.Slides)
 	defer urlCleanup()
 	if urlErr != nil {
 		return mcpErrorWithNext("URL_RESOLVER_INIT", fmt.Sprintf("resource resolver: %v", urlErr), nextCallRetry("validate_input", "presentation")), nil
@@ -1081,7 +1081,7 @@ func (mc *mcpConfig) handleValidate(ctx context.Context, request mcp.CallToolReq
 	if baseDirErr != nil {
 		return baseDirErr, nil
 	}
-	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths, urlCacheDir)...); len(assetFindings) > 0 {
 		boundaryDiags = append(boundaryDiags, assetFindings...)
 	}
 

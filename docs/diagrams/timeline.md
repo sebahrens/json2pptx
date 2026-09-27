@@ -77,7 +77,7 @@ For `milestone` type:
 | Field | Type | Description |
 |-------|------|-------------|
 | `description` | `string` | Additional text |
-| `icon` | `string` | Emoji or icon |
+| `icon` | `string` | Bundled icon name, inline `<svg>`, or `data:` URI (decoded size ≤ 512 KB; raster ≤ 4096×4096 px). Remote URLs and local file paths are ignored — no fetch or file read is made. |
 | `color` | `string` | Custom hex color |
 | `progress` | `number` | Completion % (0-100) |
 | `row` | `number` | Manual row assignment |

@@ -57,8 +57,33 @@ func IsSVGFile(path string) bool {
 		return false
 	}
 
+	// A file that opens with raster magic bytes is a raster, even when an
+	// "<svg" string follows (a GIF/SVG polyglot): routing it as SVG would
+	// skip image validation (go-slide-creator-csclk.77).
+	if hasRasterMagic(buf[:n]) {
+		return false
+	}
+
 	content := string(buf[:n])
 	return strings.Contains(content, "<svg") || strings.Contains(content, "<!DOCTYPE svg")
+}
+
+// hasRasterMagic reports whether data starts with a PNG, JPEG, GIF, BMP, WebP
+// or TIFF signature.
+func hasRasterMagic(data []byte) bool {
+	for _, magic := range [][]byte{
+		{0x89, 'P', 'N', 'G'},
+		{0xFF, 0xD8, 0xFF},
+		[]byte("GIF8"),
+		[]byte("BM"),
+		{0x49, 0x49, 0x2A, 0x00},
+		{0x4D, 0x4D, 0x00, 0x2A},
+	} {
+		if bytes.HasPrefix(data, magic) {
+			return true
+		}
+	}
+	return len(data) >= 12 && bytes.Equal(data[0:4], []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WEBP"))
 }
 
 // SVGConverter handles conversion of SVG files to PNG or EMF format.

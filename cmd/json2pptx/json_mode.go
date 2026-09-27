@@ -557,7 +557,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 				// ICON_PATH_SYMLINK_ESCAPE. validate already absolutizes via
 				// validateBaseDir; sharing it keeps the two CLI surfaces in lockstep.
 				inputDir := validateBaseDir(jsonPath, "")
-				assetFindings := resolveLocalAssetPaths(input.Slides, inputDir)
+				assetFindings := resolveLocalAssetPaths(input.Slides, inputDir, imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir)...)
 				if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
 					preConvertErr = assetErr
 					return preConvertErr

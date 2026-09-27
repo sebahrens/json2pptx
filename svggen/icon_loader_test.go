@@ -1,10 +1,15 @@
 package svggen
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
+	"image"
+	"image/png"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -99,9 +104,39 @@ func TestLoadIcon_URL(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Remote icon URLs are refused (SSRF guard): no request, nil image.
 	img := LoadIcon(server.URL+"/icon.svg", 64)
-	if img == nil {
-		t.Fatal("Expected non-nil image for URL icon")
+	if img != nil {
+		t.Fatal("Expected nil image for URL icon (remote icons are refused)")
+	}
+}
+
+func TestLoadIcon_FilePathRefused(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "icon.svg")
+	if err := os.WriteFile(p, []byte(`<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10"/></svg>`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if img := LoadIcon(p, 64); img != nil {
+		t.Fatal("Expected nil image for file-path icon (local paths are refused)")
+	}
+}
+
+func TestDecodeDataURI_SizeLimit(t *testing.T) {
+	uri := "data:image/png;base64," + base64.StdEncoding.EncodeToString(make([]byte, iconMaxBytes+10))
+	if _, err := decodeDataURI(uri); err == nil {
+		t.Fatal("Expected error for oversized data URI")
+	}
+}
+
+func TestRasterizeIconData_RejectsHugeRaster(t *testing.T) {
+	var buf bytes.Buffer
+	img := image.NewGray(image.Rect(0, 0, 4097, 4097))
+	if err := png.Encode(&buf, img); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rasterizeIconData(buf.Bytes(), 64); err == nil {
+		t.Fatal("Expected error for raster above the pixel cap")
 	}
 }
 
@@ -136,21 +171,6 @@ func TestLoadIcon_InvalidData(t *testing.T) {
 	img := LoadIcon(uri, 64)
 	if img != nil {
 		t.Error("Expected nil for invalid image data")
-	}
-}
-
-func TestFetchURL_SizeLimit(t *testing.T) {
-	// Serve data that exceeds the limit
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		data := make([]byte, iconMaxBytes+100)
-		w.Write(data)
-	}))
-	defer server.Close()
-
-	_, err := fetchURL(server.URL)
-	if err == nil {
-		t.Error("Expected error for oversized response")
 	}
 }
 

@@ -12,6 +12,46 @@ import (
 // 100 MB is generous for any PPTX XML part (typical slide XML is <50 KB).
 const MaxZipEntrySize = 100 << 20 // 100 MB
 
+// MaxZipTotalSize caps the summed declared uncompressed size of every entry
+// in a user-supplied PPTX/template archive (zip-bomb guard).
+const MaxZipTotalSize = 256 << 20 // 256 MB
+
+// maxZipEntryRatio is the largest uncompressed:compressed ratio accepted for
+// an entry larger than zipRatioMinSize. Real OOXML parts compress ~5-30x;
+// DEFLATE tops out near 1030x, which is what a bomb uses.
+const (
+	maxZipEntryRatio = 200
+	zipRatioMinSize  = 10 << 20 // 10 MB
+)
+
+// CheckZipLimits rejects a ZIP archive whose entries would decompress past
+// MaxZipEntrySize each or MaxZipTotalSize in total, or whose large entries
+// have a bomb-like compression ratio. archive/zip refuses to read past an
+// entry's declared UncompressedSize64, so the declared sizes are binding.
+func CheckZipLimits(files []*zip.File) error {
+	var total uint64
+	for _, f := range files {
+		size := f.UncompressedSize64
+		if size > MaxZipEntrySize {
+			return fmt.Errorf("ZIP entry %s: uncompressed size %d exceeds %d byte limit", f.Name, size, MaxZipEntrySize)
+		}
+		if size > zipRatioMinSize && size > f.CompressedSize64*maxZipEntryRatio {
+			return fmt.Errorf("ZIP entry %s: compression ratio exceeds %d:1 (possible zip bomb)", f.Name, maxZipEntryRatio)
+		}
+		total += size
+		if total > MaxZipTotalSize {
+			return fmt.Errorf("ZIP archive: total uncompressed size exceeds %d byte limit", MaxZipTotalSize)
+		}
+	}
+	return nil
+}
+
+// ReadZipEntryLimited reads up to MaxZipEntrySize bytes from r and returns an
+// error, rather than silently truncating, when the entry is larger.
+func ReadZipEntryLimited(r io.Reader, name string) ([]byte, error) {
+	return readLimited(r, name)
+}
+
 // DeterministicTimestamp is the fixed modification time used for all ZIP entries
 // to ensure byte-identical output across runs. Matches internal/pptx convention.
 var DeterministicTimestamp = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)

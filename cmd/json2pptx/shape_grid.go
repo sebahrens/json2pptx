@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"os"
@@ -1490,7 +1491,7 @@ var imageAssetExtensions = map[string]bool{
 //
 // Prefer resolveLocalAssetPaths in new callers — it walks all local-asset
 // surfaces (icon, image, background) in one pass.
-func resolveIconPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnostic {
+func resolveIconPaths(slides []SlideInput, baseDir string, allowList ...string) []diagnostics.Diagnostic {
 	var findings []diagnostics.Diagnostic
 	for i := range slides {
 		if slides[i].ShapeGrid == nil {
@@ -1505,12 +1506,12 @@ func resolveIconPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnos
 				// Resolve icon on cell
 				if cell.Icon != nil {
 					path := slidepath.GridCellField(i, j, k, "icon")
-					findings = append(findings, resolveIconInputPath(cell.Icon, baseDir, i, path)...)
+					findings = append(findings, resolveIconInputPath(cell.Icon, baseDir, i, path, allowList...)...)
 				}
 				// Resolve icon nested inside shape
 				if cell.Shape != nil && cell.Shape.Icon != nil {
 					path := slidepath.GridCellField(i, j, k, "shape/icon")
-					findings = append(findings, resolveIconInputPath(cell.Shape.Icon, baseDir, i, path)...)
+					findings = append(findings, resolveIconInputPath(cell.Shape.Icon, baseDir, i, path, allowList...)...)
 				}
 			}
 		}
@@ -1552,7 +1553,7 @@ var panelFamilyDiagramTypes = map[string]bool{
 // Bundled-name, inline-svg, data-URI, and URL icons are left untouched for the
 // generator's resolver. Path resolution and traversal-safety reuse
 // resolveIconInputPath; the read + fill reuse resolveIconSVG.
-func resolvePanelDiagramIcons(slide *SlideInput, baseDir string, slideIdx int) []diagnostics.Diagnostic {
+func resolvePanelDiagramIcons(slide *SlideInput, baseDir string, slideIdx int, allowList ...string) []diagnostics.Diagnostic {
 	var findings []diagnostics.Diagnostic
 	for j := range slide.Content {
 		c := &slide.Content[j]
@@ -1577,7 +1578,7 @@ func resolvePanelDiagramIcons(slide *SlideInput, baseDir string, slideIdx int) [
 			if icon == nil || icon.Path == "" {
 				continue // only file-path icons need cmd-side resolution
 			}
-			if diags := resolveIconInputPath(icon, baseDir, slideIdx, jsonPath); len(diags) > 0 {
+			if diags := resolveIconInputPath(icon, baseDir, slideIdx, jsonPath, allowList...); len(diags) > 0 {
 				findings = append(findings, diags...)
 				if anyDiagnosticError(diags) {
 					continue
@@ -1660,12 +1661,12 @@ func anyDiagnosticError(diags []diagnostics.Diagnostic) bool {
 	return false
 }
 
-func resolveLocalAssetPaths(slides []SlideInput, baseDir string) []diagnostics.Diagnostic {
+func resolveLocalAssetPaths(slides []SlideInput, baseDir string, allowList ...string) []diagnostics.Diagnostic {
 	var findings []diagnostics.Diagnostic
 	// Reuse the existing icon walker so its tests stay authoritative.
-	findings = append(findings, resolveIconPaths(slides, baseDir)...)
+	findings = append(findings, resolveIconPaths(slides, baseDir, allowList...)...)
 	for i := range slides {
-		findings = append(findings, resolveSlideAssets(&slides[i], baseDir, i)...)
+		findings = append(findings, resolveSlideAssets(&slides[i], baseDir, i, allowList...)...)
 	}
 	findings = append(findings, resolvePatternImagePaths(slides, baseDir)...)
 	return findings
@@ -1674,7 +1675,7 @@ func resolveLocalAssetPaths(slides []SlideInput, baseDir string) []diagnostics.D
 // resolveSlideAssets resolves background, content image_value, and shape-grid
 // image cell paths for one slide. Extracted from resolveLocalAssetPaths to
 // keep that function's cognitive complexity under the linter ceiling.
-func resolveSlideAssets(slide *SlideInput, baseDir string, slideIdx int) []diagnostics.Diagnostic {
+func resolveSlideAssets(slide *SlideInput, baseDir string, slideIdx int, allowList ...string) []diagnostics.Diagnostic {
 	var findings []diagnostics.Diagnostic
 	if bg := slide.Background; bg != nil && bg.Image != "" {
 		path := slidepath.SlideField(slideIdx, "background/image")
@@ -1692,7 +1693,7 @@ func resolveSlideAssets(slide *SlideInput, baseDir string, slideIdx int) []diagn
 	}
 	// Resolve file-path icons inside panel-family diagrams into inline svg_data so
 	// the generator embeds them as native SVG (matching shape_grid icon handling).
-	findings = append(findings, resolvePanelDiagramIcons(slide, baseDir, slideIdx)...)
+	findings = append(findings, resolvePanelDiagramIcons(slide, baseDir, slideIdx, allowList...)...)
 	if slide.ShapeGrid == nil {
 		return findings
 	}
@@ -1752,6 +1753,16 @@ func expandAssetPath(rawPath string) (string, string) {
 	}
 	var unsetVar string
 	expanded := os.Expand(p, func(name string) string {
+		// Only allow-listed variables expand: an arbitrary name would let a
+		// caller (an MCP model, or prompt-injected deck content) read any
+		// server env var back out of a path diagnostic. A non-allow-listed
+		// name is reported exactly like an unset one.
+		if !assetPathEnvAllowed(name) {
+			if unsetVar == "" {
+				unsetVar = name
+			}
+			return ""
+		}
 		v, ok := os.LookupEnv(name)
 		if !ok && unsetVar == "" {
 			unsetVar = name
@@ -1762,6 +1773,29 @@ func expandAssetPath(rawPath string) (string, string) {
 		return rawPath, unsetVar
 	}
 	return expanded, ""
+}
+
+// assetPathEnvAllowed reports whether $name may be expanded inside an asset
+// or template path: HOME, BRAND_ASSETS, and any JSON2PPTX_* variable.
+func assetPathEnvAllowed(name string) bool {
+	return name == "HOME" || name == "BRAND_ASSETS" || strings.HasPrefix(name, "JSON2PPTX_")
+}
+
+// pathErrReason renders a filesystem error without the (expanded, absolute)
+// path it carries, so diagnostics quote only the caller's raw input and never
+// echo env-var values or server directories.
+func pathErrReason(err error) string {
+	switch {
+	case os.IsNotExist(err):
+		return "no such file or directory"
+	case os.IsPermission(err):
+		return "permission denied"
+	}
+	var pe *os.PathError
+	if errors.As(err, &pe) {
+		return pe.Err.Error()
+	}
+	return "cannot resolve path"
 }
 
 // prepareIconPath runs the per-icon path prep steps shared by all callers:
@@ -1790,7 +1824,7 @@ func prepareIconPath(rawPath string, slideIdx int, jsonPath string) (string, *di
 	if unsetVar != "" {
 		return "", &diagnostics.Diagnostic{
 			Code:     diagnostics.CodeAssetPathEnvUnset,
-			Message:  fmt.Sprintf("icon path %q references unset environment variable %q", rawPath, unsetVar),
+			Message:  fmt.Sprintf("icon path %q references environment variable %q that is unset or not permitted (allowed: HOME, BRAND_ASSETS, JSON2PPTX_*)", rawPath, unsetVar),
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
@@ -1798,14 +1832,14 @@ func prepareIconPath(rawPath string, slideIdx int, jsonPath string) (string, *di
 				"asset_kind":   "icon",
 				"input_value":  rawPath,
 				"env_variable": unsetVar,
-				"remediation":  fmt.Sprintf("export %s before invoking, or supply a literal path", unsetVar),
+				"remediation":  fmt.Sprintf("export %s before invoking (only HOME, BRAND_ASSETS and JSON2PPTX_* expand), or supply a literal path", unsetVar),
 			},
 		}
 	}
 	if err := utils.ValidatePath(filepath.FromSlash(expanded), nil); err != nil {
 		return "", &diagnostics.Diagnostic{
 			Code:     diagnostics.CodeIconPathTraversal,
-			Message:  fmt.Sprintf("icon path %q (expanded %q): %v", rawPath, expanded, err),
+			Message:  fmt.Sprintf("icon path %q: %v (after environment expansion)", rawPath, err),
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
@@ -1864,7 +1898,7 @@ func resolveLocalAssetPath(rawPath, baseDir string, allowedExts map[string]bool,
 	if unsetVar != "" {
 		return "", &diagnostics.Diagnostic{
 			Code:     diagnostics.CodeAssetPathEnvUnset,
-			Message:  fmt.Sprintf("%s path %q references unset environment variable %q", assetKind, rawPath, unsetVar),
+			Message:  fmt.Sprintf("%s path %q references environment variable %q that is unset or not permitted (allowed: HOME, BRAND_ASSETS, JSON2PPTX_*)", assetKind, rawPath, unsetVar),
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
@@ -1872,7 +1906,7 @@ func resolveLocalAssetPath(rawPath, baseDir string, allowedExts map[string]bool,
 				"asset_kind":   assetKind,
 				"input_value":  rawPath,
 				"env_variable": unsetVar,
-				"remediation":  fmt.Sprintf("export %s before invoking, or supply a literal path", unsetVar),
+				"remediation":  fmt.Sprintf("export %s before invoking (only HOME, BRAND_ASSETS and JSON2PPTX_* expand), or supply a literal path", unsetVar),
 			},
 		}
 	}
@@ -1889,7 +1923,7 @@ func resolveLocalAssetPath(rawPath, baseDir string, allowedExts map[string]bool,
 	if err != nil {
 		return "", &diagnostics.Diagnostic{
 			Code:     code,
-			Message:  fmt.Sprintf("%s path %q: %v", assetKind, rawPath, err),
+			Message:  fmt.Sprintf("%s path %q: %s", assetKind, rawPath, pathErrReason(err)),
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
@@ -2015,7 +2049,10 @@ func checkIconSourceArity(hasName, hasPath, hasURL, hasSVGData bool, slideIdx in
 //
 // jsonPath is the RFC 6901 pointer to the icon node, used so callers can map
 // each finding back to the exact JSON location.
-func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPath string) []diagnostics.Diagnostic {
+// allowList, when non-empty, is the ALLOWED_IMAGE_PATHS restriction
+// (imageAllowList): the resolved icon file must live under one of its roots,
+// the same rule image_value / grid image / background paths obey.
+func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPath string, allowList ...string) []diagnostics.Diagnostic {
 	hasName := icon.Name != ""
 	hasPath := icon.Path != ""
 	hasURL := icon.URL != ""
@@ -2106,7 +2143,7 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 		}
 		return []diagnostics.Diagnostic{{
 			Code:     code,
-			Message:  fmt.Sprintf("icon path %q: %v", icon.Path, err),
+			Message:  fmt.Sprintf("icon path %q: %s", icon.Path, pathErrReason(err)),
 			Path:     jsonPath,
 			Severity: diagnostics.SeverityError,
 			Details: map[string]any{
@@ -2150,6 +2187,25 @@ func resolveIconInputPath(icon *IconInput, baseDir string, slideIdx int, jsonPat
 					},
 				}}
 			}
+		}
+	}
+
+	// ALLOWED_IMAGE_PATHS: when a restriction is configured, the resolved
+	// icon file must sit under an allowed root, exactly like image paths.
+	if len(allowList) > 0 {
+		if err := utils.ValidatePath(resolved, allowList); err != nil {
+			return []diagnostics.Diagnostic{{
+				Code:     diagnostics.CodeIconPath,
+				Message:  fmt.Sprintf("icon path %q: %v", icon.Path, err),
+				Path:     jsonPath,
+				Severity: diagnostics.SeverityError,
+				Details: map[string]any{
+					"slide_index": slideIdx,
+					"asset_kind":  "icon",
+					"input_value": icon.Path,
+					"remediation": "place the icon under a directory listed in ALLOWED_IMAGE_PATHS, or use a bundled icon via 'name' or inline 'svg_data'",
+				},
+			}}
 		}
 	}
 

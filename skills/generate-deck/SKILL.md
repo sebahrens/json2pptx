@@ -46,7 +46,8 @@ patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts
 / "who to call": grouped rows of circular headshots, names and titles, up to
 24 people) and `text-sidebar` (prose introduction or foreword beside one large
 key-message panel). A shape-grid `image` cell accepts `geometry: "ellipse"` for
-a circular picture frame.
+a circular picture frame. Asset paths expand only `$HOME`, `$BRAND_ASSETS`,
+`$JSON2PPTX_*`; `icon.path` obeys `ALLOWED_IMAGE_PATHS`.
 
 For both paths, a passing `quality_gate` or `deterministic_ready` field is a
 precondition, not proof that anybody looked at the slides. On a fresh semantic
