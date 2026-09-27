@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 func budgetProbeCopy(length int) string {
@@ -26,7 +27,9 @@ func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload fun
 			t.Fatal(err)
 		}
 	}
-	templateNames := schemaMaximaTemplateNames(t)
+	// Every shipped template (plus local p-style): a budget is only as good
+	// as the smallest content area it has to hold on.
+	templateNames := testutil.AllTestTemplateNames()
 	geometries := make([]schemaMaximaGeometry, 0, len(templateNames))
 	for _, name := range templateNames {
 		geometries = append(geometries, loadSchemaMaximaGeometry(t, name))
@@ -40,7 +43,7 @@ func probeReadableBudget(t *testing.T, pattern string, maxChars int, payload fun
 			input := &PresentationInput{Template: geom.name, Slides: []SlideInput{{
 				SlideType: "content", LayoutID: "blank-title", Pattern: &PatternInput{Name: pattern, Values: encoded, Overrides: encodedOverrides},
 			}}}
-			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 {
+			if len(collectReadabilityFindings(input, geom.layouts, geom.width, geom.height)) > 0 || writtenRoleViolations(t, input, geom) > 0 {
 				return false
 			}
 		}

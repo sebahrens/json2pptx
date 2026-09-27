@@ -1,5 +1,14 @@
 # Schema Changelog
 
+- **2026-09-27 — Schema 4.149.0: written-size copy budgets (`go-slide-creator-n1muf`).**
+  Generation refuses `shape_grid` text written below its role floor, so
+  pattern copy budgets are now calibrated against the written size on every
+  shipped template (and the local p-style) instead of the advisory preflight
+  predictor, which tolerated shrinks down to 85%. `bmc-canvas` budgets
+  tighten: narrow middle cells 125 / 50 / 25 / 22 characters for 1 / 2 / 3 /
+  4–5 bullets, at most five bullets there and in the cost/revenue cells; the
+  `BODY_TOO_LONG` bullet-count warning names each cell's own limit.
+
 - **2026-09-27 — Schema 4.148.0: pre-release review round 2 (`go-slide-creator-csclk`).**
   Contract surface changed by the batch fixes listed below: raw slides gain the
   engine-set `section_title`, DeckSpec team members accept `photo`,

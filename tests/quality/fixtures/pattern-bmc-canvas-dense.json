@@ -3,7 +3,7 @@
   "output_filename": "pattern-bmc-canvas-dense.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout7",
+      "layout_id": "blank-title",
       "content": [
         {
           "placeholder_id": "title",
@@ -14,12 +14,12 @@
       "pattern": {
         "name": "bmc-canvas",
         "values": {
-          "key_partners": {"header": "Key Partners", "bullets": ["Cloud infrastructure providers (AWS, Azure, GCP)", "System integrators (Accenture, Deloitte)", "Technology OEMs (Intel, NVIDIA)", "Channel resellers in APAC and EMEA", "Open-source community contributors", "Academic research institutions"]},
-          "key_activities": {"header": "Key Activities", "bullets": ["Platform R&D", "Enterprise sales", "Customer success", "Partner ecosystem", "Compliance certification", "Developer community"]},
-          "key_resources": {"header": "Key Resources", "bullets": ["Engineering team (120+)", "Proprietary ML models", "35 filed patents", "Enterprise relationships", "SOC 2 / HIPAA certified", "Global CDN"]},
-          "value_propositions": {"header": "Value Propositions", "bullets": ["10x faster time-to-insight vs. legacy tools", "No-code analytics for business users", "Enterprise-grade security and compliance", "Real-time collaborative decision-making", "Seamless integration with 200+ data sources", "Predictive analytics powered by proprietary AI"]},
-          "customer_relations": {"header": "Customer Relationships", "bullets": ["Success managers", "Tiered support plans", "Quarterly reviews", "Knowledge base", "Certification programs", "Annual user conference"]},
-          "channels": {"header": "Channels", "bullets": ["Direct enterprise sales", "Self-serve platform", "150+ reseller partners", "Cloud marketplaces", "Developer docs portal", "Industry events"]},
+          "key_partners": {"header": "Key Partners", "bullets": ["Cloud providers (AWS, Azure, GCP)", "System integrators (Accenture, Deloitte)", "Technology OEMs (Intel, NVIDIA)", "Channel resellers in APAC and EMEA", "Open-source community contributors", "Academic research institutions"]},
+          "key_activities": {"header": "Key Activities", "bullets": ["Platform R&D", "Enterprise sales", "Customer success", "Partner ecosystem", "Certifications"]},
+          "key_resources": {"header": "Key Resources", "bullets": ["120+ engineers", "Proprietary ML models", "35 filed patents", "Enterprise accounts", "SOC 2 / HIPAA"]},
+          "value_propositions": {"header": "Value Propositions", "bullets": ["10x faster time-to-insight vs. legacy tools", "No-code analytics for business users", "Enterprise-grade security and compliance", "Real-time collaborative decision-making", "Seamless integration with 200+ data sources", "Predictive analytics on proprietary AI"]},
+          "customer_relations": {"header": "Customer Relationships", "bullets": ["Success managers", "Tiered support", "Quarterly reviews", "Knowledge base", "Certifications"]},
+          "channels": {"header": "Channels", "bullets": ["Direct sales", "Self-serve", "150+ resellers", "Cloud marketplaces", "Developer docs"]},
           "customer_segments": {"header": "Customer Segments", "bullets": ["Enterprise (5000+ employees)", "Mid-market (500-5000 employees)", "Public sector and government", "Financial services and banking", "Healthcare and life sciences", "Retail and e-commerce"]},
           "cost_structure": {"header": "Cost Structure", "bullets": ["Engineering salaries (55% of costs)", "Cloud infrastructure hosting (18%)", "Sales and marketing (15%)", "G&A and legal/compliance (8%)", "R&D partnerships and grants (4%)"]},
           "revenue_streams": {"header": "Revenue Streams", "bullets": ["Annual SaaS subscriptions (70%)", "Professional services/consulting (15%)", "Marketplace transaction fees (8%)", "Training and certification revenue (4%)", "Data enrichment add-ons (3%)"]}

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
@@ -238,7 +239,7 @@ func (d *dualOrgLadder) Validate(values, overrides any, cellOverrides map[int]an
 	return errors.Join(errs...)
 }
 
-func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
+func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	v, ok := values.(*DualOrgLadderValues)
 	if !ok {
 		return nil, fmt.Errorf("dual-org-ladder: values must be *DualOrgLadderValues, got %T", values)
@@ -288,13 +289,30 @@ func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverr
 		}
 	}
 
+	// Each body row holds its role cards at their written size: with six rows
+	// on a short content area the fixed 18% header squeezed them until the
+	// cards were stored at 96% autofit, below the floor. A body-row minimum
+	// (by the writer's own measure) makes the header give way instead
+	// (go-slide-creator-n1muf).
+	contentW, _ := contentAreaPt(ctx)
+	cardW := (contentW - dualOrgColGapPt) / 2
+	bodyMinPt := 0.0
+	for _, row := range v.Rows {
+		for _, c := range []*jsonschema.GridCellInput{
+			buildDualOrgRoleCell(row.ANameField, row.ATitle, nameSize, titleSize),
+			buildDualOrgRoleCell(row.BNameField, row.BTitle, nameSize, titleSize),
+		} {
+			bodyMinPt = math.Max(bodyMinPt, writtenFitHeightPt(c.Shape.Text, cardW, 0))
+		}
+	}
+
 	bodyRows := make([]jsonschema.GridRowInput, len(v.Rows))
 	for i, row := range v.Rows {
 		cells := []*jsonschema.GridCellInput{
 			buildDualOrgRoleCell(row.ANameField, row.ATitle, nameSize, titleSize),
 			buildDualOrgRoleCell(row.BNameField, row.BTitle, nameSize, titleSize),
 		}
-		gridRow := jsonschema.GridRowInput{Cells: cells}
+		gridRow := jsonschema.GridRowInput{Cells: cells, MinHeight: bodyMinPt}
 		if showConnectors {
 			gridRow.Connector = &jsonschema.ConnectorSpecInput{
 				Style: "line",
@@ -323,7 +341,7 @@ func (d *dualOrgLadder) Expand(_ ExpandContext, values, overrides any, cellOverr
 	colsJSON, _ := json.Marshal(2)
 	return &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
-		ColGap:  24, // visible gap between the two columns
+		ColGap:  dualOrgColGapPt, // visible gap between the two columns
 		RowGap:  6,
 		Rows:    rows,
 	}, nil
@@ -351,6 +369,9 @@ func headerBFill(accentA, accentB string, usePeerTone bool) json.RawMessage {
 	}
 	return accentFillJSON(accentB)
 }
+
+// dualOrgColGapPt is the visible gap between the two org columns.
+const dualOrgColGapPt = 24.0
 
 func buildDualOrgRoleCell(memberName, title string, nameSize, titleSize float64) *jsonschema.GridCellInput {
 	return &jsonschema.GridCellInput{

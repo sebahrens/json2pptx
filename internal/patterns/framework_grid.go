@@ -288,6 +288,12 @@ func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOver
 				textParagraph{text: inlineMarkupRe.ReplaceAllString(card.Body, ""), size: l.bodyPt}))
 		}
 		h = math.Round(math.Max(h+2*defaultShapeInsetTBPt+2*fgCardPadPt, fgMinRowPt))
+		// Cards must also fit by the writer's own measure at their unstretched
+		// inset: sized by the theme-font model alone, abstract's cards were
+		// stored at 92% autofit, below the body floor (go-slide-creator-n1muf).
+		for _, card := range row.Cards {
+			h = math.Max(h, writtenFitHeightPt(fgCardTextJSON(card, l, "dk1", "dk1", math.Round(defaultShapeInsetTBPt+fgCardPadPt)), cardW, h))
+		}
 		if h > l.contentHPt {
 			l.contentHPt, l.tallestRow = h, i
 		}
@@ -304,6 +310,12 @@ func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOver
 	if n > 0 {
 		per := (sizingH*fgFillFrac - gaps) / n
 		l.rowHPt = math.Round(clampPt(per, l.contentHPt, l.contentHPt*fgMaxStretch))
+		// Never stretch past the content area itself: the grid would scale
+		// every row back down while the card inset kept the stretched value,
+		// storing abstract's cards at 92% autofit (go-slide-creator-n1muf).
+		if fit := math.Floor((contentH - gaps) / n); l.rowHPt > fit {
+			l.rowHPt = math.Max(l.contentHPt, fit)
+		}
 	}
 	return l
 }
@@ -398,14 +410,10 @@ func (p *frameworkGrid) Expand(ctx ExpandContext, values, overrides any, cellOve
 			accent := ctx.ResolveCellAccent(base, j, ovr.CellAccentMode)
 			tone := fgCardTone(accent)
 			body := strings.TrimSpace(card.Body)
-			paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(card.Title), Size: l.titlePt, Bold: true, Color: fgTitleInk(ctx, accent, tone, l.titlePt, body != ""), Align: "l", SpaceAfter: 2}}
-			if body != "" {
-				paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(body), Size: l.bodyPt, Color: readableTextOn(ctx, tone, "dk1"), Align: "l"})
-			}
 			// Every card is top-anchored at the same inset, so titles line up
 			// across the row; the inset centres the row's tallest card, which
 			// splits the stretch evenly above and below it.
-			text := patternTextObj{Paragraphs: paras, Align: "l", VerticalAlign: "t", InsetTop: insetTop}.json()
+			text := fgCardTextJSON(card, l, fgTitleInk(ctx, accent, tone, l.titlePt, body != ""), readableTextOn(ctx, tone, "dk1"), insetTop)
 			cell := &jsonschema.GridCellInput{
 				Shape: &jsonschema.ShapeSpecInput{
 					Geometry: "rect",
@@ -470,4 +478,14 @@ func (p *frameworkGrid) PostExpandWarnings(ctx ExpandContext, values, overrides 
 	return []string{fmt.Sprintf(
 		"%s: framework-grid rows[%d] sets a %.0fpt row height and every row takes it; %d rows need about %.0fpt but the content area holds %.0fpt, so every card shrinks — shorten the card bodies in rows[%d], drop a row, or split the framework",
 		ErrCodeBodyTooLong, l.tallestRow, l.contentHPt, len(v.Rows), l.neededHPt, l.areaHPt, l.tallestRow)}
+}
+
+// fgCardTextJSON is the text object a framework card is written with.
+func fgCardTextJSON(card FrameworkGridCard, l fgLayout, titleInk, bodyInk string, insetTop float64) json.RawMessage {
+	body := strings.TrimSpace(card.Body)
+	paras := []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(card.Title), Size: l.titlePt, Bold: true, Color: titleInk, Align: "l", SpaceAfter: 2}}
+	if body != "" {
+		paras = append(paras, chartInsightsParagraph{Content: pptx.ConvertMarkdownEmphasis(body), Size: l.bodyPt, Color: bodyInk, Align: "l"})
+	}
+	return patternTextObj{Paragraphs: paras, Align: "l", VerticalAlign: "t", InsetTop: insetTop}.json()
 }

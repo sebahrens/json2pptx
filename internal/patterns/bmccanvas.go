@@ -96,15 +96,31 @@ func (b *bmcCanvas) NewValues() any       { return &BMCCanvasValues{} }
 func (b *bmcCanvas) NewOverrides() any    { return &BMCCanvasOverrides{} }
 func (b *bmcCanvas) NewCellOverride() any { return &BMCCanvasCellOverride{} }
 
-// Calibrated with TestPatternBudgetProbe across all bundled templates. Each
-// entry is the approximate characters per bullet when every bullet in that
-// cell has the same length and the other eight cells contain short copy.
-// Index zero is unused because a BMC cell requires at least one bullet.
+// Calibrated with TestPatternBudgetProbe across every shipped template (and
+// the local p-style when present) against the WRITTEN size: a budget is clean
+// only when no populated run is stored below its role floor, the check
+// generation refuses on. The earlier table was calibrated against the advisory
+// preflight predictor, which ignores shrinks down to 85%, so copy within it was
+// refused (go-slide-creator-n1muf). Each entry is the approximate characters
+// per bullet when every bullet in that cell has the same length and the other
+// eight cells contain short copy. Index zero is unused because a BMC cell
+// requires at least one bullet; a zero entry is a count the cell cannot hold.
 var bmcBulletBudgets = [4][11]int{
-	{0, 200, 200, 127, 102, 77, 52, 52, 52, 26, 26}, // tall narrow
-	{0, 177, 77, 52, 26, 26, 26, 26, 0, 0, 0},       // short narrow
-	{0, 200, 200, 183, 92, 92, 92, 92, 0, 0, 0},     // cost structure
-	{0, 200, 181, 121, 58, 58, 58, 58, 0, 0, 0},     // revenue streams
+	{0, 200, 143, 93, 68, 43, 43, 22, 22, 22, 22}, // tall narrow
+	{0, 125, 50, 25, 22, 22, 0, 0, 0, 0, 0},       // short narrow
+	{0, 200, 165, 82, 78, 78, 0, 0, 0, 0, 0},      // cost structure
+	{0, 200, 103, 52, 51, 51, 0, 0, 0, 0, 0},      // revenue streams
+}
+
+// bmcMaxBullets is the largest bullet count group g holds readably.
+func bmcMaxBullets(group int) int {
+	most := 0
+	for count, budget := range bmcBulletBudgets[group] {
+		if budget > 0 {
+			most = count
+		}
+	}
+	return most
 }
 
 type bmcNamedCell struct {
@@ -143,8 +159,8 @@ func (b *bmcCanvas) PostExpandWarnings(_ ExpandContext, values, _ any) []string 
 		budget := bmcBulletBudgets[named.group][count]
 		if budget == 0 {
 			warnings = append(warnings, fmt.Sprintf(
-				"%s: bmc-canvas %s.bullets has %d items; this cell holds at most 7 readable bullets — reduce the count",
-				ErrCodeBodyTooLong, named.name, count))
+				"%s: bmc-canvas %s.bullets has %d items; this cell holds at most %d readable bullets — reduce the count",
+				ErrCodeBodyTooLong, named.name, count, bmcMaxBullets(named.group)))
 			continue
 		}
 		for i, bullet := range named.cell.Bullets {
@@ -168,10 +184,10 @@ func (b *bmcCanvas) Schema() *Schema {
 			[]string{"header", "bullets"},
 		).WithAdditionalProperties(false).WithDescription(description)
 	}
-	const tall = "1-2: 200; 3: 127; 4: 102; 5: 77; 6-8: 52; 9-10: 26"
-	const short = "1: 177; 2: 77; 3: 52; 4-7: 26; use at most 7 bullets"
-	const cost = "1-2: 200; 3: 183; 4-7: 92; use at most 7 bullets"
-	const revenue = "1: 200; 2: 181; 3: 121; 4-7: 58; use at most 7 bullets"
+	const tall = "1: 200; 2: 143; 3: 93; 4: 68; 5-6: 43; 7-10: 22"
+	const short = "1: 125; 2: 50; 3: 25; 4-5: 22; use at most 5 bullets"
+	const cost = "1: 200; 2: 165; 3: 82; 4-5: 78; use at most 5 bullets"
+	const revenue = "1: 200; 2: 103; 3: 52; 4-5: 51; use at most 5 bullets"
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{

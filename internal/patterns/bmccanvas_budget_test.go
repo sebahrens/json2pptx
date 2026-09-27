@@ -22,10 +22,10 @@ func TestBMCCanvasCellBudgetsAndSchemaGuidance(t *testing.T) {
 		set           func(*BMCCanvasValues, []string)
 		count, budget int
 	}{
-		{"tall", func(v *BMCCanvasValues, b []string) { v.KeyPartners.Bullets = b }, 3, 127},
-		{"short", func(v *BMCCanvasValues, b []string) { v.KeyActivities.Bullets = b }, 3, 52},
-		{"cost", func(v *BMCCanvasValues, b []string) { v.CostStructure.Bullets = b }, 3, 183},
-		{"revenue", func(v *BMCCanvasValues, b []string) { v.RevenueStreams.Bullets = b }, 3, 121},
+		{"tall", func(v *BMCCanvasValues, b []string) { v.KeyPartners.Bullets = b }, 3, 93},
+		{"short", func(v *BMCCanvasValues, b []string) { v.KeyActivities.Bullets = b }, 3, 25},
+		{"cost", func(v *BMCCanvasValues, b []string) { v.CostStructure.Bullets = b }, 3, 82},
+		{"revenue", func(v *BMCCanvasValues, b []string) { v.RevenueStreams.Bullets = b }, 3, 52},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -44,19 +44,19 @@ func TestBMCCanvasCellBudgetsAndSchemaGuidance(t *testing.T) {
 	}
 
 	v := *base
-	v.Channels.Bullets = make([]string, 7)
+	v.Channels.Bullets = make([]string, 5)
 	for i := range v.Channels.Bullets {
 		v.Channels.Bullets[i] = "short"
 	}
 	if got := warn(&v); len(got) != 0 {
-		t.Fatalf("seven short bullets should fit: %v", got)
+		t.Fatalf("five short bullets should fit: %v", got)
 	}
-	v.Channels.Bullets = make([]string, 8)
+	v.Channels.Bullets = make([]string, 6)
 	for i := range v.Channels.Bullets {
 		v.Channels.Bullets[i] = "short"
 	}
 	got := warn(&v)
-	if len(got) != 1 || !strings.Contains(got[0], "channels.bullets has 8 items") || !strings.Contains(got[0], "at most 7") {
+	if len(got) != 1 || !strings.Contains(got[0], "channels.bullets has 6 items") || !strings.Contains(got[0], "at most 5") {
 		t.Fatalf("unreadable count warning: %v", got)
 	}
 

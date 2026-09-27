@@ -775,15 +775,53 @@ func (n *numberedStepStrip) expandStackedBox(ctx ExpandContext, vals *NumberedSt
 	}
 
 	cols := json.RawMessage(`[1, 8]`)
+	weights := []float64{1, 8}
 	if withIcons {
 		cols = json.RawMessage(`[1, 0.7, 8]`)
+		weights = []float64{1, 0.7, 8}
 	}
 	return &jsonschema.ShapeGridInput{
 		Columns: cols,
-		Gap:     8,
-		RowGap:  6,
+		Gap:     stackedBoxColGapPt,
+		RowGap:  stackedBoxRowGapPt(ctx, rows, weights),
 		Rows:    rows,
 	}
+}
+
+const (
+	stackedBoxColGapPt    = 8.0
+	stackedBoxRowGapMaxPt = 6.0
+	stackedBoxRowGapMinPt = 2.0
+)
+
+// stackedBoxRowGapPt is the gap between step rows: the full 6pt unless the
+// rows' written text (by the writer's own measure) plus the gaps would
+// overrun the content height, in which case the gap gives way first, down to
+// 2pt. Seven two-line steps on a short content area otherwise stored every
+// label at 98% autofit, below the body floor (go-slide-creator-n1muf).
+func stackedBoxRowGapPt(ctx ExpandContext, rows []jsonschema.GridRowInput, weights []float64) float64 {
+	if len(rows) < 2 {
+		return stackedBoxRowGapMaxPt
+	}
+	contentW, contentH := contentAreaPt(ctx)
+	total := 0.0
+	for _, w := range weights {
+		total += w
+	}
+	bodyW := (contentW - stackedBoxColGapPt*float64(len(weights)-1)) * weights[len(weights)-1] / total
+	need := 0.0
+	for _, r := range rows {
+		body := r.Cells[len(r.Cells)-1]
+		if body == nil || body.Shape == nil {
+			continue
+		}
+		need += writtenFitHeightPt(body.Shape.Text, bodyW, 0)
+	}
+	gaps := float64(len(rows) - 1)
+	if need+stackedBoxRowGapMaxPt*gaps <= contentH {
+		return stackedBoxRowGapMaxPt
+	}
+	return math.Max(stackedBoxRowGapMinPt, math.Floor((contentH-need)/gaps))
 }
 
 // numberedStepsHaveIcons reports whether any step carries an icon; the icon

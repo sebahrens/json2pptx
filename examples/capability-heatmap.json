@@ -24,31 +24,31 @@
             {"label": "Low", "description": "<20% of time automatable"}
           ],
           "columns": [
-            {"header": "Front office", "sublabel": "Up to 30% capacity unlock", "cells": [
+            {"header": "Front office", "sublabel": "Up to 30% unlock", "cells": [
               {"text": "Research summaries", "tier": 0},
-              {"text": "Pitch book preparation", "tier": 0},
+              {"text": "Pitch books", "tier": 0},
               {"text": "RFP responses", "tier": 1},
               {"text": "Client meetings", "tier": 2}
             ]},
-            {"header": "Middle office", "sublabel": "Up to 45% capacity unlock", "cells": [
+            {"header": "Middle office", "sublabel": "Up to 45% unlock", "cells": [
               {"text": "Reconciliations", "tier": 0},
               {"text": "Risk reporting", "tier": 0},
               {"text": "Limit monitoring", "tier": 1},
               {"text": "Model validation", "tier": 1},
-              {"text": "Exception handling", "tier": 2}
+              {"text": "Exceptions", "tier": 2}
             ]},
-            {"header": "Operations", "sublabel": "Up to 40% capacity unlock", "cells": [
+            {"header": "Operations", "sublabel": "Up to 40% unlock", "cells": [
               {"text": "Trade settlement", "tier": 0},
               {"text": "Corporate actions", "tier": 1},
               {"text": "Client onboarding", "tier": 1}
             ]},
-            {"header": "Corporate", "sublabel": "Up to 25% capacity unlock", "cells": [
-              {"text": "Invoice processing", "tier": 0},
+            {"header": "Corporate", "sublabel": "Up to 25% unlock", "cells": [
+              {"text": "Invoicing", "tier": 0},
               {"text": "HR queries", "tier": 1},
-              {"text": "Financial planning", "tier": 2},
+              {"text": "FP&A", "tier": 2},
               {"text": "Strategy work", "tier": 2}
             ]},
-            {"header": "Technology", "sublabel": "Up to 35% capacity unlock", "cells": [
+            {"header": "Technology", "sublabel": "Up to 35% unlock", "cells": [
               {"text": "Code generation", "tier": 0},
               {"text": "Testing", "tier": 0},
               {"text": "Incident triage", "tier": 1},

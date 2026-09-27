@@ -4,7 +4,7 @@
   "output_filename": "font-size-stress-test.pptx",
   "slides": [
     {
-      "layout_id": "slideLayout7",
+      "layout_id": "blank-title",
       "content": [
         {
           "placeholder_id": "title",

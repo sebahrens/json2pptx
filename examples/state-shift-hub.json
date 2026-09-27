@@ -21,10 +21,10 @@
           "left_header": "TODAY'S STATE",
           "right_header": "AGENTIC STATE (doing more in less time)",
           "pairs": [
-            {"title": "Intake", "before": "Requests arrive by email and are triaged by hand, often days later", "after": "Agents classify, enrich and route every request the moment it arrives"},
-            {"title": "Research", "before": "Analysts spend days assembling context from scattered sources", "after": "Agents draft a sourced brief in minutes for analysts to refine"},
-            {"title": "Decision", "before": "Committees wait for weekly meetings to review options", "after": "Owners approve pre-analysed options the same day"},
-            {"title": "Follow-up", "before": "Status is chased manually across email and spreadsheets", "after": "Agents track progress and escalate only the exceptions"}
+            {"title": "Intake", "before": "Requests arrive by email and wait days for manual triage", "after": "Agents classify, enrich and route requests on arrival"},
+            {"title": "Research", "before": "Analysts spend days assembling scattered context", "after": "Agents draft a sourced brief in minutes"},
+            {"title": "Decision", "before": "Committees review options weekly", "after": "Owners approve options the same day"},
+            {"title": "Follow-up", "before": "Status is chased manually across email and spreadsheets", "after": "Agents track progress and escalate exceptions"}
           ]
         }
       }
@@ -41,12 +41,12 @@
           "left_header": "CURRENT STATE",
           "right_header": "TARGET STATE",
           "pairs": [
-            {"title": "Data capture", "before": "Manual uploads from 14 ledgers", "after": "Automated nightly feeds"},
-            {"title": "Reconciliation", "before": "Spreadsheet matching by hand", "after": "Rules engine clears 90% of items"},
-            {"title": "Accruals", "before": "Estimated from last month", "after": "Calculated from live commitments"},
+            {"title": "Data capture", "before": "Manual ledger uploads", "after": "Automated nightly feeds"},
+            {"title": "Reconciliation", "before": "Matching by hand", "after": "Rules clear 90% of items"},
+            {"title": "Accruals", "before": "Last month's estimate", "after": "Live commitments"},
             {"title": "Review", "before": "Line-by-line sign-off", "after": "Exception-based review"},
-            {"before_title": "Reporting", "after_title": "Insight", "before": "Static packs a week late", "after": "Live dashboards on day 3"},
-            {"title": "Controls", "before": "Sample testing after the fact", "after": "Continuous automated monitoring"}
+            {"before_title": "Reporting", "after_title": "Insight", "before": "Week-late static packs", "after": "Live dashboards by day 3"},
+            {"title": "Controls", "before": "After-the-fact sampling", "after": "Continuous monitoring"}
           ]
         }
       }

@@ -177,10 +177,31 @@ func writtenFitHeightPt(text json.RawMessage, widthPt, minPt float64) float64 {
 		return minPt
 	}
 	w := int64(widthPt * sizingEMUPerPt)
-	for h := math.Ceil(math.Max(minPt, 1)); h <= minPt+maxGrowPt; h++ {
-		if pptx.AutofitScaleFor(tb, pptx.RectEmu{CX: w, CY: int64(h * sizingEMUPerPt)}) >= 1 {
-			return h
+	// AutofitScaleFor reports 1 for a box with no text area, so start above
+	// the vertical insets: a zero-height area is not a fit.
+	insetsPt := 2 * defaultShapeInsetTBPt
+	if tb.Insets != [4]int64{} {
+		insetsPt = float64(tb.Insets[1]+tb.Insets[3]) / sizingEMUPerPt
+	}
+	fits := func(h float64) bool {
+		return pptx.AutofitScaleFor(tb, pptx.RectEmu{CX: w, CY: int64(h * sizingEMUPerPt)}) >= 1
+	}
+	// The fit is monotonic in height: binary-search whole points.
+	lo := math.Ceil(math.Max(minPt, insetsPt+1))
+	hi := math.Floor(math.Max(minPt, insetsPt) + maxGrowPt)
+	if fits(lo) {
+		return lo
+	}
+	if hi <= lo || !fits(hi) {
+		return minPt
+	}
+	for hi-lo > 1 {
+		mid := math.Floor((lo + hi) / 2)
+		if fits(mid) {
+			hi = mid
+		} else {
+			lo = mid
 		}
 	}
-	return minPt
+	return hi
 }

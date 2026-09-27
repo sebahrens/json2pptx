@@ -49,7 +49,7 @@ func assertPatternFindingAcrossTemplates(t *testing.T, code, pattern string, val
 func TestBMCCellBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := bmcProbeValues()
 	values.KeyActivities.Bullets = []string{strings.Repeat("long ", 30), "short", "short"}
-	assertBudgetFindingAcrossTemplates(t, "bmc-canvas", values, "key_activities.bullets[0]", "about 52 characters")
+	assertBudgetFindingAcrossTemplates(t, "bmc-canvas", values, "key_activities.bullets[0]", "about 25 characters")
 }
 
 func TestDriverTreeBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {

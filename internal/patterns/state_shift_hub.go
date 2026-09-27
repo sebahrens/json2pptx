@@ -133,6 +133,7 @@ const (
 	sshHubGapPt          = 16.0 // hub edge to the nearest node edge
 	sshTextGapPt         = 8.0  // node edge to its text box
 	sshRowGapPt          = 6.0
+	sshMinRowGapPt       = 2.0
 	sshColGapPt          = 0.01 // lattice columns are geometric: a hairline gap
 	sshMaxPitchPt        = 96.0 // a stage row never grows taller than this
 	sshHubWidthFrac      = 0.25 // hub diameter as a share of the width, before height caps it
@@ -260,6 +261,8 @@ type sshLayout struct {
 	width, cx  float64
 	headerH    float64 // 0 = no header row
 	pitch      float64 // stage row height
+	gap        float64 // gap between stage rows
+	tightItems bool    // item frames drop their vertical insets
 	hubD       float64
 	hubSize    float64
 	hubFits    bool
@@ -318,9 +321,23 @@ func sshMeasure(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOve
 		lay.headerH = headerRowPt(ctx.Theme.BodyFont, []string{v.LeftHeader, v.RightHeader}, sshHeaderPt, lay.headerEdge-2*defaultShapeInsetLRPt)
 		bodyAvail -= lay.headerH + sshRowGapPt
 	}
-	lay.pitch = math.Min((bodyAvail-(n64-1)*sshRowGapPt)/n64, sshMaxPitchPt)
+	// A stage row holds at least a title line and a body line. When the full
+	// gaps would squeeze rows below that, the gap gives way first (down to
+	// sshMinRowGapPt): six pairs on a short content area were otherwise
+	// written at 90% autofit, below the body floor (go-slide-creator-n1muf).
+	lay.gap = sshRowGapPt
+	if n > 1 {
+		minItem := writtenFitHeightPt(sshItemCell("Stage", "One line", "l", lay, "dk1").Shape.Text, w/2, 0)
+		if (bodyAvail-(n64-1)*lay.gap)/n64 < minItem {
+			lay.gap = math.Max(sshMinRowGapPt, math.Floor((bodyAvail-n64*minItem)/(n64-1)))
+			// The item frames are unfilled, so their vertical insets are
+			// padding the row gap already provides; drop them when tight.
+			lay.tightItems = true
+		}
+	}
+	lay.pitch = math.Min((bodyAvail-(n64-1)*lay.gap)/n64, sshMaxPitchPt)
 	lay.pitch = math.Max(lay.pitch, sshNodeDiaPt+4)
-	bodyH := n64*lay.pitch + (n64-1)*sshRowGapPt
+	bodyH := n64*lay.pitch + (n64-1)*lay.gap
 
 	lay.hubD = math.Min(hubD, bodyH-2*sshHaloWidthPt)
 	lay.hubD = math.Max(lay.hubD, math.Min(sshHubMinPt, bodyH))
@@ -328,7 +345,7 @@ func sshMeasure(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOve
 	// Nodes sit on a circle concentric with the hub, flattened into an
 	// ellipse when the full circle would bulge the middle rows so far out
 	// that their text column starves.
-	dyMax := math.Abs(sshRowCentre(0, lay.pitch) - bodyH/2)
+	dyMax := math.Abs(sshRowCentre(0, lay.pitch, lay.gap) - bodyH/2)
 	ring := math.Hypot(dxMin, dyMax)
 	squash := 1.0
 	if bulge := ring - dxMin; bulge > sshMaxBulgePt {
@@ -336,7 +353,7 @@ func sshMeasure(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOve
 	}
 	lay.rows = make([]sshRow, len(v.Pairs))
 	for i := range lay.rows {
-		dy := sshRowCentre(i, lay.pitch) - bodyH/2
+		dy := sshRowCentre(i, lay.pitch, lay.gap) - bodyH/2
 		dx := dxMin + (math.Sqrt(math.Max(ring*ring-dy*dy, dxMin*dxMin))-dxMin)*squash
 		lay.rows[i] = sshRow{dx: dx, textEdge: lay.cx - dx - lay.nodeR - sshTextGapPt}
 	}
@@ -349,8 +366,8 @@ func sshMeasure(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOve
 	return lay
 }
 
-func sshRowCentre(i int, pitch float64) float64 {
-	return float64(i)*(pitch+sshRowGapPt) + pitch/2
+func sshRowCentre(i int, pitch, gap float64) float64 {
+	return float64(i)*(pitch+gap) + pitch/2
 }
 
 // sshFitHubLabel returns the largest size (1pt steps, floored at the renderer's
@@ -537,7 +554,7 @@ func (s *stateShiftHub) Expand(ctx ExpandContext, values, overrides any, _ map[i
 	return &jsonschema.ShapeGridInput{
 		Columns: colsJSON,
 		ColGap:  sshColGapPt,
-		RowGap:  sshRowGapPt,
+		RowGap:  lay.gap,
 		Rows:    rows,
 	}, nil
 }
@@ -675,9 +692,18 @@ func sshItemCell(title, body, align string, lay sshLayout, accentInk string) *js
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"none"`),
 			Line:     json.RawMessage(`"none"`),
-			Text:     sshTextJSON(align, sshInsets{}, paras...),
+			Text:     sshTextJSON(align, sshItemInsets(lay), paras...),
 		},
 	}
+}
+
+// sshItemInsets keeps the renderer's default side insets and, on a tight
+// layout, near-zero vertical insets for the unfilled item frames.
+func sshItemInsets(lay sshLayout) sshInsets {
+	if !lay.tightItems {
+		return sshInsets{}
+	}
+	return sshInsets{L: defaultShapeInsetLRPt, T: 0.5, R: defaultShapeInsetLRPt, B: 0.5, set: true}
 }
 
 // sshNodeCell is a numbered circle. Its text insets are near zero: the

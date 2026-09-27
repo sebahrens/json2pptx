@@ -20,13 +20,13 @@
         "values": {
           "rows": [
             {"label": "People", "cards": [
-              {"title": "Leadership", "body": "Visible sponsor at every level of the organisation"},
-              {"title": "Skills", "body": "Role-based academies and on-the-job coaching"},
+              {"title": "Leadership", "body": "Visible sponsors at every level"},
+              {"title": "Skills", "body": "Role academies and coaching"},
               {"title": "Incentives", "body": "Goals and bonuses tied to adoption"},
               {"title": "Communication", "body": "Monthly story of wins and lessons"}
             ]},
             {"label": "Process", "cards": [
-              {"title": "Governance", "body": "Single change board with a monthly cadence"},
+              {"title": "Governance", "body": "One change board, monthly cadence"},
               {"title": "Ways of working", "body": "Redesigned end-to-end workflows"}
             ]},
             {"label": "Technology", "cards": [
@@ -34,7 +34,7 @@
               {"title": "Tooling", "body": "Copilots embedded in daily tools"},
               {"title": "Data", "body": "Owned, trusted and reusable"}
             ]},
-            {"label": "Measurement", "cards": [
+            {"label": "Metrics", "cards": [
               {"title": "Adoption KPIs", "body": "Weekly active use by role"},
               {"title": "Value tracking", "body": "Benefits signed off by finance"}
             ]}

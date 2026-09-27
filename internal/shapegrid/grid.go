@@ -377,7 +377,38 @@ func resolveRowHeights(rows []Row, availHeightEMU int64) []float64 { //nolint:go
 	// Apply min/max constraints to flex rows with iterative clamping.
 	clampFlexRows(rows, classes, heights, availHeightEMU)
 
+	reserveMinHeightRows(rows, heights, availHeightEMU)
 	return heights
+}
+
+// reserveMinHeightRows handles an over-committed grid (allocations above
+// 100%). Layout would otherwise scale every row down proportionally, taking a
+// row held at its point min_height below that minimum — a pinned 22pt date
+// row written at 21.5pt stored its 12pt labels at 98% autofit, below the body
+// floor (go-slide-creator-n1muf). Rows at their minimum keep it; the deficit
+// comes out of the other rows. When the minimums alone exceed the grid, the
+// proportional scale-down is left unchanged.
+func reserveMinHeightRows(rows []Row, heights []float64, availHeightEMU int64) {
+	var total, reserved, rest float64
+	atMin := make([]bool, len(rows))
+	for i, h := range heights {
+		total += h
+		if minPct := ptToPct(rows[i].MinHeight, availHeightEMU); minPct > 0 && h <= minPct+1e-9 {
+			atMin[i] = true
+			reserved += h
+		} else {
+			rest += h
+		}
+	}
+	if total <= 100+1e-6 || reserved == 0 || rest <= 0 || reserved >= 100 {
+		return
+	}
+	scale := (100 - reserved) / rest
+	for i := range heights {
+		if !atMin[i] {
+			heights[i] *= scale
+		}
+	}
 }
 
 // rowClass identifies how a row's height is determined.

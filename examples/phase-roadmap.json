@@ -97,10 +97,10 @@
         "name": "phase-roadmap",
         "values": {
           "phases": [
-            {"name": "Prioritized opportunity", "date_label": "Weeks 1–8", "description": "Assess maturity, identify top workflows, size P&L impact, define governance."},
-            {"name": "Lighthouse builds", "date_label": "Months 3–6", "description": "Reimagine two to three workflows end to end with business owners.", "active": true, "milestone": "First lighthouse live"},
-            {"name": "Wave 1 scale-up", "date_label": "Months 6–12", "description": "Expand across business units; systematize upskilling and extend to performance management."},
-            {"name": "Continuous expansion", "date_label": "12 months+", "description": "Full value-chain extension, recursive improvement and an AI-native operating model."}
+            {"name": "Prioritized opportunity", "date_label": "Weeks 1–8", "description": "Assess maturity, pick workflows, size P&L, set governance."},
+            {"name": "Lighthouse builds", "date_label": "Months 3–6", "description": "Reimagine 2–3 workflows end to end with owners.", "active": true, "milestone": "First lighthouse live"},
+            {"name": "Wave 1 scale-up", "date_label": "Months 6–12", "description": "Expand across units; upskill and manage performance."},
+            {"name": "Continuous expansion", "date_label": "12 months+", "description": "Extend the value chain toward an AI-native model."}
           ],
           "parallel_tracks": [
             "Data and technology architecture, modernization, integrations, and governance",

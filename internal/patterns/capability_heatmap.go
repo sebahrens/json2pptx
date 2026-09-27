@@ -454,12 +454,29 @@ func chmLegendColumns(tiers []CapabilityHeatmapTier, contentW float64) (swatchPc
 
 // chmLegendTextPt is the height of the tallest legend entry's text.
 func chmLegendTextPt(ctx ExpandContext, v *CapabilityHeatmapValues, contentW float64) float64 {
-	_, _, textW := chmLegendColumns(v.Tiers, contentW)
+	_, textPct, textW := chmLegendColumns(v.Tiers, contentW)
 	h := 0.0
 	for i, t := range v.Tiers {
 		h = math.Max(h, textBlockHeightPt(ctx.Theme.BodyFont, textW[i], textParagraph{text: inlineMarkupRe.ReplaceAllString(chmLegendText(t), ""), size: shapegrid.MinTextSizePt}))
 	}
-	return math.Round(math.Max(h, chmLegendSwatchPt) + 2*defaultShapeInsetTBPt)
+	h = math.Round(math.Max(h, chmLegendSwatchPt) + 2*defaultShapeInsetTBPt)
+	// The legend labels must also fit by the writer's measure: sized by the
+	// theme-font model alone they were stored at 72% autofit (8.6pt, below
+	// the caption floor) on the abstract template (go-slide-creator-n1muf).
+	for i, t := range v.Tiers {
+		h = math.Max(h, writtenFitHeightPt(chmLegendTextJSON(t), contentW*textPct[i]/100, h))
+	}
+	return h
+}
+
+// chmLegendTextJSON is the text object a legend entry is written with.
+func chmLegendTextJSON(t CapabilityHeatmapTier) json.RawMessage {
+	text := patternTextObj{
+		Paragraphs:    []chartInsightsParagraph{{Content: chmLegendText(t), Size: shapegrid.MinTextSizePt, Color: "dk1", Align: "l"}},
+		Align:         "l",
+		VerticalAlign: "t",
+	}
+	return text.json()
 }
 
 func chmLegendRowPt(ctx ExpandContext, v *CapabilityHeatmapValues, contentW float64) float64 {
@@ -648,15 +665,10 @@ func chmLegendCell(ctx ExpandContext, v *CapabilityHeatmapValues, accent string,
 				Line:     json.RawMessage(paperSurfaceHairline),
 			},
 		})
-		text := patternTextObj{
-			Paragraphs:    []chartInsightsParagraph{{Content: chmLegendText(t), Size: shapegrid.MinTextSizePt, Color: "dk1", Align: "l"}},
-			Align:         "l",
-			VerticalAlign: "t",
-		}
 		cells = append(cells, &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"none"`),
-			Text:     text.json(),
+			Text:     chmLegendTextJSON(t),
 		}})
 		cols = append(cols, swatchPct, textPct[i])
 	}

@@ -1,6 +1,6 @@
 {
   "scope": "Existing go-slide-creator-n1muf: written grid role floors and capacity geometry",
-  "status": "Candidate: role gate on current main; the six midnight-blue corpus refusals cleared at the root; smoke-template refusals remain",
+  "status": "Candidate: no role refusals for any example or quality fixture on all 9 shipped templates plus local p-style",
   "evidence": {
     "baseline": "A real CLI deck published two complete body paragraphs; bundled-renderer PDF measured both at 10.006pt, below the present-mode 12pt body floor. The new CLI regression fails with only the final role check disabled and passes with it restored.",
     "generator_race": "PASS 25.646s: universal and role-floor publication regressions, including all 10 installed test templates and ignored local p-style, off/warn/strict; source, existing destination and temporary cleanup asserted.",
@@ -26,7 +26,20 @@
     },
     "additional_core_template_fixes": "modern-template: waterfall-bridge label side now measured at the floored 12pt (was 10pt); sovereign slides 9/11 axis row 6 -> 7% and slide 13 governance row 14 -> 18%",
     "visual_check": "soffice->pdf->pdftoppm on midnight-blue and p-style for every touched slide; viewed, no clipping/overlap",
-    "remaining": "Role refusals remain on smoke-tier templates only: abstract (capability-heatmap, dual-org-ladder, framework-grid, numbered-step-strip, phase-roadmap, state-shift-hub examples) and modern (business-model-canvas, phase-roadmap examples; stress, bmc-dense, card-grid-overflow fixtures). Core templates and local p-style: no role refusals across all examples and fixtures."
+    "remaining": "None for role refusals (sweep of examples/*.json and tests/quality/fixtures/*.json x 10 templates, strict_fit off). Unrelated pre-existing fixture failures on abstract (placeholder collisions / table truncation from template-specific slideLayoutN ids) are unchanged from main.",
+    "smoke_template_fixes": {
+      "shapegrid": "over-committed grids keep rows held at min_height and shrink the others (phase-roadmap date row was scaled below its writer need)",
+      "writtenFitHeightPt": "no longer treats a zero-area box as a fit; binary search",
+      "capability-heatmap": "legend sized by writer measure; example sublabels/activities shortened for abstract's content area",
+      "dual-org-ladder": "body rows carry a writer-measured min_height so the 18% header gives way",
+      "framework-grid": "cards measured by writer; stretched rows capped to the content area; example copy shortened ('Metrics' label)",
+      "numbered-step-strip": "stacked-box row gap gives way (6 -> 2pt) before rows shrink",
+      "state-shift-hub": "stage-row gap gives way and unfilled item frames drop vertical insets when tight; example copy shortened",
+      "phase-roadmap example": "slide 5 descriptions shortened",
+      "business-model-canvas example": "columns 18/17/14/14/18/19, rows 8/39/32/21",
+      "fixtures": "stress, bmc-dense, card-grid-overflow use the portable 'blank-title' layout tag instead of midnight-blue's slideLayout7"
+    },
+    "budget_recalibration": "probeReadableBudget now requires no written-role violation (convertPresentationSlides + GridTextRoles + stored fontScale) on every shipped template plus p-style. bmc-canvas budgets recalibrated (tall 200/143/93/68/43/43/22..; short 125/50/25/22/22, max 5; cost 200/165/82/78/78, max 5; revenue 200/103/52/51/51, max 5); schema 4.149.0. A full probe run shows ~1100 budget log lines changing across 34 other patterns versus main's preflight-only core-template calibration; those tables are NOT yet updated."
   },
   "review": {
     "testing": {
