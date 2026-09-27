@@ -1,0 +1,34 @@
+{
+  "scope": "Installed authoring references and recursive skill packaging; not visual-review completion",
+  "bead": "go-slide-creator-3qzo4.53",
+  "reproduction": {
+    "log": "output/installed-skill-reference-repro-20260927-v1.log",
+    "result": "FAIL: eight installed Markdown links escaped the isolated bundle"
+  },
+  "repair": {
+    "canonical_sources": "Unchanged skills/, docs/, examples/ and internal/tokens/",
+    "packaging": "Stage canonical linked reference closure inside generate-deck/references/repository and reroute installed entrypoint links only",
+    "installation_destination": "Testing-owned temporary directory with spaces; real installed user skills untouched",
+    "distribution_installers": "POSIX and PowerShell copies made recursive"
+  },
+  "gates": {
+    "installation_and_preview_regressions": "PASS: output/installed-skill-reference-final-gates-20260927-v1.log",
+    "race_enabled": true,
+    "repeat_install": "PASS; unrelated personal guide byte-identical",
+    "invalid_arguments_and_canonical_source_destination": "Rejected",
+    "skip_install": "PASS; no destination created",
+    "all_installed_markdown_links": "Exist and remain inside the isolated bundle, including reference snapshot links",
+    "preview_and_mcp_freshness": "PASS; renderer source and templates unchanged",
+    "lint": "PASS: output/installed-skill-reference-lint-20260927-v3.log",
+    "build": "PASS: go build ./...",
+    "shell_syntax": "PASS: bash -n scripts/stage-skills.sh scripts/install-dist.sh",
+    "canonical_skill_source_check": "PASS",
+    "diff_whitespace": "PASS"
+  },
+  "reviews": [
+    {"reviewer": "testing", "findings": [], "residual_risks": ["PowerShell runtime unavailable locally; Windows installer change inspected, not executed"]},
+    {"reviewer": "adversarial", "findings": [], "resolved_scenarios": ["Installed links outside checkout", "Whitespace in destination", "Repeat installation mutating personal guides", "Staging onto canonical sources", "Distribution staging swallowing helper errors"]}
+  ],
+  "ci_status": "Await exact published-SHA workflow results",
+  "remaining_visual_findings": "Tracked independently; unchanged by this packaging repair"
+}

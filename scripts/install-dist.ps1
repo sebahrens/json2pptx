@@ -84,7 +84,7 @@ if (-not $SkipSkill) {
 
         if (Test-Path $SkillSrc) {
             New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
-            Copy-Item (Join-Path $SkillSrc "*") $SkillDst -Force
+            Copy-Item (Join-Path $SkillSrc "*") $SkillDst -Recurse -Force
             Write-Host "    $SkillDst"
         }
     }

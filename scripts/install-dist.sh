@@ -108,7 +108,7 @@ if [ "$SKIP_SKILL" = false ]; then
     if [ -d "$SCRIPT_DIR/skills/$skill_name" ]; then
       SKILL_DIR="$HOME/.claude/skills/$skill_name"
       mkdir -p "$SKILL_DIR"
-      cp "$SCRIPT_DIR/skills/$skill_name/"* "$SKILL_DIR/"
+      cp -R "$SCRIPT_DIR/skills/$skill_name/". "$SKILL_DIR/"
       echo "    $SKILL_DIR/"
     fi
   done

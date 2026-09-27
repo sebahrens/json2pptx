@@ -23,6 +23,9 @@ SHELL := $(firstword $(wildcard $(BASH_CANDIDATES)) bash)
 # All:        ~/go/bin (GOPATH default)
 export PATH := /usr/local/go/bin:/usr/local/bin:/opt/homebrew/bin:/snap/bin:$(HOME)/go/bin:$(PATH)
 
+# Override for isolated installs without changing the user's home directory.
+SKILL_DEST ?= $(HOME)/.claude/skills
+
 # Version info from git
 VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 COMMIT     ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
@@ -171,12 +174,7 @@ endif
 install-skill:
 ifndef SKIP_SKILL
 	@echo "==> Installing Claude Code skills..."
-	@for skill_dir in skills/*/; do \
-		skill_name=$$(basename "$$skill_dir"); \
-		mkdir -p "$(HOME)/.claude/skills/$$skill_name"; \
-		cp -R "$$skill_dir". "$(HOME)/.claude/skills/$$skill_name/"; \
-		echo "    $(HOME)/.claude/skills/$$skill_name/"; \
-	done
+	@bash scripts/stage-skills.sh "$(SKILL_DEST)"
 endif
 
 install-mcp:
@@ -253,11 +251,7 @@ ensure-templates:
 # survived the copy (guards against a shallow, non-recursive cp regression —
 # see go-slide-creator-8lv5). Usage in a recipe: @$(call stage-skills,<staging-dir>)
 define stage-skills
-	for skill_dir in skills/*/; do \
-		skill_name=$$(basename "$$skill_dir"); \
-		mkdir -p "$(1)/skills/$$skill_name"; \
-		cp -R "$$skill_dir". "$(1)/skills/$$skill_name/"; \
-	done; \
+	bash scripts/stage-skills.sh "$(1)/skills" || exit $$?; \
 	if [ ! -f "$(1)/skills/generate-deck/examples/skeletons/README.md" ]; then \
 		echo "ERROR: staged dist is missing nested skill assets (skills/generate-deck/examples/skeletons/)."; \
 		echo "       The skill copy must be recursive (cp -R)."; \
