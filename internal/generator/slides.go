@@ -374,6 +374,10 @@ func validateRequest(req GenerationRequest) error {
 // masterPositions maps placeholder type/index to transforms from the slide master.
 func createSlideFromLayout(layoutData []byte, slideNum int, masterPositions map[string]*transformXML) (*slideXML, error) {
 	// Parse layout XML
+	layoutData, err := localizeNativeQNameBindings(layoutData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve layout namespaces: %w", err)
+	}
 	var layout slideLayoutXML
 	if err := xml.Unmarshal(layoutData, &layout); err != nil {
 		return nil, fmt.Errorf("failed to parse layout: %w", err)

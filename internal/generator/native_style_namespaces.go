@@ -79,7 +79,11 @@ func decodeNativeStyle(d *xml.Decoder, start xml.StartElement, target any) error
 	if err := encoder.Flush(); err != nil {
 		return err
 	}
-	return xml.Unmarshal(buf.Bytes(), target)
+	fragment, err := localizeNativeQNameBindings(buf.Bytes())
+	if err != nil {
+		return err
+	}
+	return xml.Unmarshal(fragment, target)
 }
 
 func (p *bodyPropertiesXML) UnmarshalXML(d *xml.Decoder, start xml.StartElement) error {

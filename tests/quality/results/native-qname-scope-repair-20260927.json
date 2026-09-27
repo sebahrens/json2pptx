@@ -1,0 +1,42 @@
+{
+  "issue": "go-slide-creator-3qzo4.81",
+  "scope": "Inherited namespace bindings used by QName-valued native extension attributes",
+  "reproduction": {
+    "log": "output/qname-scope-reproduction-20260927-v1/reproduction.log",
+    "sha256": "cecff2a9c0d7cabeeed1f365cec599f00cda342daac62ab22a754c00d8c7aa32",
+    "actual_generated_pptx_failures": ["binding on run properties", "binding on enclosing shape"]
+  },
+  "repair": {
+    "ancestor_bindings_localized_before_layout_decode": true,
+    "run_root_bindings_localized_before_innerxml_capture": true,
+    "source_text_and_QName_values_preserved": true,
+    "unmodified_XML_bytes_preserved": true,
+    "regressions": ["actual emitted run scope", "actual emitted shape scope", "actual emitted nested override", "sibling scope restoration", "local declarations", "empty and paired elements", "escaped namespace URIs", "deduplication", "idempotence", "malformed XML", "URI and unbound-prefix non-matches"]
+  },
+  "gates": {
+    "full_generator_short_race": {"status": "PASS", "seconds": 216.208, "log": "output/qname-scope-reproduction-20260927-v1/generator-race.log"},
+    "final_namespace_focused_race": {"status": "PASS", "log": "output/qname-scope-reproduction-20260927-v1/focused-final.log"},
+    "preview_template_discovery_determinism_race": {"status": "PASS", "log": "output/qname-scope-reproduction-20260927-v1/integration-gates.log"},
+    "build": "PASS",
+    "pinned_lint": "PASS: zero issues",
+    "golden_hash_regeneration": "PASS: all four hashes unchanged",
+    "canonical_previews": "PASS: all 108 refreshed; only provenance manifests changed"
+  },
+  "native_corpus": {
+    "manifest": "output/qname-scope-native-corpus-20260927-v1/manifest.json",
+    "manifest_sha256": "13016819b406ab6602cb7a228de9bededcd88882177c2cc2200bd65a4d3cae28",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "pixel_identical_accepted_pages": 262,
+    "identical_source_loss_refusals": 47,
+    "all_source_hashes_inputs_statuses_preserved": true,
+    "private_p_style_included_and_gitignored": true
+  },
+  "limitations": [
+    "This proves regression equivalence, not aggregate visual approval.",
+    "Existing dense typography and decorative-art findings remain open.",
+    "Schema-specific unprefixed QName values and prefix-list attributes are not inferred as QName-valued attributes by this repair.",
+    "Published replacement CI must be inspected before issue closure."
+  ]
+}
