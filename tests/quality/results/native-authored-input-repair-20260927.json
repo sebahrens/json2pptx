@@ -1,0 +1,34 @@
+{
+  "bead": "go-slide-creator-3qzo4.87",
+  "change": "Native corpus schema 5 freezes the full authored input before publication attempts. effective_input independently retains the generator-mutated record; generated dimensions are not hidden or treated as authored.",
+  "regression": {
+    "actual_generation": "TestNativeEvidenceFreezesAuthoredChartBeforeGeneration uses the real modern-yellow OneContent chart publication path, verifies nonzero derived geometry, exact unchanged authored JSON and exact separately serialized effective JSON.",
+    "errors": "TestNativeEvidenceRejectsMissingOrUnserializableSource rejects a missing snapshot and unsupported authored value.",
+    "focused_race_seconds": 2.550,
+    "all_native_tests_race_seconds": 19.536
+  },
+  "corpus": {
+    "manifest": "output/native-authored-input-baseline-20260927-v2/manifest.json",
+    "manifest_sha256": "dfd3a6e78c019d0a07a973434dd54318f189bb4413af01c1f99956cf38739ab2",
+    "render_test_seconds": 46.68,
+    "template_count": 14,
+    "native_layout_count": 108,
+    "probe_count": 309,
+    "pixel_identical_accepted_pages": 262,
+    "unchanged_source_loss_refusals": 47,
+    "corrected_authored_input_records": 31,
+    "historical_effective_inputs_preserved": true,
+    "audit_sha256": "0769ea52d274ad47cd4e326385655de73c546021f572182423a353032a1a6909"
+  },
+  "private_template": {
+    "name": "p-style.pptx",
+    "sha256": "1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1",
+    "included_in_local_corpus": true,
+    "gitignored": true,
+    "changed": false
+  },
+  "testing_review": {"reviewer": "testing", "findings": [], "testing_gaps": [], "residual_risks": ["Fresh CI excludes the private ignored template; its corpus evidence is local."]},
+  "adversarial_review": {"reviewer": "adversarial", "findings": [], "testing_gaps": [], "residual_risks": ["This preserves evidence, not generator argument immutability. effective_input remains deliberately mutable until final serialization."]},
+  "visual_approval": false,
+  "remaining_visual_work": "Tiny dense text, grouping, chart labels and all-layout visual findings remain tracked separately. The 47 refusals are negative source-fidelity evidence, never visual approvals."
+}

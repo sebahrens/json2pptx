@@ -48,6 +48,7 @@ type nativeProbe struct {
 
 type nativeProbeEvidence struct {
 	nativeProbe
+	AuthoredInput    json.RawMessage           `json:"-"`
 	SlideIndex       int                       `json:"slide_index"`
 	OutputSlideIndex *int                      `json:"output_slide_index,omitempty"`
 	GenerationStatus string                    `json:"generation_status"`
@@ -55,6 +56,28 @@ type nativeProbeEvidence struct {
 	PNGPath          string                    `json:"png_path,omitempty"`
 	PNGHash          string                    `json:"png_sha256,omitempty"`
 	Failures         []string                  `json:"failures,omitempty"`
+}
+
+// Generation can mutate nested diagram/table pointers. Freeze the authored
+// JSON before either publication attempt, and retain the effective input too.
+func (e nativeProbeEvidence) MarshalJSON() ([]byte, error) {
+	if len(e.AuthoredInput) == 0 {
+		return nil, fmt.Errorf("probe %s has no pre-generation input snapshot", e.ID)
+	}
+	type evidenceAlias nativeProbeEvidence
+	return json.Marshal(struct {
+		evidenceAlias
+		Input          json.RawMessage     `json:"input"`
+		EffectiveInput generator.SlideSpec `json:"effective_input"`
+	}{evidenceAlias(e), e.AuthoredInput, e.Slide})
+}
+
+func newNativeProbeEvidence(page nativeProbe, index int) (nativeProbeEvidence, error) {
+	authored, err := json.Marshal(page.Slide)
+	if err != nil {
+		return nativeProbeEvidence{}, fmt.Errorf("snapshot authored probe %s: %w", page.ID, err)
+	}
+	return nativeProbeEvidence{nativeProbe: page, AuthoredInput: authored, SlideIndex: index}, nil
 }
 
 type nativeTemplateEvidence struct {
@@ -569,7 +592,11 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 					}
 				}
 				for _, page := range pages {
-					e.Probes = append(e.Probes, nativeProbeEvidence{nativeProbe: page, SlideIndex: len(slides)})
+					probe, snapshotErr := newNativeProbeEvidence(page, len(slides))
+					if snapshotErr != nil {
+						t.Fatal(snapshotErr)
+					}
+					e.Probes = append(e.Probes, probe)
 					slides = append(slides, page.Slide)
 				}
 			}
@@ -736,7 +763,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 		Templates          []nativeTemplateEvidence `json:"templates"`
 		Limits             []string                 `json:"limits"`
 	}{
-		SchemaVersion: 4, StrictFit: mode, EngineCommit: strings.TrimSpace(string(commit)),
+		SchemaVersion: 5, StrictFit: mode, EngineCommit: strings.TrimSpace(string(commit)),
 		EngineSourceHash: engineHash, HarnessHash: harnessHash,
 		ReferenceImageHash: imageHash, Renderer: renderer, RendererHash: rendererHash,
 		DPI: 96, CreatedAt: time.Now().UTC().Format(time.RFC3339), TemplateCount: len(paths), Templates: evidence,
