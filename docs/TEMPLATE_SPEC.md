@@ -38,7 +38,8 @@ Every template must contain **all** of the following layouts. Layout names are m
 
 **Notes:**
 - If a mandatory layout is missing, `template-check` reports an error and exits non-zero.
-- The engine can synthesize `Two Content` and `Blank + Title` from other layouts when missing, but native layouts are always preferred. Synthesis triggers a warning.
+- **Title Slide** and **One Content** must also resolve through the generator's `layout_id` aliases `title` and `content`: the layout needs the `title-slide` tag without `closing` / `blank-title`, or the `content` tag without `two-column` / `section-header`. A template whose only `content`-tagged layout is Two Content, or whose only `title-slide`-tagged layout is Closing, fails `template-check` even though a layout "shares" the tag. A One Content layout whose first-level body font is so large that the body holds fewer than 100 characters loses its `content` tag; the FAIL detail names the body size and capacity.
+- The engine can synthesize `Two Content` and `Blank + Title` from other layouts when missing, but native layouts are always preferred. Synthesis logs a `WARN` ("template missing layout capabilities, synthesizing").
 - Layout order within the PPTX file does not matter — layouts are matched by name and tag.
 
 ## Optional Layouts
@@ -83,9 +84,9 @@ reserves its text band from the content zone.
 
 The `Section Number` placeholder on section divider layouts has specific requirements:
 
-- **Name**: `cNvPr` name must be `"Section Number"` (case-sensitive in the XML, matched case-insensitively by the resolver)
-- **Position**: Upper-right quadrant of the slide
-- **Minimum width**: 2,743,200 EMU (3 inches) — must fit two-digit numbers
+- **Name**: `cNvPr` name must be `"Section Number"` (case-sensitive in the XML, matched case-insensitively by the resolver). A section divider without it fails `template-check` (and `GATE.SECTION_NUMBER_MISSING` in the CI gate).
+- **Position**: Upper-right quadrant of the slide is recommended; it is a design guideline and not checked (bundled `abstract` places its number lower right by design). Alignment and color below are likewise recommendations.
+- **Minimum width**: 2,743,200 EMU (3 inches) — must fit two-digit numbers (`template-check` warns when narrower)
 - **Font size**: Large display type appropriate to the template. Sizes are hundredths of a point: 9,600 = 96pt; 13,600 = 136pt. The structural role heuristic uses 9,000 (90pt), not a mandatory conformance minimum. Preserve existing template typography; `template-check` does not enforce a section-number font-size threshold.
 - **Alignment**: Right-aligned
 - **Color**: Should use an accent color from the theme (typically `accent1`)
@@ -208,7 +209,7 @@ Run `json2pptx template-check` to verify metadata completeness:
 json2pptx template-check templates/midnight-blue.pptx
 ```
 
-The checker validates that `surface_tints` defines all four roles and `data_palette` contains valid scheme color names.
+The checker FAILs when a `surface_tints` value is neither a scheme color name nor 6-digit hex, or a `data_palette` entry is not a theme slot name (`dk1`, `dk2`, `lt1`, `lt2`, `accent1`–`accent6`, `hlink`, `folHlink`; hex is not resolved for charts). It WARNs when `surface_tints` is present but omits one of the four roles. At generation time an invalid surface tint falls back to the pattern's default instead of being written into slide XML.
 
 On One Content and Two Content layouts, the visible title font must be larger than the first-level body font. `template-check` reports a typography warning when the body is the same size or larger; layouts with unresolved font sizes are not judged by this check.
 
@@ -222,20 +223,23 @@ json2pptx template-check --json <template.pptx>   # machine-readable output
 ```
 
 The checker verifies:
-1. All 7 mandatory layouts are present (by name, tag, **or canonical-role classification**)
+1. All 7 mandatory layouts are present (by name, tag, **or canonical-role classification**); Title Slide and One Content must additionally resolve as `layout_id` `title` / `content` (see Mandatory Layouts notes)
 2. Each mandatory layout has its required placeholders
-3. Section Number placeholder meets size/position requirements
-4. Theme defines all 12 scheme colors
-5. Theme defines major and minor fonts
-6. Dark/light color luminance polarity is correct
-7. **Layout names match canonical roles** — emits WARN when a layout is structurally a canonical role (Title Slide, One Content, Two Content, Section Divider, Blank, Blank + Title, Closing) but uses a non-canonical name (e.g. "Cover Slide" → "Title Slide"). The repair pipeline must rename in place; do not author a new duplicate layout.
-8. **No duplicate layout signatures** — emits WARN when two or more layouts map to the **same canonical role** AND share the **same structural signature**. Layouts that share only a signature but have different canonical roles (e.g. a Closing layout and a Title Slide both with `subtitle+title`) are not flagged.
-9. **First accent visible on the light canvas** — emits WARN when `accent1` has less than 2:1 contrast against `lt1`; such a color can still be intentional on a dark surface, but should not lead charts on the light canvas.
-10. **Footer chrome complete or absent** — the resolved `dt`, `ftr`, and `sldNum` slots must appear together, or not at all.
-11. **No conflicting structural tags** — a layout must not be classified as both `content` and `section-header`.
-12. **Text slots do not materially overlap** — title, subtitle, and body/content placeholders must not intersect by at least 1 mm in both dimensions and 2% of the smaller slot. Decorative section-number frames and picture/text overlays are excluded.
-13. **Image does not cover title** — an image placeholder that overlaps a title must precede it in the layout shape tree. The generator also protects emitted slide order, but source templates should be safe independently.
-14. **Content title/body hierarchy** — a visible title on One Content or Two Content must be larger than first-level body text when both sizes resolve.
+3. Section divider has a `Section Number` placeholder (FAIL when missing; WARN when narrower than 3 inches)
+4. Theme part is present, parses, and every slide master's theme relationship resolves (a dangling theme rel FAILs)
+5. Theme defines all 12 scheme colors, each a valid 6-digit hex value (`GGHHII` FAILs instead of being dropped silently)
+6. Theme defines major and minor fonts — checked on the raw `a:fontScheme`, so a missing scheme or empty `typeface` FAILs rather than defaulting to Calibri
+7. Dark/light color luminance polarity is correct
+8. **Slide size** — `p:sldSz` is present and `cx` / `cy` are within the OOXML range 914,400–51,206,400 EMU (FAIL); layout placeholders extending more than 1% past the right or bottom slide edge WARN (placeholders parked at negative coordinates are ignored)
+9. **Metadata colors** — `surface_tints` / `data_palette` values are valid (see Template Conformance Check above)
+10. **Layout names match canonical roles** — emits WARN when a layout is structurally a canonical role (Title Slide, One Content, Two Content, Section Divider, Blank, Blank + Title, Closing) but uses a non-canonical name (e.g. "Cover Slide" → "Title Slide"). The repair pipeline must rename in place; do not author a new duplicate layout.
+11. **No duplicate layout signatures** — emits WARN when two or more layouts map to the **same canonical role** AND share the **same structural signature**. Layouts that share only a signature but have different canonical roles (e.g. a Closing layout and a Title Slide both with `subtitle+title`) are not flagged.
+12. **First accent visible on the light canvas** — emits WARN when `accent1` has less than 2:1 contrast against `lt1`; such a color can still be intentional on a dark surface, but should not lead charts on the light canvas.
+13. **Footer chrome complete or absent** — the resolved `dt`, `ftr`, and `sldNum` slots must appear together, or not at all.
+14. **No conflicting structural tags** — a layout must not be classified as both `content` and `section-header`.
+15. **Text slots do not materially overlap** — title, subtitle, and body/content placeholders must not intersect by at least 1 mm in both dimensions and 2% of the smaller slot. Decorative section-number frames and picture/text overlays are excluded.
+16. **Image does not cover title** — an image placeholder that overlaps a title must precede it in the layout shape tree. The generator also protects emitted slide order, but source templates should be safe independently.
+17. **Content title/body hierarchy** — a visible title on One Content or Two Content must be larger than first-level body text when both sizes resolve. Layouts named as One / Two Content are judged even when an oversized body font stops the classifier from recognising the role.
 
 Exit codes:
 - **0**: All checks pass (WARN findings do not fail the check)
@@ -278,10 +282,12 @@ The gate runs `json2pptx examine-template <tpl> --gate` against every file in
 | Gate code | Fails when |
 |-----------|-----------|
 | `GATE.LAYOUT_EMPTY_TAGS` | A layout carries no classification tags (tag-based selection can never reach it). |
-| `GATE.CANONICAL_COVERAGE_INCOMPLETE` | A content-bearing canonical family is missing — coverage must include all four of `title-slide`, `section-divider`, `one-content`, `qa-closing`. |
+| `GATE.CANONICAL_COVERAGE_INCOMPLETE` | A content-bearing canonical family is missing — coverage must include all four of `title-slide`, `section-divider`, `one-content`, `qa-closing` — or the `one-content` family is covered only by Two Content (no One Content layout). |
 | `GATE.TITLE_PLACEHOLDER_NAMING` | A title-typed placeholder is named anything other than exactly `title` on disk. |
 | `GATE.SECTION_NUMBER_MISSING` | A section-divider layout has no placeholder named exactly `Section Number`. |
 | `GATE.ERROR_FINDING` | The examination emitted any error-severity finding. |
+| `GATE.TEMPLATE_CHECK_FAIL` | `template-check` reports any FAIL (one violation per failed check), so the gate never passes a template the conformance checker rejects. |
+| `GATE.PROFILE_ERROR` | The template profile reports an error-severity diagnostic (`LAYOUT_RELATIONSHIP_INVALID`, including a dangling master → theme relationship, or `UNUSABLE_GEOMETRY`). |
 
 `--gate` writes a `gate.json` verdict (`{template, passed, violations[]}`) into the
 examination output directory and exits non-zero on any violation; the run always
@@ -289,8 +295,14 @@ leaves the full `examination/` tree (including annotated SVGs) behind, which the
 workflow uploads as the `template-examination` artifact so reviewers can visually
 inspect a template change. The gate is implemented in `internal/examine/gate.go`
 and is distinct from the report's `findings` envelope: the four structural checks
-are gate-only (the report surfaces missing coverage as a *warning*), and the fifth
-check folds in any error-severity finding the report already carries.
+are gate-only (the report surfaces missing coverage as a *warning*), the fifth
+check folds in any error-severity finding the report already carries, and the last
+two fold in every `template-check` FAIL and every error-severity profile diagnostic.
+
+`validate-template` likewise folds every `template-check` FAIL into its findings
+as an error-severity `TPL.TEMPLATE_ERROR` (message prefixed `template-check FAIL:`),
+so `valid` is `false` and the command exits non-zero for a template that cannot
+generate; `valid` no longer reflects only the optional metadata JSON.
 
 Run the gate locally before opening a template PR:
 

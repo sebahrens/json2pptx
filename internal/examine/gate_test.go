@@ -5,8 +5,36 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
+
+// Two Content alone covers the one-content family but cannot serve
+// layout_id "content" (go-slide-creator-csclk.32).
+func TestGateRequiresOneContentNotJustTwoContent(t *testing.T) {
+	layouts := conformantLayouts()
+	layouts[1].Name = "Two Content"
+	layouts[1].CanonicalType = types.CanonicalLayoutTwoContent
+	layouts[1].Tags = []string{"content", "two-column"}
+	if got := codesOf(Gate(conformantReport(layouts)))[GateCodeCanonicalCoverage]; got != 1 {
+		t.Fatalf("coverage violations = %d, want 1", got)
+	}
+}
+
+// template-check FAILs and profile errors fold into the gate
+// (go-slide-creator-csclk.33).
+func TestGateFoldsConformanceFailsAndProfileErrors(t *testing.T) {
+	report := conformantReport(conformantLayouts())
+	report.conformanceFails = []template.ConformanceCheck{{Category: "theme", Check: "Theme: theme part present", Status: template.ConformanceStatusFail}}
+	report.Profile = &ProfileReport{Diagnostics: []template.ProfileDiagnostic{
+		{Code: "LAYOUT_RELATIONSHIP_INVALID", Severity: "error"},
+		{Code: "AMBIGUOUS_CANONICAL_ROLE", Severity: "warning"},
+	}}
+	codes := codesOf(Gate(report))
+	if codes[GateCodeTemplateCheckFail] != 1 || codes[GateCodeProfileError] != 1 {
+		t.Fatalf("codes = %v, want one template-check and one profile violation", codes)
+	}
+}
 
 // conformantLayouts returns a minimal set of layouts that satisfies every gate
 // check: one layout per content-bearing canonical family, all tagged, the

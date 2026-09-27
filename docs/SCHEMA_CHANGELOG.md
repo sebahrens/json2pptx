@@ -1,5 +1,18 @@
 # Schema Changelog
 
+- **2026-09-27 — Template validators agree with generation (`go-slide-creator-csclk.32`–`.40`).**
+  `template-check` now FAILs when layout_id `title` / `content` cannot resolve
+  (Two Content or Closing merely sharing the tag no longer counts), when the
+  theme part is missing / dangling / unparsable, when a font scheme typeface is
+  missing or empty, when a scheme color is not 6-digit hex, when `p:sldSz` is
+  missing or outside 914,400–51,206,400 EMU, when metadata `surface_tints` /
+  `data_palette` values are invalid, and when a section divider has no
+  `Section Number` (previously WARN). It WARNs on placeholders past the slide
+  edge. `validate-template` folds every template-check FAIL into `findings` as
+  `TPL.TEMPLATE_ERROR`, so `valid` is false for templates that cannot generate.
+  The `examine-template --gate` adds `GATE.TEMPLATE_CHECK_FAIL` and
+  `GATE.PROFILE_ERROR`. No response fields added or removed.
+
 - **2026-09-26 — CLI source-loss error diagnostics retained (`go-slide-creator-3qzo4.55`).**
   CLI JSON error reports now retain actual source-loss code, authored path,
   `refuse` action, and repair parameters in the existing `fit_findings` array.

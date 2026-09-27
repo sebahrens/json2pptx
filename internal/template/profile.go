@@ -215,7 +215,14 @@ func resolveLayoutRelationships(reader *Reader, layoutID string) (string, string
 	}
 	for _, rel := range rels.Relationships {
 		if rel.Type == pptx.RelTypeTheme {
-			return master, ResolveRelativePath(filepath.Dir(master), rel.Target), nil
+			themePath := ResolveRelativePath(filepath.Dir(master), rel.Target)
+			if !reader.hasFile(themePath) {
+				// A dangling theme rel makes every generated deck invalid
+				// (OPC_DANGLING_REL); surface it as a profile error
+				// (go-slide-creator-csclk.33).
+				return master, "", fmt.Errorf("dangling theme relationship %s -> %s", masterRels, themePath)
+			}
+			return master, themePath, nil
 		}
 	}
 	return master, "", nil

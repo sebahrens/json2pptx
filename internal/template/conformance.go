@@ -1,11 +1,15 @@
 package template
 
 import (
+	"encoding/xml"
 	"fmt"
 	"math"
 	"path/filepath"
+	"sort"
 	"strings"
 
+	layoutpkg "github.com/sebahrens/json2pptx/internal/layout"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -125,19 +129,26 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 		return nil, fmt.Errorf("failed to open template: %w", err)
 	}
 	defer func() { _ = reader.Close() }()
+	return CheckConformanceReader(reader, filepath.Base(path))
+}
 
+// CheckConformanceReader runs every conformance check against an already
+// opened template. name is the display name stamped on the report.
+func CheckConformanceReader(reader *Reader, name string) (*ConformanceReport, error) {
 	layouts, err := ParseLayouts(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse layouts: %w", err)
 	}
 
-	theme := ParseTheme(reader)
+	slideW, slideH, sizeChecks := checkSlideSize(reader)
 
 	var checks []ConformanceCheck
+	checks = append(checks, sizeChecks...)
 	checks = append(checks, checkMandatoryLayouts(layouts)...)
 	checks = append(checks, checkLayoutNameMismatches(layouts)...)
 	checks = append(checks, checkDuplicateLayoutSignatures(layouts)...)
 	checks = append(checks, checkSectionNumber(layouts)...)
+	checks = append(checks, checkPlaceholdersOnCanvas(layouts, slideW, slideH)...)
 	checks = append(checks, checkFooterChromeCompleteness(layouts))
 	checks = append(checks, checkConflictingLayoutTags(layouts)...)
 	checks = append(checks, checkTextPlaceholderOverlap(layouts)...)
@@ -148,7 +159,12 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 		return nil, fmt.Errorf("failed to check layout text: %w", err)
 	}
 	checks = append(checks, staticText...)
-	checks = append(checks, checkTheme(theme)...)
+	themeChecks, themeOK := checkThemeSource(reader)
+	checks = append(checks, themeChecks...)
+	if themeOK {
+		checks = append(checks, checkTheme(ParseTheme(reader))...)
+	}
+	checks = append(checks, checkMetadataColors(reader)...)
 
 	pass := true
 	for _, c := range checks {
@@ -159,7 +175,7 @@ func CheckConformance(path string) (*ConformanceReport, error) {
 	}
 
 	return &ConformanceReport{
-		Template: filepath.Base(path),
+		Template: name,
 		SHA256:   reader.Hash(),
 		Pass:     pass,
 		Checks:   checks,
@@ -174,7 +190,7 @@ func checkContentTitleBodyHierarchy(layouts []types.LayoutMetadata) []Conformanc
 	for i := range layouts {
 		layout := &layouts[i]
 		role, _, _ := ClassifyCanonicalRole(layout)
-		if role != CanonicalRoleOneContent && role != CanonicalRoleTwoContent {
+		if role != CanonicalRoleOneContent && role != CanonicalRoleTwoContent && !isContentLayoutName(layout.Name) {
 			continue
 		}
 		var titleSize, bodySize int
@@ -203,6 +219,25 @@ func checkContentTitleBodyHierarchy(layouts []types.LayoutMetadata) []Conformanc
 		})
 	}
 	return checks
+}
+
+// isContentLayoutName reports whether a layout is named as a mandatory One or
+// Two Content layout. An oversized body font can stop the classifier from
+// recognising the role, which is exactly when the hierarchy check matters
+// (go-slide-creator-csclk.37).
+func isContentLayoutName(name string) bool {
+	lower := strings.ToLower(strings.TrimSpace(name))
+	for _, ml := range MandatoryLayouts {
+		if ml.Role != CanonicalRoleOneContent && ml.Role != CanonicalRoleTwoContent {
+			continue
+		}
+		for _, n := range ml.Names {
+			if lower == n {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // checkFooterChromeCompleteness catches templates whose partial utility
@@ -240,13 +275,40 @@ func checkFooterChromeCompleteness(layouts []types.LayoutMetadata) ConformanceCh
 	}
 }
 
+// generatorLayoutIDs maps the mandatory roles every deck depends on to the
+// canonical layout_id generation resolves them through. A layout that only
+// shares a tag with the role (Two Content carries "content", Closing carries
+// "title-slide") is not what generation picks, so template-check holds these
+// roles to the generator's own resolution (go-slide-creator-csclk.32).
+var generatorLayoutIDs = map[string]string{
+	CanonicalRoleTitleSlide: "title",
+	CanonicalRoleOneContent: "content",
+}
+
 // checkMandatoryLayouts verifies all mandatory layouts are present with
 // required placeholders.
 func checkMandatoryLayouts(layouts []types.LayoutMetadata) []ConformanceCheck {
 	var checks []ConformanceCheck
+	resolved := layoutpkg.ResolveAllCanonicalLayouts(layouts)
 
 	for _, ml := range MandatoryLayouts {
 		found, layout := findMandatoryLayout(layouts, ml)
+
+		if layoutID, ok := generatorLayoutIDs[ml.Role]; ok {
+			id, resolvable := resolved[layoutID]
+			if !resolvable {
+				checks = append(checks, ConformanceCheck{
+					Category: "layout",
+					Check:    fmt.Sprintf("Mandatory layout: %s", ml.Role),
+					Status:   ConformanceStatusFail,
+					Detail:   unresolvableRoleDetail(ml, layoutID, found, layout),
+				})
+				continue
+			}
+			if l := FindLayout(layouts, id); l != nil {
+				found, layout = true, *l
+			}
+		}
 
 		if !found {
 			checks = append(checks, ConformanceCheck{
@@ -269,6 +331,56 @@ func checkMandatoryLayouts(layouts []types.LayoutMetadata) []ConformanceCheck {
 	}
 
 	return checks
+}
+
+// unresolvableRoleDetail explains why generation cannot resolve layoutID for a
+// mandatory role. When a layout was matched by name, the detail names the
+// reason its classification tag is missing: an oversized first-level body font
+// leaves too little text capacity to count as a content body
+// (go-slide-creator-csclk.37).
+func unresolvableRoleDetail(ml MandatoryLayout, layoutID string, found bool, layout types.LayoutMetadata) string {
+	base := fmt.Sprintf("layout_id %q does not resolve to any layout, so %s slides cannot generate", layoutID, ml.Role)
+	if !found {
+		return base + fmt.Sprintf("; no layout matches names %v or tags %v", ml.Names, ml.Tags)
+	}
+	detail := fmt.Sprintf("%s; %q (ID: %s) must carry tag %v and none of %v (has %v)",
+		base, layout.Name, layout.ID, ml.Tags, excludedTagsFor(layoutID), layout.Tags)
+	if ml.Role != CanonicalRoleOneContent {
+		return detail
+	}
+	var titleSize int
+	for _, ph := range layout.Placeholders {
+		if ph.Type == types.PlaceholderTitle && ph.FontSize > 0 {
+			titleSize = ph.FontSize
+		}
+	}
+	for _, ph := range layout.Placeholders {
+		if IsDisclosurePlaceholder(ph) || (ph.Type != types.PlaceholderBody && ph.Type != types.PlaceholderContent) {
+			continue
+		}
+		if ph.MaxChars > 0 && ph.MaxChars < minUsableBodyChars {
+			detail += fmt.Sprintf("; body placeholder %q holds only ~%d chars (< %d) at %.0fpt",
+				ph.ID, ph.MaxChars, minUsableBodyChars, float64(ph.FontSize)/100)
+			if titleSize > 0 {
+				detail += fmt.Sprintf(" (title %.0fpt)", float64(titleSize)/100)
+			}
+			detail += "; reduce the first-level body font size"
+			break
+		}
+	}
+	return detail
+}
+
+// excludedTagsFor lists the tags that disqualify a layout from layoutID in the
+// generator's canonical resolution (internal/layout canonicalNames).
+func excludedTagsFor(layoutID string) []string {
+	switch layoutID {
+	case "title":
+		return []string{"blank-title", "closing"}
+	case "content":
+		return []string{"two-column", "section-header"}
+	}
+	return nil
 }
 
 // findMandatoryLayout searches for a mandatory layout by name, tag, or
@@ -509,7 +621,7 @@ func checkSectionNumber(layouts []types.LayoutMetadata) []ConformanceCheck {
 		checks = append(checks, ConformanceCheck{
 			Category: "placeholder",
 			Check:    "Section Divider: has Section Number placeholder",
-			Status:   ConformanceStatusWarn,
+			Status:   ConformanceStatusFail,
 			Detail:   fmt.Sprintf("Layout %q has no placeholder named \"Section Number\"", sectionLayout.Name),
 		})
 		return checks
@@ -537,6 +649,209 @@ func checkSectionNumber(layouts []types.LayoutMetadata) []ConformanceCheck {
 		})
 	}
 
+	return checks
+}
+
+// OOXML ST_SlideSizeCoordinate bounds for p:sldSz cx/cy.
+const (
+	minSlideSizeEMU int64 = 914400
+	maxSlideSizeEMU int64 = 51206400
+)
+
+// checkSlideSize fails a missing or out-of-range p:sldSz, which the generator
+// would otherwise copy verbatim into every output deck
+// (go-slide-creator-csclk.39). It returns the slide size for the canvas checks,
+// or zeros when the size is unusable.
+func checkSlideSize(reader *Reader) (int64, int64, []ConformanceCheck) {
+	const name = "Slide size: p:sldSz present and within OOXML range"
+	w, h := ParseSlideDimensions(reader)
+	if w == 0 && h == 0 {
+		return 0, 0, []ConformanceCheck{{Category: "slide", Check: name, Status: ConformanceStatusFail,
+			Detail: "ppt/presentation.xml declares no usable <p:sldSz>"}}
+	}
+	if w < minSlideSizeEMU || w > maxSlideSizeEMU || h < minSlideSizeEMU || h > maxSlideSizeEMU {
+		return 0, 0, []ConformanceCheck{{Category: "slide", Check: name, Status: ConformanceStatusFail,
+			Detail: fmt.Sprintf("sldSz cx=%d cy=%d; each must be %d..%d EMU", w, h, minSlideSizeEMU, maxSlideSizeEMU)}}
+	}
+	return w, h, []ConformanceCheck{{Category: "slide", Check: name, Status: ConformanceStatusPass,
+		Detail: fmt.Sprintf("%.2fin x %.2fin", float64(w)/914400, float64(h)/914400)}}
+}
+
+// checkPlaceholdersOnCanvas warns when layout placeholders extend past the
+// right or bottom slide edge, e.g. 16:9 master geometry in a 4:3 deck
+// (go-slide-creator-csclk.39). Placeholders parked at negative coordinates are
+// intentionally off-slide and are not judged; a 1% tolerance absorbs rounding.
+func checkPlaceholdersOnCanvas(layouts []types.LayoutMetadata, slideW, slideH int64) []ConformanceCheck {
+	if slideW <= 0 || slideH <= 0 {
+		return nil
+	}
+	const name = "Placeholders within slide canvas"
+	var off []string
+	for _, l := range layouts {
+		for _, ph := range l.Placeholders {
+			b := ph.Bounds
+			if b.Width <= 0 || b.Height <= 0 || b.X < 0 || b.Y < 0 {
+				continue
+			}
+			if b.X+b.Width > slideW+slideW/100 || b.Y+b.Height > slideH+slideH/100 {
+				off = append(off, fmt.Sprintf("%s/%s", l.Name, ph.ID))
+			}
+		}
+	}
+	if len(off) == 0 {
+		return []ConformanceCheck{{Category: "slide", Check: name, Status: ConformanceStatusPass}}
+	}
+	return []ConformanceCheck{{Category: "slide", Check: name, Status: ConformanceStatusWarn,
+		Detail: fmt.Sprintf("%d placeholder(s) extend past the %.2fin x %.2fin slide: %s",
+			len(off), float64(slideW)/914400, float64(slideH)/914400, strings.Join(off, ", "))}}
+}
+
+// checkThemeSource validates the theme part itself: the slide master's theme
+// relationship must resolve, the theme must parse, both font scheme typefaces
+// must be present, and every scheme colour value must be six hex digits.
+// ParseTheme silently substitutes defaults for all of these, so checks on its
+// result could not fail (go-slide-creator-csclk.33, -.34). The bool reports
+// whether a theme was read, so callers skip the parsed-theme checks otherwise.
+func checkThemeSource(reader *Reader) ([]ConformanceCheck, bool) {
+	var checks []ConformanceCheck
+	masters, _ := reader.ListFiles("ppt/slideMasters/slideMaster*.xml")
+	sort.Strings(masters)
+	var dangling []string
+	for _, master := range masters {
+		relsPath := filepath.ToSlash(filepath.Join(filepath.Dir(master), "_rels", filepath.Base(master)+".rels"))
+		data, err := reader.ReadFile(relsPath)
+		if err != nil {
+			continue
+		}
+		var rels pptx.RelationshipsXML
+		if xml.Unmarshal(data, &rels) != nil {
+			continue
+		}
+		for _, rel := range rels.Relationships {
+			if rel.Type != pptx.RelTypeTheme {
+				continue
+			}
+			target := ResolveRelativePath(filepath.Dir(master), rel.Target)
+			if !reader.hasFile(target) {
+				dangling = append(dangling, fmt.Sprintf("%s -> %s", master, target))
+			}
+		}
+	}
+	if len(dangling) > 0 {
+		checks = append(checks, ConformanceCheck{Category: "theme", Check: "Theme: slide master theme relationship resolves", Status: ConformanceStatusFail,
+			Detail: "dangling theme relationship: " + strings.Join(dangling, "; ")})
+	}
+
+	themeFiles, _ := reader.ListFiles("ppt/theme/theme*.xml")
+	if len(themeFiles) == 0 {
+		return append(checks, ConformanceCheck{Category: "theme", Check: "Theme: theme part present", Status: ConformanceStatusFail,
+			Detail: "the package has no ppt/theme/theme*.xml"}), false
+	}
+	data, err := reader.ReadFile(themeFiles[0])
+	var theme pptx.ThemeXML
+	if err == nil {
+		err = xml.Unmarshal(data, &theme)
+	}
+	if err != nil {
+		return append(checks, ConformanceCheck{Category: "theme", Check: "Theme: theme part parses", Status: ConformanceStatusFail,
+			Detail: fmt.Sprintf("%s: %v", themeFiles[0], err)}), false
+	}
+
+	fonts := theme.ThemeElements.FontScheme
+	for _, f := range []struct{ check, typeface string }{
+		{"Theme: major font (titles) defined", fonts.MajorFont.Latin.Typeface},
+		{"Theme: minor font (body) defined", fonts.MinorFont.Latin.Typeface},
+	} {
+		c := ConformanceCheck{Category: "theme", Check: f.check, Status: ConformanceStatusPass, Detail: f.typeface}
+		if strings.TrimSpace(f.typeface) == "" {
+			c.Status = ConformanceStatusFail
+			c.Detail = fmt.Sprintf("%s has no a:fontScheme latin typeface", themeFiles[0])
+		}
+		checks = append(checks, c)
+	}
+
+	var invalid []string
+	for _, slot := range colorSlots {
+		def := slot.getter(theme.ThemeElements.ColorScheme)
+		raw := def.SRGBColor.Val
+		if raw == "" {
+			raw = def.SystemColor.LastClr
+		}
+		if raw != "" && !isHex6(strings.TrimSpace(raw)) {
+			invalid = append(invalid, fmt.Sprintf("%s=%q", slot.name, raw))
+		}
+	}
+	c := ConformanceCheck{Category: "theme", Check: "Theme: scheme colors are 6-digit hex", Status: ConformanceStatusPass}
+	if len(invalid) > 0 {
+		c.Status = ConformanceStatusFail
+		c.Detail = "invalid color value(s): " + strings.Join(invalid, ", ")
+	}
+	checks = append(checks, c)
+	return checks, true
+}
+
+// isHex6 reports whether s is exactly six hexadecimal digits.
+func isHex6(s string) bool {
+	if len(s) != 6 {
+		return false
+	}
+	for _, r := range s {
+		if !strings.ContainsRune("0123456789abcdefABCDEF", r) {
+			return false
+		}
+	}
+	return true
+}
+
+// surfaceTintRoles are the four roles TEMPLATE_SPEC requires in surface_tints.
+var surfaceTintRoles = []string{"subtle", "paper", "elevated", "inverse"}
+
+// validMetadataColor accepts an OOXML scheme color name or a 6-digit hex
+// value (optionally '#'-prefixed), the two forms fills resolve.
+func validMetadataColor(v string) bool {
+	return pptx.IsSchemeColor(v) || isHex6(strings.TrimPrefix(v, "#"))
+}
+
+// checkMetadataColors validates the embedded metadata's surface_tints and
+// data_palette values, which are otherwise written verbatim into slide XML
+// (go-slide-creator-csclk.36). Templates without metadata are not judged.
+func checkMetadataColors(reader *Reader) []ConformanceCheck {
+	md, err := ParseMetadata(reader)
+	if err != nil || md == nil || (len(md.SurfaceTints) == 0 && len(md.DataPalette) == 0) {
+		return nil
+	}
+	var invalid, missing []string
+	for _, role := range surfaceTintRoles {
+		v, ok := md.SurfaceTints[role]
+		switch {
+		case !ok && len(md.SurfaceTints) > 0:
+			missing = append(missing, role)
+		case ok && !validMetadataColor(v):
+			invalid = append(invalid, fmt.Sprintf("surface_tints.%s=%q", role, v))
+		}
+	}
+	// data_palette resolves only through the theme's scheme slots; any other
+	// entry (hex included) is silently dropped from chart palettes.
+	themeSlots := make(map[string]bool, len(colorSlots))
+	for _, slot := range colorSlots {
+		themeSlots[slot.name] = true
+	}
+	for i, v := range md.DataPalette {
+		if !themeSlots[v] {
+			invalid = append(invalid, fmt.Sprintf("data_palette[%d]=%q", i, v))
+		}
+	}
+	valid := ConformanceCheck{Category: "metadata", Check: "Metadata: surface_tints and data_palette colors valid", Status: ConformanceStatusPass}
+	if len(invalid) > 0 {
+		valid.Status = ConformanceStatusFail
+		valid.Detail = "surface_tints values must be scheme color names or 6-digit hex and data_palette entries theme slot names (dk1..accent6, hlink, folHlink): " +
+			strings.Join(invalid, ", ")
+	}
+	checks := []ConformanceCheck{valid}
+	if len(missing) > 0 {
+		checks = append(checks, ConformanceCheck{Category: "metadata", Check: "Metadata: surface_tints defines all four roles", Status: ConformanceStatusWarn,
+			Detail: "missing role(s): " + strings.Join(missing, ", ")})
+	}
 	return checks
 }
 
@@ -575,35 +890,9 @@ func checkTheme(theme types.ThemeInfo) []ConformanceCheck {
 		})
 	}
 
-	if theme.TitleFont == "" {
-		checks = append(checks, ConformanceCheck{
-			Category: "theme",
-			Check:    "Theme: major font (titles) defined",
-			Status:   ConformanceStatusFail,
-		})
-	} else {
-		checks = append(checks, ConformanceCheck{
-			Category: "theme",
-			Check:    "Theme: major font (titles) defined",
-			Status:   ConformanceStatusPass,
-			Detail:   theme.TitleFont,
-		})
-	}
-
-	if theme.BodyFont == "" {
-		checks = append(checks, ConformanceCheck{
-			Category: "theme",
-			Check:    "Theme: minor font (body) defined",
-			Status:   ConformanceStatusFail,
-		})
-	} else {
-		checks = append(checks, ConformanceCheck{
-			Category: "theme",
-			Check:    "Theme: minor font (body) defined",
-			Status:   ConformanceStatusPass,
-			Detail:   theme.BodyFont,
-		})
-	}
+	// Fonts are checked on the raw theme XML by checkThemeSource: ParseTheme
+	// defaults a missing or empty typeface to Calibri, so a check on the
+	// parsed value could never fail (go-slide-creator-csclk.34).
 
 	checks = append(checks, checkColorPolarity(colorMap)...)
 	checks = append(checks, checkAccentVisibility(colorMap)...)

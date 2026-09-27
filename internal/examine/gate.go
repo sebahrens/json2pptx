@@ -43,6 +43,12 @@ const (
 	// GateCodeErrorFinding fires once per error-severity finding the
 	// examination already emitted.
 	GateCodeErrorFinding = "GATE.ERROR_FINDING"
+	// GateCodeTemplateCheckFail fires once per template-check FAIL, so the gate
+	// never passes a template the conformance checker rejects.
+	GateCodeTemplateCheckFail = "GATE.TEMPLATE_CHECK_FAIL"
+	// GateCodeProfileError fires once per error-severity template-profile
+	// diagnostic (e.g. LAYOUT_RELATIONSHIP_INVALID, UNUSABLE_GEOMETRY).
+	GateCodeProfileError = "GATE.PROFILE_ERROR"
 )
 
 // GateViolation is one CI-gate failure: a precise, human-readable reason a
@@ -61,7 +67,9 @@ type GateViolation struct {
 //  2. canonical_coverage is complete across the four content-bearing families;
 //  3. every title-typed placeholder is named exactly "title";
 //  4. every section-divider layout has a "Section Number" placeholder;
-//  5. the examination emitted no error-severity finding.
+//  5. the examination emitted no error-severity finding;
+//  6. template-check reported no FAIL;
+//  7. the template profile reported no error-severity diagnostic.
 //
 // Gate is pure and side-effect-free; the CLI's --gate flag prints the result
 // and exits non-zero when the slice is non-empty.
@@ -75,7 +83,38 @@ func Gate(report *Report) []GateViolation {
 	violations = append(violations, gateCheckTitleNaming(report)...)
 	violations = append(violations, gateCheckSectionNumber(report)...)
 	violations = append(violations, gateCheckErrorFindings(report)...)
+	violations = append(violations, gateCheckConformance(report)...)
+	violations = append(violations, gateCheckProfile(report)...)
 	return violations
+}
+
+// gateCheckConformance flags every template-check FAIL.
+func gateCheckConformance(report *Report) []GateViolation {
+	var v []GateViolation
+	for _, c := range report.conformanceFails {
+		v = append(v, GateViolation{
+			Code:    GateCodeTemplateCheckFail,
+			Message: fmt.Sprintf("template-check FAIL [%s] %s: %s", c.Category, c.Check, c.Detail),
+		})
+	}
+	return v
+}
+
+// gateCheckProfile flags every error-severity template-profile diagnostic.
+func gateCheckProfile(report *Report) []GateViolation {
+	if report.Profile == nil {
+		return nil
+	}
+	var v []GateViolation
+	for _, d := range report.Profile.Diagnostics {
+		if d.Severity == "error" {
+			v = append(v, GateViolation{
+				Code:    GateCodeProfileError,
+				Message: fmt.Sprintf("template profile error [%s]: %s", d.Code, d.Message),
+			})
+		}
+	}
+	return v
 }
 
 // gateCheckTags flags any layout with an empty tag set.
@@ -113,7 +152,27 @@ func gateCheckCoverage(report *Report) []GateViolation {
 			})
 		}
 	}
+	// The one-content family also contains Two Content, but layout_id
+	// "content" never resolves to a two-column layout: a template whose only
+	// member of the family is Two Content cannot generate a content slide
+	// (go-slide-creator-csclk.32). Require the One Content role itself.
+	if c, ok := report.CanonicalCoverage[string(types.LayoutFamilyOneContent)]; ok && c.Present && !hasCanonicalType(report, types.CanonicalLayoutOneContent) {
+		v = append(v, GateViolation{
+			Code:    GateCodeCanonicalCoverage,
+			Message: "canonical coverage incomplete: the one-content family has no One Content layout (Two Content alone cannot serve layout_id \"content\")",
+		})
+	}
 	return v
+}
+
+// hasCanonicalType reports whether any layout classifies as ct.
+func hasCanonicalType(report *Report, ct types.CanonicalLayoutType) bool {
+	for i := range report.Layouts {
+		if report.Layouts[i].CanonicalType == string(ct) {
+			return true
+		}
+	}
+	return false
 }
 
 // gateCheckTitleNaming flags title-typed placeholders not named exactly "title".

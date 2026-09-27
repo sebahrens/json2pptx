@@ -133,8 +133,10 @@ func normalizeRGB(rgb string) string {
 	// Convert to uppercase for consistency
 	rgb = strings.ToUpper(rgb)
 
-	// Validate format (should be 7 characters: #RRGGBB)
-	if len(rgb) != 7 {
+	// Validate format (#RRGGBB with hex digits). A non-hex value such as
+	// "GGHHII" is not a colour; treating it as missing keeps it out of chart
+	// palettes and lets template-check report it (go-slide-creator-csclk.34).
+	if !isHex6(rgb[1:]) {
 		return ""
 	}
 

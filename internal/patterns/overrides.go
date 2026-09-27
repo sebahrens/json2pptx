@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/svggen"
 )
@@ -286,10 +287,13 @@ func ValidateCellAccentMode(patternName, mode string) error {
 }
 
 // ResolveSurface returns the scheme color name for a surface tint role.
-// Falls back to defaultColor if the role is not defined in the template metadata.
+// Falls back to defaultColor if the role is not defined in the template metadata
+// or its value is neither a scheme color name nor 6-digit hex; an invalid value
+// would otherwise be written verbatim as <a:srgbClr val="..."/>
+// (go-slide-creator-csclk.36).
 func ResolveSurface(role string, metadata *types.TemplateMetadata, defaultColor string) string {
 	if metadata != nil && len(metadata.SurfaceTints) > 0 {
-		if resolved, ok := metadata.SurfaceTints[role]; ok {
+		if resolved, ok := metadata.SurfaceTints[role]; ok && (pptx.IsSchemeColor(resolved) || isHexColor(resolved)) {
 			return resolved
 		}
 	}
