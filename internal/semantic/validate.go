@@ -392,6 +392,18 @@ func validateMeta(spec *DeckSpec, s *semDiags) {
 	if v := spec.Meta.TypeScale; v != "" && v != "compact" && v != "comfortable" && v != "presentation" {
 		s.hard("meta.type_scale", diagnostics.CodeSemanticRequired, "type_scale must be compact, comfortable, or presentation")
 	}
+	// The same enums the DeckSpec schema and the raw validator enforce, so an
+	// invalid value cannot pass semantic validate and then render with the
+	// engine default (go-slide-creator-csclk.46).
+	if v := spec.Meta.AccentStrategy; v != "" && v != "primary" && v != "rotate" && v != "section-keyed" {
+		s.hard("meta.accent_strategy", diagnostics.CodeSemanticRequired, "accent_strategy must be primary, rotate, or section-keyed")
+	}
+	if v := spec.Meta.ViewingMode; v != "" && v != "present" && v != "read" {
+		s.hard("meta.viewing_mode", diagnostics.CodeSemanticRequired, "viewing_mode must be present or read")
+	}
+	if v := spec.Meta.DesignMode; v != "" && v != "constrained" && v != "free" {
+		s.hard("meta.design_mode", diagnostics.CodeSemanticRequired, "design_mode must be constrained or free")
+	}
 	if strings.TrimSpace(spec.Meta.Title) == "" {
 		s.hard("meta.title", diagnostics.CodeSemanticRequired, "deck title (meta.title) is required")
 	} else {
@@ -586,6 +598,11 @@ func validateAgenda(path string, slide SlideSpec, s *semDiags) {
 func validateBridge(path string, slide SlideSpec, s *semDiags) {
 	field, problem := slides.BridgeProblem(slide.Body)
 	if problem == "" {
+		if at, running, total, bad := slides.BridgeTotalMismatch(slide.Body); bad {
+			s.advisory(path+"."+at, string(diagnostics.CodeSemanticBridgeTotalMismatch),
+				fmt.Sprintf("bridge total %s does not match the running sum %s of the columns before it; correct the total or the deltas",
+					strconv.FormatFloat(total, 'f', -1, 64), strconv.FormatFloat(running, 'f', -1, 64)))
+		}
 		return
 	}
 	if field == "columns" && !hasNonEmpty(slide.Body, "columns") {

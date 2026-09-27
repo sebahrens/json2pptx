@@ -1261,6 +1261,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"categories": ["A","B"], "series": [{"name": "Revenue", "values": [1, 2]}]}`,
 		RelatedCodes:  []string{CodeChartSeriesLengthMismatch},
 	},
+	CodeSemanticBridgeTotalMismatch: {
+		Code:        CodeSemanticBridgeTotalMismatch,
+		Summary:     "A bridge total contradicts the running sum of the columns before it.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation walks a bridge's columns and finds a \"total\" column after deltas whose value differs from the running sum by more than rounding (0.5% of the larger magnitude). The waterfall draws the authored total, so the walk visibly does not add up. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Correct the total at evidence.path, or the deltas before it, so the walk adds up.",
+			"Use a \"subtotal\" column with no value to have the engine compute the running total.",
+		},
+		ExampleBefore: `{"columns": [{"label": "Start", "type": "total", "value": 100}, {"label": "Cost", "type": "delta", "value": -10}, {"label": "End", "type": "total", "value": 999}]}`,
+		ExampleAfter:  `{"columns": [{"label": "Start", "type": "total", "value": 100}, {"label": "Cost", "type": "delta", "value": -10}, {"label": "End", "type": "total", "value": 90}]}`,
+		RelatedCodes:  []string{CodeSemanticFieldType},
+	},
 	CodeSemanticPatternNotAvailable: {
 		Code:        CodeSemanticPatternNotAvailable,
 		Summary:     "A slide's pattern / layout override names a composition its kind cannot compile to, so the override is ignored.",

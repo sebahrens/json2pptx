@@ -142,6 +142,9 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 	var s *server.MCPServer
 	opts := []server.ServerOption{
 		server.WithToolCapabilities(false),
+		// A panicking tool handler becomes a tool error instead of killing the
+		// stdio server and every later call (go-slide-creator-csclk.42).
+		server.WithRecovery(),
 		// Resources are how the deck itself leaves the server
 		// (go-slide-creator-fx52): a generated .pptx is readable as a blob at
 		// json2pptx://deck/<name>, so a host that cannot see the server's

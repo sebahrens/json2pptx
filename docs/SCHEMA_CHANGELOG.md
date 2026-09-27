@@ -43,6 +43,25 @@
   `dependentRequired: {style_id: [template]}`. A panicking tool handler now
   returns an `INTERNAL` isError result instead of killing the server.
 
+- **2026-09-27 — DeckSpec fidelity fixes (`go-slide-creator-csclk.42`–`.49`).**
+  - Raw slides accept the engine-set **`section_title`** (the
+    `chrome.section_crumb` text). `semantic compile` now writes it, so
+    `generate` on compiled output keeps the crumbs `semantic render` shows.
+  - New semantic advisory **`SEMANTIC_BRIDGE_TOTAL_MISMATCH`** at
+    `columns[i].value` when a bridge `total` after deltas differs from their
+    running sum by more than 0.5% (strict promotes it to an error).
+  - `meta.accent_strategy`, `meta.viewing_mode` and `meta.design_mode` are
+    validated against their enums (`SEMANTIC_REQUIRED`, like `type_scale`).
+  - Numbers inside list items at text positions (`kpis[].value`,
+    `milestones[].date`, …) render as text instead of being dropped; YAML
+    dates and zero-padded / hex integers keep their source text.
+  - Structure-mode findings and rhythm warnings point at `structure.…`
+    paths instead of nonexistent `slides[N]`.
+  - Arabic/Hebrew text no longer panics fit measurement; the MCP server
+    recovers a panicking tool handler as a tool error.
+  - `plan_deck` splits long clauses at "and"/"while" and treats CJK
+    punctuation as clause boundaries, so those facts are kept.
+
 - **2026-09-26 — CLI source-loss error diagnostics retained (`go-slide-creator-3qzo4.55`).**
   CLI JSON error reports now retain actual source-loss code, authored path,
   `refuse` action, and repair parameters in the existing `fit_findings` array.

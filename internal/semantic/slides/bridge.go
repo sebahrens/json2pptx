@@ -111,6 +111,33 @@ func bridgeColumnProblem(col map[string]any, path string, running *float64) (str
 	return "", ""
 }
 
+// BridgeTotalMismatch returns the path of the first "total" column that follows
+// deltas and disagrees with their running sum beyond rounding tolerance (0.5%
+// of the larger magnitude), with the running sum and the authored total. It
+// assumes BridgeProblem reported no problem (go-slide-creator-csclk.47).
+func BridgeTotalMismatch(body map[string]any) (string, float64, float64, bool) {
+	raw, _ := body["columns"].([]any)
+	running, sawDelta := 0.0, false
+	for i, entry := range raw {
+		col, _ := entry.(map[string]any)
+		typ, _ := col["type"].(string)
+		n, hasValue := bridgeNumber(col["value"])
+		switch typ {
+		case "delta":
+			running += n
+			sawDelta = true
+		case "subtotal":
+			sawDelta = false
+		case "total":
+			if sawDelta && hasValue && math.Abs(n-running) > 0.005*math.Max(math.Abs(n), math.Abs(running))+1e-9 {
+				return fmt.Sprintf("columns[%d].value", i), running, n, true
+			}
+			running, sawDelta = n, false
+		}
+	}
+	return "", 0, 0, false
+}
+
 func bridgeNumber(v any) (float64, bool) {
 	switch n := v.(type) {
 	case float64:

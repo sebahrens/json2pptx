@@ -22,7 +22,16 @@ const maxFactLen = 100
 // Every one of these is a clause boundary wherever it appears — a fact that
 // kept a semicolon would read as two facts spliced together, which is the
 // shape this file exists to avoid (go-slide-creator-vmiy).
-var factClauseSplit = regexp.MustCompile(`[.!?]+(?:\s+|$)|[;\n]+|,\s+|:\s+|\s+[-–—]\s+`)
+//
+// CJK sentence and clause punctuation (。！？；，、：) is a boundary without
+// trailing whitespace, since CJK text has none (go-slide-creator-csclk.48).
+var factClauseSplit = regexp.MustCompile(`[.!?]+(?:\s+|$)|[;\n]+|,\s+|:\s+|\s+[-–—]\s+|[。！？；，、：]+`)
+
+// factLongClauseSplit splits a clause longer than maxFactLen at a joining word,
+// so the facts after "... from 5% to 3% and headcount reached 1200 ..." are
+// kept as their own facts instead of being cut off by the length cap
+// (go-slide-creator-csclk.48).
+var factLongClauseSplit = regexp.MustCompile(`(?i)\s+(?:and|while|whereas|but)\s+`)
 
 // factListMarker strips a list marker a brief's bullet leaves at the head of a
 // clause: "- ", "* ", "• ", "1. ", "2) ". The marker is the author's list
@@ -71,7 +80,9 @@ func balanceFactBrackets(s string) string {
 // factQuantity matches a standalone number (not glued to a preceding letter,
 // so period labels like "Q3", "FY24", "H1" do not count as quantities),
 // optionally signed and currency-prefixed.
-var factQuantity = regexp.MustCompile(`(?:^|[^\p{L}\d])[+\-−±]?[$€£¥]?\d`)
+// A digit straight after a CJK character still counts: CJK text has no spaces,
+// so "增长23%" is a quantity (go-slide-creator-csclk.48).
+var factQuantity = regexp.MustCompile(`(?:^|[^\p{L}\d]|[\p{Han}\p{Hiragana}\p{Katakana}\p{Hangul}])[+\-−±]?[$€£¥]?\d`)
 
 // namedPercentSplit matches a contiguous three-category percentage breakdown
 // ("North 41%, South 33%, West 26%"). Keeping this as one chart signal and
@@ -136,7 +147,14 @@ type briefFact struct {
 // deck topic (it already feeds the opening slide's seed), so it only counts as
 // a fact when it carries a quantity.
 func extractBriefFacts(brief string) []briefFact {
-	clauses := factClauseSplit.Split(brief, -1)
+	var clauses []string
+	for _, c := range factClauseSplit.Split(brief, -1) {
+		if len([]rune(strings.TrimSpace(c))) > maxFactLen {
+			clauses = append(clauses, factLongClauseSplit.Split(c, -1)...)
+			continue
+		}
+		clauses = append(clauses, c)
+	}
 	var out []briefFact
 	seen := make(map[string]bool)
 	first := true
