@@ -12,7 +12,9 @@ schema. Do not copy a static kind catalog from an older document.
 Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.
 The forms are mutually exclusive. Chapters add numbered section dividers;
-`meta.chrome.section_crumb: true` labels their content slides. The compiler
+`meta.chrome.section_crumb: true` labels their content slides (the compiled
+raw deck carries the crumb as each slide's engine-set `section_title`, so
+`generate` on `semantic compile` output matches `semantic render`). The compiler
 generates divider numbers: do not hand-author them. Keep an actual narrative
 instead of creating one slide per layout or a sequence of interchangeable
 cards. `explain_deck_spec` previews the resolved story and visual rhythm
@@ -29,8 +31,10 @@ adding empty or unrelated slides. Template resolution order is
 default. Discover archetypes with `list_deck_archetypes`.
 
 `meta.chrome` controls confidentiality, client/project labels, date, page
-numbers, and section crumbs. `meta.viewing_mode` and
-`meta.accent_strategy` choose reading scale and accent rhythm. Every slide
+numbers, and section crumbs. `meta.viewing_mode` (`present` / `read`) and
+`meta.accent_strategy` (`primary` / `rotate` / `section-keyed`) choose
+reading scale and accent rhythm; `meta.design_mode` is `constrained` or
+`free`. Any other value of these enums is a `SEMANTIC_REQUIRED` error. Every slide
 kind can carry `notes` and `source`; the latter is rendered once even when
 the chosen pattern has its own attribution band. `meta.type_scale` can be
 `compact`, `comfortable` (default), or `presentation`; use a
@@ -41,7 +45,11 @@ the chosen pattern has its own attribution band. `meta.type_scale` can be
 The live kind schema is closed. Unknown fields are dropped by compilation
 and surfaced as `SEMANTIC_UNKNOWN_FIELD`; treat even a warning as lost
 content. A wrong JSON type is `SEMANTIC_FIELD_TYPE`, not a request to guess
-the intended coercion. Run `validate_deck_spec` before rendering and correct
+the intended coercion. A number in a text position inside a list item
+(`kpis[].value: 48`, `milestones[].date: 2024`) renders as its plain decimal
+text; quote it when the literal matters (`"1.10"`, `"48%"`). In YAML, dates
+(`2024-03-01`) and zero-padded or hex integers (`007`, `0x1F`) keep their
+source text. Run `validate_deck_spec` before rendering and correct
 these at their source paths.
 
 Visuals have content limits. The compiler degrades an out-of-range visual to
@@ -72,7 +80,7 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 | Hero statistic | One value at most 20 characters, label 80, unit 10, context 120, source 80. For several equal-weight figures use KPI snapshot. |
 | Agenda | Two to ten numbered sections; three to six with subtitles can use illustrated rows. Outside the range, use a numbered list, preserving the current-section marker. |
 | Quotation | One named speaker uses a pull quote (at most 500 characters); three to eight named speakers use a cluster (at most 240 each). Two quotes or missing names degrade to quote bullets. |
-| Bridge | Three to ten waterfall columns; component label at most 40 characters, unit 8, caption 60. Total/delta values are numeric; an implicit subtotal uses the running total. |
+| Bridge | Three to ten waterfall columns; component label at most 40 characters, unit 8, caption 60. Total/delta values are numeric; an implicit subtotal uses the running total. A `total` after deltas that differs from their running sum by more than 0.5% is `SEMANTIC_BRIDGE_TOTAL_MISMATCH` at that column's `value`. |
 | Pillars | Three to five pillars. A house needs both objective and foundation, title at most 60, up to five bullets of 120, and up to three roof badges of 24. Without full framing use panels (title 80, one to eight bullets of 200). |
 | Organization | One root, up to seven nodes, three levels, and four direct reports per node; labels at most 40 characters. Larger trees degrade to attributed bullets rather than dropping people. |
 | Architecture | Three to six tiers; tier label at most 60 characters, detail at most 120, and side rail at most 30. Out-of-budget content degrades intact to bullets. |

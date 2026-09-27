@@ -127,15 +127,36 @@ func bodyAndBulletsContent(placeholderID, body string, bullets []string) deckinp
 }
 
 // strField returns the trimmed string value of a payload field, or "" when it
-// is absent or not a string.
+// is absent or not a string. A numeric value is rendered as its plain decimal
+// text (as stringList does) rather than silently dropped: a nested kpis[].value
+// of 48 or milestones[].date of 2024 is content, not an absent field
+// (go-slide-creator-csclk.43).
 func strField(body map[string]any, key string) string {
 	if body == nil {
 		return ""
 	}
-	if v, ok := body[key].(string); ok {
-		return strings.TrimSpace(v)
+	s, _ := scalarText(body[key])
+	return s
+}
+
+// scalarText renders a string or numeric payload value as trimmed text. The
+// bool reports whether v was such a scalar.
+func scalarText(v any) (string, bool) {
+	switch t := v.(type) {
+	case string:
+		return strings.TrimSpace(t), true
+	case float64:
+		return strconv.FormatFloat(t, 'f', -1, 64), true
+	case json.Number:
+		return t.String(), true
+	case int:
+		return strconv.Itoa(t), true
+	case int64:
+		return strconv.FormatInt(t, 10), true
+	case uint64:
+		return strconv.FormatUint(t, 10), true
 	}
-	return ""
+	return "", false
 }
 
 // stringList returns the string entries of a list-valued payload field. Non-

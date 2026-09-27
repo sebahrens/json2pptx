@@ -1,6 +1,7 @@
 package semantic
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,30 @@ import (
 type SourceMap struct {
 	// entries maps a normalized raw path to its source entry.
 	entries map[string]SourceEntry
+	// slidePaths maps a raw output slide index to its DeckSpec slide locator
+	// (e.g. "structure.sections[0].slides[0]"). Structure-mode output indices
+	// count the cover, generated agenda and dividers, so slides[N] is not a
+	// valid DeckSpec path there (go-slide-creator-csclk.45).
+	slidePaths map[int]string
+}
+
+// SetSlidePath records the DeckSpec locator of raw output slide outputIndex.
+func (m *SourceMap) SetSlidePath(outputIndex int, semanticPath string) {
+	if m.slidePaths == nil {
+		m.slidePaths = map[int]string{}
+	}
+	m.slidePaths[outputIndex] = semanticPath
+}
+
+// SlidePath returns the DeckSpec locator of raw output slide outputIndex,
+// falling back to slides[outputIndex] when none was recorded.
+func (m *SourceMap) SlidePath(outputIndex int) string {
+	if m != nil {
+		if p, ok := m.slidePaths[outputIndex]; ok && p != "" {
+			return p
+		}
+	}
+	return fmt.Sprintf("slides[%d]", outputIndex)
 }
 
 // SourceEntry is one raw↔semantic correspondence.

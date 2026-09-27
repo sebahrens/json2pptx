@@ -9,6 +9,31 @@ import (
 	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
+// TestExtractBriefFactsLongAndCJKClauses pins go-slide-creator-csclk.48: a
+// clause past the length cap keeps the facts after its "and", and a CJK brief
+// yields facts at all.
+func TestExtractBriefFactsLongAndCJKClauses(t *testing.T) {
+	joined := func(fs []briefFact) string {
+		var parts []string
+		for _, f := range fs {
+			parts = append(parts, f.text)
+		}
+		return strings.Join(parts, " | ")
+	}
+	en := joined(extractBriefFacts("Logistics board update. Over the last twelve months across our regional network churn fell from 5% to 3% and headcount reached 1200 people across 14 depots in 9 countries."))
+	for _, want := range []string{"5%", "1200", "14 depots", "9 countries"} {
+		if !strings.Contains(en, want) {
+			t.Errorf("fact %q lost: %s", want, en)
+		}
+	}
+	zh := joined(extractBriefFacts("物流业务董事会更新。收入增长23%至4800万美元。客户流失率降至3%。"))
+	for _, want := range []string{"23%", "3%"} {
+		if !strings.Contains(zh, want) {
+			t.Errorf("CJK fact %q lost: %s", want, zh)
+		}
+	}
+}
+
 // planContains reports whether s appears in any slide's content_seed / facts
 // or in unplaced_facts.
 func planContains(res *Result, s string) bool {

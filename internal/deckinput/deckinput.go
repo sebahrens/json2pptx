@@ -265,10 +265,11 @@ type SlideInput struct {
 	ContrastCheck      *bool                `json:"contrast_check,omitempty"`
 
 	// SectionTitle is the title of the structure.sections[] entry this slide was
-	// expanded from. It is set by the engine, never by the author — hence
-	// json:"-", which keeps it out of the schema and out of round-trips — and is
-	// what chrome.section_crumb puts in the footer (go-slide-creator-ynfv).
-	SectionTitle string `json:"-"`
+	// expanded from, and is what chrome.section_crumb puts in the footer
+	// (go-slide-creator-ynfv). The engine sets it when expanding a structure
+	// block; it is serialised so the flat slides `semantic compile` emits keep
+	// their crumbs when fed back to generate (go-slide-creator-csclk.49).
+	SectionTitle string `json:"section_title,omitempty"`
 }
 
 // BackgroundInput defines a slide background image.

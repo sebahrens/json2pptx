@@ -127,6 +127,9 @@ func Compile(spec *DeckSpec, opts CompileOptions) (*deckinput.PresentationInput,
 			}
 		}
 		outputIndex := len(input.Slides)
+		if si.SourcePath != "" {
+			ir.SourceMap.SetSlidePath(outputIndex, si.SourcePath)
+		}
 		for _, l := range links {
 			ir.SourceMap.Add(l.RawPath, l.SemanticPath, si.SourceIndex)
 			// Validation findings now address authored content by array index.

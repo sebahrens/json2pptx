@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/svggen/safeyaml"
+	"gopkg.in/yaml.v3"
 )
 
 // maxSpecSize bounds a semantic source document. It is generous relative to the
@@ -60,6 +61,13 @@ func ParseYAML(data []byte) (*DeckSpec, Diagnostics) {
 	if err := safeyaml.UnmarshalWithLimits(data, &root, limits); err != nil {
 		return nil, parseErrorDiagnostics(err)
 	}
+	if kept, changed := keepYAMLScalarText(data); changed {
+		data = kept
+		root = nil
+		if err := safeyaml.UnmarshalWithLimits(data, &root, limits); err != nil {
+			return nil, parseErrorDiagnostics(err)
+		}
+	}
 	if ds := validateContainerShapes(root); ds.HasErrors() {
 		return nil, ds
 	}
@@ -70,6 +78,53 @@ func ParseYAML(data []byte) (*DeckSpec, Diagnostics) {
 	}
 	top, _ := root.(map[string]any)
 	return buildDeckSpec(raw, top)
+}
+
+// keepYAMLScalarText re-tags as strings the plain YAML scalars whose typed
+// decode loses the author's literal and has no JSON equivalent: timestamps
+// (which otherwise print as "2024-03-01 00:00:00 +0000 UTC") and integers
+// written in hex, octal or with a leading zero ("0x1F", "0o17", "007"). No
+// DeckSpec position reads these as dates or non-decimal numbers, so the source
+// text is what the author meant (go-slide-creator-csclk.44). It returns the
+// re-encoded document and whether anything changed.
+func keepYAMLScalarText(data []byte) ([]byte, bool) {
+	var node yaml.Node
+	if err := yaml.Unmarshal(data, &node); err != nil {
+		return data, false
+	}
+	changed := false
+	var walk func(n *yaml.Node)
+	walk = func(n *yaml.Node) {
+		if n.Kind == yaml.ScalarNode && n.Style == 0 && keepScalarSourceText(n) {
+			n.Tag = "!!str"
+			changed = true
+		}
+		for _, c := range n.Content {
+			walk(c)
+		}
+	}
+	walk(&node)
+	if !changed {
+		return data, false
+	}
+	out, err := yaml.Marshal(&node)
+	if err != nil {
+		return data, false
+	}
+	return out, true
+}
+
+// keepScalarSourceText reports whether a plain scalar's typed value would lose
+// its literal: a timestamp, or a non-decimal / zero-padded integer.
+func keepScalarSourceText(n *yaml.Node) bool {
+	switch n.ShortTag() {
+	case "!!timestamp":
+		return true
+	case "!!int":
+		v := strings.TrimLeft(n.Value, "+-")
+		return len(v) > 1 && v[0] == '0'
+	}
+	return false
 }
 
 // ParseJSON decodes a semantic deck document from JSON.

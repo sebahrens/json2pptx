@@ -13,6 +13,7 @@ package semantic
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
 )
@@ -95,7 +96,7 @@ func (ir *DeckIR) visualFamilyWarning() (RhythmWarning, bool) {
 		Code: string(diagnostics.CodeSemanticVisualFamilyNarrow),
 		Message: fmt.Sprintf("a %d-slide deck uses only %d non-structural visual families; use at least %d compatible families so evidence, analysis, and structure do not all read the same",
 			len(ir.Slides), ir.Rhythm.DistinctFamilyCount, minimumDistinctVisualFamilies),
-		Path: "slides",
+		Path: ir.slideListPath(),
 	}, true
 }
 
@@ -114,7 +115,7 @@ func (ir *DeckIR) monotonyWarnings() []RhythmWarning {
 			Code: string(diagnostics.CodeSemanticRhythmMonotony),
 			Message: fmt.Sprintf("%d consecutive %s slides read as monotonous; vary the slide kinds or insert a section break",
 				run.length, run.family),
-			Path: fmt.Sprintf("slides[%d]", run.start),
+			Path: ir.slidePath(run.start),
 		})
 	}
 	return out
@@ -132,7 +133,7 @@ func (ir *DeckIR) densityWarnings() []RhythmWarning {
 				Code: string(diagnostics.CodeSemanticRhythmDensity),
 				Message: fmt.Sprintf("%d consecutive dense slides fatigue the audience; break the run with a lighter slide",
 					runLen),
-				Path: fmt.Sprintf("slides[%d]", ir.Slides[runStart].SourceIndex),
+				Path: ir.slidePath(runStart),
 			})
 		}
 	}
@@ -189,8 +190,30 @@ func (ir *DeckIR) synthesisWarning() (RhythmWarning, bool) {
 // familyRun describes a maximal run of adjacent slides sharing one visual family.
 type familyRun struct {
 	family VisualFamily
-	start  int // SourceIndex of the run's first slide
+	start  int // index into the slice of the run's first slide
 	length int
+}
+
+// slidePath is the DeckSpec locator of ir.Slides[i]: its authored source path
+// (a structure-mode deck has no slides[] and its expanded stream includes the
+// cover, generated agenda and dividers), falling back to slides[SourceIndex]
+// (go-slide-creator-csclk.45).
+func (ir *DeckIR) slidePath(i int) string {
+	if p := ir.Slides[i].SourcePath; p != "" {
+		return p
+	}
+	return fmt.Sprintf("slides[%d]", ir.Slides[i].SourceIndex)
+}
+
+// slideListPath is the deck-level slide container: "structure" for a
+// structure-mode deck, "slides" otherwise.
+func (ir *DeckIR) slideListPath() string {
+	for i := range ir.Slides {
+		if strings.HasPrefix(ir.Slides[i].SourcePath, "structure") {
+			return "structure"
+		}
+	}
+	return "slides"
 }
 
 // familyRuns groups the slides into maximal runs of identical visual family, in
@@ -203,7 +226,7 @@ func familyRuns(slides []SlideIR) []familyRun {
 			runs[n-1].length++
 			continue
 		}
-		runs = append(runs, familyRun{family: fam, start: slides[i].SourceIndex, length: 1})
+		runs = append(runs, familyRun{family: fam, start: i, length: 1})
 	}
 	return runs
 }

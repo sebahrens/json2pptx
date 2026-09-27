@@ -12,6 +12,19 @@ import (
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
+// TestGeomMeasurerRTLDoesNotPanic pins go-slide-creator-csclk.42: canvas
+// FontFace.TextWidth panics on Arabic/Hebrew (harfbuzz guesses RTL while canvas
+// slices clusters as LTR), which killed render, validate -fit-report and the MCP
+// server. The measurer must fall back and still return a positive width.
+func TestGeomMeasurerRTLDoesNotPanic(t *testing.T) {
+	m := newGeomMeasurer(nil)
+	for _, s := range []string{"الإيرادات", "שלום עולם"} {
+		if w := m.widthPt(s, 14, true); w <= 0 {
+			t.Errorf("widthPt(%q) = %v, want > 0", s, w)
+		}
+	}
+}
+
 func geomSlides(t *testing.T, slidesJSON string) *PresentationInput {
 	t.Helper()
 	var in PresentationInput

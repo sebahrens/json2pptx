@@ -121,6 +121,7 @@ var fieldScopeMap = map[string]map[string]string{
 		"transition_speed": "slide",
 		"build":            "slide",
 		"contrast_check":   "slide",
+		"section_title":    "slide",
 	},
 	"SplitSlideInput": {
 		"type":  "slide",
