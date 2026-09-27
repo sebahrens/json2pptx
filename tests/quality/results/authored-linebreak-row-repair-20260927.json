@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "scope": "Correct authored newline measurement and verify the previously colliding native dense-plan table without altering author input, source text, fonts, or slide count",
+  "bead": "go-slide-creator-3qzo4.3",
+  "cause": "Word measurement collapsed explicit newline characters via strings.Fields while native table rendering preserved them, allowing actual rows to grow beyond their measured geometry",
+  "production_change": "Measure and estimate overflow per authored line, preserving blank lines and existing word-wrap behavior",
+  "regressions": [
+    "Authored LF and CRLF line breaks reserve their full line height",
+    "Blank, leading, and trailing lines consume capacity",
+    "Exact-limit and unlimited line budgets retain correct fits and overflow rune counts",
+    "Word-wrapped paragraphs and explicit breaks contribute additive line counts",
+    "Native table retains required multiline content and refuses undersized row capacity"
+  ],
+  "retained_evidence_directory": "output/newline-row-repair-20260927-v1",
+  "unchanged_input": "output/quality-benchmark-codex/decks/baseline-dense-plan-warm-coral-1.json",
+  "render_font_context": {
+    "mechanism": "Command-scoped FONTCONFIG_FILE includes the bundled LibreOffice font configuration and provides a task-private writable cache; existing fonts only",
+    "configuration_sha256": "6ebd7665af73abfda500e0739c3dc5380d9b177d89e575ed99550c8d67523454",
+    "global_font_or_template_changes": false
+  },
+  "repaired_page_review": {
+    "reviewer_count": 1,
+    "reviewer_type": "llm",
+    "reviewed": 1,
+    "unreviewed": 0,
+    "image_sha256": "2069b4fc7c3f127696a7ce4dff204a2189a9a9a9e094c65310d70480a6a3f89f",
+    "review_sha256": "1c2470d6ed066701aa6a288ca7fc49d7eeebcb49a7d023103481c0fa4157b966",
+    "verdict": "SAFE_WITH_MINOR_CAUTIONS",
+    "observed": "All 20 expected strings and W5-W9 row associations visible; no source collision",
+    "remaining_cautions": ["Small source text", "Tight source clearance", "Title compound wrapping"]
+  },
+  "all_native_layouts": {
+    "templates": 14,
+    "layouts": 108,
+    "includes_gitignored_p_style": true,
+    "includes_all_portability_fixture_layouts": true,
+    "source_sha256": "38057a0bd09effa2d942a8f87218e81a7314e038e9ffc66f45bcef3c7f2ca17e",
+    "operator_inventory_sha256": "57079707c44b4ab490224b585d9feabb511bcd71f545414fed2354bd65f3c95d",
+    "inventory_audit": "PASS: exact template hashes, shipped thumbnail hashes, retained full-resolution cache identity, unique 108 layout IDs, one current source fingerprint",
+    "sole_blind_visual_review": "RUNNING at receipt creation; not approval"
+  },
+  "gates_at_receipt_creation": {
+    "textfit_full_race": "PASS, 5.873 seconds including final overflow-count regression",
+    "generator_full_short_race": "PASS, 268.486 seconds; final table regression also independently passed",
+    "consumer_race_log_sha256": "9ed0db89884d62486ad1f07b100301922f858c4223a63750a404d3211f092d28",
+    "preview_and_determinism_targeted_tests": "PASS",
+    "golden_hashes": "UNCHANGED",
+    "pinned_lint": "PASS, zero issues",
+    "complete_local_root_race": "RUNNING session 32603; not counted as PASS",
+    "publication_ci": "NOT YET DISPATCHED"
+  },
+  "review_limitations": [
+    "Extracted expected text is not independent original-author evidence",
+    "No physical projection, PowerPoint fidelity or global release approval",
+    "Earlier blind baseline remains an immutable HOLD result",
+    "Dense, media, multilingual, native composition and other existing issue scopes remain open"
+  ],
+  "testing_review": {
+    "findings": [],
+    "residual_risks": ["Cross-consumer final root race and exact-publication CI remain pending", "Native font availability still affects actual renderer fidelity"]
+  }
+}

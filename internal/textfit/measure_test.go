@@ -53,6 +53,52 @@ func TestMeasureRun_ShortTextFitsOneLine(t *testing.T) {
 	}
 }
 
+func TestMeasureRun_PreservesAuthoredLineBreaks(t *testing.T) {
+	for _, tc := range []struct {
+		text  string
+		lines int
+	}{
+		{"Workstream\nOwner", 2},
+		{"Workstream\r\nOwner", 2},
+		{"Workstream\n\nOwner", 3},
+		{"\nOwner\n", 3},
+	} {
+		t.Run(tc.text, func(t *testing.T) {
+			m := mustMeasure(t, tc.text, "Arial", 18, 5*914400, 1)
+			if m.Lines != tc.lines || m.Fits || m.OverflowChars == 0 {
+				t.Fatalf("authored line breaks lost: %+v; want %d lines and overflow", m, tc.lines)
+			}
+			one := mustMeasure(t, "Owner", "Arial", 18, 5*914400, 0)
+			if m.RequiredEMU != one.RequiredEMU*int64(tc.lines) {
+				t.Fatalf("height %d does not reserve %d authored lines of %d", m.RequiredEMU, tc.lines, one.RequiredEMU)
+			}
+		})
+	}
+}
+
+func TestMeasureRun_LineBreakCapacityAndOverflowCount(t *testing.T) {
+	for _, tc := range []struct {
+		limit    int
+		overflow int
+	}{
+		{1, 9}, // Two + authored break + Three
+		{2, 5}, // Three
+		{3, 0},
+		{0, 0}, // unlimited
+	} {
+		m := mustMeasure(t, "One\nTwo\nThree", "Arial", 18, 5*914400, tc.limit)
+		if m.Lines != 3 || m.OverflowChars != tc.overflow || m.Fits != (tc.overflow == 0) {
+			t.Errorf("limit %d: %+v, want three lines and %d overflow runes", tc.limit, m, tc.overflow)
+		}
+	}
+	const paragraph = "A longer sentence wraps within this narrow column"
+	first := mustMeasure(t, paragraph, "Arial", 18, 914400, 0)
+	joined := mustMeasure(t, paragraph+"\nOwner", "Arial", 18, 914400, 0)
+	if first.Lines < 2 || joined.Lines != first.Lines+1 {
+		t.Fatalf("wrapped paragraph and explicit break are not additive: %+v %+v", first, joined)
+	}
+}
+
 func TestMeasureRun_LongTextWraps(t *testing.T) {
 	// Long text in a narrow placeholder should wrap to multiple lines.
 	text := "This is a significantly longer piece of text that should definitely require wrapping to multiple lines when rendered in a narrow placeholder"

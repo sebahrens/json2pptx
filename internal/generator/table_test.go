@@ -86,6 +86,35 @@ func TestGenerateTableXML_Basic3x3(t *testing.T) {
 	}
 }
 
+func TestGenerateTableXML_AuthoredBreaksReserveRowHeight(t *testing.T) {
+	const content = "Workstream\nAccountable owner\nGate evidence"
+	table := &types.TableSpec{Headers: []string{"Contract"}, Rows: [][]types.TableCell{{{Content: content, ColSpan: 1, RowSpan: 1}}}}
+	config := TableRenderConfig{Bounds: types.BoundingBox{Width: 8229600}, DefaultSize: 1800, DefaultFont: "Arial"}
+	result, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows := regexp.MustCompile(`<a:tr h="(\d+)">`).FindAllStringSubmatch(result.XML, -1)
+	if len(rows) != 2 || !strings.Contains(result.XML, content) {
+		t.Fatalf("required cell or row missing: %s", result.XML)
+	}
+	height, err := strconv.ParseInt(rows[1][1], 10, 64)
+	if err != nil || height < 3*18*12700*12/10+cellMargin {
+		t.Fatalf("row height %d does not reserve all three authored lines: %v", height, err)
+	}
+	config.Bounds.Height = 900000 // enough for a collapsed line, not all three
+	limited, err := GenerateTableXML(table, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range limited.Findings {
+		if finding.Code == patterns.ErrCodeTableRowsTruncated && finding.Action == "refuse" {
+			return
+		}
+	}
+	t.Fatalf("undersized bounds incorrectly claim complete source fits: %+v", limited.Findings)
+}
+
 func TestGenerateTableXML_HeaderStyling(t *testing.T) {
 	tests := []struct {
 		name           string

@@ -185,6 +185,28 @@ func MeasureLineWidth(text, fontName string, fontPt float64) (int64, error) {
 // maxLines of the given width. It walks words forward, consuming the first
 // maxLines worth of space, then counts remaining runes.
 func estimateOverflowChars(face *canvas.FontFace, text string, widthPt float64, maxLines int) int {
+	paragraphs := strings.Split(text, "\n")
+	used := 0
+	for i, paragraph := range paragraphs {
+		lines := wrapTextLine(face, paragraph, widthPt)
+		if used+lines > maxLines {
+			remaining := len([]rune(strings.Join(paragraphs[i+1:], "\n")))
+			if i+1 < len(paragraphs) {
+				remaining++ // the authored break before the remaining paragraphs
+			}
+			if used >= maxLines {
+				remaining += len([]rune(paragraph))
+			} else {
+				remaining += estimateLineOverflowChars(face, paragraph, widthPt, maxLines-used)
+			}
+			return max(1, remaining) // empty authored lines still exceed capacity
+		}
+		used += lines
+	}
+	return 0
+}
+
+func estimateLineOverflowChars(face *canvas.FontFace, text string, widthPt float64, maxLines int) int {
 	widthMM := widthPt * ptToMM
 	words := strings.Fields(text)
 	if len(words) == 0 {

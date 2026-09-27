@@ -2,20 +2,20 @@
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
   "template_sha256": "025839a5db46be67c20069c361f7c4097465dbade6135581121ed409311a69e3",
-  "rendering_source_sha256": "7383a8e3579939f5833874f09cf072fd70674cfb817e08dc2b9feae3bc464eaa",
-  "render_cache_identity": "b6eae00411fb4960e2259c2efdfc3c13544b7186222179375b309c8d526188da",
+  "rendering_source_sha256": "38057a0bd09effa2d942a8f87218e81a7314e038e9ffc66f45bcef3c7f2ca17e",
+  "render_cache_identity": "66478c114487691cc66463bdbde73f24c23d3be22b5321f9610206c8c27454ce",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
-    "slideLayout1": "89424c11f0222d98e8731b81e1850e770723135e5b9b874d63b4a3421ff4a46e",
-    "slideLayout2": "e5d57fa635959a8a3bf0cf251ee19f6479ebe0f5bf15dbe129bc665fa4e647d7",
-    "slideLayout3": "7313e06a37676225d051d2a80f4e55e42704d6b3fd1eb8ad3d7408b0e1dffed2",
-    "slideLayout4": "e24b4585862cb203b5ef6c6dab027336cd9a3ac818bb1a1dc2a771e8ca11d762",
-    "slideLayout5": "ec53b15fac0459931c371355d4b9f27c987586ad5b3578213d59a7503bf709f6",
-    "slideLayout6": "0d3e0f8360c20bf67379e82d07dd9058e77a868e38e69c4e6a2393eaffe1133d",
-    "slideLayout7": "e691e17d8942ce5ab8953bea71f36ec16406f026de23bdebd0da72f746364ccf",
+    "slideLayout1": "89d935c67287bbc112138c67ddc5d78c5b5cc186e23c5546b3750de3c22cddbd",
+    "slideLayout2": "a3897edb6c331998cf5eed63fce87ec82825a7267bd56e4729cc6a29048c35ce",
+    "slideLayout3": "215eafb6a6e1d1e87373d682eb80ddd4a73674b1cf1368a33fef1fa8873c81ec",
+    "slideLayout4": "1e8aa93c7829ea66e0eb5c6ed0cd5f2aa6847af6f06df96b9f61502318961b4c",
+    "slideLayout5": "ee406acd3244ac68779c46390e1380901fcae9f4ba52b7a9bd429e74d8f4b4e4",
+    "slideLayout6": "b38ad95a153c208e1f5d2cc111e54029b3f7497515a7ee81f0bc376036051bbf",
+    "slideLayout7": "3e14d18fe8df07864a68a9c65a8d7dd45ea1854b4f88e5d1d58714060fa6d1f4",
     "slideLayout8": "39da2706e5eba5abaef2ef3c59abad774e93ffac679a19f51112c6ddac4e273b",
-    "slideLayout9": "b385e94f513f11e8df8e9d4ec8b86673198ec8351e93d53a5bfe6ec34f175293"
+    "slideLayout9": "21f295a3e1a181e62d81f8473be25a40d2e5da93eb14edef2fb23cdb4d6a22e8"
   },
   "source_content": {
     "slideLayout1": [

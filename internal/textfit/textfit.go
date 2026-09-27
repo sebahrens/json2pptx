@@ -363,6 +363,16 @@ func MeasureHeight(p Params) (int64, error) {
 // wrapText estimates how many lines a paragraph will need when word-wrapped
 // to fit within widthPt points.
 func wrapText(face *canvas.FontFace, text string, widthPt float64) int {
+	// Explicit line breaks survive OOXML emission. Measure each authored line
+	// separately, including empty lines, rather than collapsing them to spaces.
+	lines := 0
+	for _, paragraph := range strings.Split(text, "\n") {
+		lines += wrapTextLine(face, paragraph, widthPt)
+	}
+	return lines
+}
+
+func wrapTextLine(face *canvas.FontFace, text string, widthPt float64) int {
 	widthMM := widthPt * ptToMM
 	words := strings.Fields(text)
 	if len(words) == 0 {
