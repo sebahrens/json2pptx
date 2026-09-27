@@ -1275,6 +1275,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"kind": "comparison", "pattern": "card-grid", "columns": [...]}`,
 		RelatedCodes:  []string{CodeSemanticRhythmMonotony},
 	},
+	CodeSemanticReferenceUnresolved: {
+		Code:        CodeSemanticReferenceUnresolved,
+		Summary:     "A slide field names an option, criterion, or section that does not exist on the slide, so its highlight or marker is not drawn.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds an option_matrix recommended / decisive_criterion (or their aliases) that matches no option name or criterion label and is not an in-range 0-based index, or an agenda current section that is neither an in-range 1-based number nor a section title. The slide still renders, without the highlight. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Use the exact option name / criterion label / section title (case-insensitive), or an in-range index.",
+			"Or remove the reference if nothing should be highlighted.",
+		},
+		ExampleBefore: `{"kind": "agenda", "current": 9, "sections": ["Context", "Options", "Plan"]}`,
+		ExampleAfter:  `{"kind": "agenda", "current": 2, "sections": ["Context", "Options", "Plan"]}`,
+		RelatedCodes:  []string{CodeSemanticFieldType},
+	},
 	CodeSemanticRhythmMonotony: {
 		Code:        CodeSemanticRhythmMonotony,
 		Summary:     "Three or more consecutive slides share the same visual family.",

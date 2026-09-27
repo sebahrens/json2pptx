@@ -243,6 +243,9 @@ func AgendaCurrentIndex(body map[string]any, sections []agendaSection) int {
 		if !ok {
 			continue
 		}
+		if i, isInt := v.(int); isInt {
+			v = float64(i)
+		}
 		switch t := v.(type) {
 		case float64:
 			n := int(t)
@@ -270,6 +273,20 @@ func agendaSectionsField(body map[string]any) string {
 		}
 	}
 	return "sections"
+}
+
+// AgendaUnresolvedCurrent returns the current-section field when the author
+// set one that names no section (an out-of-range number or an unknown title),
+// so validation can say the marker is lost; "" otherwise.
+func AgendaUnresolvedCurrent(body map[string]any) string {
+	field := agendaCurrentField(body)
+	if !referencePresent(body[field]) {
+		return ""
+	}
+	if AgendaCurrentIndex(map[string]any{field: body[field]}, AgendaSections(body)) != 0 {
+		return ""
+	}
+	return field
 }
 
 // agendaCurrentField names the field the current-section marker came from.

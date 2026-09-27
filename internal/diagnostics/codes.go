@@ -163,6 +163,11 @@ const (
 	// deck validated clean and an agent's variation attempt vanished
 	// (go-slide-creator-u5az).
 	CodeSemanticPatternNotAvailable Code = "SEMANTIC_PATTERN_NOT_AVAILABLE"
+	// CodeSemanticReferenceUnresolved flags a slide field that refers to another
+	// part of the same slide by name or index — an option matrix's recommended
+	// option or decisive criterion, an agenda's current section — and matches
+	// nothing. The highlight or marker silently vanished before this code.
+	CodeSemanticReferenceUnresolved Code = "SEMANTIC_REFERENCE_UNRESOLVED"
 	// Deck-rhythm advisories — emitted by internal/semantic rhythm analysis over
 	// the normalized DeckIR (not per-slide authoring rules). They flag monotony
 	// and missing narrative structure before a deck is rendered.
@@ -272,6 +277,7 @@ func AllCodes() []Code {
 		CodeChartSeriesLengthMismatch,
 		CodeChartValueNotNumeric,
 		CodeSemanticPatternNotAvailable,
+		CodeSemanticReferenceUnresolved,
 		CodeSemanticRhythmMonotony,
 		CodeSemanticRhythmDensity,
 		CodeSemanticRhythmSectioning,

@@ -1,5 +1,25 @@
 # Schema Changelog
 
+- **2026-09-27 — DeckSpec semantic fixes (`go-slide-creator-csclk.50`–`.56`, `.86`, `.92`).**
+  - New advisory **`SEMANTIC_REFERENCE_UNRESOLVED`**: an option_matrix
+    `recommended` / `decisive_criterion` (and aliases) or agenda `current`
+    that names nothing on the slide.
+  - A non-string slide `pattern` / `layout` reports `SEMANTIC_FIELD_TYPE`;
+    per-slide `pattern.overrides.type_scale` was never supported (doc fixed).
+  - `raw_json2pptx` pattern values are schema-checked by validate
+    (`INVALID_SLIDE`), not only at render.
+  - `team` members accept `photo` (path/url string or `{path|url, alt}`),
+    mapped to `team-bios` `members[].photo`.
+  - An over-budget `image_case` with a picture degrades to a two-column slide
+    that keeps the image.
+  - Sparse bare-label `process` flows compile with `max_height_pct: 50`.
+  - Semantic render: substantive-review fit findings are `warning`, a rendered
+    shape's text maps to its unique body field's `semantic_path`,
+    `slide_scores` take the structural deductions, and render
+    `explanation_summary` reports post-degrade `layout` / `visual_family`.
+  - `waterfall-bridge` caption uses 1pt top/bottom insets so it no longer
+    autofits below the readable minimum.
+
 - **2026-09-26 — CLI source-loss error diagnostics retained (`go-slide-creator-3qzo4.55`).**
   CLI JSON error reports now retain actual source-loss code, authored path,
   `refuse` action, and repair parameters in the existing `fit_findings` array.

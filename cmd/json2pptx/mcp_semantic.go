@@ -608,6 +608,8 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		return finish(res)
 	}
 
+	reconcileExplanationWithCompiled(&explanation, input)
+
 	// Constrained mode is enforced before rendering: the raw_json2pptx escape
 	// hatch passes an author's slide payload through unchanged, and the same
 	// payload is refused by generate_presentation (go-slide-creator-rs4h).
@@ -751,6 +753,34 @@ func explainSpecWithTemplate(spec *semantic.DeckSpec, defaultTemplate string) se
 		explanation.Template = defaultTemplate
 	}
 	return explanation
+}
+
+// reconcileExplanationWithCompiled makes the render's explanation_summary
+// report what was actually compiled. The plan keeps a visual kind's
+// blank-title layout and visual family even when the slide degraded to a
+// content or two-column slide, so an agent checking "did the visual land"
+// read the pre-degrade answer. Only a 1:1 slide mapping is reconciled.
+func reconcileExplanationWithCompiled(explanation *semantic.DeckExplanation, input *PresentationInput) {
+	if explanation == nil || input == nil || len(explanation.Slides) != len(input.Slides) {
+		return
+	}
+	for i := range explanation.Slides {
+		planned := &explanation.Slides[i]
+		compiled := input.Slides[i]
+		if compiled.Pattern == nil && compiled.ShapeGrid == nil {
+			planned.Pattern = ""
+		}
+		layout := compiled.LayoutID
+		if layout == "" {
+			layout = compiled.SlideType
+		}
+		if planned.Layout == "blank-title" && layout != "" && layout != "blank-title" {
+			planned.Layout = layout
+			if planned.VisualFamily != semantic.FamilyChart {
+				planned.VisualFamily = semantic.FamilyText
+			}
+		}
+	}
 }
 
 // explainDeckSpecResponse is the explanation plus the deck handle fields.

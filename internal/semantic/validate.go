@@ -581,6 +581,10 @@ func validateAgenda(path string, slide SlideSpec, s *semDiags) {
 			fmt.Sprintf("agenda has %d usable sections; 2–10 render as the numbered agenda visual and 3–6 with subtitles as agenda rows (otherwise it degrades to a bullet list)", n),
 			"agenda", degradeToBullets, degradeCountOutOfRange)
 	}
+	if field := slides.AgendaUnresolvedCurrent(slide.Body); field != "" {
+		s.advisory(path+"."+field, diagnostics.CodeSemanticReferenceUnresolved,
+			fmt.Sprintf("%s names no section (use a 1-based number up to %d or a section title), so the current-section marker is not drawn", field, n))
+	}
 }
 
 func validateBridge(path string, slide SlideSpec, s *semDiags) {
@@ -1402,6 +1406,12 @@ func validateOptionMatrix(path string, slide SlideSpec, s *semDiags) {
 		}
 	}
 
+	for _, field := range slides.OptionMatrixUnresolvedReferences(slide.Body) {
+		s.advisory(path+"."+field, diagnostics.CodeSemanticReferenceUnresolved,
+			fmt.Sprintf("%s matches no %s name and is not an in-range 0-based index, so the matrix renders without that highlight",
+				field, map[bool]string{true: "option", false: "criterion"}[strings.HasPrefix(field, "recommended") || field == "highlight_row"]))
+	}
+
 	for _, field := range []string{"highlight_label", "corner_label"} {
 		if label := strPayloadField(slide.Body, field); label != "" && !slides.OptionMatrixLabelFits(label) {
 			s.advisory(path+"."+field, diagnostics.CodeSemanticDensity,
@@ -1563,6 +1573,17 @@ func validateKPISnapshot(path string, slide SlideSpec, s *semDiags) {
 // validateCompositionOverride reports a pattern / layout override the kind has
 // no candidate for, naming the ones it does have.
 func validateCompositionOverride(path string, slide SlideSpec, s *semDiags) {
+	// pattern / layout are pattern NAMES. An object (e.g. a raw-style
+	// {overrides:{type_scale:...}}) is silently ignored by the planner, so say so.
+	for _, key := range []string{"pattern", "layout"} {
+		if v, present := slide.Body[key]; present && v != nil {
+			if _, isString := v.(string); !isString {
+				s.advisory(path+"."+key, diagnostics.CodeSemanticFieldType,
+					fmt.Sprintf("%q must be a string naming one of this kind's alternatives but is %s; the value is ignored (per-slide pattern overrides such as type_scale are not supported — use meta.type_scale)",
+						key, jsonTypeName(v)))
+			}
+		}
+	}
 	requestedPattern := slide.String("pattern")
 	requestedLayout := slide.String("layout")
 	if requestedPattern == "" && requestedLayout == "" {

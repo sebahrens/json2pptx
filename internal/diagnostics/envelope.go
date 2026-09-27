@@ -490,7 +490,7 @@ var classifyMap = func() map[string]Namespace {
 		CodeSemanticRequired, CodeSemanticUnknownKind, CodeSemanticUnknownArchetype,
 		CodeSemanticTakeawayRequired, CodeSemanticDensity, CodeSemanticPatternDegraded,
 		CodeSemanticWeakContent, CodeSemanticDuplicateCallout,
-		CodeSemanticFieldType, CodeSemanticPatternNotAvailable,
+		CodeSemanticFieldType, CodeSemanticPatternNotAvailable, CodeSemanticReferenceUnresolved,
 		CodeChartSeriesLengthMismatch, CodeChartValueNotNumeric,
 		CodeSemanticRhythmMonotony, CodeSemanticRhythmDensity,
 		CodeSemanticRhythmSectioning, CodeSemanticRhythmSynthesis)

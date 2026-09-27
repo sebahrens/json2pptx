@@ -572,6 +572,11 @@ func buildWaterfallBridgeCaptionText(caption string, size float64) json.RawMessa
 		},
 		Align:         "r",
 		VerticalAlign: "ctr",
+		// The caption band is thin (wbCaptionRowPct); the default 3.6pt
+		// top/bottom insets left too little height for one line, so autofit
+		// shrank the scale note below the readable minimum.
+		InsetTop:    wbLabelGapPt,
+		InsetBottom: wbLabelGapPt,
 	}
 	data, _ := json.Marshal(textObj)
 	return data

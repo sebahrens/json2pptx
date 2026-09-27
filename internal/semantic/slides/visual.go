@@ -364,7 +364,36 @@ func compileProcessFlow(in Input, steps []processStepDetail) (*deckinput.SlideIn
 	if err != nil {
 		return nil, nil, fmt.Errorf("marshal process-flow values: %w", err)
 	}
-	return processPatternSlide(in, "process-flow", encoded)
+	slide, links, err := processPatternSlide(in, "process-flow", encoded)
+	if err == nil && processFlowSparse(flow) {
+		// A short run of bare labels stretched to the full content height is
+		// the SPARSE_SINGLE_ROW_FLOW smell; cap it the way that finding advises
+		// rather than shipping a layout the render gate then flags.
+		slide.Pattern.MaxHeightPct = processFlowSparseHeightPct
+	}
+	return slide, links, err
+}
+
+const (
+	// processFlowSparse* mirror the render-side SPARSE_SINGLE_ROW_FLOW guard:
+	// 3–6 steps averaging under 40 characters stretch into oversized boxes, so
+	// the compiler caps them at half the content height (the OVERTALL_FLOW_LANE
+	// limit; lower caps trip SLIDE_UNDERUSED instead).
+	processFlowSparseMaxSteps    = 6
+	processFlowSparseMaxAvgChars = 40
+	processFlowSparseHeightPct   = 50.0
+)
+
+// processFlowSparse reports whether a flow is a short run of short labels.
+func processFlowSparse(flow []processFlowStep) bool {
+	if len(flow) < processFlowMin || len(flow) > processFlowSparseMaxSteps {
+		return false
+	}
+	total := 0
+	for _, st := range flow {
+		total += len(strings.TrimSpace(st.Label))
+	}
+	return total < processFlowSparseMaxAvgChars*len(flow)
 }
 
 // processPatternSlide assembles a process pattern slide.

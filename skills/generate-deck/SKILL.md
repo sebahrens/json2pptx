@@ -30,7 +30,9 @@ For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
 `list_slide_kinds` using its compact fields; request `item_schema` and
 `compositions` only for selected kinds. Then call `validate_deck_spec`,
 `render_deck_spec`, and `render_deck_thumbnails`. Edit the spec at a finding's
-`semantic_path` and repeat. `make_deck` creates an exemplar-filled wireframe,
+`semantic_path` and repeat; a finding the quality gate blocks on carries at
+least `warning` severity, and `SEMANTIC_REFERENCE_UNRESOLVED` means a
+highlight / current-section reference matched nothing. `make_deck` creates an exemplar-filled wireframe,
 not a publishable authored deck. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation behavior, required-layout coverage, handles, and revision rules.
 
