@@ -35,8 +35,13 @@ they are not an integration boundary.
 
 ## 2. Tool-gated render tier
 
-`internal/render` drives LibreOffice + ImageMagick. The integration tests skip
-when those binaries are absent:
+`internal/render` drives LibreOffice + ImageMagick. Some LibreOffice builds
+(e.g. 24.2 on Linux) do not load fonts embedded in the deck, so templates that
+ship their own faces (`modern-template`: Lora titles, Poppins body) render in a
+fallback sans such as DejaVu Sans while fit measurement uses the real metrics.
+Check `pdffonts` on the intermediate PDF before judging typeface or line breaks,
+and install `svggen/fonts/*.ttf` system-wide (fontconfig) for faithful renders.
+The integration tests skip when those binaries are absent:
 
 - `TestIntegrationRenderSlide`, `TestIntegrationRenderDeck`
   (`internal/render/render_test.go`) — gated by `CheckDependencies()` (needs

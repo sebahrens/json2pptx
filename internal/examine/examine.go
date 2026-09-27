@@ -91,6 +91,12 @@ type Report struct {
 	// the generator uses for chrome geometry; nil when profiling failed.
 	Profile  *ProfileReport              `json:"profile,omitempty"`
 	Findings diagnostics.FindingEnvelope `json:"findings"`
+
+	// conformanceFails are the template-check FAIL results, carried for the
+	// CI gate so a template template-check rejects cannot pass the gate
+	// (go-slide-creator-csclk.33). Not serialized: report.json already has
+	// its own findings surface.
+	conformanceFails []template.ConformanceCheck
 }
 
 // ProfileReport summarises the relationship-aware template profile: its cache
@@ -255,7 +261,7 @@ func Examine(reader *template.Reader, opts Options) (*Report, error) {
 	// the rest of its examination report.
 	profile, _ := template.BuildProfile(reader)
 
-	return BuildReport(Inputs{
+	report := BuildReport(Inputs{
 		Template:            displayName(opts.TemplatePath),
 		SHA256:              reader.Hash(),
 		AspectRatio:         aspect,
@@ -266,7 +272,17 @@ func Examine(reader *template.Reader, opts Options) (*Report, error) {
 		Masters:             masters,
 		MetadataDiagnostics: vr.Diagnostics,
 		Profile:             profile,
-	}), nil
+	})
+	cr, err := template.CheckConformanceReader(reader, report.Template)
+	if err != nil {
+		return nil, fmt.Errorf("conformance: %w", err)
+	}
+	for _, c := range cr.Checks {
+		if c.Status == template.ConformanceStatusFail {
+			report.conformanceFails = append(report.conformanceFails, c)
+		}
+	}
+	return report, nil
 }
 
 // BuildReport assembles a Report from already-parsed inputs. It is the pure

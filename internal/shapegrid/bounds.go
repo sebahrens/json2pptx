@@ -37,7 +37,14 @@ func DefaultBoundsFromZone(zone ContentZone, gapPt float64) pptx.RectEmu {
 	if height < 0 {
 		height = 0
 	}
-	width := zone.RightEdge - zone.LeftMargin
+	right := zone.RightEdge
+	// Placeholders drawn for a wider canvas than the template's sldSz (a 4:3
+	// deck with 16:9 master geometry) must not carry grids off the slide
+	// (go-slide-creator-csclk.39). Keep the left margin symmetric.
+	if zone.SlideWidth > 0 && right > zone.SlideWidth {
+		right = zone.SlideWidth - zone.LeftMargin
+	}
+	width := right - zone.LeftMargin
 	if width < 0 {
 		width = 0
 	}
@@ -67,6 +74,10 @@ func ClampBoundsToZone(bounds pptx.RectEmu, zone ContentZone) pptx.RectEmu {
 		if bounds.CY < 0 {
 			bounds.CY = 0
 		}
+	}
+	// Clamp right edge: content must stay on the slide canvas.
+	if zone.SlideWidth > 0 && bounds.X+bounds.CX > zone.SlideWidth {
+		bounds.CX = max(zone.SlideWidth-bounds.X, 0)
 	}
 	return bounds
 }

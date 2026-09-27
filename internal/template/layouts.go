@@ -207,6 +207,12 @@ func extractLayoutID(filename string) string {
 // fontResolver is used to resolve fonts from shapes and master.
 func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions map[string]*MasterTransform, masterFonts *MasterFontStyles, fontResolver *MasterFontResolver, clrMapOvr map[string]string) []types.PlaceholderInfo {
 	var placeholders []types.PlaceholderInfo
+	// Body/content placeholders written without an idx attribute default to
+	// idx 0, colliding with the title and sorting ahead of the real first body.
+	// Slot mapping orders content placeholders by idx, so an idx-less body_2
+	// made "body_2" resolve onto "body" and silently overwrite the left column
+	// (go-slide-creator-csclk.38). They are renumbered past the highest idx.
+	var idxLess []int
 
 	for i, shape := range shapes {
 		// Skip shapes without placeholder properties
@@ -282,7 +288,21 @@ func extractPlaceholders(shapes []shapeXML, layoutName string, masterPositions m
 			info.InheritedFontColor = inheritedBodyColor(&shape, masterFonts, clrMapOvr)
 			info.InheritedFontColorMods = inheritedBodyColorMods(&shape, masterFonts)
 		}
+		if ph.Index == nil && (phType == types.PlaceholderBody || phType == types.PlaceholderContent) {
+			idxLess = append(idxLess, len(placeholders))
+		}
 		placeholders = append(placeholders, info)
+	}
+
+	if len(idxLess) > 0 {
+		next := 0
+		for _, ph := range placeholders {
+			next = max(next, ph.Index)
+		}
+		for _, pos := range idxLess {
+			next++
+			placeholders[pos].Index = next
+		}
 	}
 
 	return placeholders
