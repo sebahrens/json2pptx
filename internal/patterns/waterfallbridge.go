@@ -325,6 +325,45 @@ func chartRange(cols []resolvedColumn) (yMin, yMax float64) {
 	return yMin, yMax
 }
 
+// waterfallDeltaFill picks a delta bar's fill. A positive delta is "good": it
+// uses the template's declared positive accent unless the author asked for a
+// per-cell rotation, which they own.
+func waterfallDeltaFill(ctx ExpandContext, negative bool, i int, baseAccent, negativeAccent, positiveAccent, cellAccentMode string) string {
+	switch {
+	case negative:
+		return negativeAccent
+	case positiveAccent != "" && cellAccentMode == "":
+		return positiveAccent
+	default:
+		return ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
+	}
+}
+
+// waterfallBarPcts places a bar vertically as percentages of the bar-area row
+// (top spacer, bar, bottom spacer). Tiny bars get a 2pct minimum so the label
+// still fits, squeezed from the larger spacer, and the three renormalise to 100.
+func waterfallBarPcts(yStart, yEnd, yMin, yMax, scale float64) (topPct, barPct, bottomPct float64) {
+	barTopY := math.Max(yStart, yEnd)
+	barBottomY := math.Min(yStart, yEnd)
+	topPct = (yMax - barTopY) / scale * 100
+	barPct = (barTopY - barBottomY) / scale * 100
+	bottomPct = (barBottomY - yMin) / scale * 100
+	if barPct < 2 {
+		barPct = 2
+		if topPct >= bottomPct {
+			topPct = math.Max(0, topPct-2)
+		} else {
+			bottomPct = math.Max(0, bottomPct-2)
+		}
+	}
+	if total := topPct + barPct + bottomPct; total > 0 {
+		topPct = topPct * 100 / total
+		barPct = barPct * 100 / total
+		bottomPct = bottomPct * 100 / total
+	}
+	return topPct, barPct, bottomPct
+}
+
 func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	vals, ok := values.(*WaterfallBridgeValues)
 	if !ok {
@@ -384,52 +423,14 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 	labelDecimals := LabelDecimals(labelValues)
 
 	for i, col := range resolved {
-		// Choose bar fill by type.
 		fill := baseAccent
 		switch col.typ {
 		case wbTypeSubtotal:
 			fill = subtotalAccent
 		case wbTypeDelta:
-			switch {
-			case col.isNegDelta:
-				fill = negativeAccent
-			case positiveAccent != "" && ovr.CellAccentMode == "":
-				// A positive delta is "good"; use the template's declared
-				// positive accent unless the author asked for a per-cell
-				// rotation, which they own.
-				fill = positiveAccent
-			default:
-				fill = ctx.ResolveCellAccent(baseAccent, i, ovr.CellAccentMode)
-			}
-		case wbTypeTotal:
-			fill = baseAccent
+			fill = waterfallDeltaFill(ctx, col.isNegDelta, i, baseAccent, negativeAccent, positiveAccent, ovr.CellAccentMode)
 		}
-
-		// Compute the bar's vertical placement as percentages of the bar-area row.
-		barTopY := math.Max(col.yStart, col.yEnd)
-		barBottomY := math.Min(col.yStart, col.yEnd)
-		topPct := (yMax - barTopY) / scale * 100
-		barPct := (barTopY - barBottomY) / scale * 100
-		bottomPct := (barBottomY - yMin) / scale * 100
-
-		// Tiny bars (zero-value totals or deltas) get a 2pct minimum so the
-		// label still fits visually.
-		if barPct < 2 {
-			barPct = 2
-			// Squeeze proportionally from the larger spacer.
-			if topPct >= bottomPct {
-				topPct = math.Max(0, topPct-2)
-			} else {
-				bottomPct = math.Max(0, bottomPct-2)
-			}
-		}
-		// Renormalise to 100% (floating-point cleanup).
-		total := topPct + barPct + bottomPct
-		if total > 0 {
-			topPct = topPct * 100 / total
-			barPct = barPct * 100 / total
-			bottomPct = bottomPct * 100 / total
-		}
+		topPct, barPct, bottomPct := waterfallBarPcts(col.yStart, col.yEnd, yMin, yMax, scale)
 
 		valueText := FormatMagnitudeLabelDecimals(col.value, vals.Unit, col.typ == wbTypeDelta, labelDecimals)
 		barCells[i] = &jsonschema.GridCellInput{

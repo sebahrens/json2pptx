@@ -790,6 +790,40 @@ func semanticDiagFromFit(sm *semantic.SourceMap, f patterns.FitFinding) semantic
 // shape IDs are allocated after compilation and therefore have no raw JSON
 // source-map entry. Duplicate labels are deliberately left unmapped rather
 // than guessing which axis the author should edit.
+// matrixTextAmbiguous reports whether text also appears as the slide's title,
+// takeaway, an axis title or a quadrant. A rendered shape is identified by its
+// text, so any such match would make axis-end attribution ambiguous.
+func matrixTextAmbiguous(slide semantic.SlideIR, text string) bool {
+	if slide.Title == text || slide.Takeaway == text || slide.Body["x_axis"] == text || slide.Body["x_axis_label"] == text || slide.Body["y_axis"] == text || slide.Body["y_axis_label"] == text {
+		return true
+	}
+	for _, quadrant := range slides.MatrixQuadrants(slide.Body) {
+		if quadrant.Header == text || quadrant.Body == text {
+			return true
+		}
+	}
+	return false
+}
+
+// uniqueBodyFieldWithText attributes a rendered shape on a non-matrix slide to
+// the one top-level string body field carrying exactly this text (e.g. a
+// bridge caption); anything ambiguous returns "" rather than a guess.
+func uniqueBodyFieldWithText(slide semantic.SlideIR, text string) string {
+	if slide.Title == text || slide.Takeaway == text {
+		return ""
+	}
+	var only string
+	for field, v := range slide.Body {
+		if s, ok := v.(string); ok && s == text {
+			if only != "" {
+				return ""
+			}
+			only = field
+		}
+	}
+	return only
+}
+
 func semanticDiagFromFitWithIR(sm *semantic.SourceMap, ir *semantic.DeckIR, f patterns.FitFinding) semanticDiagnostic {
 	d := semanticDiagFromFit(sm, f)
 	if d.SemanticPath != "" || ir == nil || f.Code != patterns.ErrCodeTextBelowReadableMin || !strings.Contains(f.Path, "/rendered_shapes/") || f.Fix == nil {
@@ -805,23 +839,8 @@ func semanticDiagFromFitWithIR(sm *semantic.SourceMap, ir *semantic.DeckIR, f pa
 		return d
 	}
 	if slide.Kind != semantic.KindMatrix2x2 || slide.Visual.Pattern != "matrix-2x2" {
-		// Other kinds: attribute the shape to the one top-level string field
-		// that carries exactly this text (e.g. a bridge caption); anything
-		// ambiguous stays unmapped rather than guessed.
-		if slide.Title == text || slide.Takeaway == text {
-			return d
-		}
-		var only string
-		for field, v := range slide.Body {
-			if s, ok := v.(string); ok && s == text {
-				if only != "" {
-					return d
-				}
-				only = field
-			}
-		}
-		if only != "" {
-			d.SemanticPath = slide.SourcePath + "." + only
+		if field := uniqueBodyFieldWithText(slide, text); field != "" {
+			d.SemanticPath = slide.SourcePath + "." + field
 		}
 		return d
 	}
@@ -837,15 +856,8 @@ func semanticDiagFromFitWithIR(sm *semantic.SourceMap, ir *semantic.DeckIR, f pa
 		matched = field
 	}
 	if matched != "" {
-		// A rendered shape is identified by its text, so a matching title,
-		// takeaway, axis title, or quadrant would make attribution ambiguous.
-		if slide.Title == text || slide.Takeaway == text || slide.Body["x_axis"] == text || slide.Body["x_axis_label"] == text || slide.Body["y_axis"] == text || slide.Body["y_axis_label"] == text {
+		if matrixTextAmbiguous(slide, text) {
 			return d
-		}
-		for _, quadrant := range slides.MatrixQuadrants(slide.Body) {
-			if quadrant.Header == text || quadrant.Body == text {
-				return d
-			}
 		}
 		d.SemanticPath = slide.SourcePath + "." + matched
 		d.RecommendedEdit = &semantic.SemanticEdit{Kind: semantic.EditShortenText, Hint: "Shorten this matrix axis-end label; use at most 11 characters and re-render."}

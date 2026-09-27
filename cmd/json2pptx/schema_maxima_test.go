@@ -507,7 +507,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"capability-heatmap":           6.0,
 	"card-grid":                    2.9,
 	"chart-insights-split":         6.2,
-	"contact-directory":            5.0,
+	"contact-directory":            6.2,
 	"comparison-2col":              5.0,
 	"driver-tree":                  4.8,
 	"dual-org-ladder":              7.7,

@@ -85,6 +85,34 @@ Image source policy: paths must be absolute and end in .png/.jpg/.jpeg. Path tra
 
 // --- Handler ---
 
+// buildInspectSlideInfo applies slide_info overrides and the content default.
+func buildInspectSlideInfo(index int, slideType, title string, overrides map[int]inspectSlideInfo) visualqa.SlideInfo {
+	info := visualqa.SlideInfo{Index: index, Type: slideType, Title: title}
+	if override, ok := overrides[index]; ok {
+		if override.SlideType != "" {
+			info.Type = override.SlideType
+		}
+		if override.Title != "" {
+			info.Title = override.Title
+		}
+	}
+	if info.Type == "" {
+		info.Type = "content"
+	}
+	return info
+}
+
+// defaultFindingSource labels findings that carry no source.
+func defaultFindingSource(report *visualqa.Report, source string) {
+	for ri := range report.Results {
+		for fi := range report.Results[ri].Findings {
+			if report.Results[ri].Findings[fi].Source == "" {
+				report.Results[ri].Findings[fi].Source = source
+			}
+		}
+	}
+}
+
 func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	images, err := extractSlideImages(request)
 	if err != nil {
@@ -121,22 +149,7 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 		if entry.Path != "" {
 			pathByIndex[entry.Index] = entry.Path
 		}
-		info := visualqa.SlideInfo{
-			Index: entry.Index,
-			Type:  entry.SlideType,
-			Title: entry.Title,
-		}
-		if override, ok := infoByIdx[entry.Index]; ok {
-			if override.SlideType != "" {
-				info.Type = override.SlideType
-			}
-			if override.Title != "" {
-				info.Title = override.Title
-			}
-		}
-		if info.Type == "" {
-			info.Type = "content"
-		}
+		info := buildInspectSlideInfo(entry.Index, entry.SlideType, entry.Title, infoByIdx)
 		slideImages = append(slideImages, visualqa.SlideImage{Info: info, Data: data})
 	}
 
@@ -158,13 +171,7 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 		// deterministic findings; the broader heuristic fallback remains a
 		// no-key mode so it cannot add noise to a successful vision pass.
 		mergeDeterministicGeometry(report, geometry)
-		for ri := range report.Results {
-			for fi := range report.Results[ri].Findings {
-				if report.Results[ri].Findings[fi].Source == "" {
-					report.Results[ri].Findings[fi].Source = "vision"
-				}
-			}
-		}
+		defaultFindingSource(report, "vision")
 		report.Summarize()
 	} else {
 		report = geometry

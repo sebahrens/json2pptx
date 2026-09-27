@@ -100,7 +100,7 @@ func TestSchemaFingerprintMatchesVersion(t *testing.T) {
 	// 4.77.0 classifies pull-quote cells at the body readability floor;
 	// the fingerprint is unchanged.
 	// If this fails, see file header comment.
-	const wantFingerprint = "098782e76954d735"
+	const wantFingerprint = "c57a6a572ad2a1bb"
 
 	got := schemaFingerprint()
 

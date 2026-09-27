@@ -316,29 +316,8 @@ func collectShapeTreeCtx(slide *Slide, tree *shapeTree, tf childTransform, rc *r
 		slide.Tables = append(slide.Tables, t)
 	}
 
-	for _, pic := range tree.Pictures {
-		p := Picture{
-			Name:       pic.NvPicPr.CNvPr.Name,
-			AltText:    pic.NvPicPr.CNvPr.Descr,
-			Hyperlinks: rc.hyperlinks(pic.NvPicPr.CNvPr, nil),
-			Bounds:     boundsIn(pic.SpPr.Xfrm, tf),
-		}
-		if b := pic.BlipFill.Blip; b != nil {
-			id := b.Embed
-			if id == "" {
-				id = b.Link
-			}
-			p.Media = rc.target(id)
-			p.ContentType = rc.contentType(p.Media)
-			if b.ExtLst != nil {
-				for _, ext := range b.ExtLst.Exts {
-					if ext.SVGBlip != nil {
-						p.SVGMedia = rc.target(ext.SVGBlip.Embed)
-					}
-				}
-			}
-		}
-		slide.Pictures = append(slide.Pictures, p)
+	for i := range tree.Pictures {
+		slide.Pictures = append(slide.Pictures, readPicture(&tree.Pictures[i], tf, rc))
 	}
 
 	for _, cx := range tree.Connectors {
@@ -361,19 +340,53 @@ func collectShapeTreeCtx(slide *Slide, tree *shapeTree, tf childTransform, rc *r
 	// A reader shows one rendition of mc:AlternateContent: the first
 	// mc:Choice, or mc:Fallback when the choice yields nothing readable.
 	for i := range tree.AltContent {
-		ac := &tree.AltContent[i]
-		if len(ac.Choices) > 0 {
-			var probe Slide
-			collectShapeTreeCtx(&probe, &ac.Choices[0], tf, rc)
-			if hasReadableContent(&probe) || ac.Fallback == nil {
-				appendSlideContent(slide, &probe)
-				continue
-			}
-		}
-		if ac.Fallback != nil {
-			collectShapeTreeCtx(slide, ac.Fallback, tf, rc)
+		collectAlternateContent(slide, &tree.AltContent[i], tf, rc)
+	}
+}
+
+// collectAlternateContent reads the first mc:Choice, or mc:Fallback when the
+// choice yields nothing readable.
+func collectAlternateContent(slide *Slide, ac *alternateContent, tf childTransform, rc *readContext) {
+	if len(ac.Choices) > 0 {
+		var probe Slide
+		collectShapeTreeCtx(&probe, &ac.Choices[0], tf, rc)
+		if hasReadableContent(&probe) || ac.Fallback == nil {
+			appendSlideContent(slide, &probe)
+			return
 		}
 	}
+	if ac.Fallback != nil {
+		collectShapeTreeCtx(slide, ac.Fallback, tf, rc)
+	}
+}
+
+// readPicture extracts a picture's name, alt text, links, bounds and media
+// (raster blip target plus any svgBlip extension).
+func readPicture(pic *pictureElement, tf childTransform, rc *readContext) Picture {
+	p := Picture{
+		Name:       pic.NvPicPr.CNvPr.Name,
+		AltText:    pic.NvPicPr.CNvPr.Descr,
+		Hyperlinks: rc.hyperlinks(pic.NvPicPr.CNvPr, nil),
+		Bounds:     boundsIn(pic.SpPr.Xfrm, tf),
+	}
+	b := pic.BlipFill.Blip
+	if b == nil {
+		return p
+	}
+	id := b.Embed
+	if id == "" {
+		id = b.Link
+	}
+	p.Media = rc.target(id)
+	p.ContentType = rc.contentType(p.Media)
+	if b.ExtLst != nil {
+		for _, ext := range b.ExtLst.Exts {
+			if ext.SVGBlip != nil {
+				p.SVGMedia = rc.target(ext.SVGBlip.Embed)
+			}
+		}
+	}
+	return p
 }
 
 // hasReadableContent reports whether s holds any text or picture.

@@ -41,7 +41,7 @@ func TestBusinessTwoContentPreservesReadableNativeLeading(t *testing.T) {
 				t.Fatal("duplicate native body placeholder")
 			}
 			seen[shape.Identity.Name] = true
-			if shape.First.Leading.Value != "110000" || shape.Second.Leading.Value != "110000" || shape.First.Font.Size != "1800" || shape.Second.Font.Size != "1600" {
+			if shape.First.Leading.Value != "120000" || shape.Second.Leading.Value != "120000" || shape.First.Font.Size != "1800" || shape.Second.Font.Size != "1600" {
 				t.Errorf("native parent/child leading or font size drifted on %s: %+v %+v", shape.Identity.Name, shape.First, shape.Second)
 			}
 		}

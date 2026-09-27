@@ -866,6 +866,39 @@ func (d *WaterfallDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder,
 }
 
 // parseWaterfallData parses the request data into WaterfallData.
+// parseWaterfallPointType validates an explicit point type; "negative" is the
+// backward-compatible spelling used in the public example.
+func parseWaterfallPointType(rawType any, i int, label string) (WaterfallChartType, error) {
+	typ, ok := rawType.(string)
+	if !ok {
+		return "", fmt.Errorf("waterfall point %d (%q) type must be a string", i, label)
+	}
+	t := WaterfallChartType(strings.ToLower(strings.TrimSpace(typ)))
+	switch t {
+	case WaterfallTypeIncrease, WaterfallTypeDecrease, WaterfallTypeTotal, WaterfallTypeSubtotal, "":
+		return t, nil
+	case "negative":
+		return WaterfallTypeDecrease, nil
+	default:
+		return "", fmt.Errorf("waterfall point %d (%q) has invalid type %q; use increase, decrease, total, or subtotal", i, label, typ)
+	}
+}
+
+// inferWaterfallPointType infers an unspecified type from the label or value.
+func inferWaterfallPointType(label string, value float64) WaterfallChartType {
+	lower := strings.ToLower(label)
+	switch {
+	case strings.Contains(lower, "subtotal") || strings.Contains(lower, "sub-total"):
+		return WaterfallTypeSubtotal
+	case strings.Contains(lower, "total"):
+		return WaterfallTypeTotal
+	case value >= 0:
+		return WaterfallTypeIncrease
+	default:
+		return WaterfallTypeDecrease
+	}
+}
+
 func parseWaterfallData(req *RequestEnvelope) (WaterfallData, error) {
 	data := WaterfallData{
 		Title:    req.Title,
@@ -911,18 +944,11 @@ func parseWaterfallData(req *RequestEnvelope) (WaterfallData, error) {
 		}
 		point.Value = value
 		if rawType, exists := p["type"]; exists {
-			typ, ok := rawType.(string)
-			if !ok {
-				return data, fmt.Errorf("waterfall point %d (%q) type must be a string", i, label)
+			typ, err := parseWaterfallPointType(rawType, i, label)
+			if err != nil {
+				return data, err
 			}
-			point.Type = WaterfallChartType(strings.ToLower(strings.TrimSpace(typ)))
-			switch point.Type {
-			case WaterfallTypeIncrease, WaterfallTypeDecrease, WaterfallTypeTotal, WaterfallTypeSubtotal, "":
-			case "negative": // Backward-compatible spelling in the public example.
-				point.Type = WaterfallTypeDecrease
-			default:
-				return data, fmt.Errorf("waterfall point %d (%q) has invalid type %q; use increase, decrease, total, or subtotal", i, label, typ)
-			}
+			point.Type = typ
 		}
 		if colorStr, ok := p["color"].(string); ok {
 			if c, err := ParseColor(colorStr); err == nil {
@@ -930,18 +956,8 @@ func parseWaterfallData(req *RequestEnvelope) (WaterfallData, error) {
 			}
 		}
 
-		// Infer type from explicit label or value if not specified
 		if point.Type == "" {
-			lower := strings.ToLower(point.Label)
-			if strings.Contains(lower, "subtotal") || strings.Contains(lower, "sub-total") {
-				point.Type = WaterfallTypeSubtotal
-			} else if strings.Contains(lower, "total") {
-				point.Type = WaterfallTypeTotal
-			} else if point.Value >= 0 {
-				point.Type = WaterfallTypeIncrease
-			} else {
-				point.Type = WaterfallTypeDecrease
-			}
+			point.Type = inferWaterfallPointType(point.Label, point.Value)
 		}
 
 		// The type sets the direction: a decrease always lowers the running

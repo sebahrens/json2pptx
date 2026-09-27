@@ -66,7 +66,8 @@ func lookupDeterministicGate(sha string) ([]string, bool) {
 	if !ok {
 		return nil, false
 	}
-	return v.([]string), true
+	reasons, ok := v.([]string)
+	return reasons, ok
 }
 
 func mcpSubmitVisualReviewTool() mcp.Tool {
@@ -221,6 +222,35 @@ func deckVerdict(slides []visualReviewSlideInput) string {
 // submitVisualReview validates a host/manual review against the current
 // artifact and returns the resulting quality evidence. Validation failures
 // wrap errVisualReviewRejected.
+// currentReviewRevision returns the authoring manifest bound to this exact
+// artifact (nil when it describes an earlier one) and the current revision:
+// the manifest's revision when bound, else the artifact hash itself.
+func currentReviewRevision(manifestPath, artifactSHA string) (*pipeline.AuthoringManifest, string) {
+	manifest, _ := pipeline.ReadAuthoringManifest(manifestPath)
+	if manifest == nil || manifest.PPTXSHA256 != artifactSHA {
+		return nil, artifactSHA
+	}
+	return manifest, manifest.Revision
+}
+
+// applyDeterministicGate keeps a visual verdict from overriding the
+// deterministic gate: a deck the render reported publishable:false for P0
+// content is not complete however the slides look (go-slide-creator-csclk.127).
+func applyDeterministicGate(out *submitVisualReviewOutput, artifactSHA string) {
+	gateReasons, known := lookupDeterministicGate(artifactSHA)
+	if !known {
+		return
+	}
+	if len(gateReasons) > 0 {
+		if out.Status == visualReviewCompleteStatus {
+			out.Status = visualReviewBlockedStatus
+		}
+		out.BlockingReasons = gateReasons
+	}
+	publishable := out.Status == visualReviewCompleteStatus
+	out.Publishable = &publishable
+}
+
 func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, error) {
 	reviewer := in.Reviewer
 	if reviewer == "" {
@@ -241,14 +271,7 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 	// The current revision is the authoring manifest's revision when the deck
 	// has one for this exact artifact, else the artifact hash itself.
 	manifestPath := in.PPTXPath + ".authoring.json"
-	manifest, _ := pipeline.ReadAuthoringManifest(manifestPath)
-	if manifest != nil && manifest.PPTXSHA256 != artifact.SHA256 {
-		manifest = nil // manifest describes an earlier artifact; do not bind to it
-	}
-	currentRevision := artifact.SHA256
-	if manifest != nil {
-		currentRevision = manifest.Revision
-	}
+	manifest, currentRevision := currentReviewRevision(manifestPath, artifact.SHA256)
 	claimedRevision := in.Revision
 	if claimedRevision == "" {
 		claimedRevision = currentRevision
@@ -332,19 +355,7 @@ func submitVisualReview(in submitVisualReviewInput) (*submitVisualReviewOutput, 
 		out.Notes = append(out.Notes, howToVerify)
 	}
 
-	// A visual verdict never overrides the deterministic gate: a deck the
-	// render reported publishable:false for P0 content is not complete
-	// however the slides look (go-slide-creator-csclk.127).
-	if gateReasons, known := lookupDeterministicGate(artifact.SHA256); known {
-		if len(gateReasons) > 0 {
-			if out.Status == visualReviewCompleteStatus {
-				out.Status = visualReviewBlockedStatus
-			}
-			out.BlockingReasons = gateReasons
-		}
-		publishable := out.Status == visualReviewCompleteStatus
-		out.Publishable = &publishable
-	}
+	applyDeterministicGate(out, artifact.SHA256)
 
 	// An unverified review never becomes durable evidence in the manifest.
 	if manifest != nil && !verification.verified() {
