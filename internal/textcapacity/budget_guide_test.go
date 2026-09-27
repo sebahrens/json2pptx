@@ -16,6 +16,31 @@ func TestComputeBudgetGuide_EmptyConfigs(t *testing.T) {
 	}
 }
 
+func TestBudgetGuideUsesFittedShapeAndNeverSkipsZeroCapacityCell(t *testing.T) {
+	config := []GridBudgetConfig{{Columns: 2, Rows: 1}}
+	bounds := pptx.RectEmu{CX: 600 * 12700, CY: 60 * 12700}
+	makeGuide := func(fit string, height float64) *TextBudgetGuide {
+		return ComputeBudgetGuide(config, func(_, _ int) (*jsonschema.ShapeGridInput, error) {
+			return &jsonschema.ShapeGridInput{Columns: json.RawMessage(`2`), Rows: []jsonschema.GridRowInput{{Cells: []*jsonschema.GridCellInput{
+				{Fit: fit, MaxHeight: height, Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Text: json.RawMessage(`{"content":"Body text","size":12}`)}},
+				{Shape: &jsonschema.ShapeSpecInput{Geometry: "rect", Text: json.RawMessage(`{"content":"Body text","size":12}`)}},
+			}}}}, nil
+		}, bounds, 12192000, 6858000)
+	}
+	stretch, contained, empty := makeGuide("", 0), makeGuide("contain", 0), makeGuide("", 3)
+	for _, guide := range []*TextBudgetGuide{stretch, contained, empty} {
+		if guide == nil || len(guide.Configurations) != 1 {
+			t.Fatalf("missing configuration: %+v", guide)
+		}
+	}
+	if contained.Configurations[0].BodyMaxChars >= stretch.Configurations[0].BodyMaxChars {
+		t.Fatal("guide budgeted the outer cell instead of the contained shape")
+	}
+	if empty.Configurations[0].BodyMaxChars != 0 || empty.Configurations[0].HeaderMaxChars != 0 {
+		t.Fatalf("zero-capacity text cell skipped: %+v", empty.Configurations[0])
+	}
+}
+
 func TestComputeBudgetGuide_ExpandError(t *testing.T) {
 	configs := []GridBudgetConfig{{Columns: 2, Rows: 2}}
 	expandFn := func(cols, rows int) (*jsonschema.ShapeGridInput, error) {

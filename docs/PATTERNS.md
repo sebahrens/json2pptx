@@ -366,14 +366,9 @@ The engine computes a deterministic text budget for every shape grid cell. Patte
 
    It used to be a character ratio against a single size, the **largest** paragraph in the cell, which made every mixed-size cell nonsense in both directions: a `stat-hero` cell with a 120pt number above three small support lines reported 911% "overflow" while rendering with room to spare, and most cells of most patterns reported "underfilled" (go-slide-creator-yj77). An unsized cell is also now measured at the size it renders at (`shapegrid.DefaultTextSizePt`, 14pt) rather than a legacy 11pt budget default.
 
-3. **Font precedence.** The font size used for budget computation follows this resolution chain (first non-zero wins):
-   - Paragraph-level `size` in the cell's text content
-   - Shape-level `font_size` on the `ShapeSpecInput`
-   - Pattern override `font_size` (from `cell_overrides` or pattern-level overrides)
-   - Pattern default font size (set in `Expand()`)
-   - Template theme body font size
+3. **Use the written text and geometry.** Capacity parses text through the writer's `shapegrid.ResolveTextInput`: object content uses `text.size`, paragraph arrays use each paragraph's `size`, and an unspecified size uses 14pt. Explicit sizes below 12pt are raised to the writer's floor. Use the fitted shape bounds, not the outer cell allocation, and subtract authored/default/overlay insets once. Include paragraph `space_after`. Pattern overrides must resolve into the emitted text before measurement.
 
-   Pattern authors control the default by setting `FontSize` on emitted `ShapeSpecInput` structs. If a pattern does not set a font size, the template theme default applies.
+   `show_pattern`'s character guide uses generic geometry. It is not a template-specific fit promise and cannot guarantee arbitrary glyph widths. Expand and validate the actual content against the chosen template; retain all required content and inspect the rendered output. A cell with no usable text area has zero capacity, not a positive one-line budget.
 
 4. **Determinism guarantee.** `textcapacity` uses `go-fonts/liberation` embedded metrics — no OS font dependency. Given the same grid geometry, font size, and insets, budgets are identical across macOS, Linux, and CI. This is a hard invariant; if a pattern change causes budget drift in CI, the change is wrong.
 
@@ -402,8 +397,8 @@ func TestMyPattern_CellBudgets(t *testing.T) {
 
             densities := textcapacity.ForResolvedGrid(result)
             for i, d := range densities {
-                if d.MaxChars < 10 {
-                    t.Errorf("cell %d: max_chars=%d too small, check insets/font", i, d.MaxChars)
+                if d.ActualChars > 0 && d.MaxChars == 0 && d.Fits {
+                    t.Errorf("cell %d: populated unusable frame reported as fitting", i)
                 }
                 // Budget should be > 0 for text cells
                 if d.Status == textcapacity.StatusOverflow && d.ActualChars > 0 {
@@ -416,8 +411,8 @@ func TestMyPattern_CellBudgets(t *testing.T) {
 ```
 
 Parameterize over grid configurations (different cell counts, column layouts) and assert that:
-- Every text cell has `max_chars > 0`
-- No cell has a budget below a plausible floor (10 chars minimum)
+- Usable text frames have positive character budgets
+- Unusable frames report zero capacity rather than inventing a minimum budget
 - Density bands shift as expected when content length varies
 
 ### Density bands reference
@@ -426,12 +421,12 @@ Parameterize over grid configurations (different cell counts, column layouts) an
 |------|-----------|---------------|--------------|
 | Underfilled | < 35% | `"underfilled"` | Add content or pick a smaller grid |
 | Optimal | 35–110% | `"optimal"` | No action needed |
-| Overflow | > 110% | `"overflow"` | The renderer will shrink this cell's text to fit (`<a:normAutofit/>`). Trim content or pick a larger grid if the shrink would push text below the readable floor. |
+| Overflow | > 110% | `"overflow"` | Enlarge or redesign the frame while preserving required content. Use continuation slides only when the requested slide count allows them. Do not delete source merely to clear a finding. |
 
 Density % is `required text height / available text height`, so >100% means "needs an autofit shrink", not "clipped". Two further signals separate those cases:
 
 - **`fits: false`** (Density.Fits) — the block does not fit even at the smallest shrink the renderer applies (`textcapacity.AutofitFloorScale`, 20%). This, and only this, is what `fit_overflow` reports for a shape_grid cell: text that is actually clipped.
-- **`TEXT_BELOW_READABLE_MIN`** — the predicted post-autofit size is under the viewing mode's floor for that text role. This is the finding for "it fits, but only because it shrank too far"; it is advisory (`review`).
+- **`TEXT_BELOW_READABLE_MIN`** — the size is under the viewing mode's floor for that text role. Preflight predictions remain advisory (`review`). Generated grid paragraphs carry their source-style-inferred roles and refuse publication below their written-size floor; generated explicit text below the universal 7pt floor also refuses, regardless of fit mode. Native template chrome is not relabelled as grid body text.
 
 These thresholds are defined in `internal/textcapacity/textcapacity.go` and are stable — do not hardcode different values in patterns.
 

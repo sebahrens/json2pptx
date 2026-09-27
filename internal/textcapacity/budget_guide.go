@@ -122,12 +122,13 @@ func computeConfigBudget(
 
 	vAlign, _ := shapegrid.ParseVerticalAlign(grid.VerticalAlign)
 	sgGrid := &shapegrid.Grid{
-		Bounds:  bounds,
-		Columns: colWidths,
-		Rows:    sgRows,
-		ColGap:  colGap,
-		RowGap:  rowGap,
-		VAlign:  vAlign,
+		Bounds:    bounds,
+		TypeScale: grid.TypeScale,
+		Columns:   colWidths,
+		Rows:      sgRows,
+		ColGap:    colGap,
+		RowGap:    rowGap,
+		VAlign:    vAlign,
 	}
 
 	if vErr := shapegrid.Validate(sgGrid); vErr != nil {
@@ -144,19 +145,16 @@ func computeConfigBudget(
 	// sizes. We use the minimum across all cells to give agents a safe ceiling.
 	var headerBudgets, bodyBudgets []int
 	for _, cell := range result.Cells {
-		w := cell.CellBounds.CX
-		h := cell.CellBounds.CY
-		if w <= 0 || h <= 0 {
+		if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
 			continue
 		}
-		hb := computeBudget(w, h, defaultHeaderFontPt)
-		bb := computeBudget(w, h, defaultBodyFontPt)
-		if hb.MaxChars > 0 {
-			headerBudgets = append(headerBudgets, hb.MaxChars)
-		}
-		if bb.MaxChars > 0 {
-			bodyBudgets = append(bodyBudgets, bb.MaxChars)
-		}
+		paras, insets := extractCellParagraphs(cell)
+		w, h := effectiveTextRect(cell.Bounds, cell.TextInsets, insets)
+		bodyPt := max(defaultBodyFontPt, dominantFontPt(paras))
+		hb := computeTextAreaBudget(w, h, max(defaultHeaderFontPt, bodyPt))
+		bb := computeTextAreaBudget(w, h, bodyPt)
+		headerBudgets = append(headerBudgets, hb.MaxChars)
+		bodyBudgets = append(bodyBudgets, bb.MaxChars)
 	}
 
 	if len(bodyBudgets) == 0 {
@@ -215,20 +213,28 @@ func convertRows(inputRows []jsonschema.GridRowInput) []shapegrid.Row {
 				continue // zero Cell = empty
 			}
 			cells[j] = shapegrid.Cell{
-				ColSpan: c.ColSpan,
+				ColSpan:   c.ColSpan,
+				RowSpan:   c.RowSpan,
+				MaxHeight: c.MaxHeight,
+				Fit:       shapegrid.FitMode(c.Fit),
 				Shape: &shapegrid.ShapeSpec{
-					Geometry: c.Shape.Geometry,
-					Fill:     c.Shape.Fill,
-					Line:     c.Shape.Line,
-					Text:     c.Shape.Text,
-					Rotation: c.Shape.Rotation,
+					Geometry:    c.Shape.Geometry,
+					TypeScale:   c.Shape.TypeScale,
+					Fill:        c.Shape.Fill,
+					Line:        c.Shape.Line,
+					Text:        c.Shape.Text,
+					Rotation:    c.Shape.Rotation,
+					Adjustments: c.Shape.Adjustments,
 				},
 			}
 		}
 		rows[i] = shapegrid.Row{
-			Cells:     cells,
-			Height:    r.Height,
-			MaxHeight: r.MaxHeight,
+			Cells:      cells,
+			Height:     r.Height,
+			AutoHeight: r.AutoHeight,
+			Flex:       r.Flex,
+			MinHeight:  r.MinHeight,
+			MaxHeight:  r.MaxHeight,
 		}
 	}
 	return rows

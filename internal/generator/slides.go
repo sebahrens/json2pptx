@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -106,6 +107,10 @@ type SlideSpec struct {
 	ContrastCheck     *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
 	SkipFooter        bool             // When true, footer/chrome is suppressed on this slide
 	RawShapeXML       [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
+	// GridTextRoles preserves source paragraph roles for generated grid shapes.
+	// Keys are the shape IDs in RawShapeXML; values retain emitted paragraph
+	// order, including empty paragraphs. Native template chrome is not included.
+	GridTextRoles map[uint32][]tokens.TextRole
 	// OverlayShapeXML holds free-floating shapes (badges, arrows, lines) that
 	// must paint ON TOP of everything else on the slide. They are kept separate
 	// from RawShapeXML because raw grid shapes go in at the START of the spTree

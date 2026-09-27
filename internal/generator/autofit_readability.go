@@ -123,14 +123,8 @@ func smallestPopulatedRunSizeHPt(shape string) int {
 	}
 	smallest := 0
 	for _, p := range parsed.TextBody.Paragraphs {
-		for _, run := range p.Runs {
-			if strings.TrimSpace(run.Text) == "" || run.RunProperties == nil {
-				continue
-			}
-			size, err := strconv.Atoi(run.RunProperties.FontSize)
-			if err == nil && size > 0 && (smallest == 0 || size < smallest) {
-				smallest = size
-			}
+		if size := smallestPopulatedParagraphRunSizeHPt(p); size > 0 && (smallest == 0 || size < smallest) {
+			smallest = size
 		}
 	}
 	return smallest

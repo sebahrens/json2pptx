@@ -4,23 +4,18 @@
 // All budgets use the embedded Liberation Sans font (metric-compatible with
 // Arial) for deterministic cross-platform results. This avoids platform-
 // dependent jitter between macOS (with system Arial) and Linux CI (which may
-// have different font metrics). Budget values are exact — no rounding — because
-// the embedded font is identical on every platform.
+// have different font metrics). Character budgets are deterministic sizing
+// hints, not fit guarantees for arbitrary glyphs or an installed theme font.
 //
 // # Font precedence for cell budget computation
 //
-// When determining font size for a cell budget, the following precedence
-// applies (first non-zero wins):
-//
-//  1. Per-paragraph font size in the cell's text JSON
-//  2. Cell-level text.size in the shape specification
-//  3. Pattern override (HeaderSize / BodySize on the resolved cell)
-//  4. Default: 11pt
+// Cell paragraphs are resolved through shapegrid.ResolveTextInput, the same
+// parser the writer uses. Object content uses text.size; paragraph arrays use
+// each paragraph's size. An unspecified size uses the writer's 14pt default.
 //
 // For shape_grid cells, any explicitly authored size below the renderer's
 // minimum floor (shapegrid.MinTextSizePt, 12pt) is raised to that floor so the
-// budget matches what the renderer produces. The unspecified-size default above
-// (11pt) is not floored.
+// budget matches what the renderer produces.
 //
 // # Post-markdown rule
 //
@@ -31,7 +26,6 @@
 package textcapacity
 
 import (
-	"encoding/json"
 	"math"
 	"strings"
 
@@ -160,7 +154,11 @@ func ForResolvedGrid(result *shapegrid.ResolveResult) []Density {
 		// shapegrid.GenerateShapeXML, which adds the overlay insets onto the
 		// authored Insets from buildTextBody). Mirror that here so the budget
 		// reflects the box PowerPoint actually receives, not the full cell.
-		w, h := effectiveTextRect(cell.CellBounds, cell.TextInsets, authoredInsets)
+		bounds := cell.Bounds
+		if bounds.CX == 0 && bounds.CY == 0 {
+			bounds = cell.CellBounds // legacy synthetic callers without fitted bounds
+		}
+		w, h := effectiveTextRect(bounds, cell.TextInsets, authoredInsets)
 		densities[i] = measuredDensity(paras, w, h)
 	}
 	return densities
@@ -171,8 +169,15 @@ func ForResolvedGrid(result *shapegrid.ResolveResult) []Density {
 // width and height. Results are clamped at zero so over-large insets cannot
 // yield a negative rectangle.
 func effectiveTextRect(bounds pptx.RectEmu, overlay, authored [4]int64) (int64, int64) {
-	w := bounds.CX - overlay[0] - overlay[2] - authored[0] - authored[2]
-	h := bounds.CY - overlay[1] - overlay[3] - authored[1] - authored[3]
+	insets := authored
+	for i := range insets {
+		insets[i] += overlay[i]
+	}
+	if insets == [4]int64{} {
+		insets = [4]int64{91440, 45720, 91440, 45720}
+	}
+	w := bounds.CX - insets[0] - insets[2]
+	h := bounds.CY - insets[1] - insets[3]
 	if w < 0 {
 		w = 0
 	}
@@ -217,6 +222,21 @@ func computeBudget(widthEMU, heightEMU int64, fontPt float64) Budget {
 		WidthEMU:  widthEMU,
 		HeightEMU: heightEMU,
 	}
+}
+
+// The caller has already applied authored/default/overlay insets. Keep a
+// zero budget when even one unshrunk line cannot fit; do not invent one line.
+func computeTextAreaBudget(widthEMU, heightEMU int64, fontPt float64) Budget {
+	b := Budget{FontPt: fontPt, WidthEMU: widthEMU, HeightEMU: heightEMU,
+		AvailableHeightPt: float64(heightEMU) / float64(types.EMUPerPoint)}
+	if widthEMU <= 0 || heightEMU <= 0 || fontPt <= 0 {
+		return b
+	}
+	b.MaxLines = int(math.Floor(b.AvailableHeightPt / (fontPt * lineSpacing)))
+	if b.MaxLines > 0 {
+		b.MaxChars = binarySearchCharsPerLine(widthEMU, fontPt) * b.MaxLines
+	}
+	return b
 }
 
 // binarySearchCharsPerLine finds how many average-width characters fit on one
@@ -271,8 +291,9 @@ const defaultCellFontPt = shapegrid.DefaultTextSizePt
 
 // cellParagraph is one paragraph of a cell's text with the size it renders at.
 type cellParagraph struct {
-	text   string
-	fontPt float64
+	text         string
+	fontPt       float64
+	spaceAfterPt float64
 }
 
 // extractCellParagraphs parses a resolved cell's shape text into paragraphs,
@@ -288,58 +309,23 @@ func extractCellParagraphs(cell shapegrid.ResolvedCell) ([]cellParagraph, [4]int
 		return nil, [4]int64{}
 	}
 
-	raw := cell.ShapeSpec.Text
-
-	// String shorthand: one paragraph at the default size.
-	var str string
-	if err := json.Unmarshal(raw, &str); err == nil {
-		return []cellParagraph{{text: stripMarkdown(str), fontPt: defaultCellFontPt}}, [4]int64{}
-	}
-
-	var obj struct {
-		Content     string  `json:"content"`
-		Size        float64 `json:"size,omitempty"`
-		InsetLeft   float64 `json:"inset_left,omitempty"`
-		InsetRight  float64 `json:"inset_right,omitempty"`
-		InsetTop    float64 `json:"inset_top,omitempty"`
-		InsetBottom float64 `json:"inset_bottom,omitempty"`
-		Paragraphs  []struct {
-			Content string  `json:"content"`
-			Size    float64 `json:"size,omitempty"`
-		} `json:"paragraphs,omitempty"`
-	}
-	if err := json.Unmarshal(raw, &obj); err != nil {
+	body, err := shapegrid.ResolveTextInput(cell.ShapeSpec.Text)
+	if err != nil {
 		return nil, [4]int64{}
 	}
-
-	insets := [4]int64{
-		pointsToEMU(obj.InsetLeft),
-		pointsToEMU(obj.InsetTop),
-		pointsToEMU(obj.InsetRight),
-		pointsToEMU(obj.InsetBottom),
-	}
-
-	// Cell-level authored size, floored to the renderer's minimum, is the
-	// fallback for paragraphs that do not set their own.
-	cellPt := defaultCellFontPt
-	if obj.Size > 0 {
-		cellPt = shapegrid.EffectiveTextSizePt(obj.Size)
-	}
-
-	if len(obj.Paragraphs) > 0 {
-		paras := make([]cellParagraph, 0, len(obj.Paragraphs))
-		for _, p := range obj.Paragraphs {
-			pt := cellPt
-			if p.Size > 0 {
-				// Mirror the renderer's per-paragraph floor.
-				pt = shapegrid.EffectiveTextSizePt(p.Size)
+	paras := make([]cellParagraph, 0, len(body.Paragraphs))
+	for _, p := range body.Paragraphs {
+		var text strings.Builder
+		size := 0
+		for _, run := range p.Runs {
+			text.WriteString(run.Text)
+			if run.FontSize > 0 && (size == 0 || run.FontSize < size) {
+				size = run.FontSize
 			}
-			paras = append(paras, cellParagraph{text: stripMarkdown(p.Content), fontPt: pt})
 		}
-		return paras, insets
+		paras = append(paras, cellParagraph{text: stripMarkdown(text.String()), fontPt: float64(size) / 100, spaceAfterPt: float64(p.SpaceAfter) / 100})
 	}
-
-	return []cellParagraph{{text: stripMarkdown(obj.Content), fontPt: cellPt}}, insets
+	return paras, body.Insets
 }
 
 // measuredDensity lays each paragraph out at its own size inside the cell's text
@@ -347,7 +333,7 @@ func extractCellParagraphs(cell shapegrid.ResolvedCell) ([]cellParagraph, [4]int
 // the renderer stacks paragraphs. This is the measurement fit_overflow and
 // cell_underfilled are derived from (go-slide-creator-lmpu, go-slide-creator-yj77).
 func measuredDensity(paras []cellParagraph, widthEMU, heightEMU int64) Density {
-	availablePt := availableTextHeightPt(heightEMU)
+	availablePt := float64(heightEMU) / float64(types.EMUPerPoint)
 	chars := 0
 	for _, p := range paras {
 		chars += len([]rune(p.text))
@@ -358,30 +344,16 @@ func measuredDensity(paras []cellParagraph, widthEMU, heightEMU int64) Density {
 	// a 14pt caption is a 14pt text box with a number in it, not a 120pt one.
 	dominantPt := dominantFontPt(paras)
 	d := Density{
-		Budget: Budget{
-			FontPt:            dominantPt,
-			WidthEMU:          widthEMU,
-			HeightEMU:         heightEMU,
-			AvailableHeightPt: availablePt,
-		},
+		Budget:      computeTextAreaBudget(widthEMU, heightEMU, dominantPt),
 		ActualChars: chars,
 	}
 	if widthEMU <= 0 || availablePt <= 0 {
 		d.Status = StatusUnderfilled
+		if chars > 0 {
+			d.Status = StatusOverflow
+		}
 		return d
 	}
-
-	// Char budget at the dominant size, kept as the hint agents use to size text
-	// (reduce_cell_text's max_chars) — derived, never the density itself.
-	perLine := binarySearchCharsPerLine(widthEMU, dominantPt)
-	if perLine < 1 {
-		perLine = 1
-	}
-	d.MaxLines = int(math.Floor(availablePt / (dominantPt * lineSpacing)))
-	if d.MaxLines < 1 {
-		d.MaxLines = 1
-	}
-	d.MaxChars = perLine * d.MaxLines
 
 	for _, p := range paras {
 		if strings.TrimSpace(p.text) == "" {
@@ -392,7 +364,7 @@ func measuredDensity(paras []cellParagraph, widthEMU, heightEMU int64) Density {
 			lines = m.Lines
 		}
 		d.Lines += lines
-		d.RequiredHeightPt += float64(lines) * p.fontPt * lineSpacing
+		d.RequiredHeightPt += float64(lines)*p.fontPt*lineSpacing + p.spaceAfterPt
 	}
 
 	if chars == 0 {
@@ -402,7 +374,7 @@ func measuredDensity(paras []cellParagraph, widthEMU, heightEMU int64) Density {
 	}
 	d.DensityPct = int(math.Round(d.RequiredHeightPt / availablePt * 100))
 	d.Status = statusForDensity(d.DensityPct)
-	d.AutofitScale, d.Fits = AutofitScale(paras, widthEMU, heightEMU)
+	d.AutofitScale, d.Fits = autofitScaleInTextArea(paras, widthEMU, availablePt)
 	return d
 }
 
@@ -434,11 +406,15 @@ func AutofitScaleFor(paras []ParagraphSpec, widthEMU, heightEMU int64) (float64,
 // steps, whose measured wrapped height fits the rectangle. The second result is
 // false when even AutofitFloorScale overflows.
 func AutofitScale(paras []cellParagraph, widthEMU, heightEMU int64) (float64, bool) {
+	return autofitScaleInTextArea(paras, widthEMU, availableTextHeightPt(heightEMU))
+}
+
+func autofitScaleInTextArea(paras []cellParagraph, widthEMU int64, availableHeightPt float64) (float64, bool) {
 	converted := make([]textfit.AutofitParagraph, 0, len(paras))
 	for _, p := range paras {
-		converted = append(converted, textfit.AutofitParagraph{Text: p.text, FontPt: p.fontPt})
+		converted = append(converted, textfit.AutofitParagraph{Text: p.text, FontPt: p.fontPt, SpaceAfterPt: p.spaceAfterPt})
 	}
-	return textfit.AutofitScale(converted, widthEMU, availableTextHeightPt(heightEMU), textfit.AutofitOptions{
+	return textfit.AutofitScale(converted, widthEMU, availableHeightPt, textfit.AutofitOptions{
 		FontName:    budgetFontName,
 		LineSpacing: lineSpacing,
 		FloorScale:  AutofitFloorScale,
@@ -485,16 +461,6 @@ func statusForDensity(pct int) Status {
 	default:
 		return StatusUnderfilled
 	}
-}
-
-// pointsToEMU converts an authored point inset to EMU, mirroring the renderer's
-// shapegrid.buildTextBody conversion. Non-positive insets yield 0 so a missing
-// or negative authored inset never expands the budgeted rectangle.
-func pointsToEMU(pt float64) int64 {
-	if pt <= 0 {
-		return 0
-	}
-	return int64(types.FromPoints(pt))
 }
 
 // stripMarkdown removes markdown emphasis markers from text and returns the
