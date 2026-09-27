@@ -35,6 +35,9 @@ func Open(r io.ReaderAt, size int64) (*Package, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open ZIP: %w", err)
 	}
+	if err := utils.CheckZipLimits(zr.File); err != nil {
+		return nil, err
+	}
 
 	pkg := &Package{
 		reader:   zr,
@@ -164,7 +167,7 @@ func (p *Package) ReadEntry(path string) ([]byte, error) {
 	}
 	defer func() { _ = rc.Close() }()
 
-	return io.ReadAll(io.LimitReader(rc, utils.MaxZipEntrySize))
+	return utils.ReadZipEntryLimited(rc, path)
 }
 
 // SetEntry sets or replaces content for a part.
@@ -274,7 +277,7 @@ func (p *Package) readOriginalEntry(path string) ([]byte, error) {
 	}
 	defer func() { _ = rc.Close() }()
 
-	return io.ReadAll(io.LimitReader(rc, utils.MaxZipEntrySize))
+	return utils.ReadZipEntryLimited(rc, path)
 }
 
 // Clone creates an independent copy of the package state.

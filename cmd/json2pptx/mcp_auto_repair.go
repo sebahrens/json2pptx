@@ -547,7 +547,7 @@ func (mc *mcpConfig) runAutoRepairLoop(
 	// through unchanged, so resolving once up front is correct for every pass.
 	// Error-severity findings short-circuit (the caller passes the result
 	// straight through), matching handleGenerate's contract.
-	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths)...); len(assetFindings) > 0 {
 		if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
 			return nil, api.MCPDiagnosticsError(assetErrors)
 		}

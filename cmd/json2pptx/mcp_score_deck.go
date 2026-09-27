@@ -145,7 +145,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	if baseDirErr != nil {
 		return baseDirErr, nil
 	}
-	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir); len(assetFindings) > 0 {
+	if assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths)...); len(assetFindings) > 0 {
 		if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
 			return api.MCPDiagnosticsError(assetErrors), nil
 		}

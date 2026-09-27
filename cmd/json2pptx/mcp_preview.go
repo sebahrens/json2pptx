@@ -231,7 +231,7 @@ func (mc *mcpConfig) handlePreviewPlan(ctx context.Context, request mcp.CallTool
 	if baseDirErr != nil {
 		return baseDirErr, nil
 	}
-	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir)
+	assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(mc.cfg.Images.AllowedBasePaths)...)
 	if assetErrors := diagnostics.FilterBySeverity(assetFindings, diagnostics.SeverityError); len(assetErrors) > 0 {
 		return api.MCPDiagnosticsError(assetErrors), nil
 	}

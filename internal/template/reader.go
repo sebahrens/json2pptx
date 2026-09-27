@@ -58,6 +58,10 @@ func OpenTemplate(path string) (*Reader, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid PPTX format (not a ZIP archive): %w", err)
 	}
+	if err := utils.CheckZipLimits(zipReader.File); err != nil {
+		_ = zipReader.Close()
+		return nil, fmt.Errorf("invalid PPTX: %w", err)
+	}
 
 	reader := &Reader{
 		path: path,
@@ -136,7 +140,7 @@ func (r *Reader) ReadFile(name string) ([]byte, error) {
 			}
 			defer func() { _ = rc.Close() }()
 
-			data, err := io.ReadAll(io.LimitReader(rc, utils.MaxZipEntrySize))
+			data, err := utils.ReadZipEntryLimited(rc, name)
 			if err != nil {
 				return nil, fmt.Errorf("failed to read %s: %w", name, err)
 			}

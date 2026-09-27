@@ -533,7 +533,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		// have no base directory (mirrors generate's jsonPath != "-" guard).
 		if *specPath != "-" {
 			baseDir := validateBaseDir(*specPath, "")
-			assetFindings := resolveLocalAssetPaths(input.Slides, baseDir)
+			assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir)...)
 			if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
 				return assetErr
 			}
