@@ -472,6 +472,12 @@ func TestFormatCompact(t *testing.T) {
 		// Small fractional values
 		{0.5, "0.5"},
 		{0.25, "0.25"},
+		// Rounding up to 1000 promotes to the next unit (csclk.15)
+		{999999, "1M"},
+		{999960, "1M"},
+		{999999999, "1B"},
+		{999999999999, "1T"},
+		{-999999, "-1M"},
 	}
 
 	for _, tt := range tests {

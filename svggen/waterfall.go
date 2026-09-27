@@ -138,16 +138,12 @@ func (wc *WaterfallChart) Draw(data WaterfallData) error {
 		return fmt.Errorf("waterfall chart requires at least one data point")
 	}
 
-	// Auto-detect decimal precision: if using the default integer format but
-	// data contains fractional values, switch to one decimal place.
-	if wc.config.ValueFormat == "%.0f" {
-		for _, p := range data.Points {
-			if p.Value != math.Trunc(p.Value) {
-				wc.config.ValueFormat = "%.1f"
-				break
-			}
-		}
-	}
+	// Decimal precision is left to the shared value formatter
+	// (ResolveValueFormatter below): it picks the decimals that keep the
+	// labels distinct and derives y-tick precision from the tick step. A
+	// forced "%.1f" printed a -0.04 delta as "-0.0" and every tick of a
+	// narrow axis as "10.0" (go-slide-creator-csclk.12).
+	wc.checkTotals(data.Points)
 
 	b := wc.builder
 	style := b.StyleGuide()
@@ -572,7 +568,7 @@ func (wc *WaterfallChart) drawBarsAndConnectors(points []WaterfallDataPoint, plo
 				b.SetFontSize(valueFontSize)
 				b.SetFontWeight(style.Typography.WeightNormal)
 
-				label := wc.config.ValueFmt.FormatOr(p.Value, wc.config.ValueFormat)
+				label := waterfallLabel(wc.config.ValueFmt.FormatOr(p.Value, wc.config.ValueFormat))
 				if p.Value > 0 && p.Type != WaterfallTypeTotal && p.Type != WaterfallTypeSubtotal && i > 0 {
 					label = "+" + label
 				}
@@ -672,7 +668,7 @@ func (wc *WaterfallChart) measureValueLabelWidth(points []WaterfallDataPoint, fo
 	b.SetFontSize(fontSize)
 	var maxW float64
 	for i, p := range points {
-		label := wc.config.ValueFmt.FormatOr(p.Value, wc.config.ValueFormat)
+		label := waterfallLabel(wc.config.ValueFmt.FormatOr(p.Value, wc.config.ValueFormat))
 		if p.Value > 0 && p.Type != WaterfallTypeTotal && p.Type != WaterfallTypeSubtotal && i > 0 {
 			label = "+" + label
 		}
@@ -682,6 +678,56 @@ func (wc *WaterfallChart) measureValueLabelWidth(points []WaterfallDataPoint, fo
 		}
 	}
 	return maxW
+}
+
+// waterfallLabel drops the sign from a label that rounds to zero, so a tiny
+// negative delta never reads "-0.0" (go-slide-creator-csclk.12).
+func waterfallLabel(label string) string {
+	if !strings.HasPrefix(label, "-") {
+		return label
+	}
+	for _, r := range label {
+		if r >= '1' && r <= '9' {
+			return label
+		}
+	}
+	return strings.TrimPrefix(label, "-")
+}
+
+// checkTotals records a finding for every total/subtotal whose authored value
+// disagrees with the running sum of the bars before it beyond rounding: the
+// chart draws the authored value, so the walk would silently not add up
+// (go-slide-creator-csclk.11). A total that opens the walk has nothing to
+// check against.
+func (wc *WaterfallChart) checkTotals(points []WaterfallDataPoint) {
+	var running float64
+	for i, p := range points {
+		switch p.Type {
+		case WaterfallTypeTotal, WaterfallTypeSubtotal:
+			if i > 0 {
+				tol := 0.005 * math.Max(math.Abs(running), math.Abs(p.Value))
+				if diff := p.Value - running; math.Abs(diff) > math.Max(tol, 1e-9) {
+					wc.builder.AddFinding(Finding{
+						Field:    fmt.Sprintf("points[%d].value", i),
+						Code:     FindingWaterfallTotalMismatch,
+						Message:  fmt.Sprintf("waterfall %s %q is %v but the bars before it sum to %v (off by %v); the bar is drawn at the authored value", p.Type, p.Label, p.Value, running, diff),
+						Severity: "warning",
+						Fix: &FixSuggestion{
+							Kind:   FixKindReplaceValue,
+							Params: map[string]any{"index": i, "authored": p.Value, "running_sum": running},
+						},
+					})
+				}
+			}
+			running = p.Value
+		default:
+			if i == 0 {
+				running = p.Value
+			} else {
+				running += p.Value
+			}
+		}
+	}
 }
 
 // =============================================================================
@@ -896,6 +942,17 @@ func parseWaterfallData(req *RequestEnvelope) (WaterfallData, error) {
 			} else {
 				point.Type = WaterfallTypeDecrease
 			}
+		}
+
+		// The type sets the direction: a decrease always lowers the running
+		// total and an increase raises it, whatever sign the value was
+		// written with. {type: decrease, value: 5} used to draw a +5 rise
+		// (go-slide-creator-csclk.11).
+		switch point.Type {
+		case WaterfallTypeDecrease:
+			point.Value = -math.Abs(point.Value)
+		case WaterfallTypeIncrease:
+			point.Value = math.Abs(point.Value)
 		}
 
 		data.Points = append(data.Points, point)

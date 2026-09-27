@@ -177,6 +177,7 @@ const (
 	FindingPointOutOfRange           = core.FindingPointOutOfRange
 	FindingPercentScaleAmbiguous     = core.FindingPercentScaleAmbiguous
 	FindingCurrencyPrefixDefaulted   = core.FindingCurrencyPrefixDefaulted
+	FindingWaterfallTotalMismatch    = core.FindingWaterfallTotalMismatch
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries

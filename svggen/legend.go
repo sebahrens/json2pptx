@@ -694,8 +694,18 @@ func (l *Legend) drawHorizontal(bounds Rect, itemWidths []float64, fontSize floa
 func (l *Legend) drawVertical(bounds Rect, itemWidths []float64, fontSize float64, fontColor Color) {
 	rowHeight := math.Max(l.config.MarkerSize, fontSize)
 
-	// Calculate total height
-	totalHeight := float64(len(l.items))*rowHeight + float64(len(l.items)-1)*l.config.RowGap
+	maxY := bounds.Y + bounds.H
+	capacity := legendRowCapacity(bounds.H, rowHeight, l.config.RowGap)
+	show := legendItemsToShow(len(l.items), capacity)
+
+	// Total height of the rows actually drawn: the shown items plus the
+	// "+N more" row when items are dropped. Centring on the full item count
+	// pushed the first items above the canvas (go-slide-creator-csclk.13).
+	rows := show
+	if show < len(l.items) {
+		rows++
+	}
+	totalHeight := float64(rows)*rowHeight + float64(rows-1)*l.config.RowGap
 
 	// Calculate starting Y based on vertical alignment
 	var startY float64
@@ -705,6 +715,9 @@ func (l *Legend) drawVertical(bounds Rect, itemWidths []float64, fontSize float6
 	case "middle":
 		startY = bounds.Y + (bounds.H-totalHeight)/2
 	default: // top
+		startY = bounds.Y
+	}
+	if startY < bounds.Y {
 		startY = bounds.Y
 	}
 
@@ -725,10 +738,6 @@ func (l *Legend) drawVertical(bounds Rect, itemWidths []float64, fontSize float6
 	default: // left
 		startX = bounds.X
 	}
-
-	maxY := bounds.Y + bounds.H
-	capacity := legendRowCapacity(bounds.H, rowHeight, l.config.RowGap)
-	show := legendItemsToShow(len(l.items), capacity)
 
 	currentY := startY
 	drawn := 0
@@ -979,21 +988,38 @@ func (l *Legend) Height(maxWidth float64) float64 {
 		return float64(numRows)*rowHeight + float64(numRows-1)*l.config.RowGap + l.config.Padding*2
 
 	default: // LegendLayoutHorizontal
-		// Calculate if wrapping is needed
-		totalWidth := 0.0
+		// Simulate drawHorizontal's greedy wrap with the same item widths
+		// (font weight, value text) so the reserved height matches the rows
+		// actually drawn. ceil(totalWidth/available) undercounted rows when
+		// whole items could not share a line, and the last legend row fell
+		// below the canvas (go-slide-creator-csclk.87).
+		b.Push()
+		defer b.Pop()
+		if l.config.Style != nil && l.config.Style.FontWeight > 0 {
+			b.SetFontWeight(l.config.Style.FontWeight)
+		} else {
+			b.SetFontWeight(style.Typography.WeightNormal)
+		}
+		availableWidth := maxWidth - l.config.Padding*2
+		if l.config.MaxWidth > 0 && l.config.MaxWidth < availableWidth {
+			availableWidth = l.config.MaxWidth
+		}
+		numRows := 1
+		currentX := 0.0
 		for _, item := range l.items {
 			textWidth, _ := b.MeasureText(item.Label)
-			totalWidth += l.config.MarkerSize + l.config.MarkerLabelGap + textWidth*twf
+			textWidth *= twf
+			if item.Value != "" {
+				valueWidth, _ := b.MeasureText(item.Value)
+				textWidth += style.Spacing.XS + valueWidth*twf
+			}
+			w := l.config.MarkerSize + l.config.MarkerLabelGap + textWidth
+			if currentX > 0 && currentX+w > availableWidth {
+				numRows++
+				currentX = 0
+			}
+			currentX += w + l.config.ItemGap
 		}
-		totalWidth += float64(len(l.items)-1) * l.config.ItemGap
-
-		availableWidth := maxWidth - l.config.Padding*2
-		if totalWidth <= availableWidth {
-			return rowHeight + l.config.Padding*2
-		}
-
-		// Estimate rows needed
-		numRows := int(math.Ceil(totalWidth / availableWidth))
 		return float64(numRows)*rowHeight + float64(numRows-1)*l.config.RowGap + l.config.Padding*2
 	}
 }

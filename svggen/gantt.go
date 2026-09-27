@@ -233,6 +233,7 @@ func (gc *GanttChart) Draw(data GanttData) error {
 	if timeUnit == "" {
 		timeUnit = gc.detectTimeUnit(dateRange)
 	}
+	timeUnit = coarsenTimeUnit(gc.builder, dateRange, timeUnit)
 
 	// Build rows (merging tasks and milestones, respecting swimlanes).
 	// When there are too many rows to fit at the minimum readable row
@@ -1294,7 +1295,86 @@ func (d *GanttDiagram) Validate(req *RequestEnvelope) error {
 	if !hasTasks && !hasMilestones {
 		return fmt.Errorf("gantt chart requires 'tasks' or 'milestones' in data. Expected: {\"tasks\": [{\"name\": \"Design\", \"start\": \"2024-01-01\", \"end\": \"2024-01-15\"}]} or {\"milestones\": [{\"name\": \"Launch\", \"date\": \"2024-03-01\"}]}")
 	}
-	return validateGanttProgress(req.Data)
+	if err := validateGanttProgress(req.Data); err != nil {
+		return err
+	}
+	return validateGanttDates(req.Data)
+}
+
+// ganttDateField returns the first present key among keys, its parsed date
+// and an error naming the field when the value is present but unparseable.
+func ganttDateField(m map[string]any, what string, keys ...string) (string, time.Time, error) {
+	for _, k := range keys {
+		raw, present := m[k]
+		if !present || raw == nil {
+			continue
+		}
+		str, ok := raw.(string)
+		if !ok || strings.TrimSpace(str) == "" {
+			return k, time.Time{}, fmt.Errorf("%s %s must be a date string such as \"2024-01-15\"", what, k)
+		}
+		t, err := parseDate(str)
+		if err != nil {
+			return k, time.Time{}, fmt.Errorf("%s %s %q is not a recognised date (use e.g. \"2024-01-15\")", what, k, str)
+		}
+		return k, t, nil
+	}
+	return "", time.Time{}, nil
+}
+
+// validateGanttDates rejects tasks and milestones whose dates would otherwise
+// be silently dropped to year 1 and drawn off-canvas: present-but-unparseable
+// dates, a task with no start, and an end before its start
+// (go-slide-creator-csclk.9).
+func validateGanttDates(data map[string]any) error {
+	if tasks, ok := toAnySlice(data["tasks"]); ok {
+		for i, raw := range tasks {
+			task, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			what := fmt.Sprintf("gantt task %d", i+1)
+			startKey, start, err := ganttDateField(task, what, "start", "start_date")
+			if err != nil {
+				return err
+			}
+			endKey, end, err := ganttDateField(task, what, "end", "end_date")
+			if err != nil {
+				return err
+			}
+			dateKey, _, err := ganttDateField(task, what, "date")
+			if err != nil {
+				return err
+			}
+			typ, _ := task["type"].(string)
+			if startKey == "" && dateKey == "" {
+				if typ == "milestone" {
+					return fmt.Errorf("%s is a milestone but has no date or start_date", what)
+				}
+				return fmt.Errorf("%s is missing start_date", what)
+			}
+			if startKey != "" && endKey != "" && end.Before(start) {
+				return fmt.Errorf("%s %s is before %s", what, endKey, startKey)
+			}
+		}
+	}
+	if milestones, ok := toAnySlice(data["milestones"]); ok {
+		for i, raw := range milestones {
+			ms, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			what := fmt.Sprintf("gantt milestone %d", i+1)
+			key, _, err := ganttDateField(ms, what, "date")
+			if err != nil {
+				return err
+			}
+			if key == "" {
+				return fmt.Errorf("%s is missing date", what)
+			}
+		}
+	}
+	return nil
 }
 
 func validateGanttProgress(data map[string]any) error {
@@ -1356,6 +1436,9 @@ func (d *GanttDiagram) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SV
 // parseGanttData parses the request data into GanttData.
 func parseGanttData(req *RequestEnvelope) (GanttData, error) {
 	if err := validateGanttProgress(req.Data); err != nil {
+		return GanttData{}, err
+	}
+	if err := validateGanttDates(req.Data); err != nil {
 		return GanttData{}, err
 	}
 	data := GanttData{

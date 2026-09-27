@@ -59,7 +59,7 @@ Alternative flat format:
 | `width_mode` | `string` | `clamped` | How a stage's width follows its value. `clamped` interpolates between a 25%-of-plot floor and the full width (ordering preserved, every stage still a shape); `proportional` is exactly proportional — a 12,400 → 212 funnel ends in a 2px stick; `equal` gives every stage the full width |
 | `show_conversion` | `bool` | `true` | Stage-to-stage conversion under each stage's label ("25% of Visitors") — the number a funnel exists to show |
 | `gap` | `number` | - | Spacing between stages |
-| `show_percentage` | `bool` | `false` | Append each stage as a percentage of the FIRST stage to its label (distinct from `show_conversion`, which is stage-to-stage) |
+| `show_percentage` | `bool` | `false` | Append each stage as a percentage of the LARGEST stage (the first stage in a normal narrowing funnel) to its label (distinct from `show_conversion`, which is stage-to-stage) |
 | `label_position` | `string` | - | Label placement |
 
 ## Examples

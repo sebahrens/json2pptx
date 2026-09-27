@@ -652,8 +652,12 @@ func chartWithDataLabels(d *types.DiagramSpec, force *bool) *types.DiagramSpec {
 		return nil
 	}
 	on := dataLabelsByDefault(cp)
-	if _, explicit := cp.Data["data_labels"]; explicit {
-		on = false // the author configured labels in the payload
+	if raw, explicit := cp.Data["data_labels"]; explicit {
+		// A bool is the author's on/off switch; an object means the author
+		// configured labels in the payload, which svggen applies itself
+		// (go-slide-creator-csclk.10).
+		b, isBool := raw.(bool)
+		on = isBool && b
 	}
 	if force != nil {
 		on = *force

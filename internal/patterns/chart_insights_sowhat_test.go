@@ -76,6 +76,16 @@ func TestChartInsightsSplit_DataLabels(t *testing.T) {
 	if chartWithDataLabels(configured, nil).Style.ShowValues {
 		t.Error("an explicit data.data_labels payload is left to svggen")
 	}
+	boolOn := barChart("x")
+	boolOn.Data["data_labels"] = true
+	if !chartWithDataLabels(boolOn, nil).Style.ShowValues {
+		t.Error("data.data_labels: true must keep value labels on (csclk.10)")
+	}
+	boolOff := barChart("x")
+	boolOff.Data["data_labels"] = false
+	if chartWithDataLabels(boolOff, nil).Style.ShowValues {
+		t.Error("data.data_labels: false must switch value labels off")
+	}
 	pie := &types.DiagramSpec{Type: "pie_chart", Data: map[string]any{"values": []any{1, 2}}}
 	if chartWithDataLabels(pie, nil).Style.ShowValues {
 		t.Error("non label-friendly chart types keep their defaults")
