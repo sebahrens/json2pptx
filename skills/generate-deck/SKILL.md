@@ -94,6 +94,7 @@ profile is deliberately compact. `get_capabilities().mcp_tools_available`
 identifies the current core set and tools callable by name in this session.
 For full discovery, use `--tools all` or `JSON2PPTX_MCP_TOOLS=all`. If
 `list_templates` preview-cache writes are undesirable during discovery,
-pass `read_only: true`.
+pass `read_only: true`. Args over 2 MiB of text are refused; a raced
+`deck_id` patch returns `STALE_REVISION` (reload, re-apply).
 
 Responses are always compact JSON; the server still advertises `experimental.compact_responses: true` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.

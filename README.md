@@ -786,7 +786,9 @@ apt install librsvg2-bin      # Ubuntu/Debian
 server:
   port: 8080
   read_timeout: 30s
-  write_timeout: 60s
+  write_timeout: 150s   # raised to at least 2m30s so /convert (2m timeout) can answer with a 504
+  max_slides_per_request: 500   # /convert rejects larger decks with 400
+  max_concurrent_converts: 4    # extra concurrent /convert requests get 503 RATE_LIMITED
 templates:
   dir: ./templates
   cache_dir: ./cache/templates

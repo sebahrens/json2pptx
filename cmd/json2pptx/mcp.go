@@ -84,7 +84,7 @@ Split slide (optional, replaces a slide entry): {"type":"split_slide","by":"tabl
 		),
 		mcp.WithString("deck_id", mcp.Description("Stored raw presentation handle returned by generate_presentation or repair_slide. Send instead of presentation to regenerate without resending the deck; a DeckSpec handle is compiled read-only.")),
 		mcp.WithString("output_filename",
-			mcp.Description("Output filename (default: output.pptx). Path components are stripped for safety."),
+			mcp.Description("Output filename (default: presentation-<8 hex of the input digest>.pptx, so different decks never overwrite each other). Path components are stripped for safety."),
 		),
 		mcp.WithString("strict_fit",
 			mcp.Description("Text-fit checking mode: off (skip fit checks), warn (default; report overflow warnings), or strict (refuse generation if any cell overflows)."),
@@ -514,8 +514,15 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	}
 	chartDiagFindings := validateSlidesChartDiagnostics(input.Slides)
 
-	// Determine output filename
-	outputFilename := sanitizeOutputFilename(input.OutputFilename)
+	// Determine output filename. Without an explicit name, derive one from a
+	// digest of the input so concurrent calls for different decks cannot
+	// overwrite each other's output.pptx (go-slide-creator-csclk.132).
+	var outputFilename string
+	if input.OutputFilename != "" {
+		outputFilename = sanitizeOutputFilename(input.OutputFilename)
+	} else {
+		outputFilename = deckSpecOutputFilename("presentation", []byte(jsonStr))
+	}
 	// Check for override from MCP request
 	if reqFilename, err := request.RequireString("output_filename"); err == nil && reqFilename != "" {
 		outputFilename = sanitizeOutputFilename(reqFilename)
@@ -549,7 +556,11 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 		genReq.ThemeOverride = input.ThemeOverride.ToThemeOverride()
 	}
 
+	// Hold the target path across the write and the hash read-back, so two
+	// calls aimed at one file cannot report a content_hash that is not on disk.
+	unlockOutput := lockOutputPath(outputPath)
 	result, err := generator.Generate(ctx, genReq)
+	unlockOutput()
 	if err != nil {
 		var loss *patterns.ValidationError
 		if errors.As(err, &loss) && loss != nil && (loss.Code == patterns.ErrCodeTextTrimmed || loss.Code == patterns.ErrCodeReadabilityTrimmed || loss.Code == patterns.ErrCodeTableRowsTruncated || loss.Code == patterns.ErrCodeTextBelowReadableMin) {

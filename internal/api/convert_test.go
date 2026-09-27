@@ -1305,3 +1305,26 @@ func TestFileResponseExpiresAtMatchesRetention(t *testing.T) {
 		doRequest(t, 0)
 	})
 }
+
+// TestConvertLimits pins go-slide-creator-csclk.82: /convert caps slides per
+// request and refuses conversions beyond the concurrency limit.
+func TestConvertLimits(t *testing.T) {
+	tempDir := t.TempDir()
+	templateService := NewTemplateService(tempDir, template.NewMemoryCache(24*60*60), false)
+	service := NewConvertService(tempDir, tempDir, templateService, nil)
+	service.SetLimits(1, 1)
+
+	body, _ := json.Marshal(ConvertRequest{Template: "test-template", Slides: []APISlide{{}, {}}})
+	w := httptest.NewRecorder()
+	service.ConvertHandler()(w, httptest.NewRequest(http.MethodPost, "/api/v1/convert", bytes.NewReader(body)))
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "maximum is 1") {
+		t.Errorf("slide cap: status=%d body=%s", w.Code, w.Body.String())
+	}
+
+	service.convertSem <- struct{}{} // occupy the only slot
+	w = httptest.NewRecorder()
+	service.ConvertHandler()(w, httptest.NewRequest(http.MethodPost, "/api/v1/convert", bytes.NewReader(body)))
+	if w.Code != http.StatusServiceUnavailable {
+		t.Errorf("concurrency cap: status=%d, want 503", w.Code)
+	}
+}

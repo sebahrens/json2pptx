@@ -919,3 +919,23 @@ func TestPNGOutput(t *testing.T) {
 		}
 	})
 }
+
+// TestRenderRejectsUnboundedOutput pins go-slide-creator-csclk.78: output
+// dimensions, scale and PNG pixel count are bounded before any render.
+func TestRenderRejectsUnboundedOutput(t *testing.T) {
+	server, _ := newTestServer()
+	for name, output := range map[string]string{
+		"scale out of range": `{"format":"png","width":800,"height":600,"scale":40}`,
+		"width too large":    `{"format":"svg","width":200000,"height":600}`,
+		"too many pixels":    `{"format":"png","width":3000,"height":2000,"scale":4}`,
+	} {
+		body := `{"type":"test_chart","data":{"x":1},"output":` + output + `}`
+		req := httptest.NewRequest(http.MethodPost, "/render", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		server.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: status=%d body=%s, want 400", name, rec.Code, rec.Body.String())
+		}
+	}
+}

@@ -69,6 +69,71 @@ type Config struct {
 	// Security holds security configuration.
 	// If nil, default security config is used (authentication and rate limiting disabled).
 	Security *SecurityConfig
+
+	// MaxOutputDimension caps output.width and output.height.
+	// If 0, defaults to DefaultMaxOutputDimension.
+	MaxOutputDimension int
+
+	// MaxOutputPixels caps the rasterized PNG pixel count
+	// (width × height × scale² × (96/72)²). If 0, defaults to DefaultMaxOutputPixels.
+	MaxOutputPixels float64
+}
+
+const (
+	// DefaultMaxOutputDimension is the default cap on output.width / output.height.
+	DefaultMaxOutputDimension = 10000
+	// DefaultMaxOutputPixels is the default rasterized pixel cap (~256 MB RGBA).
+	DefaultMaxOutputPixels = 64_000_000
+)
+
+// validateOutputBounds rejects output dimensions and scales that would make a
+// single render allocate unbounded memory. It mirrors svggen.Decoder.validate
+// for the scale range and adds server-side dimension and pixel caps.
+func (s *Server) validateOutputBounds(req *svggen.RequestEnvelope) error {
+	maxDim := s.config.MaxOutputDimension
+	if maxDim <= 0 {
+		maxDim = DefaultMaxOutputDimension
+	}
+	maxPixels := s.config.MaxOutputPixels
+	if maxPixels <= 0 {
+		maxPixels = DefaultMaxOutputPixels
+	}
+	out := req.Output
+	errs := &svggen.ValidationErrors{}
+	if out.Width < 0 || out.Width > maxDim {
+		errs.Add(svggen.ValidationError{Field: "output.width", Code: svggen.ErrCodeConstraint,
+			Message: fmt.Sprintf("width must be between 0 and %d", maxDim), Value: out.Width})
+	}
+	if out.Height < 0 || out.Height > maxDim {
+		errs.Add(svggen.ValidationError{Field: "output.height", Code: svggen.ErrCodeConstraint,
+			Message: fmt.Sprintf("height must be between 0 and %d", maxDim), Value: out.Height})
+	}
+	if out.Scale != 0 && (out.Scale < svggen.MinSVGScale || out.Scale > svggen.MaxSVGScale) {
+		errs.Add(svggen.ValidationError{Field: "output.scale", Code: svggen.ErrCodeConstraint,
+			Message: fmt.Sprintf("scale must be between %.1f and %.1f", svggen.MinSVGScale, svggen.MaxSVGScale), Value: out.Scale})
+	}
+	if errs.HasErrors() {
+		return errs.AsError()
+	}
+	if strings.EqualFold(out.Format, "png") {
+		w, h, scale := float64(out.Width), float64(out.Height), out.Scale
+		if w == 0 {
+			w = 800
+		}
+		if h == 0 {
+			h = 600
+		}
+		if scale == 0 {
+			scale = 2.0
+		}
+		const dpiRatio = 96.0 / 72.0
+		if px := w * h * (scale * dpiRatio) * (scale * dpiRatio); px > maxPixels {
+			errs.Add(svggen.ValidationError{Field: "output.scale", Code: svggen.ErrCodeConstraint,
+				Message: fmt.Sprintf("PNG output of %.0f pixels exceeds the maximum of %.0f; reduce width, height or scale", px, maxPixels),
+				Value:   out.Scale})
+		}
+	}
+	return errs.AsError()
 }
 
 // DefaultConfig returns the default server configuration.
@@ -459,6 +524,9 @@ type BatchResponse struct {
 // renderSingleRequest renders a single request and returns the response.
 // This method handles format validation, caching, and result building.
 func (s *Server) renderSingleRequest(req *RenderRequest) RenderResponse {
+	if err := s.validateOutputBounds(req); err != nil {
+		return RenderResponse{Error: err.Error()}
+	}
 	if err := rejectUntrustedIconSources(req.Data, "data"); err != nil {
 		return RenderResponse{Error: err.Error()}
 	}
@@ -613,6 +681,9 @@ func (s *Server) parseRequest(r *http.Request) (*svggen.RequestEnvelope, error) 
 	}
 
 	if err := req.Validate(); err != nil {
+		return nil, err
+	}
+	if err := s.validateOutputBounds(&req); err != nil {
 		return nil, err
 	}
 

@@ -47,6 +47,9 @@ func (ctx *singlePassContext) prepareSlides() error {
 
 	var newSlideEntries []string
 	for i, slideSpec := range ctx.slideSpecs {
+		if err := ctx.ctx.Err(); err != nil {
+			return fmt.Errorf("generation cancelled at slide %d: %w", i+1, err)
+		}
 		input := slidePreparationInput{
 			slideSpec:            slideSpec,
 			slideNum:             nextSlideNum,

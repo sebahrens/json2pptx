@@ -295,7 +295,10 @@ func (mc *mcpConfig) handleValidateDeckSpec(ctx context.Context, request mcp.Cal
 	}, ds)
 	handleID := ""
 	if parsedSpec != nil && !parseDiags.HasErrors() {
-		handleID = mc.rememberDeck(deckID, data, filename, resolvedTemplate)
+		var stored bool
+		if handleID, stored = mc.rememberDeck(deckID, src.BaseSpec, data, filename, resolvedTemplate); !stored {
+			return staleDeckSpecResult("validate_deck_spec", deckID), nil
+		}
 	}
 	semanticizeFindings(&envelope, data, handleID)
 
@@ -565,7 +568,10 @@ func (mc *mcpConfig) handleRenderDeckSpec(ctx context.Context, request mcp.CallT
 		if storedTemplate == "" {
 			storedTemplate = src.Template
 		}
-		res.DeckID = mc.rememberDeck(deckID, data, filename, storedTemplate)
+		var stored bool
+		if res.DeckID, stored = mc.rememberDeck(deckID, src.BaseSpec, data, filename, storedTemplate); !stored {
+			return staleDeckSpecResult("render_deck_spec", deckID), nil
+		}
 		res.ChangedSlides = changed
 		semanticizeRenderDiagnostics(res.Diagnostics, data, res.DeckID)
 		return semanticSuccessOrInternal(ctx, "render_deck_spec", res)
@@ -714,9 +720,13 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 
 	explanation := explainSpecWithTemplate(spec, src.Template)
 	if explanation.Template == "" {
+		storedID, stored := mc.rememberDeck(deckID, src.BaseSpec, data, filename, "")
+		if !stored {
+			return staleDeckSpecResult("explain_deck_spec", deckID), nil
+		}
 		resp := explainDeckSpecResponse{
 			DeckExplanation: explanation,
-			DeckID:          mc.rememberDeck(deckID, data, filename, ""),
+			DeckID:          storedID,
 			ChangedSlides:   changed,
 		}
 		return api.MCPSuccessResult(ctx, resp)
@@ -730,9 +740,13 @@ func (mc *mcpConfig) handleExplainDeckSpec(ctx context.Context, request mcp.Call
 	} else {
 		return api.MCPDiagnosticsError([]diagnostics.Diagnostic{*templateDiagnostic}), nil
 	}
+	storedID, stored := mc.rememberDeck(deckID, src.BaseSpec, data, filename, "")
+	if !stored {
+		return staleDeckSpecResult("explain_deck_spec", deckID), nil
+	}
 	resp := explainDeckSpecResponse{
 		DeckExplanation: explanation,
-		DeckID:          mc.rememberDeck(deckID, data, filename, ""),
+		DeckID:          storedID,
 		ChangedSlides:   changed,
 	}
 	mcpResult, err := api.MCPSuccessResult(ctx, resp)

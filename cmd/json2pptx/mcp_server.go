@@ -160,6 +160,9 @@ func newMCPServer(mc *mcpConfig, extra ...server.ServerOption) *server.MCPServer
 		server.WithInstructions(mcpInstructionsFor(renderDependencyStatus())),
 		// Alias normalisation runs BEFORE the strict check so a sibling name is
 		// rewritten rather than rejected (go-slide-creator-r1m3).
+		// The size cap runs first so an oversized call is refused before any
+		// middleware or handler walks its arguments (go-slide-creator-csclk.131).
+		server.WithToolHandlerMiddleware(argSizeMiddleware()),
 		server.WithToolHandlerMiddleware(argAliasMiddleware()),
 		server.WithToolHandlerMiddleware(strictArgsMiddleware(func(name string) *server.ServerTool {
 			return s.GetTool(name)

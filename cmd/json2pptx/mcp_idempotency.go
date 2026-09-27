@@ -133,10 +133,39 @@ func (c *idempotencyCache) Set(tool, key, fingerprint string, data any) {
 	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.entries[cacheKey(tool, key)] = idempotencyEntry{
+	full := cacheKey(tool, key)
+	delete(c.entries, full)
+	pruneTTLEntries(c.entries, c.now(), maxSessionStoreEntries, func(e idempotencyEntry) time.Time { return e.expiresAt })
+	c.entries[full] = idempotencyEntry{
 		data:        data,
 		fingerprint: fingerprint,
 		expiresAt:   c.now().Add(c.ttl),
+	}
+}
+
+// maxSessionStoreEntries caps each per-process MCP session store (deck
+// handles, loop sessions, idempotency). Expiry alone is lazy, so without a
+// cap a long session retains every spec, deck and response it ever saw.
+const maxSessionStoreEntries = 256
+
+// pruneTTLEntries drops expired entries and, if the map still holds at least
+// limit entries, evicts the soonest-expiring ones so one more insert fits.
+// Callers hold the store lock.
+func pruneTTLEntries[V any](m map[string]V, now time.Time, limit int, expiresAt func(V) time.Time) {
+	for k, v := range m {
+		if now.After(expiresAt(v)) {
+			delete(m, k)
+		}
+	}
+	for len(m) >= limit && len(m) > 0 {
+		oldestKey := ""
+		var oldest time.Time
+		for k, v := range m {
+			if exp := expiresAt(v); oldestKey == "" || exp.Before(oldest) {
+				oldestKey, oldest = k, exp
+			}
+		}
+		delete(m, oldestKey)
 	}
 }
 
