@@ -277,16 +277,16 @@ func TestWaterfallBridgeTenColumnLabelWarningReachesFitReportAcrossTemplates(t *
 
 func TestStatHeroCombinedWideCopyWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.StatHeroValues{Value: strings.Repeat("W", 20), Unit: strings.Repeat("W", 10), Label: strings.Repeat("W", 80), Context: strings.Repeat("W", 120), Source: strings.Repeat("W", 80)}
-	assertBudgetFindingAcrossTemplates(t, "stat-hero", values, "values.value/unit/label/context/source", "long unbroken runs")
+	assertBudgetFindingAcrossTemplates(t, "stat-hero", values, "values.value/unit/label/context/source", "holds about 120")
 }
 
 func TestSCQASummarySharedRowBudgetReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.SCQASummaryValues{
 		Situation: patterns.SCQAText{"Current position"}, Complication: patterns.SCQAText{"New pressure"},
-		Questions: []string{strings.Repeat("Q", 126), strings.Repeat("Q", 126), strings.Repeat("Q", 126)},
+		Questions: []string{strings.Repeat("Q", 107), strings.Repeat("Q", 107), strings.Repeat("Q", 107)},
 		Answer:    []string{"Take action"},
 	}
-	assertBudgetFindingAcrossTemplates(t, "scqa-summary", values, "questions", "about 8 lines")
+	assertBudgetFindingAcrossTemplates(t, "scqa-summary", values, "questions", "about 106 characters per bullet")
 }
 
 func TestAgendaDenseUnbrokenTitleWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -303,8 +303,8 @@ func TestValueChainDenseUnbrokenDescriptionWarningReachesFitReportAcrossTemplate
 	for i := range values.Steps {
 		values.Steps[i] = patterns.ValueChainStep{Label: "Stage", Description: "Brief description"}
 	}
-	values.Steps[3].Description = strings.Repeat("W", 119)
-	assertBudgetFindingAcrossTemplates(t, "value-chain", values, "steps[3].description", "about 118 wide characters")
+	values.Steps[3].Description = strings.Repeat("W", 85)
+	assertBudgetFindingAcrossTemplates(t, "value-chain", values, "steps[3].description", "about 84 wide characters")
 }
 
 func TestStrategyHouseDenseSharedBulletBudgetReachesFitReportAcrossTemplates(t *testing.T) {
@@ -312,11 +312,11 @@ func TestStrategyHouseDenseSharedBulletBudgetReachesFitReportAcrossTemplates(t *
 	for i := 0; i < 5; i++ {
 		pillar := patterns.StrategyHousePillar{Title: "Growth"}
 		for j := 0; j < 5; j++ {
-			pillar.Body = append(pillar.Body, strings.Repeat("B", 53))
+			pillar.Body = append(pillar.Body, strings.Repeat("B", 39))
 		}
 		values.Pillars = append(values.Pillars, pillar)
 	}
-	assertBudgetFindingAcrossTemplates(t, "strategy-house", values, "pillars.body", "about 52 characters per bullet")
+	assertBudgetFindingAcrossTemplates(t, "strategy-house", values, "pillars.body", "about 38 characters per bullet")
 }
 
 func TestJourneyMaturityDenseUnbrokenDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -324,8 +324,8 @@ func TestJourneyMaturityDenseUnbrokenDescriptionWarningReachesFitReportAcrossTem
 	for i := range values.Stages {
 		values.Stages[i] = patterns.JourneyMaturityStage{Label: "Stage", Description: "Brief description"}
 	}
-	values.Stages[2].Description = strings.Repeat("W", 144)
-	assertBudgetFindingAcrossTemplates(t, "journey-maturity-model", values, "stages[2].description", "about 143 wide characters")
+	values.Stages[2].Description = strings.Repeat("W", 103)
+	assertBudgetFindingAcrossTemplates(t, "journey-maturity-model", values, "stages[2].description", "about 102 wide characters")
 }
 
 func TestProcessFlowCompactPointedLabelBudgetReachesFitReportAcrossTemplates(t *testing.T) {

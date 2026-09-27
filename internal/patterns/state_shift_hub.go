@@ -158,7 +158,7 @@ const (
 func (s *stateShiftHub) Schema() *Schema {
 	pair := ObjectSchema(map[string]*Schema{
 		"title":        StringSchema(sshTitleMax).WithDescription("Stage title shown (bold, accent) above both descriptions, e.g. \"Research\""),
-		"before":       StringSchema(sshBodyMax).WithDescription("Today / current-state description (left column, right-aligned). Measured readable budget at default sizes with a one-line title: about 100 characters with 3 pairs, 70 with 4, 45 with 5, 30 with 6 (less in a short content area); expand_pattern reports BODY_TOO_LONG when the text outgrows its row"),
+		"before":       StringSchema(sshBodyMax).WithDescription("Today / current-state description (left column, right-aligned). Measured readable budget at default sizes with a one-line title: about 100 characters with 3 pairs, 62 with 4, 40 with 5, 30 with 6 (less in a short content area); expand_pattern reports BODY_TOO_LONG when the text outgrows its row"),
 		"after":        StringSchema(sshBodyMax).WithDescription("Future / target-state description (right column, left-aligned); same budget as before"),
 		"before_title": StringSchema(sshTitleMax).WithDescription("Optional left-side title replacing title"),
 		"after_title":  StringSchema(sshTitleMax).WithDescription("Optional right-side title replacing title"),

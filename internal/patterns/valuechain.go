@@ -96,7 +96,7 @@ func (vc *valueChain) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":       StringSchema(40).WithDescription("Short step label (1-3 words)"),
-			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 8/9/10 steps, keep wide unbroken runs near 159/136/118 characters or add word breaks"),
+			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 7/8/9/10 steps about 165/162/151/148 characters, and keep unbroken runs near 160/133/112/97/84 characters at 6/7/8/9/10 steps or add word breaks"),
 			"highlight":   BooleanSchema().WithDescription("When true, the label row uses the highlight color (default accent2) instead of dk2"),
 		},
 		[]string{"label"},
@@ -270,6 +270,28 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	return grid, nil
 }
 
+// valueChainDescriptionMax is the schema maximum for a step description.
+const valueChainDescriptionMax = 180
+
+// valueChainDescriptionBudgets returns the worded and unbroken-word
+// description budgets for a step count.
+func valueChainDescriptionBudgets(steps int) (words, wide int) {
+	switch {
+	case steps <= 5:
+		return valueChainDescriptionMax, valueChainDescriptionMax
+	case steps == 6:
+		return valueChainDescriptionMax, 160
+	case steps == 7:
+		return 165, 133
+	case steps == 8:
+		return 162, 112
+	case steps == 9:
+		return 151, 97
+	default:
+		return 148, 84
+	}
+}
+
 // valueChainGapPt is the gap between step columns.
 const valueChainGapPt = 8.0
 
@@ -419,20 +441,20 @@ func (vc *valueChain) PostExpandWarnings(ctx ExpandContext, values, overrides an
 			"%s: value-chain step %s %s %s not fit on one line at %d steps even at %.0fpt — the renderer breaks %s mid-word; shorten %s or use fewer steps",
 			ErrCodeTextExceedsShape, noun, listFirstN(unfit, 3), verb, len(v.Steps), size, pronoun, pronoun))
 	}
-	if len(v.Steps) >= 8 {
-		budget := 159
-		if len(v.Steps) >= 10 {
-			budget = 118
-		} else if len(v.Steps) == 9 {
-			budget = 136
-		}
+	// Measured against the written size (no run stored below its role floor)
+	// on every shipped template (go-slide-creator-n1muf): worded descriptions
+	// and unbroken words each have a per-step-count budget.
+	if words, wide := valueChainDescriptionBudgets(len(v.Steps)); words < valueChainDescriptionMax {
 		for i, step := range v.Steps {
 			longest := 0
 			for _, word := range strings.Fields(step.Description) {
 				longest = max(longest, runeLen(word))
 			}
-			if longest > budget {
-				out = append(out, fmt.Sprintf("%s: value-chain steps[%d].description contains a %d-character unbroken word; %d steps hold about %d wide characters per description — add a word break, shorten the copy, or use fewer steps", ErrCodeBodyTooLong, i, longest, len(v.Steps), budget))
+			switch {
+			case longest > wide:
+				out = append(out, fmt.Sprintf("%s: value-chain steps[%d].description contains a %d-character unbroken word; %d steps hold about %d wide characters per description — add a word break, shorten the copy, or use fewer steps", ErrCodeBodyTooLong, i, longest, len(v.Steps), wide))
+			case runeLen(step.Description) > words:
+				out = append(out, fmt.Sprintf("%s: value-chain steps[%d].description is %d characters; %d steps hold about %d readable characters per description — shorten the copy or use fewer steps", ErrCodeBodyTooLong, i, runeLen(step.Description), len(v.Steps), words))
 			}
 		}
 	}

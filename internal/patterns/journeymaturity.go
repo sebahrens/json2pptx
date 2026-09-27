@@ -95,7 +95,7 @@ func (jm *journeyMaturity) Schema() *Schema {
 		map[string]*Schema{
 			"number":      IntegerSchema(1, 9).WithDescription("Optional stage number (defaults to 1..N by position)"),
 			"label":       StringSchema(40).WithDescription("Short stage label (1-3 words)"),
-			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 5/6 stages keep wide unbroken runs near 177/143 characters or add word breaks"),
+			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 4/5/6 stages keep wide unbroken runs near 163/127/102 characters or add word breaks"),
 			"current":     BooleanSchema().WithDescription("When true, marks this stage as the present state and renders a 'where we are' marker beneath it"),
 		},
 		[]string{"label"},
@@ -172,10 +172,12 @@ func (jm *journeyMaturity) PostExpandWarnings(_ ExpandContext, values, _ any) []
 		return nil
 	}
 	var warnings []string
-	if len(vals.Stages) >= 5 {
-		budget := 177
+	// Unbroken-word budgets measured against the written size on every
+	// shipped template (go-slide-creator-n1muf).
+	if len(vals.Stages) >= 4 {
+		budget := map[int]int{4: 163, 5: 127}[len(vals.Stages)]
 		if len(vals.Stages) >= 6 {
-			budget = 143
+			budget = 102
 		}
 		for i, stage := range vals.Stages {
 			longest := 0

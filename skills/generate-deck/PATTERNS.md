@@ -86,7 +86,7 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Numbered steps.** `numbered-step-strip` labels hold 60 characters (about 47 in a six-step `chevron`); bodies hold 180 through six steps. Only `stacked-box` / `toc` accept a seventh step (bodies ~140) and an optional per-step `icon` (bundled name or `{name|path|url|svg_data}`); `chevron` rejects both. `BODY_TOO_LONG` names long labels; `TEXT_EXCEEDS_SHAPE` flags a mid-word chevron break.
 
-**State-shift hub.** `state-shift-hub` descriptions hold about 100 characters with 3 pairs, 70 with 4, 45 with 5 and 30 with 6; keep `hub_label` near 40 characters.
+**State-shift hub.** `state-shift-hub` descriptions hold about 100 characters with 3 pairs, 62 with 4, 40 with 5 and 30 with 6; keep `hub_label` near 40 characters.
 
 **Inline KPIs.** `kpi-inline` has a compact height. Captions hold the 40-character schema limit without icons or with up to four KPIs. With icons in five or six cells, the number and optional delta share space with the caption: an eight-character number in a five-KPI bar leaves about 16 caption characters without a delta and none with one. `show_pattern` describes the dense cases; `BODY_TOO_LONG` names the affected KPI and suggests shortening copy or dropping the delta/icon.
 

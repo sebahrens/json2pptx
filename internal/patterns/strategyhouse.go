@@ -101,19 +101,25 @@ func (sh *strategyHouse) NewValues() any       { return &StrategyHouseValues{} }
 func (sh *strategyHouse) NewOverrides() any    { return &StrategyHouseOverrides{} }
 func (sh *strategyHouse) NewCellOverride() any { return &StrategyHouseCellOverride{} }
 
-// Equal-copy fit probes give an average per-bullet target for each layout.
-// A single long bullet can still fit when the other pillars stay concise.
+// Equal-copy probes against the written size (no run stored below its role
+// floor) on every shipped template give an average per-bullet target for
+// each layout (go-slide-creator-n1muf). A single long bullet can still fit
+// when the other pillars stay concise, up to strategyHouseSingleBulletMax.
 func strategyHouseBulletBudget(pillars, bullets int, roof bool) int {
 	if pillars < 3 || pillars > 5 || bullets < 1 || bullets > 5 {
 		return 120
 	}
-	withoutRoof := [3][6]int{{120, 120, 120, 120, 120, 95}, {120, 120, 120, 120, 106, 71}, {120, 120, 120, 102, 77, 52}}
-	withRoof := [3][6]int{{120, 120, 120, 120, 95, 95}, {120, 120, 120, 106, 71, 71}, {120, 120, 120, 77, 52, 52}}
+	withoutRoof := [3][6]int{{120, 120, 120, 120, 83, 82}, {120, 120, 120, 91, 61, 61}, {120, 120, 118, 68, 45, 45}}
+	withRoof := [3][6]int{{120, 120, 120, 120, 82, 42}, {120, 120, 120, 91, 61, 38}, {120, 120, 95, 68, 45, 38}}
 	if roof {
 		return withRoof[pillars-3][bullets]
 	}
 	return withoutRoof[pillars-3][bullets]
 }
+
+// strategyHouseSingleBulletMax is the longest single bullet five pillars hold
+// beside concise neighbours.
+const strategyHouseSingleBulletMax = 118
 
 func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*StrategyHouseValues)
@@ -133,6 +139,15 @@ func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 	bulletsPerPillar := (totalBullets + len(v.Pillars) - 1) / len(v.Pillars)
 	budget := strategyHouseBulletBudget(len(v.Pillars), bulletsPerPillar, len(v.RoofBadges) > 0)
 	if totalChars <= budget*totalBullets {
+		if len(v.Pillars) == 5 {
+			for i, pillar := range v.Pillars {
+				for j, bullet := range pillar.Body {
+					if n := runeLen(bullet); n > strategyHouseSingleBulletMax {
+						return []string{fmt.Sprintf("%s: strategy-house pillars[%d].body[%d] is %d characters; five pillars hold about %d characters in one bullet — shorten the bullet", ErrCodeBodyTooLong, i, j, n, strategyHouseSingleBulletMax)}
+					}
+				}
+			}
+		}
 		return nil
 	}
 	return []string{fmt.Sprintf("%s: strategy-house pillars.body averages %.0f characters across %d bullets; this %d-pillar layout holds about %d characters per bullet at its current density — shorten bullet copy, use fewer bullets, or split the house", ErrCodeBodyTooLong, float64(totalChars)/float64(totalBullets), totalBullets, len(v.Pillars), budget)}
@@ -142,7 +157,7 @@ func (sh *strategyHouse) Schema() *Schema {
 	pillarSchema := ObjectSchema(
 		map[string]*Schema{
 			"title": StringSchema(60).WithDescription("Pillar title"),
-			"body":  ArraySchema(StringSchema(120), 0, 5).WithDescription("Pillar bullet items (0-5); dense average targets depend on pillar count, bullet count and roof: five pillars with five bullets hold about 52 characters per bullet"),
+			"body":  ArraySchema(StringSchema(120), 0, 5).WithDescription("Pillar bullet items (0-5); dense average targets depend on pillar count, bullet count and roof: five pillars with four or five bullets hold about 45 characters per bullet (38 with roof badges), four pillars with four or five about 61 (38 with five and a roof)"),
 		},
 		[]string{"title"},
 	).WithAdditionalProperties(false).WithDescription("Pillar column with title and optional bullet body")

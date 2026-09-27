@@ -15,9 +15,15 @@ func TestStatHeroCombinedWideCopyWarning(t *testing.T) {
 	if len(got) != 1 || !strings.Contains(got[0], ErrCodeBodyTooLong) || !strings.Contains(got[0], "values.value/unit/label/context/source") {
 		t.Fatalf("full wide stack warning: %v", got)
 	}
+	// Every field at its maximum does not write readably on every shipped
+	// template even with word breaks (go-slide-creator-n1muf).
 	wordy := &StatHeroValues{Value: budgetLikeCopy(20), Unit: budgetLikeCopy(10), Label: budgetLikeCopy(80), Context: budgetLikeCopy(120), Source: budgetLikeCopy(80)}
-	if got := p.PostExpandWarnings(testThemeCtx(), wordy, nil); len(got) != 0 {
-		t.Fatalf("full word-like stack should fit: %v", got)
+	if got := p.PostExpandWarnings(testThemeCtx(), wordy, nil); len(got) != 1 {
+		t.Fatalf("full word-like stack should warn: %v", got)
+	}
+	balanced := &StatHeroValues{Value: budgetLikeCopy(8), Unit: budgetLikeCopy(4), Label: budgetLikeCopy(32), Context: budgetLikeCopy(49), Source: budgetLikeCopy(32)}
+	if got := p.PostExpandWarnings(testThemeCtx(), balanced, nil); len(got) != 0 {
+		t.Fatalf("measured balanced stack should fit: %v", got)
 	}
 	isolated := &StatHeroValues{Value: strings.Repeat("W", 20), Label: "Market size"}
 	if got := p.PostExpandWarnings(testThemeCtx(), isolated, nil); len(got) != 0 {

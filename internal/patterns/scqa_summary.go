@@ -127,6 +127,21 @@ func (s *scqaSummary) NewValues() any       { return &SCQASummaryValues{} }
 func (s *scqaSummary) NewOverrides() any    { return &SCQASummaryOverrides{} }
 func (s *scqaSummary) NewCellOverride() any { return &SCQASummaryCellOverride{} }
 
+// scqaItemBudgets returns the longest single bullet (beside short ones) and the
+// average bullet a row holds, by bullet count, measured against the written
+// size (no run stored below its role floor) on every shipped template
+// (go-slide-creator-n1muf).
+func scqaItemBudgets(items int) (single, average int) {
+	switch items {
+	case 2:
+		return 212, 212
+	case 3:
+		return 221, 106
+	default:
+		return 110, 106
+	}
+}
+
 func (s *scqaSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*SCQASummaryValues)
 	if !ok || v == nil {
@@ -141,16 +156,21 @@ func (s *scqaSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []strin
 	}
 	var warnings []string
 	for _, row := range rows {
-		if len(row.items) < 3 {
+		n := len(row.items)
+		if n < 2 || n > 4 {
 			continue
 		}
-		slots := 0
-		for _, item := range row.items {
+		single, average := scqaItemBudgets(n)
+		total := 0
+		for i, item := range row.items {
 			length := runeLen(item)
-			slots += max(1, (2*length+124)/125)
+			total += length
+			if length > single {
+				warnings = append(warnings, fmt.Sprintf("%s: scqa-summary %s[%d] is %d characters; with %d bullets a row holds about %d characters in one bullet beside short ones — shorten the bullet or split the summary", ErrCodeBodyTooLong, row.name, i, length, n, single))
+			}
 		}
-		if slots > 8 {
-			warnings = append(warnings, fmt.Sprintf("%s: scqa-summary %s uses about %d wrapped lines; a row holds about 8 lines (roughly 125 characters each with 3–4 bullets) — shorten bullets or split the summary", ErrCodeBodyTooLong, row.name, slots))
+		if total > average*n {
+			warnings = append(warnings, fmt.Sprintf("%s: scqa-summary %s uses %d characters across %d bullets; a row holds about %d characters per bullet on average — shorten bullets or split the summary", ErrCodeBodyTooLong, row.name, total, n, average))
 		}
 	}
 	return warnings
@@ -160,10 +180,10 @@ func (s *scqaSummary) Schema() *Schema {
 	stringOrArray := OneOfSchema(
 		StringSchema(240).WithDescription("Single-paragraph form"),
 		ArraySchema(StringSchema(240), 1, 4).WithDescription("Array form (1-4 bullet points)"),
-	).WithDescription("String (single paragraph) or array of strings (1-4 bullets); with 3-4 bullets target about 125 characters each or 8 wrapped lines per row")
+	).WithDescription("String (single paragraph) or array of strings (1-4 bullets); about 212 characters each with 2 bullets, 106 each with 3-4 (one bullet beside short ones: 221 with 3, 110 with 4)")
 
 	bulletArray := ArraySchema(StringSchema(240), 1, 4).
-		WithDescription("1-4 bullet points; with 3-4 bullets target about 125 characters each or 8 wrapped lines per row")
+		WithDescription("1-4 bullet points; about 212 characters each with 2 bullets, 106 each with 3-4 (one bullet beside short ones: 221 with 3, 110 with 4)")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{

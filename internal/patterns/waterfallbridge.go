@@ -142,10 +142,19 @@ func (w *waterfallBridge) NewCellOverride() any { return &WaterfallBridgeCellOve
 
 func (w *waterfallBridge) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*WaterfallBridgeValues)
-	if !ok || v == nil || len(v.Columns) < wbMaxColumns {
+	if !ok || v == nil {
 		return nil
 	}
 	var warnings []string
+	// Value labels share the column width with the unit: measured against the
+	// written size on every shipped template (go-slide-creator-n1muf), 9
+	// columns hold a 6-character unit and 10 columns a 5-character one.
+	if unitBudget := map[int]int{9: 6, 10: 5}[len(v.Columns)]; unitBudget > 0 && runeLen(v.Unit) > unitBudget {
+		warnings = append(warnings, fmt.Sprintf("%s: waterfall-bridge unit has %d characters; %d columns hold about %d readable unit characters beside the value — shorten the unit or use fewer columns", ErrCodeBodyTooLong, runeLen(v.Unit), len(v.Columns), unitBudget))
+	}
+	if len(v.Columns) < wbMaxColumns {
+		return warnings
+	}
 	for i, column := range v.Columns {
 		if runeLen(column.Label) > 32 {
 			warnings = append(warnings, fmt.Sprintf("%s: waterfall-bridge columns[%d].label has %d characters; ten columns hold about 32 readable label characters — shorten the label or split the bridge", ErrCodeBodyTooLong, i, runeLen(column.Label)))
@@ -167,7 +176,7 @@ func (w *waterfallBridge) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"columns": ArraySchema(columnSchema, wbMinColumns, wbMaxColumns).WithDescription("Bridge columns left-to-right (3-10)"),
-			"unit":    StringSchema(wbUnitMax).WithDescription("Optional unit for value labels (e.g. \"$m\", \"%\"); a leading currency symbol renders as a prefix (\"$m\" → $210m, −$41m)"),
+			"unit":    StringSchema(wbUnitMax).WithDescription("Optional unit for value labels (e.g. \"$m\", \"%\"); a leading currency symbol renders as a prefix (\"$m\" → $210m, −$41m); about 6 characters with 9 columns, 5 with 10"),
 			"caption": StringSchema(wbCaptionMax).WithDescription("Optional scale note rendered once above the bars (e.g. \"EUR millions\", \"$m, constant FX\"); a bridge draws no value axis, so this is where the scale is stated"),
 		},
 		[]string{"columns"},
@@ -687,7 +696,9 @@ func waterfallLabelSide(l wbColumnLayout, topPct, barPct, bottomPct float64) str
 	// Measure at the size the writer emits: a 10pt label is raised to the
 	// 12pt shape-text floor, and a bar sized for 10pt stored the 12pt label at
 	// 90% autofit, below the floor (go-slide-creator-n1muf).
-	needPt := shapegrid.EffectiveTextSizePt(l.valueSize)*1.5 + 4
+	// The +6 margin covers the column-area estimate running a little above
+	// the written bar height (modern stored a 21.1pt bar's label at 96%).
+	needPt := shapegrid.EffectiveTextSizePt(l.valueSize)*1.5 + 6
 	if l.areaPt <= 0 || l.areaPt*barPct/100 >= needPt {
 		return "bar"
 	}

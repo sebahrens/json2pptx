@@ -13,23 +13,27 @@ func TestValueChainDenseUnbrokenDescriptionWarning(t *testing.T) {
 	for i := range v.Steps {
 		v.Steps[i] = ValueChainStep{Label: "Stage", Description: "Brief description"}
 	}
-	v.Steps[3].Description = strings.Repeat("W", 119)
+	v.Steps[3].Description = strings.Repeat("W", 85)
 	got := p.PostExpandWarnings(testThemeCtx(), v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "steps[3].description") || !strings.Contains(got[0], "about 118") {
+	if len(got) != 1 || !strings.Contains(got[0], "steps[3].description") || !strings.Contains(got[0], "about 84") {
 		t.Fatalf("dense description warning: %v", got)
 	}
-	v.Steps[3].Description = strings.Repeat("W", 118)
+	v.Steps[3].Description = strings.Repeat("W", 84)
 	if got := p.PostExpandWarnings(testThemeCtx(), v, nil); len(got) != 0 {
 		t.Fatalf("measured ten-step target should fit: %v", got)
 	}
-	v.Steps[3].Description = strings.Repeat("word ", 36)
+	v.Steps[3].Description = strings.TrimSpace(strings.Repeat("word ", 29))
 	if got := p.PostExpandWarnings(testThemeCtx(), v, nil); len(got) != 0 {
-		t.Fatalf("word-like schema maximum should fit: %v", got)
+		t.Fatalf("word-like ten-step target should fit: %v", got)
 	}
-	v.Steps = v.Steps[:7]
+	v.Steps[3].Description = strings.Repeat("word ", 36)
+	if got := p.PostExpandWarnings(testThemeCtx(), v, nil); len(got) != 1 || !strings.Contains(got[0], "about 148 readable") {
+		t.Fatalf("word-like schema maximum should warn at ten steps: %v", got)
+	}
+	v.Steps = v.Steps[:5]
 	v.Steps[3].Description = strings.Repeat("W", 180)
 	if got := p.PostExpandWarnings(testThemeCtx(), v, nil); len(got) != 0 {
-		t.Fatalf("seven-step schema maximum should fit: %v", got)
+		t.Fatalf("five-step schema maximum should fit: %v", got)
 	}
 }
 

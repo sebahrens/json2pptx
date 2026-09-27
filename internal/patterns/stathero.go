@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 )
@@ -81,31 +80,23 @@ func (sh *statHero) NewValues() any       { return &StatHeroValues{} }
 func (sh *statHero) NewOverrides() any    { return &StatHeroOverrides{} }
 func (sh *statHero) NewCellOverride() any { return nil }
 
-func (sh *statHero) PostExpandWarnings(ctx ExpandContext, values, overrides any) []string {
+// statHeroStackBudget is the combined label + context + source length that
+// writes at or above the role floors on every shipped template, measured
+// against the written size (go-slide-creator-n1muf): any one field at its
+// maximum (context 120) fits, as does every field at 41% of its maximum,
+// but every field at its maximum does not, with or without word breaks.
+const statHeroStackBudget = 120
+
+func (sh *statHero) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*StatHeroValues)
 	if !ok || v == nil {
 		return nil
 	}
-	grid, err := sh.Expand(ctx, values, overrides, nil)
-	if err != nil {
+	total := runeLen(v.Label) + runeLen(v.Context) + runeLen(v.Source)
+	if total <= statHeroStackBudget {
 		return nil
 	}
-	reference := &StatHeroValues{
-		Value: strings.Repeat("W", 11), Unit: strings.Repeat("W", 5),
-		Label: strings.Repeat("W", 47), Context: strings.Repeat("W", 70), Source: strings.Repeat("W", 47),
-	}
-	referenceGrid, err := sh.Expand(ctx, reference, overrides, nil)
-	if err != nil {
-		return nil
-	}
-	width, _ := contentAreaPt(ctx)
-	textWidth := width - 2*defaultShapeInsetLRPt
-	actualHeight := shapeTextHeightPt(ctx.Theme.BodyFont, grid.Rows[0].Cells[0].Shape.Text, textWidth)
-	referenceHeight := shapeTextHeightPt(ctx.Theme.BodyFont, referenceGrid.Rows[0].Cells[0].Shape.Text, textWidth)
-	if actualHeight <= referenceHeight {
-		return nil
-	}
-	return []string{fmt.Sprintf("%s: stat-hero values.value/unit/label/context/source exceed the measured combined text stack; long unbroken runs in all five fields shrink the slide text below readable size — use word breaks, shorten the copy, or move context/source elsewhere", ErrCodeBodyTooLong)}
+	return []string{fmt.Sprintf("%s: stat-hero values.value/unit/label/context/source exceed the measured combined text stack; label, context and source use %d characters but the stack beneath the number holds about %d before text shrinks below readable size — shorten the copy or move context/source elsewhere", ErrCodeBodyTooLong, total, statHeroStackBudget)}
 }
 
 func (sh *statHero) Schema() *Schema {
@@ -115,7 +106,7 @@ func (sh *statHero) Schema() *Schema {
 				map[string]*Schema{
 					"value":   StringSchema(20).WithDescription("The big number (e.g. \"$2.4B\", \"99.9%\"); shorten long unbroken text when all context fields are populated"),
 					"unit":    StringSchema(10).WithDescription("Optional unit suffix (e.g. \"TAM\", \"MRR\")"),
-					"label":   StringSchema(80).WithDescription("One-line label beneath the number"),
+					"label":   StringSchema(80).WithDescription("One-line label beneath the number; label, context and source together hold about 120 readable characters"),
 					"context": StringSchema(120).WithDescription("Optional subtext line"),
 					"source":  StringSchema(80).WithDescription("Optional source/footnote text"),
 				},
