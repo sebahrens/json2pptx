@@ -1,0 +1,31 @@
+{
+  "scope": "Existing go-slide-creator-n1muf: written grid role floors and capacity geometry",
+  "status": "Targeted implementation verified; broader visual closure remains open",
+  "evidence": {
+    "baseline": "A real CLI deck published two complete body paragraphs; bundled-renderer PDF measured both at 10.006pt, below the present-mode 12pt body floor. The new CLI regression fails with only the final role check disabled and passes with it restored.",
+    "generator_race": "PASS 25.646s: universal and role-floor publication regressions, including all 10 installed test templates and ignored local p-style, off/warn/strict; source, existing destination and temporary cleanup asserted.",
+    "matrix_race": "PASS 173.193s: registered-pattern schema maxima, independent written-run matrix and six extreme-pattern refusal cases across five matrix templates, including p-style.",
+    "final_role_and_nested_race": "PASS 3.943s",
+    "capacity_race": "PASS 1.899s: full textcapacity package; fitted geometry, paragraph spacing, padding and zero-budget regressions.",
+    "preview_refresh": "PASS: 14 templates, 108 layouts; every PNG byte-identical to main128e. Updated manifests only. p-style template and previews remain ignored.",
+    "build": "PASS",
+    "lint": "PASS: pinned v2.8.0, zero issues",
+    "full_root_short": "Pending at receipt creation; retained role-root-short-final.log. Not a race-suite PASS claim.",
+    "prior_main_ci": "128e97b36f1003b35f03c174c1a6181393f74500: CI, Docker and CodeQL all SUCCESS. Prior local root race timed out at15m; exact two interrupted tests passed on rerun, not counted as full-suite PASS."
+  },
+  "review": {
+    "testing": {
+      "findings": [],
+      "tested_edges": ["blank and nested paragraph-role alignment", "inline bold versus fully bold roles", "populated child runs versus unused tiny styles", "exact presentation/report role boundaries", "no usable frame and explicit zero written insets", "source and existing destination preservation", "zero capacity rather than invented minimum"]
+    },
+    "adversarial": {
+      "findings": [],
+      "residual_risks": [
+        "Roles reuse the existing source-style inference, not explicit semantic annotations.",
+        "Written autofit remains client-dependent; one baseline PDF measurement is not all-template native PowerPoint verification.",
+        "Character budgets remain nominal glyph/font hints; show_pattern uses generic geometry, not a template-specific fit guarantee.",
+        "Refusal prevents unreadable publication but is not source-complete visual acceptance. Overflow above role floors and blank-paragraph fitting remain within the existing bead's broader scope."
+      ]
+    }
+  }
+}

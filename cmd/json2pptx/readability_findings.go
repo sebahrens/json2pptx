@@ -54,13 +54,8 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 		if result == nil {
 			continue
 		}
-		densities := textcapacity.ForResolvedGrid(result)
-		for i, cell := range result.Cells {
-			if i >= len(densities) || cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
-				continue
-			}
-			d := densities[i]
-			if d.ActualChars == 0 || d.WidthEMU <= 0 || d.HeightEMU <= 0 {
+		for _, cell := range result.Cells {
+			if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil || cell.Bounds.CX <= 0 || cell.Bounds.CY <= 0 {
 				continue
 			}
 			paras := parseCellParagraphs(cell.ShapeSpec.Text)
@@ -77,10 +72,16 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 			path := slidepath.Join(cellPath, "shape/text")
 			roleOverride := patternCellReadabilityRole(slide, cell.RowIdx)
 			if f := worstReadability(paras, scale, mode, path, roleOverride); f != nil {
+				// Character-budget shaping is needed only for an actual finding,
+				// not every readable cell inspected by previews/recommendations.
+				maxChars, usable := populatedCellBudget(cell)
+				if !usable {
+					continue
+				}
 				// The generic finding suggests reduce_text, which cannot reach a
 				// grid cell. Point it at the cell with its measured budget
 				// (go-slide-creator-9zof).
-				retargetCellReadabilityFix(f, cellPath, d.MaxChars)
+				retargetCellReadabilityFix(f, cellPath, maxChars)
 				if fromPattern[si] {
 					patternName := ""
 					if slide.Pattern != nil {
@@ -94,6 +95,11 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 		}
 	}
 	return findings
+}
+
+func populatedCellBudget(cell shapegrid.ResolvedCell) (int, bool) {
+	d := textcapacity.ForResolvedGrid(&shapegrid.ResolveResult{Cells: []shapegrid.ResolvedCell{cell}})[0]
+	return d.MaxChars, d.ActualChars > 0 && d.WidthEMU > 0 && d.HeightEMU > 0
 }
 
 // Measure the same shape body generation writes. A density rectangle has
@@ -121,6 +127,40 @@ func writtenCellAutofitScale(cell shapegrid.ResolvedCell) (float64, error) {
 		return float64(scale) / 100000, nil
 	}
 	return 1, nil
+}
+
+// Resolve the same paragraphs as the writer, retaining blank paragraphs and
+// inline run boundaries so roles cannot slide onto a neighbouring paragraph.
+func resolvedCellTextRoles(cell shapegrid.ResolvedCell, override tokens.TextRole) []tokens.TextRole {
+	if cell.ShapeSpec == nil || len(cell.ShapeSpec.Text) == 0 {
+		return nil
+	}
+	body, err := shapegrid.ResolveTextInput(cell.ShapeSpec.Text)
+	if err != nil {
+		return nil // shape generation reports invalid text before publication
+	}
+	roles := make([]tokens.TextRole, len(body.Paragraphs))
+	for i, p := range body.Paragraphs {
+		var text strings.Builder
+		bold := true
+		size := 0
+		for _, run := range p.Runs {
+			if strings.TrimSpace(run.Text) == "" {
+				continue
+			}
+			text.WriteString(run.Text)
+			bold = bold && run.Bold
+			size = max(size, run.FontSize)
+		}
+		if text.Len() == 0 {
+			continue
+		}
+		roles[i] = cellTextRole(float64(size)/100, bold, len([]rune(text.String())))
+		if override != "" {
+			roles[i] = override
+		}
+	}
+	return roles
 }
 
 // patternCellReadabilityRole applies a pattern's semantic role when font size

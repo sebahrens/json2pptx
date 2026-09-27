@@ -27,6 +27,7 @@ import (
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/template"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 	"github.com/sebahrens/json2pptx/internal/visualqa/deterministic"
 	"github.com/sebahrens/json2pptx/svggen"
@@ -1145,7 +1146,11 @@ func convertSinglePresentationSlide( //nolint:gocognit,gocyclo
 		}
 		if gridResult != nil {
 			spec.RawShapeXML = gridResult.Shapes
+			spec.GridTextRoles = make(map[uint32][]tokens.TextRole)
 			for _, cell := range gridResult.Cells {
+				if roles := resolvedCellTextRoles(cell, patternCellReadabilityRole(slide, cell.RowIdx)); len(roles) > 0 {
+					spec.GridTextRoles[cell.ID] = roles
+				}
 				if cell.ShapeSpec != nil && cell.ShapeSpec.Link != nil {
 					spec.ShapeLinks = append(spec.ShapeLinks, generator.ShapeLink{
 						Marker: fmt.Sprintf("json2pptx_shape_link_%d", cell.ID),

@@ -11,6 +11,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/testutil"
+	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
 func TestGeneratedExtremeScaleRefusesBelowEveryRoleFloor(t *testing.T) {
@@ -27,6 +28,45 @@ func TestGeneratedExtremeScaleRefusesBelowEveryRoleFloor(t *testing.T) {
 				t.Fatalf("findings=%+v, want action %s", got, tc.action)
 			}
 		})
+	}
+}
+
+func TestDirectGeneratorPreservesSourceOnGridRoleRefusal(t *testing.T) {
+	for _, name := range testutil.AllTestTemplateNames() {
+		for _, mode := range []string{"off", "warn", "strict"} {
+			t.Run(name+"/"+mode, func(t *testing.T) {
+				dir := t.TempDir()
+				output := filepath.Join(dir, "deck.pptx")
+				if err := os.WriteFile(output, []byte("existing destination"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				request := GenerationRequest{TemplatePath: filepath.Join(testutil.TemplatesDir(), name+".pptx"), OutputPath: output, StrictFit: mode, ExcludeTemplateSlides: true,
+					ViewingMode: "present",
+					Slides:      []SlideSpec{{LayoutID: "slideLayout1", RawShapeXML: [][]byte{[]byte(slideWithAutofit("75000", "1200"))}, GridTextRoles: map[uint32][]tokens.TextRole{1: {tokens.TextRoleBody}}}},
+				}
+				before, err := json.Marshal(request.Slides)
+				if err != nil {
+					t.Fatal(err)
+				}
+				result, err := Generate(context.Background(), request)
+				var failure *patterns.ValidationError
+				if result != nil || !errors.As(err, &failure) || failure.Code != patterns.ErrCodeTextBelowReadableMin || failure.Path != "/slides/0/rendered_shapes/1/paragraphs/0" || failure.Fix != nil {
+					t.Fatalf("9pt body published or unsafe refusal: %+v %v", result, err)
+				}
+				after, err := json.Marshal(request.Slides)
+				if err != nil || string(before) != string(after) {
+					t.Fatal("source changed")
+				}
+				data, err := os.ReadFile(output)
+				if err != nil || string(data) != "existing destination" {
+					t.Fatal("destination changed")
+				}
+				files, err := os.ReadDir(dir)
+				if err != nil || len(files) != 1 {
+					t.Fatal("temporary output leaked")
+				}
+			})
+		}
 	}
 }
 
