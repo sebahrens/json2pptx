@@ -129,10 +129,10 @@ ifndef SKIP_TEMPLATES
 	@echo "    Templates:  $(HOME)/.json2pptx/templates/"
 endif
 ifndef SKIP_SKILL
-	@echo "    Skills:     $(HOME)/.claude/skills/{template-deck,generate-deck,slide-visual-qa}/"
+	@echo "    Skills:     $(SKILL_DEST)/*/"
 endif
 ifndef SKIP_MCP
-	@echo "    MCP config: $(HOME)/.claude/mcp.json"
+	@echo "    MCP:        json2pptx (Claude Code user scope; see: claude mcp get json2pptx)"
 endif
 	@# PATH check
 	@case ":$(PATH):" in \
@@ -179,31 +179,28 @@ endif
 
 install-mcp:
 ifndef SKIP_MCP
-	@echo "==> Configuring MCP server in $(HOME)/.claude/mcp.json..."
-	@mkdir -p "$(HOME)/.claude"
-	@# On MSYS2/Git Bash, convert /c/Users/... to C:/Users/... for mcp.json
-	@# so that Claude Code (running outside MSYS) can find the binary.
+	@echo "==> Registering MCP server with Claude Code (user scope)..."
+	@# Claude Code reads user-scope servers from ~/.claude.json via
+	@# `claude mcp add --scope user`; it does not read ~/.claude/mcp.json.
+	@# On MSYS2/Git Bash, convert /c/Users/... to C:/Users/... so that Claude
+	@# Code (running outside MSYS) can find the binary.
 	@_mcp_bin="$(PREFIX)/bin/json2pptx$(EXE)"; \
 	_mcp_tdir="$(HOME)/.json2pptx/templates"; \
 	if [ -n "$(IS_WINDOWS)" ]; then \
 		_mcp_bin=$$(echo "$$_mcp_bin" | sed 's|^/\([a-zA-Z]\)/|\1:/|'); \
 		_mcp_tdir=$$(echo "$$_mcp_tdir" | sed 's|^/\([a-zA-Z]\)/|\1:/|'); \
 	fi; \
-	if command -v jq >/dev/null 2>&1; then \
-		TMPFILE="$(HOME)/.claude/mcp.json.$$$$.tmp"; \
-		if [ -f "$(HOME)/.claude/mcp.json" ]; then \
-			jq --arg bin "$$_mcp_bin" --arg tdir "$$_mcp_tdir" \
-				'.mcpServers["json2pptx"] = {command: $$bin, args: ["mcp", "--templates-dir", $$tdir, "--output", "./output"]}' \
-				"$(HOME)/.claude/mcp.json" > "$$TMPFILE" && \
-			mv "$$TMPFILE" "$(HOME)/.claude/mcp.json"; \
+	if command -v claude >/dev/null 2>&1; then \
+		claude mcp remove --scope user json2pptx >/dev/null 2>&1 || true; \
+		if claude mcp add --scope user json2pptx -- "$$_mcp_bin" mcp --templates-dir "$$_mcp_tdir" --output ./output >/dev/null; then \
+			echo "    json2pptx registered (see: claude mcp get json2pptx)"; \
 		else \
-			printf '{"mcpServers":{"json2pptx":{"command":"%s","args":["mcp","--templates-dir","%s","--output","./output"]}}}\n' \
-				"$$_mcp_bin" "$$_mcp_tdir" | jq . > "$$TMPFILE" && \
-			mv "$$TMPFILE" "$(HOME)/.claude/mcp.json"; \
+			echo "    WARNING: 'claude mcp add' failed. Register manually with:"; \
+			echo "      claude mcp add --scope user json2pptx -- \"$$_mcp_bin\" mcp --templates-dir \"$$_mcp_tdir\" --output ./output"; \
 		fi; \
-		echo "    $(HOME)/.claude/mcp.json (json2pptx server configured)"; \
 	else \
-		echo "    WARNING: jq not found. Add json2pptx to $(HOME)/.claude/mcp.json manually."; \
+		echo "    Claude Code CLI ('claude') not found on PATH. Register the server with:"; \
+		echo "      claude mcp add --scope user json2pptx -- \"$$_mcp_bin\" mcp --templates-dir \"$$_mcp_tdir\" --output ./output"; \
 	fi
 endif
 
@@ -213,10 +210,8 @@ uninstall:
 		rm -f "$(PREFIX)/bin/$(cmd)$(EXE)" && \
 	) true
 	@rm -rf "$(HOME)/.json2pptx"
-	@rm -rf "$(HOME)/.claude/skills/template-deck"
-	@rm -rf "$(HOME)/.claude/skills/generate-deck"
-	@rm -rf "$(HOME)/.claude/skills/slide-visual-qa"
-	@echo "    Done (MCP config left in place — edit ~/.claude/mcp.json manually)"
+	@for skill in skills/*/; do rm -rf "$(SKILL_DEST)/$$(basename "$$skill")"; done
+	@echo "    Done (MCP registration left in place — run: claude mcp remove --scope user json2pptx)"
 
 # ─── Cross-compilation ────────────────────────────────────────────────
 

@@ -101,6 +101,19 @@ func TestLoadNonExistent(t *testing.T) {
 	}
 }
 
+// TestLoadDirectoryFallsBackToDefaults guards go-slide-creator-csclk.65: Docker
+// creates a missing bind-mount source (./config.yaml) as a directory, which must
+// not crash-loop `serve --config /app/config.yaml`.
+func TestLoadDirectoryFallsBackToDefaults(t *testing.T) {
+	cfg, err := Load(t.TempDir())
+	if err != nil {
+		t.Fatalf("Load() should treat a directory like a missing file, got %v", err)
+	}
+	if cfg.Server.Port != 8080 {
+		t.Errorf("expected default port 8080, got %d", cfg.Server.Port)
+	}
+}
+
 func TestLoadFromFile(t *testing.T) {
 	// Create temp config file
 	dir := t.TempDir()

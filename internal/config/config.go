@@ -108,7 +108,7 @@ func DefaultConfig() Config {
 }
 
 // Load loads configuration from a YAML file, with environment variable overrides.
-// When path is non-empty but the file does not exist, Load silently falls back to
+// When path is non-empty but the file does not exist (or is a directory), Load falls back to
 // defaults. This is intentional: the Dockerfile hardcodes --config /app/config.yaml
 // in CMD, so containers start cleanly with defaults when no config is mounted.
 func Load(path string) (Config, error) {
@@ -117,7 +117,10 @@ func Load(path string) (Config, error) {
 	if path != "" {
 		data, err := os.ReadFile(path)
 		if err != nil {
-			if !os.IsNotExist(err) {
+			// A directory at the config path is treated like a missing file:
+			// Docker creates an absent bind-mount source as an empty directory,
+			// which would otherwise crash-loop the container.
+			if !os.IsNotExist(err) && !isDir(path) {
 				return Config{}, fmt.Errorf("read config file: %w", err)
 			}
 			// File not found — use defaults (see comment above).
@@ -131,6 +134,12 @@ func Load(path string) (Config, error) {
 	applyEnvOverrides(&cfg)
 
 	return cfg, nil
+}
+
+// isDir reports whether path exists and is a directory.
+func isDir(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // applyEnvOverrides applies environment variable overrides to the config.

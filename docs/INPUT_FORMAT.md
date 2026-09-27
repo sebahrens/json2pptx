@@ -83,7 +83,7 @@ These layouts carry the `title-at-bottom` classification tag, and when the botto
 
 ## Inline formatting
 
-Text and bullet strings accept three inline tags: `<b>`, `<i>`, `<u>`. They can be nested: `<b><i>bold italic</i></b>`. Plain dashes/arrows (`→`, `•`, en/em dashes) are allowed; **emoji codepoints are rejected anywhere** in deck JSON.
+Text and bullet strings accept five inline tags: `<b>`, `<i>`, `<u>`, `<sup>`, `<sub>` (the live list is `get_capabilities().features.supports_inline_markup`). They can be nested: `<b><i>bold italic</i></b>`. Plain dashes/arrows (`→`, `•`, en/em dashes) are allowed; **emoji codepoints are rejected anywhere** in deck JSON.
 
 ## A custom visual: `shape_grid`
 

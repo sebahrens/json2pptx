@@ -15,8 +15,6 @@ services:
         BUILD_TIME: development
 
     volumes:
-      # Development: mount testdata for test fixtures
-      - ./testdata:/app/testdata:ro
       # Development: mount examples directory
       - ./examples:/app/examples:ro
 

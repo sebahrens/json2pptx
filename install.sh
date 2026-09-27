@@ -19,7 +19,6 @@ SKIP_SKILL=false
 SKIP_BUILD=false
 SKIP_MCP=false
 SKIP_TEMPLATES=false
-SKILL_NAMES=(template-deck generate-deck slide-visual-qa)
 OLD_SKILL_NAME="make-slides"
 
 # Binaries to install (user-facing tools)
@@ -74,6 +73,21 @@ echo "==> json2pptx installer"
 echo "    prefix: $PREFIX"
 echo ""
 
+# version_lt A B: true when dotted version A is older than B (numeric
+# components; pre-release suffixes such as "rc1" are ignored).
+version_lt() {
+  local IFS=.
+  local -a a=($1) b=($2)
+  local i x y
+  for i in 0 1 2; do
+    x="${a[i]:-0}"; x="${x%%[^0-9]*}"; x="${x:-0}"
+    y="${b[i]:-0}"; y="${y%%[^0-9]*}"; y="${y:-0}"
+    if (( 10#$x < 10#$y )); then return 0; fi
+    if (( 10#$x > 10#$y )); then return 1; fi
+  done
+  return 1
+}
+
 # --- Prerequisites ---
 
 if [[ "$SKIP_BUILD" == false ]]; then
@@ -84,11 +98,14 @@ if [[ "$SKIP_BUILD" == false ]]; then
     exit 1
   fi
 
-  GO_VERSION="$(go version | grep -oE '[0-9]+\.[0-9]+' | head -1)"
-  GO_MAJOR="${GO_VERSION%%.*}"
-  GO_MINOR="${GO_VERSION#*.}"
-  if [[ "$GO_MAJOR" -lt 1 ]] || { [[ "$GO_MAJOR" -eq 1 ]] && [[ "$GO_MINOR" -lt 23 ]]; }; then
-    echo "ERROR: Go >= 1.23 required (found $GO_VERSION)"
+  # The minimum comes from go.mod's `go` directive so the check cannot drift
+  # from what the build actually requires. Query the local toolchain from
+  # outside the module so go.mod does not trigger a toolchain switch.
+  GO_MIN="$(awk '$1 == "go" { print $2; exit }' "$SCRIPT_DIR/go.mod")"
+  GO_VERSION="$(cd / && go env GOVERSION)"
+  GO_VERSION="${GO_VERSION#go}"
+  if version_lt "$GO_VERSION" "$GO_MIN"; then
+    echo "ERROR: Go >= $GO_MIN required by go.mod (found $GO_VERSION)"
     exit 1
   fi
   echo "    go: $(go version)"
@@ -167,17 +184,12 @@ if [[ "$SKIP_SKILL" == false ]]; then
     rm -rf "$OLD_SKILL_DST"
   fi
 
-  for SKILL_NAME in "${SKILL_NAMES[@]}"; do
-    SKILL_SRC="$SCRIPT_DIR/skills/$SKILL_NAME"
-    SKILL_DST="$HOME/.claude/skills/$SKILL_NAME"
-
-    if [[ ! -d "$SKILL_SRC" ]]; then
-      echo "    Skipped $SKILL_NAME (no skill files found)"
-    else
-      mkdir -p "$SKILL_DST"
-      cp -R "$SKILL_SRC"/* "$SKILL_DST"/
-      echo "    Installed: $SKILL_DST"
-    fi
+  # Same staging as `make install`: every skill under skills/, the
+  # references/repository snapshot, and ../../docs-style links rewritten so
+  # they resolve inside ~/.claude/skills.
+  bash "$SCRIPT_DIR/scripts/stage-skills.sh" "$HOME/.claude/skills"
+  for SKILL_SRC in "$SCRIPT_DIR"/skills/*/; do
+    echo "    Installed: $HOME/.claude/skills/$(basename "$SKILL_SRC")"
   done
 fi
 
@@ -187,41 +199,23 @@ if [[ "$SKIP_MCP" == false ]]; then
   echo ""
   echo "==> Configuring MCP server..."
 
-  MCP_FILE="$HOME/.claude/mcp.json"
   BINARY_PATH="$PREFIX/bin/json2pptx"
   TEMPLATES_PATH="$HOME/.json2pptx/templates"
+  MCP_ADD=(claude mcp add --scope user json2pptx -- "$BINARY_PATH" mcp --templates-dir "$TEMPLATES_PATH" --output ./output)
 
-  mkdir -p "$(dirname "$MCP_FILE")"
-
-  if command -v jq &>/dev/null; then
-    TMPFILE="$MCP_FILE.$$.tmp"
-    if [[ -f "$MCP_FILE" ]]; then
-      jq --arg bin "$BINARY_PATH" --arg tdir "$TEMPLATES_PATH" \
-        '.mcpServers["json2pptx"] = {command: $bin, args: ["mcp", "--templates-dir", $tdir, "--output", "./output"]}' \
-        "$MCP_FILE" > "$TMPFILE" && mv "$TMPFILE" "$MCP_FILE"
+  # Claude Code reads user-scope MCP servers from ~/.claude.json, managed by
+  # `claude mcp add --scope user` (it does not read ~/.claude/mcp.json).
+  if command -v claude &>/dev/null; then
+    claude mcp remove --scope user json2pptx >/dev/null 2>&1 || true
+    if "${MCP_ADD[@]}" >/dev/null; then
+      echo "    Registered json2pptx with Claude Code (user scope)"
     else
-      printf '{"mcpServers":{"json2pptx":{"command":"%s","args":["mcp","--templates-dir","%s","--output","./output"]}}}\n' \
-        "$BINARY_PATH" "$TEMPLATES_PATH" | jq . > "$TMPFILE" && mv "$TMPFILE" "$MCP_FILE"
+      echo "    WARNING: 'claude mcp add' failed. Register manually with:"
+      echo "      ${MCP_ADD[*]}"
     fi
-    echo "    $MCP_FILE (json2pptx server configured)"
   else
-    # No jq -- write or warn
-    if [[ ! -f "$MCP_FILE" ]]; then
-      cat > "$MCP_FILE" <<MCPEOF
-{
-  "mcpServers": {
-    "json2pptx": {
-      "command": "$BINARY_PATH",
-      "args": ["mcp", "--templates-dir", "$TEMPLATES_PATH", "--output", "./output"]
-    }
-  }
-}
-MCPEOF
-      echo "    $MCP_FILE (json2pptx server configured)"
-    else
-      echo "    WARNING: jq not found and $MCP_FILE already exists."
-      echo "             Add json2pptx to $MCP_FILE manually."
-    fi
+    echo "    Claude Code CLI ('claude') not found on PATH. Register the server with:"
+    echo "      ${MCP_ADD[*]}"
   fi
 fi
 
@@ -245,10 +239,10 @@ if [[ "$SKIP_TEMPLATES" == false ]]; then
   echo "  Templates: ~/.json2pptx/templates/"
 fi
 if [[ "$SKIP_SKILL" == false ]]; then
-  echo "  Skills:    ~/.claude/skills/{template-deck,generate-deck,slide-visual-qa}/"
+  echo "  Skills:    ~/.claude/skills/*/"
 fi
 if [[ "$SKIP_MCP" == false ]]; then
-  echo "  MCP:       ~/.claude/mcp.json"
+  echo "  MCP:       json2pptx (Claude Code user scope; see: claude mcp get json2pptx)"
 fi
 
 # PATH warning

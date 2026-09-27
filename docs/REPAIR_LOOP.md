@@ -135,14 +135,14 @@ The skill should track attempt counts per slide and force `split_slide` after 2 
 
 ### MCP Harness
 
-Callers using the MCP `generate` and `validate_fit_report` tools wrap them in a retry loop:
+Callers using the MCP `validate_input` (with `fit_report: true`, its default) and `generate_presentation` tools wrap them in a retry loop:
 
 ```python
 attempts = {}  # slide_index -> count
 
 for _ in range(10):  # outer safety cap
-    result = mcp.call("validate_fit_report", {"json_path": path})
-    findings = parse_ndjson(result)
+    result = mcp.call("validate_input", {"presentation": json_data, "fit_report": True})
+    findings = result["findings"]["findings"]
     
     unfittable = [f for f in findings if f["action"] == "refuse"]
     if not unfittable:

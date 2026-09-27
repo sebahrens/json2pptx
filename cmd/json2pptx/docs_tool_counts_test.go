@@ -52,6 +52,17 @@ func TestDocsDoNotHardcodeToolOrTemplateCounts(t *testing.T) {
 		{"README.md", "4 bundled templates"},
 		{filepath.Join("skills", "generate-deck", "TOOLS.md"), "~20 tools"},
 		{"CLAUDE.md", "4 bundled templates"},
+		// go-slide-creator-csclk.72 / csclk.130
+		{"README.md", "20 named patterns"},
+		{"README.md", "19 example decks"},
+		{"README.md", "embedded as PNG (default)"},
+		{"README.md", "three Claude Code skills"},
+		{"CLAUDE.md", "(19 decks)"},
+		{"CLAUDE.md", "embedded as EMF"},
+		{filepath.Join("docs", "INPUT_FORMAT.md"), "three inline tags"},
+		{filepath.Join("cmd", "json2pptx", "mcp_server.go"), "~21 tools"},
+		{"TODOS.md", "24 tools"},
+		{filepath.Join("docs", "REPAIR_LOOP.md"), "validate_fit_report"},
 	}
 	for _, s := range stale {
 		if strings.Contains(readRepoFile(t, s.file), s.phrase) {

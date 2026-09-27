@@ -79,7 +79,7 @@ You can also combine patterns on one slide with a `compose` envelope (e.g. a her
 | Path | What | How | Result |
 |------|------|-----|--------|
 | **Native OOXML shapes** | SWOT, Porter's, BMC, pyramids, value chains, panel layouts, KPI dashboards, heatmaps and more | Generated as real PowerPoint shapes | Editable, crisp at any zoom |
-| **SVG-rendered visuals** | 15 chart types and the remaining diagram families | Rendered by the `svggen/` module and embedded as PNG (default), EMF, or native SVG | High-quality visuals in PowerPoint/Keynote |
+| **SVG-rendered visuals** | 15 chart types and the remaining diagram families | Rendered by the `svggen/` module and embedded as native SVG with a PNG fallback (default; `--chart-png` forces PNG) | High-quality visuals in PowerPoint/Keynote |
 
 ### Diagnostics & Self-Repair
 
@@ -96,11 +96,11 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 - **Template-aware layout selection** -- picks the right layout based on your content; synthesizes missing standard layouts
 - **15 chart types** -- bar, grouped_bar, stacked_bar, line, area, stacked_area, pie, donut, scatter, bubble, radar, waterfall, funnel, gauge, treemap
 - **21 diagram types** -- SWOT, timeline, process flow, pyramid, venn, org chart, Gantt, KPI dashboard, heatmap, fishbone, PESTEL, Porter's Five Forces, value chain, Business Model Canvas, nine box talent, house diagram, panel layout, icon columns/rows, stat cards, matrix 2x2
-- **20 named patterns** -- agenda, arch-stack, before-after, bmc-canvas, card-grid, comparison-2col, icon-row, kpi-2up...kpi-6up (parametric), matrix-2x2, process-flow, pull-quote, pyramid, roadmap-phased, stat-hero, swimlane, timeline-horizontal
+- **Named patterns** -- agenda, arch-stack, before-after, bmc-canvas, card-grid, comparison-2col, icon-row, kpi-2up...kpi-6up (parametric), matrix-2x2, process-flow, pull-quote, pyramid, roadmap-phased, stat-hero, swimlane, timeline-horizontal and many more; `json2pptx patterns list` (or MCP `list_patterns`) prints the live registry
 - **Pattern composition** (`compose`) -- 2-4 patterns merged into one slide with vertical/horizontal layout
 - **Shape grid engine** -- consulting-style custom layouts with preset geometries, row/column grids, cell spanning, authoritative bounds
 - **Tables with auto-pagination** (`split_slide`) -- header rows repeat across continuation slides
-- **Inline formatting** -- `<b>bold</b>`, `<i>italic</i>`, `<u>underline</u>` in text and bullets
+- **Inline formatting** -- `<b>bold</b>`, `<i>italic</i>`, `<u>underline</u>`, `<sup>superscript</sup>`, `<sub>subscript</sub>` in text and bullets
 - **Constrained vs free authoring** (`design_mode`) -- constrained refuses raw hex and absolute font sizes to keep decks on-brand; `free` unlocks them
 - **Accent rotation strategies** (`accent_strategy`) -- `primary`, `rotate`, or `section-keyed`
 - **Style defaults** -- deck-level `defaults.table_style` / `defaults.cell_style`, swap-only semantics
@@ -118,8 +118,8 @@ Every generation (and every dry-run) emits structured **fit findings** (`code`, 
 - **PPTX read-back** -- `read_presentation` extracts placeholders/shapes/tables from an existing PPTX without LibreOffice
 - **HTTP API** -- REST endpoints for programmatic generation
 - **Semantic compiler** -- compact YAML/JSON deck specs compile to raw `PresentationInput`, render through the existing engine, and return diagnostics mapped back to semantic paths
-- **MCP server** -- 51 Model Context Protocol tools for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair, including semantic deck-spec tools and the one-call `make_deck` cold-start facade
-- **Claude Code skills** -- 3 integrated skills for AI-driven deck generation, template setup, and visual QA
+- **MCP server** -- Model Context Protocol tools (`get_capabilities().mcp_tools_available` lists them) for AI-assisted deck creation, validation, planning, recommendation, scoring, and repair, including semantic deck-spec tools and the one-call `make_deck` cold-start facade
+- **Claude Code skills** -- integrated skills for AI-driven deck generation, template usage, visual QA, and standalone diagram rendering
 
 ## Installation
 
@@ -130,7 +130,7 @@ json2pptx ships several install paths. Pick one by what you have and your platfo
 | You have | Platform | Recommended command | What it does |
 |----------|----------|---------------------|--------------|
 | **Source checkout** (cloned repo) | macOS / Linux / WSL2 | `make install` | Builds every binary from source, installs to `~/.local/bin`, sets up skills + MCP. **Default for source checkouts.** |
-| **Source checkout**, want install options | macOS / Linux / WSL2 | `./install.sh` | Same build + install as `make install`, but adds `--prefix`, `--skip-skill`, `--skip-mcp`, `--skip-templates`, `--skip-build` flags. |
+| **Source checkout**, want install options | macOS / Linux / WSL2 | `./install.sh` | Same build + install (same staged skills) as `make install`, but adds `--prefix`, `--skip-skill`, `--skip-mcp`, `--skip-templates`, `--skip-build` flags. |
 | **Source checkout** | Windows (PowerShell) | `.\install.ps1` | Builds from source, installs to `%LOCALAPPDATA%\json2pptx\bin`. **Default for Windows source checkouts.** Needs Go; no Make/bash. |
 | **Prebuilt release archive** | macOS / Linux / WSL2 | `./install.sh` (inside the archive) | Copies the bundled binary + templates into place — **no Go or Make required.** |
 | **Prebuilt release archive** | Windows | `.\install.ps1` (inside the archive) | Copies the bundled binary + templates into place — **no Go required.** |
@@ -261,8 +261,11 @@ slides:
     takeaway: Add enterprise sales capacity now to convert EMEA pipeline.
     recommendation: Add four enterprise AEs in Q3.
     options:
-      - Hold current coverage and accept slower EMEA conversion.
-      - Add four enterprise AEs in Q3 (recommended).
+      - label: Hold current coverage
+        detail: Accept slower EMEA conversion.
+      - label: Add four enterprise AEs
+        detail: Hire in Q3 to convert the EMEA pipeline.
+        recommended: true
 ```
 
 Deck-level intent lives under `meta`; each slide is a `kind`-tagged payload whose remaining fields are that kind's content. Use `list_slide_kinds` / `json2pptx semantic schema` for the per-kind fields, and [examples/semantic/qbr.yaml](examples/semantic/qbr.yaml) for a fuller, test-verified spec.
@@ -311,7 +314,7 @@ json2pptx generate \
 
 ### Example Decks
 
-The repo ships with 19 example decks (and a `diagrams/` subdirectory with one JSON per diagram type). The most useful ones to learn from, in order:
+The repo ships dozens of example decks under `examples/` (plus a `diagrams/` subdirectory of diagram decks and `semantic/` YAML specs). The most useful ones to learn from, in order:
 
 | Example | What it shows |
 |---------|---------------|
@@ -339,36 +342,37 @@ curl -X POST http://localhost:8080/api/v1/convert \
   -d '{
     "template": "midnight-blue",
     "slides": [
-      {"slide_type": "title",
-       "content": [
-         {"placeholder_id": "title",    "type": "text", "text_value": "My Presentation"},
-         {"placeholder_id": "subtitle", "type": "text", "text_value": "Welcome"}
-       ]},
-      {"slide_type": "content",
-       "content": [
-         {"placeholder_id": "title", "type": "text",    "text_value": "Key Points"},
-         {"placeholder_id": "body",  "type": "bullets", "bullets_value": ["First point", "Second point"]}
-       ]}
+      {"type": "title",   "title": "My Presentation", "content": {"body": "Welcome"}},
+      {"type": "content", "title": "Key Points",      "content": {"bullets": ["First point", "Second point"]}}
     ]
   }'
 ```
+
+The HTTP convert endpoint takes a simplified text/bullet slide shape (`type`, `title`, `content.body` / `content.bullets`), not the raw `PresentationInput` JSON used by the CLI and MCP. See [docs/api/README.md](docs/api/README.md#convert-slides).
 
 <a id="mcp-integration"></a>
 
 ## Claude Code Integration
 
-json2pptx ships with three Claude Code skills and an MCP server that let an AI agent plan, create, validate, score, and repair presentations from natural language prompts.
+json2pptx ships with Claude Code skills and an MCP server that let an AI agent plan, create, validate, score, and repair presentations from natural language prompts.
 
 ### What Gets Installed
 
-`make install` (or `./install.sh` / `.\install.ps1`) sets up everything:
+`make install` (or `./install.sh` / `.\install.ps1`) sets up everything. All
+installers stage the same skill set — every directory under `skills/`, a
+`generate-deck/references/repository/` snapshot of the docs the skills link to,
+and links rewritten to resolve inside `~/.claude/skills`:
 
 | Component | Location | Purpose |
 |-----------|----------|---------|
-| MCP server config | `~/.claude/mcp.json` | Connects Claude Code to json2pptx tools |
+| MCP server registration | Claude Code user scope (`~/.claude.json`, via `claude mcp add --scope user`) | Connects Claude Code to json2pptx tools |
 | **generate-deck** skill | `~/.claude/skills/generate-deck/` | 4-phase deck workflow (Plan -> Vary -> Render -> Repair) |
-| **template-deck** skill | `~/.claude/skills/template-deck/` | Template setup and conformance reference |
+| **template-deck** skill | `~/.claude/skills/template-deck/` | Template selection, layouts, and placeholder reference |
 | **slide-visual-qa** skill | `~/.claude/skills/slide-visual-qa/` | Composition review + per-slide screenshot inspection |
+| **render-diagram** skill | `~/.claude/skills/render-diagram/` | Standalone SVG/PNG charts and diagrams via `svggen-mcp` |
+
+The installers register the MCP server with `claude mcp add --scope user json2pptx -- <bin> mcp --templates-dir ~/.json2pptx/templates --output ./output`
+when the `claude` CLI is on `PATH`; otherwise they print that command for you to run.
 
 Skip skill installation with `--skip-skill` (shell) or `-SkipSkill` (PowerShell).
 
@@ -387,7 +391,7 @@ tool counts and wire bytes. Pass
 `--tools all` (or set `JSON2PPTX_MCP_TOOLS=all`) to list the full catalogue
 below; non-core tools stay callable by name either way.
 
-The installer configures this automatically in `~/.claude/mcp.json`. The fastest
+The installer registers this automatically via `claude mcp add --scope user`. The fastest
 way to learn the workflow at runtime is the `get_started` tool: it returns the
 recommended single-call **fast path** plus the ordered manual **sequence** it
 composes, scoped to `brief` / `revise` / `validate-only`. Each tool carries
@@ -621,7 +625,7 @@ json2pptx skill-info --mode=full --template=my-corporate-theme --templates-dir=m
 
 The `json2pptx` binary is the primary tool: batch converter, HTTP API server, and MCP server.
 
-### Subcommands (40)
+### Subcommands
 
 Run `json2pptx help` for the authoritative list, or `json2pptx <command> -h` for
 per-command flags. A handful of MCP tools have no direct subcommand (e.g.
@@ -634,6 +638,7 @@ for each under "MCP-only tools".
 | `generate` | Convert JSON input to PPTX (default if subcommand omitted) |
 | `semantic` | Validate, compile, render, explain, and print schema for semantic deck specs |
 | `read` | Read PPTX and output extracted content as JSON |
+| `export` | Export an existing PPTX to PDF or a speaker-notes handout |
 | `validate` | Validate JSON input without generating (see [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for `-fit-report`) |
 | `preflight` | Run every static check on a deck (stage-based, emits the finding envelope) |
 | `validate-output` | Check generated PPTX for OOXML correctness |
@@ -664,6 +669,7 @@ for each under "MCP-only tools".
 | `render-slide` | Render a single slide to PNG (requires LibreOffice + ImageMagick) |
 | `render-slide-from-json` | Render one slide directly from JSON (no full deck render) |
 | `render-thumbnails` | Render all slides as PNG thumbnails (requires LibreOffice + ImageMagick) |
+| `purge-render-cache` | Reclaim the on-disk render cache |
 | `audit-palette` | Render PPTX to PNG and report ΔE between chart pics and adjacent solid-filled shapes |
 | `template-settings` | Manage named styles (list/register/delete) |
 | `data-format-hints` | Show data format hints for chart/diagram types |
@@ -674,17 +680,24 @@ for each under "MCP-only tools".
 
 ### Generate Flags
 
+`json2pptx generate -h` is authoritative. Fit findings come from
+`json2pptx validate -fit-report` (a `validate` flag, not a `generate` flag).
+
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-json` | (required) | Path to JSON input file, or `-` for stdin |
 | `-template` | | Template name (without `.pptx`) |
 | `-templates-dir` | `./templates` | Directory containing templates |
 | `-output` | `./output` | Output directory for generated PPTX files (or a `.pptx` file path, e.g. `/tmp/deck.pptx`) |
-| `-json-output-report` | | Path for the JSON result report (success, warnings, quality score) in headless mode |
+| `-json-output-report` | | Path for the JSON result report (success, review findings, warnings, quality score) in headless mode |
 | `-json-output` | | DEPRECATED: alias for `-json-output-report` |
 | `-dry-run` / `-n` | `false` | Validate input and show layout selections without generating |
 | `-strict-fit` | `warn` | Text-fit checking mode: `off`, `warn`, or `strict` (refuse on overflow) |
-| `-fit-report` | `false` | Emit structured fit findings |
+| `-output-validation` | `strict` | Post-generation PPTX validation: `off`, `warn`, or `strict` (fail on blocking findings) |
+| `-design-mode` | | Override the deck's `design_mode`: `constrained` or `free`; empty keeps the JSON setting |
+| `-partial` | `false` | Skip failing slides instead of aborting the whole deck |
+| `-strict-unknown-keys` | `false` | Treat unknown/misspelled JSON keys as blocking errors instead of warnings |
+| `-chart-png` | `false` | DEPRECATED: use PNG instead of native SVG for charts |
 | `-verbose` | `false` | Enable verbose output |
 | `-config` | | Path to config file |
 
@@ -822,7 +835,7 @@ internal/
   layout/           Layout selection (heuristic scoring)
   layoutpreview/    Generation plan previewing
   pagination/       Slide pagination and content splitting
-  patterns/         Named shape grid pattern registry (20 patterns)
+  patterns/         Named shape grid pattern registry (`json2pptx patterns list`)
   pipeline/         Generation pipeline orchestration
   pptx/             Low-level OOXML manipulation
   pptxread/         PPTX read-back (for read_presentation)
@@ -841,7 +854,7 @@ internal/
   visualqa/         Visual QA agent integration (deterministic + screenshot)
 svggen/             SVG chart and diagram generation (separate Go module)
 templates/          Built-in PPTX templates (4)
-examples/           Example JSON input files (19 + diagrams/ subdirectory)
+examples/           Example JSON input decks (+ diagrams/ and semantic/ subdirectories)
 docs/               Specs: PATTERNS, FIT_FINDINGS, REPAIR_LOOP, INPUT_FORMAT,
                     STYLE_DEFAULTS, TEMPLATE_SPEC, VISUAL_CRITERIA, ...
 skills/             Claude Code skills (3)

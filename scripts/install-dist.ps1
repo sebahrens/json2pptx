@@ -25,8 +25,8 @@ Options:
 
 Installs:
   <Prefix>\bin\json2pptx.exe                CLI binary (also serves as MCP server)
-  ~\.claude\skills\*\                       Claude Code skill files (3 skills)
-  ~\.claude\mcp.json                        MCP server configuration (merged)
+  ~\.claude\skills\*\                       Claude Code skill files (every skill in the archive)
+  claude mcp add --scope user json2pptx     MCP server registration
 "@
     exit 0
 }
@@ -78,15 +78,14 @@ if (-not $SkipSkill) {
         Write-Host "    Removed old skill: $OldSkillDst"
     }
 
-    foreach ($SkillName in @("template-deck", "generate-deck", "slide-visual-qa")) {
-        $SkillSrc = Join-Path $ScriptDir "skills\$SkillName"
-        $SkillDst = Join-Path $env:USERPROFILE ".claude\skills\$SkillName"
-
-        if (Test-Path $SkillSrc) {
-            New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
-            Copy-Item (Join-Path $SkillSrc "*") $SkillDst -Recurse -Force
-            Write-Host "    $SkillDst"
-        }
+    # The archive's skills\ tree was already staged by scripts/stage-skills.sh
+    # (every skill, references snapshot, rewritten links); install all of it.
+    $SkillsRoot = Join-Path $ScriptDir "skills"
+    foreach ($SkillDir in Get-ChildItem $SkillsRoot -Directory -ErrorAction SilentlyContinue) {
+        $SkillDst = Join-Path $env:USERPROFILE ".claude\skills\$($SkillDir.Name)"
+        New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
+        Copy-Item (Join-Path $SkillDir.FullName "*") $SkillDst -Recurse -Force
+        Write-Host "    $SkillDst"
     }
 }
 
@@ -96,31 +95,27 @@ if (-not $SkipMcp) {
     Write-Host ""
     Write-Host "==> Configuring MCP server..."
 
-    $McpFile = Join-Path $env:USERPROFILE ".claude\mcp.json"
+    # Claude Code reads user-scope MCP servers from ~/.claude.json, managed by
+    # `claude mcp add --scope user` (it does not read ~/.claude/mcp.json).
+    # Use forward slashes in paths for cross-platform compatibility.
     $BinaryPath = (Join-Path $BinDir "json2pptx.exe") -replace '\\', '/'
-    $TemplatesDir = (Join-Path $env:USERPROFILE ".json2pptx\templates") -replace '\\', '/'
+    $TemplatesPath = (Join-Path $env:USERPROFILE ".json2pptx\templates") -replace '\\', '/'
+    $McpArgs = @("mcp", "add", "--scope", "user", "json2pptx", "--", $BinaryPath, "mcp", "--templates-dir", $TemplatesPath, "--output", "./output")
+    $McpManual = "claude mcp add --scope user json2pptx -- `"$BinaryPath`" mcp --templates-dir `"$TemplatesPath`" --output ./output"
 
-    $NewServer = @{
-        command = $BinaryPath
-        args = @("mcp", "--templates-dir", $TemplatesDir, "--output", "./output")
-    }
-
-    if (Test-Path $McpFile) {
-        $McpConfig = Get-Content $McpFile -Raw | ConvertFrom-Json
+    if (Get-Command claude -ErrorAction SilentlyContinue) {
+        & claude mcp remove --scope user json2pptx *> $null
+        & claude @McpArgs *> $null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "    Registered json2pptx with Claude Code (user scope)"
+        } else {
+            Write-Host "    WARNING: 'claude mcp add' failed. Register manually with:" -ForegroundColor Yellow
+            Write-Host "      $McpManual"
+        }
     } else {
-        New-Item -ItemType Directory -Force -Path (Split-Path $McpFile) | Out-Null
-        $McpConfig = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+        Write-Host "    Claude Code CLI ('claude') not found on PATH. Register the server with:" -ForegroundColor Yellow
+        Write-Host "      $McpManual"
     }
-
-    # Add or update the json2pptx server entry
-    if ($McpConfig.mcpServers.PSObject.Properties["json2pptx"]) {
-        $McpConfig.mcpServers.json2pptx = $NewServer
-    } else {
-        $McpConfig.mcpServers | Add-Member -NotePropertyName "json2pptx" -NotePropertyValue $NewServer
-    }
-
-    $McpConfig | ConvertTo-Json -Depth 10 | Set-Content $McpFile -Encoding UTF8
-    Write-Host "    $McpFile (json2pptx server configured)"
 }
 
 # --- Verify ---
@@ -145,10 +140,10 @@ if (Test-Path (Join-Path $ScriptDir "templates")) {
     Write-Host "  Templates: $env:USERPROFILE\.json2pptx\templates\"
 }
 if (-not $SkipSkill) {
-    Write-Host "  Skills:    ~\.claude\skills\{template-deck,generate-deck,slide-visual-qa}\"
+    Write-Host "  Skills:    ~\.claude\skills\*\"
 }
 if (-not $SkipMcp) {
-    Write-Host "  MCP:       ~\.claude\mcp.json (json2pptx server)"
+    Write-Host "  MCP:       json2pptx (Claude Code user scope; see: claude mcp get json2pptx)"
 }
 
 # PATH warning

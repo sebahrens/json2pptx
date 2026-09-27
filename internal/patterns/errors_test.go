@@ -245,3 +245,12 @@ func TestValidateCellOverrideKeysStructuredErrors(t *testing.T) {
 		t.Errorf("Path %q does not contain cell_overrides", ve.Path)
 	}
 }
+
+// TestErrCalloutUnsupportedForPathIsPatternRelative guards go-slide-creator-
+// csclk.60: the harvester roots paths at /slides/i/pattern, so a path of
+// "pattern.callout" produced the unresolvable /slides/i/pattern/pattern/callout.
+func TestErrCalloutUnsupportedForPathIsPatternRelative(t *testing.T) {
+	if got := ErrCalloutUnsupportedFor("kpi-3up", nil).Path; got != "callout" {
+		t.Fatalf("Path = %q, want %q", got, "callout")
+	}
+}
