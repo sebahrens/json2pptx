@@ -334,6 +334,17 @@ This is an explicit authoring choice, not an automatic repair or approval of
 the original overlaid/half-width composition. Do not dim the source, add a scrim,
 or use a cover-cropped grid image as a substitute for whole-source contain.
 
+When the actual editable source data is available, the
+[tested three-page companion example](../../tests/quality/evidence/connectors/midnight-blue/readable-source-companion-route.json)
+adds a native editable swimlane between the text page and complete original.
+It preserves every actor, activity, empty cell and handoff from the source
+fixture, with explicit 20pt lane/activity text. Treat the original screenshot
+as an overview, not the readable detail page. Do not invent missing source data
+or reconstruct ambiguous relationships from pixels. Verify the rendered labels,
+cell associations and arrows; the example's font size is not a universal fit
+guarantee. This route also requires the requested slide count to permit extra
+pages and does not waive defects in the original composition.
+
 ## Footer Configuration
 
 Enable slide footers at the presentation level:

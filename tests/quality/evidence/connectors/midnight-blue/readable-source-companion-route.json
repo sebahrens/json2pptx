@@ -1,0 +1,35 @@
+{
+  "template": "modern",
+  "slides": [
+    {
+      "layout_id": "slideLayout4",
+      "content": [
+        {"placeholder_id":"title","type":"text","text_value":"Quarterly operating review"},
+        {"placeholder_id":"subtitle","type":"text","text_value":"Illustrative test data for review"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout3",
+      "content": [{"placeholder_id":"title","type":"text","text_value":"4. Swimlane — cross-team handoffs"}],
+      "pattern": {
+        "name":"swimlane",
+        "values":{"lanes":[
+          {"actor":"Sales Rep","steps":["Qualify lead","Submit proposal",""]},
+          {"actor":"Legal","steps":["","Review terms","Approve contract"]},
+          {"actor":"Finance","steps":["","","Book revenue"]}
+        ]},
+        "overrides":{"header_size":20,"body_size":20}
+      },
+      "overlays":[
+        {"kind":"arrow","from":{"anchor_cell":{"row":0,"col":1,"at":"center"}},"to":{"anchor_cell":{"row":1,"col":2,"at":"center"}},"color":"accent1","width":1.5},
+        {"kind":"arrow","from":{"anchor_cell":{"row":1,"col":3,"at":"center"}},"to":{"anchor_cell":{"row":2,"col":3,"at":"center"}},"color":"accent1","width":1.5}
+      ]
+    },
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id":"image","type":"image","image_value":{"path":"powerpoint-slide-4.png","alt":"Complete original swimlane source including every label and connector","fit":"contain"}}
+      ]
+    }
+  ]
+}
