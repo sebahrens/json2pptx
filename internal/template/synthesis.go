@@ -30,7 +30,9 @@ func SynthesizeIfNeeded(reader *Reader, analysis *types.TemplateAnalysis) []patt
 		return nil
 	}
 
-	slog.Info("template missing layout capabilities, synthesizing",
+	// WARN, not INFO: a template that needs synthesis is missing mandatory
+	// layouts, and TEMPLATE_SPEC promises a warning (go-slide-creator-csclk.40).
+	slog.Warn("template missing layout capabilities, synthesizing",
 		slog.Any("missing", missing),
 		slog.String("template", analysis.TemplatePath),
 	)

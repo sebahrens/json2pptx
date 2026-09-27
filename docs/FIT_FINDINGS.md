@@ -354,7 +354,7 @@ The measurement no longer requires an explicit `layout_id`. A slide that gives o
 **Pattern:** `placeholder`
 **Fix kind:** `shorten_title`
 
-A section-divider title cannot fit its title box at 28pt or larger without losing text or compressing line spacing. The generator preserves the full title and reports `fix.params.max_chars` from the shared measured word-prefix estimator; strict fit refuses generation. Shorten the heading or choose a divider with a larger title box. Decorative section numbers are not subject to this title policy.
+A section-divider title cannot fit its title box at 28pt or larger without losing text or compressing line spacing — or without breaking a single word across lines. Divider titles shrink until their longest word (all-caps and letter spacing included) fits on one line; a word too wide even at 28pt raises this finding instead of rendering as `PERFORMAN / CE`. The generator preserves the full title and reports `fix.params.max_chars` from the shared measured word-prefix estimator; strict fit refuses generation. Shorten the heading or choose a divider with a larger title box. Decorative section numbers are not subject to this title policy.
 
 ### `TITLE_OVERFLOW`
 

@@ -154,10 +154,19 @@ func runValidateTemplate() error {
 	// Run heuristic checks
 	sectionNumberDiags := checkSectionNumberNaming(layouts)
 
-	valid := validationResult.Valid
+	// Valid used to reflect only the optional metadata JSON, so templates with
+	// no content layout, no theme or dangling relationships reported
+	// Valid: true and then failed to generate. Every template-check FAIL is
+	// folded in as an error finding (go-slide-creator-csclk.35).
+	templateName := filepath.Base(templatePath)
+	conformance, err := template.CheckConformanceReader(reader, templateName)
+	if err != nil {
+		return fmt.Errorf("failed to check template conformance: %w", err)
+	}
+	conformanceDiags := conformanceFailDiagnostics(conformance)
+	valid := validationResult.Valid && len(conformanceDiags) == 0
 
 	// Build result
-	templateName := filepath.Base(templatePath)
 	result := validateTemplateResult{
 		Valid:        valid,
 		Template:     templateName,
@@ -165,7 +174,7 @@ func runValidateTemplate() error {
 		Theme:        buildThemeOutput(theme),
 		Layouts:      buildLayoutsOutput(layouts, *verbose),
 		Capabilities: caps,
-		Findings:     buildTemplateFindings(templateName, validationResult.Diagnostics, sectionNumberDiags),
+		Findings:     buildTemplateFindings(templateName, append(validationResult.Diagnostics, conformanceDiags...), sectionNumberDiags),
 	}
 
 	// Output
@@ -259,6 +268,28 @@ func buildLayoutsOutput(layouts []types.LayoutMetadata, verbose bool) []validate
 		out[i] = vl
 	}
 	return out
+}
+
+// conformanceFailDiagnostics converts every template-check FAIL into an
+// error-severity TEMPLATE_ERROR diagnostic.
+func conformanceFailDiagnostics(report *template.ConformanceReport) []diagnostics.Diagnostic {
+	var ds []diagnostics.Diagnostic
+	for _, c := range report.Checks {
+		if c.Status != template.ConformanceStatusFail {
+			continue
+		}
+		msg := "template-check FAIL: " + c.Check
+		if c.Detail != "" {
+			msg += " — " + c.Detail
+		}
+		ds = append(ds, diagnostics.Diagnostic{
+			Code:     diagnostics.CodeTemplateError,
+			Severity: diagnostics.SeverityError,
+			Message:  msg,
+			Details:  map[string]any{"category": c.Category, "check": c.Check},
+		})
+	}
+	return ds
 }
 
 // buildTemplateFindings folds the metadata-validation diagnostics and the

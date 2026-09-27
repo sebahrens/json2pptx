@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
@@ -198,6 +199,9 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// cannot fit even at the minimum scale, keep the maximum reduction and
 	// report TITLE_OVERFLOW so the author shortens it.
 	if cfg.isTitle {
+		if cfg.sectionTitle {
+			result = capScaleForLongestWord(shape, params, result)
+		}
 		if cfg.findings != nil {
 			if cfg.sectionTitle && (result.Overflow || result.LnSpcReduction > 0) {
 				*cfg.findings = append(*cfg.findings, newSectionTitleFloorFinding(cfg.findingPath, strings.Join(texts, " "), params))
@@ -243,6 +247,56 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	emitReadabilityFinding(&cfg, shape, params, result, len(shape.TextBody.Paragraphs))
 	emitBodySizeFinding(&cfg, result.FontScale)
 	bp.Inner += buildNormAutofitElement(result)
+}
+
+// letterSpacingRegexp finds the first spc (character spacing) attribute in a
+// list style.
+var letterSpacingRegexp = regexp.MustCompile(`\bspc="(-?\d+)"`)
+
+// capScaleForLongestWord shrinks a divider title until its longest word fits
+// on one line. textfit counts a word wider than the box as wrapping by
+// character, so a single long all-caps word ("PERFORMANCE") "fitted" as
+// PERFORMAN / CE (go-slide-creator-csclk.96). A 3% margin absorbs bold weight
+// and inset differences the regular-weight word measurement does not see.
+// When even the divider floor cannot hold the word, the result is marked as
+// overflowing so the section-title floor finding reports it.
+func capScaleForLongestWord(shape *shapeXML, p textfit.Params, res textfit.FitResult) textfit.FitResult {
+	if p.FontSizeHPt <= 0 || len(p.Paragraphs) == 0 {
+		return res
+	}
+	text := strings.Join(p.Paragraphs, " ")
+	// Character spacing (spc, hundredths of a point, not scaled by the font
+	// scale) widens every letter of the word; take it off the usable width.
+	width := p.WidthEMU
+	if shape.TextBody.ListStyle != nil {
+		if m := letterSpacingRegexp.FindStringSubmatch(shape.TextBody.ListStyle.Inner); m != nil {
+			if spc, err := strconv.Atoi(m[1]); err == nil && spc > 0 {
+				longest := 0
+				for _, w := range strings.Fields(text) {
+					longest = max(longest, len([]rune(w)))
+				}
+				width -= int64(longest) * int64(spc) * 127 // hPt -> EMU
+			}
+		}
+	}
+	maxHPt := textfit.MaxFontForWidth(text, width, p.FontName) * 97 / 100
+	if maxHPt <= 0 {
+		return res
+	}
+	scale := res.FontScale
+	if scale == 0 {
+		scale = 100000
+	}
+	if p.FontSizeHPt*scale/100000 <= maxHPt {
+		return res
+	}
+	newScale := maxHPt * 100000 / p.FontSizeHPt
+	if p.MinFontScalePct > 0 && newScale < p.MinFontScalePct*1000 {
+		newScale = p.MinFontScalePct * 1000
+		res.Overflow = true
+	}
+	res.FontScale = newScale
+	return res
 }
 
 // handleNoAutofitDirective respects an explicit <a:noAutofit/> in the template
