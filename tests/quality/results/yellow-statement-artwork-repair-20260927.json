@@ -1,0 +1,54 @@
+{
+  "issue": "go-slide-creator-3qzo4.94",
+  "base_commit": "d1115a9c863b591a52c88e87309bed6fc83e52e4",
+  "published": false,
+  "repair": "Reduce the empty Statement decorative freeform to a quiet 1 cm upper edge by repositioning the original path; reduce its shadow opacity from 26% to 8%.",
+  "template_sha256": "5eba80d18c3ad02c6c1be388f37a91a93149ee156338597100373bb89b42ecea",
+  "changed_package_parts": ["ppt/slideLayouts/slideLayout4.xml"],
+  "preservation": {
+    "native_layout_ids_fonts_source_placeholders_custom_paths_themes_relationships_preserved": true,
+    "all_other_package_payloads_preserved": true,
+    "preview_changes": ["modern-yellow/manifest.json", "modern-yellow/slideLayout4.png"]
+  },
+  "coverage": {
+    "templates": 14,
+    "native_layouts": 108,
+    "probes": 309,
+    "accepted_pixel_identical_to_reviewed_candidate": 247,
+    "unchanged_refusals": 62,
+    "private_p_style_included_locally_and_gitignored": true
+  },
+  "sole_blind_review": {
+    "before_after_pages_inspected": 6,
+    "unreviewed": 0,
+    "review_sha256": "f45f3c877d22b0c4412f0f16ac7fa5ca0096927830e9fbbc90d85fd37dca90b6",
+    "original_image_bytes_and_complete_required_text_verified": true,
+    "dominant_empty_artwork_findings_before": 3,
+    "dominant_empty_artwork_findings_after": 0,
+    "aggregate_visual_approval": false
+  },
+  "regression": {
+    "source_and_generated_package_geometry_and_shadow_checked": true,
+    "complete_required_text_preserved": true,
+    "original_template_negative_control_fails": true,
+    "focused_race_seconds": 2.104
+  },
+  "gates": {
+    "full_short_race": {"passed": true, "cli_seconds": 789.128, "generator_seconds": 237.986, "quality_seconds": 531.094},
+    "integration_corpus": {"passed": true, "seconds": 303.118},
+    "pinned_lint": {"passed": true, "issues": 0},
+    "preview_conformance_mcp_and_golden_checks": {"passed": true},
+    "build_format_and_diff_check": {"passed": true}
+  },
+  "evidence_sha256": {
+    "output/yellow-statement-installed-root-race-20260927-v1.log": "e2f99bda045ebf27c5090ddf5a1d9080c41a639b91e822a752bf411a3458fec2",
+    "output/yellow-statement-installed-integration-corpus-20260927-v1.log": "994dbb58b370af6340a95a9ab27c96caa57c61df813f9ee2e48b18dec15ba0dd",
+    "output/yellow-statement-installed-native-audit-20260927-v1.json": "a62794952eefaaf6abe0a48a94e6d285d6190a79ff6d60bebe579ef279aeb91f",
+    "output/yellow-statement-installed-source-audit-20260927-v1.json": "0a62f679e5b5cefb8a974410903a72530d4a219cf62829fb28b811b92657c34a"
+  },
+  "remaining_findings": [
+    "Statement chart labels remain small; this unchanged minor finding is tracked in go-slide-creator-3qzo4.69.",
+    "Projection-distance readability is untested.",
+    "Refused probes are not counted as visual approval; other outstanding corpus findings are not waived."
+  ]
+}
