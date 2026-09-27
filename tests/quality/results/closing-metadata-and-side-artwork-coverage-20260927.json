@@ -1,0 +1,43 @@
+{
+  "beads": ["go-slide-creator-bl6j6", "go-slide-creator-3qzo4.8"],
+  "status": "installed_targeted_and_corpus_checks_pass_final_full_suite_and_published_ci_pending",
+  "parent_commit": "a93de3861b46a8f4088d793643ec880285ccc749",
+  "template_sha256": "bdad956022fdecd1d1ded9670e960397f1ac4c1b9c0176614b36a90d404daee9",
+  "rendering_source_sha256": "a8c612c95bcc757b7008e38e634cfc5399e9e3695e056a5db456190034e25d01",
+  "metadata_repair": {
+    "scope": "Only modern native Closing layout5 picture id8 description attribute",
+    "description": "Decorative pale lavender wash fading into white; original AI-generated-content disclosure retained exactly",
+    "preservation": "All other bytes of layout5 XML and every other ZIP part unchanged: artwork payload, fonts, master, theme, relationships, wording, frame geometry and other layouts retained",
+    "source_audit": "output/closing-alt-description-candidate-20260927-v1/source-audit.json",
+    "negative_control": "Old installed source and both actual generated keep/exclude-template cases fail exact caption assertions:4.710s, retained negative-control.log",
+    "candidate_regression": "PASS5.849s actual Generate keep/exclude-template outputs retain corrected native description",
+    "conformance": "PASS31checks, exactbdadSHA"
+  },
+  "side_artwork_coverage": {
+    "scope": "Test-only temporary PPTX mutations, no side artwork restored to blue-corporate or its logo-free portability fixture",
+    "cases": "16=4canvases(wide,4:3,portrait,ultrawide)x2sides(left,right)x2origins(masterfilledshape,nativelayoutpicture)",
+    "assertions": "Actual OpenTemplate/BuildProfile parsing checks region origin/name/full geometry and cache invalidation at same filename; all32band combinations check content and source/takeaway horizontal spans",
+    "race_regression": "Final isolated parallel PASS5.829s; sequential PASS59.170s, same16cases and assertions, approximately10x faster",
+    "negative_control": "Exclusion-disabled overlay EXPECTEDFAIL all16exact artwork-span assertions; final parallel4.800s, retained negative-control-v2.log",
+    "limits": "Geometry/collision coverage, not visual approval of new artwork; existing picture payload is reused without creating new illustration assets. All synthetic mutations stay in t.TempDir."
+  },
+  "installed_evidence": {
+    "targeted_regressions": "PASS handle55522:generator5.787s template6.297s",
+    "native_corpus": "PASS41.780s handle6544;14templates108native layouts309probes including ignoredp-style",
+    "candidate_vs_parent": "Candidate comparison.json: all247accepted pixels identical, all309input/status/refusaldiagnostics unchanged, onlymodernlayout5metadataZIPdelta",
+    "installed_vs_candidate": "output/closing-alt-description-installed-native-corpus-20260927-v1/comparison.json: all247accepted pixels and every generatedZIP payload identical; all309input/status/refusaldiagnostics unchanged",
+    "previews": "preview-audit.json joins actual nativeZIP IDs/source/corpus/preview inventories and verifies all108PNG hashes;108pixels/source_content unchanged",
+    "private_template": "p-style sourceSHA1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1 unchanged and gitignored",
+    "golden": "Only modern-template changes tocd9a11a0236e2704ac86982ea10be7571dad9e311582ed2746ac0ee0dda3794c; other3goldens unchanged",
+    "code_review": "output/closing-alt-description-candidate-20260927-v1/scoped-review.json testing/adversarial, no actionable findings; stated visual/cross-renderer residual risks preserved"
+  },
+  "local_gates": {
+    "parent_full_root": "Publisheda93PASS handle88576, CLI825.177s/quality569.718s; complete59-line log fullyread. ParentCI still running at preparation, not claimed complete.",
+    "current_full_root": "Pending complete installed-source race suite; targeted checks do not substitute for this gate",
+    "current_pinned_lint": "PASS0issues handle45048",
+    "current_build": "PASS handle39815; nonfatal module-stat-cache permission warning retained",
+    "previews_and_golden": "PASS sequential preview refresh64708 and golden38559",
+    "source_freeze": "Full suite begins after preview/golden generation finishes; no source/template edits while it runs"
+  },
+  "remaining": "Both beads require final current-source root gate and all exact published-SHA CI workflows beforeclosure. All existing minor composition/chart annotations, source-loss/readability/screenshots, dense/multilingual/allfeature and held-out/contact-sheet-freshness issues remain open. All247identical pixels reuse existing single-reviewer visual evidence; no repeated reviewer, projection or PowerPoint approval claimed."
+}
