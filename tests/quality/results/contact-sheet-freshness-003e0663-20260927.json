@@ -1,0 +1,37 @@
+{
+  "bead": "go-slide-creator-9byyi",
+  "status": "completed_current_engine_replay_historical_pixels_are_obsolete",
+  "engine_commit": "003e066345cd442aac548cac8f940d95c048d499",
+  "binary_sha256": "725faf8b9675a7ecb16796cf0f8664ea1dc93a10e59d502506db0d37afaf7f25",
+  "original_report": "tests/quality/results/agent-20260921T101451Z.json",
+  "previous_review_engine": "7280c531ca671f43e1c0aee6274131a229e77a1a",
+  "current_replay": "output/quality-benchmark-current-20260927-003e0663",
+  "original_inputs": 144,
+  "all_original_input_hashes_unchanged": true,
+  "rendered_current_sheets": 104,
+  "changed_from_original_sheets": 104,
+  "changed_from_previous_review_sheets": 104,
+  "pixel_identical_to_previous_review": 0,
+  "generation_refusals_unscored": 40,
+  "previously_classified_refusals": 35,
+  "additional_refusals": {
+    "count": 5,
+    "cause": "Existing generated-source-loss guard refuses omitted table rows. These are exactly the five previous blind-reviewed decks with critical table omissions.",
+    "runs": [
+      "baseline-process-onboarding-midnight-blue-2",
+      "baseline-process-transformation-midnight-blue-1",
+      "baseline-multilingual-warm-coral-2",
+      "baseline-dense-plan-midnight-blue-2",
+      "baseline-dense-plan-portability-side-logo-2"
+    ]
+  },
+  "audit_sha256": "dec9fa3b5f0cbf6d7eeba1bbe8b8b104b71e90d6702abcc45ff3e7d9ed18b991",
+  "comparison_sha256": "ba2ca1cf03a7469180008d52f36ab3ffdacadc576db3eedb923678284db60161",
+  "new_anonymized_review_packet": "output/quality-benchmark-blind-20260927-003e0663/packet",
+  "validation": {
+    "full_root_race": "PASS",
+    "full_root_race_log_sha256": "aecc07a80fdea7f4e3c708d3b25b2e36bd81940b66f74c30f78c0593802d7fc7",
+    "single_reviewer_documentation_and_rating_contract_tests": "PASS: cmd/json2pptx 0.734s, cmd/qualitybench 1.017s"
+  },
+  "scope": "This answers whether current generator commits change the historical contact sheets and refreshes their review evidence. It preserves frozen template selectors, including the historical held-out template snapshot, for engine isolation. It does not claim that snapshot is the latest fixture template. Current-template coverage is independently tracked by the 14-template/108-layout native corpus. Historical inputs, sheets and ballots were not overwritten. Ratings from old pixels must not be reused. Fresh blind ratings and the committed rated baseline belong to go-slide-creator-0ek6; overall visual closure and release approval remain separate."
+}

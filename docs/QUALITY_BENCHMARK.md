@@ -200,12 +200,22 @@ fewer resolve to `false`, and a 3–3 split is reported as `tie` for adjudicatio
 
 ## Refresh the committed baseline
 
+The current-engine frozen-input baseline is
+[`agent-baseline-003e0663-20260927.json`](../tests/quality/results/agent-baseline-003e0663-20260927.json).
+It has one blind AI reviewer, 104 individually inspected current sheets and 40
+unscored generation refusals; its release decision is **hold**. The linked
+[audit](../tests/quality/results/agent-baseline-003e0663-audit-20260927.json) retains
+the exact inspected image hashes and limitations. This replay preserves the
+historical held-out template snapshot for engine isolation; it does not replace
+the separate current-template all-native-layout corpus. A recorded baseline is
+not visual release approval, and old-pixel ratings must not be reused.
+
 After an engine or workflow change:
 
 1. Run the same frozen briefs, template specification, configurations, and two
    repetitions used by the prior baseline.
 2. Collect one blind human or AI rating file without sharing the blind key.
-3. Apply both CSVs to the new report.
+3. Apply the single reviewer's CSV to the new report.
 4. Commit the rated report under `tests/quality/results/` with the agent model,
    version, prompt, tool calls, artifacts, cost, iterations, and summary intact.
 5. Compare usable rate, Wilson interval, critical failures, disagreements, and

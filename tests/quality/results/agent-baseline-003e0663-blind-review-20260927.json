@@ -1,0 +1,3274 @@
+{
+  "reviewer": {
+    "identity": "Codex (GPT-5-based)",
+    "reviewer_type": "llm",
+    "model_identity": "GPT-5-based per supplied runtime instructions. Exact deployed model identifier is not exposed to this reviewer."
+  },
+  "scope": "Blind original contact-sheet PNG review only. No configuration identities, external sources, canonical templates, source decks or individual slide assets were consulted.",
+  "inventory": {
+    "manifest_item_count": 144,
+    "available_sheet_count": 104,
+    "actual_png_count": 104,
+    "generation_failed_count": 40,
+    "unlisted_pngs": []
+  },
+  "reviewed_count": 104,
+  "inspected_ids": [
+    "00efc353e3798d2c4b1d5217393c12b1",
+    "0116b81858a99e97c94f37ed39ee525b",
+    "08e5d0e58dd02ba8ede639997e48a56f",
+    "09c0322e1342c418e3eaa10760bf453b",
+    "0a61ad939f68b59e96d63e047f71194a",
+    "0df6b473ade06f4988be4441b0d56f15",
+    "0e6bc6c30ee4375fae45762b30451136",
+    "0ef6b1c5af814bc1cbcb176b70220a0a",
+    "1188bb2dec1493385619046c759a8dda",
+    "119ab8cf4afcd77045e6a8770e35df6b",
+    "119dbce91d971820cc07c33c677f9dcc",
+    "15789424373e9dd04f8cc8e1fcb3c4e6",
+    "1628891db21f5d0d8b40feff55e00eb2",
+    "1e47afdef56e6f4f915b62e5d5b4b5fd",
+    "23b4928d560c57f0e8e9183a84482493",
+    "24e27e0996f700aeb100c2da9c63c5b5",
+    "260bd6cb70a1643ff929350a0750052e",
+    "29efde1aafc9a25ebfe17f4d6bfede0b",
+    "2d93cff06272436f44b0445d1b55ac07",
+    "31c250b87adcc6fc64d65bf8415c856d",
+    "31f16606683f6a96e8198ce0ce58e607",
+    "3465ba89befa3f89b7eb29c0a5813e33",
+    "35c7f97339e7e21bdbd9d321fc4072d7",
+    "3771f6dae5a812e8d428c1a29f94eb59",
+    "3a06bcc4e0c4ecae04c069d95676674e",
+    "3a70fa8216ed4c29960f5c0a8c857954",
+    "3a96b43100d700cc0bd77582052ee615",
+    "3b30c8403d425ca4e01c91a609d75960",
+    "3f2361beb6f41160aafe621b2eb0e535",
+    "44f948d732ddf8a9e63e49bae48109d1",
+    "4508d83755ecc067b08f2d88cf4a6a48",
+    "45bc17aceaef6701a5a984ce62a60f63",
+    "487fe6129cb1740650d0247d915ea71d",
+    "48ae5026b0e8afeaebfb7bb9cefab5c1",
+    "4ad9f5ec1766b983861fbc816726d459",
+    "519369f0a758f0bde4609660b72dc95c",
+    "51e096755cbf274ea8148d66ecc1eed3",
+    "5296c3cb4277958627bca0652c5aef32",
+    "54e1bdf681e59cc60521971ae24bf3e6",
+    "56b48cef0ff1e4a19456dd00421700a0",
+    "592ab06cbcf0c8cdb711e4a4801857db",
+    "5c62960c82151330aecc0ef3d82c8647",
+    "5e01b2208c0869169fa2a44fef7c81e6",
+    "5ec9b4585b962e8c2d451d9d951c0b01",
+    "6146c16343345e780bc7e8d021df1140",
+    "6187de014dd3cf55a57fecba02efd4ca",
+    "6387f8428a4b9fcf1345f12aae9f1897",
+    "643975f35fc0cd58352db84faf7e8ff2",
+    "6688e8807ce7900779de20e6027916eb",
+    "68fd377f0b95ee120b15ddf42e7a8142",
+    "6a23970633f6f074bc1a2ba1fc1030a0",
+    "6c6a7f061e057438ff8e39cba997c742",
+    "7098bb4803da7ece7c3b5078b6aba819",
+    "7146fd3987608333bef460fb42a29503",
+    "714e726113b1a4a863d94ff973cb3164",
+    "733fa282c451be5876e8b73350154fb9",
+    "74066cabe6f6fd9c4e5582b905155bde",
+    "7821555af0c49df13f5f3264c323b7e0",
+    "782373626fb03818269d0cde8b103aa8",
+    "79de851adab2168430ce91140a81eafb",
+    "7a188136deb48164a4f4646b9ed6f632",
+    "7ae6d2cff429c4e7d5b1a837443abd2b",
+    "7d8743c3a0b6f2512769dc0031bd1f11",
+    "7f1aa4929986f72e43f0780b32d4e118",
+    "80a676d4fb5b10d280bd82f5b2fb21cb",
+    "83ef2f668cd09653a21d43a1a477b4c2",
+    "867a8747156840fede75f48d73caf047",
+    "888e054e989dee0a590c23a3e62731b3",
+    "8a4efedb47399a3fd729c570e6cefd11",
+    "8c0105d77e0e01de779f2942d3c4bb4e",
+    "8e98c44d8d9f197cc9c9019e03b016d8",
+    "970d40072436519ecddd3b6df299f888",
+    "9f09d980efaac6fd9ee264cf3269e84a",
+    "a46499e16a9f9cd851181d52036eb274",
+    "a5522f7232039dfe560b7182d187b111",
+    "a8761a91c9b7b6e1e17ccdcffd725151",
+    "a90294371520985062267eb71a086cf4",
+    "ad2641ba245d83bb37957d5d3571015c",
+    "af67762759a647a9859f716d19a2e10d",
+    "b597c15a7b8d3ebb422468de150c1272",
+    "b5e2b5d2cfc9f866dd18077cdc8d90d2",
+    "b7c878362da1d693dc449f8764108d2c",
+    "b8138c743984da905aa7dc7be35a2522",
+    "bac93c007e552aa1cc8157c23296a533",
+    "be644ea596173552f2f6e3b580c02bfe",
+    "bebff7d09c5531a8b27f5b31a9ed5031",
+    "bf8b1e9db5038c5def73bc981a9065ca",
+    "c5083d79550a6d552d658728f80bd1b7",
+    "c9586275e5428174281f69e3a949ae81",
+    "ce304ca8124d27321c0f4192fe3ddc9a",
+    "d012ee38c5233d98a3ab9a52eed7fd53",
+    "d290394c5f4deee82816067bc9fe9cc1",
+    "d64b0bdbfb1bf1936285c6e0ce192bf5",
+    "d9cd0e50d34d79dfae5fcf1e9d140c39",
+    "dea0af61bf1c671d5fea94b9b0a916bb",
+    "e06ba17be6f02f29eeb297b5d2254eef",
+    "e2c33470d75169eb4c022a04a529a5f5",
+    "e3238935582e5abc108dd4f4cc5cdc03",
+    "e78f7b4bc40ac1b675f3b162859a5090",
+    "edff28d5a52f10ec56da9cbfc0b24b43",
+    "f04b90bec2604a245fb059998ab996f0",
+    "f1f59bcd74bcd4721bb7f1e9e4c3b1a5",
+    "f8971a9a7b01eae961370639f9e9e706",
+    "f9dcd9c7964297f47dc34cc76da928e7"
+  ],
+  "inspected_files": [
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/00efc353e3798d2c4b1d5217393c12b1.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0116b81858a99e97c94f37ed39ee525b.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/08e5d0e58dd02ba8ede639997e48a56f.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/09c0322e1342c418e3eaa10760bf453b.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0a61ad939f68b59e96d63e047f71194a.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0df6b473ade06f4988be4441b0d56f15.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0e6bc6c30ee4375fae45762b30451136.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0ef6b1c5af814bc1cbcb176b70220a0a.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/1188bb2dec1493385619046c759a8dda.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/119ab8cf4afcd77045e6a8770e35df6b.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/119dbce91d971820cc07c33c677f9dcc.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/15789424373e9dd04f8cc8e1fcb3c4e6.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/1628891db21f5d0d8b40feff55e00eb2.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/1e47afdef56e6f4f915b62e5d5b4b5fd.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/23b4928d560c57f0e8e9183a84482493.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/24e27e0996f700aeb100c2da9c63c5b5.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/260bd6cb70a1643ff929350a0750052e.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/29efde1aafc9a25ebfe17f4d6bfede0b.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/2d93cff06272436f44b0445d1b55ac07.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/31c250b87adcc6fc64d65bf8415c856d.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/31f16606683f6a96e8198ce0ce58e607.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3465ba89befa3f89b7eb29c0a5813e33.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/35c7f97339e7e21bdbd9d321fc4072d7.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3771f6dae5a812e8d428c1a29f94eb59.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3a06bcc4e0c4ecae04c069d95676674e.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3a70fa8216ed4c29960f5c0a8c857954.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3a96b43100d700cc0bd77582052ee615.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3b30c8403d425ca4e01c91a609d75960.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3f2361beb6f41160aafe621b2eb0e535.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/44f948d732ddf8a9e63e49bae48109d1.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/4508d83755ecc067b08f2d88cf4a6a48.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/45bc17aceaef6701a5a984ce62a60f63.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/487fe6129cb1740650d0247d915ea71d.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/48ae5026b0e8afeaebfb7bb9cefab5c1.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/4ad9f5ec1766b983861fbc816726d459.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/519369f0a758f0bde4609660b72dc95c.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/51e096755cbf274ea8148d66ecc1eed3.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/5296c3cb4277958627bca0652c5aef32.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/54e1bdf681e59cc60521971ae24bf3e6.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/56b48cef0ff1e4a19456dd00421700a0.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/592ab06cbcf0c8cdb711e4a4801857db.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/5c62960c82151330aecc0ef3d82c8647.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/5e01b2208c0869169fa2a44fef7c81e6.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/5ec9b4585b962e8c2d451d9d951c0b01.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6146c16343345e780bc7e8d021df1140.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6187de014dd3cf55a57fecba02efd4ca.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6387f8428a4b9fcf1345f12aae9f1897.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/643975f35fc0cd58352db84faf7e8ff2.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6688e8807ce7900779de20e6027916eb.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/68fd377f0b95ee120b15ddf42e7a8142.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6a23970633f6f074bc1a2ba1fc1030a0.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6c6a7f061e057438ff8e39cba997c742.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7098bb4803da7ece7c3b5078b6aba819.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7146fd3987608333bef460fb42a29503.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/714e726113b1a4a863d94ff973cb3164.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/733fa282c451be5876e8b73350154fb9.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/74066cabe6f6fd9c4e5582b905155bde.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7821555af0c49df13f5f3264c323b7e0.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/782373626fb03818269d0cde8b103aa8.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/79de851adab2168430ce91140a81eafb.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7a188136deb48164a4f4646b9ed6f632.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7ae6d2cff429c4e7d5b1a837443abd2b.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7d8743c3a0b6f2512769dc0031bd1f11.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7f1aa4929986f72e43f0780b32d4e118.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/80a676d4fb5b10d280bd82f5b2fb21cb.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/83ef2f668cd09653a21d43a1a477b4c2.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/867a8747156840fede75f48d73caf047.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/888e054e989dee0a590c23a3e62731b3.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/8a4efedb47399a3fd729c570e6cefd11.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/8c0105d77e0e01de779f2942d3c4bb4e.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/8e98c44d8d9f197cc9c9019e03b016d8.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/970d40072436519ecddd3b6df299f888.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/9f09d980efaac6fd9ee264cf3269e84a.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/a46499e16a9f9cd851181d52036eb274.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/a5522f7232039dfe560b7182d187b111.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/a8761a91c9b7b6e1e17ccdcffd725151.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/a90294371520985062267eb71a086cf4.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/ad2641ba245d83bb37957d5d3571015c.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/af67762759a647a9859f716d19a2e10d.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/b597c15a7b8d3ebb422468de150c1272.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/b5e2b5d2cfc9f866dd18077cdc8d90d2.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/b7c878362da1d693dc449f8764108d2c.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/b8138c743984da905aa7dc7be35a2522.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/bac93c007e552aa1cc8157c23296a533.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/be644ea596173552f2f6e3b580c02bfe.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/bebff7d09c5531a8b27f5b31a9ed5031.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/bf8b1e9db5038c5def73bc981a9065ca.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/c5083d79550a6d552d658728f80bd1b7.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/c9586275e5428174281f69e3a949ae81.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/ce304ca8124d27321c0f4192fe3ddc9a.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/d012ee38c5233d98a3ab9a52eed7fd53.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/d290394c5f4deee82816067bc9fe9cc1.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/d64b0bdbfb1bf1936285c6e0ce192bf5.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/d9cd0e50d34d79dfae5fcf1e9d140c39.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/dea0af61bf1c671d5fea94b9b0a916bb.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/e06ba17be6f02f29eeb297b5d2254eef.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/e2c33470d75169eb4c022a04a529a5f5.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/e3238935582e5abc108dd4f4cc5cdc03.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/e78f7b4bc40ac1b675f3b162859a5090.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/edff28d5a52f10ec56da9cbfc0b24b43.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/f04b90bec2604a245fb059998ab996f0.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/f1f59bcd74bcd4721bb7f1e9e4c3b1a5.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/f8971a9a7b01eae961370639f9e9e706.png",
+    "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/f9dcd9c7964297f47dc34cc76da928e7.png"
+  ],
+  "unreviewed_available_count": 0,
+  "unreviewed_ids": [],
+  "unreviewed_files": [],
+  "unreviewable_count": 40,
+  "unreviewable_ids": [
+    "067660fd2cc3f0469b1a248e381cfc3b",
+    "0b157884a9974924a43cda00cc2ee359",
+    "0c7d57e8f79bb1046f7277512bca5c41",
+    "13b999a5e73be49a278662ae02fb8c66",
+    "16e8c52cfdb55b56f572c52dad130fd7",
+    "1afe6a496db6c4ee30caf1a3a556bba9",
+    "1b51faacc50ac09eaf06ee838760e88c",
+    "2259c6e2f8b8de9018375cf23ee2bb73",
+    "22dd2cb3d9ce19d1e88e23efa8c5c23b",
+    "2338ced13b0784e95f076a8e4ec10572",
+    "26f9512c0b48238e90b27a9944ba67dc",
+    "361a9855e786d563dd09b1b829ce89a4",
+    "4eb96d9a2cd1aab82168ab416b0387de",
+    "4fe3a02be2aaf0d2c4d8d0eda55917ab",
+    "55d9b506d2d1690f788073e89c6f240e",
+    "5723a9fd5ba162540c2b52b66a86c0e3",
+    "64d0af591851a61aa722a70720fad9e3",
+    "6a97f18645253bc138e3bda267ff6be4",
+    "6c5ad1e90a62bf478b8dea8825c874f5",
+    "6cd7d6c7cb9f8e06e79a89092119fa64",
+    "6d23140a2d5c699ad4e8b64c88297265",
+    "793fe4912089dc0b3cf0ead2586fc167",
+    "810ffdb76817fdf02211544ca3d7c26f",
+    "848591f40e8a27a71302d1501cbec5f3",
+    "8c52716b3827f73551cb35ae2a747712",
+    "8e9a3df88e61ae47931159a920ed59a3",
+    "99ec459926e52db8392bcd65213934a4",
+    "9ce4858c03780c8ffe6335d8054fbd64",
+    "b0f93fdb9953370b289a7e00066e4ba0",
+    "b1e0ff5d71b9c7ed81f07402f35b06aa",
+    "b98e8c31025c8ec74a3e81e72ab568a2",
+    "c2dcf2332d4e23586b485272815c22d9",
+    "c4acf5ce88ac509739fb1e3769b64141",
+    "c9c02865b469bf13bc3fbaf078278496",
+    "cde95ebf00e30ecef7c8ff8b7be93365",
+    "cf36a7cc1b99be6ed9030aa12a350942",
+    "d2b739c4fe3cdd2613e53e2af77ecc8b",
+    "e040326b41301b0f7ce5f2f56b88cff3",
+    "e42585d59093530e6de70f39fcb3b54b",
+    "e531f8c1456428b58dc243a8adc38451"
+  ],
+  "critical_defects": [
+    {
+      "id": "0e6bc6c30ee4375fae45762b30451136",
+      "evidence": "German narrative remains visible, but Japanese portions show conspicuous empty text and isolated tokens/numbers: KPI 26.1 lacks meaningful surrounding wording; right side of local-model table and final subtitle collapse to fragments (3PL,6). Several cells cannot communicate intended market meaning. Citations are present but extremely small. This is visible semantic loss/ambiguity, not a verified translation or inferred font cause."
+    },
+    {
+      "id": "44f948d732ddf8a9e63e49bae48109d1",
+      "evidence": "German entries and compliance citations survive, but Japanese/locale text is visibly fragmented: Japan population card has isolated2024/10/1, Japan action cards display APPI/10% or blank content, and a takeaway bar is empty. Several headings end in dangling separators. Required bilingual market summary is not usable; do not infer renderer cause."
+    },
+    {
+      "id": "6387f8428a4b9fcf1345f12aae9f1897",
+      "evidence": "Germany content is coherent, while Japan evidence slide contains isolated29.3%/65/2024/5tokens and a largely blank takeaway/citation; Japan localized value propositions collapse into empty bullets and PoC. Numerous dangling separators. Visible multilingual semantic omissions prevent usable bilingual summary; citations cannot restore missing meaning."
+    },
+    {
+      "id": "a46499e16a9f9cd851181d52036eb274",
+      "evidence": "18workstreams,four overlapping phases and six gates are visible, but Phase2 design table extends so low that its source line overlays the last W9 row. Dense tables/cards and gates tiny. 'Three-level' cadence shows four forum rows, relationship unexplained. Visible table/source collision is a critical visual defect; exact source fact loss cannot be proved from this sheet."
+    },
+    {
+      "id": "f04b90bec2604a245fb059998ab996f0",
+      "evidence": "German prose remains visible, but the Japan-side columns and the Japan-specific slide contain empty bullet markers and isolated '10%' with no explanatory wording. Japanese-market KPI cards show fragments such as '1 2380' and '29.3%' without usable labels; comparison-table Japan header/entries are largely blank. These are observed semantic losses, not merely tiny text, and block executive use. Citations alone do not restore missing meaning."
+    }
+  ],
+  "lost_critical_fact_ids": [
+    "0e6bc6c30ee4375fae45762b30451136",
+    "44f948d732ddf8a9e63e49bae48109d1",
+    "6387f8428a4b9fcf1345f12aae9f1897",
+    "f04b90bec2604a245fb059998ab996f0"
+  ],
+  "release_approved": false,
+  "release_approval_reason": "Critical visible defects remain, and 40 generation failures have no reviewable output. This review does not grant aggregate approval.",
+  "limitations": [
+    "Contact sheets are the only supplied visual assets. Each was opened individually at original resolution; small slide text is nevertheless reduced within the sheet. This is not a full-slide pixel inspection or a projection-distance test.",
+    "Factual completeness scores measure brief-level coverage and visible internal consistency, not truth against an external source. No external truth data or complete authored source deck is provided; full critical-fact retention cannot be certified.",
+    "Template fidelity scores measure visible consistency within each deck. No canonical source template is supplied, so fidelity to an original template is unverified.",
+    "Actual SHA-256 hashes were computed from every reviewed PNG. The manifest supplies no expected hashes, so these are actual inspection fingerprints rather than verified matches to independent expected hashes.",
+    "False lost_critical_fact means no critical semantic loss was demonstrated from supplied evidence; it is not a certification of complete source preservation.",
+    "No renderer causality, font identity, configuration ranking, editability, or PowerPoint fidelity is inferred from PNGs."
+  ],
+  "entries": {
+    "00efc353e3798d2c4b1d5217393c12b1": {
+      "id": "00efc353e3798d2c4b1d5217393c12b1",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/00efc353e3798d2c4b1d5217393c12b1.png",
+      "actual_sha256": "0c3892e907b93d8dca2f534371ac60e2fbd3ad4f5b71139dc36900d53d4cd031",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Eight-slide market shift → friction → workflow choice → prove/repeat/expand → phased delivery → impact → approval narrative is coherent. Chart and tables support the argument; table/chart labels and sources are small at sheet scale. Blue/yellow chrome is consistent; no obvious clipping. Scenario ambitions are visibly qualified, not verified source facts.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "0116b81858a99e97c94f37ed39ee525b": {
+      "id": "0116b81858a99e97c94f37ed39ee525b",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0116b81858a99e97c94f37ed39ee525b.png",
+      "actual_sha256": "a0f4331a5da2cc09683b3aa599942393ec7fe7e671672f9e1fc6356b2b12d21f",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "18-workstream plan has phase-specific WS01–WS18 groups, three gate references and W4/W10/W16/W18/W22/W28/W36 critical-path milestones. Clear overview-to-phase hierarchy and consistent orange/brown chrome. Matrix cells and phase-card body text are dense/tiny, limiting executive scanability; exact critical milestones cannot be verified against an absent source plan.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "08e5d0e58dd02ba8ede639997e48a56f": {
+      "id": "08e5d0e58dd02ba8ede639997e48a56f",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/08e5d0e58dd02ba8ede639997e48a56f.png",
+      "actual_sha256": "f97db7418237d3f4816be42f2ae360eabfe975a6b9ba46dadb777c013076cb92",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Apex/Nimbus/Orbit comparison visibly includes price, capability, go-live and risk; eligible-gate explanation resolves Orbit's higher weighted score versus Apex recommendation. Rollout and diligence close are usable. Small caveats and comparison bullets need full-slide checking; consistent blue/yellow chrome, no obvious collision.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "09c0322e1342c418e3eaa10760bf453b": {
+      "id": "09c0322e1342c418e3eaa10760bf453b",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/09c0322e1342c418e3eaa10760bf453b.png",
+      "actual_sha256": "d3d8fc55e06a17b8084373f77ec33008a42ee1fc7d1575bef3e9453a29058d5d",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five labelled annual revenue bars ($120M to $260M) and margin points (12% to24%) support explicit growth/margin takeaway. Values and fiscal years appear consistent with closing summary. Accent block/chrome is repeated; small side insights and footnotes constrain sheet-level reading. Illustrative dataset is disclosed; external truth unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "0a61ad939f68b59e96d63e047f71194a": {
+      "id": "0a61ad939f68b59e96d63e047f71194a",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0a61ad939f68b59e96d63e047f71194a.png",
+      "actual_sha256": "b3183927fa4257ecff393f4945987bb131f7b38ff6577a411eabcaa25ffe31f4",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Build/buy/partner comparison includes speed, differentiation, control, capital efficiency and execution confidence, with symbol legend and conditional partner recommendation. Exit gates and guardrails are explicit. Consistent blue/purple hierarchy; comparison body and caveats small, no obvious clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "0df6b473ade06f4988be4441b0d56f15": {
+      "id": "0df6b473ade06f4988be4441b0d56f15",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0df6b473ade06f4988be4441b0d56f15.png",
+      "actual_sha256": "6bb26719e1f6260cbd243fdd282e503958fc8ee7b9cf52a5d3ef0c00a7bee7a6",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five stages Align/Configure/Validate/Launch/Adopt are mapped to named accountable owners, exit deliverables and three decision gates. Timeline and shared-log actions reinforce the process. Table is dense but orderly; smallest stage text and footer require full-slide confirmation. No visible collision; consistent blue chrome.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "0e6bc6c30ee4375fae45762b30451136": {
+      "id": "0e6bc6c30ee4375fae45762b30451136",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0e6bc6c30ee4375fae45762b30451136.png",
+      "actual_sha256": "79eec90d147a79ee144edaaccb95704d0750c42645e91ad335d00a796c272f61",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 2,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 2,
+        "usability": 2
+      },
+      "lost_critical_fact": true,
+      "critical_template_defect": true,
+      "reason": "German narrative remains visible, but Japanese portions show conspicuous empty text and isolated tokens/numbers: KPI 26.1 lacks meaningful surrounding wording; right side of local-model table and final subtitle collapse to fragments (3PL,6). Several cells cannot communicate intended market meaning. Citations are present but extremely small. This is visible semantic loss/ambiguity, not a verified translation or inferred font cause.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "0ef6b1c5af814bc1cbcb176b70220a0a": {
+      "id": "0ef6b1c5af814bc1cbcb176b70220a0a",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/0ef6b1c5af814bc1cbcb176b70220a0a.png",
+      "actual_sha256": "e1a0e62339fecfeff0cde7cad1b06dff7010a0a5417a1b3a9b9e2b369aef7a06",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Seven-slide decision-loop narrative moves from forces/choice through wedge, action sequence and Adoption/Economy/Moat scorecard to decision. Within-deck typography and colored takeaway bars are consistent. Small source lines and process explanations; no obvious critical clipping. Hypotheses and proposed metrics are identified as such.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "1188bb2dec1493385619046c759a8dda": {
+      "id": "1188bb2dec1493385619046c759a8dda",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/1188bb2dec1493385619046c759a8dda.png",
+      "actual_sha256": "ff91a300e305b2c8ea4d708d1ba92e9b83a376143149db1eb1f9fe043ff52a64",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Four slides show five annual revenue and margin values and a profit-growth takeaway with visible annual-report citations. Margin chart begins near41%, a truncated scale that magnifies a4-point gain; values remain labelled but framing deserves caution. Consistent orange serif hierarchy; external Microsoft facts unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "119ab8cf4afcd77045e6a8770e35df6b": {
+      "id": "119ab8cf4afcd77045e6a8770e35df6b",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/119ab8cf4afcd77045e6a8770e35df6b.png",
+      "actual_sha256": "4c19d958ac7980abf1f51e073f6cc67f1d9d9a629d84b5e69ca010e188955c75",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 5,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Delivery, incidents, capacity and release risk are each evidenced and connected to a focused Identity intervention. 88%,11.4d,97.8%,15/18 cards plus incident counts and -35d gap form a clear executive chain. RAG legend is explicit, though color-based status needs text backup at full-slide scale. Many small side notes; no obvious overlap.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "119dbce91d971820cc07c33c677f9dcc": {
+      "id": "119dbce91d971820cc07c33c677f9dcc",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/119dbce91d971820cc07c33c677f9dcc.png",
+      "actual_sha256": "08c99be4da8da1a4ce8914cb02d2a3a93d2314aee9712bee3ba2ecd59ef291c3",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Six-slide five-year financial narrative includes labelled revenue/margin charts and a full fiscal-year table, ending with scale/leverage/inflection synthesis. Internal headline values are consistent; margin scale is compressed near41–46 and should not be read as an enormous absolute improvement. Small table/citation text; consistent blue chrome.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "15789424373e9dd04f8cc8e1fcb3c4e6": {
+      "id": "15789424373e9dd04f8cc8e1fcb3c4e6",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/15789424373e9dd04f8cc8e1fcb3c4e6.png",
+      "actual_sha256": "e8f60e74eb6e3e577bbc130c6b08529793b59c7fd6712c54e565df9502dcb822",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five-year financial table, revenue bars and margin points support $113.6B/4.0-point summary and explicit FY2023 inflection. Clear summary framework and orange/purple consistency. Fine table/side-note type and truncated margin axis are cautions. Annual-report citations visible but not externally verified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "1628891db21f5d0d8b40feff55e00eb2": {
+      "id": "1628891db21f5d0d8b40feff55e00eb2",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/1628891db21f5d0d8b40feff55e00eb2.png",
+      "actual_sha256": "ca7cac203585de8eadee287b4909d54fc173537c70890afed85f58d538c2f73a",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Delivery reliability, incidents by severity, capacity mix and downside/base/mitigated scope forecasts are all shown with labelled values and targeted approvals. Chart baselines and color series need careful reading; forecast scope and confidence language could be tightened. Consistent blue/red accents; very small side notes but no clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "1e47afdef56e6f4f915b62e5d5b4b5fd": {
+      "id": "1e47afdef56e6f4f915b62e5d5b4b5fd",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/1e47afdef56e6f4f915b62e5d5b4b5fd.png",
+      "actual_sha256": "2caaa2c203485a4cdabbc30bd84251ac86b7febe1bb4e8ec5a7d5ee6d9aa477c",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Technology and operating-model tracks align across four phases, with shared gates, current/target comparison and launch-option scoring legend. Approval ask is explicit in last slide. Some grid/option body text is small; blue/red contrast and repeated chrome remain coherent, no obvious overlap.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "23b4928d560c57f0e8e9183a84482493": {
+      "id": "23b4928d560c57f0e8e9183a84482493",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/23b4928d560c57f0e8e9183a84482493.png",
+      "actual_sha256": "6ce63ae01480ae7a4e415b7eb965d1103a0f03a433c50b92b7cd9d911e2fc000",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Seven-slide transformation sequence includes paired tracks, four shared gates with technology/operating evidence, governance and a90-day lighthouse ask. Matrices and governance boxes are dense at sheet scale; headline/decision separation is good. Consistent orange/brown style, no apparent loss; source readiness criteria unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "24e27e0996f700aeb100c2da9c63c5b5": {
+      "id": "24e27e0996f700aeb100c2da9c63c5b5",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/24e27e0996f700aeb100c2da9c63c5b5.png",
+      "actual_sha256": "3e023666c57fa4361212391d66bce3a7b9540aa663275bd9e6192d41e29c99c4",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "All four KPI subjects are visible (+18%,72.4%,116%,$6.8M), supported by quarterly revenue bars, labelled margin/retention lines and cash bridge. Waterfall labels and small side insights need full-slide reading. Orange/teal/brown palette is coherent; illustrative status disclosed; internal bridge visibly reconciles to6.8M.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "260bd6cb70a1643ff929350a0750052e": {
+      "id": "260bd6cb70a1643ff929350a0750052e",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/260bd6cb70a1643ff929350a0750052e.png",
+      "actual_sha256": "eacac659cc6ff2f6412c1f5354c7393f00d62e0c32220cc73c0011e09d19bc7a",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Eight-slide workflow strategy has market comparison, scarce-assets table, option scoring, operating architecture, phased plan and quantified targets. Strong choice-to-action chain and disclosed planning targets. Dense four-column architecture/roadmap cells make the sheet hard to scan; smallest source/legend text requires originals. Blue/red/yellow accents consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "29efde1aafc9a25ebfe17f4d6bfede0b": {
+      "id": "29efde1aafc9a25ebfe17f4d6bfede0b",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/29efde1aafc9a25ebfe17f4d6bfede0b.png",
+      "actual_sha256": "6a4e260f5a550819371fa7de24d26b907dcc6a83d938dde99d5d5ebd8951b63b",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five slides preserve both tracks over18months, gate table and governance/accountability. Final ask is specific but wraps into a short final 'one package' line; title/body shapes otherwise coherent. Table body and footer are small; no critical clipping, repeated blue chrome.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "2d93cff06272436f44b0445d1b55ac07": {
+      "id": "2d93cff06272436f44b0445d1b55ac07",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/2d93cff06272436f44b0445d1b55ac07.png",
+      "actual_sha256": "70f42fe61de36e034a6e306575ab8fcdd37a8d0cb8621db6ebbb70665d859d28",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Regional paired bars retain four region values, mix columns show Enterprise/Mid-market/SMB percentages, and labelled waterfall names volume/price-mix as two largest drivers ($10.9M/70%). No evident value omission; small readout labels and compressed bridge axis are cautions. Orange/teal/brown consistent, illustrative data disclosed.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "31c250b87adcc6fc64d65bf8415c856d": {
+      "id": "31c250b87adcc6fc64d65bf8415c856d",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/31c250b87adcc6fc64d65bf8415c856d.png",
+      "actual_sha256": "19f8ad50757a3c8a2a3e1d6cea16259b2b5534c48d71d93ee1dfa4e5e51020f6",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Growth,margin,retention,cash KPI cards are followed by evidence charts and a retention-focused action close. Revenue actual/plan and retention series are labelled; cash balance versus free cash flow is separately named. Negative first cash bar sits close to baseline, and small notes merit full-slide check. Consistent orange/brown/teal, no visible severe defect.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "31f16606683f6a96e8198ce0ce58e607": {
+      "id": "31f16606683f6a96e8198ce0ce58e607",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/31f16606683f6a96e8198ce0ce58e607.png",
+      "actual_sha256": "cb66cdfd1aedef369b04b96912a8f24376c10e8226c13943f79abb44e9828408",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Regional bars and mix table retain FY25/FY26 values, with Europe+33m and price/mix+34m clearly separated. Waterfall shows34+22+13−9=60m and two drivers56m/93%; consistent internal arithmetic. Increment bars are visually tiny relative to800/860m totals, so chart alone under-emphasizes drivers; explicit labels compensate. Orange/purple style consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "3465ba89befa3f89b7eb29c0a5813e33": {
+      "id": "3465ba89befa3f89b7eb29c0a5813e33",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3465ba89befa3f89b7eb29c0a5813e33.png",
+      "actual_sha256": "59aba23762491d89a5f4c942d0f91a1b0793924b838697cac3ba61a6fc4fbb43",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "ARR,EBITDA margin,NRR and FCF KPI cards are accompanied by revenue actual/plan, segment retention and8.9−1.0−0.7=7.2 cash bridge. Decision close names selective spending priorities. Legend/body and source text small; coherent blue/red/yellow/green palette with no visible severe overlap.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "35c7f97339e7e21bdbd9d321fc4072d7": {
+      "id": "35c7f97339e7e21bdbd9d321fc4072d7",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/35c7f97339e7e21bdbd9d321fc4072d7.png",
+      "actual_sha256": "021660c22dc7a63b03eeb10664a6426dabdd00f54baae7e45da988a20ed0f27e",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five stages each get owner,target timing,gate condition,if-not-ready route and output; overview table and dedicated stage pages are internally aligned. Clear two-column stage/gate hierarchy; table and footer small but body not excessively dense. Orange/brown chrome consistent; no obvious missing gate.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "3771f6dae5a812e8d428c1a29f94eb59": {
+      "id": "3771f6dae5a812e8d428c1a29f94eb59",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3771f6dae5a812e8d428c1a29f94eb59.png",
+      "actual_sha256": "71d0e9877a398cda43ce9f169e126c34babf090df4b9730b3f66acdc6b2b1398",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five named stages and four decision gates are visible, with approvers/pass evidence/if-not-ready actions. Governance slide adds owner/cadence. Stage-stack owner/outcome text is very small and gate table densely wrapped, reducing real-use scanability; no obvious semantic loss. Blue chrome consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "3a06bcc4e0c4ecae04c069d95676674e": {
+      "id": "3a06bcc4e0c4ecae04c069d95676674e",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3a06bcc4e0c4ecae04c069d95676674e.png",
+      "actual_sha256": "48a2debdd2a9302bbc9c8127fb7678efcfcaf15f8f129c8b13d5522477bf2164",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Two tracks, four gates and three governance forums are explicitly aligned, with first90day mobilization ask. Table and timeline labels are small but organized. Closing title isolates 'journeys' on a short second line; minor rag issue. Repeated blue/purple chrome remains intact.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "3a70fa8216ed4c29960f5c0a8c857954": {
+      "id": "3a70fa8216ed4c29960f5c0a8c857954",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3a70fa8216ed4c29960f5c0a8c857954.png",
+      "actual_sha256": "e7f4bff77155c03109b83d52b1a35e7a552b5a9324c76967675abe90c9b37005",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Four region values, mix shares and$8.8M top-two-driver bridge are visible and reconcile to106.5M. Headline calls Enterprise a 'majority' while chart/readout shows50%, exactly half; tighten wording to avoid semantic overstatement. Fine numeric annotations and truncated waterfall range are cautions; consistent blue/red.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "3a96b43100d700cc0bd77582052ee615": {
+      "id": "3a96b43100d700cc0bd77582052ee615",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3a96b43100d700cc0bd77582052ee615.png",
+      "actual_sha256": "98bb1d6d737949e545c18d07a143ab86a072e9eec4f4b07aa29df2e19b8fc7da",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Six-slide KPI snapshot covers growth,margin,retention,cash with quarterly labelled data and27.4→18.6 bridge. Margin +260bps across three quarters and card+180bpsYoY use different stated periods, not inherently contradictory. Margin axis is narrow71.5–74.5, accentuating change; clarify visual scale. No severe clipping, blue styling coherent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "3b30c8403d425ca4e01c91a609d75960": {
+      "id": "3b30c8403d425ca4e01c91a609d75960",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3b30c8403d425ca4e01c91a609d75960.png",
+      "actual_sha256": "ae0892174aafb7ab13f1f5a3679e0fae60c78db8c45eb5cc50c1f1081a8229c4",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 2,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Growth/retention/cash structure and typography are clear, but margin-driver slide headline says260bps while visible bars show130+80+50+20=280bps. This material internal inconsistency requires correction before real use. Other KPI values and cash bridge are labelled; small notes, no obvious template collision. External source facts not verified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "3f2361beb6f41160aafe621b2eb0e535": {
+      "id": "3f2361beb6f41160aafe621b2eb0e535",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/3f2361beb6f41160aafe621b2eb0e535.png",
+      "actual_sha256": "349892578074abc5169af61ac85b19ce221bb4ffbd0f6fcf2c84c4ecce4f0db0",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Partner recommendation, build/buy tradeoffs, cost curves and reversible four-gate plan are explicit. Weighted-score row appears to show Partner4,4,4,4,5 under30/25/20/15/10% weights, which implies4.1 rather than displayed4.2; confirm at full-slide resolution. Cost savings claim matches about3.6 versus5.2. Small score/footnotes, consistent orange style.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "44f948d732ddf8a9e63e49bae48109d1": {
+      "id": "44f948d732ddf8a9e63e49bae48109d1",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/44f948d732ddf8a9e63e49bae48109d1.png",
+      "actual_sha256": "df63eefbbf5a891899bb7aaead2a73a7ecb6a3a93c5ae755699ea066224976b5",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 2,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 2,
+        "usability": 2
+      },
+      "lost_critical_fact": true,
+      "critical_template_defect": true,
+      "reason": "German entries and compliance citations survive, but Japanese/locale text is visibly fragmented: Japan population card has isolated2024/10/1, Japan action cards display APPI/10% or blank content, and a takeaway bar is empty. Several headings end in dangling separators. Required bilingual market summary is not usable; do not infer renderer cause.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "4508d83755ecc067b08f2d88cf4a6a48": {
+      "id": "4508d83755ecc067b08f2d88cf4a6a48",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/4508d83755ecc067b08f2d88cf4a6a48.png",
+      "actual_sha256": "e38fb224147605c95d8eaab82ec70cac7c36e87624b142b3b3df899e141baa56",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Eight-slide five-stage playbook includes swimlane ownership, stage evidence, five-gate ledger and PASS/HOLD/ESCALATE protocol. Clear handoff logic and consistent blue chrome. Swimlane/table/process-card explanations are very small, so details need full-slide legibility review; no evident whole-stage omission.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "45bc17aceaef6701a5a984ce62a60f63": {
+      "id": "45bc17aceaef6701a5a984ce62a60f63",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/45bc17aceaef6701a5a984ce62a60f63.png",
+      "actual_sha256": "7754011436b7a7e9dc9aec38571f2b1aa4667d5d35e602046bf0300caa69b76d",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Workstreams01–18, four phases/gates and seven dated milestones are visible across ten slides. Title 'Three lenses' is followed by four numbered principles, a minor internal counting inconsistency. Dense design columns and gate details are tiny at sheet scale; exact source milestones remain unverified. Blue chrome consistent, no critical clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "487fe6129cb1740650d0247d915ea71d": {
+      "id": "487fe6129cb1740650d0247d915ea71d",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/487fe6129cb1740650d0247d915ea71d.png",
+      "actual_sha256": "bd21022481d10f414319e15b00d229051a446f278af267dfa2ac0c480118db9b",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 5,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Board context/performance/risks/decisions/next90days are clearly separated with numbered section dividers. Revenue/margin/NRR/runway cards and risk table support a$1.2m reallocation ask and named executive owners. Small risk triggers and notes need full-slide reading; consistent blue chrome, no obvious critical defect.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "48ae5026b0e8afeaebfb7bb9cefab5c1": {
+      "id": "48ae5026b0e8afeaebfb7bb9cefab5c1",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/48ae5026b0e8afeaebfb7bb9cefab5c1.png",
+      "actual_sha256": "43b26be4c691445e46381fae4b3804b59eebe6d0cf63317991396a4a7cbf5b8c",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Northstar/Vertex/Keystone table includes3-yearTCO,capability,weeks,RAG risk and weighted score; cost/time charts reinforce recommendation and diligence terms. Color legend reduces ambiguity. Tiny weighted-score formula/assumptions remain a check; no severe clipping, cohesive blue palette.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "4ad9f5ec1766b983861fbc816726d459": {
+      "id": "4ad9f5ec1766b983861fbc816726d459",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/4ad9f5ec1766b983861fbc816726d459.png",
+      "actual_sha256": "1d10f52e18f01d50405f417c23bce483fcbf83747dd0842a37a634a33aa65e76",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Technology/operating model tracks, four releases, three gates and funding forum are present. Some content-slide titles sit unusually close to the upper edge and gate-box text is tiny; hierarchy is less polished than the coherent body tables. Blue/yellow chrome is repeated but top-title spacing merits repair/check; no proved missing content.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "519369f0a758f0bde4609660b72dc95c": {
+      "id": "519369f0a758f0bde4609660b72dc95c",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/519369f0a758f0bde4609660b72dc95c.png",
+      "actual_sha256": "4bad00d4e3e50a71c6dadb845dac6221e743ca84119f34fbfc35e1fbd4888b32",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Four synchronized waves, separate technology sequence and operating-model mechanisms lead to joint readiness/release/scale evidence and a90day ask. Clear within-deck orange/brown/teal palette. Small gate/roadmap explanation text and closing90-/day wrap are cautions; no obvious loss or collision.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "51e096755cbf274ea8148d66ecc1eed3": {
+      "id": "51e096755cbf274ea8148d66ecc1eed3",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/51e096755cbf274ea8148d66ecc1eed3.png",
+      "actual_sha256": "18b31685e4071a3b1d6e93f65363a04f1554cf45d0178a30e1ae9a3d4d70caee",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Market shift,priority-journey choice,three operating moves,12month sequence and leading impact targets create a complete strategy chain. Targets are visibly aims, not measured outcomes. Small architecture/roadmap text and scoring-symbol legend remain cautions; blue/purple palette/chrome consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "5296c3cb4277958627bca0652c5aef32": {
+      "id": "5296c3cb4277958627bca0652c5aef32",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/5296c3cb4277958627bca0652c5aef32.png",
+      "actual_sha256": "7d7d7abe8ec01c6eea6d686c7a1c7ee89241662d18eadf3dcbff65966268e358",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "RelayWorks narrative moves from seat sales to dispatch-to-resolution outcomes, states will/will-not tradeoffs, four evidence gates and quantified targets. Clear action/impact close with design partners and baseline. Small framework and roadmap body labels; consistent orange/brown, no obvious critical clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "54e1bdf681e59cc60521971ae24bf3e6": {
+      "id": "54e1bdf681e59cc60521971ae24bf3e6",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/54e1bdf681e59cc60521971ae24bf3e6.png",
+      "actual_sha256": "b58491fa631762e13e73eb15280bbb608644a027a1fa8c302530ccb927bbc6ee",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 2,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "KPI cards,quarterly revenue,retention and cash bridge are visually orderly, but margin-driver chart labels130+80+50+20bps=280 while headline says260. Material internal inconsistency needs correction. Closing title isolates 'gains'; small footnotes. No apparent template collision; external facts unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "56b48cef0ff1e4a19456dd00421700a0": {
+      "id": "56b48cef0ff1e4a19456dd00421700a0",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/56b48cef0ff1e4a19456dd00421700a0.png",
+      "actual_sha256": "a493e1fe973f24b2705237f2807df368ab9e947156663b1be82ae0e7d44403fb",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 3,
+        "factual_completeness": 2,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Board deck covers context,evidence,risk matrix,decisions and90day roadmap. Claim 'Three of four ... on or ahead of plan' conflicts with ARR card3% below plan and NRR111% versus115% plan; caption says retention is only KPI below plan. Clarify this material internal contradiction. Several headlines sit very close to top edge and fine body text is small; blue chrome otherwise coherent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "592ab06cbcf0c8cdb711e4a4801857db": {
+      "id": "592ab06cbcf0c8cdb711e4a4801857db",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/592ab06cbcf0c8cdb711e4a4801857db.png",
+      "actual_sha256": "ee7182a3926ab97edea3c6efc9d5458df641299c973b0bd79ccf10c9fe7c6972",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 3,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Context/backlog-performance/capacity chain,risk matrix,two approvals and120day plan are explicit. EBITDA bridge8.7+1.4+1.2−.7−.4=10.2 supports headline. Some first-row titles are near upper edge and body/trigger text tiny. Consistent blue palette but title margins uneven; no obvious critical data loss.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "5c62960c82151330aecc0ef3d82c8647": {
+      "id": "5c62960c82151330aecc0ef3d82c8647",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/5c62960c82151330aecc0ef3d82c8647.png",
+      "actual_sha256": "be1a747212c9acf02151a6d5d2b16124b4f6866a171391cf96341ca7bad133a9",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Four regional paired bars,51/32/17 enterprise mix and labelled101.8→117.4 bridge preserve values and two largest drivers6.1/4.8=10.9. Sources disclose rounding. Small legend/readout text and cropped-range bridge axis are cautions; cohesive blue/red/green, no overlap.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "5e01b2208c0869169fa2a44fef7c81e6": {
+      "id": "5e01b2208c0869169fa2a44fef7c81e6",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/5e01b2208c0869169fa2a44fef7c81e6.png",
+      "actual_sha256": "89841e0ba926cd2ab257da06d223d80772f6df0910874daea5b2da0da887847a",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five regional annual bars and complete regional table show Greater China decline/mix loss; Services+iPhone bridge and summary name the two largest growth drivers. Value labels and fiscal years retained. Tiny mix table and very thin waterfall increments reduce scanability; public-data citations visible, not externally verified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "5ec9b4585b962e8c2d451d9d951c0b01": {
+      "id": "5ec9b4585b962e8c2d451d9d951c0b01",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/5ec9b4585b962e8c2d451d9d951c0b01.png",
+      "actual_sha256": "312483366e7f913ae6198acf53b2732af1ecd3a854d588492f77da38c7c765a3",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Three CRM vendors compared on3-yearTCO index,capability,time andrisk; separate scored capability table supports a conditional Dynamics pilot. Source notes identify illustrative planning/internal assessment. Red table header is a distinct accent but not a proven template violation. Small cells/footnotes; no evident data omission.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "6146c16343345e780bc7e8d021df1140": {
+      "id": "6146c16343345e780bc7e8d021df1140",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6146c16343345e780bc7e8d021df1140.png",
+      "actual_sha256": "d65ff644f23dde3e8582194f8b6c2ba3b3f10b61d98d2ee18285c91d01c138ed",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Board narrative includes market response,revenue actual/plan,activation miss,risk table,two approvals and dated90day outcomes. Timeline annotation text is extremely small and revenue bars lack per-bar printed values, making sheet-level evidence reading harder. Consistent blue/red chrome; no clear missing brief category.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "6187de014dd3cf55a57fecba02efd4ca": {
+      "id": "6187de014dd3cf55a57fecba02efd4ca",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6187de014dd3cf55a57fecba02efd4ca.png",
+      "actual_sha256": "a8316d6b5c7ce77e5a1257d87c0333c0f16d036286db7a4bab7d6db4510c3a94",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Technology/operating-model waves,five joint gates,governance forums and paired delivery/adoption signals are complete at broad brief level. Several headings sit close to top edge; four-column roadmap/governance explanations are tiny. Palette is coherent but dense cells and title margins limit presentation polish. No proved source loss.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "6387f8428a4b9fcf1345f12aae9f1897": {
+      "id": "6387f8428a4b9fcf1345f12aae9f1897",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6387f8428a4b9fcf1345f12aae9f1897.png",
+      "actual_sha256": "923b3437778ad0e5d22fc5913c45088646e5400d215bda57a9bae220413784b0",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 2,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 2,
+        "usability": 2
+      },
+      "lost_critical_fact": true,
+      "critical_template_defect": true,
+      "reason": "Germany content is coherent, while Japan evidence slide contains isolated29.3%/65/2024/5tokens and a largely blank takeaway/citation; Japan localized value propositions collapse into empty bullets and PoC. Numerous dangling separators. Visible multilingual semantic omissions prevent usable bilingual summary; citations cannot restore missing meaning.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "643975f35fc0cd58352db84faf7e8ff2": {
+      "id": "643975f35fc0cd58352db84faf7e8ff2",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/643975f35fc0cd58352db84faf7e8ff2.png",
+      "actual_sha256": "18a401ecc74961e3ba5a32a2f07d27c7d485c61467d88ab648fee0bf89e97064",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Build/buy/partner recommendation states explicit penalties,control guardrails,buy fallback and90day gate process. Weighted-symbol table has a legend, though exact numeric score derivation is not independently shown. Small tradeoff bullets and sources; blue/red/yellow styling consistent, no critical clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "6688e8807ce7900779de20e6027916eb": {
+      "id": "6688e8807ce7900779de20e6027916eb",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6688e8807ce7900779de20e6027916eb.png",
+      "actual_sha256": "46375032609fc6b4e58583decef48053ca3c0f903b8d258658929f9571bda6a2",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Concise three-slide five-year revenue/margin story retains all five value labels and explains FY2023 dip before stronger margins. Clear chart/readout hierarchy; narrow41–46margin axis exaggerates visual magnitude but values/4.0pt claim are explicit. Annual-report source line tiny and unverified; orange styling consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "68fd377f0b95ee120b15ddf42e7a8142": {
+      "id": "68fd377f0b95ee120b15ddf42e7a8142",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/68fd377f0b95ee120b15ddf42e7a8142.png",
+      "actual_sha256": "13004ff97b5576ef03a381d1f4a77f4a948e51484ac4859704934308afc9f50b",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Salesforce/Dynamics/HubSpot have cost index,capability,time/risk and scored capability table, followed by pilot safeguards and approval. Tradeoffs are explicit and scores sum18/17/15. Small table/body labels and long final-title wrap are cautions. Orange/brown chrome cohesive; no visible critical defect.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "6a23970633f6f074bc1a2ba1fc1030a0": {
+      "id": "6a23970633f6f074bc1a2ba1fc1030a0",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6a23970633f6f074bc1a2ba1fc1030a0.png",
+      "actual_sha256": "0ae372362fecbb46bf5c6aa930ba0110de0eee13b67901a37eaebdf63f27a17d",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Three-slide financial review retains five revenue bars and a three-metric FY21–FY25 table, with explicit13.8%CAGR/4.0margin-point insight. No missing year appears. Table is tiny and margin trend is mainly prose/table rather than chart; compact blue presentation remains usable for executive summary.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "6c6a7f061e057438ff8e39cba997c742": {
+      "id": "6c6a7f061e057438ff8e39cba997c742",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/6c6a7f061e057438ff8e39cba997c742.png",
+      "actual_sha256": "ec5f19ac2d9340b2678e994f0204975b1c7de1f2d97e7a3eb95851cd16b9a369",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "KPI cards and revenue/retention/cash evidence are coherent; margin driver bars130+80+50+20=280bps while KPI card says+180bps without an explicit comparison period. Different periods may explain this, but missing baseline association creates ambiguity. No260bps headline contradiction is visible here. Fine annotations small; blue/purple chrome consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "7098bb4803da7ece7c3b5078b6aba819": {
+      "id": "7098bb4803da7ece7c3b5078b6aba819",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7098bb4803da7ece7c3b5078b6aba819.png",
+      "actual_sha256": "2f214d5d6450bd606c895614706aa0ae6bcde0eff047450a22c84bbaa1f84af3",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Build/buy/partner tradeoffs,two asset constraints and four contractual gates are explicit. Visible weights25/25/20/20/10 with Build2/5/2/5/3 imply3.45 versus printed3.40; Partner4/4/3/4/5 imply3.90 versus3.95. Confirm full-slide digits and correct score arithmetic. Small dense table, coherent blue/multicolor accents.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "7146fd3987608333bef460fb42a29503": {
+      "id": "7146fd3987608333bef460fb42a29503",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7146fd3987608333bef460fb42a29503.png",
+      "actual_sha256": "86283f2987fea060944a7c63c992d3fc969acd33fa87ee08317a0450bf646b2e",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Regional values,mix percentages and all waterfall contributions are retained in a concise four-slide evidence deck. Some first-row titles are close to upper edge; limited prose synthesis beyond headline leaves implications less developed. Larger charts help legibility, though bridge uses a truncated95–120axis. Blue/red/green consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "714e726113b1a4a863d94ff973cb3164": {
+      "id": "714e726113b1a4a863d94ff973cb3164",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/714e726113b1a4a863d94ff973cb3164.png",
+      "actual_sha256": "5801253b57d5dcf6d5415b9fcbe3071de633bb335e566e5c711e373097b997b2",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 3,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Four KPI cards and evidence charts cover revenue,margin bridge,retention and operating/capital/free-cash flow with visible labels. Margin bridge69+2+1.7+.8−.9−.6=72 internally reconciles. Very small side comments and near-top-edge headlines limit polish; no apparent loss. Series colors and units named, external data unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "733fa282c451be5876e8b73350154fb9": {
+      "id": "733fa282c451be5876e8b73350154fb9",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/733fa282c451be5876e8b73350154fb9.png",
+      "actual_sha256": "5ebfaacbfe8bfb2551f99dd86e6f4906bfad67fb62ad980f2f80b0130c47d879",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Partner choice includes explicit tradeoffs,weighted-symbol legend,owned-versus-partnered layers and90day decision gates. Vertical architecture labels and dense option bullets are tiny; final title leaves 'pilot.' isolated. Internal palette/chrome coherent, no critical collision; score assumptions remain illustrative.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "74066cabe6f6fd9c4e5582b905155bde": {
+      "id": "74066cabe6f6fd9c4e5582b905155bde",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/74066cabe6f6fd9c4e5582b905155bde.png",
+      "actual_sha256": "94a6e472e5f5be617f659870d3fdb0205c9a3bca8aa14030c91fcb5b1bf9b991",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Atlas/Beacon/Cedar comparison retainsTCO,capability,weeks,risk and contract gates. Closing says Atlas is within3% of lowestTCO, while590versus570is about3.5%; correct or qualify this numeric claim. Capability table and gate-box text small, orange/brown chrome consistent, no obvious clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "7821555af0c49df13f5f3264c323b7e0": {
+      "id": "7821555af0c49df13f5f3264c323b7e0",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7821555af0c49df13f5f3264c323b7e0.png",
+      "actual_sha256": "70ef5b8653dcd47866fa95bad1d92ae1ff4901e6a115dfaaf17eea662a93c14d",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Growth18%,margin70%,NRR114%,FCF4.2M and cash18.6M are distinctly labelled with revenue trend,margin bridge and retention measures. Bridge66.5+1.1−.4+2.2+.6=70 supports takeaway. Small notes and retention-bar scale comparisons need care; consistent blue/purple/green, no visible severe defect.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "782373626fb03818269d0cde8b103aa8": {
+      "id": "782373626fb03818269d0cde8b103aa8",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/782373626fb03818269d0cde8b103aa8.png",
+      "actual_sha256": "e5cce41527543ec19b502c5c43aea64224861894afe9a2c8926dbfca3a4f048b",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "18 numbered workstreams distributed across mobilize/design,build,adoption andlaunch pages, with five gated phases and sevenW2–W20milestones. Coverage is broad and explicit, but five-column task explanations are tiny/dense. Title and key checkpoints remain clear. No source plan exists for exact milestone-loss audit.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "79de851adab2168430ce91140a81eafb": {
+      "id": "79de851adab2168430ce91140a81eafb",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/79de851adab2168430ce91140a81eafb.png",
+      "actual_sha256": "5953c85b49bcd4b18fe3a0fb7b632010df17eb5613ee98c0b8784ab31f0c6724",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Ten slides give shift/choice/action/impact narrative with option screen,will-not-do choices,operating architecture,timeline and target cards. Clear proposed/illustrative scenario labelling. Initial story-outline plus summary adds repetition for a 'concise' request; fine architecture/plan labels are tiny. Coherent orange/purple, no severe clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "7a188136deb48164a4f4646b9ed6f632": {
+      "id": "7a188136deb48164a4f4646b9ed6f632",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7a188136deb48164a4f4646b9ed6f632.png",
+      "actual_sha256": "2dfd3994ee989c22ea9bb17025aad7fb771e19787ca83ff9262d4822242eebe4",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Build,buy,partner each have gain/tradeoff pages,weighted option scores and an8week proof path; buy recommendation is explicit. Headline says speed/delivery risk carry 'half' the decision, while table weights25%+20%=45%, not50%; tighten wording. Fine score/tradeoff text; consistent orange/brown/teal/purple.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "7ae6d2cff429c4e7d5b1a837443abd2b": {
+      "id": "7ae6d2cff429c4e7d5b1a837443abd2b",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7ae6d2cff429c4e7d5b1a837443abd2b.png",
+      "actual_sha256": "5b03b8a23373592236d16cbe3adc1e5a7e3df4f752d36d92702289993a3ef400",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "APAC mix gain and two largest regional contributors are supported by four region values,mix shares and200→230bridge with16+6+5+3=30. No external values verified. Bars lack printed labels on one chart but side readout retains them; small mix labels and thin increment bars are cautions. Blue styling consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "7d8743c3a0b6f2512769dc0031bd1f11": {
+      "id": "7d8743c3a0b6f2512769dc0031bd1f11",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7d8743c3a0b6f2512769dc0031bd1f11.png",
+      "actual_sha256": "19ba944473d833af6c456110b847351e0b86d1807fcd6a9afe12c0f0440f3edf",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Dynamics/Salesforce/HubSpot cost,capability,time andrisk are explicit; savings chart is described as relative toSalesforce so42/18/0values are not mistaken forTCO. Capability totals18/17/15 and conditional sixweek pilot are coherent. Small table/bar/source labels; orange/purple palette consistent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "7f1aa4929986f72e43f0780b32d4e118": {
+      "id": "7f1aa4929986f72e43f0780b32d4e118",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/7f1aa4929986f72e43f0780b32d4e118.png",
+      "actual_sha256": "085c5a7381fa90c847ace4441aa15df2a7832c973fb68afdc9a506891ba1c658",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 2,
+        "hierarchy": 3,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 2
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "18 numbered workstreams and six phases/gates are retained across three large matrices, with seven datedcritical-path points. Coverage is broad, but repeated6×6matrices have exceptionally tiny dense cell text, poor audience scanability and heavy cognitive load. Headings remain readable; no proved lost milestone or template collision. Needs substantial presentation simplification.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "80a676d4fb5b10d280bd82f5b2fb21cb": {
+      "id": "80a676d4fb5b10d280bd82f5b2fb21cb",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/80a676d4fb5b10d280bd82f5b2fb21cb.png",
+      "actual_sha256": "cb8cd8302d7fdce9ca4cf4e673fb9e1cc48213f371f0b403ec6e6b2f01f4fe49",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Nine-slide outcome strategy has explicit market shift,wedge choice,three capabilities,proof-to-expansion sequence,90day gate cycle and three impacttargets. Proposed targets are labelled. Some framework/sequence captions tiny and narrative slightly repetitive for concise brief; consistent blue/red/yellow, no obvious critical defect.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "83ef2f668cd09653a21d43a1a477b4c2": {
+      "id": "83ef2f668cd09653a21d43a1a477b4c2",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/83ef2f668cd09653a21d43a1a477b4c2.png",
+      "actual_sha256": "316ef58a118062dec0efce75c75dbef7560fa97f6022aa83241f37424bc80e56",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Four-region values show EMEA+6of10growth and LATAM−1;mix percentages and100+8+6−3−1=110bridge retain two largest drivers. Values and source rounding are explicit. Small chart labels and compressed bridge axis are cautions; cohesive blue/red/green, no apparent loss.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "867a8747156840fede75f48d73caf047": {
+      "id": "867a8747156840fede75f48d73caf047",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/867a8747156840fede75f48d73caf047.png",
+      "actual_sha256": "a336b931df5b7d14b66a39891b0a517a8d35bf8ba1312de5730c56a1a366b8de",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Board context,ARR/NRR/EBITDA performance,risk matrix,spend options and90day capacity action are all present. Commercial contributions and decisionguardrails are visible, with illustrative caveats. Tiny risk/score/plan text; coherent orange/brown/teal and clear decision close, no evident template collision.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "888e054e989dee0a590c23a3e62731b3": {
+      "id": "888e054e989dee0a590c23a3e62731b3",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/888e054e989dee0a590c23a3e62731b3.png",
+      "actual_sha256": "e98985bb37ed992172808670ee499c69052b0b507e4382359560b1b81e0cadb8",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 3,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five onboarding stages,named owners,three gates andoutputs are covered. Ownership grid has role-row headers but no visible stage-column headers, making handoff-stage associations unnecessarily inferential. Dense gate/ownership text and tiny source lines weaken scanning. Orange multicolor chrome consistent; no proven source-stage omission.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "8a4efedb47399a3fd729c570e6cefd11": {
+      "id": "8a4efedb47399a3fd729c570e6cefd11",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/8a4efedb47399a3fd729c570e6cefd11.png",
+      "actual_sha256": "50d80dcd59ee96576492687365f763f080db174b53807bee98da97713f9b7dde",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Technology/operating-model roadmap and governance are explicit, but one headline says 'same four value gates' while later slide lists 'same three evidence gates'. They may be different constructs, yet relationship/adoption gate is not clearly explained. Dense gate/table body tiny; orange/brown consistent, no confirmed missing text.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "8c0105d77e0e01de779f2942d3c4bb4e": {
+      "id": "8c0105d77e0e01de779f2942d3c4bb4e",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/8c0105d77e0e01de779f2942d3c4bb4e.png",
+      "actual_sha256": "4a9bae088564a250133c3cd93ee3dbf56f1deca61a6f2b81f21e96e01e8528f6",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Six-slide workflow narrative moves from market shifts through chosen customer/workflow,will-stop rules,proof-repeat-scale roadmap and outcome scorecard to90day ask. Quantified targets are identified as illustrative. Small roadmap/tablecells and sources; coherent blue hierarchy, no obvious critical clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "8e98c44d8d9f197cc9c9019e03b016d8": {
+      "id": "8e98c44d8d9f197cc9c9019e03b016d8",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/8e98c44d8d9f197cc9c9019e03b016d8.png",
+      "actual_sha256": "9795e8d1d69bb3795ff7387d9297ca84cdd15028d3fabdd43c3420ecdcb0c43a",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five revenue bars and margin trend with fiscal years support Apple record/growth takeaway. No per-year point/bar value labels are visible, so exact five-year data cannot be read without inferring axis positions; source citations are tiny and not verified. Margin axis41–48accentuates change. Otherwise concise blue styling is clear.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "970d40072436519ecddd3b6df299f888": {
+      "id": "970d40072436519ecddd3b6df299f888",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/970d40072436519ecddd3b6df299f888.png",
+      "actual_sha256": "b12c0989a620bbe5a032498d0b7eaec92961fa806fb19309349ecc23f8c71839",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five stage chevrons,namedowners and five decision/evidence/if-no gates are complete, with ownership/control explanation. Tiny stage-owner captions and dense gate table limit executive reading; closing heading and main stages legible. Multicolor and blue chrome coherent; no proved source loss.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "9f09d980efaac6fd9ee264cf3269e84a": {
+      "id": "9f09d980efaac6fd9ee264cf3269e84a",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/9f09d980efaac6fd9ee264cf3269e84a.png",
+      "actual_sha256": "a50eb9cb173d4be0f1e524b2fc9b02986db09e0f79f7a2133d49e96234782496",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 3,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Germany/Japan strategy has population/tax/growth cards,compliance/partner actions and180day gates. Most semantic content survives in German, but many headings/bullets end with dangling '/' separators and Japanese-native wording is not visible. Without exact author text, this is suspected locale text absence/formatting ambiguity rather than proved critical fact loss. Small sources; blue chrome mostly coherent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "a46499e16a9f9cd851181d52036eb274": {
+      "id": "a46499e16a9f9cd851181d52036eb274",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/a46499e16a9f9cd851181d52036eb274.png",
+      "actual_sha256": "f178107638664c6c8000e72e3ffd36b9e0d994c143715106d09fb068b11e3f86",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 2,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 3,
+        "usability": 2
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": true,
+      "reason": "18workstreams,four overlapping phases and six gates are visible, but Phase2 design table extends so low that its source line overlays the last W9 row. Dense tables/cards and gates tiny. 'Three-level' cadence shows four forum rows, relationship unexplained. Visible table/source collision is a critical visual defect; exact source fact loss cannot be proved from this sheet.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "a5522f7232039dfe560b7182d187b111": {
+      "id": "a5522f7232039dfe560b7182d187b111",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/a5522f7232039dfe560b7182d187b111.png",
+      "actual_sha256": "94564df5a45f76c47e19d7947165e8a4536a7f695aebf4a7a1c02a62135cce22",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 3,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Board deck includes performance proof,profit bridge,risk matrix,three linked decisions and90day gates. Bridge3.3−.7+.4+.2−.2=3.0 reconciles; clear cash floor/capacity conditions. Ten slides and many small notes; top-row summary heading sits close to upper edge. Orange/purple styling coherent apart from title-margin polish.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "a8761a91c9b7b6e1e17ccdcffd725151": {
+      "id": "a8761a91c9b7b6e1e17ccdcffd725151",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/a8761a91c9b7b6e1e17ccdcffd725151.png",
+      "actual_sha256": "1bf6ff6814e493152628ca529713c961652f0d60c3a9c01709376c46d5712cdf",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Four regional pairs total409→450,mix shifts are labelled, and bridge18+15+7−4+3+2=41supports two largest drivers33/41≈80%. NorthAmerica remains largest while APAC fastest, explicitly distinguished. Thin incremental bars and small mix/source labels; consistent orange/teal/brown. Source truth unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "a90294371520985062267eb71a086cf4": {
+      "id": "a90294371520985062267eb71a086cf4",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/a90294371520985062267eb71a086cf4.png",
+      "actual_sha256": "97fb274db4b2ff47cc12fa99b85582ce1245ef4491717fab0066c452208dfd83",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Both annual revenue and margin charts visibly include all five years and values, with differentiated takeaways and consistent orange/brown typography. The margin axis is truncated (36–46%), which magnifies changes, although explicit values permit interpretation. Source annotations are small at contact-sheet scale; external figures are not verified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "ad2641ba245d83bb37957d5d3571015c": {
+      "id": "ad2641ba245d83bb37957d5d3571015c",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/ad2641ba245d83bb37957d5d3571015c.png",
+      "actual_sha256": "237704e3cc3b28d44b808fdcf94153fe576add6844a4491be80ed6f6ca688850",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "The build/buy/partner narrative includes alternatives, directional comparison, explicit tradeoffs and four timed decision gates. Consistent blue chrome and restrained accents support hierarchy. The closing title isolates 'pilot' and the subtitle wraps 'six-/month'; matrix legend and supporting framework text are small. Directional ratings are not empirical facts and cannot be externally verified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "af67762759a647a9859f716d19a2e10d": {
+      "id": "af67762759a647a9859f716d19a2e10d",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/af67762759a647a9859f716d19a2e10d.png",
+      "actual_sha256": "c2b2933c8277f54ef1c34308beea36c3db4559f5d3538d4813686bed83ff2446",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Growth, margin, retention and cash each receive clear labelled evidence, with coherent KPI cards and a cash bridge whose displayed steps reconcile to 18.6. The margin line uses a narrow 71.5–74.5% axis, magnifying movement; explicit point labels mitigate this. Readout/source captions are small. Different YoY and three-quarter margin comparisons are labelled rather than demonstrably contradictory.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "b597c15a7b8d3ebb422468de150c1272": {
+      "id": "b597c15a7b8d3ebb422468de150c1272",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/b597c15a7b8d3ebb422468de150c1272.png",
+      "actual_sha256": "d0ff94fd4ee9064db3fbf938a530a6308ab1e386c8163600474960d91d5573ab",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Regional values, mix shifts and two largest revenue drivers are visibly represented through chart, table and labelled bridge. Largest-driver contribution is explicit and the regional/table hierarchy is coherent. Small table/source type and the compressed bridge baseline limit distance readability; the chart labels make the compression visible. External company figures remain unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "b5e2b5d2cfc9f866dd18077cdc8d90d2": {
+      "id": "b5e2b5d2cfc9f866dd18077cdc8d90d2",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/b5e2b5d2cfc9f866dd18077cdc8d90d2.png",
+      "actual_sha256": "5d0d0609309df5c4176993194d3797a78dba5b5d80728da871c414ed32f968da",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "All four requested delivery-health dimensions appear with explicit KPI cards, time series, capacity comparison and a reconciled 120−8−6−4+3=105 forecast bridge. Decisions are connected to risks. Orange KPI/table panels and small decision text reduce distance legibility; closing subtitle wraps 'Platform / and Data'. Actual operational facts are illustrative and unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "b7c878362da1d693dc449f8764108d2c": {
+      "id": "b7c878362da1d693dc449f8764108d2c",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/b7c878362da1d693dc449f8764108d2c.png",
+      "actual_sha256": "0ba2eefbe0fcf9f5bd1ada7da0a6babe7c544383f9f3d0b4a9ac0d6b20b42d76",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Three vendors are compared across explicit cost, capability, implementation and risk evidence, with labelled scoring weights and conditional recommendation. Visible weighted scores reconcile with shown ratings. Table body, source and utility footer are small at sheet scale; the Dynamics 365 risk cell wraps the name across lines. Consistent blue rule/chrome maintains association.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "b8138c743984da905aa7dc7be35a2522": {
+      "id": "b8138c743984da905aa7dc7be35a2522",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/b8138c743984da905aa7dc7be35a2522.png",
+      "actual_sha256": "8d8684633d20355327749b1fc4595c9182fc70826336554bdeb4d22523696811",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Build, buy and partner have visible weighted criteria, concrete tradeoffs and staged gates, with a recommendation and internalization option. Displayed weighted scores reconcile with displayed weights/ratings. Several tradeoff bullets and source notes are tiny, and the closing subtitle breaks 'Month-12 review'. Native top title margin is narrow but no observed clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "bac93c007e552aa1cc8157c23296a533": {
+      "id": "bac93c007e552aa1cc8157c23296a533",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/bac93c007e552aa1cc8157c23296a533.png",
+      "actual_sha256": "7e239d7f64a05d9571578017fd531d8ec6226ffebebc638a4b82d061622f4790",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Technology and operating-model tracks remain separately labelled through four releases, decision loops and evidence gates. Both-track gating is explicit and coherent. Dense roadmap cells, table text and footers need full-slide reading; title/body positioning is consistent and no visible collision. Closing headline is large but its subtitle spans a long narrow line.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "be644ea596173552f2f6e3b580c02bfe": {
+      "id": "be644ea596173552f2f6e3b580c02bfe",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/be644ea596173552f2f6e3b580c02bfe.png",
+      "actual_sha256": "dd564ccef298f0dd736d701a610f0d920d7a7a7e0637651e130f2eacd5b05c2e",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Delivery, incidents, capacity and forecast risk are all represented, with explicit release status, role-directed actions and a legend for colored risk dots. KPI cards and commentary form an executive narrative. Dense release/status cells and many very small source/footer lines weaken readability; red/amber/green relies partly on color but a textual legend is present. No visible clipping or demonstrated missing critical fact.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "bebff7d09c5531a8b27f5b31a9ed5031": {
+      "id": "bebff7d09c5531a8b27f5b31a9ed5031",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/bebff7d09c5531a8b27f5b31a9ed5031.png",
+      "actual_sha256": "8925c39504f295f5e9ce25e07a4237bf20fe006ec00d87096fec70f08d450edd",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Regional bar values, full mix table and bridge retain visible regional amounts and the two largest uplift drivers. The displayed 16+12 of 36 supports the rounded 78% headline. Orange/teal/purple accents remain consistent by role. Table, footer and closing action details are small; exact source facts cannot be externally certified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "bf8b1e9db5038c5def73bc981a9065ca": {
+      "id": "bf8b1e9db5038c5def73bc981a9065ca",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/bf8b1e9db5038c5def73bc981a9065ca.png",
+      "actual_sha256": "79b504daacbf26f48144de9500d636c4f54b7bfd203b567fd8731e53bf74822c",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 3,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Both tracks appear across an 18-month four-phase roadmap, three gates and an outcome-measure table. The three gate boxes occupy a very small central strip surrounded by extensive unused whitespace; their explanatory text is disproportionately tiny versus large titles. Roadmap cell text also needs close reading. No observed wording loss, but the gate slide is weak for a presentation audience.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "c5083d79550a6d552d658728f80bd1b7": {
+      "id": "c5083d79550a6d552d658728f80bd1b7",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/c5083d79550a6d552d658728f80bd1b7.png",
+      "actual_sha256": "aca7224ea965637e57e58e201d5522276c68aac08580cc83140582ca6337cada",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Four KPI dimensions are present with labelled incident proportions, capacity categories and a 48−4−3+2=43 bridge that reconciles with the five-point downside narrative. Delivery trend uses an axis beginning at 36, accentuating the gap, and individual points are not explicitly value-labelled. Small donut legend and capacity labels limit precision at sheet scale; serif hierarchy and orange chrome remain coherent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "c9586275e5428174281f69e3a949ae81": {
+      "id": "c9586275e5428174281f69e3a949ae81",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/c9586275e5428174281f69e3a949ae81.png",
+      "actual_sha256": "765b2393c86630dee05cfc84ee231cfd64b237f8c75434e9c5362162113e5a72",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five years of revenue and operating-margin figures are visibly retained in labelled bars and a complete year-by-metric table, with explicit period takeaways. Revenue CAGR and margin expansion appear internally plausible from displayed endpoints. Small margin narrative and source/footer type need closer reading; a large right-edge blue block is decorative and consumes otherwise useful space without observed collision.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "ce304ca8124d27321c0f4192fe3ddc9a": {
+      "id": "ce304ca8124d27321c0f4192fe3ddc9a",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/ce304ca8124d27321c0f4192fe3ddc9a.png",
+      "actual_sha256": "764fa1511394b6787e5c63089dce289b7c94f1dc05ba2822603e66ad5ada87d7",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five stages, stage outputs and four explicit gates with decision owners are present. However the role-by-stage ownership matrix has no visible stage column headers; associations must be inferred from position and the earlier process slide, weakening standalone meaning. Gate and owner descriptions are dense and small. No proven missing source fact, but column identification should be explicit.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "d012ee38c5233d98a3ab9a52eed7fd53": {
+      "id": "d012ee38c5233d98a3ab9a52eed7fd53",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/d012ee38c5233d98a3ab9a52eed7fd53.png",
+      "actual_sha256": "7e34cef0ea52b78267b7764047805d15eaf98caeeec35c00e1ecb09a57c14f4a",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Technology and operating-model tracks remain distinct in a four-phase matrix, supported by present-to-target comparison and three joint gates. Phase and gate relationship is comprehensible. SCQA and roadmap cell details are tiny at sheet scale; large colored takeaway bars can dominate supporting text. No observed clipping or brief-level omission.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "d290394c5f4deee82816067bc9fe9cc1": {
+      "id": "d290394c5f4deee82816067bc9fe9cc1",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/d290394c5f4deee82816067bc9fe9cc1.png",
+      "actual_sha256": "3443cba5dabe3074d5eb0a2bd596ca766efdfd8a86953a8572769bef92e9ff38",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Delivery, incidents, capacity and forecast risk appear with labelled charts, risk values and actionable mitigation. The capacity KPI says 84% while supporting September narrative says 87%, and the forecast card says 72% +9pp review without a visible reconciled baseline; these may differ by period but need explicit clarification. Dense risk table and small chart captions limit audience readability. Edge blue blocks are conspicuous but do not visibly obscure content.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "d64b0bdbfb1bf1936285c6e0ce192bf5": {
+      "id": "d64b0bdbfb1bf1936285c6e0ce192bf5",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/d64b0bdbfb1bf1936285c6e0ce192bf5.png",
+      "actual_sha256": "b7a203b825321892cc00524caf14266ac8e0ddb049ef8e7bb0197867bfc56e09",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Growth, margin, retention and cash are covered through four cards, trend evidence, segment retention table and concrete investment choices. Revenue bars retain values; margin/cash trends lack individual point labels, limiting exact extraction from the sheet. Supporting insights and table cells are small; narrow top margin on summary title is visible but no clipping observed. Internal displayed endpoint figures are coherent.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "d9cd0e50d34d79dfae5fcf1e9d140c39": {
+      "id": "d9cd0e50d34d79dfae5fcf1e9d140c39",
+      "brief": "Create an executive quarterly KPI snapshot with growth, margin, retention and cash metrics.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/d9cd0e50d34d79dfae5fcf1e9d140c39.png",
+      "actual_sha256": "afe10debb2c8700a43d2f29c970901531e79aa7df83ac1e23045a426842379dc",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Revenue and free-cash-flow bars visibly retain point values; full margin table and retention headline support the quarterly narrative. The cash KPI uses balance rather than flow but explicitly includes +5.4M FCF. Retention evidence is mainly current-period numbers, so trend strength relies on text. Small source/footer and summary bullets remain cautions; consistent serif/orange/purple roles.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "dea0af61bf1c671d5fea94b9b0a916bb": {
+      "id": "dea0af61bf1c671d5fea94b9b0a916bb",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/dea0af61bf1c671d5fea94b9b0a916bb.png",
+      "actual_sha256": "5c79b0df2c477581c846b6c1209228ab80a7eca943373592959bb535216f2474",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "All 18 workstream identifiers are visibly distributed across 5/5/4/4 waves and six milestone gates show week timing. Phase slides preserve more breathing room than a single dense plan. Workstream bullets and milestone descriptions are very small at contact-sheet scale, so full exact milestone sentences cannot be certified. Section-divider slides consume substantial deck length but remain coherent, without observed overlap or omitted numbered workstream.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "e06ba17be6f02f29eeb297b5d2254eef": {
+      "id": "e06ba17be6f02f29eeb297b5d2254eef",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/e06ba17be6f02f29eeb297b5d2254eef.png",
+      "actual_sha256": "7c266ed2068f2818c7168273d151c9c8248edb8b7e0f47c3555d04ab8fad2004",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Three vendors are compared across explicit price, capability, launch time and risk with a conditional recommendation. Price differences and eight-week launch difference reconcile with shown values. Harvey-ball legend explains degree of fit, though nuanced partial symbols need close reading. Risk-quadrant supporting text and utility footers are tiny; risk positioning is qualitative, not externally validated.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "e2c33470d75169eb4c022a04a529a5f5": {
+      "id": "e2c33470d75169eb4c022a04a529a5f5",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/e2c33470d75169eb4c022a04a529a5f5.png",
+      "actual_sha256": "5a6e784ce8e7ba7ecef018c5e9d3a1f220ef3ebb880075cf13b34d58853ba85b",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "All five revenue and margin years have explicit point/bar values, units and clear endpoint takeaways. The displayed 128→246 supports approximately 92% growth and 17.7% four-interval CAGR; margin 12.4→23.2 supports 10.8 points. Narrow margin axis exaggerates movement but values are labelled. Small implications and source text need close reading; no external fact verification.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "e3238935582e5abc108dd4f4cc5cdc03": {
+      "id": "e3238935582e5abc108dd4f4cc5cdc03",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/e3238935582e5abc108dd4f4cc5cdc03.png",
+      "actual_sha256": "62f2d991f0769d6ab641e4a9f255a0933bf7046061ffca0c5114a3bb10741d51",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five annual revenue and EBITDA-margin values are plainly labelled in adjacent charts and summarized with explicit period, units and CAGR. Shown 420→735 gives 75% growth and approximately 15% CAGR, while 12→24 doubles margin. Small footer/source lines remain a distance-readability caution. Consistent hierarchy and ample space; no visible semantic loss.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "e78f7b4bc40ac1b675f3b162859a5090": {
+      "id": "e78f7b4bc40ac1b675f3b162859a5090",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/e78f7b4bc40ac1b675f3b162859a5090.png",
+      "actual_sha256": "2aa9c40af43d9631a19cd6e1740f7b088f484c65f42a48aa8e602e0a0398151e",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Jira, monday and Asana are compared across price, capability, launch time and main risk, with explicit annual-cost values and gated recommendation. Price differences reconcile with displayed seat rates. Capability dots have only Green/Amber/Red labels rather than explicit meaning, and dense rollout bullets/footer text are small. Current prices and vendor claims cannot be verified without external truth data.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "edff28d5a52f10ec56da9cbfc0b24b43": {
+      "id": "edff28d5a52f10ec56da9cbfc0b24b43",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/edff28d5a52f10ec56da9cbfc0b24b43.png",
+      "actual_sha256": "c3083b05273150fde38ea469991f125ac864ba1217fcb11ad6687d354d7d8202",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Context, performance, risks, a balanced-plan decision and timed next steps are visible with strong executive sequencing. Revenue plan/actual bars are value-labelled. Risk bars use 82/100, 68/100 etc. without a defined scoring methodology, so their precision is visually persuasive but evidentially ambiguous. Small supporting text and large right-edge decorative blocks are cautions; actual company/source facts remain unverified.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "f04b90bec2604a245fb059998ab996f0": {
+      "id": "f04b90bec2604a245fb059998ab996f0",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/f04b90bec2604a245fb059998ab996f0.png",
+      "actual_sha256": "9262d4581e3035ccb4f1a0604057a607a3e98e5f7ecb6d58ed8a911094b992a4",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 2,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 2,
+        "usability": 2
+      },
+      "lost_critical_fact": true,
+      "critical_template_defect": true,
+      "reason": "German prose remains visible, but the Japan-side columns and the Japan-specific slide contain empty bullet markers and isolated '10%' with no explanatory wording. Japanese-market KPI cards show fragments such as '1 2380' and '29.3%' without usable labels; comparison-table Japan header/entries are largely blank. These are observed semantic losses, not merely tiny text, and block executive use. Citations alone do not restore missing meaning.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "f1f59bcd74bcd4721bb7f1e9e4c3b1a5": {
+      "id": "f1f59bcd74bcd4721bb7f1e9e4c3b1a5",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/f1f59bcd74bcd4721bb7f1e9e4c3b1a5.png",
+      "actual_sha256": "02d2f13a1fb82fc54f797ac16776ea22560b52b602b5c74c378552b48fd9d355",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 3,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Three vendors have complete visible cost, capability, implementation-time and risk comparisons plus conditional recommendation. Price savings and six-week speed tradeoff reconcile. Capability components with stated 40/30/30 weights appear to yield Northstar 82.8 and ForgeWorks 71.6 versus displayed 82 and 71; exact rounding convention is not disclosed and should be confirmed on individual slides. Supporting bullets and footers are small; no observed source clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "f8971a9a7b01eae961370639f9e9e706": {
+      "id": "f8971a9a7b01eae961370639f9e9e706",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/f8971a9a7b01eae961370639f9e9e706.png",
+      "actual_sha256": "eff401030df9728dc6da2e45a1ea0722f47fabf4bcfda33271afc819e2795621",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 3,
+        "hierarchy": 3,
+        "template_fidelity": 3,
+        "factual_completeness": 4,
+        "usability": 3
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Build/buy/partner criteria, displayed weighted scores, explicit tradeoffs and staged partnership guardrails are all present and scores reconcile. The tradeoff slide's large black takeaway panel dominates the composition despite containing only a tiny centered sentence, inconsistent with lighter native panels elsewhere. Dense white text on colored cards and small guardrail bullets impair distance reading. No demonstrated lost critical fact.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "f9dcd9c7964297f47dc34cc76da928e7": {
+      "id": "f9dcd9c7964297f47dc34cc76da928e7",
+      "brief": "Show five years of revenue and margin data with a clear evidence-based takeaway.",
+      "status": "VISUALLY_REVIEWED",
+      "inspected_file": "/Users/seb/projects/json2pptx/output/quality-benchmark-blind-20260927-003e0663/packet/sheets/f9dcd9c7964297f47dc34cc76da928e7.png",
+      "actual_sha256": "1e6d9fd6265713ba292392314d4749c0de06c1987d682e69e3085621c96d457b",
+      "reviewer_type": "llm",
+      "scores": {
+        "readability": 4,
+        "hierarchy": 4,
+        "template_fidelity": 4,
+        "factual_completeness": 4,
+        "usability": 4
+      },
+      "lost_critical_fact": false,
+      "critical_template_defect": false,
+      "reason": "Five revenue years and five operating-margin years retain explicit values, units and coherent period comparisons. The 41.6→45.6 margin change and 41.8→45.6 FY23 change reconcile with headlines. Narrow 41–46% margin axis strongly magnifies movement but values reveal its extent. Supporting implication/source text is small, and title margin near the top of evidence slides is narrow without observed clipping.",
+      "perspectives_checked": [
+        "executive usability",
+        "typography/hierarchy/spacing",
+        "within-deck template fidelity",
+        "adversarial brief coverage/internal consistency and visual ambiguity"
+      ],
+      "external_source_facts_verified": false
+    },
+    "067660fd2cc3f0469b1a248e381cfc3b": {
+      "id": "067660fd2cc3f0469b1a248e381cfc3b",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "0b157884a9974924a43cda00cc2ee359": {
+      "id": "0b157884a9974924a43cda00cc2ee359",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "0c7d57e8f79bb1046f7277512bca5c41": {
+      "id": "0c7d57e8f79bb1046f7277512bca5c41",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "13b999a5e73be49a278662ae02fb8c66": {
+      "id": "13b999a5e73be49a278662ae02fb8c66",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "16e8c52cfdb55b56f572c52dad130fd7": {
+      "id": "16e8c52cfdb55b56f572c52dad130fd7",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "1afe6a496db6c4ee30caf1a3a556bba9": {
+      "id": "1afe6a496db6c4ee30caf1a3a556bba9",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "1b51faacc50ac09eaf06ee838760e88c": {
+      "id": "1b51faacc50ac09eaf06ee838760e88c",
+      "brief": "Show regional performance, mix shift and the two largest drivers without losing values.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "2259c6e2f8b8de9018375cf23ee2bb73": {
+      "id": "2259c6e2f8b8de9018375cf23ee2bb73",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "22dd2cb3d9ce19d1e88e23efa8c5c23b": {
+      "id": "22dd2cb3d9ce19d1e88e23efa8c5c23b",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "2338ced13b0784e95f076a8e4ec10572": {
+      "id": "2338ced13b0784e95f076a8e4ec10572",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "26f9512c0b48238e90b27a9944ba67dc": {
+      "id": "26f9512c0b48238e90b27a9944ba67dc",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "361a9855e786d563dd09b1b829ce89a4": {
+      "id": "361a9855e786d563dd09b1b829ce89a4",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "4eb96d9a2cd1aab82168ab416b0387de": {
+      "id": "4eb96d9a2cd1aab82168ab416b0387de",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "4fe3a02be2aaf0d2c4d8d0eda55917ab": {
+      "id": "4fe3a02be2aaf0d2c4d8d0eda55917ab",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "55d9b506d2d1690f788073e89c6f240e": {
+      "id": "55d9b506d2d1690f788073e89c6f240e",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "5723a9fd5ba162540c2b52b66a86c0e3": {
+      "id": "5723a9fd5ba162540c2b52b66a86c0e3",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "64d0af591851a61aa722a70720fad9e3": {
+      "id": "64d0af591851a61aa722a70720fad9e3",
+      "brief": "Turn a dense 18-workstream implementation plan into readable phased slides without dropping critical milestones.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "6a97f18645253bc138e3bda267ff6be4": {
+      "id": "6a97f18645253bc138e3bda267ff6be4",
+      "brief": "Show a two-track transformation roadmap for technology and operating model.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "6c5ad1e90a62bf478b8dea8825c874f5": {
+      "id": "6c5ad1e90a62bf478b8dea8825c874f5",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "6cd7d6c7cb9f8e06e79a89092119fa64": {
+      "id": "6cd7d6c7cb9f8e06e79a89092119fa64",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "6d23140a2d5c699ad4e8b64c88297265": {
+      "id": "6d23140a2d5c699ad4e8b64c88297265",
+      "brief": "Explain a five-stage customer onboarding process with owners and decision gates.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "793fe4912089dc0b3cf0ead2586fc167": {
+      "id": "793fe4912089dc0b3cf0ead2586fc167",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "810ffdb76817fdf02211544ca3d7c26f": {
+      "id": "810ffdb76817fdf02211544ca3d7c26f",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "848591f40e8a27a71302d1501cbec5f3": {
+      "id": "848591f40e8a27a71302d1501cbec5f3",
+      "brief": "Compare three vendors across price, capability, implementation time and risk.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "8c52716b3827f73551cb35ae2a747712": {
+      "id": "8c52716b3827f73551cb35ae2a747712",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "8e9a3df88e61ae47931159a920ed59a3": {
+      "id": "8e9a3df88e61ae47931159a920ed59a3",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "99ec459926e52db8392bcd65213934a4": {
+      "id": "99ec459926e52db8392bcd65213934a4",
+      "brief": "Build a concise strategy narrative from market shift through choice, action and impact.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "9ce4858c03780c8ffe6335d8054fbd64": {
+      "id": "9ce4858c03780c8ffe6335d8054fbd64",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "b0f93fdb9953370b289a7e00066e4ba0": {
+      "id": "b0f93fdb9953370b289a7e00066e4ba0",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "b1e0ff5d71b9c7ed81f07402f35b06aa": {
+      "id": "b1e0ff5d71b9c7ed81f07402f35b06aa",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "b98e8c31025c8ec74a3e81e72ab568a2": {
+      "id": "b98e8c31025c8ec74a3e81e72ab568a2",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "c2dcf2332d4e23586b485272815c22d9": {
+      "id": "c2dcf2332d4e23586b485272815c22d9",
+      "brief": "Prepare a board update covering context, performance, risks, decisions and next steps.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "c4acf5ce88ac509739fb1e3769b64141": {
+      "id": "c4acf5ce88ac509739fb1e3769b64141",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "c9c02865b469bf13bc3fbaf078278496": {
+      "id": "c9c02865b469bf13bc3fbaf078278496",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "cde95ebf00e30ecef7c8ff8b7be93365": {
+      "id": "cde95ebf00e30ecef7c8ff8b7be93365",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "cf36a7cc1b99be6ed9030aa12a350942": {
+      "id": "cf36a7cc1b99be6ed9030aa12a350942",
+      "brief": "Compare build, buy and partner options and recommend one with explicit tradeoffs.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "d2b739c4fe3cdd2613e53e2af77ecc8b": {
+      "id": "d2b739c4fe3cdd2613e53e2af77ecc8b",
+      "brief": "Create a German and Japanese market-entry summary with long labels and cited facts.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "e040326b41301b0f7ce5f2f56b88cff3": {
+      "id": "e040326b41301b0f7ce5f2f56b88cff3",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "e42585d59093530e6de70f39fcb3b54b": {
+      "id": "e42585d59093530e6de70f39fcb3b54b",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    },
+    "e531f8c1456428b58dc243a8adc38451": {
+      "id": "e531f8c1456428b58dc243a8adc38451",
+      "brief": "Create a KPI deck showing delivery health, incidents, capacity and forecast risk.",
+      "status": "UNREVIEWABLE_GENERATION_FAILED",
+      "scores": null,
+      "actual_sha256": null,
+      "release_blocking": true,
+      "reason": "Manifest marks generation_failed and provides no rendered sheet. No visual scores or visual findings assigned."
+    }
+  }
+}

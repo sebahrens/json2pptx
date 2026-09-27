@@ -1,0 +1,65 @@
+{
+  "status": "PASS",
+  "sheet_count": 104,
+  "unreviewable_generation_failures": 40,
+  "actual_original_image_hashes_verified": 104,
+  "reviewer_type": "llm",
+  "summary": {
+    "Runs": 144,
+    "RatedPairs": 104,
+    "Usable": 67,
+    "UsableRate": 0.6442307692307693,
+    "WilsonLow": 0.5485886820119005,
+    "WilsonHigh": 0.7295971015818149,
+    "LostCriticalFacts": 4,
+    "CriticalTemplateDefects": 5,
+    "Disagreements": 0,
+    "PairedImprovement": true,
+    "ReleaseDecision": "hold: target not achieved or evidence incomplete",
+    "FailedRuns": 40,
+    "ReviewerTypes": [
+      "llm"
+    ]
+  },
+  "critical_observations": [
+    {
+      "id": "0e6bc6c30ee4375fae45762b30451136",
+      "run_id": "redesigned-multilingual-warm-coral-2",
+      "evidence": "German narrative remains visible, but Japanese portions show conspicuous empty text and isolated tokens/numbers: KPI 26.1 lacks meaningful surrounding wording; right side of local-model table and final subtitle collapse to fragments (3PL,6). Several cells cannot communicate intended market meaning. Citations are present but extremely small. This is visible semantic loss/ambiguity, not a verified translation or inferred font cause."
+    },
+    {
+      "id": "44f948d732ddf8a9e63e49bae48109d1",
+      "run_id": "redesigned-multilingual-portability-side-logo-2",
+      "evidence": "German entries and compliance citations survive, but Japanese/locale text is visibly fragmented: Japan population card has isolated2024/10/1, Japan action cards display APPI/10% or blank content, and a takeaway bar is empty. Several headings end in dangling separators. Required bilingual market summary is not usable; do not infer renderer cause."
+    },
+    {
+      "id": "6387f8428a4b9fcf1345f12aae9f1897",
+      "run_id": "baseline-multilingual-portability-side-logo-1",
+      "evidence": "Germany content is coherent, while Japan evidence slide contains isolated29.3%/65/2024/5tokens and a largely blank takeaway/citation; Japan localized value propositions collapse into empty bullets and PoC. Numerous dangling separators. Visible multilingual semantic omissions prevent usable bilingual summary; citations cannot restore missing meaning."
+    },
+    {
+      "id": "a46499e16a9f9cd851181d52036eb274",
+      "run_id": "baseline-dense-plan-warm-coral-1",
+      "evidence": "18workstreams,four overlapping phases and six gates are visible, but Phase2 design table extends so low that its source line overlays the last W9 row. Dense tables/cards and gates tiny. 'Three-level' cadence shows four forum rows, relationship unexplained. Visible table/source collision is a critical visual defect; exact source fact loss cannot be proved from this sheet."
+    },
+    {
+      "id": "f04b90bec2604a245fb059998ab996f0",
+      "run_id": "baseline-multilingual-warm-coral-1",
+      "evidence": "German prose remains visible, but the Japan-side columns and the Japan-specific slide contain empty bullet markers and isolated '10%' with no explanatory wording. Japanese-market KPI cards show fragments such as '1 2380' and '29.3%' without usable labels; comparison-table Japan header/entries are largely blank. These are observed semantic losses, not merely tiny text, and block executive use. Citations alone do not restore missing meaning."
+    }
+  ],
+  "sha256": {
+    "ratings.csv": "b11b7c484d248f23cf206d3b3bed664cf59682bfa544a3b605b702fd686cad6c",
+    "review.json": "74df25046c62ab608d1798a4fb0d55a91b6323e8819167c07ec9072d7a739f03",
+    "manifest.json": "737e6e3054349a548af0875f30a1482ff1cf713fb52306c63cec1e2dbb032d1b"
+  },
+  "rated_report_sha256": "9f0a17479a021ad817f49e719dde8504e926f299f910c03f33806b39dd041c58",
+  "limitations": [
+    "Contact sheets are the only supplied visual assets. Each was opened individually at original resolution; small slide text is nevertheless reduced within the sheet. This is not a full-slide pixel inspection or a projection-distance test.",
+    "Factual completeness scores measure brief-level coverage and visible internal consistency, not truth against an external source. No external truth data or complete authored source deck is provided; full critical-fact retention cannot be certified.",
+    "Template fidelity scores measure visible consistency within each deck. No canonical source template is supplied, so fidelity to an original template is unverified.",
+    "Actual SHA-256 hashes were computed from every reviewed PNG. The manifest supplies no expected hashes, so these are actual inspection fingerprints rather than verified matches to independent expected hashes.",
+    "False lost_critical_fact means no critical semantic loss was demonstrated from supplied evidence; it is not a certification of complete source preservation.",
+    "No renderer causality, font identity, configuration ranking, editability, or PowerPoint fidelity is inferred from PNGs."
+  ]
+}
