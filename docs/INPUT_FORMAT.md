@@ -236,14 +236,12 @@ So `~/assets/logo.svg` and `$BRAND_ASSETS/logo.svg` resolve as expected instead 
 
 ## Validating before generating
 
-- CLI: `json2pptx validate <input.json>` — same validator the engine runs.
-- CLI: `json2pptx validate <input.json> -fit-report` — adds layout-fit diagnostics.
+- CLI: `json2pptx validate <input.json>` — same validator the engine runs; add `-fit-report` for layout-fit diagnostics.
 - MCP: `validate_input` — wraps both.
 
 Errors carry structured `code` fields catalogued in `docs/FIT_FINDINGS.md` (with severity and recommended action). The validator accepts both canonical and alias enum values for backward compatibility; the schema publishes only the canonical names.
 
 ## Where to go next
-
 - `docs/SEMANTIC_COMPILER.md` — semantic deck-spec model, compiler stages, and implementation roadmap.
 - `docs/PATTERNS.md` — named-pattern authoring guide.
 - `docs/FIT_FINDINGS.md` — finding-code catalogue.

@@ -1,6 +1,6 @@
 {
   "scope": "Existing go-slide-creator-n1muf: written grid role floors and capacity geometry",
-  "status": "Targeted implementation verified; broader visual closure remains open",
+  "status": "HOLD: experimental role gate is not approved for main; broad regressions exposed semantic false refusals",
   "evidence": {
     "baseline": "A real CLI deck published two complete body paragraphs; bundled-renderer PDF measured both at 10.006pt, below the present-mode 12pt body floor. The new CLI regression fails with only the final role check disabled and passes with it restored.",
     "generator_race": "PASS 25.646s: universal and role-floor publication regressions, including all 10 installed test templates and ignored local p-style, off/warn/strict; source, existing destination and temporary cleanup asserted.",
@@ -10,7 +10,7 @@
     "preview_refresh": "PASS: 14 templates, 108 layouts; every PNG byte-identical to main128e. Updated manifests only. p-style template and previews remain ignored.",
     "build": "PASS",
     "lint": "PASS: pinned v2.8.0, zero issues",
-    "full_root_short": "Pending at receipt creation; retained role-root-short-final.log. Not a race-suite PASS claim.",
+    "full_root_short": "FAIL: CLI130.579s (narrow usable width measurement, documentation line budget), quality44.166s (stress fixture refused). All other packages passed. Follow-up whole-corpus probe also refused eight readability inputs, including a sovereign axis-number semantic false positive. Do not whitelist these refusals as visual success. Capacity corrections are being separated for independently verified publication.",
     "prior_main_ci": "128e97b36f1003b35f03c174c1a6181393f74500: CI, Docker and CodeQL all SUCCESS. Prior local root race timed out at15m; exact two interrupted tests passed on rerun, not counted as full-suite PASS."
   },
   "review": {
