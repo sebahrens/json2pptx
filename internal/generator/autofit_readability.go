@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"encoding/xml"
 	"fmt"
 	"html"
 	"regexp"
@@ -50,7 +51,7 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 		if err != nil || scaleThousandths <= 0 {
 			continue
 		}
-		smallest := smallestRunSizeHPt(shape)
+		smallest := smallestPopulatedRunSizeHPt(shape)
 		if smallest <= 0 {
 			continue
 		}
@@ -69,6 +70,15 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 			Context: fmt.Sprintf("autofit %d%% to fit the shape",
 				scaleThousandths*100/int(autofitScaleDenominator)),
 		}); f != nil {
+			// This scale is written into the output, not a preflight estimate.
+			// Below even the most compact footnote floor, no semantic role can
+			// make the populated text acceptable. Do not publish or suggest
+			// deleting source. Higher sizes still need role-aware visual review.
+			if effective < tokens.FootnoteMinHPt {
+				f.Action = "refuse"
+				f.Message = strings.TrimSuffix(strings.TrimSuffix(f.Message, "; shorten the text"), "; split the text") + "; preserve all source at a readable size"
+				f.Fix = nil
+			}
 			if matches := renderedShapeTextRE.FindAllStringSubmatch(shape, -1); len(matches) > 0 {
 				var parts []string
 				for _, m := range matches {
@@ -76,13 +86,35 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 						parts = append(parts, s)
 					}
 				}
-				if len(parts) > 0 {
+				if len(parts) > 0 && f.Fix != nil {
 					f.Fix.Params["rendered_shape_text"] = strings.Join(parts, " ")
 				}
 			}
 			ctx.emitFitFinding(*f)
 		}
 	}
+}
+
+// Only populated runs establish an actual written size. Unused list levels,
+// empty prompts and end-paragraph cursor styles must never trigger a refusal.
+func smallestPopulatedRunSizeHPt(shape string) int {
+	var parsed shapeXML
+	if err := xml.Unmarshal([]byte(shape), &parsed); err != nil || parsed.TextBody == nil {
+		return 0
+	}
+	smallest := 0
+	for _, p := range parsed.TextBody.Paragraphs {
+		for _, run := range p.Runs {
+			if strings.TrimSpace(run.Text) == "" || run.RunProperties == nil {
+				continue
+			}
+			size, err := strconv.Atoi(run.RunProperties.FontSize)
+			if err == nil && size > 0 && (smallest == 0 || size < smallest) {
+				smallest = size
+			}
+		}
+	}
+	return smallest
 }
 
 // splitShapeElements returns each <p:sp>…</p:sp> element in a slide.

@@ -1,0 +1,18 @@
+{
+  "reviewer": "testing-and-adversarial",
+  "findings": [],
+  "residual_risks": [
+    "This is an explicit populated-run/stored-scale safeguard only. Inherited sizes, fields, bare autofit and role-specific higher floors still need broader audit; n1muf remains in progress.",
+    "Refusal preserves source but does not automatically paginate native diagrams or establish projection readability."
+  ],
+  "testing_gaps": [
+    "Full root race suite and exact publication CI were still running or pending at review time."
+  ],
+  "attacks_exercised": [
+    "Disable advisory preflight and generate real text-maxima payloads across five patterns and five core/local templates: typed runtime refusal still occurs.",
+    "Place 1pt unused list styles, empty-run styles and cursor styles alongside readable populated text: no false refusal.",
+    "Reuse an existing destination and generate 2.4pt stored text in off/warn/strict across every installed test template: no destination overwrite, no source mutation, no temporary artifact leak.",
+    "Walk the 7pt boundary: exact 7pt stays advisory, 6.99pt refuses.",
+    "Rerender every native layout and compare every probe outcome, template hash, accepted PNG pixel array and generated ZIP part with the previous corpus: unchanged."
+  ]
+}

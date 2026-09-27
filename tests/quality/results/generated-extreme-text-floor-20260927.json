@@ -1,0 +1,34 @@
+{
+  "date": "2026-09-27",
+  "bead": "go-slide-creator-n1muf",
+  "baseline_commit": "1eb4482736e329ba637b86b1020b5ca90b221ae4",
+  "scope": "Incremental safeguard, not closure of the wider readability/capacity audit. Refuse populated generated runs with an explicit stored scale below the universal 7pt footnote floor. Keep source and destination intact, request source-complete continuation or a suitable layout, and never suggest deleting source. Higher sizes remain subject to semantic-role and visual review.",
+  "baseline_reproduction": "New direct-generator regression failed on all ten installed test templates including ignored p-style: 2.4pt text was published in off, warn and strict modes. Boundary and unused-style negative tests also failed before the fix.",
+  "targeted_generator_race": "PASS 13.922s",
+  "cli_real_pattern_text_maxima_race": "PASS 92.099s; five patterns by five core/local templates, 25 cases; preflight off, actual generated typed refusal, source and destination unchanged, no leaked artifacts.",
+  "patterns": ["bmc-canvas", "stylish-panels", "card-grid", "contact-directory", "framework-grid"],
+  "text_maxima_limit": "Optional fake photo URLs from the generic schema-maxima builder were omitted from contact-directory; all people, groups and maximum-length textual values retained. Initial unrelated asset-resolution failures are retained, not counted as successful tiny-text refusals.",
+  "boundary_controls": "2.4pt, 6pt and 6.99pt refuse; 7pt and 9.6pt remain advisory; 21.6pt populated text is not falsely refused by unused 1pt list, cursor or whitespace-run styles.",
+  "native_corpus": {
+    "result": "PASS 44.580s",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "prior_accepted_pixels_identical": 247,
+    "outcome_or_refusal_changes": 0,
+    "generated_zip_payload_changes": 0,
+    "template_source_changes": 0,
+    "comparison_sha256": "43549ec7d0ab15b40361cadb322d16d21da7f7b34bd00d7e0dc91332b37c828e"
+  },
+  "pinned_lint": "PASS, 0 issues",
+  "build": "PASS; nonfatal sandbox module-stat-cache warning retained",
+  "full_root_race": "Running at receipt creation; session6192, output/generated-extreme-text-floor-20260927-v1/root-race.log. Do not infer terminal success.",
+  "publication_ci": "Pending publication; inspect every workflow for the exact pushed SHA.",
+  "residual_work": [
+    "Semantic-role-aware readable pattern capacities and lossless continuations remain in n1muf.",
+    "Bare autofit, inherited or undeclared run sizes are not covered by this explicit-stored-size guard.",
+    "No physical projection, universal template, full-feature or whole-deck approval."
+  ],
+  "evidence_directory": "output/generated-extreme-text-floor-20260927-v1",
+  "native_candidate_directory": "output/generated-extreme-text-native-corpus-20260927-v2"
+}

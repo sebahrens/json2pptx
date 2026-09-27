@@ -53,14 +53,14 @@ func TestUnreadableAutofitIsReported(t *testing.T) {
 	if !strings.Contains(f.Message, "autofit 28%") {
 		t.Errorf("message does not say the shrink caused it: %q", f.Message)
 	}
-	if f.Action != "review" {
-		t.Errorf("action = %q, want review — the prediction is advisory", f.Action)
+	if f.Action != "refuse" {
+		t.Errorf("action = %q, want refusal for the stored 3.4pt size", f.Action)
 	}
 	if f.Path != "/slides/0/rendered_shapes/1" {
 		t.Errorf("path = %q, want exact rendered shape", f.Path)
 	}
-	if got := f.Fix.Params["rendered_shape_text"]; got != "Some bullet text Some bullet text Some bullet text Some bullet text" {
-		t.Errorf("rendered shape text = %v", got)
+	if f.Fix != nil || strings.Contains(f.Message, "shorten") {
+		t.Errorf("extreme-size refusal must not offer source deletion: %+v", f)
 	}
 }
 
