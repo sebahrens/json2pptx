@@ -23,6 +23,7 @@ import (
 
 	"github.com/sebahrens/json2pptx/internal/deckinput"
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
+	"github.com/sebahrens/json2pptx/internal/patterns"
 )
 
 // validateRawEscapeHatch enforces that a raw_json2pptx slide's "slide" payload
@@ -77,6 +78,21 @@ func validateRawEscapeHatch(path string, body map[string]any, s *semDiags) {
 	if !strings.EqualFold(strings.TrimSpace(slide.SlideType), "blank") && !rawSlideHasRenderableContent(&slide) {
 		s.hard(slidePath, diagnostics.CodeSemanticRequired,
 			"raw_json2pptx slide has no renderable content; provide content, shape_grid, pattern, or compose")
+	}
+
+	// The pattern's own values gate (the compile preflight and the renderer
+	// apply it) must run here too, or validate passes a payload such as
+	// capability-heatmap tiers given as strings that render then refuses.
+	if slide.Pattern != nil {
+		if err := deckinput.ValidatePattern(slide.Pattern, patterns.Default()); err != nil {
+			for _, d := range diagnostics.FromJoinedError(err, diagnostics.CodeInvalidSlide) {
+				p := slidePath + ".pattern"
+				if d.Path != "" {
+					p += "." + d.Path
+				}
+				s.hard(p, d.Code, d.Message)
+			}
+		}
 	}
 }
 

@@ -94,6 +94,9 @@ func CompileImageCase(in Input) (*deckinput.SlideInput, []SourceLink, error) {
 // come with it, so the caption or alt text stands in for it rather than the
 // slide pretending there was never an image.
 func compileImageCaseFallback(in Input, v imageCaseValues) (*deckinput.SlideInput, []SourceLink, error) {
+	if v.Image != nil && (v.Eyebrow != "" || v.Heading != "" || v.Body != "" || len(v.Bullets) > 0 || len(v.Metrics) > 0) {
+		return compileImageCaseTwoColumn(in, v)
+	}
 	slide := &deckinput.SlideInput{SlideType: "content"}
 	links := titleLink(slide, in)
 
@@ -139,6 +142,57 @@ func compileImageCaseFallback(in Input, v imageCaseValues) (*deckinput.SlideInpu
 	if len(paras) > 0 && len(bullets) > 0 {
 		slide.SlideType = "two-column"
 		slide.LayoutID = "two-column"
+	}
+	links = append(links, applyTakeaway(slide, in)...)
+	return slide, links, nil
+}
+
+// compileImageCaseTwoColumn keeps the author's picture when the story is too
+// long for image-text-split: a two-column slide with the image in one column
+// (on image_side, left by default) and the whole story as text in the other.
+func compileImageCaseTwoColumn(in Input, v imageCaseValues) (*deckinput.SlideInput, []SourceLink, error) {
+	slide := &deckinput.SlideInput{SlideType: "two-column", LayoutID: "two-column"}
+	links := titleLink(slide, in)
+
+	imagePH, textPH := "body", "body_2"
+	if imageCaseSide(in.Body) == "right" {
+		imagePH, textPH = "body_2", "body"
+	}
+
+	var paras []string
+	for _, p := range []string{v.Eyebrow, v.Heading, v.Body, v.Caption} {
+		if p != "" {
+			paras = append(paras, p)
+		}
+	}
+	bullets := append([]string{}, v.Bullets...)
+	for _, m := range v.Metrics {
+		bullets = append(bullets, m.Value+" — "+m.Label)
+	}
+
+	img := &deckinput.ImageInput{Path: v.Image.Path, URL: v.Image.URL, Alt: firstNonEmpty(v.Image.Alt, v.Caption, v.ImageLabel)}
+	contents := []deckinput.ContentInput{{PlaceholderID: imagePH, Type: "image", ImageValue: img}}
+	var textItem deckinput.ContentInput
+	var textField string
+	switch {
+	case len(paras) > 0 && len(bullets) > 0:
+		textItem, textField = bodyAndBulletsContent(textPH, strings.Join(paras, "\n"), bullets), "body_and_bullets_value"
+	case len(bullets) > 0:
+		textItem, textField = bulletsContent(textPH, bullets), "bullets_value"
+	default:
+		textItem, textField = textContent(textPH, strings.Join(paras, "\n")), "text_value"
+	}
+	contents = append(contents, textItem)
+	if imagePH == "body_2" {
+		contents[0], contents[1] = contents[1], contents[0]
+	}
+	for _, c := range contents {
+		idx := appendContent(slide, c)
+		raw, sem := fmt.Sprintf("%s.content[%d].%s", in.rawSlide(), idx, textField), in.semSlide()+".body"
+		if c.Type == "image" {
+			raw, sem = fmt.Sprintf("%s.content[%d].image_value", in.rawSlide(), idx), in.semSlide()+".image"
+		}
+		links = append(links, SourceLink{RawPath: raw, SemanticPath: sem})
 	}
 	links = append(links, applyTakeaway(slide, in)...)
 	return slide, links, nil
