@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -73,33 +74,42 @@ func TestPreviewToolIdentityTracksWrapperTargetVersion(t *testing.T) {
 		t.Skip("POSIX renderer wrapper fixture")
 	}
 	path := filepath.Join(t.TempDir(), "renderer")
+	identity := func(binary string) (string, error) {
+		return previewToolIdentityWithVersion(binary, func(path string) ([]byte, error) {
+			// This test checks identity, not the production five-second budget.
+			// Keep fixture startup bounded while testing real wrapper execution.
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			return previewRendererVersion(ctx, path)
+		})
+	}
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nread version < \"$0.version\"\necho \"$version\"\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path+".version", []byte("renderer1\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	first, err := previewToolIdentity(path)
+	first, err := identity(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path+".version", []byte("renderer2\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	second, err := previewToolIdentity(path)
+	second, err := identity(path)
 	if err != nil || first == second {
 		t.Fatalf("unchanged wrapper concealed renderer upgrade: %v", err)
 	}
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 1\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := previewToolIdentity(path); err == nil {
+	if _, err := identity(path); err == nil {
 		t.Fatal("failed renderer-version probe accepted")
 	}
 	if err := os.WriteFile(path, []byte("#!/bin/sh\nexit 0\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := previewToolIdentity(path); err == nil {
+	if _, err := identity(path); err == nil {
 		t.Fatal("empty renderer version accepted")
 	}
 	ctx, cancel := context.WithCancel(context.Background())

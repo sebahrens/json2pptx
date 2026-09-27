@@ -63,13 +63,18 @@ func TestIsRasterizerCommand(t *testing.T) {
 
 func readOfficeWorkerPID(t *testing.T, path string) int {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
+	// Startup has its own bounded budget. Conversion cancellation is armed
+	// only after this handshake; it must never expire before a worker exists.
+	deadline := time.Now().Add(30 * time.Second)
+	if testDeadline, ok := t.Deadline(); ok && testDeadline.Before(deadline) {
+		deadline = testDeadline.Add(-time.Second)
+	}
 	for time.Now().Before(deadline) {
 		data, err := os.ReadFile(path)
 		if err == nil {
 			value := strings.TrimSpace(string(data))
 			if value != "" {
-				pid, err := strconv.Atoi(value)
+				pid, err := parseFixtureWorkerPID(value)
 				if err != nil {
 					t.Fatalf("parse worker PID: %v", err)
 				}
@@ -80,8 +85,71 @@ func readOfficeWorkerPID(t *testing.T, path string) int {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	t.Fatal("fake soffice did not start a worker")
+	t.Fatalf("fake conversion process did not report worker readiness at %s", path)
 	return 0
+}
+
+func parseFixtureWorkerPID(value string) (int, error) {
+	pid, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("worker PID %q: %w", value, err)
+	}
+	if pid <= 0 {
+		return 0, fmt.Errorf("worker PID must be positive: %d", pid)
+	}
+	return pid, nil
+}
+
+func TestFixtureWorkerPIDRejectsProcessGroups(t *testing.T) {
+	for _, value := range []string{"0", "-1", "", "not-a-pid"} {
+		if _, err := parseFixtureWorkerPID(value); err == nil {
+			t.Errorf("accepted unsafe fixture PID %q", value)
+		}
+	}
+	if pid, err := parseFixtureWorkerPID("12345"); err != nil || pid != 12345 {
+		t.Fatalf("positive fixture PID = %d, %v", pid, err)
+	}
+}
+
+// A controllable deadline keeps process startup separate from the condition
+// under test. Only the test timer cancels it; its Err models that deadline.
+type fixtureDeadlineContext struct{ context.Context }
+
+func (c fixtureDeadlineContext) Err() error {
+	if c.Context.Err() != nil {
+		return context.DeadlineExceeded
+	}
+	return nil
+}
+
+func runWorkerUntilDeadline(t *testing.T, executable, workerFile string, wantTimeout time.Duration) int {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	runner := &RealCommandRunner{Stdout: io.Discard, Stderr: io.Discard,
+		timeoutContext: func(timeout time.Duration) (context.Context, context.CancelFunc) {
+			if timeout != wantTimeout {
+				t.Errorf("selected timeout=%s, want %s", timeout, wantTimeout)
+			}
+			return fixtureDeadlineContext{ctx}, cancel
+		}}
+	done := make(chan error, 1)
+	go func() { done <- runner.Run(executable, workerFile) }()
+	pid := readOfficeWorkerPID(t, workerFile)
+	if err := syscall.Kill(pid, 0); err != nil {
+		t.Fatalf("worker exited before deadline: %v", err)
+	}
+	timer := time.AfterFunc(50*time.Millisecond, cancel)
+	defer timer.Stop()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("run error=%v, want deadline exceeded", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("conversion did not return after deadline")
+	}
+	return pid
 }
 
 func assertWorkerGone(t *testing.T, pid int) {
@@ -122,16 +190,7 @@ func officeWorkerExited(pid int) bool {
 func TestRealCommandRunnerLibreOfficeTimeoutKillsWorker(t *testing.T) {
 	office := fakeSofficeWithWorker(t)
 	workerFile := filepath.Join(t.TempDir(), "worker.pid")
-	prior := pptx2jpgLibreOfficeTimeout
-	// Allow the shell to launch and record its child even on loaded CI hosts.
-	pptx2jpgLibreOfficeTimeout = time.Second
-	t.Cleanup(func() { pptx2jpgLibreOfficeTimeout = prior })
-	runner := &RealCommandRunner{Stdout: io.Discard, Stderr: io.Discard}
-	err := runner.Run(office, workerFile)
-	if !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("run error = %v, want deadline exceeded", err)
-	}
-	assertWorkerGone(t, readOfficeWorkerPID(t, workerFile))
+	assertWorkerGone(t, runWorkerUntilDeadline(t, office, workerFile, pptx2jpgLibreOfficeTimeout))
 }
 
 func TestRealCommandRunnerLibreOfficeCallerDeath(t *testing.T) {
@@ -142,7 +201,7 @@ func TestRealCommandRunnerLibreOfficeCallerDeath(t *testing.T) {
 	}
 	office := fakeSofficeWithWorker(t)
 	workerFile := filepath.Join(t.TempDir(), "worker.pid")
-	unrelated := exec.Command("/bin/sleep", "10")
+	unrelated := exec.Command("/bin/sleep", "60")
 	unrelated.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	if err := unrelated.Start(); err != nil {
 		t.Fatal(err)
@@ -172,10 +231,6 @@ func TestRealCommandRunnerLibreOfficeCallerDeath(t *testing.T) {
 }
 
 func TestRealCommandRunnerRasterizerTimeoutKillsWorker(t *testing.T) {
-	prior := pptx2jpgRasterizerTimeout
-	// The timeout must outlast process startup so cleanup checks a real child.
-	pptx2jpgRasterizerTimeout = time.Second
-	t.Cleanup(func() { pptx2jpgRasterizerTimeout = prior })
 	for _, binary := range []string{"pdftoppm", "magick", "convert"} {
 		t.Run(binary, func(t *testing.T) {
 			rasterizer := filepath.Join(t.TempDir(), binary)
@@ -184,12 +239,7 @@ func TestRealCommandRunnerRasterizerTimeoutKillsWorker(t *testing.T) {
 				t.Fatal(err)
 			}
 			workerFile := filepath.Join(t.TempDir(), "worker.pid")
-			runner := &RealCommandRunner{Stdout: io.Discard, Stderr: io.Discard}
-			err := runner.Run(rasterizer, workerFile)
-			if !errors.Is(err, context.DeadlineExceeded) {
-				t.Fatalf("run error = %v, want deadline exceeded", err)
-			}
-			assertWorkerGone(t, readOfficeWorkerPID(t, workerFile))
+			assertWorkerGone(t, runWorkerUntilDeadline(t, rasterizer, workerFile, pptx2jpgRasterizerTimeout))
 		})
 	}
 }

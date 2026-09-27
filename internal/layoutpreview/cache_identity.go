@@ -31,6 +31,16 @@ var previewEngineIdentity = sync.OnceValues(func() (string, error) {
 // Include the tool version as well as entrypoint bytes: bundled entrypoints can
 // be wrapper scripts whose target changes without changing the wrapper itself.
 func previewToolIdentity(binary string) (string, error) {
+	return previewToolIdentityWithVersion(binary, func(path string) ([]byte, error) {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		return previewRendererVersion(ctx, path)
+	})
+}
+
+// Keep version acquisition separate from cache identity. Tests of wrapper
+// upgrades can bound fixture startup independently of the production deadline.
+func previewToolIdentityWithVersion(binary string, probe func(string) ([]byte, error)) (string, error) {
 	path, err := exec.LookPath(binary)
 	if err != nil {
 		return "", err
@@ -39,9 +49,7 @@ func previewToolIdentity(binary string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	version, err := previewRendererVersion(ctx, path)
+	version, err := probe(path)
 	if err != nil {
 		return "", fmt.Errorf("identify renderer %s: %w", path, err)
 	}

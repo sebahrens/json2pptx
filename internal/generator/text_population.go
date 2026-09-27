@@ -241,7 +241,7 @@ func setTextParagraph(shape *shapeXML, placeholderID string, value interface{}, 
 }
 
 func preservesNativeTextAlignment(shape *shapeXML, id string) bool {
-	if isTitleShape(shape) || isTitlePlaceholder(id) {
+	if classifyShapeRole(shape) == RoleDisclosure || isTitleShape(shape) || isTitlePlaceholder(id) {
 		return true
 	}
 	canonical := strings.ToLower(strings.TrimSpace(id))

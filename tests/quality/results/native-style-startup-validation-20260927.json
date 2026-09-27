@@ -1,0 +1,49 @@
+{
+  "scope": "Native style preservation, disclosure policy, unused footer prompt repairs and test startup controls; not closure of the all-layout visual goal",
+  "production_template_repairs": ["abstract", "blue-corporate"],
+  "unpromoted_candidates": ["modern-template Closing composition", "business-template footer contrast"],
+  "full_root_validation": {
+    "command": "go test ./... -race -count=1 -timeout=25m -coverprofile=output/startup-readiness-root-coverage-20260927-v1.out -covermode=atomic -json",
+    "bundled_libreoffice": "/Users/seb/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/soffice",
+    "exit_code": 0,
+    "failed_tests": [],
+    "coverage_percent": 80.6,
+    "log_sha256": "438b084c9b942142348cb33794b836903346286cb58d0b731eb6714554671b46",
+    "coverage_sha256": "1570f2ec87b8ffbc05f22d2c997b8cc0e321c0ff1cd7c59496b9e37dae149977",
+    "private_pstyle_named_passes": 312,
+    "private_pstyle_named_skips": [
+      "TestThemeCorpus_SurfaceTintsReferenceValidSchemeColors/p-style.pptx",
+      "TestThemeCorpus_DataPaletteHasSixValidSchemeColors/p-style.pptx"
+    ],
+    "private_template_remains_gitignored": true
+  },
+  "all_native_namespace_render_audit": {
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "accepted_pages": 262,
+    "typed_source_loss_refusals": 47,
+    "all_accepted_pages_pixel_identical_to_prior_footer_repair_corpus": true,
+    "manifest_sha256": "a24c96ad3ef5b9aaf54cee8b480a23c40f25603a60f7ff21155f952c51d9ab91",
+    "refusals_are_not_visual_approval": true
+  },
+  "additional_gates": {
+    "pinned_lint": "PASS: output/startup-readiness-lint-20260927-v1.log",
+    "build": "PASS: output/startup-readiness-build-20260927-v1.log",
+    "installed_startup_controls_three_repetitions": "PASS: output/startup-readiness-installed-controls-20260927-v2.log",
+    "goldens": "PASS: output/native-namespace-goldens-20260927-v1.log",
+    "preview_refresh": "All local73 and portability35 layouts refreshed after final production source changes",
+    "tracked_go_format": "PASS",
+    "diff_whitespace": "PASS"
+  },
+  "review_records": [
+    "output/native-namespace-review-20260927-v1.json",
+    "output/startup-readiness-review-20260927-v1.json"
+  ],
+  "remaining_risks": [
+    "Unknown extension QName values whose namespace binding exists only outside the captured native-style subtree are not established as preserved",
+    "Local full-suite success does not prove replacement pushed-SHA CI success",
+    "Outstanding visual cautions remain tracked separately and are not waived by this validation"
+  ],
+  "ci_status": "Pending coherent publication and exact-SHA workflow verification"
+}

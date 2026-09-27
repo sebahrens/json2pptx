@@ -75,7 +75,7 @@ Placeholders are identified by the `cNvPr` name attribute in the slide layout XM
 
 An explicitly named `legal_disclosure` (or `Legal Disclosure`, matched
 case-insensitively with surrounding whitespace ignored) retains its native
-OOXML type, font and geometry. It does not satisfy a mandatory ordinary
+OOXML type, font, alignment and geometry. It does not satisfy a mandatory ordinary
 subtitle/body requirement. Supply a separate ordinary subtitle on Title Slide
 and Closing layouts. Small fonts or incidental names such as `legal notes`
 do not imply this role. Inspection reports its role as `disclosure` and

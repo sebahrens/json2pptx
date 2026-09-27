@@ -26,8 +26,16 @@ type CommandRunner interface {
 
 // RealCommandRunner runs actual shell commands.
 type RealCommandRunner struct {
-	Stdout io.Writer
-	Stderr io.Writer
+	Stdout         io.Writer
+	Stderr         io.Writer
+	timeoutContext func(time.Duration) (context.Context, context.CancelFunc)
+}
+
+func (r *RealCommandRunner) newTimeoutContext(timeout time.Duration) (context.Context, context.CancelFunc) {
+	if r.timeoutContext != nil {
+		return r.timeoutContext(timeout)
+	}
+	return context.WithTimeout(context.Background(), timeout)
 }
 
 // Kept separate from the mocked CommandRunner contract so tests can use a
@@ -48,7 +56,7 @@ func isRasterizerCommand(name string) bool {
 // Run executes the command with the given name and arguments.
 func (r *RealCommandRunner) Run(name string, args ...string) error {
 	if isLibreOfficeCommand(name) {
-		ctx, cancel := context.WithTimeout(context.Background(), pptx2jpgLibreOfficeTimeout)
+		ctx, cancel := r.newTimeoutContext(pptx2jpgLibreOfficeTimeout)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // executable comes from the resolved LibreOffice toolchain
 		cmd.Stdout, cmd.Stderr = r.Stdout, r.Stderr
@@ -60,7 +68,7 @@ func (r *RealCommandRunner) Run(name string, args ...string) error {
 		return err
 	}
 	if isRasterizerCommand(name) {
-		ctx, cancel := context.WithTimeout(context.Background(), pptx2jpgRasterizerTimeout)
+		ctx, cancel := r.newTimeoutContext(pptx2jpgRasterizerTimeout)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec // executable comes from the resolved rasterizer toolchain
 		cmd.Stdout, cmd.Stderr = r.Stdout, r.Stderr

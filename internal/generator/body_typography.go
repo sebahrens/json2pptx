@@ -55,7 +55,7 @@ func normalizeBodyTypography(shape *shapeXML, cfg *autofitConfig) {
 func shouldNormalizeBodyTypography(shape *shapeXML, item ContentItem) bool {
 	ph := shape.NonVisualProperties.NvPr.Placeholder
 	if item.FontSize != 0 || ph == nil || (ph.Type != "" && ph.Type != "body" && ph.Type != "obj") ||
-		isTitleShape(shape) || isTitlePlaceholder(item.PlaceholderID) || strings.Contains(strings.ToLower(item.PlaceholderID), "subtitle") {
+		classifyShapeRole(shape) == RoleDisclosure || isTitleShape(shape) || isTitlePlaceholder(item.PlaceholderID) || strings.Contains(strings.ToLower(item.PlaceholderID), "subtitle") {
 		return false
 	}
 	switch item.Type {

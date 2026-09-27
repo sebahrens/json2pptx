@@ -643,9 +643,12 @@ type listStyleXML struct {
 }
 
 type paragraphXML struct {
-	Properties *paragraphPropertiesXML `xml:"a:pPr,omitempty"`
-	Runs       []runXML                `xml:"a:r"`
-	EndParaRPr *endParaRPrXML          `xml:"a:endParaRPr,omitempty"`
+	// Match local names when decoding DrawingML. Literal "a:" tags silently
+	// drop native properties/runs because encoding/xml resolves the prefix.
+	// fixOOXMLNamespaces adds the DrawingML prefixes when writing the slide.
+	Properties *paragraphPropertiesXML `xml:"pPr,omitempty"`
+	Runs       []runXML                `xml:"r"`
+	EndParaRPr *endParaRPrXML          `xml:"endParaRPr,omitempty"`
 }
 
 // paragraphPropertiesXML preserves paragraph properties including the level attribute.

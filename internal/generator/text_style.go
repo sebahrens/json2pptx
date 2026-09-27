@@ -2,6 +2,7 @@
 package generator
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -32,7 +33,7 @@ func extractTemplateTextStyle(paragraphs []paragraphXML) (*paragraphPropertiesXM
 	// Clone run properties from the first run if present
 	if len(firstPara.Runs) > 0 && firstPara.Runs[0].RunProperties != nil {
 		templateRProps := firstPara.Runs[0].RunProperties
-		if templateRProps.Lang != "" || templateRProps.FontSize != "" || templateRProps.Inner != "" {
+		if templateRProps.Lang != "" || templateRProps.FontSize != "" || templateRProps.Italic != "" || templateRProps.Inner != "" {
 			rProps = cloneRunProperties(templateRProps)
 		}
 	}
@@ -66,7 +67,7 @@ func extractBulletTemplateStyles(paragraphs []paragraphXML) []bulletLevelStyle {
 		// Clone run properties from the first run
 		if len(para.Runs) > 0 && para.Runs[0].RunProperties != nil {
 			rProps := para.Runs[0].RunProperties
-			if rProps.Lang != "" || rProps.FontSize != "" || rProps.Inner != "" {
+			if rProps.Lang != "" || rProps.FontSize != "" || rProps.Italic != "" || rProps.Inner != "" {
 				style.rProps = cloneRunProperties(rProps)
 			}
 		}
@@ -245,15 +246,18 @@ func cloneRunProperties(props *runPropertiesXML) *runPropertiesXML {
 		return nil
 	}
 	// Check if there's anything to clone (Lang/FontSize attribute or Inner content)
-	if props.Lang == "" && props.FontSize == "" && props.Inner == "" {
+	if props.Lang == "" && props.FontSize == "" && props.Italic == "" && props.Inner == "" {
 		return nil
 	}
 	return &runPropertiesXML{
 		Lang:     props.Lang,
 		FontSize: props.FontSize,
+		Italic:   props.Italic,
 		Inner:    strings.Clone(props.Inner),
 	}
 }
+
+var nativeRunInteractionPattern = regexp.MustCompile(`(?s)<(?:[A-Za-z_][A-Za-z0-9_.-]*:)?hlink(?:Click|MouseOver)\b[^>]*?/>|<(?:[A-Za-z_][A-Za-z0-9_.-]*:)?hlink(?:Click|MouseOver)\b[^>]*>.*?</(?:[A-Za-z_][A-Za-z0-9_.-]*:)?hlink(?:Click|MouseOver)\s*>`)
 
 // createFormattedRuns parses inline tag formatting in text and creates XML runs.
 // Supports <b>bold</b>, <i>italic</i>, and <u>underline</u> formatting.
@@ -281,7 +285,9 @@ func createFormattedRuns(text string, templateRProps *runPropertiesXML) []runXML
 				Lang:     templateRProps.Lang,
 				FontSize: templateRProps.FontSize,
 				Italic:   templateRProps.Italic,
-				Inner:    templateRProps.Inner,
+				// Prompt interactions reference layout relationships, not the
+				// generated slide. Authored links are added separately afterwards.
+				Inner: nativeRunInteractionPattern.ReplaceAllString(templateRProps.Inner, ""),
 			}
 		} else {
 			rProps = &runPropertiesXML{Lang: "en-US"}
