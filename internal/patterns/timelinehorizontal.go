@@ -87,8 +87,9 @@ func (th *timelineHorizontal) NewValues() any       { return &TimelineHorizontal
 func (th *timelineHorizontal) NewOverrides() any    { return &TimelineHorizontalOverrides{} }
 func (th *timelineHorizontal) NewCellOverride() any { return &TimelineHorizontalCellOverride{} }
 
-// Measured against the fit collector on all four bundled templates at default
-// text sizes. Label wrapping consumes room in the same text shape as the body.
+// Measured against the written size (no run stored below its role floor) on
+// every shipped template at default text sizes (go-slide-creator-n1muf).
+// Label wrapping consumes room in the same text shape as the body.
 type timelineBudgetBand struct {
 	maxLabel, body int
 }
@@ -96,10 +97,10 @@ type timelineBudgetBand struct {
 var timelineBodyBudgetBands = map[string]map[int][]timelineBudgetBand{
 	"dots": {
 		3: {{60, 200}},
-		4: {{60, 200}},
-		5: {{20, 200}, {40, 176}, {60, 151}},
-		6: {{15, 181}, {30, 141}, {45, 121}, {60, 101}},
-		7: {{15, 136}, {30, 106}, {45, 91}, {60, 76}},
+		4: {{25, 181}, {50, 151}, {60, 121}},
+		5: {{20, 123}, {40, 103}, {60, 83}},
+		6: {{15, 107}, {30, 92}, {45, 77}, {60, 58}},
+		7: {{10, 90}, {20, 75}, {30, 60}, {40, 45}, {60, 40}},
 	},
 }
 
@@ -208,7 +209,7 @@ func (th *timelineHorizontal) Schema() *Schema {
 			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\")"),
 			"date":     StringSchema(30).WithDescription("Optional date or time annotation. Chevron dates have a one-line row at the effective font size (12pt minimum); BODY_TOO_LONG reports wrapping for the chosen template width. Dots and gantt retain the 30-character schema limit."),
 			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date)"),
-			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Dots readable chars for short/long labels by stop count: 3-4: 200/200, 5: 200/151, 6: 181/101, 7: 136/76. Chevron body capacity is measured from its actual width, height, label wrapping, and font sizes; BODY_TOO_LONG reports the line limit for the chosen layout. Shorten descriptions or use fewer stops when warned."),
+			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Dots readable chars for short/long labels by stop count: 3: 200/200, 4: 181/121, 5: 123/83, 6: 107/58, 7: 90/40. Chevron body capacity is measured from its actual width, height, label wrapping, and font sizes; BODY_TOO_LONG reports the line limit for the chosen layout. Shorten descriptions or use fewer stops when warned."),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)

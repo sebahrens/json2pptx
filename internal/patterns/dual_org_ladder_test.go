@@ -12,12 +12,12 @@ func TestDualOrgLadderDenseTitleWarning(t *testing.T) {
 	for i := 0; i < 6; i++ {
 		values.Rows = append(values.Rows, DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
 	}
-	values.Rows[2].ATitle = strings.Repeat("T", 76)
+	values.Rows[2].ATitle = strings.Repeat("T", 66)
 	got := p.PostExpandWarnings(ExpandContext{}, values, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "rows[2].a_title") || !strings.Contains(got[0], "about 75") {
+	if len(got) != 1 || !strings.Contains(got[0], "rows[2].a_title") || !strings.Contains(got[0], "about 65") {
 		t.Fatalf("dense title warning: %v", got)
 	}
-	values.Rows[2].ATitle = strings.Repeat("T", 75)
+	values.Rows[2].ATitle = strings.Repeat("T", 65)
 	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
 		t.Fatalf("measured six-row target should fit: %v", got)
 	}

@@ -93,19 +93,28 @@ func (a *agendaWithImages) NewOverrides() any    { return &AgendaWithImagesOverr
 func (a *agendaWithImages) NewCellOverride() any { return &AgendaWithImagesCellOverride{} }
 
 // The title and subtitle share one text cell. The budget was measured at
-// default text sizes across all four bundled templates. Without image labels,
-// the text cell expands into the image column and retains its schema maximum.
+// default text sizes against the written size on every shipped template
+// (go-slide-creator-n1muf). Without image labels, the text cell expands into
+// the image column.
 func agendaWithImagesSubtitleBudget(rows, titleChars int, withImages bool) int {
-	if !withImages || rows <= 4 {
+	switch {
+	case !withImages && rows <= 5, withImages && rows <= 4:
 		return 160
+	case !withImages:
+		return 110
+	case rows == 5 && titleChars <= 40:
+		return 130
+	case rows == 5 && titleChars <= 55:
+		return 120
+	case rows == 5:
+		return 40
+	case titleChars <= 40:
+		return 65
+	case titleChars <= 65:
+		return 40
+	default:
+		return 0
 	}
-	if titleChars <= 65 {
-		return 150
-	}
-	if rows == 5 {
-		return 75
-	}
-	return 0
 }
 
 func (a *agendaWithImages) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
@@ -132,8 +141,8 @@ func (a *agendaWithImages) Schema() *Schema {
 	itemSchema := ObjectSchema(
 		map[string]*Schema{
 			"number":      IntegerSchema(0, 999).WithDescription("1-based ordinal; auto-assigned 1..N when omitted (use 0 or omit to auto-assign)"),
-			"title":       StringSchema(80).WithDescription("Section title (bold); with 5-6 image rows, keep it to about 65 characters when the subtitle exceeds 75 characters"),
-			"subtitle":    StringSchema(160).WithDescription("Optional text below the title. About 160 readable characters with 3-4 rows or no image labels. With 5-6 image rows and a title up to 65 characters, use about 150. With a longer title, use about 75 at 5 rows or omit the subtitle at 6 rows"),
+			"title":       StringSchema(80).WithDescription("Section title (bold); with 5 image rows keep it to about 55 characters when the subtitle exceeds 40; with 6 image rows about 65 with a subtitle up to 40"),
+			"subtitle":    StringSchema(160).WithDescription("Optional text below the title. About 160 readable characters with 3-4 rows (3-5 without image labels; 110 at 6). With image labels: 5 rows hold 130 with a title up to 40, 120 up to 55, else 40; 6 rows hold 65 with a title up to 40, 40 up to 65, else omit it"),
 			"image_label": StringSchema(60).WithDescription("Optional caption centred in the image placeholder; omit it on one row and that row still gets an empty placeholder, omit it on every row to collapse the image column"),
 		},
 		[]string{"title"},

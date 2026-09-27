@@ -19,30 +19,29 @@ func compactBudgetValues(items int) *BeforeAfterValues {
 
 func TestBeforeAfterCompactWarningsUseSharedLineBudget(t *testing.T) {
 	pat := &beforeAfterCompact{}
-	v := compactBudgetValues(8)
-	v.Before.Items[0] = strings.Repeat("w", 200)
-	v.Before.Items[1] = strings.Repeat("w", 200)
+	v := compactBudgetValues(4)
+	v.Before.Items[0] = strings.Repeat("w", 133)
 	if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("two long bullets fit with short headers: %v", got)
+		t.Fatalf("one long bullet fits with short headers: %v", got)
 	}
-	v.Before.Items[2] = strings.Repeat("w", 68)
+	v.Before.Items[1] = strings.Repeat("w", 53)
 	got := pat.PostExpandWarnings(ExpandContext{}, v, nil)
 	if len(got) != 1 || !strings.Contains(got[0], ErrCodeBodyTooLong) ||
-		!strings.Contains(got[0], "before.items") || !strings.Contains(got[0], "holds about 12 lines") {
+		!strings.Contains(got[0], "before.items") || !strings.Contains(got[0], "holds about 6 lines") {
 		t.Fatalf("over short-header line budget: %v", got)
 	}
-	v.Before.Items[2] = "Short"
+	v.Before.Items[1] = "Short"
 	v.Before.Header = strings.Repeat("H", 47)
 	got = pat.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "holds about 10 lines") {
+	if len(got) != 1 || !strings.Contains(got[0], "holds about 5 lines") {
 		t.Fatalf("long header should reduce the line budget: %v", got)
 	}
-	v.Before.Items[1] = "Short"
+	v.Before.Items[0] = strings.Repeat("w", 103)
 	if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("one long bullet fits with a long header: %v", got)
+		t.Fatalf("a two-line bullet fits with a long header: %v", got)
 	}
-	v.After.Items[0] = strings.Repeat("w", 200)
-	v.After.Items[1] = strings.Repeat("w", 200)
+	v.After.Items[0] = strings.Repeat("w", 133)
+	v.After.Items[1] = strings.Repeat("w", 133)
 	got = pat.PostExpandWarnings(ExpandContext{}, v, nil)
 	if len(got) != 1 || !strings.Contains(got[0], "after.items") {
 		t.Fatalf("other column warning: %v", got)

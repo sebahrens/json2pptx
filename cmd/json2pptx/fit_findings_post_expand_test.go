@@ -131,8 +131,8 @@ func TestHorizontalBarBudgetWarningReachesFitReportAcrossTemplates(t *testing.T)
 	for i := 0; i < 8; i++ {
 		values.Bars = append(values.Bars, patterns.HorizontalBarCalloutsBar{Label: "Item", Value: 80, Callout: "Insight"})
 	}
-	values.Bars[3].Callout = strings.Repeat("C", 122)
-	assertBudgetFindingAcrossTemplates(t, "horizontal-bar-with-callouts", values, "bars[3].callout", "about 121 characters")
+	values.Bars[3].Callout = strings.Repeat("C", 54)
+	assertBudgetFindingAcrossTemplates(t, "horizontal-bar-with-callouts", values, "bars[3].callout", "about 53 characters")
 }
 
 func TestAgendaWithImagesBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -141,8 +141,8 @@ func TestAgendaWithImagesBudgetWarningReachesFitReportAcrossTemplates(t *testing
 		values.Items = append(values.Items, patterns.AgendaWithImagesItem{Title: "Title", Subtitle: "Summary", ImageLabel: "Image"})
 	}
 	values.Items[2].Title = strings.Repeat("T", 80)
-	values.Items[2].Subtitle = strings.Repeat("S", 76)
-	assertBudgetFindingAcrossTemplates(t, "agenda-with-images", values, "items[2].subtitle", "about 75 subtitle characters")
+	values.Items[2].Subtitle = strings.Repeat("S", 41)
+	assertBudgetFindingAcrossTemplates(t, "agenda-with-images", values, "items[2].subtitle", "about 40 subtitle characters")
 }
 
 func TestAgendaWithImagesFullAgendaWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -160,10 +160,10 @@ func TestPhaseRoadmapBudgetWarningsReachFitReportAcrossTemplates(t *testing.T) {
 	for i := 0; i < 6; i++ {
 		values.Phases = append(values.Phases, patterns.PhaseRoadmapPhase{Name: "Plan", DateLabel: "Q1", Description: "Brief", Milestone: "Gate"})
 	}
-	values.Phases[2].DateLabel = strings.Repeat("D", 23)
-	values.Phases[2].Milestone = strings.Repeat("M", 43)
-	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].date_label", "about 22 readable date-label characters")
-	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].milestone", "about 42 readable milestone characters")
+	values.Phases[2].DateLabel = strings.Repeat("D", 19)
+	values.Phases[2].Milestone = strings.Repeat("M", 39)
+	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].date_label", "about 18 readable date-label characters")
+	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].milestone", "about 38 readable milestone characters")
 }
 
 func TestTimelineHorizontalBudgetWarningsReachFitReportAcrossTemplates(t *testing.T) {
@@ -172,8 +172,8 @@ func TestTimelineHorizontalBudgetWarningsReachFitReportAcrossTemplates(t *testin
 		values = append(values, patterns.TimelineStop{Label: "Launch", Date: "Q1", Body: "Brief"})
 	}
 	values[3].Label = strings.Repeat("L", 60)
-	values[3].Body = strings.Repeat("B", 77)
-	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "about 76 readable body characters")
+	values[3].Body = strings.Repeat("B", 41)
+	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "about 40 readable body characters")
 	values[3].Body = strings.Repeat("B", 33)
 	chevron := &patterns.TimelineHorizontalOverrides{Style: "chevron"}
 	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "7-stop chevron holds", chevron)
@@ -216,13 +216,15 @@ func TestTableHighlightPairedCopyWarningReachesFitReportAcrossTemplates(t *testi
 	values := &patterns.TableHighlightValues{Scale: "harvey"}
 	for i := 0; i < 6; i++ {
 		values.Criteria = append(values.Criteria, patterns.TableHighlightCriterion{Label: "Quality"})
+	}
+	for i := 0; i < 5; i++ {
 		option := patterns.TableHighlightOption{Name: strings.Repeat("N", 40), Detail: strings.Repeat("D", 60)}
 		for j := 0; j < 6; j++ {
 			option.Scores = append(option.Scores, "3")
 		}
 		values.Options = append(values.Options, option)
 	}
-	assertBudgetFindingAcrossTemplates(t, "table-highlight", values, "options[0].name/detail", "about 30 characters each")
+	assertBudgetFindingAcrossTemplates(t, "table-highlight", values, "options[0].name/detail", "about 31 characters each")
 }
 
 func TestQuoteClusterCombinedCopyWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -232,7 +234,7 @@ func TestQuoteClusterCombinedCopyWarningReachesFitReportAcrossTemplates(t *testi
 			Text: strings.Repeat("word ", 48), Name: strings.Repeat("name ", 12), Title: strings.Repeat("role ", 16),
 		})
 	}
-	assertBudgetFindingAcrossTemplates(t, "quote-cluster", values, "quotes.text/name/title", "near 148 characters")
+	assertBudgetFindingAcrossTemplates(t, "quote-cluster", values, "quotes.text/name/title", "near 81 when names")
 }
 
 func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -240,8 +242,8 @@ func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testin
 	for i := 0; i < 6; i++ {
 		values.Rows = append(values.Rows, patterns.DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
 	}
-	values.Rows[2].ATitle = strings.Repeat("T", 76)
-	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 75 title characters")
+	values.Rows[2].ATitle = strings.Repeat("T", 66)
+	assertBudgetFindingAcrossTemplates(t, "dual-org-ladder", values, "rows[2].a_title", "about 65 title characters")
 }
 
 func TestStateShiftHubDenseDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -258,7 +260,7 @@ func TestExecSummaryDenseSupportWarningReachesFitReportAcrossTemplates(t *testin
 	for i := 0; i < 5; i++ {
 		values.Points = append(values.Points, patterns.ExecSummaryPoint{Lead: "Conclusion", Support: strings.Repeat("S", 200)})
 	}
-	assertBudgetFindingAcrossTemplates(t, "exec-summary", values, "points.support", "about 178 support characters")
+	assertBudgetFindingAcrossTemplates(t, "exec-summary", values, "points.support", "about 146 support characters")
 }
 
 func TestWaterfallBridgeTenColumnLabelWarningReachesFitReportAcrossTemplates(t *testing.T) {

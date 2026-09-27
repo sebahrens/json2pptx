@@ -28,10 +28,13 @@ func TestAgendaWithImagesSubtitleWarnings(t *testing.T) {
 		warningText string
 	}{
 		{"four rows with images", 4, true, 80, 160, ""},
-		{"six rows without images", 6, false, 80, 160, ""},
-		{"five image rows short title", 5, true, 65, 150, "about 150"},
-		{"five image rows long title", 5, true, 80, 75, "about 75"},
-		{"six image rows short title", 6, true, 65, 150, "about 150"},
+		{"five rows without images", 5, false, 80, 160, ""},
+		{"six rows without images", 6, false, 80, 110, "about 110"},
+		{"five image rows short title", 5, true, 40, 130, "about 130"},
+		{"five image rows mid title", 5, true, 55, 120, "about 120"},
+		{"five image rows long title", 5, true, 80, 40, "about 40"},
+		{"six image rows short title", 6, true, 40, 65, "about 65"},
+		{"six image rows mid title", 6, true, 65, 40, "about 40"},
 		{"six image rows long title", 6, true, 80, 0, "no readable subtitle room"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -57,7 +60,7 @@ func TestAgendaWithImagesSubtitleWarnings(t *testing.T) {
 	}
 	props := pat.Schema().raw.Properties["values"].raw.Properties["items"].raw.Items.raw.Properties
 	if max := props["subtitle"].raw.MaxLength; max == nil || *max != 160 ||
-		!strings.Contains(props["subtitle"].raw.Description, "75 at 5 rows") {
+		!strings.Contains(props["subtitle"].raw.Description, "120 up to 55") {
 		t.Fatalf("subtitle schema loses sparse maximum or dense guidance: %+v", props["subtitle"].raw)
 	}
 }

@@ -54,14 +54,17 @@ func (b *beforeAfterCompact) NewValues() any       { return &BeforeAfterValues{}
 func (b *beforeAfterCompact) NewOverrides() any    { return &BeforeAfterOverrides{} }
 func (b *beforeAfterCompact) NewCellOverride() any { return &BeforeAfterCellOverride{} }
 
-// Each compact body column has a measured vertical budget. At default text
-// sizes, a bullet up to 67/133/200 characters occupies about 1/2/3 wrapped
-// lines. A header above 46 characters wraps and takes room from the body.
+// Each compact body column has a vertical budget measured against the written
+// size on every shipped template (go-slide-creator-n1muf): at default text
+// sizes, a bullet up to 52/103/133 characters occupies about 1/2/3 wrapped
+// lines on the narrowest template, and a column holds about 6 such lines
+// (one 133-character bullet plus three short ones, three of 103, or four of
+// 52). A header above 46 characters wraps and takes room from the body.
 func beforeAfterCompactBulletLines(item string) int {
 	switch n := runeLen(item); {
-	case n <= 67:
+	case n <= 52:
 		return 1
-	case n <= 133:
+	case n <= 103:
 		return 2
 	default:
 		return 3
@@ -70,9 +73,9 @@ func beforeAfterCompactBulletLines(item string) int {
 
 func beforeAfterCompactBodyLineBudget(before, after string) int {
 	if runeLen(before) > 46 || runeLen(after) > 46 {
-		return 10
+		return 5
 	}
-	return 12
+	return 6
 }
 
 func (b *beforeAfterCompact) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
@@ -94,7 +97,7 @@ func (b *beforeAfterCompact) PostExpandWarnings(_ ExpandContext, values, _ any) 
 			lines += beforeAfterCompactBulletLines(item)
 		}
 		if lines > budget {
-			warnings = append(warnings, fmt.Sprintf("%s: before-after-compact %s.items use about %d wrapped text lines across %d bullets; this compact column holds about %d lines with the chosen headers — shorten bullets above 133 or 67 characters, use fewer bullets, shorten the headers, or use before-after for more height", ErrCodeBodyTooLong, side.name, lines, len(side.items), budget))
+			warnings = append(warnings, fmt.Sprintf("%s: before-after-compact %s.items use about %d wrapped text lines across %d bullets; this compact column holds about %d lines with the chosen headers — shorten bullets above 103 or 52 characters, use fewer bullets, shorten the headers, or use before-after for more height", ErrCodeBodyTooLong, side.name, lines, len(side.items), budget))
 		}
 	}
 	return warnings
@@ -104,7 +107,7 @@ func (b *beforeAfterCompact) Schema() *Schema {
 	columnSchema := ObjectSchema(
 		map[string]*Schema{
 			"header": StringSchema(46).WithDescription("Short column header; use the full before-after variant for longer headers"),
-			"items":  ArraySchema(StringSchema(133), 1, 4).WithDescription("Brief bullet items (1-4); use full before-after for longer copy or more items"),
+			"items":  ArraySchema(StringSchema(133), 1, 4).WithDescription("Brief bullet items (1-4); about 133 characters for one long bullet among short ones, 103 each with three, 52 each with four; use full before-after for longer copy or more items"),
 		},
 		[]string{"header", "items"},
 	).WithAdditionalProperties(false)

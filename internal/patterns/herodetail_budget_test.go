@@ -12,10 +12,11 @@ func TestHeroDetailIconBodyWarnings(t *testing.T) {
 		details, title, budget int
 		icon                   bool
 	}{
-		{3, 38, 200, true},
-		{3, 39, 181, true},
-		{4, 27, 90, true},
-		{4, 28, 60, true},
+		{2, 21, 196, true},
+		{3, 20, 161, true},
+		{3, 21, 121, true},
+		{4, 23, 90, true},
+		{4, 24, 60, true},
 		{4, 49, 30, true},
 		{4, 60, 200, false},
 	} {

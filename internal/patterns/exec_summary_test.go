@@ -15,11 +15,11 @@ func TestExecSummaryFivePointSupportBudget(t *testing.T) {
 		v.Points = append(v.Points, ExecSummaryPoint{Lead: "Conclusion", Support: strings.Repeat("S", 200)})
 	}
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "points.support") || !strings.Contains(got[0], "about 178") {
+	if len(got) != 1 || !strings.Contains(got[0], "points.support") || !strings.Contains(got[0], "about 146") {
 		t.Fatalf("dense support warning: %v", got)
 	}
 	for i := range v.Points {
-		v.Points[i].Support = strings.Repeat("S", 178)
+		v.Points[i].Support = strings.Repeat("S", 146)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured dense target should fit: %v", got)
@@ -31,10 +31,17 @@ func TestExecSummaryFivePointSupportBudget(t *testing.T) {
 	}
 	v.BottomLine = ""
 	for i := range v.Points {
+		v.Points[i].Support = strings.Repeat("S", 158)
+	}
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("without bottom line the measured target should fit: %v", got)
+	}
+	v.Points = v.Points[:4]
+	for i := range v.Points {
 		v.Points[i].Support = strings.Repeat("S", 200)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("without bottom line schema maxima should fit: %v", got)
+		t.Fatalf("four points without bottom line keep schema maxima: %v", got)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
 		t.Fatalf("nil values: %v", got)

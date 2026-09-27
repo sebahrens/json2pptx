@@ -78,16 +78,33 @@ func (h *horizontalBarCallouts) Taxonomy() PatternTaxonomy {
 func (h *horizontalBarCallouts) SupportsCallout() bool        { return true }
 func (h *horizontalBarCallouts) SupportsInlineMarkdown() bool { return true }
 
-// hbcReadableCalloutBudget is measured with the fit-report readability
-// collector on all four bundled templates at the default text sizes.
+// hbcReadableCalloutBudget is measured against the written size (no run
+// stored below its role floor) on every shipped template at the default text
+// sizes (go-slide-creator-n1muf).
 func hbcReadableCalloutBudget(bars int) int {
 	switch {
-	case bars <= 5:
+	case bars <= 4:
 		return hbcCalloutMax
+	case bars == 5:
+		return 152
 	case bars == 6:
-		return 181
+		return 108
+	case bars == 7:
+		return 102
 	default:
-		return 121
+		return 53
+	}
+}
+
+// hbcReadableLabelBudget is the written-size label budget per bar count.
+func hbcReadableLabelBudget(bars int) int {
+	switch {
+	case bars <= 4:
+		return hbcLabelMax
+	case bars <= 6:
+		return 30
+	default:
+		return 15
 	}
 }
 
@@ -97,8 +114,12 @@ func (h *horizontalBarCallouts) PostExpandWarnings(_ ExpandContext, values, _ an
 		return nil
 	}
 	budget := hbcReadableCalloutBudget(len(v.Bars))
+	labelBudget := hbcReadableLabelBudget(len(v.Bars))
 	var warnings []string
 	for i, bar := range v.Bars {
+		if n := runeLen(bar.Label); n > labelBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: horizontal-bar-with-callouts bars[%d].label is %d characters; %d bars hold about %d label characters before text shrinks below the readable minimum — shorten the label or use fewer bars", ErrCodeBodyTooLong, i, n, len(v.Bars), labelBudget))
+		}
 		if n := runeLen(bar.Callout); n > budget {
 			warnings = append(warnings, fmt.Sprintf("%s: horizontal-bar-with-callouts bars[%d].callout is %d characters; %d bars hold about %d characters per callout before text shrinks below the readable minimum — shorten the insight or use fewer bars", ErrCodeBodyTooLong, i, n, len(v.Bars), budget))
 		}
@@ -173,9 +194,9 @@ func (h *horizontalBarCallouts) NewCellOverride() any { return &HorizontalBarCal
 func (h *horizontalBarCallouts) Schema() *Schema {
 	barSchema := ObjectSchema(
 		map[string]*Schema{
-			"label":   StringSchema(hbcLabelMax).WithDescription("Short bar label (1-3 words)"),
+			"label":   StringSchema(hbcLabelMax).WithDescription("Short bar label (1-3 words); about 40 readable characters with 3-4 bars, 30 with 5-6, 15 with 7-8"),
 			"value":   NumberSchema(0, 1e12).WithDescription("Numeric value rendered as a proportional bar"),
-			"callout": StringSchema(hbcCalloutMax).WithDescription("One-sentence insight rendered next to the bar; about 200 readable characters per callout with 3-5 bars, 181 with 6, or 121 with 7-8 (at default text sizes)"),
+			"callout": StringSchema(hbcCalloutMax).WithDescription("One-sentence insight rendered next to the bar; about 200 readable characters per callout with 3-4 bars, 152 with 5, 108 with 6, 102 with 7, or 53 with 8 (at default text sizes)"),
 		},
 		[]string{"label", "value"},
 	).WithAdditionalProperties(false)

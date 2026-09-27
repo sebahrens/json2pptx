@@ -220,26 +220,32 @@ func (p *tableHighlight) NewValues() any       { return &TableHighlightValues{} 
 func (p *tableHighlight) NewOverrides() any    { return &TableHighlightOverrides{} }
 func (p *tableHighlight) NewCellOverride() any { return &TableHighlightCellOverride{} }
 
-// The paired name/detail target was measured with the fit collector on all
-// four bundled templates. It is guidance for a dense matrix, not a per-field
-// validation limit: a sparse row can use its full schema maxima.
+// The paired name/detail target was measured against the written size (no run
+// stored below its role floor) on every shipped template
+// (go-slide-creator-n1muf). It is guidance for a dense matrix, not a per-field
+// validation limit: a sparse row can use its full schema maxima. Six option
+// rows hold no readable copy on the shortest content area (0).
 func tableHighlightPairedCopyBudget(options, criteria int) int {
-	if options <= 4 {
+	switch {
+	case options <= 3:
 		return 40
+	case options == 4 && criteria <= 3:
+		return 37
+	case options == 4 && criteria == 4:
+		return 35
+	case options == 4:
+		return 32
+	case options == 5 && criteria == 2:
+		return 37
+	case options == 5 && criteria == 3:
+		return 36
+	case options == 5 && criteria == 4:
+		return 35
+	case options == 5:
+		return 31
+	default:
+		return 0
 	}
-	if options == 5 {
-		if criteria >= 5 {
-			return 37
-		}
-		return 40
-	}
-	if criteria >= 5 {
-		return 30
-	}
-	if criteria == 4 {
-		return 33
-	}
-	return 35
 }
 
 // TableHighlightDetailLimit permits a longer descriptor only when the matrix
@@ -260,14 +266,12 @@ func (p *tableHighlight) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 	if budget >= thNameMax {
 		return nil
 	}
+	if budget == 0 {
+		return []string{fmt.Sprintf("%s: table-highlight has %d option rows; the shortest shipped content area holds at most 5 readable rows — use 5 or fewer options or split the table", ErrCodeBodyTooLong, len(v.Options))}
+	}
 	var warnings []string
 	for i, option := range v.Options {
-		// The two paragraphs share a row. A highlighted tag can make one
-		// otherwise tall row fit because the renderer gives it its own height.
-		if i == highlightRow(v) && v.HighlightLabel != "" &&
-			(len(v.Options) == 5 || len(v.Criteria) <= 4) {
-			continue
-		}
+		// The two paragraphs share a row.
 		if runeLen(option.Name)+runeLen(option.Detail) > 2*budget {
 			warnings = append(warnings, fmt.Sprintf("%s: table-highlight options[%d].name/detail use %d/%d characters; a %d-option x %d-criterion matrix holds about %d characters each when both are populated — shorten the option copy, hide the legend, or split the table", ErrCodeBodyTooLong, i, runeLen(option.Name), runeLen(option.Detail), len(v.Options), len(v.Criteria), budget))
 		}
@@ -275,12 +279,6 @@ func (p *tableHighlight) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 	return warnings
 }
 
-func highlightRow(v *TableHighlightValues) int {
-	if v.HighlightRow != nil {
-		return *v.HighlightRow
-	}
-	return -1
-}
 
 func (p *tableHighlight) Schema() *Schema {
 	scaleEnum := func() *Schema { return EnumSchema(thScaleHarvey, thScaleRAG, thScaleText) }
@@ -300,7 +298,7 @@ func (p *tableHighlight) Schema() *Schema {
 		"detail": StringSchema(thDetailMax).WithDescription("Optional descriptor under the name (≤80 chars for up to 4 options × 4 criteria; ≤60 in denser matrices)"),
 		"scores": ArraySchema(score, thMinCriteria, thMaxCriteria).WithDescription("One score per criterion, in criteria order"),
 	}, []string{"name", "scores"}).WithAdditionalProperties(false).
-		WithDescription("Paired name/detail readable characters by option rows x criteria: 2-4 rows about 40 each; 5 rows with 5-6 criteria about 37; 6 rows with 2-3/4/5-6 criteria about 35/33/30. Sparse rows can use field maxima; fit reports flag copy beyond dense paired targets")
+		WithDescription("Paired name/detail readable characters by option rows x criteria: 2-3 rows about 40 each; 4 rows with 2-3/4/5-6 criteria about 37/35/32; 5 rows with 2/3/4/5-6 criteria about 37/36/35/31; 6 rows fit no readable copy on every template (use at most 5). Sparse rows can use field maxima; fit reports flag copy beyond dense paired targets")
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
 		"criteria":          ArraySchema(criterion, thMinCriteria, thMaxCriteria).WithDescription("2-6 criteria (columns)"),

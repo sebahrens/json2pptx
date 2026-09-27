@@ -11,7 +11,7 @@ func TestPhaseRoadmapDenseCopyWarnings(t *testing.T) {
 	for _, tc := range []struct {
 		phases, dateBudget, milestoneBudget int
 	}{
-		{3, 30, 60}, {4, 30, 60}, {5, 27, 52}, {6, 22, 42},
+		{3, 30, 60}, {4, 30, 60}, {5, 25, 48}, {6, 18, 38},
 	} {
 		t.Run(fmt.Sprintf("%d phases", tc.phases), func(t *testing.T) {
 			v := &PhaseRoadmapValues{}
@@ -46,7 +46,7 @@ func TestPhaseRoadmapDenseCopyWarnings(t *testing.T) {
 		max  int
 		hint string
 	}{
-		{"date_label", 30, "22 with 6"}, {"milestone", 60, "42 with 6"},
+		{"date_label", 30, "18 with 6"}, {"milestone", 60, "38 with 6"},
 	} {
 		schema := fields[field.name]
 		if schema.raw.MaxLength == nil || *schema.raw.MaxLength != field.max || !strings.Contains(schema.raw.Description, field.hint) {

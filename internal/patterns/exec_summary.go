@@ -126,26 +126,53 @@ func (e *execSummary) NewValues() any       { return &ExecSummaryValues{} }
 func (e *execSummary) NewOverrides() any    { return &ExecSummaryOverrides{} }
 func (e *execSummary) NewCellOverride() any { return &ExecSummaryCellOverride{} }
 
+// execSummaryBudgets returns the per-point lead limit and the average support
+// budget, measured against the written size (no run stored below its role
+// floor) on every shipped template (go-slide-creator-n1muf). A bottom line
+// longer than a short ask (about 40 characters) takes room from the supports.
+func execSummaryBudgets(points int, bottomLine string) (lead, support int) {
+	bottom := runeLen(strings.TrimSpace(bottomLine))
+	switch {
+	case points >= 5 && bottom > 40:
+		return 37, 76
+	case points >= 5 && bottom > 0:
+		return 37, 146
+	case points >= 5:
+		return execSummaryLeadMax, 158
+	case points == 4 && bottom > 40:
+		return 72, 153
+	case points == 4 && bottom > 0:
+		return 72, execSummarySupportMax
+	default:
+		return execSummaryLeadMax, execSummarySupportMax
+	}
+}
+
 func (e *execSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*ExecSummaryValues)
-	if !ok || v == nil || len(v.Points) < execSummaryMaxPoints || strings.TrimSpace(v.BottomLine) == "" {
+	if !ok || v == nil {
 		return nil
 	}
+	leadBudget, supportBudget := execSummaryBudgets(len(v.Points), v.BottomLine)
+	var warnings []string
 	total := 0
-	for _, point := range v.Points {
+	for i, point := range v.Points {
 		total += runeLen(point.Support)
+		if n := runeLen(point.Lead); n > leadBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: exec-summary points[%d].lead is %d characters; %d points hold about %d lead characters each with this bottom line — shorten the lead or split the summary", ErrCodeBodyTooLong, i, n, len(v.Points), leadBudget))
+		}
 	}
-	if total <= 178*len(v.Points) {
-		return nil
+	if total > supportBudget*len(v.Points) {
+		warnings = append(warnings, fmt.Sprintf("%s: exec-summary points.support contains %d characters across %d points; the shared space holds about %d support characters per point with this bottom line — shorten supporting sentences or split the summary", ErrCodeBodyTooLong, total, len(v.Points), supportBudget))
 	}
-	return []string{fmt.Sprintf("%s: exec-summary points.support contains %d characters across five points with a bottom line; the shared space holds about 178 support characters per point — shorten supporting sentences or split the summary", ErrCodeBodyTooLong, total)}
+	return warnings
 }
 
 func (e *execSummary) Schema() *Schema {
 	pointSchema := ObjectSchema(
 		map[string]*Schema{
 			"lead":    StringSchema(execSummaryLeadMax).WithDescription("Bold lead-in statement — the conclusion, stated as a full sentence (≤90 chars)"),
-			"support": StringSchema(execSummarySupportMax).WithDescription("One supporting sentence with the evidence (≤200 chars); with five points and a bottom line, target about 178 per point when all supports are populated"),
+			"support": StringSchema(execSummarySupportMax).WithDescription("One supporting sentence with the evidence (≤200 chars); average support per point: 5 points about 158 (146 with a short bottom line, 76 with a long one); 4 points with a bottom line over 40 characters about 153. Leads: about 72 with 4 points and a bottom line, 37 with 5"),
 		},
 		[]string{"lead"},
 	).WithAdditionalProperties(false)

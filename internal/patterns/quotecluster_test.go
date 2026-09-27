@@ -67,20 +67,20 @@ func TestQuoteClusterDenseCombinedCopyWarning(t *testing.T) {
 		t.Fatalf("dense full attribution warning: %v", got)
 	}
 	for i := range values.Quotes {
-		values.Quotes[i].Text = strings.Repeat("word ", 29)
+		values.Quotes[i].Text = strings.Repeat("word ", 16)
 	}
 	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
-		t.Fatalf("measured 145-character target should fit: %v", got)
+		t.Fatalf("measured 80-character target should fit: %v", got)
 	}
-	values.Quotes[0] = QuoteClusterItem{Text: strings.Repeat("word ", 48), Name: strings.Repeat("name ", 12), Title: strings.Repeat("role ", 16)}
+	values.Quotes[0] = QuoteClusterItem{Text: strings.Repeat("word ", 43), Name: strings.Repeat("name ", 12), Title: strings.Repeat("role ", 16)}
 	for i := 1; i < len(values.Quotes); i++ {
 		values.Quotes[i] = QuoteClusterItem{Text: "A concise customer quote.", Name: "J. Lin", Title: "Director"}
 	}
 	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
-		t.Fatalf("a single full-length quote should fit: %v", got)
+		t.Fatalf("a single 215-character quote should fit: %v", got)
 	}
 	for i := range values.Quotes {
-		values.Quotes[i] = QuoteClusterItem{Text: quoteClusterBudgetCopy(195), Name: quoteClusterBudgetCopy(48), Title: quoteClusterBudgetCopy(65)}
+		values.Quotes[i] = QuoteClusterItem{Text: quoteClusterBudgetCopy(128), Name: quoteClusterBudgetCopy(48), Title: quoteClusterBudgetCopy(65)}
 	}
 	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
 		t.Fatalf("measured balanced target should fit: %v", got)

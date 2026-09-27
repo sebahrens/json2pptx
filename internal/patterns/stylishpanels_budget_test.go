@@ -23,12 +23,12 @@ func TestStylishPanelsBodyWarningsUseAverageCopy(t *testing.T) {
 	for _, tc := range []struct {
 		panels, bullets, title, budget int
 	}{
-		{3, 6, 30, 121},
-		{3, 6, 31, 81},
-		{4, 3, 20, 180},
-		{4, 3, 21, 150},
-		{5, 2, 16, 182},
-		{5, 2, 17, 162},
+		{3, 4, 45, 161},
+		{3, 4, 46, 128},
+		{4, 3, 25, 150},
+		{4, 3, 26, 121},
+		{5, 2, 5, 182},
+		{5, 2, 6, 162},
 		{5, 8, 80, 26},
 	} {
 		t.Run(fmt.Sprintf("%d panels %d bullets %d title", tc.panels, tc.bullets, tc.title), func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestStylishPanelsBodyWarningsUseAverageCopy(t *testing.T) {
 	}
 	body := pat.Schema().raw.Properties["values"].raw.Items.raw.Properties["body"]
 	if body.raw.Items.raw.MaxLength == nil || *body.raw.Items.raw.MaxLength != 200 ||
-		!strings.Contains(body.raw.Description, "5 panels 200/182/122") {
+		!strings.Contains(body.raw.Description, "5 panels 200/162/102") {
 		t.Fatalf("schema loses sparse maximum or panel-density guidance: %+v", body.raw)
 	}
 }

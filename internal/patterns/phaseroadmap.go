@@ -145,9 +145,9 @@ func (pr *phaseRoadmap) NewCellOverride() any { return &PhaseRoadmapCellOverride
 func phaseRoadmapDateBudget(phases int) int {
 	switch phases {
 	case 5:
-		return 27
+		return 25
 	case 6:
-		return 22
+		return 18
 	default:
 		return 30
 	}
@@ -156,9 +156,9 @@ func phaseRoadmapDateBudget(phases int) int {
 func phaseRoadmapMilestoneBudget(phases int) int {
 	switch phases {
 	case 5:
-		return 52
+		return 48
 	case 6:
-		return 42
+		return 38
 	default:
 		return 60
 	}
@@ -187,10 +187,10 @@ func (pr *phaseRoadmap) Schema() *Schema {
 	phaseSchema := ObjectSchema(
 		map[string]*Schema{
 			"name":        StringSchema(40).WithDescription("Phase name (e.g. \"Plan\", \"Build\")"),
-			"date_label":  StringSchema(30).WithDescription("Optional date range below the timeline bar; about 30 readable characters with 3-4 phases, 27 with 5, or 22 with 6"),
+			"date_label":  StringSchema(30).WithDescription("Optional date range below the timeline bar; about 30 readable characters with 3-4 phases, 25 with 5, or 18 with 6"),
 			"description": StringSchema(160).WithDescription("Short description rendered below the date label"),
 			"active":      BooleanSchema().WithDescription("When true, this phase renders with the accent fill (others use a light tint of the accent)"),
-			"milestone":   StringSchema(60).WithDescription("Optional milestone callout; when any phase sets one, a milestone row is rendered. About 60 readable characters with 3-4 phases, 52 with 5, or 42 with 6"),
+			"milestone":   StringSchema(60).WithDescription("Optional milestone callout; when any phase sets one, a milestone row is rendered. About 60 readable characters with 3-4 phases, 48 with 5, or 38 with 6"),
 		},
 		[]string{"name"},
 	).WithAdditionalProperties(false)
