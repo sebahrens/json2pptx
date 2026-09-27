@@ -29,6 +29,13 @@ done
 cp -R "$repo_root/examples/semantic" "$references/examples/"
 cp -R "$repo_root/internal/tokens" "$references/internal/"
 cp -R "$repo_root/skills" "$references/"
+# Portable source-aware examples are linked from the template guide. Keep their
+# original relative image alongside them; do not ship the whole test corpus.
+evidence_relative="tests/quality/evidence/connectors/midnight-blue"
+mkdir -p "$references/$evidence_relative"
+for resource in source-aware-evidence-route.json readable-source-companion-route.json powerpoint-slide-4.png; do
+  cp "$repo_root/$evidence_relative/$resource" "$references/$evidence_relative/"
+done
 # Only installed entrypoint guides need rerouting; the reference snapshot keeps
 # its original relative links. sed without -i works on macOS and Git Bash alike.
 for source_guide in "$repo_root"/skills/*/*.md; do
@@ -37,6 +44,7 @@ for source_guide in "$repo_root"/skills/*/*.md; do
   sed -e 's|](../../docs/|](../generate-deck/references/repository/docs/|g' \
       -e 's|](../../examples/|](../generate-deck/references/repository/examples/|g' \
       -e 's|](../../internal/|](../generate-deck/references/repository/internal/|g' \
+      -e 's|](../../tests/|](../generate-deck/references/repository/tests/|g' \
       "$guide" > "$guide.install-tmp"
   mv "$guide.install-tmp" "$guide"
 done

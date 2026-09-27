@@ -1,0 +1,33 @@
+{
+  "status": "focused_regressions_pass_full_suite_and_ci_pending",
+  "beads": ["go-slide-creator-3qzo4.112", "go-slide-creator-3qzo4.113"],
+  "diagnosis": {
+    "installed_examples": "CI runs 36325398131 and 36326171466 fail TestInstalledSkillReferencesAreSelfContained: screenshot-example links escape the installed entrypoint or reference missing bundled files. Both failed-job logs were inspected; the latter also includes the companion example.",
+    "preview_provenance": "Full local race run after f1513ee fails TestPreviewsShipForAllBundledTemplates and TestMCPRecommendVisual_TemplatePreviewRefs because rendering-source fingerprints are stale. Provenance validation was not relaxed."
+  },
+  "repair": {
+    "installer": "Bundle exactly two original example JSON files and their original screenshot, rerouting installed entrypoint test-resource links. Regression generates both real installed examples outside the checkout, checks exact source bytes, successful output files, and two/three-slide counts.",
+    "previews": "Sequentially regenerate all 14 local templates and 108 native layouts, including ignored p-style; publish only the 13 tracked manifests."
+  },
+  "verification": {
+    "focused_race": {"status": "PASS", "templatepreview_seconds": 8.886, "cli_seconds": 4.590},
+    "installed_skill_race": {"status": "PASS", "seconds": 4.341},
+    "pinned_lint": "PASS: zero issues",
+    "independent_preview_audit": {
+      "status": "PASS",
+      "sha256": "44a91a34e10acc457f08e04f3c01c7c8974a4d8d8b0c1478c00c2c0fd005ac70",
+      "unchanged_png_pixel_arrays": 108,
+      "source_content_and_template_hashes_unchanged": true,
+      "rendering_source_sha256": "7383a8e3579939f5833874f09cf072fd70674cfb817e08dc2b9feae3bc464eaa",
+      "p_style_source_sha256": "1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1",
+      "p_style_remains_gitignored": true
+    },
+    "corrected_root_race": "RUNNING; output/preview-provenance-repair-20260927-v1/root-race.log",
+    "publication_ci": "PENDING"
+  },
+  "review": {
+    "testing": {"findings": [], "residual_risks": ["Full suite and Linux CI remain pending."], "testing_gaps": []},
+    "adversarial": {"findings": [], "residual_risks": ["The bundled resource list is explicit; future examples must update it and remain subject to installed-link closure tests."], "testing_gaps": []}
+  },
+  "limitations": "This is a packaging/provenance repair, not approval of every visual composition or dense-content case. No native template or image was modified. Prior publication receipts remain unchanged. Close affected beads only after exact superseding publication gates pass."
+}

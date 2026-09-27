@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/testutil"
 )
 
 // Exercise the real installer outside the repository. Repository-relative links
@@ -67,6 +71,49 @@ func TestInstalledSkillReferencesAreSelfContained(t *testing.T) {
 				t.Errorf("broken installed link: %s -> %s: %v", path, target, err)
 			}
 		}
+	}
+	// Resolve and execute the real examples after installation outside the
+	// checkout. Checking the Markdown links alone misses absent relative media.
+	evidence := filepath.Join("tests", "quality", "evidence", "connectors", "midnight-blue")
+	installed := filepath.Join(destination, "generate-deck", "references", "repository", evidence)
+	for _, resource := range []string{"source-aware-evidence-route.json", "readable-source-companion-route.json", "powerpoint-slide-4.png"} {
+		original, err := os.ReadFile(filepath.Join(testutil.RepoRoot(), evidence, resource))
+		if err != nil {
+			t.Fatal(err)
+		}
+		copy, err := os.ReadFile(filepath.Join(installed, resource))
+		if err != nil || !bytes.Equal(copy, original) {
+			t.Fatalf("installed source evidence changed or missing: %s: %v", resource, err)
+		}
+	}
+	for _, example := range []struct {
+		name   string
+		slides int
+	}{
+		{"source-aware-evidence-route.json", 2},
+		{"readable-source-companion-route.json", 3},
+	} {
+		t.Run(example.name, func(t *testing.T) {
+			dir := t.TempDir()
+			report := filepath.Join(dir, "result.json")
+			if err := runJSONMode(filepath.Join(installed, example.name), report, testutil.TemplatesDir(), dir, "", false, false, "", "strict", true, "strict", "", false); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(report)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var result JSONOutput
+			if err := json.Unmarshal(data, &result); err != nil {
+				t.Fatal(err)
+			}
+			if !result.Success || result.SlideCount != example.slides || result.OutputPath == "" {
+				t.Fatalf("installed example did not generate its complete deck: %+v", result)
+			}
+			if _, err := os.Stat(result.OutputPath); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 
