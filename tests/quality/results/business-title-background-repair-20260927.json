@@ -1,0 +1,46 @@
+{
+  "scope": "Business-template Title background banding only; not all-template visual closure",
+  "source_template_sha256": "b02ee0f4238df72d7f3319337f5b50bb6f9f6776ee223ceb350490f314225e85",
+  "repaired_template_sha256": "307ae68e874b563750873ce3925d7cc241b912c047d1b713bfc09d806421f3dc",
+  "changed_package_parts": ["ppt/slideLayouts/slideLayout4.xml"],
+  "change": "Original first light accent1 gradient stop becomes native solid fill (lumMod5000/lumOff95000)",
+  "preserved": ["All fonts and sizes", "All geometry", "Legal footer wording and readable color", "Media", "Relationships", "Layout IDs", "Every other package payload"],
+  "candidate_conformance": "31 PASS; no warnings or failures",
+  "artifact_tool_import": "PASS source and candidate",
+  "all_native_render": {
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "unchanged_accepted_pages": 260,
+    "unchanged_source_loss_refusals": 47,
+    "changed_pages": ["business-template/slideLayout4-representative", "business-template/slideLayout4-dense"],
+    "manifest_sha256": "64374671f5b405d4b14543100c267156abf8d133e5cf98d77304885a0c706022",
+    "flat_native_background_rgb": [251, 249, 252],
+    "left_interior_uniform": true,
+    "outer_top_rasterizer_antialiased_pixel_matches_original": true
+  },
+  "single_blind_review": {
+    "pages": 4,
+    "unreviewed": 0,
+    "source_complete": 4,
+    "source_and_packet_sha_verified": true,
+    "after_verdicts": "Two SAFE_WITH_MINOR_CAUTIONS",
+    "after_background_banding_findings": 0,
+    "remaining_after_caution": "Preserved native utility lettering remains small and distance-sensitive",
+    "native_footer_strongest_local_contrast": 6.29,
+    "local_evidence": "output/blind-business-background-followup-20260927-v1/joined-review-audit.json"
+  },
+  "installed_template_and_previews": true,
+  "regression_tests": ["TestBusinessTitleBackgroundPreservesQuietNativeAccentFill", "TestBusinessNativeFooterPreservesReadableStyleAndLegalText"],
+  "installed_gates": {
+    "race_regressions": "PASS",
+    "all_local_template_conformance": "PASS",
+    "canonical_preview_freshness": "PASS",
+    "recommendation_preview_references": "PASS",
+    "every_native_layout_inventory": "PASS",
+    "pinned_lint": "PASS; zero issues",
+    "logs": "output/business-title-background-promotion-20260927-v1/"
+  },
+  "ci_status": "Pending publication and exact-SHA workflows",
+  "remaining_visual_cautions_not_waived": true
+}

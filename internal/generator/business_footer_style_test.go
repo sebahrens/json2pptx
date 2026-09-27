@@ -70,3 +70,46 @@ func TestBusinessNativeFooterPreservesReadableStyleAndLegalText(t *testing.T) {
 		})
 	}
 }
+
+func TestBusinessTitleBackgroundPreservesQuietNativeAccentFill(t *testing.T) {
+	templatePath := "../../templates/business-template.pptx"
+	check := func(path string) {
+		t.Helper()
+		var layout struct {
+			Fill struct {
+				Solid *struct {
+					Color struct {
+						Scheme string `xml:"val,attr"`
+						Mod    struct {
+							Value string `xml:"val,attr"`
+						} `xml:"lumMod"`
+						Off struct {
+							Value string `xml:"val,attr"`
+						} `xml:"lumOff"`
+					} `xml:"schemeClr"`
+				} `xml:"solidFill"`
+				Gradient *struct{} `xml:"gradFill"`
+			} `xml:"cSld>bg>bgPr"`
+		}
+		if err := xml.Unmarshal([]byte(readZipFileString(t, path, "ppt/slideLayouts/slideLayout4.xml")), &layout); err != nil {
+			t.Fatal(err)
+		}
+		if layout.Fill.Gradient != nil || layout.Fill.Solid == nil {
+			t.Fatal("Title must retain a native solid background, not the banded gradient")
+		}
+		color := layout.Fill.Solid.Color
+		if color.Scheme != "accent1" || color.Mod.Value != "5000" || color.Off.Value != "95000" {
+			t.Errorf("native light accent fill drifted: %+v", color)
+		}
+	}
+	check(templatePath)
+	output := filepath.Join(t.TempDir(), "title-background.pptx")
+	_, _, err := generateSinglePass(context.Background(), GenerationRequest{
+		TemplatePath: templatePath, OutputPath: output, ExcludeTemplateSlides: true,
+		Slides: []SlideSpec{{LayoutID: "slideLayout4", Content: []ContentItem{{PlaceholderID: "title", Type: ContentText, Value: "Required title"}}}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check(output)
+}
