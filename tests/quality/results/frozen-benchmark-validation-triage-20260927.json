@@ -1,0 +1,23 @@
+{
+  "bead": "go-slide-creator-xbmcd",
+  "status": "all_current_frozen_rejections_classified_no_validation_relaxation",
+  "original_report": "tests/quality/results/agent-20260921T101451Z.json",
+  "replay": "output/quality-benchmark-current-20260926-v6/refresh_audit.json",
+  "replay_engine_commit": "7280c531ca671f43e1c0aee6274131a229e77a1a",
+  "replay_audit_sha256": "fc88c5701e3c8ff0237ad4704292ce5feafd666bead176ac6e49e87d08d35f1b",
+  "current_parent_commit": "b20cce0d37b821929cf15cde83ec41c5eeebbc20",
+  "current_binary_sha256": "afd9eb471b8c0b023c7c2cacf737a2ba2e472f7c302e543a12bdb619333649ef",
+  "diagnostics": "output/validation-triage-current-20260927-v2/diagnostics.json",
+  "diagnostics_sha256": "6f1db9d611efcc57431d95b3b16d5fdf30a2db2b9bd777d27a3946c66e61b393",
+  "inventory": {"original_runs": 144, "replay_failed_runs": 35, "raw_failed_runs": 9, "semantic_failed_runs": 26, "current_diagnostic_failed_runs": 35, "all_original_input_hashes_preserved": true},
+  "classification": [
+    {"reason": "matrix-2x2 x_axis_label exceeds published maxLength16", "runs": 6, "class": "invalid frozen authoring input against explicit existing pattern budget", "evidence": "internal/patterns/matrix2x2.go Schema/Validate and matrix2x2_test.go x_axis_label_exceeds_maxlen"},
+    {"reason": "process-flow overrides.header_size has no header to affect", "runs": 3, "class": "intentional unused-override rejection", "contract_commit": "628d8e0ac4659da69f3541bf83b765336fd81f75", "evidence": "internal/patterns/overrides.go rejectUnusedTextOverrides; TestTextOverrides_UnusedHeaderSizeRejected"},
+    {"reason": "decision options have no recommended:true option", "runs": 25, "class": "intentional semantic recommendation contract", "contract_commit": "65ee2d96bd962761b963025caecfc402495b225e", "evidence": "internal/semantic/validate.go recommendation selection guard; TestDecisionRequiresOneUsableRecommendedOption"},
+    {"reason": "section.subtitle would be silently dropped", "runs": 9, "occurrences": 16, "class": "intentional source-loss prevention", "contract_commit": "b3d3c2e1eee1d85e7c94e4f6a5fc427356e9f527", "evidence": "internal/semantic/payload_fields.go unknownSlideField; TestSectionSubtitleIsDiagnosedInsteadOfDropped"}
+  ],
+  "overlap": "Semantic reasons overlap:25missing-recommendation runs +9unsupported-subtitle runs cover26unique semantic runs; subtitle occurs16times. Raw reasons are disjoint6+3=9. Total35, superseding earlier v5 count32.",
+  "checks": "Current-source isolated CLI used actual semantic compile --envelope and raw validate --json --base-dir repository. All35reject with only listed blocking reasons. Focused contract tests PASS patterns0.606s semantic1.013s. No product source, frozen authoring input, historical sheet or validation assertion changed.",
+  "harness_correction": "Initial v1 raw validation used the input-directory default base_dir, causing two unrelated template_path containment diagnostics. Retained original logs; v2 sets repository base_dir explicitly for in-scope fixture templates and assets, revealing actual original matrix-budget rejections.",
+  "limits": "This closes rejection-cause triage only, not benchmark visual approval.109successful replay sheets are historical engine7280 artifacts, not current visual evidence. Contact-sheet freshness9byyi, held-out baseline0ek6 and broader media/multilingual/source/readability coverage remain open. Corrected authoring evidence must use a new version; originals are preserved. No renderer failure inferred from expected validation rejection."
+}

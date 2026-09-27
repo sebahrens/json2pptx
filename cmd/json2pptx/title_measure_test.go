@@ -46,13 +46,26 @@ func titleSlide(title string) SlideInput {
 
 func TestTitlePlaceholderInheritsModernTemplateStyle(t *testing.T) {
 	a := loadTemplateAnalysis(t, "modern-template")
-	s := titleSlide(vjwnLongTitle)
-	ph := titlePlaceholderFor(&s, "title", a.Layouts)
-	if ph == nil {
-		t.Fatal("canonical 'content' layout title placeholder not resolved")
-	}
-	if ph.FontSize != 4500 || !ph.TextCaps || ph.LineSpacingPct != 80 {
-		t.Errorf("title placeholder style = size %d caps %v lnSpc %d, want 4500/true/80", ph.FontSize, ph.TextCaps, ph.LineSpacingPct)
+	for _, tc := range []struct {
+		layout  string
+		leading int
+	}{
+		{"content", 100}, // Canonical alias must use the content-layout override.
+		{"slideLayout3", 100},
+		{"slideLayout4", 100},
+		{"slideLayout5", 80}, // Unchanged Closing still inherits native master leading.
+	} {
+		t.Run(tc.layout, func(t *testing.T) {
+			s := titleSlide(vjwnLongTitle)
+			s.LayoutID = tc.layout
+			ph := titlePlaceholderFor(&s, "title", a.Layouts)
+			if ph == nil {
+				t.Fatal("native title placeholder not resolved")
+			}
+			if ph.FontSize != 4500 || !ph.TextCaps || ph.LineSpacingPct != tc.leading || ph.FontFamily != "Lora" {
+				t.Errorf("title placeholder style = size %d caps %v lnSpc %d family %q, want 4500/true/%d/Lora", ph.FontSize, ph.TextCaps, ph.LineSpacingPct, ph.FontFamily, tc.leading)
+			}
+		})
 	}
 }
 

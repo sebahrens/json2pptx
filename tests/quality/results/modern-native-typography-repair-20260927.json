@@ -1,0 +1,39 @@
+{
+  "beads": ["go-slide-creator-3qzo4.109", "go-slide-creator-3qzo4.110", "go-slide-creator-3qzo4.69"],
+  "status": "scoped_visual_and_regression_gates_pass_corrected_full_root_rerun_and_exact_commit_ci_pending",
+  "template_sha256": "ed50a499fa772447d16bd813aa8676e6298b0c0af1f7572eb413af2eba0ca6de",
+  "rendering_source_sha256": "a8c612c95bcc757b7008e38e634cfc5399e9e3695e056a5db456190034e25d01",
+  "repair": {
+    "scope": "Only modern-template native layouts3/4; original theme/master/fonts/artwork/media and other layouts retained",
+    "body": "Native body leading110percent at levels1-5; layout3 child margin565200EMU balances nested wrapping without body font shrink or text changes",
+    "title": "Bottom-anchor grouping,100percent native title leading, source frame y647303 h1532258 retaining x860893 width10465073; gap to unchanged body frame188082EMU=0.52245cm",
+    "font_sizes": "Actual six title controls retain45.01pt short headings and increase long headings38.01pt to42.49pt; native body18pt/15.99pt unchanged. No claim all long titles stay45pt.",
+    "golden": "Only modern-template deterministic golden updated to6d3627605d55022d38dba04fac59c78b80a05e6c8ddc2d89735d7cf393e1ce38"
+  },
+  "evidence": {
+    "candidate": "output/modern-title-leading-capacity-candidate-20260927-v1",
+    "actual_pdf": "controls-audit.json and native-pdf-audit.json: all authored character/font sequences preserved, body metrics unchanged, multiline title clearance improved; all6controls >0.5cm actual glyph-to-body clearance",
+    "sole_blind_review": "output/blind-modern-title-leading-capacity-20260927-v1/joined-review-audit.json:24originals,0unreviewed, exact source/packet/image/requiredtext/four-lens join",
+    "review_sha256": "91bdbfb27f873a57927e9bc68e595864dcc499a00d2f8bfe1697452183557cf6",
+    "blind_scope": "All6AFTER title controls SAFE without findings; AFTER native representative/table pages SAFE. Both chart small-annotation cautions retained, not waived.",
+    "visible_data": "joined-source-data-audit.json independently verifies6tableobjects36rows and6chartobjects24category/value associations; nonvisual alt/style/object semantics are outside PNG approval",
+    "installed_corpus": "output/modern-typography-installed-native-corpus-20260927-v1/comparison.json: all14templates108native layouts309probe inputs/status/refusals;247accepted pixels and every generated ZIP payload identical to sole-reviewed exact candidate",
+    "previews": "preview-audit.json:14templates108native previews/hash/source inventories verified,106pixels unchanged, ONLYmodernLayout3/4changed; every preview source_content preserved",
+    "private_template": "p-style sourceSHA1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1 unchanged, still gitignored; all7native layouts included locally",
+    "scoped_code_review": "candidate/final-scoped-review.json testing+adversarial: no actionable findings; known broader readability/projection/cross-renderer residual risks retained"
+  },
+  "local_gates": {
+    "regression": "PASS13.484s actual Generate, two layouts x three title controls; old installed source expected FAIL retained in regression-before-v2.log",
+    "native_corpus": "PASS43.515s handle62224",
+    "conformance": "Candidate PASS31checks0warn0fail, same installed SHA",
+    "root_race": "Original72313 terminalFAIL: only CLI TestTitlePlaceholderInheritsModernTemplateStyle pinned old80percent instead of reviewed100. CLI793.071s; generator283.278s/quality556.480s/all other packages PASS. Full corrected-source root rerun required; no finalPASS yet.",
+    "cli_style_regression": "PASS1.924s handle2239; canonicalcontent plus explicit layouts3/4 assert100percent, unchanged Closing retains80percent, all four preserve45pt/caps/Lora. Prior test-author float64/int compile failure retained before correction. No product logic change.",
+    "svg_race": "PASS36.116s handle57640 authorized local-server suite; prior10611 failed sandbox port permission, not product logic, retained tool output",
+    "root_pinned_lint": "PASS0issues handle96550",
+    "svg_pinned_lint": "PASS0issues handle81886",
+    "build": "PASS handle77810, nonfatal module-stat-cache permission warning retained",
+    "format_and_diff": "PASS",
+    "previews_and_golden": "PASS sequential make template-previews handle32990 and golden rebaseline15657"
+  },
+  "remaining": "Exact published commit all4CI workflows must be terminalgreen before109closure. Aggregate69 remains open for cover rag/chartannotations/otherminorfindings. Other source-loss, screenshotreadability, media/multilingual/allfeature, privatepstyle composition and benchmark coverage beads remain; no whole-goal completion, projection or native PowerPoint approval. Leading-only experiment rejected because longtitlefonts shrank38pt to29pt; retained failed audit, no weakened assertions."
+}
