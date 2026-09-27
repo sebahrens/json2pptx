@@ -6,6 +6,8 @@ import (
 	"regexp"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // inlineMarkupRe strips inline emphasis tags (<b>…</b>) before measuring.
@@ -156,4 +158,29 @@ func contentCardHeightPt(textHPt, cardWPt float64, hasTopIcon bool) float64 {
 		return math.Round(withIcon)
 	}
 	return math.Round(h + 0.6*cardWPt + 6)
+}
+
+// writtenFitHeightPt returns the smallest whole-point shape height, not below
+// minPt, at which the shape_grid writer stores no normAutofit shrink for text
+// in a shape widthPt wide. Pattern sizing measures with the theme body font;
+// the writer measures with its own metrics, so a row sized by the pattern model
+// alone can still be written shrunk — value-chain descriptions were written at
+// 98%, 11.8pt against the 12pt body floor (go-slide-creator-n1muf). Text the
+// writer cannot parse, or that still shrinks after maxGrowPt, returns minPt.
+func writtenFitHeightPt(text json.RawMessage, widthPt, minPt float64) float64 {
+	const maxGrowPt = 400
+	if len(text) == 0 || widthPt <= 0 {
+		return minPt
+	}
+	tb, err := shapegrid.ResolveTextInput(text)
+	if err != nil || tb == nil {
+		return minPt
+	}
+	w := int64(widthPt * sizingEMUPerPt)
+	for h := math.Ceil(math.Max(minPt, 1)); h <= minPt+maxGrowPt; h++ {
+		if pptx.AutofitScaleFor(tb, pptx.RectEmu{CX: w, CY: int64(h * sizingEMUPerPt)}) >= 1 {
+			return h
+		}
+	}
+	return minPt
 }

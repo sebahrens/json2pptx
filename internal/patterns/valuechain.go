@@ -334,7 +334,15 @@ func valueChainDescRowHeightPt(ctx ExpandContext, cells []*jsonschema.GridCellIn
 	if h == 0 {
 		return 0
 	}
-	return math.Round(h + 2*defaultShapeInsetTBPt)
+	// The row shares one autofit shrink, so every description must fit
+	// unscaled by the writer's own measure, not only the theme-font model.
+	h = math.Round(h + 2*defaultShapeInsetTBPt)
+	for _, c := range cells {
+		if c != nil && c.Shape != nil {
+			h = math.Max(h, writtenFitHeightPt(c.Shape.Text, colW, h))
+		}
+	}
+	return h
 }
 
 // ---------------------------------------------------------------------------

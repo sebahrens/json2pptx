@@ -39,7 +39,7 @@
         ],
         "rows": [
           {
-            "height": 10,
+            "height": 9,
             "cells": [
               {
                 "col_span": 6,
@@ -59,7 +59,7 @@
             ]
           },
           {
-            "height": 35,
+            "height": 39,
             "cells": [
               {
                 "row_span": 2,
@@ -67,7 +67,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "KEY PARTNERS\n\n• Cloud providers (AWS/Azure)\n• Payment processors\n• API marketplace partners\n• System integrators",
+                    "content": "KEY PARTNERS\n• Cloud providers (AWS/Azure)\n• Payment processors\n• API marketplace partners\n• System integrators",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -82,7 +82,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "KEY ACTIVITIES\n\n• Platform development\n• Customer onboarding\n• Data security & compliance\n• Continuous integration",
+                    "content": "KEY ACTIVITIES\n• Platform development\n• Customer onboarding\n• Data security & compliance\n• Continuous integration",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -99,7 +99,7 @@
                   "geometry": "rect",
                   "fill": "accent1",
                   "text": {
-                    "content": "VALUE PROPOSITIONS\n\n• Reduce manual work by 60%\n• Real-time analytics\n• Enterprise-grade security\n• Seamless integrations",
+                    "content": "VALUE PROPOSITIONS\n• Reduce manual work by 60%\n• Real-time analytics\n• Enterprise-grade security\n• Seamless integrations",
                     "size": 9,
                     "bold": false,
                     "color": "#FFFFFF",
@@ -116,7 +116,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "CUSTOMER RELATIONSHIPS\n\n• Self-service portal\n• Dedicated CSM (Enterprise)\n• Community forums\n• Quarterly business reviews",
+                    "content": "CUSTOMER RELATIONSHIPS\n• Self-service portal\n• Dedicated CSM (Enterprise)\n• Community forums\n• Quarterly business reviews",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -132,7 +132,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "CUSTOMER SEGMENTS\n\n• SMB (10-200 employees)\n• Mid-market (200-2000)\n• Enterprise (2000+)\n• Financial services",
+                    "content": "CUSTOMER SEGMENTS\n• SMB (10-200 employees)\n• Mid-market (200-2000)\n• Enterprise (2000+)\n• Financial services",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -152,7 +152,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "KEY RESOURCES\n\n• Engineering team (45 FTE)\n• Proprietary ML models\n• SOC 2 certification\n• Customer data platform",
+                    "content": "KEY RESOURCES\n• Engineering team (45 FTE)\n• Proprietary ML models\n• SOC 2 certification\n• Customer data platform",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -167,7 +167,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "CHANNELS\n\n• Direct sales team\n• Product-led growth\n• Partner referrals\n• Content marketing",
+                    "content": "CHANNELS\n• Direct sales team\n• Product-led growth\n• Partner referrals\n• Content marketing",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -180,7 +180,7 @@
             ]
           },
           {
-            "height": 20,
+            "height": 17,
             "cells": [
               {
                 "col_span": 3,
@@ -188,7 +188,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "COST STRUCTURE\n\n• Cloud infrastructure (35%)  •  Engineering salaries (40%)  •  Sales & marketing (15%)  •  G&A (10%)",
+                    "content": "COST STRUCTURE\n• Cloud infrastructure (35%)  •  Engineering salaries (40%)  •  Sales & marketing (15%)  •  G&A (10%)",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -204,7 +204,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "REVENUE STREAMS\n\n• SaaS subscriptions (75%)  •  Professional services (15%)  •  API usage fees (10%)",
+                    "content": "REVENUE STREAMS\n• SaaS subscriptions (75%)  •  Professional services (15%)  •  API usage fees (10%)",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -240,7 +240,7 @@
         ],
         "rows": [
           {
-            "height": 10,
+            "height": 9,
             "cells": [
               {
                 "col_span": 6,
@@ -260,7 +260,7 @@
             ]
           },
           {
-            "height": 35,
+            "height": 39,
             "cells": [
               {
                 "row_span": 2,
@@ -268,7 +268,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "KEY PARTNERS\n\n• Logistics providers\n• Payment gateways\n• Brand suppliers\n• Influencer networks\n• Warehouse operators",
+                    "content": "KEY PARTNERS\n• Logistics providers\n• Payment gateways\n• Brand suppliers\n• Influencer networks\n• Warehouse operators",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -283,7 +283,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "KEY ACTIVITIES\n\n• Seller acquisition\n• Catalog curation\n• Fraud prevention\n• Recommendation engine",
+                    "content": "KEY ACTIVITIES\n• Seller acquisition\n• Catalog curation\n• Fraud prevention\n• Recommendation engine",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -316,7 +316,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "CUSTOMER RELATIONSHIPS\n\n• Buyer: Automated/self-service\n• Seller: Dedicated support\n• Loyalty program\n• Review ecosystem",
+                    "content": "CUSTOMER RELATIONSHIPS\n• Buyer: Automated/self-service\n• Seller: Dedicated support\n• Loyalty program\n• Review ecosystem",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -332,7 +332,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "CUSTOMER SEGMENTS\n\n• Urban consumers 25-45\n• Small business sellers\n• D2C brand operators\n• Bargain hunters\n• Premium shoppers",
+                    "content": "CUSTOMER SEGMENTS\n• Urban consumers 25-45\n• Small business sellers\n• D2C brand operators\n• Bargain hunters\n• Premium shoppers",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -352,7 +352,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "KEY RESOURCES\n\n• Technology platform\n• Seller network (50K+)\n• Fulfillment centers\n• Customer data",
+                    "content": "KEY RESOURCES\n• Technology platform\n• Seller network (50K+)\n• Fulfillment centers\n• Customer data",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -367,7 +367,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "CHANNELS\n\n• Mobile app (60% traffic)\n• Website\n• Social commerce\n• Affiliate marketing",
+                    "content": "CHANNELS\n• Mobile app (60% traffic)\n• Website\n• Social commerce\n• Affiliate marketing",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -380,7 +380,7 @@
             ]
           },
           {
-            "height": 20,
+            "height": 17,
             "cells": [
               {
                 "col_span": 3,
@@ -388,7 +388,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "COST STRUCTURE\n\n• Fulfillment & logistics (45%)  •  Technology (25%)  •  Marketing (20%)  •  Operations (10%)",
+                    "content": "COST STRUCTURE\n• Fulfillment & logistics (45%)  •  Technology (25%)  •  Marketing (20%)  •  Operations (10%)",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",
@@ -404,7 +404,7 @@
                   "geometry": "rect",
                   "fill": "lt2",
                   "text": {
-                    "content": "REVENUE STREAMS\n\n• Transaction fees (60%)  •  Seller subscriptions (20%)  •  Advertising (15%)  •  Fulfillment fees (5%)",
+                    "content": "REVENUE STREAMS\n• Transaction fees (60%)  •  Seller subscriptions (20%)  •  Advertising (15%)  •  Fulfillment fees (5%)",
                     "size": 9,
                     "align": "l",
                     "vertical_align": "t",

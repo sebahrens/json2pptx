@@ -683,7 +683,10 @@ func waterfallBarAreaPt(ctx ExpandContext) float64 {
 // the bar can hold one line of value text, otherwise the adjacent spacer
 // ("top" / "bottom", preferring l.labelUp) that has room.
 func waterfallLabelSide(l wbColumnLayout, topPct, barPct, bottomPct float64) string {
-	needPt := l.valueSize*1.5 + 4
+	// Measure at the size the writer emits: a 10pt label is raised to the
+	// 12pt shape-text floor, and a bar sized for 10pt stored the 12pt label at
+	// 90% autofit, below the floor (go-slide-creator-n1muf).
+	needPt := shapegrid.EffectiveTextSizePt(l.valueSize)*1.5 + 4
 	if l.areaPt <= 0 || l.areaPt*barPct/100 >= needPt {
 		return "bar"
 	}

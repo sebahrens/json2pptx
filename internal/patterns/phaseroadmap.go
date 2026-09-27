@@ -395,7 +395,17 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 		applyPhaseRoadmapOverride(dateCells[i], cellOverrides, dateIdx0+i, accent)
 	}
-	rows = append(rows, jsonschema.GridRowInput{Height: datePct, Cells: dateCells})
+	dateRow := jsonschema.GridRowInput{Height: datePct, Cells: dateCells}
+	if tracks != nil {
+		// Parallel tracks squeeze the date row towards its measured need, and
+		// a percentage of the estimated area can still land below what the
+		// writer needs once gaps come off the real grid height. Pin it in
+		// points at no less than the writer-fit height (go-slide-creator-n1muf).
+		_, areaH := sizingAreaPt(ctx)
+		pt := math.Max(math.Round(datePct*areaH)/100, phaseRoadmapDateMinPt(ctx, vals, dateSize))
+		dateRow = jsonschema.GridRowInput{MinHeight: pt, MaxHeight: pt, Cells: dateCells}
+	}
+	rows = append(rows, dateRow)
 
 	// Row 4 (optional) — milestone callouts as small accent badges, placed
 	// directly under the date labels so they stay anchored to the timeline
@@ -642,7 +652,7 @@ func phaseRoadmapTrackedRowPcts(ctx ExpandContext, vals *PhaseRoadmapValues, blo
 		dateH = math.Max(dateH, textBlockHeightPt(ctx.Theme.BodyFont, textW, textParagraph{text: p.DateLabel, size: dateSize, bold: true}))
 	}
 	headerNeed := math.Max(phaseRoadmapMinHeaderPct, pctOf(nameH+2*defaultShapeInsetTBPt+2, areaH))
-	dateNeed := pctOf(dateH+2*defaultShapeInsetTBPt, areaH)
+	dateNeed := pctOf(math.Max(dateH+2*defaultShapeInsetTBPt, phaseRoadmapDateMinPt(ctx, vals, dateSize)), areaH)
 
 	timeline, date = 6.0, 8.0
 	want := phaseRoadmapHeaderPct - pctOf(blockPt+4, areaH)
@@ -657,6 +667,27 @@ func phaseRoadmapTrackedRowPcts(ctx ExpandContext, vals *PhaseRoadmapValues, blo
 		date -= math.Min(deficit, date-dateNeed)
 	}
 	return math.Round(header*10) / 10, math.Round(timeline*10) / 10, math.Round(date*10) / 10
+}
+
+// phaseRoadmapDateMinPt is the smallest date-row height at which the writer
+// stores no autofit shrink for any date label at its column width. A 12pt bold
+// date in the row's 8%/squeezed share was written at 90% (10.8pt, below the
+// 12pt floor) on examples/phase-roadmap.json (go-slide-creator-n1muf).
+func phaseRoadmapDateMinPt(ctx ExpandContext, vals *PhaseRoadmapValues, dateSize float64) float64 {
+	n := len(vals.Phases)
+	if n == 0 {
+		return 0
+	}
+	contentW, _ := contentAreaPt(ctx)
+	colW := equalColumnWidthPt(contentW, n, 6)
+	need := 0.0
+	for _, p := range vals.Phases {
+		if p.DateLabel == "" {
+			continue
+		}
+		need = math.Max(need, writtenFitHeightPt(buildPhaseRoadmapPlainText(p.DateLabel, dateSize, true, "dk1", "ctr"), colW, 0))
+	}
+	return need
 }
 
 func applyPhaseRoadmapOverride(cell *jsonschema.GridCellInput, cellOverrides map[int]any, idx int, accent string) {
