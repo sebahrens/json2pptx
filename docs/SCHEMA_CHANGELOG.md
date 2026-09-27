@@ -1,5 +1,11 @@
 # Schema Changelog
 
+- **2026-09-27 — Schema 4.148.0: pre-release review round 2 (`go-slide-creator-csclk`).**
+  Contract surface changed by the batch fixes listed below: raw slides gain the
+  engine-set `section_title`, DeckSpec team members accept `photo`,
+  `data.data_labels` accepts a bool, output schemas are rooted at
+  `type: object`, `get_shape_catalog` returns `{categories}`, and pattern
+  text-size overrides are range-checked (12–40pt).
 - **2026-09-27 — Server robustness caps (`go-slide-creator-csclk.78`, `.81`–`.84`, `.123`, `.131`, `.132`).**
   - MCP: one tool call's arguments may carry at most 2 MiB of text; larger
     calls return `INVALID_PARAMETER` before any handler runs.

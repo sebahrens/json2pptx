@@ -1326,35 +1326,40 @@ func ganttDateField(m map[string]any, what string, keys ...string) (string, time
 // be silently dropped to year 1 and drawn off-canvas: present-but-unparseable
 // dates, a task with no start, and an end before its start
 // (go-slide-creator-csclk.9).
+// validateGanttTaskDates rejects unparseable dates, a missing start (or date
+// for milestones) and an end before its start.
+func validateGanttTaskDates(task map[string]any, what string) error {
+	startKey, start, err := ganttDateField(task, what, "start", "start_date")
+	if err != nil {
+		return err
+	}
+	endKey, end, err := ganttDateField(task, what, "end", "end_date")
+	if err != nil {
+		return err
+	}
+	dateKey, _, err := ganttDateField(task, what, "date")
+	if err != nil {
+		return err
+	}
+	if startKey == "" && dateKey == "" {
+		if typ, _ := task["type"].(string); typ == "milestone" {
+			return fmt.Errorf("%s is a milestone but has no date or start_date", what)
+		}
+		return fmt.Errorf("%s is missing start_date", what)
+	}
+	if startKey != "" && endKey != "" && end.Before(start) {
+		return fmt.Errorf("%s %s is before %s", what, endKey, startKey)
+	}
+	return nil
+}
+
 func validateGanttDates(data map[string]any) error {
 	if tasks, ok := toAnySlice(data["tasks"]); ok {
 		for i, raw := range tasks {
-			task, ok := raw.(map[string]any)
-			if !ok {
-				continue
-			}
-			what := fmt.Sprintf("gantt task %d", i+1)
-			startKey, start, err := ganttDateField(task, what, "start", "start_date")
-			if err != nil {
-				return err
-			}
-			endKey, end, err := ganttDateField(task, what, "end", "end_date")
-			if err != nil {
-				return err
-			}
-			dateKey, _, err := ganttDateField(task, what, "date")
-			if err != nil {
-				return err
-			}
-			typ, _ := task["type"].(string)
-			if startKey == "" && dateKey == "" {
-				if typ == "milestone" {
-					return fmt.Errorf("%s is a milestone but has no date or start_date", what)
+			if task, ok := raw.(map[string]any); ok {
+				if err := validateGanttTaskDates(task, fmt.Sprintf("gantt task %d", i+1)); err != nil {
+					return err
 				}
-				return fmt.Errorf("%s is missing start_date", what)
-			}
-			if startKey != "" && endKey != "" && end.Before(start) {
-				return fmt.Errorf("%s %s is before %s", what, endKey, startKey)
 			}
 		}
 	}

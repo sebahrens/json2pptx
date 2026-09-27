@@ -64,6 +64,42 @@ Use this after generate_presentation or with a DeckSpec deck_id to get structure
 // error responses (missing params, invalid JSON, template lookup, marshal
 // failure) carry a next_tool_call suggestion so the agent can chain to the
 // recovery tool (get_input_schema, list_templates) without inferring it.
+// scoreDeckModeError rejects unimplemented modes rather than silently
+// downgrading; nil means the mode is supported.
+func scoreDeckModeError(mode string) *mcp.CallToolResult {
+	switch mode {
+	case "deterministic":
+		return nil
+	case "with_heuristics":
+		return mcpErrorWithNext(
+			"UNSUPPORTED_MODE",
+			"score_deck mode 'with_heuristics' is not implemented; call inspect_slide_images on rendered thumbnails for vision-based visual QA, or omit the mode parameter to use 'deterministic'",
+			nextCallInspectSlideImages(),
+		)
+	default:
+		return mcpErrorWithNext(
+			"UNSUPPORTED_MODE",
+			fmt.Sprintf("score_deck mode %q is not recognized; supported modes: 'deterministic'", mode),
+			nextCallGetInputSchema(),
+		)
+	}
+}
+
+// scoreDeckMissingSlides distinguishes a present-but-empty slides array from
+// a missing one — argRequired would otherwise say "must be an array, got an
+// array" (go-slide-creator-csclk.31).
+func scoreDeckMissingSlides(request mcp.CallToolRequest, jsonStr string) *mcp.CallToolResult {
+	example := []any{map[string]any{"layout_id": "title"}}
+	var raw struct {
+		Slides []json.RawMessage `json:"slides"`
+	}
+	if json.Unmarshal([]byte(jsonStr), &raw) == nil && raw.Slides != nil {
+		return argInvalidValue("score_deck", "INVALID_PARAMETER", "presentation.slides",
+			"presentation.slides must contain at least one slide", "array", example, nextCallGetInputSchema())
+	}
+	return argRequired(request, "score_deck", "presentation.slides", "array", example, nextCallGetInputSchema())
+}
+
 func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	jsonStr, _, paramErr := mc.presentationForTool("score_deck", request)
 	if paramErr != nil {
@@ -79,21 +115,8 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 	// 'with_heuristics' is reserved for a future render+inspect pass; until
 	// that ships, agents that want vision-based QA should call
 	// inspect_slide_images directly on rendered thumbnails.
-	switch mode {
-	case "deterministic":
-		// supported
-	case "with_heuristics":
-		return mcpErrorWithNext(
-			"UNSUPPORTED_MODE",
-			"score_deck mode 'with_heuristics' is not implemented; call inspect_slide_images on rendered thumbnails for vision-based visual QA, or omit the mode parameter to use 'deterministic'",
-			nextCallInspectSlideImages(),
-		), nil
-	default:
-		return mcpErrorWithNext(
-			"UNSUPPORTED_MODE",
-			fmt.Sprintf("score_deck mode %q is not recognized; supported modes: 'deterministic'", mode),
-			nextCallGetInputSchema(),
-		), nil
+	if modeErr := scoreDeckModeError(mode); modeErr != nil {
+		return modeErr, nil
 	}
 
 	// A semantic DeckSpec unmarshals into a PresentationInput whose slides are
@@ -131,17 +154,7 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		return argRequired(request, "score_deck", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if len(input.Slides) == 0 {
-		// A present-but-empty slides array is not "missing" — argRequired would
-		// otherwise say "must be an array, got an array" (go-slide-creator-csclk.31).
-		var raw struct {
-			Slides []json.RawMessage `json:"slides"`
-		}
-		if json.Unmarshal([]byte(jsonStr), &raw) == nil && raw.Slides != nil {
-			return argInvalidValue("score_deck", "INVALID_PARAMETER", "presentation.slides",
-				"presentation.slides must contain at least one slide", "array",
-				[]any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
-		}
-		return argRequired(request, "score_deck", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
+		return scoreDeckMissingSlides(request, jsonStr), nil
 	}
 
 	// Resolve relative local-asset paths (icons, content images, grid images,
