@@ -26,7 +26,7 @@
     },
     "additional_core_template_fixes": "modern-template: waterfall-bridge label side now measured at the floored 12pt (was 10pt); sovereign slides 9/11 axis row 6 -> 7% and slide 13 governance row 14 -> 18%",
     "visual_check": "soffice->pdf->pdftoppm on midnight-blue and p-style for every touched slide; viewed, no clipping/overlap",
-    "remaining": "Role refusals on smoke-tier templates only: abstract (capability-heatmap, dual-org-ladder, framework-grid, numbered-step-strip, phase-roadmap, state-shift-hub), modern (business-model-canvas, phase-roadmap, stress/bmc-dense/card-grid-overflow fixtures). Pre-existing on main, unrelated: TestSchemaDocsDoctor (INPUT_FORMAT 258 lines), TestGenerateDeckSkillBudgets (bundle >100KiB), TestSchemaMaximaStayReadable contact-directory p-style pin."
+    "remaining": "Role refusals remain on smoke-tier templates only: abstract (capability-heatmap, dual-org-ladder, framework-grid, numbered-step-strip, phase-roadmap, state-shift-hub examples) and modern (business-model-canvas, phase-roadmap examples; stress, bmc-dense, card-grid-overflow fixtures). Core templates and local p-style: no role refusals across all examples and fixtures."
   },
   "review": {
     "testing": {

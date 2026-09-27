@@ -52,8 +52,8 @@ repairable kinds query
 Actual source loss refuses every fit mode, including `warn` and `off`.
 Preserve required content and the requested slide count; refused inputs and
 stale outputs are not approved. Use `describe_finding` for repair guidance.
-So does grid text written below its role floor
-(`TEXT_BELOW_READABLE_MIN`); a lone axis/step "1" is a caption, not a KPI.
+So does grid text below its role floor
+(`TEXT_BELOW_READABLE_MIN`); a lone axis "1" is a caption.
 
 Apply precise `repair_slide` fixes to a single raw slide. For findings on
 several slides, `propose_repairs` plus `repair_slides_batch` avoids repeated
