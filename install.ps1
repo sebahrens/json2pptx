@@ -34,8 +34,8 @@ Options:
 Installs:
   <Prefix>\bin\json2pptx.exe                CLI binary (also serves as MCP server)
   %LOCALAPPDATA%\json2pptx\templates\       PPTX template files
-  ~\.claude\skills\*\                       Claude Code skill files (3 skills)
-  ~\.claude\mcp.json                        MCP server configuration
+  ~\.claude\skills\*\                       Claude Code skill files (every skill under skills\)
+  claude mcp add --scope user json2pptx     MCP server registration
 "@
     exit 0
 }
@@ -57,10 +57,17 @@ if (-not $SkipBuild) {
         exit 1
     }
 
-    $GoVersionRaw = (go version) -replace '.*go(\d+\.\d+).*', '$1'
-    $GoMajor, $GoMinor = $GoVersionRaw -split '\.'
-    if ([int]$GoMajor -lt 1 -or ([int]$GoMajor -eq 1 -and [int]$GoMinor -lt 23)) {
-        Write-Host "ERROR: Go >= 1.23 required (found $GoVersionRaw)" -ForegroundColor Red
+    # The minimum comes from go.mod's `go` directive so the check cannot drift
+    # from what the build requires. Query the local toolchain from outside the
+    # module so go.mod does not trigger a toolchain switch.
+    $GoMinRaw = (Select-String -Path (Join-Path $ScriptDir "go.mod") -Pattern '^go\s+(\S+)').Matches[0].Groups[1].Value
+    Push-Location "$env:SystemDrive\"
+    $GoVersionRaw = (go env GOVERSION) -replace '^go', ''
+    Pop-Location
+    $GoMin = [version]($GoMinRaw -replace '^(\d+(\.\d+){1,2}).*', '$1')
+    $GoFound = [version]($GoVersionRaw -replace '^(\d+(\.\d+){1,2}).*', '$1')
+    if ($GoFound -lt $GoMin) {
+        Write-Host "ERROR: Go >= $GoMinRaw required by go.mod (found $GoVersionRaw)" -ForegroundColor Red
         exit 1
     }
     Write-Host "    go: $(go version)"
@@ -166,17 +173,44 @@ if (-not $SkipSkill) {
         Write-Host "    Removed old skill: $OldSkillDst"
     }
 
-    $SkillNames = @("template-deck", "generate-deck", "slide-visual-qa")
-    foreach ($SkillName in $SkillNames) {
-        $SkillSrc = Join-Path $ScriptDir "skills\$SkillName"
-        $SkillDst = Join-Path $env:USERPROFILE ".claude\skills\$SkillName"
+    # PowerShell port of scripts/stage-skills.sh (what `make install` runs):
+    # every skill under skills\, the references\repository snapshot, and
+    # ../../docs-style links rewritten so they resolve inside ~\.claude\skills.
+    $SkillsRoot = Join-Path $ScriptDir "skills"
+    $SkillsDst = Join-Path $env:USERPROFILE ".claude\skills"
+    foreach ($SkillDir in Get-ChildItem $SkillsRoot -Directory) {
+        $SkillDst = Join-Path $SkillsDst $SkillDir.Name
+        New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
+        Copy-Item (Join-Path $SkillDir.FullName "*") $SkillDst -Recurse -Force
+        Write-Host "    $SkillDst"
+    }
 
-        if (Test-Path $SkillSrc) {
-            New-Item -ItemType Directory -Force -Path $SkillDst | Out-Null
-            Copy-Item (Join-Path $SkillSrc "*") $SkillDst -Force
-            Write-Host "    $SkillDst"
-        } else {
-            Write-Host "    Skipped $SkillName (no skill files found)" -ForegroundColor Yellow
+    $Refs = Join-Path $SkillsDst "generate-deck\references\repository"
+    foreach ($Sub in @("docs", "examples", "internal")) {
+        New-Item -ItemType Directory -Force -Path (Join-Path $Refs $Sub) | Out-Null
+    }
+    foreach ($Doc in @("INPUT_FORMAT", "FIT_FINDINGS", "SEMANTIC_COMPILER", "TEMPLATE_SPEC", "PATH_GRAMMAR", "PATTERNS", "TEMPLATE_ANALYSIS")) {
+        Copy-Item (Join-Path $ScriptDir "docs\$Doc.md") (Join-Path $Refs "docs") -Force
+    }
+    Copy-Item (Join-Path $ScriptDir "examples\semantic") (Join-Path $Refs "examples") -Recurse -Force
+    Copy-Item (Join-Path $ScriptDir "internal\tokens") (Join-Path $Refs "internal") -Recurse -Force
+    Copy-Item $SkillsRoot $Refs -Recurse -Force
+    $Evidence = "tests\quality\evidence\connectors\midnight-blue"
+    $EvidenceDst = Join-Path $Refs $Evidence
+    New-Item -ItemType Directory -Force -Path $EvidenceDst | Out-Null
+    foreach ($Resource in @("source-aware-evidence-route.json", "readable-source-companion-route.json", "powerpoint-slide-4.png")) {
+        Copy-Item (Join-Path $ScriptDir "$Evidence\$Resource") $EvidenceDst -Force
+    }
+
+    # Only installed entrypoint guides (skills\<name>\*.md) need rerouting.
+    foreach ($SkillDir in Get-ChildItem $SkillsRoot -Directory) {
+        foreach ($Source in Get-ChildItem $SkillDir.FullName -Filter "*.md" -File) {
+            $Guide = Join-Path (Join-Path $SkillsDst $SkillDir.Name) $Source.Name
+            $Text = [IO.File]::ReadAllText($Guide)
+            foreach ($Sub in @("docs", "examples", "internal", "tests")) {
+                $Text = $Text.Replace("](../../$Sub/", "](../generate-deck/references/repository/$Sub/")
+            }
+            [IO.File]::WriteAllText($Guide, $Text)
         }
     }
 }
@@ -187,32 +221,27 @@ if (-not $SkipMcp) {
     Write-Host ""
     Write-Host "==> Configuring MCP server..."
 
-    $McpFile = Join-Path $env:USERPROFILE ".claude\mcp.json"
-    # Use forward slashes in JSON paths for cross-platform compatibility
+    # Claude Code reads user-scope MCP servers from ~/.claude.json, managed by
+    # `claude mcp add --scope user` (it does not read ~/.claude/mcp.json).
+    # Use forward slashes in paths for cross-platform compatibility.
     $BinaryPath = (Join-Path $InstallBinDir "json2pptx.exe") -replace '\\', '/'
     $TemplatesPath = (Join-Path $env:LOCALAPPDATA "json2pptx\templates") -replace '\\', '/'
+    $McpArgs = @("mcp", "add", "--scope", "user", "json2pptx", "--", $BinaryPath, "mcp", "--templates-dir", $TemplatesPath, "--output", "./output")
+    $McpManual = "claude mcp add --scope user json2pptx -- `"$BinaryPath`" mcp --templates-dir `"$TemplatesPath`" --output ./output"
 
-    $NewServer = @{
-        command = $BinaryPath
-        args = @("mcp", "--templates-dir", $TemplatesPath, "--output", "./output")
-    }
-
-    if (Test-Path $McpFile) {
-        $McpConfig = Get-Content $McpFile -Raw | ConvertFrom-Json
+    if (Get-Command claude -ErrorAction SilentlyContinue) {
+        & claude mcp remove --scope user json2pptx *> $null
+        & claude @McpArgs *> $null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "    Registered json2pptx with Claude Code (user scope)"
+        } else {
+            Write-Host "    WARNING: 'claude mcp add' failed. Register manually with:" -ForegroundColor Yellow
+            Write-Host "      $McpManual"
+        }
     } else {
-        New-Item -ItemType Directory -Force -Path (Split-Path $McpFile) | Out-Null
-        $McpConfig = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+        Write-Host "    Claude Code CLI ('claude') not found on PATH. Register the server with:" -ForegroundColor Yellow
+        Write-Host "      $McpManual"
     }
-
-    # Add or update the json2pptx server entry
-    if ($McpConfig.mcpServers.PSObject.Properties["json2pptx"]) {
-        $McpConfig.mcpServers.json2pptx = $NewServer
-    } else {
-        $McpConfig.mcpServers | Add-Member -NotePropertyName "json2pptx" -NotePropertyValue $NewServer
-    }
-
-    $McpConfig | ConvertTo-Json -Depth 10 | Set-Content $McpFile -Encoding UTF8
-    Write-Host "    $McpFile (json2pptx server configured)"
 }
 
 # --- Verify ---
@@ -237,10 +266,10 @@ if (-not $SkipTemplates) {
     Write-Host "  Templates: $env:LOCALAPPDATA\json2pptx\templates\"
 }
 if (-not $SkipSkill) {
-    Write-Host "  Skills:    ~\.claude\skills\{template-deck,generate-deck,slide-visual-qa}\"
+    Write-Host "  Skills:    ~\.claude\skills\*\"
 }
 if (-not $SkipMcp) {
-    Write-Host "  MCP:       ~\.claude\mcp.json"
+    Write-Host "  MCP:       json2pptx (Claude Code user scope; see: claude mcp get json2pptx)"
 }
 
 # PATH warning

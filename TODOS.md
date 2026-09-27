@@ -44,11 +44,11 @@
 |---|---|---|
 | **Binary** | `json2pptx mcp` | `svggen-mcp` |
 | **Transport** | stdio | stdio |
-| **Tools** | 24 tools | 4 tools |
+| **Tools** | `get_capabilities().mcp_tools_available` (core profile by default; `--tools all` for the full catalog) | 4 tools |
 | **Context** | Templates, themes, layouts, settings | None (standalone) |
-| **Version** | `3.x.x` | `0.1.0` |
+| **Version** | `json2pptx version` / `get_capabilities().tool_version` | `0.1.0` |
 
-**json2pptx tools (24):** `generate_presentation`, `list_templates`, `get_data_format_hints`, `get_chart_capabilities`, `get_diagram_capabilities`, `validate_input`, `recommend_pattern`, `recommend_visual`, `list_patterns`, `show_pattern`, `validate_pattern`, `expand_pattern`, `list_icons`, `table_density_guide`, `resolve_theme`, `render_slide_image`, `render_deck_thumbnails`, `score_deck`, `preview_presentation_plan`, `repair_slide`, `list_template_settings`, `register_template_setting`, `delete_template_setting`, `analyze_deck_rhythm`, `get_capabilities`, `read_presentation`, `get_shape_catalog`
+**json2pptx tools:** the list drifts as tools are added — read it live from `get_capabilities().mcp_tools_available` (or `tools/list` with `--tools all`) rather than from this document.
 
 **svggen-mcp tools (4):** `render_diagram`, `list_diagram_types`, `validate_diagram`, `get_diagram_schema`
 

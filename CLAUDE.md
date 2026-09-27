@@ -104,7 +104,7 @@ svggen/           # SVG chart/diagram generation (separate Go module via go.work
   style.go        # Theme-aware styling
 
 templates/        # Shipped PPTX templates (see templates/embed.go for the full list)
-examples/         # Example JSON input files (19 decks)
+examples/         # Example JSON input decks (+ diagrams/, semantic/)
 ```
 
 ## Key Architectural Decisions
@@ -112,7 +112,7 @@ examples/         # Example JSON input files (19 decks)
 - **Template-driven**: All visual identity comes from `.pptx` template files. The engine never hardcodes colors/fonts.
 - **Semantic colors**: JSON uses scheme names (`accent1`, `lt2`, `dk1`) not hex. The engine resolves via the template's theme.
 - **Contrast enforcement**: `internal/generator/text_contrast.go` auto-fixes low-contrast text on layout backgrounds (WCAG AA). Shape grid text is warn-only (user-specified colors preserved).
-- **SVG for charts/diagrams**: The `svggen/` module renders charts as SVG, embedded as EMF in the PPTX.
+- **SVG for charts/diagrams**: The `svggen/` module renders charts as SVG, embedded as native SVG with a PNG fallback (default; `--chart-png` forces PNG).
 - **Shape grids**: Complex layouts (BMC, KPI dashboards, timelines) use `shape_grid` in JSON, rendered by `internal/shapegrid/`.
 - **Named patterns**: Reusable `shape_grid` skeletons in `internal/patterns/` that expand at generation time. See [docs/PATTERNS.md](docs/PATTERNS.md) for the authoring guide.
 - **Fit findings**: Content overflow and density diagnostics emitted by `validate -fit-report` and MCP `generate_presentation(fit_report=true)`. See [docs/FIT_FINDINGS.md](docs/FIT_FINDINGS.md) for the code catalog, action semantics, and scope rules.
@@ -138,9 +138,9 @@ Template rules are documented in two canonical docs — link to them rather than
 
 Quick reference only — the full placeholder/layout catalog lives in [skills/template-deck/TEMPLATE_GUIDE.md](skills/template-deck/TEMPLATE_GUIDE.md).
 
-- Slide types: `title`, `content`, `section`, `two-column`, `blank`, `chart`, `diagram`
+- Slide types: `title`, `content`, `section`, `two-column`, `blank`, `chart`, `diagram`, `image`, `comparison`
 - Placeholder IDs: `title`, `subtitle`, `body`, `body_2` (portable across templates)
-- Content types: `text`, `bullets`, `chart`, `diagram`, `table`, `image`, `body_and_bullets`, `bullet_groups`
+- Content types: `text`, `bullets`, `chart`, `diagram`, `table`, `image`, `body_and_bullets`, `body_and_lead`, `bullet_groups`
 
 ### Named Patterns (registered in `internal/patterns/`)
 
