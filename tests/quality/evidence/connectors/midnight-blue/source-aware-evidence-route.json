@@ -1,0 +1,18 @@
+{
+  "template": "modern",
+  "slides": [
+    {
+      "layout_id": "slideLayout4",
+      "content": [
+        {"placeholder_id":"title","type":"text","text_value":"Quarterly operating review"},
+        {"placeholder_id":"subtitle","type":"text","text_value":"Illustrative test data for review"}
+      ]
+    },
+    {
+      "layout_id": "slideLayout1",
+      "content": [
+        {"placeholder_id":"image","type":"image","image_value":{"path":"powerpoint-slide-4.png","alt":"Complete original swimlane source including every label and connector","fit":"contain"}}
+      ]
+    }
+  ]
+}

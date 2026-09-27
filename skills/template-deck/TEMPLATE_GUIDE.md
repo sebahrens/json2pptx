@@ -317,6 +317,23 @@ frame or a different layout. A complete but unreadable diagram is not acceptable
 {"placeholder_id": "image", "type": "image", "image_value": {"path": "assets/process.png", "alt": "Complete process diagram", "fit": "contain"}}
 ```
 
+If a photo layout overlays text on required evidence, do not force that pairing.
+When the slide count permits, put the exact title/subtitle on a separate native
+text layout and the untouched source on a native full-image page with only its
+`image` item populated. Omit title/subtitle items on that evidence page so they
+cannot cover labels or connectors. Inspect its fitted scale: even full-slide
+contain can leave small source labels, requiring enlarged detail pages or a
+faithful editable diagram alongside the complete original. Never silently add
+pages to a fixed-count deck.
+
+The [tested two-page example](../../tests/quality/evidence/connectors/midnight-blue/source-aware-evidence-route.json)
+uses `modern` layouts `slideLayout4` and `slideLayout1`; these IDs are specific to
+that template. Discover appropriate native text/full-image layouts for another
+template rather than copying the IDs or assuming a full-image alias exists.
+This is an explicit authoring choice, not an automatic repair or approval of
+the original overlaid/half-width composition. Do not dim the source, add a scrim,
+or use a cover-cropped grid image as a substitute for whole-source contain.
+
 ## Footer Configuration
 
 Enable slide footers at the presentation level:

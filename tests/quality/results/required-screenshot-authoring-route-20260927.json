@@ -1,0 +1,183 @@
+{
+  "date": "2026-09-27",
+  "beads": [
+    "go-slide-creator-3qzo4.15",
+    "go-slide-creator-3qzo4.19"
+  ],
+  "baseline_commit": "4f2706998791f000add0f53b0a5272b7ad08e650",
+  "scope": "Explicit supported two-page source-aware authoring route; no renderer/template/font change, no unsafe-probe replacement. Exact title/subtitle move to modern native text layout4; original source occupies native full-image layout1 alone with contain. Extra page requires permission from the requested slide count.",
+  "source_sha256": "3b9c6fad930dd2843b363f606700b9b6067abbaba74c755194864a0c19a6d89b",
+  "source_audit_sha256": "9bee33d3ac1ea76d7764e378580df07c8b70b5b5937dc944c7469b2a0d6a061d",
+  "blind_review_sha256": "d8a80c6921013dcf909a4d68657b5c061fc88e98b73d8d1dd3c72b34b743a571",
+  "opaque_images": 11,
+  "all_images_reviewed": true,
+  "single_reviewer": true,
+  "original_controls_unsafe": 6,
+  "candidate_pages": 12,
+  "candidate_unsafe_pages": 0,
+  "candidate_safe_pages": 1,
+  "candidate_minor_caution_pages": 11,
+  "cases": [
+    {
+      "original_id": "slideLayout2-representative",
+      "verdicts": {
+        "original": "UNSAFE",
+        "text_slide": "SAFE_WITH_MINOR_CAUTIONS",
+        "image_slide": "SAFE_WITH_MINOR_CAUTIONS"
+      },
+      "source_bytes_preserved": true,
+      "required_title_subtitle_exact_once": true,
+      "whole_source_no_crop_overlay": true,
+      "image_findings": [
+        {
+          "code": "SMALL_DIAGRAM_LABELS",
+          "severity": "minor",
+          "lens": "presentation_legibility",
+          "description": "Lane and step labels are small relative to the large diagram heading even at full frame. They are intact and readable close-up, but should be enlarged for distant viewing."
+        }
+      ],
+      "review_ids": [
+        "V5c45a9690662",
+        "Vc7a8016707d4",
+        "V719b7f22af9a"
+      ]
+    },
+    {
+      "original_id": "slideLayout2-dense",
+      "verdicts": {
+        "original": "UNSAFE",
+        "text_slide": "SAFE_WITH_MINOR_CAUTIONS",
+        "image_slide": "SAFE_WITH_MINOR_CAUTIONS"
+      },
+      "source_bytes_preserved": true,
+      "required_title_subtitle_exact_once": true,
+      "whole_source_no_crop_overlay": true,
+      "image_findings": [
+        {
+          "code": "SMALL_DIAGRAM_LABELS",
+          "severity": "minor",
+          "lens": "presentation_legibility",
+          "description": "Lane and step labels are small relative to the large diagram heading even at full frame. They are intact and readable close-up, but should be enlarged for distant viewing."
+        }
+      ],
+      "review_ids": [
+        "Vd6a873cd74e6",
+        "Vaad665e38875",
+        "V719b7f22af9a"
+      ]
+    },
+    {
+      "original_id": "slideLayout1-representative",
+      "verdicts": {
+        "original": "UNSAFE",
+        "text_slide": "SAFE_WITH_MINOR_CAUTIONS",
+        "image_slide": "SAFE_WITH_MINOR_CAUTIONS"
+      },
+      "source_bytes_preserved": true,
+      "required_title_subtitle_exact_once": true,
+      "whole_source_no_crop_overlay": true,
+      "image_findings": [
+        {
+          "code": "SMALL_DIAGRAM_LABELS",
+          "severity": "minor",
+          "lens": "presentation_legibility",
+          "description": "Lane and step labels are small relative to the large diagram heading even at full frame. They are intact and readable close-up, but should be enlarged for distant viewing."
+        }
+      ],
+      "review_ids": [
+        "Ve73d54ddb25a",
+        "Va72d86b8a79e",
+        "V719b7f22af9a"
+      ]
+    },
+    {
+      "original_id": "slideLayout1-dense",
+      "verdicts": {
+        "original": "UNSAFE",
+        "text_slide": "SAFE",
+        "image_slide": "SAFE_WITH_MINOR_CAUTIONS"
+      },
+      "source_bytes_preserved": true,
+      "required_title_subtitle_exact_once": true,
+      "whole_source_no_crop_overlay": true,
+      "image_findings": [
+        {
+          "code": "SMALL_DIAGRAM_LABELS",
+          "severity": "minor",
+          "lens": "presentation_legibility",
+          "description": "Lane and step labels are small relative to the large diagram heading even at full frame. They are intact and readable close-up, but should be enlarged for distant viewing."
+        }
+      ],
+      "review_ids": [
+        "V731edcbf8d03",
+        "V2dee85e7a125",
+        "V719b7f22af9a"
+      ]
+    },
+    {
+      "original_id": "slideLayout6-representative",
+      "verdicts": {
+        "original": "UNSAFE",
+        "text_slide": "SAFE_WITH_MINOR_CAUTIONS",
+        "image_slide": "SAFE_WITH_MINOR_CAUTIONS"
+      },
+      "source_bytes_preserved": true,
+      "required_title_subtitle_exact_once": true,
+      "whole_source_no_crop_overlay": true,
+      "image_findings": [
+        {
+          "code": "SMALL_DIAGRAM_LABELS",
+          "severity": "minor",
+          "lens": "presentation_legibility",
+          "description": "Lane and step labels are small relative to the large diagram heading even at full frame. They are intact and readable close-up, but should be enlarged for distant viewing."
+        }
+      ],
+      "review_ids": [
+        "Vd99f3ca068a0",
+        "Vc7a8016707d4",
+        "V719b7f22af9a"
+      ]
+    },
+    {
+      "original_id": "slideLayout6-dense",
+      "verdicts": {
+        "original": "UNSAFE",
+        "text_slide": "SAFE_WITH_MINOR_CAUTIONS",
+        "image_slide": "SAFE_WITH_MINOR_CAUTIONS"
+      },
+      "source_bytes_preserved": true,
+      "required_title_subtitle_exact_once": true,
+      "whole_source_no_crop_overlay": true,
+      "image_findings": [
+        {
+          "code": "SMALL_DIAGRAM_LABELS",
+          "severity": "minor",
+          "lens": "presentation_legibility",
+          "description": "Lane and step labels are small relative to the large diagram heading even at full frame. They are intact and readable close-up, but should be enlarged for distant viewing."
+        }
+      ],
+      "review_ids": [
+        "V08c387f9efec",
+        "Vaad665e38875",
+        "V719b7f22af9a"
+      ]
+    }
+  ],
+  "portable_example": "tests/quality/evidence/connectors/midnight-blue/source-aware-evidence-route.json",
+  "portable_example_sha256": "2006b8f5ac5aca4baa7791ef49e9cc579fced5df9cc47cfb0b21b2f7405fc779",
+  "gates_at_publication": {
+    "all_six_case_generation": "PASS, strict_fit=strict and strict_unknown_keys; no validation/media failures",
+    "portable_example": "PASS, strict_fit=strict and strict_unknown_keys",
+    "source_code_full_race": "PASS session70488; production Go/templates unchanged afterward",
+    "docs_contract": "PASS",
+    "format_diff": "PASS",
+    "exact_commit_ci": "PENDING publication"
+  },
+  "remaining_findings": {
+    "go-slide-creator-3qzo4.15": "Full-frame labels remain small for distant viewing. Whole source + source-byte/label completeness does not resolve presentation-distance readability.",
+    "go-slide-creator-3qzo4.69": "Native cover title rag and general composition cautions retained.",
+    "go-slide-creator-3qzo4.111": "Native gradient banner stepped upper edge newly tracked; cause unproven."
+  },
+  "limitations": "Opaque reviewer cannot prove unseen authored title/subtitle source wording; independent exact-once XML audit supplies that proof. No physical projection or native PowerPoint fidelity claim. Source-only full-bleed artwork follows source intent and is not a comparison panel. This evidence does not approve original six unsafe probes or all features/layouts.",
+  "closure": "Source-overlap authoring route in .19 can close after exact-commit gates. Readability .15 and remaining visual defects stay active."
+}
