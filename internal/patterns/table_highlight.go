@@ -279,7 +279,6 @@ func (p *tableHighlight) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 	return warnings
 }
 
-
 func (p *tableHighlight) Schema() *Schema {
 	scaleEnum := func() *Schema { return EnumSchema(thScaleHarvey, thScaleRAG, thScaleText) }
 	criterion := OneOfSchema(
