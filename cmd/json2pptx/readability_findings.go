@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"math"
 	"strings"
@@ -17,12 +18,12 @@ import (
 
 // Shape-grid readability (go-slide-creator-vbic).
 //
-// shape_grid text is written at its authored size (floored at 12pt) with
-// <a:normAutofit/>; when the text exceeds the cell, the renderer shrinks every
+// shape_grid text is written at its authored size with <a:normAutofit/>;
+// when the text exceeds the cell, the renderer shrinks every
 // paragraph by the same factor — which is how real decks ended up with 6pt
 // KPI deltas and 9pt chevron descriptions. The fit report predicts that
-// shrink by measuring the cell's paragraphs in its text rectangle (the same
-// rectangle textcapacity budgets) and reports the paragraph that lands
+// shrink using the shape emitter's stored scale (including text insets and
+// paragraph spacing) and reports the paragraph that lands
 // furthest below the deck viewing_mode floor for its text role.
 
 // collectReadabilityFindings returns TEXT_BELOW_READABLE_MIN findings for
@@ -66,7 +67,12 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 			if len(paras) == 0 {
 				continue
 			}
-			scale := predictedAutofitScale(paras, d.WidthEMU, d.HeightEMU)
+			scale, err := writtenCellAutofitScale(cell)
+			if err != nil {
+				// Generation will report the invalid shape; do not invent a
+				// readability measurement for XML that cannot be produced.
+				continue
+			}
 			cellPath := slidepath.GridCell(si, cell.RowIdx, cell.ColIdx)
 			path := slidepath.Join(cellPath, "shape/text")
 			roleOverride := patternCellReadabilityRole(slide, cell.RowIdx)
@@ -88,6 +94,33 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 		}
 	}
 	return findings
+}
+
+// Measure the same shape body generation writes. A density rectangle has
+// already subtracted authored padding, so measuring it through textcapacity
+// subtracts default padding a second time. Reusing the shape emitter also
+// preserves paragraph spacing, overlay insets and the final resolved bounds.
+func writtenCellAutofitScale(cell shapegrid.ResolvedCell) (float64, error) {
+	data, err := shapegrid.GenerateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.TextInsets)
+	if err != nil {
+		return 0, err
+	}
+	var emitted struct {
+		TextBody struct {
+			BodyProperties struct {
+				Autofit struct {
+					FontScale int `xml:"fontScale,attr"`
+				} `xml:"normAutofit"`
+			} `xml:"bodyPr"`
+		} `xml:"txBody"`
+	}
+	if err := xml.Unmarshal(data, &emitted); err != nil {
+		return 0, err
+	}
+	if scale := emitted.TextBody.BodyProperties.Autofit.FontScale; scale > 0 {
+		return float64(scale) / 100000, nil
+	}
+	return 1, nil
 }
 
 // patternCellReadabilityRole applies a pattern's semantic role when font size
@@ -163,20 +196,6 @@ func splitCellParagraphs(content string, sizePt float64, bold bool) []cellParagr
 		out = append(out, cellParagraph{text: line, sizePt: sizePt, bold: bold})
 	}
 	return out
-}
-
-// predictedAutofitScale estimates the uniform font scale the renderer's
-// shrink-on-overflow (<a:normAutofit/>) applies to fit all paragraphs of a cell
-// into its text rectangle. It delegates to textcapacity, which owns the single
-// implementation: the fit report's overflow verdict and this readability verdict
-// must agree on the size text renders at (go-slide-creator-lmpu).
-func predictedAutofitScale(paras []cellParagraph, widthEMU, heightEMU int64) float64 {
-	specs := make([]textcapacity.ParagraphSpec, 0, len(paras))
-	for _, p := range paras {
-		specs = append(specs, textcapacity.ParagraphSpec{Text: p.text, FontPt: p.sizePt})
-	}
-	scale, _ := textcapacity.AutofitScaleFor(specs, widthEMU, heightEMU)
-	return scale
 }
 
 // autofitShrinkReportThreshold is the predicted scale at or below which a

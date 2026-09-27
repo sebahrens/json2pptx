@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/tokens"
 )
 
@@ -111,6 +114,83 @@ func TestAuthoredSmallGridTextCarriesExactSource(t *testing.T) {
 		tokens.ViewingModePresentation, "/slides/0/shape_grid/rows/0/cells/0/shape/text", "")
 	if f == nil || f.Fix == nil || f.Fix.Params["measurement_source"] != "authored" {
 		t.Fatalf("8pt authored text must be marked exact: %+v", f)
+	}
+}
+
+func TestReadabilityExplicitInsetsDoNotSubtractDefaultsAgain(t *testing.T) {
+	var input PresentationInput
+	if err := json.Unmarshal([]byte(`{
+		"viewing_mode":"present",
+		"slides":[{"layout_id":"blank","shape_grid":{
+			"bounds":{"x":5,"y":20,"width":90,"height":6.67},
+			"columns":[100],"rows":[{"cells":[{"shape":{
+				"geometry":"rect","text":{"content":"First line\nSecond line",
+				"size":13,"bold":true,"inset_left":2,"inset_right":2,
+				"inset_top":2,"inset_bottom":2}
+			}}]}]
+		}}]
+	}`), &input); err != nil {
+		t.Fatal(err)
+	}
+	// 36pt frame minus 4pt authored padding leaves 32pt for two 13pt
+	// lines at 1.2 spacing. The written shape fits without any font shrink.
+	if got := readabilityCodes(collectReadabilityFindings(&input, nil, 12192000, 6858000)); len(got) != 0 {
+		t.Fatalf("explicitly padded readable text falsely shrunk: %+v", got)
+	}
+}
+
+func TestWrittenCellAutofitAccountsForSpacingAndOverlay(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		text    string
+		height  float64
+		top     float64
+		shrinks bool
+	}{
+		{"default padding fits", `{"content":"First line\nSecond line","size":13}`, 40, 0, false},
+		{"authored padding fits", `{"content":"First line\nSecond line","size":13,"inset_top":2,"inset_bottom":2}`, 36, 0, false},
+		{"overlay consumes room", `{"content":"First line\nSecond line","size":13,"inset_top":2,"inset_bottom":2}`, 36, 12, true},
+		{"paragraph spacing consumes room", `{"paragraphs":[{"content":"First line","size":13,"space_after":16},{"content":"Second line","size":13}]}`, 40, 0, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cell := shapegrid.ResolvedCell{
+				ID: 42, Bounds: pptx.RectEmu{CX: shapegrid.PtToEMU(400), CY: shapegrid.PtToEMU(tc.height)},
+				ShapeSpec:  &shapegrid.ShapeSpec{Geometry: "rect", Text: json.RawMessage(tc.text)},
+				TextInsets: [4]int64{0, shapegrid.PtToEMU(tc.top), 0, 0},
+			}
+			before, err := json.Marshal(cell)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scale, err := writtenCellAutofitScale(cell)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.shrinks {
+				if scale <= 0 || scale >= .85 {
+					t.Fatalf("expected material shrink, got %v", scale)
+				}
+			} else if scale != 1 {
+				t.Fatalf("readable frame shrank to %v", scale)
+			}
+			after, err := json.Marshal(cell)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Equal(before, after) {
+				t.Fatal("measurement mutated the source cell")
+			}
+		})
+	}
+}
+
+func TestWrittenCellAutofitRejectsInvalidShape(t *testing.T) {
+	cell := shapegrid.ResolvedCell{
+		Bounds:    pptx.RectEmu{CX: shapegrid.PtToEMU(400), CY: shapegrid.PtToEMU(40)},
+		ShapeSpec: &shapegrid.ShapeSpec{Geometry: "rect", Fill: json.RawMessage(`{"alpha":101}`), Text: json.RawMessage(`"Text"`)},
+	}
+	if scale, err := writtenCellAutofitScale(cell); err == nil || scale != 0 {
+		t.Fatalf("invalid shape must not acquire a readability measurement: scale=%v err=%v", scale, err)
 	}
 }
 

@@ -1,0 +1,21 @@
+{
+  "scope": "Shape-grid readability measurement correction within go-slide-creator-n1muf",
+  "status": "targeted correction verified; broader readability closure remains unproven",
+  "changes": [
+    "Use the shape emitter's stored autofit scale rather than subtracting default padding twice from an already inset density rectangle.",
+    "Include authored paragraph spacing and icon-overlay insets in the reported effective size.",
+    "Correct five schema-maxima audit pins only after independently inspecting populated written runs; retain actual extreme-font publication refusals and extend them to text-sidebar."
+  ],
+  "evidence": {
+    "focused_padding_spacing_overlay_invalid_shape_race": "PASS 4.622s on final production source",
+    "combined_schema_maxima_and_publication_race": "PASS 177.035s; all registered patterns measured, six extreme-text patterns refused across all five installed matrix templates (30 cases), source/destination/temp-cleanup asserted",
+    "independent_written_run_matrix_race": "PASS 31.085s; three affected patterns across four core templates plus ignored local p-style (15 cases)",
+    "unchanged_28_page_control": "All 181 ZIP payloads match after normalizing only random slide-number field UUIDs. Raw slide payloads differ in those UUIDs; no byte-identical claim.",
+    "lint": "PASS; pinned golangci-lint v2.8.0 reports zero issues",
+    "build": "PASS"
+  },
+  "review": {
+    "testing": {"findings": [], "residual_risks": ["Defensive XML unmarshal error path is not independently injected."], "testing_gaps": []},
+    "adversarial": {"findings": [], "residual_risks": ["Stored OOXML autofit scale remains an estimate of client-rendered size, not a native PowerPoint or PDF measurement.", "Semantic-role minima and source-complete capacity guidance remain outstanding within the same bead.", "Extreme-schema audit pins record unreadable debt, not visual acceptance."], "testing_gaps": []}
+  }
+}

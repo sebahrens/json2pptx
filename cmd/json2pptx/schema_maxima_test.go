@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"math"
@@ -15,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/template"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
@@ -264,6 +266,82 @@ func measureSchemaMaximumEncodedPt(patternName string, encoded json.RawMessage, 
 	return worst
 }
 
+// Independently inspect written runs for the patterns whose old preflight
+// measurement lost padding/paragraph spacing. These are audit corrections,
+// not evidence that the underlying extreme payload is readable.
+func TestSchemaMaximaMeasurementsMatchWrittenRuns(t *testing.T) {
+	for _, name := range []string{"text-sidebar", "contact-directory", "labeled-rows"} {
+		pat, _ := patterns.Default().Get(name)
+		values, note := schemaMaximumValues(pat)
+		if note != "" {
+			t.Fatal(note)
+		}
+		encoded, err := json.Marshal(values)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, templateName := range schemaMaximaTemplateNames(t) {
+			t.Run(name+"/"+templateName, func(t *testing.T) {
+				geom := loadSchemaMaximaGeometry(t, templateName)
+				input := &PresentationInput{Slides: []SlideInput{{LayoutID: "blank-title", Pattern: &PatternInput{Name: name, Values: encoded}}}}
+				expanded, _ := expandPatternsForFit(input, geom.width, geom.height, nil, geom.layouts...)
+				slide := expanded.Slides[0]
+				geometry, _ := patternExpansionGeometry(slide, geom.layouts, geom.width, geom.height, resolvedValidRhythmGrid(input, geom.layouts, geom.width, geom.height))
+				grid := resolveGridForStructural(slide.ShapeGrid, geometry.OverrideBounds, geometry.Zone, geom.width, geom.height)
+				if grid == nil {
+					t.Fatal("pattern grid did not resolve")
+				}
+				minimum := math.Inf(1)
+				for _, cell := range grid.Cells {
+					if cell.ShapeSpec == nil {
+						continue
+					}
+					data, err := shapegrid.GenerateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.TextInsets)
+					if err != nil {
+						t.Fatal(err)
+					}
+					var shape struct {
+						Body struct {
+							Properties struct {
+								Autofit struct {
+									Scale int `xml:"fontScale,attr"`
+								} `xml:"normAutofit"`
+							} `xml:"bodyPr"`
+							Paragraphs []struct {
+								Runs []struct {
+									Properties struct {
+										Size int `xml:"sz,attr"`
+									} `xml:"rPr"`
+									Text string `xml:"t"`
+								} `xml:"r"`
+							} `xml:"p"`
+						} `xml:"txBody"`
+					}
+					if err := xml.Unmarshal(data, &shape); err != nil {
+						t.Fatal(err)
+					}
+					scale := shape.Body.Properties.Autofit.Scale
+					if scale == 0 {
+						scale = 100000
+					}
+					for _, paragraph := range shape.Body.Paragraphs {
+						for _, run := range paragraph.Runs {
+							if strings.TrimSpace(run.Text) != "" && run.Properties.Size > 0 {
+								minimum = math.Min(minimum, float64(run.Properties.Size)*float64(scale)/10000000)
+							}
+						}
+					}
+				}
+				written := math.Round(minimum*10) / 10
+				if reported := measureSchemaMaximumEncodedPt(name, encoded, geom); reported != written {
+					t.Fatalf("reported %.1fpt but written populated runs reach %.1fpt", reported, written)
+				}
+				t.Logf("written minimum %.1fpt", written)
+			})
+		}
+	}
+}
+
 // readabilityRenderedPt reads the predicted size out of a
 // TEXT_BELOW_READABLE_MIN message ("... renders at 4.6pt, below ...").
 func readabilityRenderedPt(message string) float64 {
@@ -347,6 +425,10 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 // go-slide-creator-s1uvj.12 textfit character-wrapped an over-wide word only
 // when it opened its paragraph, so a maximum that followed a bullet or label
 // prefix measured as one line; the pins below were re-measured with the fix.
+// The contact-directory and text-sidebar corrections below are verified
+// against populated written runs by TestSchemaMaximaMeasurementsMatchWrittenRuns.
+// The old predictor omitted paragraph spacing and double-subtracted padding;
+// changing these audit values does not make extreme payloads safe to publish.
 var schemaMaximaShrinkPt = map[string]float64{
 	"agenda":                       7.8,
 	"agenda-with-images":           6.0,
@@ -358,7 +440,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"card-grid":                    2.4,
 	"chart-insights-split":         6.2,
 	"comparison-2col":              4.2,
-	"contact-directory":            2.8, // 24 people in 4 groups with 60-char titles overflow one slide; the pattern reports BODY_TOO_LONG
+	"contact-directory":            4.2, // Still refused by the generated-font floor; not a readable schema budget.
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
 	"exec-summary":                 7.2,
@@ -403,7 +485,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"swimlane":            5.5,
 	"table-highlight":     6.7,
 	"team-bios":           5.5,
-	"text-sidebar":        6.0,
+	"text-sidebar":        5.3, // Written spacing exposes existing shrink; CLI must refuse it.
 	"timeline-horizontal": 5.5,
 	"value-chain":         8.2,
 	"waterfall-bridge":    7.2,
@@ -424,7 +506,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"capability-heatmap":           6.0,
 	"card-grid":                    2.9,
 	"chart-insights-split":         6.2,
-	"contact-directory":            2.8,
+	"contact-directory":            5.0,
 	"comparison-2col":              5.0,
 	"driver-tree":                  4.8,
 	"dual-org-ladder":              7.7,
@@ -441,7 +523,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"kpi-5up":                      0,
 	"kpi-6up":                      0,
 	"kpi-inline":                   6.2,
-	"labeled-rows":                 6.0,
+	"labeled-rows":                 7.2,
 	"matrix-2x2":                   0,
 	"metric-list":                  9.1,
 	"numbered-step-strip":          8.4,
@@ -461,7 +543,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"swimlane":                     6.0,
 	"table-highlight":              7.0,
 	"team-bios":                    6.0,
-	"text-sidebar":                 6.7,
+	"text-sidebar":                 5.8,
 	"timeline-horizontal":          6.2,
 	"value-chain":                  9.1,
 	"waterfall-bridge":             7.9,
