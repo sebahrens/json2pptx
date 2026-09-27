@@ -64,8 +64,8 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Supply a value for the field at the reported path.",
 			"Run show_pattern <name> to see which fields are required for the pattern.",
 		},
-		ExampleBefore: `{"pattern":{"name":"kpi-3up","values":{"kpis":[{"value":"$1.2M"}]}}}  // missing required "label"`,
-		ExampleAfter:  `{"pattern":{"name":"kpi-3up","values":{"kpis":[{"value":"$1.2M","label":"ARR"}]}}}`,
+		ExampleBefore: `{"pattern":{"name":"kpi-3up","values":[{"big":"$1.2M"},{"big":"94%","small":"Retention"},{"big":"38","small":"Markets"}]}}  // missing required "small"`,
+		ExampleAfter:  `{"pattern":{"name":"kpi-3up","values":[{"big":"$1.2M","small":"ARR"},{"big":"94%","small":"Retention"},{"big":"38","small":"Markets"}]}}`,
 		RelatedCodes:  []string{ErrCodeEmptyValue, ErrCodeInvalidShape},
 	},
 	ErrCodeMaxLength: {
@@ -484,7 +484,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Or keep the pattern and set max_height_pct (e.g. 35) so the row no longer stretches to fill the slide.",
 		},
 		ExampleBefore: `{"pattern":{"name":"process-flow","values":{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"}]}}}`,
-		ExampleAfter:  `{"pattern":{"name":"numbered-step-strip","values":{"steps":[{"title":"Plan","detail":"…"},{"title":"Build","detail":"…"},{"title":"Ship","detail":"…"}]}}}`,
+		ExampleAfter:  `{"pattern":{"name":"numbered-step-strip","values":{"steps":[{"label":"Plan","body":"…"},{"label":"Build","body":"…"},{"label":"Ship","body":"…"}]}}}`,
 		RelatedCodes:  []string{ErrCodeSparseLayout, ErrCodeCellUnderfilled, ErrCodeWrongPattern},
 	},
 
@@ -501,7 +501,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Or set max_height_pct to ~35 so the lane no longer occupies half the slide.",
 		},
 		ExampleBefore: `{"pattern":{"name":"process-flow","max_height_pct":60,"values":{"steps":[{"label":"Plan"},{"label":"Build"},{"label":"Ship"},{"label":"Scale"},{"label":"Review"},{"label":"Iterate"},{"label":"Ship"}]}}}`,
-		ExampleAfter:  `{"pattern":{"name":"numbered-step-strip","values":{"steps":[{"title":"Plan","detail":"…"}]}}}`,
+		ExampleAfter:  `{"pattern":{"name":"numbered-step-strip","values":{"steps":[{"label":"Plan","body":"…"},{"label":"Build","body":"…"},{"label":"Ship","body":"…"}]}}}`,
 		RelatedCodes:  []string{ErrCodeSparseSingleRowFlow, ErrCodeSparseLayout, ErrCodeWrongPattern},
 	},
 	ErrCodeFlowDiamondNoContent: {

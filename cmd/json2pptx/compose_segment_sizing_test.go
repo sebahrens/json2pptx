@@ -35,7 +35,8 @@ func TestComposeContentSizedLeavesUseAllocatedSegments(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			got := merged.Rows[0].MaxHeight
+			// Each vertical segment is a nested sub-grid in its own parent row.
+			got := merged.Rows[0].Cells[0].Grid.Rows[0].MaxHeight
 			allowed := fullHeight*tc.maxShare + 2
 			if tc.maxShare < 0.5 {
 				allowed = float64(ctx.LayoutBounds.Height)/12700*tc.maxShare + 2

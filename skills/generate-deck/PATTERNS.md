@@ -89,7 +89,7 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Labeled rows.** `labeled-rows` (WHY / WHAT / HOW) holds 300-character bodies through four rows and about 190 at five or six; `BODY_TOO_LONG` reports the overflow.
 
-**Contact directories.** `contact-directory` fits 24 people with one-line titles in one or two groups at 4–5 per row; four groups fit only as single rows. Wrapped titles cost about a third more height; past that it reports `BODY_TOO_LONG`.
+**Contact directories.** `contact-directory` fits 24 people with one-line titles in one or two groups at 4–5 per row; four groups fit only as single rows. Wrapped titles cost about a third more height; past that it reports `BODY_TOO_LONG`. Without `columns` it drops to 3 per row first.
 
 **Text sidebars.** `text-sidebar`'s main column holds about 1,100 characters at 14pt and 1,500 at 12pt; keep the sidebar to one statement.
 
@@ -97,7 +97,7 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Numbered steps.** For `numbered-step-strip`, a six-step `chevron` holds about 47 readable label characters at default size; three to five chevrons and all `stacked-box` / `toc` labels hold the 60-character schema limit. Optional step bodies hold 180 through six steps. `stacked-box` and `toc` accept a seventh step (bodies then hold about 140 and 135 characters); `chevron` stays at six and a seventh step fails validation with a pointer to those styles. `stacked-box` and `toc` steps also accept an optional `icon` (bundled name or `{name|path|url|svg_data}` object) drawn in its own column between the number badge and the label; the column appears when any step has an icon, and `chevron` rejects icons. `BODY_TOO_LONG` names labels past the six-chevron target; `TEXT_EXCEEDS_SHAPE` remains the stronger signal when the chevron renderer knows a label will break mid-word.
 
-**State-shift hub.** `state-shift-hub` descriptions hold about 140 characters with 3 pairs, 120 with 4, 80 with 5 and 40 with 6; keep `hub_label` near 40 characters.
+**State-shift hub.** `state-shift-hub` descriptions hold about 100 characters with 3 pairs, 70 with 4, 45 with 5 and 30 with 6; keep `hub_label` near 40 characters.
 
 **Inline KPIs.** `kpi-inline` has a compact height. Captions hold the 40-character schema limit without icons or with up to four KPIs. With icons in five or six cells, the number and optional delta share space with the caption: an eight-character number in a five-KPI bar leaves about 16 caption characters without a delta and none with one. `show_pattern` describes the dense cases; `BODY_TOO_LONG` names the affected KPI and suggests shortening copy or dropping the delta/icon.
 

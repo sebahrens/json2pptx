@@ -322,8 +322,30 @@ func cdTextHeightPt(ctx ExpandContext, p ContactDirectoryPerson, nameSize, title
 }
 
 func cdMeasure(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides) cdLayout {
-	areaW, areaH := sizingAreaPt(ctx)
 	n := cdColumns(ovr)
+	lay := cdMeasureN(ctx, v, ovr, n)
+	// Without an explicit column count, a directory that does not fit (too
+	// tall, or a name / title word that would break mid-word) steps down to
+	// fewer, wider columns before giving up.
+	if ovr == nil || ovr.Columns == 0 {
+		var narrowest cdLayout
+		for m := n - 1; !lay.fits && m >= cdMinColumns; m-- {
+			narrowest = cdMeasureN(ctx, v, ovr, m)
+			if narrowest.fits {
+				return narrowest
+			}
+		}
+		// Nothing fits: when words break mid-word at n columns, the widest
+		// text column (fewest people per row) is the better compromise.
+		if !lay.fits && narrowest.columns > 0 && !lay.namesFit(ctx, v) {
+			return narrowest
+		}
+	}
+	return lay
+}
+
+func cdMeasureN(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirectoryOverrides, n int) cdLayout {
+	areaW, areaH := sizingAreaPt(ctx)
 	personRows := 0
 	for _, g := range v.Groups {
 		personRows += (len(g.People) + n - 1) / n
@@ -373,7 +395,9 @@ func cdMeasure(ctx ExpandContext, v *ContactDirectoryValues, ovr *ContactDirecto
 func cdMeasureSide(ctx ExpandContext, v *ContactDirectoryValues, n int, steps []cdTypeStep, photoMax, areaW, areaH float64) cdLayout {
 	usable := areaW - cdColGapPt*float64(2*n-1)
 	personW := usable / float64(n)
-	photoMax = math.Min(photoMax, math.Floor(personW*0.42))
+	// A narrow area still measures at the minimum headshot rather than
+	// skipping the search and returning an empty layout.
+	photoMax = math.Max(cdPhotoMinPt, math.Min(photoMax, math.Floor(personW*0.42)))
 
 	// Give up type size before the headshot shrinks far: first try every
 	// type step with a headshot of at least 70% of the maximum, and only
@@ -478,21 +502,38 @@ func cdMeasureStacked(ctx ExpandContext, v *ContactDirectoryValues, n int, nameS
 	return lay
 }
 
-// namesFit reports whether every word of every name fits on one line of the
-// text column: a long surname must wrap between words, never mid-word.
+// namesFit reports whether every word of every name and title fits on one
+// line of the text column: a long word must wrap between words, never
+// mid-word.
 func (lay cdLayout) namesFit(ctx ExpandContext, v *ContactDirectoryValues) bool {
+	_, _, _, ok := lay.firstBrokenWord(ctx, v)
+	return ok
+}
+
+// firstBrokenWord returns the first person (group, index) and word of a name
+// or title that does not fit on one line of the text column; ok is true when
+// every word fits.
+func (lay cdLayout) firstBrokenWord(ctx ExpandContext, v *ContactDirectoryValues) (g, p int, word string, ok bool) {
 	font := cdFont(ctx)
 	w := lay.textW - cdTextInsetLPt - cdTextInsetRPt
-	for _, g := range v.Groups {
-		for _, p := range g.People {
-			for _, word := range strings.Fields(p.Name) {
-				if measuredLines(word, font, true, lay.nameSize, w*0.95) > 1 {
-					return false
+	for gi, grp := range v.Groups {
+		for pi, person := range grp.People {
+			if w <= 0 {
+				return gi, pi, person.Name, false
+			}
+			for _, wd := range strings.Fields(person.Name) {
+				if measuredLines(wd, font, true, lay.nameSize, w*0.95) > 1 {
+					return gi, pi, wd, false
+				}
+			}
+			for _, wd := range strings.Fields(person.Title) {
+				if measuredLines(wd, font, false, lay.titleSize, w*0.95) > 1 {
+					return gi, pi, wd, false
 				}
 			}
 		}
 	}
-	return true
+	return 0, 0, "", true
 }
 
 func cdFont(ctx ExpandContext) string {
@@ -522,8 +563,12 @@ func (c *contactDirectory) PostExpandWarnings(ctx ExpandContext, values, overrid
 			}
 		}
 	}
-	if !lay.fits {
-		_, areaH := sizingAreaPt(ctx)
+	_, areaH := sizingAreaPt(ctx)
+	if bg, bp, word, ok := lay.firstBrokenWord(ctx, v); !ok && lay.naturalPt <= areaH {
+		warnings = append(warnings, fmt.Sprintf(
+			"%s: contact-directory groups[%d].people[%d] (%q) has the word %q that does not fit one line of its %.0fpt text column at %d people per row, so it breaks mid-word — shorten the name / title or widen the pattern's area",
+			ErrCodeBodyTooLong, bg, bp, v.Groups[bg].People[bp].Name, word, lay.textW, lay.columns))
+	} else if !lay.fits {
 		warnings = append(warnings, fmt.Sprintf(
 			"%s: contact-directory groups need %.0fpt at the smallest type and headshot but the content area holds about %.0fpt — raise overrides.columns, merge groups, shorten titles, or split the directory across slides",
 			ErrCodeBodyTooLong, lay.naturalPt, areaH))
@@ -546,6 +591,9 @@ func (c *contactDirectory) Expand(ctx ExpandContext, values, overrides any, cell
 	lay := cdMeasure(ctx, v, ovr)
 	n := lay.columns
 	areaW, _ := sizingAreaPt(ctx)
+	if len(lay.headPt) != len(v.Groups) || len(lay.rowPt) != len(v.Groups) || (!lay.stacked && lay.textW <= 0) {
+		return nil, fmt.Errorf("contact-directory: the content area (%.0fpt wide) is too narrow for %d people per row — give the pattern more width", areaW, n)
+	}
 	usable := areaW - cdColGapPt*float64(2*n-1)
 
 	// Columns: photo, text, photo, text, … as percentages of the width left
