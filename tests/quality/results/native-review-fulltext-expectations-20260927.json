@@ -10,7 +10,10 @@
     "build": "PASS",
     "format_and_diff": "PASS",
     "broader_quality_short_race_suite": "Original run FAIL (500.410s): continuation expectations retained full sentences from sibling pages; follow-up tracked in go-slide-creator-6yucq",
-    "continuation_followup": "Page-local expectation filter retains complete sentences for the current page only; regression covers both identifier-only and complete-sentence source expectations, title retention and original source immutability"
+    "continuation_followup": "Page-local expectation filter retains complete sentences for the current page only; regression covers both identifier-only and complete-sentence source expectations, title retention and original source immutability",
+    "followup_full_quality_short_race": "PASS (499.462s)",
+    "followup_log": "output/native-fulltext-continuation-quality-race-20260927-v2.log",
+    "followup_log_sha256": "69f8a52d213d4124cbfe454ccf05640d590a681d0550d5ec6f5fbf27adfc5b1f"
   },
   "testing_review": {
     "reviewer": "testing",
