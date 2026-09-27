@@ -335,6 +335,15 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 			return nil, ctx.warnings, fmt.Errorf("%s: generated source loss: %w", prefix, &loss)
 		}
 	}
+	// An ordinary native body carrying a known sub-floor size/scale is not a
+	// generic pattern fit prediction. Preserve the source and destination and
+	// return a lossless continuation remedy instead of publishing tiny text.
+	for _, finding := range ctx.fitFindings {
+		if finding.Code == patterns.ErrCodeTextBelowReadableMin && finding.Action == "refuse" {
+			readability := SourcePreservingParagraphRepair(finding.ValidationError, req.Slides)
+			return nil, ctx.warnings, fmt.Errorf("generation refused: unreadable native body: %w", &readability)
+		}
+	}
 
 	result, err := ctx.finalizePPTX(len(req.Slides))
 	if err != nil {

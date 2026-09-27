@@ -210,7 +210,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 		// retain normAutofit as a safety net; divider titles disable further
 		// renderer shrink so the 28pt floor remains stable.
 		bakeTitleFit(shape, params, result)
-		emitReadabilityFinding(&cfg, params, result, len(shape.TextBody.Paragraphs))
+		emitReadabilityFinding(&cfg, shape, params, result, len(shape.TextBody.Paragraphs))
 		if cfg.sectionTitle {
 			// Keep the measured font size stable across renderers. A bare
 			// normAutofit can silently shrink below the floor on re-open.
@@ -241,7 +241,7 @@ func applySmartAutofitWithOptions(shape *shapeXML, opts ...autofitOption) {
 	// <a:bodyPr/> overrides the slide master's normAutofit, disabling LibreOffice's
 	// built-in shrink-to-fit. This is a safety net for cases where our height
 	// estimate is slightly optimistic (e.g., bold text width, inherited marL).
-	emitReadabilityFinding(&cfg, params, result, len(shape.TextBody.Paragraphs))
+	emitReadabilityFinding(&cfg, shape, params, result, len(shape.TextBody.Paragraphs))
 	emitBodySizeFinding(&cfg, result.FontScale)
 	bp.Inner += buildNormAutofitElement(result)
 }

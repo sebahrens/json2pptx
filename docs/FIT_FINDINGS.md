@@ -1636,8 +1636,8 @@ above 40pt retain their requested size.
 
 ### `TEXT_BELOW_READABLE_MIN`
 
-**Action:** `review`
-**Fix kind:** `reduce_text` (`fix.params.strategy`: `shorten` or `split`)
+**Action:** `review` for generic predictions; `refuse` for generated normalized ordinary native body text below its floor
+**Fix kind:** advisory `reduce_text`; publication refusals use source-preserving `split_bullets` when supported, otherwise manual continuation guidance
 
 Text ends up below the readability floor for its role in the deck's `viewing_mode` (go-slide-creator-vbic). Floors come from `tokens.MinReadableHPt`:
 
@@ -1650,7 +1650,7 @@ Text ends up below the readability floor for its role in the deck's `viewing_mod
 
 Emitted from two fit sites, each tagging its text role:
 
-- **Placeholders (validate AND generate):** measured autofit shrinks title / body text below the floor. Template-native sizes already below the floor are not reported (shortening would not change them). The policy never changes the fitted size — it reports rather than trimming. The preflight predicts the same scale as the render because both read the master's own `bodyStyle` — its size, its line spacing and its per-paragraph space-before. That last one decides it: fourteen bullets on an 8pt `spcBef` is 112pt of height, and a predictor that ignored it reported nothing at all where generate reported 10pt text (go-slide-creator-nlrg). The density thresholds that lower the floor for a long list (10+ and 12+ paragraphs) are one definition, `generator.AutofitDensityPolicy`, shared by both sides.
+- **Placeholders (validate AND generate):** autofit reports title / body text below the floor. Generation additionally refuses normalized ordinary native body text whose populated run sizes, combined with stored autofit, fall below the floor. Smaller populated child runs count; unused list levels and empty prompts do not. This publication guard applies even with `strict_fit: off`, preserves the authored source and any existing output file, and never silently expands a fixed slide count. Supported plain-bullet sources receive a grouped, source-preserving split suggestion; other sources require manual source-complete continuations or a suitable layout. Explicit author size overrides, disclosure/display roles, and generic pattern or chart predictions are outside this narrow guard. The policy does not change the fitted size or trim text. Preflight and generation read the master's `bodyStyle`, including size, line spacing and paragraph space-before; generic predictions remain advisory.
 - **shape_grid cells (fit report / preflight):** the renderer writes cell text at its authored size with `<a:normAutofit/>` and shrinks every paragraph by one factor when the text overflows the cell. The fit report predicts that factor by measuring the cell's paragraphs in its text rectangle and reports the paragraph furthest below its floor. Roles are inferred per paragraph: ≥24pt → `kpi-value`, bold → `card-title`, ≤40 chars → `caption`, else `card-body`.
 - **Rendered OOXML shapes (generate / render_deck_spec):** the generator also reads stored `fontScale` values after writing the slide. A finding from this pass uses `/slides/N/rendered_shapes/ID` to identify the exact `p:cNvPr` shape in the PPTX rather than pointing only at the slide. This is a rendered-shape locator, not an editable input JSON pointer. On a DeckSpec `matrix_2x2` slide, a unique axis-end label additionally maps to the authored `x_low` / `x_high` / `y_low` / `y_high` semantic field.
 

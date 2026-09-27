@@ -24,7 +24,7 @@ func TestEveryNativeProbePreservesSourceOrRefuses(t *testing.T) {
 	imagePath := nativeReferenceImage()
 	for _, mode := range []string{"", "warn", "off", "strict"} {
 		t.Run(fmt.Sprintf("mode=%q", mode), func(t *testing.T) {
-			accepted, refused, probes, layoutsCount := 0, 0, 0, 0
+			accepted, refused, readabilityRefused, probes, layoutsCount := 0, 0, 0, 0, 0
 			for _, path := range nativeCorpusPaths(t) {
 				name := strings.TrimSuffix(filepath.Base(path), ".pptx")
 				reader, err := template.OpenTemplate(path)
@@ -71,15 +71,22 @@ func TestEveryNativeProbePreservesSourceOrRefuses(t *testing.T) {
 							result, err := generator.Generate(context.Background(), generator.GenerationRequest{TemplatePath: path, OutputPath: output, StrictFit: mode, Slides: []generator.SlideSpec{p.Slide}, ExcludeTemplateSlides: true, AllowedImagePaths: []string{testutil.RepoRoot()}})
 							if err != nil {
 								var loss *patterns.ValidationError
-								if result != nil || !errors.As(err, &loss) || (loss.Code != patterns.ErrCodeTextTrimmed && loss.Code != patterns.ErrCodeReadabilityTrimmed && loss.Code != patterns.ErrCodeTableRowsTruncated) || loss.Path == "" {
+								if result != nil || !errors.As(err, &loss) || loss == nil || (loss.Code != patterns.ErrCodeTextTrimmed && loss.Code != patterns.ErrCodeReadabilityTrimmed && loss.Code != patterns.ErrCodeTableRowsTruncated && loss.Code != patterns.ErrCodeTextBelowReadableMin) || loss.Path == "" {
 									t.Fatalf("unexpected refusal: result=%+v err=%v", result, err)
 								}
 								files, readErr := os.ReadDir(dir)
 								if readErr != nil || len(files) != 0 {
 									t.Fatalf("refusal published or leaked files: %v %v", files, readErr)
 								}
-								refused++
-								t.Logf("REFUSED source-loss=%s path=%s; not visually approved", loss.Code, loss.Path)
+								if loss.Code == patterns.ErrCodeTextBelowReadableMin {
+									if loss.Fix == nil || loss.Fix.Kind != "split_bullets" || !strings.Contains(loss.Message, "preserve all source") || strings.Contains(loss.Message, "shorten") {
+										t.Fatalf("readability refusal lacks source-preserving continuation guidance: %+v", loss)
+									}
+									readabilityRefused++
+								} else {
+									refused++
+								}
+								t.Logf("REFUSED code=%s path=%s; not visually approved", loss.Code, loss.Path)
 								return
 							}
 							if result == nil || result.SlideCount != 1 || len(result.MediaFailures) != 0 || len(result.ValidationErrors) != 0 {
@@ -118,9 +125,9 @@ func TestEveryNativeProbePreservesSourceOrRefuses(t *testing.T) {
 					}
 				}
 			}
-			t.Logf("templates=%d layouts=%d probes=%d accepted=%d refused=%d; source presence is not visual approval", len(nativeCorpusPaths(t)), layoutsCount, probes, accepted, refused)
-			if probes == 0 || accepted == 0 || refused == 0 {
-				t.Fatalf("missing positive/adverse coverage: %d/%d/%d", probes, accepted, refused)
+			t.Logf("templates=%d layouts=%d probes=%d accepted=%d source_loss_refused=%d readability_refused=%d; source presence is not visual approval", len(nativeCorpusPaths(t)), layoutsCount, probes, accepted, refused, readabilityRefused)
+			if probes == 0 || accepted == 0 || refused == 0 || readabilityRefused == 0 || accepted+refused+readabilityRefused != probes {
+				t.Fatalf("missing positive/adverse coverage or unaccounted probes: %d/%d/%d/%d", probes, accepted, refused, readabilityRefused)
 			}
 		})
 	}

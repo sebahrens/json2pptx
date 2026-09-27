@@ -2,6 +2,8 @@ package generator
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/textfit"
@@ -95,16 +97,32 @@ func NewReadabilityFinding(in ReadabilityFindingInput) *patterns.FitFinding {
 	}
 }
 
-// emitReadabilityFinding reports a placeholder autofit result that shrank the
-// text below the policy floor. Template-native sizes that are already below
-// the floor are not reported: shortening would not change them.
-func emitReadabilityFinding(cfg *autofitConfig, params textfit.Params, result textfit.FitResult, paragraphs int) {
+// emitReadabilityFinding reports placeholder autofit below the policy floor.
+// Normalized ordinary native body text uses a publication refusal; generic
+// predictions remain advisory.
+func emitReadabilityFinding(cfg *autofitConfig, shape *shapeXML, params textfit.Params, result textfit.FitResult, paragraphs int) {
 	if cfg.findings == nil || cfg.textRole == "" || result.FontScale <= 0 {
 		return
 	}
 	baseHPt := params.FontSizeHPt
 	if baseHPt <= 0 {
 		baseHPt = tokens.BodyDefaultHPt // the size Calculate assumed
+	}
+	// Ordinary native body runs are written with this stored font scale, not
+	// merely predicted against a future pattern frame. Include smaller populated
+	// child runs, but never unused list levels, empty prompts or decorative text.
+	nativeBody := cfg.bodyTypography && cfg.textRole == tokens.TextRoleBody
+	if nativeBody && shape != nil && shape.TextBody != nil {
+		for _, paragraph := range shape.TextBody.Paragraphs {
+			for _, run := range paragraph.Runs {
+				if strings.TrimSpace(run.Text) == "" || run.RunProperties == nil {
+					continue
+				}
+				if size, err := strconv.Atoi(run.RunProperties.FontSize); err == nil && size > 0 && size < baseHPt {
+					baseHPt = size
+				}
+			}
+		}
 	}
 	check := textfit.CheckReadability(baseHPt, result.FontScale, cfg.viewingMode, cfg.textRole)
 	f := NewReadabilityFinding(ReadabilityFindingInput{
@@ -117,6 +135,11 @@ func emitReadabilityFinding(cfg *autofitConfig, params textfit.Params, result te
 		MeasurementSource: "generated",
 	})
 	if f != nil {
+		if nativeBody {
+			f.Action = "refuse"
+			f.Message = strings.TrimSuffix(strings.TrimSuffix(f.Message, "; shorten the text"), "; split the text") + "; preserve all source at a readable size"
+			f.Fix.Params["measurement_source"] = "generated_native_body"
+		}
 		*cfg.findings = append(*cfg.findings, *f)
 	}
 }

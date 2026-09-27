@@ -552,7 +552,7 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	result, err := generator.Generate(ctx, genReq)
 	if err != nil {
 		var loss *patterns.ValidationError
-		if errors.As(err, &loss) && (loss.Code == patterns.ErrCodeTextTrimmed || loss.Code == patterns.ErrCodeReadabilityTrimmed || loss.Code == patterns.ErrCodeTableRowsTruncated) {
+		if errors.As(err, &loss) && loss != nil && (loss.Code == patterns.ErrCodeTextTrimmed || loss.Code == patterns.ErrCodeReadabilityTrimmed || loss.Code == patterns.ErrCodeTableRowsTruncated || loss.Code == patterns.ErrCodeTextBelowReadableMin) {
 			return api.MCPDiagnosticsError([]diagnostics.Diagnostic{diagnostics.FromValidationError(loss)}), nil
 		}
 		return api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("generation failed: %v", err)), nil

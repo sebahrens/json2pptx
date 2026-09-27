@@ -613,7 +613,7 @@ func TestNativeLayoutRenderedCorpus(t *testing.T) {
 				p.Failures = append(p.Failures, classifyErr.Error())
 				continue
 			}
-			if status == nativeRefused {
+			if status == nativeRefused || status == nativeReadabilityRefused {
 				continue
 			}
 		}

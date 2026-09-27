@@ -20,6 +20,7 @@ import (
 
 const nativeGenerated = "generated_unreviewed"
 const nativeRefused = "source_loss_refused"
+const nativeReadabilityRefused = "readability_refused"
 
 // Every original probe is attempted independently before accepted probes are
 // assembled. A refusal is an explicit non-image outcome, never visual approval.
@@ -32,12 +33,15 @@ func classifyNativePublication(t *testing.T, path string, probe nativeProbe, mod
 	result, err := generator.Generate(ctx, generator.GenerationRequest{TemplatePath: path, OutputPath: out, StrictFit: mode, Slides: []generator.SlideSpec{probe.Slide}, ExcludeTemplateSlides: true, AllowedImagePaths: []string{testutil.RepoRoot()}})
 	if err != nil {
 		var loss *patterns.ValidationError
-		if result != nil || !errors.As(err, &loss) || loss == nil || loss.Path == "" || loss.Fix == nil || (loss.Code != patterns.ErrCodeTextTrimmed && loss.Code != patterns.ErrCodeReadabilityTrimmed && loss.Code != patterns.ErrCodeTableRowsTruncated) {
+		if result != nil || !errors.As(err, &loss) || loss == nil || loss.Path == "" || loss.Fix == nil || (loss.Code != patterns.ErrCodeTextTrimmed && loss.Code != patterns.ErrCodeReadabilityTrimmed && loss.Code != patterns.ErrCodeTableRowsTruncated && loss.Code != patterns.ErrCodeTextBelowReadableMin) {
 			return "", nil, fmt.Errorf("unexpected generation failure: %w", err)
 		}
 		files, readErr := os.ReadDir(dir)
 		if readErr != nil || len(files) != 0 {
 			return "", nil, fmt.Errorf("refusal leaked artifacts: files=%v error=%v", files, readErr)
+		}
+		if loss.Code == patterns.ErrCodeTextBelowReadableMin {
+			return nativeReadabilityRefused, loss, nil
 		}
 		return nativeRefused, loss, nil
 	}

@@ -14,7 +14,7 @@ import (
 )
 
 func TestWriteJSONErrorRetainsTypedSourceLoss(t *testing.T) {
-	for _, code := range []string{patterns.ErrCodeTextTrimmed, patterns.ErrCodeReadabilityTrimmed, patterns.ErrCodeTableRowsTruncated} {
+	for _, code := range []string{patterns.ErrCodeTextTrimmed, patterns.ErrCodeReadabilityTrimmed, patterns.ErrCodeTableRowsTruncated, patterns.ErrCodeTextBelowReadableMin} {
 		t.Run(code, func(t *testing.T) {
 			loss := &patterns.ValidationError{Code: code, Path: "/slides/0/content/1", Message: "required source omitted", Fix: &patterns.FixSuggestion{Kind: "split_at_row", Params: map[string]any{"split_at_row": 7, "hidden_rows": 73}}}
 			err := fmt.Errorf("generation refused: %w", loss)

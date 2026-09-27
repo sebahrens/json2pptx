@@ -13,7 +13,7 @@ import (
 // bullet structure, not fitted paragraphs (which may include headings, children
 // and an ellipsis). Unsupported sources get manual source-preserving guidance.
 func SourcePreservingParagraphRepair(loss patterns.ValidationError, slides []SlideSpec) patterns.ValidationError {
-	if loss.Code != patterns.ErrCodeTextTrimmed && loss.Code != patterns.ErrCodeReadabilityTrimmed {
+	if loss.Code != patterns.ErrCodeTextTrimmed && loss.Code != patterns.ErrCodeReadabilityTrimmed && loss.Code != patterns.ErrCodeTextBelowReadableMin {
 		return loss
 	}
 	loss.Fix = nil

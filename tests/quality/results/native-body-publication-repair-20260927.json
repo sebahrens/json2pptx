@@ -1,0 +1,52 @@
+{
+  "beads": [
+    "go-slide-creator-3qzo4.44",
+    "go-slide-creator-3qzo4.88",
+    "go-slide-creator-3qzo4.89"
+  ],
+  "scope": "Refuse normalized ordinary native body text below its per-viewing-mode role floor before publishing a deck. Preserve complete source and existing destinations. Generic predictions remain advisory; this is not a universal font-size resolver or visual approval.",
+  "regressions": {
+    "direct_generator": "All four fit modes, populated child sizes, unused styles and empty prompts, existing/missing destinations, source unchanged, and readable 18pt continuation control.",
+    "single_paragraph": "Manual source-complete continuation guidance, no shortening instruction; generic prediction control remains advisory.",
+    "caller_diagnostics": "Actual CLI and MCP across all four fit modes retain code, input path, grouped split_bullets max_items=2, complete source and existing destination without leaked output artifacts.",
+    "caller_focused_race_seconds": 5.521,
+    "generator_focused_race_seconds": 5.417,
+    "full_generator_race_seconds": 226.826,
+    "all_native_quality_focused_race_seconds": 20.518,
+    "all_native_source_gate": "Explicit typed readability refusals are counted separately from source-loss refusals; every attempted probe must be accounted for, and refusals never count as visual approvals."
+  },
+  "corpus": {
+    "manifest": "output/native-body-floor-corpus-20260927-v4/manifest.json",
+    "manifest_sha256": "9bc435ba172b69486b80cee0903c0e8198d22312f5ae7e5e31ad1dbc9b92d437",
+    "audit_sha256": "7bb868fa784729973222ff8ad9fb9d8ed23a8df7551e5426b08756fff3bc53f6",
+    "render_test_seconds": 43.793,
+    "template_count": 14,
+    "native_layout_count": 108,
+    "probe_count": 309,
+    "exact_known_blind_unsafe_dense_cases_now_refused": 15,
+    "pixel_identical_retained_pages": 247,
+    "unchanged_source_loss_refusals": 47,
+    "all_authored_inputs_and_template_hashes_preserved": true,
+    "pixel_identical_canonical_previews": 108
+  },
+  "private_template": {
+    "name": "p-style.pptx",
+    "sha256": "1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1",
+    "gitignored": true,
+    "included_in_local_corpus": true,
+    "changed": false
+  },
+  "final_gate": {
+    "status": "passed",
+    "command": "go test ./... -short -race -timeout=25m",
+    "log": "output/native-body-floor-root-race-20260927-v4.log",
+    "log_sha256": "368e521e9bd20cc2d9b820801644167137e44795373f9a94e74636727a84eca0",
+    "cli_package_seconds": 780.756,
+    "quality_package_seconds": 521.4,
+    "pinned_lint": "0 issues",
+    "build": "passed",
+    "published": false
+  },
+  "visual_approval": false,
+  "remaining_work": "Exact published CI must finish before closure. Yellow master repair is reviewed but uninstalled; its minor wrapping/chart cautions remain. Explicit-size/pattern extreme budgets and namespace-scope defects are tracked separately. Original unsafe single-page pixels are retained as adverse evidence, not silently removed or visually approved."
+}

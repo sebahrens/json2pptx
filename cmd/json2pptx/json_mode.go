@@ -1922,7 +1922,7 @@ func convertBulletGroupsInput(input *BulletGroupsInput) generator.BulletGroupsCo
 func writeJSONError(jsonOutputPath string, err error) error {
 	var findings []patterns.FitFinding
 	var loss *patterns.ValidationError
-	if errors.As(err, &loss) && loss != nil && (loss.Code == patterns.ErrCodeTextTrimmed || loss.Code == patterns.ErrCodeReadabilityTrimmed || loss.Code == patterns.ErrCodeTableRowsTruncated) {
+	if errors.As(err, &loss) && loss != nil && (loss.Code == patterns.ErrCodeTextTrimmed || loss.Code == patterns.ErrCodeReadabilityTrimmed || loss.Code == patterns.ErrCodeTableRowsTruncated || loss.Code == patterns.ErrCodeTextBelowReadableMin) {
 		findings = []patterns.FitFinding{{ValidationError: *loss, Action: "refuse"}}
 	}
 	return writeJSONErrorWithFindings(jsonOutputPath, err, findings)
