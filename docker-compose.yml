@@ -4,7 +4,6 @@
 # Volumes:
 #   templates: Read-only mount for PPTX templates
 #   output:    Read-write mount for generated files
-#   testdata:  Development only - test fixtures (use 'dev' profile)
 #   fonts:     Optional - mount custom fonts from host
 
 services:
@@ -23,8 +22,10 @@ services:
       - ./templates:/app/templates:ro
       # Mount output directory (read-write for generated files)
       - ./output:/app/output:rw
-      # Mount config file (optional - uses defaults if not present)
-      - ./config.yaml:/app/config.yaml:ro
+      # Optional: mount a config file. Create ./config.yaml first — if the host
+      # path is missing, Docker creates it as a directory. Without a mount the
+      # server starts with defaults plus the environment overrides below.
+      # - ./config.yaml:/app/config.yaml:ro
       # Optional: Mount custom fonts from host
       # - ./fonts:/usr/share/fonts/custom:ro
     environment:

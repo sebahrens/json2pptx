@@ -57,19 +57,10 @@ docker-compose down
 
 **Development overrides** are automatically applied via `docker-compose.override.yml`:
 - Debug logging enabled
-- Auth disabled for easier testing
-- Test fixtures mounted at `/app/testdata`
 - Examples mounted at `/app/examples`
 
-**Running tests in Docker:**
-
-```bash
-# Run tests inside the container
-docker-compose exec server go test ./... -v
-
-# Or run a one-off container
-docker-compose run --rm server go test ./... -v
-```
+The runtime image contains only the `json2pptx` binary (no Go toolchain), so run
+tests on the host with `go test ./...` rather than inside the container.
 
 **Rebuilding after changes:**
 
