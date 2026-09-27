@@ -665,7 +665,7 @@ The code also carries the **heatmap label-density** case (go-slide-creator-3rkpt
 
 A diagram with **both** explicit `DiagramSpec.Width` and `Height` has a render-frame aspect ratio that differs from those pinned (authored) dimensions by more than 25%. Because the explicit dimensions fix the rendered SVG aspect regardless of the frame, the chart is either stretched or letterboxed, both of which read as visual noise. The agent action is to widen/shorten the cell, set `cell.fit` to `contain` / `fit-width` / `fit-height`, or change the explicit `diagram.width` / `diagram.height` to match the frame.
 
-This finding does **not** fire for diagrams with unset or single-axis (`width`-only / `height`-only) dimensions: the renderer resolves the missing dimension(s) from the render frame (via `ResolveDiagramRenderDimensions`), so the rendered SVG adopts the frame aspect and there is nothing to flag. Natural-aspect diagram types (`timeline`, `gantt`, `org_chart`) that ignore unset dimensions are covered by [`diagram_aspect_conflict`](#diagram_aspect_conflict) instead.
+This finding does **not** fire for diagrams with unset or single-axis (`width`-only / `height`-only) dimensions: the renderer resolves the missing dimension(s) from the render frame (via `ResolveDiagramRenderDimensions`), so the rendered SVG adopts the frame aspect and there is nothing to flag. Natural-aspect diagram types (`timeline`, `gantt`, `org_chart`) also lay out into the supplied frame, so nothing is flagged for them either (the former `diagram_aspect_conflict` code is retired and no longer emitted).
 
 **Authored vs effective evidence.** The flagged deviation is the **authored** aspect vs the **post-fit render frame** (the frame the SVG is actually sized into — what render emits). The fix params carry four independent aspect signals so an agent can tell apart an authoring mistake (authored dims fight the cell) from a fit-driven render mismatch:
 
@@ -690,26 +690,6 @@ When `fit_adjusted` is `true`, the message additionally reports the original cel
 ```
 
 > The example above assumes the `bar_chart` carries explicit `diagram.width: 800` / `diagram.height: 600` and no `cell.fit` (so `cell_*` and `render_*` coincide). With a `cell.fit`, `render_*` reflects the post-fit frame and `fit_adjusted` is `true`. `measured` is the post-fit render frame; `allowed` is the effective render dimensions.
-
-### `diagram_aspect_conflict`
-
-**Action:** `review`
-**Fix kind:** `reshape_grid`
-**Emitted at:** preflight + render time
-
-A non-chart diagram cell's aspect ratio differs from the diagram type's natural svggen viewBox aspect by more than 30%. Currently emitted for diagram types whose renderer pins a non-container natural aspect via `svggen.NaturalAspect` — `timeline` (2:1), `gantt` (~1.8:1), and `org_chart` (~1.57:1, baseline before data-driven scaling). The check is silent for chart types (their aspect issues come from svggen dry-render `chart.*` findings) and for diagrams with explicit `DiagramSpec.Width`/`Height` (those are handled by `diagram_aspect_mismatch`). Available at validate and preview time without invoking resvg/inkscape.
-
-```json
-{
-  "path": "/slides/0/shape_grid/rows/0/cells/0/diagram",
-  "code": "diagram_aspect_conflict",
-  "message": "timeline cell aspect 0.52 conflicts with diagram natural aspect 2.00 (deviation 74%) — render will be letterboxed or distorted; resize the cell, set cell.fit, or set explicit diagram.width/height",
-  "fix": { "kind": "reshape_grid", "params": { "diagram_type": "timeline", "natural_aspect": 2.0, "cell_aspect": 0.52, "deviation": 0.74, "cell_width_emu": 3048000, "cell_height_emu": 5829300 } },
-  "action": "review",
-  "measured": { "width_emu": 3048000, "height_emu": 5829300 },
-  "overflow_ratio": 0.26
-}
-```
 
 ### `diagram_clamped`
 
@@ -1665,6 +1645,35 @@ Emitted from two fit sites, each tagging its text role:
   "action": "review"
 }
 ```
+
+### Input-validation and render-time codes
+
+These codes are advertised in `get_capabilities().vocabularies.fit_finding_codes`
+and described in full by `describe_finding` / `json2pptx describe-finding <code>`.
+Pattern-input codes (`min_items` … `unknown_key`) come from `Pattern.Validate` and
+address the pattern object, e.g. `/slides/0/pattern/values/cells/3/header` or
+`/slides/0/pattern/callout`; `refuse` means generation is blocked until fixed.
+
+| Code | Action | Emitted at | Meaning and remedy |
+|------|--------|------------|--------------------|
+| `UNKNOWN_ENUM` | `refuse` | validate | An enum field received a value outside its allowed set. Use a value from `fix.params.allowed` (or the `get_capabilities` vocabularies). |
+| `unknown_layout_id` | `refuse` | validate | `layout_id` is not one of the template's `canonical_layout_ids`. Pick one from `list_templates`. |
+| `unknown_table_style_id` | `refuse` | validate | A table `style_id` is not in the template's `table_styles`. Pick one from `list_templates`, or drop it for the template default. |
+| `hex_fill_non_brand` | `review` | validate | A `#RRGGBB` shape fill matches no theme or brand-allowlisted color. Use a scheme name (`accent1`…`accent6`, `lt1`/`dk1`, `lt2`/`dk2`) or register the hex via `register_template_setting`. |
+| `callout_unsupported` | `refuse` | validate / expand | `pattern.callout` is set on a pattern without callout support (e.g. `kpi-3up`). Remove the callout or switch to a pattern listed in `fix.params.supports_callout_patterns`. |
+| `min_items` | `refuse` | validate / expand | A pattern list is shorter than its minimum. Add items or pick a smaller pattern via `recommend_pattern`. |
+| `max_items` | `refuse` | validate / expand | A pattern list is longer than its maximum. Trim items, split the slide, or pick a denser pattern. |
+| `count_mismatch` | `refuse` | validate / expand | A fixed-arity pattern list has the wrong count (e.g. `bmc-canvas` needs exactly 9 cells). Resize the list to the stated count. |
+| `required` | `refuse` | validate / expand | A required pattern field is missing. Supply it; `show_pattern <name>` lists the required fields. |
+| `wrong_pattern` | `refuse` | validate / expand | The content's shape (e.g. item count) fits another pattern better. Swap to a pattern in `fix.params.suggested` (confirm with `recommend_pattern`) or reshape the content. |
+| `empty_value` | `refuse` | validate / expand | A required pattern field is empty or whitespace-only. Supply real text, or remove the field if it is optional. |
+| `out_of_range` | `refuse` | validate / expand | A numeric pattern field (or `cell_overrides` index) is outside its `[min,max]`. Use a value inside the stated range. |
+| `unknown_key` | `refuse` | validate / expand | A pattern `values` / `cell_overrides` object carries a key outside the schema. Remove it or use the closest legal key from the message. |
+| `text_overflow` | `review` | render | Text still overflows its placeholder after trimming trailing paragraphs. Shorten via `repair_slide` `reduce_text` or split the slide. |
+| `no_autofit_overflow` | `review` | render | Text overflows a `noAutofit` placeholder, so PowerPoint cannot shrink it. Shorten the text or use a layout whose placeholder autofits. |
+| `table_font_scaled` | `review` | render | A table's font was scaled down to the minimum readable floor to fit. Trim rows/columns, or accept the small font. |
+| `column_width_deficit` | `review` | render | Authored table column widths could not be distributed into the available width, so widths fell back to a uniform floor. Make widths sum to the table width, or omit them. |
+| `pagination_default_threshold` | `info` | render | Auto-pagination used a hard-coded default threshold because the template has no capacity hint. Register a capacity hint or split content manually. |
 
 ## Scope Rules
 
