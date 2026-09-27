@@ -366,18 +366,11 @@ The engine computes a deterministic text budget for every shape grid cell. Patte
 
    It used to be a character ratio against a single size, the **largest** paragraph in the cell, which made every mixed-size cell nonsense in both directions: a `stat-hero` cell with a 120pt number above three small support lines reported 911% "overflow" while rendering with room to spare, and most cells of most patterns reported "underfilled" (go-slide-creator-yj77). An unsized cell is also now measured at the size it renders at (`shapegrid.DefaultTextSizePt`, 14pt) rather than a legacy 11pt budget default.
 
-3. **Font precedence.** The font size used for budget computation follows this resolution chain (first non-zero wins):
-   - Paragraph-level `size` in the cell's text content
-   - Shape-level `font_size` on the `ShapeSpecInput`
-   - Pattern override `font_size` (from `cell_overrides` or pattern-level overrides)
-   - Pattern default font size (set in `Expand()`)
-   - Template theme body font size
-
-   Pattern authors control the default by setting `FontSize` on emitted `ShapeSpecInput` structs. If a pattern does not set a font size, the template theme default applies.
+3. **Written text settings.** Capacity uses the writer's text parser: object content uses `text.size`, paragraph arrays use each paragraph's `size`, and unspecified sizes use the writer's 14pt default. Authored sizes below the shape-grid 12pt floor are raised before measurement. Set size in the emitted text JSON, not a nonexistent shape-level `font_size` field.
 
 4. **Determinism guarantee.** `textcapacity` uses `go-fonts/liberation` embedded metrics — no OS font dependency. Given the same grid geometry, font size, and insets, budgets are identical across macOS, Linux, and CI. This is a hard invariant; if a pattern change causes budget drift in CI, the change is wrong.
 
-5. **Insets matter.** Cell insets (top, bottom, left, right in points) reduce the available text area. Patterns that set tight insets (< 6pt) will produce higher `max_chars` for the same cell size, but risk visual cramming. The recommended range is 6–10pt per side.
+5. **Insets and fitted bounds matter.** Capacity uses the actual fitted shape rectangle, not its larger allocation cell. Authored, overlay, or default OOXML insets reduce the available area once; paragraph trailing spacing contributes to required height. A frame that cannot hold one unshrunk line has zero character capacity. Character counts are nominal font/glyph hints, not a promise that arbitrary text fits; validate and render against the chosen template.
 
 ### Testing patterns with capacity
 
@@ -402,8 +395,8 @@ func TestMyPattern_CellBudgets(t *testing.T) {
 
             densities := textcapacity.ForResolvedGrid(result)
             for i, d := range densities {
-                if d.MaxChars < 10 {
-                    t.Errorf("cell %d: max_chars=%d too small, check insets/font", i, d.MaxChars)
+                if d.ActualChars > 0 && d.MaxChars == 0 && d.Fits {
+                    t.Errorf("cell %d: populated unusable frame reported as fitting", i)
                 }
                 // Budget should be > 0 for text cells
                 if d.Status == textcapacity.StatusOverflow && d.ActualChars > 0 {
@@ -416,8 +409,8 @@ func TestMyPattern_CellBudgets(t *testing.T) {
 ```
 
 Parameterize over grid configurations (different cell counts, column layouts) and assert that:
-- Every text cell has `max_chars > 0`
-- No cell has a budget below a plausible floor (10 chars minimum)
+- Usable text frames have positive character budgets
+- Unusable frames report zero capacity rather than an invented minimum
 - Density bands shift as expected when content length varies
 
 ### Density bands reference

@@ -1,0 +1,26 @@
+{
+  "scope": "Existing go-slide-creator-n1muf: capacity measurement and authoring guidance",
+  "status": "Verified measurement correction; broader readability and visual closure remain open",
+  "changes": [
+    "Measure the fitted shape frame, using the writer's paragraph parser, actual spacing and authored/overlay/default insets exactly once.",
+    "Compensate MeasureRun's built-in horizontal defaults only when measuring already-inset text areas; preserve legacy outer-frame AutofitScale behavior.",
+    "Respect fit, type scale and row constraints in nominal pattern budget guides; report zero rather than inventing a line or dropping unusable cells.",
+    "Keep populated zero-capacity cells eligible for overflow findings and correct authoring guidance."
+  ],
+  "evidence": {
+    "full_root_short": "PASS: go test ./... -short -timeout=15m; retained capacity-root-short-final.log. This is not a full root race-suite claim.",
+    "full_capacity_race": "PASS 1.666s",
+    "focused_capacity_and_cli_race": "PASS capacity1.627s / CLI2.755s; includes previous narrow-frame overflow failure and independent geometry/spacing/zero-capacity regressions.",
+    "build": "PASS",
+    "pinned_lint": "PASS v2.8.0; zero issues",
+    "preview_refresh": "PASS14templates108layouts including ignored p-style; all108PNGbytes identical to previous published previews. Only provenance manifests change."
+  },
+  "review": {
+    "testing": {"findings": [], "gaps": ["No all-template actual PDF font/layout acceptance claim."]},
+    "adversarial": {
+      "findings": [],
+      "residual_risks": ["Character hints use nominal Liberation Sans glyph metrics, not the installed template font.", "Generic show_pattern budgets are not template-specific fit guarantees.", "Blank-paragraph client fitting and source-complete readability remain open within n1muf."]
+    }
+  },
+  "held_candidate": "Role-floor publication guard is NOT included. Broad testing exposed source-style KPI misclassification on axis numbers and refusals of existing examples; experimental branch codex/readability-insets records HOLD, not visual success."
+}
