@@ -1356,6 +1356,11 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 
 	content := buf.Bytes()
 	content = normalizeCanvasFontMIME(content)
+	var fontErr error
+	content, fontErr = normalizeEmittedFontDeterminism(content)
+	if fontErr != nil {
+		return nil, fmt.Errorf("normalize embedded fonts: %w", fontErr)
+	}
 
 	// Fix rotation transforms: convert matrix-form rotations to translate+rotate
 	// form BEFORE pixel scaling so translate values get scaled correctly.

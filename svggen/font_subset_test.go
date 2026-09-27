@@ -1,10 +1,12 @@
 package svggen
 
 import (
+	"bytes"
 	"encoding/base64"
 	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // svgBase64Blob matches an embedded data-URI payload — in practice the base64
@@ -107,5 +109,24 @@ func TestSVGRenderOptionsSubsetFonts(t *testing.T) {
 	if svgRenderOptions.SizeUnits != "mm" {
 		t.Errorf("SizeUnits = %q, want mm: the builder renders in millimetres and rescales afterwards",
 			svgRenderOptions.SizeUnits)
+	}
+}
+
+func TestChartSVGStableAcrossClockBoundary(t *testing.T) {
+	req := &RequestEnvelope{Type: "bar_chart", Title: "Stable font emission", Output: OutputSpec{Width: 900, Height: 500}, Data: map[string]any{"categories": []any{"Q1", "Q2"}, "series": []any{map[string]any{"name": "Revenue", "values": []any{12.0, 18.0}}}}}
+	first, err := Render(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(svgBase64Blob.FindAll(first.Content, -1)) == 0 {
+		t.Fatal("reproduction requires embedded fonts")
+	}
+	time.Sleep(1100 * time.Millisecond)
+	second, err := Render(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first.Content, second.Content) {
+		t.Fatal("identical chart changed SVG bytes across clock boundary")
 	}
 }

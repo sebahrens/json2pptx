@@ -1,0 +1,118 @@
+{
+  "issues": [
+    "go-slide-creator-sahrf",
+    "go-slide-creator-8n8iu"
+  ],
+  "base_commit": "2f149e7c57bc926548199192fd9b2f589cf8e852",
+  "published": false,
+  "repair": "Normalize only embedded SFNT modified timestamps/checksums and stably order distinct contiguous canvas font descriptors; preserve duplicate CSS cascade order, glyph programs, non-font drawing bytes, source buffers, and complete text.",
+  "source_sha256": {
+    "svggen/builder.go": "2d5a7b91c913f2e0507ffd38eca228d3f8d033c13b1f61ca8d8ca10c3cd4d4fe",
+    "svggen/font_determinism.go": "a8c6f2c2ad37a05cc5a914a4b135f6b9450a8c4b6212b00e6bf40c465a44d510",
+    "svggen/font_determinism_test.go": "c99f784d3d1658a7470df770dd7daee733d859c63f9ae2848e2b0303bae63915",
+    "svggen/font_subset_test.go": "4fa836a940d3b88d1fc013d568efb26c50eb2f292c0b2e2301d6aaadc4dc7436"
+  },
+  "coverage": {
+    "templates": 14,
+    "native_layouts": 108,
+    "probes": 309,
+    "accepted_pixel_identical": 247,
+    "unchanged_refusals": 62,
+    "separate_generation_package_payloads_identical": 1176,
+    "preview_png_bytes_identical": 108,
+    "private_p_style_included_and_gitignored": true,
+    "aggregate_visual_approval": false
+  },
+  "gates": {
+    "full_root_race": {
+      "passed": true,
+      "cli_seconds": 781.297,
+      "generator_seconds": 246.567,
+      "quality_seconds": 535.26
+    },
+    "full_svg_race": {
+      "passed": true
+    },
+    "pinned_root_lint": {
+      "passed": true,
+      "issues": 0
+    },
+    "pinned_svg_lint": {
+      "passed": true,
+      "issues": 0
+    },
+    "integration_corpus": {
+      "passed": true,
+      "seconds": 305.084
+    },
+    "installed_native_corpus": {
+      "passed": true,
+      "seconds": 38.222
+    },
+    "complete_preview_inventory_and_provenance": {
+      "passed": true,
+      "seconds": 8.98
+    },
+    "template_conformance_and_MCP_preview_discovery": {
+      "passed": true
+    },
+    "actual_determinism_goldens": {
+      "passed": true,
+      "shipped_golden_drift": false,
+      "private_p_style_no_shipped_golden": true
+    },
+    "root_and_svg_build_format_diff": {
+      "passed": true
+    }
+  },
+  "negative_controls": {
+    "original_clock_boundary_reproduction_fails": true,
+    "intermediate_quoted_family_parser_regression_fails": true
+  },
+  "reviews": [
+    {
+      "reviewer": "testing",
+      "findings": [],
+      "residual_risks": [
+        "Focused emitted-canvas CSS grammar; not a general CSS font-face canonicalizer."
+      ],
+      "testing_gaps": []
+    },
+    {
+      "reviewer": "adversarial",
+      "findings": [],
+      "residual_risks": [
+        "Duplicate descriptors retain original cascade order; arbitrary imported SVG CSS is outside this generated-output normalization."
+      ],
+      "testing_gaps": []
+    }
+  ],
+  "evidence_sha256": {
+    "svggen/builder.go": "2d5a7b91c913f2e0507ffd38eca228d3f8d033c13b1f61ca8d8ca10c3cd4d4fe",
+    "svggen/font_determinism.go": "a8c6f2c2ad37a05cc5a914a4b135f6b9450a8c4b6212b00e6bf40c465a44d510",
+    "svggen/font_determinism_test.go": "c99f784d3d1658a7470df770dd7daee733d859c63f9ae2848e2b0303bae63915",
+    "svggen/font_subset_test.go": "4fa836a940d3b88d1fc013d568efb26c50eb2f292c0b2e2301d6aaadc4dc7436",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-root-race.log": "8e0eeafdedc7e1df032dc81af3726d87133ddf3feaede3599bf5e7fd10708bd2",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-svg-race.log": "e899d66a3a776005ca8c0b7322b9c2f6948f8ac599040d8f20d97c5f68c1bdbf",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-root-lint.log": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-svg-lint.log": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-integration.log": "bea80489d6924c1b9b14fae10d3c71f5b3d3cb2b5abf2990e45d0c6945f28e72",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-native-corpus.log": "09ecdf37de9c8a733503c621067fa1549a3e05f64092690cb13c1aa3c9518ff1",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-native-audit.json": "3e0162ca960a5f9ba3fb6fa839915cf9c6637643e4f5a5ca66821e37744c82e7",
+    "output/qname-reserved-scope-repair-20260927-v1/font-candidate-repeat-v3-audit.json": "c82b5b181661aa4f935b235f51313ada35947157f95921b3f36fd717a06a42d1",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-preview-full.log": "364b0ee79fac214a346c890f4b5e7962b12b2764c74446a88e4491c2c3af98a9",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-preview-conformance-focus.log": "0628079fdf3b238831250be182f437c781c9e65e2a473e87f7c99292f7beb9e9",
+    "output/qname-reserved-scope-repair-20260927-v1/font-installed-deterministic-golden.log": "acc6ae68b78b99556cc0879170cc6e8d0096e14688df46b6d1d02ccf89ea357b",
+    "output/qname-reserved-scope-repair-20260927-v1/font-determinism-reproduction.log": "2aeabc1662b8a4e828980f72e971f2240c7da2d42a949d59dda7ea1ed61c9e84",
+    "output/qname-reserved-scope-repair-20260927-v1/font-candidate-quoted-family-negative.log": "4d94ef1bf08e4436798aa4f152b545637c6d828cb366aa73f8ed8ac72da49279",
+    "output/font-installed-preview-audit-20260927-v1.json": "65c9fa24655aea07699ea13359204f4745babe415f9ecae878984cf4f6c631b6"
+  },
+  "installed_engine_source_sha256": "9458632d7f4039d61f1ac64f44f673add8ec643b168e4d483e4834722047291e",
+  "harness_sha256": "fce908e7bb98b4cf81929639696c6aeec2e128a77b3c8babb2a7188d7fc0e3c1",
+  "limits": [
+    "Pixel identity preserves all unresolved visual findings; refused probes are not visual approvals.",
+    "Generated PNG timestamp/XMP metadata can differ between render runs; pixel comparisons include alpha. This repair concerns SVG and PPTX determinism, not PNG file timestamps.",
+    "Earlier failing intermediate attempts retained; current installed helper matches verified v3 candidate.",
+    "All pushed-SHA workflows must be inspected before closing either issue."
+  ]
+}
