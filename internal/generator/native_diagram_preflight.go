@@ -65,21 +65,17 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 		return out
 	}
 	bounds := types.BoundingBox{Width: width, Height: height}
-	layout := computeProcessFlowLayout(steps, connections, bounds, direction)
+	layout := computeProcessFlowLayout(steps, connections, bounds, direction, font)
 	for i, step := range steps {
 		box := layout.steps[i]
-		usableW := box.cx - 2*pfTextInset
-		availableH := box.cy - 2*pfTextInset
+		usableW, availableH := pfTextArea(step.stepType, box.cx, box.cy)
 		if usableW < 1 {
 			usableW = 1
 		}
 		if availableH < 1 {
 			availableH = 1
 		}
-		required := measureNativeText(step.label, font, float64(pfLabelFontSize)/100, usableW)
-		if step.description != "" {
-			required += measureNativeText(step.description, font, float64(pfDescFontSize)/100, usableW)
-		}
+		required := pfRequiredTextHeight(step, font, usableW)
 		if required > availableH {
 			out = append(out, nativeTextCollisionFinding(spec.Type, slidepath.Field(path, fmt.Sprintf("data.steps[%d]", i)), step.label, step.description, required, availableH))
 		}

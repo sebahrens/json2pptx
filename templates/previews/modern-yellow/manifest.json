@@ -2,19 +2,19 @@
   "schema_version": 1,
   "recipe": "native-layout-thumbnail-v2",
   "template_sha256": "5eba80d18c3ad02c6c1be388f37a91a93149ee156338597100373bb89b42ecea",
-  "rendering_source_sha256": "38057a0bd09effa2d942a8f87218e81a7314e038e9ffc66f45bcef3c7f2ca17e",
-  "render_cache_identity": "12fe42fd47f81f0b8b101aa935bd1ad6eb9621bddbd1e1a12f3992d836953df3",
+  "rendering_source_sha256": "d57021becc18b633df1ecb695817caf011c0cdbb27b619154ff56f75469f1b9a",
+  "render_cache_identity": "1f0f9dd1be2de8ca5f6103db1455a9b7c171b5f2eebfc3bdf7df8eb76d996002",
   "width": 320,
   "dpi": 60,
   "png_sha256": {
-    "slideLayout1": "3281b5c27f985acacfa54ee1d916a262d6ee97e4904423cbb28d3fbc6a332511",
-    "slideLayout2": "a11c42ff361b901db53b8dc0f7b8b43b47467578b803cfcaa5bab82b9859cb24",
-    "slideLayout3": "0edca3efd834dcc4007adcee9e6e83ae140c8c0e21ca75da5ae3d2744247b176",
-    "slideLayout4": "41a49c645f265246d46c44826d71a6aa9017c9662ec2336cb594e979e3fb22d0",
-    "slideLayout5": "37017bdf621c94085f21a11ec838e7b7382ae0911dc724e86c7919c93842c5cb",
-    "slideLayout6": "1e11e5f09a1a764be2eb9da51eebea73635abec1de58eb10df34acdf3d10fd74",
-    "slideLayout7": "e314c81eaa5025da7f15e443ca75d68c939e66c465f99d88dd304507054afa38",
-    "slideLayout8": "0ee818ac3172bd115e4da364f998bf3adbd5c5c80f62f9df85ca25f54d3d0b20"
+    "slideLayout1": "0c715b6ab6bf09c66174e8785ebccde8b64a3c80dfc7a454d03158f11c43baba",
+    "slideLayout2": "a0fefd0b96b03421f6f7cd6f0d9765d2c926f9e2e52b4331d4e01ec77b193474",
+    "slideLayout3": "9ee12dfb4351d4da043e45e59beba0fd9b041d7e1e23ce80e28a42616095a169",
+    "slideLayout4": "0d2c02fd4afc5b0dc28b560fe97e558e6288f3bd951c5d3ffaf68311ec4ecdb3",
+    "slideLayout5": "a156087e3959eb74077dc9a909d18430358f998c7ab8852fc83a225a17a914c5",
+    "slideLayout6": "bbea29d623737676c0f8009f32f4f6bce8d67e5908d3dfe50d605546dd305dda",
+    "slideLayout7": "576b5fb3e60be995d791c7555f6b11dbb5aceb83bc527dcff5f883b278058e38",
+    "slideLayout8": "636f188ebff40c88af3b5dd576f10ebf81438e476643c88632b46e662bc72537"
   },
   "source_content": {
     "slideLayout1": [

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -32,14 +33,14 @@ const (
 	// pfCornerRadius is the roundRect adjustment value for process steps.
 	pfCornerRadius int64 = 8000
 
-	// pfLabelFontSize is the step label font size (hundredths of a point). 1100 = 11pt
-	pfLabelFontSize int = 1100
+	// Primary process labels must remain readable at slide scale.
+	pfLabelFontSize int = 1800
 
-	// pfDescFontSize is the description font size (hundredths of a point). 900 = 9pt
-	pfDescFontSize int = 900
+	// Supporting descriptions use a smaller, distinct type role.
+	pfDescFontSize int = 1400
 
-	// pfConnLabelFontSize is the connection label font size. 800 = 8pt
-	pfConnLabelFontSize int = 800
+	// Connection labels are utility text, not primary step content.
+	pfConnLabelFontSize int = 1100
 
 	// pfTextInset is the text inset for step shapes (EMU). ~0.06"
 	pfTextInset int64 = 54864
@@ -105,6 +106,7 @@ type processFlowConnection struct {
 
 // processFlowMeta holds metadata for process flow layout.
 type processFlowMeta struct {
+	fontName        string
 	stepCount       int
 	connectionCount int
 	direction       string // "horizontal" or "vertical"
@@ -164,6 +166,7 @@ func (ctx *singlePassContext) processProcessFlowNativeShapes(slideNum int, item 
 		panels:          panels,
 		processFlowMode: true,
 		processFlowMeta: processFlowMeta{
+			fontName:        ctx.themeFontName,
 			stepCount:       len(steps),
 			connectionCount: len(connections),
 			direction:       direction,
@@ -289,16 +292,21 @@ type pfLayoutResult struct {
 }
 
 // computeProcessFlowLayout calculates EMU positions for all steps within bounds.
-func computeProcessFlowLayout(steps []processFlowStep, connections []processFlowConnection, bounds types.BoundingBox, direction string) pfLayoutResult {
+func computeProcessFlowLayout(steps []processFlowStep, connections []processFlowConnection, bounds types.BoundingBox, direction string, fonts ...string) pfLayoutResult {
 	n := len(steps)
 	if n == 0 {
 		return pfLayoutResult{direction: direction}
 	}
 
 	// Compute step dimensions.
+	font := defaultFontFamily
+	if len(fonts) > 0 && fonts[0] != "" {
+		font = fonts[0]
+	}
 	layouts := make([]pfStepLayout, n)
 	for i, s := range steps {
 		layouts[i].cx, layouts[i].cy = pfStepDimensions(s, bounds, n)
+		pfGrowTextHeight(&layouts[i], s, font)
 	}
 
 	// Auto-switch to vertical if horizontal would be too crowded.
@@ -316,7 +324,7 @@ func computeProcessFlowLayout(steps []processFlowStep, connections []processFlow
 	}
 
 	if direction == "vertical" {
-		return pfLayoutVertical(layouts, steps, connections, bounds)
+		return pfLayoutVertical(layouts, steps, connections, bounds, font)
 	}
 
 	// Horizontal layout — check if single row fits.
@@ -337,6 +345,46 @@ func computeProcessFlowLayout(steps []processFlowStep, connections []processFlow
 	}
 
 	return pfLayoutMultiRow(layouts, steps, bounds, maxH, n)
+}
+
+// Preset text rectangles are narrower than the exterior geometry. In
+// particular, terminators must not measure their text as full-width boxes.
+func pfTextAreaPercent(kind processFlowStepType) (width, height int64) {
+	switch kind {
+	case pfDecisionType:
+		return 50, 50
+	case pfStartType, pfEndType:
+		return 70, 70
+	default:
+		return 100, 100
+	}
+}
+
+func pfTextArea(kind processFlowStepType, width, height int64) (int64, int64) {
+	w, h := pfTextAreaPercent(kind)
+	return max(1, (width-2*pfTextInset)*w/100), max(1, (height-2*pfTextInset)*h/100)
+}
+
+func pfRequiredTextHeight(step processFlowStep, font string, width int64) int64 {
+	m, err := textfit.MeasureStyledRuns(textfit.StyledMeasureParams{
+		Runs:     []textfit.StyledRun{{Text: step.label, Bold: true}},
+		FontName: font, FontPt: float64(pfLabelFontSize) / 100, WidthEMU: width,
+	})
+	if err != nil {
+		return 0
+	}
+	return m.RequiredEMU + measureNativeText(step.description, font, float64(pfDescFontSize)/100, width)
+}
+
+func pfGrowTextHeight(layout *pfStepLayout, step processFlowStep, font string) {
+	layout.cy = max(layout.cy, pfMinimumTextHeight(*layout, step, font))
+}
+
+func pfMinimumTextHeight(layout pfStepLayout, step processFlowStep, font string) int64 {
+	w, _ := pfTextArea(step.stepType, layout.cx, layout.cy)
+	required := pfRequiredTextHeight(step, font, w)
+	_, heightPct := pfTextAreaPercent(step.stepType)
+	return (required*100+heightPct-1)/heightPct + 2*pfTextInset
 }
 
 // pfStepHeight is the height of one process step, scaled to the space it has.
@@ -415,9 +463,12 @@ func pfStepDimensions(step processFlowStep, bounds types.BoundingBox, stepCount 
 // pfLayoutVertical positions steps on a central spine, with the direct targets
 // of a decision placed on left/right lanes. This makes Yes/No paths visually
 // distinct while preserving the authored step order and merge connections.
-func pfLayoutVertical(layouts []pfStepLayout, steps []processFlowStep, connections []processFlowConnection, bounds types.BoundingBox) pfLayoutResult {
+func pfLayoutVertical(layouts []pfStepLayout, steps []processFlowStep, connections []processFlowConnection, bounds types.BoundingBox, font string) pfLayoutResult {
 	for i := range layouts {
 		layouts[i].cx = pfVerticalStepWidth(steps[i], layouts[i], bounds)
+		// The vertical lane can be narrower than the initial horizontal box.
+		// Measure again at that actual width before allocating its height.
+		pfGrowTextHeight(&layouts[i], steps[i], font)
 	}
 
 	gap := pfVerticalGap(len(layouts), bounds.Height)
@@ -430,10 +481,24 @@ func pfLayoutVertical(layouts []pfStepLayout, steps []processFlowStep, connectio
 		stepHeight += layout.cy
 	}
 	if stepHeight > availableForSteps {
+		minimums := make([]int64, len(layouts))
+		minimumHeight := int64(0)
+		for i, layout := range layouts {
+			minimums[i] = pfMinimumTextHeight(layout, steps[i], font)
+			minimumHeight += minimums[i]
+		}
 		scale := float64(availableForSteps) / float64(stepHeight)
+		if minimumHeight <= availableForSteps && stepHeight > minimumHeight {
+			// Remove decorative whitespace before sacrificing readable text.
+			scale = float64(availableForSteps-minimumHeight) / float64(stepHeight-minimumHeight)
+		}
 		stepHeight = 0
 		for i := range layouts {
-			layouts[i].cy = pfMax64(1, int64(float64(layouts[i].cy)*scale))
+			if minimumHeight <= availableForSteps {
+				layouts[i].cy = minimums[i] + int64(float64(layouts[i].cy-minimums[i])*scale)
+			} else {
+				layouts[i].cy = pfMax64(1, int64(float64(layouts[i].cy)*scale))
+			}
 			stepHeight += layouts[i].cy
 		}
 	}
@@ -605,6 +670,11 @@ func pfLayoutSingleRow(layouts []pfStepLayout, bounds types.BoundingBox, totalW,
 	centerY := bounds.Y + bounds.Height/2
 	currentX := startX
 	for i := range layouts {
+		// Long descriptions must not grow a centered box into footer chrome.
+		// Preflight reports the remaining text-capacity deficit at this height.
+		if bounds.Height > 0 {
+			layouts[i].cy = min(layouts[i].cy, bounds.Height)
+		}
 		layouts[i].x = currentX
 		layouts[i].y = centerY - layouts[i].cy/2
 		currentX += layouts[i].cx + pfGap
@@ -746,7 +816,7 @@ func generateProcessFlowGroupXML(panels []nativePanelData, bounds types.Bounding
 	}
 
 	// Compute layout.
-	layout := computeProcessFlowLayout(steps, connections, bounds, meta.direction)
+	layout := computeProcessFlowLayout(steps, connections, bounds, meta.direction, meta.fontName)
 
 	var children [][]byte
 	nextID := shapeIDBase + 1
@@ -822,13 +892,8 @@ func pfGenerateStepShape(step processFlowStep, sl pfStepLayout, shapeID uint32, 
 	// Build text paragraphs.
 	var paras []pptx.Paragraph
 
-	// Label paragraph — bold, centered.
+	// More steps must not silently lower the primary text role.
 	labelSize := pfLabelFontSize
-	if totalSteps >= 10 {
-		labelSize = 900 // 9pt for many steps
-	} else if totalSteps >= 7 {
-		labelSize = 1000 // 10pt
-	}
 
 	paras = append(paras, pptx.Paragraph{
 		Align:    "ctr",

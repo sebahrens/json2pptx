@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "beads": ["go-slide-creator-3qzo4.3", "go-slide-creator-n1muf", "go-slide-creator-3qzo4.32"],
+  "scope": "Focused native process text-role and measured-geometry repair; not global visual closure",
+  "changes": [
+    "Primary labels 18pt, descriptions 14pt, connection labels 11pt; no step-count font downgrade",
+    "Measure bold labels against preset text rectangles and actual vertical lane widths",
+    "Remove spare vertical whitespace before reducing readable content height",
+    "Keep long horizontal descriptions inside the authored frame and report capacity deficits"
+  ],
+  "evidence_directory": "output/process-readable-repair-20260927-v1",
+  "process_review": {
+    "reviewers": 1,
+    "reviewed": 1,
+    "unreviewed": 0,
+    "image_sha256": "9a32eb272d0022acf5261588c3f531d5f3b18bcf6e7bd011bde1e9746d6caa72",
+    "review_sha256": "8f3416a3f882e5e32320570a897b0d0c3105fe66b945ab4daca727a97b384049",
+    "verdict": "SAFE_WITH_MINOR_CAUTIONS",
+    "observations": "All five German/Japanese stages and four connectors visible; no collisions",
+    "remaining": ["Awkward compound wrapping", "Unequal stage geometry", "Small utility text"]
+  },
+  "native_previews": {
+    "templates": 14,
+    "layouts": 108,
+    "p_style_included_and_gitignored": true,
+    "rendering_source_sha256": "d57021becc18b633df1ecb695817caf011c0cdbb27b619154ff56f75469f1b9a",
+    "renderer": "Explicit bundled headless LibreOffice override, command-scoped supplied font configuration and private font cache",
+    "comparison_with_previous_review": "80 originals pixel-identical; 28 changed. PNG metadata changes are not visual changes. Prior preview invocation did not explicitly prepend the bundled override.",
+    "final_audit_sha256": "14c8f183ed8549c7eb6a671cfc6141c4f1c6770733ef1f36bb7da02fd6c629e0",
+    "incremental_review": {
+      "reviewed": 28,
+      "unreviewed": 0,
+      "safe": 9,
+      "minor_cautions": 18,
+      "unsafe": 1,
+      "review_sha256": "75c27ec716baadd9ecda5c3ae8f9d76673fadbe84179058a6f56c61cdcf405e9",
+      "remaining_defect": "Blue-corporate slideLayout3 identifier 01 wraps into two vertical digits; retained under existing native-composition bead .32",
+      "final_pixels_match_reviewed_pixels": true
+    }
+  },
+  "gates": {
+    "generator_full_race": "PASS 265.316s before final frame-cap guard",
+    "generator_race_log_sha256": "5ba27e13664c5ad8f6904f09f583ccf81d361414444c0df627e80c52e4787896",
+    "final_focused_race": "PASS including frame cap, source preservation, role sizes, vertical fit and multiline descriptions",
+    "preview_and_determinism_regressions": "PASS on final source",
+    "golden_hashes": "UNCHANGED",
+    "pinned_lint": "PASS zero issues",
+    "build": "PASS",
+    "previous_b528_complete_root_race": "PASS, CLI 877.748s",
+    "publication_ci": "Not yet dispatched at receipt creation"
+  },
+  "testing_review": {
+    "findings": [],
+    "residual_risks": ["Extreme density remains capacity-review territory, not universal readable output", "Physical projection and PowerPoint fidelity unverified"]
+  },
+  "adversarial_review": {
+    "findings": [],
+    "residual_risks": ["Very dense diagrams can still shrink via normAutofit and need capacity handling under existing n1muf", "Font/render environment changes require pixel verification"]
+  },
+  "aggregate_approval": false,
+  "release_status": "HOLD; original baseline and raw reviews preserved; no new bead created"
+}
