@@ -1,0 +1,56 @@
+{
+  "scope": "Native business-template footer color only; no whole-slide or aggregate visual closure",
+  "template_sha256_before": "0bc681a83c7fcee70cf63af0cb3966c183e56dfdd9a86c10ae47d7a69ee39854",
+  "template_sha256_after": "b02ee0f4238df72d7f3319337f5b50bb6f9f6776ee223ceb350490f314225e85",
+  "changed_package_parts": ["ppt/slideMasters/slideMaster1.xml"],
+  "sole_native_change": "Footer tx1 tint75000 to tint90000",
+  "preserved": ["Confidential 2024", "Native 13.23pt size", "Native font", "Geometry", "Media", "Relationships", "Layout IDs", "All other ZIP payloads"],
+  "candidate_validation": {
+    "artifact_tool_import": "PASS for source and candidate",
+    "conformance": "31 PASS; no warnings or failures",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "unchanged_accepted_pages": 256,
+    "unchanged_typed_refusals": 47,
+    "changed_accepted_pages": 6,
+    "every_changed_pixel_bbox": [642, 751, 769, 765],
+    "strongest_native_footer_ink_rgb": [93, 93, 93],
+    "strongest_local_contrast_white_background": 6.584652797685219,
+    "strongest_local_contrast_shaded_title_background": 4.887820049577467,
+    "manifest_sha256": "dbfb15fc602f129b807105e889382f90d09dbaa5878d4a08bebb3423c486d924"
+  },
+  "single_blind_review": {
+    "reviewer_count": 1,
+    "anonymized_pages": 12,
+    "unreviewed_pages": 0,
+    "source_complete_pages": 12,
+    "after_verdicts": "Six SAFE_WITH_MINOR_CAUTIONS",
+    "packet_and_source_sha_verified": true,
+    "remaining_cautions": [
+      "Native utility lettering remains small and distance-sensitive",
+      "Chart axis/category/value labels remain small",
+      "Dense body and nested bullet leading remain tight",
+      "Title background horizontal tonal steps remain visible (separate issue .86)"
+    ],
+    "local_evidence": "output/blind-business-footer-followup-20260927-v3/joined-review-audit.json"
+  },
+  "rejected_candidates": [
+    "tint40000 worsened actual contrast; six after-pages UNSAFE in blind review",
+    "tint87500 improved white-background contrast but shaded Title contrast remained 4.20:1"
+  ],
+  "regression_test": "TestBusinessNativeFooterPreservesReadableStyleAndLegalText",
+  "installed_template_and_canonical_previews": true,
+  "installed_gates": {
+    "race_emitted_footer_style_and_text_test": "PASS",
+    "all_local_template_conformance": "PASS",
+    "canonical_preview_freshness": "PASS",
+    "mcp_preview_references": "PASS",
+    "all_native_inventory_and_source_preservation": "PASS",
+    "pinned_lint": "PASS; zero issues",
+    "local_log": "output/business-footer-contrast-promotion-20260927-v1/installed-gates.log"
+  },
+  "production_renderer_changed": false,
+  "remaining_visual_issues_not_waived": true,
+  "ci_verification": "Pending exact repair publication SHA"
+}
