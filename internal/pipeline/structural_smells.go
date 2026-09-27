@@ -211,8 +211,12 @@ func detectMixedFillScheme(grid *jsonschema.ShapeGridInput, slideIdx int) []*pat
 			Message: fmt.Sprintf("slide %d: shape_grid mixes hex fills (e.g. %s) and semantic fills (e.g. %s); use one scheme for template portability", slideIdx+1, hexExample, semanticExample),
 			Fix: &patterns.FixSuggestion{
 				Kind: "use_semantic_color",
+				// value is required by repair_slide; without a path it rewrites
+				// every hex fill on the slide to it. Suggest the scheme color the
+				// grid already uses (go-slide-creator-csclk.125).
 				Params: map[string]any{
-					"message": "replace all hex fill colors with scheme references (accent1, accent2, lt2, dk1, etc.)",
+					"value":   semanticExample,
+					"message": fmt.Sprintf("replace all hex fill colors with scheme references (suggested: %s; or accent1, accent2, lt2, dk1, etc.)", semanticExample),
 				},
 			},
 		}}

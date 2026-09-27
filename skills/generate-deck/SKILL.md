@@ -53,7 +53,9 @@ For both paths, a passing `quality_gate` or `deterministic_ready` field is a
 precondition, not proof that anybody looked at the slides. On a fresh semantic
 render, `publishable` remains false until a complete approved visual verdict
 for the current artifact exists. For a recorded publishable verdict, use
-`submit_visual_review` only after inspecting each current-revision image.
+`submit_visual_review` only after inspecting each current-revision image;
+it never overrides deterministic blockers (status
+`reviewed_deterministic_blockers`, `publishable: false`, `blocking_reasons`).
 Any changed slide invalidates its previous visual verdict. If a finding is
 unfamiliar, call `describe_finding`; use
 `get_capabilities().vocabularies.repair_fix_kinds` to distinguish executable
@@ -97,4 +99,4 @@ For full discovery, use `--tools all` or `JSON2PPTX_MCP_TOOLS=all`. If
 pass `read_only: true`. Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).
 
-Responses are always compact JSON; the server still advertises `experimental.compact_responses: true` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
+Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.

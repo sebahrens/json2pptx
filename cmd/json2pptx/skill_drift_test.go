@@ -140,7 +140,7 @@ func TestSkillRoutesRepairKindsToRuntime(t *testing.T) {
 func TestCompactResponsesPhrasingMatchesRuntime(t *testing.T) {
 	// The canonical sentence — normalized form (backticks stripped, whitespace
 	// collapsed, lowercased) must appear in every location below.
-	const canonical = "responses are always compact json; the server still advertises experimental.compact_responses: true and still honours the client capability and the deprecated mcp_compact_responses=1 environment variable, but neither changes anything"
+	const canonical = "responses are always compact json; the server still advertises experimental.compact_responses: {} and still honours the client capability and the deprecated mcp_compact_responses=1 environment variable, but neither changes anything"
 
 	repoRoot := filepath.Join("..", "..")
 	locations := []string{

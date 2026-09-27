@@ -96,7 +96,11 @@ not for a deterministic blocker under strict mode. Resolve `diagnostics[]`,
 `deterministic_blocking_reasons[]`, and the quality gate before review.
 After inspecting the images, use `submit_visual_review` and its returned
 current-revision status for the final verdict; re-rendering creates a new
-unreviewed response rather than refreshing the earlier one.
+unreviewed response rather than refreshing the earlier one. A visual verdict
+never clears deterministic blockers: for an artifact whose render reported
+them, `submit_visual_review` returns `status:
+"reviewed_deterministic_blockers"`, `publishable: false` and the render's
+`blocking_reasons`.
 Each diagnostic has a `semantic_path` to edit and a
 `raw_path` only as fallback. Keep the DeckSpec as the source of truth.
 After each revision, render and inspect the affected slides, then inspect all

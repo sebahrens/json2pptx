@@ -247,7 +247,7 @@ Boundary-error mappings used by the candidate-decision tools:
 ```
 
 - `slide_index: -1` means "caller must supply the actual slide index" — `validate_pattern` operates without slide context.
-- For `swap_pattern` fix kinds, `next_tool_call` points to `recommend_pattern` instead of `repair_slide`.
+- For `swap_pattern` / `adopt_pattern` fix kinds, `next_tool_call` points to `recommend_visual` (`{intent, content_hints: {item_count}}`, in every tool profile) instead of `repair_slide`; fill in `intent` before calling.
 - Internal-only errors (marshal failures, unrecognized fix kinds inside content-finding errors) may omit `next_tool_call` (the field is absent, not null). Boundary errors from candidate-decision tools always carry it.
 
 ---

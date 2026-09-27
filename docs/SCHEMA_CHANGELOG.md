@@ -22,6 +22,27 @@
     `output.scale` must be 0.5–10, PNG output is capped at 64M pixels, and the
     render cache is capped at 256 MiB (`CacheConfig.MaxBytes`).
 
+- **2026-09-27 — MCP protocol-conformance fixes (`go-slide-creator-csclk.116`–`.129`).**
+  The server advertises `experimental.compact_responses: {}` (an object, as the
+  MCP schema requires) instead of `true`, and accepts either form from clients.
+  Every tool `outputSchema` root is `type: object` around its
+  `anyOf: [success, error_envelope]`. `get_shape_catalog` structuredContent is
+  `{categories: [...]}` (was a bare array). `generate_presentation`
+  `fit_findings[].slide_index` and `list_templates.supported_types` are no longer
+  required (deck-level findings and the compact projection omit them).
+  `audit_palette` `slides[].pairs` / `theme_matches` and `inspect_slide_images`
+  `results[].findings` are `[]` rather than `null`. `swap_pattern` /
+  `adopt_pattern` findings suggest `recommend_visual {intent, content_hints:
+  {item_count}}` in every profile (was `recommend_pattern {item_count}`, which
+  failed with `UNKNOWN_PARAMETER`). `mixed_fill_scheme` `use_semantic_color`
+  fixes carry `value`. `pattern_overcrowded` omits cell-unit `first`/`second`
+  on named-pattern slides. `submit_visual_review` gains status
+  `reviewed_deterministic_blockers` plus `publishable` / `blocking_reasons` for
+  artifacts whose `render_deck_spec` gate failed. The text synopsis keeps
+  `output_path` and `fit_findings`. `table_density_guide` declares
+  `dependentRequired: {style_id: [template]}`. A panicking tool handler now
+  returns an `INTERNAL` isError result instead of killing the server.
+
 - **2026-09-26 — CLI source-loss error diagnostics retained (`go-slide-creator-3qzo4.55`).**
   CLI JSON error reports now retain actual source-loss code, authored path,
   `refuse` action, and repair parameters in the existing `fit_findings` array.

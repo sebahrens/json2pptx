@@ -144,6 +144,14 @@ func handleAuditPalette(ctx context.Context, request mcp.CallToolRequest) (*mcp.
 	// hand the agent dangling paths.
 	for i := range report.Slides {
 		report.Slides[i].RenderImage = ""
+		// The schema declares these as arrays; nil slices would marshal to
+		// null (go-slide-creator-csclk.122).
+		if report.Slides[i].Pairs == nil {
+			report.Slides[i].Pairs = []auditPair{}
+		}
+		if report.Slides[i].ThemeMatches == nil {
+			report.Slides[i].ThemeMatches = []auditThemeMatch{}
+		}
 	}
 
 	output := auditPaletteOutput{

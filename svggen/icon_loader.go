@@ -164,7 +164,7 @@ func rasterizeIconData(data []byte, targetSizePx int) (image.Image, error) {
 	// Try SVG parse first (most icons will be SVG)
 	svgCanvas, err := canvas.ParseSVG(bytes.NewReader(data))
 	if err == nil && svgCanvas != nil {
-		return rasterizeSVGCanvas(svgCanvas, targetSizePx), nil
+		return rasterizeSVGCanvas(svgCanvas, targetSizePx)
 	}
 
 	// Reject decompression bombs before allocating the full raster.
@@ -220,7 +220,7 @@ func RasterizeSVGToPNG(data []byte, targetSizePx int) (pngBytes []byte, err erro
 				err = fmt.Errorf("svg rasterizer panic: %v", r)
 			}
 		}()
-		img = rasterizeSVGCanvas(svgCanvas, targetSizePx)
+		img, err = rasterizeSVGCanvas(svgCanvas, targetSizePx)
 	}()
 	if err != nil {
 		return nil, err
@@ -233,13 +233,15 @@ func RasterizeSVGToPNG(data []byte, targetSizePx int) (pngBytes []byte, err erro
 }
 
 // rasterizeSVGCanvas renders a parsed SVG canvas to an image.Image at the target size.
-func rasterizeSVGCanvas(c *canvas.Canvas, targetSizePx int) image.Image {
+// A canvas with no width or height (e.g. an empty <svg/>) is an error: the
+// rasterizer panics with "raster size is zero" on it (go-slide-creator-csclk.117).
+func rasterizeSVGCanvas(c *canvas.Canvas, targetSizePx int) (image.Image, error) {
 	// Calculate DPI to achieve target size.
 	// Canvas dimensions are in mm; we want targetSizePx pixels on the longer side.
 	w := c.W
 	h := c.H
 	if w <= 0 || h <= 0 {
-		w, h = 100, 100 // fallback
+		return nil, fmt.Errorf("svg has zero width or height")
 	}
 
 	longerMM := w
@@ -249,6 +251,10 @@ func rasterizeSVGCanvas(c *canvas.Canvas, targetSizePx int) image.Image {
 
 	// DPI = pixels / inches = pixels / (mm / 25.4)
 	dpi := float64(targetSizePx) / (longerMM / 25.4)
+	res := canvas.DPI(dpi)
+	if int(w*res.DPMM()+0.5) <= 0 || int(h*res.DPMM()+0.5) <= 0 {
+		return nil, fmt.Errorf("svg rasterizes to zero pixels")
+	}
 
-	return rasterizer.Draw(c, canvas.DPI(dpi), nil)
+	return rasterizer.Draw(c, res, nil), nil
 }

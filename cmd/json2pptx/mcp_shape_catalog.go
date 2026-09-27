@@ -212,7 +212,9 @@ func handleGetShapeCatalog(_ context.Context, request mcp.CallToolRequest) (*mcp
 		}
 	}
 
-	mcpResult, err := api.MCPSuccessResult(context.Background(), result)
+	// structuredContent must be an object, so the list is wrapped
+	// (go-slide-creator-csclk.120).
+	mcpResult, err := api.MCPSuccessResult(context.Background(), map[string]any{"categories": result})
 	if err != nil {
 		return api.MCPSimpleError("INTERNAL", "failed to marshal response: "+err.Error()), nil
 	}

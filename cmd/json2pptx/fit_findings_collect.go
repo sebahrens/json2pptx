@@ -1392,6 +1392,14 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 				TotalSlots:     totalSlots,
 				RecommendedMax: recMax,
 			}); f != nil {
+				// first/second count grid cells, but repair_slide splits a
+				// pattern slide by its values array, reading first as an item
+				// index. Omit them so repair halves the list
+				// (go-slide-creator-csclk.126).
+				if slide.Pattern != nil && f.Fix != nil {
+					delete(f.Fix.Params, "first")
+					delete(f.Fix.Params, "second")
+				}
 				findings = append(findings, *f)
 			}
 		}

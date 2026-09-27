@@ -48,7 +48,7 @@ var errorEnvelopeSchema = json.RawMessage(`{
 // showing the (deliberately rich) diagnostics (go-slide-creator-vtqo).
 //
 // Rather than dropping the structured errors agents already depend on, the schema
-// becomes {$defs, anyOf: [success, error_envelope]}. Any "$defs" the success
+// becomes {type: object, $defs, anyOf: [success, error_envelope]}. Any "$defs" the success
 // schema declares is HOISTED to the wrapper's root so its "#/$defs/..."
 // references keep resolving — an anyOf branch is not a schema root.
 func withErrorEnvelope(schema json.RawMessage) json.RawMessage {
@@ -69,7 +69,10 @@ func withErrorEnvelope(schema json.RawMessage) json.RawMessage {
 		return schema
 	}
 
+	// MCP types Tool.outputSchema as {type: "object", ...}; strict clients
+	// (the TypeScript SDK) reject a root without it (go-slide-creator-csclk.119).
 	wrapper := map[string]json.RawMessage{
+		"type":  json.RawMessage(`"object"`),
 		"anyOf": json.RawMessage(`[` + string(successBody) + `,` + string(errorEnvelopeSchema) + `]`),
 	}
 	if hasDefs {
