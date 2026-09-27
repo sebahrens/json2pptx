@@ -17,10 +17,12 @@ func TestModernOriginalEmbeddedFontsPreserved(t *testing.T) {
 	check := func(t *testing.T, path string) {
 		t.Helper()
 		for _, face := range []struct{ style, sha string }{
-			{"Regular", "c72a925082ba55885e7b4ead25d34a3c91fa44edda72a16a3a2983fc7fa7cef3"},
-			{"Bold", "32baf740eac1bf3f257904a6cf89e4e067ca1566b375bf22f743a26fc88b3791"},
+			{"Lora-Regular", "c72a925082ba55885e7b4ead25d34a3c91fa44edda72a16a3a2983fc7fa7cef3"},
+			{"Lora-Bold", "32baf740eac1bf3f257904a6cf89e4e067ca1566b375bf22f743a26fc88b3791"},
+			{"Poppins-Light", "650ba57fa99d12ec40c31ccfb680be656be4497fbe14164617d67e32ffe9cd46"},
+			{"Poppins-LightItalic", "b8f9c5be59723fadf8e5447fa1245c2c53b60a3464a24d6ece9ee3c283d8917b"},
 		} {
-			font := []byte(readZipFileString(t, path, "ppt/fonts/Lora-"+face.style+".fntdata"))
+			font := []byte(readZipFileString(t, path, "ppt/fonts/"+face.style+".fntdata"))
 			if len(font) < 80 {
 				t.Fatalf("missing or truncated embedded %s", face.style)
 			}
@@ -48,6 +50,9 @@ func TestModernOriginalEmbeddedFontsPreserved(t *testing.T) {
 				Bold struct {
 					ID string `xml:"id,attr"`
 				} `xml:"bold"`
+				Italic struct {
+					ID string `xml:"id,attr"`
+				} `xml:"italic"`
 			} `xml:"embeddedFontLst>embeddedFont"`
 		}
 		if err := xml.Unmarshal([]byte(readZipFileString(t, path, "ppt/presentation.xml")), &presentation); err != nil {
@@ -69,6 +74,19 @@ func TestModernOriginalEmbeddedFontsPreserved(t *testing.T) {
 		if found != 1 {
 			t.Errorf("found %d native embedded Lora families, want one", found)
 		}
+		found = 0
+		for _, font := range presentation.Fonts {
+			if font.Font.Typeface != "Poppins Light" {
+				continue
+			}
+			found++
+			if font.Regular.ID != "rIdPoppinsLight" || font.Italic.ID != "rIdPoppinsLightItalic" || font.Bold.ID != "" {
+				t.Error("native Light regular/italic references or synthetic bold semantics changed")
+			}
+		}
+		if found != 1 {
+			t.Errorf("found %d native embedded Poppins Light families, want one", found)
+		}
 		var relationships struct {
 			Entries []struct {
 				ID     string `xml:"Id,attr"`
@@ -79,19 +97,24 @@ func TestModernOriginalEmbeddedFontsPreserved(t *testing.T) {
 		if err := xml.Unmarshal([]byte(readZipFileString(t, path, "ppt/_rels/presentation.xml.rels")), &relationships); err != nil {
 			t.Fatal(err)
 		}
-		for _, style := range []string{"Regular", "Bold"} {
+		for _, face := range []struct{ id, target string }{
+			{"rIdLoraRegular", "fonts/Lora-Regular.fntdata"},
+			{"rIdLoraBold", "fonts/Lora-Bold.fntdata"},
+			{"rIdPoppinsLight", "fonts/Poppins-Light.fntdata"},
+			{"rIdPoppinsLightItalic", "fonts/Poppins-LightItalic.fntdata"},
+		} {
 			found := 0
 			for _, relationship := range relationships.Entries {
-				if relationship.ID != "rIdLora"+style {
+				if relationship.ID != face.id {
 					continue
 				}
 				found++
-				if relationship.Target != "fonts/Lora-"+style+".fntdata" || relationship.Type != "http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" {
-					t.Errorf("invalid %s font relationship", style)
+				if relationship.Target != face.target || relationship.Type != "http://schemas.openxmlformats.org/officeDocument/2006/relationships/font" {
+					t.Errorf("invalid %s font relationship", face.id)
 				}
 			}
 			if found != 1 {
-				t.Errorf("missing or duplicated %s font relationship", style)
+				t.Errorf("missing or duplicated %s font relationship", face.id)
 			}
 		}
 		var contentTypes struct {

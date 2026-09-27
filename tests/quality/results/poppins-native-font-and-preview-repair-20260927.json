@@ -1,0 +1,41 @@
+{
+  "beads": ["go-slide-creator-3qzo4.103", "go-slide-creator-3qzo4.106", "go-slide-creator-3qzo4.107", "go-slide-creator-3qzo4.108"],
+  "status": "all_current_source_local_gates_pass_exact_commit_ci_pending",
+  "repair": {
+    "fonts": "Unmodified Poppins Light/LightItalic version4.004 weight300, Google Fonts snapshot8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5. Original metadata and SIL OFL1.1 license retained. Bold remains synthetic; no genuineBold or authored-template exact-version claim.",
+    "light_sha256": "650ba57fa99d12ec40c31ccfb680be656be4497fbe14164617d67e32ffe9cd46",
+    "italic_sha256": "b8f9c5be59723fadf8e5447fa1245c2c53b60a3464a24d6ece9ee3c283d8917b",
+    "measurement": "Direct native-family and explicitfallback loading, failclosed if either original face is corrupt; fourstyles/cache/native-width missed-wrap assertions.",
+    "native_template": "Only originalPoppins embeddedpayloads/familyactivation/relationships added. Prior Lora activation, allslides/layouts/masters/themes/media/wording/geometry bytes preserved.",
+    "template_sha256": "fdfa609a77fe74ec51b7882369de19690256bcd5c25fa7be9e301e4a53c949d4",
+    "rendering_source_sha256": "a8c612c95bcc757b7008e38e634cfc5399e9e3695e056a5db456190034e25d01",
+    "previews": "14templates/108nativepreviews current, including ignoredlocalpstyle. Five modernPNG pixels change;103other previews identical. All35portabilityfixture manifests corrected after real staleprovenance failure; tests not weakened.",
+    "golden": "Only modern-template golden changes to2172e637c16f416cd2ab99ff24ce5dea889946f67602378710531a0683f5df89"
+  },
+  "evidence": {
+    "directory": "output/poppins-native-template-candidate-20260927-v1",
+    "source_preservation": "source-audit.json",
+    "installed_matrix": "installed-audit.json and current refactor-audit.json:14templates108layouts309probes,247acceptedpages and everyZIPpayload match reviewedcandidate;62typedrefusals unchanged. Refusals are notvisualapproval.",
+    "preview_inventory": "refactor-audit.json: actualPPTX nativeZIP IDs/corpus IDs/preview IDs joined, all108PNG/source/template hashes verified for current a8c612 renderingfingerprint",
+    "fixture_preview_audit": "fixture-preview-audit.json:all35pixels/sourcecontent/templateSHAs unchanged",
+    "blind_review": "output/blind-poppins-native-pages-20260927-v1/joined-review-audit.json:24originals0unreviewed, strict source/packet/review hash and requiredtext/fourlensjoin;7SAFE+5minorAFTER pages. Existing cautions retained under69.",
+    "actual_pdf": "pdf-audit.json:all16sourceverifiedcharactersequences preserved, allLora titlemetrics unchanged, actualPoppins Light18pt Closing subtitles; fresh bundledLibreOffice profile/noFONTCONFIG_FILE/globalfontinstall",
+    "actual_styles": "output/poppins-portable-embedding-experiment-20260927-v1/italic-render-audit.json and bold-render-audit.json: genuineItalicactivation, regular/bold+italic/bolditalic pairedcontrols preserveglyphadvances; syntheticbold fill/stroke observed",
+    "code_review": "final-scoped-code-review.json: testing/adversarial/reliability, noactionablefindings; explicitroundedconversion105/projection/crossrenderer residualrisks"
+  },
+  "local_gates": {
+    "root_race": "CURRENT SOURCE PASS session71763 terminalexit0; final-root-race-refactor-v3.log fullyread. go test ./... -short -race -timeout=15m: CLI821.408s generator277.966s quality585.942s textfit12.221s layoutpreview15.056s templatepreview15.148s. Prior root98075 PASS preserved separately; subsequent resolver refactor fully revalidated.",
+    "original_failure": "final-root-race.log retained: socketpermission denial/previewrenderer errors/stalefixtureprovenance. Corrected provenance after filing106; rerun explicitbundledrendererPATH+localtestsocketpermission, noassertionweakening/skips.",
+    "svg_race": "CURRENT SOURCE PASS39.970s session92974; final-svg-race-refactor-v3.log fullyread",
+    "fontcache_race": "PASS6.347s",
+    "textfit_race": "PASS5.582s",
+    "generator_native_font_regression": "PASS5.383s keep/exclude originalslides; originaltemplate negative EXPECTEDFAIL0.444s",
+    "installed_native_corpus": "CURRENT SOURCE PASS42.066s session50123; native-corpus-refactor-v3.log/refactor-audit.json all247pixels/payloads unchanged",
+    "golden": "PASS",
+    "root_pinned_lint": "CURRENT SOURCE root20561 andSVG68551 PASS0issues; fontcache race20470 PASS6.656s",
+    "build": "CURRENT SOURCE PASS session92773; nonfatalstatcachepermissionwarning retained",
+    "diff_whitespace": "PASS",
+    "private_template": "pstyle sourceSHA1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1 unchanged/gitignored; all7native layouts included locally"
+  },
+  "remaining": "SVG lint107 repaired with nativefallback consolidation, no suppression. Parallel go:embed previewcompile race108 recovered sequentially and safe workflow persisted via bdremember/CONTRIBUTING; all108currentpreviews verified. Exactpublishedcommit allCI must be terminalgreen before103/106/107/108closure. Isolatedleading/childindent candidates excluded. Minorvisual69, roundedconversion105, broader source/readability/allfeature findings remain; nooverallgoalcompletion orPowerPoint/projectionapproval."
+}

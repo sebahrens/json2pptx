@@ -97,6 +97,13 @@ func Resolve(name string, fallbackName string) (*canvas.FontFamily, string, bool
 func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, bool) {
 	ff := canvas.NewFontFamily(name)
 
+	if name == "Poppins Light" {
+		if err := loadEmbeddedPoppinsLight(ff); err != nil {
+			return nil, "", false
+		}
+		return ff, "Poppins Light", false
+	}
+
 	// Resolve the native title family from the exact embedded original faces,
 	// so measurement never depends on host font installation or substitution.
 	if name == "Lora" {
@@ -125,11 +132,11 @@ func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, boo
 
 	// 2. Try the explicit fallback name.
 	if fallbackName != "" && fallbackName != name {
-		if fallbackName == "Lora" {
-			if err := loadEmbeddedLora(ff); err != nil {
+		if fallbackName == "Poppins Light" || fallbackName == "Lora" {
+			if err := loadEmbeddedNativeFallback(ff, fallbackName); err != nil {
 				return nil, "", false
 			}
-			return ff, "Lora", true
+			return ff, fallbackName, true
 		}
 		if fallbackName == "Arial" {
 			if err := loadEmbeddedLiberation(ff); err == nil {
@@ -160,6 +167,26 @@ func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, boo
 
 	// 5. Nothing worked.
 	return nil, "", false
+}
+
+func loadEmbeddedNativeFallback(ff *canvas.FontFamily, name string) error {
+	if name == "Poppins Light" {
+		return loadEmbeddedPoppinsLight(ff)
+	}
+	return loadEmbeddedLora(ff)
+}
+
+func loadEmbeddedPoppinsLight(ff *canvas.FontFamily) error {
+	// Legacy family metadata identifies Poppins Light Regular and Italic.
+	// Family slots do not change the original weight300 font bytes. Bold uses
+	// synthetic styling, matching native Light-family rendering semantics.
+	if err := ff.LoadFont(fonts.PoppinsLight, 0, canvas.FontRegular); err != nil {
+		return fmt.Errorf("load embedded original Poppins Light Regular: %w", err)
+	}
+	if err := ff.LoadFont(fonts.PoppinsLightItalic, 0, canvas.FontItalic); err != nil {
+		return fmt.Errorf("load embedded original Poppins Light Italic: %w", err)
+	}
+	return nil
 }
 
 func loadEmbeddedLora(ff *canvas.FontFamily) error {

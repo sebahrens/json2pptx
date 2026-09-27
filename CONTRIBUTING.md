@@ -323,6 +323,20 @@ The hook only fires when a commit touches `templates/*.pptx` or `internal/templa
 
 ## Pull Request Process
 
+### Refreshing template previews safely
+
+Use `make template-previews` to refresh both local templates and portability
+fixtures sequentially. Keep any ignored local template, including `p-style.pptx`,
+in the local render inventory without adding it to Git. Refresh previews after
+renderer or embedded-font changes as well as template changes, and verify their
+source fingerprints and PNG hashes.
+
+Do not run concurrent `go run ./cmd/templatepreviews` refreshes: preview files
+are embedded in the executable, and compilation can race another refresh's
+output replacement. If parallel rendering is necessary, build the preview
+executable before either output directory is changed. Preserve failed-run logs
+and wait for an active refresh to finish before retrying.
+
 ### Branch Naming
 
 Use descriptive branch names:

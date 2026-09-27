@@ -23,3 +23,13 @@ var LoraRegular []byte
 
 //go:embed Lora-Bold.ttf
 var LoraBold []byte
+
+// Original native modern-template body family, pinned Google Fonts snapshot
+// 8b0a1d0f5983c89bc2b93f1b5fb55f9e252744b5. The Light weight and original
+// Regular/Italic family metadata are retained; see Poppins-OFL.txt.
+//
+//go:embed Poppins-Light.ttf
+var PoppinsLight []byte
+
+//go:embed Poppins-LightItalic.ttf
+var PoppinsLightItalic []byte
