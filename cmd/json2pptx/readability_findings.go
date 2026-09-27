@@ -101,7 +101,7 @@ func collectReadabilityFindings(input *PresentationInput, layouts []types.Layout
 // subtracts default padding a second time. Reusing the shape emitter also
 // preserves paragraph spacing, overlay insets and the final resolved bounds.
 func writtenCellAutofitScale(cell shapegrid.ResolvedCell) (float64, error) {
-	data, err := shapegrid.GenerateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.TextInsets)
+	data, err := shapegrid.GenerateCellShapeXML(cell)
 	if err != nil {
 		return 0, err
 	}

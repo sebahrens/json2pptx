@@ -204,8 +204,8 @@ func (p *capabilityHeatmap) Schema() *Schema {
 	overridesSchema := ObjectSchema(map[string]*Schema{
 		"accent":          StringSchema(0).WithDescription("Accent scheme color for tier 0 and the headers (default accent1)").WithDefault("accent1"),
 		"semantic_accent": EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
-		"header_size":     NumberSchema(6, 120).WithDescription("Header title size in points (default 14; shrinks to 12 so no word breaks)"),
-		"cell_size":       NumberSchema(6, 120).WithDescription("Activity cell text size in points (default 12)"),
+		"header_size":     NumberSchema(12, 40).WithDescription("Header title size in points (default 14; shrinks to 12 so no word breaks)"),
+		"cell_size":       NumberSchema(12, 40).WithDescription("Activity cell text size in points (default 12)"),
 		"show_legend":     BooleanSchema().WithDescription("Tier legend under the grid (default true)"),
 		"header_shape":    EnumSchema(chmHeaderHomePlate, chmHeaderRect).WithDescription("Header geometry: homePlate (pointed, default) or rect").WithDefault(chmHeaderHomePlate),
 	}, nil).WithAdditionalProperties(false)
@@ -233,6 +233,14 @@ func (p *capabilityHeatmap) Validate(values, overrides any, cellOverrides map[in
 			errs = append(errs, newValidationError(chmName, "overrides.header_shape", "invalid_enum",
 				fmt.Sprintf("%s: overrides.header_shape must be one of homePlate, rect; got %q", chmName, ovr.HeaderShape),
 				UseOneOfFix("overrides.header_shape", []string{chmHeaderHomePlate, chmHeaderRect})))
+		}
+		// Text below 12pt was silently raised to 12 and huge sizes blew the
+		// rows apart; reject both like the sibling patterns (go-slide-creator-csclk.110).
+		if ovr.HeaderSize != 0 && (ovr.HeaderSize < 12 || ovr.HeaderSize > 40) {
+			errs = append(errs, errOutOfRange(chmName, "overrides.header_size", 12, 40, int(ovr.HeaderSize)))
+		}
+		if ovr.CellSize != 0 && (ovr.CellSize < 12 || ovr.CellSize > 40) {
+			errs = append(errs, errOutOfRange(chmName, "overrides.cell_size", 12, 40, int(ovr.CellSize)))
 		}
 	}
 

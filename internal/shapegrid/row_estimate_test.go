@@ -43,6 +43,13 @@ func TestEstimateCellTextHeightReadsParagraphs(t *testing.T) {
 		t.Errorf("an empty paragraph estimated %d EMU, want 0", got)
 	}
 
+	// Explicit insets replace the default padding rather than adding to it
+	// (go-slide-creator-csclk.112): 14.4 + 8 + 8 = 30.4pt.
+	inset := cellWith(`{"paragraphs":[{"content":"A","size":12}],"inset_left":8,"inset_right":8,"inset_top":8,"inset_bottom":8}`)
+	if got := float64(estimateCellTextHeightEMU(inset)) / 12700; got < 30 || got > 31 {
+		t.Errorf("12pt line with 8pt insets estimated at %.1fpt, want ~30.4", got)
+	}
+
 	// The single-content form is unchanged.
 	if got := float64(estimateCellTextHeightEMU(cellWith(`{"content":"One line","size":12}`))) / 12700; got < 20 || got > 23 {
 		t.Errorf("single-content form estimated at %.1fpt, want ~21.6", got)

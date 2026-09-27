@@ -20,7 +20,10 @@ const thinSpace = " "
 // which is the same defect go-slide-creator-8u9k fixed for waterfall-bridge):
 //
 //   - thousands separators: 1240.5 -> "1,240.5"
-//   - at most one decimal:  96.44  -> "96.4";  12.0 -> "12"
+//   - one decimal by default: 96.44 -> "96.4";  12.0 -> "12". More decimals
+//     (up to labelMaxDecimals) are used only when one decimal would print a
+//     nonzero value as 0 ("+$0.04", not "+$0"); see LabelDecimals for the
+//     chart-level variant that also keeps distinct values distinct.
 //   - currency units lead:  ("210", "$m")     -> "$210m"
 //   - other units follow, separated by a thin space: ("1240.5", "EUR M") ->
 //     "1,240.5 EUR M". A single-character symbolic unit such as "%" is
@@ -29,8 +32,15 @@ const thinSpace = " "
 // When signed is true the label carries an explicit "+" / "−" so a delta's
 // direction is unambiguous.
 func FormatMagnitudeLabel(v float64, unit string, signed bool) string {
+	return FormatMagnitudeLabelDecimals(v, unit, signed, LabelDecimals([]float64{v}))
+}
+
+// FormatMagnitudeLabelDecimals is FormatMagnitudeLabel with an explicit
+// maximum number of decimals (trailing zeros are dropped). Callers labelling a
+// whole series pass LabelDecimals(series) so every label shares one precision.
+func FormatMagnitudeLabelDecimals(v float64, unit string, signed bool, decimals int) string {
 	abs := math.Abs(v)
-	body := groupThousands(roundToOneDecimal(abs))
+	body := groupThousands(roundToDecimals(abs, decimals))
 
 	prefix, suffix := splitUnit(unit)
 	body = prefix + body + suffix
@@ -45,14 +55,48 @@ func FormatMagnitudeLabel(v float64, unit string, signed bool) string {
 	}
 }
 
-// roundToOneDecimal renders a non-negative value with at most one decimal
-// place, dropping a trailing ".0".
-func roundToOneDecimal(abs float64) string {
-	rounded := math.Round(abs*10) / 10
-	if rounded == math.Trunc(rounded) {
-		return strconv.FormatInt(int64(rounded), 10)
+// labelMaxDecimals caps how far LabelDecimals extends the precision.
+const labelMaxDecimals = 4
+
+// LabelDecimals returns the number of decimals a series of value labels needs:
+// one by default, raised (up to labelMaxDecimals) until no nonzero value
+// rounds to 0 and no two distinct magnitudes round to the same label — a
+// bridge of 1.97 → 2.03 with ±0.0x deltas printed "$2 … +$0 … $2" at one
+// decimal (go-slide-creator-csclk.88).
+func LabelDecimals(values []float64) int {
+	for d := 1; d < labelMaxDecimals; d++ {
+		if labelDecimalsOK(values, d) {
+			return d
+		}
 	}
-	return strconv.FormatFloat(rounded, 'f', 1, 64)
+	return labelMaxDecimals
+}
+
+func labelDecimalsOK(values []float64, d int) bool {
+	seen := make(map[string]float64, len(values))
+	for _, v := range values {
+		abs := math.Abs(v)
+		key := roundToDecimals(abs, d)
+		if abs != 0 && key == "0" {
+			return false
+		}
+		if prev, ok := seen[key]; ok && prev != abs {
+			return false
+		}
+		seen[key] = abs
+	}
+	return true
+}
+
+// roundToDecimals renders a non-negative value with at most d decimal places,
+// dropping trailing zeros (and the point when the value is integral).
+func roundToDecimals(abs float64, d int) string {
+	p := math.Pow(10, float64(d))
+	out := strconv.FormatFloat(math.Round(abs*p)/p, 'f', d, 64)
+	if strings.IndexByte(out, '.') >= 0 {
+		out = strings.TrimRight(strings.TrimRight(out, "0"), ".")
+	}
+	return out
 }
 
 // groupThousands inserts thousands separators into the integer part of an

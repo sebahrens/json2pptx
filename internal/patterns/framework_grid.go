@@ -167,8 +167,8 @@ func (p *frameworkGrid) Schema() *Schema {
 		"accent":           StringSchema(0).WithDescription("Accent scheme color for card titles and tints (default accent1)").WithDefault("accent1"),
 		"semantic_accent":  EnumSchema("positive", "negative", "neutral").WithDescription("Semantic accent role resolved via template metadata; ignored when accent is set"),
 		"label_width_pct":  NumberSchema(fgMinLabelPct, fgMaxLabelPct).WithDescription("Row-label column width as a percent of the grid (default 18)"),
-		"title_size":       NumberSchema(6, 120).WithDescription("Card title and row label size in points (default 14)"),
-		"body_size":        NumberSchema(6, 120).WithDescription("Card body size in points (default 12)"),
+		"title_size":       NumberSchema(12, 40).WithDescription("Card title and row label size in points (default 14)"),
+		"body_size":        NumberSchema(12, 40).WithDescription("Card body size in points (default 12)"),
 		"cell_accent_mode": EnumSchema("uniform", "alternate", "progressive").WithDescription("Per-column accent variation: uniform (default), alternate (base/base+1), progressive (walks accent1-6)").WithDefault("uniform"),
 	}, nil).WithAdditionalProperties(false)
 
@@ -196,6 +196,14 @@ func (p *frameworkGrid) Validate(values, overrides any, cellOverrides map[int]an
 			errs = append(errs, newValidationError(fgName, "overrides.label_width_pct", ErrCodeOutOfRange,
 				fmt.Sprintf("%s: overrides.label_width_pct must be %.0f–%.0f, got %g", fgName, fgMinLabelPct, fgMaxLabelPct, ovr.LabelWidthPct),
 				ReplaceValueFix("overrides.label_width_pct", int(fgMinLabelPct), int(fgMaxLabelPct))))
+		}
+		// Text below 12pt was silently raised to 12 and huge sizes produced
+		// 2000pt rows; reject both like the sibling patterns (go-slide-creator-csclk.110).
+		if ovr.TitleSize != 0 && (ovr.TitleSize < 12 || ovr.TitleSize > 40) {
+			errs = append(errs, errOutOfRange(fgName, "overrides.title_size", 12, 40, int(ovr.TitleSize)))
+		}
+		if ovr.BodySize != 0 && (ovr.BodySize < 12 || ovr.BodySize > 40) {
+			errs = append(errs, errOutOfRange(fgName, "overrides.body_size", 12, 40, int(ovr.BodySize)))
 		}
 	}
 

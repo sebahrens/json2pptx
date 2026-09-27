@@ -1226,7 +1226,7 @@ func generateGridOutput(result *shapegrid.ResolveResult, alloc *pptx.ShapeIDAllo
 
 // generateShapeCellXML produces XML and icon inserts for a shape cell.
 func generateShapeCellXML(cell shapegrid.ResolvedCell, _ *pptx.ShapeIDAllocator, themeColors []types.ThemeColor) ([][]byte, []generator.IconInsert, error) {
-	xml, err := shapegrid.GenerateShapeXML(cell.ShapeSpec, cell.ID, cell.Bounds, cell.TextInsets)
+	xml, err := shapegrid.GenerateCellShapeXML(cell)
 	if err != nil {
 		return nil, nil, fmt.Errorf("shape id %d: %w", cell.ID, err)
 	}

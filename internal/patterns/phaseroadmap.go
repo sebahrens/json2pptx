@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -261,7 +262,7 @@ func (pr *phaseRoadmap) Validate(values, overrides any, cellOverrides map[int]an
 	}
 	for i, t := range vals.ParallelTracks {
 		path := fmt.Sprintf("parallel_tracks[%d]", i)
-		if t == "" {
+		if strings.TrimSpace(t) == "" {
 			errs = append(errs, errRequired(name, path))
 		} else if runeLen(t) > phaseRoadmapTrackMaxChars {
 			errs = append(errs, errMaxLength(name, path, phaseRoadmapTrackMaxChars, runeLen(t)))

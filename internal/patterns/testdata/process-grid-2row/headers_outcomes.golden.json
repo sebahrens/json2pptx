@@ -122,7 +122,7 @@
               "paragraphs": [
                 {
                   "content": "DESIGN PROCESS",
-                  "size": 14,
+                  "size": 12,
                   "bold": true,
                   "color": "lt1",
                   "align": "ctr"
@@ -226,7 +226,7 @@
               "paragraphs": [
                 {
                   "content": "PRODUCTION",
-                  "size": 14,
+                  "size": 12,
                   "bold": true,
                   "color": "lt1",
                   "align": "ctr"

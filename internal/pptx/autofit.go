@@ -44,9 +44,18 @@ func applyAutofitScale(tb *TextBody, bounds RectEmu) {
 	if tb == nil || tb.AutoFit != "normAutofit" || tb.AutoFitFontScale != 0 {
 		return
 	}
+	SetAutofitScale(tb, AutofitScaleFor(tb, bounds))
+}
+
+// AutofitScaleFor returns the uniform shrink (0..1] a normAutofit body needs to
+// fit bounds, or 1 when it fits, is not normAutofit, or cannot be measured.
+func AutofitScaleFor(tb *TextBody, bounds RectEmu) float64 {
+	if tb == nil || tb.AutoFit != "normAutofit" {
+		return 1
+	}
 	widthEMU, heightEMU := textAreaEMU(tb, bounds)
 	if widthEMU <= 0 || heightEMU <= 0 {
-		return
+		return 1
 	}
 
 	paras := make([]textfit.AutofitParagraph, 0, len(tb.Paragraphs))
@@ -62,7 +71,7 @@ func applyAutofitScale(tb *TextBody, bounds RectEmu) {
 		})
 	}
 	if len(paras) == 0 {
-		return
+		return 1
 	}
 
 	availablePt := float64(heightEMU) / float64(types.EMUPerPoint)
@@ -76,11 +85,19 @@ func applyAutofitScale(tb *TextBody, bounds RectEmu) {
 		FloorScale:  autofitFloorScale,
 	})
 	if scale >= 1 {
-		// The text fits as authored: leave the bare element, which means "no
-		// shrink" to every renderer.
+		return 1
+	}
+	return scale
+}
+
+// SetAutofitScale records a shrink on a normAutofit body. A scale >= 1 leaves
+// the bare element, which means "no shrink" to every renderer. Sibling cells
+// share one scale through this so a row does not render at uneven sizes
+// (go-slide-creator-csclk.99).
+func SetAutofitScale(tb *TextBody, scale float64) {
+	if tb == nil || tb.AutoFit != "normAutofit" || scale >= 1 || scale <= 0 {
 		return
 	}
-
 	tb.AutoFitFontScale = int(scale*autofitScaleDenominator + 0.5)
 	// PowerPoint pairs a font shrink with a line-spacing reduction; mirroring it
 	// keeps a heavily shrunk block from looking airier than the renderer's own
