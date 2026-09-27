@@ -297,6 +297,7 @@ func Resolve(grid *Grid, alloc *pptx.ShapeIDAllocator) (*ResolveResult, error) {
 			}
 		}
 	}
+	shareRowAutofitScale(cells)
 
 	return &ResolveResult{
 		Cells:        cells,
@@ -560,6 +561,8 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 	var obj struct {
 		Content     string  `json:"content"`
 		Size        float64 `json:"size"`
+		InsetLeft   float64 `json:"inset_left"`
+		InsetRight  float64 `json:"inset_right"`
 		InsetTop    float64 `json:"inset_top"`
 		InsetBottom float64 `json:"inset_bottom"`
 		Paragraphs  []struct {
@@ -570,6 +573,14 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 	}
 	if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
 		return 0
+	}
+	// Any explicit inset makes the renderer write all four insets, replacing
+	// the 3.6pt defaults (buildTextBody), so the default padding must not be
+	// added on top: labeled-rows' 8pt block insets were counted twice and every
+	// conforming row reported ~7pt of phantom overflow (go-slide-creator-csclk.112).
+	padPt := textShapePaddingPt
+	if obj.InsetLeft > 0 || obj.InsetTop > 0 || obj.InsetRight > 0 || obj.InsetBottom > 0 {
+		padPt = 0
 	}
 
 	// A paragraphs-form cell used to fall through to the empty-content default
@@ -594,7 +605,7 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 		if totalPt == 0 {
 			return 0
 		}
-		return int64((totalPt + obj.InsetTop + obj.InsetBottom + textShapePaddingPt) * 12700)
+		return int64((totalPt + obj.InsetTop + obj.InsetBottom + padPt) * 12700)
 	}
 
 	fontSize := obj.Size
@@ -602,7 +613,7 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 		fontSize = 11
 	}
 	lines := strings.Count(obj.Content, "\n") + 1
-	return textHeightEMU(lines, fontSize, obj.InsetTop, obj.InsetBottom)
+	return int64((float64(lines)*fontSize*textLineHeightFactor + obj.InsetTop + obj.InsetBottom + padPt) * 12700)
 }
 
 const (

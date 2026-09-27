@@ -66,7 +66,7 @@ Beyond text-shrinking and table-splitting, the repair loop supports structural f
 
 | Kind | Params | When Emitted | repair_slide Support |
 |------|--------|--------------|---------------------|
-| `swap_pattern` | `filled_pct`, `filled_slots`, `total_slots`, `reason` | `pattern_underfilled` or `wrong_pattern` — content doesn't match the chosen pattern's slot count | No (use `recommend_pattern` tool instead) |
+| `swap_pattern` | `filled_pct`, `filled_slots`, `total_slots`, `reason` | `pattern_underfilled` or `wrong_pattern` — content doesn't match the chosen pattern's slot count | No (follow its `next_tool_call` to `recommend_visual` instead) |
 | `reshape_grid` | (embedded in `swap_pattern` params as `reason`) | `pattern_underfilled` — grid has too few items for the pattern | No (informational — tells agent why `swap_pattern` was suggested) |
 | `split_pattern` | `filled_slots`, `recommended_max`, `first`, `second`, `title_part_2`, `path` | `pattern_overcrowded` — grid exceeds the pattern's recommended max; also proposed when `reduce_items`/`resize_list` is refused for dropping a protected fact | **Yes** — splits grid rows (or, with `path`, the `pattern.values[path]` array) across two slides |
 | `split_bullets` | `max_items` (positive integer per-column budget) | Predicted/actual paragraph-loss refusals with provably splittable plain bullets | **Yes** — coordinates equally sized nonempty columns, preserves exact strings and nested groups, repeats other content, keeps notes/source on page one. Refuses compound lists, blank bullets, orphan children, path targeting, oversized nested groups and decks with numeric internal slide links. Render every resulting page; item count is not proof of fit. |
@@ -84,10 +84,10 @@ Beyond text-shrinking and table-splitting, the repair loop supports structural f
      "message": "kpi-6up: content shape (2 items) matches a different pattern; consider kpi-2up",
      "fix": { "kind": "swap_pattern", "params": { "suggested": [{"from": "kpi-6up", "to": "kpi-2up"}] } },
      "action": "review",
-     "next_tool_call": { "tool": "recommend_pattern", "args_template": { "item_count": 2 } }
+     "next_tool_call": { "tool": "recommend_visual", "args_template": { "intent": "<one sentence: what this slide should show>", "content_hints": { "item_count": 2 } } }
    }
 
-3. Agent calls recommend_pattern(item_count=2) → gets "kpi-2up" confirmation.
+3. Agent calls recommend_visual(intent=..., content_hints={item_count: 2}) → gets "kpi-2up" confirmation.
 
 4. Agent regenerates the slide with pattern "kpi-2up" and 2 items.
 
@@ -135,14 +135,14 @@ The skill should track attempt counts per slide and force `split_slide` after 2 
 
 ### MCP Harness
 
-Callers using the MCP `generate` and `validate_fit_report` tools wrap them in a retry loop:
+Callers using the MCP `validate_input` (with `fit_report: true`, its default) and `generate_presentation` tools wrap them in a retry loop:
 
 ```python
 attempts = {}  # slide_index -> count
 
 for _ in range(10):  # outer safety cap
-    result = mcp.call("validate_fit_report", {"json_path": path})
-    findings = parse_ndjson(result)
+    result = mcp.call("validate_input", {"presentation": json_data, "fit_report": True})
+    findings = result["findings"]["findings"]
     
     unfittable = [f for f in findings if f["action"] == "refuse"]
     if not unfittable:

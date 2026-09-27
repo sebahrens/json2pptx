@@ -258,7 +258,7 @@ func (mc *mcpConfig) resolvePreviewIcon(icon *IconInput, sourceKind, baseDir str
 		// (traversal, symlink eval, extension, env expansion) apply here.
 		// resolveIconInputPath rewrites icon.Path to an absolute resolved
 		// form on success.
-		diags := resolveIconInputPath(icon, baseDir, 0, "icon")
+		diags := resolveIconInputPath(icon, baseDir, 0, "icon", imageAllowList(mc.cfg.Images.AllowedBasePaths)...)
 		if hasErrorDiagnostic(diags) {
 			return nil, nil, api.MCPDiagnosticsError(diags)
 		}

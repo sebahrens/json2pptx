@@ -33,8 +33,7 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
       {"big": "$127M", "small": "Revenue"},
       {"big": "43%",   "small": "Gross margin"},
       {"big": "2.1x",  "small": "YoY growth"}
-    ],
-    "callout": {"text": "Takeaway", "emphasis": "accent1"}
+    ]
   }
 }
 ```
@@ -43,7 +42,7 @@ KPI `values` is a JSON **array** of cells (one per metric). Each cell is an obje
 
 Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 
-**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content).
+**Callouts.** Patterns with `supports_callout=true` accept an envelope-level `callout: {text, emphasis?, accent?}` — a full-width band rendered below the pattern. Use for one-line takeaways; text is plain string (no bullets / structured content). KPI patterns (`kpi-2up` … `kpi-6up`) do **not** support callouts — validate refuses the deck with `callout_unsupported`; check `supports_callout` in `show_pattern` first.
 
 ### Picking a Grid Configuration with `text_budget_guide`
 
@@ -89,7 +88,7 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Labeled rows.** `labeled-rows` (WHY / WHAT / HOW) holds 300-character bodies through four rows and about 190 at five or six; `BODY_TOO_LONG` reports the overflow.
 
-**Contact directories.** `contact-directory` fits 24 people with one-line titles in one or two groups at 4–5 per row; four groups fit only as single rows. Wrapped titles cost about a third more height; past that it reports `BODY_TOO_LONG`.
+**Contact directories.** `contact-directory` fits 24 people with one-line titles in one or two groups at 4–5 per row; four groups fit only as single rows. Wrapped titles cost about a third more height; past that it reports `BODY_TOO_LONG`. Without `columns` it drops to 3 per row first.
 
 **Text sidebars.** `text-sidebar`'s main column holds about 1,100 characters at 14pt and 1,500 at 12pt; keep the sidebar to one statement.
 
@@ -97,13 +96,13 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Numbered steps.** For `numbered-step-strip`, a six-step `chevron` holds about 47 readable label characters at default size; three to five chevrons and all `stacked-box` / `toc` labels hold the 60-character schema limit. Optional step bodies hold 180 through six steps. `stacked-box` and `toc` accept a seventh step (bodies then hold about 140 and 135 characters); `chevron` stays at six and a seventh step fails validation with a pointer to those styles. `stacked-box` and `toc` steps also accept an optional `icon` (bundled name or `{name|path|url|svg_data}` object) drawn in its own column between the number badge and the label; the column appears when any step has an icon, and `chevron` rejects icons. `BODY_TOO_LONG` names labels past the six-chevron target; `TEXT_EXCEEDS_SHAPE` remains the stronger signal when the chevron renderer knows a label will break mid-word.
 
-**State-shift hub.** `state-shift-hub` descriptions hold about 140 characters with 3 pairs, 120 with 4, 80 with 5 and 40 with 6; keep `hub_label` near 40 characters.
+**State-shift hub.** `state-shift-hub` descriptions hold about 100 characters with 3 pairs, 70 with 4, 45 with 5 and 30 with 6; keep `hub_label` near 40 characters.
 
 **Inline KPIs.** `kpi-inline` has a compact height. Captions hold the 40-character schema limit without icons or with up to four KPIs. With icons in five or six cells, the number and optional delta share space with the caption: an eight-character number in a five-KPI bar leaves about 16 caption characters without a delta and none with one. `show_pattern` describes the dense cases; `BODY_TOO_LONG` names the affected KPI and suggests shortening copy or dropping the delta/icon.
 
-**Capability heatmaps.** `capability-heatmap` cells index `tiers` (0 = solid accent). Keep activities to 1–3 short words at 7–8 columns; too-wide header words draw `TEXT_EXCEEDS_SHAPE`, overfull grids `BODY_TOO_LONG`.
+**Capability heatmaps.** `capability-heatmap` cells index `tiers` (0 = solid accent). Keep activities to 1–3 short words at 7–8 columns; too-wide header words draw `TEXT_EXCEEDS_SHAPE`, overfull grids `BODY_TOO_LONG`. `header_size` / `cell_size` must be 12–40pt (lower values are rejected, not clamped).
 
-**Framework grids.** `framework-grid` rows all take the tallest row's height; keep card bodies near 60 characters at four cards per row.
+**Framework grids.** `framework-grid` rows all take the tallest row's height; keep card bodies near 60 characters at four cards per row. `title_size` / `body_size` must be 12–40pt.
 
 ---
 

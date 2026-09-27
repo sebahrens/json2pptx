@@ -155,3 +155,25 @@ func TestLoadInspectSlideInfoRejectsNonObjectItem(t *testing.T) {
 		t.Fatalf("error = %v, want object item error", err)
 	}
 }
+
+// TestCollectInspectImagesUsesFilenameSlideNumber is the regression test for
+// go-slide-creator-csclk.29: a subset render must keep each image's slide
+// number as its index rather than its list position.
+func TestCollectInspectImagesUsesFilenameSlideNumber(t *testing.T) {
+	dir := t.TempDir()
+	writeInspectImages(t, dir, "slide-7.png", "slide-0.png", "slide-3.png")
+
+	images, err := collectInspectImages(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []int{0, 3, 7}
+	if len(images) != len(want) {
+		t.Fatalf("got %d images, want %d", len(images), len(want))
+	}
+	for i, image := range images {
+		if image["index"] != want[i] {
+			t.Errorf("images[%d].index = %v, want %d", i, image["index"], want[i])
+		}
+	}
+}

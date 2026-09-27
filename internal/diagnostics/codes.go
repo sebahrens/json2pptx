@@ -157,12 +157,22 @@ const (
 	// quoted figure ("10"), a null, or an object. The chart then renders as an
 	// empty plot with a format-error label (go-slide-creator-pcrp).
 	CodeChartValueNotNumeric Code = "CHART_VALUE_NOT_NUMERIC"
+	// CodeSemanticBridgeTotalMismatch flags a bridge whose explicit total
+	// column contradicts the running sum of the columns before it (Start 100,
+	// delta -10, End 999). The waterfall draws the authored total, so the walk
+	// is visibly wrong (go-slide-creator-csclk.47).
+	CodeSemanticBridgeTotalMismatch Code = "SEMANTIC_BRIDGE_TOTAL_MISMATCH"
 	// CodeSemanticPatternNotAvailable flags a slide's pattern / layout override
 	// that names something the kind cannot compile to. The override is a no-op
 	// — the compiler keeps its own choice — and before this code said so the
 	// deck validated clean and an agent's variation attempt vanished
 	// (go-slide-creator-u5az).
 	CodeSemanticPatternNotAvailable Code = "SEMANTIC_PATTERN_NOT_AVAILABLE"
+	// CodeSemanticReferenceUnresolved flags a slide field that refers to another
+	// part of the same slide by name or index — an option matrix's recommended
+	// option or decisive criterion, an agenda's current section — and matches
+	// nothing. The highlight or marker silently vanished before this code.
+	CodeSemanticReferenceUnresolved Code = "SEMANTIC_REFERENCE_UNRESOLVED"
 	// Deck-rhythm advisories — emitted by internal/semantic rhythm analysis over
 	// the normalized DeckIR (not per-slide authoring rules). They flag monotony
 	// and missing narrative structure before a deck is rendered.
@@ -271,7 +281,9 @@ func AllCodes() []Code {
 		CodeSemanticFieldType,
 		CodeChartSeriesLengthMismatch,
 		CodeChartValueNotNumeric,
+		CodeSemanticBridgeTotalMismatch,
 		CodeSemanticPatternNotAvailable,
+		CodeSemanticReferenceUnresolved,
 		CodeSemanticRhythmMonotony,
 		CodeSemanticRhythmDensity,
 		CodeSemanticRhythmSectioning,

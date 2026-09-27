@@ -119,6 +119,7 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 	"diagram.org_chart_depth_pruned":  briefMeta("diagram.org_chart_depth_pruned", "Org-chart levels were omitted to fit.", "The diagram renderer prunes hierarchy depth to preserve readable remaining boxes.", "Split the organization chart or reduce its depth so all required levels render.", describeSeverityReview),
 	"chart.plot_area_collapsed":       briefMeta("chart.plot_area_collapsed", "Axis labels leave too little room for the chart plot.", "Long or dense category labels consume most of the chart canvas.", "Shorten category labels or split the chart across slides.", describeSeverityReview),
 	"chart.negative_pie_slice":        briefMeta("chart.negative_pie_slice", "A pie/donut chart received negative slice values, which were excluded.", "Chart rendering drops slices below zero because a part-to-whole chart cannot show a negative share.", "Remove or correct the negative values, or use a bar or waterfall chart for signed data.", describeSeverityReview),
+	"chart.waterfall_total_mismatch":  briefMeta("chart.waterfall_total_mismatch", "A waterfall total or subtotal does not equal the running sum before it.", "Chart rendering finds an authored total/subtotal that differs from the sum of the preceding bars by more than 0.5%; the bar is drawn at the authored value.", "Correct the total, or add the missing increase/decrease step so the walk adds up.", describeSeverityReview),
 	"chart.point_out_of_range":        briefMeta("chart.point_out_of_range", "A plotted value lies outside the configured axis range.", "Chart rendering clamps a point beyond the axis minimum or maximum.", "Correct the value or extend the explicit axis range to include it.", describeSeverityReview),
 	"ACCENT_OVERLOAD":                 briefMeta("ACCENT_OVERLOAD", "Too many accent hues are visible on one slide.", "Visual QA finds more than two distinct accent hues in the rendered slide.", "Limit accent fills to the one or two hues that carry the slide's argument.", describeSeverityReview),
 	"BASELINE_MISALIGN":               briefMeta("BASELINE_MISALIGN", "Sibling panel text baselines do not align.", "Visual QA finds adjacent cards or KPI bodies starting at different visual baselines.", "Align text boxes and use consistent top insets across sibling panels.", describeSeverityReview),
@@ -145,6 +146,8 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 	"MALFORMED_XML":                   briefMeta("MALFORMED_XML", "A PPTX XML part is malformed.", "OPC validation cannot parse a package XML part.", "Regenerate or repair the malformed XML part.", describeSeverityRefuse),
 	"MISSING_CONTENT_TYPE":            briefMeta("MISSING_CONTENT_TYPE", "A PPTX part has no content type.", "OPC validation finds a part without a matching content-type declaration.", "Add the correct content-type declaration or regenerate the package.", describeSeverityRefuse),
 	"MISSING_CONTENT_TYPE_OVERRIDE":   briefMeta("MISSING_CONTENT_TYPE_OVERRIDE", "A required PPTX content-type override is absent.", "OPC validation finds a part that needs an explicit override.", "Add the missing override to [Content_Types].xml or regenerate the package.", describeSeverityRefuse),
+	"FONT_SUBSTITUTED":                briefMeta("FONT_SUBSTITUTED", "A template theme font is not installed on this host.", "Raw generation finds a theme title/body font that fit measurement must substitute; LibreOffice renders substitute their own fallback.", "Install the named font (or a metric-compatible one), or trust rendered images over fit findings for wrapping.", describeSeverityReview),
+	"DUPLICATE_SLIDE_ID":              briefMeta("DUPLICATE_SLIDE_ID", "presentation.xml repeats a slide id.", "OPC validation finds two <p:sldId> entries with the same id.", "Give every <p:sldId> a unique id or regenerate the package.", describeSeverityRefuse),
 	"DUPLICATE_ID":                    briefMeta("DUPLICATE_ID", "A slide repeats a shape identifier.", "OOXML validation finds duplicate non-visual property IDs.", "Assign unique shape IDs or regenerate the slide.", describeSeverityRefuse),
 	"EMPTY_REQUIRED_ATTR":             briefMeta("EMPTY_REQUIRED_ATTR", "A required OOXML attribute is empty.", "OOXML validation finds a mandatory attribute with no value.", "Supply the required value or regenerate the affected shape.", describeSeverityRefuse),
 	"ILLEGAL_XML_CHAR":                briefMeta("ILLEGAL_XML_CHAR", "Slide text contains an illegal XML character.", "OOXML validation finds a character forbidden by XML 1.0.", "Remove or replace the control character in the source text.", describeSeverityRefuse),
@@ -1261,6 +1264,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleAfter:  `{"categories": ["A","B"], "series": [{"name": "Revenue", "values": [1, 2]}]}`,
 		RelatedCodes:  []string{CodeChartSeriesLengthMismatch},
 	},
+	CodeSemanticBridgeTotalMismatch: {
+		Code:        CodeSemanticBridgeTotalMismatch,
+		Summary:     "A bridge total contradicts the running sum of the columns before it.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation walks a bridge's columns and finds a \"total\" column after deltas whose value differs from the running sum by more than rounding (0.5% of the larger magnitude). The waterfall draws the authored total, so the walk visibly does not add up. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Correct the total at evidence.path, or the deltas before it, so the walk adds up.",
+			"Use a \"subtotal\" column with no value to have the engine compute the running total.",
+		},
+		ExampleBefore: `{"columns": [{"label": "Start", "type": "total", "value": 100}, {"label": "Cost", "type": "delta", "value": -10}, {"label": "End", "type": "total", "value": 999}]}`,
+		ExampleAfter:  `{"columns": [{"label": "Start", "type": "total", "value": 100}, {"label": "Cost", "type": "delta", "value": -10}, {"label": "End", "type": "total", "value": 90}]}`,
+		RelatedCodes:  []string{CodeSemanticFieldType},
+	},
 	CodeSemanticPatternNotAvailable: {
 		Code:        CodeSemanticPatternNotAvailable,
 		Summary:     "A slide's pattern / layout override names a composition its kind cannot compile to, so the override is ignored.",
@@ -1274,6 +1290,19 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		ExampleBefore: `{"kind": "comparison", "pattern": "table-highlight", "columns": [...]}`,
 		ExampleAfter:  `{"kind": "comparison", "pattern": "card-grid", "columns": [...]}`,
 		RelatedCodes:  []string{CodeSemanticRhythmMonotony},
+	},
+	CodeSemanticReferenceUnresolved: {
+		Code:        CodeSemanticReferenceUnresolved,
+		Summary:     "A slide field names an option, criterion, or section that does not exist on the slide, so its highlight or marker is not drawn.",
+		Severity:    describeSeverityReview,
+		WhenEmitted: "semantic validation finds an option_matrix recommended / decisive_criterion (or their aliases) that matches no option name or criterion label and is not an in-range 0-based index, or an agenda current section that is neither an in-range 1-based number nor a section title. The slide still renders, without the highlight. Promoted to an error under strict validation.",
+		RemediationSteps: []string{
+			"Use the exact option name / criterion label / section title (case-insensitive), or an in-range index.",
+			"Or remove the reference if nothing should be highlighted.",
+		},
+		ExampleBefore: `{"kind": "agenda", "current": 9, "sections": ["Context", "Options", "Plan"]}`,
+		ExampleAfter:  `{"kind": "agenda", "current": 2, "sections": ["Context", "Options", "Plan"]}`,
+		RelatedCodes:  []string{CodeSemanticFieldType},
 	},
 	CodeSemanticRhythmMonotony: {
 		Code:        CodeSemanticRhythmMonotony,
@@ -1387,7 +1416,7 @@ func init() {
 		prefix string
 		codes  []string
 	}{
-		{"OPC_", []string{"MISSING_PART", "DANGLING_REL", "DUPLICATE_REL_ID", "MISSING_ELEMENT", "MALFORMED_XML", "MISSING_CONTENT_TYPE", "MISSING_CONTENT_TYPE_OVERRIDE"}},
+		{"OPC_", []string{"MISSING_PART", "DANGLING_REL", "DUPLICATE_REL_ID", "MISSING_ELEMENT", "MALFORMED_XML", "MISSING_CONTENT_TYPE", "MISSING_CONTENT_TYPE_OVERRIDE", "DUPLICATE_SLIDE_ID"}},
 		{"OOXML_", []string{"INVALID_COLOR", "INVALID_SCHEME", "DUPLICATE_ID", "INVALID_TABLE", "ZERO_EXTENT", "ILLEGAL_XML_CHAR", "SLIDE_COUNT_MISMATCH", "EMPTY_REQUIRED_ATTR"}},
 	} {
 		for _, base := range family.codes {

@@ -75,7 +75,7 @@ func (ov *OutputValidator) slideFallbackDPIFindings(slidePath string, slideIdx i
 	for {
 		token, err := decoder.Token()
 		if err != nil {
-			break // malformed XML is reported by the existing validator
+			break // malformed XML is reported by Validator.ValidatePartXML (OPC_MALFORMED_XML)
 		}
 		start, ok := token.(xml.StartElement)
 		if !ok || start.Name.Local != "pic" {

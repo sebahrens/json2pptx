@@ -78,7 +78,7 @@ func resolveGuardedTemplatePath(tool, argPath, rawPath, baseDir string) (string,
 	expanded, unsetVar := expandAssetPath(rawPath)
 	if unsetVar != "" {
 		return invalid(diagnostics.CodeInvalidPath,
-			fmt.Sprintf("%s %q references unset environment variable %q", argPath, rawPath, unsetVar), false)
+			fmt.Sprintf("%s %q references environment variable %q that is unset or not permitted (allowed: HOME, BRAND_ASSETS, JSON2PPTX_*)", argPath, rawPath, unsetVar), false)
 	}
 
 	// Resolve relative paths against the allowed root (baseDir).
@@ -92,7 +92,7 @@ func resolveGuardedTemplatePath(tool, argPath, rawPath, baseDir string) (string,
 	// against the real on-disk location, not a symlink that points outside.
 	resolved, err := filepath.EvalSymlinks(p)
 	if err != nil {
-		return invalid(diagnostics.CodeFileNotFound, fmt.Sprintf("%s %q: %v", argPath, rawPath, err), true)
+		return invalid(diagnostics.CodeFileNotFound, fmt.Sprintf("%s %q: %s", argPath, rawPath, pathErrReason(err)), true)
 	}
 
 	// Containment: the resolved path MUST live within baseDir. This is the
@@ -105,7 +105,7 @@ func resolveGuardedTemplatePath(tool, argPath, rawPath, baseDir string) (string,
 
 	info, err := os.Stat(resolved)
 	if err != nil {
-		return invalid(diagnostics.CodeFileNotFound, fmt.Sprintf("%s %q: %v", argPath, rawPath, err), true)
+		return invalid(diagnostics.CodeFileNotFound, fmt.Sprintf("%s %q: %s", argPath, rawPath, pathErrReason(err)), true)
 	}
 	if info.IsDir() {
 		return invalid(diagnostics.CodeInvalidParameter,
@@ -292,7 +292,7 @@ func resolveDeckTemplatePath(rawPath, jsonPath string) (string, error) {
 	}
 	expanded, unsetVar := expandAssetPath(rawPath)
 	if unsetVar != "" {
-		return "", fmt.Errorf("template_path %q references unset environment variable %q", rawPath, unsetVar)
+		return "", fmt.Errorf("template_path %q references environment variable %q that is unset or not permitted (allowed: HOME, BRAND_ASSETS, JSON2PPTX_*)", rawPath, unsetVar)
 	}
 	p := filepath.FromSlash(expanded)
 	if !filepath.IsAbs(p) && jsonPath != "" && jsonPath != "-" {
@@ -300,11 +300,11 @@ func resolveDeckTemplatePath(rawPath, jsonPath string) (string, error) {
 	}
 	abs, err := filepath.Abs(p)
 	if err != nil {
-		return "", fmt.Errorf("template_path %q: %w", rawPath, err)
+		return "", fmt.Errorf("template_path %q: %s", rawPath, pathErrReason(err))
 	}
 	info, err := os.Stat(abs)
 	if err != nil {
-		return "", fmt.Errorf("template_path %q: %w", rawPath, err)
+		return "", fmt.Errorf("template_path %q: %s", rawPath, pathErrReason(err))
 	}
 	if info.IsDir() {
 		return "", fmt.Errorf("template_path %q is a directory, not a .pptx file", rawPath)

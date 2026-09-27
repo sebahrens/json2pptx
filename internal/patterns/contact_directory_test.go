@@ -256,3 +256,16 @@ func TestContactDirectory_Recommend(t *testing.T) {
 		}
 	}
 }
+
+// A narrow area (a slim compose segment or tight bounds) must never panic:
+// it measures at the minimum headshot, steps columns down, and at worst
+// returns an error.
+func TestContactDirectory_NarrowAreaDoesNotPanic(t *testing.T) {
+	p := contactDirectoryPattern(t)
+	for _, frac := range []float64{0.03, 0.10, 0.25, 0.35, 0.45} {
+		ctx := fullThemeCtx()
+		ctx.LayoutBounds = LayoutBounds{Width: int64(11277600 * frac), Height: 5029200}
+		_, _ = p.Expand(ctx, p.(Exemplar).ExemplarValues(), nil, nil)
+		_ = p.(PostExpandWarner).PostExpandWarnings(ctx, p.(Exemplar).ExemplarValues(), nil)
+	}
+}

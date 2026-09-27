@@ -353,6 +353,42 @@ func optionMatrixIndexValue(v any, n int) (int, bool) {
 	return idx, true
 }
 
+// OptionMatrixUnresolvedReferences names each authored highlight reference
+// (recommended option / decisive criterion) that matches no option or
+// criterion, so validation can say the highlight will not render.
+func OptionMatrixUnresolvedReferences(body map[string]any) []string {
+	criteria := optionMatrixCriteria(body)
+	options := optionMatrixOptions(body, len(criteria))
+	var out []string
+	for _, field := range []string{"recommended", "recommended_option", "highlight_row"} {
+		if referencePresent(body[field]) {
+			if _, ok := optionMatrixRowIndex(map[string]any{field: body[field]}, options); !ok {
+				out = append(out, field)
+			}
+		}
+	}
+	for _, field := range []string{"decisive_criterion", "highlight_col", "highlight_column"} {
+		if referencePresent(body[field]) {
+			if _, ok := optionMatrixColIndex(map[string]any{field: body[field]}, criteria); !ok {
+				out = append(out, field)
+			}
+		}
+	}
+	return out
+}
+
+// referencePresent reports whether an authored reference carries a value: a
+// number or a non-blank string.
+func referencePresent(v any) bool {
+	switch t := v.(type) {
+	case string:
+		return strings.TrimSpace(t) != ""
+	case float64, int, json.Number:
+		return true
+	}
+	return false
+}
+
 // firstPopulatedList returns the first of names that holds a non-empty list.
 func firstPopulatedList(body map[string]any, names ...string) string {
 	for _, n := range names {

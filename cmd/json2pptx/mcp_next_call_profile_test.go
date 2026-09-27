@@ -58,8 +58,8 @@ func TestReadPresentationSubstituteKeepsThePath(t *testing.T) {
 }
 
 // patterns.AttachNextToolCalls points adopt_pattern / swap_pattern findings at
-// recommend_pattern, which core hides. The retarget pass rewrites it to
-// recommend_visual with the item count carried into content_hints.
+// recommend_visual with the item count carried into content_hints, in every
+// profile (go-slide-creator-csclk.124).
 func TestRetargetRewritesRecommendPatternForCore(t *testing.T) {
 	newFindings := func() []patterns.FitFinding {
 		return []patterns.FitFinding{{
@@ -80,9 +80,6 @@ func TestRetargetRewritesRecommendPatternForCore(t *testing.T) {
 	withToolProfile(t, toolProfileCore)
 	findings := newFindings()
 	patterns.AttachNextToolCalls(findings, slidepath.SlideIndex)
-	if got := findings[0].NextToolCall; got == nil || got.Tool != "recommend_pattern" {
-		t.Fatalf("precondition: AttachNextToolCalls should emit recommend_pattern, got %+v", got)
-	}
 	retargetUnadvertisedSuggestions(findings)
 	next := findings[0].NextToolCall
 	if next == nil {
@@ -106,8 +103,8 @@ func TestRetargetRewritesRecommendPatternForCore(t *testing.T) {
 	findings = newFindings()
 	patterns.AttachNextToolCalls(findings, slidepath.SlideIndex)
 	retargetUnadvertisedSuggestions(findings)
-	if got := findings[0].NextToolCall; got == nil || got.Tool != "recommend_pattern" {
-		t.Errorf("full profile must keep recommend_pattern, got %+v", got)
+	if got := findings[0].NextToolCall; got == nil || got.Tool != "recommend_visual" {
+		t.Errorf("full profile must also emit recommend_visual (recommend_pattern has no item_count), got %+v", got)
 	}
 }
 

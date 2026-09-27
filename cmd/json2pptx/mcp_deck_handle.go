@@ -90,6 +90,7 @@ func (s *deckHandleStore) Save(h *deckHandle) string {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	pruneTTLEntries(s.entries, s.now(), maxSessionStoreEntries, func(e deckHandleEntry) time.Time { return e.expiresAt })
 	s.entries[id] = deckHandleEntry{handle: h, expiresAt: s.now().Add(s.ttl)}
 	return id
 }
@@ -97,15 +98,23 @@ func (s *deckHandleStore) Save(h *deckHandle) string {
 // Update replaces the handle behind an existing id, keeping the id stable
 // across a patch so an agent holds one identifier for the whole session. It
 // refreshes the TTL: an actively edited deck should not expire mid-session.
-func (s *deckHandleStore) Update(id string, h *deckHandle) {
+//
+// base is the spec the caller loaded before patching. When non-nil, Update is
+// a compare-and-swap: it returns false without writing if another call has
+// replaced the spec since, so concurrent patches cannot silently drop one
+// another. An unknown id is a no-op that reports true.
+func (s *deckHandleStore) Update(id string, base []byte, h *deckHandle) bool {
 	if s == nil || id == "" || h == nil {
-		return
+		return true
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	entry, ok := s.entries[id]
 	if !ok {
-		return
+		return true
+	}
+	if base != nil && !bytes.Equal(entry.handle.Spec, base) {
+		return false
 	}
 	// Validation and explanation refresh the spec but do not choose a new
 	// template or filename. Keep the last render's metadata unless the caller
@@ -118,6 +127,7 @@ func (s *deckHandleStore) Update(id string, h *deckHandle) {
 		h.Filename = entry.handle.Filename
 	}
 	s.entries[id] = deckHandleEntry{handle: h, expiresAt: s.now().Add(s.ttl)}
+	return true
 }
 
 // Load returns the live handle for an id. An expired or unknown id (and a nil
@@ -186,6 +196,9 @@ type specSource struct {
 	// handle-driven re-render that names no template falls back to it, so
 	// patching a deck cannot silently restyle it.
 	Template string
+	// BaseSpec is the stored spec the call loaded before patching; storing
+	// the result compares against it so concurrent patches cannot be lost.
+	BaseSpec []byte
 }
 
 // resolveSpecSource returns the spec a call should act on, from whichever of
@@ -235,6 +248,7 @@ func (mc *mcpConfig) resolveSpecSource(tool string, request mcp.CallToolRequest)
 		DeckID:        rawID,
 		ChangedSlides: changed,
 		Template:      handle.Template,
+		BaseSpec:      handle.Spec,
 	}, nil
 }
 
@@ -598,7 +612,11 @@ func newDeckHandleFor(spec []byte, filename, template string) *deckHandle {
 
 // rememberDeck stores (or refreshes) the handle for a call's spec and returns
 // the id to echo. An existing id is kept so one identifier covers the session.
-func (mc *mcpConfig) rememberDeck(existingID string, spec []byte, filename, template string) string {
+// base is the stored spec the call started from (specSource.BaseSpec). It
+// reports false when another call changed the stored deck in the meantime and
+// this call's edit would overwrite it; a call that made no edit then leaves
+// the newer stored deck in place and still reports true.
+func (mc *mcpConfig) rememberDeck(existingID string, base, spec []byte, filename, template string) (string, bool) {
 	h := newDeckHandleFor(spec, filename, template)
 	if existingID != "" {
 		if filename == "" {
@@ -606,10 +624,19 @@ func (mc *mcpConfig) rememberDeck(existingID string, spec []byte, filename, temp
 			// for an existing deck omission instead means retain its name.
 			h.Filename = ""
 		}
-		mc.deckHandles.Update(existingID, h)
-		return existingID
+		if !mc.deckHandles.Update(existingID, base, h) {
+			return existingID, bytes.Equal(h.Spec, base)
+		}
+		return existingID, true
 	}
-	return mc.deckHandles.Save(h)
+	return mc.deckHandles.Save(h), true
+}
+
+// staleDeckSpecResult reports a deck_id patch that lost a race with another
+// call on the same handle.
+func staleDeckSpecResult(tool, deckID string) *mcp.CallToolResult {
+	return argInvalidValue(tool, "STALE_REVISION", "deck_id",
+		"another call changed this deck_id while this one was running, so its patch was not stored; reload with deck_id (no patch) and re-apply the edit", "string", deckID, nil)
 }
 
 // rememberRawDeck stores the effective raw presentation after defaults and

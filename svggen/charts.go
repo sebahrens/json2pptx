@@ -3273,6 +3273,13 @@ func (rc *RadarChart) Draw(data ChartData) error {
 	if maxValue == 0 {
 		maxValue = 1.0
 	}
+	if rc.config.MaxValue == 0 {
+		// Round the outer ring up to a value whose per-ring steps are clean,
+		// so ring labels read 0.02 / 0.04 … rather than 0.0 / 0.0 / 0.1
+		// (go-slide-creator-csclk.16).
+		maxValue = radarNiceMax(maxValue, rc.config.Levels)
+	}
+	rc.config.ResolveValueFormatter(chartDataValues(data), true)
 
 	angleStep := 2 * math.Pi / float64(numAxes)
 
@@ -3391,18 +3398,47 @@ func (rc *RadarChart) drawScaleLabels(centerX, centerY, radius, maxValue float64
 		labelX := centerX + xOffset
 		labelY := centerY - levelRadius
 
-		// Format label: use integer if whole number, otherwise one decimal
-		var label string
-		if value == math.Trunc(value) {
-			label = fmt.Sprintf("%.0f", value)
-		} else {
-			label = fmt.Sprintf("%.1f", value)
+		// Format through the chart's value formatter (value_format percent,
+		// compact, ...) with at least the precision one ring step needs.
+		step := maxValue / float64(rc.config.Levels)
+		if vf := rc.config.ValueFmt; vf != nil && vf.scale > 0 {
+			step *= vf.scale
 		}
+		stepDecimals := radarStepDecimals(step)
+		label := rc.config.ValueFmt.WithDecimals(stepDecimals).FormatOr(value, fmt.Sprintf("%%.%df", stepDecimals))
 
 		b.DrawText(label, labelX, labelY, TextAlignLeft, TextBaselineMiddle)
 	}
 
 	b.Pop()
+}
+
+// radarNiceMax rounds maxValue up so that each of levels rings is a multiple of
+// a 1/2/2.5/5 x 10^k step.
+func radarNiceMax(maxValue float64, levels int) float64 {
+	if levels <= 0 || maxValue <= 0 || math.IsInf(maxValue, 0) || math.IsNaN(maxValue) {
+		return maxValue
+	}
+	raw := maxValue / float64(levels)
+	mag := math.Pow(10, math.Floor(math.Log10(raw)))
+	for _, m := range []float64{1, 2, 2.5, 5, 10} {
+		if step := m * mag; step >= raw*(1-1e-9) {
+			return step * float64(levels)
+		}
+	}
+	return maxValue
+}
+
+// radarStepDecimals is the number of decimals needed to print multiples of step
+// distinctly (capped at 4).
+func radarStepDecimals(step float64) int {
+	for d := 0; d < 4; d++ {
+		p := math.Pow(10, float64(d))
+		if math.Abs(step*p-math.Round(step*p)) < 1e-6 {
+			return d
+		}
+	}
+	return 4
 }
 
 // drawAxes draws the radar axis labels.

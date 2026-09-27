@@ -13,7 +13,6 @@ package semantic
 // transport-neutral RawFinding so this package never imports the renderer.
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/diagnostics"
@@ -90,7 +89,7 @@ func MapFinding(sm *SourceMap, in RawFinding) MappedFinding {
 		// slide without a source link. Recover only their slide-level DeckSpec
 		// locator; adding a global slide-root source link would obscure more
 		// precise late-bound mappings for unrelated findings.
-		semPath = fmt.Sprintf("slides[%d]", slideIdx)
+		semPath = sm.SlidePath(slideIdx)
 	}
 	return MappedFinding{
 		Code:         in.Code,

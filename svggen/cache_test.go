@@ -737,3 +737,29 @@ func TestRenderCache_EvictListConsistency(t *testing.T) {
 			mapSize, listSize, indexSize)
 	}
 }
+
+// TestRenderCache_MaxBytes pins go-slide-creator-csclk.78: the cache is
+// bounded by retained bytes, not only by entry count.
+func TestRenderCache_MaxBytes(t *testing.T) {
+	cache := NewRenderCache(CacheConfig{
+		TTL:             1 * time.Minute,
+		MaxEntries:      100,
+		MaxBytes:        1000,
+		CleanupInterval: 1 * time.Minute,
+	})
+	defer cache.Stop()
+
+	for i := 0; i < 5; i++ {
+		req := &RequestEnvelope{Type: "chart", Data: map[string]any{"id": float64(i)}}
+		cache.Set(req, &RenderResult{Format: "png", PNG: make([]byte, 400)})
+	}
+	if stats := cache.Stats(); stats.TotalBytes > 1000 || stats.Entries != 2 {
+		t.Errorf("Stats() = %+v, want <= 1000 bytes in 2 entries", stats)
+	}
+
+	big := &RequestEnvelope{Type: "chart", Data: map[string]any{"id": "big"}}
+	cache.Set(big, &RenderResult{Format: "png", PNG: make([]byte, 2000)})
+	if cache.Get(big) != nil {
+		t.Error("a result larger than MaxBytes was cached")
+	}
+}

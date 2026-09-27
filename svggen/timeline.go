@@ -301,6 +301,7 @@ func (tc *TimelineChart) Draw(data TimelineData) error {
 	if timeUnit == "" {
 		timeUnit = tc.detectTimeUnit(dateRange)
 	}
+	timeUnit = coarsenTimeUnit(tc.builder, dateRange, timeUnit)
 
 	// Assign rows to activities
 	rowAssignments := tc.assignRows(data.Activities, dateRange, plotArea)
@@ -1449,6 +1450,66 @@ func (tc *TimelineChart) drawTimeAxis(dateRange timelineRange, timeUnit string, 
 	b.Pop()
 }
 
+// maxTimeAxisTicks bounds the time-axis tick count. An authored time_unit
+// (e.g. "day") over a very long range produced one tick per step — millions of
+// ticks, seconds of CPU and a multi-megabyte SVG (go-slide-creator-csclk.80).
+const maxTimeAxisTicks = 200
+
+// timeUnitApproxDays is the approximate length of one time unit in days.
+var timeUnitApproxDays = map[string]float64{
+	"day": 1, "week": 7, "month": 30.44, "quarter": 91.31, "year": 365.25,
+}
+
+// coarsenTimeUnit returns timeUnit, or the first coarser unit whose tick count
+// over dateRange fits maxTimeAxisTicks. When it changes the unit it records a
+// chart.tick_thinned finding on b. Ranges too long even for "year" are thinned
+// further by generateTimeTicks.
+func coarsenTimeUnit(b *SVGBuilder, dateRange timelineRange, timeUnit string) string {
+	start, end := dateRange.start, dateRange.end
+	if !dateRange.dataStart.IsZero() {
+		start, end = dateRange.dataStart, dateRange.dataEnd
+	}
+	spanDays := end.Sub(start).Hours() / 24
+	if end.Year()-start.Year() > 250 {
+		// time.Duration saturates at ~292 years; use calendar years.
+		spanDays = float64(end.Year()-start.Year()) * 365.25
+	}
+	order := []string{"day", "week", "month", "quarter", "year"}
+	idx := -1
+	for i, u := range order {
+		if u == timeUnit {
+			idx = i
+		}
+	}
+	if idx < 0 {
+		// Unknown units advance one day per tick (advanceTimeUnit default).
+		if spanDays <= maxTimeAxisTicks {
+			return timeUnit
+		}
+		idx = 0
+	}
+	chosen := timeUnit
+	for i := idx; i < len(order); i++ {
+		chosen = order[i]
+		if spanDays/timeUnitApproxDays[chosen] <= maxTimeAxisTicks {
+			break
+		}
+	}
+	if chosen != timeUnit && b != nil {
+		b.AddFinding(Finding{
+			Field:    "time_unit",
+			Code:     FindingTickThinned,
+			Message:  fmt.Sprintf("time_unit %q would draw more than %d axis ticks over this date range; coarsened to %q", timeUnit, maxTimeAxisTicks, chosen),
+			Severity: "info",
+			Fix: &FixSuggestion{
+				Kind:   FixKindReduceItems,
+				Params: map[string]any{"requested_time_unit": timeUnit, "applied_time_unit": chosen, "max_ticks": maxTimeAxisTicks},
+			},
+		})
+	}
+	return chosen
+}
+
 // generateTimeTicks generates tick marks for the time axis.
 // Ticks are limited to the unpadded data range so padding doesn't
 // introduce extra labels beyond the actual data boundaries.
@@ -1463,10 +1524,23 @@ func (tc *TimelineChart) generateTimeTicks(dateRange timelineRange, timeUnit str
 		tickEnd = dateRange.dataEnd
 	}
 
+	// Years per tick: only >1 for a "year" axis whose range still exceeds
+	// maxTimeAxisTicks after coarsenTimeUnit.
+	yearStride := 1
+	if timeUnit == "year" {
+		if years := tickEnd.Year() - tickStart.Year() + 1; years > maxTimeAxisTicks {
+			yearStride = (years + maxTimeAxisTicks - 1) / maxTimeAxisTicks
+		}
+	}
+
 	current := tc.roundToTimeUnit(tickStart, timeUnit)
 	for current.Before(tickEnd) || current.Equal(tickEnd) {
 		if current.After(tickStart) || current.Equal(tickStart) {
 			ticks = append(ticks, current)
+		}
+		if yearStride > 1 {
+			current = current.AddDate(yearStride, 0, 0)
+			continue
 		}
 		current = tc.advanceTimeUnit(current, timeUnit)
 	}
@@ -1586,6 +1660,43 @@ func (d *Timeline) Validate(req *RequestEnvelope) error {
 	if !hasActivities && !hasItems && !hasPhases && !hasMilestones {
 		return fmt.Errorf("timeline requires 'activities', 'events', 'items', 'phases', or 'milestones' in data. Expected: {\"activities\": [{\"name\": \"Phase 1\", \"start\": \"2024-01\", \"end\": \"2024-03\"}]} or {\"milestones\": [{\"name\": \"Launch\", \"date\": \"2024-06\"}]}")
 	}
+	return validateTimelineDates(req.Data)
+}
+
+// validateTimelineDates rejects explicit start/end dates that do not parse
+// (they were silently dropped and the bar drawn from a zero date) and an end
+// before its start (drawn off-canvas). Descriptive text in "date" and dateless
+// entries stay allowed: they are auto-spaced (go-slide-creator-csclk.9).
+func validateTimelineDates(data map[string]any) error {
+	for _, key := range []string{"activities", "items", "phases", "milestones"} {
+		entries, ok := toAnySlice(data[key])
+		if !ok {
+			continue
+		}
+		for i, raw := range entries {
+			entry, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			what := fmt.Sprintf("timeline %s %d", key, i+1)
+			startKey, start, err := ganttDateField(entry, what, "start_date", "start")
+			if err != nil {
+				return err
+			}
+			endKey, end, err := ganttDateField(entry, what, "end_date", "end")
+			if err != nil {
+				return err
+			}
+			if endKey != "" && startKey == "" {
+				if _, hasDate := entry["date"]; !hasDate {
+					return fmt.Errorf("%s has %s but no start_date", what, endKey)
+				}
+			}
+			if startKey != "" && endKey != "" && end.Before(start) {
+				return fmt.Errorf("%s %s is before %s", what, endKey, startKey)
+			}
+		}
+	}
 	return nil
 }
 
@@ -1639,6 +1750,9 @@ func (d *Timeline) RenderWithBuilder(req *RequestEnvelope) (*SVGBuilder, *SVGDoc
 
 // parseTimelineData parses the request data into TimelineData.
 func parseTimelineData(req *RequestEnvelope) (TimelineData, error) {
+	if err := validateTimelineDates(req.Data); err != nil {
+		return TimelineData{}, err
+	}
 	data := TimelineData{
 		Title:    req.Title,
 		Subtitle: req.Subtitle,

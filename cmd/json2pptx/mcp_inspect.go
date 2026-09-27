@@ -170,6 +170,13 @@ func (mc *mcpConfig) handleInspectSlideImages(ctx context.Context, request mcp.C
 		report = geometry
 	}
 	report.Template = template
+	// results[].findings is declared as an array; a nil slice marshals to null
+	// (go-slide-creator-csclk.122).
+	for ri := range report.Results {
+		if report.Results[ri].Findings == nil {
+			report.Results[ri].Findings = []visualqa.Finding{}
+		}
+	}
 
 	failedSlides, inspectionStatus := inspectionFailureStats(report)
 	output := inspectOutput{

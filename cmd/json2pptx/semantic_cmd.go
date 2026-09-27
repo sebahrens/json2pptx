@@ -533,7 +533,7 @@ func runSemanticRender() error { //nolint:gocognit // Orchestrates validation, c
 		// have no base directory (mirrors generate's jsonPath != "-" guard).
 		if *specPath != "-" {
 			baseDir := validateBaseDir(*specPath, "")
-			assetFindings := resolveLocalAssetPaths(input.Slides, baseDir)
+			assetFindings := resolveLocalAssetPaths(input.Slides, baseDir, imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir)...)
 			if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
 				return assetErr
 			}
@@ -773,6 +773,11 @@ func semanticDiagFromFit(sm *semantic.SourceMap, f patterns.FitFinding) semantic
 		Action:          mapped.Action,
 		RecommendedEdit: mapped.Edit,
 	}
+	// A review finding the quality gate blocks on must not read as "info":
+	// agents skim severity to decide what to fix before deterministic_ready.
+	if deterministic.IsSubstantiveReview(f) && d.Severity == string(diagnostics.SeverityInfo) {
+		d.Severity = string(diagnostics.SeverityWarning)
+	}
 	if mapped.SlideIndex >= 0 {
 		idx := mapped.SlideIndex
 		d.SlideIndex = &idx
@@ -796,7 +801,28 @@ func semanticDiagFromFitWithIR(sm *semantic.SourceMap, ir *semantic.DeckIR, f pa
 		return d
 	}
 	slide := ir.Slides[idx]
-	if slide.Kind != semantic.KindMatrix2x2 || slide.Visual.Pattern != "matrix-2x2" || slide.SourcePath == "" {
+	if slide.SourcePath == "" {
+		return d
+	}
+	if slide.Kind != semantic.KindMatrix2x2 || slide.Visual.Pattern != "matrix-2x2" {
+		// Other kinds: attribute the shape to the one top-level string field
+		// that carries exactly this text (e.g. a bridge caption); anything
+		// ambiguous stays unmapped rather than guessed.
+		if slide.Title == text || slide.Takeaway == text {
+			return d
+		}
+		var only string
+		for field, v := range slide.Body {
+			if s, ok := v.(string); ok && s == text {
+				if only != "" {
+					return d
+				}
+				only = field
+			}
+		}
+		if only != "" {
+			d.SemanticPath = slide.SourcePath + "." + only
+		}
 		return d
 	}
 	var matched string
@@ -972,6 +998,22 @@ func semanticQualityScorePtr(input *PresentationInput, fit []patterns.FitFinding
 	// it first, and "100" on a deck the gate rejects is the failure this fixes.
 	if float64(ds.OverallScore) < q.Score {
 		q.Score = float64(ds.OverallScore)
+	}
+	// The per-slide breakdown takes the same structural deductions, so a
+	// one-slide deck cannot read 75 overall and 100 for its only slide.
+	for i := range q.SlideScores {
+		if i >= len(ds.PerSlide) {
+			break
+		}
+		ps := ds.PerSlide[i]
+		if float64(ps.Score) < q.SlideScores[i].Score {
+			q.SlideScores[i].Score = float64(ps.Score)
+		}
+		for _, f := range ps.Findings {
+			if f.Code != "" && ps.Score < 100 {
+				q.SlideScores[i].Issues = append(q.SlideScores[i].Issues, f.Code)
+			}
+		}
 	}
 	return q
 }

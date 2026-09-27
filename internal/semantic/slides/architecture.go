@@ -149,11 +149,13 @@ func archTierDescription(tier map[string]any) string {
 	}
 	var parts []string
 	for _, item := range items {
-		switch v := item.(type) {
-		case string:
-			if s := strings.TrimSpace(v); s != "" {
+		if s, ok := scalarText(item); ok {
+			if s != "" {
 				parts = append(parts, s)
 			}
+			continue
+		}
+		switch v := item.(type) {
 		case map[string]any:
 			if s := firstNonEmpty(strField(v, "label"), strField(v, "name"), strField(v, "title"), strField(v, "text")); s != "" {
 				parts = append(parts, s)

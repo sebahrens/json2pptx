@@ -1384,14 +1384,29 @@ func collectGridOccupancyFindings(input *PresentationInput) []patterns.FitFindin
 			recMax = patternRecommendedMax[patternName]
 		}
 		if recMax > 0 {
+			crowdSlots := filledSlots
+			// comparison-2col's connectors mode inserts a centre gutter column
+			// holding one badge (or an empty spacer) per row. Those are not
+			// content cells; count only the left/right items.
+			if patternName == "comparison-2col" && numCols == 3 {
+				crowdSlots -= len(grid.Rows)
+			}
 			if f := generator.DetectPatternOvercrowded(generator.GridOccupancyInput{
 				SlideIndex:     si,
 				Path:           path,
 				PatternName:    patternName,
-				FilledSlots:    filledSlots,
+				FilledSlots:    crowdSlots,
 				TotalSlots:     totalSlots,
 				RecommendedMax: recMax,
 			}); f != nil {
+				// first/second count grid cells, but repair_slide splits a
+				// pattern slide by its values array, reading first as an item
+				// index. Omit them so repair halves the list
+				// (go-slide-creator-csclk.126).
+				if slide.Pattern != nil && f.Fix != nil {
+					delete(f.Fix.Params, "first")
+					delete(f.Fix.Params, "second")
+				}
 				findings = append(findings, *f)
 			}
 		}

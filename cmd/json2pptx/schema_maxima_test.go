@@ -440,7 +440,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"card-grid":                    2.4,
 	"chart-insights-split":         6.2,
 	"comparison-2col":              4.2,
-	"contact-directory":            4.2, // Still refused by the generated-font floor; not a readable schema budget.
+	"contact-directory":            5.6, // Still refused by the generated-font floor; not a readable schema budget.
 	"driver-tree":                  4.1,
 	"dual-org-ladder":              7.0,
 	"exec-summary":                 7.2,
@@ -466,10 +466,11 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"process-flow":         0,
 	"process-flow-compact": 9.1,
 	// Optional column_headers + outcomes rows (go-slide-creator-s1uvj.10) take
-	// height from the two tracks; at the all-"W" schema maximum the 40-char row
-	// labels in the 12% label column then autofit to ~10.4pt. Without the
-	// extra rows the maximum still renders with nothing below the floor.
-	"process-grid-2row": 10.4,
+	// height from the two tracks; the 40-char row labels in the 12% label
+	// column used to autofit to ~10.4pt at 14pt. The labels now step down to
+	// 12pt so no word breaks (go-slide-creator-csclk.113), and the maximum
+	// renders with nothing below the floor.
+	"process-grid-2row": 0,
 	// A long italic quote is prose, not a KPI value. With the 12pt prose floor,
 	// the schema-maximum quote remains readable beside its optional headshot;
 	// genuine sub-12pt shrink still produces a finding (tp23k.2).

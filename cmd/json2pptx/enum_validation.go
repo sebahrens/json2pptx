@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/diagnostics"
 	"github.com/sebahrens/json2pptx/internal/generator"
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/layout"
@@ -53,7 +54,36 @@ func checkDeckEnumValues(input *PresentationInput) []*patterns.ValidationError {
 			errs = append(errs, err)
 		}
 	}
-	return append(errs, checkThemeOverrideColors(input.ThemeOverride)...)
+	errs = append(errs, checkThemeOverrideColors(input.ThemeOverride)...)
+	return append(errs, checkThemeOverrideFonts(input.ThemeOverride)...)
+}
+
+// checkThemeOverrideFonts rejects theme_override font names carrying control
+// characters. They are written into the theme part's typeface attribute, and
+// XML 1.0 cannot represent U+0000-U+001F (bar TAB/LF/CR) at all, so the
+// result was an ill-formed theme1.xml while validate reported VALID
+// (go-slide-creator-csclk.4).
+func checkThemeOverrideFonts(override *ThemeInput) []*patterns.ValidationError {
+	if override == nil {
+		return nil
+	}
+	var errs []*patterns.ValidationError
+	for _, f := range []struct{ key, value string }{
+		{"title_font", override.TitleFont},
+		{"body_font", override.BodyFont},
+	} {
+		if !strings.ContainsFunc(f.value, generator.IsFontNameControlRune) {
+			continue
+		}
+		path := "theme_override/" + f.key
+		errs = append(errs, &patterns.ValidationError{
+			Pattern: "input",
+			Path:    path,
+			Code:    string(diagnostics.CodeInvalidParameter),
+			Message: fmt.Sprintf("invalid font name %q for %s: control characters cannot be written into the theme part", f.value, path),
+		})
+	}
+	return errs
 }
 
 // checkThemeOverrideColors rejects theme_override colours that are not six

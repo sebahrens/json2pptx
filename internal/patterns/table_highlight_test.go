@@ -204,6 +204,11 @@ func TestTableHighlight_ExpandStructure(t *testing.T) {
 	if leg.ColSpan != 5 || leg.Grid == nil || len(leg.Grid.Rows[0].Cells) < 6 {
 		t.Errorf("legend cell = %+v", leg)
 	}
+	// The exemplar scores a quarter ball, so the legend lists all five levels
+	// (go-slide-creator-csclk.100).
+	if thHarveyUsesQuarters(v) && leg.Grid != nil && len(leg.Grid.Rows[0].Cells) < 10 {
+		t.Errorf("legend with quarter scores has %d cells, want >= 10 (five symbol/label pairs)", len(leg.Grid.Rows[0].Cells))
+	}
 }
 
 func TestTableHighlight_HarveySVGLevels(t *testing.T) {

@@ -190,6 +190,10 @@ func TestDetectMixedFillScheme_Positive(t *testing.T) {
 	for _, w := range warnings {
 		if errors.Is(w, patterns.ErrMixedFillScheme) {
 			found = true
+			// repair_slide requires value; the fix must be applicable as emitted.
+			if w.Fix == nil || w.Fix.Params["value"] != "accent1" {
+				t.Errorf("use_semantic_color fix must carry value accent1, got %+v", w.Fix)
+			}
 			break
 		}
 	}
@@ -288,11 +292,30 @@ func TestDetectStructuralSmells_EmptyGrid(t *testing.T) {
 
 // --- Error code verification ---
 
+// Nested cell sub-grids are author-controlled too: the same stacked-table /
+// thin-gap grid must be flagged when nested (go-slide-creator-csclk.8).
+func TestDetectStructuralSmells_NestedGrid(t *testing.T) {
+	inner := makeGrid(tableRow(tableCell()), tableRow(tableCell()))
+	inner.RowGap = 1
+	outer := makeGrid(tableRow(&jsonschema.GridCellInput{Grid: inner}))
+
+	got := map[string]bool{}
+	for _, w := range DetectStructuralSmells(outer, 0) {
+		got[w.Code+"@"+w.Path] = true
+	}
+	nested := "/slides/0/shape_grid/rows/0/cells/0/grid/rows/0:1"
+	for _, code := range []string{patterns.ErrCodeStackedTables, patterns.ErrCodeDividerTooThin} {
+		if !got[code+"@"+nested] {
+			t.Errorf("missing %s at %s; got %v", code, nested, got)
+		}
+	}
+}
+
 func TestStructuralSmellErrorCodes(t *testing.T) {
 	// Stacked tables
 	grid := makeGrid(tableRow(tableCell()), tableRow(tableCell()))
 	grid.RowGap = 1.0
-	warnings := detectStackedTables(grid, 0)
+	warnings := detectStackedTables(grid, "/slides/0/shape_grid", 0)
 	if len(warnings) == 0 {
 		t.Fatal("expected stacked_tables warning")
 	}
@@ -303,7 +326,7 @@ func TestStructuralSmellErrorCodes(t *testing.T) {
 	// Divider too thin (gap)
 	grid2 := makeGrid(tableRow(emptyShapeCell()), tableRow(emptyShapeCell()))
 	grid2.RowGap = 1.0
-	warnings2 := detectDividerTooThin(grid2, 0)
+	warnings2 := detectDividerTooThin(grid2, "/slides/0/shape_grid", 0)
 	if len(warnings2) == 0 {
 		t.Fatal("expected divider_too_thin warning")
 	}

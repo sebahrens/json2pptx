@@ -130,6 +130,9 @@ func TestAllToolOutputSchemasAdmitTheErrorEnvelope(t *testing.T) {
 			t.Errorf("%s: output schema is not valid JSON: %v", name, err)
 			continue
 		}
+		if root["type"] != "object" {
+			t.Errorf("%s: output schema root must be type object (MCP Tool.outputSchema), got %v", name, root["type"])
+		}
 		branches, ok := root["anyOf"].([]any)
 		if !ok || len(branches) != 2 {
 			t.Errorf("%s: output schema does not admit the error envelope (no two-branch anyOf) — wrap it with withErrorEnvelope", name)

@@ -724,7 +724,30 @@ func (m *geomMeasurer) widthPt(s string, sizePt float64, bold bool) float64 {
 		style = canvas.FontBold
 	}
 	face := m.family.Face(sizePt, color.Black, style, canvas.FontNormal) // Face takes points; TextWidth returns mm
-	return face.TextWidth(s) * mmToPt
+	return safeTextWidthMM(face, s, sizePt) * mmToPt
+}
+
+// safeTextWidthMM measures s with face.TextWidth, which shapes without
+// itemising by script: harfbuzz guesses RTL for Arabic/Hebrew while canvas
+// slices clusters as LTR and panics (go-slide-creator-csclk.42). On a panic it
+// falls back to canvas.NewTextLine, which itemises and shapes RTL runs with an
+// explicit direction, and finally to a coarse per-rune estimate.
+func safeTextWidthMM(face *canvas.FontFace, s string, sizePt float64) (w float64) {
+	defer func() {
+		if recover() != nil {
+			w = textLineWidthMM(face, s, sizePt)
+		}
+	}()
+	return face.TextWidth(s)
+}
+
+func textLineWidthMM(face *canvas.FontFace, s string, sizePt float64) (w float64) {
+	defer func() {
+		if recover() != nil {
+			w = 0.55 * sizePt * float64(len([]rune(s))) / mmToPt
+		}
+	}()
+	return canvas.NewTextLine(face, s, canvas.Left).Bounds().W()
 }
 
 // widestWord returns the widest whitespace-delimited word across paragraphs.

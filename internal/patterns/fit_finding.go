@@ -414,15 +414,42 @@ func RepairToolCall(slideIdx int, fix *FixSuggestion) *ToolCallSuggestion {
 	}
 }
 
-// RecommendToolCall builds a ToolCallSuggestion for the recommend_pattern tool.
+// RecommendToolCall builds a ToolCallSuggestion for the recommend_visual tool.
 // Used when a finding suggests adopting or switching patterns.
+//
+// recommend_pattern requires intent and has no item_count parameter, so the old
+// {tool: recommend_pattern, args: {item_count}} suggestion failed with
+// INPUT.UNKNOWN_PARAMETER in every profile that did not rewrite it
+// (go-slide-creator-csclk.124). recommend_visual is in every profile and takes
+// the count as a content hint.
+// A non-positive itemCount (unknown) is left out of content_hints rather than
+// sent as a misleading 0.
 func RecommendToolCall(itemCount int) *ToolCallSuggestion {
+	hints := map[string]any{}
+	if itemCount > 0 {
+		hints["item_count"] = itemCount
+	}
 	return &ToolCallSuggestion{
-		Tool: "recommend_pattern",
+		Tool: "recommend_visual",
 		ArgsTemplate: map[string]any{
-			"item_count": itemCount,
+			"intent":        "<one sentence: what this slide should show>",
+			"content_hints": hints,
 		},
 	}
+}
+
+// FixItemCount returns the item count a pattern-swap fix carries in its params
+// (item_count, else filled_slots), or 0 when it carries none.
+func FixItemCount(fix *FixSuggestion) int {
+	if fix == nil {
+		return 0
+	}
+	for _, key := range []string{"item_count", "filled_slots"} {
+		if n, ok := fix.Params[key].(int); ok {
+			return n
+		}
+	}
+	return 0
 }
 
 // SortCanonical sorts findings in place into the canonical serialization order:
@@ -472,18 +499,10 @@ func AttachNextToolCalls(findings []FitFinding, slideIndexFn func(string) int) {
 		slideIdx := slideIndexFn(f.Path)
 
 		switch f.Fix.Kind {
-		case "adopt_pattern":
-			// Extract item count from params if available.
-			itemCount := 0
-			if n, ok := f.Fix.Params["filled_slots"].(int); ok {
-				itemCount = n
-			}
-			f.NextToolCall = RecommendToolCall(itemCount)
-		case "swap_pattern":
-			// swap_pattern suggests switching to a different pattern — point
-			// to recommend_pattern for the agent to pick the right one.
-			itemCount := 0
-			f.NextToolCall = RecommendToolCall(itemCount)
+		case "adopt_pattern", "swap_pattern":
+			// Adopting or switching patterns — point to recommend_visual for
+			// the agent to pick the right one.
+			f.NextToolCall = RecommendToolCall(FixItemCount(f.Fix))
 		default:
 			f.NextToolCall = RepairToolCall(slideIdx, f.Fix)
 		}

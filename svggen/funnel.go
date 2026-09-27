@@ -684,6 +684,30 @@ func (d *FunnelDiagram) Validate(req *RequestEnvelope) error {
 		return fmt.Errorf("funnel chart requires 'values', 'stages', or 'points' array in data. Expected: {\"values\": [{\"label\": \"Leads\", \"value\": 1000}, {\"label\": \"Converted\", \"value\": 200}]}")
 	}
 
+	if data, err := parseFunnelData(req); err == nil {
+		return validateFunnelNonNegative(data)
+	}
+	return nil
+}
+
+// validateFunnelNonNegative rejects negative stage values: a negative width
+// inverts its trapezoid into a self-intersecting bow-tie labelled with a
+// negative share (go-slide-creator-csclk.7).
+func validateFunnelNonNegative(data FunnelData) error {
+	for i, p := range data.Points {
+		if p.Value < 0 {
+			label := p.Label
+			if label == "" {
+				label = fmt.Sprintf("stage %d", i+1)
+			}
+			return &ValidationError{
+				Field:   fmt.Sprintf("data.values[%d]", i),
+				Code:    ErrCodeConstraint,
+				Message: fmt.Sprintf("funnel_chart stage values must be >= 0 (%q is %v); a funnel cannot draw a negative stage — show losses as a separate stage count or use a waterfall", label, p.Value),
+				Value:   p.Value,
+			}
+		}
+	}
 	return nil
 }
 
@@ -814,6 +838,10 @@ func parseFunnelData(req *RequestEnvelope) (FunnelData, error) {
 		}
 	} else {
 		return data, fmt.Errorf("invalid funnel data format")
+	}
+
+	if err := validateFunnelNonNegative(data); err != nil {
+		return data, err
 	}
 
 	// Parse footnote

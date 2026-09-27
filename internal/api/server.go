@@ -53,6 +53,10 @@ type ServerConfig struct {
 	// these roots (config Images.AllowedBasePaths / ALLOWED_IMAGE_PATHS).
 	// Empty means unrestricted apart from the traversal check.
 	AllowedImagePaths []string
+	// MaxSlidesPerRequest caps slides per /convert request (0 = default).
+	MaxSlidesPerRequest int
+	// MaxConcurrentConverts bounds concurrent /convert requests (0 = default).
+	MaxConcurrentConverts int
 }
 
 // NewServer creates a new API server with all handlers configured.
@@ -66,6 +70,7 @@ func NewServer(cfg ServerConfig) *Server {
 	convertService := NewConvertService(cfg.TemplatesDir, cfg.OutputDir, templateService, conversionPipeline)
 	convertService.SetFileRetention(cfg.FileRetention)
 	convertService.SetAllowedImagePaths(cfg.AllowedImagePaths)
+	convertService.SetLimits(cfg.MaxSlidesPerRequest, cfg.MaxConcurrentConverts)
 	healthHandler := NewHealthHandler(cfg.Logger, HealthConfig{
 		Version:   cfg.Version,
 		CommitSHA: cfg.CommitSHA,

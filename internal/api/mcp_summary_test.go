@@ -243,3 +243,30 @@ func TestModernMCPTextSummaryBoundsEscapedJSON(t *testing.T) {
 		t.Errorf("escaped synopsis lost failure status or error: %s", text)
 	}
 }
+
+// generate_presentation's synopsis must carry output_path and its fit_findings
+// (go-slide-creator-csclk.128).
+func TestModernMCPTextSummaryKeepsOutputPathAndFitFindings(t *testing.T) {
+	withMode(t, TextFallbackAuto)
+	ctx := ctxForSession("modern-generate-summary")
+	RecordProtocolVersion(ctx, "2025-06-18")
+	t.Cleanup(func() { ForgetProtocolVersion(ctx) })
+	payload := map[string]any{
+		"success": true, "deck_id": "deck_1", "output_path": "/tmp/out/deck.pptx",
+		"fit_findings": []map[string]any{{"code": "DECK_MONOTONY", "message": "vary the patterns"}},
+	}
+	result, err := MCPSuccessResult(ctx, payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var summary map[string]any
+	if err := json.Unmarshal([]byte(result.Content[0].(mcp.TextContent).Text), &summary); err != nil {
+		t.Fatal(err)
+	}
+	if summary["output_path"] != "/tmp/out/deck.pptx" {
+		t.Errorf("synopsis output_path = %v", summary["output_path"])
+	}
+	if summary["fit_findings_count"] != float64(1) {
+		t.Errorf("synopsis fit_findings_count = %v, want 1", summary["fit_findings_count"])
+	}
+}

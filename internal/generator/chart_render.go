@@ -262,7 +262,10 @@ func diagramSpecToSVGGen(spec *types.DiagramSpec, themeColors []types.ThemeColor
 	if surface != "" {
 		style.Surface = surface
 	}
-	if isSVGChartType(spec.Type) {
+	// org_chart draws translucent node fills and thin connectors like a chart,
+	// so an lt1 canvas paints an opaque slab over tinted slides
+	// (go-slide-creator-csclk.91).
+	if isSVGChartType(spec.Type) || spec.Type == "org_chart" {
 		style.Background = "transparent"
 	} else if bg != "" {
 		style.Background = bg

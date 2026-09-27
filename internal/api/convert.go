@@ -43,7 +43,17 @@ type ConvertService struct {
 	// allowedImagePaths restricts local image paths (ALLOWED_IMAGE_PATHS).
 	// Empty means unrestricted apart from the traversal check.
 	allowedImagePaths []string
+	// maxSlides caps the slides accepted per request.
+	maxSlides int
+	// convertSem bounds concurrent conversions server-wide.
+	convertSem chan struct{}
 }
+
+// DefaultMaxSlidesPerRequest caps the number of slides in one convert request.
+const DefaultMaxSlidesPerRequest = 500
+
+// DefaultMaxConcurrentConverts bounds concurrent convert requests server-wide.
+const DefaultMaxConcurrentConverts = 4
 
 // NewConvertService creates a new convert service.
 func NewConvertService(templatesDir, outputDir string, templateAnalyzer TemplateAnalyzer, p pipeline.Pipeline) *ConvertService {
@@ -52,6 +62,19 @@ func NewConvertService(templatesDir, outputDir string, templateAnalyzer Template
 		outputDir:        outputDir,
 		templateAnalyzer: templateAnalyzer,
 		pipeline:         p,
+		maxSlides:        DefaultMaxSlidesPerRequest,
+		convertSem:       make(chan struct{}, DefaultMaxConcurrentConverts),
+	}
+}
+
+// SetLimits configures the per-request slide cap and the server-wide
+// concurrent-convert limit. Non-positive values keep the defaults.
+func (cs *ConvertService) SetLimits(maxSlides, maxConcurrent int) {
+	if maxSlides > 0 {
+		cs.maxSlides = maxSlides
+	}
+	if maxConcurrent > 0 {
+		cs.convertSem = make(chan struct{}, maxConcurrent)
 	}
 }
 
@@ -102,6 +125,18 @@ func (cs *ConvertService) ConvertHandler() http.HandlerFunc {
 					"Content-Type must be application/json", nil)
 				return
 			}
+		}
+
+		// Bound concurrent conversions so a few large requests cannot
+		// exhaust CPU and memory; excess requests are rejected, not queued.
+		select {
+		case cs.convertSem <- struct{}{}:
+			defer func() { <-cs.convertSem }()
+		default:
+			w.Header().Set("Retry-After", "5")
+			writeError(w, http.StatusServiceUnavailable, apierrors.CodeRateLimited,
+				"Too many concurrent conversions; retry later", nil)
+			return
 		}
 
 		// Parse and validate request
@@ -269,6 +304,12 @@ func (cs *ConvertService) parseAndValidateRequest(w http.ResponseWriter, r *http
 	if len(req.Slides) == 0 {
 		writeError(w, http.StatusBadRequest, apierrors.CodeInvalidRequest,
 			"At least one slide is required", map[string]interface{}{"field": "slides"})
+		return nil, "", fmt.Errorf("validation failed")
+	}
+	if cs.maxSlides > 0 && len(req.Slides) > cs.maxSlides {
+		writeError(w, http.StatusBadRequest, apierrors.CodeInvalidRequest,
+			fmt.Sprintf("Request has %d slides; the maximum is %d", len(req.Slides), cs.maxSlides),
+			map[string]interface{}{"field": "slides", "max_slides": cs.maxSlides})
 		return nil, "", fmt.Errorf("validation failed")
 	}
 	if req.Template == "" {

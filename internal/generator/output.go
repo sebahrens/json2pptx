@@ -720,6 +720,12 @@ func (ctx *singlePassContext) writeSingleSlide(slideNum int, slide *slideXML) er
 		// Some templates include static brand-mark text shapes in layouts
 		// that overlap with the footer's left text zone.
 		slide = removeDuplicateFooterBrandMark(slide, ctx.footerConfig.LeftText, ctx.slideHeight)
+	} else if ctx.footerConfig != nil && ctx.footerConfig.Enabled {
+		// The deck's own footer is suppressed on this slide (title/closing):
+		// the template's literal footer text ("Confidential 2024") must not
+		// show here while every other slide carries the deck footer
+		// (go-slide-creator-csclk.89).
+		slide = removeFooterPlaceholders(slide)
 	} else {
 		slide = removeEmptyFooterPlaceholders(slide)
 	}

@@ -59,14 +59,6 @@ var knownFitDocDrift = map[string]string{
 	"chart.overflow_suppressed":    "chart code, documented in SKILL.md only",
 	"chart.scatter_label_skipped":  "chart code, documented in SKILL.md only",
 	"chart.zero_sum_pie":           "chart code, documented in SKILL.md only",
-	// Render-time codes — documented in SKILL.md table but missing from
-	// FIT_FINDINGS.md.
-	"column_width_deficit":         "render-time code, SKILL.md only",
-	"hex_fill_non_brand":           "validation code also used in fit report",
-	"no_autofit_overflow":          "render-time code, SKILL.md only",
-	"pagination_default_threshold": "render-time code, SKILL.md only",
-	"table_font_scaled":            "render-time code, SKILL.md only",
-	"text_overflow":                "render-time code, SKILL.md only",
 }
 
 // ---------------------------------------------------------------------------

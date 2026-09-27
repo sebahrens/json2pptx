@@ -112,7 +112,7 @@ var teamMemberKeys = []string{
 	"name", "title", "person",
 	"role", "position", "job_title",
 	"bio", "description", "summary",
-	"photo_label", "initials",
+	"photo_label", "initials", "photo",
 }
 
 // agendaSectionKeys are the keys an agenda section object may carry.
@@ -328,7 +328,7 @@ var kindPayloadFields = map[SlideKind]map[string]payloadField{
 		"takeaway": strField("One-line takeaway footer."),
 		"members": {
 			typ:         "array",
-			desc:        "1–8 people: strings (a bare name) or {name, role, bio?, photo_label?}. Every card needs a role. Name ≤60 chars, role ≤80, bio ≤220 (~2 lines); photo_label is the initials badge, ≤8 chars.",
+			desc:        "1–8 people: strings (a bare name) or {name, role, bio?, photo?, photo_label?}. Every card needs a role. Name ≤60 chars, role ≤80, bio ≤220 (~2 lines); photo is a headshot (a path/url string or {path|url, alt}); photo_label is the initials badge shown when there is no photo, ≤8 chars.",
 			itemStrings: true,
 			itemKeys:    teamMemberKeys,
 		},

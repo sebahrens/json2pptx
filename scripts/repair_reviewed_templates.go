@@ -18,10 +18,27 @@ import (
 
 func main() {
 	if len(os.Args) > 1 {
-		if len(os.Args) != 3 || os.Args[1] != "--pstyle-title-grouping" {
-			panic("usage: repair_reviewed_templates [--pstyle-title-grouping path.pptx]")
+		if len(os.Args) != 3 {
+			panic("usage: repair_reviewed_templates [--pstyle-title-grouping|--blue-reusable-title path.pptx]")
 		}
-		if err := repairPStyleTitleAnchor(os.Args[2]); err != nil {
+		var repair func(string) error
+		switch os.Args[1] {
+		case "--pstyle-title-grouping":
+			repair = repairPStyleTitleAnchor
+		case "--blue-reusable-title":
+			repair = repairBlueReusableTitle
+		case "--yellow-closing-grouping":
+			repair = repairYellowClosingGrouping
+		case "--pstyle-column-hierarchy":
+			repair = repairPStyleColumnHierarchy
+		case "--blue-child-leading":
+			repair = repairBlueChildLeading
+		case "--business-column-leading":
+			repair = repairBusinessColumnLeading
+		default:
+			panic("unknown reviewed repair")
+		}
+		if err := repair(os.Args[2]); err != nil {
 			panic(err)
 		}
 		return
@@ -38,6 +55,129 @@ func main() {
 			panic(err)
 		}
 	}
+}
+
+func repairYellowClosingGrouping(path string) error {
+	return repairReviewedParts(path, "yellow-closing-grouping-before.pptx", map[string]reviewedPartRepair{
+		"ppt/slideLayouts/slideLayout8.xml": {
+			old:               `<a:off x="1524000" y="2286000"/><a:ext cx="9144000" cy="1600200"/>`,
+			replacement:       `<a:off x="397665" y="2286000"/><a:ext cx="11396670" cy="1600200"/>`,
+			guards:            []string{`name="Closing"`, `name="title"`, `name="subtitle"`, `sz="6000"`, `sz="2400"`, `<a:bodyPr anchor="b"/>`},
+			secondOld:         `<a:off x="1524000" y="4000500"/><a:ext cx="9144000" cy="800100"/>`,
+			secondReplacement: `<a:off x="397665" y="4000500"/><a:ext cx="11396670" cy="800100"/>`,
+		},
+	})
+}
+
+func repairPStyleColumnHierarchy(path string) error {
+	const old = `<a:lvl1pPr><a:spcAft><a:spcPts val="1200"/></a:spcAft><a:defRPr sz="1500"/></a:lvl1pPr><a:lvl2pPr><a:defRPr sz="1200"/></a:lvl2pPr><a:lvl3pPr><a:defRPr sz="1200"/></a:lvl3pPr>`
+	// This template's ordinary bullets start at native level2, with children at
+	// level3. Raising only lvl1 disables the generator's floor override while
+	// leaving the visible root at12pt. Repair the actual root/child styles.
+	const replacement = `<a:lvl1pPr><a:spcAft><a:spcPts val="1200"/></a:spcAft><a:defRPr sz="2000"/></a:lvl1pPr><a:lvl2pPr><a:defRPr sz="2000"/></a:lvl2pPr><a:lvl3pPr><a:defRPr sz="2000"/></a:lvl3pPr><a:lvl4pPr><a:defRPr sz="1800"/></a:lvl4pPr>`
+	// Both reviewed columns must change together; guard the entire part so an
+	// unexpected third occurrence or partially repaired column is not accepted.
+	z, err := zip.OpenReader(path)
+	if err != nil {
+		return err
+	}
+	defer z.Close()
+	for _, e := range z.File {
+		if e.Name != "ppt/slideLayouts/slideLayout5.xml" {
+			continue
+		}
+		r, err := e.Open()
+		if err != nil {
+			return err
+		}
+		data, err := io.ReadAll(r)
+		_ = r.Close()
+		if err != nil {
+			return err
+		}
+		oldCount, newCount := bytes.Count(data, []byte(old)), bytes.Count(data, []byte(replacement))
+		if !((oldCount == 2 && newCount == 0) || (oldCount == 0 && newCount == 2)) {
+			return fmt.Errorf("unexpected reviewed column typography")
+		}
+		before := strings.ReplaceAll(string(data), replacement, old)
+		after := strings.ReplaceAll(before, old, replacement)
+		return repairReviewedParts(path, "p-style-column-hierarchy-before.pptx", map[string]reviewedPartRepair{
+			e.Name: {old: before, replacement: after, guards: []string{`name="Two Content"`, `name="body"`, `name="body_2"`, `cx="5583528" cy="4000502"`}},
+		})
+	}
+	return fmt.Errorf("reviewed column layout missing")
+}
+
+// Blue One Content bullets start at native level2 with children at level3,
+// which inherited the master's 90% leading under 140% parents. Give the child
+// levels the parent leading so hierarchy reads by size and indent, not crowding.
+func repairBlueChildLeading(path string) error {
+	return repairReviewedParts(path, "blue-child-leading-before.pptx", map[string]reviewedPartRepair{
+		"ppt/slideLayouts/slideLayout2.xml": {
+			old:         `<a:lvl3pPr><a:defRPr sz="1600"/></a:lvl3pPr><a:lvl4pPr><a:defRPr sz="1600"/></a:lvl4pPr><a:lvl5pPr><a:defRPr sz="1400"/></a:lvl5pPr>`,
+			replacement: `<a:lvl3pPr><a:lnSpc><a:spcPct val="140000"/></a:lnSpc><a:defRPr sz="1600"/></a:lvl3pPr><a:lvl4pPr><a:lnSpc><a:spcPct val="140000"/></a:lnSpc><a:defRPr sz="1600"/></a:lvl4pPr><a:lvl5pPr><a:lnSpc><a:spcPct val="140000"/></a:lnSpc><a:defRPr sz="1400"/></a:lvl5pPr>`,
+			guards:      []string{`name="body"`, `<a:lvl2pPr><a:lnSpc><a:spcPct val="140000"/></a:lnSpc><a:defRPr sz="2000"/></a:lvl2pPr>`},
+		},
+	})
+}
+
+// Business Two Content columns set four-line paragraphs at 110%, which read
+// cramped on dense continuations. Open both columns to 120% together.
+func repairBusinessColumnLeading(path string) error {
+	const old = `<a:lvl1pPr><a:lnSpc><a:spcPct val="110000"/></a:lnSpc><a:defRPr sz="1800"/></a:lvl1pPr><a:lvl2pPr><a:lnSpc><a:spcPct val="110000"/></a:lnSpc><a:defRPr sz="1600"/></a:lvl2pPr>`
+	const replacement = `<a:lvl1pPr><a:lnSpc><a:spcPct val="120000"/></a:lnSpc><a:defRPr sz="1800"/></a:lvl1pPr><a:lvl2pPr><a:lnSpc><a:spcPct val="120000"/></a:lnSpc><a:defRPr sz="1600"/></a:lvl2pPr>`
+	return repairWholePart(path, "business-column-leading-before.pptx", "ppt/slideLayouts/slideLayout5.xml", old, replacement, 2,
+		[]string{`name="Two Content"`, `name="body"`, `name="body_2"`})
+}
+
+// repairWholePart rewrites every occurrence of old in one part, requiring the
+// part to hold exactly want occurrences of either old or replacement (never a
+// partial mix), so all sibling placeholders change together.
+func repairWholePart(path, backup, part, old, replacement string, want int, guards []string) error {
+	z, err := zip.OpenReader(path)
+	if err != nil {
+		return err
+	}
+	defer z.Close()
+	for _, e := range z.File {
+		if e.Name != part {
+			continue
+		}
+		r, err := e.Open()
+		if err != nil {
+			return err
+		}
+		data, err := io.ReadAll(r)
+		_ = r.Close()
+		if err != nil {
+			return err
+		}
+		oldCount, newCount := bytes.Count(data, []byte(old)), bytes.Count(data, []byte(replacement))
+		if !((oldCount == want && newCount == 0) || (oldCount == 0 && newCount == want)) {
+			return fmt.Errorf("unexpected reviewed typography in %s", part)
+		}
+		before := strings.ReplaceAll(string(data), replacement, old)
+		after := strings.ReplaceAll(before, old, replacement)
+		return repairReviewedParts(path, backup, map[string]reviewedPartRepair{
+			part: {old: before, replacement: after, guards: guards},
+		})
+	}
+	return fmt.Errorf("reviewed layout %s missing", part)
+}
+
+// A reusable content heading needs stronger hierarchy than ordinary body text.
+// Retain its all-caps tracked style, position and width; reserve two lines for
+// long titles instead of making the larger type clip in the old shallow frame.
+func repairBlueReusableTitle(path string) error {
+	return repairReviewedParts(path, "blue-reusable-title-before.pptx", map[string]reviewedPartRepair{
+		"ppt/slideLayouts/slideLayout7.xml": {
+			old:               `<a:defRPr sz="2000" cap="all" spc="300" baseline="0"/>`,
+			replacement:       `<a:defRPr sz="2800" cap="all" spc="300" baseline="0"/>`,
+			guards:            []string{`type="titleOnly"`, `name="Blank + Title"`, `name="title"`, `<a:bodyPr anchor="t"/>`, `<p:ph type="title"/>`},
+			secondOld:         `<a:off x="841248" y="841248"/><a:ext cx="10479024" cy="557784"/>`,
+			secondReplacement: `<a:off x="841248" y="841248"/><a:ext cx="10479024" cy="1016000"/>`,
+		},
+	})
 }
 
 type reviewedPartRepair struct {

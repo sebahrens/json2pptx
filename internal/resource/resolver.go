@@ -96,7 +96,7 @@ func IsURL(s string) bool {
 // the local cached path.
 func (r *Resolver) ResolveImage(rawURL string) (string, error) {
 	key := cacheKey(kindImage, rawURL)
-	data, ext, err := r.download(key, rawURL)
+	data, _, err := r.download(key, rawURL)
 	if err != nil {
 		if p, ok := handleCached(err); ok {
 			return p, nil
@@ -109,9 +109,11 @@ func (r *Resolver) ResolveImage(rawURL string) (string, error) {
 		return "", fmt.Errorf("URL %q: content is not a recognized image format", rawURL)
 	}
 
-	if ext == "" {
-		ext = guessImageExt(data)
-	}
+	// The stored extension comes from the validated magic bytes only, never
+	// the URL path: a raster/SVG polyglot fetched as ".../photo.svg" would
+	// otherwise be cached as .svg and routed down the SVG embed path without
+	// ever passing validateSVG (go-slide-creator-csclk.77).
+	ext := guessImageExt(data)
 
 	filename := hashFilename(key, ext)
 	return r.cache.put(key, filename, data)
@@ -294,6 +296,12 @@ func guessImageExt(data []byte) string {
 	}
 	if len(data) >= 12 && bytes.Equal(data[0:4], []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WEBP")) {
 		return ".webp"
+	}
+	if isBMPHeader(data) {
+		return ".bmp"
+	}
+	if bytes.HasPrefix(data, []byte{0x49, 0x49, 0x2A, 0x00}) || bytes.HasPrefix(data, []byte{0x4D, 0x4D, 0x00, 0x2A}) {
+		return ".tiff"
 	}
 	return ".bin"
 }

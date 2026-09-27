@@ -558,7 +558,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 				// ICON_PATH_SYMLINK_ESCAPE. validate already absolutizes via
 				// validateBaseDir; sharing it keeps the two CLI surfaces in lockstep.
 				inputDir := validateBaseDir(jsonPath, "")
-				assetFindings := resolveLocalAssetPaths(input.Slides, inputDir)
+				assetFindings := resolveLocalAssetPaths(input.Slides, inputDir, imageAllowList(cfg.Images.AllowedBasePaths, urlCacheDir)...)
 				if assetErr := iconFindingsToError(assetFindings); assetErr != nil {
 					preConvertErr = assetErr
 					return preConvertErr
@@ -613,6 +613,7 @@ func runJSONMode(jsonPath, jsonOutputPath, templatesDir, outputDir, configPath s
 
 	inputWarnings = append(inputWarnings, runRes.GridDiagWarnings...)
 	inputWarnings = append(inputWarnings, runRes.ThemeOverrideWarnings...)
+	inputWarnings = append(inputWarnings, themeFontSubstitutionWarnings(runRes.TemplateTheme)...)
 	// Pre-validate chart/diagram data structures via svggen Validate().
 	// Issues are collected as warnings so generation still proceeds.
 	inputWarnings = append(inputWarnings, validateSlidesChartData(input.Slides)...)
@@ -1694,6 +1695,9 @@ func validateDiagramSpec(spec *types.DiagramSpec, slideNum, contentNum int) stri
 			if err := generator.ValidateHeatmapColorScale(scale); err != nil {
 				return fmt.Sprintf("slide %d, content %d: heatmap data validation: %v", slideNum, contentNum, err)
 			}
+		}
+		if err := generator.ValidateHeatmapData(spec.Data); err != nil {
+			return fmt.Sprintf("slide %d, content %d: heatmap data validation: %v", slideNum, contentNum, err)
 		}
 	}
 
@@ -3045,7 +3049,18 @@ func footerConfigForInput(input *PresentationInput, totalSlides int) *generator.
 
 func chromeContainsFooterText(chrome *ChromeInput, text string) bool {
 	return text == chrome.Confidentiality || text == chrome.ClientName ||
-		text == chrome.FooterDate || (chrome.ProjectCode != "" && text == "Project "+chrome.ProjectCode)
+		text == chrome.FooterDate || (chrome.ProjectCode != "" && text == chromeProjectLabel(chrome.ProjectCode))
+}
+
+// chromeProjectLabel renders chrome.project_code as "Project <code>", unless
+// the author already wrote the word ("Project Lighthouse"), which would
+// otherwise render "Project Project Lighthouse".
+func chromeProjectLabel(code string) string {
+	if len(code) >= 7 && strings.EqualFold(code[:7], "project") &&
+		(len(code) == 7 || code[7] == ' ') {
+		return code
+	}
+	return "Project " + code
 }
 
 // composeChromeLine builds the left footer text from chrome fields.
@@ -3057,7 +3072,7 @@ func composeChromeLine(chrome *ChromeInput) string {
 		parts = append(parts, chrome.Confidentiality)
 	}
 	if chrome.ProjectCode != "" {
-		parts = append(parts, "Project "+chrome.ProjectCode)
+		parts = append(parts, chromeProjectLabel(chrome.ProjectCode))
 	}
 	if chrome.ClientName != "" {
 		parts = append(parts, chrome.ClientName)

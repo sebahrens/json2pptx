@@ -6,12 +6,8 @@ import (
 	"fmt"
 	"image"
 	"image/png"
-	"io"
 	"log/slog"
-	"net/http"
-	"os"
 	"strings"
-	"time"
 
 	"github.com/sebahrens/json2pptx/svggen/icons"
 	"github.com/sebahrens/json2pptx/svggen/raster"
@@ -22,8 +18,9 @@ import (
 // iconMaxBytes is the maximum size for fetched icon data (512KB).
 const iconMaxBytes = 512 * 1024
 
-// iconHTTPTimeout is the timeout for HTTP icon fetches.
-const iconHTTPTimeout = 5 * time.Second
+// iconMaxPixels caps the decoded dimensions of a raster icon (4096x4096), so
+// a small compressed PNG cannot expand into gigabytes of pixels.
+const iconMaxPixels = 4096 * 4096
 
 // IconKind classifies the type of icon string.
 type IconKind int
@@ -99,16 +96,23 @@ func LoadIcon(icon string, targetSizePx int) image.Image {
 }
 
 // fetchIconBytes retrieves raw icon bytes based on the icon kind.
+//
+// Remote URLs and local file paths are refused: LoadIcon is reached from
+// user-controlled diagram data (e.g. timeline items[].icon) on the CLI, MCP
+// and HTTP API paths, none of which route it through the SSRF guard or the
+// ALLOWED_IMAGE_PATHS allow-list. Callers that need such icons must resolve
+// them at the input layer and pass inline SVG or a data URI instead (as
+// panel icons do).
 func fetchIconBytes(icon string, kind IconKind) ([]byte, error) {
 	switch kind {
 	case IconKindURL:
-		return fetchURL(icon)
+		return nil, fmt.Errorf("remote icon URLs are not allowed in diagram data; use a bundled name, inline SVG or data URI")
 	case IconKindDataURI:
 		return decodeDataURI(icon)
 	case IconKindInlineSVG:
 		return []byte(strings.TrimSpace(icon)), nil
 	case IconKindFilePath:
-		return readFilePath(icon)
+		return nil, fmt.Errorf("local icon file paths are not allowed in diagram data; use a bundled name, inline SVG or data URI")
 	case IconKindName:
 		return icons.Lookup(icon)
 	default:
@@ -116,33 +120,9 @@ func fetchIconBytes(icon string, kind IconKind) ([]byte, error) {
 	}
 }
 
-// fetchURL fetches icon bytes from a URL with timeout and size limit.
-func fetchURL(url string) ([]byte, error) {
-	client := &http.Client{Timeout: iconHTTPTimeout}
-	resp, err := client.Get(url) //nolint:gosec // URL comes from user-provided JSON data
-	if err != nil {
-		return nil, fmt.Errorf("HTTP GET %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d for %s", resp.StatusCode, url)
-	}
-
-	limited := io.LimitReader(resp.Body, iconMaxBytes+1)
-	data, err := io.ReadAll(limited)
-	if err != nil {
-		return nil, fmt.Errorf("reading %s: %w", url, err)
-	}
-	if len(data) > iconMaxBytes {
-		return nil, fmt.Errorf("icon from %s exceeds %d bytes", url, iconMaxBytes)
-	}
-
-	return data, nil
-}
-
 // decodeDataURI decodes a data: URI into raw bytes.
 // Supports: data:image/svg+xml;base64,... and data:image/png;base64,...
+// The decoded payload is capped at iconMaxBytes.
 func decodeDataURI(uri string) ([]byte, error) {
 	// Find the comma separating metadata from data
 	commaIdx := strings.Index(uri, ",")
@@ -154,27 +134,24 @@ func decodeDataURI(uri string) ([]byte, error) {
 	encoded := uri[commaIdx+1:]
 
 	if strings.Contains(meta, ";base64") {
+		if base64.StdEncoding.DecodedLen(len(encoded)) > iconMaxBytes+2 {
+			return nil, fmt.Errorf("data URI icon exceeds %d bytes", iconMaxBytes)
+		}
 		data, err := base64.StdEncoding.DecodeString(encoded)
 		if err != nil {
 			return nil, fmt.Errorf("base64 decode: %w", err)
+		}
+		if len(data) > iconMaxBytes {
+			return nil, fmt.Errorf("data URI icon exceeds %d bytes", iconMaxBytes)
 		}
 		return data, nil
 	}
 
 	// Raw data (URL-encoded or plain)
+	if len(encoded) > iconMaxBytes {
+		return nil, fmt.Errorf("data URI icon exceeds %d bytes", iconMaxBytes)
+	}
 	return []byte(encoded), nil
-}
-
-// readFilePath reads icon bytes from a local file path.
-func readFilePath(path string) ([]byte, error) {
-	data, err := os.ReadFile(path) //nolint:gosec // Path comes from user-provided JSON data
-	if err != nil {
-		return nil, fmt.Errorf("reading icon file %s: %w", path, err)
-	}
-	if len(data) > iconMaxBytes {
-		return nil, fmt.Errorf("icon file %s exceeds %d bytes", path, iconMaxBytes)
-	}
-	return data, nil
 }
 
 // rasterizeIconData attempts to parse icon data as SVG and rasterize it,
@@ -187,7 +164,14 @@ func rasterizeIconData(data []byte, targetSizePx int) (image.Image, error) {
 	// Try SVG parse first (most icons will be SVG)
 	svgCanvas, err := canvas.ParseSVG(bytes.NewReader(data))
 	if err == nil && svgCanvas != nil {
-		return rasterizeSVGCanvas(svgCanvas, targetSizePx), nil
+		return rasterizeSVGCanvas(svgCanvas, targetSizePx)
+	}
+
+	// Reject decompression bombs before allocating the full raster.
+	if cfg, _, cerr := image.DecodeConfig(bytes.NewReader(data)); cerr == nil {
+		if int64(cfg.Width)*int64(cfg.Height) > iconMaxPixels {
+			return nil, fmt.Errorf("icon raster %dx%d exceeds %d pixels", cfg.Width, cfg.Height, iconMaxPixels)
+		}
 	}
 
 	// Try as raster image (PNG, JPEG, etc.)
@@ -197,6 +181,10 @@ func rasterizeIconData(data []byte, targetSizePx int) (image.Image, error) {
 	}
 
 	// Try PNG specifically (image.Decode needs format registration)
+	if cfg, cerr := png.DecodeConfig(bytes.NewReader(data)); cerr == nil &&
+		int64(cfg.Width)*int64(cfg.Height) > iconMaxPixels {
+		return nil, fmt.Errorf("icon raster %dx%d exceeds %d pixels", cfg.Width, cfg.Height, iconMaxPixels)
+	}
 	pngImg, err := png.Decode(bytes.NewReader(data))
 	if err == nil {
 		return pngImg, nil
@@ -232,7 +220,7 @@ func RasterizeSVGToPNG(data []byte, targetSizePx int) (pngBytes []byte, err erro
 				err = fmt.Errorf("svg rasterizer panic: %v", r)
 			}
 		}()
-		img = rasterizeSVGCanvas(svgCanvas, targetSizePx)
+		img, err = rasterizeSVGCanvas(svgCanvas, targetSizePx)
 	}()
 	if err != nil {
 		return nil, err
@@ -245,13 +233,15 @@ func RasterizeSVGToPNG(data []byte, targetSizePx int) (pngBytes []byte, err erro
 }
 
 // rasterizeSVGCanvas renders a parsed SVG canvas to an image.Image at the target size.
-func rasterizeSVGCanvas(c *canvas.Canvas, targetSizePx int) image.Image {
+// A canvas with no width or height (e.g. an empty <svg/>) is an error: the
+// rasterizer panics with "raster size is zero" on it (go-slide-creator-csclk.117).
+func rasterizeSVGCanvas(c *canvas.Canvas, targetSizePx int) (image.Image, error) {
 	// Calculate DPI to achieve target size.
 	// Canvas dimensions are in mm; we want targetSizePx pixels on the longer side.
 	w := c.W
 	h := c.H
 	if w <= 0 || h <= 0 {
-		w, h = 100, 100 // fallback
+		return nil, fmt.Errorf("svg has zero width or height")
 	}
 
 	longerMM := w
@@ -261,6 +251,10 @@ func rasterizeSVGCanvas(c *canvas.Canvas, targetSizePx int) image.Image {
 
 	// DPI = pixels / inches = pixels / (mm / 25.4)
 	dpi := float64(targetSizePx) / (longerMM / 25.4)
+	res := canvas.DPI(dpi)
+	if int(w*res.DPMM()+0.5) <= 0 || int(h*res.DPMM()+0.5) <= 0 {
+		return nil, fmt.Errorf("svg rasterizes to zero pixels")
+	}
 
-	return rasterizer.Draw(c, canvas.DPI(dpi), nil)
+	return rasterizer.Draw(c, res, nil), nil
 }

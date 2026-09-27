@@ -12,7 +12,9 @@ schema. Do not copy a static kind catalog from an older document.
 Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.
 The forms are mutually exclusive. Chapters add numbered section dividers;
-`meta.chrome.section_crumb: true` labels their content slides. The compiler
+`meta.chrome.section_crumb: true` labels their content slides (the compiled
+raw deck carries the crumb as each slide's engine-set `section_title`, so
+`generate` on `semantic compile` output matches `semantic render`). The compiler
 generates divider numbers: do not hand-author them. Keep an actual narrative
 instead of creating one slide per layout or a sequence of interchangeable
 cards. `explain_deck_spec` previews the resolved story and visual rhythm
@@ -29,19 +31,29 @@ adding empty or unrelated slides. Template resolution order is
 default. Discover archetypes with `list_deck_archetypes`.
 
 `meta.chrome` controls confidentiality, client/project labels, date, page
-numbers, and section crumbs. `meta.viewing_mode` and
-`meta.accent_strategy` choose reading scale and accent rhythm. Every slide
+numbers, and section crumbs. `meta.viewing_mode` (`present` / `read`) and
+`meta.accent_strategy` (`primary` / `rotate` / `section-keyed`) choose
+reading scale and accent rhythm; `meta.design_mode` is `constrained` or
+`free`. Any other value of these enums is a `SEMANTIC_REQUIRED` error. Every slide
 kind can carry `notes` and `source`; the latter is rendered once even when
 the chosen pattern has its own attribution band. `meta.type_scale` can be
-`compact`, `comfortable` (default), or `presentation`; use a
-`pattern.overrides.type_scale` only for a slide that needs a different scale.
+`compact`, `comfortable` (default), or `presentation` and applies to the
+whole deck; a slide's `pattern` is only a string naming one of the kind's
+alternatives (an object is ignored and reported as `SEMANTIC_FIELD_TYPE`).
 
 ## Validation and content budgets
 
 The live kind schema is closed. Unknown fields are dropped by compilation
 and surfaced as `SEMANTIC_UNKNOWN_FIELD`; treat even a warning as lost
 content. A wrong JSON type is `SEMANTIC_FIELD_TYPE`, not a request to guess
-the intended coercion. Run `validate_deck_spec` before rendering and correct
+the intended coercion. A number in a text position inside a list item
+(`kpis[].value: 48`, `milestones[].date: 2024`) renders as its plain decimal
+text; quote it when the literal matters (`"1.10"`, `"48%"`). In YAML, dates
+(`2024-03-01`) and zero-padded or hex integers (`007`, `0x1F`) keep their
+source text. A reference that matches nothing on the slide (an option matrix
+`recommended` / `decisive_criterion`, an agenda `current`) is
+`SEMANTIC_REFERENCE_UNRESOLVED`: the highlight is not drawn. Run
+`validate_deck_spec` before rendering and correct
 these at their source paths.
 
 Visuals have content limits. The compiler degrades an out-of-range visual to
@@ -51,7 +63,9 @@ the same as `SEMANTIC_DENSITY`, which advises about density without losing
 the visual. Respond to `count_out_of_range` by changing the visual or count,
 and to `budget_exceeded` by shortening or splitting content; do not silently
 truncate facts. Check `explanation_summary.pattern` after render to confirm
-the visual you expected actually landed.
+the visual you expected actually landed; on a render, a degraded slide's
+`layout` and `visual_family` report what was compiled (e.g. `content`,
+`text`), not the planned visual.
 
 The following are decision budgets *not fully expressed* by a compact kind
 listing; get exact fields and aliases from `list_slide_kinds`:
@@ -64,19 +78,19 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 | Comparison | Two balanced columns of at most ten rows use a comparison visual; three to five columns use panels; larger content may degrade to cards or bullets. |
 | Table | At most six headers and six body rows fit the semantic table budget. Use `option_matrix` for options scored against criteria instead of flattening that structure into a generic table. |
 | Option matrix | Two to six criteria by two to six options. Each option needs exactly one score per criterion; use the chosen Harvey, RAG, or short text scale consistently. |
-| Team | One to eight people use biography cards. Name at most 60 characters, role at most 80, bio at most 220, initials label at most 8. Every card needs a role; a photo and an initials label are alternatives. |
-| Image case | Story body at most 300 characters, eyebrow 30, heading 80, at most five bullets of 140 each, at most three metrics with value 10 and label 40, caption 120. A picture without a stated case is not an image case. |
+| Team | One to eight people use biography cards. Name at most 60 characters, role at most 80, bio at most 220, initials label at most 8. Every card needs a role; a `photo` headshot (path/url string or `{path|url, alt}`) and an initials `photo_label` are alternatives. |
+| Image case | Story body at most 300 characters, eyebrow 30, heading 80, at most five bullets of 140 each, at most three metrics with value 10 and label 40, caption 120. A picture without a stated case is not an image case. Over budget, the slide degrades to two columns that keep the picture beside the full text. |
 | Framework | SWOT, Five Forces, and BMC need every canonical part; at most ten items per part and 200 characters per item. A missing part degrades the whole framework to grouped bullets. |
 | 2×2 matrix | Exactly four headed quadrants and both axes. Quadrant header at most 80 characters, body 200; horizontal axis 16, vertical axis 60, axis ends 11. Missing parts or over-budget copy degrade to named bullets. |
 | Timeline | Three to seven milestones, label at most 60, date 30, body 200. Use ranges for periods; use a roadmap for parallel workstreams. Outside the budget, preserve dates in bullets. |
 | Hero statistic | One value at most 20 characters, label 80, unit 10, context 120, source 80. For several equal-weight figures use KPI snapshot. |
 | Agenda | Two to ten numbered sections; three to six with subtitles can use illustrated rows. Outside the range, use a numbered list, preserving the current-section marker. |
 | Quotation | One named speaker uses a pull quote (at most 500 characters); three to eight named speakers use a cluster (at most 240 each). Two quotes or missing names degrade to quote bullets. |
-| Bridge | Three to ten waterfall columns; component label at most 40 characters, unit 8, caption 60. Total/delta values are numeric; an implicit subtotal uses the running total. |
+| Bridge | Three to ten waterfall columns; component label at most 40 characters, unit 8, caption 60. Total/delta values are numeric; an implicit subtotal uses the running total. A `total` after deltas that differs from their running sum by more than 0.5% is `SEMANTIC_BRIDGE_TOTAL_MISMATCH` at that column's `value`. |
 | Pillars | Three to five pillars. A house needs both objective and foundation, title at most 60, up to five bullets of 120, and up to three roof badges of 24. Without full framing use panels (title 80, one to eight bullets of 200). |
 | Organization | One root, up to seven nodes, three levels, and four direct reports per node; labels at most 40 characters. Larger trees degrade to attributed bullets rather than dropping people. |
 | Architecture | Three to six tiers; tier label at most 60 characters, detail at most 120, and side rail at most 30. Out-of-budget content degrades intact to bullets. |
-| Process | Three to six described steps use numbered rows (label at most 60, description at most 180). Bare labels or decision branches use `process-flow` when within its range. A straight sequence is not a branching flowchart. |
+| Process | Three to six described steps use numbered rows (label at most 60, description at most 180). Bare labels or decision branches use `process-flow` when within its range; three to six short bare labels are height-capped at half the content area so the boxes do not stretch. A straight sequence is not a branching flowchart. |
 | Roadmap | Three to six phases use a phase visual; otherwise choose a content layout that preserves every milestone. |
 | Decision | Three to six options use numbered boxes (label at most 60, detail at most 180). Exactly two *detailed* options use paired cards (label at most 80, detail at most 300). Mark exactly one labeled option recommended and put the ask in `recommendation`. |
 
@@ -96,7 +110,11 @@ not for a deterministic blocker under strict mode. Resolve `diagnostics[]`,
 `deterministic_blocking_reasons[]`, and the quality gate before review.
 After inspecting the images, use `submit_visual_review` and its returned
 current-revision status for the final verdict; re-rendering creates a new
-unreviewed response rather than refreshing the earlier one.
+unreviewed response rather than refreshing the earlier one. A visual verdict
+never clears deterministic blockers: for an artifact whose render reported
+them, `submit_visual_review` returns `status:
+"reviewed_deterministic_blockers"`, `publishable: false` and the render's
+`blocking_reasons`.
 Each diagnostic has a `semantic_path` to edit and a
 `raw_path` only as fallback. Keep the DeckSpec as the source of truth.
 After each revision, render and inspect the affected slides, then inspect all
@@ -114,7 +132,8 @@ overwrite the earlier artifact; check `overwrote`.
 
 `raw_json2pptx` is a deliberate escape hatch inside a DeckSpec. Its
 `slide` must be a structurally valid raw slide with a layout/type and
-renderable content (except a deliberate blank slide), and has the same
+renderable content (except a deliberate blank slide), its `pattern` values
+must pass that pattern's own schema at validate time (not only at render), and has the same
 `meta.design_mode` constraints as a raw deck. A raw hex fill or absolute
 font size in constrained mode is refused; use free mode only when low-level
 control is intentional. For a visual beyond semantic reach, query the

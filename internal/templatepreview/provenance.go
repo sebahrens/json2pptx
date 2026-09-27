@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -34,24 +35,65 @@ func hashBytes(data []byte) string {
 	return hex.EncodeToString(h[:])
 }
 
+// RenderingPackageDirs are the repository package directories compiled into
+// cmd/templatepreviews — exactly its transitive in-repo import set
+// (`go list -deps ./cmd/templatepreviews`; TestRenderingPackageDirsMatchImports
+// keeps the two in sync). Only these can change preview pixels, so only these
+// are hashed: an edit to internal/api or internal/resource no longer marks
+// every shipped preview stale (go-slide-creator-csclk.1).
+var RenderingPackageDirs = []string{
+	"cmd/templatepreviews",
+	"internal/deckinput",
+	"internal/diagnostics",
+	"internal/generator",
+	"internal/jsonschema",
+	"internal/layout",
+	"internal/layoutpreview",
+	"internal/patterns",
+	"internal/placeholderrole",
+	"internal/pptx",
+	"internal/render",
+	"internal/shapegrid",
+	"internal/slidepath",
+	"internal/template",
+	"internal/templatepreview",
+	"internal/textcapacity",
+	"internal/textfit",
+	"internal/tokens",
+	"internal/types",
+	"internal/utils",
+	"svggen",
+	"svggen/core",
+	"svggen/fontcache",
+	"svggen/fonts",
+	"svggen/icons",
+	"svggen/raster",
+	"svggen/safeyaml",
+	"templates",
+}
+
 // RenderingSourceHash binds shipped previews to the repository's rendering
 // implementation, without a circular dependency on generated thumbnails or a
-// binary that embeds them. Test sources are not rendering inputs.
+// binary that embeds them. It covers the non-test Go sources, go.mod/go.sum
+// and font assets of RenderingPackageDirs (each directory only, not its
+// subdirectories — sub-packages are listed separately), plus the root module
+// files. A listed directory absent from root is skipped.
 func RenderingSourceHash(root string) (string, error) {
 	var paths []string
-	for _, dir := range []string{"internal", "svggen", "cmd/templatepreviews"} {
-		err := filepath.WalkDir(filepath.Join(root, dir), func(path string, entry fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			fontAsset := strings.EqualFold(filepath.Ext(path), ".ttf") || strings.EqualFold(filepath.Ext(path), ".otf")
-			if !entry.IsDir() && ((strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go")) || entry.Name() == "go.mod" || entry.Name() == "go.sum" || fontAsset) {
-				paths = append(paths, path)
-			}
-			return nil
-		})
+	for _, dir := range RenderingPackageDirs {
+		entries, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
 		if err != nil {
 			return "", fmt.Errorf("preview source inventory: %w", err)
+		}
+		for _, entry := range entries {
+			name := entry.Name()
+			fontAsset := strings.EqualFold(filepath.Ext(name), ".ttf") || strings.EqualFold(filepath.Ext(name), ".otf")
+			if !entry.IsDir() && ((strings.HasSuffix(name, ".go") && !strings.HasSuffix(name, "_test.go")) || name == "go.mod" || name == "go.sum" || fontAsset) {
+				paths = append(paths, filepath.Join(root, filepath.FromSlash(dir), name))
+			}
 		}
 	}
 	paths = append(paths, filepath.Join(root, "go.mod"), filepath.Join(root, "go.sum"))

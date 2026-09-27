@@ -86,7 +86,8 @@ type ChromeInput struct {
 	Confidentiality string `json:"confidentiality,omitempty"`
 	// ClientName is the client or company name (e.g., "Acme Corp").
 	ClientName string `json:"client_name,omitempty"`
-	// ProjectCode is the project identifier (e.g., "Aurora").
+	// ProjectCode is the project identifier (e.g., "Aurora"). The footer
+	// renders it as "Project <code>" unless it already starts with "Project".
 	ProjectCode string `json:"project_code,omitempty"`
 	// FooterDate is the date string shown in the footer (e.g., "May 2026").
 	FooterDate string `json:"footer_date,omitempty"`
@@ -265,10 +266,11 @@ type SlideInput struct {
 	ContrastCheck      *bool                `json:"contrast_check,omitempty"`
 
 	// SectionTitle is the title of the structure.sections[] entry this slide was
-	// expanded from. It is set by the engine, never by the author — hence
-	// json:"-", which keeps it out of the schema and out of round-trips — and is
-	// what chrome.section_crumb puts in the footer (go-slide-creator-ynfv).
-	SectionTitle string `json:"-"`
+	// expanded from, and is what chrome.section_crumb puts in the footer
+	// (go-slide-creator-ynfv). The engine sets it when expanding a structure
+	// block; it is serialised so the flat slides `semantic compile` emits keep
+	// their crumbs when fed back to generate (go-slide-creator-csclk.49).
+	SectionTitle string `json:"section_title,omitempty"`
 }
 
 // BackgroundInput defines a slide background image.

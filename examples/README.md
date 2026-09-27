@@ -1,6 +1,6 @@
 # Examples
 
-Ready-to-run input files for `json2pptx`. This directory contains both **Markdown** and **JSON** examples.
+Ready-to-run input files for `json2pptx`: raw **JSON** decks (this directory), one deck per chart/diagram type in [`diagrams/`](diagrams/README.md), and compact **semantic YAML** specs in `semantic/` (see [docs/SEMANTIC_COMPILER.md](../docs/SEMANTIC_COMPILER.md)).
 
 ## JSON Examples
 
@@ -19,7 +19,8 @@ These pattern-rich decks are the best entry points for AI agents building new de
 
 | File | Description | Template |
 |------|-------------|----------|
-| `patterns-smoke.json` | Pattern library smoke test: one slide per v1 pattern (kpi-3up, kpi-4up, bmc-canvas, matrix-2x2, timeline-horizontal, card-grid, icon-row, comparison-2col) | midnight-blue |
+| `patterns-smoke.json` | Pattern library smoke test: one slide per pattern across a broad slice of the registry (KPI, canvas, matrix, timeline, card-grid, roadmap, heatmap, directory, bios, and more) | midnight-blue |
+| `<pattern-name>.json` | Many patterns also have a dedicated deck named after the pattern (e.g. `driver-tree.json`, `waterfall-bridge.json`, `team-bios.json`) | varies |
 
 ### Testing & QA decks
 
@@ -38,32 +39,11 @@ These pattern-rich decks are the best entry points for AI agents building new de
 
 ### Pattern coverage
 
-Which examples demonstrate each registered pattern:
-
-| Pattern | `patterns-smoke` | `varied-pitch-deck` | `board-deck` |
-|---------|:-:|:-:|:-:|
-| `arch-stack` | | | x |
-| `before-after` | | x | x |
-| `bmc-canvas` | x | | |
-| `card-grid` | x | x | |
-| `comparison-2col` | x | x | |
-| `icon-row` | x | x | |
-| `kpi-2up` | | | x |
-| `kpi-3up` | x | x | |
-| `kpi-4up` | x | | x |
-| `kpi-5up` | | | |
-| `kpi-6up` | | | |
-| `matrix-2x2` | x | | x |
-| `process-flow` | | x | |
-| `pull-quote` | | x | x |
-| `pyramid` | | x | |
-| `roadmap-phased` | | | |
-| `stat-hero` | | x | x |
-| `swimlane` | | | x |
-| `timeline-horizontal` | x | x | |
-| `agenda` | | | |
-
-Coverage: 17/20 patterns (85%) across all examples.
+The pattern registry grows faster than a hand-kept matrix, so this README does
+not list per-pattern coverage. For the live list of registered patterns run
+`json2pptx patterns list` (MCP `list_patterns`); `json2pptx patterns show <name>`
+prints canonical `example_values` for every pattern, including ones no example
+deck uses yet.
 
 ### Running a JSON example
 
@@ -88,7 +68,7 @@ cat examples/charts.json | json2pptx generate -json - -output ./output
 Write structured output as JSON:
 
 ```bash
-json2pptx generate -json examples/basic-deck.json -json-output result.json
+json2pptx generate -json examples/basic-deck.json -json-output-report result.json
 ```
 
 ### JSON input structure
@@ -119,7 +99,7 @@ json2pptx generate -json examples/basic-deck.json -json-output result.json
 
 ### Available templates
 
-The built-in templates are: `midnight-blue`, `forest-green`, `warm-coral`.
+The bundled templates are `abstract`, `blue-corporate`, `business-template`, `forest-green`, `midnight-blue`, `modern`, `modern-template`, `modern-yellow`, and `warm-coral` (all embedded in the binary).
 
 List all available templates (including any installed locally):
 
@@ -129,7 +109,7 @@ json2pptx skill-info --mode list
 
 ### Layout reference
 
-Each built-in template provides six layouts. Use **canonical layout IDs** (not raw `slideLayoutN` IDs or display names) for cross-template compatibility:
+Every conforming template provides these canonical layouts. Use **canonical layout IDs** (not raw `slideLayoutN` IDs or display names) for cross-template compatibility:
 
 | Canonical `layout_id` | Template Display Name | Placeholders |
 |-----------------------|----------------------|--------------|

@@ -27,7 +27,7 @@
               "R&D": 8
             },
             "style": {
-              "colors": ["#2563EB", "#10B981", "#F59E0B", "#8B5CF6", "#EC4899"],
+              "colors": ["accent1", "accent2", "accent3", "accent4", "accent5"],
               "show_legend": true,
               "show_values": true
             }

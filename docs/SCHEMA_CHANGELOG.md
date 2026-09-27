@@ -1,5 +1,87 @@
 # Schema Changelog
 
+- **2026-09-27 — Server robustness caps (`go-slide-creator-csclk.78`, `.81`–`.84`, `.123`, `.131`, `.132`).**
+  - MCP: one tool call's arguments may carry at most 2 MiB of text; larger
+    calls return `INVALID_PARAMETER` before any handler runs.
+  - MCP: `deck_id` handles, loop resume tokens and idempotency entries sweep
+    expired entries on insert and cap each store at 256 live entries.
+  - MCP: `validate_deck_spec` / `render_deck_spec` / `explain_deck_spec` store
+    a patched spec by compare-and-swap; a call that lost a race with another
+    patch on the same `deck_id` returns `STALE_REVISION` instead of silently
+    dropping the other edit.
+  - MCP: `generate_presentation` without `output_filename` now defaults to
+    `presentation-<8 hex of the input digest>.pptx` (was `output.pptx`) and
+    serializes writes per output path, so `content_hash` matches the file.
+  - HTTP `/api/v1/convert`: at most `server.max_slides_per_request` (500)
+    slides per request (400 `INVALID_REQUEST`), at most
+    `server.max_concurrent_converts` (4) concurrent conversions (503
+    `RATE_LIMITED`), conversion stops between slides once the request is
+    cancelled, and the default `write_timeout` is 150s (a shorter value is
+    raised to 2m30s) so timeouts return 504 rather than a dropped connection.
+  - svggen HTTP server: `output.width` / `output.height` are capped at 10000,
+    `output.scale` must be 0.5–10, PNG output is capped at 64M pixels, and the
+    render cache is capped at 256 MiB (`CacheConfig.MaxBytes`).
+
+- **2026-09-27 — MCP protocol-conformance fixes (`go-slide-creator-csclk.116`–`.129`).**
+  The server advertises `experimental.compact_responses: {}` (an object, as the
+  MCP schema requires) instead of `true`, and accepts either form from clients.
+  Every tool `outputSchema` root is `type: object` around its
+  `anyOf: [success, error_envelope]`. `get_shape_catalog` structuredContent is
+  `{categories: [...]}` (was a bare array). `generate_presentation`
+  `fit_findings[].slide_index` and `list_templates.supported_types` are no longer
+  required (deck-level findings and the compact projection omit them).
+  `audit_palette` `slides[].pairs` / `theme_matches` and `inspect_slide_images`
+  `results[].findings` are `[]` rather than `null`. `swap_pattern` /
+  `adopt_pattern` findings suggest `recommend_visual {intent, content_hints:
+  {item_count}}` in every profile (was `recommend_pattern {item_count}`, which
+  failed with `UNKNOWN_PARAMETER`). `mixed_fill_scheme` `use_semantic_color`
+  fixes carry `value`. `pattern_overcrowded` omits cell-unit `first`/`second`
+  on named-pattern slides. `submit_visual_review` gains status
+  `reviewed_deterministic_blockers` plus `publishable` / `blocking_reasons` for
+  artifacts whose `render_deck_spec` gate failed. The text synopsis keeps
+  `output_path` and `fit_findings`. `table_density_guide` declares
+  `dependentRequired: {style_id: [template]}`. A panicking tool handler now
+  returns an `INTERNAL` isError result instead of killing the server.
+
+- **2026-09-27 — DeckSpec fidelity fixes (`go-slide-creator-csclk.42`–`.49`).**
+  - Raw slides accept the engine-set **`section_title`** (the
+    `chrome.section_crumb` text). `semantic compile` now writes it, so
+    `generate` on compiled output keeps the crumbs `semantic render` shows.
+  - New semantic advisory **`SEMANTIC_BRIDGE_TOTAL_MISMATCH`** at
+    `columns[i].value` when a bridge `total` after deltas differs from their
+    running sum by more than 0.5% (strict promotes it to an error).
+  - `meta.accent_strategy`, `meta.viewing_mode` and `meta.design_mode` are
+    validated against their enums (`SEMANTIC_REQUIRED`, like `type_scale`).
+  - Numbers inside list items at text positions (`kpis[].value`,
+    `milestones[].date`, …) render as text instead of being dropped; YAML
+    dates and zero-padded / hex integers keep their source text.
+  - Structure-mode findings and rhythm warnings point at `structure.…`
+    paths instead of nonexistent `slides[N]`.
+  - Arabic/Hebrew text no longer panics fit measurement; the MCP server
+    recovers a panicking tool handler as a tool error.
+  - `plan_deck` splits long clauses at "and"/"while" and treats CJK
+    punctuation as clause boundaries, so those facts are kept.
+
+- **2026-09-27 — DeckSpec semantic fixes (`go-slide-creator-csclk.50`–`.56`, `.86`, `.92`).**
+  - New advisory **`SEMANTIC_REFERENCE_UNRESOLVED`**: an option_matrix
+    `recommended` / `decisive_criterion` (and aliases) or agenda `current`
+    that names nothing on the slide.
+  - A non-string slide `pattern` / `layout` reports `SEMANTIC_FIELD_TYPE`;
+    per-slide `pattern.overrides.type_scale` was never supported (doc fixed).
+  - `raw_json2pptx` pattern values are schema-checked by validate
+    (`INVALID_SLIDE`), not only at render.
+  - `team` members accept `photo` (path/url string or `{path|url, alt}`),
+    mapped to `team-bios` `members[].photo`.
+  - An over-budget `image_case` with a picture degrades to a two-column slide
+    that keeps the image.
+  - Sparse bare-label `process` flows compile with `max_height_pct: 50`.
+  - Semantic render: substantive-review fit findings are `warning`, a rendered
+    shape's text maps to its unique body field's `semantic_path`,
+    `slide_scores` take the structural deductions, and render
+    `explanation_summary` reports post-degrade `layout` / `visual_family`.
+  - `waterfall-bridge` caption uses 1pt top/bottom insets so it no longer
+    autofits below the readable minimum.
+
 - **2026-09-26 — CLI source-loss error diagnostics retained (`go-slide-creator-3qzo4.55`).**
   CLI JSON error reports now retain actual source-loss code, authored path,
   `refuse` action, and repair parameters in the existing `fit_findings` array.

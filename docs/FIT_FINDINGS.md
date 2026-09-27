@@ -126,12 +126,12 @@ Findings with action `refuse`, `shrink_or_split`, or `review` include a `next_to
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `tool` | string | MCP tool name, e.g. `"repair_slide"` or `"recommend_pattern"` |
+| `tool` | string | MCP tool name, e.g. `"repair_slide"` or `"recommend_visual"` |
 | `args_template` | object | Template for the tool arguments — agents can invoke directly or merge with additional context |
 
 Routing logic:
 - Fix kinds in the `repair_slide` vocabulary (`reduce_text`, `split_at_row`, `shorten_title`, `replace_color`, `use_semantic_color`, `split_pattern`, `swap_layout`, `use_one_of`) → `next_tool_call.tool = "repair_slide"`
-- `swap_pattern` and `adopt_pattern` fix kinds → `next_tool_call.tool = "recommend_pattern"`
+- `swap_pattern` and `adopt_pattern` fix kinds → `next_tool_call.tool = "recommend_visual"` with `args_template: {intent: "<...>", content_hints: {item_count: N}}` in every tool profile (`item_count` is omitted when the fix carries no count)
 - Findings with action `"info"` never have `next_tool_call`
 
 Example:
@@ -456,7 +456,7 @@ Only fires when a title-anchored content zone was resolved for the slide (`Layou
 
 Visible content covers less than 40% of the resolved grid area — the slide is mostly empty. Filled cells and non-text visuals count at their drawn size; unfilled text uses its measured wrapped height. A full-bleed painted card row is not sparse merely because each label is short.
 
-The raw-grid fix params include `filled_pct`, `filled_slots`, `grid_rows`, and `grid_cols`, so `recommend_pattern` can use the actual structure. The measured/allowed extents retain area-equivalent heights (visible area divided by grid width), not raw newline estimates.
+The raw-grid fix params include `filled_pct`, `filled_slots`, `grid_rows`, and `grid_cols`, so `recommend_visual` can use the actual structure. The measured/allowed extents retain area-equivalent heights (visible area divided by grid width), not raw newline estimates.
 
 Native SWOT, PESTEL, KPI-dashboard, and house diagrams also use this code when measured text ink occupies under 40% of their allocated height. Their cards are automatically content-sized and vertically centred where possible. These findings use the diagram type as `pattern` and recommend `add_detail_or_resize`, not a shape-grid repair; adding meaningful detail or choosing a shorter diagram region resolves the remaining whitespace.
 
@@ -480,7 +480,7 @@ Native SWOT, PESTEL, KPI-dashboard, and house diagrams also use this code when m
 **Pattern:** `shape_grid` (authored raw grid)
 **Fix kind:** `swap_pattern`
 
-An authored raw grid has less than 50% of its declared slots populated. Pattern and compose expanders may pad rows for alignment, so their slots are not interpreted as missing content; those slides use resolved-ink findings instead. The fix suggests using `recommend_pattern` to find a better-fitting layout for the item count.
+An authored raw grid has less than 50% of its declared slots populated. Pattern and compose expanders may pad rows for alignment, so their slots are not interpreted as missing content; those slides use resolved-ink findings instead. The fix suggests using `recommend_visual` to find a better-fitting layout for the item count.
 
 ```json
 {
@@ -491,7 +491,7 @@ An authored raw grid has less than 50% of its declared slots populated. Pattern 
   "fix": { "kind": "swap_pattern", "params": { "filled_pct": 0.33, "filled_slots": 1, "total_slots": 3, "reason": "reshape_grid" } },
   "action": "review",
   "overflow_ratio": 0.33,
-  "next_tool_call": { "tool": "recommend_pattern", "args_template": { "item_count": 1 } }
+  "next_tool_call": { "tool": "recommend_visual", "args_template": { "intent": "<one sentence: what this slide should show>", "content_hints": { "item_count": 1 } } }
 }
 ```
 
@@ -503,7 +503,9 @@ An authored raw grid has less than 50% of its declared slots populated. Pattern 
 
 A pattern grid exceeds the pattern's recommended maximum cell count. The fix suggests splitting across two slides using `split_pattern`, with params indicating the recommended split point.
 
-The limit counts **grid cells**, not the pattern's items: a pattern that draws each item as a stack of cells (`timeline-horizontal`'s dots layout emits a date, a dot and a label per stop) carries a limit scaled accordingly.
+The limit counts **grid cells**, not the pattern's items: a pattern that draws each item as a stack of cells (`timeline-horizontal`'s dots layout emits a date, a dot and a label per stop) carries a limit scaled accordingly. Cells that carry no content are not counted: `comparison-2col`'s `connectors` gutter (one badge or spacer per row) is excluded, so a 3-row comparison with headers and connectors is not reported (go-slide-creator-csclk.111).
+
+On a raw `shape_grid` slide the params carry `first` / `second` (the cell split point). On a named-pattern slide they are omitted: those counts are in grid cells, while `repair_slide` splits a pattern slide by its `pattern.values` array, so it halves that list instead.
 
 ```json
 {
@@ -511,10 +513,10 @@ The limit counts **grid cells**, not the pattern's items: a pattern that draws e
   "path": "/slides/3/shape_grid",
   "code": "pattern_overcrowded",
   "message": "card-grid: 12 cells exceeds recommended max of 8 — consider splitting",
-  "fix": { "kind": "split_pattern", "params": { "filled_slots": 12, "recommended_max": 8, "first": 6, "second": 6, "title_part_2": "(continued)" } },
+  "fix": { "kind": "split_pattern", "params": { "filled_slots": 12, "recommended_max": 8, "title_part_2": "(continued)" } },
   "action": "review",
   "overflow_ratio": 1.5,
-  "next_tool_call": { "tool": "repair_slide", "args_template": { "slide_index": 3, "fixes": [{ "kind": "split_pattern", "params": { "first": 6, "title_part_2": "(continued)" } }] } }
+  "next_tool_call": { "tool": "repair_slide", "args_template": { "slide_index": 3, "fixes": [{ "kind": "split_pattern", "params": { "title_part_2": "(continued)" } }] } }
 }
 ```
 
@@ -538,7 +540,7 @@ The fix is a `swap_pattern` suggestion ranked toward `numbered-step-strip` (whos
   "message": "slide 4: process-flow is a single horizontal row of 4 sparse cells (avg 6 chars) with no height cap — boxes stretch to fill the slide; switch to numbered-step-strip / process-grid-2row / phase-roadmap, or set max_height_pct",
   "fix": { "kind": "swap_pattern", "params": { "from": "process-flow", "item_count": 4, "avg_chars": 6, "reason": "single_row_sparse", "suggested": [{ "to": "numbered-step-strip", "rationale": "ordered steps with a per-step detail zone fill the vertical space" }] } },
   "action": "review",
-  "next_tool_call": { "tool": "recommend_pattern", "args_template": { "item_count": 0 } }
+  "next_tool_call": { "tool": "recommend_visual", "args_template": { "intent": "<one sentence: what this slide should show>", "content_hints": { "item_count": 4 } } }
 }
 ```
 
@@ -665,7 +667,7 @@ The code also carries the **heatmap label-density** case (go-slide-creator-3rkpt
 
 A diagram with **both** explicit `DiagramSpec.Width` and `Height` has a render-frame aspect ratio that differs from those pinned (authored) dimensions by more than 25%. Because the explicit dimensions fix the rendered SVG aspect regardless of the frame, the chart is either stretched or letterboxed, both of which read as visual noise. The agent action is to widen/shorten the cell, set `cell.fit` to `contain` / `fit-width` / `fit-height`, or change the explicit `diagram.width` / `diagram.height` to match the frame.
 
-This finding does **not** fire for diagrams with unset or single-axis (`width`-only / `height`-only) dimensions: the renderer resolves the missing dimension(s) from the render frame (via `ResolveDiagramRenderDimensions`), so the rendered SVG adopts the frame aspect and there is nothing to flag. Natural-aspect diagram types (`timeline`, `gantt`, `org_chart`) that ignore unset dimensions are covered by [`diagram_aspect_conflict`](#diagram_aspect_conflict) instead.
+This finding does **not** fire for diagrams with unset or single-axis (`width`-only / `height`-only) dimensions: the renderer resolves the missing dimension(s) from the render frame (via `ResolveDiagramRenderDimensions`), so the rendered SVG adopts the frame aspect and there is nothing to flag. Natural-aspect diagram types (`timeline`, `gantt`, `org_chart`) also lay out into the supplied frame, so nothing is flagged for them either (the former `diagram_aspect_conflict` code is retired and no longer emitted).
 
 **Authored vs effective evidence.** The flagged deviation is the **authored** aspect vs the **post-fit render frame** (the frame the SVG is actually sized into — what render emits). The fix params carry four independent aspect signals so an agent can tell apart an authoring mistake (authored dims fight the cell) from a fit-driven render mismatch:
 
@@ -690,26 +692,6 @@ When `fit_adjusted` is `true`, the message additionally reports the original cel
 ```
 
 > The example above assumes the `bar_chart` carries explicit `diagram.width: 800` / `diagram.height: 600` and no `cell.fit` (so `cell_*` and `render_*` coincide). With a `cell.fit`, `render_*` reflects the post-fit frame and `fit_adjusted` is `true`. `measured` is the post-fit render frame; `allowed` is the effective render dimensions.
-
-### `diagram_aspect_conflict`
-
-**Action:** `review`
-**Fix kind:** `reshape_grid`
-**Emitted at:** preflight + render time
-
-A non-chart diagram cell's aspect ratio differs from the diagram type's natural svggen viewBox aspect by more than 30%. Currently emitted for diagram types whose renderer pins a non-container natural aspect via `svggen.NaturalAspect` — `timeline` (2:1), `gantt` (~1.8:1), and `org_chart` (~1.57:1, baseline before data-driven scaling). The check is silent for chart types (their aspect issues come from svggen dry-render `chart.*` findings) and for diagrams with explicit `DiagramSpec.Width`/`Height` (those are handled by `diagram_aspect_mismatch`). Available at validate and preview time without invoking resvg/inkscape.
-
-```json
-{
-  "path": "/slides/0/shape_grid/rows/0/cells/0/diagram",
-  "code": "diagram_aspect_conflict",
-  "message": "timeline cell aspect 0.52 conflicts with diagram natural aspect 2.00 (deviation 74%) — render will be letterboxed or distorted; resize the cell, set cell.fit, or set explicit diagram.width/height",
-  "fix": { "kind": "reshape_grid", "params": { "diagram_type": "timeline", "natural_aspect": 2.0, "cell_aspect": 0.52, "deviation": 0.74, "cell_width_emu": 3048000, "cell_height_emu": 5829300 } },
-  "action": "review",
-  "measured": { "width_emu": 3048000, "height_emu": 5829300 },
-  "overflow_ratio": 0.26
-}
-```
 
 ### `diagram_clamped`
 
@@ -804,6 +786,24 @@ The chart's data map is empty — the output would be a blank chart placeholder.
   "message": "slide 1, content 1: bar data is empty; output will be blank",
   "fix": { "kind": "provide_data", "params": { "chart_type": "bar" } },
   "action": "refuse"
+}
+```
+
+### `chart.waterfall_total_mismatch`
+
+**Action:** `review`
+**Pattern:** `waterfall`
+**Fix kind:** `replace_value` (params: `index`, `authored`, `running_sum`)
+
+A waterfall `total` or `subtotal` point disagrees with the running sum of the bars before it by more than 0.5%. The bar is still drawn at the authored value, so the walk visibly does not add up. Correct the total, or add the increase/decrease step that explains the gap. (Increase/decrease direction always comes from `type`, not the sign of `value`.)
+
+```json
+{
+  "code": "chart.waterfall_total_mismatch",
+  "field": "points[2].value",
+  "message": "waterfall total \"T\" is 99 but the bars before it sum to 15 (off by 84); the bar is drawn at the authored value",
+  "fix": { "kind": "replace_value", "params": { "index": 2, "authored": 99, "running_sum": 15 } },
+  "severity": "warning"
 }
 ```
 
@@ -946,7 +946,7 @@ Mechanics:
 **Pattern:** `shape_grid`
 **Fix kind:** `increase_gap`
 
-Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored grids only) when two consecutive rows both hold a table and the grid's effective row gap (`row_gap`, else `gap`, else the 8pt default) is below 4pt, so the tables read as one run-on table. `params` carries `current_pt` and `minimum_pt`. Raise `row_gap`, merge the tables, or split the slide.
+Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored grids only) when two consecutive rows both hold a table and the grid's effective row gap (`row_gap`, else `gap`, else the 8pt default) is below 4pt, so the tables read as one run-on table. `params` carries `current_pt` and `minimum_pt`. Raise `row_gap`, merge the tables, or split the slide. Nested cell sub-grids are checked too; their findings carry the nested path (`.../cells/N/grid/rows/a:b`).
 
 ### `divider_too_thin`
 
@@ -954,7 +954,7 @@ Emitted by `DetectStructuralSmells` (same scope as `accent_overload`: authored g
 **Pattern:** `shape_grid`
 **Fix kind:** `increase_gap` or `increase_row_height`
 
-Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap is below 3pt (`increase_gap`, one finding per crushed row pair) or whose row has an explicit `height` below 4% of the slide (`increase_row_height`).
+Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap is below 3pt (`increase_gap`, one finding per crushed row pair) or whose row has an explicit `height` below 4% of the slide (`increase_row_height`). Nested cell sub-grids are checked with their own gap and paths. `mixed_fill_scheme` and `accent_overload` also count fills inside nested sub-grids.
 
 ### `mixed_fill_scheme`
 
@@ -962,7 +962,7 @@ Emitted by `DetectStructuralSmells` for an authored grid whose effective row gap
 **Pattern:** `shape_grid`
 **Fix kind:** `use_semantic_color`
 
-Emitted by `DetectStructuralSmells` when one authored grid mixes hex fills (other than black/white) with semantic scheme fills. Hex fills do not follow a template swap, so the slide stops being portable. Convert the hex fills to scheme names.
+Emitted by `DetectStructuralSmells` when one authored grid mixes hex fills (other than black/white) with semantic scheme fills. Hex fills do not follow a template swap, so the slide stops being portable. Convert the hex fills to scheme names. `fix.params.value` carries a scheme color the grid already uses, so the `repair_slide` call in `next_tool_call` rewrites every hex fill in the grid to it; pass a different `value` (or a per-cell `path`) to choose another.
 
 ### `CHROME_COLLISION`
 
@@ -1667,6 +1667,35 @@ Emitted from two fit sites, each tagging its text role:
 }
 ```
 
+### Input-validation and render-time codes
+
+These codes are advertised in `get_capabilities().vocabularies.fit_finding_codes`
+and described in full by `describe_finding` / `json2pptx describe-finding <code>`.
+Pattern-input codes (`min_items` … `unknown_key`) come from `Pattern.Validate` and
+address the pattern object, e.g. `/slides/0/pattern/values/cells/3/header` or
+`/slides/0/pattern/callout`; `refuse` means generation is blocked until fixed.
+
+| Code | Action | Emitted at | Meaning and remedy |
+|------|--------|------------|--------------------|
+| `UNKNOWN_ENUM` | `refuse` | validate | An enum field received a value outside its allowed set. Use a value from `fix.params.allowed` (or the `get_capabilities` vocabularies). |
+| `unknown_layout_id` | `refuse` | validate | `layout_id` is not one of the template's `canonical_layout_ids`. Pick one from `list_templates`. |
+| `unknown_table_style_id` | `refuse` | validate | A table `style_id` is not in the template's `table_styles`. Pick one from `list_templates`, or drop it for the template default. |
+| `hex_fill_non_brand` | `review` | validate | A `#RRGGBB` shape fill matches no theme or brand-allowlisted color. Use a scheme name (`accent1`…`accent6`, `lt1`/`dk1`, `lt2`/`dk2`) or register the hex via `register_template_setting`. |
+| `callout_unsupported` | `refuse` | validate / expand | `pattern.callout` is set on a pattern without callout support (e.g. `kpi-3up`). Remove the callout or switch to a pattern listed in `fix.params.supports_callout_patterns`. |
+| `min_items` | `refuse` | validate / expand | A pattern list is shorter than its minimum. Add items or pick a smaller pattern via `recommend_pattern`. |
+| `max_items` | `refuse` | validate / expand | A pattern list is longer than its maximum. Trim items, split the slide, or pick a denser pattern. |
+| `count_mismatch` | `refuse` | validate / expand | A fixed-arity pattern list has the wrong count (e.g. `bmc-canvas` needs exactly 9 cells). Resize the list to the stated count. |
+| `required` | `refuse` | validate / expand | A required pattern field is missing. Supply it; `show_pattern <name>` lists the required fields. |
+| `wrong_pattern` | `refuse` | validate / expand | The content's shape (e.g. item count) fits another pattern better. Swap to a pattern in `fix.params.suggested` (confirm with `recommend_pattern`) or reshape the content. |
+| `empty_value` | `refuse` | validate / expand | A required pattern field is empty or whitespace-only. Supply real text, or remove the field if it is optional. |
+| `out_of_range` | `refuse` | validate / expand | A numeric pattern field (or `cell_overrides` index) is outside its `[min,max]`. Use a value inside the stated range. |
+| `unknown_key` | `refuse` | validate / expand | A pattern `values` / `cell_overrides` object carries a key outside the schema. Remove it or use the closest legal key from the message. |
+| `text_overflow` | `review` | render | Text still overflows its placeholder after trimming trailing paragraphs. Shorten via `repair_slide` `reduce_text` or split the slide. |
+| `no_autofit_overflow` | `review` | render | Text overflows a `noAutofit` placeholder, so PowerPoint cannot shrink it. Shorten the text or use a layout whose placeholder autofits. |
+| `table_font_scaled` | `review` | render | A table's font was scaled down to the minimum readable floor to fit. Trim rows/columns, or accept the small font. |
+| `column_width_deficit` | `review` | render | Authored table column widths could not be distributed into the available width, so widths fell back to a uniform floor. Make widths sum to the table width, or omit them. |
+| `pagination_default_threshold` | `info` | render | Auto-pagination used a hard-coded default threshold because the template has no capacity hint. Register a capacity hint or split content manually. |
+
 ## Scope Rules
 
 Fit findings are scoped to **JSON-authored content only**. Content inherited from template layouts or masters is never checked.
@@ -1755,7 +1784,7 @@ Findings are printed to stderr grouped by slide. Exit code is nonzero only if an
 
 ### Compact Responses
 
-Responses are always compact JSON; the server still advertises `experimental.compact_responses: true` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
+Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
 
 ## Visual-QA Aesthetic Findings
 

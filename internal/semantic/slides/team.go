@@ -30,10 +30,11 @@ const (
 
 // teamMember is one resolved person.
 type teamMember struct {
-	Name       string `json:"name"`
-	Role       string `json:"role"`
-	Bio        string `json:"bio,omitempty"`
-	PhotoLabel string `json:"photo_label,omitempty"`
+	Name       string          `json:"name"`
+	Role       string          `json:"role"`
+	Bio        string          `json:"bio,omitempty"`
+	PhotoLabel string          `json:"photo_label,omitempty"`
+	Photo      *imageCaseImage `json:"photo,omitempty"`
 }
 
 // teamBiosValues is the team-bios pattern's values object.
@@ -119,6 +120,8 @@ func TeamMembers(body map[string]any) []teamMember {
 				Role:       firstNonEmpty(strField(m, "role"), strField(m, "position"), strField(m, "job_title")),
 				Bio:        firstNonEmpty(strField(m, "bio"), strField(m, "description"), strField(m, "summary")),
 				PhotoLabel: teamPhotoLabel(m),
+				// A headshot: a path/url string or {path|url, alt}, as image_case reads it.
+				Photo: imageCaseImageFrom(map[string]any{"photo": m["photo"]}),
 			})
 		}
 	}

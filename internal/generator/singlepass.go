@@ -115,6 +115,11 @@ func (ctx *singlePassContext) initializeContext(templatePath string) (cleanup fu
 	if err != nil {
 		return nil, fmt.Errorf("failed to open template: %w", err)
 	}
+	if err := utils.CheckZipLimits(ctx.templateReader.File); err != nil {
+		_ = ctx.templateReader.Close()
+		ctx.templateReader = nil
+		return nil, fmt.Errorf("failed to open template: %w", err)
+	}
 	ctx.templatePath = templatePath
 	ctx.templateIndex = utils.BuildZipIndex(&ctx.templateReader.Reader)
 	ctx.loadTemplateProfile(templatePath)

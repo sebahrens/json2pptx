@@ -16,8 +16,9 @@ make build-race
 # Run all tests
 go test ./... -v
 
-# CI-equivalent race suite (cmd/json2pptx can exceed Go's default 10m timeout)
-go test ./... -short -race -timeout=15m
+# CI-equivalent race suite (cmd/json2pptx can exceed Go's default 10m timeout;
+# .github/workflows/ci.yml uses 25m). Run it in svggen/ too: cd svggen && go test ./... -short -race
+go test ./... -short -race -timeout=25m
 
 # Run tests with coverage
 go test ./... -cover -coverprofile=coverage.out -covermode=atomic
@@ -28,8 +29,9 @@ go tool cover -func=coverage.out | tail -1
 # Type checking (Go is statically typed - build is the check)
 go build ./...
 
-# Lint
-golangci-lint run ./...
+# Lint BOTH modules with the CI-pinned golangci-lint (.golangci-version).
+# Do not run a bare golangci-lint off PATH: other versions disagree with CI.
+make lint
 
 # Format check (tracked Go files only; ignores scratch worktrees)
 git ls-files -z -- '*.go' | xargs -0 gofmt -l
@@ -104,7 +106,6 @@ internal/            # Private packages
   visualqa/          # Visual QA agent integration
 svggen/              # SVG chart and diagram generation (separate module)
 templates/           # Built-in PPTX templates
-specs/               # Design specifications
 ```
 
 ## Dependencies

@@ -30,7 +30,9 @@ For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
 `list_slide_kinds` using its compact fields; request `item_schema` and
 `compositions` only for selected kinds. Then call `validate_deck_spec`,
 `render_deck_spec`, and `render_deck_thumbnails`. Edit the spec at a finding's
-`semantic_path` and repeat. `make_deck` creates an exemplar-filled wireframe,
+`semantic_path` and repeat; a finding the quality gate blocks on carries at
+least `warning` severity, and `SEMANTIC_REFERENCE_UNRESOLVED` means a
+highlight / current-section reference matched nothing. `make_deck` creates an exemplar-filled wireframe,
 not a publishable authored deck. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation behavior, required-layout coverage, handles, and revision rules.
 
@@ -46,13 +48,16 @@ patterns cover pages DeckSpec kinds do not: `contact-directory` (key contacts
 / "who to call": grouped rows of circular headshots, names and titles, up to
 24 people) and `text-sidebar` (prose introduction or foreword beside one large
 key-message panel). A shape-grid `image` cell accepts `geometry: "ellipse"` for
-a circular picture frame.
+a circular picture frame. Asset paths expand only `$HOME`, `$BRAND_ASSETS`,
+`$JSON2PPTX_*`; `icon.path` obeys `ALLOWED_IMAGE_PATHS`.
 
 For both paths, a passing `quality_gate` or `deterministic_ready` field is a
 precondition, not proof that anybody looked at the slides. On a fresh semantic
 render, `publishable` remains false until a complete approved visual verdict
 for the current artifact exists. For a recorded publishable verdict, use
-`submit_visual_review` only after inspecting each current-revision image.
+`submit_visual_review` only after inspecting each current-revision image;
+it never overrides deterministic blockers (status
+`reviewed_deterministic_blockers`, `publishable: false`, `blocking_reasons`).
 Any changed slide invalidates its previous visual verdict. If a finding is
 unfamiliar, call `describe_finding`; use
 `get_capabilities().vocabularies.repair_fix_kinds` to distinguish executable
@@ -70,11 +75,13 @@ executable one.
 - [WORKFLOW.md](WORKFLOW.md): detailed Plan → Vary → Render → Repair workflow,
   visual inspection, resumable calls, and idempotency.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
-  anti-pattern rules.
+  anti-pattern rules. Chart data rules (waterfall `type` sets the sign;
+  `chart.waterfall_total_mismatch`) are in docs/INPUT_FORMAT.md.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance
   (including tier-rated `capability-heatmap`, labelled-row `framework-grid`
   and per-pair-count `state-shift-hub` budgets); get the current catalog and per-pattern schema from
-  `list_patterns` / `show_pattern`.
+  `list_patterns` / `show_pattern`. Pattern text-size overrides honour the
+  schema range (12pt floor): out-of-range sizes are rejected, not clamped.
 - [FINDINGS.md](FINDINGS.md): legacy finding and fix details for cases not yet
   covered by `describe_finding`; prefer the live tool for known codes.
 - [../template-deck/TEMPLATE_GUIDE.md](../template-deck/TEMPLATE_GUIDE.md):
@@ -93,6 +100,7 @@ profile is deliberately compact. `get_capabilities().mcp_tools_available`
 identifies the current core set and tools callable by name in this session.
 For full discovery, use `--tools all` or `JSON2PPTX_MCP_TOOLS=all`. If
 `list_templates` preview-cache writes are undesirable during discovery,
-pass `read_only: true`.
+pass `read_only: true`. Args over 2 MiB of text are refused; a raced
+`deck_id` patch returns `STALE_REVISION` (reload, re-apply).
 
-Responses are always compact JSON; the server still advertises `experimental.compact_responses: true` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.
+Responses are always compact JSON; the server still advertises `experimental.compact_responses: {}` and still honours the client capability and the deprecated `MCP_COMPACT_RESPONSES=1` environment variable, but neither changes anything.

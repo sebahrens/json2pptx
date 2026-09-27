@@ -81,6 +81,14 @@ func TestNonChartDiagramKeepsThemeBackground(t *testing.T) {
 	}
 }
 
+func TestOrgChartBackgroundTransparent(t *testing.T) {
+	spec := &types.DiagramSpec{Type: "org_chart"}
+	theme := []types.ThemeColor{{Name: "lt1", RGB: "#FFFFFF"}, {Name: "accent1", RGB: "#355F95"}}
+	if got := diagramSpecToSVGGen(spec, theme, 0, "").Style.Background; got != "transparent" {
+		t.Errorf("org_chart background = %q, want transparent (csclk.91)", got)
+	}
+}
+
 func TestAbstractChartPaletteUsesVisibleFirstAccent(t *testing.T) {
 	reader, err := template.OpenTemplate("../../templates/abstract.pptx")
 	if err != nil {

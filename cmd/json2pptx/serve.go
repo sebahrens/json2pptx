@@ -128,7 +128,9 @@ func runServe() error {
 		BuildTime:        BuildTime,
 		FileRetention:    cfg.Storage.FileRetention,
 		// Empty = unrestricted, as before; ALLOWED_IMAGE_PATHS opts in.
-		AllowedImagePaths: cfg.Images.AllowedBasePaths,
+		AllowedImagePaths:     cfg.Images.AllowedBasePaths,
+		MaxSlidesPerRequest:   cfg.Server.MaxSlidesPerRequest,
+		MaxConcurrentConverts: cfg.Server.MaxConcurrentConverts,
 	})
 
 	// Start output file cleanup daemon (enforces FileRetention policy)
@@ -140,6 +142,14 @@ func runServe() error {
 	})
 	outputCleaner.Start()
 	defer outputCleaner.Stop()
+
+	// The write timeout must outlast the convert timeout, otherwise net/http
+	// drops slow converts before the handler can answer with a 504.
+	if minWrite := api.DefaultConvertTimeout + 30*time.Second; cfg.Server.WriteTimeout > 0 && cfg.Server.WriteTimeout < minWrite {
+		slog.Warn("write_timeout is shorter than the convert timeout; raising it",
+			"configured", cfg.Server.WriteTimeout, "effective", minWrite)
+		cfg.Server.WriteTimeout = minWrite
+	}
 
 	// Create HTTP server
 	server := &http.Server{

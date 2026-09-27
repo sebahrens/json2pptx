@@ -35,3 +35,25 @@ func TestTimelineWithinItsOwnStopLimitIsNotOvercrowded(t *testing.T) {
 		}
 	}
 }
+
+// comparison-2col's connectors mode adds a centre gutter cell per row; those
+// badges are not content and must not push a 3-row comparison over the
+// 8-cell limit (go-slide-creator-csclk.111).
+func TestComparison2colConnectorGutterIsNotOvercrowded(t *testing.T) {
+	input := &PresentationInput{Slides: []SlideInput{{
+		SlideType: "content",
+		LayoutID:  "blank-title",
+		Pattern: &PatternInput{
+			Name:      "comparison-2col",
+			Values:    json.RawMessage(`{"headers":["Today","Target"],"rows":[{"left":"Manual","right":"Automated"},{"left":"Siloed","right":"Shared"},{"left":"Quarterly","right":"Weekly"}]}`),
+			Overrides: json.RawMessage(`{"connectors":true}`),
+		},
+	}}}
+
+	expanded, _ := expandPatternsForFit(input, shapegrid.DefaultSlideWidthEMU, shapegrid.DefaultSlideHeightEMU, nil)
+	for _, f := range collectGridOccupancyFindings(expanded) {
+		if strings.Contains(string(f.Code), "overcrowded") {
+			t.Errorf("3-row comparison-2col with connectors reported overcrowded: %s", f.Message)
+		}
+	}
+}

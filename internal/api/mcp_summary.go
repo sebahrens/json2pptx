@@ -51,10 +51,10 @@ func compactMCPTextSummary(data any) ([]byte, error) {
 }
 
 func addSummaryScalars(summary map[string]any, object map[string]json.RawMessage) {
-	for _, key := range []string{"ok", "success", "valid", "publishable", "deterministic_ready", "error", "summary", "message", "pptx_path", "path", "output_filename", "deck_id", "task"} {
+	for _, key := range []string{"ok", "success", "valid", "publishable", "deterministic_ready", "error", "summary", "message", "pptx_path", "output_path", "path", "output_filename", "deck_id", "task"} {
 		if raw, ok := object[key]; ok {
 			limit := 120
-			if key == "pptx_path" || key == "path" || key == "output_filename" {
+			if key == "pptx_path" || key == "output_path" || key == "path" || key == "output_filename" {
 				limit = 320
 			}
 			if value, ok := summaryScalarLimit(raw, limit); ok {
@@ -70,7 +70,8 @@ func addSummaryFindings(summary map[string]any, object map[string]json.RawMessag
 			summary["next_tool_call"] = call
 		}
 	}
-	for _, key := range []string{"findings", "diagnostics"} {
+	// fit_findings is the generate_presentation list (go-slide-creator-csclk.128).
+	for _, key := range []string{"findings", "diagnostics", "fit_findings"} {
 		if raw, ok := object[key]; ok {
 			if count, first := summaryFindings(raw); count >= 0 {
 				summary[key+"_count"] = count
@@ -145,6 +146,8 @@ func fitMCPTextSummary(summary map[string]any, object map[string]json.RawMessage
 			summary["findings"] = findings[:len(findings)-1]
 		} else if findings, ok := summary["diagnostics"].([]map[string]any); ok && len(findings) > 1 {
 			summary["diagnostics"] = findings[:len(findings)-1]
+		} else if findings, ok := summary["fit_findings"].([]map[string]any); ok && len(findings) > 1 {
+			summary["fit_findings"] = findings[:len(findings)-1]
 		} else if _, ok := summary["next_tools"]; ok {
 			delete(summary, "next_tools")
 		} else if _, ok := summary["message"]; ok {
@@ -184,13 +187,13 @@ func minimalMCPTextSummary(object map[string]json.RawMessage, summary map[string
 			break
 		}
 	}
-	for _, key := range []string{"pptx_path", "path", "output_filename"} {
+	for _, key := range []string{"pptx_path", "output_path", "path", "output_filename"} {
 		if value, ok := summaryScalarLimit(object[key], 320); ok {
 			minimal[key] = value
 			break
 		}
 	}
-	for _, key := range []string{"findings", "diagnostics"} {
+	for _, key := range []string{"findings", "diagnostics", "fit_findings"} {
 		if findings, ok := summary[key].([]map[string]any); ok && len(findings) > 0 {
 			first := make(map[string]any)
 			for _, field := range []string{"code", "message"} {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"strconv"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -360,9 +361,9 @@ func generateHeatmapGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 			}
 		}
 		shapeIdx++
-		children = append(children, []byte(generateHeatmapLabelXML(formatHeatmapVal(minVal), barX-legendLabelW, legendY, legendLabelW-heatmapGap, heatmapLegendHeight, shapeIDBase+shapeIdx, heatmapHeaderFontSize, "r", false)))
+		children = append(children, []byte(generateHeatmapLabelXML(formatHeatmapLegendVal(minVal), barX-legendLabelW, legendY, legendLabelW-heatmapGap, heatmapLegendHeight, shapeIDBase+shapeIdx, heatmapHeaderFontSize, "r", false)))
 		shapeIdx++
-		children = append(children, []byte(generateHeatmapLabelXML(formatHeatmapVal(maxVal), barX+barW+heatmapGap, legendY, legendLabelW-heatmapGap, heatmapLegendHeight, shapeIDBase+shapeIdx, heatmapHeaderFontSize, "l", false)))
+		children = append(children, []byte(generateHeatmapLabelXML(formatHeatmapLegendVal(maxVal), barX+barW+heatmapGap, legendY, legendLabelW-heatmapGap, heatmapLegendHeight, shapeIDBase+shapeIdx, heatmapHeaderFontSize, "l", false)))
 	}
 
 	groupBounds := pptx.RectEmu{X: bounds.X, Y: bounds.Y, CX: bounds.Width, CY: bounds.Height}
@@ -394,6 +395,15 @@ func heatmapCellFill(value, minVal, maxVal float64, colorScale string) heatmapTo
 	}
 
 	t := (value - minVal) / (maxVal - minVal)
+	if colorScale == "diverging" && minVal < 0 && maxVal > 0 {
+		// A range spanning zero diverges from 0, not from the midrange: in
+		// [-10..50] a 0 is neutral, not "low" (go-slide-creator-csclk.18).
+		if value < 0 {
+			t = 0.5 - 0.5*value/minVal
+		} else {
+			t = 0.5 + 0.5*value/maxVal
+		}
+	}
 	t = math.Max(0, math.Min(1, t))
 
 	if colorScale == "diverging" {
@@ -565,6 +575,53 @@ func formatHeatmapVal(v float64) string {
 		return fmt.Sprintf("%.0f", v)
 	}
 	return fmt.Sprintf("%g", v)
+}
+
+// formatHeatmapLegendVal formats a colour-scale endpoint compactly: values of
+// a million or more (in magnitude) take a K/M/B/T-style suffix so a label such
+// as -1e12 does not wrap inside the narrow legend box
+// (go-slide-creator-csclk.18). Smaller values format as cell values do.
+func formatHeatmapLegendVal(v float64) string {
+	abs := math.Abs(v)
+	if abs < 1e6 || math.IsInf(v, 0) || math.IsNaN(v) {
+		return formatHeatmapVal(v)
+	}
+	for _, s := range []struct {
+		div    float64
+		suffix string
+	}{{1e12, "T"}, {1e9, "B"}, {1e6, "M"}} {
+		if abs >= s.div && abs/s.div < 999.5 {
+			return strconv.FormatFloat(v/s.div, 'g', 3, 64) + s.suffix
+		}
+	}
+	return strconv.FormatFloat(v, 'g', 3, 64)
+}
+
+// ValidateHeatmapData rejects heatmap data the native renderer would draw
+// wrongly: unparseable values, ragged rows (cells padded with 0 or dropped)
+// and label lists whose length does not match the grid
+// (go-slide-creator-csclk.18).
+func ValidateHeatmapData(data map[string]any) error {
+	parsed, err := parseHeatmapData(data)
+	if err != nil {
+		return err
+	}
+	if len(parsed.values) == 0 || len(parsed.values[0]) == 0 {
+		return fmt.Errorf("heatmap 'values' must contain at least one row and one column")
+	}
+	cols := len(parsed.values[0])
+	for i, row := range parsed.values {
+		if len(row) != cols {
+			return fmt.Errorf("heatmap 'values' row %d has %d values but row 1 has %d; every row must have the same length", i+1, len(row), cols)
+		}
+	}
+	if n := len(parsed.rowLabels); n > 0 && n != len(parsed.values) {
+		return fmt.Errorf("heatmap has %d row labels for %d rows", n, len(parsed.values))
+	}
+	if n := len(parsed.colLabels); n > 0 && n != cols {
+		return fmt.Errorf("heatmap has %d column labels for %d columns", n, cols)
+	}
+	return nil
 }
 
 // parseHeatmapData extracts heatmap data from a diagram data map.
