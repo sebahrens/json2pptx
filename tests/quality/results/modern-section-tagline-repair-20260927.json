@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "bead": "go-slide-creator-3qzo4.100",
+  "status": "installed_locally_all_final_gates_passed_awaiting_publication_and_ci",
+  "scope": "Align the modern-template section tagline with its existing title while preserving the right edge, vertical frame and native styling.",
+  "source_template_sha256": "dd47b93e27d55df1c8564f6f78d06dce62d6b59bb1515bdb1f1b92836314e761",
+  "installed_template_sha256": "945ef9841c40233dd1bccbf5c02f5112d474830a83ba9afc3e9cbef07c7c1b45",
+  "source_changes": {
+    "part": "ppt/slideLayouts/slideLayout2.xml",
+    "body_x_emu": [838200, 1450428],
+    "body_width_emu": [10515600, 9903372],
+    "body_right_edge_emu": 11353800,
+    "other_package_payloads": "byte-identical"
+  },
+  "preserved": ["full wording", "editable placeholders", "fonts and sizes", "title geometry", "section-number geometry", "vertical spacing", "source media", "picture crops", "other layouts", "master", "theme", "relationships"],
+  "candidate_validation": {
+    "conformance": "31 pass, zero warnings or failures",
+    "native_render": "PASS 38.437s",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "generated": 247,
+    "refused": 62,
+    "unchanged_decoded_rgba_images": 245,
+    "changed_images": ["modern-template/slideLayout2-representative", "modern-template/slideLayout2-dense"],
+    "generated_package_changes": "Only the same two geometry attributes in slideLayout2.xml and slides4/5.xml",
+    "audit_sha256": "b901371851db8ae2e125262728c9abfea7dab0509bd306e7dc481a5103f535f2"
+  },
+  "blind_review": {
+    "reviewers": 1,
+    "images": 4,
+    "unreviewed": 0,
+    "supplied_wording_complete": 4,
+    "source_packet_review_hash_join": "PASS",
+    "resolved_in_both_after_images": "TAGLINE_ALIGNMENT",
+    "introduced_finding_codes": [],
+    "remaining_in_both_after_images": "BACKGROUND_RINGING; separately tracked by go-slide-creator-3qzo4.99",
+    "join_sha256": "956f87c65f07a3f2f1b0d820925c63b4a224f0dc70e55b77e3426f0b381a08a5"
+  },
+  "installed_validation": {
+    "actual_generation_regression": "PASS 6.145s, source and generated output; representative/dense titles plus longer tagline",
+    "regression_source_sha256": "e6be47609eb5c4466bc16aed6b98d8a4b94bc50bc89e8e9b21a56547af867263",
+    "negative_control": "Original template FAILS alignment assertion in source and all three actual generated outputs",
+    "retained_initial_scratch_failure": "Invalid unused XML attribute-path field; corrected before successful regression, not passing evidence",
+    "installed_vs_reviewed_candidate": "All 247 decoded RGBA images and package parts identical; 62 refusals and all 309 input/status records preserved",
+    "installed_audit_sha256": "c27618897ac4adff923f7f29c948a8e2e616787e909e184dae3cf6a43982f07a",
+    "preview_refresh": "Only modern-template slideLayout2 PNG changed; six other native preview PNGs byte/pixel-identical; matching manifest installed",
+    "golden_refresh": "Only modern-template hash changes from 5033babd160292775229ddf8ccdb106ae613ed448a967cf4824ba15f1e076283 to efb2b9ea92262ce289bc633f3acf4ed8a0768c863f7361d92a81e7fc497d5945",
+    "pinned_lint": "PASS, zero issues",
+    "build": "PASS",
+    "templatepreview_race": "PASS 11.014s",
+    "template_conformance_race": "PASS 13.597s",
+    "full_root_race": "PASS; CLI 794.356s, generator 246.911s, quality 538.176s; complete retained log inspected",
+    "render_integration": "PASS 310.462s",
+    "installed_golden_check": "PASS 1.159s",
+    "ci": "Not yet published; required before bead closure"
+  },
+  "reviews": [
+    {"reviewer": "testing", "findings": [], "testing_gaps": [], "residual_risks": ["Longer tagline has actual-generation/source checks but is not separately blind-reviewed; native representative and dense profiles both reviewed.", "Geometry/source tests do not themselves prove visual quality; independent all-layout pixel audit and sole blind review are separate evidence."]},
+    {"reviewer": "adversarial", "findings": [], "testing_gaps": [], "residual_risks": ["Longer arbitrary titles and extreme authoring budgets remain outside this fixture-specific repair; do not infer global visual approval.", "Native font substitution remains tracked by go-slide-creator-3qzo4.98."]}
+  ],
+  "private_template": "p-style included in local all-template matrices; remains gitignored and unchanged",
+  "published": false,
+  "evidence_limits": ["Refused probes are not visually approved.", "Background-ring caution remains unresolved.", "No PowerPoint inspection claimed.", "This receipt does not close the all-layout/contact-sheet goal."]
+}
