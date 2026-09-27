@@ -1,0 +1,31 @@
+{
+  "date": "2026-09-27",
+  "bead": "go-slide-creator-n1muf",
+  "baseline_commit": "eabc6c528418e5c08605fdaf407effa0155f68ac",
+  "scope": "Close a confirmed publication-guard bypass within the existing readability bead. Explicit populated run sizes below the universal 7pt floor must not be published merely because the shape omits an explicit shrink percentage. This is not closure of semantic-role-aware capacities or visual acceptance.",
+  "baseline_reproduction": "New regression failed for 2.4pt runs under empty bodyPr, noAutofit, bare normAutofit, and normAutofit with fontScale after another attribute.",
+  "repair": "Read explicit fontScale independently of attribute order. With no explicit scale, treat declared run size as an upper bound and enforce only the universal floor; unknown renderer shrink is not used to reject otherwise readable authored sizes.",
+  "final_targeted_race": "PASS 20.984s: generated floor boundaries, unused/empty styles, scale parser controls, and direct-generator publication/source/destination/temp-output checks across every locally installed test template, including ignored p-style, in off/warn/strict modes for scaled and bare-autofit tiny text.",
+  "build": "PASS",
+  "pinned_lint": "PASS, 0 issues after extracting scale parsing",
+  "full_root_race": {
+    "status": "running at receipt creation; not a PASS claim",
+    "session": 81988,
+    "log": "output/generated-unscaled-text-floor-20260927-v1/root-race-final.log",
+    "command": "go test ./... -short -race -timeout=15m",
+    "font_context": "output/blue-number-repair-20260927-v1/fonts.conf"
+  },
+  "interrupted_run": "Earlier root-race.log was intentionally stopped after the lint gate failed, before refactoring source. It is retained and is not success evidence.",
+  "review": {
+    "reviewer": "testing",
+    "findings": [],
+    "testing_gaps": [],
+    "residual_risks": [
+      "Paragraph/list/master inherited sizes and native table text are not newly covered by this populated-explicit-run scan.",
+      "Bare renderer autofit can still shrink otherwise readable declared sizes; no universal rendered-size or semantic-role guarantee follows from this guard.",
+      "Invalid explicit scale values are not treated as valid measurements."
+    ]
+  },
+  "visual_review": "No new visual approval asserted: affected inputs now refuse before publication, not produce repaired readable decks. No template assets, layout geometry, or accepted PPTX payloads are rewritten by this scanner.",
+  "remaining_work": "Existing n1muf retains role-aware readable pattern capacities and source-complete continuation/suitability work. No follow-up bead created."
+}

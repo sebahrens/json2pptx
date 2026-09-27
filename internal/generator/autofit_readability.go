@@ -24,7 +24,7 @@ import (
 // through twenty call sites.
 
 // autofitScaleRE captures the fontScale of a normAutofit that carries one.
-var autofitScaleRE = regexp.MustCompile(`<a:normAutofit fontScale="(\d+)"`)
+var autofitScaleRE = regexp.MustCompile(`<a:normAutofit\b[^>]*\bfontScale="(\d+)"`)
 
 // shapeRunSizeRE captures a run's declared size in hundredths of a point.
 var shapeRunSizeRE = regexp.MustCompile(`sz="(\d+)"`)
@@ -33,6 +33,20 @@ var renderedShapeTextRE = regexp.MustCompile(`(?s)<a:t>(.*?)</a:t>`)
 
 // autofitScaleDenominator converts OOXML percent-thousandths to a 0..1 scale.
 const autofitScaleDenominator = 100000.0
+
+// Missing scale means only the declared upper-bound size is known. Invalid
+// explicit scales are not measurements and must not be treated as shrinkage.
+func storedShapeFontScale(shape string) (int, bool) {
+	m := autofitScaleRE.FindStringSubmatch(shape)
+	if m == nil {
+		return int(autofitScaleDenominator), false
+	}
+	scale, err := strconv.Atoi(m[1])
+	if err != nil || scale <= 0 {
+		return 0, true
+	}
+	return scale, true
+}
 
 // reportUnreadableAutofit emits TEXT_BELOW_READABLE_MIN for every shape on the
 // slide whose stored autofit scale takes its smallest text under the floor for
@@ -43,19 +57,25 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 		return
 	}
 	for _, shape := range splitShapeElements(string(slideData)) {
-		m := autofitScaleRE.FindStringSubmatch(shape)
-		if m == nil {
-			continue
-		}
-		scaleThousandths, err := strconv.Atoi(m[1])
-		if err != nil || scaleThousandths <= 0 {
+		scaleThousandths, hasStoredScale := storedShapeFontScale(shape)
+		if scaleThousandths <= 0 {
 			continue
 		}
 		smallest := smallestPopulatedRunSizeHPt(shape)
 		if smallest <= 0 {
 			continue
 		}
+		// A missing scale leaves the exact authored size as an upper bound:
+		// bare renderer autofit can shrink it, never make tiny text readable.
+		// Do not infer a semantic-role violation from unknown renderer shrink.
+		if !hasStoredScale && smallest >= tokens.FootnoteMinHPt {
+			continue
+		}
 		effective := int(float64(smallest) * float64(scaleThousandths) / autofitScaleDenominator)
+		context := fmt.Sprintf("autofit %d%% to fit the shape", scaleThousandths*100/int(autofitScaleDenominator))
+		if !hasStoredScale {
+			context = "declared font size before any renderer shrink"
+		}
 		shapePath := slidepath.Slide(slideIndex)
 		if id := renderedShapeIDRE.FindStringSubmatch(shape); len(id) == 2 {
 			shapePath += "/rendered_shapes/" + id[1]
@@ -67,8 +87,7 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 			EffectiveHPt:      effective,
 			Paragraphs:        countParagraphs(shape),
 			MeasurementSource: "generated",
-			Context: fmt.Sprintf("autofit %d%% to fit the shape",
-				scaleThousandths*100/int(autofitScaleDenominator)),
+			Context:           context,
 		}); f != nil {
 			// This scale is written into the output, not a preflight estimate.
 			// Below even the most compact footnote floor, no semantic role can
