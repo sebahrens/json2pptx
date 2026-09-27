@@ -140,6 +140,15 @@ func resolvedCellTextRoles(cell shapegrid.ResolvedCell, override tokens.TextRole
 		return nil // shape generation reports invalid text before publication
 	}
 	roles := make([]tokens.TextRole, len(body.Paragraphs))
+	populated := 0
+	for _, p := range body.Paragraphs {
+		for _, run := range p.Runs {
+			if strings.TrimSpace(run.Text) != "" {
+				populated++
+				break
+			}
+		}
+	}
 	for i, p := range body.Paragraphs {
 		var text strings.Builder
 		bold := true
@@ -155,7 +164,7 @@ func resolvedCellTextRoles(cell shapegrid.ResolvedCell, override tokens.TextRole
 		if text.Len() == 0 {
 			continue
 		}
-		roles[i] = cellTextRole(float64(size)/100, bold, len([]rune(text.String())))
+		roles[i] = cellTextRole(float64(size)/100, bold, text.String(), populated)
 		if override != "" {
 			roles[i] = override
 		}
@@ -259,8 +268,9 @@ func worstReadability(paras []cellParagraph, scale float64, mode tokens.ViewingM
 	}
 	var worst *patterns.FitFinding
 	worstRatio := 1.0
+	populated := populatedCellParagraphs(paras)
 	for _, p := range paras {
-		role := cellTextRole(p.sizePt, p.bold, len([]rune(p.text)))
+		role := cellTextRole(p.sizePt, p.bold, p.text, populated)
 		if roleOverride != "" {
 			role = roleOverride
 		}
@@ -310,17 +320,57 @@ func retargetCellReadabilityFix(f *patterns.FitFinding, cellPath string, maxChar
 }
 
 // cellTextRole infers the text role of a shape_grid paragraph from its style:
-// display-size text is a KPI value, bold text a card title, short text a
-// caption (KPI labels, deltas, chips), anything else card body copy.
-func cellTextRole(fontPt float64, bold bool, chars int) tokens.TextRole {
+// display-size text stating a figure is a KPI value, a lone index marker an
+// axis/step caption, bold text a card title, short text a caption (KPI
+// labels, deltas, chips), anything else card body copy. populated counts the
+// cell's non-blank paragraphs.
+func cellTextRole(fontPt float64, bold bool, text string, populated int) tokens.TextRole {
 	switch {
-	case fontPt >= 24:
+	case populated == 1 && isIndexMarker(strings.TrimSpace(text)):
+		return tokens.TextRoleCaption
+	case fontPt >= 24 && isKPIValueText(text):
 		return tokens.TextRoleKPIValue
 	case bold:
 		return tokens.TextRoleCardTitle
-	case chars <= 40:
+	case len([]rune(text)) <= 40:
 		return tokens.TextRoleCaption
 	default:
 		return tokens.TextRoleCardBody
 	}
+}
+
+// isKPIValueText reports whether display-size text states a figure. Size
+// alone also matches display words ("Domestic" at 28pt is a heading) and lone
+// index markers such as the sovereign-ai-strategy matrix axis numbers, which
+// cellTextRole classifies as captions first. A marker accompanied by a caption
+// paragraph ("4" over "new markets") is a KPI however short.
+func isKPIValueText(text string) bool {
+	return strings.ContainsAny(text, "0123456789")
+}
+
+// isIndexMarker matches a bare one- or two-digit ordinal: "1", "04", "3.",
+// "(2)", "#5".
+func isIndexMarker(t string) bool {
+	t = strings.TrimPrefix(strings.TrimPrefix(t, "#"), "(")
+	t = strings.TrimSuffix(strings.TrimSuffix(t, "."), ")")
+	if len(t) == 0 || len(t) > 2 {
+		return false
+	}
+	for _, r := range t {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// populatedCellParagraphs counts paragraphs carrying visible text.
+func populatedCellParagraphs(paras []cellParagraph) int {
+	n := 0
+	for _, p := range paras {
+		if strings.TrimSpace(p.text) != "" {
+			n++
+		}
+	}
+	return n
 }

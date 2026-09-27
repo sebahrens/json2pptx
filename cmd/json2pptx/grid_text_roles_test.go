@@ -18,6 +18,9 @@ func TestResolvedGridRolesUseWrittenParagraphOrder(t *testing.T) {
 		{"blank paragraph retained", `{"paragraphs":[{"content":"48%","size":32},{"content":""},{"content":"KPI caption","size":12}]}`, "", []tokens.TextRole{tokens.TextRoleKPIValue, "", tokens.TextRoleCaption}},
 		{"inline emphasis does not turn prose into a title", `{"content":"This required body paragraph has <b>emphasis</b> but is not a bold card title."}`, "", []tokens.TextRole{tokens.TextRoleCardBody}},
 		{"bold card title", `{"content":"Card title","bold":true}`, "", []tokens.TextRole{tokens.TextRoleCardTitle}},
+		{"lone axis number is a caption, not a KPI", `{"content":"1","size":24,"bold":true}`, "", []tokens.TextRole{tokens.TextRoleCaption}},
+		{"figure with caption stays KPI", `{"paragraphs":[{"content":"4","size":36,"bold":true},{"content":"new markets","size":14}]}`, "", []tokens.TextRole{tokens.TextRoleKPIValue, tokens.TextRoleCaption}},
+		{"lone metric stays KPI", `{"content":"$4.2M","size":36,"bold":true}`, "", []tokens.TextRole{tokens.TextRoleKPIValue}},
 		{"pull quote override", `{"content":"A quote is prose","size":36,"italic":true}`, tokens.TextRoleBody, []tokens.TextRole{tokens.TextRoleBody}},
 		{"invalid source not measured", `123`, "", nil},
 	} {

@@ -1,6 +1,6 @@
 {
   "scope": "Existing go-slide-creator-n1muf: written grid role floors and capacity geometry",
-  "status": "Targeted implementation verified; broader visual closure remains open",
+  "status": "HOLD: role gate rebased on main 577ba613; named false refusal and doc/stress failures fixed, six further corpus refusals remain",
   "evidence": {
     "baseline": "A real CLI deck published two complete body paragraphs; bundled-renderer PDF measured both at 10.006pt, below the present-mode 12pt body floor. The new CLI regression fails with only the final role check disabled and passes with it restored.",
     "generator_race": "PASS 25.646s: universal and role-floor publication regressions, including all 10 installed test templates and ignored local p-style, off/warn/strict; source, existing destination and temporary cleanup asserted.",
@@ -10,13 +10,26 @@
     "preview_refresh": "PASS: 14 templates, 108 layouts; every PNG byte-identical to main128e. Updated manifests only. p-style template and previews remain ignored.",
     "build": "PASS",
     "lint": "PASS: pinned v2.8.0, zero issues",
-    "full_root_short": "Pending at receipt creation; retained role-root-short-final.log. Not a race-suite PASS claim.",
-    "prior_main_ci": "128e97b36f1003b35f03c174c1a6181393f74500: CI, Docker and CodeQL all SUCCESS. Prior local root race timed out at15m; exact two interrupted tests passed on rerun, not counted as full-suite PASS."
+    "full_root_short": "Not rerun (targeted tests only). TestMechanicalMetrics still FAILS: role guard refuses pattern-bmc-canvas-dense (8.9pt card-title, 74%) and examples business-model-canvas (9.6pt caption, 80%), patterns-smoke and value-chain (value-chain description 11.8pt, 98%), phase-roadmap (date band 10.8pt, 90%), template-qa-deck (8.6pt card-title, 72%) on midnight-blue. These are stored sub-floor scales that main publishes today; not whitelisted. Same corpus on p-style: no role refusals.",
+    "prior_main_ci": "128e97b36f1003b35f03c174c1a6181393f74500: CI, Docker and CodeQL all SUCCESS. Prior local root race timed out at15m; exact two interrupted tests passed on rerun, not counted as full-suite PASS.",
+    "rebase": "Cherry-picked 3e31fb6e onto main. Main's capacity/textcapacity (577ba613: narrow usable width, written geometry) and preview manifests kept; role-guard code, tests and docs applied.",
+    "role_inference": "Sovereign slide 9 axis '4' (24pt source, written at 54% stored autofit, ~13pt) was inferred kpi-value (18pt floor) and refused. Role inference now classifies a lone 1-2 digit index marker as caption and requires a digit for kpi-value; a figure with a caption paragraph and lone metrics such as '$4.2M' / '78%' stay kpi-value and still refuse in the same band. Regression TestCLIGridAxisMarkerIsNotKPIButLoneFigureIs covers all 10 test templates including local p-style.",
+    "docs_budget": "INPUT_FORMAT.md role paragraph folded into the viewing-mode paragraph; TestSchemaDocsDoctor PASS.",
+    "narrow_width": "TestGenerateFitReport_ShapeGridText PASS on main's capacity code.",
+    "stress_fixture": "font-size-stress-test 'Dense text at 8pt' cell (floored to 12pt) was written at 98% autofit; two lines shortened, source sizes unchanged (small_font_count baseline 3 preserved); cell now written unscaled."
   },
   "review": {
     "testing": {
       "findings": [],
-      "tested_edges": ["blank and nested paragraph-role alignment", "inline bold versus fully bold roles", "populated child runs versus unused tiny styles", "exact presentation/report role boundaries", "no usable frame and explicit zero written insets", "source and existing destination preservation", "zero capacity rather than invented minimum"]
+      "tested_edges": [
+        "blank and nested paragraph-role alignment",
+        "inline bold versus fully bold roles",
+        "populated child runs versus unused tiny styles",
+        "exact presentation/report role boundaries",
+        "no usable frame and explicit zero written insets",
+        "source and existing destination preservation",
+        "zero capacity rather than invented minimum"
+      ]
     },
     "adversarial": {
       "findings": [],

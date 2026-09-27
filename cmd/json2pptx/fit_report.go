@@ -16,7 +16,6 @@ import (
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
 	"github.com/sebahrens/json2pptx/internal/textfit"
-	"github.com/sebahrens/json2pptx/internal/tokens"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -526,12 +525,7 @@ const underfillSparseSlideMinCells = 3
 // short — reporting them as underfilled is noise, and it was the dominant
 // source of it (go-slide-creator-xpz8).
 func underfillExemptRole(fontPt float64, chars int) bool {
-	switch cellTextRole(fontPt, false, chars) {
-	case tokens.TextRoleKPIValue, tokens.TextRoleCaption:
-		return true
-	default:
-		return false
-	}
+	return fontPt >= 24 || chars <= 40
 }
 
 // aggregateUnderfilledFinding folds a slide's underfilled cells into a single

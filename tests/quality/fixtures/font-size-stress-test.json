@@ -26,7 +26,7 @@
           {
             "height": 25,
             "cells": [
-              {"shape": {"geometry": "rect", "fill": "accent4", "text": {"content": "Dense text at 8pt with multiple lines\nLine 2: Additional context about the metric performance over time\nLine 3: Year-over-year comparison shows improvement\nLine 4: Target achievement at 95%", "size": 8}}},
+              {"shape": {"geometry": "rect", "fill": "accent4", "text": {"content": "Dense text at 8pt with multiple lines\nLine 2: Context on metric performance over time\nLine 3: Year-over-year comparison improves\nLine 4: Target achievement at 95%", "size": 8}}},
               {"shape": {"geometry": "rect", "fill": "accent5", "text": {"content": "Normal text at 12pt\nThis is a comfortable reading size for presentation content displayed on screen", "size": 12}}},
               {"shape": {"geometry": "rect", "fill": "accent6", "text": {"content": "Tiny text at 7pt\nThis is way too small for any practical presentation use and should definitely be flagged by quality checks", "size": 7}}}
             ]

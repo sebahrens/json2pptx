@@ -209,19 +209,31 @@ func TestReadability_ReadModeIsMoreLenient(t *testing.T) {
 
 func TestCellTextRole(t *testing.T) {
 	cases := []struct {
-		pt    float64
-		bold  bool
-		chars int
-		want  tokens.TextRole
+		pt        float64
+		bold      bool
+		text      string
+		populated int
+		want      tokens.TextRole
 	}{
-		{36, true, 4, tokens.TextRoleKPIValue},
-		{14, true, 20, tokens.TextRoleCardTitle},
-		{12, false, 12, tokens.TextRoleCaption},
-		{12, false, 200, tokens.TextRoleCardBody},
+		{36, true, "$52M", 1, tokens.TextRoleKPIValue},
+		{36, true, "$52M", 2, tokens.TextRoleKPIValue},
+		{40, true, "3.8x", 1, tokens.TextRoleKPIValue}, // metric-list value alone in its cell
+		{36, false, "78%", 1, tokens.TextRoleKPIValue},
+		{36, true, "12", 2, tokens.TextRoleKPIValue}, // short figure with its caption
+		// A lone index marker labels an axis, row or step: a caption, not a metric.
+		{24, true, "1", 1, tokens.TextRoleCaption},
+		{24, false, "(4)", 1, tokens.TextRoleCaption},
+		{28, true, "04.", 1, tokens.TextRoleCaption},
+		{12, true, "3", 1, tokens.TextRoleCaption},
+		// Display words state no figure.
+		{28, true, "Domestic", 1, tokens.TextRoleCardTitle},
+		{14, true, strings.Repeat("x", 20), 1, tokens.TextRoleCardTitle},
+		{12, false, strings.Repeat("x", 12), 1, tokens.TextRoleCaption},
+		{12, false, strings.Repeat("x", 200), 1, tokens.TextRoleCardBody},
 	}
 	for _, c := range cases {
-		if got := cellTextRole(c.pt, c.bold, c.chars); got != c.want {
-			t.Errorf("cellTextRole(%v,%v,%d) = %s, want %s", c.pt, c.bold, c.chars, got, c.want)
+		if got := cellTextRole(c.pt, c.bold, c.text, c.populated); got != c.want {
+			t.Errorf("cellTextRole(%v,%v,%q,%d) = %s, want %s", c.pt, c.bold, c.text, c.populated, got, c.want)
 		}
 	}
 	if ps := parseCellParagraphs(json.RawMessage(`{"content":"a\nb","bold":true,"size":10}`)); len(ps) != 2 || !ps[0].bold || ps[0].sizePt != 12 {

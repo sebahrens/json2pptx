@@ -37,3 +37,79 @@ func TestCLIGridBodyBelowRoleFloorCannotPublish(t *testing.T) {
 		t.Fatal("source changed")
 	}
 }
+
+// The lone axis numbers on examples/sovereign-ai-strategy.json slide 9 are
+// marker labels, not KPIs: the 24pt "4" in its 6% band is written at 54%
+// autofit (~13pt), above a marker's floor but below the 18pt KPI floor. The
+// same band holding a real figure must still refuse at the KPI floor.
+func TestCLIGridAxisMarkerIsNotKPIButLoneFigureIs(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join(testutil.RepoRoot(), "examples", "sovereign-ai-strategy.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	deck := func(t *testing.T, template, marker string) []byte {
+		t.Helper()
+		var d map[string]any
+		if err := json.Unmarshal(data, &d); err != nil {
+			t.Fatal(err)
+		}
+		slide := d["slides"].([]any)[8].(map[string]any)
+		rows := slide["shape_grid"].(map[string]any)["rows"].([]any)
+		text := rows[3].(map[string]any)["cells"].([]any)[0].(map[string]any)["shape"].(map[string]any)["text"].(map[string]any)
+		if text["content"] != "4" || text["size"] != float64(24) {
+			t.Fatalf("sovereign axis fixture moved: %v", text)
+		}
+		text["content"] = marker
+		d["slides"], d["template"], d["output_filename"] = []any{slide}, template, "deck.pptx"
+		out, err := json.Marshal(d)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	run := func(t *testing.T, source []byte) (JSONOutput, error) {
+		t.Helper()
+		dir := t.TempDir()
+		input, report := filepath.Join(dir, "input.json"), filepath.Join(dir, "result.json")
+		if err := os.WriteFile(input, source, 0600); err != nil {
+			t.Fatal(err)
+		}
+		runErr := runJSONMode(input, report, testutil.TemplatesDir(), dir, "", false, false, "", "off", false, "strict", "", false)
+		var result JSONOutput
+		out, err := os.ReadFile(report)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := json.Unmarshal(out, &result); err != nil {
+			t.Fatal(err)
+		}
+		if after, err := os.ReadFile(input); err != nil || string(after) != string(source) {
+			t.Fatal("source changed")
+		}
+		return result, runErr
+	}
+	// The marker is the slide's only 24pt run. On the deck's own template it
+	// publishes; on every test template (including local p-style) no refusal
+	// may name it. Other cells are judged on their own roles: on the modern
+	// templates the 13pt bold column headers are independently refused.
+	for _, name := range testutil.AllTestTemplateNames() {
+		t.Run(name, func(t *testing.T) {
+			result, err := run(t, deck(t, name, "4"))
+			for _, f := range result.FitFindings {
+				if f.Code == patterns.ErrCodeTextBelowReadableMin && strings.Contains(f.Message, "written 24.0pt") {
+					t.Fatalf("axis marker refused: %s", f.Message)
+				}
+			}
+			if name == "warm-coral" && (err != nil || !result.Success || result.OutputPath == "") {
+				t.Fatalf("sovereign slide refused on its own template: %v %+v", err, result.FitFindings)
+			}
+		})
+	}
+	for _, figure := range []string{"$4.2M", "78%"} {
+		result, err := run(t, deck(t, "warm-coral", figure))
+		finding := firstFindingCode(result.FitFindings, patterns.ErrCodeTextBelowReadableMin)
+		if err == nil || result.Success || finding == nil || finding.Action != "refuse" || !strings.Contains(finding.Message, "kpi-value") || !strings.Contains(finding.Message, "written 24.0pt") {
+			t.Fatalf("lone figure %q below the KPI floor published: %v %+v", figure, err, result.FitFindings)
+		}
+	}
+}
