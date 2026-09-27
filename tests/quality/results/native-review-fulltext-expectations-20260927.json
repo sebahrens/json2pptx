@@ -1,0 +1,43 @@
+{
+  "issue": "go-slide-creator-xmctf",
+  "change": "Native bullet review expectations now contain complete authored sentences, not identifiers alone",
+  "scope": "Review evidence coverage; no renderer or template change and no aggregate visual approval",
+  "regression": "Representative and dense probe expectations equal every authored bullet after trimming indentation whitespace",
+  "local_validation": {
+    "focused_race_tests": "PASS",
+    "all_layout_render_test": "PASS (46.715s)",
+    "quality_package_lint": "PASS (0 issues)",
+    "build": "PASS",
+    "format_and_diff": "PASS",
+    "broader_quality_short_race_suite": "Pending at publication; not counted as a pass"
+  },
+  "testing_review": {
+    "reviewer": "testing",
+    "findings": [],
+    "testing_gaps": [],
+    "residual_risks": ["This correction verifies review expectation completeness, not presentation readability"]
+  },
+  "corpus": {
+    "manifest": "output/native-fulltext-expectations-20260927-v1/manifest.json",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "baseline": "output/modern-closing-smooth-installed-corpus-20260927-v1/manifest.json",
+    "inputs_and_generation_statuses_unchanged": true,
+    "pixel_identical_accepted_pages": 262,
+    "unchanged_refusals": 47,
+    "comparison_limitation": "PNG bytes differ across regenerated files; decoded RGB pixels, not encoded file bytes, are identical"
+  },
+  "blind_followup": {
+    "review": "output/blind-business-leading-native-fulltext-20260927-v2/packet/review.json",
+    "joined_hash_audit": "output/blind-business-leading-native-fulltext-20260927-v2/joined-review-audit.json",
+    "reviewer_count": 1,
+    "original_pages": 4,
+    "unreviewed": 0,
+    "complete_bullet_sentences": 56,
+    "complete_titles": 4,
+    "unsafe_pages": 2,
+    "safe_with_minor_cautions_pages": 2,
+    "residual": "Dense text remains too small; representative pages retain isolated-word wraps. Business spacing candidate is not installed."
+  }
+}

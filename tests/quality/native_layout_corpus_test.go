@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"testing"
@@ -256,7 +257,7 @@ func makeNativeProbes(layout types.LayoutMetadata, imagePath string) []nativePro
 								text = "\t" + text
 							}
 							bullets = append(bullets, text)
-							p.ExpectedText = append(p.ExpectedText, marker)
+							p.ExpectedText = append(p.ExpectedText, strings.TrimSpace(text))
 						}
 						item.Type, item.Value = generator.ContentBullets, bullets
 					}
@@ -415,6 +416,17 @@ func TestNativeProbeEvidenceProfilesPreserveDistinctColumns(t *testing.T) {
 			}
 			if len(p.ExpectedText) != want || !strings.Contains(strings.Join(p.ExpectedText, " "), "C2-B00") {
 				t.Fatalf("distinct complete bullet columns missing: %+v", p.ExpectedText)
+			}
+			var authored []string
+			for _, item := range p.Slide.Content {
+				if item.Type == generator.ContentBullets {
+					for _, text := range item.Value.([]string) {
+						authored = append(authored, strings.TrimSpace(text))
+					}
+				}
+			}
+			if !reflect.DeepEqual(p.ExpectedText, authored) {
+				t.Fatalf("review expectations must contain every complete authored bullet: got %q, want %q", p.ExpectedText, authored)
 			}
 		case "table", "table-stress":
 			want := 12
