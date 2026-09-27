@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "bead": "go-slide-creator-3qzo4.32",
+  "scope": "Correct the private visual-evidence renderer's unavailable-Aptos fallback and verify all affected native previews",
+  "source_template_changed": false,
+  "generation_code_changed": false,
+  "global_fonts_changed": false,
+  "source_template_sha256": "e0d65072af4afc1dbb49927029cb1ba174a52b088c7e4b757a1d7e3ba5b6cf2a",
+  "unchanged_control_pptx_sha256": "d509333767dae3fca2b1671ffc37a2d6c6d80cefa69d6699c28b7575316f9fa8",
+  "controlled_observations": {
+    "original_pdf": "HiraMaruPro-W4 substitutes Aptos Light; 0 and 1 render on separate lines",
+    "rejected_change": "Renderer wrap=none candidate did not correct actual pixels; completely discarded",
+    "fallback_pdf": "Same unchanged PPTX, command-private explicit fallback: ArialMT renders joined 01",
+    "native_font_fidelity": "Not certified: Arial is an explicit fallback, not Aptos"
+  },
+  "font_profile": {
+    "fixture": "tests/quality/fixtures/fontconfig-aptos-fallback.conf",
+    "fixture_sha256": "6581a1cf786575f9c6de554bbee543b36c2469b55b8600b0eeb8c773affdc0fd",
+    "policy": "Accept Arial after the original Aptos family rather than preferring it over an installed original",
+    "private_config_sha256": "053f0c25a7e73922a0b1586a2b1c5c00b7f55fe79ee34bab05b976e3687e60d1",
+    "additional_fonts": "Existing repository svggen/fonts exposed privately; no download or global installation"
+  },
+  "native_inventory": {
+    "templates": 14,
+    "layouts": 108,
+    "includes_gitignored_p_style": true,
+    "pixel_identical_to_previous": 102,
+    "pixel_changed": 6,
+    "final_accept_policy_pixels_match_reviewed_policy": "108 of 108",
+    "audit_sha256": "34b7e78a50e095469713ca816fc50a2e6ee78a99d38fd92356e89a3ca9d904d0"
+  },
+  "sole_incremental_review": {
+    "reviewed": 6,
+    "unreviewed": 0,
+    "safe": 1,
+    "minor_cautions": 5,
+    "unsafe": 0,
+    "joined_number_confirmed": true,
+    "review_sha256": "35736a3e2e88e1cd7cd839d13983e92451c51084e3cc8c92593561bdaa72ebdd",
+    "remaining": ["Small primary text", "Loose title/subtitle grouping"]
+  },
+  "gates": {
+    "fallback_fixture_race_regression": "PASS 1.562s",
+    "preview_and_determinism_regressions": "PASS on final configuration",
+    "previous_b528_all_workflows": "SUCCESS",
+    "ff02_full_root_race": "PASS; terminal session 89311, root-race-final.log; new fallback fixture regression independently passed",
+    "pinned_lint": "PASS zero issues",
+    "build": "PASS",
+    "publication_ci": "Not yet dispatched"
+  },
+  "testing_review": {
+    "findings": [],
+    "residual_risks": ["Installed Aptos host behavior not physically exercised; fixture guards fallback ordering", "Private renderer configuration must be explicitly loaded; documented workflow"]
+  },
+  "aggregate_approval": false,
+  "release_status": "HOLD; dense/media corpus and other existing visual issues remain open; no new bead"
+}
