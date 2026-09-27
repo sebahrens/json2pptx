@@ -1,0 +1,56 @@
+{
+  "issue": "go-slide-creator-3qzo4.69",
+  "status": "Installed partial repair; remaining visual findings not waived",
+  "template_before_sha256": "3bcd211a2b1230d6c8fb9dbfbe3febcab49c425c5a57309b0d0aa2d71bc431a1",
+  "template_after_sha256": "e0d65072af4afc1dbb49927029cb1ba174a52b088c7e4b757a1d7e3ba5b6cf2a",
+  "changed_parts": ["ppt/media/image3.svg", "ppt/media/image4.svg", "ppt/slideLayouts/slideLayout2.xml"],
+  "repair": {
+    "original_SVG_paths_geometry_colors_preserved": true,
+    "corner_artwork_fill_opacity": 0.12,
+    "child_line_spacing_matches_parent_percent": 140,
+    "native_fonts_sizes_text_geometry_paragraph_spacing_preserved": true,
+    "all_other_zip_payloads_preserved": true,
+    "six_other_blue_previews_byte_identical": true
+  },
+  "blind_review": {
+    "reviewer_count": 1,
+    "inspected_original_pages": 16,
+    "unreviewed_pages": 0,
+    "all_supplied_source_complete": true,
+    "review": "output/blind-blue-corner-leading-20260927-v2/packet/review.json",
+    "review_sha256": "97ebf3e3b0d9c7f873497874bd3cbb9a188e9cbcb1561333fdd94cdcca22a1c5",
+    "joined_review_sha256": "b64917158001a630548743ee4bcafc659340ae23545940d1046c588ffa1e1fb2",
+    "all_eight_installed_changed_pages_pixel_identical_to_reviewed_candidate": true,
+    "remaining_findings": ["Dense body and child type too small", "Modest paragraph-boundary separation on dense and three continuation pages", "Chart labels small relative to title", "Modern-yellow disc dominance remains a separate unrepaired finding"]
+  },
+  "fresh_installed_verification": {
+    "manifest": "output/blue-leading-installed-corpus-20260927-v1/manifest.json",
+    "manifest_sha256": "565f920ae9c44e349ec4eff06c71c332f0f996aced08e10f4982b99a756c88e5",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "native_pages_changed": 4,
+    "other_accepted_native_pages_pixel_identical": 258,
+    "identical_source_loss_refusals": 47,
+    "all_native_inputs_statuses_and_unrelated_template_hashes_preserved": true,
+    "continuation_series": 15,
+    "continuation_pages": 60,
+    "continuation_pages_changed": 4,
+    "other_continuation_pages_pixel_identical": 56,
+    "complete_sentences_order_indentation_preserved": 180,
+    "emitted_continuation_font_minima_unchanged_at_least_18pt": true,
+    "audit": "output/blue-leading-promotion-20260927-v1/installed-audit.json",
+    "audit_sha256": "ae91faf4b3dae408c99861c26332c0e409856603ed29215650d555dcf282b652"
+  },
+  "gates": {
+    "source_and_generated_body_artwork_regression_race": "PASS",
+    "all_template_conformance_race": "PASS",
+    "all_reviewed_dense_continuation_cases_race": "PASS",
+    "fresh_native_corpus": "PASS: 48.35 seconds",
+    "preview_provenance_and_discovery_race": "PASS",
+    "pinned_lint": "PASS: zero issues",
+    "build_format_diff": "PASS",
+    "private_p_style_and_previews_remain_gitignored_and_in_local_matrix": true
+  },
+  "limitations": ["No aggregate visual approval", "Existing unsafe dense pages and minor findings remain open", "Published CI must still finish", "Initial baseline attempt selected desktop LibreOffice and failed; retained failed log and reran in a new directory using bundled LibreOffice"]
+}
