@@ -1964,6 +1964,15 @@ var outputSchemaReadPresentation = json.RawMessage(`{
           "layout_id":      {"type": "string"},
           "placeholders":   {"type": "array", "items": {"type": "object"}},
           "shapes":         {"type": "array", "items": {"type": "object"}},
+          "pictures":       {"type": "array", "items": {"type": "object", "properties": {
+            "name":         {"type": "string"},
+            "alt_text":     {"type": "string"},
+            "media":        {"type": "string"},
+            "content_type": {"type": "string"},
+            "svg_media":    {"type": "string"},
+            "hyperlinks":   {"type": "array", "items": {"type": "string"}},
+            "bounds":       {"type": "object"}
+          }}},
           "tables":         {"type": "array", "items": {"type": "object"}},
           "speaker_notes":  {"type": "string"}
         }

@@ -6,6 +6,7 @@ package pptxread
 import (
 	"encoding/xml"
 	"fmt"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,24 +26,41 @@ type Slide struct {
 	LayoutID     string        `json:"layout_id,omitempty"`
 	Placeholders []Placeholder `json:"placeholders,omitempty"`
 	Shapes       []Shape       `json:"shapes,omitempty"`
+	Pictures     []Picture     `json:"pictures,omitempty"`
 	Tables       []Table       `json:"tables,omitempty"`
 	SpeakerNotes string        `json:"speaker_notes,omitempty"`
 }
 
 // Placeholder represents a populated placeholder on a slide.
 type Placeholder struct {
-	ID     string `json:"id"`
-	Type   string `json:"type,omitempty"`
-	Text   string `json:"text"`
-	Bounds *Rect  `json:"bounds,omitempty"`
+	ID         string   `json:"id"`
+	Type       string   `json:"type,omitempty"`
+	Text       string   `json:"text"`
+	Hyperlinks []string `json:"hyperlinks,omitempty"`
+	Bounds     *Rect    `json:"bounds,omitempty"`
 }
 
 // Shape represents a non-placeholder shape on a slide.
 type Shape struct {
 	Name     string `json:"name,omitempty"`
 	Geometry string `json:"geometry,omitempty"`
-	Text     string `json:"text,omitempty"`
-	Bounds   *Rect  `json:"bounds,omitempty"`
+	// Connector marks a p:cxnSp line/arrow rather than a p:sp shape.
+	Connector  bool     `json:"connector,omitempty"`
+	Text       string   `json:"text,omitempty"`
+	Hyperlinks []string `json:"hyperlinks,omitempty"`
+	Bounds     *Rect    `json:"bounds,omitempty"`
+}
+
+// Picture represents a p:pic on a slide: a photo, or an SVG chart, diagram
+// or icon the engine embedded (with its PNG fallback as Media).
+type Picture struct {
+	Name        string   `json:"name,omitempty"`
+	AltText     string   `json:"alt_text,omitempty"`
+	Media       string   `json:"media,omitempty"`        // package part path (or external URL) of the blip
+	ContentType string   `json:"content_type,omitempty"` // content type of Media
+	SVGMedia    string   `json:"svg_media,omitempty"`    // package part path of the svgBlip, when present
+	Hyperlinks  []string `json:"hyperlinks,omitempty"`
+	Bounds      *Rect    `json:"bounds,omitempty"`
 }
 
 // Table represents a table found on a slide.
@@ -117,7 +135,7 @@ func readSlide(pkg *pptx.Package, info pptx.SlideInfo) (*Slide, error) {
 		return nil, fmt.Errorf("parse slide %d XML: %w", info.Index, err)
 	}
 
-	collectShapeTree(slide, &sld.CSld.SpTree, identityTransform)
+	collectShapeTreeCtx(slide, &sld.CSld.SpTree, identityTransform, newReadContext(pkg, info.PartPath))
 
 	// Extract speaker notes.
 	slide.SpeakerNotes = readSpeakerNotes(pkg, info.PartPath)
@@ -166,11 +184,96 @@ func boundsIn(xfrm *xfrmElement, tf childTransform) *Rect {
 	return &out
 }
 
+// readContext resolves relationship ids for one slide part. A nil context
+// (tests on bare XML) leaves ids unresolved.
+type readContext struct {
+	partDir string
+	rels    *pptx.Relationships
+	ct      *pptx.ContentTypes
+}
+
+func newReadContext(pkg *pptx.Package, partPath string) *readContext {
+	rc := &readContext{partDir: path.Dir(partPath)}
+	if data, err := pkg.ReadEntry(pptx.GetRelsPath(partPath)); err == nil {
+		rc.rels, _ = pptx.ParseRelationships(data)
+	}
+	if data, err := pkg.ReadEntry(pptx.ContentTypesPath); err == nil {
+		rc.ct, _ = pptx.ParseContentTypes(data)
+	}
+	return rc
+}
+
+// target resolves a relationship id to an external URL or a package part
+// path. It returns "" when the id is unknown.
+func (rc *readContext) target(id string) string {
+	if rc == nil || rc.rels == nil || id == "" {
+		return ""
+	}
+	rel := rc.rels.Get(id)
+	if rel == nil {
+		return ""
+	}
+	if rel.TargetMode == "External" {
+		return rel.Target
+	}
+	if strings.HasPrefix(rel.Target, "/") {
+		return strings.TrimPrefix(rel.Target, "/")
+	}
+	return path.Clean(path.Join(rc.partDir, rel.Target))
+}
+
+func (rc *readContext) contentType(part string) string {
+	if rc == nil || rc.ct == nil || part == "" || strings.Contains(part, "://") {
+		return ""
+	}
+	return rc.ct.ContentType("/" + part)
+}
+
+// hyperlinks returns the distinct hyperlink targets of a shape: its own
+// click link plus every run-level link in its text.
+func (rc *readContext) hyperlinks(nv cnvPr, txBody *textBody) []string {
+	var out []string
+	add := func(h *hyperlinkElement) {
+		if h == nil {
+			return
+		}
+		t := rc.target(h.RID)
+		if t == "" {
+			return
+		}
+		for _, existing := range out {
+			if existing == t {
+				return
+			}
+		}
+		out = append(out, t)
+	}
+	add(nv.HlinkClick)
+	if txBody != nil {
+		for _, p := range txBody.Paragraphs {
+			for _, r := range p.Runs {
+				if r.RPr != nil {
+					add(r.RPr.HlinkClick)
+				}
+			}
+		}
+	}
+	return out
+}
+
 // collectShapeTree appends the placeholders, shapes and tables of a shape
 // tree to slide, recursing into p:grpSp groups so grouped text (native
 // diagrams) is read and reported at slide coordinates
 // (go-slide-creator-s1uvj.27).
 func collectShapeTree(slide *Slide, tree *shapeTree, tf childTransform) {
+	collectShapeTreeCtx(slide, tree, tf, nil)
+}
+
+// collectShapeTreeCtx is collectShapeTree with relationship resolution for
+// hyperlinks and picture media. Besides p:sp, p:graphicFrame tables and
+// p:grpSp groups it reads p:pic pictures, p:cxnSp connectors and the content
+// of mc:AlternateContent (go-slide-creator-csclk.25).
+func collectShapeTreeCtx(slide *Slide, tree *shapeTree, tf childTransform, rc *readContext) {
 	// Extract shapes (sp elements).
 	for _, sp := range tree.Shapes {
 		ph := sp.NvSpPr.NvPr.Placeholder
@@ -180,17 +283,19 @@ func collectShapeTree(slide *Slide, tree *shapeTree, tf childTransform) {
 			// This is a placeholder.
 			phID := placeholderID(sp.NvSpPr.CNvPr.Name, ph)
 			p := Placeholder{
-				ID:   phID,
-				Type: ph.Type,
-				Text: text,
+				ID:         phID,
+				Type:       ph.Type,
+				Text:       text,
+				Hyperlinks: rc.hyperlinks(sp.NvSpPr.CNvPr, sp.TxBody),
 			}
 			p.Bounds = boundsIn(sp.SpPr.Xfrm, tf)
 			slide.Placeholders = append(slide.Placeholders, p)
 		} else if text != "" || sp.SpPr.PrstGeom != nil {
 			// Non-placeholder shape with text or geometry.
 			s := Shape{
-				Name: sp.NvSpPr.CNvPr.Name,
-				Text: text,
+				Name:       sp.NvSpPr.CNvPr.Name,
+				Text:       text,
+				Hyperlinks: rc.hyperlinks(sp.NvSpPr.CNvPr, sp.TxBody),
 			}
 			if sp.SpPr.PrstGeom != nil {
 				s.Geometry = sp.SpPr.PrstGeom.Prst
@@ -211,10 +316,87 @@ func collectShapeTree(slide *Slide, tree *shapeTree, tf childTransform) {
 		slide.Tables = append(slide.Tables, t)
 	}
 
+	for _, pic := range tree.Pictures {
+		p := Picture{
+			Name:       pic.NvPicPr.CNvPr.Name,
+			AltText:    pic.NvPicPr.CNvPr.Descr,
+			Hyperlinks: rc.hyperlinks(pic.NvPicPr.CNvPr, nil),
+			Bounds:     boundsIn(pic.SpPr.Xfrm, tf),
+		}
+		if b := pic.BlipFill.Blip; b != nil {
+			id := b.Embed
+			if id == "" {
+				id = b.Link
+			}
+			p.Media = rc.target(id)
+			p.ContentType = rc.contentType(p.Media)
+			if b.ExtLst != nil {
+				for _, ext := range b.ExtLst.Exts {
+					if ext.SVGBlip != nil {
+						p.SVGMedia = rc.target(ext.SVGBlip.Embed)
+					}
+				}
+			}
+		}
+		slide.Pictures = append(slide.Pictures, p)
+	}
+
+	for _, cx := range tree.Connectors {
+		s := Shape{
+			Name:      cx.NvCxnSpPr.CNvPr.Name,
+			Connector: true,
+			Bounds:    boundsIn(cx.SpPr.Xfrm, tf),
+		}
+		if cx.SpPr.PrstGeom != nil {
+			s.Geometry = cx.SpPr.PrstGeom.Prst
+		}
+		slide.Shapes = append(slide.Shapes, s)
+	}
+
 	for i := range tree.Groups {
 		g := &tree.Groups[i]
-		collectShapeTree(slide, &g.shapeTree, groupTransform(tf, g.GrpSpPr.Xfrm))
+		collectShapeTreeCtx(slide, &g.shapeTree, groupTransform(tf, g.GrpSpPr.Xfrm), rc)
 	}
+
+	// A reader shows one rendition of mc:AlternateContent: the first
+	// mc:Choice, or mc:Fallback when the choice yields nothing readable.
+	for i := range tree.AltContent {
+		ac := &tree.AltContent[i]
+		if len(ac.Choices) > 0 {
+			var probe Slide
+			collectShapeTreeCtx(&probe, &ac.Choices[0], tf, rc)
+			if hasReadableContent(&probe) || ac.Fallback == nil {
+				appendSlideContent(slide, &probe)
+				continue
+			}
+		}
+		if ac.Fallback != nil {
+			collectShapeTreeCtx(slide, ac.Fallback, tf, rc)
+		}
+	}
+}
+
+// hasReadableContent reports whether s holds any text or picture.
+func hasReadableContent(s *Slide) bool {
+	for _, p := range s.Placeholders {
+		if p.Text != "" {
+			return true
+		}
+	}
+	for _, sh := range s.Shapes {
+		if sh.Text != "" {
+			return true
+		}
+	}
+	return len(s.Pictures) > 0 || len(s.Tables) > 0
+}
+
+// appendSlideContent appends src's extracted items to dst.
+func appendSlideContent(dst, src *Slide) {
+	dst.Placeholders = append(dst.Placeholders, src.Placeholders...)
+	dst.Shapes = append(dst.Shapes, src.Shapes...)
+	dst.Pictures = append(dst.Pictures, src.Pictures...)
+	dst.Tables = append(dst.Tables, src.Tables...)
 }
 
 // resolveLayoutID finds the layout filename referenced by a slide's .rels file.

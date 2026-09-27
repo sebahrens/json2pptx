@@ -4,6 +4,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/sebahrens/json2pptx/internal/render"
 )
 
 var (
@@ -22,7 +24,11 @@ var (
 const SchemaVersion = "4.147.0"
 
 func main() {
-	if err := dispatch(); err != nil {
+	err := dispatch()
+	// The private LibreOffice profile (~0.5 MB) would otherwise outlive every
+	// render CLI call in TMPDIR (go-slide-creator-csclk.27).
+	render.CleanupLibreOfficeProfile()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

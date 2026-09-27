@@ -77,7 +77,14 @@ func (mc *mcpConfig) handleExportDeck(ctx context.Context, request mcp.CallToolR
 			if errors.Is(err, context.Canceled) {
 				return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
 			}
-			return api.MCPSimpleError(diagnostics.CodeRenderFailed, err.Error()), nil
+			// Classify like the render tools do (go-slide-creator-csclk.28);
+			// export has no force flag, so a timeout gets export-specific advice.
+			msg := err.Error()
+			var te *render.TimeoutError
+			if errors.As(err, &te) {
+				msg = te.Summary() + ". Retry the export; if it recurs the renderer is likely wedged: close any running LibreOffice or restart the render environment."
+			}
+			return api.MCPSimpleError(renderErrorCode(err), msg), nil
 		}
 	} else {
 		pres, err := pptxread.ReadFile(pptxPath)

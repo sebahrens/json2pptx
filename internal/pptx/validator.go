@@ -72,6 +72,7 @@ const (
 	ErrCodeMalformedXML               = "MALFORMED_XML"
 	ErrCodeMissingContentType         = "MISSING_CONTENT_TYPE"
 	ErrCodeMissingContentTypeOverride = "MISSING_CONTENT_TYPE_OVERRIDE"
+	ErrCodeDuplicateSlideID           = "DUPLICATE_SLIDE_ID"
 )
 
 // NewValidator creates a validator from PPTX bytes.
@@ -125,6 +126,12 @@ func (v *Validator) Validate() error {
 	// Validate all relationship targets
 	v.ValidateAllRelationshipTargets()
 
+	// Every XML part must parse, and every r:id / r:embed / r:link it
+	// carries must resolve against its .rels (go-slide-creator-csclk.21).
+	v.ValidatePartXML()
+	v.ValidateSlideIDs()
+	v.ValidateSlideLayoutRels()
+
 	if v.HasErrors() {
 		return v.Errors()
 	}
@@ -150,10 +157,13 @@ func (v *Validator) ValidateContentTypes() {
 	}
 }
 
-// ValidateContentTypeCoverage checks that every XML part in the package is
-// covered by either a Default whose extension matches the part's extension or
-// an Override whose PartName matches the part's absolute path ("/" + entry).
-// Parts that lack both trigger PowerPoint's repair prompt on open.
+// ValidateContentTypeCoverage checks that every XML part and every media part
+// (ppt/media/) in the package is covered by either a Default whose extension matches
+// the part's extension or an Override whose PartName matches the part's
+// absolute path ("/" + entry). Parts that lack both trigger PowerPoint's
+// repair prompt on open. The presentation, slide, layout, master and notes
+// parts additionally need their own Override: the generic Default for "xml"
+// gives them the wrong content type, so PowerPoint cannot load them.
 //
 // Excludes [Content_Types].xml itself, .rels files, and any entry beneath a
 // _rels/ directory; those have their own coverage rules in OPC.
@@ -177,15 +187,26 @@ func (v *Validator) ValidateContentTypeCoverage() {
 		if strings.HasPrefix(entry, "_rels/") || strings.Contains(entry, "/_rels/") {
 			continue
 		}
-		if !strings.HasSuffix(entry, ".xml") {
+		if strings.HasSuffix(entry, "/") {
+			continue // zip directory entry, not a part
+		}
+		// Binary coverage is enforced for media (images/video a slide
+		// references); other non-XML entries (e.g. template sidecar metadata)
+		// are not loaded by PowerPoint and keep their existing tolerance.
+		if !strings.HasSuffix(entry, ".xml") && !strings.HasPrefix(entry, "ppt/media/") {
 			continue
 		}
 
-		ext := strings.TrimPrefix(strings.ToLower(path.Ext(entry)), ".")
-		if ct.HasDefault(ext) {
+		if ct.HasOverride("/" + entry) {
 			continue
 		}
-		if ct.HasOverride("/" + entry) {
+		if overrideRequiredPartRegex.MatchString(entry) {
+			v.addError(entry, ErrCodeMissingContentTypeOverride,
+				"part has no Override in [Content_Types].xml; the generic Default gives it the wrong content type and PowerPoint will show the repair prompt")
+			continue
+		}
+		ext := strings.TrimPrefix(strings.ToLower(path.Ext(entry)), ".")
+		if ext != "" && ct.HasDefault(ext) {
 			continue
 		}
 		v.addError(entry, ErrCodeMissingContentTypeOverride,

@@ -138,11 +138,22 @@ func collectInspectImages(dir string) ([]map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	// A numbered sequence keeps the slide number from its filename as the
+	// 0-based slide index, so a subset render ({slide-0, slide-3, slide-7})
+	// joins findings and --slide-info to the right slides
+	// (go-slide-creator-csclk.29). Only unnumbered directories fall back to
+	// list position.
 	if selected != nil {
-		files = selected
-	} else {
-		sort.Strings(files)
+		out := make([]map[string]any, len(selected))
+		for i, image := range selected {
+			out[i] = map[string]any{
+				"index": image.number,
+				"path":  image.path,
+			}
+		}
+		return out, nil
 	}
+	sort.Strings(files)
 	out := make([]map[string]any, len(files))
 	for i, p := range files {
 		out[i] = map[string]any{
@@ -161,7 +172,7 @@ func collectInspectImages(dir string) ([]map[string]any, error) {
 // unmatched groups are rejected instead of silently inspecting a mixed deck.
 // A nil result means there are no numbered slide groups, so callers may retain
 // the legacy arbitrary-image-directory behavior.
-func selectNumberedSlideImages(dir string, groups map[string][]numberedSlideImage) ([]string, error) {
+func selectNumberedSlideImages(dir string, groups map[string][]numberedSlideImage) ([]numberedSlideImage, error) {
 	if len(groups) == 0 {
 		return nil, nil
 	}
@@ -194,12 +205,10 @@ func selectNumberedSlideImages(dir string, groups map[string][]numberedSlideImag
 		}
 		return images[i].path < images[j].path
 	})
-	files := make([]string, len(images))
 	for i, image := range images {
 		if i > 0 && image.number == images[i-1].number {
 			return nil, fmt.Errorf("duplicate slide number %d in image group %q", image.number, selectedPrefix)
 		}
-		files[i] = image.path
 	}
-	return files, nil
+	return images, nil
 }

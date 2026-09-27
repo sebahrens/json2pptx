@@ -68,7 +68,9 @@ It can replace a `presentation` payload on later preview, repair, score,
 rhythm, and regenerate calls. Keep your own source JSON; a
 `read_presentation` extraction is for inspection, not an authoritative
 round-trip `PresentationInput`; it includes shapes inside groups (native
-diagrams such as swot / pestel / bmc) with bounds in slide coordinates. `apply_deck_patch` is an atomic structural
+diagrams such as swot / pestel / bmc), connectors, `pictures[]` and
+`hyperlinks`. A `FONT_SUBSTITUTED` warning means renders may wrap where fit
+findings did not; trust the image. `apply_deck_patch` is an atomic structural
 transform for insertion, removal, replacement, move, duplicate, or existing
 field replacement; validate and inspect the resulting deck before shipping.
 

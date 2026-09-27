@@ -65,13 +65,20 @@ type TimeoutError struct {
 // suggested recovery action so transport surfaces that only forward err.Error()
 // (e.g. api.MCPSimpleError) still convey the full, actionable diagnostic.
 func (e *TimeoutError) Error() string {
+	msg := e.Summary()
+	if action := e.Action(); action != "" {
+		msg += ". " + action
+	}
+	return msg
+}
+
+// Summary describes the timeout without recovery guidance, for callers whose
+// tool has a different retry path than the render tools' force flag.
+func (e *TimeoutError) Summary() string {
 	msg := fmt.Sprintf("%s timed out after %s (deadline %s)",
 		e.Tool, e.Elapsed.Round(time.Millisecond), e.Timeout)
 	if e.Path != "" {
 		msg += fmt.Sprintf(" while processing %s", e.Path)
-	}
-	if action := e.Action(); action != "" {
-		msg += ". " + action
 	}
 	return msg
 }

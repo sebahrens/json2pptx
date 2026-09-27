@@ -134,6 +134,48 @@ func TestSweepPrunesEmptyDirs(t *testing.T) {
 	}
 }
 
+// go-slide-creator-csclk.23: size eviction deleted individual slide-N.png
+// files oldest-first, leaving a partial deck whose later hits returned the
+// wrong slide by position. Eviction is now per key directory, and a hit
+// requires a complete entry.
+func TestSweepCacheEvictsWholeKeyDirectories(t *testing.T) {
+	withTempCache(t)
+	src := t.TempDir()
+	var pngs []string
+	for _, name := range []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j"} {
+		p := filepath.Join(src, name+".png")
+		if err := os.WriteFile(p, make([]byte, 1000), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		pngs = append(pngs, p)
+	}
+	storeCachePNGs("deck-d150", pngs)
+	if got := getCachedPNGs("deck-d150"); len(got) != 10 {
+		t.Fatalf("fresh entry: got %d files, want 10", len(got))
+	}
+
+	if _, err := SweepCache(0, 7500); err != nil {
+		t.Fatalf("SweepCache: %v", err)
+	}
+	if got := getCachedPNGs("deck-d150"); got != nil {
+		t.Fatalf("partial cache hit after eviction: %v", got)
+	}
+	if got := LookupCachedSlide("deck", 0, 150); got != nil {
+		t.Fatal("LookupCachedSlide returned an image from an evicted entry")
+	}
+}
+
+// An entry missing its completion marker is a miss, not a positional hit on
+// whichever slides survived.
+func TestGetCachedPNGsRejectsPartialEntry(t *testing.T) {
+	root := withTempCache(t)
+	writeCacheFile(t, root, "deck-d150/slide-3.png", 10, time.Minute)
+	writeCacheFile(t, root, "deck-d150/slide-4.png", 10, time.Minute)
+	if got := getCachedPNGs("deck-d150"); got != nil {
+		t.Fatalf("entry without marker returned %v", got)
+	}
+}
+
 // The policy string must describe the bound that actually exists. It used to
 // promise removal by InvalidateCache, which nothing called.
 func TestArtifactCleanupPolicyDescribesTheRealBound(t *testing.T) {

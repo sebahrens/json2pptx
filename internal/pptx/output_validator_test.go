@@ -64,6 +64,8 @@ func validPPTXFiles() map[string]string {
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="xml" ContentType="application/xml"/>
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+  <Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>
 </Types>`,
 		"_rels/.rels": `<?xml version="1.0"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
@@ -586,9 +588,13 @@ func TestOutputValidator_MissingContentTypeOverride_IsBlocking(t *testing.T) {
 func TestOutputValidator_ContentTypeCoverage_DefaultExtensionSatisfies(t *testing.T) {
 	t.Parallel()
 
-	// validPPTXFiles() has Default Extension="xml" — every XML part is covered
-	// by extension Default. No OPC_MISSING_CONTENT_TYPE_OVERRIDE expected.
-	data := createValidatorTestZIP(validPPTXFiles())
+	// validPPTXFiles() has Default Extension="xml" — an ordinary XML part is
+	// covered by the extension Default. No OPC_MISSING_CONTENT_TYPE_OVERRIDE
+	// expected. (PresentationML parts carry their own Overrides; see
+	// TestOutputValidator_ContentTypeCoverage_SlideNeedsOverride.)
+	files := validPPTXFiles()
+	files["ppt/customXml/item1.xml"] = `<?xml version="1.0"?><root/>`
+	data := createValidatorTestZIP(files)
 	report, err := ValidateOutputBytes(data)
 	if err != nil {
 		t.Fatalf("ValidateOutputBytes: %v", err)
@@ -599,6 +605,109 @@ func TestOutputValidator_ContentTypeCoverage_DefaultExtensionSatisfies(t *testin
 			t.Errorf("did not expect OPC_MISSING_CONTENT_TYPE_OVERRIDE when Default Extension=xml exists: %v", f)
 		}
 	}
+}
+
+// go-slide-creator-csclk.21: the generic xml Default gives a slide the wrong
+// content type, so a slide whose Override was removed must be flagged.
+func TestOutputValidator_ContentTypeCoverage_SlideNeedsOverride(t *testing.T) {
+	t.Parallel()
+
+	files := validPPTXFiles()
+	files["[Content_Types].xml"] = `<?xml version="1.0"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+</Types>`
+	report, err := ValidateOutputBytes(createValidatorTestZIP(files))
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+	if !hasBlockingFinding(report, "OPC_MISSING_CONTENT_TYPE_OVERRIDE", "ppt/slides/slide1.xml") {
+		t.Errorf("expected OPC_MISSING_CONTENT_TYPE_OVERRIDE for the slide, got: %v", report.Findings)
+	}
+}
+
+// go-slide-creator-csclk.21: each corruption below used to validate clean.
+func TestOutputValidator_DetectsPartCorruption(t *testing.T) {
+	t.Parallel()
+
+	const slideHead = `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:cSld><p:spTree>`
+	const slideTail = `</p:spTree></p:cSld></p:sld>`
+	cases := []struct {
+		name   string
+		mutate func(map[string]string)
+		code   string
+		path   string
+	}{
+		{"unclosed element", func(f map[string]string) {
+			f["ppt/slides/slide1.xml"] = slideHead + `<p:sp>` + slideTail
+		}, "OPC_MALFORMED_XML", "ppt/slides/slide1.xml"},
+		{"bare ampersand", func(f map[string]string) {
+			f["ppt/slides/slide1.xml"] = slideHead + `<p:sp><p:txBody><a:p><a:r><a:t>R&D</a:t></a:r></a:p></p:txBody></p:sp>` + slideTail
+		}, "OPC_MALFORMED_XML", "ppt/slides/slide1.xml"},
+		{"dangling blip embed", func(f map[string]string) {
+			f["ppt/slides/slide1.xml"] = slideHead + `<p:pic><p:blipFill><a:blip r:embed="rId999"/></p:blipFill></p:pic>` + slideTail
+		}, "OPC_DANGLING_REL", "ppt/slides/slide1.xml"},
+		{"dangling sldId", func(f map[string]string) {
+			f["ppt/presentation.xml"] = strings.Replace(f["ppt/presentation.xml"], `r:id="rId2"`, `r:id="rId999"`, 1)
+		}, "OPC_DANGLING_REL", "ppt/presentation.xml"},
+		{"duplicate sldId", func(f map[string]string) {
+			f["ppt/presentation.xml"] = strings.Replace(f["ppt/presentation.xml"], `</p:sldIdLst>`,
+				`<p:sldId id="256" r:id="rId2" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/></p:sldIdLst>`, 1)
+		}, "OPC_DUPLICATE_SLIDE_ID", "ppt/presentation.xml"},
+		{"media without content type", func(f map[string]string) {
+			f["ppt/media/image1.png"] = "png"
+		}, "OPC_MISSING_CONTENT_TYPE_OVERRIDE", "ppt/media/image1.png"},
+		{"illegal char in notes", func(f map[string]string) {
+			f["ppt/notesSlides/notesSlide1.xml"] = "<?xml version=\"1.0\"?><p:notes xmlns:p=\"http://schemas.openxmlformats.org/presentationml/2006/main\">\x0b</p:notes>"
+		}, "OPC_MALFORMED_XML", "ppt/notesSlides/notesSlide1.xml"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			files := validPPTXFiles()
+			tc.mutate(files)
+			report, err := ValidateOutputBytes(createValidatorTestZIP(files))
+			if err != nil {
+				t.Fatalf("ValidateOutputBytes: %v", err)
+			}
+			if !hasBlockingFinding(report, tc.code, tc.path) {
+				t.Errorf("expected blocking %s at %s, got: %v", tc.code, tc.path, report.Findings)
+			}
+		})
+	}
+}
+
+// go-slide-creator-csclk.30: shapes repeated in mc:Fallback are not duplicates.
+func TestOutputValidator_AlternateContentIsNotDuplicateID(t *testing.T) {
+	t.Parallel()
+
+	files := validPPTXFiles()
+	files["ppt/slides/slide1.xml"] = `<?xml version="1.0"?>
+<p:sld xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"><p:cSld><p:spTree>
+<mc:AlternateContent><mc:Choice Requires="a14"><p:sp><p:nvSpPr><p:cNvPr id="50" name="Eq"/></p:nvSpPr></p:sp></mc:Choice>
+<mc:Fallback><p:sp><p:nvSpPr><p:cNvPr id="50" name="Eq"/></p:nvSpPr></p:sp></mc:Fallback></mc:AlternateContent>
+</p:spTree></p:cSld></p:sld>`
+	report, err := ValidateOutputBytes(createValidatorTestZIP(files))
+	if err != nil {
+		t.Fatalf("ValidateOutputBytes: %v", err)
+	}
+	for _, f := range report.Findings {
+		if f.Code == "OOXML_DUPLICATE_ID" {
+			t.Errorf("unexpected duplicate id across mc:Choice/mc:Fallback: %v", f)
+		}
+	}
+}
+
+func hasBlockingFinding(report *Report, code, path string) bool {
+	for _, f := range report.Blocking() {
+		if f.Code == code && f.Path == path {
+			return true
+		}
+	}
+	return false
 }
 
 func TestOutputValidator_ContentTypeCoverage_UnknownXMLPart(t *testing.T) {

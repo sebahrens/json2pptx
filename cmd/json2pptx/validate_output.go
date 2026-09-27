@@ -14,7 +14,7 @@ import (
 // (structural OPC checks + OOXML content checks).
 func runValidateOutput() error {
 	fs := flag.NewFlagSet("validate-output", flag.ContinueOnError)
-	jsonOut := fs.Bool("json", false, "Output results as JSON")
+	jsonOut := fs.Bool("json", false, "Output results as one JSON array (one entry per file, with an error field for unreadable files)")
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: json2pptx validate-output [options] <file.pptx ...>\n\n")
@@ -36,17 +36,29 @@ func runValidateOutput() error {
 		return fmt.Errorf("at least one PPTX file is required")
 	}
 
+	// --json emits one JSON array covering every file (including files that
+	// could not be opened), so the output parses as a single document
+	// (go-slide-creator-csclk.30).
 	hasErrors := false
+	var results []validateOutputResult
 	for _, path := range fs.Args() {
 		report, err := pptx.ValidateOutputFile(path)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %s: %v\n", path, err)
 			hasErrors = true
+			if *jsonOut {
+				results = append(results, validateOutputResult{FilePath: path, Error: err.Error()})
+			} else {
+				fmt.Fprintf(os.Stderr, "Error: %s: %v\n", path, err)
+			}
 			continue
 		}
 
 		if *jsonOut {
-			printValidateOutputJSON(path, report)
+			results = append(results, validateOutputResult{
+				FilePath: path,
+				IsValid:  report.IsValid(),
+				Findings: report.Findings,
+			})
 		} else {
 			printValidateOutputHuman(path, report)
 		}
@@ -54,6 +66,12 @@ func runValidateOutput() error {
 		if !report.IsValid() {
 			hasErrors = true
 		}
+	}
+
+	if *jsonOut {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		_ = enc.Encode(results)
 	}
 
 	if hasErrors {
@@ -66,17 +84,7 @@ type validateOutputResult struct {
 	FilePath string         `json:"file_path"`
 	IsValid  bool           `json:"is_valid"`
 	Findings []pptx.Finding `json:"findings,omitempty"`
-}
-
-func printValidateOutputJSON(path string, report *pptx.Report) {
-	result := validateOutputResult{
-		FilePath: path,
-		IsValid:  report.IsValid(),
-		Findings: report.Findings,
-	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", "  ")
-	_ = enc.Encode(result)
+	Error    string         `json:"error,omitempty"`
 }
 
 func printValidateOutputHuman(path string, report *pptx.Report) {

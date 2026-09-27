@@ -118,12 +118,53 @@ func TestConvert_SofficeAndPdftoppm(t *testing.T) {
 	if !strings.Contains(mock.Calls[1], "-r 110") || !strings.Contains(mock.Calls[1], "-jpeg") {
 		t.Errorf("pdftoppm call missing density/jpeg flags: %s", mock.Calls[1])
 	}
-	for _, n := range []string{"1", "2", "10", "12"} {
+	// Normalized to 0-based indices, matching the ImageMagick path.
+	for _, n := range []string{"0", "1", "9", "11"} {
 		if _, err := os.Stat(filepath.Join(out, "deck-slide-"+n+".jpg")); err != nil {
 			t.Errorf("expected normalized deck-slide-%s.jpg: %v", n, err)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(out, "deck-slide-01.jpg")); !os.IsNotExist(err) {
-		t.Errorf("zero-padded pdftoppm name should have been renamed")
+	for _, n := range []string{"01", "12"} {
+		if _, err := os.Stat(filepath.Join(out, "deck-slide-"+n+".jpg")); !os.IsNotExist(err) {
+			t.Errorf("pdftoppm name deck-slide-%s.jpg should have been renamed", n)
+		}
+	}
+}
+
+// TestConvert_RemovesStaleSlideImages is the regression test for
+// go-slide-creator-csclk.26: images from an earlier, longer render with the
+// same base name must not survive a re-render.
+func TestConvert_RemovesStaleSlideImages(t *testing.T) {
+	withLookPath(t, fakeLookPath("soffice", "pdftoppm"))
+	tmp := t.TempDir()
+	pptx := filepath.Join(tmp, "deck.pptx")
+	if err := os.WriteFile(pptx, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(tmp, "out")
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stale := filepath.Join(out, "deck-slide-7.jpg")
+	if err := os.WriteFile(stale, []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mock := &MockCommandRunner{RunFunc: func(name string, args ...string) error {
+		switch name {
+		case "soffice":
+			return os.WriteFile(filepath.Join(out, "deck.pdf"), []byte("pdf"), 0o644)
+		case "pdftoppm":
+			return os.WriteFile(args[len(args)-1]+"-1.jpg", []byte("jpg"), 0o644)
+		}
+		return nil
+	}}
+	if err := convertPPTXToJPGWithRunner(pptx, out, 110, mock); err != nil {
+		t.Fatalf("convert: %v", err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Errorf("stale deck-slide-7.jpg should have been removed")
+	}
+	if _, err := os.Stat(filepath.Join(out, "deck-slide-0.jpg")); err != nil {
+		t.Errorf("expected deck-slide-0.jpg: %v", err)
 	}
 }
