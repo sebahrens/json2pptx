@@ -9,7 +9,8 @@
     "quality_package_lint": "PASS (0 issues)",
     "build": "PASS",
     "format_and_diff": "PASS",
-    "broader_quality_short_race_suite": "Pending at publication; not counted as a pass"
+    "broader_quality_short_race_suite": "Original run FAIL (500.410s): continuation expectations retained full sentences from sibling pages; follow-up tracked in go-slide-creator-6yucq",
+    "continuation_followup": "Page-local expectation filter retains complete sentences for the current page only; regression covers both identifier-only and complete-sentence source expectations, title retention and original source immutability"
   },
   "testing_review": {
     "reviewer": "testing",

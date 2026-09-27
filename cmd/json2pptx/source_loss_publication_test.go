@@ -21,7 +21,11 @@ func TestHandleGenerateRuntimeSourceLossRetainsStructuredRepair(t *testing.T) {
 	for i := range bullets {
 		bullets[i] = fmt.Sprintf("P%02d %s", i, strings.Repeat("Required ownership and reporting evidence. ", 24))
 	}
-	for _, kind := range []string{"table", "bullets"} {
+	readabilityBullets := make([]any, 9)
+	for i := range readabilityBullets {
+		readabilityBullets[i] = fmt.Sprintf("R%02d %s", i, strings.Repeat("Required ownership and reporting evidence. ", 4))
+	}
+	for _, kind := range []string{"table", "bullets", "readability"} {
 		for _, mode := range []string{"", "warn", "off"} {
 			t.Run(fmt.Sprintf("%s/mode=%q", kind, mode), func(t *testing.T) {
 				dir := t.TempDir()
@@ -39,6 +43,10 @@ func TestHandleGenerateRuntimeSourceLossRetainsStructuredRepair(t *testing.T) {
 				if kind == "bullets" {
 					item = map[string]any{"placeholder_id": "body", "type": "bullets", "value": bullets}
 					code = patterns.ErrCodeTextTrimmed
+				}
+				if kind == "readability" {
+					item = map[string]any{"placeholder_id": "body", "type": "bullets", "value": readabilityBullets}
+					code = patterns.ErrCodeReadabilityTrimmed
 				}
 				params := map[string]any{"output_filename": "deck.pptx", "presentation": map[string]any{"template": "abstract", "slides": []any{map[string]any{"layout_id": "slideLayout3", "content": []any{item}}}}}
 				if mode != "" {
@@ -61,7 +69,7 @@ func TestHandleGenerateRuntimeSourceLossRetainsStructuredRepair(t *testing.T) {
 						t.Fatalf("source-loss repair parameters missing: %+v", params)
 					}
 				}
-				if kind == "bullets" && (envelope.Diagnostics[0].Fix.Kind != string(diagnostics.ActionSplitSlide) || envelope.Diagnostics[0].Fix.Params["kind"] != "split_bullets" || envelope.Diagnostics[0].Fix.Params["max_items"] != float64(1)) {
+				if kind != "table" && (envelope.Diagnostics[0].Fix.Kind != string(diagnostics.ActionSplitSlide) || envelope.Diagnostics[0].Fix.Params["kind"] != "split_bullets" || envelope.Diagnostics[0].Fix.Params["max_items"] != float64(1)) {
 					t.Fatalf("MCP lost source-preserving paragraph repair: %+v", envelope.Diagnostics[0].Fix)
 				}
 				data, err := os.ReadFile(output)

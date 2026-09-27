@@ -17,6 +17,7 @@ import (
 func nativeBulletContinuations(source nativeProbe, budget int) ([]nativeProbe, error) {
 	base := deckinput.SlideInput{}
 	markers := map[string]bool{}
+	bulletExpectations := map[string]bool{}
 	for _, item := range source.Slide.Content {
 		ci := deckinput.ContentInput{Type: string(item.Type), PlaceholderID: item.PlaceholderID}
 		if item.Type == generator.ContentBullets {
@@ -31,6 +32,8 @@ func nativeBulletContinuations(source nativeProbe, budget int) ([]nativeProbe, e
 					return nil, fmt.Errorf("native fixture needs unique nonempty bullet markers")
 				}
 				markers[fields[0]] = true
+				bulletExpectations[fields[0]] = true
+				bulletExpectations[strings.TrimSpace(bullet)] = true
 			}
 		}
 		base.Content = append(base.Content, ci)
@@ -50,7 +53,7 @@ func nativeBulletContinuations(source nativeProbe, budget int) ([]nativeProbe, e
 		page.Slide.Content = append([]generator.ContentItem(nil), source.Slide.Content...)
 		page.ExpectedText = nil
 		for _, text := range source.ExpectedText {
-			if !markers[text] {
+			if !bulletExpectations[text] {
 				page.ExpectedText = append(page.ExpectedText, text)
 			}
 		}
@@ -144,6 +147,35 @@ func TestNativeBulletContinuationsPreserveAllLayoutsAndSource(t *testing.T) {
 		t.Fatal("no native bullet layouts exercised")
 	}
 	t.Logf("preserved dense bullet source on %d native layouts", count)
+}
+
+func TestNativeBulletContinuationExpectationsArePageLocal(t *testing.T) {
+	const first = "C1-B00 Café teams retain the first full qualifier"
+	const second = "C1-B01 Résumé evidence retains the second full qualifier"
+	for _, expectations := range [][]string{{"Required title", "C1-B00", "C1-B01"}, {"Required title", first, second}} {
+		source := nativeProbe{LayoutID: "native", ExpectedText: expectations, Slide: generator.SlideSpec{Content: []generator.ContentItem{
+			{Type: generator.ContentText, Value: "Required title"},
+			{Type: generator.ContentBullets, Value: []string{first, second}},
+		}}}
+		before, err := json.Marshal(source)
+		if err != nil {
+			t.Fatal(err)
+		}
+		pages, err := nativeBulletContinuations(source, 1)
+		if err != nil || len(pages) != 2 {
+			t.Fatalf("continuation failed: %v, %d pages", err, len(pages))
+		}
+		for i, sentence := range []string{first, second} {
+			want := []string{"Required title", strings.Fields(sentence)[0], sentence}
+			if !reflect.DeepEqual(pages[i].ExpectedText, want) {
+				t.Fatalf("page %d retains sibling source or loses its own full sentence: got %q, want %q", i, pages[i].ExpectedText, want)
+			}
+		}
+		after, err := json.Marshal(source)
+		if err != nil || string(before) != string(after) {
+			t.Fatal("continuation changed original source")
+		}
+	}
 }
 
 func TestNativeBulletContinuationsRejectPartialSourceSentences(t *testing.T) {
