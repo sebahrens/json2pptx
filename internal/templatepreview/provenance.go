@@ -44,7 +44,8 @@ func RenderingSourceHash(root string) (string, error) {
 			if err != nil {
 				return err
 			}
-			if !entry.IsDir() && ((strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go")) || entry.Name() == "go.mod" || entry.Name() == "go.sum") {
+			fontAsset := strings.EqualFold(filepath.Ext(path), ".ttf") || strings.EqualFold(filepath.Ext(path), ".otf")
+			if !entry.IsDir() && ((strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go")) || entry.Name() == "go.mod" || entry.Name() == "go.sum" || fontAsset) {
 				paths = append(paths, path)
 			}
 			return nil

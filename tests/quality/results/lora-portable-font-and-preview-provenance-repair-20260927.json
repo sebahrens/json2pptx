@@ -1,0 +1,57 @@
+{
+  "beads": ["go-slide-creator-3qzo4.98", "go-slide-creator-3qzo4.101"],
+  "status": "installed_local_gates_pass_publication_ci_pending",
+  "published": false,
+  "font_source": {
+    "upstream": "https://github.com/cyrealtype/Lora-Cyrillic",
+    "commit": "2d53b449b60e185b39f671b44fded83e0910ad30",
+    "license": "SIL Open Font License 1.1; original metadata and Lora-OFL.txt retained",
+    "regular_sha256": "c72a925082ba55885e7b4ead25d34a3c91fa44edda72a16a3a2983fc7fa7cef3",
+    "bold_sha256": "32baf740eac1bf3f257904a6cf89e4e067ca1566b375bf22f743a26fc88b3791",
+    "scope": "Canonical Lora Regular/Bold; unmodified upstream native-family faces, pinned version. The formerly external template reference did not identify its author's exact font version."
+  },
+  "repair": {
+    "measurement": "Resolve canonical Lora and explicit Lora fallback from embedded original Regular/Bold; fail closed if either face is corrupt; preserve existing Arial and other-family paths.",
+    "native_template": "Embed unrestricted EOT 2.1 fonts with original TTF tails and valid font relationships/content type; enable full TrueType embedding. Preserve slide/layout/master/theme/media geometry, wording, fonts and artwork.",
+    "template_sha256": "e11129f55be4a647dab87e1230af4949f277bdec48cb1aa410cdd0af7465df34",
+    "provenance": "RenderingSourceHash now includes TTF/OTF bytes, not merely embedding declarations; existing generated-PNG/test-Go exclusions retained.",
+    "rendering_source_sha256": "832e4dcd8d0b6e404476903c4817cec3b1209efb994f37545e1e7d8227b452da",
+    "previews": "All 14 local templates/108 previews refreshed, including ignored p-style; six modern text-bearing previews change pixels, all other 102 remain pixel-identical. Only modern golden changes."
+  },
+  "evidence": {
+    "directory": "output/lora-portable-native-font-candidate-20260927-v1",
+    "source_audit": "source-audit.json",
+    "candidate_matrix": "full-matrix-audit.json",
+    "installed_matrix": "installed-candidate-audit.json",
+    "installed_matrix_sha256": "eac8161c0dfa64958eec68e76ecefa9fef381971875eea538867c75bf0f4e618",
+    "matrix": "14 templates, 108 layouts, 309 unchanged inputs/statuses; all 247 generated pages and ZIP payloads identical to reviewed candidate; 62 unchanged typed refusals are not visual approval.",
+    "preview_audit": "installed-preview-audit.json",
+    "blind_review": "output/blind-portable-native-font-fidelity-20260927-v1/joined-review-audit.json",
+    "blind_join_sha256": "0020fff1a3c8d161cef8a1e7cb253260790d1118612c129c3f9c4b3185e1932f",
+    "blind_scope": "One fresh-context reviewer, 28 opaque originals, all hashes joined, zero unreviewed; supplied wording complete. Dense Title 1 orphan resolved, no introduced finding codes. Seven AFTER pages retain minor cautions.",
+    "actual_renderer": "output/lora-embedded-font-experiment-20260927-v1/font-control-audit.json and bold-render-audit.json: bundled LibreOffice PDF uses embedded Lora Regular/Bold versus disabled-embedding controls, preserving wording and native sizes. No global font installation."
+  },
+  "local_gates": {
+    "root_race": "PASS; session 93912 terminal exit 0; installed-root-race.log; CLI 795.372s, generator 263.914s, quality 552.858s; go test ./... -short -race -timeout=15m",
+    "svg_race": "PASS 38.649s; fontcache 7.736s",
+    "fontcache_race": "PASS 6.337s",
+    "native_corpus_final": "PASS 41.530s; installed v2",
+    "native_font_generation_regressions": "PASS 1.272s; keep and exclude original template slides",
+    "preview_race": "PASS 10.402s",
+    "conformance_race": "PASS 13.078s",
+    "provenance_positive": "PASS 1.621s",
+    "provenance_negative_original": "EXPECTED FAIL 0.561s for both asset-only TTF/OTF changes",
+    "original_font_resolver_negative": "EXPECTED FAIL 0.510s for direct/fallback/corrupt-face regressions",
+    "golden_check": "PASS 0.980s",
+    "root_and_svg_pinned_lint": "PASS, zero issues",
+    "root_build": "PASS; final source also compiled by full race suite",
+    "diff_whitespace": "PASS",
+    "private_template": "p-style.pptx and its preview manifest remain gitignored; source unchanged"
+  },
+  "code_reviews": [
+    {"reviewer": "testing", "findings": [], "testing_gaps": [], "residual_risks": ["No claim of all font styles/scripts or all office renderers; visual comparisons verify supplied wording, not every chart/table datum."]},
+    {"reviewer": "adversarial", "findings": [], "testing_gaps": [], "residual_risks": ["Corrupt either face cannot silently substitute; cache identity and fallback flags asserted. Native font preservation is tested through actual generation; actual PDF renderer audited separately."]},
+    {"reviewer": "reliability", "findings": [], "testing_gaps": [], "residual_risks": ["In-memory font loading retains existing bounded cache behavior; both-face errors return nil instead of false-success. Asset mutation tests are sequential and restore bytes/cache."]}
+  ],
+  "remaining": "Keep both beads in progress until exact published-SHA CI is terminal green. Closing mottled artwork, short-title rag, body leading/orphans, chart label sizing, broad source suitability and baseline comparison remain separately tracked; this repair is not global visual approval."
+}

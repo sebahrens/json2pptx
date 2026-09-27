@@ -41,13 +41,14 @@ type fontCache struct {
 }
 
 // Get returns a cached font family for the given name, loading it if necessary.
-// fallbackName is an optional system font to try when name is not found (pass ""
+// fallbackName is an optional font to try when name is not found (pass ""
 // to skip). The font loading strategy is:
 //
-//  1. Resolve Arial to embedded Liberation Sans for cross-platform metric stability.
+//  1. Resolve Lora to the embedded original faces, and Arial to embedded
+//     Liberation Sans for cross-platform metric stability.
 //  2. Try loading name as a system font.
 //  3. If that fails and fallbackName is non-empty, try the fallback (using the
-//     embedded face when that fallback is Arial).
+//     embedded face when that fallback is Lora or Arial).
 //  4. If that fails, cycle through common system fallbacks (Arial, Helvetica, DejaVu Sans).
 //  5. If no system font is available, load the embedded Liberation Sans (metric-compatible
 //     with Arial, works in headless/Docker environments).
@@ -96,6 +97,15 @@ func Resolve(name string, fallbackName string) (*canvas.FontFamily, string, bool
 func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, bool) {
 	ff := canvas.NewFontFamily(name)
 
+	// Resolve the native title family from the exact embedded original faces,
+	// so measurement never depends on host font installation or substitution.
+	if name == "Lora" {
+		if err := loadEmbeddedLora(ff); err != nil {
+			return nil, "", false
+		}
+		return ff, "Lora", false
+	}
+
 	// Keep the default presentation font deterministic across hosts. On Linux,
 	// fontconfig may report a successful "Arial" lookup while silently returning
 	// DejaVu Sans, which changes text metrics and therefore chart geometry. The
@@ -115,6 +125,12 @@ func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, boo
 
 	// 2. Try the explicit fallback name.
 	if fallbackName != "" && fallbackName != name {
+		if fallbackName == "Lora" {
+			if err := loadEmbeddedLora(ff); err != nil {
+				return nil, "", false
+			}
+			return ff, "Lora", true
+		}
 		if fallbackName == "Arial" {
 			if err := loadEmbeddedLiberation(ff); err == nil {
 				return ff, "Liberation Sans", true
@@ -144,6 +160,16 @@ func loadFont(name string, fallbackName string) (*canvas.FontFamily, string, boo
 
 	// 5. Nothing worked.
 	return nil, "", false
+}
+
+func loadEmbeddedLora(ff *canvas.FontFamily) error {
+	if err := ff.LoadFont(fonts.LoraRegular, 0, canvas.FontRegular); err != nil {
+		return fmt.Errorf("load embedded original Lora Regular: %w", err)
+	}
+	if err := ff.LoadFont(fonts.LoraBold, 0, canvas.FontBold); err != nil {
+		return fmt.Errorf("load embedded original Lora Bold: %w", err)
+	}
+	return nil
 }
 
 func loadEmbeddedLiberation(ff *canvas.FontFamily) error {
