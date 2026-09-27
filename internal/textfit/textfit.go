@@ -104,7 +104,7 @@ const (
 	// ptToMM converts points to millimeters. canvas text bounds are reported
 	// in millimetres, so available widths are converted with it; font faces
 	// take their size in points (see newFace).
-	ptToMM = 0.3528
+	ptToMM = 25.4 / 72.0
 )
 
 // Calculate determines the font scale and line spacing reduction needed to fit

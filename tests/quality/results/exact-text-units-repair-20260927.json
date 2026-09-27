@@ -1,0 +1,58 @@
+{
+  "date": "2026-09-27",
+  "bead": "go-slide-creator-3qzo4.105",
+  "baseline_commit": "937203fe2ad328798f331610a3554c3d56cc4970",
+  "scope": "Replace rounded point-to-millimetre conversion 0.3528 with exact 25.4/72. No font, template, layout, shaping, or content changes.",
+  "regression": {
+    "oracle": "Independent 36000 EMU/mm against canvas millimetre bounds, not the production conversion constant.",
+    "coverage": "Arial's explicit Liberation Sans fallback plus native Poppins Light and Lora, each at 10/18/45pt; longest explicit line; plain/styled wrapping one EMU below and at fit, with and without default insets; maximum fitting word font.",
+    "baseline": "EXPECTED_FAIL: underreported widths, missed wraps and over-large maximum fitting font.",
+    "baseline_log_sha256": "2d7a72a3a272b5abd7be83443e8ccc15728e33d40313dcc01867407309647ad5",
+    "candidate_package_race": "PASS 5.890s",
+    "candidate_log_sha256": "96ea1981ab665314ef9889c230c56f3c402d2176d411d9458cb10b78b916b396",
+    "installed_regression_race": "PASS 1.356s",
+    "retained_harness_failures": "Initial v1/v2 asserted an incorrect font fallback identity; failed logs retained locally and corrected to the existing explicit Arial-to-Liberation-Sans contract. No font source changes or skips."
+  },
+  "native_corpus": {
+    "status": "PASS 41.107s",
+    "templates": 14,
+    "layouts": 108,
+    "probes": 309,
+    "accepted_renders": 247,
+    "typed_refusals": 62,
+    "source_hashes": "All 14 unchanged",
+    "inputs_and_outcomes": "All 309 unchanged",
+    "pixels": "All 247 identical",
+    "generated_zip_payloads": "All identical",
+    "comparison_sha256": "43549ec7d0ab15b40361cadb322d16d21da7f7b34bd00d7e0dc91332b37c828e"
+  },
+  "previews": {
+    "status": "PASS, refreshed sequentially after promotion",
+    "count": 108,
+    "pixels": "All identical",
+    "source_content": "All preserved",
+    "rendering_source_sha256": "ed11dc3783fb8b4608b4ae8d8b5fb3c64c21aee0e687988a4e048eec27faa1db",
+    "audit_sha256": "e18b4833fc7fc1520806ace49d0cb73c6c48710d368f3db405a4fb6476e2985d"
+  },
+  "p_style": {
+    "source_sha256": "1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1",
+    "gitignored": true,
+    "native_layouts_covered": 7,
+    "source_unchanged": true
+  },
+  "gates_at_publication": {
+    "lint": "PASS, pinned v2.8.0, zero issues",
+    "build": "PASS",
+    "format_and_diff": "PASS",
+    "goldens": "All four unchanged",
+    "full_root_race": "RUNNING; session 70488; output/exact-text-units-20260927-v1/installed-root-race.log",
+    "exact_commit_ci": "PENDING publication"
+  },
+  "review": {
+    "testing": "No actionable findings",
+    "adversarial": "No actionable findings in the narrow unit-conversion change",
+    "blind_visual": "Reused prior evidence only through proven pixel identity; no repeated reviewer request",
+    "limitations": "Retained corpus equivalence is not proof that arbitrary near-boundary text is unchanged. Existing wrapping remains approximate shaping. Typed refusals are not visual approvals."
+  },
+  "closure": "Bead remains in progress until full local race and every exact-commit CI workflow is terminal success. Publication-time statuses are immutable."
+}
