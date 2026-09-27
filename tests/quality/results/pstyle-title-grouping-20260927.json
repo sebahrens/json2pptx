@@ -1,0 +1,36 @@
+{
+  "scope": "Existing go-slide-creator-3qzo4.32: p-style native Title grouping only",
+  "status": "Installed locally; remaining defects in the existing bead are not closed",
+  "template": {
+    "gitignored": true,
+    "before_sha256": "1dc10c7290935f5f6441bd83068f288d8be20753804b2a41a891b8752ffa98c1",
+    "installed_sha256": "c6a21beb122a6a43b00be944c96b2fd8c1f77f1960f60946d1b269f6f64d086a",
+    "recoverable_backup": "output/template-repair-20260926/p-style-title-grouping-before.pptx",
+    "changed_parts": ["ppt/slideLayouts/slideLayout1.xml", "ppt/slides/slide1.xml"],
+    "changes": "Bottom-anchor the title and widen its frame from 5664555 to 8000000 EMU into unused canvas; preserve title typography, height, position and the complete 22pt subtitle frame.",
+    "unchanged": "ZIP order and every other part payload; all source wording and other layouts."
+  },
+  "evidence": {
+    "baseline_native_corpus": "PASS 50.954s; output/pstyle-title-anchor-baseline-native-20260927-v1",
+    "final_candidate_native_corpus": "PASS 49.144s; output/pstyle-title-grouping-candidate-native-20260927-v1",
+    "comparison": "14 templates,108 layouts,309 probes: same inputs, expected words and outcomes (247 accepted,62 refused). Only two p-style Title images changed; other245 accepted images have identical decoded RGBA pixels. Encoded PNG metadata is not byte-identical.",
+    "conformance": "PASS, zero fail/warn; grouping-template-check.json",
+    "sole_anonymous_review": "2/2 SAFE,0 unreviewed; all required wording visible and no title orphan, detached subtitle, clipping or overlap.",
+    "review_sha256": "294b72f00a6a014219dcbc5a04f45d4151b7ddd1c85d15e0632f6ba9d6a94560",
+    "guarded_repair_race": "PASS 1.909s; includes unchanged invalid inputs/no backup, exact two-part repair, preserved preimage and byte-idempotent repeat.",
+    "installed_preview_refresh": "PASS14 templates108 layouts; installed p-style manifest matches source SHA and includes all7 layouts. Tracked PNG hashes unchanged; renderer cache identities refreshed.",
+    "build": "PASS",
+    "pinned_lint": "PASS v2.8.0, zero issues",
+    "installed_root_short": "PASS: go test ./... -short -count=1 -timeout=15m with installed ignored p-style and bundled renderer profile; retained installed-root-short-final.log. Initial restricted run failed on prohibited localhost mock-server binding and renderer process startup, retained installed-root-short.log. Not a full root race-suite claim."
+  },
+  "review": {
+    "testing": "Guarded exact-source transformation rejects missing, duplicate, unexpected-font/frame and partially repaired parts before backup or mutation.",
+    "adversarial": "No private PPTX payload committed. Recoverable preimage retained; opt-in repair only, unrelated parts untouched. Unknown template revisions are refused rather than patched heuristically."
+  },
+  "limitations": [
+    "First anchor-only candidate retained a one-word orphan and was not installed; original review retained.",
+    "First corpus setup failed due duplicate portability inventory; failed log retained and corrected inventory rerun.",
+    "Refused probes are not source-complete visual approvals.",
+    "This is not all-template approval, actual projection-distance approval or native-font/application-fidelity certification."
+  ]
+}

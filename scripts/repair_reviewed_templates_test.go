@@ -13,6 +13,111 @@ import (
 	"testing"
 )
 
+func TestRepairPStyleTitleAnchor(t *testing.T) {
+	const markers = `<p:sp name="title"><a:off x="401904" y="1963495"/><a:ext cx="5664555" cy="1828800"/><a:defRPr sz="4800" b="0"/></p:sp><p:sp name="subtitle"><a:off x="401904" y="4000000"/><a:ext cx="5664555" cy="1100000"/></p:sp>`
+	for _, invalid := range []string{"", "missing-slide", "wrong-geometry", "wrong-font", "duplicate-layout", "partial-width", "partial-anchor"} {
+		t.Run(invalid, func(t *testing.T) {
+			t.Chdir(t.TempDir())
+			parts := map[string]string{
+				"ppt/slideLayouts/slideLayout1.xml": markers + `<a:bodyPr anchor="t" anchorCtr="0"/>`,
+				"ppt/slides/slide1.xml":             markers + `<a:bodyPr wrap="square" anchor="t" anchorCtr="0"><a:normAutofit/></a:bodyPr>`,
+				"ppt/media/image.png":               "untouched artwork",
+			}
+			if invalid == "missing-slide" {
+				delete(parts, "ppt/slides/slide1.xml")
+			}
+			if invalid == "wrong-geometry" {
+				parts["ppt/slides/slide1.xml"] = strings.Replace(parts["ppt/slides/slide1.xml"], `y="4000000"`, `y="4000001"`, 1)
+			}
+			if invalid == "wrong-font" {
+				parts["ppt/slideLayouts/slideLayout1.xml"] = strings.Replace(parts["ppt/slideLayouts/slideLayout1.xml"], `sz="4800"`, `sz="4600"`, 1)
+			}
+			if invalid == "partial-width" {
+				parts["ppt/slideLayouts/slideLayout1.xml"] = strings.Replace(parts["ppt/slideLayouts/slideLayout1.xml"], `cx="5664555"`, `cx="8000000"`, 1)
+			}
+			if invalid == "partial-anchor" {
+				parts["ppt/slides/slide1.xml"] = strings.Replace(parts["ppt/slides/slide1.xml"], `anchor="t"`, `anchor="b"`, 1)
+			}
+			var buf bytes.Buffer
+			w := zip.NewWriter(&buf)
+			for name, body := range parts {
+				f, err := w.Create(name)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := io.WriteString(f, body); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if invalid == "duplicate-layout" {
+				f, err := w.Create("ppt/slideLayouts/slideLayout1.xml")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := io.WriteString(f, parts["ppt/slideLayouts/slideLayout1.xml"]); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := w.Close(); err != nil {
+				t.Fatal(err)
+			}
+			before := bytes.Clone(buf.Bytes())
+			if err := os.WriteFile("source.pptx", before, 0600); err != nil {
+				t.Fatal(err)
+			}
+			err := repairPStyleTitleAnchor("source.pptx")
+			if (err != nil) != (invalid != "") {
+				t.Fatalf("repair=%v for %q", err, invalid)
+			}
+			after, err := os.ReadFile("source.pptx")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if invalid != "" {
+				if !bytes.Equal(before, after) {
+					t.Fatal("invalid source modified")
+				}
+				if _, err := os.Stat("output/template-repair-20260926/p-style-title-grouping-before.pptx"); !os.IsNotExist(err) {
+					t.Fatalf("invalid source created a backup: %v", err)
+				}
+				return
+			}
+			backup, err := os.ReadFile("output/template-repair-20260926/p-style-title-grouping-before.pptx")
+			if err != nil || !bytes.Equal(before, backup) {
+				t.Fatal("preimage not preserved")
+			}
+			r, err := zip.OpenReader("source.pptx")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, entry := range r.File {
+				f, err := entry.Open()
+				if err != nil {
+					t.Fatal(err)
+				}
+				body, err := io.ReadAll(f)
+				_ = f.Close()
+				if err != nil {
+					t.Fatal(err)
+				}
+				want := strings.Replace(parts[entry.Name], `anchor="t"`, `anchor="b"`, 1)
+				want = strings.Replace(want, `<a:off x="401904" y="1963495"/><a:ext cx="5664555" cy="1828800"/>`, `<a:off x="401904" y="1963495"/><a:ext cx="8000000" cy="1828800"/>`, 1)
+				if string(body) != want {
+					t.Fatalf("unexpected change in %s", entry.Name)
+				}
+			}
+			_ = r.Close()
+			if err := repairPStyleTitleAnchor("source.pptx"); err != nil {
+				t.Fatal(err)
+			}
+			again, err := os.ReadFile("source.pptx")
+			if err != nil || !bytes.Equal(after, again) {
+				t.Fatal("idempotent repair rewrote source")
+			}
+		})
+	}
+}
+
 func TestRepairModernSection(t *testing.T) {
 	const original = `<p:cSld><p:sp name="title"><a:off x="1450428" y="990601"/><a:ext cx="9145991" cy="3630384"/><a:bodyPr anchor="b"/><a:defRPr sz="6500"/></p:sp><p:sp name="Section Number"><a:off x="7886700" y="572408"/><a:ext cx="3182938" cy="3417887"/><p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr marL="11113" indent="-11113"><a:defRPr sz="9600"/></a:lvl1pPr></a:lstStyle></p:txBody></p:sp></p:cSld>`
 	// Match the reviewed opening tags, not simplified self-closing font tags.

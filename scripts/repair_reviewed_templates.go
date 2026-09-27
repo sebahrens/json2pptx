@@ -17,6 +17,15 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 {
+		if len(os.Args) != 3 || os.Args[1] != "--pstyle-title-grouping" {
+			panic("usage: repair_reviewed_templates [--pstyle-title-grouping path.pptx]")
+		}
+		if err := repairPStyleTitleAnchor(os.Args[2]); err != nil {
+			panic(err)
+		}
+		return
+	}
 	for _, repair := range []func() error{
 		func() error { return repairClosingRule("templates/modern-template.pptx") },
 		func() error { return repairBusinessSubtitle("templates/business-template.pptx") },
@@ -32,8 +41,32 @@ func main() {
 }
 
 type reviewedPartRepair struct {
-	old, replacement string
-	guards           []string
+	old, replacement             string
+	guards                       []string
+	secondOld, secondReplacement string
+}
+
+// Keep title typography, height and subtitle frame, but widen the title into
+// unused canvas space and anchor it toward its related subtitle. Short titles
+// must not create a large empty gap or strand their last word on a new line.
+// This private-template repair is explicitly invoked, never a built-in sweep.
+func repairPStyleTitleAnchor(path string) error {
+	guards := []string{`name="title"`, `name="subtitle"`,
+		`<a:off x="401904" y="1963495"/>`,
+		`<a:off x="401904" y="4000000"/><a:ext cx="5664555" cy="1100000"/>`,
+		`<a:defRPr sz="4800" b="0"/>`}
+	const oldFrame = `<a:off x="401904" y="1963495"/><a:ext cx="5664555" cy="1828800"/>`
+	const newFrame = `<a:off x="401904" y="1963495"/><a:ext cx="8000000" cy="1828800"/>`
+	return repairReviewedParts(path, "p-style-title-grouping-before.pptx", map[string]reviewedPartRepair{
+		"ppt/slideLayouts/slideLayout1.xml": {
+			old: `<a:bodyPr anchor="t" anchorCtr="0"/>`, replacement: `<a:bodyPr anchor="b" anchorCtr="0"/>`, guards: guards,
+			secondOld: oldFrame, secondReplacement: newFrame,
+		},
+		"ppt/slides/slide1.xml": {
+			old: `<a:bodyPr wrap="square" anchor="t" anchorCtr="0">`, replacement: `<a:bodyPr wrap="square" anchor="b" anchorCtr="0">`, guards: guards,
+			secondOld: oldFrame, secondReplacement: newFrame,
+		},
+	})
 }
 
 // These local list styles override the master's nesting margins. Their parent
@@ -239,12 +272,21 @@ func repairReviewedParts(path, backupName string, repairs map[string]reviewedPar
 			}
 		}
 		if bytes.Count(body, []byte(repair.replacement)) == 1 && !bytes.Contains(body, []byte(repair.old)) {
+			if repair.secondOld != "" && (bytes.Count(body, []byte(repair.secondReplacement)) != 1 || bytes.Contains(body, []byte(repair.secondOld))) {
+				return fmt.Errorf("%s has partial reviewed repair; refusing to patch", entry.Name)
+			}
 			continue // Already repaired, without rewriting this part.
 		}
 		if bytes.Count(body, []byte(repair.old)) != 1 {
 			return fmt.Errorf("%s differs from reviewed source; refusing to patch", entry.Name)
 		}
 		updates[entry.Name] = bytes.Replace(body, []byte(repair.old), []byte(repair.replacement), 1)
+		if repair.secondOld != "" {
+			if bytes.Count(body, []byte(repair.secondOld)) != 1 || bytes.Contains(body, []byte(repair.secondReplacement)) {
+				return fmt.Errorf("%s has unexpected or partial reviewed geometry; refusing to patch", entry.Name)
+			}
+			updates[entry.Name] = bytes.Replace(updates[entry.Name], []byte(repair.secondOld), []byte(repair.secondReplacement), 1)
+		}
 	}
 	for part := range repairs {
 		if !seen[part] {
