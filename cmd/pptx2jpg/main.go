@@ -248,7 +248,12 @@ func convertPPTXToJPGWithRunner(pptxPath, outputDir string, density int, runner 
 		return fmt.Errorf("PDF was not created at expected path: %s", pdfPath)
 	}
 
-	// Step 2: Rasterize PDF pages to JPG.
+	// Step 2: Rasterize PDF pages to JPG. Images left by an earlier render of
+	// a same-named deck would otherwise survive (and be reported) when the
+	// deck shrinks (go-slide-creator-csclk.26).
+	if err := removeSlideJPGs(outputDir, baseName); err != nil {
+		return err
+	}
 	fmt.Printf("Converting PDF to JPG slides...\n")
 	if err := rasterizePDF(runner, tc, pdfPath, outputDir, baseName, density); err != nil {
 		return err
@@ -307,21 +312,43 @@ func rasterizePDF(runner CommandRunner, tc toolchain, pdfPath, outputDir, baseNa
 	return nil
 }
 
+// removeSlideJPGs deletes existing "<base>-slide-N.jpg" images in outputDir
+// so a re-render never mixes in stale slides from an earlier, longer deck.
+func removeSlideJPGs(outputDir, baseName string) error {
+	files, err := filepath.Glob(filepath.Join(outputDir, baseName+"-slide-*.jpg"))
+	if err != nil {
+		return fmt.Errorf("failed to list existing slide images: %w", err)
+	}
+	for _, f := range files {
+		if slideIndexFromName(f) < 0 || !strings.HasPrefix(filepath.Base(f), baseName+"-slide-") {
+			continue
+		}
+		if err := os.Remove(f); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to remove stale %s: %w", f, err)
+		}
+	}
+	return nil
+}
+
 // normalizePdftoppmNames renames pdftoppm output ("<base>-slide-01.jpg",
-// 1-based and zero-padded to the page-count width) to the unpadded
+// 1-based and zero-padded to the page-count width) to the unpadded, 0-based
 // "<base>-slide-N.jpg" names ImageMagick produces, keeping the output
-// contract identical regardless of which rasterizer ran.
+// contract identical regardless of which rasterizer ran: N is always the
+// 0-based slide index.
 func normalizePdftoppmNames(outputDir, baseName string) error {
 	files, err := filepath.Glob(filepath.Join(outputDir, baseName+"-slide-*.jpg"))
 	if err != nil {
 		return fmt.Errorf("failed to list pdftoppm output: %w", err)
 	}
+	// Ascending order makes every rename target free: page k+1 moves to k
+	// only after page k has already moved to k-1.
+	sortSlideJPGs(files)
 	for _, f := range files {
 		n := slideIndexFromName(f)
-		if n < 0 {
+		if n < 1 {
 			continue
 		}
-		want := filepath.Join(outputDir, fmt.Sprintf("%s-slide-%d.jpg", baseName, n))
+		want := filepath.Join(outputDir, fmt.Sprintf("%s-slide-%d.jpg", baseName, n-1))
 		if want == f {
 			continue
 		}

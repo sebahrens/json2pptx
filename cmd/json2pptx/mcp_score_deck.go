@@ -131,6 +131,16 @@ func (mc *mcpConfig) handleScoreDeck(ctx context.Context, request mcp.CallToolRe
 		return argRequired(request, "score_deck", "template", "string", "midnight-blue", nextCallListTemplates()), nil
 	}
 	if len(input.Slides) == 0 {
+		// A present-but-empty slides array is not "missing" — argRequired would
+		// otherwise say "must be an array, got an array" (go-slide-creator-csclk.31).
+		var raw struct {
+			Slides []json.RawMessage `json:"slides"`
+		}
+		if json.Unmarshal([]byte(jsonStr), &raw) == nil && raw.Slides != nil {
+			return argInvalidValue("score_deck", "INVALID_PARAMETER", "presentation.slides",
+				"presentation.slides must contain at least one slide", "array",
+				[]any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
+		}
 		return argRequired(request, "score_deck", "presentation.slides", "array", []any{map[string]any{"layout_id": "title"}}, nextCallGetInputSchema()), nil
 	}
 

@@ -13,11 +13,11 @@ import (
 
 func mcpReadPresentationTool() mcp.Tool {
 	return mcp.NewTool("read_presentation",
-		mcp.WithDescription(`Read a PPTX file and return its content as structured JSON. Best-effort extraction of placeholders, shapes, tables, and speaker notes — entirely deterministic, no LibreOffice dependency.
+		mcp.WithDescription(`Read a PPTX file and return its content as structured JSON. Best-effort extraction of placeholders, shapes (including connectors and shapes inside groups), pictures (photos and the SVG charts, diagrams and icons the engine embeds), tables, and speaker notes — entirely deterministic, no LibreOffice dependency. Text includes field runs (slide numbers, dates) and the rendition of mc:AlternateContent a reader shows; hyperlink targets are reported per placeholder / shape / picture.
 
 Use this tool to introspect what generate_presentation actually produced: verify text placement, check which placeholders were populated, detect silent trimming, and confirm idempotency.
 
-Response shape: {slide_count, slides: [{index, layout_id, placeholders: [{id, type, text, bounds}], shapes: [{name, geometry, text, bounds}], tables: [{name, rows, cols, headers, data, bounds}], speaker_notes}]}`),
+Response shape: {slide_count, slides: [{index, layout_id, placeholders: [{id, type, text, hyperlinks, bounds}], shapes: [{name, geometry, connector, text, hyperlinks, bounds}], pictures: [{name, alt_text, media, content_type, svg_media, hyperlinks, bounds}], tables: [{name, rows, cols, headers, data, bounds}], speaker_notes}]}`),
 		mcp.WithString("pptx_path",
 			mcp.Description("Path to the PPTX file to read."),
 			mcp.Required(),

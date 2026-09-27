@@ -61,6 +61,7 @@ var (
 	// in 0x01-0x1F is illegal and causes Office to show the repair prompt.
 	illegalXMLCharRegex = regexp.MustCompile("[\x01-\x08\x0B\x0C\x0E-\x1F]")
 	sldIDInListRegex    = regexp.MustCompile(`<p:sldId\b`)
+	mcFallbackRegex     = regexp.MustCompile(`(?s)<mc:Fallback\b(?:[^>]*/>|.*?</mc:Fallback>)`)
 
 	// Empty-required-attribute regexes. PowerPoint's loader treats these as
 	// malformed and shows the repair prompt on open.
@@ -105,6 +106,23 @@ func (v *OOXMLValidator) Validate() error {
 				continue
 			}
 			v.validateSlideContent(entry, data)
+		}
+	}
+
+	// Notes, layouts and masters carry text too: scan them for XML 1.0
+	// illegal control characters (go-slide-creator-csclk.21).
+	for _, entry := range v.pkg.Entries() {
+		if (strings.HasPrefix(entry, "ppt/notesSlides/") ||
+			strings.HasPrefix(entry, "ppt/notesMasters/") ||
+			strings.HasPrefix(entry, "ppt/slideLayouts/") ||
+			strings.HasPrefix(entry, "ppt/slideMasters/")) &&
+			strings.HasSuffix(entry, ".xml") &&
+			!strings.Contains(entry, "_rels") {
+			data, err := v.pkg.ReadEntry(entry)
+			if err != nil {
+				continue
+			}
+			v.validateXMLChars(entry, data)
 		}
 	}
 
@@ -270,7 +288,10 @@ func (v *OOXMLValidator) validateBlipFillHasBlip(path string, data []byte) {
 
 // validateUniqueShapeIDs checks that cNvPr id attributes are unique within a slide.
 func (v *OOXMLValidator) validateUniqueShapeIDs(path string, data []byte) {
-	matches := cNvPrIDRegex.FindAllSubmatch(data, -1)
+	// mc:Fallback repeats the mc:Choice content for older readers; only one
+	// branch is ever loaded, so its shape ids are not duplicates
+	// (go-slide-creator-csclk.30).
+	matches := cNvPrIDRegex.FindAllSubmatch(mcFallbackRegex.ReplaceAll(data, nil), -1)
 	seen := make(map[string]bool, len(matches))
 	for _, match := range matches {
 		id := string(match[1])

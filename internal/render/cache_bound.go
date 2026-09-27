@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -61,10 +62,53 @@ type cacheEntry struct {
 	modTime time.Time
 }
 
+// cacheUnit is what the sweep evicts atomically: a whole per-render key
+// directory (slide-N.png files plus their completion marker), or a single
+// content-addressed file. Evicting individual slides of a key directory
+// would leave a partial deck whose later cache hits map indices to the wrong
+// slides (go-slide-creator-csclk.23).
+type cacheUnit struct {
+	path    string
+	size    int64
+	modTime time.Time // newest file in the unit
+}
+
+// cacheUnits groups cache files into eviction units.
+func cacheUnits(entries []cacheEntry) []cacheUnit {
+	root := cacheDir()
+	byPath := make(map[string]*cacheUnit)
+	var order []string
+	for _, e := range entries {
+		unitPath := e.path
+		if rel, err := filepath.Rel(root, e.path); err == nil {
+			parts := strings.SplitN(filepath.ToSlash(rel), "/", 2)
+			if len(parts) == 2 && parts[0] != "artifacts" {
+				unitPath = filepath.Join(root, parts[0])
+			}
+		}
+		u, ok := byPath[unitPath]
+		if !ok {
+			u = &cacheUnit{path: unitPath}
+			byPath[unitPath] = u
+			order = append(order, unitPath)
+		}
+		u.size += e.size
+		if e.modTime.After(u.modTime) {
+			u.modTime = e.modTime
+		}
+	}
+	out := make([]cacheUnit, 0, len(order))
+	for _, p := range order {
+		out = append(out, *byPath[p])
+	}
+	return out
+}
+
 // SweepCache removes cached artifacts older than maxAge, then evicts
-// oldest-first until the total is within maxBytes. It returns the bytes
-// reclaimed. A missing cache directory is not an error — there is nothing to
-// sweep.
+// oldest-first until the total is within maxBytes. A per-render key
+// directory is evicted as a whole, never slide by slide. It returns the
+// bytes reclaimed. A missing cache directory is not an error — there is
+// nothing to sweep.
 //
 // maxAge <= 0 skips the age pass; maxBytes <= 0 skips the size pass.
 func SweepCache(maxAge time.Duration, maxBytes int64) (int64, error) {
@@ -72,41 +116,42 @@ func SweepCache(maxAge time.Duration, maxBytes int64) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
+	units := cacheUnits(entries)
 
 	var reclaimed int64
-	kept := entries[:0]
+	kept := units[:0]
 	if maxAge > 0 {
 		cutoff := time.Now().Add(-maxAge)
-		for _, e := range entries {
-			if e.modTime.Before(cutoff) {
-				if os.Remove(e.path) == nil {
-					reclaimed += e.size
+		for _, u := range units {
+			if u.modTime.Before(cutoff) {
+				if os.RemoveAll(u.path) == nil {
+					reclaimed += u.size
 				}
 				continue
 			}
-			kept = append(kept, e)
+			kept = append(kept, u)
 		}
 	} else {
-		kept = entries
+		kept = units
 	}
 
 	if maxBytes > 0 {
 		var total int64
-		for _, e := range kept {
-			total += e.size
+		for _, u := range kept {
+			total += u.size
 		}
 		if total > maxBytes {
 			// Oldest first: a cached render nobody has asked for in days is the
 			// cheapest thing to lose, and re-rendering it is one LibreOffice
 			// call.
 			sort.Slice(kept, func(i, j int) bool { return kept[i].modTime.Before(kept[j].modTime) })
-			for _, e := range kept {
+			for _, u := range kept {
 				if total <= maxBytes {
 					break
 				}
-				if os.Remove(e.path) == nil {
-					total -= e.size
-					reclaimed += e.size
+				if os.RemoveAll(u.path) == nil {
+					total -= u.size
+					reclaimed += u.size
 				}
 			}
 		}

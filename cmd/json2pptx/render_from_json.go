@@ -17,7 +17,10 @@ import (
 	"image"
 	"image/draw"
 	"image/png"
+	"io"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -118,12 +121,21 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 		return api.MCPSimpleError("TEMPLATE_ERROR", fmt.Sprintf("hash template: %v", err)), nil
 	}
 
-	// Cache key: sha256(slide JSON || template content hash). Density is
-	// folded in by RenderSlideWithCacheKey.
+	// Cache key: sha256(slide JSON || template content hash || engine build ||
+	// base_dir || referenced local assets). Density is folded in by
+	// RenderSlideWithCacheKey. The JSON alone is not the slide's identity: an
+	// image file overwritten in place, or the same relative path under another
+	// base_dir, must not return the stale render (go-slide-creator-csclk.24).
+	baseDir, _ := request.GetArguments()["base_dir"].(string)
 	h := sha256.New()
 	h.Write([]byte(slideJSON))
 	h.Write([]byte{0})
 	h.Write([]byte(tplHash))
+	h.Write([]byte{0})
+	h.Write([]byte(Version + "+" + CommitSHA))
+	h.Write([]byte{0})
+	h.Write([]byte(baseDir))
+	writeSlideAssetFingerprints(h, slideJSON, baseDir)
 	jsonCacheKey := hex.EncodeToString(h.Sum(nil))
 
 	// Fast path: if a cached PNG exists for this (json+template+density)
@@ -213,19 +225,7 @@ func (mc *mcpConfig) handleRenderSlideImageFromJSON(ctx context.Context, request
 		if errors.Is(err, context.Canceled) {
 			return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
 		}
-		code := "RENDER_FAILED"
-		var te *render.TimeoutError
-		switch {
-		case errors.As(err, &te):
-			code = te.Code // LIBREOFFICE_TIMEOUT / IMAGEMAGICK_TIMEOUT
-		case strings.Contains(err.Error(), "not found on PATH"):
-			if strings.Contains(err.Error(), "libreoffice") {
-				code = "LIBREOFFICE_UNAVAILABLE"
-			} else {
-				code = "IMAGEMAGICK_UNAVAILABLE"
-			}
-		}
-		return api.MCPSimpleError(code, err.Error()), nil
+		return api.MCPSimpleError(renderErrorCode(err), err.Error()), nil
 	}
 	if err := ctx.Err(); err != nil {
 		return api.MCPSimpleError(diagnostics.CodeCancelled, err.Error()), nil
@@ -455,4 +455,76 @@ func extractMCPTextContent(result *mcp.CallToolResult) string {
 		}
 	}
 	return ""
+}
+
+// renderErrorCode classifies a render/convert failure: a structured timeout
+// keeps its LIBREOFFICE_TIMEOUT / IMAGEMAGICK_TIMEOUT code, a missing binary
+// maps to LIBREOFFICE_UNAVAILABLE / IMAGEMAGICK_UNAVAILABLE, and anything else
+// is RENDER_FAILED.
+func renderErrorCode(err error) string {
+	var te *render.TimeoutError
+	switch {
+	case errors.As(err, &te):
+		return te.Code
+	case strings.Contains(err.Error(), "not found on PATH"):
+		if strings.Contains(err.Error(), "libreoffice") {
+			return "LIBREOFFICE_UNAVAILABLE"
+		}
+		return "IMAGEMAGICK_UNAVAILABLE"
+	}
+	return "RENDER_FAILED"
+}
+
+// writeSlideAssetFingerprints folds the identity of every local file the slide
+// JSON references into h: each string value that resolves (as given, or
+// relative to baseDir / the process CWD) to a regular file contributes its
+// absolute path, size and modification time. URLs and data URIs are skipped;
+// strings that name no file contribute nothing.
+func writeSlideAssetFingerprints(h io.Writer, slideJSON, baseDir string) {
+	var root any
+	if json.Unmarshal([]byte(slideJSON), &root) != nil {
+		return
+	}
+	var strs []string
+	var walk func(v any)
+	walk = func(v any) {
+		switch t := v.(type) {
+		case map[string]any:
+			for _, child := range t {
+				walk(child)
+			}
+		case []any:
+			for _, child := range t {
+				walk(child)
+			}
+		case string:
+			strs = append(strs, t)
+		}
+	}
+	walk(root)
+	sort.Strings(strs)
+
+	seen := make(map[string]bool)
+	for _, s := range strs {
+		if s == "" || len(s) > 4096 || strings.Contains(s, "://") || strings.HasPrefix(s, "data:") || strings.ContainsAny(s, "\n\x00") {
+			continue
+		}
+		p := s
+		if !filepath.IsAbs(p) {
+			if baseDir != "" {
+				p = filepath.Join(baseDir, p)
+			} else if abs, err := filepath.Abs(p); err == nil {
+				p = abs
+			}
+		}
+		if seen[p] {
+			continue
+		}
+		seen[p] = true
+		info, err := os.Stat(p)
+		if err != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		fmt.Fprintf(h, "\x00asset:%s:%d:%d", p, info.Size(), info.ModTime().UnixNano())
+	}
 }

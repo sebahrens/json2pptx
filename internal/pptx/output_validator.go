@@ -115,6 +115,7 @@ var opcCodeMap = map[string]string{
 	ErrCodeMalformedXML:               "OPC_MALFORMED_XML",
 	ErrCodeMissingContentType:         "OPC_MISSING_CONTENT_TYPE",
 	ErrCodeMissingContentTypeOverride: "OPC_MISSING_CONTENT_TYPE_OVERRIDE",
+	ErrCodeDuplicateSlideID:           "OPC_DUPLICATE_SLIDE_ID",
 }
 
 // ooxmlCodeMap maps OOXML ValidationError codes to stable OOXML_ prefixed codes.

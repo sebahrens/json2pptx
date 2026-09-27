@@ -101,6 +101,24 @@ func libreOfficeProfile() (string, error) {
 	return loProfileDir, loProfileErr
 }
 
+// CleanupLibreOfficeProfile removes this process's private LibreOffice
+// profile, if one was created. Call it once at process exit, after the last
+// render. It never waits: if a conversion still holds the LibreOffice slot
+// (a hung run at shutdown), the profile is left in place rather than pulled
+// from under it.
+func CleanupLibreOfficeProfile() {
+	select {
+	case loSlots <- struct{}{}:
+		defer func() { <-loSlots }()
+	default:
+		return
+	}
+	loProfileOnce.Do(func() {}) // no profile created yet: nothing to remove, and none will be
+	if loProfileDir != "" {
+		_ = os.RemoveAll(loProfileDir)
+	}
+}
+
 // loProfileArg renders a profile directory as the -env:UserInstallation
 // argument LibreOffice expects. An empty dir yields no argument, which means
 // the shared default profile — only acceptable when a private one could not be
@@ -142,32 +160,65 @@ func cacheKey(hash string, density int) string {
 	return fmt.Sprintf("%s-d%d", hash, density)
 }
 
-// getCachedPNGs returns cached PNG paths if they exist for the given key.
-// Returns nil if cache miss.
+// cacheCompleteMarker names the file storeCachePNGs writes last into a cache
+// entry. It records the slide count, so a hit is only a hit when every
+// slide-0..N-1 is present: a partial entry (interrupted write, or a sweep that
+// removed some files) would otherwise shift every later index
+// (go-slide-creator-csclk.23).
+const cacheCompleteMarker = ".complete"
+
+// getCachedPNGs returns cached PNG paths if a complete entry exists for the
+// given key, indexed by slide number. Returns nil on a cache miss or when the
+// entry is incomplete.
 func getCachedPNGs(key string) []string {
 	dir := filepath.Join(cacheDir(), key)
-	files, err := filepath.Glob(filepath.Join(dir, "slide-*.png"))
-	if err != nil || len(files) == 0 {
+	marker, err := os.ReadFile(filepath.Join(dir, cacheCompleteMarker)) //nolint:gosec // path is internal (cache dir + key)
+	if err != nil {
 		return nil
 	}
-	sortPNGsByIndex(files)
+	n, err := strconv.Atoi(strings.TrimSpace(string(marker)))
+	if err != nil || n <= 0 {
+		return nil
+	}
+	files := make([]string, n)
+	for i := range files {
+		files[i] = filepath.Join(dir, fmt.Sprintf("slide-%d.png", i))
+		if _, err := os.Stat(files[i]); err != nil {
+			return nil
+		}
+	}
 	return files
 }
 
-// storeCachePNGs copies rendered PNGs into the cache directory for future reuse.
+// storeCachePNGs copies rendered PNGs into the cache directory for future
+// reuse. The entry is assembled in a temporary sibling directory, completed
+// with a count marker and renamed into place, so a reader never sees a
+// half-written entry.
 func storeCachePNGs(key string, pngs []string) {
-	dir := filepath.Join(cacheDir(), key)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	root := cacheDir()
+	if err := os.MkdirAll(root, 0755); err != nil {
 		return // best-effort caching
 	}
+	tmp, err := os.MkdirTemp(root, ".tmp-")
+	if err != nil {
+		return
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
 	for i, src := range pngs {
 		data, err := os.ReadFile(src)
 		if err != nil {
-			continue
+			return
 		}
-		dst := filepath.Join(dir, fmt.Sprintf("slide-%d.png", i))
-		_ = os.WriteFile(dst, data, 0644)
+		if err := os.WriteFile(filepath.Join(tmp, fmt.Sprintf("slide-%d.png", i)), data, 0644); err != nil { //nolint:gosec // path is internal
+			return
+		}
 	}
+	if err := os.WriteFile(filepath.Join(tmp, cacheCompleteMarker), []byte(strconv.Itoa(len(pngs))), 0644); err != nil { //nolint:gosec // path is internal
+		return
+	}
+	dir := filepath.Join(root, key)
+	_ = os.RemoveAll(dir)
+	_ = os.Rename(tmp, dir)
 }
 
 // SlideImage holds the rendered output for a single slide.
@@ -382,6 +433,12 @@ func ExportPDFContext(ctx context.Context, pptxPath, dst string) error {
 	return nil
 }
 
+// pdfConvertFilter exports hidden (show="0") slides too. LibreOffice's PDF
+// export skips them by default, so page i would no longer be slide i: every
+// later index shifts and the slide count comes up short
+// (go-slide-creator-csclk.22).
+const pdfConvertFilter = `pdf:impress_pdf_Export:{"ExportHiddenSlides":{"type":"boolean","value":"true"}}`
+
 // errNoPDFProduced marks the case where LibreOffice exited successfully but
 // wrote no PDF — the concurrency signature, and the only case worth retrying.
 var errNoPDFProduced = errors.New("libreoffice produced no PDF")
@@ -391,7 +448,7 @@ var errNoPDFProduced = errors.New("libreoffice produced no PDF")
 func convertToPDF(ctx context.Context, office, profile, pptxPath, tmpDir string) (pdfPath, stderr string, err error) {
 	args := append(loProfileArg(profile),
 		"--headless",
-		"--convert-to", "pdf",
+		"--convert-to", pdfConvertFilter,
 		"--outdir", tmpDir,
 		pptxPath,
 	)

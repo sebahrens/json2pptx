@@ -145,6 +145,8 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 	"MALFORMED_XML":                   briefMeta("MALFORMED_XML", "A PPTX XML part is malformed.", "OPC validation cannot parse a package XML part.", "Regenerate or repair the malformed XML part.", describeSeverityRefuse),
 	"MISSING_CONTENT_TYPE":            briefMeta("MISSING_CONTENT_TYPE", "A PPTX part has no content type.", "OPC validation finds a part without a matching content-type declaration.", "Add the correct content-type declaration or regenerate the package.", describeSeverityRefuse),
 	"MISSING_CONTENT_TYPE_OVERRIDE":   briefMeta("MISSING_CONTENT_TYPE_OVERRIDE", "A required PPTX content-type override is absent.", "OPC validation finds a part that needs an explicit override.", "Add the missing override to [Content_Types].xml or regenerate the package.", describeSeverityRefuse),
+	"FONT_SUBSTITUTED":                briefMeta("FONT_SUBSTITUTED", "A template theme font is not installed on this host.", "Raw generation finds a theme title/body font that fit measurement must substitute; LibreOffice renders substitute their own fallback.", "Install the named font (or a metric-compatible one), or trust rendered images over fit findings for wrapping.", describeSeverityReview),
+	"DUPLICATE_SLIDE_ID":              briefMeta("DUPLICATE_SLIDE_ID", "presentation.xml repeats a slide id.", "OPC validation finds two <p:sldId> entries with the same id.", "Give every <p:sldId> a unique id or regenerate the package.", describeSeverityRefuse),
 	"DUPLICATE_ID":                    briefMeta("DUPLICATE_ID", "A slide repeats a shape identifier.", "OOXML validation finds duplicate non-visual property IDs.", "Assign unique shape IDs or regenerate the slide.", describeSeverityRefuse),
 	"EMPTY_REQUIRED_ATTR":             briefMeta("EMPTY_REQUIRED_ATTR", "A required OOXML attribute is empty.", "OOXML validation finds a mandatory attribute with no value.", "Supply the required value or regenerate the affected shape.", describeSeverityRefuse),
 	"ILLEGAL_XML_CHAR":                briefMeta("ILLEGAL_XML_CHAR", "Slide text contains an illegal XML character.", "OOXML validation finds a character forbidden by XML 1.0.", "Remove or replace the control character in the source text.", describeSeverityRefuse),
@@ -1387,7 +1389,7 @@ func init() {
 		prefix string
 		codes  []string
 	}{
-		{"OPC_", []string{"MISSING_PART", "DANGLING_REL", "DUPLICATE_REL_ID", "MISSING_ELEMENT", "MALFORMED_XML", "MISSING_CONTENT_TYPE", "MISSING_CONTENT_TYPE_OVERRIDE"}},
+		{"OPC_", []string{"MISSING_PART", "DANGLING_REL", "DUPLICATE_REL_ID", "MISSING_ELEMENT", "MALFORMED_XML", "MISSING_CONTENT_TYPE", "MISSING_CONTENT_TYPE_OVERRIDE", "DUPLICATE_SLIDE_ID"}},
 		{"OOXML_", []string{"INVALID_COLOR", "INVALID_SCHEME", "DUPLICATE_ID", "INVALID_TABLE", "ZERO_EXTENT", "ILLEGAL_XML_CHAR", "SLIDE_COUNT_MISMATCH", "EMPTY_REQUIRED_ATTR"}},
 	} {
 		for _, base := range family.codes {
