@@ -9,11 +9,26 @@
   "build": "PASS",
   "pinned_lint": "PASS, 0 issues after extracting scale parsing",
   "full_root_race": {
-    "status": "running at receipt creation; not a PASS claim",
+    "status": "terminal FAIL: stale preview provenance failed TestMCPRecommendVisual_TemplatePreviewRefs and TestPreviewsShipForAllBundledTemplates; not a full-suite PASS",
     "session": 81988,
     "log": "output/generated-unscaled-text-floor-20260927-v1/root-race-final.log",
     "command": "go test ./... -short -race -timeout=15m",
-    "font_context": "output/blue-number-repair-20260927-v1/fonts.conf"
+    "font_context": "output/blue-number-repair-20260927-v1/fonts.conf",
+    "generator_result": "PASS 302.674s",
+    "quality_result": "PASS 557.398s",
+    "cli_result": "FAIL 884.635s: preview-reference test only",
+    "preview_result": "FAIL 16.127s: stale rendering-source fingerprints"
+  },
+  "preview_provenance_correction": {
+    "templates": 14,
+    "layouts": 108,
+    "actual_png_bytes_unchanged": 108,
+    "rendering_source_sha256": "8403c0a25ba3c86490c25f5d950456a29173d019aade85b5b9851fb11049b72a",
+    "hash_audit": "output/generated-unscaled-text-floor-20260927-v1/preview-png-final-verification.log",
+    "exact_failed_gate_reruns": "PASS: internal/templatepreview 8.682s and cmd/json2pptx 1.910s, race, uncached",
+    "renderer": "Bundled LibreOffice, selected by command-line make PATH override; Makefile otherwise prepends desktop tool directories.",
+    "rejected_first_refresh": "Environment-only PATH override was overwritten by Makefile. Desktop-rendered results retained under rejected-path-run and replaced; not used as final evidence.",
+    "limits": "Only provenance changes shipped; ignored p-style source/previews remain local. Terminal failure retained, exact failed gates rerun separately."
   },
   "interrupted_run": "Earlier root-race.log was intentionally stopped after the lint gate failed, before refactoring source. It is retained and is not success evidence.",
   "review": {
