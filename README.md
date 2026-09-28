@@ -384,12 +384,16 @@ Start manually for debugging:
 json2pptx mcp --templates-dir ~/.json2pptx/templates --output ./output
 ```
 
-By default the server runs the `core` tool profile: `tools/list` advertises a
-smaller, output-schema-free tool set. Run
-`go test ./cmd/json2pptx -run TestCoreToolProfileBudget -v` for current core/all
-tool counts and wire bytes. Pass
-`--tools all` (or set `JSON2PPTX_MCP_TOOLS=all`) to list the full catalogue
-below; non-core tools stay callable by name either way.
+By default the server runs the `deckspec` tool profile: `tools/list`
+advertises only the DeckSpec authoring path (output-schema-free, with the
+DeckSpec outline in place of the closed per-kind schema). `--tools core`
+(alias `raw`) adds the raw-JSON path; `--tools all` (or
+`JSON2PPTX_MCP_TOOLS=all`) lists the full catalogue below except the folded
+aliases (`recommend_pattern`, `render_slide_image`, `repair_slides_batch`,
+`get_chart_capabilities`, `get_diagram_capabilities`). Hidden tools stay
+callable by name. Run
+`go test ./cmd/json2pptx -run 'ToolProfileBudget' -v` for current tool counts
+and wire bytes.
 
 The installer registers this automatically via `claude mcp add --scope user`. The fastest
 way to learn the workflow at runtime is the `get_started` tool: it returns the
@@ -423,8 +427,8 @@ collapse a whole chain into one call:
 | `get_input_schema` | Authoritative JSON Schema for PresentationInput with digest-based caching | `input-schema` |
 | `get_data_format_hints` | Full chart/diagram data-shape hints (with digest for caching) | `data-format-hints` |
 | `list_templates` | Discover bundled/external templates, layouts, palette, canonical taxonomy | `skill-info` |
-| `get_chart_capabilities` | Per-chart limits and label strategy | `capabilities` |
-| `get_diagram_capabilities` | Per-diagram limits and field reference | `capabilities` |
+| `get_chart_capabilities` | Per-chart limits and label strategy (folded alias: `list_templates` `fields:"full"`) | `capabilities` |
+| `get_diagram_capabilities` | Per-diagram limits and field reference (folded alias: `list_templates` `fields:"full"`) | `capabilities` |
 | `get_shape_catalog` | Preset geometries grouped by use case | `shape-catalog` |
 | `resolve_theme` | Resolve theme colors and fonts for a template | `resolve-theme` |
 | `list_icons` | Bundled icon names by set | `icons` |
@@ -445,7 +449,7 @@ collapse a whole chain into one call:
 | `explain_deck_spec` | Explain archetype, rhythm, density, and pattern/layout choices without rendering | `semantic explain` |
 | `plan_deck` | Turn a brief into an ordered slide outline with rhythm rules (template-aware) | `plan-deck` |
 | `recommend_visual` | Unified router across placeholder layouts, patterns, charts, diagrams, raw grids | `recommend-visual` |
-| `recommend_pattern` | Rank named patterns for a slide intent (legacy subset of `recommend_visual`) | `recommend-pattern` |
+| `recommend_pattern` | Rank named patterns for a slide intent (folded alias of `recommend_visual`) | `recommend-pattern` |
 | `validate_pattern` | Check pattern values and content fit without returning the expanded grid | `patterns validate` |
 | `expand_pattern` | Expand a pattern into a full `shape_grid` | `patterns expand` |
 | `expand_patterns` | Batch-expand N patterns under one template load | MCP-only |
@@ -474,13 +478,13 @@ collapse a whole chain into one call:
 | Tool | Purpose | CLI |
 |------|---------|-----|
 | `repair_slide` | Apply targeted fixes to one slide without regenerating the deck | `repair` |
-| `repair_slides_batch` | Apply fixes to multiple slides in one call | MCP-only |
+| `repair_slides_batch` | Apply fixes to multiple slides in one call (folded alias: one `repair_slide` call per slide) | MCP-only |
 | `propose_repairs` | Translate fit/visual-QA findings into ranked `repair_slide` directives | MCP-only |
 | `apply_deck_patch` | Pure deck-JSON transform: bounded structural ops (insert/remove/move/replace) | MCP-only |
 | `auto_repair` | Server-side convergence loop (see fast path above) | MCP-only |
 | `inspect_slide_images` | Vision/heuristic visual QA of rendered slides with pre-mapped fixes | `inspect` |
 | `submit_visual_review` | Record a host/manual all-slide visual review verdict as quality evidence (validated against the current PPTX revision) | MCP-only |
-| `render_slide_image` | Render one PPTX slide to PNG (requires LibreOffice + ImageMagick) | `render-slide` |
+| `render_slide_image` | Render one PPTX slide to PNG (folded alias: `render_deck_thumbnails` `slide_indices`) | `render-slide` |
 | `render_slide_image_from_json` | Render one slide directly from its JSON (requires LibreOffice + ImageMagick) | `render-slide-from-json` |
 | `render_deck_thumbnails` | Render all slides to low-res thumbnails (requires LibreOffice + ImageMagick) | `render-thumbnails` |
 | `purge_render_cache` | Reclaim the on-disk render cache (renders bound it automatically; this is the deliberate reclaim) | `purge-render-cache` |

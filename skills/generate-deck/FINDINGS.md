@@ -35,9 +35,9 @@ The classification is more useful than a generic increase-the-score loop.
 On raw decks, `propose_repairs` translates findings to candidate directives
 and separates executable `directives` from `advisory[]`. The authoritative
 executable and advisory vocabularies are
-`get_capabilities().vocabularies.repair_fix_kinds` and
-`advisory_fix_kinds`. `repair_slide` applies one slide's executable
-directives; `repair_slides_batch` applies several. A finding's
+`get_capabilities().vocabularies.repair_fix_kinds` (params in
+`repair_fix_kind_params`) and `advisory_fix_kinds`. `repair_slide` applies
+one slide's executable directives. A finding's
 `fix.kind` is not necessarily executable: if it needs human judgment,
 `repair_slide` returns `advisory_fix_kind` with alternatives. Act on its
 guidance; do not retry the same advisory kind.

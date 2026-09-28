@@ -3,6 +3,7 @@ package semantic
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -275,6 +276,10 @@ func payloadItemSchema(f payloadField) map[string]any {
 var objectKeyTypes = map[string]string{
 	"items": "array", "pros": "array", "cons": "array", "bullets": "array",
 	"active": "boolean", "data": "object",
+	// option_matrix option scores: one per criterion, a number (Harvey 0–4)
+	// or a word (half, green, "-"). They were typed string, so the kind's own
+	// example ([1, 1, 3, 2]) failed its schema (go-slide-creator-ppned).
+	"scores": "array", "values": "array",
 }
 
 // objectKeySchemas renders the property schemas for a closed entry / chart
@@ -290,6 +295,8 @@ func objectKeySchemas(keys []string) map[string]any {
 		switch k {
 		case "items", "pros", "cons", "bullets":
 			p["items"] = map[string]any{"type": "string"}
+		case "scores", "values":
+			p["items"] = map[string]any{"type": []any{"number", "string"}}
 		case "data":
 			p["description"] = "Chart data. Bar/line/area: {categories:[…], series:[{name, values:[…]}]}. Pie/donut: {categories:[…], values:[…]}."
 		case "type":
@@ -370,7 +377,61 @@ func KindItemSchema(k SlideKind) map[string]any {
 	if !ok {
 		return nil
 	}
-	return kindVariantSchema(info)
+	return refKindAliases(info, kindVariantSchema(info))
+}
+
+// refKindAliases replaces each alias property whose schema only repeats its
+// canonical field's (apart from the description) with a local $ref to that
+// field. list_slide_kinds published every alias as a full copy — option_matrix
+// carried criteria/columns and options/rows twice each, ~5KB per kind
+// (go-slide-creator-ppned). The accepted payload is unchanged: the $ref
+// resolves to the identical schema. An alias whose schema differs keeps its
+// own copy.
+func refKindAliases(info KindInfo, variant map[string]any) map[string]any {
+	props, _ := variant["properties"].(map[string]any)
+	if props == nil {
+		return variant
+	}
+	canonicalOf := map[string]string{}
+	for canonical, aliases := range info.RequiredAliases {
+		for _, a := range aliases {
+			canonicalOf[a] = canonical
+		}
+	}
+	for name, f := range kindPayloadFields[info.Kind] {
+		if rest, ok := strings.CutPrefix(f.desc, "Alias for "); ok {
+			if canonical, _, found := strings.Cut(rest, "."); found {
+				canonicalOf[name] = canonical
+			}
+		}
+	}
+	for alias, canonical := range canonicalOf {
+		aliasSchema, _ := props[alias].(map[string]any)
+		canonicalSchema, _ := props[canonical].(map[string]any)
+		if aliasSchema == nil || canonicalSchema == nil || !sameSchemaIgnoringDescription(aliasSchema, canonicalSchema) {
+			continue
+		}
+		props[alias] = map[string]any{
+			"$ref":        "#/properties/" + canonical,
+			"description": "Alias for " + canonical + ".",
+		}
+	}
+	return variant
+}
+
+// sameSchemaIgnoringDescription reports whether a and b are the same schema
+// once their top-level descriptions are set aside.
+func sameSchemaIgnoringDescription(a, b map[string]any) bool {
+	strip := func(m map[string]any) map[string]any {
+		out := make(map[string]any, len(m))
+		for k, v := range m {
+			if k != "description" {
+				out[k] = v
+			}
+		}
+		return out
+	}
+	return reflect.DeepEqual(strip(a), strip(b))
 }
 
 // InlineSchema returns Schema() with every local "#/$defs/..." reference

@@ -194,7 +194,7 @@ func runMCP() error {
 	templatesDir := fs.String("templates-dir", "./templates", "Directory containing templates")
 	outputDir := fs.String("output", "./output", "Output directory for generated PPTX files")
 	configPath := fs.String("config", "", "Path to config file (optional)")
-	toolsProfile := fs.String("tools", toolProfileCore, "Tool profile advertised in tools/list: core (default; compact subset flagged in_core_profile by get_capabilities, no outputSchema) or all (full catalog). Env: "+toolProfileEnv)
+	toolsProfile := fs.String("tools", toolProfileDeckSpec, "Tool profile advertised in tools/list: deckspec (default; the DeckSpec authoring tools, no outputSchema), core (alias raw; adds the raw-JSON path, flagged in_core_profile by get_capabilities) or all (full catalog minus folded aliases). Hidden tools stay callable by name. Env: "+toolProfileEnv)
 	textFallback := fs.String("text-fallback", string(api.TextFallbackAuto),
 		"Text content alongside structuredContent: "+
 			"auto (default; up to 1 KB synopsis for protocol 2025-06-18 or later, full JSON for older clients), "+

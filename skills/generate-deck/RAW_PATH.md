@@ -55,9 +55,8 @@ stale outputs are not approved. Use `describe_finding` for repair guidance.
 So does grid text below its role floor
 (`TEXT_BELOW_READABLE_MIN`); a lone axis "1" is a caption.
 
-Apply precise `repair_slide` fixes to a single raw slide. For findings on
-several slides, `propose_repairs` plus `repair_slides_batch` avoids repeated
-round trips. A finding can recommend an advisory kind whose remedy is an
+Apply precise `repair_slide` fixes to one raw slide per call; with a raw
+`deck_id` each call is small. `propose_repairs` plans several slides. A finding can recommend an advisory kind whose remedy is an
 authoring decision; do not retry it as an executable fix. Text-reduction
 repairs may refuse with `semantic_review_required` when they would remove
 a number, unit, negation, or qualifier; split or rewrite deliberately.

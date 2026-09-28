@@ -182,25 +182,11 @@ type proposeRepairsFinding struct {
 
 func mcpProposeRepairsTool() mcp.Tool {
 	return mcp.NewTool("propose_repairs",
-		mcp.WithDescription(`Translate structured findings (fit_report findings, visual QA findings, or validation diagnostics) into a ranked list of repair_slide fix directives. Returns proposed directives grouped by slide and ordered by severity — does NOT mutate the deck.
+		mcp.WithDescription(`Translate structured findings into ranked repair_slide fix directives, grouped by slide and ordered by severity (then action rank refuse > shrink_or_split > review > info). Does NOT mutate the deck.
 
-Accepts three finding shapes (polymorphic, mixed input is fine):
-- Fit findings: {path, code, message, action, fix:{kind,params}, slide_index?} — emitted by generate_presentation(fit_report=true).
-- FindingEnvelope entries: {code, severity, category, where:{slide}, evidence:{path,action}, remediation:{primary:{action,params}}} — emitted by validate_input and repair tools. Pass the inner findings array, not the outer envelope. The concrete repair kind is read from primary.params.kind when present.
-- Visual QA findings: {slide_index, slide_type, severity, category, suggested_fixes:[{kind,params}], description, location, bbox?} — emitted by inspect_slide_images. bbox is {x,y,w,h} as fractions (0–1) of the slide; when present it is hit-tested against the generated shape_grid cell bounds so directives target that cell's path (/slides/N/shape_grid/rows/R/cells/C, also threaded into reduce_cell_text's cell_path) instead of the whole slide.
+findings[] accepts, in any mix: fit findings {path, code, action, fix:{kind,params}, slide_index?}; FindingEnvelope entries from validate_input / repair tools (pass the inner findings array; the kind is read from remediation.primary.params.kind); and visual QA findings from inspect_slide_images {slide_index, severity, category, suggested_fixes, bbox?} — a bbox (slide fractions) is hit-tested against shape_grid cells so the directive targets that cell.
 
-For each finding the tool:
-1. Resolves the target slide (from finding.slide_index, finding.path /slides/N, or fix.params.path).
-2. Selects candidate fix kinds: finding.fix (fit) > finding.suggested_fixes (visual) > visualqa category mapping > advisory (a registered non-executable kind) > unmapped.
-3. Augments each candidate with a tool_call pointing at repair_slide.
-
-Output:
-- slides[]: per-slide directives sorted by severity (error|P0 > warning|P1 > info|P2 > P3), then by action rank (refuse > shrink_or_split > review > info).
-- advisory[]: findings whose fix kind is a registered ADVISORY (add_detail_or_resize, grow_pattern, review, truncation_summary, … — see get_capabilities.vocabularies.advisory_fix_kinds). repair_slide cannot execute these, but they are not dead ends: each carries {kind, guidance (what you have to decide), alternatives[] (executable kinds addressing the same defect), code, slide_index, path, message, params}. On a clean deck most findings land here — act on the guidance or apply an alternative; do not feed the kind back to repair_slide.
-- unmapped[]: findings with no mapping at all (review-only visual QA categories like image_quality, aspect_ratio, border_style; findings without fix info; unknown fix kinds).
-- summary: counts (total_findings, mapped_findings, advisory_findings, unmapped_findings, total_directives, slides_affected).
-
-Each directive carries {kind, params, rank, source:{type,code|category,severity,action,path,message}, tool_call}. Agents can submit the directive's tool_call directly, or batch directives for one slide using the per-slide batch_tool_call.`),
+Response: slides[] (directives {kind, params, rank, source, tool_call}, plus a per-slide batch_tool_call), advisory[] (registered advisory kinds repair_slide cannot execute, each with guidance and executable alternatives — act on those, do not feed the kind back), unmapped[] (review-only or unknown findings), and summary counts.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaProposeRepairs)),
 		mcp.WithObject("presentation",
 			mcp.Required(),

@@ -28,7 +28,7 @@ Slides:
   ...
 ```
 
-Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram). Use `recommend_visual` when unsure which visual approach fits a slide intent — it ranks across all categories (layouts, patterns, charts, diagrams). Use `recommend_pattern` only when you already know you need a named pattern.
+Each line picks a `layout_id` and a visual approach. For shape grid slides, name the pattern (call `list_patterns` via MCP, or `json2pptx patterns list` from the CLI, for the catalog). For content slides, note the content type (bullets, chart, table, diagram). Use `recommend_visual` when unsure which visual approach fits a slide intent — it ranks across all categories (layouts, patterns, charts, diagrams).
 
 Present the outline to the user. Proceed to Phase 2 only after approval or if the user asked for the full deck directly.
 
@@ -158,7 +158,7 @@ Validation is NOT verification. `validate_input` checks JSON structure; it does 
    ```
 3. **Render to images, then inspect them.** Three distinct steps — do not conflate them:
    - **Structural wireframe** (`preview_slide_wireframe`) is geometry only. Its response is stamped `inspection_kind: "wireframe_structural"`, `contract: "structural_only"`, `not_text_flow_safe: true`. It does NOT model text wrapping, font metrics, icon/text collisions, SVG readability, or image fidelity, and emits no quality verdict. **A wireframe never satisfies visual QA** — it is a cheap pre-render sanity check, nothing more.
-   - **Rendered-image generation** (`render_slide_image` for one slide / `render_deck_thumbnails` for the whole deck, preferred over the `pptx2jpg -input <out.pptx> -output <dir>/ -density 150` shell-out) produces real pixels via LibreOffice + ImageMagick. **Generating the PNG is not the same as inspecting it** — an unviewed render is evidence you have not yet read. By default these tools return every slide as a native MCP image content block you can look at directly (plus JSON metadata with each slide's on-disk `path`); pass `include_base64_json: true` only for clients that cannot display MCP images.
+   - **Rendered-image generation** (`render_deck_thumbnails`, `slide_indices` for a few slides, preferred over the `pptx2jpg -input <out.pptx> -output <dir>/ -density 150` shell-out) produces real pixels via LibreOffice + ImageMagick. **Generating the PNG is not the same as inspecting it** — an unviewed render is evidence you have not yet read. By default these tools return every slide as a native MCP image content block you can look at directly (plus JSON metadata with each slide's on-disk `path`); pass `include_base64_json: true` only for clients that cannot display MCP images.
    - **Rendered visual inspection** is the verification step: the rendered pixels must actually be inspected — by `inspect_slide_images` (Claude vision / heuristic) or by an agent looking at the images — before the deck counts as visually verified.
 
    Both render paths require LibreOffice + ImageMagick on the server's PATH; if unavailable, **say so explicitly** and flag data-dense slides for manual inspection before declaring done. Some LibreOffice builds ignore embedded fonts; don't judge typefaces from them. To get a deck-level quality signal, also call `score_deck` — it returns a 0-100 score plus structured findings keyed to the same `code` vocabulary as fit-report.
@@ -182,7 +182,7 @@ Do not tell the user the deck is done until the checklist passes or you have exp
 
 Pixels — not JSON — decide whether refinement is acceptable. The `inspect_slide_images` MCP tool exposes the same Claude-vision QA agent that `testrand qa` runs on the CLI: pass an array of rendered slide images, get back structured findings keyed to repair_slide fix kinds.
 
-**When to call it.** After `render_deck_thumbnails` or `render_slide_image`, when (a) the deck has been generated and visually rendered, (b) heuristics on its own pass but the deck still feels off, or (c) the user explicitly asked for a quality pass. Skip it for sub-3-slide drafts. When `ANTHROPIC_API_KEY` is unset the tool degrades gracefully to a heuristic mode (`mode:"heuristic"`) instead of failing: findings are coarser (blank/edge-overflow/aspect-ratio only, all P3, tagged `source:"heuristic"`) but still usable as triage input.
+**When to call it.** After `render_deck_thumbnails`, when (a) the deck has been generated and visually rendered, (b) heuristics on its own pass but the deck still feels off, or (c) the user explicitly asked for a quality pass. Skip it for sub-3-slide drafts. When `ANTHROPIC_API_KEY` is unset the tool degrades gracefully to a heuristic mode (`mode:"heuristic"`) instead of failing: findings are coarser (blank/edge-overflow/aspect-ratio only, all P3, tagged `source:"heuristic"`) but still usable as triage input.
 
 **Shape of the call.**
 
@@ -217,7 +217,7 @@ The same response also carries a top-level `findings` `FindingEnvelope` — ever
 
 ## Machine-Actionable `next_tool_call`
 
-Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), fit-report findings (`validate_input`, `generate_presentation`), and boundary errors from the candidate-decision tools (`plan_deck`, `recommend_pattern`, `recommend_visual`, `validate_input`, `preview_presentation_plan`, `score_deck`) include an optional `next_tool_call` field when the error has an actionable recovery. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
+Pattern validation errors (`validate_pattern`), density warnings (`expand_pattern`), fit-report findings (`validate_input`, `generate_presentation`), and boundary errors from the candidate-decision tools (`plan_deck`, `recommend_visual`, `validate_input`, `preview_presentation_plan`, `score_deck`) include an optional `next_tool_call` field when the error has an actionable recovery. This is a machine-readable hint: the exact MCP tool name and an `args_template` pre-filled with fix parameters. Invoke the suggested tool directly without inferring the protocol from the error message.
 
 Boundary-error mappings used by the candidate-decision tools:
 

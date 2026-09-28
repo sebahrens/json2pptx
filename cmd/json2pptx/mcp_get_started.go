@@ -404,33 +404,34 @@ func mcpGetStartedTool() mcp.Tool {
 // built on tools absent from tools/list is what made the whole "revise" path
 // uncallable in core mode (go-slide-creator-mvny).
 func getStartedToolDescription() string {
-	reviseFastPath := "render_deck_spec (deck_id + patch for DeckSpec revisions)"
-	makeDeckNote := " make_deck is a skeleton/wireframe only (exemplar placeholder copy; gate always fails)."
 	workflowStatement := canonicalWorkflowStatement
+	sequence := `- sequence: the ordered raw-primitive path, for a feature DeckSpec cannot express or a deck that is already raw JSON.`
 	if !toolIsAdvertised("make_deck") {
-		makeDeckNote = ""
-		// Core tools/list has a 100 KiB budget and must not name hidden tools.
-		// Keep the same contract, but project only the callable path here.
+		// Profiles that hide make_deck must not name it; project only the
+		// callable path.
 		workflowStatement = "Default for content-bearing decks: author real content as a DeckSpec; call `list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`, then render and inspect every slide. Use raw JSON only when DeckSpec cannot express the feature; call `validate_input` before `generate_presentation`."
 	}
-	reviseInspect := "read_presentation (inspection-only; not fed downstream) → "
-	if !toolIsAdvertised("read_presentation") {
-		reviseInspect = ""
+	if !toolIsAdvertised("generate_presentation") {
+		// The default deckspec profile advertises no raw-path tool
+		// (go-slide-creator-355t7): say where they are instead of naming them.
+		workflowStatement = "Default for content-bearing decks: author real content as a DeckSpec; call `list_slide_kinds` → `validate_deck_spec` → `render_deck_spec`, then render and inspect every slide."
+		sequence = `- sequence: the raw-JSON path. Its tools are advertised by the core profile (json2pptx mcp --tools core), not this one; use it only when DeckSpec cannot express a feature.`
 	}
-	return fmt.Sprintf(`Returns the recommended workflow for a stated task: a DeckSpec-first fast path plus a separate ordered raw-primitive sequence. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
+	return fmt.Sprintf(`The recommended workflow for a task. Call it first.
 
-%[4]s
+%[1]s
 
-The response carries two complementary paths:
-- fast_path: the recommended path — for "brief" the DeckSpec path ending in render_deck_spec (steps: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails), for "revise" %[1]s.%[2]s A passing deterministic gate is never completion: render all slides and inspect every image (completion_protocol.rule). Its falls_back_to lists raw primitives. Omitted for "validate-only" (pure diagnostics).
-- sequence: the controllable raw path — use its ordered primitives when DeckSpec cannot express a needed feature or the source deck is already raw.
+The response carries:
+- fast_path: the recommended path — for "brief" the DeckSpec path (list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails), for "revise" render_deck_spec with deck_id + patch. A passing deterministic gate is never completion: render all slides and inspect every image (completion_protocol.rule).
+%[2]s
 
-Pass "task" to scope both paths:
-- "brief" (default): authoring a new deck — fast_path render_deck_spec (DeckSpec); manual sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
-- "revise": modifying an existing PPTX — fast_path %[1]s; manual sequence get_capabilities → %[3]svalidate_input → preview_presentation_plan → repair_slide → generate_presentation → score_deck.
-- "validate-only": just checking a deck JSON is valid (no fast_path) — get_capabilities → list_templates → validate_input → preview_presentation_plan.
+task:
+- "brief" (default): a new deck — fast_path render_deck_spec (DeckSpec).
+- "revise": modifying an existing PPTX — fast_path render_deck_spec (deck_id + patch for DeckSpec revisions).
+- "validate-only": check a deck JSON (no fast_path).
+- "onboard-template": vet a user-supplied .pptx.
 
-Each step in the response includes a one-line when_to_call hint. The response also lists every available task key so agents can discover the supported scopes, and quality_workflow repeats the server instructions (the 5-step quality workflow).`, reviseFastPath, makeDeckNote, reviseInspect, workflowStatement)
+Steps carry when_to_call hints.`, workflowStatement, sequence)
 }
 
 // compareSkillSchemaVersions compares strict major.minor.patch version stamps.

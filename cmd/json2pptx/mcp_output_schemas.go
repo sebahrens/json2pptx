@@ -617,7 +617,7 @@ var outputSchemaPreviewSlideWireframe = json.RawMessage(`{
   "properties": {
     "index":             {"type": "integer"},
     "inspection_kind":   {"type": "string", "enum": ["wireframe_structural"], "description": "Always \"wireframe_structural\". Marks this output as a LibreOffice-free structural geometry preview, NOT a rendered-pixel inspection. Do NOT treat the SVG/PNG as visual-QA evidence — it proves layout geometry only."},
-    "contract":          {"type": "string", "enum": ["structural_only"], "description": "Always \"structural_only\". The wireframe emits no visual-QA categories, severities, or quality verdicts. Rendered visual inspection (render_slide_image + inspect_slide_images) is still required before a deck counts as visually verified."},
+    "contract":          {"type": "string", "enum": ["structural_only"], "description": "Always \"structural_only\". The wireframe emits no visual-QA categories, severities, or quality verdicts. Rendered visual inspection (render_deck_thumbnails + inspect_slide_images) is still required before a deck counts as visually verified."},
     "not_text_flow_safe": {"type": "boolean", "description": "Always true. The wireframe does NOT model PowerPoint text wrapping / font metrics, so it cannot prove that text fits or flows correctly. A passing wireframe is not proof of text fit."},
     "limitations":       {"type": "array", "items": {"type": "string"}, "description": "Human-readable list of checks this structural preview cannot perform (rendered text flow, icon/text collisions, SVG readability, font metrics, image fidelity, visual polish). Use rendered visual QA to cover these."},
     "svg":               {"type": "string", "description": "SVG document (omitted when format=\"png\")."},
@@ -647,7 +647,7 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
         "properties": {
           "index":        {"type": "integer"},
           "png_base64":   {"type": "string"},
-          "path":         {"type": "string", "description": "Content-addressed artifact path, returned instead of png_base64 when a thumbnail exceeds the inline cap (~200KB). The filename embeds the PNG content hash, so the path is collision-free across decks and never overwritten with different content."},
+          "path":         {"type": "string", "description": "Full-resolution PNG on disk (content-addressed; the filename embeds its hash). In image_content mode the image block is a downscaled JPEG of it (top-level image_mime_type); submit this path or content_hash to submit_visual_review. In the legacy envelope it replaces png_base64 when a thumbnail exceeds the inline cap (~200KB)."},
           "width":        {"type": "integer"},
           "height":       {"type": "integer"},
           "size_error":   {"type": "string"},
@@ -655,7 +655,7 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
           "source_hash":  {"type": "string", "description": "PPTX file content hash this thumbnail was rendered from."},
           "cleanup":      {"type": "string", "description": "Lifetime/cleanup semantics of the on-disk path artifact. Set only when path is returned."},
           "image_content_index": {"type": "integer", "description": "Position of this slide's image block in the result content array (content[0] is this JSON)."},
-          "image_mime_type":     {"type": "string"},
+          "image_mime_type":     {"type": "string", "description": "Per-slide MIME type; omitted when it equals the top-level image_mime_type."},
           "image_width":         {"type": "integer"},
           "image_height":        {"type": "integer"}
         },
@@ -667,7 +667,8 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
     "selected": {"type": "array", "items": {"type": "integer"}, "description": "0-based slide indices this call returned, ascending. Present only when slide_indices narrowed the render."},
     "delivery":  {"type": "string", "enum": ["image_content"], "description": "Set to image_content (the default) when thumbnails are delivered as MCP image content blocks (one per slide, in order) after this JSON. Absent in the legacy include_base64_json=true envelope."},
     "source_hash": {"type": "string", "description": "image_content mode: PPTX content hash shared by every slide (hoisted from slides[])."},
-    "cleanup":     {"type": "string", "description": "image_content mode: lifetime/cleanup semantics shared by every slides[].path artifact."}
+    "cleanup":     {"type": "string", "description": "image_content mode: lifetime/cleanup semantics shared by every slides[].path artifact."},
+    "image_mime_type": {"type": "string", "description": "image_content mode: encoding of every image block (image/jpeg), hoisted from slides[]. slides[].path is the full-resolution PNG, not the block."}
   },
   "required": ["slides", "truncated"]
 }`)
@@ -1690,7 +1691,7 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
           "cli_counterpart":   {"type": "string"},
           "mcp_only_reason":   {"type": "string"},
           "primitive_alternatives": {"type": "array", "items": {"type": "string"}},
-          "in_core_profile":   {"type": "boolean", "description": "True when the default core tool profile advertises this tool in tools/list. Others are listed only when the server runs with --tools=all (JSON2PPTX_MCP_TOOLS=all)."}
+          "in_core_profile":   {"type": "boolean", "description": "True when the core tool profile (--tools core) advertises this tool in tools/list. The default deckspec profile lists a subset; --tools all lists every unfolded tool. Hidden tools stay callable by name."}
         },
         "required": ["name", "added_in", "kind", "phase"]
       }
@@ -1842,6 +1843,7 @@ var outputSchemaGetCapabilities = json.RawMessage(`{
       "type": "object",
       "properties": {
         "repair_fix_kinds":     {"type": "array", "items": {"type": "string"}, "description": "Fix kinds repair_slide executes."},
+        "repair_fix_kind_params": {"type": "object", "additionalProperties": {"type": "string"}, "description": "Per executable fix kind: what it does and the params it takes."},
         "advisory_fix_kinds":   {"type": "array", "items": {"type": "string"}, "description": "Fix kinds a finding may name whose remedy is an authoring decision; repair_slide answers code advisory_fix_kind with guidance and executable alternatives."},
         "fit_finding_codes":    {"type": "array", "items": {"type": "string"}},
         "content_types":        {"type": "array", "items": {"type": "string"}},

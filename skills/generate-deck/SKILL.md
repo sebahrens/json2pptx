@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.150.0
+schema_version: 4.151.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -17,7 +17,7 @@ Use the live MCP schemas and `get_capabilities` for arguments and availability;
 do not infer a tool's signature from an old example.
 
 **Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
-server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices, or render_slide_image for a single one), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
+server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
 
 ## Choose the authoring path
 
@@ -92,10 +92,10 @@ For a standalone SVG diagram, use the `svggen-mcp` server and its
 
 ## Operational boundaries
 
-Start the deck server with `json2pptx mcp`; its default core `tools/list`
-profile is deliberately compact. `get_capabilities().mcp_tools_available`
-identifies the current core set and tools callable by name in this session.
-For full discovery, use `--tools all` or `JSON2PPTX_MCP_TOOLS=all`. If
+Start the deck server with `json2pptx mcp`; its default `deckspec`
+`tools/list` carries only the DeckSpec path. `--tools core` adds the raw
+path and `get_capabilities().mcp_tools_available` (tools callable by name);
+`--tools all` (or `JSON2PPTX_MCP_TOOLS=all`) lists the rest. If
 `list_templates` preview-cache writes are undesirable during discovery,
 pass `read_only: true`. Args over 2 MiB of text are refused; a raced
 `deck_id` patch returns `STALE_REVISION` (reload, re-apply).

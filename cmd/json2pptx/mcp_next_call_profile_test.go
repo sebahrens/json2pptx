@@ -141,9 +141,10 @@ func TestSuggestionSubstitutesMatchTargetInputSchemas(t *testing.T) {
 	}
 	constructors := toolConstructors()
 	sourceArgs := map[string]any{
-		"item_count": 6,
-		"pptx_path":  "/tmp/deck.pptx",
-		"path":       "/tmp/deck.pptx",
+		"item_count":  6,
+		"pptx_path":   "/tmp/deck.pptx",
+		"path":        "/tmp/deck.pptx",
+		"slide_index": 3,
 	}
 	for source, build := range suggestionSubstitutes {
 		t.Run(source, func(t *testing.T) {
@@ -185,6 +186,16 @@ func TestSuggestionSubstitutesMatchTargetInputSchemas(t *testing.T) {
 				case "object":
 					if _, ok := value.(map[string]any); !ok {
 						t.Errorf("%s.%s must be object, got %T", s.Tool, arg, value)
+					}
+				case "number", "integer":
+					switch value.(type) {
+					case int, float64:
+					default:
+						t.Errorf("%s.%s must be a number, got %T", s.Tool, arg, value)
+					}
+				case "array":
+					if _, ok := value.([]any); !ok {
+						t.Errorf("%s.%s must be an array, got %T", s.Tool, arg, value)
 					}
 				default:
 					t.Fatalf("%s.%s has unhandled schema type %q", s.Tool, arg, schema.Type)

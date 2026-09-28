@@ -18,7 +18,7 @@ import (
 // ---------------------------------------------------------------------------
 
 // mcpCompletionRule is the one completion rule every surface states.
-const mcpCompletionRule = "A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices, or render_slide_image for a single one), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen."
+const mcpCompletionRule = "A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen."
 
 // mcpQualityWorkflow is the server `instructions` text and get_started's
 // quality_workflow field.
@@ -38,7 +38,7 @@ Unknown tool arguments are rejected with UNKNOWN_PARAMETER and a did_you_mean hi
 // (go-slide-creator-a7fh).
 func renderToolingWarning(missing []string) string {
 	return fmt.Sprintf(
-		"RENDER TOOLING MISSING (%s): render_deck_thumbnails / render_slide_image / inspect_slide_images will fail on this server, so a deck CANNOT be visually approved here. Build and validate the deck as usual, hand back pptx_path (or the json2pptx://deck/<name> resource), and say plainly that the deck is UNREVIEWED — do not claim the completion rule was met. Install LibreOffice and ImageMagick to restore the visual step.",
+		"RENDER TOOLING MISSING (%s): render_deck_thumbnails / inspect_slide_images will fail on this server, so a deck CANNOT be visually approved here. Build and validate the deck as usual, hand back pptx_path (or the json2pptx://deck/<name> resource), and say plainly that the deck is UNREVIEWED — do not claim the completion rule was met. Install LibreOffice and ImageMagick to restore the visual step.",
 		strings.Join(missing, ", "))
 }
 

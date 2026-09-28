@@ -186,7 +186,12 @@ func TestOptionMatrixDetailBudgetReportsActualField(t *testing.T) {
 
 func TestOptionMatrixItemSchemaDocumentsDetailBudget(t *testing.T) {
 	props := KindItemSchema(KindOptionMatrix)["properties"].(map[string]any)
-	for _, list := range []string{"options", "rows"} {
+	// rows is an alias of options and is published as a $ref to it
+	// (go-slide-creator-ppned).
+	if ref := props["rows"].(map[string]any)["$ref"]; ref != "#/properties/options" {
+		t.Errorf("rows = %v, want a $ref to options", props["rows"])
+	}
+	for _, list := range []string{"options"} {
 		item := props[list].(map[string]any)["items"].(map[string]any)
 		fields := item["properties"].(map[string]any)
 		for _, key := range []string{"detail", "description", "summary"} {

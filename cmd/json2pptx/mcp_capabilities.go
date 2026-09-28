@@ -133,7 +133,7 @@ type mcpToolEntry struct {
 	MCPOnlyReason string `json:"mcp_only_reason,omitempty"`
 	// PrimitiveAlternatives lists the primitives a workflow_facade composes.
 	PrimitiveAlternatives []string `json:"primitive_alternatives,omitempty"`
-	// InCoreProfile is true when the tool is advertised by the default "core"
+	// InCoreProfile is true when the tool is advertised by the "core"
 	// MCP tool profile. Tools with false are only listed when the server runs
 	// with --tools=all (or JSON2PPTX_MCP_TOOLS=all).
 	InCoreProfile bool `json:"in_core_profile"`
@@ -146,18 +146,21 @@ type capabilitiesVocabularies struct {
 	// applies. AdvisoryFixKinds is the rest — kinds a finding can name whose
 	// remedy is an authoring decision, which repair_slide reports as
 	// advisory_fix_kind rather than executing (go-slide-creator-ui4c).
-	RepairFixKinds     []string            `json:"repair_fix_kinds"`
-	AdvisoryFixKinds   []string            `json:"advisory_fix_kinds"`
-	FitFindingCodes    []string            `json:"fit_finding_codes"`
-	ContentTypes       []string            `json:"content_types"`
-	SlideTransitions   []string            `json:"slide_transitions"`
-	TransitionSpeeds   []string            `json:"transition_speeds"`
-	BuildAnimations    []string            `json:"build_animations"`
-	ChartTypes         []string            `json:"chart_types"`
-	DiagramTypes       []string            `json:"diagram_types"`
-	PlaceholderAliases map[string][]string `json:"placeholder_aliases"`
-	PatternNames       []string            `json:"pattern_names"`
-	PatternAliases     map[string]string   `json:"pattern_aliases"`
+	RepairFixKinds []string `json:"repair_fix_kinds"`
+	// RepairFixKindParams documents each executable kind's params — the
+	// catalogue that used to live in repair_slide's tool description.
+	RepairFixKindParams map[string]string   `json:"repair_fix_kind_params"`
+	AdvisoryFixKinds    []string            `json:"advisory_fix_kinds"`
+	FitFindingCodes     []string            `json:"fit_finding_codes"`
+	ContentTypes        []string            `json:"content_types"`
+	SlideTransitions    []string            `json:"slide_transitions"`
+	TransitionSpeeds    []string            `json:"transition_speeds"`
+	BuildAnimations     []string            `json:"build_animations"`
+	ChartTypes          []string            `json:"chart_types"`
+	DiagramTypes        []string            `json:"diagram_types"`
+	PlaceholderAliases  map[string][]string `json:"placeholder_aliases"`
+	PatternNames        []string            `json:"pattern_names"`
+	PatternAliases      map[string]string   `json:"pattern_aliases"`
 }
 
 // capabilitiesDeprecatedField describes a deprecated JSON input field.
@@ -649,18 +652,19 @@ func buildVocabularies() capabilitiesVocabularies {
 	}
 
 	return capabilitiesVocabularies{
-		RepairFixKinds:     repairFixKinds(),
-		AdvisoryFixKinds:   advisoryFixKinds(),
-		FitFindingCodes:    patterns.AllFitFindingCodes(),
-		ContentTypes:       generator.AllContentTypes(),
-		SlideTransitions:   canonicalTransitions(),
-		TransitionSpeeds:   canonicalTransitionSpeeds,
-		BuildAnimations:    canonicalBuilds,
-		ChartTypes:         chartTypes,
-		DiagramTypes:       diagramTypes,
-		PlaceholderAliases: placeholderAliases,
-		PatternNames:       patternNames,
-		PatternAliases:     reg.Aliases(),
+		RepairFixKinds:      repairFixKinds(),
+		RepairFixKindParams: repairFixKindParams,
+		AdvisoryFixKinds:    advisoryFixKinds(),
+		FitFindingCodes:     patterns.AllFitFindingCodes(),
+		ContentTypes:        generator.AllContentTypes(),
+		SlideTransitions:    canonicalTransitions(),
+		TransitionSpeeds:    canonicalTransitionSpeeds,
+		BuildAnimations:     canonicalBuilds,
+		ChartTypes:          chartTypes,
+		DiagramTypes:        diagramTypes,
+		PlaceholderAliases:  placeholderAliases,
+		PatternNames:        patternNames,
+		PatternAliases:      reg.Aliases(),
 	}
 }
 

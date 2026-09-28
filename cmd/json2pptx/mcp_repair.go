@@ -91,51 +91,9 @@ Returns applied_fixes and post-patch findings. Stateless and DeckSpec-sourced ca
 
 Fixes accept optional path (RFC 6901 JSON Pointer) to target an element; otherwise the first match is used.
 
-Executable kinds (registry; also get_capabilities sections:["vocabularies"]):
-`+strings.Join(repairFixKinds(), ", ")+`
+Executable kinds: `+strings.Join(repairFixKinds(), ", ")+`. Each kind's params: get_capabilities sections:["vocabularies"] → repair_fix_kind_params.
 
-Parameters by kind:
-
-Text / title fits:
-- reduce_text: Truncate bullets/body text. Params: path (string, optional), max_items (int, for bullets), max_length (int, for text).
-- shorten_title: Truncate a title to max_length characters (max_chars is an alias emitted by measured title-fit findings). Params: path (string, optional), max_length or max_chars (int).
-- reduce_cell_text: Truncate a shape_grid cell. Params: cell_path (JSON Pointer), max_chars (int). Preserves markdown emphasis and ends with an ellipsis.
-- renumber_bullets: Number bullets sequentially, or remove typed numbers with strip:true. Params: path (string, optional), strip (bool, optional).
-
-Layout / pagination:
-- split_at_row: Split a table across pages using the split_slide envelope. Params: path (string, optional), row (int, rows per page), title_suffix (string, optional), repeat_headers (bool, optional).
-- split_bullets: Preserve all plain bullet columns verbatim across sibling slides, keeping nested children with parents. Params: max_items (positive int, per-column page budget). Requires equal nonempty column lengths; no path targeting or compound bullet content. Refuses decks with numeric internal slide links to prevent redirecting navigation. Repeats other content and keeps notes/source on page one. Render every resulting page to verify actual fit.
-- swap_layout: Change the slide's layout_id. Params: layout_id (string, required).
-
-Color / theme:
-- use_one_of: Replace a field value with a valid option. Params: path (string), value (string).
-- replace_color: Replace one color with another in shape_grid fills or text. Params: from (string, color to find), to (string, replacement color), target ("fill" default or "text"), path (optional grid-cell JSON Pointer to limit scope). Also accepts original_color/replacement_color from contrast findings.
-- use_semantic_color: Replace a hex fill with a semantic scheme color. Params: path (string, JSON Pointer e.g. "/slides/0/shape_grid/rows/0/cells/0/shape/fill"), value (string, scheme name e.g. "accent1").
-
-Pattern shape:
-- split_pattern: Split a pattern slide. Params: first (count on slide 1; default half), title_part_2 (suffix), path (optional values-array key).
-- swap_pattern: Replace the slide's pattern with a different one. Params: to (string, required, target pattern name), values (object, optional, new values for the target pattern), overrides (object, optional), cell_overrides (object, optional).
-- reshape_grid: Adjust rows/columns. Params: rows (int), columns (int or []int); at least one required.
-- set_pattern_style: Change the style variant in a pattern's overrides (e.g. timeline-horizontal "dots" to "chevron"). Params: style (string, required).
-- set_max_height_pct: Cap pattern height to avoid overtall lanes. Params: max_height_pct (0 < number <= 100; ~35 for a sparse row).
-
-Pattern values (field-level edits to slide.pattern.values):
-- rename_field: Rename a top-level key in pattern values (or slide-level fields). Params: from (string, required, current key name), to (string, required, new key name).
-- reshape_value: Replace a pattern-values field with a restructured value (e.g. array → object). The field must already exist. Params: path (string, required, key in pattern.values), value (any, required, replacement value in the target shape).
-- provide_value: Set a pattern-values field to an agent-supplied value, creating the key if missing. Params: path (string, required, key in pattern.values), value (any, required).
-- replace_value: Replace an existing pattern-values field with a new value (typically to bring it within valid bounds). The field must already exist. Params: path (string, required, key in pattern.values), value (any, required).
-- reduce_items: Truncate an array. Params: path (array key), max_items (>0), confirm_semantic_change (bool). Fact loss requires confirmation or split_pattern.
-- add_items: Append items to an array field in pattern values (creates the array if missing). Params: path (string, required, array key in pattern.values), items (array, required, items to append).
-- resize_list: Resize an array. Params: path (array key), count (>0), confirm_semantic_change (bool). Too few items requires add_items; fact loss is guarded.
-- remove_key: Remove a key from pattern overrides or pattern values (overrides checked first). Params: key (string, required, key to remove).
-- remove_field: Remove a top-level field from pattern values or slide-level fields. Params: path (string, required, field name to remove).
-
-Heuristic:
-- autofix_visual: Apply a heuristic fix based on a visual QA finding category. Params: category (string, required, the visual QA finding category e.g. "text_overflow", "contrast"). Tries each candidate fix kind for the category in order until one succeeds. Additional params are forwarded to the underlying fix handler.
-
-Non-applied outcomes:
-- Unknown kind: code kind_not_supported, optional did_you_mean, supported_kinds, and next_tool_call get_capabilities{sections:["vocabularies"]}.
-- Registered advisory kind: code advisory_fix_kind, authoring guidance in message, executable alternatives, and supported_kinds. Follow the guidance or an alternative; do not retry the same kind.`),
+Non-applied outcomes: an unknown kind returns kind_not_supported (did_you_mean, supported_kinds); a registered advisory kind returns advisory_fix_kind with guidance and executable alternatives — follow those; do not retry the same kind.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRepairSlide)),
 		mcp.WithObject("presentation",
 			mcp.Description(`Full presentation definition. Same schema as generate_presentation.`),

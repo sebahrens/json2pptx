@@ -1,17 +1,27 @@
-// mcp_tool_profile.go implements MCP tool profiles (go-slide-creator-vdxa).
+// mcp_tool_profile.go implements MCP tool profiles (go-slide-creator-vdxa,
+// go-slide-creator-355t7).
 //
-// The full catalog is ~50 tools and a ~210KB tools/list payload (~50K tokens
-// before the first call). The default "core" profile advertises only the
-// tools an agent needs for the recommended DeckSpec / raw-JSON authoring and
-// render-inspect-repair loop, and omits their outputSchema (responses still
-// carry structuredContent). The "all" profile advertises the full, unchanged
-// surface. Every tool stays REGISTERED in both profiles — the profile only
-// filters what tools/list advertises — so a non-core tool called by name still
-// works, and registration-based parity/coverage tests see the full catalog.
+// The full catalog is ~55 tools and a ~330KB tools/list payload (~80K tokens
+// before the first call). Profiles filter what tools/list advertises:
+//
+//   - "deckspec" (default): the DeckSpec authoring core — discovery, the
+//     semantic validate/render pair, render-and-look, review and scoring.
+//     ~12 tools, no outputSchema, and validate_deck_spec carries the DeckSpec
+//     outline instead of the closed per-kind schema (list_slide_kinds
+//     fields:[item_schema] serves a chosen kind's contract on demand).
+//   - "core" (alias "raw"): the deckspec tools plus the raw-JSON path
+//     (validate_input, generate_presentation, repair_slide, patterns, ...).
+//   - "all": every tool with full schemas, except the folded aliases in
+//     foldedTools (still callable by name).
+//
+// Every tool stays REGISTERED in every profile — the profile only filters
+// what tools/list advertises — so a hidden tool called by name still works,
+// and registration-based parity/coverage tests see the full catalog.
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -22,13 +32,24 @@ import (
 )
 
 const (
+	// toolProfileDeckSpec is the default: the DeckSpec authoring core.
+	toolProfileDeckSpec = "deckspec"
 	// toolProfileCore advertises the coreToolNames subset without outputSchema.
 	toolProfileCore = "core"
+	// toolProfileRaw is an accepted alias for toolProfileCore: the profile
+	// that adds the raw-JSON path to the DeckSpec core.
+	toolProfileRaw = "raw"
 	// toolProfileAll advertises every registered tool with full schemas.
 	toolProfileAll = "all"
 
 	// toolProfileEnv selects the profile when the --tools flag is not given.
 	toolProfileEnv = "JSON2PPTX_MCP_TOOLS"
+
+	// deckSpecToolLimit and deckSpecToolListByteBudget cap the default
+	// profile (TestDeckSpecToolProfileBudget). 40KB is ~10K tokens: the
+	// go-slide-creator-355t7 target of 8–10K tokens before the first call.
+	deckSpecToolLimit          = 12
+	deckSpecToolListByteBudget = 40 * 1024
 
 	// coreToolLimit caps the core profile. TestCoreToolProfileBudget enforces it
 	// together with coreToolListByteBudget.
@@ -45,16 +66,53 @@ const (
 	//
 	// The budget has been raised four times before that (72 -> 80 -> 88 -> 96 ->
 	// 104KB) as deck chrome, examine_template and the option_matrix / table /
-	// architecture kinds arrived; it came back down to 92KB there. The full
-	// profile is ~323KB today.
+	// architecture kinds arrived; it came back down to 92KB there.
 	//
 	// 92 -> 100KB: the agenda, team, stat, timeline and matrix_2x2 kinds. New
 	// kinds still add unique fields to validate_deck_spec's input schema; keep
 	// the budget fixed and watch TestCoreToolProfileBudget as the registry grows.
+	// The default deckspec profile does not carry that schema at all.
 	coreToolListByteBudget = 100 * 1024
 )
 
-// coreToolNames is the tool set advertised by the default "core" profile.
+// deckSpecToolNames is the tool set advertised by the default "deckspec"
+// profile (go-slide-creator-355t7). Every name here is also a core tool.
+var deckSpecToolNames = []string{
+	"get_started",
+	"list_templates",
+	"examine_template",
+	"list_slide_kinds",
+	"validate_deck_spec",
+	"render_deck_spec",
+	"render_deck_thumbnails",
+	"submit_visual_review",
+	"describe_finding",
+	"score_deck",
+	"recommend_visual",
+	"plan_deck",
+}
+
+// foldedTools maps a tool whose job another tool now covers to that
+// successor (go-slide-creator-fa3k8). A folded tool is a hidden alias: it
+// stays registered and callable by its old name, so no client breaks, but no
+// profile advertises it — the successor is the one to learn.
+var foldedTools = map[string]string{
+	// recommend_visual ranks patterns together with layouts, charts and
+	// diagrams through the same intent string.
+	"recommend_pattern": "recommend_visual",
+	// list_templates fields="full" returns supported_types.chart_capabilities
+	// and supported_types.diagram_capabilities.
+	"get_chart_capabilities":   "list_templates",
+	"get_diagram_capabilities": "list_templates",
+	// render_deck_thumbnails slide_indices:[i] renders one slide.
+	"render_slide_image": "render_deck_thumbnails",
+	// repair_slide takes an ordered fixes[] array; repair_slides_batch only
+	// adds per-directive slide_index.
+	"repair_slides_batch": "repair_slide",
+}
+
+// coreToolNames is the tool set advertised by the "core" profile: the
+// deckspec tools plus the raw-JSON authoring and repair path.
 // To promote a tool into core, add its name here (one line) — the budget test
 // fails if the profile outgrows coreToolLimit / coreToolListByteBudget.
 var coreToolNames = []string{
@@ -85,7 +143,6 @@ var coreToolNames = []string{
 	"generate_presentation",
 	// Inspect / repair
 	"render_deck_thumbnails",
-	"render_slide_image",
 	"score_deck",
 	"repair_slide",
 	"preview_presentation_plan",
@@ -93,30 +150,51 @@ var coreToolNames = []string{
 	"submit_visual_review",
 }
 
-// coreToolSet returns coreToolNames as a lookup set.
-func coreToolSet() map[string]bool {
-	set := make(map[string]bool, len(coreToolNames))
-	for _, n := range coreToolNames {
+// toolSet returns names as a lookup set.
+func toolSet(names []string) map[string]bool {
+	set := make(map[string]bool, len(names))
+	for _, n := range names {
 		set[n] = true
 	}
 	return set
 }
 
+// coreToolSet returns coreToolNames as a lookup set.
+func coreToolSet() map[string]bool { return toolSet(coreToolNames) }
+
+// deckSpecToolSet returns deckSpecToolNames as a lookup set.
+func deckSpecToolSet() map[string]bool { return toolSet(deckSpecToolNames) }
+
+// profileToolSet returns the tool names a profile advertises, or nil when the
+// profile advertises every registered tool that is not folded.
+func profileToolSet(profile string) map[string]bool {
+	switch profile {
+	case toolProfileDeckSpec:
+		return deckSpecToolSet()
+	case toolProfileCore:
+		return coreToolSet()
+	default:
+		return nil
+	}
+}
+
 // parseToolProfile validates a --tools / JSON2PPTX_MCP_TOOLS value. Empty
-// selects the default (core).
+// selects the default (deckspec); raw is an alias for core.
 func parseToolProfile(v string) (string, error) {
 	switch strings.ToLower(strings.TrimSpace(v)) {
-	case "", toolProfileCore:
+	case "", toolProfileDeckSpec:
+		return toolProfileDeckSpec, nil
+	case toolProfileCore, toolProfileRaw:
 		return toolProfileCore, nil
 	case toolProfileAll:
 		return toolProfileAll, nil
 	default:
-		return "", fmt.Errorf("invalid tool profile %q: want %q or %q", v, toolProfileCore, toolProfileAll)
+		return "", fmt.Errorf("invalid tool profile %q: want %q, %q (alias %q) or %q", v, toolProfileDeckSpec, toolProfileCore, toolProfileRaw, toolProfileAll)
 	}
 }
 
 // resolveToolProfile picks the profile from the flag value (when explicitly
-// set) or the environment, defaulting to core.
+// set) or the environment, defaulting to deckspec.
 func resolveToolProfile(flagValue string, flagSet bool) (string, error) {
 	if flagSet {
 		return parseToolProfile(flagValue)
@@ -124,20 +202,36 @@ func resolveToolProfile(flagValue string, flagSet bool) (string, error) {
 	return parseToolProfile(os.Getenv(toolProfileEnv))
 }
 
-// toolProfileFilter returns the tools/list filter for a profile, or nil when
-// the profile advertises the full surface.
+// toolProfileFilter returns the tools/list filter for a profile.
 func toolProfileFilter(profile string) server.ToolFilterFunc {
 	if profile == toolProfileAll {
-		return nil
+		return func(_ context.Context, tools []mcp.Tool) []mcp.Tool {
+			out := make([]mcp.Tool, 0, len(tools))
+			for _, t := range tools {
+				if _, folded := foldedTools[t.Name]; !folded {
+					out = append(out, t)
+				}
+			}
+			return out
+		}
 	}
-	core := coreToolSet()
+	set := profileToolSet(profile)
+	deckSpec := profile == toolProfileDeckSpec
 	return func(_ context.Context, tools []mcp.Tool) []mcp.Tool {
-		return filterCoreTools(tools, core)
+		out := filterCoreTools(tools, set)
+		if deckSpec {
+			for i := range out {
+				if out[i].Name == "validate_deck_spec" {
+					out[i] = withDeckSpecOutlineInput(out[i])
+				}
+			}
+		}
+		return out
 	}
 }
 
-// filterCoreTools keeps only core tools, sorted by name, with outputSchema
-// stripped to keep the advertised payload small.
+// filterCoreTools keeps only the profile's tools, sorted by name, with
+// outputSchema stripped to keep the advertised payload small.
 func filterCoreTools(tools []mcp.Tool, core map[string]bool) []mcp.Tool {
 	out := make([]mcp.Tool, 0, len(core))
 	for _, t := range tools {
@@ -150,6 +244,36 @@ func filterCoreTools(tools []mcp.Tool, core map[string]bool) []mcp.Tool {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
+}
+
+// withDeckSpecOutlineInput swaps validate_deck_spec's closed per-kind spec
+// schema (~23KB, a quarter of the old default listing) for the same outline the
+// other spec tools carry (go-slide-creator-355t7). The accepted payload is
+// unchanged — the compiler still rejects an unknown field as
+// SEMANTIC_UNKNOWN_FIELD — and list_slide_kinds kinds:[k] fields:[item_schema]
+// serves any chosen kind's closed contract on demand. Only the advertised copy
+// changes; the registered tool keeps the closed schema for the "all" profile.
+func withDeckSpecOutlineInput(tool mcp.Tool) mcp.Tool {
+	var schema map[string]any
+	if len(tool.RawInputSchema) == 0 || json.Unmarshal(tool.RawInputSchema, &schema) != nil {
+		return tool
+	}
+	props, _ := schema["properties"].(map[string]any)
+	if props == nil {
+		return tool
+	}
+	spec := map[string]any{
+		"description": "The semantic DeckSpec to validate, as a JSON object ({meta:{…}, slides:[{kind, …}]}); a raw YAML/JSON string is also accepted. Send this OR deck_id, not both." + deckSpecOutlineNote,
+	}
+	withDeckSpecOutline()(spec)
+	props["spec"] = spec
+	delete(schema, "$defs")
+	raw, err := json.Marshal(schema)
+	if err != nil {
+		return tool
+	}
+	tool.RawInputSchema = raw
+	return tool
 }
 
 // newJSON2PPTXMCPServer builds the MCP server with every tool registered and
@@ -168,16 +292,21 @@ func newJSON2PPTXMCPServer(mc *mcpConfig, profile string, opts ...server.ServerO
 // tools/list, so recommending one makes the recommended path uncallable
 // (go-slide-creator-mvny).
 //
-// The default is toolProfileAll — "nothing is filtered" — because the non-MCP
-// entry points (generate, validate -fit-report) advertise no tool list at all,
-// and their findings should keep naming the canonical tool. Every MCP server
-// goes through newJSON2PPTXMCPServer, which sets the real profile.
-var activeProfile = toolProfileAll
+// The default is toolProfileUnfiltered — "nothing is filtered, not even the
+// folded aliases" — because the non-MCP entry points (generate, validate
+// -fit-report) advertise no tool list at all, and their findings should keep
+// naming the canonical tool. Every MCP server goes through
+// newJSON2PPTXMCPServer, which sets the real profile.
+var activeProfile = toolProfileUnfiltered
+
+// toolProfileUnfiltered is the process default outside an MCP server: every
+// tool counts as advertised.
+const toolProfileUnfiltered = "unfiltered"
 
 // setActiveToolProfile records the profile for profile-aware handlers.
 func setActiveToolProfile(profile string) {
 	if profile == "" {
-		profile = toolProfileCore
+		profile = toolProfileDeckSpec
 	}
 	activeProfile = profile
 }
@@ -189,8 +318,13 @@ func activeToolProfile() string { return activeProfile }
 // tools/list. Handlers use it to avoid pointing an agent at a tool it cannot
 // call.
 func toolIsAdvertised(name string) bool {
-	if activeToolProfile() == toolProfileAll {
+	switch profile := activeToolProfile(); profile {
+	case toolProfileUnfiltered:
 		return true
+	case toolProfileAll:
+		_, folded := foldedTools[name]
+		return !folded
+	default:
+		return profileToolSet(profile)[name]
 	}
-	return coreToolSet()[name]
 }

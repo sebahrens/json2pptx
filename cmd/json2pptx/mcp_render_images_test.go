@@ -138,6 +138,16 @@ func TestDeckThumbnailsMCPResult_ImageContentDefault(t *testing.T) {
 	if resp.Slides[0].Width != 667 || resp.Slides[0].ImageWidth != 667 {
 		t.Errorf("dims: width=%d image_width=%d, want 667/667", resp.Slides[0].Width, resp.Slides[0].ImageWidth)
 	}
+	// go-slide-creator-ppned: the block encoding is stated once, not per slide
+	// beside a .png path.
+	if resp.ImageMIMEType != "image/jpeg" {
+		t.Errorf("top-level image_mime_type = %q, want image/jpeg", resp.ImageMIMEType)
+	}
+	for i, s := range resp.Slides {
+		if s.ImageMIMEType != "" {
+			t.Errorf("slides[%d].image_mime_type = %q, want it hoisted to the top level", i, s.ImageMIMEType)
+		}
+	}
 }
 
 func TestDeckThumbnailsMCPResult_LegacyBase64JSON(t *testing.T) {
