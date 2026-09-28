@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/textfit"
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
@@ -63,6 +64,13 @@ const (
 	// 0.15 = 15% of full width, matching the SVG default.
 	pyramidTopWidthRatio float64 = 0.15
 
+	// pyramidMaxApexRatio caps how far pyramidApexRatio widens the apex.
+	pyramidMaxApexRatio float64 = 0.30
+
+	// pyramidBoldWidthFactor allows for a bold label measured in the regular
+	// face.
+	pyramidBoldWidthFactor = 1.08
+
 	// pyramidMaxLevels is the maximum number of levels supported.
 	pyramidMaxLevels int = 20
 )
@@ -87,25 +95,17 @@ func (ctx *singlePassContext) processPyramidNativeShapes(slideNum int, item Cont
 		return
 	}
 
-	levels, err := parsePyramidDiagramData(diagramSpec.Data)
+	panels, err := pyramidPanels(diagramSpec)
 	if err != nil {
 		slog.Warn("pyramid native shapes: parse failed", "slide", slideNum, "error", err)
 		return
 	}
 
-	if len(levels) == 0 {
+	if len(panels) == 0 {
 		slog.Warn("pyramid native shapes: no levels parsed", "slide", slideNum)
 		return
 	}
-
-	// Encode levels into panels for the panelShapeInsert system.
-	var panels []nativePanelData
-	for _, l := range levels {
-		panels = append(panels, nativePanelData{
-			title: l.label,
-			body:  l.description,
-		})
-	}
+	levels := panels
 
 	// Get placeholder bounds from the shape being replaced.
 	slide := ctx.templateSlideData[slideNum]
@@ -124,6 +124,20 @@ func (ctx *singlePassContext) processPyramidNativeShapes(slideNum int, item Cont
 		panels:         panels,
 		pyramidMode:    true,
 	})
+}
+
+// pyramidPanels encodes a pyramid spec's levels into panels for the
+// panelShapeInsert system.
+func pyramidPanels(diagramSpec *types.DiagramSpec) ([]nativePanelData, error) {
+	levels, err := parsePyramidDiagramData(diagramSpec.Data)
+	if err != nil {
+		return nil, err
+	}
+	panels := make([]nativePanelData, 0, len(levels))
+	for _, l := range levels {
+		panels = append(panels, nativePanelData{title: l.label, body: l.description})
+	}
+	return panels, nil
 }
 
 // parsePyramidDiagramData extracts pyramid levels from the diagram data map.
@@ -192,6 +206,7 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 		fontName = "Arial"
 	}
 	levelHeights, levelGap := pyramidLevelHeights(panels, bounds, labelFontSize, descFontSize, fontName)
+	apex := pyramidApexRatio(panels, bounds, labelFontSize, descFontSize, fontName)
 
 	var children [][]byte
 	shapeIdx := uint32(0)
@@ -199,7 +214,7 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 
 	for i, panel := range panels {
 		// Compute width ratio: top level uses pyramidTopWidthRatio, bottom uses 1.0.
-		widthRatio := pyramidLevelWidthRatio(i, numLevels)
+		widthRatio := pyramidLevelWidthRatioApex(i, numLevels, apex)
 		levelWidth := int64(float64(bounds.Width) * widthRatio)
 
 		// Position: centered horizontally, stacked vertically.
@@ -210,7 +225,7 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 		// adj value in OOXML is in 1/100000 of shape width from each side.
 		// We want the top of each trapezoid to match the width of the level above,
 		// and the bottom to be the current level width.
-		adjValue := pyramidTrapezoidAdj(i, numLevels, widthRatio)
+		adjValue := pyramidTrapezoidAdjApex(i, numLevels, widthRatio, apex)
 
 		// Compute fill color: dark (apex) to light (base) using accent1.
 		fill := pyramidLevelFill(i, numLevels)
@@ -288,11 +303,57 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 	return string(b)
 }
 
-func pyramidLevelWidthRatio(levelIndex, numLevels int) float64 {
+// pyramidLevelWidthRatioApex is a level's width as a fraction of the full
+// width, interpolated from the apex ratio at the top to 1 at the base.
+func pyramidLevelWidthRatioApex(levelIndex, numLevels int, apex float64) float64 {
 	if numLevels <= 1 {
 		return 1
 	}
-	return pyramidTopWidthRatio + (1-pyramidTopWidthRatio)*float64(levelIndex)/float64(numLevels-1)
+	return apex + (1-apex)*float64(levelIndex)/float64(numLevels-1)
+}
+
+// pyramidApexRatio is the apex width ratio: the default 15% point, widened —
+// up to pyramidMaxApexRatio — until the apex label and description each fit on
+// one line across the trapezoid's midpoint. A 15% apex on a short content area
+// wrapped "Self-Actualization" onto three lines, took the height the tiers
+// below it needed, and every other tier stored a 74% shrink of its 9pt
+// description (go-slide-creator-zbo58).
+func pyramidApexRatio(panels []nativePanelData, bounds types.BoundingBox, labelSize, descSize int, fontName string) float64 {
+	n := len(panels)
+	if n <= 1 || bounds.Width <= 0 {
+		return pyramidTopWidthRatio
+	}
+	need := int64(0)
+	for _, line := range []struct {
+		text string
+		size int
+		bold bool
+	}{{panels[0].title, labelSize, true}, {panels[0].body, descSize, false}} {
+		if strings.TrimSpace(line.text) == "" {
+			continue
+		}
+		w, err := textfit.MeasureLineWidth(line.text, fontName, float64(line.size)/100)
+		if err != nil {
+			continue
+		}
+		if line.bold {
+			w = int64(float64(w) * pyramidBoldWidthFactor)
+		}
+		need = max(need, w)
+	}
+	if need == 0 {
+		return pyramidTopWidthRatio
+	}
+	for ratio := pyramidTopWidthRatio; ratio < pyramidMaxApexRatio; ratio += 0.01 {
+		adj := pyramidTrapezoidAdjApex(0, n, ratio, ratio)
+		mid := int64(float64(bounds.Width) * ratio * (1 - float64(adj)/100000))
+		// measureNativeText (textfit.MeasureRun), which sizes the tiers,
+		// removes the OOXML default 0.1in sides from the width it is handed.
+		if mid-2*pyramidTextInset-2*91440 >= need {
+			return ratio
+		}
+	}
+	return pyramidMaxApexRatio
 }
 
 // pyramidLevelHeights gives narrow, text-heavy tiers more of the fixed
@@ -304,6 +365,7 @@ func pyramidLevelHeights(panels []nativePanelData, bounds types.BoundingBox, lab
 		return nil, 0
 	}
 	gap := pyramidGapEMU
+	apex := pyramidApexRatio(panels, bounds, labelSize, descSize, fontName)
 	minimumTierHeight := 2*pyramidTextInset + int64(math.Ceil(float64(labelSize)/100*1.2*float64(types.EMUPerPoint)))
 	if bounds.Height <= int64(n-1)*gap+int64(n)*minimumTierHeight {
 		gap = 0
@@ -315,9 +377,9 @@ func pyramidLevelHeights(panels []nativePanelData, bounds types.BoundingBox, lab
 	weights := make([]int64, n)
 	var totalWeight int64
 	for i, panel := range panels {
-		widthRatio := pyramidLevelWidthRatio(i, n)
+		widthRatio := pyramidLevelWidthRatioApex(i, n, apex)
 		levelWidth := int64(float64(bounds.Width) * widthRatio)
-		adj := pyramidTrapezoidAdj(i, n, widthRatio)
+		adj := pyramidTrapezoidAdjApex(i, n, widthRatio, apex)
 		// At half height the sides have expanded halfway from the top edge.
 		midWidth := int64(float64(levelWidth) * (1 - float64(adj)/100000))
 		textWidth := midWidth - 2*pyramidTextInset
@@ -387,6 +449,12 @@ func pyramidLevelHeights(panels []nativePanelData, bounds types.BoundingBox, lab
 // For the topmost level (i=0), adj creates a narrow top (approaching a triangle).
 // For the bottommost level (i=n-1), adj=0 (rectangle).
 func pyramidTrapezoidAdj(levelIndex, numLevels int, currentWidthRatio float64) int64 {
+	return pyramidTrapezoidAdjApex(levelIndex, numLevels, currentWidthRatio, pyramidTopWidthRatio)
+}
+
+// pyramidTrapezoidAdjApex is pyramidTrapezoidAdj for an apex of the given
+// width ratio.
+func pyramidTrapezoidAdjApex(levelIndex, numLevels int, currentWidthRatio, apex float64) int64 {
 	if numLevels <= 1 {
 		return 0 // Single level: rectangle
 	}
@@ -398,7 +466,7 @@ func pyramidTrapezoidAdj(levelIndex, numLevels int, currentWidthRatio float64) i
 		topWidthRatio = currentWidthRatio * 0.4
 	} else {
 		// The top edge should match the bottom edge of the level above.
-		topWidthRatio = pyramidTopWidthRatio + (1.0-pyramidTopWidthRatio)*float64(levelIndex-1)/float64(numLevels-1)
+		topWidthRatio = apex + (1.0-apex)*float64(levelIndex-1)/float64(numLevels-1)
 	}
 
 	// The adj value is the fraction of shape width that each side indents at the top.

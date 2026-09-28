@@ -110,6 +110,12 @@ func collectChartDryRenderFindingsResolved(
 				path := slidepath.ContentField(slideIdx, contentIdx, "diagram_value")
 				findings = append(findings,
 					dryRenderSpecInBounds(item.DiagramValue, themeColors, bodyFont, strictFit, path, false, bounds)...)
+				// Native diagrams: lay the shapes out in this template's
+				// placeholder and run generation's written-scale scan, so a
+				// refusal generate would raise is an error here first
+				// (go-slide-creator-y72c3).
+				findings = append(findings, generator.NativeDiagramReadabilityPreflight(
+					item.DiagramValue, bounds, bodyFont, themeColors, viewingMode, path)...)
 			}
 		}
 

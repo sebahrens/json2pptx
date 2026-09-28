@@ -60,6 +60,11 @@ const (
 	// porterPeripheralHeightRatio is the peripheral box height as a fraction of total height.
 	porterPeripheralHeightRatio = 0.25
 
+	// porterMinConnectorGapRatio is the smallest gap, as a fraction of total
+	// height, left for the connector between Rivalry and the boxes above and
+	// below it when their text claims more than the default heights.
+	porterMinConnectorGapRatio = 0.04
+
 	// porterHeaderFontSize is the force header font size (hundredths of a point).
 	// 1200 = 12pt
 	porterHeaderFontSize int = 1200
@@ -186,29 +191,10 @@ func (ctx *singlePassContext) processPortersFiveForceNativeShapes(slideNum int, 
 			"slide", slideNum)
 	}
 
-	forces := parsePorterForces(diagramSpec.Data)
-	if len(forces) == 0 {
+	panels := porterPanels(diagramSpec)
+	if len(panels) == 0 {
 		slog.Warn("porters native shapes: no forces parsed", "slide", slideNum)
 		return
-	}
-
-	// Convert to nativePanelData for the panelShapeInsert system.
-	// We encode force metadata into the panel fields.
-	var panels []nativePanelData
-	for _, f := range forces {
-		body := ""
-		if len(f.factors) > 0 {
-			lines := make([]string, len(f.factors))
-			for j, factor := range f.factors {
-				lines[j] = "- " + factor
-			}
-			body = strings.Join(lines, "\n")
-		}
-		panels = append(panels, nativePanelData{
-			title: f.label,
-			body:  body,
-			value: porterPanelValue(f),
-		})
 	}
 
 	slide := ctx.templateSlideData[slideNum]
@@ -227,6 +213,29 @@ func (ctx *singlePassContext) processPortersFiveForceNativeShapes(slideNum int, 
 		panels:          panels,
 		portersFiveMode: true,
 	})
+}
+
+// porterPanels converts a Porter's spec to nativePanelData for the
+// panelShapeInsert system, encoding force metadata into the panel fields.
+func porterPanels(diagramSpec *types.DiagramSpec) []nativePanelData {
+	forces := parsePorterForces(diagramSpec.Data)
+	panels := make([]nativePanelData, 0, len(forces))
+	for _, f := range forces {
+		body := ""
+		if len(f.factors) > 0 {
+			lines := make([]string, len(f.factors))
+			for j, factor := range f.factors {
+				lines[j] = "- " + factor
+			}
+			body = strings.Join(lines, "\n")
+		}
+		panels = append(panels, nativePanelData{
+			title: f.label,
+			body:  body,
+			value: porterPanelValue(f),
+		})
+	}
+	return panels
 }
 
 // porterDefaultLabels maps each force type to its default display label.
@@ -414,9 +423,14 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 	totalH := bounds.Height
 
 	centerW := int64(float64(totalW) * porterCenterWidthRatio)
-	centerH := int64(float64(totalH) * porterCenterHeightRatio)
 	periW := int64(float64(totalW) * porterPeripheralWidthRatio)
-	periH := int64(float64(totalH) * porterPeripheralHeightRatio)
+
+	// Map forces by type for easy lookup.
+	forceMap := make(map[porterForceType]porterForceData)
+	for _, f := range forces {
+		forceMap[f.forceType] = f
+	}
+	centerH, periH, sideH := porterBoxHeights(forceMap, totalH, centerW, periW, themeColors)
 
 	// Center of the diagram.
 	cx := bounds.X + totalW/2
@@ -432,15 +446,9 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 	bottomX := cx - periW/2
 	bottomY := bounds.Y + totalH - periH
 	leftX := bounds.X
-	leftY := cy - periH/2
+	leftY := cy - sideH/2
 	rightX := bounds.X + totalW - periW
-	rightY := cy - periH/2
-
-	// Map forces by type for easy lookup.
-	forceMap := make(map[porterForceType]porterForceData)
-	for _, f := range forces {
-		forceMap[f.forceType] = f
-	}
+	rightY := cy - sideH/2
 
 	// Fixed rendering order for deterministic output.
 	type forceLayout struct {
@@ -452,8 +460,8 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 		{porterRivalry, centerX, centerY, centerW, centerH, true},
 		{porterNewEntrant, topX, topY, periW, periH, false},
 		{porterSubstitute, bottomX, bottomY, periW, periH, false},
-		{porterSupplier, leftX, leftY, periW, periH, false},
-		{porterBuyer, rightX, rightY, periW, periH, false},
+		{porterSupplier, leftX, leftY, periW, sideH, false},
+		{porterBuyer, rightX, rightY, periW, sideH, false},
 	}
 
 	var children [][]byte
@@ -465,16 +473,7 @@ func generatePortersFiveGroupXML(panels []nativePanelData, bounds types.Bounding
 
 	// Generate force box shapes.
 	for _, layout := range layouts {
-		f, ok := forceMap[layout.ft]
-		if !ok {
-			// A force the payload never mentioned is drawn with its own name
-			// and nothing else: no factors, and no intensity, because there is
-			// no assessment to show.
-			f = porterForceData{
-				forceType: layout.ft,
-				label:     porterDefaultLabel(layout.ft),
-			}
-		}
+		f := porterForceWithDefault(forceMap, layout.ft)
 
 		shapeID := nextID
 		shapeIDs[layout.ft] = shapeID
@@ -599,6 +598,69 @@ func porterOutlineScheme(fillScheme string) string {
 // generatePorterForceBoxXML produces a single roundRect shape for a force box.
 func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint32, isCenter bool, themeColors []types.ThemeColor) string {
 	scheme, lumMod, lumOff := porterIntensityColor(f.intensity)
+	text := porterForceText(f, isCenter, themeColors)
+	b, err := pptx.GenerateShape(pptx.ShapeOptions{
+		ID:       shapeID,
+		Name:     fmt.Sprintf("Porter %s", f.label),
+		Bounds:   pptx.RectEmu{X: x, Y: y, CX: w, CY: h},
+		Geometry: pptx.GeomRoundRect,
+		Adjustments: []pptx.AdjustValue{
+			{Name: "adj", Value: porterCornerRadius},
+		},
+		// An unscored force keeps the template's neutral surface unmodified.
+		Fill: porterBoxFill(scheme, lumMod, lumOff),
+		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill(porterOutlineScheme(scheme))},
+		Text: &text,
+	})
+	if err != nil {
+		slog.Warn("generatePorterForceBoxXML failed", "error", err)
+		return ""
+	}
+	return string(b)
+}
+
+// porterForceWithDefault is the force drawn at a position: the parsed force,
+// or — for a force the payload never mentioned — its own name and nothing
+// else: no factors, and no intensity, because there is no assessment to show.
+func porterForceWithDefault(forceMap map[porterForceType]porterForceData, ft porterForceType) porterForceData {
+	if f, ok := forceMap[ft]; ok {
+		return f
+	}
+	return porterForceData{forceType: ft, label: porterDefaultLabel(ft)}
+}
+
+// porterBoxHeights sizes the three box heights of the diagram to their text:
+// the rivalry box (center), the new-entrant / substitute boxes above and below
+// it (top/bottom), and the supplier / buyer boxes beside it (side). Each keeps
+// its default share of the height unless its text needs more. The column of
+// top box, rivalry and bottom box shares the height with two connector gaps,
+// so when it cannot hold all three the boxes shrink together; the side boxes
+// have their columns to themselves and may grow to the full height. Fixed
+// 25% boxes stored a 62% autofit into three factors on a short content area
+// (go-slide-creator-zbo58).
+func porterBoxHeights(forceMap map[porterForceType]porterForceData, totalH, centerW, periW int64, themeColors []types.ThemeColor) (center, topBottom, side int64) {
+	need := func(ft porterForceType, isCenter bool, w int64) int64 {
+		return nativeTextNeedEMU(porterForceText(porterForceWithDefault(forceMap, ft), isCenter, themeColors), w, totalH)
+	}
+	center = max(int64(float64(totalH)*porterCenterHeightRatio), need(porterRivalry, true, centerW))
+	topBottom = max(int64(float64(totalH)*porterPeripheralHeightRatio),
+		need(porterNewEntrant, false, periW), need(porterSubstitute, false, periW))
+	side = min(totalH, max(int64(float64(totalH)*porterPeripheralHeightRatio),
+		need(porterSupplier, false, periW), need(porterBuyer, false, periW)))
+
+	minGap := int64(float64(totalH) * porterMinConnectorGapRatio)
+	if column := 2*topBottom + center; column+2*minGap > totalH {
+		f := float64(totalH-2*minGap) / float64(column)
+		center = int64(float64(center) * f)
+		topBottom = int64(float64(topBottom) * f)
+	}
+	return center, topBottom, side
+}
+
+// porterForceText is a force box's text body — header, stated intensity and
+// factor bullets — shared by the writer and porterBoxHeights' measurement.
+func porterForceText(f porterForceData, isCenter bool, themeColors []types.ThemeColor) pptx.TextBody {
+	scheme, lumMod, lumOff := porterIntensityColor(f.intensity)
 	// The intensity line used to be painted in the box's own scheme colour on
 	// the box's own tint of it: "Medium (50%)" measured 1.55:1 on the old accent3
 	// tile. Pick it against the fill the reader actually sees, the same way the
@@ -680,30 +742,13 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 		}
 	}
 
-	b, err := pptx.GenerateShape(pptx.ShapeOptions{
-		ID:       shapeID,
-		Name:     fmt.Sprintf("Porter %s", f.label),
-		Bounds:   pptx.RectEmu{X: x, Y: y, CX: w, CY: h},
-		Geometry: pptx.GeomRoundRect,
-		Adjustments: []pptx.AdjustValue{
-			{Name: "adj", Value: porterCornerRadius},
-		},
-		// An unscored force keeps the template's neutral surface unmodified.
-		Fill: porterBoxFill(scheme, lumMod, lumOff),
-		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.SchemeFill(porterOutlineScheme(scheme))},
-		Text: &pptx.TextBody{
-			Wrap:       "square",
-			Anchor:     "ctr",
-			Insets:     pptx.ShapeTextInsets(),
-			AutoFit:    "normAutofit",
-			Paragraphs: paras,
-		},
-	})
-	if err != nil {
-		slog.Warn("generatePorterForceBoxXML failed", "error", err)
-		return ""
+	return pptx.TextBody{
+		Wrap:       "square",
+		Anchor:     "ctr",
+		Insets:     pptx.ShapeTextInsets(),
+		AutoFit:    "normAutofit",
+		Paragraphs: paras,
 	}
-	return string(b)
 }
 
 // generatePorterConnectorXML produces a straightConnector1 between two shapes.

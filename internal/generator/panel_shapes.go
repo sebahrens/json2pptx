@@ -932,6 +932,7 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 		inserts := ctx.panelShapeInserts[slideNum]
 
 		for i := range inserts {
+			base := nextShapeID
 			// Generate the final group XML with the correct shape ID base.
 			switch {
 			case inserts[i].swotMode:
@@ -1042,6 +1043,13 @@ func (ctx *singlePassContext) finalizePanelGroupXML() { //nolint:gocyclo
 				nextShapeID += uint32(len(inserts[i].panels) + 1)
 			default:
 				nextShapeID += uint32(len(inserts[i].panels)*2 + 1)
+			}
+			if inserts[i].contentPath != "" {
+				ctx.nativeShapeSources = append(ctx.nativeShapeSources, nativeShapeSource{
+					slideIndex: slideNum - ctx.calculateStartingSlideNum(),
+					lo:         base, hi: nextShapeID,
+					path: inserts[i].contentPath, diagramType: inserts[i].diagramType,
+				})
 			}
 		}
 

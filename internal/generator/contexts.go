@@ -60,6 +60,7 @@ type SlideContext struct {
 	slideTakeaways          map[int]string                      // slideNum -> takeaway / "so what" headline (only for slides with takeaway)
 	tableInserts            map[int][]tableInsert               // slideNum -> table XML inserts (replaces placeholder shapes)
 	panelShapeInserts       map[int][]panelShapeInsert          // slideNum -> native panel shape inserts (replaces placeholder shapes)
+	nativeShapeSources      []nativeShapeSource                 // shape-id ranges of native diagram groups, for refusal paths
 	logoZones               map[string]*LogoZone                // per-layout logo zones (key = layout basename, e.g. "slideLayout1"); nil if no logos detected
 	footerConfig            *FooterConfig                       // Footer configuration (nil = disabled)
 	footerPositionsByLayout map[string]map[string]*transformXML // layoutID -> ("dt"/"ftr"/"sldNum" -> position)
@@ -82,6 +83,8 @@ type panelShapeInsert struct {
 	panels            []nativePanelData // Parsed panel data
 	groupXML          string            // Populated during finalizePanelGroupXML()
 	altText           string            // Alt text for the group's cNvPr descr (from the DiagramSpec)
+	contentPath       string            // Authored JSON path of the diagram (/slides/N/content/J/diagram_value)
+	diagramType       string            // DiagramSpec.Type the group draws
 	swotMode          bool              // True for SWOT 2x2 grid layout (vs column panels)
 	pestelMode        bool              // True for PESTEL 3x2 grid layout
 	nineBoxMode       bool              // True for Nine Box Talent 3x3 grid layout

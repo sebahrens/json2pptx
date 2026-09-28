@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/patterns"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/tokens"
 )
@@ -56,7 +57,24 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 	if slideIndex < 0 {
 		return
 	}
-	for _, shape := range splitShapeElements(string(slideData)) {
+	shapePath := func(id string) string {
+		p := slidepath.Slide(slideIndex)
+		if id != "" {
+			p += "/rendered_shapes/" + id
+		}
+		return p
+	}
+	for _, f := range unreadableAutofitFindings(string(slideData), ctx.viewingMode, shapePath) {
+		ctx.emitFitFinding(f)
+	}
+}
+
+// unreadableAutofitFindings is reportUnreadableAutofit's scan of written shape
+// XML, shared with the native-diagram validate preflight so the two measure
+// the same thing. shapePath names a shape by its cNvPr id ("" when it has none).
+func unreadableAutofitFindings(slideXML string, mode tokens.ViewingMode, shapePath func(id string) string) []patterns.FitFinding {
+	var out []patterns.FitFinding
+	for _, shape := range splitShapeElements(slideXML) {
 		scaleThousandths, hasStoredScale := storedShapeFontScale(shape)
 		if scaleThousandths <= 0 {
 			continue
@@ -76,13 +94,13 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 		if !hasStoredScale {
 			context = "declared font size before any renderer shrink"
 		}
-		shapePath := slidepath.Slide(slideIndex)
-		if id := renderedShapeIDRE.FindStringSubmatch(shape); len(id) == 2 {
-			shapePath += "/rendered_shapes/" + id[1]
+		id := ""
+		if m := renderedShapeIDRE.FindStringSubmatch(shape); len(m) == 2 {
+			id = m[1]
 		}
 		if f := NewReadabilityFinding(ReadabilityFindingInput{
-			Path:              shapePath,
-			Mode:              ctx.viewingMode,
+			Path:              shapePath(id),
+			Mode:              mode,
 			Role:              tokens.TextRoleBody,
 			EffectiveHPt:      effective,
 			Paragraphs:        countParagraphs(shape),
@@ -109,9 +127,10 @@ func (ctx *singlePassContext) reportUnreadableAutofit(slideData []byte, slideNum
 					f.Fix.Params["rendered_shape_text"] = strings.Join(parts, " ")
 				}
 			}
-			ctx.emitFitFinding(*f)
+			out = append(out, *f)
 		}
 	}
+	return out
 }
 
 // Only populated runs establish an actual written size. Unused list levels,

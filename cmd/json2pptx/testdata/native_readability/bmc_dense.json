@@ -21,14 +21,14 @@
             "title": "DataSync SaaS",
             "data": {
               "key_partners": ["Cloud providers (AWS, GCP)", "Data warehouse partners", "System integrators", "Technology consultants"],
-              "key_activities": ["Platform development", "Connector upkeep", "Customer onboarding"],
-              "key_resources": ["Engineering team", "Proprietary ETL engine", "SOC 2 certification"],
+              "key_activities": ["Platform development", "Connector maintenance", "Customer onboarding", "Security compliance"],
+              "key_resources": ["Engineering team", "Proprietary ETL engine", "SOC 2 certification", "Partner network"],
               "value_proposition": ["No-code data pipelines", "Real-time sync", "200+ pre-built connectors", "Enterprise security"],
-              "customer_relationships": ["Self-service free tier", "Premium support", "Enterprise CSM"],
-              "channels": ["Product-led growth", "Partner referrals", "Enterprise sales"],
+              "customer_relationships": ["Self-service free tier", "Premium support", "Dedicated CSM for enterprise", "Community forums"],
+              "channels": ["Website & product-led growth", "Content marketing", "Partner referrals", "Enterprise sales team"],
               "customer_segments": ["Data teams at mid-market", "Enterprise IT departments", "Startups scaling data ops", "Analytics teams"],
-              "cost_structure": ["Cloud infrastructure (40%)", "Engineering salaries (35%)", "Sales, marketing & G&A (25%)"],
-              "revenue_streams": ["Monthly/annual subscriptions", "Usage-based pricing (data volume)", "Enterprise contracts"]
+              "cost_structure": ["Cloud infrastructure (40%)", "Engineering salaries (35%)", "Sales & marketing (15%)", "G&A (10%)"],
+              "revenue_streams": ["Monthly/annual subscriptions", "Usage-based pricing (data volume)", "Enterprise contracts", "Professional services"]
             }
           }
         }

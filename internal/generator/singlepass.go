@@ -345,7 +345,9 @@ func generateSinglePass(goCtx context.Context, req GenerationRequest) (*Generati
 	// return a lossless continuation remedy instead of publishing tiny text.
 	for _, finding := range ctx.fitFindings {
 		if finding.Code == patterns.ErrCodeTextBelowReadableMin && finding.Action == "refuse" {
-			readability := SourcePreservingParagraphRepair(finding.ValidationError, req.Slides)
+			located := finding.ValidationError
+			ctx.authorNativeRefusal(&located)
+			readability := SourcePreservingParagraphRepair(located, req.Slides)
 			return nil, ctx.warnings, fmt.Errorf("generation refused: unreadable generated text: %w", &readability)
 		}
 	}

@@ -58,6 +58,10 @@ const (
 	// 1000 = 10pt (small to fit multiple names in cells)
 	nineBoxItemFontSize int = 1000
 
+	// nineBoxItemSpaceAfter is the space after each listed name (hundredths
+	// of a point).
+	nineBoxItemSpaceAfter int = 200
+
 	// nineBoxAxisFontSize is the axis label font size (hundredths of a point).
 	// 1000 = 10pt
 	nineBoxAxisFontSize int = 1000
@@ -138,8 +142,32 @@ func (ctx *singlePassContext) processNineBoxNativeShapes(slideNum int, item Cont
 		return
 	}
 
-	// Warn if themeOverride is set — scheme colors won't reflect overrides.
+	panels, cells := nineBoxPanels(diagramSpec)
 
+	// Get placeholder bounds from the shape being replaced.
+	slide := ctx.templateSlideData[slideNum]
+	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
+	placeholderBounds := getPlaceholderBounds(shape, nil)
+
+	slog.Info("native nine_box shapes: registered",
+		"slide", slideNum,
+		"cells", cells,
+		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
+
+	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
+		altText:        diagramAltText(item),
+		placeholderIdx: shapeIdx,
+		bounds:         placeholderBounds,
+		panels:         panels,
+		nineBoxMode:    true,
+		nineBoxTints:   nineBoxSemanticTints(ctx.semanticAccents),
+	})
+}
+
+// nineBoxPanels converts a nine_box_talent spec to panel data — the axis
+// metadata first, then the nine cells — and reports how many cells the data
+// populated.
+func nineBoxPanels(diagramSpec *types.DiagramSpec) ([]nativePanelData, int) {
 	// Parse cells and axis info from DiagramSpec.Data.
 	cells := parseNineBoxCells(diagramSpec.Data)
 	xAxisLabel, _ := diagramSpec.Data["x_axis_label"].(string)
@@ -191,25 +219,7 @@ func (ctx *singlePassContext) processNineBoxNativeShapes(slideNum int, item Cont
 			})
 		}
 	}
-
-	// Get placeholder bounds from the shape being replaced.
-	slide := ctx.templateSlideData[slideNum]
-	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
-	placeholderBounds := getPlaceholderBounds(shape, nil)
-
-	slog.Info("native nine_box shapes: registered",
-		"slide", slideNum,
-		"cells", len(cells),
-		"bounds", fmt.Sprintf("%dx%d+%d+%d", placeholderBounds.Width, placeholderBounds.Height, placeholderBounds.X, placeholderBounds.Y))
-
-	ctx.panelShapeInserts[slideNum] = append(ctx.panelShapeInserts[slideNum], panelShapeInsert{
-		altText:        diagramAltText(item),
-		placeholderIdx: shapeIdx,
-		bounds:         placeholderBounds,
-		panels:         panels,
-		nineBoxMode:    true,
-		nineBoxTints:   nineBoxSemanticTints(ctx.semanticAccents),
-	})
+	return panels, len(cells)
 }
 
 // encodeNineBoxAxes encodes axis labels into a single string for transport in nativePanelData.
@@ -428,7 +438,7 @@ func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint3
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  pptx.ShapeTextInsets(),
+			Insets:  nativeCardHeaderInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
@@ -453,7 +463,19 @@ func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint3
 
 // generateNineBoxCellBodyXML produces a roundRect body shape for a nine box cell.
 func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
-	paras := panelBulletsParagraphs(body, nineBoxItemFontSize)
+	// A cell lists names, one per line: the 6pt panel bullet spacing left a
+	// four-name cell on a short content area at a third of its size
+	// (go-slide-creator-zbo58).
+	var paras []pptx.Paragraph
+	if body != "" {
+		paras = pptx.ParseBulletText(body, pptx.BulletTextOptions{
+			FontSize:    nineBoxItemFontSize,
+			Lang:        "en-US",
+			Dirty:       true,
+			BulletColor: pptx.SchemeFill(panelBulletSchemeColor),
+			SpaceAfter:  nineBoxItemSpaceAfter,
+		})
+	}
 
 	// Use the same accent color for bullets but with full strength.
 	bulletColor := pptx.ResolveColorString(schemeColor)
@@ -477,7 +499,7 @@ func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32,
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",
-			Insets:     pptx.ShapeTextInsets(),
+			Insets:     nativeCardBodyInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},
