@@ -34,6 +34,20 @@ bin/
 # Build artifacts
 .cache/
 tmp/
+dist/
+
+# Generated output and large local data (not needed for the image build)
+output/
+outputs/
+svg/
+
+# Locally built binaries (the image builds its own)
+/json2pptx
+/pptx2jpg
+svggen/svggen
+svggen/json2pptx
+svggen/svggen-mcp
+svggen/svggen-server
 
 # Docker files (avoid recursion)
 Dockerfile*
