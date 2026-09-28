@@ -26,6 +26,13 @@ func TestDescribeFindingCoversCodesEmittedInCmd(t *testing.T) {
 		regexp.MustCompile(`\b(?:ErrCode[A-Za-z0-9_]*|[A-Za-z0-9_]*Code)\s*=\s*"([A-Za-z][A-Za-z0-9_.]*)"`),
 		regexp.MustCompile(`"([A-Z][A-Z0-9]*_[A-Z0-9_]+):`),
 		regexp.MustCompile(`"((?:OPC|OOXML)_[A-Z0-9_]+)"`),
+		// Positional code arguments of the MCP error helpers
+		// (go-slide-creator-wizql): argInvalidValue(tool, "CODE", ...) and
+		// mcpErrorWithNext("CODE", ...). STALE_REVISION,
+		// RESUME_TOKEN_NOT_FOUND and UNSUPPORTED_MODE slipped past the
+		// field-shaped patterns above.
+		regexp.MustCompile(`\bargInvalidValue\(\s*(?:"[^"]*"|[A-Za-z_][A-Za-z0-9_.]*),\s*"([A-Z][A-Z0-9_]+)"`),
+		regexp.MustCompile(`\bmcpErrorWithNext\(\s*"([A-Z][A-Z0-9_]+)"`),
 	}
 
 	found := map[string][]string{} // code -> files

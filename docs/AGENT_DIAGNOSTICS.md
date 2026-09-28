@@ -525,3 +525,108 @@ Rules of thumb:
 - A replay requires the request to be byte-for-byte equivalent (modulo object-key ordering). If you edit the deck/outline or any other argument and keep the key, you get an `IDEMPOTENCY_CONFLICT` error, never a stale replay — bump the key whenever the content changes.
 - Only successful responses are cached. Error responses surface every time so the agent can fix the underlying input.
 - The cache is in-memory and per-process. Restarting the MCP server drops it — design retries to tolerate a fresh run after a server bounce.
+
+## 8. Appendix — catalogue codes without prose elsewhere
+
+Every code `describe_finding` resolves must be named somewhere under `docs/`
+or `skills/`. The table below is generated from the describe_finding
+catalogue for the codes that no hand-written doc covers yet — mostly
+structural / output-validation codes (`OPC_*`, `OOXML_*`), MCP call errors,
+visual-QA codes and per-renderer chart / diagram diagnostics. Call
+`describe_finding` for the full `when_emitted`, remediation steps and
+examples. `TestFindingCatalogCodesAreDocumented`
+(`cmd/json2pptx/finding_catalog_docs_test.go`) fails when a catalogue code
+is in no doc; when you add prose for a code, regenerate so it leaves the
+table:
+
+```bash
+go test ./cmd/json2pptx -run TestFindingCatalogCodesAreDocumented -update-diag-appendix
+```
+
+<!-- BEGIN GENERATED: finding-code appendix (go test ./cmd/json2pptx -run TestFindingCatalogCodesAreDocumented -update-diag-appendix) -->
+
+| Code | Severity | Summary |
+|------|----------|---------|
+| `AMBIGUOUS_CANONICAL_ROLE` | review | Two template layouts tie for a canonical role. |
+| `ASSET_TOO_LARGE` | refuse | An asset exceeds the maximum allowed size. |
+| `DANGLING_REL` | refuse | A PPTX relationship points to a missing part. |
+| `DUPLICATE_ID` | refuse | A slide repeats a shape identifier. |
+| `DUPLICATE_REL_ID` | refuse | A PPTX relationships file reuses an ID. |
+| `DUPLICATE_SLIDE_ID` | refuse | presentation.xml repeats a slide id. |
+| `EMPTY_REQUIRED_ATTR` | refuse | A required OOXML attribute is empty. |
+| `ICON_AMBIGUOUS` | refuse | An icon name matches more than one bundled icon. |
+| `ICON_FILL_IGNORED_ON_INLINE` | review | An icon `fill` was ignored because inline `svg_data` is set. |
+| `ICON_LIST` | refuse | Listing the available icons failed. |
+| `ICON_MISSING` | refuse | An icon reference is empty. |
+| `ICON_PATH` | refuse | An icon path argument is invalid. |
+| `ICON_PATH_SYMLINK_ESCAPE` | refuse | An icon path resolves through a symlink that escapes the allowed root. |
+| `ICON_PATH_TRAVERSAL` | refuse | An icon path attempts directory traversal outside the allowed root. |
+| `ILLEGAL_XML_CHAR` | refuse | Slide text contains an illegal XML character. |
+| `INVALID_ARG` | refuse | A tool argument is missing or invalid. |
+| `INVALID_COLOR` | refuse | An OOXML color value is invalid. |
+| `INVALID_DECK_SPEC` | refuse | The DeckSpec stored under deck_id could not be parsed or compiled. |
+| `INVALID_IMAGE` | refuse | An image supplied for inspection is invalid. |
+| `INVALID_KEY` | refuse | An object contains a key the schema does not allow. |
+| `INVALID_SCHEME` | refuse | A color references an invalid theme scheme slot. |
+| `INVALID_SLIDE_INDEX` | refuse | A slide index argument is out of range. |
+| `INVALID_TABLE` | refuse | A table has invalid OOXML structure. |
+| `LAYOUT_DERIVED` | info | An asymmetric two-column slide was derived from a template layout. |
+| `MALFORMED_XML` | refuse | A PPTX XML part is malformed. |
+| `MISSING_CONTENT_TYPE` | refuse | A PPTX part has no content type. |
+| `MISSING_CONTENT_TYPE_OVERRIDE` | refuse | A required PPTX content-type override is absent. |
+| `MISSING_ELEMENT` | refuse | A required OOXML element is absent. |
+| `MISSING_PART` | refuse | A required PPTX package part is missing. |
+| `MULTIPLE_CURRENT_STAGES` | review | More than one journey stage is marked current. |
+| `OOXML_DUPLICATE_ID` | refuse | A slide repeats a shape identifier. |
+| `OOXML_EMPTY_REQUIRED_ATTR` | refuse | A required OOXML attribute is empty. |
+| `OOXML_ILLEGAL_XML_CHAR` | refuse | Slide text contains an illegal XML character. |
+| `OOXML_INVALID_COLOR` | refuse | An OOXML color value is invalid. |
+| `OOXML_INVALID_SCHEME` | refuse | A color references an invalid theme scheme slot. |
+| `OOXML_LOW_FALLBACK_DPI` | review | An SVG fallback image is below 96 DPI at display size. |
+| `OOXML_SLIDE_COUNT_MISMATCH` | refuse | Slide references and slide files disagree in count. |
+| `OOXML_ZERO_EXTENT` | refuse | A shape has zero width or height. |
+| `OPC_DANGLING_REL` | refuse | A PPTX relationship points to a missing part. |
+| `OPC_DUPLICATE_REL_ID` | refuse | A PPTX relationships file reuses an ID. |
+| `OPC_DUPLICATE_SLIDE_ID` | refuse | presentation.xml repeats a slide id. |
+| `OPC_MALFORMED_XML` | refuse | A PPTX XML part is malformed. |
+| `OPC_MISSING_CONTENT_TYPE` | refuse | A PPTX part has no content type. |
+| `OPC_MISSING_CONTENT_TYPE_OVERRIDE` | refuse | A required PPTX content-type override is absent. |
+| `OPC_MISSING_ELEMENT` | refuse | A required OOXML element is absent. |
+| `OPC_MISSING_PART` | refuse | A required PPTX package part is missing. |
+| `OUTPUT_DIR` | refuse | The output directory is missing or not writable. |
+| `READ_FAILED` | refuse | The input deck or a referenced file could not be read. |
+| `SEMANTIC_EVIDENCE_VISUAL_MISSING` | review | A market-analysis deck has no data-bearing evidence visual. |
+| `SEMANTIC_REQUIRED_LAYOUT_DUPLICATE` | refuse | meta.required_layouts lists the same canonical layout more than once. |
+| `SEMANTIC_REQUIRED_LAYOUT_MISSING` | refuse | A required layout lacks a compatible slide or is unavailable in the selected template. |
+| `SEMANTIC_REQUIRED_LAYOUT_UNKNOWN` | refuse | meta.required_layouts contains an unknown canonical layout ID. |
+| `SEMANTIC_VISUAL_FAMILY_NARROW` | review | A longer deck uses too few non-structural visual families. |
+| `SETTINGS_ERROR` | refuse | A template-settings operation failed. |
+| `SETTINGS_WRITE_DISABLED` | refuse | Writing template settings is disabled. |
+| `SLIDE_COUNT_MISMATCH` | refuse | Slide references and slide files disagree in count. |
+| `STRICT_FIT` | refuse | Strict-fit mode refused the deck because content overflows. |
+| `STYLE_NOT_FOUND` | refuse | A referenced named style is not defined. |
+| `TEMPLATES_DIR` | refuse | The templates directory is missing or unreadable. |
+| `TEMPLATE_ASPECT_RATIO_INVALID` | review | The metadata aspect_ratio is not in WIDTH:HEIGHT form. |
+| `TEMPLATE_LAYOUT_HINT_INVALID` | review | A layout hint in the metadata is malformed (empty key or a negative budget). |
+| `TEMPLATE_METADATA_PARSE` | review | The template's embedded metadata file could not be read or parsed. |
+| `TEMPLATE_METADATA_VERSION` | review | The template metadata declares a version outside the supported range. |
+| `TEMPLATE_SECTION_NUMBER_NAMING` | review | A section-header layout has a decorative number placeholder that is not named "Section Number". |
+| `UNKNOWN_TABLE_STYLE_ID` | refuse | A table references a style_id the template does not define. |
+| `UNKNOWN_THEME_COLOR` | refuse | A semantic color name is not part of the template theme. |
+| `UNSUPPORTED` | refuse | The requested operation or option is not supported. |
+| `URL_RESOLVER_INIT` | refuse | The URL asset resolver failed to initialize. |
+| `VALIDATION_FAILED` | refuse | Input validation failed with at least one error-severity finding. |
+| `ZERO_EXTENT` | refuse | A shape has zero width or height. |
+| `chart.all_zero_series` | review | A chart series contains only zero values and would render as a flat line. |
+| `chart.auto_log_scale_applied` | info | Legacy svggen finding for an automatically applied log scale (no longer emitted). |
+| `chart.invalid_numeric` | review | Chart data contains a value that cannot be parsed as a number. |
+| `chart.invalid_time_format` | review | A time-axis value is not in a recognized format. |
+| `diagram.label_truncated` | review | A diagram label was shortened to fit. |
+| `diagram.quadrant_position_defaulted` | review | A matrix quadrant had no valid position and was placed by its list index. |
+| `invalid_enum` | refuse | A pattern field has an unsupported enum value. |
+| `layout_synthesized` | review | A missing template layout was synthesized. |
+| `length_mismatch` | refuse | Chart categories and values have different lengths. |
+| `navigation_requires_authoring` | refuse | Bullet continuation cannot safely shift numeric slide destinations. |
+| `palette_drift` | review | Rendered colors drift from the template theme palette. |
+
+<!-- END GENERATED: finding-code appendix -->

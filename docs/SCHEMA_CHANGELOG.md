@@ -12,6 +12,16 @@
   `TestSchemaDocsDoctor`). Every skill file now keeps at least 1 KiB of
   headroom under its `skill_size_test.go` cap.
 
+- **2026-09-28 — describe_finding covers the MCP call-error codes (`go-slide-creator-wizql`).**
+  `describe_finding` now resolves `STALE_REVISION`, `RESUME_TOKEN_NOT_FOUND`,
+  `UNSUPPORTED_MODE` and `INVALID_DECK_SPEC`, which MCP tools already
+  returned but the catalogue could not explain. The emitted-code coverage
+  test now also scans positional codes passed to `argInvalidValue` and
+  `mcpErrorWithNext`. A new mirror test requires every catalogue code to be
+  named in some doc under `docs/` or `skills/`; codes without prose are
+  listed in the generated appendix of `docs/AGENT_DIAGNOSTICS.md` (§8). No
+  response-shape change.
+
 - **2026-09-28 — Schema 4.154.0 · Template-aware stacked columns and nested-cell readability
   prediction (`go-slide-creator-bzh34`).** A `chart-insights-split` with a
   headline or so-what pins those rows at their writer-measured height and,
