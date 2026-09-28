@@ -42,16 +42,23 @@ func TestProcessFlowCompactPointedStepsKeepReadableTextWidth(t *testing.T) {
 				if tc.steps[i].Type != "chevron" && tc.steps[i].Type != "arrow" {
 					continue
 				}
-				var text struct {
-					InsetLeft  float64 `json:"inset_left"`
-					InsetRight float64 `json:"inset_right"`
-				}
+				// Pointed labels keep the uniform shape text margin inside
+				// the preset's text rectangle: no per-side insets.
+				var text map[string]any
 				if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
 					t.Fatalf("cell %d text: %v", i, err)
 				}
+				for _, k := range []string{"inset_left", "inset_right", "inset_top", "inset_bottom"} {
+					if _, has := text[k]; has {
+						t.Errorf("cell %d emits %s; want the uniform margin", i, k)
+					}
+				}
 				notch := float64(chevronAdj) / 100000 * height
-				usable := width - 2*notch - text.InsetLeft - text.InsetRight
-				if usable < width*0.6 {
+				usable := width - 2*notch - 2*defaultShapeInsetLRPt
+				// The notch is counted once (the preset's text rectangle) and
+				// the uniform margin once per side; a doubled notch inset
+				// would drop well below half the step.
+				if usable < width*0.55 {
 					t.Errorf("cell %d leaves only %.1fpt of %.1fpt for text", i, usable, width)
 				}
 				if measuredLines(tc.steps[i].Label, ctx.Theme.BodyFont, true, processFlowDefaultFontPt(len(tc.steps)), usable) != 1 {
@@ -68,16 +75,16 @@ func TestProcessFlowCompactPointedLabelBudgets(t *testing.T) {
 	for i := range v.Steps {
 		v.Steps[i] = ProcessFlowStep{Label: "Stage", Type: "chevron"}
 	}
-	v.Steps[3].Label = strings.Repeat("word ", 6) + "w" // 31 word-like characters
+	v.Steps[3].Label = "word wordw" // 10 word-like characters
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured word-like target should fit: %v", got)
 	}
 	v.Steps[3].Label += "w"
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "steps[3].label") || !strings.Contains(got[0], "about 31 word-like or 13 wide") {
+	if len(got) != 1 || !strings.Contains(got[0], "steps[3].label") || !strings.Contains(got[0], "about 10 word-like or 8 wide") {
 		t.Fatalf("dense chevron warning: %v", got)
 	}
-	v.Steps[3].Label = strings.Repeat("W", 14)
+	v.Steps[3].Label = strings.Repeat("W", 9)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 {
 		t.Fatalf("wide chevron should warn: %v", got)
 	}

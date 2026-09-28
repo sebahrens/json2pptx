@@ -954,7 +954,7 @@ func TestBuildTextBody_BulletDetection(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tb := buildTextBody(tt.content, 0, false, false, "l", "t", "", "", 0, 0, 0, 0)
+			tb := buildTextBody(tt.content, 0, false, false, "l", "t", "", "", [4]int64{})
 			if len(tb.Paragraphs) != 1 {
 				t.Fatalf("expected 1 paragraph, got %d", len(tb.Paragraphs))
 			}

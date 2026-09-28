@@ -42,7 +42,7 @@ func generateTakeawayShapeInBounds(takeawayText string, shapeID uint32, bounds p
 		Text: &pptx.TextBody{
 			Wrap:   "square",
 			Anchor: "ctr",
-			Insets: [4]int64{91440, 0, 0, 0},
+			Insets: pptx.ShapeTextInsets(),
 			Paragraphs: []pptx.Paragraph{{
 				Align: "l",
 				Runs: []pptx.Run{{

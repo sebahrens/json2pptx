@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
@@ -15,10 +16,11 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	// defaultShapeInsetLRPt is the OOXML default left/right text inset (0.1").
-	defaultShapeInsetLRPt = 7.2
-	// defaultShapeInsetTBPt is the OOXML default top/bottom text inset (0.05").
-	defaultShapeInsetTBPt = 3.6
+	// defaultShapeInsetLRPt / defaultShapeInsetTBPt are the text insets every
+	// shape_grid shape is written with: the uniform 0.5 cm shape margin
+	// (pptx.ShapeTextInsetPt) on all four sides.
+	defaultShapeInsetLRPt = pptx.ShapeTextInsetPt
+	defaultShapeInsetTBPt = pptx.ShapeTextInsetPt
 	// contentLineHeight is the line-height factor used for content estimates.
 	contentLineHeight = 1.2
 )

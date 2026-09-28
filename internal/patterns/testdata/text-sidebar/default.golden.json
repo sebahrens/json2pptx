@@ -6,8 +6,8 @@
   ],
   "rows": [
     {
-      "min_height": 261.2,
-      "max_height": 261.2,
+      "min_height": 275.1,
+      "max_height": 275.1,
       "cells": [
         {
           "shape": {
@@ -82,11 +82,7 @@
                 }
               ],
               "align": "l",
-              "vertical_align": "ctr",
-              "inset_left": 18,
-              "inset_right": 18,
-              "inset_top": 18,
-              "inset_bottom": 18
+              "vertical_align": "ctr"
             }
           },
           "accent_bar": {

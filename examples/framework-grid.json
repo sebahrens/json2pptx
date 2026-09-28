@@ -33,10 +33,6 @@
               {"title": "Platforms", "body": "Shared data and AI platform"},
               {"title": "Tooling", "body": "Copilots embedded in daily tools"},
               {"title": "Data", "body": "Owned, trusted and reusable"}
-            ]},
-            {"label": "Metrics", "cards": [
-              {"title": "Adoption KPIs", "body": "Weekly active use by role"},
-              {"title": "Value tracking", "body": "Benefits signed off by finance"}
             ]}
           ]
         }

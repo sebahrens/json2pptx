@@ -21,11 +21,11 @@
           "max_value": 100,
           "unit": "%",
           "bars": [
-            {"label": "Vendor A", "value": 87, "callout": "Strongest on price; weakest on support SLA."},
-            {"label": "Vendor B", "value": 72, "callout": "Preferred for enterprise; long implementation cycles."},
-            {"label": "Vendor C", "value": 64, "callout": "Best APIs and ecosystem fit, mid-market focus."},
-            {"label": "Vendor D", "value": 51, "callout": "Solid baseline product; underinvesting in security certifications."},
-            {"label": "Vendor E", "value": 33, "callout": "New entrant; track quarterly for capability maturation."}
+            {"label": "Vendor A", "value": 87, "callout": "Best price; weakest support SLA."},
+            {"label": "Vendor B", "value": 72, "callout": "Enterprise pick; slow to implement."},
+            {"label": "Vendor C", "value": 64, "callout": "Best APIs; mid-market focus."},
+            {"label": "Vendor D", "value": 51, "callout": "Solid base; thin on security."},
+            {"label": "Vendor E", "value": 33, "callout": "New entrant; track quarterly."}
           ]
         },
         "callout": {
@@ -62,13 +62,13 @@
           "max_value": 100,
           "unit": "%",
           "bars": [
-            {"label": "Pricing", "value": 92, "callout": "Largest single contributor; revisit annually."},
+            {"label": "Pricing", "value": 92, "callout": "Largest contributor; revisit yearly."},
             {"label": "Cross-sell", "value": 81, "callout": "Drives ARR expansion in install base."},
             {"label": "New logo", "value": 73, "callout": "Pipeline coverage up 1.5x YoY."},
             {"label": "Renewals", "value": 64, "callout": "NRR floor; protect with CS investment."},
             {"label": "Geography", "value": 52, "callout": "EMEA launch closes regional gap."},
             {"label": "Channel", "value": 41, "callout": "Tier-1 partner motion in scoping."},
-            {"label": "Product", "value": 33, "callout": "Three platform GAs gated on Q3 stability work."},
+            {"label": "Product", "value": 33, "callout": "Three GAs gated on Q3 stability."},
             {"label": "Partnerships", "value": 22, "callout": "Strategic integrations; long lead time."}
           ]
         },

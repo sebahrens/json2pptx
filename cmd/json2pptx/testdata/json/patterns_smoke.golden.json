@@ -163,13 +163,12 @@
   },
   {
     "pattern_name": "state-shift-hub",
-    "row_count": 5,
+    "row_count": 4,
     "cell_counts": [
       5,
-      11,
-      12,
-      12,
-      10
+      9,
+      10,
+      8
     ]
   },
   {

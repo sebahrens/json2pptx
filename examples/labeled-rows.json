@@ -27,11 +27,11 @@
         "name": "labeled-rows",
         "values": {
           "rows": [
-            {"label": "Smarter", "body": "2x-5x research coverage and 5-15% Sharpe ratio improvement. Research agents deliver overnight what used to take weeks."},
-            {"label": "Closer to Clients", "body": "3x-5x client coverage per relationship manager and 5x-10x RFP capacity; personalization at scale for segments too small to serve."},
-            {"label": "Faster", "body": "2x-3x speed to market for new products, 50-70% trade error reduction, and operations capacity up 55-65%."},
-            {"label": "Leaner", "body": "25-30% net cost reduction over three to five years; negative operating leverage reversed."},
-            {"label": "More Resilient", "body": "Continuous compliance surveillance, AI risk monitoring and audit-grade transparency in agentic workflows."}
+            {"label": "Smarter", "body": "2x-5x research coverage; 5-15% Sharpe ratio uplift."},
+            {"label": "Closer to Clients", "body": "3x-5x client coverage per RM; 5x-10x RFP capacity."},
+            {"label": "Faster", "body": "2x-3x speed to market; 50-70% fewer trade errors."},
+            {"label": "Leaner", "body": "25-30% net cost reduction over three to five years."},
+            {"label": "More Resilient", "body": "Continuous compliance and AI risk monitoring."}
           ]
         },
         "overrides": {"label_style": "text", "label_width_pct": 20}

@@ -65,8 +65,9 @@ func TestBeforeAfterCompact_WithinSixtyPercent(t *testing.T) {
 
 func TestStylishPanels_HeaderBand(t *testing.T) {
 	res, _ := resolvePatternForTest(t, "stylish-panels", `[{"title":"Grow the core","body":["Defend share in top 5 markets","Lift price realisation 3 pts"]},{"title":"Build adjacencies","body":["Launch services offering"]},{"title":"Fund the journey","body":["$340M cost programme"]}]`)
-	if h := maxCellHeight(rowCells(res.Cells, 0)); h > 50*pt {
-		t.Errorf("ribbon header %.0fpt, want <= 50pt (was 20%% of the area)", float64(h)/pt)
+	// One title line plus the uniform 0.5 cm top and bottom text margin.
+	if h := maxCellHeight(rowCells(res.Cells, 0)); h > 64*pt {
+		t.Errorf("ribbon header %.0fpt, want <= 64pt (was 20%% of the area)", float64(h)/pt)
 	}
 	if h := maxCellHeight(rowCells(res.Cells, 1)); float64(h) > 0.4*float64(contentRect.CY) {
 		t.Errorf("panel body %.0fpt should hug two bullets", float64(h)/pt)

@@ -83,7 +83,8 @@ func (sh *statHero) NewCellOverride() any { return nil }
 // statHeroStackBudget is the combined label + context + source length that
 // writes at or above the role floors on every shipped template, measured
 // against the written size (go-slide-creator-n1muf): any one field at its
-// maximum (context 120) fits, as does every field at 41% of its maximum,
+// maximum (context 120) fits, as does every worded field at its maximum
+// beside a short number, or every field as one unbroken run at 29%,
 // but every field at its maximum does not, with or without word breaks.
 const statHeroStackBudget = 120
 

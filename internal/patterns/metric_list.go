@@ -59,15 +59,14 @@ const (
 
 	// metricListColGapPt is near zero on purpose: a highlighted row tints both
 	// its cells, and a real column gap would show as a white seam through the
-	// tint. The visual gutter comes from the text insets instead. A gap of 0
+	// tint. The visual gutter comes from the uniform text margin instead
+	// (defaultShapeInsetLRPt on each side of the boundary). A gap of 0
 	// reads as "unset" and resolves to shapegrid's 8pt default, so it is
 	// stated as a hair above zero.
 	metricListColGapPt    = 0.1
 	metricListRowGapPt    = 2.0
 	metricListRulePt      = 0.75
-	metricListGutterPt    = 12.0 // inset on each side of the value / text boundary
-	metricListOuterPt     = 10.0 // inset on the outer edges
-	metricListBarPt       = 4.0  // highlight accent bar width
+	metricListBarPt       = 4.0 // highlight accent bar width
 	metricListMinValuePt  = 16.0
 	metricListMinFillFrac = 0.68
 )
@@ -148,7 +147,7 @@ func (m *metricList) Schema() *Schema {
 		map[string]*Schema{
 			"value":     StringSchema(metricListValueMax).WithDescription("The number, short (≤12 chars): \"3.8x\", \"~30%\", \"$4.2M\", \"16→33%\". Every value shares one size, shrunk until the longest fits its column on one line"),
 			"label":     StringSchema(metricListLabelMax).WithDescription("What the number measures, one line (≤60 chars)"),
-			"detail":    StringSchema(metricListDetailMax).WithDescription("Optional smaller context line under the label (≤120 chars). 3-4 items hold the full 120 at default sizes, 5 items about 90; with 6-7 items omit detail lines"),
+			"detail":    StringSchema(metricListDetailMax).WithDescription("Optional smaller context line under the label (≤120 chars). 3 items hold the full 120 at default sizes, 4 items about 98, 5 items about 40; with 6-7 items omit detail lines"),
 			"highlight": BooleanSchema().WithDescription("Emphasise this row with an accent-tinted band and accent bar; at most one item"),
 		},
 		[]string{"value", "label"},
@@ -333,7 +332,8 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 
 	// One shared value size: the largest that puts every value on one line.
 	font := ctx.Theme.BodyFont
-	valueTextW := valueColW - metricListOuterPt - metricListBarPt - metricListGutterPt
+	// The highlight bar sits inside the value cell's left margin.
+	valueTextW := valueColW - 2*defaultShapeInsetLRPt
 	size := valueSize
 	for _, it := range vals.Items {
 		if s := fitSingleLineSize(it.Value, font, true, size, metricListMinValuePt, valueTextW); s < size {
@@ -347,9 +347,7 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 		}
 	}
 
-	// sizedBlockHeightPt assumes the default 7.2pt side insets; hand it the
-	// width that leaves the text the same measure as the real insets do.
-	textFrameW := textColW - (metricListGutterPt + metricListOuterPt) + 2*sizingInsetLRPt
+	textFrameW := textColW
 	row := size*sizingLineSpacing + 2*sizingInsetTBPt
 	for _, it := range vals.Items {
 		paras := []sizedPara{{text: it.Label, sizePt: labelSize, bold: true, spaceAfterPt: 2}}
@@ -360,7 +358,7 @@ func measureMetricList(ctx ExpandContext, vals *MetricListValues, cols []float64
 	}
 	lay.rowPt = math.Ceil(row)
 	if strings.TrimSpace(vals.Callout) != "" {
-		h := sizedBlockHeightPt(ctx, []sizedPara{{text: vals.Callout, sizePt: labelSize, bold: true}}, areaW-2*metricListOuterPt)
+		h := sizedBlockHeightPt(ctx, []sizedPara{{text: vals.Callout, sizePt: labelSize, bold: true}}, areaW)
 		lay.calloutPt = math.Ceil(math.Max(h, labelSize*sizingLineSpacing*2))
 	}
 	return lay
@@ -385,15 +383,12 @@ func metricListBandLine(tone fillTone) json.RawMessage {
 	return data
 }
 
-// insetText is a cell text object with per-side insets (points).
+// insetText is a paragraphs cell text object. It carries no inset_* fields:
+// every pattern shape keeps the uniform shape text margin.
 type insetText struct {
 	Paragraphs    []chartInsightsParagraph `json:"paragraphs"`
 	Align         string                   `json:"align"`
 	VerticalAlign string                   `json:"vertical_align"`
-	InsetLeft     float64                  `json:"inset_left,omitempty"`
-	InsetRight    float64                  `json:"inset_right,omitempty"`
-	InsetTop      float64                  `json:"inset_top,omitempty"`
-	InsetBottom   float64                  `json:"inset_bottom,omitempty"`
 }
 
 func (t insetText) json() json.RawMessage {
@@ -482,7 +477,6 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 					Content: it.Value, Size: lay.valueSize, Bold: true, Color: valueInk, Align: "r",
 				}},
 				Align: "r", VerticalAlign: "ctr",
-				InsetLeft: metricListOuterPt + metricListBarPt, InsetRight: metricListGutterPt,
 			}.json(),
 		}}
 		// The big value is the item's primary text (D15 text keys).
@@ -501,7 +495,6 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 			Line:     line,
 			Text: insetText{
 				Paragraphs: paras, Align: "l", VerticalAlign: "ctr",
-				InsetLeft: metricListGutterPt, InsetRight: metricListOuterPt,
 			}.json(),
 		}}
 		rows = append(rows, jsonschema.GridRowInput{MinHeight: lay.rowPt, MaxHeight: lay.rowPt, Cells: []*jsonschema.GridCellInput{valueCell, textCell}})
@@ -524,7 +517,6 @@ func (m *metricList) Expand(ctx ExpandContext, values, overrides any, cellOverri
 							Color: readableTextOn(ctx, tone, "lt1"), Align: "ctr",
 						}},
 						Align: "ctr", VerticalAlign: "ctr",
-						InsetLeft: metricListOuterPt, InsetRight: metricListOuterPt,
 					}.json(),
 				},
 			}},
@@ -565,7 +557,7 @@ func (m *metricList) PostExpandWarnings(ctx ExpandContext, values, overrides any
 	_, areaH := sizingAreaPt(ctx)
 	if need := lay.natural(len(v.Items)); need > areaH+1 {
 		out = append(out, fmt.Sprintf(
-			"%s: metric-list items need %.0fpt at the smallest type scale but the content area holds about %.0fpt — 5 items hold about 90 detail characters each and 6-7 items none; shorten or drop the detail lines, drop the callout, or use fewer items",
+			"%s: metric-list items need %.0fpt at the smallest type scale but the content area holds about %.0fpt — 4 items hold about 98 detail characters each, 5 items about 40 and 6-7 items none; shorten or drop the detail lines, drop the callout, or use fewer items",
 			ErrCodeBodyTooLong, need, areaH))
 	}
 	return out

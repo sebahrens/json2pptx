@@ -117,27 +117,29 @@ func (p *processFlow) NewOverrides() any    { return &ProcessFlowOverrides{} }
 func (p *processFlow) NewCellOverride() any { return &ProcessFlowCellOverride{} }
 
 func processFlowLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
+	// Measured against the written size on every shipped template, every
+	// shape keeping the uniform 0.5 cm text margin (go-slide-creator-n1muf).
 	if pointed {
 		switch steps {
+		case 4:
+			return 80, 69
 		case 5:
-			return 76, 45
+			return 61, 41
 		case 6:
-			return 42, 28
+			return 31, 22
 		case 7:
-			return 30, 16
+			return 12, 9
 		case 8:
-			return 17, 13
+			return 10, 8
 		default:
 			return 80, 80
 		}
 	}
-	// Rectangular steps: unbroken runs measured against the written size on
-	// every shipped template (go-slide-creator-n1muf).
 	if steps == 7 {
-		return 80, 73
+		return 72, 68
 	}
 	if steps >= 8 {
-		return 80, 62
+		return 71, 59
 	}
 	return 80, 80
 }
@@ -165,7 +167,7 @@ func (p *processFlow) PostExpandWarnings(_ ExpandContext, values, _ any) []strin
 func (p *processFlow) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
-			"label": StringSchema(80).WithDescription("Step label text; chevron/arrow labels tighten to about 76/42/30/17 word-like characters at 5/6/7/8 steps, less for wide unbroken text"),
+			"label": StringSchema(80).WithDescription("Step label text; chevron/arrow labels tighten to about 61/31/12/10 word-like characters at 5/6/7/8 steps (rectangular steps about 72 at 7 and 71 at 8), less for wide unbroken text"),
 			"type":  EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: rectangle (step), diamond (decision), chevron, or right-arrow (arrow)").WithDefault("step"),
 		},
 		[]string{"label"},
@@ -275,7 +277,7 @@ func (p *processFlow) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
 		if pointed {
-			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize, chevronTextPadPt)
+			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
 		}
 
 		cell := &jsonschema.GridCellInput{
@@ -391,11 +393,12 @@ func allStepsPointed(steps []ProcessFlowStep) bool {
 	return len(steps) > 0
 }
 
-// buildProcessFlowPointedText adds padding inside the preset's text rectangle.
-// Chevron and rightArrow presets already reserve their point/notch width in
-// that rectangle; adding the notch again as bodyPr insets leaves almost no
-// room for text in narrow steps.
-func buildProcessFlowPointedText(content string, size, insetPt float64) json.RawMessage {
+// buildProcessFlowPointedText is a pointed step's label. Chevron and
+// rightArrow presets already reserve their point/notch width in their text
+// rectangle, so the label keeps only the uniform shape text margin inside it;
+// adding the notch again as bodyPr insets leaves almost no room for text in
+// narrow steps.
+func buildProcessFlowPointedText(content string, size float64) json.RawMessage {
 	type paragraph struct {
 		Content string  `json:"content"`
 		Size    float64 `json:"size"`
@@ -408,16 +411,12 @@ func buildProcessFlowPointedText(content string, size, insetPt float64) json.Raw
 		Paragraphs    []paragraph `json:"paragraphs"`
 		Align         string      `json:"align"`
 		VerticalAlign string      `json:"vertical_align"`
-		InsetLeft     float64     `json:"inset_left"`
-		InsetRight    float64     `json:"inset_right"`
 	}{
 		Paragraphs: []paragraph{
 			{Content: content, Size: size, Bold: true, Color: "lt1", Align: "ctr"},
 		},
 		Align:         "ctr",
 		VerticalAlign: "ctr",
-		InsetLeft:     insetPt,
-		InsetRight:    insetPt,
 	}
 
 	data, _ := json.Marshal(textObj)

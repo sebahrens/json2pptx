@@ -7,7 +7,7 @@
   ],
   "rows": [
     {
-      "max_height": 126.39999999999999,
+      "max_height": 118.74645669291337,
       "cells": [
         {
           "row_span": 2,
@@ -30,16 +30,15 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "b",
-              "inset_bottom": 21.599999999999998
+              "vertical_align": "b"
             }
           }
         }
       ]
     },
     {
-      "min_height": 35.2,
-      "max_height": 35.2,
+      "min_height": 49.14645669291339,
+      "max_height": 49.14645669291339,
       "cells": [
         {
           "shape": {

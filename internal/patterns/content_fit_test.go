@@ -41,7 +41,9 @@ func TestShapeTextHeightPt(t *testing.T) {
 
 func TestHeaderRowAndCardHeights(t *testing.T) {
 	h := headerRowPt("", []string{"Short", "A somewhat longer header"}, 16, 400)
-	if h < 16*1.2 || h > 50 {
+	// One 16pt line plus the uniform top+bottom shape text margin and band
+	// padding; a second line would push it past the upper bound.
+	if lo, hi := 16*1.2+2*defaultShapeInsetTBPt, 16*1.5+2*defaultShapeInsetTBPt+headerBandPadPt; h < lo || h > hi {
 		t.Errorf("one-line 16pt header band = %g, want ~1.2x line height + padding", h)
 	}
 	if h := headerRowPt("", nil, 16, 400); h <= 0 {

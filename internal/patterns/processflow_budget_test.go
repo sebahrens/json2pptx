@@ -14,16 +14,21 @@ func TestProcessFlowLabelBudgetWarnings(t *testing.T) {
 		label    string
 		wantWarn bool
 	}{
-		{"sparse_chevron", 4, "chevron", strings.Repeat("W", 80), false},
-		{"five_chevrons_at_limit", 5, "chevron", strings.Repeat("word ", 15) + "w", false},
-		{"five_chevrons_over_limit", 5, "chevron", strings.Repeat("word ", 15) + "ww", true},
-		{"six_arrows_over_limit", 6, "arrow", strings.Repeat("word ", 8) + "xxx", true},
-		{"seven_steps_wide_over_limit", 7, "step", strings.Repeat("W", 77), true},
-		{"eight_decisions_wide_at_limit", 8, "decision", strings.Repeat("W", 62), false},
-		{"eight_decisions_wide_over_limit", 8, "decision", strings.Repeat("W", 65), true},
-		{"eight_chevrons_word_like_over_limit", 8, "chevron", strings.Repeat("word ", 3) + "www", true},
-		{"eight_arrows_wide_at_limit", 8, "arrow", strings.Repeat("W", 13), false},
-		{"eight_arrows_wide_over_limit", 8, "arrow", strings.Repeat("W", 14), true},
+		{"sparse_chevron_wide_at_limit", 4, "chevron", strings.Repeat("W", 69), false},
+		{"sparse_chevron_wide_over_limit", 4, "chevron", strings.Repeat("W", 70), true},
+		{"sparse_chevron_word_like_max", 4, "chevron", strings.Repeat("word ", 16), false},
+		{"five_chevrons_at_limit", 5, "chevron", strings.Repeat("word ", 12) + "w", false},
+		{"five_chevrons_over_limit", 5, "chevron", strings.Repeat("word ", 12) + "ww", true},
+		{"six_arrows_at_limit", 6, "arrow", strings.Repeat("word ", 6) + "w", false},
+		{"six_arrows_over_limit", 6, "arrow", strings.Repeat("word ", 6) + "xx", true},
+		{"seven_steps_wide_at_limit", 7, "step", strings.Repeat("W", 68), false},
+		{"seven_steps_wide_over_limit", 7, "step", strings.Repeat("W", 69), true},
+		{"eight_decisions_wide_at_limit", 8, "decision", strings.Repeat("W", 59), false},
+		{"eight_decisions_wide_over_limit", 8, "decision", strings.Repeat("W", 60), true},
+		{"eight_chevrons_word_like_at_limit", 8, "chevron", "word wordw", false},
+		{"eight_chevrons_word_like_over_limit", 8, "chevron", "word wordww", true},
+		{"eight_arrows_wide_at_limit", 8, "arrow", strings.Repeat("W", 8), false},
+		{"eight_arrows_wide_over_limit", 8, "arrow", strings.Repeat("W", 9), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := &ProcessFlowValues{Steps: make([]ProcessFlowStep, tc.count)}

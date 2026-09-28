@@ -55,8 +55,9 @@ const (
 	// 700 = 7pt
 	pyramidDescFontSizeSmall int = 700
 
-	// pyramidTextInset is the text inset for level shapes (EMU). ~0.05"
-	pyramidTextInset int64 = 45720
+	// pyramidTextInset is the text inset for level shapes (EMU): the uniform
+	// 0.5 cm shape text margin.
+	pyramidTextInset = pptx.ShapeTextInsetEMU
 
 	// pyramidTopWidthRatio is the width ratio for the top (apex) level.
 	// 0.15 = 15% of full width, matching the SVG default.
@@ -259,7 +260,7 @@ func generatePyramidGroupXML(panels []nativePanelData, bounds types.BoundingBox,
 			Text: &pptx.TextBody{
 				Wrap:       "square",
 				Anchor:     "ctr",
-				Insets:     [4]int64{pyramidTextInset, pyramidTextInset, pyramidTextInset, pyramidTextInset},
+				Insets:     pptx.ShapeTextInsets(),
 				AutoFit:    "normAutofit",
 				Paragraphs: paras,
 			},

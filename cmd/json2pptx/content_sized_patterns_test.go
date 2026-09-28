@@ -262,7 +262,9 @@ func TestProcessFlowCompactChevronResolvedGeometry(t *testing.T) {
 			continue
 		}
 		shapes++
-		if !bytes.Contains(shape, []byte(`lIns="38100"`)) || !bytes.Contains(shape, []byte(`rIns="38100"`)) {
+		// The preset's text rectangle clears the point and notch; the label
+		// keeps the uniform 0.5 cm side margin inside it.
+		if !bytes.Contains(shape, []byte(`lIns="180000"`)) || !bytes.Contains(shape, []byte(`rIns="180000"`)) {
 			t.Errorf("chevron XML has wrong text insets: %s", shape)
 		}
 	}

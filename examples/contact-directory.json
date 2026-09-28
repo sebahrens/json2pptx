@@ -14,7 +14,7 @@
             {
               "name": "North America",
               "people": [
-                {"name": "Jane Smith", "title": "Managing Director & Partner, New York"},
+                {"name": "Jane Smith", "title": "Partner, New York"},
                 {"name": "Arun Patel", "title": "Partner, Toronto"},
                 {"name": "Lila Romero", "title": "Principal, Chicago"},
                 {"name": "Tom Becker", "title": "Principal, San Francisco"}
@@ -23,18 +23,9 @@
             {
               "name": "Europe",
               "people": [
-                {"name": "Sophie Laurent", "title": "Managing Director & Partner, Paris"},
+                {"name": "Sophie Laurent", "title": "Partner, Paris"},
                 {"name": "Henrik Nilsson", "title": "Partner, Stockholm"},
                 {"name": "Marta Kowalska", "title": "Principal, Warsaw"}
-              ]
-            },
-            {
-              "name": "Asia-Pacific",
-              "people": [
-                {"name": "Kenji Watanabe", "title": "Managing Director & Partner, Tokyo"},
-                {"name": "Priya Raghunathan", "title": "Partner, Singapore"},
-                {"name": "Oliver Chen", "title": "Principal, Sydney"},
-                {"name": "Mei-Ling Huang", "title": "Principal, Shanghai"}
               ]
             }
           ]
@@ -53,7 +44,7 @@
             {
               "name": "Engagement leadership",
               "people": [
-                {"name": "Alexandra Richardson-Whitfield", "title": "Senior Partner and Global Head of Asset Management"},
+                {"name": "Alexandra Richardson-Whitfield", "title": "Senior Partner, Asset Management"},
                 {"name": "Arun Patel", "title": "Partner, Data & AI"},
                 {"name": "Lila Romero", "title": "Principal, Operations"}
               ]

@@ -39,9 +39,10 @@ func TestCLIGridBodyBelowRoleFloorCannotPublish(t *testing.T) {
 }
 
 // The lone axis numbers on examples/sovereign-ai-strategy.json slide 9 are
-// marker labels, not KPIs: the 24pt "4" in its 6% band is written at 54%
-// autofit (~13pt), above a marker's floor but below the 18pt KPI floor. The
-// same band holding a real figure must still refuse at the KPI floor.
+// marker labels, not KPIs, and must never be refused. Their 6% band is too
+// short for one 24pt line plus the uniform 0.5 cm text margin, so the writer
+// clamps the margin and writes the run at full size — which also keeps a real
+// figure in the same band above the KPI floor.
 func TestCLIGridAxisMarkerIsNotKPIButLoneFigureIs(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join(testutil.RepoRoot(), "examples", "sovereign-ai-strategy.json"))
 	if err != nil {
@@ -105,11 +106,19 @@ func TestCLIGridAxisMarkerIsNotKPIButLoneFigureIs(t *testing.T) {
 			}
 		})
 	}
+	// The band is shorter than one 24pt line plus the uniform 0.5 cm margin,
+	// so the writer clamps its vertical margin (a degenerate shape) and the
+	// figure keeps its full written size: a real figure in the same band is
+	// now readable at the KPI floor rather than shrunk below it.
 	for _, figure := range []string{"$4.2M", "78%"} {
 		result, err := run(t, deck(t, "warm-coral", figure))
-		finding := firstFindingCode(result.FitFindings, patterns.ErrCodeTextBelowReadableMin)
-		if err == nil || result.Success || finding == nil || finding.Action != "refuse" || !strings.Contains(finding.Message, "kpi-value") || !strings.Contains(finding.Message, "written 24.0pt") {
-			t.Fatalf("lone figure %q below the KPI floor published: %v %+v", figure, err, result.FitFindings)
+		for _, f := range result.FitFindings {
+			if f.Code == patterns.ErrCodeTextBelowReadableMin && strings.Contains(f.Message, "written 24.0pt") {
+				t.Fatalf("lone figure %q shrunk below its floor despite the clamped margin: %v %s", figure, err, f.Message)
+			}
+		}
+		if err != nil || !result.Success {
+			t.Fatalf("lone figure %q refused: %v %+v", figure, err, result.FitFindings)
 		}
 	}
 }

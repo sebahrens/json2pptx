@@ -80,7 +80,11 @@ func (a *agenda) NewCellOverride() any { return &AgendaCellOverride{} }
 
 func (a *agenda) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*AgendaValues)
-	if !ok || v == nil || len(v.Items) < 8 {
+	if !ok || v == nil {
+		return nil
+	}
+	limit := agendaUnbrokenBudget(len(v.Items))
+	if limit == 0 {
 		return nil
 	}
 	var warnings []string
@@ -89,11 +93,25 @@ func (a *agenda) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 		for _, word := range strings.Fields(title) {
 			longest = max(longest, runeLen(word))
 		}
-		if longest > 58 {
-			warnings = append(warnings, fmt.Sprintf("%s: agenda items[%d] contains a %d-character unbroken word; eight to ten rows hold about 58 wide characters per title — add a word break, shorten the title, or split the agenda", ErrCodeBodyTooLong, i, longest))
+		if longest > limit {
+			warnings = append(warnings, fmt.Sprintf("%s: agenda items[%d] contains a %d-character unbroken word; %d rows hold about %d wide characters per title — add a word break, shorten the title, or split the agenda", ErrCodeBodyTooLong, i, longest, len(v.Items), limit))
 		}
 	}
 	return warnings
+}
+
+// agendaUnbrokenBudget is the widest unbroken run a title holds at an item
+// count, measured by TestAgendaBudgetProbe against the written size on every
+// shipped template with the uniform shape text margin; 0 means the schema
+// maximum holds.
+func agendaUnbrokenBudget(items int) int {
+	switch {
+	case items >= 6:
+		return 59
+	case items == 5:
+		return 61
+	}
+	return 0
 }
 
 func (a *agenda) Schema() *Schema {
@@ -101,7 +119,7 @@ func (a *agenda) Schema() *Schema {
 		map[string]*Schema{
 			"values": ObjectSchema(
 				map[string]*Schema{
-					"items": ArraySchema(StringSchema(100).WithDescription("Section title; with 8-10 items, keep wide unbroken runs near 58 characters or add word breaks"), 2, 10).
+					"items": ArraySchema(StringSchema(100).WithDescription("Section title; with 5-10 items, keep wide unbroken runs near 59 characters or add word breaks"), 2, 10).
 						WithDescription("Section titles in order"),
 				},
 				[]string{"items"},

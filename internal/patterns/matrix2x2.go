@@ -161,14 +161,18 @@ func (m *matrix2x2) NewOverrides() any    { return &Matrix2x2Overrides{} }
 func (m *matrix2x2) NewCellOverride() any { return &Matrix2x2CellOverride{} }
 
 // matrixBodyRunBudget is the unbroken body run a quadrant holds beside header.
+// matrixHeaderRunBudget is the header unbroken run past which the body keeps
+// only about 40 characters.
+const matrixHeaderRunBudget = 47
+
 func matrixBodyRunBudget(header string, headerRun int) int {
 	switch {
-	case headerRun > 68:
-		return 62
+	case headerRun > matrixHeaderRunBudget:
+		return 40
 	case runeLen(header) >= 40:
-		return 156
+		return 126
 	default:
-		return 188
+		return 163
 	}
 }
 
@@ -194,12 +198,13 @@ func (m *matrix2x2) PostExpandWarnings(_ ExpandContext, values, _ any) []string 
 			bodyRun = max(bodyRun, runeLen(word))
 		}
 		// Budgets measured against the written size on every shipped
-		// template (go-slide-creator-n1muf): a body's unbroken run holds
-		// about 188 characters beside a short header, 156 beside a long
-		// worded header, and 62 beside a header with an unbroken run over
-		// 68 characters (which also leaves no room for longer worded copy).
+		// template with the uniform 0.5 cm shape text margin
+		// (go-slide-creator-n1muf): a body's unbroken run holds about 163
+		// characters beside a short header, 126 beside a long worded header,
+		// and 40 beside a header with an unbroken run over 47 characters
+		// (which also leaves no room for longer worded copy).
 		budget := matrixBodyRunBudget(quadrant.value.Header, headerRun)
-		if bodyRun > budget || (headerRun > 68 && runeLen(quadrant.value.Body) > 62) {
+		if bodyRun > budget || (headerRun > matrixHeaderRunBudget && runeLen(quadrant.value.Body) > 40) {
 			warnings = append(warnings, fmt.Sprintf("%s: matrix-2x2 %s.header/body contain %d/%d-character unbroken runs; this header leaves about %d wide characters for its body — add word breaks or shorten the paired copy", ErrCodeBodyTooLong, quadrant.name, headerRun, bodyRun, budget))
 		}
 	}
@@ -213,7 +218,7 @@ func (m *matrix2x2) Schema() *Schema {
 	quadrantObjSchema := ObjectSchema(
 		map[string]*Schema{
 			"header": StringSchema(80).WithDescription("Quadrant header text"),
-			"body":   StringSchema(200).WithDescription("Quadrant body text; keep unbroken runs near 188 characters (156 beside a long header; 62 and at most 62 characters of copy beside a header with an unbroken run over 68) or add word breaks"),
+			"body":   StringSchema(200).WithDescription("Quadrant body text; keep unbroken runs near 163 characters (126 beside a long header; 40 and at most 40 characters of copy beside a header with an unbroken run over 47) or add word breaks"),
 			"icon":   IconRefSchema(""),
 		},
 		[]string{"header"},
@@ -575,14 +580,10 @@ func matrix2x2AxisEndText(content string, size float64, align, vAlign string) js
 		Paragraphs    []paragraph `json:"paragraphs"`
 		Align         string      `json:"align"`
 		VerticalAlign string      `json:"vertical_align"`
-		InsetLeft     float64     `json:"inset_left"`
-		InsetRight    float64     `json:"inset_right"`
 	}{
 		Paragraphs:    []paragraph{{Content: content, Size: size, Color: "dk1", Align: align}},
 		Align:         align,
 		VerticalAlign: vAlign,
-		InsetLeft:     2,
-		InsetRight:    2,
 	}
 	data, _ := json.Marshal(textObj)
 	return data

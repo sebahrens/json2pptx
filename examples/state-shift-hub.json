@@ -12,19 +12,18 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Agentic AI reshapes every workflow stage"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Agentic AI reshapes three workflow stages"}
       ],
       "pattern": {
         "name": "state-shift-hub",
         "values": {
           "hub_label": "Today's state vs. agentic state",
           "left_header": "TODAY'S STATE",
-          "right_header": "AGENTIC STATE (doing more in less time)",
+          "right_header": "AGENTIC STATE",
           "pairs": [
-            {"title": "Intake", "before": "Requests arrive by email and wait days for manual triage", "after": "Agents classify, enrich and route requests on arrival"},
-            {"title": "Research", "before": "Analysts spend days assembling scattered context", "after": "Agents draft a sourced brief in minutes"},
-            {"title": "Decision", "before": "Committees review options weekly", "after": "Owners approve options the same day"},
-            {"title": "Follow-up", "before": "Status is chased manually across email and spreadsheets", "after": "Agents track progress and escalate exceptions"}
+            {"title": "Intake", "before": "Email requests wait days for triage", "after": "Agents route requests on arrival"},
+            {"title": "Research", "before": "Context scattered for days", "after": "A sourced brief in minutes"},
+            {"title": "Decision", "before": "Weekly committee reviews", "after": "Owners approve the same day"}
           ]
         }
       }
@@ -32,21 +31,17 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Six shifts in how the finance close runs"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Four shifts in how the finance close runs"}
       ],
       "pattern": {
         "name": "state-shift-hub",
         "values": {
           "hub_label": "Current close vs. target close",
-          "left_header": "CURRENT STATE",
-          "right_header": "TARGET STATE",
           "pairs": [
             {"title": "Data capture", "before": "Manual ledger uploads", "after": "Automated nightly feeds"},
             {"title": "Reconciliation", "before": "Matching by hand", "after": "Rules clear 90% of items"},
-            {"title": "Accruals", "before": "Last month's estimate", "after": "Live commitments"},
             {"title": "Review", "before": "Line-by-line sign-off", "after": "Exception-based review"},
-            {"before_title": "Reporting", "after_title": "Insight", "before": "Week-late static packs", "after": "Live dashboards by day 3"},
-            {"title": "Controls", "before": "After-the-fact sampling", "after": "Continuous monitoring"}
+            {"before_title": "Reporting", "after_title": "Insight", "before": "Week-late static packs", "after": "Live dashboards by day 3"}
           ]
         }
       }
@@ -61,9 +56,9 @@
         "values": {
           "hub_label": "As-is vs. to-be",
           "pairs": [
-            {"title": "Customers", "before": "Served through a single call centre with long wait times at peak", "after": "Self-serve first, with agents handling complex cases"},
-            {"title": "Operations", "before": "Batch processing overnight with frequent manual rework", "after": "Straight-through processing in real time"},
-            {"title": "People", "before": "Specialists tied up in routine checks", "after": "Specialists focused on judgement calls and coaching"}
+            {"title": "Customers", "before": "One call centre with long waits at peak", "after": "Self-serve first; agents take complex cases"},
+            {"title": "Operations", "before": "Overnight batches with manual rework", "after": "Straight-through processing in real time"},
+            {"title": "People", "before": "Specialists tied up in routine checks", "after": "Specialists focused on judgement calls"}
           ]
         },
         "overrides": {"accent": "accent2"}

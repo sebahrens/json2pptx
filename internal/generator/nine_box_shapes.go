@@ -69,9 +69,6 @@ const (
 	// nineBoxLabelHeightRatio is the fraction of cell height used for the label area.
 	nineBoxLabelHeightRatio = 0.22
 
-	// nineBoxCellInset is the text inset for cell text (EMU).
-	nineBoxCellInset int64 = 72000 // ~0.079"
-
 	// nineBoxAxisSpace is the space reserved for axis labels (EMU).
 	// Y-axis labels on the left, X-axis labels on the bottom.
 	nineBoxAxisLabelSpace int64 = 457200 // ~0.5"
@@ -431,7 +428,7 @@ func generateNineBoxCellLabelXML(label string, x, y, cx, cy int64, shapeID uint3
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{nineBoxCellInset, 0, nineBoxCellInset, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
@@ -480,7 +477,7 @@ func generateNineBoxCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32,
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",
-			Insets:     [4]int64{nineBoxCellInset, nineBoxCellInset, nineBoxCellInset, nineBoxCellInset},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},
@@ -504,7 +501,7 @@ func generateNineBoxAxisLabelXML(text string, x, y, cx, cy int64, shapeID uint32
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{0, 0, 0, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    align,
@@ -540,7 +537,7 @@ func generateNineBoxAxisTitleVerticalXML(text string, x, y, cx, cy int64, shapeI
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{0, 0, 0, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",

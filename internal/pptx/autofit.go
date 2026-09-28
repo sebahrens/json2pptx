@@ -28,6 +28,9 @@ const (
 	// autofitDefaultInsetPt is the default body inset (0.05in top/bottom,
 	// 0.1in left/right) in points, used when a body declares none.
 	autofitDefaultInsetPt = 3.6
+	// autofitMeasureSideEMU is the side margin textfit.MeasureRun removes
+	// from every width it measures (the OOXML 0.1in default).
+	autofitMeasureSideEMU = 91440
 	// autofitScaleDenominator converts a 0..1 scale to OOXML's
 	// percent-thousandths (0.62 -> 62000).
 	autofitScaleDenominator = 100000
@@ -79,7 +82,17 @@ func AutofitScaleFor(tb *TextBody, bounds RectEmu) float64 {
 		// No declared insets: the renderer still applies its defaults.
 		availablePt -= 2 * autofitDefaultInsetPt
 	}
-	scale, _ := textfit.AutofitScale(paras, widthEMU, availablePt, textfit.AutofitOptions{
+	measureW := widthEMU
+	if tb.Insets != [4]int64{} {
+		// textfit.MeasureRun removes the OOXML default 0.1in sides from the
+		// width it is handed. A body with declared insets has already had its
+		// own removed (textAreaEMU), so hand the measurement that allowance
+		// back — otherwise every shape is measured 14.4pt narrower than the
+		// text area it writes, the same correction internal/textcapacity makes
+		// at its measurement boundary.
+		measureW += 2 * autofitMeasureSideEMU
+	}
+	scale, _ := textfit.AutofitScale(paras, measureW, availablePt, textfit.AutofitOptions{
 		FontName:    autofitFontName,
 		LineSpacing: autofitLineSpacing,
 		FloorScale:  autofitFloorScale,
@@ -113,9 +126,9 @@ func SetAutofitScale(tb *TextBody, scale float64) {
 // after the body's insets.
 func textAreaEMU(tb *TextBody, bounds RectEmu) (width, height int64) {
 	width, height = bounds.CX, bounds.CY
-	if tb.Insets != [4]int64{} {
-		width -= tb.Insets[0] + tb.Insets[2]
-		height -= tb.Insets[1] + tb.Insets[3]
+	if in := EffectiveTextInsets(tb, bounds); in != [4]int64{} {
+		width -= in[0] + in[2]
+		height -= in[1] + in[3]
 	}
 	return width, height
 }

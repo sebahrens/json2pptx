@@ -68,7 +68,7 @@ func nativeProcessFlowPreflight(spec *types.DiagramSpec, font, path string, widt
 	layout := computeProcessFlowLayout(steps, connections, bounds, direction, font)
 	for i, step := range steps {
 		box := layout.steps[i]
-		usableW, availableH := pfTextArea(step.stepType, box.cx, box.cy)
+		usableW, availableH := pfTextArea(step, font, box.cx, box.cy)
 		if usableW < 1 {
 			usableW = 1
 		}

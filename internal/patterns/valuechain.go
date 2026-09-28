@@ -96,7 +96,7 @@ func (vc *valueChain) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":       StringSchema(40).WithDescription("Short step label (1-3 words)"),
-			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 7/8/9/10 steps about 165/162/151/148 characters, and keep unbroken runs near 160/133/112/97/84 characters at 6/7/8/9/10 steps or add word breaks"),
+			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 7/8/9/10 steps about 152/141/140/72 characters, and keep unbroken runs near 167/142/123/108/72 characters at 6/7/8/9/10 steps or add word breaks"),
 			"highlight":   BooleanSchema().WithDescription("When true, the label row uses the highlight color (default accent2) instead of dk2"),
 		},
 		[]string{"label"},
@@ -280,15 +280,15 @@ func valueChainDescriptionBudgets(steps int) (words, wide int) {
 	case steps <= 5:
 		return valueChainDescriptionMax, valueChainDescriptionMax
 	case steps == 6:
-		return valueChainDescriptionMax, 160
+		return valueChainDescriptionMax, 167
 	case steps == 7:
-		return 165, 133
+		return 152, 142
 	case steps == 8:
-		return 162, 112
+		return 141, 123
 	case steps == 9:
-		return 151, 97
+		return 140, 108
 	default:
-		return 148, 84
+		return 72, 72
 	}
 }
 

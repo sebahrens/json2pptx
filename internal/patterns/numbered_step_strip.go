@@ -138,8 +138,8 @@ func (n *numberedStepStrip) NewCellOverride() any { return &NumberedStepStripCel
 func (n *numberedStepStrip) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
-			"label":       StringSchema(60).WithDescription("Short ordinal step label. Six-step chevrons hold about 45 readable characters per label at default size; all other supported styles/counts hold 60"),
-			"body":        StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone; about 178 readable characters in a chevron detail zone, 120 with six or seven stacked-box rows, 116 with six or seven toc rows"),
+			"label":       StringSchema(60).WithDescription("Short ordinal step label. Five-step chevrons hold about 41 readable characters per label at default size and six-step chevrons about 16; all other supported styles/counts hold 60"),
+			"body":        StringSchema(180).WithDescription("Optional 1-3 line explanation rendered in the detail zone; about 177 readable characters in a chevron detail zone; stacked-box rows hold about 117 at five steps, toc rows about 117 at four and 40 at five; six or seven stacked-box / toc rows hold no body"),
 			"recommended": BooleanSchema().WithDescription("Highlight this row with an accent fill and Recommended badge (stacked-box style)"),
 			"number":      StringSchema(6).WithDescription("Optional ordinal override (e.g. \"01\", \"A\"); defaults to the 1-based index"),
 			"tip_color":   StringSchema(0).WithDescription("Optional scheme color for this step's number / tip lane (default: rotating accent)"),
@@ -260,12 +260,12 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 		return nil
 	}
 	if vals.Style != numberedStepStripChevron {
-		return numberedStepSevenRowWarnings(vals)
+		return numberedStepRowWarnings(vals)
 	}
 	var warnings []string
 	for i, step := range vals.Steps {
-		if length := runeLen(step.Label); len(vals.Steps) == 6 && length > numberedStepSixChevronLabelBudget {
-			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].label is %d characters; a six-step chevron holds about %d readable label characters — shorten the label or use fewer steps", ErrCodeBodyTooLong, i, length, numberedStepSixChevronLabelBudget))
+		if budget, length := numberedStepChevronLabelBudget(len(vals.Steps)), runeLen(step.Label); budget > 0 && length > budget {
+			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].label is %d characters; a %d-step chevron holds about %d readable label characters — shorten the label or use fewer steps", ErrCodeBodyTooLong, i, length, len(vals.Steps), budget))
 		}
 		if length := runeLen(strings.TrimSpace(step.Body)); length > numberedStepChevronBodyBudget {
 			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].body is %d characters; a chevron detail zone holds about %d readable characters — shorten the body", ErrCodeBodyTooLong, i, length, numberedStepChevronBodyBudget))
@@ -296,28 +296,67 @@ func (n *numberedStepStrip) PostExpandWarnings(ctx ExpandContext, values, overri
 
 // Readable targets measured by TestNumberedStepBudgetProbe against the
 // written size (no run stored below its role floor) on every shipped template
-// at default sizes (go-slide-creator-n1muf): six or seven stacked-box / toc
-// rows, a six-step chevron label, and any chevron detail body.
+// at default sizes (go-slide-creator-n1muf), with every shape keeping the
+// uniform 0.5 cm text margin: five- and six-step chevron labels, any chevron
+// detail body, and stacked-box / toc bodies from four (toc) or five
+// (stacked-box) rows up. Six or seven stacked rows hold a label and no body.
 const (
-	numberedStepSevenStackedBodyBudget = 120
-	numberedStepSevenTOCBodyBudget     = 116
-	numberedStepSixChevronLabelBudget  = 45
-	numberedStepChevronBodyBudget      = 178
+	numberedStepFiveChevronLabelBudget = 41
+	numberedStepSixChevronLabelBudget  = 16
+	numberedStepChevronBodyBudget      = 177
+	numberedStepFiveStackedBodyBudget  = 117
+	numberedStepFourTOCBodyBudget      = 117
+	numberedStepFiveTOCBodyBudget      = 40
 )
 
-// numberedStepSevenRowWarnings reports stacked-box / toc bodies past the
-// six- and seven-row readable target.
-func numberedStepSevenRowWarnings(vals *NumberedStepStripValues) []string {
-	if len(vals.Steps) < numberedStepStripMaxSteps-1 {
-		return nil
+// numberedStepChevronLabelBudget is the readable label length of a chevron at
+// a step count, or 0 when the schema maximum holds.
+func numberedStepChevronLabelBudget(steps int) int {
+	switch steps {
+	case 5:
+		return numberedStepFiveChevronLabelBudget
+	case 6:
+		return numberedStepSixChevronLabelBudget
 	}
-	style, budget := numberedStepStripStackedBox, numberedStepSevenStackedBodyBudget
+	return 0
+}
+
+// numberedStepRowBodyBudget is the readable body length per step of a
+// stacked-box / toc strip at a step count: -1 when the schema maximum holds,
+// 0 when the rows hold no body at all.
+func numberedStepRowBodyBudget(style string, steps int) int {
+	switch {
+	case steps >= numberedStepStripMaxSteps-1:
+		return 0
+	case style == numberedStepStripTOC && steps == 5:
+		return numberedStepFiveTOCBodyBudget
+	case style == numberedStepStripTOC && steps == 4:
+		return numberedStepFourTOCBodyBudget
+	case steps == 5:
+		return numberedStepFiveStackedBodyBudget
+	}
+	return -1
+}
+
+// numberedStepRowWarnings reports stacked-box / toc bodies past the readable
+// target for the step count.
+func numberedStepRowWarnings(vals *NumberedStepStripValues) []string {
+	style := numberedStepStripStackedBox
 	if vals.Style == numberedStepStripTOC {
-		style, budget = numberedStepStripTOC, numberedStepSevenTOCBodyBudget
+		style = numberedStepStripTOC
+	}
+	budget := numberedStepRowBodyBudget(style, len(vals.Steps))
+	if budget < 0 {
+		return nil
 	}
 	var warnings []string
 	for i, step := range vals.Steps {
-		if length := runeLen(strings.TrimSpace(step.Body)); length > budget {
+		length := runeLen(strings.TrimSpace(step.Body))
+		switch {
+		case length == 0 || length <= budget:
+		case budget == 0:
+			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].body is %d characters; %d %s rows hold a label and no readable body — drop the bodies or use fewer steps", ErrCodeBodyTooLong, i, length, len(vals.Steps), style))
+		default:
 			warnings = append(warnings, fmt.Sprintf("%s: numbered-step-strip steps[%d].body is %d characters; %d %s rows hold about %d readable body characters per step — shorten the body or use fewer steps", ErrCodeBodyTooLong, i, length, len(vals.Steps), style, budget))
 		}
 	}
@@ -388,7 +427,6 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 	geo := chevronStripGeometry(ctx, count)
 	fit := fitChevronLabels(ctx, vals, geo, labelSize)
 	labelSize = fit.labelPt
-	notchInsetPt := fit.insetPt
 
 	chevronCells := make([]*jsonschema.GridCellInput, count)
 	descCells := make([]*jsonschema.GridCellInput, count)
@@ -399,7 +437,7 @@ func (n *numberedStepStrip) expandChevron(ctx ExpandContext, vals *NumberedStepS
 			fill = ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 		}
 		textColor := readableTextOn(ctx, fillTone{Color: fill}, "lt1")
-		text := buildChevronLabelText(stepNumber(step, i), pptx.ConvertMarkdownEmphasis(step.Label), labelSize, textColor, notchInsetPt)
+		text := buildChevronLabelText(stepNumber(step, i), pptx.ConvertMarkdownEmphasis(step.Label), labelSize, textColor)
 		cell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry:    "chevron",
@@ -487,18 +525,19 @@ const (
 	chevronFitSafetyFrac = 0.90
 	// chevronDescDefaultSize is the default detail-zone text size (pt).
 	chevronDescDefaultSize = 12.0
-	// chevronTextPadPt is extra breathing room beyond the notch depth.
-	chevronTextPadPt = 3.0
-	// chevronDescInsetPt matches the default shape text inset (0.1in ≈ 7.2pt).
-	chevronDescInsetPt = 7.2
+	// chevronDescInsetPt is the detail zone's side margin: the uniform shape
+	// text inset.
+	chevronDescInsetPt = defaultShapeInsetLRPt
 	chevronRowGapPt    = 6.0
 	chevronLineHeight  = 1.25
 	// chevronMaxAspectH caps chevron height at half its width (width >= 2x height).
 	chevronMaxAspectH = 0.5
 	// chevronMaxHeightFrac caps the chevron row at this share of the content height.
 	chevronMaxHeightFrac = 0.3
-	// chevronMinHeightPt keeps a two-line (number + label) chevron legible.
-	chevronMinHeightPt = 44.0
+	// chevronMinHeightPt keeps a two-line (number + label) chevron legible:
+	// an 11pt number and a 13pt label at 1.2 line height plus the uniform
+	// top and bottom shape margin.
+	chevronMinHeightPt = 58.0
 )
 
 // chevronGeometry is the estimated per-step geometry of a chevron strip.
@@ -545,7 +584,6 @@ func chevronStripGeometry(ctx ExpandContext, count int) chevronGeometry {
 // a little blunter) and label size only after that.
 type chevronLabelFit struct {
 	adj     int64    // chevron adjustment value, ×100000 of the shorter side
-	insetPt float64  // text inset clearing the notch on both sides
 	labelPt float64  // label size that keeps every label on one line
 	unfit   []string // labels that still wrap at the readable floor
 }
@@ -559,13 +597,12 @@ func fitChevronLabels(ctx ExpandContext, vals *NumberedStepStripValues, geo chev
 	// Deepest notch first: the arrow stays as pointed as the labels allow.
 	for adj := int64(chevronAdj); adj >= chevronMinAdj; adj -= chevronAdjStep {
 		if chevronLabelsFitOneLine(labels, font, labelPt, chevronLabelWidthPt(geo, adj)) {
-			return chevronLabelFit{adj: adj, insetPt: chevronInsetPt(geo, adj), labelPt: labelPt}
+			return chevronLabelFit{adj: adj, labelPt: labelPt}
 		}
 	}
 
 	// Even the shallowest notch is not enough, so the label shrinks — never
 	// below the readable floor, where the label has to get shorter instead.
-	inset := chevronInsetPt(geo, chevronMinAdj)
 	avail := chevronLabelWidthPt(geo, chevronMinAdj)
 	size := labelPt
 	for _, label := range labels {
@@ -573,7 +610,7 @@ func fitChevronLabels(ctx ExpandContext, vals *NumberedStepStripValues, geo chev
 			size = s
 		}
 	}
-	fit := chevronLabelFit{adj: chevronMinAdj, insetPt: inset, labelPt: size}
+	fit := chevronLabelFit{adj: chevronMinAdj, labelPt: size}
 	for _, label := range labels {
 		if measuredLines(label, font, true, size, avail) > 1 {
 			fit.unfit = append(fit.unfit, label)
@@ -610,24 +647,16 @@ func chevronNotchPt(geo chevronGeometry, adj int64) float64 {
 	return float64(adj) / 100000 * math.Min(geo.chevHPt, geo.stepWPt)
 }
 
-// chevronInsetPt is the text inset for a given notch depth: the notch itself
-// plus breathing room, on each side.
-func chevronInsetPt(geo chevronGeometry, adj int64) float64 {
-	return chevronNotchPt(geo, adj) + chevronTextPadPt
-}
-
 // chevronLabelWidthPt is the width a label is measured against.
 //
-// The notch is subtracted TWICE. A renderer lays text out inside the chevron's
-// own text rectangle, which is already pulled in past the point and the notch;
-// the lIns/rIns this pattern emits (for the renderers that do not) then stack
-// on top of that. Measuring against the shape width minus our inset alone said
-// a 13pt "Qualification" fitted in 84pt, and LibreOffice broke it at "Qualific
-// / ation" — the label really had about 51pt (go-slide-creator-e97v).
+// A renderer lays text out inside the chevron's own text rectangle, which is
+// already pulled in past the point and the notch; the uniform shape text
+// margin then stacks on top of that on both sides. Measuring against the shape
+// width alone said a 13pt "Qualification" fitted, and LibreOffice broke it at
+// "Qualific / ation" (go-slide-creator-e97v).
 func chevronLabelWidthPt(geo chevronGeometry, adj int64) float64 {
 	notch := chevronNotchPt(geo, adj)
-	inset := notch + chevronTextPadPt
-	return (geo.stepWPt - 2*inset - 2*notch) * chevronFitSafetyFrac
+	return (geo.stepWPt - 2*notch - 2*defaultShapeInsetLRPt) * chevronFitSafetyFrac
 }
 
 // chevronLabelsFitOneLine reports whether every label renders on a single line
@@ -684,25 +713,16 @@ func estimateWrappedLines(text string, sizePt, widthPt float64) int {
 }
 
 // buildChevronLabelText renders the number + label inside a chevron. The
-// left inset clears the tail notch and the right inset clears the point, so
-// no glyph falls into the notch (which shows the slide background) even in
-// renderers that lay text out over the whole shape box.
-func buildChevronLabelText(number, label string, size float64, color string, insetPt float64) json.RawMessage {
-	obj := struct {
-		numberedStepTextObj
-		InsetLeft  float64 `json:"inset_left"`
-		InsetRight float64 `json:"inset_right"`
-	}{
-		numberedStepTextObj: numberedStepTextObj{
-			Paragraphs: []numberedStepParagraph{
-				{Content: number, Size: size - 2, Bold: true, Color: color, Align: "ctr"},
-				{Content: label, Size: size, Bold: true, Color: color, Align: "ctr"},
-			},
-			Align:         "ctr",
-			VerticalAlign: "ctr",
+// preset's text rectangle clears the tail notch and the point, and the
+// uniform shape text margin sits inside it.
+func buildChevronLabelText(number, label string, size float64, color string) json.RawMessage {
+	obj := numberedStepTextObj{
+		Paragraphs: []numberedStepParagraph{
+			{Content: number, Size: size - 2, Bold: true, Color: color, Align: "ctr"},
+			{Content: label, Size: size, Bold: true, Color: color, Align: "ctr"},
 		},
-		InsetLeft:  insetPt,
-		InsetRight: insetPt,
+		Align:         "ctr",
+		VerticalAlign: "ctr",
 	}
 	data, _ := json.Marshal(obj)
 	return data

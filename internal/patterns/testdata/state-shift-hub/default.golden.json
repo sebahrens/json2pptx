@@ -2,26 +2,26 @@
   "col_gap": 0.01,
   "row_gap": 6,
   "columns": [
-    26.096,
+    26.635,
     0.97,
-    3.405,
-    0.715,
-    0.254,
-    4.121,
+    2.867,
+    0.97,
+    0.284,
+    3.836,
     1.939,
     25,
     1.939,
-    4.121,
-    0.254,
-    0.715,
-    3.405,
+    3.836,
+    0.284,
     0.97,
-    26.096
+    2.867,
+    0.97,
+    26.635
   ],
   "rows": [
     {
-      "min_height": 34,
-      "max_height": 34,
+      "min_height": 55,
+      "max_height": 55,
       "cells": [
         {
           "col_span": 6,
@@ -81,7 +81,7 @@
       ]
     },
     {
-      "max_height": 68,
+      "max_height": 63,
       "cells": [
         {
           "col_span": 3,
@@ -97,7 +97,7 @@
                   "bold": true,
                   "color": "accent1",
                   "align": "r",
-                  "space_after": 2
+                  "space_after": 1
                 },
                 {
                   "content": "Requests arrive by email and are triaged by hand",
@@ -112,8 +112,8 @@
           }
         },
         {},
-        {},
         {
+          "col_span": 2,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -133,8 +133,7 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr",
-              "inset_top": 0.5
+              "vertical_align": "ctr"
             }
           }
         },
@@ -168,6 +167,7 @@
         },
         {},
         {
+          "col_span": 2,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -184,12 +184,10 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr",
-              "inset_top": 0.5
+              "vertical_align": "ctr"
             }
           }
         },
-        {},
         {},
         {
           "col_span": 3,
@@ -205,7 +203,7 @@
                   "bold": true,
                   "color": "accent1",
                   "align": "l",
-                  "space_after": 2
+                  "space_after": 1
                 },
                 {
                   "content": "Agents classify and route every request on arrival",
@@ -222,7 +220,7 @@
       ]
     },
     {
-      "max_height": 68,
+      "max_height": 63,
       "cells": [
         {
           "shape": {
@@ -237,7 +235,7 @@
                   "bold": true,
                   "color": "accent1",
                   "align": "r",
-                  "space_after": 2
+                  "space_after": 1
                 },
                 {
                   "content": "Analysts spend days assembling context",
@@ -253,7 +251,7 @@
         },
         {},
         {
-          "col_span": 2,
+          "col_span": 3,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -273,8 +271,7 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr",
-              "inset_top": 0.5
+              "vertical_align": "ctr"
             }
           }
         },
@@ -282,10 +279,8 @@
         {},
         {},
         {},
-        {},
-        {},
         {
-          "col_span": 2,
+          "col_span": 3,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -302,8 +297,7 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr",
-              "inset_top": 0.5
+              "vertical_align": "ctr"
             }
           }
         },
@@ -321,7 +315,7 @@
                   "bold": true,
                   "color": "accent1",
                   "align": "l",
-                  "space_after": 2
+                  "space_after": 1
                 },
                 {
                   "content": "Agents draft a sourced brief in minutes",
@@ -338,7 +332,7 @@
       ]
     },
     {
-      "max_height": 68,
+      "max_height": 63,
       "cells": [
         {
           "shape": {
@@ -353,7 +347,7 @@
                   "bold": true,
                   "color": "accent1",
                   "align": "r",
-                  "space_after": 2
+                  "space_after": 1
                 },
                 {
                   "content": "Committees wait for weekly meetings",
@@ -369,7 +363,7 @@
         },
         {},
         {
-          "col_span": 2,
+          "col_span": 3,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -389,8 +383,7 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr",
-              "inset_top": 0.5
+              "vertical_align": "ctr"
             }
           }
         },
@@ -398,10 +391,8 @@
         {},
         {},
         {},
-        {},
-        {},
         {
-          "col_span": 2,
+          "col_span": 3,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -418,8 +409,7 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr",
-              "inset_top": 0.5
+              "vertical_align": "ctr"
             }
           }
         },
@@ -437,7 +427,7 @@
                   "bold": true,
                   "color": "accent1",
                   "align": "l",
-                  "space_after": 2
+                  "space_after": 1
                 },
                 {
                   "content": "Owners approve pre-analysed options same day",
@@ -454,7 +444,7 @@
       ]
     },
     {
-      "max_height": 68,
+      "max_height": 63,
       "cells": [
         {
           "col_span": 3,
@@ -470,7 +460,7 @@
                   "bold": true,
                   "color": "accent1",
                   "align": "r",
-                  "space_after": 2
+                  "space_after": 1
                 },
                 {
                   "content": "Status is chased manually",
@@ -485,8 +475,8 @@
           }
         },
         {},
-        {},
         {
+          "col_span": 2,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -506,14 +496,14 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr",
-              "inset_top": 0.5
+              "vertical_align": "ctr"
             }
           }
         },
         {},
         {},
         {
+          "col_span": 2,
           "fit": "contain",
           "shape": {
             "geometry": "ellipse",
@@ -530,12 +520,10 @@
                 }
               ],
               "align": "ctr",
-              "vertical_align": "ctr",
-              "inset_top": 0.5
+              "vertical_align": "ctr"
             }
           }
         },
-        {},
         {},
         {
           "col_span": 3,
@@ -551,7 +539,7 @@
                   "bold": true,
                   "color": "accent1",
                   "align": "l",
-                  "space_after": 2
+                  "space_after": 1
                 },
                 {
                   "content": "Agents track progress and escalate exceptions",

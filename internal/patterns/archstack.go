@@ -89,20 +89,21 @@ func (a *archStack) NewCellOverride() any { return &ArchStackCellOverride{} }
 // archStackDescriptionBudgets returns the worded and unbroken-word budgets
 // for every tier description, measured against the written size (no run
 // stored below its role floor) on every shipped template with all tiers
-// populated (go-slide-creator-n1muf). Rails narrow the tier band.
-func archStackDescriptionBudgets(tiers, rails int) (words, wide int) {
-	rails = min(max(rails, 0), 3)
+// populated and every shape keeping the uniform 0.5 cm text margin
+// (go-slide-creator-n1muf). Six tiers hold a label and no description.
+func archStackDescriptionBudgets(tiers, _ int) (words, wide int) {
 	switch {
 	case tiers <= 4:
 		return 120, 120
 	case tiers == 5:
-		return 120, [4]int{120, 68, 65, 61}[rails]
-	case rails == 3:
-		return 117, 53
+		return 40, 40
 	default:
-		return 120, [4]int{71, 58, 55, 53}[rails]
+		return 0, 0
 	}
 }
+
+// archStackRailWideBudget is the widest unbroken run a side rail holds.
+const archStackRailWideBudget = 26
 
 func (a *archStack) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*ArchStackValues)
@@ -117,10 +118,21 @@ func (a *archStack) PostExpandWarnings(_ ExpandContext, values, _ any) []string 
 			longest = max(longest, runeLen(word))
 		}
 		switch {
+		case words == 0 && strings.TrimSpace(tier.Description) != "":
+			warnings = append(warnings, fmt.Sprintf("%s: arch-stack tiers[%d].description is %d characters; %d tiers hold a label and no readable description — drop the descriptions or use five tiers or fewer", ErrCodeBodyTooLong, i, runeLen(tier.Description), len(v.Tiers)))
 		case longest > wide:
 			warnings = append(warnings, fmt.Sprintf("%s: arch-stack tiers[%d].description contains a %d-character unbroken word; %d tiers with %d rails hold about %d wide characters per description — add word breaks, shorten the copy, or drop a rail", ErrCodeBodyTooLong, i, longest, len(v.Tiers), len(v.SideRails), wide))
 		case runeLen(tier.Description) > words:
 			warnings = append(warnings, fmt.Sprintf("%s: arch-stack tiers[%d].description is %d characters; %d tiers with %d rails hold about %d readable characters per description — shorten the copy", ErrCodeBodyTooLong, i, runeLen(tier.Description), len(v.Tiers), len(v.SideRails), words))
+		}
+	}
+	for i, rail := range v.SideRails {
+		longest := 0
+		for _, word := range strings.Fields(rail) {
+			longest = max(longest, runeLen(word))
+		}
+		if longest > archStackRailWideBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: arch-stack side_rails[%d] contains a %d-character unbroken word; a rail holds about %d wide characters — add a word break or shorten it", ErrCodeBodyTooLong, i, longest, archStackRailWideBudget))
 		}
 	}
 	return warnings
@@ -130,7 +142,7 @@ func (a *archStack) Schema() *Schema {
 	tierSchema := ObjectSchema(
 		map[string]*Schema{
 			"label":       StringSchema(60).WithDescription("Tier/layer name"),
-			"description": StringSchema(120).WithDescription("Technologies or details for this tier; with 5 tiers and rails keep unbroken runs near 68/65/61 characters (1/2/3 rails), with 6 tiers near 71/58/55/53 (0-3 rails) and copy to about 117 with 3 rails"),
+			"description": StringSchema(120).WithDescription("Technologies or details for this tier; about 120 readable characters with 3-4 tiers, 40 with 5 tiers; 6 tiers hold no readable description (label only)"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -138,7 +150,7 @@ func (a *archStack) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"tiers":      ArraySchema(tierSchema, 3, 6).WithDescription("Architecture tiers, top to bottom"),
-			"side_rails": ArraySchema(StringSchema(30), 0, 3).WithDescription("Cross-cutting concerns shown as vertical side bars (0-3)"),
+			"side_rails": ArraySchema(StringSchema(30), 0, 3).WithDescription("Cross-cutting concerns shown as vertical side bars (0-3); keep unbroken runs near 26 characters"),
 		},
 		[]string{"tiers"},
 	).WithAdditionalProperties(false)

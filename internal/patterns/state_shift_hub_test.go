@@ -338,10 +338,10 @@ func TestStateShiftHub_HubLabelShrinks(t *testing.T) {
 
 func TestStateShiftHub_PostExpandWarnings(t *testing.T) {
 	p := &stateShiftHub{}
-	if got := p.PostExpandWarnings(ExpandContext{}, sshValues(6), nil); len(got) != 0 {
+	if got := p.PostExpandWarnings(ExpandContext{}, sshValues(sshMaxPairs), nil); len(got) != 0 {
 		t.Errorf("short copy should not warn: %v", got)
 	}
-	v := sshValues(6)
+	v := sshValues(sshMaxPairs)
 	v.Pairs[3].After = strings.Repeat("word ", 28)
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
 	if len(got) != 1 || !strings.HasPrefix(got[0], ErrCodeBodyTooLong+":") || !strings.Contains(got[0], "pairs[3].after") {

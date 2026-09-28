@@ -55,9 +55,6 @@ const (
 	// 1000 = 10pt
 	heatmapHeaderFontSize int = 1000
 
-	// heatmapCellInset is the text inset for cell shapes (EMU).
-	heatmapCellInset int64 = 36000 // ~0.04"
-
 	// heatmapRowLabelWidth is the space reserved for row labels (EMU).
 	// ~1.2" = 1097280 EMU
 	heatmapRowLabelWidth int64 = 1097280
@@ -501,7 +498,7 @@ func generateHeatmapCellXML(valueText string, x, y, cx, cy int64, shapeID uint32
 		text = &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{heatmapCellInset, heatmapCellInset, heatmapCellInset, heatmapCellInset},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
@@ -546,7 +543,7 @@ func generateHeatmapLabelXML(text string, x, y, cx, cy int64, shapeID uint32, fo
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{0, 0, 0, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    align,

@@ -87,12 +87,12 @@ func (e *execSummary) SupportsInlineMarkdown() bool { return true }
 func (e *execSummary) ExemplarValues() any {
 	return &ExecSummaryValues{
 		Points: []ExecSummaryPoint{
-			{Lead: "The core business is healthy but growth is plateauing", Support: "Revenue grew 4% in FY25 versus 11% for the market; share loss is concentrated in mid-market accounts."},
-			{Lead: "Cost to serve is the main margin drag", Support: "Service costs rose 18% while volumes rose 6%, driven by manual onboarding and fragmented tooling."},
-			{Lead: "Digital self-service can close the gap within 18 months", Support: "Peers that automated onboarding cut cost to serve 25–30% and lifted retention by 4 points."},
-			{Lead: "We recommend a three-wave transformation starting in Q1", Support: "Wave 1 targets quick wins worth $12M run-rate and funds the platform investment in waves 2–3."},
+			{Lead: "The core is healthy but growth is slowing", Support: "Revenue grew 4% in FY25 versus 11% for the market."},
+			{Lead: "Cost to serve is the main margin drag", Support: "Service costs rose 18% while volumes rose 6%."},
+			{Lead: "Self-service can close the gap in 18 months", Support: "Peers that automated onboarding cut cost to serve 25–30%."},
+			{Lead: "We recommend a three-wave transformation", Support: "Wave 1 targets $12M run-rate and funds waves 2–3."},
 		},
-		BottomLine: "Approve the $8M wave-1 budget to start in Q1 and capture $12M run-rate savings by year end.",
+		BottomLine: "Approve the $8M wave-1 budget to start in Q1.",
 	}
 }
 
@@ -128,24 +128,33 @@ func (e *execSummary) NewCellOverride() any { return &ExecSummaryCellOverride{} 
 
 // execSummaryBudgets returns the per-point lead limit and the average support
 // budget, measured against the written size (no run stored below its role
-// floor) on every shipped template (go-slide-creator-n1muf). A bottom line
-// longer than a short ask (about 40 characters) takes room from the supports.
+// floor) on every shipped template with every point at the same length and
+// every shape keeping the uniform 0.5 cm text margin (go-slide-creator-n1muf).
+// A bottom line longer than a short ask (about 40 characters) takes room from
+// the supports.
 func execSummaryBudgets(points int, bottomLine string) (lead, support int) {
 	bottom := runeLen(strings.TrimSpace(bottomLine))
 	switch {
-	case points >= 5 && bottom > 40:
-		return 37, 76
-	case points >= 5 && bottom > 0:
-		return 37, 146
-	case points >= 5:
-		return execSummaryLeadMax, 158
-	case points == 4 && bottom > 40:
-		return 72, 153
-	case points == 4 && bottom > 0:
-		return 72, execSummarySupportMax
+	case points >= 5, points == 4 && bottom > 0:
+		return 42, 75
+	case points == 4:
+		return 82, 150
+	case bottom > 40:
+		return 88, 68
+	case bottom > 0:
+		return 88, 152
 	default:
 		return execSummaryLeadMax, execSummarySupportMax
 	}
+}
+
+// execSummaryBottomLineBudget is the readable bottom-line length: the schema
+// maximum with three points, about 102 characters with four or five.
+func execSummaryBottomLineBudget(points int) int {
+	if points >= 4 {
+		return 102
+	}
+	return execSummaryBottomLineMax
 }
 
 func (e *execSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
@@ -162,6 +171,9 @@ func (e *execSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []strin
 			warnings = append(warnings, fmt.Sprintf("%s: exec-summary points[%d].lead is %d characters; %d points hold about %d lead characters each with this bottom line — shorten the lead or split the summary", ErrCodeBodyTooLong, i, n, len(v.Points), leadBudget))
 		}
 	}
+	if b := execSummaryBottomLineBudget(len(v.Points)); runeLen(strings.TrimSpace(v.BottomLine)) > b {
+		warnings = append(warnings, fmt.Sprintf("%s: exec-summary bottom_line is %d characters; %d points leave room for about %d readable bottom-line characters — shorten the ask or use three points", ErrCodeBodyTooLong, runeLen(strings.TrimSpace(v.BottomLine)), len(v.Points), b))
+	}
 	if total > supportBudget*len(v.Points) {
 		warnings = append(warnings, fmt.Sprintf("%s: exec-summary points.support contains %d characters across %d points; the shared space holds about %d support characters per point with this bottom line — shorten supporting sentences or split the summary", ErrCodeBodyTooLong, total, len(v.Points), supportBudget))
 	}
@@ -172,7 +184,7 @@ func (e *execSummary) Schema() *Schema {
 	pointSchema := ObjectSchema(
 		map[string]*Schema{
 			"lead":    StringSchema(execSummaryLeadMax).WithDescription("Bold lead-in statement — the conclusion, stated as a full sentence (≤90 chars)"),
-			"support": StringSchema(execSummarySupportMax).WithDescription("One supporting sentence with the evidence (≤200 chars); average support per point: 5 points about 158 (146 with a short bottom line, 76 with a long one); 4 points with a bottom line over 40 characters about 153. Leads: about 72 with 4 points and a bottom line, 37 with 5"),
+			"support": StringSchema(execSummarySupportMax).WithDescription("One supporting sentence with the evidence (≤200 chars); average support per point: 3 points with a bottom line about 152 (68 with one over 40 characters); 4 points about 150 (75 with a bottom line); 5 points about 75. Leads: about 88 with 3 points and a bottom line, 82 with 4 points, 42 with 4 points and a bottom line or with 5"),
 		},
 		[]string{"lead"},
 	).WithAdditionalProperties(false)
@@ -180,7 +192,7 @@ func (e *execSummary) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"points":      ArraySchema(pointSchema, execSummaryMinPoints, execSummaryMaxPoints).WithDescription("3-5 key messages, most important first"),
-			"bottom_line": StringSchema(execSummaryBottomLineMax).WithDescription("Optional recommendation / ask rendered as a tinted bar under the points"),
+			"bottom_line": StringSchema(execSummaryBottomLineMax).WithDescription("Optional recommendation / ask rendered as a tinted bar under the points; about 102 readable characters with 4-5 points"),
 		},
 		[]string{"points"},
 	).WithAdditionalProperties(false)
@@ -433,10 +445,15 @@ func execSummaryBottomLine(ctx ExpandContext, bottomLine, accent string, sizePt 
 	}
 }
 
-// execSummaryTextCell builds an unfilled text cell.
-// execSummaryTextCell builds one row cell: paragraphs, a vertical anchor, and a
-// top inset in points that puts the first baseline where the row wants it.
-func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string, insetTop float64) *jsonschema.GridCellInput {
+// execSummaryTextCell builds one unfilled row cell: paragraphs, a vertical
+// anchor, and a baseline nudge in points that puts the first baseline where
+// the row wants it. The nudge is ADDED to the uniform top margin — a pattern
+// may push text further from an edge to align baselines, never closer.
+func execSummaryTextCell(paras []chartInsightsParagraph, vAlign string, nudge float64) *jsonschema.GridCellInput {
+	insetTop := 0.0
+	if nudge > 0 {
+		insetTop = defaultShapeInsetTBPt + nudge
+	}
 	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: "l", VerticalAlign: vAlign, InsetTop: insetTop})
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -510,9 +527,14 @@ func measureExecSummary(ctx ExpandContext, vals *ExecSummaryValues, cols []float
 		numSize:     math.Max(leadSize+8, 22),
 		rowPt:       make([]float64, len(vals.Points)),
 	}
+	tallest := leadSize
+	if numbered {
+		tallest = lay.numSize
+	}
 	for i, p := range vals.Points {
-		lead := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Lead, sizePt: leadSize, bold: true}}, colW(leadCol))
-		support := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol))
+		// A baseline nudge adds to the cell's top margin (execSummaryTextCell).
+		lead := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Lead, sizePt: leadSize, bold: true}}, colW(leadCol)) + baselineInsetPt(tallest, leadSize)
+		support := sizedBlockHeightPt(ctx, []sizedPara{{text: p.Support, sizePt: supportSize}}, colW(supportCol)) + baselineInsetPt(tallest, supportSize)
 		h := math.Max(lead, support)
 		if numbered {
 			h = math.Max(h, lay.numSize*sizingLineSpacing+2*sizingInsetTBPt)

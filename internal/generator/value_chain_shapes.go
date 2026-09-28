@@ -72,8 +72,9 @@ const (
 	// 1400 = 14pt
 	vcMarginFontSize int = 1400
 
-	// vcTextInset is the text inset for shapes (EMU).
-	vcTextInset int64 = 54864 // ~0.06"
+	// vcTextInset is the text inset for shapes (EMU): the uniform 0.5 cm
+	// shape text margin.
+	vcTextInset = pptx.ShapeTextInsetEMU
 
 	// vcHomePlateAdj is the homePlate "adj" value controlling the arrow tip depth.
 	// 50000 = default OOXML; we use a smaller value for a subtler arrow.
@@ -413,7 +414,7 @@ func generateVCSupportBarXML(panel nativePanelData, x, y, cx, cy int64, shapeID 
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
-			Insets:     [4]int64{vcTextInset * 2, 0, vcTextInset, 0},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},
@@ -514,7 +515,7 @@ func generateVCMarginXML(label string, x, y, cx, cy int64, shapeID uint32) strin
 			Wrap:    "square",
 			Anchor:  "ctr",
 			Vert:    "vert270", // Vertical text, bottom-to-top
-			Insets:  [4]int64{0, 0, 0, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",

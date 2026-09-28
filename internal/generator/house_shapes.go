@@ -42,8 +42,9 @@ const (
 	// ~0.03" = 27432 EMU
 	housePillarGapEMU int64 = 27432
 
-	// houseTextInsetEMU is the text inset for shapes (~0.05").
-	houseTextInsetEMU int64 = 45720
+	// houseTextInsetEMU is the text inset for shapes: the uniform 0.5 cm
+	// shape text margin.
+	houseTextInsetEMU = pptx.ShapeTextInsetEMU
 
 	// houseLabelFontSize is the section label font size (hundredths of a point).
 	// 1100 = 11pt
@@ -401,7 +402,7 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{houseTextInsetEMU, houseTextInsetEMU * 3, houseTextInsetEMU, houseTextInsetEMU},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "normAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
@@ -484,7 +485,7 @@ func generateHouseDiagramGroupXML(panels []nativePanelData, bounds types.Boundin
 			Text: &pptx.TextBody{
 				Wrap:    "square",
 				Anchor:  "ctr",
-				Insets:  [4]int64{houseTextInsetEMU, houseTextInsetEMU, houseTextInsetEMU, houseTextInsetEMU},
+				Insets:  pptx.ShapeTextInsets(),
 				AutoFit: "normAutofit",
 				Paragraphs: []pptx.Paragraph{{
 					Align:    "ctr",
@@ -565,7 +566,7 @@ func generateHouseSingleFloorShape(id uint32, panel nativePanelData, x, y, w, h 
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
-			Insets:     [4]int64{houseTextInsetEMU, houseTextInsetEMU, houseTextInsetEMU, houseTextInsetEMU},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},
@@ -629,7 +630,7 @@ func generateHousePillarShape(id uint32, panel nativePanelData, x, y, w, h int64
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",
-			Insets:     [4]int64{houseTextInsetEMU, houseTextInsetEMU, houseTextInsetEMU, houseTextInsetEMU},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},

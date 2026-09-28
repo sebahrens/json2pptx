@@ -280,6 +280,7 @@ func renderOverlayBadge(
 			Wrap:      "square",
 			Anchor:    "ctr",
 			AnchorCtr: true,
+			Insets:    pptx.ShapeTextInsets(),
 			Paragraphs: []pptx.Paragraph{{
 				Align: "ctr",
 				Runs: []pptx.Run{{

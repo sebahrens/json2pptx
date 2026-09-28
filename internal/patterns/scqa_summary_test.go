@@ -10,22 +10,29 @@ import (
 func TestSCQASummarySharedRowBudget(t *testing.T) {
 	p := &scqaSummary{}
 	v := validSCQAValues()
-	v.Questions = []string{strings.Repeat("Q", 107), strings.Repeat("Q", 107), strings.Repeat("Q", 107)}
+	v.Questions = []string{strings.Repeat("Q", 106), strings.Repeat("Q", 106)}
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "questions") || !strings.Contains(got[0], "about 106 characters per bullet") {
-		t.Fatalf("three dense bullets warning: %v", got)
+	if len(got) != 1 || !strings.Contains(got[0], "questions") || !strings.Contains(got[0], "about 105 characters per bullet") {
+		t.Fatalf("two dense bullets warning: %v", got)
 	}
-	v.Questions = []string{strings.Repeat("Q", 106), strings.Repeat("Q", 106), strings.Repeat("Q", 106), strings.Repeat("Q", 106)}
+	v.Questions = []string{strings.Repeat("Q", 105), strings.Repeat("Q", 105), strings.Repeat("Q", 105)}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("four measured-length bullets should fit: %v", got)
+		t.Fatalf("three measured-length bullets should fit: %v", got)
 	}
-	v.Questions = []string{strings.Repeat("Q", 221), "Brief", "Brief"}
+	// The 2-bullet single-bullet budget (210) equals the row total (2 x 105),
+	// so a short neighbour spends part of it.
+	v.Questions = []string{strings.Repeat("Q", 205), "Brief"}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("one long bullet with short neighbors should fit: %v", got)
+		t.Fatalf("one long bullet with a short neighbor should fit: %v", got)
 	}
-	v.Questions = []string{strings.Repeat("Q", 111), "Brief", "Brief", "Brief"}
+	v.Questions = []string{strings.Repeat("Q", 106), "Brief", "Brief"}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "questions[0]") {
-		t.Fatalf("one long bullet among four should warn: %v", got)
+		t.Fatalf("one long bullet among three should warn: %v", got)
+	}
+	// Four-bullet rows hold no readable copy.
+	v.Questions = []string{"Brief", "Brief", "Brief", "Brief"}
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "at most 3 readable bullets") {
+		t.Fatalf("four bullets should warn: %v", got)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
 		t.Fatalf("nil values: %v", got)

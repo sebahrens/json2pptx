@@ -103,14 +103,15 @@ func (sh *strategyHouse) NewCellOverride() any { return &StrategyHouseCellOverri
 
 // Equal-copy probes against the written size (no run stored below its role
 // floor) on every shipped template give an average per-bullet target for
-// each layout (go-slide-creator-n1muf). A single long bullet can still fit
+// each layout, every shape keeping the uniform 0.5 cm text margin
+// (go-slide-creator-n1muf). A single long bullet can still fit
 // when the other pillars stay concise, up to strategyHouseSingleBulletMax.
 func strategyHouseBulletBudget(pillars, bullets int, roof bool) int {
 	if pillars < 3 || pillars > 5 || bullets < 1 || bullets > 5 {
 		return 120
 	}
-	withoutRoof := [3][6]int{{120, 120, 120, 120, 83, 82}, {120, 120, 120, 91, 61, 61}, {120, 120, 118, 68, 45, 45}}
-	withRoof := [3][6]int{{120, 120, 120, 120, 82, 42}, {120, 120, 120, 91, 61, 38}, {120, 120, 95, 68, 45, 38}}
+	withoutRoof := [3][6]int{{120, 120, 120, 120, 80, 40}, {120, 120, 115, 77, 52, 38}, {120, 120, 82, 61, 41, 38}}
+	withRoof := [3][6]int{{120, 120, 120, 80, 40, 38}, {120, 120, 83, 52, 38, 35}, {120, 120, 62, 41, 38, 25}}
 	if roof {
 		return withRoof[pillars-3][bullets]
 	}
@@ -119,12 +120,21 @@ func strategyHouseBulletBudget(pillars, bullets int, roof bool) int {
 
 // strategyHouseSingleBulletMax is the longest single bullet five pillars hold
 // beside concise neighbours.
-const strategyHouseSingleBulletMax = 118
+const strategyHouseSingleBulletMax = 62
+
+// strategyHouseBandBudget is the readable objective / foundation length.
+const strategyHouseBandBudget = 132
 
 func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*StrategyHouseValues)
 	if !ok || v == nil || len(v.Pillars) < 3 {
 		return nil
+	}
+	var bandWarnings []string
+	for _, band := range []struct{ name, text string }{{"objective", v.Objective}, {"foundation", v.Foundation}} {
+		if n := runeLen(band.text); n > strategyHouseBandBudget {
+			bandWarnings = append(bandWarnings, fmt.Sprintf("%s: strategy-house %s is %d characters; the band holds about %d readable characters — shorten it", ErrCodeBodyTooLong, band.name, n, strategyHouseBandBudget))
+		}
 	}
 	totalBullets, totalChars := 0, 0
 	for _, pillar := range v.Pillars {
@@ -134,7 +144,7 @@ func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 		}
 	}
 	if totalBullets == 0 {
-		return nil
+		return bandWarnings
 	}
 	bulletsPerPillar := (totalBullets + len(v.Pillars) - 1) / len(v.Pillars)
 	budget := strategyHouseBulletBudget(len(v.Pillars), bulletsPerPillar, len(v.RoofBadges) > 0)
@@ -143,30 +153,30 @@ func (sh *strategyHouse) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 			for i, pillar := range v.Pillars {
 				for j, bullet := range pillar.Body {
 					if n := runeLen(bullet); n > strategyHouseSingleBulletMax {
-						return []string{fmt.Sprintf("%s: strategy-house pillars[%d].body[%d] is %d characters; five pillars hold about %d characters in one bullet — shorten the bullet", ErrCodeBodyTooLong, i, j, n, strategyHouseSingleBulletMax)}
+						return append(bandWarnings, fmt.Sprintf("%s: strategy-house pillars[%d].body[%d] is %d characters; five pillars hold about %d characters in one bullet — shorten the bullet", ErrCodeBodyTooLong, i, j, n, strategyHouseSingleBulletMax))
 					}
 				}
 			}
 		}
-		return nil
+		return bandWarnings
 	}
-	return []string{fmt.Sprintf("%s: strategy-house pillars.body averages %.0f characters across %d bullets; this %d-pillar layout holds about %d characters per bullet at its current density — shorten bullet copy, use fewer bullets, or split the house", ErrCodeBodyTooLong, float64(totalChars)/float64(totalBullets), totalBullets, len(v.Pillars), budget)}
+	return append(bandWarnings, fmt.Sprintf("%s: strategy-house pillars.body averages %.0f characters across %d bullets; this %d-pillar layout holds about %d characters per bullet at its current density — shorten bullet copy, use fewer bullets, or split the house", ErrCodeBodyTooLong, float64(totalChars)/float64(totalBullets), totalBullets, len(v.Pillars), budget))
 }
 
 func (sh *strategyHouse) Schema() *Schema {
 	pillarSchema := ObjectSchema(
 		map[string]*Schema{
 			"title": StringSchema(60).WithDescription("Pillar title"),
-			"body":  ArraySchema(StringSchema(120), 0, 5).WithDescription("Pillar bullet items (0-5); dense average targets depend on pillar count, bullet count and roof: five pillars with four or five bullets hold about 45 characters per bullet (38 with roof badges), four pillars with four or five about 61 (38 with five and a roof)"),
+			"body":  ArraySchema(StringSchema(120), 0, 5).WithDescription("Pillar bullet items (0-5); dense average targets depend on pillar count, bullet count and roof: three pillars hold about 80 characters per bullet at four (40 at five; one fewer bullet each with roof badges), four pillars 115/77/52/38 at two/three/four/five (83/52/38/35 with a roof), five pillars 82/61/41/38 (62/41/38/25 with a roof); one bullet beside concise neighbours in five pillars holds about 62"),
 		},
 		[]string{"title"},
 	).WithAdditionalProperties(false).WithDescription("Pillar column with title and optional bullet body")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"objective":   StringSchema(140).WithDescription("Strategic objective rendered as the banner above the pillars"),
+			"objective":   StringSchema(140).WithDescription("Strategic objective rendered as the banner above the pillars; about 132 readable characters"),
 			"pillars":     ArraySchema(pillarSchema, 3, 5).WithDescription("3-5 pillar columns supporting the objective"),
-			"foundation":  StringSchema(140).WithDescription("Foundation row text rendered beneath the pillars (enablers, principles, or capabilities)"),
+			"foundation":  StringSchema(140).WithDescription("Foundation row text rendered beneath the pillars (enablers, principles, or capabilities); about 132 readable characters"),
 			"roof_badges": ArraySchema(StringSchema(24), 0, 3).WithDescription("Optional badges rendered above the banner (0-3, e.g. vision/mission tags)"),
 		},
 		[]string{"objective", "pillars", "foundation"},

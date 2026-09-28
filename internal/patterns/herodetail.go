@@ -121,28 +121,35 @@ func (hd *heroDetail) NewOverrides() any    { return &HeroDetailOverrides{} }
 func (hd *heroDetail) NewCellOverride() any { return &HeroDetailCellOverride{} }
 
 // Measured against the written size (no run stored below its role floor) on
-// every shipped template (go-slide-creator-n1muf). Icons occupy vertical room
-// in their own card; no-icon cards keep the 200-char maximum.
+// every shipped template with every shape keeping the uniform 0.5 cm text
+// margin (go-slide-creator-n1muf). Icons occupy vertical room in their own
+// card; no-icon cards keep the 200-char maximum except four cards with long
+// titles.
 func heroDetailBodyBudget(details, titleChars int, icon bool) int {
 	switch {
+	case !icon && details >= 4 && titleChars > 20:
+		return 150
 	case !icon:
 		return 200
 	case details <= 2 && titleChars > 20:
-		return 196
+		return 66
 	case details <= 2:
-		return 200
+		return 193
 	case details == 3 && titleChars > 20:
-		return 121
+		return 41
 	case details == 3:
-		return 161
-	case titleChars > 48:
+		return 118
+	case titleChars > 27:
+		return 0
+	case titleChars > 20:
 		return 30
-	case titleChars > 23:
-		return 60
 	default:
-		return 90
+		return 32
 	}
 }
+
+// heroDetailContextBudget is the readable hero context length.
+const heroDetailContextBudget = 40
 
 func (hd *heroDetail) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*HeroDetailValues)
@@ -150,10 +157,16 @@ func (hd *heroDetail) PostExpandWarnings(_ ExpandContext, values, _ any) []strin
 		return nil
 	}
 	var warnings []string
+	if n := runeLen(v.Hero.Context); n > heroDetailContextBudget {
+		warnings = append(warnings, fmt.Sprintf("%s: hero-detail hero.context is %d characters; the hero holds about %d readable context characters — shorten the context", ErrCodeBodyTooLong, n, heroDetailContextBudget))
+	}
 	for i, detail := range v.Details {
-		budget := heroDetailBodyBudget(len(v.Details), runeLen(detail.Title), detail.Icon != nil)
-		if n := runeLen(detail.Body); n > budget {
-			warnings = append(warnings, fmt.Sprintf("%s: hero-detail details[%d].body is %d characters; %d detail cards with an icon and a %d-character title hold about %d readable body characters — shorten the body or title, omit the icon, or use fewer cards", ErrCodeBodyTooLong, i, n, len(v.Details), runeLen(detail.Title), budget))
+		icon := detail.Icon != nil
+		budget := heroDetailBodyBudget(len(v.Details), runeLen(detail.Title), icon)
+		if n := runeLen(detail.Body); n > 0 && budget == 0 {
+			warnings = append(warnings, fmt.Sprintf("%s: hero-detail details[%d].body is %d characters; %d detail cards (icon=%t) with a %d-character title hold no readable body — shorten the title, omit the icon, or use fewer cards", ErrCodeBodyTooLong, i, n, len(v.Details), icon, runeLen(detail.Title)))
+		} else if n > budget {
+			warnings = append(warnings, fmt.Sprintf("%s: hero-detail details[%d].body is %d characters; %d detail cards (icon=%t) with a %d-character title hold about %d readable body characters — shorten the body or title, omit the icon, or use fewer cards", ErrCodeBodyTooLong, i, n, len(v.Details), icon, runeLen(detail.Title), budget))
 		}
 	}
 	return warnings
@@ -164,7 +177,7 @@ func (hd *heroDetail) Schema() *Schema {
 		map[string]*Schema{
 			"value":   StringSchema(20).WithDescription("The big number (e.g. \"$2.4B\", \"99.9%\")"),
 			"label":   StringSchema(80).WithDescription("One-line label beneath the number"),
-			"context": StringSchema(120).WithDescription("Optional subtext line"),
+			"context": StringSchema(120).WithDescription("Optional subtext line; about 40 readable characters"),
 		},
 		[]string{"value", "label"},
 	).WithAdditionalProperties(false)
@@ -173,7 +186,7 @@ func (hd *heroDetail) Schema() *Schema {
 		map[string]*Schema{
 			"icon":  IconRefSchema("Optional icon: bundled name string or {name|path|url|svg_data, fill?, alt?, position?} object"),
 			"title": StringSchema(60).WithDescription("Detail card title"),
-			"body":  StringSchema(200).WithDescription("Detail card body. No-icon cards retain 200 readable characters. With icons, two cards hold about 200 (196 for titles over 20 characters), three cards about 161 for titles up to 20 characters or 121 for longer, four cards about 90/60/30 for titles up to 23/48/60 characters"),
+			"body":  StringSchema(200).WithDescription("Detail card body. No-icon cards retain 200 readable characters (150 for four cards with titles over 20 characters). With icons, two cards hold about 193 (66 for titles over 20 characters), three cards about 118 for titles up to 20 characters or 41 for longer, four cards about 32 for titles up to 20, 30 up to 27, and no body beyond"),
 		},
 		[]string{"title"},
 	).WithAdditionalProperties(false)

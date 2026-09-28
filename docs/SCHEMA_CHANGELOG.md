@@ -1,5 +1,34 @@
 # Schema Changelog
 
+- **2026-09-28 — Schema 4.151.0: uniform 0.5 cm text margin in every shape.**
+  Every text-bearing shape the engine draws (shape_grid cells — so every
+  pattern, compose block and raw grid — and the native diagram shapes) keeps
+  its text 0.5 cm (~14.17pt) from the edge on all four sides, on every
+  template. `text.inset_*` now defaults per side to that margin (an authored
+  side, including 0, replaces only that side; previously one authored side
+  zeroed the other three); patterns no longer emit `inset_*`. A shape too
+  small for one line plus the margin has that axis's margin clamped to what
+  still holds one line. Because stacked text rows lose ~28pt each, every
+  probed copy budget was re-measured: schema descriptions and `BODY_TOO_LONG`
+  thresholds changed for agenda (unbroken titles from five items),
+  agenda-with-images (no subtitle at 5–6 rows; title and image-label
+  budgets), arch-stack (description 40 at five tiers, none at six; rail
+  runs), bmc-canvas (at most four bullets in narrow and cost/revenue cells),
+  chart-insights-split (insights, source, headline label), comparison-2col,
+  driver-tree, exec-summary (plus a bottom-line budget), framework-grid,
+  hero-detail (plus hero context), horizontal-bar-with-callouts,
+  journey-maturity-model (plus worded copy and six-stage labels), kpi-inline,
+  labeled-rows, matrix-2x2, metric-list, numbered-step-strip (no body at six or
+  seven stacked rows), phase-roadmap (plus description and name budgets),
+  process-flow / process-flow-compact, pyramid (plus five-tier copy),
+  quote-cluster, roadmap-phased (plus workstream-name and phase-label
+  budgets), scqa-summary (at most three readable bullets per row),
+  stylish-panels, strategy-house (plus objective / foundation), swimlane,
+  table-highlight (no detail from four options), team-bios (plus name / role
+  at 5–8), timeline-horizontal (dots bands, gantt label and date range),
+  value-chain and waterfall-bridge (per-column labels, units). `dual-org-ladder`
+  now takes 2–4 rows and `state-shift-hub` 3–4 pairs (`maxItems` 6 → 4).
+
 - **2026-09-27 — Schema 4.150.0: written-size budgets for every probed pattern (`go-slide-creator-n1muf`).**
   Every pattern budget calibrated by `probeReadableBudget` is now the written
   size on all nine shipped templates plus local p-style, so published copy

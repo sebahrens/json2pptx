@@ -256,6 +256,9 @@ func TestComputeCellBudgets_EmptyGrid(t *testing.T) {
 
 func TestSparseLayoutWarning_ProcessFlowShortSteps(t *testing.T) {
 	// process-flow with very short step labels should trigger sparse_layout.
+	// The steps carry the uniform 0.5 cm text margin, which counts as used
+	// box height, so the frame is a full 16:9 content area: tall enough that
+	// one-letter labels leave the boxes mostly empty.
 	reg := patterns.Default()
 	pat, ok := reg.Get("process-flow")
 	if !ok {
@@ -263,11 +266,11 @@ func TestSparseLayoutWarning_ProcessFlowShortSteps(t *testing.T) {
 	}
 
 	ctx := patterns.ExpandContext{
-		SlideWidth:  9144000,
-		SlideHeight: 5143500,
+		SlideWidth:  12192000,
+		SlideHeight: 6858000,
 		LayoutBounds: patterns.LayoutBounds{
 			X: 457200, Y: 457200,
-			Width: 8229600, Height: 4229100,
+			Width: 11277600, Height: 5943600,
 		},
 	}
 

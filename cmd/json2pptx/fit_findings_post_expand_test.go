@@ -49,7 +49,7 @@ func assertPatternFindingAcrossTemplates(t *testing.T, code, pattern string, val
 func TestBMCCellBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := bmcProbeValues()
 	values.KeyActivities.Bullets = []string{strings.Repeat("long ", 30), "short", "short"}
-	assertBudgetFindingAcrossTemplates(t, "bmc-canvas", values, "key_activities.bullets[0]", "about 25 characters")
+	assertBudgetFindingAcrossTemplates(t, "bmc-canvas", values, "key_activities.bullets[0]", "about 20 characters")
 }
 
 func TestDriverTreeBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -62,7 +62,7 @@ func TestDriverTreeBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Branches = append(values.Branches, branch)
 	}
 	values.Branches[0].Leaves[0] = strings.Repeat("long ", 20)
-	assertBudgetFindingAcrossTemplates(t, "driver-tree", values, "branches[0].leaves[0]", "about 62 per leaf")
+	assertBudgetFindingAcrossTemplates(t, "driver-tree", values, "branches[0].leaves[0]", "about 61 per leaf")
 }
 func TestComparisonBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.Comparison2colValues{Headers: [2]string{"Left", "Right"}}
@@ -70,7 +70,7 @@ func TestComparisonBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Rows = append(values.Rows, patterns.Comparison2colRow{Left: "Item", Right: "Other"})
 	}
 	values.Rows[6].Right = strings.Repeat("word ", 20)
-	assertBudgetFindingAcrossTemplates(t, "comparison-2col", values, "rows[6].right", "about 66 characters")
+	assertBudgetFindingAcrossTemplates(t, "comparison-2col", values, "rows[6].right", "about 65 characters")
 }
 func TestRoadmapPhasedBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.RoadmapPhasedValues{}
@@ -85,7 +85,7 @@ func TestRoadmapPhasedBudgetWarningReachesFitReportAcrossTemplates(t *testing.T)
 		values.Workstreams = append(values.Workstreams, ws)
 	}
 	values.Workstreams[2].Items[4] = strings.Repeat("word ", 10)
-	assertBudgetFindingAcrossTemplates(t, "roadmap-phased", values, "workstreams[2].items[4]", "about 20 per activity pill")
+	assertBudgetFindingAcrossTemplates(t, "roadmap-phased", values, "workstreams[2].items[4]", "about 7 per activity pill")
 }
 func TestTeamBiosBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.TeamBiosValues{}
@@ -93,7 +93,7 @@ func TestTeamBiosBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Members = append(values.Members, patterns.TeamBiosMember{Name: "Jane Doe", Role: "Lead", Bio: "Short"})
 	}
 	values.Members[4].Bio = strings.Repeat("word ", 30)
-	assertBudgetFindingAcrossTemplates(t, "team-bios", values, "members[4].bio", "about 90 bio characters")
+	assertBudgetFindingAcrossTemplates(t, "team-bios", values, "members[4].bio", "about 40 bio characters")
 }
 func TestSwimlaneBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.SwimlaneValues{}
@@ -105,7 +105,7 @@ func TestSwimlaneBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Lanes = append(values.Lanes, lane)
 	}
 	values.Lanes[5].Steps[7] = strings.Repeat("word ", 10)
-	assertBudgetFindingAcrossTemplates(t, "swimlane", values, "lanes[5].steps[7]", "about 21 per step")
+	assertBudgetFindingAcrossTemplates(t, "swimlane", values, "lanes[5].steps[7]", "about 10 per step")
 }
 func TestNumberedStepBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.NumberedStepStripValues{Style: "chevron"}
@@ -113,7 +113,7 @@ func TestNumberedStepBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) 
 		values.Steps = append(values.Steps, patterns.NumberedStepStripStep{Label: "Step", Body: "Detail"})
 	}
 	values.Steps[4].Label = strings.Repeat("word ", 10)
-	assertBudgetFindingAcrossTemplates(t, "numbered-step-strip", values, "steps[4].label", "about 45")
+	assertBudgetFindingAcrossTemplates(t, "numbered-step-strip", values, "steps[4].label", "about 16 readable label characters")
 }
 func TestKPIInlineBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := patterns.KPINupValues{}
@@ -121,9 +121,9 @@ func TestKPIInlineBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 		values = append(values, patterns.KPICell{Big: "42%", Small: "Revenue"})
 	}
 	values[3].Big = "12345678"
-	values[3].Small = strings.Repeat("C", 17)
+	values[3].Small = strings.Repeat("C", 32)
 	values[3].Icon = &patterns.IconRef{Name: "rocket"}
-	assertBudgetFindingAcrossTemplates(t, "kpi-inline", values, "values[3].small", "about 16 caption characters")
+	assertBudgetFindingAcrossTemplates(t, "kpi-inline", values, "values[3].small", "about 31 caption characters")
 }
 
 func TestHorizontalBarBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -131,18 +131,18 @@ func TestHorizontalBarBudgetWarningReachesFitReportAcrossTemplates(t *testing.T)
 	for i := 0; i < 8; i++ {
 		values.Bars = append(values.Bars, patterns.HorizontalBarCalloutsBar{Label: "Item", Value: 80, Callout: "Insight"})
 	}
-	values.Bars[3].Callout = strings.Repeat("C", 54)
-	assertBudgetFindingAcrossTemplates(t, "horizontal-bar-with-callouts", values, "bars[3].callout", "about 53 characters")
+	values.Bars[3].Callout = strings.Repeat("C", 51)
+	assertBudgetFindingAcrossTemplates(t, "horizontal-bar-with-callouts", values, "bars[3].callout", "about 50 characters")
 }
 
 func TestAgendaWithImagesBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.AgendaWithImagesValues{}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 4; i++ {
 		values.Items = append(values.Items, patterns.AgendaWithImagesItem{Title: "Title", Subtitle: "Summary", ImageLabel: "Image"})
 	}
-	values.Items[2].Title = strings.Repeat("T", 80)
-	values.Items[2].Subtitle = strings.Repeat("S", 41)
-	assertBudgetFindingAcrossTemplates(t, "agenda-with-images", values, "items[2].subtitle", "about 40 subtitle characters")
+	values.Items[2].Title = strings.Repeat("T", 65)
+	values.Items[2].Subtitle = strings.Repeat("S", 66)
+	assertBudgetFindingAcrossTemplates(t, "agenda-with-images", values, "items[2].subtitle", "about 65 subtitle characters")
 }
 
 func TestAgendaWithImagesFullAgendaWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -160,10 +160,10 @@ func TestPhaseRoadmapBudgetWarningsReachFitReportAcrossTemplates(t *testing.T) {
 	for i := 0; i < 6; i++ {
 		values.Phases = append(values.Phases, patterns.PhaseRoadmapPhase{Name: "Plan", DateLabel: "Q1", Description: "Brief", Milestone: "Gate"})
 	}
-	values.Phases[2].DateLabel = strings.Repeat("D", 19)
-	values.Phases[2].Milestone = strings.Repeat("M", 39)
-	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].date_label", "about 18 readable date-label characters")
-	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].milestone", "about 38 readable milestone characters")
+	values.Phases[2].DateLabel = strings.Repeat("D", 17)
+	values.Phases[2].Milestone = strings.Repeat("M", 17)
+	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].date_label", "about 16 readable date-label characters")
+	assertBudgetFindingAcrossTemplates(t, "phase-roadmap", values, "phases[2].milestone", "about 16 readable milestone characters")
 }
 
 func TestTimelineHorizontalBudgetWarningsReachFitReportAcrossTemplates(t *testing.T) {
@@ -171,9 +171,10 @@ func TestTimelineHorizontalBudgetWarningsReachFitReportAcrossTemplates(t *testin
 	for i := 0; i < 7; i++ {
 		values = append(values, patterns.TimelineStop{Label: "Launch", Date: "Q1", Body: "Brief"})
 	}
-	values[3].Label = strings.Repeat("L", 60)
+	values[3].Label = strings.Repeat("L", 40)
 	values[3].Body = strings.Repeat("B", 41)
 	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "about 40 readable body characters")
+	values[3].Label = strings.Repeat("L", 60)
 	values[3].Body = strings.Repeat("B", 33)
 	chevron := &patterns.TimelineHorizontalOverrides{Style: "chevron"}
 	assertBudgetFindingAcrossTemplates(t, "timeline-horizontal", &values, "values[3].body", "7-stop chevron holds", chevron)
@@ -198,7 +199,7 @@ func TestStylishPanelsBudgetWarningReachesFitReportAcrossTemplates(t *testing.T)
 		}
 		values = append(values, panel)
 	}
-	assertBudgetFindingAcrossTemplates(t, "stylish-panels", &values, "values[0].body", "about 26 characters per bullet")
+	assertBudgetFindingAcrossTemplates(t, "stylish-panels", &values, "values[0].body", "about 25 characters per bullet")
 }
 
 func TestHeroDetailBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -207,7 +208,7 @@ func TestHeroDetailBudgetWarningReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Details = append(values.Details, patterns.HeroDetailItem{Title: "Driver", Body: "Brief"})
 	}
 	values.Details[2].Icon = &patterns.IconRef{Name: "rocket"}
-	values.Details[2].Title = strings.Repeat("T", 60)
+	values.Details[2].Title = strings.Repeat("T", 25)
 	values.Details[2].Body = strings.Repeat("B", 31)
 	assertBudgetFindingAcrossTemplates(t, "hero-detail", values, "details[2].body", "about 30 readable body characters")
 }
@@ -217,14 +218,14 @@ func TestTableHighlightPairedCopyWarningReachesFitReportAcrossTemplates(t *testi
 	for i := 0; i < 6; i++ {
 		values.Criteria = append(values.Criteria, patterns.TableHighlightCriterion{Label: "Quality"})
 	}
-	for i := 0; i < 5; i++ {
+	for i := 0; i < 3; i++ {
 		option := patterns.TableHighlightOption{Name: strings.Repeat("N", 40), Detail: strings.Repeat("D", 60)}
 		for j := 0; j < 6; j++ {
 			option.Scores = append(option.Scores, "3")
 		}
 		values.Options = append(values.Options, option)
 	}
-	assertBudgetFindingAcrossTemplates(t, "table-highlight", values, "options[0].name/detail", "about 31 characters each")
+	assertBudgetFindingAcrossTemplates(t, "table-highlight", values, "options[0].name/detail", "about 30 characters each")
 }
 
 func TestQuoteClusterCombinedCopyWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -234,12 +235,12 @@ func TestQuoteClusterCombinedCopyWarningReachesFitReportAcrossTemplates(t *testi
 			Text: strings.Repeat("word ", 48), Name: strings.Repeat("name ", 12), Title: strings.Repeat("role ", 16),
 		})
 	}
-	assertBudgetFindingAcrossTemplates(t, "quote-cluster", values, "quotes.text/name/title", "near 81 when names")
+	assertBudgetFindingAcrossTemplates(t, "quote-cluster", values, "quotes.text/name/title", "near 81 beside a name")
 }
 
 func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.DualOrgLadderValues{OrgA: "Client", OrgB: "Partner"}
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 4; i++ {
 		values.Rows = append(values.Rows, patterns.DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
 	}
 	values.Rows[2].ATitle = strings.Repeat("T", 66)
@@ -248,11 +249,11 @@ func TestDualOrgLadderDenseTitleWarningReachesFitReportAcrossTemplates(t *testin
 
 func TestStateShiftHubDenseDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.StateShiftHubValues{HubLabel: "Today vs. target", LeftHeader: "TODAY", RightHeader: "TARGET"}
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 4; i++ {
 		values.Pairs = append(values.Pairs, patterns.StateShiftPair{Title: "Stage", Before: "Manual work", After: "Automated work"})
 	}
 	values.Pairs[2].After = strings.Repeat("word ", 28)
-	assertBudgetFindingAcrossTemplates(t, "state-shift-hub", values, "pairs[2].after", "stage row with 6 pairs")
+	assertBudgetFindingAcrossTemplates(t, "state-shift-hub", values, "pairs[2].after", "stage row with 4 pairs")
 }
 
 func TestExecSummaryDenseSupportWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -260,7 +261,7 @@ func TestExecSummaryDenseSupportWarningReachesFitReportAcrossTemplates(t *testin
 	for i := 0; i < 5; i++ {
 		values.Points = append(values.Points, patterns.ExecSummaryPoint{Lead: "Conclusion", Support: strings.Repeat("S", 200)})
 	}
-	assertBudgetFindingAcrossTemplates(t, "exec-summary", values, "points.support", "about 146 support characters")
+	assertBudgetFindingAcrossTemplates(t, "exec-summary", values, "points.support", "about 75 support characters")
 }
 
 func TestWaterfallBridgeTenColumnLabelWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -271,8 +272,8 @@ func TestWaterfallBridgeTenColumnLabelWarningReachesFitReportAcrossTemplates(t *
 	values.Columns[0].Type = "total"
 	values.Columns[0].Value = 100
 	values.Columns[9].Type = "subtotal"
-	values.Columns[4].Label = strings.Repeat("L", 33)
-	assertBudgetFindingAcrossTemplates(t, "waterfall-bridge", values, "columns[4].label", "about 32 readable label characters")
+	values.Columns[4].Label = strings.Repeat("L", 11)
+	assertBudgetFindingAcrossTemplates(t, "waterfall-bridge", values, "columns[4].label", "about 10 readable label characters")
 }
 
 func TestStatHeroCombinedWideCopyWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -286,7 +287,7 @@ func TestSCQASummarySharedRowBudgetReachesFitReportAcrossTemplates(t *testing.T)
 		Questions: []string{strings.Repeat("Q", 107), strings.Repeat("Q", 107), strings.Repeat("Q", 107)},
 		Answer:    []string{"Take action"},
 	}
-	assertBudgetFindingAcrossTemplates(t, "scqa-summary", values, "questions", "about 106 characters per bullet")
+	assertBudgetFindingAcrossTemplates(t, "scqa-summary", values, "questions", "about 105 characters per bullet")
 }
 
 func TestAgendaDenseUnbrokenTitleWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -294,8 +295,8 @@ func TestAgendaDenseUnbrokenTitleWarningReachesFitReportAcrossTemplates(t *testi
 	for i := range values.Items {
 		values.Items[i] = "Section title"
 	}
-	values.Items[2] = strings.Repeat("W", 59)
-	assertBudgetFindingAcrossTemplates(t, "agenda", values, "items[2]", "about 58 wide characters")
+	values.Items[2] = strings.Repeat("W", 60)
+	assertBudgetFindingAcrossTemplates(t, "agenda", values, "items[2]", "about 59 wide characters")
 }
 
 func TestValueChainDenseUnbrokenDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -304,7 +305,7 @@ func TestValueChainDenseUnbrokenDescriptionWarningReachesFitReportAcrossTemplate
 		values.Steps[i] = patterns.ValueChainStep{Label: "Stage", Description: "Brief description"}
 	}
 	values.Steps[3].Description = strings.Repeat("W", 85)
-	assertBudgetFindingAcrossTemplates(t, "value-chain", values, "steps[3].description", "about 84 wide characters")
+	assertBudgetFindingAcrossTemplates(t, "value-chain", values, "steps[3].description", "about 72 wide characters")
 }
 
 func TestStrategyHouseDenseSharedBulletBudgetReachesFitReportAcrossTemplates(t *testing.T) {
@@ -316,7 +317,7 @@ func TestStrategyHouseDenseSharedBulletBudgetReachesFitReportAcrossTemplates(t *
 		}
 		values.Pillars = append(values.Pillars, pillar)
 	}
-	assertBudgetFindingAcrossTemplates(t, "strategy-house", values, "pillars.body", "about 38 characters per bullet")
+	assertBudgetFindingAcrossTemplates(t, "strategy-house", values, "pillars.body", "about 25 characters per bullet")
 }
 
 func TestJourneyMaturityDenseUnbrokenDescriptionWarningReachesFitReportAcrossTemplates(t *testing.T) {
@@ -325,7 +326,7 @@ func TestJourneyMaturityDenseUnbrokenDescriptionWarningReachesFitReportAcrossTem
 		values.Stages[i] = patterns.JourneyMaturityStage{Label: "Stage", Description: "Brief description"}
 	}
 	values.Stages[2].Description = strings.Repeat("W", 103)
-	assertBudgetFindingAcrossTemplates(t, "journey-maturity-model", values, "stages[2].description", "about 102 wide characters")
+	assertBudgetFindingAcrossTemplates(t, "journey-maturity-model", values, "stages[2].description", "about 95 wide characters")
 }
 
 func TestProcessFlowCompactPointedLabelBudgetReachesFitReportAcrossTemplates(t *testing.T) {
@@ -334,19 +335,19 @@ func TestProcessFlowCompactPointedLabelBudgetReachesFitReportAcrossTemplates(t *
 		values.Steps[i] = patterns.ProcessFlowStep{Label: "Stage", Type: "chevron"}
 	}
 	values.Steps[3].Label = strings.Repeat("word ", 7) + "w"
-	assertBudgetFindingAcrossTemplates(t, "process-flow-compact", values, "steps[3].label", "about 31 word-like or 13 wide")
+	assertBudgetFindingAcrossTemplates(t, "process-flow-compact", values, "steps[3].label", "about 10 word-like or 8 wide")
 }
 
 func TestPyramidDenseTopTierBudgetReachesFitReportAcrossTemplates(t *testing.T) {
 	values := &patterns.PyramidValues{Tiers: []string{strings.Repeat("W", 71), "Middle", "Middle", "Base", "Base"}}
-	assertBudgetFindingAcrossTemplates(t, "pyramid", values, "tiers[0]", "about 70 wide characters")
+	assertBudgetFindingAcrossTemplates(t, "pyramid", values, "tiers[0]", "about 49 wide characters")
 }
 
 func TestChartInsightsSplitSourceBudgetReachesFitReportAcrossTemplates(t *testing.T) {
 	pat, _ := patterns.Default().Get("chart-insights-split")
 	chart := pat.(patterns.Exemplar).ExemplarValues().(*patterns.ChartInsightsSplitValues).Chart
 	values := &patterns.ChartInsightsSplitValues{Chart: chart, Insights: []string{"First", "Second"}, Source: strings.Repeat("S", 81)}
-	assertBudgetFindingAcrossTemplates(t, "chart-insights-split", values, "source", "about 80 readable characters")
+	assertBudgetFindingAcrossTemplates(t, "chart-insights-split", values, "source", "about 77 readable characters")
 }
 
 // postExpandDeck builds a two-slide deck whose patterns both object to their
@@ -501,7 +502,7 @@ func TestMatrix2x2PairedQuadrantBudgetReachesFitReportAcrossTemplates(t *testing
 		BottomLeft:  patterns.Matrix2x2Quadrant{Header: "Maintain"},
 		BottomRight: patterns.Matrix2x2Quadrant{Header: "Exit"},
 	}
-	assertBudgetFindingAcrossTemplates(t, "matrix-2x2", values, "top_left.header/body", "about 62 wide characters")
+	assertBudgetFindingAcrossTemplates(t, "matrix-2x2", values, "top_left.header/body", "about 40 wide characters")
 }
 
 func TestProcessFlowStepBudgetReachesFitReportAcrossTemplates(t *testing.T) {
@@ -510,7 +511,7 @@ func TestProcessFlowStepBudgetReachesFitReportAcrossTemplates(t *testing.T) {
 		values.Steps[i] = patterns.ProcessFlowStep{Label: "Stage", Type: "chevron"}
 	}
 	values.Steps[2].Label = strings.Repeat("word ", 4)
-	assertBudgetFindingAcrossTemplates(t, "process-flow", values, "steps[2].label", "about 17 word-like or 13 wide unbroken characters")
+	assertBudgetFindingAcrossTemplates(t, "process-flow", values, "steps[2].label", "about 10 word-like or 8 wide unbroken characters")
 }
 
 func TestCapabilityHeatmapOverfullWarningReachesFitReportAcrossTemplates(t *testing.T) {

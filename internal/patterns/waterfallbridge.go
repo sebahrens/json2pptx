@@ -140,6 +140,18 @@ func (w *waterfallBridge) NewValues() any       { return &WaterfallBridgeValues{
 func (w *waterfallBridge) NewOverrides() any    { return &WaterfallBridgeOverrides{} }
 func (w *waterfallBridge) NewCellOverride() any { return &WaterfallBridgeCellOverride{} }
 
+// wbLabelBudget is the readable column-label length for a column count.
+func wbLabelBudget(columns int) int {
+	switch {
+	case columns <= 3:
+		return wbLabelMax
+	case columns <= 10:
+		return [...]int{35, 26, 21, 17, 15, 11, 10}[columns-4]
+	default:
+		return 10
+	}
+}
+
 func (w *waterfallBridge) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*WaterfallBridgeValues)
 	if !ok || v == nil {
@@ -147,17 +159,16 @@ func (w *waterfallBridge) PostExpandWarnings(_ ExpandContext, values, _ any) []s
 	}
 	var warnings []string
 	// Value labels share the column width with the unit: measured against the
-	// written size on every shipped template (go-slide-creator-n1muf), 9
-	// columns hold a 6-character unit and 10 columns a 5-character one.
-	if unitBudget := map[int]int{9: 6, 10: 5}[len(v.Columns)]; unitBudget > 0 && runeLen(v.Unit) > unitBudget {
+	// written size on every shipped template with the uniform 0.5 cm shape
+	// text margin (go-slide-creator-n1muf), 8/9/10 columns hold a 6/4/3
+	// character unit.
+	if unitBudget := map[int]int{8: 6, 9: 4, 10: 3}[len(v.Columns)]; unitBudget > 0 && runeLen(v.Unit) > unitBudget {
 		warnings = append(warnings, fmt.Sprintf("%s: waterfall-bridge unit has %d characters; %d columns hold about %d readable unit characters beside the value — shorten the unit or use fewer columns", ErrCodeBodyTooLong, runeLen(v.Unit), len(v.Columns), unitBudget))
 	}
-	if len(v.Columns) < wbMaxColumns {
-		return warnings
-	}
+	labelBudget := wbLabelBudget(len(v.Columns))
 	for i, column := range v.Columns {
-		if runeLen(column.Label) > 32 {
-			warnings = append(warnings, fmt.Sprintf("%s: waterfall-bridge columns[%d].label has %d characters; ten columns hold about 32 readable label characters — shorten the label or split the bridge", ErrCodeBodyTooLong, i, runeLen(column.Label)))
+		if runeLen(column.Label) > labelBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: waterfall-bridge columns[%d].label has %d characters; %d columns hold about %d readable label characters — shorten the label or split the bridge", ErrCodeBodyTooLong, i, runeLen(column.Label), len(v.Columns), labelBudget))
 		}
 	}
 	return warnings
@@ -166,7 +177,7 @@ func (w *waterfallBridge) PostExpandWarnings(_ ExpandContext, values, _ any) []s
 func (w *waterfallBridge) Schema() *Schema {
 	columnSchema := ObjectSchema(
 		map[string]*Schema{
-			"label": StringSchema(wbLabelMax).WithDescription("Short column label (1-3 words); target about 32 characters with ten columns"),
+			"label": StringSchema(wbLabelMax).WithDescription("Short column label (1-3 words); about 35/26/21/17/15/11/10 readable characters at 4/5/6/7/8/9/10 columns"),
 			"value": NumberSchema(-1e12, 1e12).WithDescription("Numeric value; sign determines direction for delta; omit for subtotal to auto-compute"),
 			"type":  EnumSchema(wbTypeTotal, wbTypeDelta, wbTypeSubtotal).WithDescription("\"total\" (anchored bar from 0), \"delta\" (floating bar of length value), or \"subtotal\" (running total to date)"),
 		},
@@ -176,7 +187,7 @@ func (w *waterfallBridge) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
 			"columns": ArraySchema(columnSchema, wbMinColumns, wbMaxColumns).WithDescription("Bridge columns left-to-right (3-10)"),
-			"unit":    StringSchema(wbUnitMax).WithDescription("Optional unit for value labels (e.g. \"$m\", \"%\"); a leading currency symbol renders as a prefix (\"$m\" → $210m, −$41m); about 6 characters with 9 columns, 5 with 10"),
+			"unit":    StringSchema(wbUnitMax).WithDescription("Optional unit for value labels (e.g. \"$m\", \"%\"); a leading currency symbol renders as a prefix (\"$m\" → $210m, −$41m); about 6 characters with 8 columns, 4 with 9, 3 with 10"),
 			"caption": StringSchema(wbCaptionMax).WithDescription("Optional scale note rendered once above the bars (e.g. \"EUR millions\", \"$m, constant FX\"); a bridge draws no value axis, so this is where the scale is stated"),
 		},
 		[]string{"columns"},
@@ -533,10 +544,6 @@ type waterfallBridgeTextObj struct {
 	Paragraphs    []waterfallBridgeParagraph `json:"paragraphs"`
 	Align         string                     `json:"align"`
 	VerticalAlign string                     `json:"vertical_align"`
-	InsetLeft     float64                    `json:"inset_left,omitempty"`
-	InsetTop      float64                    `json:"inset_top,omitempty"`
-	InsetRight    float64                    `json:"inset_right,omitempty"`
-	InsetBottom   float64                    `json:"inset_bottom,omitempty"`
 }
 
 func buildWaterfallBridgeValueTextAnchored(value string, size float64, color, anchor string) json.RawMessage {
@@ -548,37 +555,13 @@ func buildWaterfallBridgeValueTextAnchored(value string, size float64, color, an
 		VerticalAlign: anchor,
 	}
 	// A label pushed out of a thin bar is anchored to the spacer edge the bar
-	// sits on, but the text box's own inset then holds it a further ~3.6pt
-	// clear, which on a 6pt bar reads as a number floating level with nothing
-	// (go-slide-creator-2fq1). Collapse the inset on that side so the label
-	// sits against its bar. Inset values are points, and the resolver only
-	// emits the block when one of them is non-zero, so the near-side value is
-	// nominal rather than a true 0.
-	switch anchor {
-	case "t": // label below the bar: close the gap above the text
-		textObj.InsetTop = wbLabelHugPt
-		textObj.InsetBottom = wbLabelGapPt
-		textObj.InsetLeft, textObj.InsetRight = wbLabelSideInsetPt, wbLabelSideInsetPt
-	case "b": // label above the bar: close the gap below the text
-		textObj.InsetBottom = wbLabelHugPt
-		textObj.InsetTop = wbLabelGapPt
-		textObj.InsetLeft, textObj.InsetRight = wbLabelSideInsetPt, wbLabelSideInsetPt
-	}
+	// sits on and keeps the uniform shape text margin like every other shape;
+	// a spacer too short for one line plus the margin has it clamped by the
+	// writer, which pulls the label back against its bar
+	// (go-slide-creator-2fq1).
 	data, _ := json.Marshal(textObj)
 	return data
 }
-
-const (
-	// wbLabelHugPt is the near-side inset of an outside value label: nominally
-	// zero, but non-zero so the inset block is emitted at all instead of
-	// falling back to PowerPoint's 0.05in default.
-	wbLabelHugPt = 0.01
-	// wbLabelGapPt is the far-side inset, kept small so a label anchored to one
-	// edge does not collide with the next column's chrome.
-	wbLabelGapPt = 1.0
-	// wbLabelSideInsetPt keeps a long value label off the column gutter.
-	wbLabelSideInsetPt = 1.0
-)
 
 const (
 	// wbBarRowPct / wbLabelRowPct are the pattern's two bands: bars over
@@ -596,13 +579,11 @@ func buildWaterfallBridgeCaptionText(caption string, size float64) json.RawMessa
 		Paragraphs: []waterfallBridgeParagraph{
 			{Content: caption, Size: size, Color: "dk2", Align: "r"},
 		},
-		Align:         "r",
+		Align: "r",
+		// The caption band is thin (wbCaptionRowPct): the writer clamps its
+		// top/bottom margin, as a degenerate shape, to what still holds one
+		// line, so autofit never shrinks the scale note below the minimum.
 		VerticalAlign: "ctr",
-		// The caption band is thin (wbCaptionRowPct); the default 3.6pt
-		// top/bottom insets left too little height for one line, so autofit
-		// shrank the scale note below the readable minimum.
-		InsetTop:    wbLabelGapPt,
-		InsetBottom: wbLabelGapPt,
 	}
 	data, _ := json.Marshal(textObj)
 	return data

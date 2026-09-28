@@ -28,16 +28,16 @@ type dualOrgLadder struct{}
 
 func (d *dualOrgLadder) Name() string { return "dual-org-ladder" }
 func (d *dualOrgLadder) Description() string {
-	return "Two parallel org columns with org-name headers and 2–6 paired role cards (engagement-team / joint-venture slides)"
+	return "Two parallel org columns with org-name headers and 2–4 paired role cards (engagement-team / joint-venture slides)"
 }
 func (d *dualOrgLadder) UseWhen() string {
-	return "Engagement-team, joint-venture, or paired-organisation slide showing 2–6 matched roles across two orgs side by side; prefer team-bios for a single org's team page, comparison-2col when the columns are pros/cons rather than role pairs, and an svggen org_chart diagram when the structure is hierarchical (parent/child)"
+	return "Engagement-team, joint-venture, or paired-organisation slide showing 2–4 matched roles across two orgs side by side; prefer team-bios for a single org's team page, comparison-2col when the columns are pros/cons rather than role pairs, and an svggen org_chart diagram when the structure is hierarchical (parent/child)"
 }
 func (d *dualOrgLadder) NotWhen() string {
-	return "Single-org team page (use team-bios), hierarchical org chart with reporting lines (use svggen org_chart), pros-and-cons or option comparison (use comparison-2col), or more than 6 paired rows (split across slides)"
+	return "Single-org team page (use team-bios), hierarchical org chart with reporting lines (use svggen org_chart), pros-and-cons or option comparison (use comparison-2col), or more than 4 paired rows (split across slides)"
 }
 func (d *dualOrgLadder) Version() int      { return 1 }
-func (d *dualOrgLadder) CellsHint() string { return "2-6 rows" }
+func (d *dualOrgLadder) CellsHint() string { return "2-4 rows" }
 func (d *dualOrgLadder) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:      "structural",
@@ -106,7 +106,7 @@ type DualOrgLadderCellOverride = CellOverride
 
 const (
 	dualOrgLadderMinRows       = 2
-	dualOrgLadderMaxRows       = 6
+	dualOrgLadderMaxRows       = 4
 	dualOrgLadderOrgMaxChars   = 60
 	dualOrgLadderNameMaxChars  = 60
 	dualOrgLadderTitleMaxChars = 80
@@ -132,9 +132,9 @@ func (d *dualOrgLadder) PostExpandWarnings(_ ExpandContext, values, _ any) []str
 		// name, or 49 each when name and title are both long.
 		for _, field := range []struct{ name, text, person string }{{"a_title", row.ATitle, row.ANameField}, {"b_title", row.BTitle, row.BNameField}} {
 			if runeLen(field.text) > 65 {
-				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters; six role rows hold about 65 title characters per card — shorten the title or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text)))
+				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters; four role rows hold about 65 title characters per card — shorten the title or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text)))
 			} else if runeLen(field.person) > 49 && runeLen(field.text) > 49 {
-				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters beside a %d-character name; six role rows hold about 49 characters each when both are long — shorten the name or title, or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text), runeLen(field.person)))
+				warnings = append(warnings, fmt.Sprintf("%s: dual-org-ladder rows[%d].%s has %d characters beside a %d-character name; four role rows hold about 49 characters each when both are long — shorten the name or title, or split the team across slides", ErrCodeBodyTooLong, i, field.name, runeLen(field.text), runeLen(field.person)))
 			}
 		}
 	}
@@ -145,9 +145,9 @@ func (d *dualOrgLadder) Schema() *Schema {
 	rowSchema := ObjectSchema(
 		map[string]*Schema{
 			"a_name":  StringSchema(dualOrgLadderNameMaxChars).WithDescription("Name of the org A member on this row (rendered bold)"),
-			"a_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org A member; target about 65 characters with six role rows (49 when the name is also long)"),
+			"a_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org A member; target about 65 characters with four role rows (49 when the name is also long)"),
 			"b_name":  StringSchema(dualOrgLadderNameMaxChars).WithDescription("Name of the org B member on this row (rendered bold)"),
-			"b_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org B member; target about 65 characters with six role rows (49 when the name is also long)"),
+			"b_title": StringSchema(dualOrgLadderTitleMaxChars).WithDescription("Role / title of the org B member; target about 65 characters with four role rows (49 when the name is also long)"),
 		},
 		[]string{"a_name", "a_title", "b_name", "b_title"},
 	).WithAdditionalProperties(false)
@@ -156,7 +156,7 @@ func (d *dualOrgLadder) Schema() *Schema {
 		map[string]*Schema{
 			"org_a":           StringSchema(dualOrgLadderOrgMaxChars).WithDescription("Name of organisation A (rendered in the left header)"),
 			"org_b":           StringSchema(dualOrgLadderOrgMaxChars).WithDescription("Name of organisation B (rendered in the right header)"),
-			"rows":            ArraySchema(rowSchema, dualOrgLadderMinRows, dualOrgLadderMaxRows).WithDescription("2–6 paired role rows; each row aligns one org A member with one org B member"),
+			"rows":            ArraySchema(rowSchema, dualOrgLadderMinRows, dualOrgLadderMaxRows).WithDescription("2–4 paired role rows; each row aligns one org A member with one org B member"),
 			"show_connectors": BooleanSchema().WithDescription("When true (default), draw a thin accent connector line between the paired cards on every body row").WithDefault(true),
 		},
 		[]string{"org_a", "org_b", "rows"},
@@ -182,7 +182,7 @@ func (d *dualOrgLadder) Schema() *Schema {
 		[]string{"values"},
 	).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Two parallel org columns: org-name headers above 2–6 paired role rows. Use for engagement-team / joint-venture slides where matched roles align horizontally without reporting hierarchy.")
+	}).WithDescription("Two parallel org columns: org-name headers above 2–4 paired role rows. Use for engagement-team / joint-venture slides where matched roles align horizontally without reporting hierarchy.")
 }
 
 func (d *dualOrgLadder) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -209,7 +209,7 @@ func (d *dualOrgLadder) Validate(values, overrides any, cellOverrides map[int]an
 		errs = append(errs, errMinItems(name, "rows", dualOrgLadderMinRows, len(v.Rows), "(hint: use team-bios for a single-org team page, comparison-2col for non-role pairs)"))
 	}
 	if len(v.Rows) > dualOrgLadderMaxRows {
-		errs = append(errs, errMaxItems(name, "rows", dualOrgLadderMaxRows, len(v.Rows), "(hint: split the team across two slides — each slide supports up to 6 paired rows)"))
+		errs = append(errs, errMaxItems(name, "rows", dualOrgLadderMaxRows, len(v.Rows), "(hint: split the team across two slides — each slide supports up to 4 paired rows)"))
 	}
 
 	for i, row := range v.Rows {
@@ -294,7 +294,7 @@ func (d *dualOrgLadder) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 	}
 
-	// Each body row holds its role cards at their written size: with six rows
+	// Each body row holds its role cards at their written size: with many rows
 	// on a short content area the fixed 18% header squeezed them until the
 	// cards were stored at 96% autofit, below the floor. A body-row minimum
 	// (by the writer's own measure) makes the header give way instead

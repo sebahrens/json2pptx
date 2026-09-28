@@ -60,7 +60,7 @@ const (
 	bmcHeaderHeightRatio = 0.18
 
 	// bmcBodyInset is the text inset for body text (EMU).
-	bmcBodyInset int64 = 72000 // ~0.079"
+	bmcBodyInset = pptx.ShapeTextInsetEMU // uniform 0.5 cm shape text margin
 
 	// bmcTopRowRatio is the fraction of total height for the top row (5-column).
 	bmcTopRowRatio = 0.60
@@ -382,7 +382,7 @@ func generateBMCCellHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, 
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{bmcBodyInset, 0, bmcBodyInset, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
@@ -431,7 +431,7 @@ func generateBMCCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, sch
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",
-			Insets:     [4]int64{bmcBodyInset, bmcBodyInset, bmcBodyInset, bmcBodyInset},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},

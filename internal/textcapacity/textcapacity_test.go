@@ -394,8 +394,9 @@ func TestForResolvedGrid_AuthoredInsetsReduceCapacity(t *testing.T) {
 }
 
 func TestForResolvedGrid_InsetsClampWithoutPanic(t *testing.T) {
-	// Overlay insets larger than the cell clamp to a zero rectangle and a zero
-	// budget rather than going negative or panicking.
+	// Overlay insets larger than the cell are clamped exactly as the writer
+	// clamps a degenerate shape (pptx.EffectiveTextInsets): the text keeps room
+	// for one line of its widest word, never a negative rectangle or a panic.
 	cell := shapegrid.ResolvedCell{
 		Kind:       shapegrid.CellKindShape,
 		CellBounds: pptx.RectEmu{CX: emuInch, CY: emuInch},
@@ -406,32 +407,26 @@ func TestForResolvedGrid_InsetsClampWithoutPanic(t *testing.T) {
 	if len(d) != 1 {
 		t.Fatalf("got %d densities, want 1", len(d))
 	}
-	if d[0].WidthEMU != 0 || d[0].HeightEMU != 0 {
-		t.Errorf("over-large overlay insets: WidthEMU=%d HeightEMU=%d, want 0/0", d[0].WidthEMU, d[0].HeightEMU)
-	}
-	if d[0].MaxChars != 0 {
-		t.Errorf("over-large overlay insets: MaxChars=%d, want 0", d[0].MaxChars)
+	if d[0].WidthEMU <= 0 || d[0].HeightEMU <= 0 || d[0].WidthEMU > emuInch || d[0].HeightEMU > emuInch {
+		t.Errorf("over-large overlay insets: WidthEMU=%d HeightEMU=%d, want a clamped rectangle inside the cell", d[0].WidthEMU, d[0].HeightEMU)
 	}
 
 	// Authored insets far larger than the cell also clamp (no panic).
 	huge := ForResolvedGrid(gridWithText(`{"content": "x", "inset_left": 5000, "inset_right": 5000}`))
-	if huge[0].WidthEMU != 0 {
-		t.Errorf("over-large authored inset: WidthEMU=%d, want 0", huge[0].WidthEMU)
-	}
-	if huge[0].MaxChars != 0 {
-		t.Errorf("over-large authored inset: MaxChars=%d, want 0", huge[0].MaxChars)
+	if huge[0].WidthEMU <= 0 || huge[0].WidthEMU > 3*emuInch {
+		t.Errorf("over-large authored inset: WidthEMU=%d, want a clamped width inside the cell", huge[0].WidthEMU)
 	}
 }
 
-func TestForResolvedGrid_NoInsetsUsesOOXMLDefaults(t *testing.T) {
-	// A body without authored insets still has OOXML's 7.2pt horizontal and
-	// 3.6pt vertical padding on each side. Report its usable text rectangle.
+func TestForResolvedGrid_NoInsetsUsesUniformShapeMargin(t *testing.T) {
+	// A body without authored insets carries the uniform 0.5 cm shape text
+	// margin on every side. Report its usable text rectangle.
 	d := ForResolvedGrid(gridWithText(`{"content": "Some descriptive card body text"}`))[0]
-	if want := 3*emuInch - 2*91440; d.WidthEMU != want {
-		t.Errorf("WidthEMU=%d, want %d (default-padded width)", d.WidthEMU, want)
+	if want := 3*emuInch - 2*pptx.ShapeTextInsetEMU; d.WidthEMU != want {
+		t.Errorf("WidthEMU=%d, want %d (margin-padded width)", d.WidthEMU, want)
 	}
-	if want := 2*emuInch - 2*45720; d.HeightEMU != want {
-		t.Errorf("HeightEMU=%d, want %d (default-padded height)", d.HeightEMU, want)
+	if want := 2*emuInch - 2*pptx.ShapeTextInsetEMU; d.HeightEMU != want {
+		t.Errorf("HeightEMU=%d, want %d (margin-padded height)", d.HeightEMU, want)
 	}
 }
 

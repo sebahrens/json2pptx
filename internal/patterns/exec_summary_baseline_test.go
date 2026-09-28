@@ -18,12 +18,17 @@ func execSummaryCellText(t *testing.T, raw json.RawMessage) chartInsightsText {
 
 // predictedBaselinePt is where a cell's first baseline falls: the top inset
 // plus the ascent of its first paragraph. It is the quantity the alignment is
-// about, so the test asserts on it rather than on the anchor alone.
+// about, so the test asserts on it rather than on the anchor alone. An omitted
+// inset_top keeps the uniform shape text margin.
 func predictedBaselinePt(text chartInsightsText) float64 {
-	if len(text.Paragraphs) == 0 {
-		return text.InsetTop
+	top := text.InsetTop
+	if top == 0 {
+		top = defaultShapeInsetTBPt
 	}
-	return text.InsetTop + text.Paragraphs[0].Size*execSummaryAscentRatio
+	if len(text.Paragraphs) == 0 {
+		return top
+	}
+	return top + text.Paragraphs[0].Size*execSummaryAscentRatio
 }
 
 // The lead and its support were both centre-anchored, so whenever a lead

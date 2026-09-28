@@ -55,7 +55,7 @@ const (
 	pestelHeaderHeightRatio = 0.20
 
 	// pestelBodyInset is the text inset for body text (EMU).
-	pestelBodyInset int64 = 91440 // ~0.1"
+	pestelBodyInset = pptx.ShapeTextInsetEMU // uniform 0.5 cm shape text margin
 )
 
 // pestelSegmentColors names the PESTEL segments in render order. The fills
@@ -291,7 +291,7 @@ func generatePESTELHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, s
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{pestelBodyInset, 0, pestelBodyInset, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
@@ -340,7 +340,7 @@ func generatePESTELBodyXML(body string, x, y, cx, cy int64, shapeID uint32, sche
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",
-			Insets:     [4]int64{pestelBodyInset, pestelBodyInset, pestelBodyInset, pestelBodyInset},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},

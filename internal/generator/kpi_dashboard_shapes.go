@@ -56,7 +56,7 @@ const (
 	kpiDeltaFontSize int = 1000
 
 	// kpiInset is the text inset for card shapes (EMU).
-	kpiInset int64 = 108000 // ~0.118"
+	kpiInset = pptx.ShapeTextInsetEMU // uniform 0.5 cm shape text margin
 
 	// kpiMaxCols is the maximum number of columns in the KPI grid.
 	kpiMaxCols = 4
@@ -289,7 +289,7 @@ func generateKPICardXML(panel nativePanelData, x, y, cx, cy int64, shapeID uint3
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
-			Insets:     [4]int64{kpiInset, kpiInset, kpiInset, kpiInset},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},

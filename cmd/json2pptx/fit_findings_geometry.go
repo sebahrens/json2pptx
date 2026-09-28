@@ -49,9 +49,7 @@ const (
 	textExceedsTolerance = 1.02
 
 	emuPerPt           = 12700.0
-	defaultInsetLREMU  = 91440 // OOXML default lIns / rIns (0.1")
-	defaultInsetTBEMU  = 45720 // OOXML default tIns / bIns (0.05")
-	shapeDefaultTextPt = 14.0  // shapegrid defaultTextSizeHPt
+	shapeDefaultTextPt = 14.0 // shapegrid defaultTextSizeHPt
 	geometryLineHeight = 1.2
 	mmToPt             = 72.0 / 25.4
 	fallbackMeasureFnt = "Arial"
@@ -71,9 +69,12 @@ type geomParagraph struct {
 // geomText is the parsed text of a shape cell.
 type geomText struct {
 	paragraphs []geomParagraph
-	insets     [4]int64 // authored L,T,R,B in EMU; -1 means "use OOXML default"
-	align      string
-	vAlign     string
+	insets     [4]int64 // written L,T,R,B in EMU before the degenerate-shape clamp
+	// body is the resolved text body the writer emits; its insets and the
+	// clamp (pptx.EffectiveTextInsets) are what the text really gets.
+	body   *pptx.TextBody
+	align  string
+	vAlign string
 	// vert is the OOXML text-direction ("vert270" for bottom-to-top). Rotated
 	// text runs along the shape's HEIGHT, so the axes swap for every
 	// measurement below. Without this a thin band with a rotated label — the
@@ -232,9 +233,11 @@ func (a *geomAccumulator) shapeCell(cell shapegrid.ResolvedCell, cellPath string
 	}
 	// Rotated text runs along the shape's height: the line length it has is the
 	// box's height, not its width.
-	availW := geometryTextWidthEMU(cell.ShapeSpec, cell.Bounds) - txt.insetLR() - cell.TextInsets[0] - cell.TextInsets[2]
+	tw, th := pptx.PresetTextRectSize(cell.ShapeSpec.Geometry, geometryAdj(cell.ShapeSpec), cell.Bounds)
+	in := txt.writtenInsets(pptx.RectEmu{CX: tw, CY: th}, cell.TextInsets)
+	availW := geometryTextWidthEMU(cell.ShapeSpec, cell.Bounds) - in[0] - in[2]
 	if txt.rotated() {
-		availW = cell.Bounds.CY - txt.insetTB() - cell.TextInsets[1] - cell.TextInsets[3]
+		availW = cell.Bounds.CY - in[1] - in[3]
 	}
 	availPt := math.Max(float64(availW)/emuPerPt, 0)
 	if word, wordPt, minGlyphPt := a.m.widestWord(txt); word != "" && wordPt > availPt*textExceedsTolerance {
@@ -562,34 +565,16 @@ func hasBodyPlaceholderContent(slide *SlideInput) bool {
 // geometryTextWidthEMU returns the width of the preset geometry's text
 // rectangle (per ECMA-376 presetShapeDefinitions) for the given bounds.
 func geometryTextWidthEMU(spec *shapegrid.ShapeSpec, b pptx.RectEmu) int64 {
-	w, h := float64(b.CX), float64(b.CY)
-	ss := math.Min(w, h)
-	adj := func(def float64) float64 {
-		if v, ok := spec.Adjustments["adj"]; ok {
-			return float64(v)
-		}
-		return def
+	w, _ := pptx.PresetTextRectSize(spec.Geometry, geometryAdj(spec), b)
+	return w
+}
+
+// geometryAdj is the spec's "adj" adjustment, or -1 for the preset default.
+func geometryAdj(spec *shapegrid.ShapeSpec) int64 {
+	if v, ok := spec.Adjustments["adj"]; ok {
+		return v
 	}
-	var tw float64
-	switch spec.Geometry {
-	case "chevron":
-		a := math.Min(adj(50000), 100000*w/ss)
-		tw = w - 2*ss*a/100000
-	case "homePlate":
-		a := math.Min(adj(50000), 100000*w/ss)
-		tw = w - ss*a/100000/2
-	case "diamond", "flowChartDecision", "triangle":
-		tw = w / 2
-	case "ellipse", "flowChartConnector":
-		tw = w * math.Sqrt2 / 2
-	case "hexagon":
-		tw = w - 2*ss*adj(25000)/100000
-	case "octagon":
-		tw = w - ss*adj(29289)/100000
-	default:
-		tw = w
-	}
-	return int64(math.Max(tw, 0))
+	return -1
 }
 
 // shapeIsFilled reports whether a shape's fill renders a visible colour
@@ -628,9 +613,13 @@ func isNoFill(s string) bool {
 // parseGeomText parses a shape_grid text payload (string, object with
 // content, or object with paragraphs[]) into measurable paragraphs.
 func parseGeomText(raw json.RawMessage) geomText {
-	t := geomText{insets: [4]int64{-1, -1, -1, -1}}
+	t := geomText{insets: pptx.ShapeTextInsets()}
 	if len(raw) == 0 {
 		return t
+	}
+	if tb, err := shapegrid.ResolveTextInput(raw); err == nil && tb != nil {
+		// The writer's own resolution: uniform margin unless authored.
+		t.body, t.insets = tb, tb.Insets
 	}
 	add := func(content string, size float64, bold bool) {
 		size = shapegrid.EffectiveTextSizePt(size)
@@ -655,10 +644,6 @@ func parseGeomText(raw json.RawMessage) geomText {
 		Bold          bool    `json:"bold"`
 		Align         string  `json:"align"`
 		VerticalAlign string  `json:"vertical_align"`
-		InsetLeft     float64 `json:"inset_left"`
-		InsetRight    float64 `json:"inset_right"`
-		InsetTop      float64 `json:"inset_top"`
-		InsetBottom   float64 `json:"inset_bottom"`
 		Vert          string  `json:"vert"`
 		Paragraphs    []struct {
 			Content string  `json:"content"`
@@ -670,10 +655,6 @@ func parseGeomText(raw json.RawMessage) geomText {
 		return t
 	}
 	t.align, t.vAlign, t.vert = obj.Align, obj.VerticalAlign, obj.Vert
-	if obj.InsetLeft > 0 || obj.InsetTop > 0 || obj.InsetRight > 0 || obj.InsetBottom > 0 {
-		// Mirrors shapegrid.buildTextBody: any authored inset replaces all four.
-		t.insets = [4]int64{int64(obj.InsetLeft * emuPerPt), int64(obj.InsetTop * emuPerPt), int64(obj.InsetRight * emuPerPt), int64(obj.InsetBottom * emuPerPt)}
-	}
 	if len(obj.Paragraphs) > 0 {
 		for _, p := range obj.Paragraphs {
 			add(p.Content, p.Size, p.Bold)
@@ -684,19 +665,29 @@ func parseGeomText(raw json.RawMessage) geomText {
 	return t
 }
 
+// writtenInsets returns the insets the writer emits for this text inside the
+// preset's text rectangle textRect, with any icon-overlay reservation added:
+// the body's insets clamped on a degenerate axis exactly as
+// pptx.GenerateShape clamps them.
+func (t geomText) writtenInsets(textRect pptx.RectEmu, overlay [4]int64) [4]int64 {
+	var body pptx.TextBody
+	if t.body != nil {
+		body = *t.body
+	}
+	body.Insets = t.insets
+	for i := range body.Insets {
+		body.Insets[i] += overlay[i]
+	}
+	return pptx.EffectiveTextInsets(&body, textRect)
+}
+
 // insetLR returns the horizontal text insets in EMU.
 func (t geomText) insetLR() int64 {
-	if t.insets[0] < 0 {
-		return 2 * defaultInsetLREMU
-	}
 	return t.insets[0] + t.insets[2]
 }
 
 // insetTB returns the vertical text insets in EMU.
 func (t geomText) insetTB() int64 {
-	if t.insets[1] < 0 {
-		return 2 * defaultInsetTBEMU
-	}
 	return t.insets[1] + t.insets[3]
 }
 

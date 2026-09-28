@@ -72,31 +72,43 @@ func (p *pyramid) NewValues() any       { return &PyramidValues{} }
 func (p *pyramid) NewOverrides() any    { return &PyramidOverrides{} }
 func (p *pyramid) NewCellOverride() any { return &PyramidCellOverride{} }
 
+// pyramidFiveTierBudget is the readable copy per tier of a five-tier pyramid.
+const pyramidFiveTierBudget = 81
+
 func (p *pyramid) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	v, ok := values.(*PyramidValues)
 	if !ok || v == nil || len(v.Tiers) < 4 {
 		return nil
 	}
-	// Measured against the written size on every shipped template
-	// (go-slide-creator-n1muf).
-	budget := 96
+	// Measured against the written size on every shipped template, every
+	// shape keeping the uniform 0.5 cm text margin (go-slide-creator-n1muf):
+	// the top tier's unbroken run, and at five tiers every tier's copy.
+	budget := 73
 	if len(v.Tiers) >= 5 {
-		budget = 70
+		budget = 49
 	}
+	var warnings []string
 	longest := 0
 	for _, word := range strings.Fields(v.Tiers[0]) {
 		longest = max(longest, runeLen(word))
 	}
-	if longest <= budget {
-		return nil
+	if longest > budget {
+		warnings = append(warnings, fmt.Sprintf("%s: pyramid tiers[0] contains a %d-character unbroken word; the top tier of a %d-tier pyramid holds about %d wide characters — add word breaks, shorten the label, or use fewer tiers", ErrCodeBodyTooLong, longest, len(v.Tiers), budget))
 	}
-	return []string{fmt.Sprintf("%s: pyramid tiers[0] contains a %d-character unbroken word; the top tier of a %d-tier pyramid holds about %d wide characters — add word breaks, shorten the label, or use fewer tiers", ErrCodeBodyTooLong, longest, len(v.Tiers), budget)}
+	if len(v.Tiers) >= 5 {
+		for i, tier := range v.Tiers {
+			if n := runeLen(tier); n > pyramidFiveTierBudget {
+				warnings = append(warnings, fmt.Sprintf("%s: pyramid tiers[%d] is %d characters; a %d-tier pyramid holds about %d readable characters per tier — shorten the label or use fewer tiers", ErrCodeBodyTooLong, i, n, len(v.Tiers), pyramidFiveTierBudget))
+			}
+		}
+	}
+	return warnings
 }
 
 func (p *pyramid) Schema() *Schema {
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"tiers": ArraySchema(StringSchema(120), 3, 5).WithDescription("Tier labels, top (narrowest) to bottom (widest); top tier with 4/5 tiers holds about 96/70 wide unbroken characters; add word breaks for longer copy"),
+			"tiers": ArraySchema(StringSchema(120), 3, 5).WithDescription("Tier labels, top (narrowest) to bottom (widest); top tier with 4/5 tiers holds about 73/49 wide unbroken characters; five tiers hold about 81 characters each; add word breaks for longer copy"),
 		},
 		[]string{"tiers"},
 	).WithAdditionalProperties(false)

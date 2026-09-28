@@ -128,20 +128,29 @@ func (t *teamBios) NewOverrides() any    { return &TeamBiosOverrides{} }
 func (t *teamBios) NewCellOverride() any { return &TeamBiosCellOverride{} }
 
 // Measured with TestTeamBiosBudgetProbe against the written size on every shipped template at
-// default sizes. A fifth member adds a second card row and halves text height.
+// default sizes, every shape keeping the uniform 0.5 cm text margin. A fifth
+// member adds a second card row and halves text height, which also tightens
+// the name and role lines.
 func teamBiosReadableBioBudget(members int) int {
 	if members > 4 {
-		return 90
+		return 40
 	}
 	return teamBiosBioMaxChars
 }
 
+// teamBiosTwoRowNameBudget / teamBiosTwoRowRoleBudget are the readable name
+// and role lengths with five to eight members.
+const (
+	teamBiosTwoRowNameBudget = 52
+	teamBiosTwoRowRoleBudget = 40
+)
+
 func (t *teamBios) Schema() *Schema {
 	memberSchema := ObjectSchema(
 		map[string]*Schema{
-			"name":        StringSchema(teamBiosNameMaxChars).WithDescription("Person's full name (rendered bold)"),
-			"role":        StringSchema(teamBiosRoleMaxChars).WithDescription("Role or title (rendered in accent color)"),
-			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio. Approximate readable limit: 220 characters with 1-4 members, 90 with 5-8; longer bios emit BODY_TOO_LONG."),
+			"name":        StringSchema(teamBiosNameMaxChars).WithDescription("Person's full name (rendered bold); about 52 readable characters with 5-8 members"),
+			"role":        StringSchema(teamBiosRoleMaxChars).WithDescription("Role or title (rendered in accent color); about 40 readable characters with 5-8 members"),
+			"bio":         StringSchema(teamBiosBioMaxChars).WithDescription("Short bio. Approximate readable limit: 220 characters with 1-4 members, 40 with 5-8; longer bios emit BODY_TOO_LONG."),
 			"photo":       PhotoSchema("Headshot, cover-cropped to a centered square photo frame; omit it to draw a square initials tile (alt defaults to the member's name and role)", teamBiosPhotoAltMaxChars),
 			"photo_label": StringSchema(teamBiosPhotoMaxChars).WithDescription("Label centred in the initials placeholder when no photo is given; defaults to initials derived from name"),
 		},
@@ -233,6 +242,14 @@ func (t *teamBios) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	var warnings []string
 	budget := teamBiosReadableBioBudget(len(v.Members))
 	for i, m := range v.Members {
+		if len(v.Members) > 4 {
+			if n := runeLen(m.Name); n > teamBiosTwoRowNameBudget {
+				warnings = append(warnings, fmt.Sprintf("%s: team-bios members[%d].name is %d characters; %d members hold about %d name characters per card — shorten the name or split the team across slides", ErrCodeBodyTooLong, i, n, len(v.Members), teamBiosTwoRowNameBudget))
+			}
+			if n := runeLen(m.Role); n > teamBiosTwoRowRoleBudget {
+				warnings = append(warnings, fmt.Sprintf("%s: team-bios members[%d].role is %d characters; %d members hold about %d role characters per card — shorten the role or split the team across slides", ErrCodeBodyTooLong, i, n, len(v.Members), teamBiosTwoRowRoleBudget))
+			}
+		}
 		if n := runeLen(m.Bio); n > budget {
 			warnings = append(warnings, fmt.Sprintf(
 				"%s: team-bios members[%d].bio is %d characters; %d members hold about %d bio characters per card before text shrinks below the readable minimum — shorten the bio or split the team across slides",

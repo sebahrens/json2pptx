@@ -180,12 +180,6 @@ func (pq *pullQuote) Validate(values, overrides any, cellOverrides map[int]any) 
 // autofit cannot touch the attribution, with an explicit gap between them and
 // both rows sized to their own content so the rule stops where the text does.
 const (
-	// pullQuoteGapFrac is the gap under the quote, as a fraction of the quote's
-	// own size — ~0.6em, which reads as one blank line at any type scale.
-	pullQuoteGapFrac = 0.6
-	// pullQuoteGapMinPt / MaxPt keep that gap sane at extreme type scales.
-	pullQuoteGapMinPt = 10.0
-	pullQuoteGapMaxPt = 28.0
 	// pullQuoteAttrMinPt is the floor for the attribution. Below it the
 	// speaker's name is unreadable at the back of a room, and an unreadable
 	// attribution is the same as no attribution.
@@ -200,8 +194,9 @@ const (
 	// pullQuoteRuleGapPt is the space between the rule and the text.
 	pullQuoteRuleGapPt = 14.0
 	// pullQuoteRowGapPt is the gap between the quote row and the attribution
-	// row. The gap under the quote's text is the quote cell's bottom inset, so
-	// this stays small; the rule spans both rows, so it is not broken by it.
+	// row. The gap between the two texts is the cells' own bottom and top
+	// margins (the uniform shape text inset), so this stays small; the rule
+	// spans both rows, so it is not broken by it.
 	pullQuoteRowGapPt = 1.0
 	// pullQuoteImageDefaultPct / MinPct / MaxPct bound the optional headshot
 	// column. The quote is the content here and the face is supporting
@@ -281,9 +276,8 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 	}
 	textW := usableW * (100 - rulePct - imgPct) / 100
 
-	gapPt := math.Min(math.Max(quoteSize*pullQuoteGapFrac, pullQuoteGapMinPt), pullQuoteGapMaxPt)
 	attrRowPt := sizedBlockHeightPt(ctx, []sizedPara{{text: attrLine, sizePt: attrSize}}, textW)
-	quoteRowPt := sizedBlockHeightPt(ctx, []sizedPara{{text: quoteLine, sizePt: quoteSize}}, textW) + gapPt
+	quoteRowPt := sizedBlockHeightPt(ctx, []sizedPara{{text: quoteLine, sizePt: quoteSize}}, textW)
 	// A quote longer than its share of the area is left to the renderer's
 	// autofit — but only the quote's own row shrinks, never the attribution.
 	if capPt := areaH * pullQuoteMaxQuoteFrac; quoteRowPt > capPt {
@@ -292,10 +286,10 @@ func (pq *pullQuote) Expand(ctx ExpandContext, values, overrides any, cellOverri
 
 	quoteCell := pullQuoteCell([]pullQuoteParagraph{
 		{Content: quoteLine, Size: quoteSize, Italic: true, Color: "dk1", Align: "ctr"},
-	}, "b", 0, gapPt)
+	}, "b")
 	attrCell := pullQuoteCell([]pullQuoteParagraph{
 		{Content: attrLine, Size: attrSize, Color: "dk1", Align: "ctr"},
-	}, "t", 0, 0)
+	}, "t")
 
 	// The accent rule and the headshot are columns spanning both rows, not
 	// per-cell bars and not a nested grid: two bars would be broken apart by
@@ -395,15 +389,13 @@ func pullQuoteImageAlt(v *PullQuoteValues) string {
 	}
 }
 
-// pullQuoteCell wraps paragraphs in a text cell with the given vertical anchor
-// and text insets (points).
-func pullQuoteCell(paras []pullQuoteParagraph, vAlign string, insetTop, insetBottom float64) *jsonschema.GridCellInput {
+// pullQuoteCell wraps paragraphs in a text cell with the given vertical
+// anchor; the cell keeps the uniform shape text margin.
+func pullQuoteCell(paras []pullQuoteParagraph, vAlign string) *jsonschema.GridCellInput {
 	textJSON, _ := json.Marshal(pullQuoteText{
 		Paragraphs:    paras,
 		Align:         "ctr",
 		VerticalAlign: vAlign,
-		InsetTop:      insetTop,
-		InsetBottom:   insetBottom,
 	})
 	return &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -428,6 +420,4 @@ type pullQuoteText struct {
 	Paragraphs    []pullQuoteParagraph `json:"paragraphs"`
 	Align         string               `json:"align"`
 	VerticalAlign string               `json:"vertical_align"`
-	InsetTop      float64              `json:"inset_top,omitempty"`
-	InsetBottom   float64              `json:"inset_bottom,omitempty"`
 }

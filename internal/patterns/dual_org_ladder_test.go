@@ -9,7 +9,7 @@ import (
 func TestDualOrgLadderDenseTitleWarning(t *testing.T) {
 	p := &dualOrgLadder{}
 	values := &DualOrgLadderValues{OrgA: "Client", OrgB: "Partner"}
-	for i := 0; i < 6; i++ {
+	for i := 0; i < 4; i++ {
 		values.Rows = append(values.Rows, DualOrgLadderRow{ANameField: "Alex Chen", ATitle: "Programme Lead", BNameField: "Bob Jones", BTitle: "Partner"})
 	}
 	values.Rows[2].ATitle = strings.Repeat("T", 66)
@@ -19,12 +19,7 @@ func TestDualOrgLadderDenseTitleWarning(t *testing.T) {
 	}
 	values.Rows[2].ATitle = strings.Repeat("T", 65)
 	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
-		t.Fatalf("measured six-row target should fit: %v", got)
-	}
-	values.Rows = values.Rows[:5]
-	values.Rows[2].ATitle = strings.Repeat("T", 80)
-	if got := p.PostExpandWarnings(ExpandContext{}, values, nil); len(got) != 0 {
-		t.Fatalf("five-row schema maximum should fit: %v", got)
+		t.Fatalf("measured four-row target should fit: %v", got)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
 		t.Fatalf("nil values: %v", got)
@@ -84,7 +79,7 @@ func validDualOrgLadderValues(n int) *DualOrgLadderValues {
 
 func TestDualOrgLadder_Validate_Valid(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
-	for _, n := range []int{2, 3, 4, 5, 6} {
+	for _, n := range []int{2, 3, 4} {
 		if err := p.Validate(validDualOrgLadderValues(n), nil, nil); err != nil {
 			t.Errorf("n=%d: unexpected validation error: %v", n, err)
 		}
@@ -105,12 +100,13 @@ func TestDualOrgLadder_Validate_TooFewRows(t *testing.T) {
 
 func TestDualOrgLadder_Validate_TooManyRows(t *testing.T) {
 	p, _ := Default().Get("dual-org-ladder")
-	v := validDualOrgLadderValues(6)
-	v.Rows = append(v.Rows, DualOrgLadderRow{
-		ANameField: "Seventh", ATitle: "Extra", BNameField: "Seventh", BTitle: "Extra",
-	})
-	if err := p.Validate(v, nil, nil); err == nil {
-		t.Fatal("expected validation error for more than 6 rows")
+	v := validDualOrgLadderValues(5)
+	err := p.Validate(v, nil, nil)
+	if err == nil {
+		t.Fatal("expected validation error for more than 4 rows")
+	}
+	if !strings.Contains(err.Error(), "at most 4") {
+		t.Errorf("expected the 4-row maximum in the error, got: %v", err)
 	}
 }
 

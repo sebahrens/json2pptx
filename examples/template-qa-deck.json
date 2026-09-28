@@ -92,10 +92,10 @@
             "height": 18,
             "connector": {"style": "arrow", "color": "666666", "width": 1.25},
             "cells": [
-              {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "1  Sense\nSignals + demand", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6}}},
-              {"shape": {"geometry": "chevron", "fill": "accent2", "text": {"content": "2  Decide\nPortfolio choices", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6}}},
-              {"shape": {"geometry": "chevron", "fill": "accent3", "text": {"content": "3  Mobilise\nSquads + funding", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6}}},
-              {"shape": {"geometry": "chevron", "fill": "accent4", "text": {"content": "4  Learn\nEvidence loop", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6}}}
+              {"shape": {"geometry": "chevron", "fill": "accent1", "text": {"content": "1  Sense\nSignals + demand", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6, "inset_top": 0, "inset_bottom": 0}}},
+              {"shape": {"geometry": "chevron", "fill": "accent2", "text": {"content": "2  Decide\nPortfolio choices", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6, "inset_top": 0, "inset_bottom": 0}}},
+              {"shape": {"geometry": "chevron", "fill": "accent3", "text": {"content": "3  Mobilise\nSquads + funding", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6, "inset_top": 0, "inset_bottom": 0}}},
+              {"shape": {"geometry": "chevron", "fill": "accent4", "text": {"content": "4  Learn\nEvidence loop", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr", "inset_left": 6, "inset_right": 6, "inset_top": 0, "inset_bottom": 0}}}
             ]
           },
           {
@@ -148,8 +148,8 @@
           {
             "height": 27,
             "cells": [
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Work intake</b>\nManual requests, duplicate triage, unclear ownership.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Release rhythm</b>\nQuarterly batches with late risk discovery.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Work intake</b>\nManual requests, duplicate triage, unclear ownership.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Release rhythm</b>\nQuarterly batches with late risk discovery.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
               {"col_span": 2, "row_span": 2, "diagram": {"type": "matrix_2x2", "title": "svggen sequencing matrix", "width": 900, "height": 300, "fit_mode": "contain", "data": {"x_label": "Implementation effort", "y_label": "Business value", "quadrant_labels": ["Quick wins", "Strategic bets", "Fill-ins", "Defer"], "quadrant_opacity": 0.16, "quadrants": [
                 {"position": "top-left", "label": "Quick wins", "items": ["Workflow status", "SLO alerts"]},
                 {"position": "top-right", "label": "Strategic bets", "items": ["Platform API", "Data product spine"]},
@@ -161,8 +161,8 @@
           {
             "height": 38,
             "cells": [
-              {"shape": {"geometry": "roundRect", "fill": "accent3", "line": {"color": "accent3", "width": 1.25}, "icon": {"name": "layout-dashboard", "fill": "#FFFFFF", "position": "top", "scale": 0.15}, "text": {"content": "<b>Single workflow</b>\nAutomated routing, visible status, clear decision rights.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 9, "inset_right": 9}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent3", "width": 1.25}, "text": {"content": "<b>Continuous delivery</b>\nWeekly increments, guardrails, and benefit checkpoints.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9}}}
+              {"shape": {"geometry": "roundRect", "fill": "accent3", "line": {"color": "accent3", "width": 1.25}, "icon": {"name": "layout-dashboard", "fill": "#FFFFFF", "position": "top", "scale": 0.15}, "text": {"content": "<b>Single workflow</b>\nAutomated routing, visible status, clear decision rights.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent3", "width": 1.25}, "text": {"content": "<b>Continuous delivery</b>\nWeekly increments, guardrails, and benefit checkpoints.", "size": 10, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 9, "inset_left": 9, "inset_right": 9, "inset_bottom": 0}}}
             ]
           },
           {
@@ -195,7 +195,7 @@
             ]
           },
           {
-            "height": 18,
+            "height": 21,
             "connector": {"style": "arrow", "color": "666666", "width": 1.25},
             "cells": [
               {"shape": {"geometry": "roundRect", "fill": "accent1", "text": {"content": "Initial\n0-30 days", "size": 10, "bold": true, "color": "lt1", "align": "ctr", "vertical_align": "ctr"}}},
@@ -211,18 +211,18 @@
           {
             "height": 36,
             "cells": [
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent1", "width": 1.25}, "text": {"content": "<b>Stabilise</b>\nMap demand\nClean ownership\nCreate backlog", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Standardise</b>\nDecision forums\nPortfolio rules\nMetric baseline", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent3", "width": 1.25}, "text": {"content": "<b>Instrument</b>\nFlow telemetry\nBenefit ledger\nRisk triggers", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8}}},
-              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent4", "width": 1.25}, "text": {"content": "<b>Optimise</b>\nCapacity model\nScenario review\nContinuous reset", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8}}}
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent1", "width": 1.25}, "text": {"content": "<b>Stabilise</b>\nMap demand\nClean ownership\nCreate backlog", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent2", "width": 1.25}, "text": {"content": "<b>Standardise</b>\nDecision forums\nPortfolio rules\nMetric baseline", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent3", "width": 1.25}, "text": {"content": "<b>Instrument</b>\nFlow telemetry\nBenefit ledger\nRisk triggers", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "lt2", "line": {"color": "accent4", "width": 1.25}, "text": {"content": "<b>Optimise</b>\nCapacity model\nScenario review\nContinuous reset", "size": 9.5, "color": "tx1", "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 8, "inset_right": 8, "inset_bottom": 0}}}
             ]
           },
           {
-            "height": 33,
+            "height": 30,
             "cells": [
-              {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Governance proof points\nDecision latency, blocked work, exception aging", "size": 10.5, "bold": true, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 12, "inset_right": 10}}},
-              {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Delivery proof points\nThroughput, predictability, benefit realisation", "size": 10.5, "bold": true, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 12, "inset_right": 10}}},
-              {"shape": {"geometry": "roundRect", "fill": "accent1", "line": {"color": "accent1", "width": 1.5}, "icon": {"name": "clock", "fill": "#FFFFFF", "position": "left"}, "text": {"content": "<b>Next checkpoint</b>\nRefresh evidence pack and retire one manual control.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 8, "inset_right": 8}}}
+              {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent2", "text": {"content": "Governance proof points\nDecision latency, blocked work, exception aging", "size": 10.5, "bold": true, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 12, "inset_right": 10, "inset_top": 0, "inset_bottom": 0}}},
+              {"col_span": 2, "shape": {"geometry": "roundRect", "fill": "accent3", "text": {"content": "Delivery proof points\nThroughput, predictability, benefit realisation", "size": 10.5, "bold": true, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 12, "inset_right": 10, "inset_top": 0, "inset_bottom": 0}}},
+              {"shape": {"geometry": "roundRect", "fill": "accent1", "line": {"color": "accent1", "width": 1.5}, "icon": {"name": "clock", "fill": "#FFFFFF", "position": "left"}, "text": {"content": "<b>Next checkpoint</b>\nRefresh evidence pack and retire one manual control.", "size": 10, "color": "lt1", "align": "l", "vertical_align": "ctr", "inset_left": 8, "inset_right": 8, "inset_top": 0, "inset_bottom": 0}}}
             ]
           }
         ]
@@ -245,11 +245,11 @@
           "max_value": 100,
           "unit": "%",
           "bars": [
-            {"label": "Vendor A", "value": 87, "callout": "Strongest on price; weakest on support SLA."},
-            {"label": "Vendor B", "value": 72, "callout": "Preferred for enterprise; long implementation cycles."},
-            {"label": "Vendor C", "value": 64, "callout": "Best APIs and ecosystem fit, mid-market focus."},
-            {"label": "Vendor D", "value": 51, "callout": "Solid baseline product; underinvesting in security certifications."},
-            {"label": "Vendor E", "value": 33, "callout": "New entrant; track quarterly for capability maturation."}
+            {"label": "Vendor A", "value": 87, "callout": "Best price; weakest support SLA."},
+            {"label": "Vendor B", "value": 72, "callout": "Enterprise pick; slow to implement."},
+            {"label": "Vendor C", "value": 64, "callout": "Best APIs; mid-market focus."},
+            {"label": "Vendor D", "value": 51, "callout": "Solid base; thin on security."},
+            {"label": "Vendor E", "value": 33, "callout": "New entrant; track quarterly."}
           ]
         },
         "callout": {"text": "Vendor A and B advance to the BAFO round.", "emphasis": "bold"}
@@ -282,17 +282,17 @@
           {
             "height": 42,
             "cells": [
-              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Cloud Migration\n\nMigrate core services\nTarget: Q2\nBudget: $2.1M", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
-              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Org Restructure\n\nAlign teams to products\nTarget: Q1\nBudget: $400K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
-              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Agile Adoption\n\nTransition to SAFe\nTarget: Q2\nBudget: $300K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}}
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Cloud Migration\n\nMigrate core services\nTarget: Q2\nBudget: $2.1M", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6, "inset_bottom": 0}}},
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Org Restructure\n\nAlign teams to products\nTarget: Q1\nBudget: $400K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6, "inset_bottom": 0}}},
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Agile Adoption\n\nTransition to SAFe\nTarget: Q2\nBudget: $300K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6, "inset_bottom": 0}}}
             ]
           },
           {
             "height": 43,
             "cells": [
-              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Data Platform\n\nBuild unified lake\nTarget: Q3\nBudget: $1.5M", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
-              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Talent Acquisition\n\nHire engineers + PMs\nTarget: Q3\nBudget: $800K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}},
-              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Automation\n\nCI/CD and monitoring\nTarget: Q2\nBudget: $250K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6}}}
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Data Platform\n\nBuild unified lake\nTarget: Q3\nBudget: $1.5M", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6, "inset_bottom": 0}}},
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Talent Acquisition\n\nHire engineers + PMs\nTarget: Q3\nBudget: $800K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6, "inset_bottom": 0}}},
+              {"shape": {"geometry": "rect", "fill": "lt2", "text": {"content": "Automation\n\nCI/CD and monitoring\nTarget: Q2\nBudget: $250K", "size": 9, "align": "l", "vertical_align": "t", "inset_top": 8, "inset_left": 6, "inset_right": 6, "inset_bottom": 0}}}
             ]
           }
         ]

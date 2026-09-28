@@ -190,7 +190,8 @@
       ]
     },
     {
-      "max_height": 28,
+      "min_height": 49,
+      "max_height": 49,
       "cells": [
         {
           "shape": {

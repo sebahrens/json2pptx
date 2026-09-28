@@ -158,7 +158,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `comparison-2col` | Two-column comparison with optional headers; `overrides.connectors` draws a per-row accent connector badge in a centre gutter ("from → to" shifts) |
 | `contact-directory` | Key-contacts directory: 1–4 groups (regions / practices), each an accent heading over a rule, then up to 24 people in rows of 3–5 — circular headshot (`photo`) or initials disc + bold name + muted title; sparse directories stack a large headshot above a centred name |
 | `driver-tree` | Value / cost driver tree: root metric → 2–4 branches → 1–4 leaf items each, with optional per-branch annotations and connector lines (use svggen `org_chart` for people/role hierarchies) |
-| `dual-org-ladder` | Two parallel org columns with 2–6 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
+| `dual-org-ladder` | Two parallel org columns with 2–4 paired role cards and an org-name header above each column (joint-venture / engagement-team slides) |
 | `exec-summary` | Executive summary of 3–5 bold lead-in statements, each with one supporting sentence, separated by rules, plus an optional tinted bottom-line bar (content-sized rows) |
 | `framework-grid` | Framework of 2–6 labelled dimension rows (bold label on a tinted band) each followed by 1–4 small cards (accent title + short body); the longest row sets the column count and shorter rows leave trailing space empty |
 | `hero-detail` | One dominant metric with 2–4 supporting detail bullets; use `stat-hero` for the metric alone or `kpi-3up` for equally weighted metrics |
@@ -185,7 +185,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `quote-cluster` | Structured 3-column grid of 3–8 attributed stakeholder quote bubbles (voice-of-customer slides), with alternating tinted fills |
 | `roadmap-phased` | Phased roadmap with workstreams and time periods |
 | `scqa-summary` | 4-row SCQA executive summary (Situation / Complication / Questions / Answer) |
-| `state-shift-hub` | Central accent hub circle (short label) with 3–6 numbered today/future stage pairs on an arc around it: today items right-aligned on the left, future items left-aligned on the right, optional column headers |
+| `state-shift-hub` | Central accent hub circle (short label) with 3–4 numbered today/future stage pairs on an arc around it: today items right-aligned on the left, future items left-aligned on the right, optional column headers |
 | `stat-hero` | Single oversized statistic with label and optional context |
 | `strategy-house` | Strategy-house framework: objective banner + 3-5 pillars + foundation row (optional roof badges) |
 | `stylish-panels` | Accent-banded panels with ribbon headers for pillars, capabilities, or workstreams |

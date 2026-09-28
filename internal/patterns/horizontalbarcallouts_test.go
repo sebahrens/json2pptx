@@ -201,20 +201,21 @@ func TestHorizontalBarCallouts_Expand_BarFillProportional(t *testing.T) {
 	// Each bar row's left cell is a sub-grid with columns [label, fill, (rest?)].
 	// For value=100 there is no "rest" column. For half/quarter there is one.
 	row0SubCols := string(grid.Rows[0].Cells[0].Grid.Columns)
-	if !strings.Contains(row0SubCols, "78") {
-		t.Errorf("100%% bar: expected fill ~78, got cols %s", row0SubCols)
+	// The label column takes hbcLabelColPct (30%), leaving 70% for the bar.
+	if !strings.Contains(row0SubCols, "70") {
+		t.Errorf("100%% bar: expected fill ~70, got cols %s", row0SubCols)
 	}
 
 	row1SubCols := string(grid.Rows[1].Cells[0].Grid.Columns)
-	// 50% of 78 = 39
-	if !strings.Contains(row1SubCols, "39") {
-		t.Errorf("50%% bar: expected fill ~39, got cols %s", row1SubCols)
+	// 50% of 70 = 35
+	if !strings.Contains(row1SubCols, "35") {
+		t.Errorf("50%% bar: expected fill ~35, got cols %s", row1SubCols)
 	}
 
 	row2SubCols := string(grid.Rows[2].Cells[0].Grid.Columns)
-	// 25% of 78 = 19.5
-	if !strings.Contains(row2SubCols, "19.5") {
-		t.Errorf("25%% bar: expected fill ~19.5, got cols %s", row2SubCols)
+	// 25% of 70 = 17.5
+	if !strings.Contains(row2SubCols, "17.5") {
+		t.Errorf("25%% bar: expected fill ~17.5, got cols %s", row2SubCols)
 	}
 }
 
@@ -231,15 +232,15 @@ func TestHorizontalBarCallouts_Expand_MaxValueDefaultsToMax(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	// Top bar should fill the full available bar area (~78%) since maxValue
+	// Top bar should fill the full available bar area (~70%) since maxValue
 	// defaults to the highest bar value.
 	row0SubGrid := grid.Rows[0].Cells[0].Grid
 	if row0SubGrid == nil {
 		t.Fatal("expected sub-grid on first bar row")
 	}
 	cols := string(row0SubGrid.Columns)
-	if !strings.Contains(cols, "78") {
-		t.Errorf("top bar should fill ~78 (full bar area), got cols %s", cols)
+	if !strings.Contains(cols, "70") {
+		t.Errorf("top bar should fill ~70 (full bar area), got cols %s", cols)
 	}
 }
 

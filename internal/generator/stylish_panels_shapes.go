@@ -63,10 +63,10 @@ const (
 	stylishBodyFontSize   = 1400 // 14pt
 
 	// Body text insets (from reference).
-	stylishBodyLIns int64 = 91440
+	stylishBodyLIns       = pptx.ShapeTextInsetEMU
 	stylishBodyTIns int64 = 1044000 // large top inset to clear ribbon area
-	stylishBodyRIns int64 = 91440
-	stylishBodyBIns int64 = 45720
+	stylishBodyRIns       = pptx.ShapeTextInsetEMU
+	stylishBodyBIns       = pptx.ShapeTextInsetEMU
 )
 
 // generateStylishPanelsGroupXML produces the complete <p:grpSp> XML for the
@@ -178,7 +178,7 @@ func generateStylishPanelsGroupXML(panels []nativePanelData, bounds types.Boundi
 			Text: &pptx.TextBody{
 				Wrap:    "square",
 				Anchor:  "ctr",
-				Insets:  [4]int64{91440, 45720, 91440, 45720},
+				Insets:  pptx.ShapeTextInsets(),
 				AutoFit: "normAutofit",
 				Paragraphs: []pptx.Paragraph{{
 					Align:    "ctr",

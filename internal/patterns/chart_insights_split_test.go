@@ -11,24 +11,37 @@ import (
 func TestChartInsightsSplitSourceBudget(t *testing.T) {
 	p := &chartInsightsSplit{}
 	chart := p.ExemplarValues().(*ChartInsightsSplitValues).Chart
-	v := &ChartInsightsSplitValues{Chart: chart, Insights: []string{"Brief insight"}, Source: strings.Repeat("S", 93)}
+	v := &ChartInsightsSplitValues{Chart: chart, Insights: []string{"Brief insight"}, Source: strings.Repeat("S", 92)}
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], ErrCodeBodyTooLong) || !strings.Contains(got[0], "about 92") {
+	if len(got) != 1 || !strings.Contains(got[0], ErrCodeBodyTooLong) || !strings.Contains(got[0], "about 91") {
 		t.Fatalf("single-insight source warning: %v", got)
 	}
-	v.Source = strings.Repeat("S", 92)
+	v.Source = strings.Repeat("S", 91)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured sparse source target should fit: %v", got)
 	}
 	v.Insights = append(v.Insights, "Second insight")
-	v.Source = strings.Repeat("S", 81)
-	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 80") {
+	v.Source = strings.Repeat("S", 78)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 77") {
 		t.Fatalf("dense source warning: %v", got)
 	}
-	v.Source = strings.Repeat("S", 80)
+	v.Source = strings.Repeat("S", 77)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured dense source target should fit: %v", got)
 	}
+	// Six insights plus a headline or so-what leave no source line.
+	v.Insights = []string{"One", "Two", "Three", "Four", "Five", "Six"}
+	v.SoWhat = "Act now"
+	v.Source = "Source"
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "no readable source line") {
+		t.Fatalf("no-source warning: %v", got)
+	}
+	v.Source = ""
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("six insights without a source should fit: %v", got)
+	}
+	v.Insights = v.Insights[:2]
+	v.SoWhat = ""
 	v.Chart = nil
 	v.Source = strings.Repeat("S", 120)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], ErrCodeChartPlaceholderEmpty) {

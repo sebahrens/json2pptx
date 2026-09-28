@@ -8,14 +8,16 @@ import (
 )
 
 // writtenFitHeightPt returns the height at which the writer stores no
-// autofit shrink — not a degenerate box with no text area, which the writer
-// also reports as scale 1 (go-slide-creator-n1muf).
+// autofit shrink WITH the full uniform shape margin — not a degenerate box
+// whose margin the writer clamps so one line squeezes in, and not a box with
+// no text area, which the writer also reports as scale 1
+// (go-slide-creator-n1muf).
 func TestWrittenFitHeightPtMatchesWriterMeasure(t *testing.T) {
 	text := buildPhaseRoadmapPlainText("Weeks 1–8", 10, true, "dk1", "ctr")
 	const widthPt = 167.24
 	h := writtenFitHeightPt(text, widthPt, 0)
-	if h < 15 {
-		t.Fatalf("fit height %.0fpt is below one 12pt line plus insets", h)
+	if minH := 12*1.2 + 2*defaultShapeInsetTBPt; h < minH {
+		t.Fatalf("fit height %.0fpt is below one 12pt line plus the uniform insets (%.1fpt)", h, minH)
 	}
 	tb, err := shapegrid.ResolveTextInput(text)
 	if err != nil {
@@ -27,8 +29,11 @@ func TestWrittenFitHeightPtMatchesWriterMeasure(t *testing.T) {
 	if s := pptx.AutofitScaleFor(tb, box(h)); s < 1 {
 		t.Fatalf("writer shrinks text at the returned %.0fpt: %.2f", h, s)
 	}
-	if s := pptx.AutofitScaleFor(tb, box(h-1)); s >= 1 {
-		t.Fatalf("%.0fpt is not the smallest fitting height", h)
+	if got := pptx.EffectiveTextInsets(tb, box(h)); got != tb.Insets {
+		t.Fatalf("returned %.0fpt only fits by clamping the margin: %v", h, got)
+	}
+	if got := pptx.EffectiveTextInsets(tb, box(h-1)); got == tb.Insets {
+		t.Fatalf("%.0fpt is not the smallest height that keeps the full margin", h)
 	}
 	if got := writtenFitHeightPt(text, widthPt, h+5); got != h+5 {
 		t.Fatalf("minimum not honoured: %.0f", got)

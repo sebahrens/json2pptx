@@ -333,15 +333,15 @@ func computePatternCellBudgets(grid *jsonschema.ShapeGridInput, ctx patterns.Exp
 
 // cardGridBudgetContext reserves the callout's auto-height row before sizing
 // card bodies. The shape-grid resolver gives an auto row at least 8% of the
-// grid; its text estimate is 1.2 line heights plus the default 7.2pt vertical
-// inset, and the extra row introduces one 10pt gap.
+// grid; its text estimate is 1.2 line heights plus the uniform 0.5 cm vertical
+// insets, and the extra row introduces one 10pt gap.
 func cardGridBudgetContext(ctx patterns.ExpandContext, callout *patterns.PatternCallout) patterns.ExpandContext {
 	if callout == nil || ctx.LayoutBounds.Height <= 0 {
 		return ctx
 	}
 	areaH := float64(ctx.LayoutBounds.Height) / 12700
 	lines := strings.Count(callout.Text, "\n") + 1
-	reserved := math.Max(areaH*0.08, float64(lines)*14*1.2+7.2) + 10
+	reserved := math.Max(areaH*0.08, float64(lines)*14*1.2+2*pptx.ShapeTextInsetPt) + 10
 	remaining := ctx.LayoutBounds.Height - int64(reserved*12700)
 	if remaining < 1 {
 		remaining = 1

@@ -151,7 +151,7 @@ func (p *frameworkGrid) NewCellOverride() any { return &FrameworkGridCellOverrid
 func (p *frameworkGrid) Schema() *Schema {
 	cardSchema := ObjectSchema(map[string]*Schema{
 		"title": StringSchema(fgTitleMax).WithDescription("Lever name, bold in the accent colour"),
-		"body":  StringSchema(fgBodyMax).WithDescription("Optional one-line explanation; at 4 cards per row keep it near 60 characters"),
+		"body":  StringSchema(fgBodyMax).WithDescription("Optional one-line explanation; at 4 cards per row keep it near 42 characters (26 with four or more rows)"),
 	}, []string{"title"}).WithAdditionalProperties(false)
 
 	rowSchema := ObjectSchema(map[string]*Schema{

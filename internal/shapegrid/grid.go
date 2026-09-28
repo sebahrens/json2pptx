@@ -531,10 +531,19 @@ func ptToPct(pt float64, availHeightEMU int64) float64 {
 
 // estimateRowTextHeightEMU returns the maximum text height across all cells
 // in a row, in EMU. Used for overflow detection.
+//
+// It is the height the row must offer for the writer to keep every cell's text
+// at its written size: a single-line cell only needs its line, because the
+// writer clamps the margin of a shape too short for one line plus the margin
+// (pptx.EffectiveTextInsets); a multi-line cell needs its lines plus the full
+// margin.
 func estimateRowTextHeightEMU(row Row) int64 {
 	var maxH int64
 	for _, cell := range row.Cells {
-		h := estimateCellTextHeightEMU(cell)
+		h, lines, padEMU := cellTextEstimateEMU(cell)
+		if lines == 1 {
+			h -= padEMU
+		}
 		if h > maxH {
 			maxH = h
 		}
@@ -578,24 +587,30 @@ func estimateRowHeightPct(row Row, availHeightEMU int64) float64 {
 // content of a cell. It parses the shape's text JSON to count lines and
 // determine font size.
 func estimateCellTextHeightEMU(cell Cell) int64 {
+	h, _, _ := cellTextEstimateEMU(cell)
+	return h
+}
+
+// cellTextEstimateEMU is estimateCellTextHeightEMU with the explicit line
+// count and the top+bottom margin it includes.
+func cellTextEstimateEMU(cell Cell) (heightEMU int64, lines int, padEMU int64) {
 	if cell.Shape == nil || len(cell.Shape.Text) == 0 {
-		return 0
+		return 0, 0, 0
 	}
 
 	// Try string shorthand
 	var s string
 	if err := json.Unmarshal(cell.Shape.Text, &s); err == nil {
-		return textHeightEMU(strings.Count(s, "\n")+1, 11, 0, 0)
+		n := strings.Count(s, "\n") + 1
+		return textHeightEMU(n, 11, 0, 0), n, int64(textShapePaddingPt * 12700)
 	}
 
 	// Object form, in either the single-content or the paragraphs variant.
 	var obj struct {
-		Content     string  `json:"content"`
-		Size        float64 `json:"size"`
-		InsetLeft   float64 `json:"inset_left"`
-		InsetRight  float64 `json:"inset_right"`
-		InsetTop    float64 `json:"inset_top"`
-		InsetBottom float64 `json:"inset_bottom"`
+		Content     string   `json:"content"`
+		Size        float64  `json:"size"`
+		InsetTop    *float64 `json:"inset_top"`
+		InsetBottom *float64 `json:"inset_bottom"`
 		Paragraphs  []struct {
 			Content    string  `json:"content"`
 			Size       float64 `json:"size"`
@@ -603,15 +618,18 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 		} `json:"paragraphs"`
 	}
 	if err := json.Unmarshal(cell.Shape.Text, &obj); err != nil {
-		return 0
+		return 0, 0, 0
 	}
-	// Any explicit inset makes the renderer write all four insets, replacing
-	// the 3.6pt defaults (buildTextBody), so the default padding must not be
-	// added on top: labeled-rows' 8pt block insets were counted twice and every
-	// conforming row reported ~7pt of phantom overflow (go-slide-creator-csclk.112).
-	padPt := textShapePaddingPt
-	if obj.InsetLeft > 0 || obj.InsetTop > 0 || obj.InsetRight > 0 || obj.InsetBottom > 0 {
-		padPt = 0
+	// Each side is the uniform shape margin unless the author set it
+	// (shapeTextInsets); counting both an explicit inset and the default once
+	// reported phantom overflow on every conforming row (go-slide-creator-csclk.112).
+	padPt := 0.0
+	for _, v := range []*float64{obj.InsetTop, obj.InsetBottom} {
+		if v != nil && *v >= 0 {
+			padPt += *v
+		} else {
+			padPt += pptx.ShapeTextInsetPt
+		}
 	}
 
 	// A paragraphs-form cell used to fall through to the empty-content default
@@ -619,6 +637,7 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 	// actually held: patterns that size a row to its own 12pt line reported a
 	// phantom overflow, and a genuinely tall stack of paragraphs reported none
 	// (go-slide-creator-wrsb).
+	padEMU = int64(padPt * 12700)
 	if len(obj.Paragraphs) > 0 {
 		var totalPt float64
 		for _, para := range obj.Paragraphs {
@@ -629,22 +648,23 @@ func estimateCellTextHeightEMU(cell Cell) int64 {
 			if size == 0 {
 				size = 11
 			}
-			lines := strings.Count(para.Content, "\n") + 1
-			totalPt += float64(lines) * size * textLineHeightFactor
+			n := strings.Count(para.Content, "\n") + 1
+			lines += n
+			totalPt += float64(n) * size * textLineHeightFactor
 			totalPt += para.SpaceAfter
 		}
 		if totalPt == 0 {
-			return 0
+			return 0, 0, 0
 		}
-		return int64((totalPt + obj.InsetTop + obj.InsetBottom + padPt) * 12700)
+		return int64((totalPt + padPt) * 12700), lines, padEMU
 	}
 
 	fontSize := obj.Size
 	if fontSize == 0 {
 		fontSize = 11
 	}
-	lines := strings.Count(obj.Content, "\n") + 1
-	return int64((float64(lines)*fontSize*textLineHeightFactor + obj.InsetTop + obj.InsetBottom + padPt) * 12700)
+	lines = strings.Count(obj.Content, "\n") + 1
+	return int64((float64(lines)*fontSize*textLineHeightFactor + padPt) * 12700), lines, padEMU
 }
 
 const (
@@ -655,9 +675,9 @@ const (
 	// overflowing by the same ~17% on every pattern that measures its rows
 	// (go-slide-creator-wrsb).
 	textLineHeightFactor = 1.2
-	// textShapePaddingPt is the shape's own top+bottom text inset: the OOXML
-	// default is 0.05in each side (3.6pt), not the 12pt this once allowed.
-	textShapePaddingPt = 7.2
+	// textShapePaddingPt is the shape's own top+bottom text inset: the uniform
+	// shape margin (pptx.ShapeTextInsetPt, 0.5 cm) on each side.
+	textShapePaddingPt = 2 * pptx.ShapeTextInsetPt
 )
 
 // textHeightEMU computes estimated text height in EMU from line count and font metrics.
@@ -969,24 +989,14 @@ func ApplyFitMode(mode FitMode, cellBounds pptx.RectEmu) pptx.RectEmu {
 // needed to prevent text from overlapping the icon.
 type iconOverlayLayout struct {
 	Bounds pptx.RectEmu // Icon position and size
-	// TextInsets are the COMPLETE text insets [L,T,R,B] in EMU, not a delta:
-	// buildTextBody writes all four as soon as one is non-zero, so every side
-	// must carry its real value (defaults on the sides the icon does not
-	// touch).
+	// TextInsets are the EXTRA text insets [L,T,R,B] in EMU the icon reserves,
+	// added on top of the text body's own insets (the uniform shape margin,
+	// pptx.ShapeTextInsets, unless the author overrode it).
 	TextInsets [4]int64
 }
 
 // iconOverlayGapEMU is the gap between icon and text (3pt).
 const iconOverlayGapEMU = 3 * 12700
-
-// defaultTextInsetLREMU / defaultTextInsetTBEMU are PowerPoint's default text
-// body insets (0.1in left/right, 0.05in top/bottom). A shape that writes any
-// inset must write all four, so these are the values to use on the sides an
-// icon overlay does not reserve space on.
-const (
-	defaultTextInsetLREMU int64 = 91440
-	defaultTextInsetTBEMU int64 = 45720
-)
 
 // leftIconMaxWidthFrac caps a "left" overlay icon at this share of the shape
 // width, bounding the text's extra left inset to icon size + padding.
@@ -1093,17 +1103,9 @@ func iconOverlayBounds(icon *IconSpec, shapeBounds pptx.RectEmu, hasText bool) i
 				CX: iconH,
 				CY: iconH,
 			},
-			// Seed with the OOXML defaults and ADD the icon reservation on the
-			// icon's own axis. Writing a bare 0 on the other three sides is not
-			// "unset": buildTextBody emits all four whenever any is non-zero, so
-			// a zero there overrode PowerPoint's default padding and the card
-			// text sat flush against the fill edge (go-slide-creator-jzb1).
-			TextInsets: [4]int64{
-				defaultTextInsetLREMU + iconH + 2*iconOverlayGapEMU,
-				defaultTextInsetTBEMU,
-				defaultTextInsetLREMU,
-				defaultTextInsetTBEMU,
-			},
+			// Reserve the icon on its own axis only; the text body already
+			// carries the uniform margin on every side (go-slide-creator-jzb1).
+			TextInsets: [4]int64{iconH + 2*iconOverlayGapEMU, 0, 0, 0},
 		}
 	case "top":
 		// Icon centered horizontally and vertically within the top icon zone.
@@ -1125,12 +1127,7 @@ func iconOverlayBounds(icon *IconSpec, shapeBounds pptx.RectEmu, hasText bool) i
 				CX: size,
 				CY: size,
 			},
-			TextInsets: [4]int64{
-				defaultTextInsetLREMU,
-				defaultTextInsetTBEMU + iconZoneH,
-				defaultTextInsetLREMU,
-				defaultTextInsetTBEMU,
-			},
+			TextInsets: [4]int64{0, iconZoneH, 0, 0},
 		}
 	default: // "center" — legacy behavior, no text adjustment
 		return iconOverlayLayout{

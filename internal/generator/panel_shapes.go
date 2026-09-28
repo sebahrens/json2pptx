@@ -308,19 +308,19 @@ const (
 
 	// panelBodyMarginLeft is the left text inset for the body text box.
 	// 108,000 EMU = ~0.118"
-	panelBodyMarginLeft int64 = 108000
+	panelBodyMarginLeft = pptx.ShapeTextInsetEMU
 
 	// panelBodyMarginTop is the top text inset for the body text box.
 	// 108,000 EMU = ~0.118"
-	panelBodyMarginTop int64 = 108000
+	panelBodyMarginTop = pptx.ShapeTextInsetEMU
 
 	// panelBodyMarginRight is the right text inset for the body text box.
 	// 108,000 EMU = ~0.118"
-	panelBodyMarginRight int64 = 108000
+	panelBodyMarginRight = pptx.ShapeTextInsetEMU
 
 	// panelBodyMarginBottom is the bottom text inset for the body text box.
 	// 144,000 EMU = ~0.157" (slightly larger than other margins)
-	panelBodyMarginBottom int64 = 144000
+	panelBodyMarginBottom = pptx.ShapeTextInsetEMU
 
 	// panelBulletSpaceAfter is the space after each bullet paragraph.
 	// 600 = 6pt in hundredths of a point
@@ -460,7 +460,7 @@ func generatePanelHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sc
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{0, 0, 0, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
@@ -688,7 +688,7 @@ const (
 	statCardBodyFontSize int = 1100 // 11pt
 
 	// statCardInset is the text inset for stat card shapes.
-	statCardInset int64 = 108000 // ~0.118"
+	statCardInset = pptx.ShapeTextInsetEMU // uniform 0.5 cm shape text margin
 
 	// statCardCaptionSpaceAfter is the space after the caption paragraph, in
 	// hundredths of a point. Named so the content-sizing measurement budgets

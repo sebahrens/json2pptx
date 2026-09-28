@@ -5,7 +5,7 @@
     <p:nvPr/>
   </p:nvGrpSpPr>
   <p:grpSpPr>
-    <a:xfrm><a:off x="329610" y="3354260"/><a:ext cx="11850000" cy="1747503"/><a:chOff x="329610" y="3354260"/><a:chExt cx="11850000" cy="1747503"/></a:xfrm>
+    <a:xfrm><a:off x="329610" y="3300260"/><a:ext cx="11850000" cy="1855503"/><a:chOff x="329610" y="3300260"/><a:chExt cx="11850000" cy="1855503"/></a:xfrm>
   </p:grpSpPr>
   <p:sp>
   <p:nvSpPr>
@@ -14,14 +14,14 @@
     <p:nvPr/>
   </p:nvSpPr>
   <p:spPr>
-    <a:xfrm><a:off x="329610" y="3354260"/><a:ext cx="2810669" cy="714000"/></a:xfrm>
+    <a:xfrm><a:off x="329610" y="3300260"/><a:ext cx="2810669" cy="714000"/></a:xfrm>
     <a:prstGeom prst="rect">
       <a:avLst/>
     </a:prstGeom>
     <a:solidFill><a:schemeClr val="accent1"><a:tint val="15000"/></a:schemeClr></a:solidFill>
     <a:ln w="6350"><a:noFill/></a:ln>
   </p:spPr>
-  <p:txBody><a:bodyPr wrap="square" anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1600" b="1" dirty="0"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Strategy</a:t></a:r></a:p></p:txBody>
+  <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="180000" tIns="180000" rIns="180000" bIns="180000"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1600" b="1" dirty="0"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Strategy</a:t></a:r></a:p></p:txBody>
 </p:sp>
   <p:sp>
   <p:nvSpPr>
@@ -30,14 +30,14 @@
     <p:nvPr/>
   </p:nvSpPr>
   <p:spPr>
-    <a:xfrm><a:off x="329610" y="4163963"/><a:ext cx="2810669" cy="937800"/></a:xfrm>
+    <a:xfrm><a:off x="329610" y="4109963"/><a:ext cx="2810669" cy="1045800"/></a:xfrm>
     <a:prstGeom prst="rect">
       <a:avLst/>
     </a:prstGeom>
     <a:noFill/>
     <a:ln w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill><a:prstDash val="solid"/><a:round/></a:ln>
   </p:spPr>
-  <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="108000" tIns="108000" rIns="108000" bIns="144000"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Define goals</a:t></a:r></a:p><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Align teams</a:t></a:r></a:p></p:txBody>
+  <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="180000" tIns="180000" rIns="180000" bIns="180000"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Define goals</a:t></a:r></a:p><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Align teams</a:t></a:r></a:p></p:txBody>
 </p:sp>
   <p:sp>
   <p:nvSpPr>
@@ -46,14 +46,14 @@
     <p:nvPr/>
   </p:nvSpPr>
   <p:spPr>
-    <a:xfrm><a:off x="3342720" y="3354260"/><a:ext cx="2810669" cy="714000"/></a:xfrm>
+    <a:xfrm><a:off x="3342720" y="3300260"/><a:ext cx="2810669" cy="714000"/></a:xfrm>
     <a:prstGeom prst="rect">
       <a:avLst/>
     </a:prstGeom>
     <a:solidFill><a:schemeClr val="accent1"><a:tint val="15000"/></a:schemeClr></a:solidFill>
     <a:ln w="6350"><a:noFill/></a:ln>
   </p:spPr>
-  <p:txBody><a:bodyPr wrap="square" anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1600" b="1" dirty="0"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Operations</a:t></a:r></a:p></p:txBody>
+  <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="180000" tIns="180000" rIns="180000" bIns="180000"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1600" b="1" dirty="0"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Operations</a:t></a:r></a:p></p:txBody>
 </p:sp>
   <p:sp>
   <p:nvSpPr>
@@ -62,14 +62,14 @@
     <p:nvPr/>
   </p:nvSpPr>
   <p:spPr>
-    <a:xfrm><a:off x="3342720" y="4163963"/><a:ext cx="2810669" cy="937800"/></a:xfrm>
+    <a:xfrm><a:off x="3342720" y="4109963"/><a:ext cx="2810669" cy="1045800"/></a:xfrm>
     <a:prstGeom prst="rect">
       <a:avLst/>
     </a:prstGeom>
     <a:noFill/>
     <a:ln w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill><a:prstDash val="solid"/><a:round/></a:ln>
   </p:spPr>
-  <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="108000" tIns="108000" rIns="108000" bIns="144000"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Streamline processes</a:t></a:r></a:p></p:txBody>
+  <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="180000" tIns="180000" rIns="180000" bIns="180000"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Streamline processes</a:t></a:r></a:p></p:txBody>
 </p:sp>
   <p:sp>
   <p:nvSpPr>
@@ -78,14 +78,14 @@
     <p:nvPr/>
   </p:nvSpPr>
   <p:spPr>
-    <a:xfrm><a:off x="6355830" y="3354260"/><a:ext cx="2810669" cy="714000"/></a:xfrm>
+    <a:xfrm><a:off x="6355830" y="3300260"/><a:ext cx="2810669" cy="714000"/></a:xfrm>
     <a:prstGeom prst="rect">
       <a:avLst/>
     </a:prstGeom>
     <a:solidFill><a:schemeClr val="accent1"><a:tint val="15000"/></a:schemeClr></a:solidFill>
     <a:ln w="6350"><a:noFill/></a:ln>
   </p:spPr>
-  <p:txBody><a:bodyPr wrap="square" anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1600" b="1" dirty="0"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Technology</a:t></a:r></a:p></p:txBody>
+  <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="180000" tIns="180000" rIns="180000" bIns="180000"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1600" b="1" dirty="0"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>Technology</a:t></a:r></a:p></p:txBody>
 </p:sp>
   <p:sp>
   <p:nvSpPr>
@@ -94,14 +94,14 @@
     <p:nvPr/>
   </p:nvSpPr>
   <p:spPr>
-    <a:xfrm><a:off x="6355830" y="4163963"/><a:ext cx="2810669" cy="937800"/></a:xfrm>
+    <a:xfrm><a:off x="6355830" y="4109963"/><a:ext cx="2810669" cy="1045800"/></a:xfrm>
     <a:prstGeom prst="rect">
       <a:avLst/>
     </a:prstGeom>
     <a:noFill/>
     <a:ln w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill><a:prstDash val="solid"/><a:round/></a:ln>
   </p:spPr>
-  <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="108000" tIns="108000" rIns="108000" bIns="144000"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Modernize stack</a:t></a:r></a:p><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Cloud migration</a:t></a:r></a:p></p:txBody>
+  <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="180000" tIns="180000" rIns="180000" bIns="180000"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Modernize stack</a:t></a:r></a:p><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Cloud migration</a:t></a:r></a:p></p:txBody>
 </p:sp>
   <p:sp>
   <p:nvSpPr>
@@ -110,14 +110,14 @@
     <p:nvPr/>
   </p:nvSpPr>
   <p:spPr>
-    <a:xfrm><a:off x="9368940" y="3354260"/><a:ext cx="2810669" cy="714000"/></a:xfrm>
+    <a:xfrm><a:off x="9368940" y="3300260"/><a:ext cx="2810669" cy="714000"/></a:xfrm>
     <a:prstGeom prst="rect">
       <a:avLst/>
     </a:prstGeom>
     <a:solidFill><a:schemeClr val="accent1"><a:tint val="15000"/></a:schemeClr></a:solidFill>
     <a:ln w="6350"><a:noFill/></a:ln>
   </p:spPr>
-  <p:txBody><a:bodyPr wrap="square" anchor="ctr"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1600" b="1" dirty="0"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>People</a:t></a:r></a:p></p:txBody>
+  <p:txBody><a:bodyPr wrap="square" anchor="ctr" lIns="180000" tIns="180000" rIns="180000" bIns="180000"><a:noAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr algn="ctr"><a:buNone/></a:pPr><a:r><a:rPr lang="en-US" sz="1600" b="1" dirty="0"><a:solidFill><a:schemeClr val="dk1"/></a:solidFill></a:rPr><a:t>People</a:t></a:r></a:p></p:txBody>
 </p:sp>
   <p:sp>
   <p:nvSpPr>
@@ -126,13 +126,13 @@
     <p:nvPr/>
   </p:nvSpPr>
   <p:spPr>
-    <a:xfrm><a:off x="9368940" y="4163963"/><a:ext cx="2810669" cy="937800"/></a:xfrm>
+    <a:xfrm><a:off x="9368940" y="4109963"/><a:ext cx="2810669" cy="1045800"/></a:xfrm>
     <a:prstGeom prst="rect">
       <a:avLst/>
     </a:prstGeom>
     <a:noFill/>
     <a:ln w="6350" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="tx1"/></a:solidFill><a:prstDash val="solid"/><a:round/></a:ln>
   </p:spPr>
-  <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="108000" tIns="108000" rIns="108000" bIns="144000"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Hire talent</a:t></a:r></a:p><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Upskill teams</a:t></a:r></a:p></p:txBody>
+  <p:txBody><a:bodyPr wrap="square" anchor="t" lIns="180000" tIns="180000" rIns="180000" bIns="180000"><a:normAutofit/></a:bodyPr><a:lstStyle/><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Hire talent</a:t></a:r></a:p><a:p><a:pPr marL="177800" indent="-177800"><a:spcAft><a:spcPts val="600"/></a:spcAft><a:buClr><a:schemeClr val="accent1"/></a:buClr><a:buFont typeface="Arial"/><a:buChar char="•"/></a:pPr><a:r><a:rPr lang="en-US" sz="1400" dirty="0"/><a:t>Upskill teams</a:t></a:r></a:p></p:txBody>
 </p:sp>
 </p:grpSp>

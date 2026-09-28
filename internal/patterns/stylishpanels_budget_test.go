@@ -23,13 +23,14 @@ func TestStylishPanelsBodyWarningsUseAverageCopy(t *testing.T) {
 	for _, tc := range []struct {
 		panels, bullets, title, budget int
 	}{
-		{3, 4, 45, 161},
-		{3, 4, 46, 128},
-		{4, 3, 25, 150},
-		{4, 3, 26, 121},
-		{5, 2, 5, 182},
-		{5, 2, 6, 162},
-		{5, 8, 80, 26},
+		{3, 4, 25, 121},
+		{3, 4, 26, 115},
+		{3, 4, 46, 81},
+		{4, 3, 5, 115},
+		{4, 3, 6, 102},
+		{5, 2, 5, 141},
+		{5, 2, 6, 121},
+		{5, 8, 80, 25},
 	} {
 		t.Run(fmt.Sprintf("%d panels %d bullets %d title", tc.panels, tc.bullets, tc.title), func(t *testing.T) {
 			v := stylishBudgetValues(tc.panels, tc.bullets, tc.title, tc.budget)
@@ -51,7 +52,7 @@ func TestStylishPanelsBodyWarningsUseAverageCopy(t *testing.T) {
 		})
 	}
 	v := stylishBudgetValues(3, 8, 80, 5)
-	(*v)[0].Body[0] = strings.Repeat("B", 200)
+	(*v)[0].Body[0] = strings.Repeat("B", stylishPanelSingleBulletMax[3])
 	if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("one long bullet should fit with short neighbors: %v", got)
 	}
@@ -60,7 +61,7 @@ func TestStylishPanelsBodyWarningsUseAverageCopy(t *testing.T) {
 	}
 	body := pat.Schema().raw.Properties["values"].raw.Items.raw.Properties["body"]
 	if body.raw.Items.raw.MaxLength == nil || *body.raw.Items.raw.MaxLength != 200 ||
-		!strings.Contains(body.raw.Description, "5 panels 200/162/102") {
+		!strings.Contains(body.raw.Description, "5 panels 200/141/81") {
 		t.Fatalf("schema loses sparse maximum or panel-density guidance: %+v", body.raw)
 	}
 }

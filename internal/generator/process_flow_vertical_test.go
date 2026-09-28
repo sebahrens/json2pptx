@@ -94,8 +94,8 @@ func TestProcessFlowVertical_ConnectionLabelsSitBesideBranchAndBetweenBoxes(t *t
 
 func TestProcessFlowVertical_LongContentCapsAtFortyPercent(t *testing.T) {
 	bounds := types.BoundingBox{Width: 10000000, Height: 5000000}
-	short := pfVerticalStepWidth(processFlowStep{label: "Review"}, pfStepLayout{cx: pfMinStepWidth}, bounds)
-	long := pfVerticalStepWidth(processFlowStep{label: "A very long decision label that must not become a slide-wide banner", stepType: pfDecisionType}, pfStepLayout{cx: pfMinStepWidth}, bounds)
+	short := pfVerticalStepWidth(processFlowStep{label: "Review"}, pfStepLayout{cx: pfMinStepWidth}, bounds, "Arial")
+	long := pfVerticalStepWidth(processFlowStep{label: "A very long decision label that must not become a slide-wide banner", stepType: pfDecisionType}, pfStepLayout{cx: pfMinStepWidth}, bounds, "Arial")
 	capW := bounds.Width * pfVerticalMaxWidthPct / 100
 	if short >= capW {
 		t.Errorf("short label width=%d should remain content-sized below cap=%d", short, capW)

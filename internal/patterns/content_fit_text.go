@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"regexp"
+	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/jsonschema"
 	"github.com/sebahrens/json2pptx/internal/pptx"
@@ -167,6 +168,19 @@ func contentCardHeightPt(textHPt, cardWPt float64, hasTopIcon bool) float64 {
 // alone can still be written shrunk — value-chain descriptions were written at
 // 98%, 11.8pt against the 12pt body floor (go-slide-creator-n1muf). Text the
 // writer cannot parse, or that still shrinks after maxGrowPt, returns minPt.
+// largestRunPt is the largest declared run size in a text body, in points.
+func largestRunPt(tb *pptx.TextBody) float64 {
+	largest := 0
+	for _, p := range tb.Paragraphs {
+		for _, r := range p.Runs {
+			if strings.TrimSpace(r.Text) != "" && r.FontSize > largest {
+				largest = r.FontSize
+			}
+		}
+	}
+	return float64(largest) / 100
+}
+
 func writtenFitHeightPt(text json.RawMessage, widthPt, minPt float64) float64 {
 	const maxGrowPt = 400
 	if len(text) == 0 || widthPt <= 0 {
@@ -177,17 +191,21 @@ func writtenFitHeightPt(text json.RawMessage, widthPt, minPt float64) float64 {
 		return minPt
 	}
 	w := int64(widthPt * sizingEMUPerPt)
-	// AutofitScaleFor reports 1 for a box with no text area, so start above
-	// the vertical insets: a zero-height area is not a fit.
+	// Start at one line plus the full vertical margin. Below that the writer
+	// clamps the margin of a degenerate shape so one line always "fits"
+	// (pptx.EffectiveTextInsets) — a floor for pills and badges, not a height
+	// to size a row to; and AutofitScaleFor reports 1 for a box with no text
+	// area at all.
 	insetsPt := 2 * defaultShapeInsetTBPt
 	if tb.Insets != [4]int64{} {
 		insetsPt = float64(tb.Insets[1]+tb.Insets[3]) / sizingEMUPerPt
 	}
+	insetsPt += largestRunPt(tb) * sizingLineSpacing
 	fits := func(h float64) bool {
 		return pptx.AutofitScaleFor(tb, pptx.RectEmu{CX: w, CY: int64(h * sizingEMUPerPt)}) >= 1
 	}
 	// The fit is monotonic in height: binary-search whole points.
-	lo := math.Ceil(math.Max(minPt, insetsPt+1))
+	lo := math.Ceil(math.Max(minPt, insetsPt))
 	hi := math.Floor(math.Max(minPt, insetsPt) + maxGrowPt)
 	if fits(lo) {
 		return lo
