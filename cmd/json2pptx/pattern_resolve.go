@@ -121,6 +121,9 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// leaving the lower half of the slide empty. A pattern may opt out by
 	// setting vertical_align itself ("top" / "stretch").
 	patterns.ApplyGridDefaults(grid)
+	// Peer cards on light accents become a tint + accent rule instead of a
+	// wall of solid colour; runs before the ink fix so the text darkens.
+	patterns.SoftenPeerFills(expandCtx, p.Name, grid)
 	// Keep the template's accents: swap unreadable pattern lt1 text for a
 	// readable theme ink instead of recolouring fills black.
 	patterns.ApplyReadableInk(expandCtx, grid)

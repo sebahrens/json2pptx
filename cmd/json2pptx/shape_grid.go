@@ -456,6 +456,7 @@ func resolveGridGeometry(slide SlideInput, layouts []types.LayoutMetadata, slide
 			}
 		}
 	}
+	g = reserveMeasuredTitle(g, slide, layouts)
 	g = reserveTakeawayBand(g, slide, layouts)
 	g = reserveCanvasHeadline(g, slide, layouts, slideWidth, slideHeight)
 	return reserveGridSideDecor(g, slide, layouts, slideWidth, slideHeight)
