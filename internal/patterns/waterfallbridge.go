@@ -474,6 +474,7 @@ func (w *waterfallBridge) Expand(ctx ExpandContext, values, overrides any, cellO
 				hasIn:    i > 0,
 				hasOut:   i < n-1,
 				areaPt:   barAreaPt,
+				colPt:    waterfallColumnWidthPt(ctx, n),
 			}),
 		}
 
@@ -628,6 +629,7 @@ type wbColumnLayout struct {
 	inOnTop, outOnTop         bool // bridge levels sit on the bar's top edge?
 	hasIn, hasOut             bool // bridge line from the previous / to the next column
 	areaPt                    float64
+	colPt                     float64 // column width in points (0 = unknown)
 }
 
 const (
@@ -646,6 +648,16 @@ func waterfallBarAreaPt(ctx ExpandContext) float64 {
 		h = shapegrid.DefaultBounds(12192000, 6858000).CY
 	}
 	return float64(h) / 12700 * 0.85
+}
+
+// waterfallColumnWidthPt is one column's width in points, or 0 when the
+// content width is unknown.
+func waterfallColumnWidthPt(ctx ExpandContext, n int) float64 {
+	w, _ := expandContentSize(ctx)
+	if w <= 0 || n <= 0 {
+		return 0
+	}
+	return float64(w) / 12700 / float64(n)
 }
 
 // wbLabelBandPt is the height one line of value text needs at size.
@@ -673,11 +685,23 @@ func waterfallHeadroomPt(valueSize float64) float64 {
 // outside the bar (go-slide-creator-h1smy): in the spacer on the preferred
 // side (l.labelUp: above for totals and increases, below for decreases), else
 // the other spacer, and inside the bar only when neither spacer has room.
-func waterfallLabelSide(l wbColumnLayout, topPct, _, bottomPct float64) string {
+func waterfallLabelSide(l wbColumnLayout, topPct, barPct, bottomPct float64) string {
 	if l.areaPt <= 0 {
 		return "bar"
 	}
 	needPt := wbLabelBandPt(l.valueSize)
+	// A value too wide for one line in its column wraps; an outside spacer
+	// sized for one line would shrink it, so a wrapping label stays in a bar
+	// tall enough to hold it (schema-maximum values with long units).
+	if l.colPt > 0 {
+		textPt := float64(runeLen(l.valueText)) * shapegrid.EffectiveTextSizePt(l.valueSize) * 0.6
+		if lines := math.Ceil(textPt / (l.colPt * 0.9)); lines > 1 {
+			if l.areaPt*barPct/100 >= needPt*lines {
+				return "bar"
+			}
+			needPt *= lines
+		}
+	}
 	first, second := "top", "bottom"
 	firstPct, secondPct := topPct, bottomPct
 	if !l.labelUp {
