@@ -363,7 +363,6 @@ func (t *teamBios) Expand(ctx ExpandContext, values, overrides any, cellOverride
 // go-slide-creator-u9xfy). The photo row keeps its nominal share.
 func capTeamBiosTextRows(ctx ExpandContext, grid *jsonschema.ShapeGridInput, columns int) {
 	const (
-		insetPt    = 14.2 // 0.5cm text inset per side (conservative: narrower measures taller)
 		padPt      = 6.0
 		photoShare = 40.0 // percent of a card-row
 	)
@@ -372,7 +371,7 @@ func capTeamBiosTextRows(ctx ExpandContext, grid *jsonschema.ShapeGridInput, col
 	if cardRows == 0 || columns == 0 {
 		return
 	}
-	textW := equalColumnWidthPt(w, columns, grid.Gap) - 2*insetPt
+	textW := equalColumnWidthPt(w, columns, grid.Gap) - 2*defaultShapeInsetLRPt
 	nominalCard := h / float64(cardRows)
 	capped := false
 	for r := 1; r < len(grid.Rows); r += 2 {
@@ -382,7 +381,10 @@ func capTeamBiosTextRows(ctx ExpandContext, grid *jsonschema.ShapeGridInput, col
 				tallest = math.Max(tallest, shapeTextHeightPt(ctx.Theme.BodyFont, c.Shape.Text, textW))
 			}
 		}
-		need := math.Ceil(tallest + 2*padPt)
+		// The row must hold the text plus the shape's own 0.5 cm top and
+		// bottom insets; sizing it to the text alone left the frame too
+		// short and autofit shrank the name below the readable floor.
+		need := math.Ceil(tallest + 2*defaultShapeInsetTBPt + 2*padPt)
 		if tallest <= 0 || need >= nominalCard*0.6 {
 			continue
 		}
