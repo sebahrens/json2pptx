@@ -1156,6 +1156,31 @@ type gridContentCounts struct {
 
 // validateShapeGrid validates a ShapeGridInput and returns content counts,
 // warnings, errors, and structured validation warnings.
+// validateGridColumns checks a shape_grid `columns` value: a whole number
+// from 1 to shapegrid.MaxColumns, checked before any int() conversion
+// (go-slide-creator-4kq5m), or an array of at most MaxColumns widths, which it
+// returns for the track-weight check. A non-empty string is the error.
+func validateGridColumns(raw json.RawMessage, slideNum int) ([]float64, string) {
+	if len(raw) == 0 {
+		return nil, ""
+	}
+	var n float64
+	if err := json.Unmarshal(raw, &n); err == nil {
+		if _, err := shapegrid.ColumnCount(n); err != nil {
+			return nil, fmt.Sprintf("slide %d: %v", slideNum, err)
+		}
+		return nil, ""
+	}
+	var arr []float64
+	if err := json.Unmarshal(raw, &arr); err != nil {
+		return nil, fmt.Sprintf("slide %d: shape_grid columns must be a number or array of numbers", slideNum)
+	}
+	if len(arr) > shapegrid.MaxColumns {
+		return nil, fmt.Sprintf("slide %d: shape_grid columns array has %d entries; at most %d columns are supported", slideNum, len(arr), shapegrid.MaxColumns)
+	}
+	return arr, ""
+}
+
 func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCounts, warnings []string, errors []string, valWarnings []*patterns.ValidationError) {
 	if len(grid.Rows) == 0 {
 		errors = append(errors, fmt.Sprintf("slide %d: shape_grid has no rows", slideNum))
@@ -1167,23 +1192,9 @@ func validateShapeGrid(grid *ShapeGridInput, slideNum int) (counts gridContentCo
 	}
 
 	// Validate columns
-	var colWeights []float64
-	if len(grid.Columns) > 0 {
-		var n float64
-		if err := json.Unmarshal(grid.Columns, &n); err != nil {
-			var arr []float64
-			if err := json.Unmarshal(grid.Columns, &arr); err != nil {
-				errors = append(errors, fmt.Sprintf("slide %d: shape_grid columns must be a number or array of numbers", slideNum))
-			} else if len(arr) > shapegrid.MaxColumns {
-				errors = append(errors, fmt.Sprintf("slide %d: shape_grid columns array has %d entries; at most %d columns are supported", slideNum, len(arr), shapegrid.MaxColumns))
-			} else {
-				colWeights = arr
-			}
-		} else if _, err := shapegrid.ColumnCount(n); err != nil {
-			// Finite, whole and 1..MaxColumns, checked before any int()
-			// conversion (go-slide-creator-4kq5m).
-			errors = append(errors, fmt.Sprintf("slide %d: %v", slideNum, err))
-		}
+	colWeights, colErr := validateGridColumns(grid.Columns, slideNum)
+	if colErr != "" {
+		errors = append(errors, colErr)
 	}
 
 	// Negative / non-finite column widths and row weights resolve to
