@@ -1,6 +1,6 @@
-# Contributing to Go Slide Creator
+# Contributing to json2pptx
 
-Thank you for your interest in contributing to Go Slide Creator! This document provides guidelines for contributing to the project.
+Thank you for your interest in contributing to json2pptx! This document provides guidelines for contributing to the project.
 
 ## Development Setup
 
@@ -373,6 +373,37 @@ Before submitting a PR, ensure:
 3. Wait for CI checks to pass
 4. Address review feedback
 5. Maintainers will merge once approved
+
+## Releasing
+
+Releases are cut by a maintainer by pushing an annotated semver tag. Nothing
+else publishes a release: `make release` / `make dist-*` only build archives
+locally, and the Docker workflow publishes `:main` on every push to `main` but
+`:X.Y.Z`, `:X.Y` and `:latest` only for a `v*` tag.
+
+1. **Update `CHANGELOG.md`.** Rename `## [Unreleased]` to
+   `## [X.Y.Z] - YYYY-MM-DD`, open a fresh empty `## [Unreleased]` above it,
+   note the input schema version the release ships (the newest entry in
+   `docs/SCHEMA_CHANGELOG.md`), and update the compare links at the bottom.
+   Commit this on `main` and push it through CI.
+2. **Check the tree.** On an up-to-date, clean `main`, run `make release-check`
+   (fails on a dirty tree or an embedded template that is not tracked) and the
+   pre-commit checklist in `CLAUDE.md` (`make lint`, tests in both modules).
+3. **Tag and push.**
+
+   ```bash
+   git tag -a vX.Y.Z -m "json2pptx vX.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+   `make` reads the version from `git describe --tags`, so binaries built from
+   the tagged commit report `vX.Y.Z` instead of a bare commit SHA.
+4. **Build the archives** from the tagged commit: `make dist-linux dist-windows`.
+   Staging holds exactly the templates listed in `templates/embed.go`; the
+   build fails if anything else (for example a local `p-style.pptx`) would ship.
+5. **Publish.** Create a GitHub release for the tag with the CHANGELOG section as
+   notes and attach `dist/*.tar.gz`. Confirm the Docker workflow pushed
+   `ghcr.io/sebahrens/json2pptx:X.Y.Z` and `:latest`.
 
 ## Issue Reporting
 
