@@ -22,6 +22,12 @@ var outputSchemaGenerate = json.RawMessage(`{
     "validation_errors": {"type": "array", "items": {"$ref": "#/$defs/validation_error"}},
     "fit_findings":      {"type": "array", "items": {"$ref": "#/$defs/fit_finding"}},
     "idempotent_replay": {"type": "boolean", "description": "True when this response was served from the idempotency cache (the caller passed an idempotency_key that matched a prior successful call)."},
+    "content_hash":      {"type": "string", "description": "SHA-256 of the written file; pass it as submit_visual_review pptx_revision."},
+    "deterministic_ready": {"type": "boolean", "description": "No refuse-class finding, the quality gate passed, and output validation ran clean. success only means the file was written."},
+    "publishable":       {"type": "boolean", "description": "deterministic_ready AND an approved all-slide submit_visual_review of this exact file. False on a fresh render."},
+    "blocking_reasons":  {"type": "array", "items": {"type": "string"}, "description": "Every reason publishable is false, including the missing visual verdict."},
+    "deterministic_blocking_reasons": {"type": "array", "items": {"type": "string"}, "description": "Editing/validation blockers only, excluding the visual verdict."},
+    "next_tool_call":    {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"], "description": "The first blocking finding's fix when not deterministic_ready, else render_deck_thumbnails for this file."},
     "output_validation_findings": {
       "type": "array",
       "items": {
@@ -667,7 +673,8 @@ var outputSchemaRenderDeckThumbnails = json.RawMessage(`{
     "selected": {"type": "array", "items": {"type": "integer"}, "description": "0-based slide indices this call returned, ascending. Present only when slide_indices narrowed the render."},
     "delivery":  {"type": "string", "enum": ["image_content"], "description": "Set to image_content (the default) when thumbnails are delivered as MCP image content blocks (one per slide, in order) after this JSON. Absent in the legacy include_base64_json=true envelope."},
     "source_hash": {"type": "string", "description": "image_content mode: PPTX content hash shared by every slide (hoisted from slides[])."},
-    "cleanup":     {"type": "string", "description": "image_content mode: lifetime/cleanup semantics shared by every slides[].path artifact."}
+    "cleanup":     {"type": "string", "description": "image_content mode: lifetime/cleanup semantics shared by every slides[].path artifact."},
+    "next_tool_call": {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"], "description": "submit_visual_review bound to this PPTX's current sha256 (pptx_revision)."}
   },
   "required": ["slides", "truncated"]
 }`)
@@ -2505,7 +2512,8 @@ var outputSchemaRenderDeckSpec = json.RawMessage(`{
     "warnings":        {"type": "array", "items": {"type": "string"}},
     "diagnostics":     {"type": "array", "items": {"$ref": "#/$defs/semantic_diagnostic"}},
     "explanation_summary": {"type": "object", "description": "The compiler's planned decisions (archetype, template, per-slide kind/role/family/density/pattern) and rhythm warnings."},
-    "error":           {"type": "string", "description": "Blocking failure reason when success=false."}
+    "error":           {"type": "string", "description": "Blocking failure reason when success=false."},
+    "next_tool_call":  {"type": "object", "properties": {"tool": {"type": "string"}, "args_template": {"type": "object"}}, "required": ["tool", "args_template"], "description": "The first blocking diagnostic's fix when not deterministic_ready, else render_deck_thumbnails for changed_slides (or the whole deck)."}
   },
   "required": ["ok", "success"],
   "$defs": {

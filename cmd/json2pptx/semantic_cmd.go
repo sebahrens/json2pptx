@@ -781,8 +781,37 @@ func semanticDiagFromFit(sm *semantic.SourceMap, f patterns.FitFinding) semantic
 	if mapped.SlideIndex >= 0 {
 		idx := mapped.SlideIndex
 		d.SlideIndex = &idx
+		d.Message = zeroBasedSlideMessage(d.Message, slidepath.SlideIndex(f.Path), idx)
 	}
+	attachFixParams(&d, f.Fix)
 	return d
+}
+
+// attachFixParams carries a raw fix's budgets onto the recommended semantic
+// edit (go-slide-creator-pi6ea). A finding with a budget but no recommended
+// edit gets the edit its budget implies.
+func attachFixParams(d *semanticDiagnostic, fix *patterns.FixSuggestion) {
+	if fix == nil || d.SemanticPath == "" {
+		return
+	}
+	params := semanticFixParams(fix.Kind, fix.Params)
+	if params == nil {
+		return
+	}
+	if d.RecommendedEdit == nil {
+		switch {
+		case params["max_items"] != nil:
+			d.RecommendedEdit = &semantic.SemanticEdit{Kind: semantic.EditReduceItems, Hint: "Remove or merge items to fit the max_items budget."}
+		case params["max_chars"] != nil || params["max_length"] != nil || params["max_words"] != nil:
+			d.RecommendedEdit = &semantic.SemanticEdit{Kind: semantic.EditShortenText, Hint: "Shorten this field to the budget in params."}
+		default:
+			return
+		}
+	} else {
+		edit := *d.RecommendedEdit
+		d.RecommendedEdit = &edit
+	}
+	d.RecommendedEdit.Params = params
 }
 
 // semanticDiagFromFitWithIR resolves a generated shape's text back to a

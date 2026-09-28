@@ -164,6 +164,15 @@ type JSONOutput struct {
 	// idempotency cache instead of regenerated. Only set on MCP responses
 	// when an idempotency_key was supplied and matched a prior call.
 	IdempotentReplay bool `json:"idempotent_replay,omitempty"`
+	// Completion block shared with render_deck_spec (go-slide-creator-mn33v).
+	// Set on MCP generate_presentation responses: success means the file was
+	// written; deterministic_ready means the gate passed; publishable also
+	// needs an approved all-slide submit_visual_review of this exact file.
+	DeterministicReady           *bool                        `json:"deterministic_ready,omitempty"`
+	Publishable                  *bool                        `json:"publishable,omitempty"`
+	BlockingReasons              []string                     `json:"blocking_reasons,omitempty"`
+	DeterministicBlockingReasons []string                     `json:"deterministic_blocking_reasons,omitempty"`
+	NextToolCall                 *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
 	// RawRevision ties a cached generate response to its mutable raw handle.
 	// It is cache-only metadata, never part of the MCP wire response.
 	RawRevision string `json:"-"`

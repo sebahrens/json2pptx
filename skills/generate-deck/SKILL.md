@@ -1,6 +1,6 @@
 ---
 name: generate-deck
-schema_version: 4.150.0
+schema_version: 4.151.0
 description: >-
   Create or revise PowerPoint decks with json2pptx. Use for presentation and
   slide-deck requests that need template-aware authoring, validation, rendering,
@@ -49,11 +49,11 @@ key-message panel). A shape-grid `image` cell accepts `geometry: "ellipse"` for
 a circular picture frame. Asset paths expand only `$HOME`, `$BRAND_ASSETS`,
 `$JSON2PPTX_*`; `icon.path` obeys `ALLOWED_IMAGE_PATHS`.
 
-For both paths, a passing `quality_gate` or `deterministic_ready` field is a
-precondition, not proof that anybody looked at the slides. On a fresh semantic
-render, `publishable` remains false until a complete approved visual verdict
-for the current artifact exists. For a recorded publishable verdict, use
-`submit_visual_review` only after inspecting each current-revision image; it
+Both render tools return `deterministic_ready`, `publishable` (false on a fresh
+render), `blocking_reasons` and `next_tool_call` (blocking fix, else
+`render_deck_thumbnails` → `submit_visual_review` with `pptx_revision` =
+`content_hash`). `deterministic_ready` is a precondition, not proof anybody
+looked: submit a verdict only after inspecting each current-revision image; it
 never clears deterministic blockers (`reviewed_deterministic_blockers`).
 Any changed slide invalidates its previous visual verdict. If a finding is
 unfamiliar, call `describe_finding`; use
