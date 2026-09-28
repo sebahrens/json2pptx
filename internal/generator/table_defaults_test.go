@@ -33,8 +33,10 @@ func qbrTable() *types.TableSpec {
 var trRegexp = regexp.MustCompile(`(?s)<a:tr .*?</a:tr>`)
 var tcRegexp = regexp.MustCompile(`(?s)<a:tc>.*?</a:tc>`)
 
-// go-slide-creator-weaq: the QBR table with the default style gets a styled
-// header, right-aligned numeric columns and an emphasised Total row.
+// go-slide-creator-weaq / go-slide-creator-1iiej: the QBR table with the
+// default style gets the consulting default — an unfilled bold header over a
+// 1pt rule, hairline row rules, no zebra, a bold first column, right-aligned
+// numeric columns and an emphasised Total row.
 func TestDefaultTableStyling_QBR(t *testing.T) {
 	table := qbrTable()
 	res, err := GenerateTableXML(table, TableRenderConfig{
@@ -50,12 +52,33 @@ func TestDefaultTableStyling_QBR(t *testing.T) {
 	}
 	header := tcRegexp.FindAllString(rows[0], -1)
 	for i, c := range header {
-		if !strings.Contains(c, `<a:solidFill><a:schemeClr val="accent1"/></a:solidFill></a:tcPr>`) {
-			t.Errorf("header cell %d missing accent1 solidFill", i)
+		if !strings.Contains(c, `<a:noFill/></a:tcPr>`) {
+			t.Errorf("header cell %d should be unfilled: %s", i, c)
 		}
-		if !strings.Contains(c, `b="1"`) {
-			t.Errorf("header cell %d not bold", i)
+		if !strings.Contains(c, `sz="1100" b="1"`) {
+			t.Errorf("header cell %d not 11pt bold", i)
 		}
+		if !strings.Contains(c, `<a:lnB w="12700" cap="flat" cmpd="sng"><a:solidFill><a:schemeClr val="tx1"/>`) {
+			t.Errorf("header cell %d missing the 1pt rule under it", i)
+		}
+	}
+	if strings.Contains(res.XML, `<a:schemeClr val="accent1"><a:lumMod val="15000"/>`) {
+		t.Error("default table must not draw zebra stripes")
+	}
+	if !strings.Contains(res.XML, `bandRow="0"`) {
+		t.Error("default table must switch banding off")
+	}
+	hairline := `<a:lnB w="6350" cap="flat" cmpd="sng"><a:solidFill><a:schemeClr val="tx1"><a:lumMod val="15000"/><a:lumOff val="85000"/></a:schemeClr></a:solidFill></a:lnB>`
+	for i, c := range tcRegexp.FindAllString(rows[1], -1) {
+		if !strings.Contains(c, hairline) {
+			t.Errorf("data cell %d missing the 0.5pt 15%% hairline under it", i)
+		}
+		if !strings.Contains(c, `<a:noFill/></a:tcPr>`) {
+			t.Errorf("data cell %d should be unfilled", i)
+		}
+	}
+	if strings.Contains(rows[5], `<a:lnB w="6350"`) {
+		t.Error("last row should not carry a hairline under it")
 	}
 	if !strings.Contains(header[1], `algn="r"`) || strings.Contains(header[0], `algn="r"`) {
 		t.Error("numeric header should be right-aligned, label header left")
@@ -74,12 +97,18 @@ func TestDefaultTableStyling_QBR(t *testing.T) {
 		if !strings.Contains(c, `b="1"`) {
 			t.Errorf("Total row cell %d not bold", i)
 		}
-		if !strings.Contains(c, `<a:lnT w="12700" cap="flat" cmpd="sng"><a:solidFill><a:schemeClr val="dk1"/>`) {
+		if !strings.Contains(c, `<a:lnT w="12700" cap="flat" cmpd="sng"><a:solidFill><a:schemeClr val="tx1"/>`) {
 			t.Errorf("Total row cell %d missing top rule", i)
 		}
 	}
-	if strings.Contains(rows[2], `b="1"`) {
-		t.Error("ordinary data row should not be bold")
+	ordinary := tcRegexp.FindAllString(rows[2], -1)
+	if !strings.Contains(ordinary[0], `sz="1200" b="1"`) {
+		t.Error("first (label) column should be 12pt bold")
+	}
+	for i := 1; i < len(ordinary); i++ {
+		if !strings.Contains(ordinary[i], `sz="1200" b="0"`) {
+			t.Errorf("ordinary data cell %d should be 12pt regular", i)
+		}
 	}
 	// Content-driven rows: not stretched to fill the 4,000,000 EMU placeholder.
 	if res.Height >= 4000000 {

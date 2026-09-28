@@ -91,6 +91,9 @@ executable one.
   grey with accent1 only on `highlight` bars (0-based indices or names;
   default the last period of a time series, else the top bar); set it to the
   bar(s) the title names. Waterfalls accent the decreases.
+  A table with no `style` renders as a
+  consulting table (unfilled 11pt bold header over a 1pt rule, 12pt rows,
+  hairline rules, no zebra); `table-highlight` matches it.
 - [PATTERNS.md](PATTERNS.md): pattern selection and text-capacity guidance;
   get the current catalog, per-pattern schema and per-field copy targets from
   `list_patterns` / `show_pattern`. Out-of-range pattern text sizes are

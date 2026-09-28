@@ -186,11 +186,14 @@
   },
   {
     "pattern_name": "table-highlight",
-    "row_count": 6,
+    "row_count": 9,
     "cell_counts": [
       5,
+      1,
       5,
+      1,
       5,
+      1,
       5,
       1,
       1

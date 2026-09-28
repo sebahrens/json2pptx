@@ -148,9 +148,12 @@ func TestTableHighlight_ExpandStructure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// header + 3 options + legend.
-	if len(grid.Rows) != 5 {
-		t.Fatalf("rows = %d, want 5", len(grid.Rows))
+	// header + header rule + 3 options + 2 hairlines + legend.
+	if len(grid.Rows) != 8 {
+		t.Fatalf("rows = %d, want 8", len(grid.Rows))
+	}
+	if grid.VerticalAlign != "top" {
+		t.Errorf("table should be top-anchored under the title, got %q", grid.VerticalAlign)
 	}
 	if got := len(grid.Rows[0].Cells); got != 5 {
 		t.Errorf("header cells = %d, want 5", got)
@@ -167,28 +170,52 @@ func TestTableHighlight_ExpandStructure(t *testing.T) {
 		t.Errorf("table should be content-sized: rows sum to %.0fpt of %.0fpt", sum, areaH)
 	}
 
+	// go-slide-creator-1iiej: unfilled 11pt bold dk1 header over a 1pt dk1
+	// rule, 0.5pt dk1-15% hairlines between option rows, no zebra.
 	hdr := cellText(t, grid.Rows[0].Cells[0].Shape.Text).Paragraphs[0]
-	if hdr.Content != "Option" || hdr.Color != "lt1" || hdr.Size < 12 {
+	if hdr.Content != "Option" || hdr.Color != "dk1" || hdr.Size != 11 || !hdr.Bold {
 		t.Errorf("corner header = %+v", hdr)
 	}
+	for i, c := range grid.Rows[0].Cells {
+		if string(c.Shape.Fill) != `"none"` {
+			t.Errorf("header cell %d should be unfilled, got %s", i, c.Shape.Fill)
+		}
+	}
+	if r := grid.Rows[1]; r.MaxHeight != thHeaderRulePt || len(r.Cells) != 1 || r.Cells[0].ColSpan != 5 ||
+		!strings.Contains(string(r.Cells[0].Shape.Fill), "dk1") {
+		t.Errorf("row 1 should be the 1pt dk1 header rule: %+v", r)
+	}
+	for _, i := range []int{3, 5} {
+		r := grid.Rows[i]
+		if r.MaxHeight != thRowRulePt || len(r.Cells) != 1 || !strings.Contains(string(r.Cells[0].Shape.Fill), "dk1") {
+			t.Errorf("row %d should be a 0.5pt hairline: %+v", i, r)
+		}
+	}
+	for _, i := range []int{2, 6} {
+		for j, c := range grid.Rows[i].Cells {
+			if string(c.Shape.Fill) != `"none"` {
+				t.Errorf("ordinary option row %d cell %d should be unfilled (no zebra), got %s", i, j, c.Shape.Fill)
+			}
+		}
+	}
 
-	// Highlighted row (option 1): tinted fill, accent bar, tag paragraph.
-	hl := grid.Rows[2].Cells[0]
-	if hl.AccentBar == nil || !strings.Contains(string(hl.Shape.Fill), "lumMod") {
-		t.Errorf("highlight row name cell should be tinted with an accent bar: %s %+v", hl.Shape.Fill, hl.AccentBar)
+	// Highlighted row (option 1): accent 10% tint, 3pt accent bar, tag paragraph.
+	hl := grid.Rows[4].Cells[0]
+	if hl.AccentBar == nil || hl.AccentBar.Width != thHighlightBarPt || !strings.Contains(string(hl.Shape.Fill), "10000") {
+		t.Errorf("highlight row name cell should be tinted 10%% with a 3pt accent bar: %s %+v", hl.Shape.Fill, hl.AccentBar)
 	}
 	paras := cellText(t, hl.Shape.Text).Paragraphs
 	if len(paras) != 3 || paras[2].Content != "Recommended" {
 		t.Errorf("highlight paragraphs = %+v", paras)
 	}
-	for _, c := range grid.Rows[2].Cells[1:] {
+	for _, c := range grid.Rows[4].Cells[1:] {
 		if string(c.Shape.Fill) != string(hl.Shape.Fill) {
 			t.Errorf("whole highlighted row should share the tint, got %s vs %s", c.Shape.Fill, hl.Shape.Fill)
 		}
 	}
 
 	// Score cells carry a centred SVG Harvey ball with alt text.
-	sc := grid.Rows[1].Cells[1]
+	sc := grid.Rows[2].Cells[1]
 	if sc.Icon == nil || !strings.HasPrefix(sc.Icon.SVGData, "<svg") || !strings.Contains(sc.Icon.Alt, "Harvey ball 1 of 4") {
 		t.Fatalf("score cell icon = %+v", sc.Icon)
 	}
@@ -200,7 +227,7 @@ func TestTableHighlight_ExpandStructure(t *testing.T) {
 	}
 
 	// Legend spans the table and nests a grid of symbol/label pairs.
-	leg := grid.Rows[4].Cells[0]
+	leg := grid.Rows[7].Cells[0]
 	if leg.ColSpan != 5 || leg.Grid == nil || len(leg.Grid.Rows[0].Cells) < 6 {
 		t.Errorf("legend cell = %+v", leg)
 	}
@@ -251,28 +278,31 @@ func TestTableHighlight_HighlightColumnAndTextCells(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(grid.Rows) != 3 {
+	// header + rule + 2 options + 1 hairline, no legend.
+	if len(grid.Rows) != 5 {
 		t.Fatalf("show_legend=false should drop the legend row, got %d rows", len(grid.Rows))
 	}
-	if got := string(grid.Rows[0].Cells[1].Shape.Fill); got != `"accent2"` {
-		t.Errorf("highlighted column header fill = %s, want accent2", got)
+	// The highlighted criterion's header is never a filled cell
+	// (go-slide-creator-1iiej): it stays unfilled, set in bold type.
+	if got := string(grid.Rows[0].Cells[1].Shape.Fill); got != `"none"` {
+		t.Errorf("highlighted column header fill = %s, want none", got)
 	}
-	if got := string(grid.Rows[1].Cells[1].Shape.Fill); !strings.Contains(got, "accent2") {
+	if got := string(grid.Rows[2].Cells[1].Shape.Fill); !strings.Contains(got, "accent2") {
 		t.Errorf("highlighted column body cell should be accent-tinted, got %s", got)
 	}
-	txt := cellText(t, grid.Rows[1].Cells[2].Shape.Text).Paragraphs[0]
+	txt := cellText(t, grid.Rows[2].Cells[2].Shape.Text).Paragraphs[0]
 	if txt.Content != "Q1 FY26" || txt.Size < 12 {
 		t.Errorf("text cell = %+v", txt)
 	}
-	if na := cellText(t, grid.Rows[2].Cells[2].Shape.Text).Paragraphs[0].Content; na != "–" {
+	if na := cellText(t, grid.Rows[4].Cells[2].Shape.Text).Paragraphs[0].Content; na != "–" {
 		t.Errorf("n/a cell should render an en dash, got %q", na)
 	}
-	if grid.Rows[1].Cells[3].Icon == nil || !strings.Contains(grid.Rows[1].Cells[3].Icon.SVGData, thDefaultRAG["green"]) {
+	if grid.Rows[2].Cells[3].Icon == nil || !strings.Contains(grid.Rows[2].Cells[3].Icon.SVGData, thDefaultRAG["green"]) {
 		t.Error("rag column should render a green dot")
 	}
 }
 
-func TestTableHighlight_DenseStepsDownButStaysReadable(t *testing.T) {
+func TestTableHighlight_DenseStaysAtTableTypeScale(t *testing.T) {
 	p := tableHighlightPattern(t)
 	opts := make([]string, 0, 6)
 	for i := 0; i < 6; i++ {
@@ -283,12 +313,13 @@ func TestTableHighlight_DenseStepsDownButStaysReadable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	name := cellText(t, grid.Rows[1].Cells[0].Shape.Text).Paragraphs[0]
-	if name.Size >= 14 || name.Size < 12 {
-		t.Errorf("dense table should step the body size down but not below 12pt, got %v", name.Size)
+	// Rows are 12pt, the table type scale and the readability floor.
+	name := cellText(t, grid.Rows[2].Cells[0].Shape.Text).Paragraphs[0]
+	if name.Size != 12 {
+		t.Errorf("dense table body should stay at 12pt, got %v", name.Size)
 	}
 	pinned, _ := p.Expand(fullThemeCtx(), v, &TableHighlightOverrides{BodySize: 16}, nil)
-	if got := cellText(t, pinned.Rows[1].Cells[0].Shape.Text).Paragraphs[0].Size; got != 16 {
+	if got := cellText(t, pinned.Rows[2].Cells[0].Shape.Text).Paragraphs[0].Size; got != 16 {
 		t.Errorf("body_size override should pin the size, got %v", got)
 	}
 }
@@ -300,10 +331,10 @@ func TestTableHighlight_CellOverrideAccentBar(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if grid.Rows[1].Cells[0].AccentBar == nil {
+	if grid.Rows[2].Cells[0].AccentBar == nil {
 		t.Error("cell_overrides[0].accent_bar should decorate option 0")
 	}
-	if grid.Rows[2].Cells[0].AccentBar != nil {
+	if grid.Rows[4].Cells[0].AccentBar != nil {
 		t.Error("option 1 should stay undecorated")
 	}
 }

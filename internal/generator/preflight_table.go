@@ -28,8 +28,12 @@ type TablePreflightInput struct {
 	// truncation requires a height to compute capacity from).
 	Bounds types.BoundingBox
 	// DefaultSize is the configured font size in hundredths of a point
-	// (e.g. 1800 = 18pt). When 0, the engine default (1800) is used.
+	// (e.g. 1800 = 18pt). When 0, the renderer's base size for Style is
+	// used (TableBaseFontSize: 12pt for the engine default, 18pt otherwise).
 	DefaultSize int
+	// Style is the authored (unresolved) table style. It selects the base
+	// font size and header geometry the renderer will use.
+	Style types.TableStyle
 }
 
 // DetectTablePreflight predicts whether GenerateTableXML would emit
@@ -54,19 +58,14 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 
 	fontSize := input.DefaultSize
 	if fontSize <= 0 {
-		fontSize = defaultFontSize
+		fontSize = TableBaseFontSize(input.Style)
 	}
 	originalFontSize := fontSize
 
 	var findings []patterns.FitFinding
 
-	// Column-count scaling: numCols > 4 → scale down by 4/numCols, floor at MinTableFontSize.
-	if numCols > 4 {
-		scale := 4.0 / float64(numCols)
-		scaled := int(float64(fontSize) * scale)
-		if scaled < minFontSizeForTable {
-			scaled = minFontSizeForTable
-		}
+	// Column-count scaling (columnScaledFontSize): wider than 4 columns shrinks toward 18pt*4/numCols, floor at MinTableFontSize.
+	if scaled, changed := columnScaledFontSize(fontSize, numCols, IsEngineDefaultTableStyle(input.Style)); changed {
 		fontSize = scaled
 		findings = append(findings, patterns.FitFinding{
 			ValidationError: patterns.ValidationError{
@@ -122,9 +121,10 @@ func DetectTablePreflight(input TablePreflightInput) []patterns.FitFinding {
 		// preflight and the generated <a:tr h> values cannot disagree.
 		colWidths := calculateColumnWidths(len(input.Headers), input.Bounds.Width, input.Headers, input.Rows, fontSize)
 		plan := planTableRows(&types.TableSpec{Headers: input.Headers, Rows: input.Rows}, colWidths, TableRenderConfig{
-			Bounds:      input.Bounds,
-			DefaultFont: defaultFontFamily,
-			DefaultSize: fontSize,
+			Bounds:        input.Bounds,
+			DefaultFont:   defaultFontFamily,
+			DefaultSize:   fontSize,
+			engineDefault: IsEngineDefaultTableStyle(input.Style),
 		})
 		if plan.HiddenRows > 0 {
 			overflow := plan.HiddenRows

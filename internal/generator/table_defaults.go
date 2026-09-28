@@ -1,43 +1,203 @@
 package generator
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/sebahrens/json2pptx/internal/types"
 )
 
-// Default table styling (go-slide-creator-weaq).
+// Default table styling (go-slide-creator-weaq, go-slide-creator-1iiej).
 //
 // Without an explicit style, tables referenced the built-in "Medium Style 2 -
 // Accent 1" GUID and deferred the header look to it — but most templates do
-// not ship that style in ppt/tableStyles.xml, so headers rendered as plain,
-// non-bold text, numbers were left-aligned and a "Total" row looked like any
-// other row. The engine now renders a consulting-grade default explicitly,
-// using only theme scheme colors so it stays template-driven:
+// not ship that style in ppt/tableStyles.xml. The engine therefore draws its
+// own consulting default explicitly, using only theme scheme colors so it
+// stays template-driven:
 //
-//   - header row: accent1 fill, bold, lt1 text
+//   - header row: NO fill, 11pt bold text-color (dk1) type over a 1pt
+//     text-color rule — never a solid black or accent header bar
+//   - data rows: 12pt, separated by 0.5pt dk1-at-15% hairline rules, no
+//     zebra stripes and no vertical rules; the first column is bold
 //   - numeric columns (detected from the data) right-aligned, header included
-//   - rows labelled Total / Sum / Grand total: bold with a top rule
-//   - row heights are content-driven minimums rather than stretched to fill
-//     the placeholder
+//   - rows labelled Total / Sum / Grand total: bold with a 1pt top rule
+//   - row heights are content-driven minimums, never stretched to fill the
+//     placeholder; the table is anchored at the top of its content area
+//
+// The default applies when the author left the style unset (no
+// header_background, no use_table_style, style_id empty or the engine
+// default GUID) and as the fallback for use_table_style /
+// "@template-default" when the template ships no formatting for its declared
+// table style. An authored style_id that the template defines, or an explicit
+// header_background, is still honoured; explicit borders / striped values are
+// honoured on top of the default.
 
-// defaultHeaderFill is the scheme color used for the default header row.
-const defaultHeaderFill = "accent1"
+// Engine-default type scale (go-slide-creator-1iiej): 12pt rows, 11pt header.
+// The shrink chain below never takes either under the 10pt table
+// readability floor (minFontSizeForTable).
+const (
+	engineDefaultRowFontSize    = 1200
+	engineDefaultHeaderFontSize = 1100
+)
 
-// applyDefaultTableStyling fills unset table style fields with the engine
-// defaults. Explicit author choices always win: an explicit
+// Engine-default rule weights in EMU.
+const (
+	engineDefaultHeaderRuleW = 12700 // 1pt under the header (and over a total)
+	engineDefaultRowRuleW    = 6350  // 0.5pt between data rows
+)
+
+// IsEngineDefaultTableStyle reports whether an (unresolved) authored table
+// style leaves the look to the engine's consulting default: no
+// use_table_style, no header_background, and a style_id that is empty or the
+// engine-default GUID.
+func IsEngineDefaultTableStyle(st types.TableStyle) bool {
+	return !st.UseTableStyle && st.HeaderBackground == "" &&
+		(st.StyleID == "" || st.StyleID == types.DefaultTableStyleID)
+}
+
+// TableBaseFontSize is the unscaled body font size (hundredths of a point)
+// the renderer starts its shrink chain from for a table with this style when
+// no placeholder size is configured: 12pt for the engine default, the legacy
+// 18pt otherwise. The preflight and fit-report predictors use it so their
+// predictions match the render.
+func TableBaseFontSize(st types.TableStyle) int {
+	if IsEngineDefaultTableStyle(st) {
+		return engineDefaultRowFontSize
+	}
+	return defaultFontSize
+}
+
+// columnScaledFontSize applies the wide-table shrink: a standard slide fits
+// four columns at 18pt, so wider tables scale down linearly, never below the
+// 10pt readability floor. Legacy tables scale their size by 4/numCols; an
+// engine-default table (already 12pt) is only capped at the 18pt-equivalent
+// size, so it keeps 12pt up to six columns. Reports whether it shrank.
+func columnScaledFontSize(size, numCols int, engineDefault bool) (int, bool) {
+	if numCols <= 4 {
+		return size, false
+	}
+	base := size
+	if engineDefault {
+		base = defaultFontSize
+	}
+	scaled := int(float64(base) * 4.0 / float64(numCols))
+	if scaled < minFontSizeForTable {
+		scaled = minFontSizeForTable
+	}
+	if engineDefault && scaled >= size {
+		return size, false
+	}
+	return scaled, true
+}
+
+// TableColumnScaledFontSize is columnScaledFontSize for the fit-report
+// walker, keyed by the authored table style.
+func TableColumnScaledFontSize(st types.TableStyle, size, numCols int) int {
+	scaled, _ := columnScaledFontSize(size, numCols, IsEngineDefaultTableStyle(st))
+	return scaled
+}
+
+// applyDefaultTableStyling marks engine-default tables and infers numeric
+// column types. Explicit author choices always win: an explicit
 // header_background (including "none"), use_table_style, a non-default
 // style_id, column_types, or a per-column alignment.
 func applyDefaultTableStyling(table *types.TableSpec, config *TableRenderConfig) {
-	st := &config.Style
-	if !st.UseTableStyle && st.HeaderBackground == "" &&
-		(st.StyleID == "" || st.StyleID == types.DefaultTableStyleID) {
-		st.HeaderBackground = defaultHeaderFill
+	if IsEngineDefaultTableStyle(config.Style) {
+		config.engineDefault = true
 	}
-	if len(st.ColumnTypes) == 0 {
-		st.ColumnTypes = inferColumnTypes(table, config.ColumnAlignments)
+	if len(config.Style.ColumnTypes) == 0 {
+		config.Style.ColumnTypes = inferColumnTypes(table, config.ColumnAlignments)
 	}
+}
+
+// tableStriped reports whether data rows get zebra stripes. The engine
+// default draws none unless the author explicitly asks (striped: true);
+// otherwise banding stays on unless explicitly switched off.
+func tableStriped(config TableRenderConfig) bool {
+	if config.engineDefault {
+		return config.Style.Striped != nil && *config.Style.Striped
+	}
+	return config.Style.Striped == nil || *config.Style.Striped
+}
+
+// headerFontSize is the header-row font size for a table rendered at the
+// given body size: 11/12 of the body for the engine default (never below the
+// readability floor, never above the body), 110% of the body otherwise.
+func headerFontSize(config TableRenderConfig, bodySize int) int {
+	if !config.engineDefault {
+		return int(float64(bodySize) * 1.1)
+	}
+	h := bodySize * engineDefaultHeaderFontSize / engineDefaultRowFontSize
+	if h < minFontSizeForTable {
+		h = minFontSizeForTable
+	}
+	if h > bodySize {
+		h = bodySize
+	}
+	return h
+}
+
+// engineDefaultRuleXML returns a horizontal rule on side ("T" or "B") in the
+// text color, tinted to 15% for the hairline row rules.
+func engineDefaultRuleXML(side string, w int, hairline bool) string {
+	clr := `<a:schemeClr val="tx1"/>`
+	if hairline {
+		clr = `<a:schemeClr val="tx1"><a:lumMod val="15000"/><a:lumOff val="85000"/></a:schemeClr>`
+	}
+	return fmt.Sprintf(`<a:ln%s w="%d" cap="flat" cmpd="sng"><a:solidFill>%s</a:solidFill></a:ln%s>`, side, w, clr, side)
+}
+
+// engineDefaultBordersXML returns the cell borders of the engine-default
+// look when the author set no borders. Vertical rules are always off. The
+// header carries the 1pt rule under it; the first data row repeats it on its
+// top edge; other data rows carry a hairline above and, unless last, below.
+// A totals row gets the 1pt rule above it.
+func engineDefaultBordersXML(isHeader bool, rowIdx int, lastRow bool, overrides *cellBorderOverrides) string {
+	none := func(side string) string { return fmt.Sprintf(`<a:ln%s w="0"><a:noFill/></a:ln%s>`, side, side) }
+	var top, bottom string
+	switch {
+	case isHeader:
+		top = none("T")
+		bottom = engineDefaultRuleXML("B", engineDefaultHeaderRuleW, false)
+	case rowIdx == 0:
+		top = engineDefaultRuleXML("T", engineDefaultHeaderRuleW, false)
+	default:
+		top = engineDefaultRuleXML("T", engineDefaultRowRuleW, true)
+	}
+	if !isHeader {
+		if lastRow {
+			bottom = none("B")
+		} else {
+			bottom = engineDefaultRuleXML("B", engineDefaultRowRuleW, true)
+		}
+	}
+	if overrides != nil {
+		switch {
+		case overrides.suppressTop:
+			top = none("T")
+		case overrides.totalsTopBorder:
+			top = engineDefaultRuleXML("T", engineDefaultHeaderRuleW, false)
+		}
+		if overrides.suppressBottom {
+			bottom = none("B")
+		}
+	}
+	return none("L") + none("R") + top + bottom
+}
+
+// engineDefaultTableLevelBorders switches every table-level rule off so the
+// cell-level rules are the only lines drawn and the referenced table style's
+// grid never shows through.
+func engineDefaultTableLevelBorders() string {
+	const no = `<a:ln w="0"><a:noFill/></a:ln>`
+	var b strings.Builder
+	b.WriteString(`<a:tblBorders>`)
+	for _, tag := range []string{"a:top", "a:bottom", "a:left", "a:right", "a:insideH", "a:insideV"} {
+		fmt.Fprintf(&b, `<%s>%s</%s>`, tag, no, tag)
+	}
+	b.WriteString(`</a:tblBorders>`)
+	return b.String()
 }
 
 // inferColumnTypes marks columns whose non-empty data cells are all numeric
@@ -103,8 +263,9 @@ func isTotalRow(row []types.TableCell) bool {
 	return totalRowLabelRegexp.MatchString(strings.ToLower(strings.TrimSpace(row[0].Content)))
 }
 
-// headerTextColorXML returns the run fill for header text on a filled header:
-// lt1 on dark scheme fills (accents, dk*, tx*), nothing otherwise.
+// headerTextColorXML returns the run fill for header text: lt1 on dark
+// scheme fills (accents, dk*, tx*), the text color (dk1) on the unfilled
+// engine-default header, nothing otherwise.
 func headerTextColorXML(config TableRenderConfig) string {
 	if config.Style.UseTableStyle {
 		return ""
@@ -112,6 +273,9 @@ func headerTextColorXML(config TableRenderConfig) string {
 	switch strings.ToLower(strings.TrimSpace(config.Style.HeaderBackground)) {
 	case "accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "dk1", "dk2", "tx1", "tx2":
 		return `<a:solidFill><a:schemeClr val="lt1"/></a:solidFill>`
+	}
+	if config.engineDefault {
+		return `<a:solidFill><a:schemeClr val="tx1"/></a:solidFill>`
 	}
 	return ""
 }

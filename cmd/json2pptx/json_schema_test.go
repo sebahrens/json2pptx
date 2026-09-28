@@ -164,8 +164,8 @@ func TestTableInput_ToTableSpec_DefaultStyle(t *testing.T) {
 	if spec.Style.HeaderBackground != "" {
 		t.Errorf("default Style.HeaderBackground = %q, want empty", spec.Style.HeaderBackground)
 	}
-	if spec.Style.Borders != "all" {
-		t.Errorf("default Style.Borders = %q, want all", spec.Style.Borders)
+	if spec.Style.Borders != "" {
+		t.Errorf("default Style.Borders = %q, want empty (engine default rules)", spec.Style.Borders)
 	}
 }
 

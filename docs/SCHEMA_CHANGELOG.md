@@ -1,5 +1,25 @@
 # Schema Changelog
 
+- **Unreleased — consulting table default (`go-slide-creator-1iiej`).**
+  A table with no style (no `header_background`, no `use_table_style`,
+  `style_id` unset or the engine default GUID) — and a `use_table_style` /
+  `@template-default` table whose template ships no style formatting — now
+  renders with no header fill (11pt bold `dk1` over a 1pt `dk1` rule), 12pt
+  rows separated by 0.5pt `dk1`-15% hairlines, no zebra stripes, no vertical
+  rules, a bold first column and right-aligned numbers; rows stay
+  content-height and top-anchored. Explicit `header_background`, `borders`,
+  `striped` and defined template styles are honoured unchanged. A table with no
+  `style` object now carries `borders: ""` (was `"all"`) in its resolved spec.
+  The 12pt start is capped at the 18pt × 4 / columns wide-table budget, so
+  `table_font_scaled` fires from seven columns (was five) for default tables;
+  the validate-time preflight and fit report predict the same sizes.
+  `table-highlight` follows the same look: unfilled header (a highlighted
+  criterion's header is no longer an accent fill), 1pt header rule and
+  hairlines between options, no banding or cell gutters, highlighted row at an
+  accent 10% tint with a 3pt bar, rows no longer padded to fill and the block
+  top-anchored; its `header_size` default is 11 (range now 11–28) and
+  `body_size` default 12. No `SchemaVersion` bump.
+
 - **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
   pattern, compose block and raw grid — and the native diagram shapes) keeps

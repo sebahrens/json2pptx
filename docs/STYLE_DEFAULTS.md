@@ -97,16 +97,21 @@ If a table has **no** `style` object at all, the entire default is adopted as a 
 
 ## Engine Table Defaults (no style authored)
 
-Independent of the `defaults` block, the renderer applies a consulting-grade table look whenever the author leaves the relevant field unset (go-slide-creator-weaq). Only theme scheme colors are used, so the look follows the template:
+Independent of the `defaults` block, the renderer applies a consulting table look whenever the author leaves the style unset (go-slide-creator-weaq, restyled by go-slide-creator-1iiej). Only theme scheme colors are used, so the look follows the template. The **engine default** applies when `header_background` is unset, `use_table_style` is false and `style_id` is unset or the engine default GUID — and as the fallback for `use_table_style` / `"@template-default"` when the template ships no formatting for its table style (see below):
 
-| Aspect | Default | Applies when | Opt out |
-|--------|---------|--------------|---------|
-| Header row | `accent1` fill, bold, `lt1` text | `header_background` unset, `use_table_style` false, and `style_id` unset or the engine default GUID | set `header_background` (e.g. `"none"`, `"lt2"`), `use_table_style: true`, or an explicit `style_id` |
-| Numeric columns | right-aligned (data and header) | `column_types` unset; a column whose every non-empty cell reads as a number (`24.1`, `+4%`, `$1.2M`, `2.8x`, `(3.0)`) | set `column_types` or a per-column `column_alignments` entry |
-| Total row | bold with a `dk1` top rule | first cell is `Total` / `Totals` / `Grand total` / `Sum` / `Subtotal` (case-insensitive) — in addition to `totals_row: true` for the last row | rename the label |
-| Row height | content-driven minimum (one line at the table font plus insets, never below 0.4in); rows are no longer stretched to fill the placeholder | always | — |
+| Aspect | Default | Opt out |
+|--------|---------|---------|
+| Header row | **no fill** (never a solid black or accent bar), 11pt bold text color (`dk1`) over a 1pt `dk1` rule | set `header_background` (e.g. `"accent1"`, `"lt2"`), `use_table_style: true` with a template that defines its style, or an explicit template `style_id` |
+| Body rows | 12pt, separated by 0.5pt `dk1`-at-15% hairline rules; no vertical rules, no rule under the last row | set `borders` (`"all"`, `"horizontal"`, `"outer"`, `"none"`) for the legacy grid rules |
+| Banding | **no zebra stripes** | `striped: true` |
+| First column | bold (the row label) | — |
+| Numeric columns | right-aligned (data and header) — applies to every table, not only the engine default | `column_types` unset; a column whose every non-empty cell reads as a number (`24.1`, `+4%`, `$1.2M`, `2.8x`, `(3.0)`); opt out with `column_types` or a per-column `column_alignments` entry |
+| Total row | bold with a 1pt `dk1` top rule | first cell is `Total` / `Totals` / `Grand total` / `Sum` / `Subtotal` (case-insensitive) — in addition to `totals_row: true` for the last row; rename the label to opt out |
+| Row height | content-driven minimum (one line at the table font plus insets, never below 0.4in); rows are never stretched to fill the placeholder, and the table is top-anchored under the title | — |
 
-A header with an explicit dark scheme `header_background` (`accent1`–`accent6`, `dk1`, `dk2`, `tx1`, `tx2`) also gets `lt1` header text.
+Type size: the engine default starts at 12pt rows / 11pt header (a style that opts out keeps the legacy 18pt start). Wide tables are capped at the 18pt-equivalent width budget (18pt × 4 / columns), so a default table stays at 12pt up to six columns and shrinks from seven, never below the 10pt table readability floor; the `table_font_scaled` finding and the validate-time preflight predict the same sizes. TDR density limits (rows ≤ 7, cols ≤ 6) are unchanged.
+
+A header with an explicit dark scheme `header_background` (`accent1`–`accent6`, `dk1`, `dk2`, `tx1`, `tx2`) gets `lt1` header text.
 
 ## Application Order
 
@@ -136,7 +141,7 @@ Resolution rules:
 
 The `@template-default` sentinel lives in a separate namespace from user-authored style IDs — there is no collision risk with OOXML GUIDs.
 
-If the resolved GUID has no non-empty `<a:tblStyle>` definition in the template, the output keeps that GUID but renders the table with explicit theme-based header fill, bold text, and cell formatting. This prevents an empty style list or portability-only stub from leaving the table visually plain. Defined template styles remain in control.
+If the resolved GUID has no non-empty `<a:tblStyle>` definition in the template, the output keeps that GUID but renders the table explicitly in the engine default look above (unfilled bold header over a 1pt rule, hairline row rules, no zebra), unless the author set `header_background`. This prevents an empty style list or portability-only stub from leaving the table visually plain. Defined template styles remain in control.
 
 **Validation:** a `style_id` must be empty, the `@template-default` sentinel, or a well-formed OOXML table style GUID (`{8-4-4-4-12}` hex, e.g. `{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}`). Any other value — a typo or a string containing XML metacharacters such as `"&<` — is rejected with an `INVALID_PARAMETER` validation error and is never emitted into slide XML or `ppt/tableStyles.xml` (the renderer drops it defensively even when validation is skipped). A well-formed GUID that the template does not declare is allowed but produces the advisory `unknown_table_style_id` warning.
 
