@@ -84,24 +84,13 @@ func isSWOTDiagram(spec *types.DiagramSpec) bool {
 	return spec.Type == "swot"
 }
 
-// processSWOTNativeShapes parses SWOT data from a DiagramSpec and registers
-// a panelShapeInsert for native OOXML shape generation.
-func (ctx *singlePassContext) processSWOTNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
-	diagramSpec, ok := item.Value.(*types.DiagramSpec)
-	if !ok {
-		slog.Warn("swot native shapes: invalid diagram spec", "slide", slideNum)
-		return
-	}
-
-	// Warn if themeOverride is set — scheme colors won't reflect overrides.
-
-	// Parse the 4 quadrants into panel data.
-	// SWOT data format: {"strengths": [...], "weaknesses": [...], "opportunities": [...], "threats": [...]}
+// swotPanels parses the four quadrants into panel data. SWOT data format:
+// {"strengths": [...], "weaknesses": [...], "opportunities": [...], "threats": [...]}
+func swotPanels(spec *types.DiagramSpec) []nativePanelData {
 	quadrantKeys := [4]string{"strengths", "weaknesses", "opportunities", "threats"}
-	var panels []nativePanelData
-
+	panels := make([]nativePanelData, 0, len(quadrantKeys))
 	for i, key := range quadrantKeys {
-		items := parseSWOTStringList(diagramSpec.Data[key])
+		items := parseSWOTStringList(spec.Data[key])
 		body := ""
 		if len(items) > 0 {
 			// Convert items to bullet format ("- " prefix per line)
@@ -116,6 +105,19 @@ func (ctx *singlePassContext) processSWOTNativeShapes(slideNum, contentIdx int, 
 			body:  body,
 		})
 	}
+	return panels
+}
+
+// processSWOTNativeShapes parses SWOT data from a DiagramSpec and registers
+// a panelShapeInsert for native OOXML shape generation.
+func (ctx *singlePassContext) processSWOTNativeShapes(slideNum, contentIdx int, item ContentItem, shapeIdx int) {
+	diagramSpec, ok := item.Value.(*types.DiagramSpec)
+	if !ok {
+		slog.Warn("swot native shapes: invalid diagram spec", "slide", slideNum)
+		return
+	}
+
+	panels := swotPanels(diagramSpec)
 
 	// Get placeholder bounds from the shape being replaced.
 	slide := ctx.templateSlideData[slideNum]
@@ -154,14 +156,9 @@ func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, sh
 	quadW := (totalWidth - swotGap) / 2
 	quadH := (totalHeight - swotGap) / 2
 
-	// Header height within each quadrant
-	headerCY := int64(float64(quadH) * swotHeaderHeightRatio)
-	for _, p := range panels {
-		headerCY = max(headerCY, taxonomyTitleHeight(p.title, quadW, swotBodyInset, swotHeaderFontSize, ""))
-	}
-	if headerCY > quadH {
-		headerCY = quadH
-	}
+	// Header height within each quadrant: the default band, or the measured
+	// title when it needs more.
+	headerCY := swotHeaderHeight(panels, quadW, quadH)
 	bodyCY := quadH - headerCY
 
 	// Quadrant positions: [top-left, top-right, bottom-left, bottom-right]
@@ -213,6 +210,7 @@ func generateSWOTGroupXML(panels []nativePanelData, bounds types.BoundingBox, sh
 
 // generateSWOTHeaderXML produces a roundRect header shape for a SWOT quadrant.
 func generateSWOTHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+	text := swotHeaderText(title, schemeColor)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "SWOT " + title,
@@ -223,24 +221,7 @@ func generateSWOTHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sch
 		},
 		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &pptx.TextBody{
-			Wrap:    "square",
-			Anchor:  "ctr",
-			Insets:  pptx.ShapeTextInsets(),
-			AutoFit: "noAutofit",
-			Paragraphs: []pptx.Paragraph{{
-				Align:    "ctr",
-				NoBullet: true,
-				Runs: []pptx.Run{{
-					Text:     title,
-					Lang:     "en-US",
-					FontSize: swotHeaderFontSize,
-					Bold:     true,
-					Dirty:    true,
-					Color:    diagramPanelTextFill(schemeColor),
-				}},
-			}},
-		},
+		Text: &text,
 	})
 	if err != nil {
 		slog.Warn("generateSWOTHeaderXML failed", "error", err)
@@ -249,8 +230,32 @@ func generateSWOTHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sch
 	return string(b)
 }
 
-// generateSWOTBodyXML produces a roundRect body shape for a SWOT quadrant.
-func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+// swotHeaderText is a quadrant header's text body: the uniform margin on its
+// visible edges and the seam inset against its own body below.
+func swotHeaderText(title, schemeColor string) pptx.TextBody {
+	return pptx.TextBody{
+		Wrap:    "square",
+		Anchor:  "ctr",
+		Insets:  nativeCardHeaderInsets(),
+		AutoFit: "noAutofit",
+		Paragraphs: []pptx.Paragraph{{
+			Align:    "ctr",
+			NoBullet: true,
+			Runs: []pptx.Run{{
+				Text:     title,
+				Lang:     "en-US",
+				FontSize: swotHeaderFontSize,
+				Bold:     true,
+				Dirty:    true,
+				Color:    diagramPanelTextFill(schemeColor),
+			}},
+		}},
+	}
+}
+
+// swotBodyText is a quadrant body's text body, shared by the writer and the
+// fit measurement (swotGridHeight).
+func swotBodyText(body, schemeColor string) pptx.TextBody {
 	paras := panelBulletsParagraphs(body, swotBodyFontSize)
 
 	// Use the same accent color for bullets but with full strength
@@ -263,7 +268,55 @@ func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, scheme
 		}
 	}
 	diagramPanelBodyColors(paras, schemeColor)
+	return pptx.TextBody{
+		Wrap:       "square",
+		Anchor:     "t",
+		Insets:     nativeCardBodyInsets(),
+		AutoFit:    "normAutofit",
+		Paragraphs: paras,
+	}
+}
 
+// swotHeaderHeight is the header band every quadrant shares: the default
+// ratio of the quadrant, or the tallest measured title when that needs more.
+// The title is measured as a normAutofit body so the need is the height at
+// which it would not shrink; the header itself is written noAutofit.
+func swotHeaderHeight(panels []nativePanelData, quadW, quadH int64) int64 {
+	headerCY := int64(float64(quadH) * swotHeaderHeightRatio)
+	for _, p := range panels {
+		probe := swotHeaderText(p.title, "")
+		probe.AutoFit = "normAutofit"
+		headerCY = max(headerCY, nativeTextNeedEMU(probe, quadW, quadH))
+	}
+	return min(headerCY, quadH)
+}
+
+// swotGridHeight is the 2x2 grid height at which no quadrant body shrinks,
+// measured with the writer's own text bodies (see fitNativeFramework).
+func swotGridHeight(panels []nativePanelData, bounds types.BoundingBox) nativeFrameworkHeight {
+	quadW := (bounds.Width - swotGap) / 2
+	if quadW <= 2*swotBodyInset || len(panels) == 0 {
+		return nativeFrameworkHeight{}
+	}
+	limit := 4 * bounds.Height
+	var header, body, ink int64
+	for _, p := range panels {
+		probe := swotHeaderText(p.title, "")
+		probe.AutoFit = "normAutofit"
+		h := nativeTextNeedEMU(probe, quadW, limit)
+		b := max(nativeTextNeedEMU(swotBodyText(p.body, ""), quadW, limit),
+			2*panelLineHeightEMU(swotBodyFontSize)+nativeCardSeamInsetEMU+swotBodyInset)
+		header, body = max(header, h), max(body, b)
+		ink += max(0, h-swotBodyInset-nativeCardSeamInsetEMU) + max(0, b-swotBodyInset-nativeCardSeamInsetEMU)
+	}
+	quadNeed := max(header+body, int64(float64(body)/(1-swotHeaderHeightRatio)))
+	rows := int64((len(panels) + 1) / 2)
+	return nativeFrameworkHeight{box: rows*quadNeed + (rows-1)*swotGap, ink: ink / 2}
+}
+
+// generateSWOTBodyXML produces a roundRect body shape for a SWOT quadrant.
+func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
+	text := swotBodyText(body, schemeColor)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "SWOT Body",
@@ -274,13 +327,7 @@ func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, scheme
 		},
 		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &pptx.TextBody{
-			Wrap:       "square",
-			Anchor:     "t",
-			Insets:     pptx.ShapeTextInsets(),
-			AutoFit:    "normAutofit",
-			Paragraphs: paras,
-		},
+		Text: &text,
 	})
 	if err != nil {
 		slog.Warn("generateSWOTBodyXML failed", "error", err)

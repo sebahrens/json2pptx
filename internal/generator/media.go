@@ -390,6 +390,9 @@ func containedDiagramFrame(bounds types.BoundingBox, contentW, contentH float64)
 // This is the preferred code path for all visual diagrams.
 func (ctx *singlePassContext) processDiagramContent(slideNum, contentIdx int, item ContentItem, shape *shapeXML, shapeIdx int, resolver *placeholderResolver) { //nolint:gocognit,gocyclo
 	contentPath := slidepath.ContentIndex(slideNum-1, contentIdx)
+	// Any native group registered below carries the authored diagram path, so a
+	// refusal on one of its shapes names the diagram, not a shape id.
+	defer ctx.tagNativeInserts(slideNum, len(ctx.panelShapeInserts[slideNum]), contentIdx, item)
 	// Native panel shapes: intercept panel_layout (columns/rows/stat_cards) before SVG rendering.
 	if diagramSpec, ok := item.Value.(*types.DiagramSpec); ok && isPanelNativeLayout(diagramSpec) {
 		ctx.processPanelNativeShapes(slideNum, item, shapeIdx)

@@ -16,19 +16,7 @@ func (ctx *singlePassContext) fitNativeFramework(slideNum, contentIdx int, kind 
 	if bounds.Width <= 0 || bounds.Height <= 0 || len(panels) == 0 {
 		return bounds
 	}
-	var size nativeFrameworkHeight
-	switch kind {
-	case "swot":
-		size = taxonomyGridHeight(panels, bounds, 2, swotGap, swotHeaderFontSize, swotBodyFontSize, swotBodyInset, swotHeaderHeightRatio, ctx.themeFontName)
-	case "pestel":
-		size = taxonomyGridHeight(panels, bounds, 3, pestelGap, pestelHeaderFontSize, pestelBodyFontSize, pestelBodyInset, pestelHeaderHeightRatio, ctx.themeFontName)
-	case "kpi_dashboard":
-		size = kpiContentHeight(panels, bounds, ctx.themeFontName)
-	case "house_diagram":
-		size = houseContentHeight(panels, meta, bounds, ctx.themeFontName)
-	default:
-		return bounds
-	}
+	size := nativeFrameworkSize(kind, bounds, panels, meta, ctx.themeFontName)
 	if size.box <= 0 {
 		return bounds
 	}
@@ -43,7 +31,32 @@ func (ctx *singlePassContext) fitNativeFramework(slideNum, contentIdx int, kind 
 		}}
 		ctx.emitFitFinding(*f)
 	}
-	if size.box >= bounds.Height {
+	return fitBoundsToFramework(bounds, size)
+}
+
+// nativeFrameworkSize measures a content-sized framework's height, or returns
+// the zero size for a kind that keeps the placeholder geometry.
+func nativeFrameworkSize(kind string, bounds types.BoundingBox, panels []nativePanelData, meta houseDiagramMeta, fontName string) nativeFrameworkHeight {
+	if bounds.Width <= 0 || bounds.Height <= 0 || len(panels) == 0 {
+		return nativeFrameworkHeight{}
+	}
+	switch kind {
+	case "swot":
+		return swotGridHeight(panels, bounds)
+	case "pestel":
+		return taxonomyGridHeight(panels, bounds, 3, pestelGap, pestelHeaderFontSize, pestelBodyFontSize, pestelBodyInset, pestelHeaderHeightRatio, fontName)
+	case "kpi_dashboard":
+		return kpiContentHeight(panels, bounds, fontName)
+	case "house_diagram":
+		return houseContentHeight(panels, meta, bounds, fontName)
+	}
+	return nativeFrameworkHeight{}
+}
+
+// fitBoundsToFramework centres a framework of the measured height in bounds;
+// a framework that needs the whole height (or more) keeps it.
+func fitBoundsToFramework(bounds types.BoundingBox, size nativeFrameworkHeight) types.BoundingBox {
+	if size.box <= 0 || size.box >= bounds.Height {
 		return bounds
 	}
 	bounds.Y += (bounds.Height - size.box) / 2

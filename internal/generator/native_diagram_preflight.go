@@ -198,11 +198,7 @@ func measureNativeText(text, font string, size float64, width int64) int64 {
 
 func nativeBMCPreflight(spec *types.DiagramSpec, font, path string, width, height int64) []patterns.FitFinding {
 	sections := parseBMCSections(spec.Data)
-	colW := (width - 4*bmcGap) / 5
-	topH := int64(float64(height) * bmcTopRowRatio)
-	fullH := topH - bmcGap
-	halfH := (fullH - bmcGap) / 2
-	bottomH := height - topH
+	cells := bmcCellRects(bmcPanels(spec), types.BoundingBox{Width: width, Height: height})
 	var out []patterns.FitFinding
 	for _, key := range bmcSectionOrder {
 		sec := sections[key]
@@ -211,14 +207,8 @@ func nativeBMCPreflight(spec *types.DiagramSpec, font, path string, width, heigh
 			title = bmcDefaultTitles[key]
 		}
 		body := strings.Join(sec.items, " • ")
-		cellW, cellH := colW, fullH
-		switch key {
-		case bmcKeyActivities, bmcKeyResources, bmcCustRelations, bmcChannels:
-			cellH = halfH
-		case bmcCostStructure, bmcRevenueStreams:
-			cellW, cellH = (width-bmcGap)/2, bottomH
-		}
-		headerH := int64(float64(cellH) * bmcHeaderHeightRatio)
+		cellW, cellH := cells[key].w, cells[key].h
+		headerH := cells[key].header
 		bodyH := cellH - headerH
 		required := measureNativeText(body, font, float64(bmcBodyFontSize)/100, cellW-2*bmcBodyInset)
 		if body != "" && required > bodyH {

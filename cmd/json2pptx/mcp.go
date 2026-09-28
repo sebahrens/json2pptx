@@ -558,8 +558,12 @@ func (mc *mcpConfig) handleGenerate(ctx context.Context, request mcp.CallToolReq
 	result, err := generator.Generate(ctx, genReq)
 	unlockOutput()
 	if err != nil {
-		var loss *patterns.ValidationError
-		if errors.As(err, &loss) && loss != nil && (loss.Code == patterns.ErrCodeTextTrimmed || loss.Code == patterns.ErrCodeReadabilityTrimmed || loss.Code == patterns.ErrCodeTableRowsTruncated || loss.Code == patterns.ErrCodeTextBelowReadableMin) {
+		if loss := generationRefusal(err); loss != nil {
+			// Name the authored slide, its layout and pattern / diagram, not
+			// only the element kind (go-slide-creator-ygaln).
+			if _, location := locateRefusal(&input, slideSpecs, templateLayouts, nil, loss); location != "" {
+				loss.Message = location + ": " + loss.Message
+			}
 			return api.MCPDiagnosticsError([]diagnostics.Diagnostic{diagnostics.FromValidationError(loss)}), nil
 		}
 		return api.MCPSimpleError("GENERATION_FAILED", fmt.Sprintf("generation failed: %v", err)), nil

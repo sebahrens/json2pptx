@@ -62,8 +62,19 @@ const (
 	// bmcBodyInset is the text inset for body text (EMU).
 	bmcBodyInset = pptx.ShapeTextInsetEMU // uniform 0.5 cm shape text margin
 
-	// bmcTopRowRatio is the fraction of total height for the top row (5-column).
-	bmcTopRowRatio = 0.60
+	// bmcBulletSpaceAfter is the space after each BMC bullet (hundredths of
+	// a point). Nine dense cells cannot afford the 6pt panel spacing.
+	bmcBulletSpaceAfter = 200
+
+	// bmcTopRowRatio is the default fraction of total height for the top row
+	// (5-column); bmcCellRects moves it within [min, max] to fit the text.
+	bmcTopRowRatio    = 0.60
+	bmcTopRowMinRatio = 0.45
+	bmcTopRowMaxRatio = 0.80
+
+	// bmcStackMinShare is the smallest share of a stacked column either of
+	// its two cells keeps, however unequal their text.
+	bmcStackMinShare = 0.3
 )
 
 // bmcSectionKey is an internal key for BMC sections.
@@ -168,32 +179,7 @@ func (ctx *singlePassContext) processBMCNativeShapes(slideNum int, item ContentI
 		return
 	}
 
-	// Parse BMC sections from DiagramSpec.Data
-	sections := parseBMCSections(diagramSpec.Data)
-
-	// Convert to nativePanelData. Sections are stored in bmcSectionOrder so
-	// generateBMCGroupXML knows which section each panel represents.
-
-	panels := make([]nativePanelData, len(bmcSectionOrder))
-	for i, key := range bmcSectionOrder {
-		sec := sections[key]
-		title := sec.title
-		if title == "" {
-			title = bmcDefaultTitles[key]
-		}
-		body := ""
-		if len(sec.items) > 0 {
-			bulletLines := make([]string, len(sec.items))
-			for j, item := range sec.items {
-				bulletLines[j] = "- " + item
-			}
-			body = strings.Join(bulletLines, "\n")
-		}
-		panels[i] = nativePanelData{
-			title: title,
-			body:  body,
-		}
-	}
+	panels := bmcPanels(diagramSpec)
 
 	slide := ctx.templateSlideData[slideNum]
 	shape := &slide.CommonSlideData.ShapeTree.Shapes[shapeIdx]
@@ -211,6 +197,31 @@ func (ctx *singlePassContext) processBMCNativeShapes(slideNum int, item ContentI
 		bmcMode:        true,
 		taxonomyTints:  taxonomyPalette(diagramSpec, len(bmcSectionOrder), bmcDefaultTint),
 	})
+}
+
+// bmcPanels converts a BMC spec to panel data. Sections are stored in
+// bmcSectionOrder so generateBMCGroupXML knows which section each panel
+// represents.
+func bmcPanels(spec *types.DiagramSpec) []nativePanelData {
+	sections := parseBMCSections(spec.Data)
+	panels := make([]nativePanelData, len(bmcSectionOrder))
+	for i, key := range bmcSectionOrder {
+		sec := sections[key]
+		title := sec.title
+		if title == "" {
+			title = bmcDefaultTitles[key]
+		}
+		body := ""
+		if len(sec.items) > 0 {
+			bulletLines := make([]string, len(sec.items))
+			for j, item := range sec.items {
+				bulletLines[j] = "- " + item
+			}
+			body = strings.Join(bulletLines, "\n")
+		}
+		panels[i] = nativePanelData{title: title, body: body}
+	}
+	return panels
 }
 
 // parseBMCSections parses BMC section data from the diagram data map.
@@ -277,51 +288,7 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 		return ""
 	}
 
-	totalW := bounds.Width
-	totalH := bounds.Height
-
-	// Split into top row (60%) and bottom row (40%)
-	topH := int64(float64(totalH) * bmcTopRowRatio)
-	bottomH := totalH - topH
-
-	// 5 equal columns in the top row
-	colW := (totalW - 4*bmcGap) / 5
-
-	// Top row: columns 0 and 2 and 4 are full height; columns 1 and 3 are split
-	fullH := topH - bmcGap // leave gap before bottom row
-	halfH := (fullH - bmcGap) / 2
-
-	// Define cell positions (x, y, w, h) for each of the 9 sections
-	type cellRect struct {
-		x, y, w, h int64
-	}
-
-	topY := bounds.Y
-	bottomY := bounds.Y + topH
-
-	cells := map[bmcSectionKey]cellRect{
-		// Column 0: Key Partners (full height)
-		bmcKeyPartners: {bounds.X, topY, colW, fullH},
-
-		// Column 1: Key Activities (top half) + Key Resources (bottom half)
-		bmcKeyActivities: {bounds.X + colW + bmcGap, topY, colW, halfH},
-		bmcKeyResources:  {bounds.X + colW + bmcGap, topY + halfH + bmcGap, colW, halfH},
-
-		// Column 2: Value Proposition (full height)
-		bmcValueProposition: {bounds.X + 2*(colW+bmcGap), topY, colW, fullH},
-
-		// Column 3: Customer Relationships (top half) + Channels (bottom half)
-		bmcCustRelations: {bounds.X + 3*(colW+bmcGap), topY, colW, halfH},
-		bmcChannels:      {bounds.X + 3*(colW+bmcGap), topY + halfH + bmcGap, colW, halfH},
-
-		// Column 4: Customer Segments (full height)
-		bmcCustSegments: {bounds.X + 4*(colW+bmcGap), topY, colW, fullH},
-
-		// Bottom row: Cost Structure (left half) + Revenue Streams (right half)
-		bmcCostStructure: {bounds.X, bottomY, (totalW - bmcGap) / 2, bottomH},
-		bmcRevenueStreams: {bounds.X + (totalW-bmcGap)/2 + bmcGap, bottomY,
-			totalW - (totalW-bmcGap)/2 - bmcGap, bottomH},
-	}
+	cells := bmcCellRects(panels, bounds)
 
 	var children [][]byte
 	for i, panel := range panels {
@@ -332,7 +299,7 @@ func generateBMCGroupXML(panels []nativePanelData, bounds types.BoundingBox, sha
 			colors = tints[i]
 		}
 
-		headerCY := int64(float64(cell.h) * bmcHeaderHeightRatio)
+		headerCY := cell.header
 		bodyCY := cell.h - headerCY
 
 		headerID := shapeIDBase + uint32(i*2) + 1
@@ -407,17 +374,7 @@ func generateBMCCellHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, 
 
 // generateBMCCellBodyXML produces a roundRect body shape for a BMC cell.
 func generateBMCCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, schemeColor string, lumMod, lumOff int) string {
-	paras := panelBulletsParagraphs(body, bmcBodyFontSize)
-
-	// Use the accent color (full strength) for bullets
-	bulletColor := pptx.ResolveColorString(schemeColor)
-	for i := range paras {
-		if paras[i].Bullet != nil {
-			paras[i].Bullet.Color = bulletColor
-		}
-	}
-	diagramPanelBodyColors(paras, schemeColor)
-
+	text := bmcBodyText(body, schemeColor)
 	b, err := pptx.GenerateShape(pptx.ShapeOptions{
 		ID:       shapeID,
 		Name:     "BMC Body",
@@ -428,17 +385,169 @@ func generateBMCCellBodyXML(body string, x, y, cx, cy int64, shapeID uint32, sch
 		},
 		Fill: diagramTintFill(schemeColor, lumMod, lumOff),
 		Line: pptx.Line{Width: panelBorderWidth, Fill: pptx.NoFill()},
-		Text: &pptx.TextBody{
-			Wrap:       "square",
-			Anchor:     "t",
-			Insets:     pptx.ShapeTextInsets(),
-			AutoFit:    "normAutofit",
-			Paragraphs: paras,
-		},
+		Text: &text,
 	})
 	if err != nil {
 		slog.Warn("generateBMCCellBodyXML failed", "error", err)
 		return ""
 	}
 	return string(b)
+}
+
+// bmcBodyText is the text body of a BMC cell body. The writer and
+// bmcCellRects' measurement share it, so what is measured is what is written.
+func bmcBodyText(body, schemeColor string) pptx.TextBody {
+	var paras []pptx.Paragraph
+	if body != "" {
+		paras = pptx.ParseBulletText(body, pptx.BulletTextOptions{
+			FontSize:    bmcBodyFontSize,
+			Lang:        "en-US",
+			Dirty:       true,
+			BulletColor: pptx.SchemeFill(panelBulletSchemeColor),
+			SpaceAfter:  bmcBulletSpaceAfter,
+		})
+	}
+	// Use the accent color (full strength) for bullets
+	bulletColor := pptx.ResolveColorString(schemeColor)
+	for i := range paras {
+		if paras[i].Bullet != nil {
+			paras[i].Bullet.Color = bulletColor
+		}
+	}
+	diagramPanelBodyColors(paras, schemeColor)
+	return pptx.TextBody{
+		Wrap:       "square",
+		Anchor:     "t",
+		Insets:     nativeCardBodyInsets(),
+		AutoFit:    "normAutofit",
+		Paragraphs: paras,
+	}
+}
+
+// bmcCellRect is one BMC section's box.
+type bmcCellRect struct {
+	x, y, w, h int64
+	header     int64 // height of the header band at the top of the cell
+}
+
+// bmcCellRects lays out the nine sections inside bounds. The canvas keeps its
+// Osterwalder shape — five top columns (Key Activities over Key Resources and
+// Customer Relationships over Channels), Cost Structure and Revenue Streams
+// below — but the two row boundaries follow the measured text: the top row
+// keeps its default 60% unless a row needs more, and the split inside the
+// stacked columns follows what the upper and lower cells need. A dense canvas
+// on a short content area used to keep 60/40 and 50/50 and store a 20%
+// autofit into its half-height cells (go-slide-creator-zbo58).
+func bmcCellRects(panels []nativePanelData, bounds types.BoundingBox) map[bmcSectionKey]bmcCellRect {
+	totalW, totalH := bounds.Width, bounds.Height
+	colW := (totalW - 4*bmcGap) / 5
+	wideLW := (totalW - bmcGap) / 2
+	wideRW := totalW - wideLW - bmcGap
+
+	body := make(map[bmcSectionKey]string, len(bmcSectionOrder))
+	title := make(map[bmcSectionKey]string, len(bmcSectionOrder))
+	for i, key := range bmcSectionOrder {
+		if i < len(panels) {
+			body[key], title[key] = panels[i].body, panels[i].title
+		}
+	}
+	width := map[bmcSectionKey]int64{bmcCostStructure: wideLW, bmcRevenueStreams: wideRW}
+	cellW := func(key bmcSectionKey) int64 {
+		if w, ok := width[key]; ok {
+			return w
+		}
+		return colW
+	}
+	// need is what a cell takes at full size: its fixed part (wrapped title,
+	// body insets) and the body text, which an autofit shrink scales.
+	bodyFixed := nativeCardSeamInsetEMU + bmcBodyInset
+	need := func(keys ...bmcSectionKey) bmcNeed {
+		var n bmcNeed
+		for _, key := range keys {
+			fixed := bmcHeaderNeed(title[key], cellW(key)) + bodyFixed
+			text := max(0, nativeTextNeedEMU(bmcBodyText(body[key], ""), cellW(key), totalH)-bodyFixed)
+			n = bmcNeed{max(n.fixed, fixed), max(n.text, text)}
+		}
+		return n
+	}
+	upper := need(bmcKeyActivities, bmcCustRelations)
+	lower := need(bmcKeyResources, bmcChannels)
+	stack := bmcNeed{upper.fixed + lower.fixed + bmcGap, upper.text + lower.text}
+	top := need(bmcKeyPartners, bmcValueProposition, bmcCustSegments)
+	if stack.at(1) > top.at(1) {
+		top = stack
+	}
+	top.fixed += bmcGap // the gap before the bottom row
+	bottom := need(bmcCostStructure, bmcRevenueStreams)
+
+	topH := int64(float64(totalH) * bmcTopRowRatio)
+	if top.at(1)+bottom.at(1) <= totalH {
+		// Both rows fit: keep the default split when it serves both, else
+		// move the boundary only as far as the short row needs.
+		topH = min(max(topH, top.at(1)), totalH-bottom.at(1))
+	} else {
+		// Neither row can have all it needs: give both the same shrink.
+		topH = top.at(bmcSharedScale(totalH, top, bottom))
+	}
+	topH = min(max(topH, int64(float64(totalH)*bmcTopRowMinRatio)), int64(float64(totalH)*bmcTopRowMaxRatio))
+	bottomH := totalH - topH
+
+	fullH := topH - bmcGap // leave gap before bottom row
+	stackH := fullH - bmcGap
+	upperH, _ := splitByNeed(stackH, upper.at(1), lower.at(1), bmcStackMinShare)
+	if upper.at(1)+lower.at(1) > stackH {
+		upperH = upper.at(bmcSharedScale(stackH, upper, lower))
+		upperH = min(max(upperH, int64(float64(stackH)*bmcStackMinShare)), int64(float64(stackH)*(1-bmcStackMinShare)))
+	}
+	lowerH := stackH - upperH
+
+	topY := bounds.Y
+	lowY := topY + upperH + bmcGap
+	bottomY := bounds.Y + topH
+	colX := func(i int64) int64 { return bounds.X + i*(colW+bmcGap) }
+	rect := func(key bmcSectionKey, x, y, w, h int64) bmcCellRect {
+		header := min(max(int64(float64(h)*bmcHeaderHeightRatio), bmcHeaderNeed(title[key], w)), h)
+		return bmcCellRect{x, y, w, h, header}
+	}
+
+	return map[bmcSectionKey]bmcCellRect{
+		bmcKeyPartners:      rect(bmcKeyPartners, colX(0), topY, colW, fullH),
+		bmcKeyActivities:    rect(bmcKeyActivities, colX(1), topY, colW, upperH),
+		bmcKeyResources:     rect(bmcKeyResources, colX(1), lowY, colW, lowerH),
+		bmcValueProposition: rect(bmcValueProposition, colX(2), topY, colW, fullH),
+		bmcCustRelations:    rect(bmcCustRelations, colX(3), topY, colW, upperH),
+		bmcChannels:         rect(bmcChannels, colX(3), lowY, colW, lowerH),
+		bmcCustSegments:     rect(bmcCustSegments, colX(4), topY, colW, fullH),
+		bmcCostStructure:    rect(bmcCostStructure, bounds.X, bottomY, wideLW, bottomH),
+		bmcRevenueStreams:   rect(bmcRevenueStreams, bounds.X+wideLW+bmcGap, bottomY, wideRW, bottomH),
+	}
+}
+
+// bmcNeed is a region's height need split into the part an autofit shrink
+// cannot reduce (titles, insets, gaps) and the body text it scales.
+type bmcNeed struct{ fixed, text int64 }
+
+// at is the height the region needs with its body text scaled by s.
+func (n bmcNeed) at(s float64) int64 { return n.fixed + int64(s*float64(n.text)) }
+
+// bmcSharedScale is the text scale at which two stacked regions exactly fill
+// total, so neither is shrunk further than the other.
+func bmcSharedScale(total int64, a, b bmcNeed) float64 {
+	if a.text+b.text <= 0 {
+		return 1
+	}
+	return min(1, max(0, float64(total-a.fixed-b.fixed)/float64(a.text+b.text)))
+}
+
+// bmcHeaderNeed is the height a section title needs at the header size in a
+// cell of width w: its wrapped lines plus the seam inset above and below. The
+// header's own 0.5 cm vertical margin is clamped away in a band this short,
+// as it always was; what must not happen is a two-line title ("Customer
+// Relationships" on a narrow canvas) cut off by a one-line band.
+func bmcHeaderNeed(title string, w int64) int64 {
+	if title == "" {
+		return 0
+	}
+	width := int64(float64(measureWidthEMU(w, bmcBodyInset, bmcBodyInset)) / pyramidBoldWidthFactor)
+	return measureNativeText(title, panelMeasureDefaultFont, float64(bmcHeaderFontSize)/100, width) + 2*nativeCardSeamInsetEMU
 }

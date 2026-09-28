@@ -311,12 +311,11 @@ func RunPresentation(ctx context.Context, input *PresentationInput, opts RenderO
 	// unsatisfiable (go-slide-creator-tngh).
 	res.Overwrote = fileExists(outputPath)
 	unlock := lockOutputPath(outputPath)
-	genResult, genErr := generator.Generate(ctx, genReq)
-	if genErr != nil {
-		unlock()
-		return res, cleanup, fmt.Errorf("failed to generate PPTX: %w", genErr)
-	}
+	genResult, genErr := generateSkippingRefusedSlides(ctx, input, &genReq, templateLayouts, gridVisualFindings, opts.Partial, &res)
 	unlock()
+	if genErr != nil {
+		return res, cleanup, genErr
+	}
 	res.GenResult = genResult
 
 	// Post-generation output validation (default: strict).

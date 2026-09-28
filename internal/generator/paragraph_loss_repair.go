@@ -87,6 +87,12 @@ func alignedBulletGroupBudget(columns [][]string, count int) int {
 }
 
 func manualParagraphContinuation(loss patterns.ValidationError) patterns.ValidationError {
+	if strings.HasSuffix(loss.Path, "/diagram_value") {
+		// A native diagram lays its own items out; there are no bullets to
+		// split across continuation slides (go-slide-creator-ygaln).
+		loss.Message += "; shorten or remove diagram items, or place the diagram in a larger placeholder"
+		return loss
+	}
 	loss.Message += "; this source cannot use automatic plain-bullet splitting; author source-complete continuation slides or choose a suitable layout, preserving groups and any fixed slide count"
 	return loss
 }

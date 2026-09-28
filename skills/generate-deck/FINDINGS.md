@@ -55,6 +55,14 @@ finding names a pattern cell, edit the corresponding pattern `values`,
 then re-expand and validate. A split must leave **both** halves valid under
 that pattern's minimum counts.
 
+A generation refusal for unreadable or lost text (`TEXT_BELOW_READABLE_MIN`
+et al.) names the slide (1-based), its layout and pattern or diagram, and the
+authored path (a native diagram's is `/slides/N/content/J/diagram_value`);
+`validate_input` with the target template reports the same refusal as an
+error first. CLI `generate --partial` skips the refused slide, writes the
+rest, and reports `CONTENT_DROPPED` with `fix.params.cause` and
+`refused_path`.
+
 Strict output validation is separate from fit: `generate_presentation`
 defaults to a blocking OPC/OOXML pass. `CONTENT_DROPPED` with
 `cause:"placeholder_not_found"` is blocking in strict mode because the
