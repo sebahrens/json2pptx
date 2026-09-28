@@ -203,20 +203,15 @@ func TestNumberedStepStrip_Chevron_NotchInsetAndSizes(t *testing.T) {
 			if adj <= 0 || adj > 50000 {
 				t.Errorf("n=%d cell %d: adj %d out of range", n, i, adj)
 			}
-			notchPt := float64(adj) / 100000 * geo.chevHPt
-			var text struct {
-				InsetLeft  float64 `json:"inset_left"`
-				InsetRight float64 `json:"inset_right"`
+			// The preset's own text rectangle clears the notch and the point;
+			// the label keeps the uniform shape text margin, so the pattern
+			// emits no per-side insets.
+			if strings.Contains(string(cell.Shape.Text), `"inset_`) {
+				t.Errorf("n=%d cell %d: chevron label should keep the uniform margin, got %s", n, i, cell.Shape.Text)
 			}
-			if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
-				t.Fatalf("text: %v", err)
-			}
-			if text.InsetLeft < notchPt {
-				t.Errorf("n=%d cell %d: lIns %.1fpt < notch depth %.1fpt", n, i, text.InsetLeft, notchPt)
-			}
-			if text.InsetRight < notchPt {
-				t.Errorf("n=%d cell %d: rIns %.1fpt < point depth %.1fpt", n, i, text.InsetRight, notchPt)
-			}
+		}
+		if w := chevronLabelWidthPt(geo, chevronMinAdj); w <= 0 {
+			t.Errorf("n=%d: label width %.1fpt leaves no room inside the notch and margins", n, w)
 		}
 		for i, cell := range grid.Rows[1].Cells {
 			var text struct {
@@ -558,19 +553,32 @@ func TestNumberedStepStrip_Chevron_WarnsWhenEvenTheFloorWraps(t *testing.T) {
 		{Label: "Internationalisation"}, {Label: "Standardisation"}, {Label: "Commercialisation"},
 		{Label: "Operationalisation"}, {Label: "Professionalisation"}, {Label: "Decommissioning"},
 	}}
-	warnings := warner.PostExpandWarnings(ctx, tooLong, nil)
-	if len(warnings) != 1 {
-		t.Fatalf("want one warning, got %v", warnings)
+	// Labels over the six-step readable budget (16 characters) also get a
+	// per-label BODY_TOO_LONG; the measured wrap is one TEXT_EXCEEDS_SHAPE.
+	var exceeds []string
+	budgetWarnings := 0
+	for _, w := range warner.PostExpandWarnings(ctx, tooLong, nil) {
+		switch {
+		case strings.HasPrefix(w, ErrCodeTextExceedsShape+": "):
+			exceeds = append(exceeds, w)
+		case strings.HasPrefix(w, ErrCodeBodyTooLong+": ") && strings.Contains(w, "about 16 readable label"):
+			budgetWarnings++
+		default:
+			t.Errorf("unexpected warning: %q", w)
+		}
+	}
+	if budgetWarnings != 4 {
+		t.Errorf("want 4 label budget warnings (labels over 16 characters), got %d", budgetWarnings)
+	}
+	if len(exceeds) != 1 {
+		t.Fatalf("want one TEXT_EXCEEDS_SHAPE warning, got %v", exceeds)
 	}
 	// TEXT_EXCEEDS_SHAPE, not BODY_TOO_LONG: the strip has measured that the
 	// label cannot fit, so the break is certain and the finding blocks the
 	// quality gate (go-slide-creator-rxkt).
-	if !strings.HasPrefix(warnings[0], ErrCodeTextExceedsShape+": ") {
-		t.Errorf("warning must carry the parseable code prefix: %q", warnings[0])
-	}
 	for _, want := range []string{"Internationalisation", "mid-word", "fewer steps"} {
-		if !strings.Contains(warnings[0], want) {
-			t.Errorf("warning missing %q: %q", want, warnings[0])
+		if !strings.Contains(exceeds[0], want) {
+			t.Errorf("warning missing %q: %q", want, exceeds[0])
 		}
 	}
 
@@ -628,14 +636,19 @@ func TestNumberedStepStrip_SevenSteps(t *testing.T) {
 		}
 	}
 	warner := p.(PostExpandWarner)
-	long := sevenSteps("toc")
-	long.Steps[3].Body = strings.Repeat("x", 117)
-	if w := warner.PostExpandWarnings(ExpandContext{}, long, nil); len(w) != 1 || !strings.Contains(w[0], "steps[3].body") {
-		t.Errorf("seven toc rows with a 117-char body: want one BODY_TOO_LONG, got %v", w)
-	}
-	long.Style = "stacked-box"
-	if w := warner.PostExpandWarnings(ExpandContext{}, long, nil); len(w) != 0 {
-		t.Errorf("seven stacked-box rows hold 120 chars, got %v", w)
+	// Seven stacked-box / toc rows hold a label and no readable body.
+	for _, style := range []string{"toc", "stacked-box"} {
+		long := sevenSteps(style)
+		w := warner.PostExpandWarnings(ExpandContext{}, long, nil)
+		if len(w) != len(long.Steps) || !strings.Contains(w[3], "steps[3].body") || !strings.Contains(w[3], "no readable body") {
+			t.Errorf("seven %s rows with bodies: want one no-body warning per step, got %v", style, w)
+		}
+		for i := range long.Steps {
+			long.Steps[i].Body = ""
+		}
+		if w := warner.PostExpandWarnings(ExpandContext{}, long, nil); len(w) != 0 {
+			t.Errorf("seven label-only %s rows should fit, got %v", style, w)
+		}
 	}
 	eight := sevenSteps("stacked-box")
 	eight.Steps = append(eight.Steps, NumberedStepStripStep{Label: "Eighth"})

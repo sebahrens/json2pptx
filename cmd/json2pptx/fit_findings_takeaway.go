@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/sebahrens/json2pptx/internal/patterns"
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/slidepath"
 	"github.com/sebahrens/json2pptx/internal/textcapacity"
 	"github.com/sebahrens/json2pptx/internal/textfit"
@@ -23,13 +24,19 @@ func collectTakeawayFitFindings(input *PresentationInput, layouts []types.Layout
 			continue
 		}
 		band := slideChromeFrame(slide, "", layouts, slideWidth, slideHeight).Takeaway
-		// The shape has a 7.2pt left inset and no right inset. Both
-		// textcapacity and textfit assume 7.2pt on each side, so add 7.2pt
-		// to the supplied width to reproduce the actual text rectangle.
-		width := band.CX + 91440
+		// The band carries the uniform shape text margin, clamped on a band
+		// too short for it (pptx.EffectiveTextInsets). textcapacity and
+		// textfit assume the OOXML 7.2pt / 3.6pt default sides, so hand them
+		// the written text rectangle grown by those defaults.
 		fontPt := float64(tokens.CardTitleMaxHPt) / 100
+		in := pptx.EffectiveTextInsets(&pptx.TextBody{
+			Insets:     pptx.ShapeTextInsets(),
+			Paragraphs: []pptx.Paragraph{{Runs: []pptx.Run{{Text: slide.Takeaway, FontSize: tokens.CardTitleMaxHPt}}}},
+		}, pptx.RectEmu{CX: band.CX, CY: band.CY})
+		width := band.CX - in[0] - in[2] + 2*91440
+		height := band.CY - in[1] - in[3] + 2*45720
 		budget := textcapacity.ForPlaceholder(types.PlaceholderInfo{
-			Bounds:   types.BoundingBox{Width: width, Height: band.CY},
+			Bounds:   types.BoundingBox{Width: width, Height: height},
 			FontSize: tokens.CardTitleMaxHPt,
 		}, slide.Takeaway)
 		measured, err := textfit.MeasureRun(slide.Takeaway, "Liberation Sans", fontPt, width, budget.MaxLines)

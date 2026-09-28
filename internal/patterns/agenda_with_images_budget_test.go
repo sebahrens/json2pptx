@@ -8,7 +8,11 @@ import (
 func agendaWithImagesBudgetValues(rows int, images bool) *AgendaWithImagesValues {
 	v := &AgendaWithImagesValues{}
 	for i := 0; i < rows; i++ {
-		item := AgendaWithImagesItem{Title: "Title", Subtitle: "Summary"}
+		item := AgendaWithImagesItem{Title: "Title"}
+		if rows <= 4 {
+			// Five or six rows hold no readable subtitle.
+			item.Subtitle = "Summary"
+		}
 		if images {
 			item.ImageLabel = "Image"
 		}
@@ -27,15 +31,15 @@ func TestAgendaWithImagesSubtitleWarnings(t *testing.T) {
 		budget      int
 		warningText string
 	}{
-		{"four rows with images", 4, true, 80, 160, ""},
-		{"five rows without images", 5, false, 80, 160, ""},
-		{"six rows without images", 6, false, 80, 110, "about 110"},
-		{"five image rows short title", 5, true, 40, 130, "about 130"},
-		{"five image rows mid title", 5, true, 55, 120, "about 120"},
-		{"five image rows long title", 5, true, 80, 40, "about 40"},
-		{"six image rows short title", 6, true, 40, 65, "about 65"},
-		{"six image rows mid title", 6, true, 65, 40, "about 40"},
-		{"six image rows long title", 6, true, 80, 0, "no readable subtitle room"},
+		{"three rows with images", 3, true, 80, 160, ""},
+		{"three rows without images", 3, false, 80, 160, ""},
+		{"four rows without images", 4, false, 80, 111, "about 111"},
+		{"four image rows readable title", 4, true, 65, 65, "about 65"},
+		{"four image rows long title", 4, true, 66, 0, "no readable subtitle room"},
+		{"five rows without images", 5, false, 80, 0, "no readable subtitle room"},
+		{"five image rows", 5, true, 65, 0, "no readable subtitle room"},
+		{"six rows without images", 6, false, 80, 0, "no readable subtitle room"},
+		{"six image rows", 6, true, 61, 0, "no readable subtitle room"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			v := agendaWithImagesBudgetValues(tc.rows, tc.images)
@@ -60,7 +64,36 @@ func TestAgendaWithImagesSubtitleWarnings(t *testing.T) {
 	}
 	props := pat.Schema().raw.Properties["values"].raw.Properties["items"].raw.Items.raw.Properties
 	if max := props["subtitle"].raw.MaxLength; max == nil || *max != 160 ||
-		!strings.Contains(props["subtitle"].raw.Description, "120 up to 55") {
+		!strings.Contains(props["subtitle"].raw.Description, "5-6 rows hold no readable subtitle") {
 		t.Fatalf("subtitle schema loses sparse maximum or dense guidance: %+v", props["subtitle"].raw)
+	}
+}
+
+func TestAgendaWithImagesTitleAndLabelWarnings(t *testing.T) {
+	pat := &agendaWithImages{}
+	for _, tc := range []struct {
+		rows, title, label int
+	}{
+		{5, 65, 41},
+		{6, 61, 40},
+	} {
+		v := agendaWithImagesBudgetValues(tc.rows, true)
+		v.Items[1].Title = strings.Repeat("T", tc.title)
+		v.Items[1].ImageLabel = strings.Repeat("L", tc.label)
+		if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+			t.Fatalf("%d rows at title/label budget: %v", tc.rows, got)
+		}
+		v.Items[1].Title += "T"
+		v.Items[1].ImageLabel += "L"
+		got := pat.PostExpandWarnings(ExpandContext{}, v, nil)
+		if len(got) != 2 || !strings.Contains(got[0], "items[1].title") || !strings.Contains(got[1], "items[1].image_label") {
+			t.Fatalf("%d rows over title/label budget: %v", tc.rows, got)
+		}
+	}
+	// Without image labels the title keeps its schema maximum.
+	v := agendaWithImagesBudgetValues(6, false)
+	v.Items[1].Title = strings.Repeat("T", 80)
+	if got := pat.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("title without image labels: %v", got)
 	}
 }

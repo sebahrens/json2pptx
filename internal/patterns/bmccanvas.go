@@ -103,13 +103,14 @@ func (b *bmcCanvas) NewCellOverride() any { return &BMCCanvasCellOverride{} }
 // preflight predictor, which ignores shrinks down to 85%, so copy within it was
 // refused (go-slide-creator-n1muf). Each entry is the approximate characters
 // per bullet when every bullet in that cell has the same length and the other
-// eight cells contain short copy. Index zero is unused because a BMC cell
-// requires at least one bullet; a zero entry is a count the cell cannot hold.
+// eight cells contain short copy, every cell keeping the uniform 0.5 cm shape
+// text margin. Index zero is unused because a BMC cell requires at least one
+// bullet; a zero entry is a count the cell cannot hold.
 var bmcBulletBudgets = [4][11]int{
-	{0, 200, 143, 93, 68, 43, 43, 22, 22, 22, 22}, // tall narrow
-	{0, 125, 50, 25, 22, 22, 0, 0, 0, 0, 0},       // short narrow
-	{0, 200, 165, 82, 78, 78, 0, 0, 0, 0, 0},      // cost structure
-	{0, 200, 103, 52, 51, 51, 0, 0, 0, 0, 0},      // revenue streams
+	{0, 200, 102, 62, 42, 41, 21, 20, 20, 20, 20}, // tall narrow
+	{0, 81, 41, 20, 20, 0, 0, 0, 0, 0, 0},         // short narrow
+	{0, 200, 152, 76, 76, 0, 0, 0, 0, 0, 0},       // cost structure
+	{0, 200, 100, 50, 50, 0, 0, 0, 0, 0, 0},       // revenue streams
 }
 
 // bmcMaxBullets is the largest bullet count group g holds readably.
@@ -184,10 +185,10 @@ func (b *bmcCanvas) Schema() *Schema {
 			[]string{"header", "bullets"},
 		).WithAdditionalProperties(false).WithDescription(description)
 	}
-	const tall = "1: 200; 2: 143; 3: 93; 4: 68; 5-6: 43; 7-10: 22"
-	const short = "1: 125; 2: 50; 3: 25; 4-5: 22; use at most 5 bullets"
-	const cost = "1: 200; 2: 165; 3: 82; 4-5: 78; use at most 5 bullets"
-	const revenue = "1: 200; 2: 103; 3: 52; 4-5: 51; use at most 5 bullets"
+	const tall = "1: 200; 2: 102; 3: 62; 4: 42; 5: 41; 6: 21; 7-10: 20"
+	const short = "1: 81; 2: 41; 3-4: 20; use at most 4 bullets"
+	const cost = "1: 200; 2: 152; 3-4: 76; use at most 4 bullets"
+	const revenue = "1: 200; 2: 100; 3-4: 50; use at most 4 bullets"
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{

@@ -27,15 +27,12 @@
             {"header": "Front office", "sublabel": "Up to 30% unlock", "cells": [
               {"text": "Research summaries", "tier": 0},
               {"text": "Pitch books", "tier": 0},
-              {"text": "RFP responses", "tier": 1},
-              {"text": "Client meetings", "tier": 2}
+              {"text": "RFP responses", "tier": 1}
             ]},
             {"header": "Middle office", "sublabel": "Up to 45% unlock", "cells": [
               {"text": "Reconciliations", "tier": 0},
               {"text": "Risk reporting", "tier": 0},
-              {"text": "Limit monitoring", "tier": 1},
-              {"text": "Model validation", "tier": 1},
-              {"text": "Exceptions", "tier": 2}
+              {"text": "Limit monitoring", "tier": 1}
             ]},
             {"header": "Operations", "sublabel": "Up to 40% unlock", "cells": [
               {"text": "Trade settlement", "tier": 0},
@@ -45,14 +42,12 @@
             {"header": "Corporate", "sublabel": "Up to 25% unlock", "cells": [
               {"text": "Invoicing", "tier": 0},
               {"text": "HR queries", "tier": 1},
-              {"text": "FP&A", "tier": 2},
-              {"text": "Strategy work", "tier": 2}
+              {"text": "FP&A", "tier": 2}
             ]},
             {"header": "Technology", "sublabel": "Up to 35% unlock", "cells": [
               {"text": "Code generation", "tier": 0},
               {"text": "Testing", "tier": 0},
-              {"text": "Incident triage", "tier": 1},
-              {"text": "Architecture", "tier": 2}
+              {"text": "Incident triage", "tier": 1}
             ]}
           ]
         }
@@ -73,14 +68,14 @@
             {"label": "Retain", "description": "Human-led"}
           ],
           "columns": [
-            {"header": "Sales", "cells": [{"text": "Lead scoring", "tier": 0}, {"text": "Proposals", "tier": 1}, {"text": "Negotiation", "tier": 3}]},
-            {"header": "Marketing", "cells": [{"text": "Content drafts", "tier": 0}, {"text": "Campaign analytics", "tier": 1}]},
-            {"header": "Service", "cells": [{"text": "Tier-1 chat", "tier": 0}, {"text": "Case routing", "tier": 0}, {"text": "Escalations", "tier": 2}]},
-            {"header": "Finance", "cells": [{"text": "Close", "tier": 1}, {"text": "Forecasting", "tier": 1}, {"text": "Audit prep", "tier": 2}]},
-            {"header": "HR", "cells": [{"text": "Screening", "tier": 1}, {"text": "Onboarding", "tier": 2}]},
-            {"header": "Legal", "cells": [{"text": "Contract review", "tier": 1}, {"text": "Litigation", "tier": 3}]},
-            {"header": "IT", "cells": [{"text": "Ticket triage", "tier": 0}, {"text": "Code review", "tier": 1}, {"text": "Security", "tier": 2}]},
-            {"header": "Supply chain", "cells": [{"text": "Demand planning", "tier": 0}, {"text": "Supplier risk", "tier": 1}, {"text": "Logistics", "tier": 2}]}
+            {"header": "Sales", "cells": [{"text": "Scoring", "tier": 0}, {"text": "Bids", "tier": 1}, {"text": "Deals", "tier": 3}]},
+            {"header": "Marketing", "cells": [{"text": "Content", "tier": 0}, {"text": "Analytics", "tier": 1}]},
+            {"header": "Service", "cells": [{"text": "Chat", "tier": 0}, {"text": "Routing", "tier": 0}, {"text": "Escalate", "tier": 2}]},
+            {"header": "Finance", "cells": [{"text": "Close", "tier": 1}, {"text": "Forecast", "tier": 1}, {"text": "Audit", "tier": 2}]},
+            {"header": "HR", "cells": [{"text": "Hiring", "tier": 1}, {"text": "Onboard", "tier": 2}]},
+            {"header": "Legal", "cells": [{"text": "Contracts", "tier": 1}, {"text": "Disputes", "tier": 3}]},
+            {"header": "IT", "cells": [{"text": "Tickets", "tier": 0}, {"text": "Reviews", "tier": 1}, {"text": "Security", "tier": 2}]},
+            {"header": "Supply", "cells": [{"text": "Demand", "tier": 0}, {"text": "Suppliers", "tier": 1}, {"text": "Freight", "tier": 2}]}
           ]
         },
         "overrides": {"header_shape": "rect", "accent": "accent2"}

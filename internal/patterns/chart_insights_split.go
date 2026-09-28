@@ -195,11 +195,11 @@ func (cis *chartInsightsSplit) Schema() *Schema {
 		map[string]*Schema{
 			"chart":          chartSchema,
 			"insights_title": StringSchema(40).WithDescription("Label above the bullet list (default \"Key Insights\")").WithDefault("Key Insights"),
-			"insights":       ArraySchema(StringSchema(160), 0, 6).WithDescription("Up to 6 narrative takeaway bullets; may be empty when so_what carries the sole insight. With a chart, average about 160 characters per insight up to 4 (135 at 5, 91 at 6); with a headline or so-what, 136/85/85/42 at 3/4/5/6. Break long unbroken runs"),
-			"source":         StringSchema(120).WithDescription("Optional source/footnote below the chart; target about 92 characters with one insight and no headline/callout, or 80 when the right column has more content"),
+			"insights":       ArraySchema(StringSchema(160), 0, 6).WithDescription("Up to 6 narrative takeaway bullets; may be empty when so_what carries the sole insight. With a chart, average about 160 characters per insight up to 4 (122 at 5, 82 at 6); with a chart and a headline or so-what, 122/81/41/40/40 at 2/3/4/5/6. Break long unbroken runs"),
+			"source":         StringSchema(120).WithDescription("Optional source/footnote below the chart; target about 91 characters with one insight and no headline/callout, 77 when the right column has more content, and none beside six insights plus a headline or so-what"),
 			"headline": ObjectSchema(map[string]*Schema{
 				"value": StringSchema(cisHeadlineValueMax).WithDescription("Headline figure, e.g. \"+75%\""),
-				"label": StringSchema(cisHeadlineLabelMax).WithDescription("What the figure means"),
+				"label": StringSchema(cisHeadlineLabelMax).WithDescription("What the figure means; about 41 readable characters"),
 			}, []string{"value"}).WithAdditionalProperties(false).WithDescription("Big accent number at the top of the insights column"),
 			"so_what":     StringSchema(cisSoWhatMax).WithDescription("Implication / recommendation shown as a tinted callout under the insights"),
 			"chart_label": StringSchema(cisChartLabelMax).WithDescription("Caption above the chart (series + units); defaults to the single series name + unit"),
@@ -296,12 +296,15 @@ func (cis *chartInsightsSplit) PostExpandWarnings(ctx ExpandContext, values, ove
 	}
 	extras := v.Headline != nil || strings.TrimSpace(v.SoWhat) != ""
 	warnings := cisInsightWarnings(v, extras)
+	if h := v.Headline; h != nil && runeLen(h.Label) > cisHeadlineLabelBudget {
+		warnings = append(warnings, fmt.Sprintf("%s: chart-insights-split headline.label has %d characters; the headline holds about %d readable label characters — shorten the label", ErrCodeBodyTooLong, runeLen(h.Label), cisHeadlineLabelBudget))
+	}
 	if v.Chart != nil {
-		budget := 80
-		if len(v.Insights) == 1 && !extras {
-			budget = 92
-		}
-		if runeLen(v.Source) > budget {
+		budget := cisSourceBudget(len(v.Insights), extras)
+		switch {
+		case budget == 0 && strings.TrimSpace(v.Source) != "":
+			warnings = append(warnings, fmt.Sprintf("%s: chart-insights-split source has %d characters; with %d insights plus a headline or so-what the column leaves no readable source line — move the source to slide notes or use fewer insights", ErrCodeBodyTooLong, runeLen(v.Source), len(v.Insights)))
+		case budget > 0 && runeLen(v.Source) > budget:
 			warnings = append(warnings, fmt.Sprintf("%s: chart-insights-split source has %d characters; the chart source line holds about %d readable characters with this insights column — shorten the source or move detail to slide notes", ErrCodeBodyTooLong, runeLen(v.Source), budget))
 		}
 		return warnings
@@ -313,18 +316,35 @@ func (cis *chartInsightsSplit) PostExpandWarnings(ctx ExpandContext, values, ove
 
 // Insight budgets by bullet count (index 0 = one insight), measured against
 // the written size (no run stored below its role floor) on every shipped
-// template with every insight at the same length (go-slide-creator-n1muf).
-// Indexed [chart][extras]; extras = headline or so-what present.
+// template with every insight at the same length and every shape keeping the
+// uniform 0.5 cm text margin (go-slide-creator-n1muf). Indexed
+// [chart][extras]; extras = headline or so-what present.
 var (
 	cisInsightWordBudgets = [2][2][6]int{
-		{{160, 160, 160, 160, 160, 160}, {160, 160, 160, 160, 160, 135}},
-		{{160, 160, 160, 160, 135, 91}, {160, 160, 136, 85, 85, 42}},
+		{{160, 160, 160, 160, 160, 160}, {160, 160, 160, 136, 132, 132}},
+		{{160, 160, 160, 160, 122, 82}, {160, 122, 81, 41, 40, 40}},
 	}
 	cisInsightUnbrokenBudgets = [2][2][6]int{
-		{{160, 160, 160, 160, 143, 74}, {160, 160, 146, 70, 70, 70}},
-		{{160, 160, 119, 71, 47, 24}, {160, 96, 48, 23, 23, 22}},
+		{{160, 160, 160, 160, 145, 72}, {160, 149, 72, 71, 68, 68}},
+		{{160, 160, 104, 75, 50, 25}, {160, 50, 24, 22, 21, 21}},
 	}
 )
+
+// cisHeadlineLabelBudget is the readable headline label length.
+const cisHeadlineLabelBudget = 41
+
+// cisSourceBudget is the readable chart source length for an insight count:
+// 91 beside a single insight with no headline or so-what, 77 otherwise, and no
+// source line at all beside six insights plus a headline or so-what.
+func cisSourceBudget(insights int, extras bool) int {
+	switch {
+	case insights == 1 && !extras:
+		return 91
+	case insights >= 6 && extras:
+		return 0
+	}
+	return 77
+}
 
 func cisInsightWarnings(v *ChartInsightsSplitValues, extras bool) []string {
 	n := len(v.Insights)
@@ -571,9 +591,10 @@ type chartInsightsText struct {
 	Paragraphs    []chartInsightsParagraph `json:"paragraphs"`
 	Align         string                   `json:"align"`
 	VerticalAlign string                   `json:"vertical_align"`
-	// InsetTop nudges the first line down, in points. It is what lets two
-	// top-anchored cells at different type sizes share a first baseline
-	// (go-slide-creator-kol0).
+	// InsetTop, in points, is the uniform top margin plus a baseline nudge. It
+	// is what lets two top-anchored cells at different type sizes share a
+	// first baseline (go-slide-creator-kol0); it never goes below the uniform
+	// margin. Zero (omitted) keeps the uniform margin.
 	InsetTop float64 `json:"inset_top,omitempty"`
 }
 

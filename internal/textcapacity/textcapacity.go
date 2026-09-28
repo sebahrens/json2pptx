@@ -147,7 +147,7 @@ func ForResolvedGrid(result *shapegrid.ResolveResult) []Density {
 			densities[i] = Density{Status: StatusUnderfilled}
 			continue
 		}
-		paras, authoredInsets := extractCellParagraphs(cell)
+		paras, body := extractCellParagraphs(cell)
 		// The renderer lays text out inside a box smaller than the cell: both the
 		// icon-overlay insets (ResolvedCell.TextInsets) and the authored text
 		// insets are subtracted before text is placed (see
@@ -158,23 +158,30 @@ func ForResolvedGrid(result *shapegrid.ResolveResult) []Density {
 		if bounds.CX == 0 && bounds.CY == 0 {
 			bounds = cell.CellBounds // legacy synthetic callers without fitted bounds
 		}
-		w, h := effectiveTextRect(bounds, cell.TextInsets, authoredInsets)
+		w, h := effectiveTextRect(bounds, cell.TextInsets, body)
 		densities[i] = measuredDensity(paras, w, h)
 	}
 	return densities
 }
 
-// effectiveTextRect subtracts the icon-overlay insets and authored text insets
-// (both [L,T,R,B] in EMU) from a cell's bounds and returns the usable text
-// width and height. Results are clamped at zero so over-large insets cannot
-// yield a negative rectangle.
-func effectiveTextRect(bounds pptx.RectEmu, overlay, authored [4]int64) (int64, int64) {
-	insets := authored
-	for i := range insets {
-		insets[i] += overlay[i]
+// effectiveTextRect subtracts the icon-overlay insets and the body's own text
+// insets (the uniform shape margin unless authored) from a cell's bounds and
+// returns the usable text width and height, clamped exactly as the writer
+// clamps a degenerate shape (pptx.EffectiveTextInsets). Results are floored at
+// zero so over-large insets cannot yield a negative rectangle.
+func effectiveTextRect(bounds pptx.RectEmu, overlay [4]int64, body *pptx.TextBody) (int64, int64) {
+	var tb pptx.TextBody
+	if body != nil {
+		tb = *body
 	}
-	if insets == [4]int64{} {
+	for i := range tb.Insets {
+		tb.Insets[i] += overlay[i]
+	}
+	var insets [4]int64
+	if tb.Insets == [4]int64{} {
 		insets = [4]int64{91440, 45720, 91440, 45720}
+	} else {
+		insets = pptx.EffectiveTextInsets(&tb, bounds)
 	}
 	w := bounds.CX - insets[0] - insets[2]
 	h := bounds.CY - insets[1] - insets[3]
@@ -297,21 +304,21 @@ type cellParagraph struct {
 }
 
 // extractCellParagraphs parses a resolved cell's shape text into paragraphs,
-// each carrying its OWN effective font size, plus any authored text insets
-// ([L,T,R,B] in EMU).
+// each carrying its OWN effective font size, plus the resolved text body (whose
+// insets the writer uses).
 //
 // The previous extractCellText summed every paragraph's characters but kept only
 // the LARGEST paragraph size, so a cell mixing one big number with small support
 // lines was budgeted as if all of its text were set at the big size
 // (go-slide-creator-yj77).
-func extractCellParagraphs(cell shapegrid.ResolvedCell) ([]cellParagraph, [4]int64) {
+func extractCellParagraphs(cell shapegrid.ResolvedCell) ([]cellParagraph, *pptx.TextBody) {
 	if cell.ShapeSpec == nil || len(cell.ShapeSpec.Text) == 0 {
-		return nil, [4]int64{}
+		return nil, nil
 	}
 
 	body, err := shapegrid.ResolveTextInput(cell.ShapeSpec.Text)
 	if err != nil {
-		return nil, [4]int64{}
+		return nil, nil
 	}
 	paras := make([]cellParagraph, 0, len(body.Paragraphs))
 	for _, p := range body.Paragraphs {
@@ -325,7 +332,7 @@ func extractCellParagraphs(cell shapegrid.ResolvedCell) ([]cellParagraph, [4]int
 		}
 		paras = append(paras, cellParagraph{text: stripMarkdown(text.String()), fontPt: float64(size) / 100, spaceAfterPt: float64(p.SpaceAfter) / 100})
 	}
-	return paras, body.Insets
+	return paras, body
 }
 
 // measuredDensity lays each paragraph out at its own size inside the cell's text

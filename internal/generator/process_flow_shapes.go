@@ -42,8 +42,9 @@ const (
 	// Connection labels are utility text, not primary step content.
 	pfConnLabelFontSize int = 1100
 
-	// pfTextInset is the text inset for step shapes (EMU). ~0.06"
-	pfTextInset int64 = 54864
+	// pfTextInset is the text inset for step shapes (EMU): the uniform 0.5 cm
+	// shape text margin.
+	pfTextInset = pptx.ShapeTextInsetEMU
 
 	// pfConnectorWidth is the connector line width in EMU. 12700 = 1pt
 	pfConnectorWidth int64 = 12700
@@ -354,15 +355,35 @@ func pfTextAreaPercent(kind processFlowStepType) (width, height int64) {
 	case pfDecisionType:
 		return 50, 50
 	case pfStartType, pfEndType:
-		return 70, 70
+		// flowChartTerminator's text rectangle: 90.6% x 70.7% of the box.
+		return 90, 70
 	default:
 		return 100, 100
 	}
 }
 
-func pfTextArea(kind processFlowStepType, width, height int64) (int64, int64) {
-	w, h := pfTextAreaPercent(kind)
-	return max(1, (width-2*pfTextInset)*w/100), max(1, (height-2*pfTextInset)*h/100)
+// pfTextArea is the text area the writer leaves in a step box: the preset's
+// own text rectangle (pfTextAreaPercent of the box) minus the uniform shape
+// text margin, which the writer clamps on an axis too short for one label
+// line or for the label's widest word (pptx.EffectiveTextInsets).
+func pfTextArea(step processFlowStep, font string, width, height int64) (int64, int64) {
+	w, h := pfTextAreaPercent(step.stepType)
+	rectW, rectH := width*w/100, height*h/100
+	lineH := int64(pfLabelFontSize) * 127 * 12 / 10
+	return max(1, rectW-2*pptx.UniformInsetFor(rectW, pfWidestLabelWordEMU(step, font))),
+		max(1, rectH-2*pptx.UniformInsetFor(rectH, lineH))
+}
+
+// pfWidestLabelWordEMU is the width of the step label's widest word, bold at
+// the label size — the horizontal room the writer's clamp keeps.
+func pfWidestLabelWordEMU(step processFlowStep, font string) int64 {
+	var widest int64
+	for _, word := range strings.Fields(step.label) {
+		if w, err := textfit.MeasureStyledLineWidth(word, font, float64(pfLabelFontSize)/100, true); err == nil {
+			widest = max(widest, w)
+		}
+	}
+	return widest
 }
 
 func pfRequiredTextHeight(step processFlowStep, font string, width int64) int64 {
@@ -381,10 +402,10 @@ func pfGrowTextHeight(layout *pfStepLayout, step processFlowStep, font string) {
 }
 
 func pfMinimumTextHeight(layout pfStepLayout, step processFlowStep, font string) int64 {
-	w, _ := pfTextArea(step.stepType, layout.cx, layout.cy)
+	w, _ := pfTextArea(step, font, layout.cx, layout.cy)
 	required := pfRequiredTextHeight(step, font, w)
 	_, heightPct := pfTextAreaPercent(step.stepType)
-	return (required*100+heightPct-1)/heightPct + 2*pfTextInset
+	return ((required+2*pfTextInset)*100 + heightPct - 1) / heightPct
 }
 
 // pfStepHeight is the height of one process step, scaled to the space it has.
@@ -465,7 +486,7 @@ func pfStepDimensions(step processFlowStep, bounds types.BoundingBox, stepCount 
 // distinct while preserving the authored step order and merge connections.
 func pfLayoutVertical(layouts []pfStepLayout, steps []processFlowStep, connections []processFlowConnection, bounds types.BoundingBox, font string) pfLayoutResult {
 	for i := range layouts {
-		layouts[i].cx = pfVerticalStepWidth(steps[i], layouts[i], bounds)
+		layouts[i].cx = pfVerticalStepWidth(steps[i], layouts[i], bounds, font)
 		// The vertical lane can be narrower than the initial horizontal box.
 		// Measure again at that actual width before allocating its height.
 		pfGrowTextHeight(&layouts[i], steps[i], font)
@@ -531,16 +552,26 @@ func pfConstrainVerticalDecisionAspect(layouts []pfStepLayout, steps []processFl
 	}
 }
 
-func pfVerticalStepWidth(step processFlowStep, layout pfStepLayout, bounds types.BoundingBox) int64 {
+func pfVerticalStepWidth(step processFlowStep, layout pfStepLayout, bounds types.BoundingBox, font string) int64 {
 	capW := bounds.Width * pfVerticalMaxWidthPct / 100
 	if capW < pfMinStepWidth {
 		capW = bounds.Width
 	}
 	w := layout.cx
-	labelW := int64(len([]rune(step.label)))*pfLabelGlyphWidthEMU + 2*pfTextInset
-	if step.stepType == pfDecisionType {
-		// Only the central portion of a diamond is usable for text.
-		labelW = labelW * 3 / 2
+	// The label's one-line width, measured bold, plus the uniform shape
+	// margin; the glyph estimate stands in when no font can be measured.
+	textW := int64(len([]rune(step.label))) * pfLabelGlyphWidthEMU
+	if m, err := textfit.MeasureStyledLineWidth(step.label, font, float64(pfLabelFontSize)/100, true); err == nil && m > 0 {
+		textW = m + m/50
+	}
+	labelW := textW + 2*pfTextInset
+	// A preset's text rectangle is only part of its box: half of a diamond,
+	// nine tenths of a terminator.
+	switch step.stepType {
+	case pfDecisionType:
+		labelW *= 2
+	case pfStartType, pfEndType:
+		labelW = labelW * 100 / 90
 	}
 	if labelW > w {
 		w = labelW
@@ -939,7 +970,7 @@ func pfGenerateStepShape(step processFlowStep, sl pfStepLayout, shapeID uint32, 
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
-			Insets:     [4]int64{pfTextInset, pfTextInset, pfTextInset, pfTextInset},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},
@@ -1068,7 +1099,7 @@ func pfGenerateConnLabel(shapeID uint32, src, tgt pptx.ShapeOptions, label, dire
 		Text: &pptx.TextBody{
 			Wrap:   "square",
 			Anchor: "ctr",
-			Insets: [4]int64{0, 0, 0, 0},
+			Insets: pptx.ShapeTextInsets(),
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
 				NoBullet: true,

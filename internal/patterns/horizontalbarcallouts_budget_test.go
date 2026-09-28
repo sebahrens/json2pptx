@@ -11,7 +11,7 @@ func TestHorizontalBarCalloutBudgetWarnings(t *testing.T) {
 	for _, tc := range []struct {
 		bars, readable int
 	}{
-		{3, 200}, {4, 200}, {5, 152}, {6, 108}, {7, 102}, {8, 53},
+		{3, 200}, {4, 150}, {5, 100}, {6, 50}, {7, 50}, {8, 50},
 	} {
 		t.Run(fmt.Sprintf("%d bars", tc.bars), func(t *testing.T) {
 			v := &HorizontalBarCalloutsValues{Unit: "%"}
@@ -38,7 +38,7 @@ func TestHorizontalBarCalloutBudgetWarnings(t *testing.T) {
 		t.Fatalf("nil values: %v", got)
 	}
 	callout := pat.Schema().raw.Properties["values"].raw.Properties["bars"].raw.Items.raw.Properties["callout"]
-	if callout.raw.MaxLength == nil || *callout.raw.MaxLength != 200 || !strings.Contains(callout.raw.Description, "53 with 8") {
+	if callout.raw.MaxLength == nil || *callout.raw.MaxLength != 200 || !strings.Contains(callout.raw.Description, "50 with 6-8") {
 		t.Fatalf("schema loses sparse maximum or dense guidance: %+v", callout.raw)
 	}
 }

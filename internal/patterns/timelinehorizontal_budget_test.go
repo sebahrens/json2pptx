@@ -12,10 +12,12 @@ func TestTimelineHorizontalDenseCopyWarnings(t *testing.T) {
 		style              string
 		stops, label, body int
 	}{
-		{"dots", 4, 60, 121},
-		{"dots", 5, 40, 103},
-		{"dots", 6, 15, 107},
-		{"dots", 7, 60, 40},
+		{"dots", 3, 60, 161},
+		{"dots", 4, 60, 77},
+		{"dots", 5, 40, 60},
+		{"dots", 6, 15, 75},
+		{"dots", 7, 40, 40},
+		{"dots", 7, 50, 15},
 	} {
 		t.Run(fmt.Sprintf("%s_%d_%d", tc.style, tc.stops, tc.label), func(t *testing.T) {
 			v := TimelineHorizontalValues{}

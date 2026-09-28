@@ -107,7 +107,7 @@ func TestTimelineChevronWarnsBeforeDenseBodyClips(t *testing.T) {
 	}
 	stops := make([]patterns.TimelineStop, 7)
 	for i := range stops {
-		stops[i] = patterns.TimelineStop{Label: "Wave close", Body: "Fleet migrated", Date: "Q1"}
+		stops[i] = patterns.TimelineStop{Label: "Wave close", Body: "Migrated", Date: "Q1"}
 	}
 	stops[4].Body = "Sheffield, Hull and Grenoble migrated; fleet stabilisation underway by June"
 	values, err := json.Marshal(stops)
@@ -158,7 +158,7 @@ func TestTimelineChevronBodySizeOverrideChangesFitFinding(t *testing.T) {
 	for i := range stops {
 		stops[i] = patterns.TimelineStop{Label: "Wave close"}
 	}
-	stops[4].Body = "Fleet migrated"
+	stops[4].Body = "Migrated"
 	values, err := json.Marshal(stops)
 	if err != nil {
 		t.Fatal(err)

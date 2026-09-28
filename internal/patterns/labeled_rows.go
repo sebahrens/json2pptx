@@ -56,7 +56,7 @@ const (
 
 	labeledRowsColGapPt    = 14.0
 	labeledRowsRowGapPt    = 4.0
-	labeledRowsBlockInset  = 8.0 // label block text inset, every side
+	labeledRowsBlockInset  = defaultShapeInsetLRPt // label block text inset: the uniform shape margin
 	labeledRowsMinLabelPt  = 12.0
 	labeledRowsMinFillFrac = 0.60
 
@@ -137,7 +137,7 @@ func (l *labeledRows) Schema() *Schema {
 		map[string]*Schema{
 			"label":    StringSchema(labeledRowsLabelMax).WithDescription("Short keyword for the row (≤24 chars): \"WHY\", \"Faster\", \"Adopt\". It shrinks as one shared size until every word fits the label column"),
 			"sublabel": StringSchema(labeledRowsSublabelMax).WithDescription("Optional smaller line under the keyword (≤60 chars): \"now is the right time to act\""),
-			"body":     StringSchema(labeledRowsBodyMax).WithDescription("1-4 lines of explanation (≤300 chars); **bold** marks a key phrase. 2-4 rows hold the full 300 at default sizes; 5-6 rows hold about 190 per row and no multi-line sublabels"),
+			"body":     StringSchema(labeledRowsBodyMax).WithDescription("1-4 lines of explanation (≤300 chars); **bold** marks a key phrase. 2-3 rows hold the full 300 at default sizes; 4 rows about 211 and 5-6 rows about 101 per row, with no multi-line sublabels"),
 		},
 		[]string{"label", "body"},
 	).WithAdditionalProperties(false)
@@ -323,7 +323,7 @@ func measureLabeledRows(ctx ExpandContext, vals *LabeledRowsValues, cols []float
 		}
 	}
 
-	// sizedBlockHeightPt assumes 7.2pt side insets; convert the real text width
+	// sizedBlockHeightPt takes the frame width including the side insets; convert the real text width
 	// back into the frame width it expects.
 	labelFrameW := lay.labelTextW + 2*sizingInsetLRPt
 	lay.bodyFrameW = bodyColW
@@ -385,8 +385,6 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 				Line:     json.RawMessage(`"none"`),
 				Text: insetText{
 					Paragraphs: paras, Align: "l", VerticalAlign: "ctr",
-					InsetLeft: labeledRowsBlockInset, InsetRight: labeledRowsBlockInset,
-					InsetTop: labeledRowsBlockInset, InsetBottom: labeledRowsBlockInset,
 				}.json(),
 			}}
 		} else {
@@ -455,7 +453,7 @@ func (l *labeledRows) PostExpandWarnings(ctx ExpandContext, values, overrides an
 	}
 	if need := lay.natural(); need > lay.areaH+1 {
 		out = append(out, fmt.Sprintf(
-			"%s: labeled-rows rows[].body needs %.0fpt at the smallest type scale but the content area holds about %.0fpt — shorten the body text (5-6 rows hold about 190 characters per row, without sublabels) or split the rows across two slides",
+			"%s: labeled-rows rows[].body needs %.0fpt at the smallest type scale but the content area holds about %.0fpt — shorten the body text (4 rows hold about 211 characters per row, 5-6 rows about 101, without sublabels) or split the rows across two slides",
 			ErrCodeBodyTooLong, need, lay.areaH))
 	}
 	return out

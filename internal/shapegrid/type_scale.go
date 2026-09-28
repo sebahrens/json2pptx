@@ -24,7 +24,7 @@ func growShapeText(spec *ShapeSpec, bounds pptx.RectEmu, overlay [4]int64, mode 
 	if len(paras) == 0 {
 		return spec
 	}
-	width, height := scaledTextRect(bounds, tb.Insets, overlay)
+	width, height := scaledTextRect(bounds, tb, overlay)
 	if width <= 0 || height <= 0 {
 		return spec
 	}
@@ -136,17 +136,15 @@ func typeScalePolicy(mode string) (float64, map[string]float64) {
 	}
 }
 
-func scaledTextRect(bounds pptx.RectEmu, authored, overlay [4]int64) (int64, int64) {
-	insets := authored
-	for i := range insets {
-		insets[i] += overlay[i]
+// scaledTextRect is the text area the writer leaves inside bounds: the body's
+// insets plus any icon-overlay reservation, clamped exactly as the writer
+// clamps a degenerate shape (pptx.EffectiveTextInsets).
+func scaledTextRect(bounds pptx.RectEmu, tb *pptx.TextBody, overlay [4]int64) (int64, int64) {
+	body := *tb
+	for i := range body.Insets {
+		body.Insets[i] += overlay[i]
 	}
-	// A bodyPr with no lIns/rIns/tIns/bIns uses OOXML defaults: 0.1in
-	// horizontally and 0.05in vertically. Once any inset is explicit, the
-	// renderer emits all four values, including zeros.
-	if insets == [4]int64{} {
-		insets = [4]int64{91440, 45720, 91440, 45720}
-	}
+	insets := pptx.EffectiveTextInsets(&body, bounds)
 	return bounds.CX - insets[0] - insets[2], bounds.CY - insets[1] - insets[3]
 }
 

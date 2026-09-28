@@ -324,7 +324,7 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 	// Try string first
 	var s string
 	if err := json.Unmarshal(raw, &s); err == nil {
-		return buildTextBody(s, 0, false, false, "ctr", "ctr", "", "", 0, 0, 0, 0), nil
+		return buildTextBody(s, 0, false, false, "ctr", "ctr", "", "", pptx.ShapeTextInsets()), nil
 	}
 
 	// Object form — try to detect paragraphs array variant
@@ -339,10 +339,10 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 		Vert          string         `json:"vert,omitempty"`
 		Color         string         `json:"color,omitempty"`
 		Font          string         `json:"font,omitempty"`
-		InsetLeft     float64        `json:"inset_left,omitempty"`
-		InsetRight    float64        `json:"inset_right,omitempty"`
-		InsetTop      float64        `json:"inset_top,omitempty"`
-		InsetBottom   float64        `json:"inset_bottom,omitempty"`
+		InsetLeft     *float64       `json:"inset_left,omitempty"`
+		InsetRight    *float64       `json:"inset_right,omitempty"`
+		InsetTop      *float64       `json:"inset_top,omitempty"`
+		InsetBottom   *float64       `json:"inset_bottom,omitempty"`
 	}
 	if err := json.Unmarshal(raw, &obj); err != nil {
 		return nil, fmt.Errorf("text must be a string, object with \"content\", or object with \"paragraphs\" array: %w", err)
@@ -352,10 +352,10 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 	// Paragraphs array form: individually styled paragraphs
 	if len(obj.Paragraphs) > 0 {
 		tb = buildParagraphsTextBody(obj.Paragraphs, obj.Align, obj.VerticalAlign, obj.Font,
-			obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom)
+			shapeTextInsets(obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom))
 	} else {
 		tb = buildTextBody(obj.Content, obj.Size, obj.Bold, obj.Italic, obj.Align, obj.VerticalAlign, obj.Color, obj.Font,
-			obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom)
+			shapeTextInsets(obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom))
 	}
 
 	// Optional OOXML text-direction (e.g. "vert270") rotates only the text
@@ -366,6 +366,21 @@ func ResolveTextInput(raw json.RawMessage) (*pptx.TextBody, error) {
 	}
 
 	return tb, nil
+}
+
+// shapeTextInsets resolves a text object's inset_* fields (points) to EMU.
+// Every side defaults to the uniform shape text margin (pptx.ShapeTextInsets,
+// 0.5 cm); an inset the deck author writes explicitly — including 0 — replaces
+// that side only. Named patterns never write inset_*, so the margin is uniform
+// on every pattern shape.
+func shapeTextInsets(l, t, r, b *float64) [4]int64 {
+	insets := pptx.ShapeTextInsets()
+	for i, v := range [4]*float64{l, t, r, b} {
+		if v != nil && *v >= 0 {
+			insets[i] = int64(*v * 12700)
+		}
+	}
+	return insets
 }
 
 // normalizeVerticalAlign maps verbose anchor names ("top","center","middle",
@@ -388,7 +403,7 @@ func normalizeVerticalAlign(v string) string {
 
 // buildTextBody creates a TextBody with wrapping text.
 func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAlign, color, font string,
-	insetL, insetT, insetR, insetB float64) *pptx.TextBody {
+	insets [4]int64) *pptx.TextBody {
 	if align == "" {
 		align = "ctr"
 	}
@@ -427,17 +442,6 @@ func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAl
 		InlineTags:     true,
 	})
 
-	// Convert point insets to EMU (1pt = 12700 EMU)
-	var insets [4]int64
-	if insetL > 0 || insetT > 0 || insetR > 0 || insetB > 0 {
-		insets = [4]int64{
-			int64(insetL * 12700),
-			int64(insetT * 12700),
-			int64(insetR * 12700),
-			int64(insetB * 12700),
-		}
-	}
-
 	return &pptx.TextBody{
 		Wrap:       "square",
 		Anchor:     vAlign,
@@ -450,7 +454,7 @@ func buildTextBody(content string, sizePt float64, bold, italic bool, align, vAl
 
 // buildParagraphsTextBody creates a TextBody from individually styled paragraphs.
 func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultFont string,
-	insetL, insetT, insetR, insetB float64) *pptx.TextBody {
+	insets [4]int64) *pptx.TextBody {
 	if defaultAlign == "" {
 		defaultAlign = "ctr"
 	}
@@ -506,16 +510,6 @@ func buildParagraphsTextBody(defs []paragraphDef, defaultAlign, vAlign, defaultF
 		}
 		if d.SpaceAfter > 0 {
 			paragraphs[i].SpaceAfter = int(d.SpaceAfter * 100)
-		}
-	}
-
-	var insets [4]int64
-	if insetL > 0 || insetT > 0 || insetR > 0 || insetB > 0 {
-		insets = [4]int64{
-			int64(insetL * 12700),
-			int64(insetT * 12700),
-			int64(insetR * 12700),
-			int64(insetB * 12700),
 		}
 	}
 
@@ -608,7 +602,11 @@ func GenerateImageTextXML(spec *ImageText, id uint32, bounds pptx.RectEmu) ([]by
 		font = "+mn-lt"
 	}
 
-	tb := buildTextBody(content, size, spec.Bold, false, align, vAlign, color, font, 4, 4, 4, 4)
+	// An image caption is a label laid over a picture, not a shape: it keeps
+	// its tight 4pt inset.
+	const captionInsetEMU = 4 * 12700
+	tb := buildTextBody(content, size, spec.Bold, false, align, vAlign, color, font,
+		[4]int64{captionInsetEMU, captionInsetEMU, captionInsetEMU, captionInsetEMU})
 
 	opts := pptx.ShapeOptions{
 		ID:       id,

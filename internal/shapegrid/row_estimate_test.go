@@ -17,15 +17,16 @@ func TestEstimateCellTextHeightReadsParagraphs(t *testing.T) {
 	}
 
 	oneLine := cellWith(`{"paragraphs":[{"content":"Mandate published","size":14,"bold":true}]}`)
-	// 14pt x 1.2 line height + 7.2pt of top/bottom inset = 24pt.
-	if got := float64(estimateCellTextHeightEMU(oneLine)) / 12700; got < 23 || got > 25 {
-		t.Errorf("one 14pt line estimated at %.1fpt, want ~24", got)
+	// 14pt x 1.2 line height + the uniform 0.5 cm top and bottom margin
+	// (2 x 14.17pt) = 45.1pt.
+	if got := float64(estimateCellTextHeightEMU(oneLine)) / 12700; got < 44 || got > 46 {
+		t.Errorf("one 14pt line estimated at %.1fpt, want ~45.1", got)
 	}
 
 	stack := cellWith(`{"paragraphs":[{"content":"A","size":12},{"content":"B","size":12},{"content":"C","size":12}]}`)
-	// Three 12pt lines: 3 x 14.4 + 7.2 = 50.4pt.
-	if got := float64(estimateCellTextHeightEMU(stack)) / 12700; got < 49 || got > 52 {
-		t.Errorf("three 12pt lines estimated at %.1fpt, want ~50", got)
+	// Three 12pt lines: 3 x 14.4 + 28.35 = 71.5pt.
+	if got := float64(estimateCellTextHeightEMU(stack)) / 12700; got < 70 || got > 73 {
+		t.Errorf("three 12pt lines estimated at %.1fpt, want ~71.5", got)
 	}
 	if estimateCellTextHeightEMU(stack) <= estimateCellTextHeightEMU(oneLine) {
 		t.Error("a three-line stack must estimate taller than one line")
@@ -50,8 +51,15 @@ func TestEstimateCellTextHeightReadsParagraphs(t *testing.T) {
 		t.Errorf("12pt line with 8pt insets estimated at %.1fpt, want ~30.4", got)
 	}
 
-	// The single-content form is unchanged.
-	if got := float64(estimateCellTextHeightEMU(cellWith(`{"content":"One line","size":12}`))) / 12700; got < 20 || got > 23 {
-		t.Errorf("single-content form estimated at %.1fpt, want ~21.6", got)
+	// The single-content form: 14.4 + 28.35 = 42.7pt.
+	if got := float64(estimateCellTextHeightEMU(cellWith(`{"content":"One line","size":12}`))) / 12700; got < 42 || got > 44 {
+		t.Errorf("single-content form estimated at %.1fpt, want ~42.7", got)
+	}
+
+	// An authored side replaces only that side's margin: an 8pt top beside
+	// the default 14.17pt bottom is 14.4 + 8 + 14.17 = 36.6pt.
+	top := cellWith(`{"paragraphs":[{"content":"A","size":12}],"inset_top":8}`)
+	if got := float64(estimateCellTextHeightEMU(top)) / 12700; got < 36 || got > 37.2 {
+		t.Errorf("12pt line with an 8pt top inset estimated at %.1fpt, want ~36.6", got)
 	}
 }

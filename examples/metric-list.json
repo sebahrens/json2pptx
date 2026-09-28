@@ -15,8 +15,7 @@
             {"value": "~30%", "label": "Share of value already generated", "detail": "Up 2.2x from 2023"},
             {"value": "20x", "label": "More agentic solutions in production", "detail": "Leaders versus laggards"},
             {"value": "16→33%", "label": "Agentic share of AI value", "detail": "Expected to double by 2028"}
-          ],
-          "callout": "The window is open because most firms have not moved beyond pilots"
+          ]
         }
       }
     },

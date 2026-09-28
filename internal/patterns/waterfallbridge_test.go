@@ -18,19 +18,28 @@ func TestWaterfallBridgeTenColumnLabelWarning(t *testing.T) {
 	v.Columns[0].Type = wbTypeTotal
 	v.Columns[0].Value = 100
 	v.Columns[9].Type = wbTypeSubtotal
-	v.Columns[4].Label = strings.Repeat("L", 33)
+	v.Columns[4].Label = strings.Repeat("L", 11)
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "columns[4].label") || !strings.Contains(got[0], "about 32") {
+	if len(got) != 1 || !strings.Contains(got[0], "columns[4].label") || !strings.Contains(got[0], "about 10") {
 		t.Fatalf("dense label warning: %v", got)
 	}
-	v.Columns[4].Label = strings.Repeat("L", 32)
+	v.Columns[4].Label = strings.Repeat("L", 10)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured ten-column target should fit: %v", got)
 	}
 	v.Columns = v.Columns[:9]
-	v.Columns[4].Label = strings.Repeat("L", 40)
+	v.Columns[4].Label = strings.Repeat("L", 12)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "9 columns hold about 11") {
+		t.Fatalf("nine-column label warning: %v", got)
+	}
+	v.Columns[4].Label = strings.Repeat("L", 11)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("nine-column schema maximum should fit: %v", got)
+		t.Fatalf("measured nine-column target should fit: %v", got)
+	}
+	v.Columns = v.Columns[:3]
+	v.Columns[1].Label = strings.Repeat("L", wbLabelMax)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("three-column schema maximum should fit: %v", got)
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, nil, nil); got != nil {
 		t.Fatalf("nil values: %v", got)
@@ -742,9 +751,9 @@ func wbTextObj(t *testing.T, raw json.RawMessage) waterfallBridgeTextObj {
 }
 
 // go-slide-creator-2fq1: a bar too thin to hold its value label puts the label
-// in the adjacent spacer. The spacer anchors it to the bar's edge, but the text
-// box's own ~3.6pt inset then held it further clear, so on a 6pt bar the number
-// floated level with nothing while every other label sat inside its bar.
+// in the adjacent spacer, anchored to the edge the bar sits on. Like every
+// shape it keeps the uniform text margin — no pattern-authored inset_* — and
+// the writer clamps that margin when the spacer is too short for it.
 func TestWaterfallBridge_ThinBarLabelHugsItsBar(t *testing.T) {
 	p, _ := Default().Get("waterfall-bridge")
 	v := &WaterfallBridgeValues{
@@ -762,47 +771,27 @@ func TestWaterfallBridge_ThinBarLabelHugsItsBar(t *testing.T) {
 	}
 
 	// The −4 column's label cannot fit its bar, so it lands in a spacer.
-	var outside *waterfallBridgeTextObj
+	var outside json.RawMessage
 	for _, row := range wbColumnRows(t, grid, 0, 2) {
 		for _, c := range row.Cells {
 			if c == nil || c.Shape == nil || len(c.Shape.Text) == 0 {
 				continue
 			}
-			obj := wbTextObj(t, c.Shape.Text)
-			if obj.VerticalAlign == "t" || obj.VerticalAlign == "b" {
-				outside = &obj
+			if obj := wbTextObj(t, c.Shape.Text); obj.VerticalAlign == "t" || obj.VerticalAlign == "b" {
+				outside = c.Shape.Text
 			}
 		}
 	}
 	if outside == nil {
 		t.Fatal("the thin bar's value label was not placed in a spacer")
 	}
-	// The inset on the side facing the bar must be collapsed, and the block
-	// must actually be emitted — the resolver skips it when every inset is 0,
-	// which falls back to PowerPoint's 0.05in default and reopens the gap.
-	near, far := outside.InsetTop, outside.InsetBottom
-	if outside.VerticalAlign == "b" {
-		near, far = outside.InsetBottom, outside.InsetTop
+	var raw map[string]any
+	if err := json.Unmarshal(outside, &raw); err != nil {
+		t.Fatal(err)
 	}
-	if near <= 0 {
-		t.Errorf("near-side inset = %v; must be >0 so the inset block is emitted at all", near)
-	}
-	if near > 0.1 {
-		t.Errorf("near-side inset = %vpt; the label should sit against its bar", near)
-	}
-	if far <= 0 {
-		t.Errorf("far-side inset = %v; every inset zero means the block is dropped", far)
-	}
-
-	// A bar that CAN hold its label is untouched: label inside, no insets.
-	for _, row := range wbColumnRows(t, grid, 0, 0) {
-		for _, c := range row.Cells {
-			if c == nil || c.Shape == nil || len(c.Shape.Text) == 0 {
-				continue
-			}
-			if obj := wbTextObj(t, c.Shape.Text); obj.VerticalAlign == "ctr" && obj.InsetTop != 0 {
-				t.Errorf("an in-bar label gained an inset: %+v", obj)
-			}
+	for _, k := range []string{"inset_left", "inset_right", "inset_top", "inset_bottom"} {
+		if _, has := raw[k]; has {
+			t.Errorf("outside label overrides the uniform shape margin with %s", k)
 		}
 	}
 }

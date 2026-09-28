@@ -93,27 +93,47 @@ func (a *agendaWithImages) NewOverrides() any    { return &AgendaWithImagesOverr
 func (a *agendaWithImages) NewCellOverride() any { return &AgendaWithImagesCellOverride{} }
 
 // The title and subtitle share one text cell. The budget was measured at
-// default text sizes against the written size on every shipped template
-// (go-slide-creator-n1muf). Without image labels, the text cell expands into
-// the image column.
+// default text sizes against the written size on every shipped template with
+// the uniform 0.5 cm shape text margin (go-slide-creator-n1muf). Without image
+// labels, the text cell expands into the image column. Five or six rows hold a
+// title and no readable subtitle.
 func agendaWithImagesSubtitleBudget(rows, titleChars int, withImages bool) int {
 	switch {
-	case !withImages && rows <= 5, withImages && rows <= 4:
+	case rows >= 5:
+		return 0
+	case rows <= 3:
 		return 160
 	case !withImages:
-		return 110
-	case rows == 5 && titleChars <= 40:
-		return 130
-	case rows == 5 && titleChars <= 55:
-		return 120
-	case rows == 5:
-		return 40
-	case titleChars <= 40:
-		return 65
+		return 111
 	case titleChars <= 65:
-		return 40
+		return 65
 	default:
 		return 0
+	}
+}
+
+// agendaWithImagesTitleBudget / agendaWithImagesLabelBudget are the readable
+// title and image-label lengths at a row count with image labels, or 0 when
+// the schema maximum holds (TestAgendaWithImagesBudgetProbe).
+func agendaWithImagesTitleBudget(rows int, withImages bool) int {
+	switch {
+	case !withImages || rows < 5:
+		return 0
+	case rows == 5:
+		return 65
+	default:
+		return 61
+	}
+}
+
+func agendaWithImagesLabelBudget(rows int) int {
+	switch {
+	case rows < 5:
+		return 0
+	case rows == 5:
+		return 41
+	default:
+		return 40
 	}
 }
 
@@ -125,10 +145,16 @@ func (a *agendaWithImages) PostExpandWarnings(_ ExpandContext, values, _ any) []
 	withImages := anyAgendaImageLabel(v.Items)
 	var warnings []string
 	for i, item := range v.Items {
+		if tb := agendaWithImagesTitleBudget(len(v.Items), withImages); tb > 0 && runeLen(item.Title) > tb {
+			warnings = append(warnings, fmt.Sprintf("%s: agenda-with-images items[%d].title is %d characters; a %d-row agenda with image labels holds about %d readable title characters — shorten the title or use fewer rows", ErrCodeBodyTooLong, i, runeLen(item.Title), len(v.Items), tb))
+		}
+		if lb := agendaWithImagesLabelBudget(len(v.Items)); lb > 0 && runeLen(item.ImageLabel) > lb {
+			warnings = append(warnings, fmt.Sprintf("%s: agenda-with-images items[%d].image_label is %d characters; a %d-row agenda holds about %d readable image-label characters — shorten the label or use fewer rows", ErrCodeBodyTooLong, i, runeLen(item.ImageLabel), len(v.Items), lb))
+		}
 		budget := agendaWithImagesSubtitleBudget(len(v.Items), runeLen(item.Title), withImages)
 		if n := runeLen(item.Subtitle); n > budget {
 			if budget == 0 {
-				warnings = append(warnings, fmt.Sprintf("%s: agenda-with-images items[%d].subtitle has %d characters; a %d-row agenda with image labels and a %d-character title leaves no readable subtitle room — shorten the title to about 65 characters, omit the subtitle, or use fewer rows", ErrCodeBodyTooLong, i, n, len(v.Items), runeLen(item.Title)))
+				warnings = append(warnings, fmt.Sprintf("%s: agenda-with-images items[%d].subtitle has %d characters; a %d-row agenda (image labels=%t, %d-character title) leaves no readable subtitle room — omit the subtitle, shorten the title, or use four rows or fewer", ErrCodeBodyTooLong, i, n, len(v.Items), withImages, runeLen(item.Title)))
 			} else {
 				warnings = append(warnings, fmt.Sprintf("%s: agenda-with-images items[%d].subtitle is %d characters; a %d-row agenda with image labels=%t and a %d-character title holds about %d subtitle characters before text shrinks below the readable minimum — shorten the subtitle or title, omit image labels, or use fewer rows", ErrCodeBodyTooLong, i, n, len(v.Items), withImages, runeLen(item.Title), budget))
 			}
@@ -141,9 +167,9 @@ func (a *agendaWithImages) Schema() *Schema {
 	itemSchema := ObjectSchema(
 		map[string]*Schema{
 			"number":      IntegerSchema(0, 999).WithDescription("1-based ordinal; auto-assigned 1..N when omitted (use 0 or omit to auto-assign)"),
-			"title":       StringSchema(80).WithDescription("Section title (bold); with 5 image rows keep it to about 55 characters when the subtitle exceeds 40; with 6 image rows about 65 with a subtitle up to 40"),
-			"subtitle":    StringSchema(160).WithDescription("Optional text below the title. About 160 readable characters with 3-4 rows (3-5 without image labels; 110 at 6). With image labels: 5 rows hold 130 with a title up to 40, 120 up to 55, else 40; 6 rows hold 65 with a title up to 40, 40 up to 65, else omit it"),
-			"image_label": StringSchema(60).WithDescription("Optional caption centred in the image placeholder; omit it on one row and that row still gets an empty placeholder, omit it on every row to collapse the image column"),
+			"title":       StringSchema(80).WithDescription("Section title (bold); with image labels, 5 rows hold about 65 characters and 6 rows about 61"),
+			"subtitle":    StringSchema(160).WithDescription("Optional text below the title. About 160 readable characters with 3 rows; 4 rows hold about 111 without image labels and 65 with them (title up to 65); 5-6 rows hold no readable subtitle — omit it"),
+			"image_label": StringSchema(60).WithDescription("Optional caption centred in the image placeholder (about 41 readable characters at 5 rows, 40 at 6); omit it on one row and that row still gets an empty placeholder, omit it on every row to collapse the image column"),
 		},
 		[]string{"title"},
 	).WithAdditionalProperties(false)

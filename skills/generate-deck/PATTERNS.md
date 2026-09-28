@@ -64,7 +64,7 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 roadmap activities, team bios, metric details, swimlane steps, KPI captions and
 the rest) live in each field's `show_pattern` description, measured at default
 sizes for every supported count. Read them there; `BODY_TOO_LONG` names the
-field to shorten and `TEXT_EXCEEDS_SHAPE` a word that cannot fit its shape.
+field to shorten and `TEXT_EXCEEDS_SHAPE` a word that cannot fit its shape. Limits: `state-shift-hub` takes 3–4 pairs, `dual-org-ladder` at most 4 rows.
 
 ---
 

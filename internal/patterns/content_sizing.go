@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/sebahrens/json2pptx/internal/pptx"
 	"github.com/sebahrens/json2pptx/internal/shapegrid"
 	"github.com/sebahrens/json2pptx/internal/textfit"
 )
@@ -18,9 +19,12 @@ import (
 // ---------------------------------------------------------------------------
 
 const (
-	sizingLineSpacing = 1.2  // renderer line height factor
-	sizingInsetTBPt   = 7.2  // top / bottom inset assumed by the fit detectors (conservative vs the 3.6pt OOXML default)
-	sizingInsetLRPt   = 7.2  // OOXML default left / right inset (0.1")
+	sizingLineSpacing = 1.2                   // renderer line height factor
+	sizingInsetTBPt   = pptx.ShapeTextInsetPt // top / bottom inset every shape is written with (0.5 cm)
+	sizingInsetLRPt   = pptx.ShapeTextInsetPt // left / right inset every shape is written with (0.5 cm)
+	// measureRunInsetPt is the side inset textfit.MeasureRun removes from the
+	// width it is handed (the OOXML 0.1in default).
+	measureRunInsetPt = 7.2
 	sizingSafetyPt    = 4.0  // slack so rounding never pushes text into autofit
 	sizingBoldWidth   = 0.94 // bold glyphs run ~6% wider than the regular face
 	sizingEMUPerPt    = 12700.0
@@ -37,16 +41,18 @@ type sizedPara struct {
 var sizingTagRe = regexp.MustCompile(`<[^>]+>`)
 
 // paragraphLines returns how many lines p wraps to in a text frame widthPt
-// wide (the frame width including the default left/right insets).
+// wide (the frame width including the shape's left/right insets).
 func paragraphLines(ctx ExpandContext, p sizedPara, widthPt float64) int {
 	text := strings.TrimSpace(sizingTagRe.ReplaceAllString(p.text, ""))
 	if text == "" {
 		return 0
 	}
-	w := widthPt
+	textW := math.Max(widthPt-2*sizingInsetLRPt, 1)
 	if p.bold {
-		w *= sizingBoldWidth
+		textW *= sizingBoldWidth
 	}
+	// MeasureRun removes its own 7.2pt sides from the width it is handed.
+	w := textW + 2*measureRunInsetPt
 	font := strings.TrimSpace(ctx.Theme.BodyFont)
 	if font == "" {
 		font = "Arial"
@@ -56,7 +62,7 @@ func paragraphLines(ctx ExpandContext, p sizedPara, widthPt float64) int {
 	if err != nil || m.Lines <= 0 {
 		// Font cache unavailable: fall back to the average-advance estimate
 		// (the frame width excludes the default insets).
-		lines = estimateWrappedLines(text, p.sizePt, math.Max(w-2*sizingInsetLRPt, 1))
+		lines = estimateWrappedLines(text, p.sizePt, textW)
 	} else {
 		lines = m.Lines
 	}

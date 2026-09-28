@@ -53,7 +53,7 @@ const (
 	tsMaxSidePct      = 40.0
 	tsColGapPt        = 28.0
 	tsMinFillPct      = 60.0
-	tsSidebarInsetPt  = 18.0
+	tsSidebarInsetPt  = defaultShapeInsetLRPt // the uniform shape text margin
 	tsSidebarBarPt    = 4.0
 	tsParaSpacePt     = 8.0
 	tsBulletSpacePt   = 4.0
@@ -283,9 +283,8 @@ func tsMainParas(v *TextSidebarValues, headingSize, bodySize float64) []sizedPar
 }
 
 func tsSidebarHeightPt(ctx ExpandContext, text string, size, widthPt float64) float64 {
-	// paragraphLines removes the default 7.2pt insets; the panel uses wider ones.
-	w := widthPt - 2*tsSidebarInsetPt + 2*sizingInsetLRPt
-	lines := paragraphLines(ctx, sizedPara{text: text, sizePt: size, bold: true}, w)
+	// paragraphLines takes the panel's frame width and removes its margins.
+	lines := paragraphLines(ctx, sizedPara{text: text, sizePt: size, bold: true}, widthPt)
 	return float64(lines)*size*sizingLineSpacing + 2*tsSidebarInsetPt + tsSidebarBarPt + sizingSafetyPt
 }
 
@@ -442,18 +441,10 @@ func tsSidebarCell(ctx ExpandContext, message string, lay tsLayout, accent, styl
 		Paragraphs    []chartInsightsParagraph `json:"paragraphs"`
 		Align         string                   `json:"align"`
 		VerticalAlign string                   `json:"vertical_align"`
-		InsetLeft     float64                  `json:"inset_left"`
-		InsetRight    float64                  `json:"inset_right"`
-		InsetTop      float64                  `json:"inset_top"`
-		InsetBottom   float64                  `json:"inset_bottom"`
 	}{
 		Paragraphs:    []chartInsightsParagraph{{Content: pptx.ConvertMarkdownEmphasis(message), Size: lay.sidebarSize, Bold: true, Color: ink, Align: "l"}},
 		Align:         "l",
 		VerticalAlign: "ctr",
-		InsetLeft:     tsSidebarInsetPt,
-		InsetRight:    tsSidebarInsetPt,
-		InsetTop:      tsSidebarInsetPt,
-		InsetBottom:   tsSidebarInsetPt,
 	}
 	textJSON, _ := json.Marshal(text)
 	cell := &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{

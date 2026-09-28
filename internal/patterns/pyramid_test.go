@@ -13,18 +13,32 @@ import (
 func TestPyramidDenseTopTierUnbrokenBudget(t *testing.T) {
 	p := &pyramid{}
 	v := &PyramidValues{Tiers: []string{"Core", "Middle", "Middle", "Base", "Base"}}
-	v.Tiers[0] = strings.Repeat("W", 71)
+	v.Tiers[0] = strings.Repeat("W", 50)
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "tiers[0]") || !strings.Contains(got[0], "about 70") {
+	if len(got) != 1 || !strings.Contains(got[0], "tiers[0]") || !strings.Contains(got[0], "about 49") {
 		t.Fatalf("dense top-tier warning: %v", got)
 	}
-	v.Tiers[0] = strings.Repeat("W", 70)
+	v.Tiers[0] = strings.Repeat("W", 49)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured five-tier target should fit: %v", got)
 	}
+	// Five tiers hold about 81 characters of word-like copy per tier.
+	v.Tiers[0] = strings.Repeat("word ", 16) + "w"
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("five-tier word-like target should fit: %v", got)
+	}
+	v.Tiers[0] += "w"
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 81 readable") {
+		t.Fatalf("five-tier copy warning: %v", got)
+	}
+	v.Tiers = v.Tiers[:4]
+	v.Tiers[0] = strings.Repeat("W", 74)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 73") {
+		t.Fatalf("four-tier top-tier warning: %v", got)
+	}
 	v.Tiers[0] = strings.Repeat("word ", 24)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("word-like schema maximum should fit: %v", got)
+		t.Fatalf("four-tier word-like schema maximum should fit: %v", got)
 	}
 	v.Tiers = v.Tiers[:3]
 	v.Tiers[0] = strings.Repeat("W", 120)

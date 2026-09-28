@@ -14,23 +14,23 @@ func TestStrategyHouseDenseSharedBulletBudget(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		pillar := StrategyHousePillar{Title: "Growth"}
 		for j := 0; j < 5; j++ {
-			pillar.Body = append(pillar.Body, strings.Repeat("B", 39))
+			pillar.Body = append(pillar.Body, strings.Repeat("B", 26))
 		}
 		v.Pillars = append(v.Pillars, pillar)
 	}
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "pillars.body") || !strings.Contains(got[0], "about 38") {
+	if len(got) != 1 || !strings.Contains(got[0], "pillars.body") || !strings.Contains(got[0], "about 25") {
 		t.Fatalf("dense pillar warning: %v", got)
 	}
 	for i := range v.Pillars {
 		for j := range v.Pillars[i].Body {
-			v.Pillars[i].Body[j] = strings.Repeat("B", 38)
+			v.Pillars[i].Body[j] = strings.Repeat("B", 25)
 		}
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured dense target should fit: %v", got)
 	}
-	v.Pillars[0].Body[0] = strings.Repeat("B", 118)
+	v.Pillars[0].Body[0] = strings.Repeat("B", 62)
 	for j := 1; j < 5; j++ {
 		v.Pillars[0].Body[j] = "Brief"
 	}
@@ -43,6 +43,14 @@ func TestStrategyHouseDenseSharedBulletBudget(t *testing.T) {
 	}
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("sparse schema maximum should fit: %v", got)
+	}
+	v.Objective = strings.Repeat("O", strategyHouseBandBudget)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("objective at band budget should fit: %v", got)
+	}
+	v.Objective += "O"
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "strategy-house objective") {
+		t.Fatalf("objective band warning: %v", got)
 	}
 }
 

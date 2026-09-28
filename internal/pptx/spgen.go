@@ -77,6 +77,11 @@ func GenerateShape(opts ShapeOptions) ([]byte, error) {
 
 	// Record the shrink PowerPoint should apply, so the stored file renders the
 	// same everywhere (go-slide-creator-wvr0).
+	// Degenerate shapes keep one line of text: an axis too small for the
+	// margin plus one line has its insets clamped (EffectiveTextInsets).
+	if opts.Text != nil {
+		opts.Text.Insets = EffectiveTextInsets(opts.Text, presetTextBounds(opts))
+	}
 	applyAutofitScale(opts.Text, opts.Bounds)
 
 	var buf bytes.Buffer

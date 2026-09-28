@@ -148,8 +148,8 @@ func computeConfigBudget(
 		if cell.Kind != shapegrid.CellKindShape || cell.ShapeSpec == nil {
 			continue
 		}
-		paras, insets := extractCellParagraphs(cell)
-		w, h := effectiveTextRect(cell.Bounds, cell.TextInsets, insets)
+		paras, body := extractCellParagraphs(cell)
+		w, h := effectiveTextRect(cell.Bounds, cell.TextInsets, body)
 		bodyPt := max(defaultBodyFontPt, dominantFontPt(paras))
 		hb := computeTextAreaBudget(w, h, max(defaultHeaderFontPt, bodyPt))
 		bb := computeTextAreaBudget(w, h, bodyPt)

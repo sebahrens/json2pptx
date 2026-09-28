@@ -224,8 +224,8 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	cellIdx := 0
 
 	// Header row: Before header | full-height chevron | After header.
-	beforeHeader := withBeforeAfterPanelInsets(buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr"))
-	afterHeader := withBeforeAfterPanelInsets(buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr"))
+	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr")
+	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr")
 
 	beforeHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -258,8 +258,8 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	cellIdx++
 
 	// Body row: light accent-derived panels; the chevron owns the middle column.
-	beforeBody := withBeforeAfterPanelInsets(buildBeforeAfterBulletContent(vals.Before.Items, bodySize))
-	afterBody := withBeforeAfterPanelInsets(buildBeforeAfterBulletContent(vals.After.Items, bodySize))
+	beforeBody := buildBeforeAfterBulletContent(vals.Before.Items, bodySize)
+	afterBody := buildBeforeAfterBulletContent(vals.After.Items, bodySize)
 
 	beforeBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{

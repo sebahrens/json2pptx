@@ -24,18 +24,12 @@
           ],
           "questions": [
             "Which workloads drive disproportionate spend?",
-            "Where can we reclaim margin without slowing the roadmap?",
             "What governance keeps the savings durable?"
           ],
           "answer": [
             "Right-size the top 10 workloads to recover 14% of FY26 spend.",
-            "Stand up a FinOps council with monthly accountability reviews.",
             "Reinvest 30% of the savings into platform reliability."
           ]
-        },
-        "callout": {
-          "text": "Target: $4.8M FY26 run-rate savings, locked in by Q1 close.",
-          "emphasis": "bold"
         }
       }
     },

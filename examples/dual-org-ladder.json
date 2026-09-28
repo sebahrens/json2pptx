@@ -49,7 +49,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Six-row ladder with accent overrides"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Four-row ladder with accent overrides"}
       ],
       "pattern": {
         "name": "dual-org-ladder",
@@ -60,9 +60,7 @@
             {"a_name": "Eva Larsen", "a_title": "Chief Executive", "b_name": "Pavel Novak", "b_title": "Managing Partner"},
             {"a_name": "Kenji Sato", "a_title": "Chief Operating Officer", "b_name": "Naomi Reyes", "b_title": "Programme Director"},
             {"a_name": "Olu Adeyemi", "a_title": "Programme Sponsor", "b_name": "Aisha Khan", "b_title": "Engagement Manager"},
-            {"a_name": "Marta Silva", "a_title": "Functional Lead", "b_name": "Yusuf Bello", "b_title": "Senior Consultant"},
-            {"a_name": "Chen Wei", "a_title": "Technology Lead", "b_name": "Hannah Wolf", "b_title": "Solution Architect"},
-            {"a_name": "Sofia Russo", "a_title": "Change Champion", "b_name": "Ravi Iyer", "b_title": "Change Lead"}
+            {"a_name": "Marta Silva", "a_title": "Functional Lead", "b_name": "Yusuf Bello", "b_title": "Senior Consultant"}
           ]
         },
         "overrides": {

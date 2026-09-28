@@ -4,7 +4,7 @@
   "columns": 4,
   "rows": [
     {
-      "height": 11,
+      "height": 14.2,
       "cells": [
         {
           "shape": {
@@ -109,8 +109,8 @@
       ]
     },
     {
-      "min_height": 22,
-      "max_height": 22,
+      "min_height": 43,
+      "max_height": 43,
       "cells": [
         {
           "shape": {
@@ -191,7 +191,8 @@
       ]
     },
     {
-      "max_height": 28,
+      "min_height": 49,
+      "max_height": 49,
       "cells": [
         {
           "shape": {
@@ -272,8 +273,8 @@
       ]
     },
     {
-      "min_height": 94,
-      "max_height": 94,
+      "min_height": 157,
+      "max_height": 157,
       "cells": [
         {
           "col_span": 4,
@@ -286,8 +287,8 @@
             ],
             "rows": [
               {
-                "min_height": 26,
-                "max_height": 26,
+                "min_height": 47,
+                "max_height": 47,
                 "cells": [
                   {
                     "row_span": 3,
@@ -339,8 +340,8 @@
                 ]
               },
               {
-                "min_height": 26,
-                "max_height": 26,
+                "min_height": 47,
+                "max_height": 47,
                 "cells": [
                   {
                     "shape": {
@@ -367,8 +368,8 @@
                 ]
               },
               {
-                "min_height": 26,
-                "max_height": 26,
+                "min_height": 47,
+                "max_height": 47,
                 "cells": [
                   {
                     "shape": {

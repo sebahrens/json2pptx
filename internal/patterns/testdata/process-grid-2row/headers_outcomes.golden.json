@@ -10,8 +10,8 @@
   ],
   "rows": [
     {
-      "min_height": 27,
-      "max_height": 27,
+      "min_height": 48,
+      "max_height": 48,
       "cells": [
         {},
         {
@@ -328,8 +328,8 @@
       ]
     },
     {
-      "min_height": 30,
-      "max_height": 30,
+      "min_height": 51,
+      "max_height": 51,
       "cells": [
         {},
         {

@@ -147,7 +147,7 @@ func TestWrittenCellAutofitAccountsForSpacingAndOverlay(t *testing.T) {
 		top     float64
 		shrinks bool
 	}{
-		{"default padding fits", `{"content":"First line\nSecond line","size":13}`, 40, 0, false},
+		{"default padding fits", `{"content":"First line\nSecond line","size":13}`, 62, 0, false}, // two 13pt lines + 2 x 0.5 cm margin
 		{"authored padding fits", `{"content":"First line\nSecond line","size":13,"inset_top":2,"inset_bottom":2}`, 36, 0, false},
 		{"overlay consumes room", `{"content":"First line\nSecond line","size":13,"inset_top":2,"inset_bottom":2}`, 36, 12, true},
 		{"paragraph spacing consumes room", `{"paragraphs":[{"content":"First line","size":13,"space_after":16},{"content":"Second line","size":13}]}`, 40, 0, true},

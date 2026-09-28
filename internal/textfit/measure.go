@@ -264,3 +264,27 @@ func estimateLineOverflowChars(face *canvas.FontFace, text string, widthPt float
 
 	return 0
 }
+
+// MeasureStyledLineWidth is MeasureLineWidth in the regular or bold face:
+// bold glyphs run noticeably wider, so a bold label measured regular claims
+// room it does not have.
+func MeasureStyledLineWidth(text, fontName string, fontPt float64, bold bool) (int64, error) {
+	if !bold {
+		return MeasureLineWidth(text, fontName, fontPt)
+	}
+	if text == "" || fontPt <= 0 {
+		return 0, nil
+	}
+	ff, _, _ := fontcache.Resolve(fontName, "Arial")
+	if ff == nil {
+		return 0, ErrNoFontCache
+	}
+	face := newFace(ff, fontPt, canvas.FontBold)
+	var widest float64
+	for _, line := range strings.Split(text, "\n") {
+		if width := canvas.NewTextLine(face, line, canvas.Left).Bounds().W(); width > widest {
+			widest = width
+		}
+	}
+	return int64(math.Ceil(widest / ptToMM * float64(emuPerPoint))), nil
+}

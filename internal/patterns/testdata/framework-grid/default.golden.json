@@ -9,8 +9,8 @@
   ],
   "rows": [
     {
-      "min_height": 83,
-      "max_height": 83,
+      "min_height": 94,
+      "max_height": 94,
       "cells": [
         {
           "shape": {
@@ -63,7 +63,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 26
+              "inset_top": 24
             }
           }
         },
@@ -94,7 +94,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 26
+              "inset_top": 24
             }
           }
         },
@@ -125,15 +125,15 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 26
+              "inset_top": 24
             }
           }
         }
       ]
     },
     {
-      "min_height": 83,
-      "max_height": 83,
+      "min_height": 94,
+      "max_height": 94,
       "cells": [
         {
           "shape": {
@@ -186,7 +186,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 26
+              "inset_top": 24
             }
           }
         },
@@ -217,7 +217,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 26
+              "inset_top": 24
             }
           }
         },
@@ -225,8 +225,8 @@
       ]
     },
     {
-      "min_height": 83,
-      "max_height": 83,
+      "min_height": 94,
+      "max_height": 94,
       "cells": [
         {
           "shape": {
@@ -279,7 +279,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 26
+              "inset_top": 24
             }
           }
         },
@@ -310,7 +310,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 26
+              "inset_top": 24
             }
           }
         },
@@ -341,7 +341,7 @@
               ],
               "align": "l",
               "vertical_align": "t",
-              "inset_top": 26
+              "inset_top": 24
             }
           }
         }

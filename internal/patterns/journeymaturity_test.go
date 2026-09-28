@@ -11,19 +11,30 @@ func TestJourneyMaturityDenseUnbrokenDescriptionWarning(t *testing.T) {
 	for i := range v.Stages {
 		v.Stages[i] = JourneyMaturityStage{Label: "Stage", Description: "Brief description"}
 	}
-	v.Stages[2].Description = strings.Repeat("W", 103)
+	v.Stages[2].Description = strings.Repeat("W", 96)
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "stages[2].description") || !strings.Contains(got[0], "about 102") {
+	if len(got) != 1 || !strings.Contains(got[0], "stages[2].description") || !strings.Contains(got[0], "about 95") {
 		t.Fatalf("dense description warning: %v", got)
 	}
-	v.Stages[2].Description = strings.Repeat("W", 102)
+	v.Stages[2].Description = strings.Repeat("W", 95)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured six-stage target should fit: %v", got)
 	}
-	v.Stages[2].Description = strings.Repeat("word ", 36)
+	// Six stages hold about 122 readable worded characters.
+	v.Stages[2].Description = strings.Repeat("word ", 24) + "ab"
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("word-like schema maximum should fit: %v", got)
+		t.Fatalf("word-like measured target should fit: %v", got)
 	}
+	v.Stages[2].Description += "c"
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 122 readable") {
+		t.Fatalf("worded six-stage warning: %v", got)
+	}
+	v.Stages[2].Description = "Brief description"
+	v.Stages[2].Label = strings.Repeat("L", 35)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "stages[2].label") || !strings.Contains(got[0], "about 34") {
+		t.Fatalf("six-stage label warning: %v", got)
+	}
+	v.Stages[2].Label = "Stage"
 	v.Stages = v.Stages[:3]
 	v.Stages[2].Description = strings.Repeat("W", 180)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {

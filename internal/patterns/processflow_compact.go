@@ -63,29 +63,33 @@ func (p *processFlowCompact) NewOverrides() any    { return &ProcessFlowOverride
 func (p *processFlowCompact) NewCellOverride() any { return &ProcessFlowCellOverride{} }
 
 func processFlowCompactLabelBudget(steps int, pointed bool) (wordLike, unbroken int) {
+	// Measured against the written size on every shipped template, every
+	// shape keeping the uniform 0.5 cm text margin (go-slide-creator-n1muf).
 	if pointed {
 		switch steps {
+		case 4:
+			return 80, 69
 		case 5:
-			return 80, 52
+			return 61, 41
 		case 6:
-			return 41, 30
+			return 31, 22
 		case 7:
-			return 40, 18
+			return 12, 9
 		case 8:
-			return 31, 13
+			return 10, 8
 		default:
 			return 80, 80
 		}
 	}
-	// Measured against the written size on every shipped template
-	// (go-slide-creator-n1muf).
 	switch {
+	case steps == 5:
+		return 80, 71
 	case steps == 6:
-		return 80, 69
+		return 76, 58
 	case steps == 7:
-		return 80, 57
+		return 52, 49
 	case steps >= 8:
-		return 72, 48
+		return 51, 42
 	}
 	return 80, 80
 }
@@ -113,7 +117,7 @@ func (p *processFlowCompact) PostExpandWarnings(_ ExpandContext, values, _ any) 
 func (p *processFlowCompact) Schema() *Schema {
 	stepSchema := ObjectSchema(
 		map[string]*Schema{
-			"label": StringSchema(80).WithDescription("Step label text; compact chevron/arrow labels tighten to about 41/40/31 word-like characters at 6/7/8 steps (rectangular steps about 72 at 8), less for wide unbroken text"),
+			"label": StringSchema(80).WithDescription("Step label text; compact chevron/arrow labels tighten to about 61/31/12/10 word-like characters at 5/6/7/8 steps (rectangular steps about 76/52/51 at 6/7/8), less for wide unbroken text"),
 			"type":  EnumSchema("step", "decision", "chevron", "arrow").WithDescription("Shape type: rectangle (step), diamond (decision), chevron, or right-arrow (arrow)").WithDefault("step"),
 		},
 		[]string{"label"},
@@ -253,7 +257,7 @@ func (p *processFlowCompact) Expand(ctx ExpandContext, values, overrides any, ce
 
 		text := buildProcessFlowTextContent(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
 		if pointed {
-			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize, chevronTextPadPt)
+			text = buildProcessFlowPointedText(pptx.ConvertMarkdownEmphasis(step.Label), bodySize)
 		}
 
 		cell := &jsonschema.GridCellInput{

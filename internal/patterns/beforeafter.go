@@ -20,9 +20,8 @@ func init() {
 
 type beforeAfter struct{}
 
-// The full-size panel's text must stay at least 0.5 cm from every edge.
-// Points are the shape-grid text-inset unit; 1 cm = 72/2.54 pt.
-const beforeAfterPanelInsetPt = 0.5 * 72 / 2.54
+// The panels carry the uniform 0.5 cm shape text margin on every edge.
+const beforeAfterPanelInsetPt = defaultShapeInsetLRPt
 
 func (b *beforeAfter) Name() string        { return "before-after" }
 func (b *beforeAfter) Description() string { return "Two-column before/after with transition chevron" }
@@ -212,8 +211,8 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	cellIdx := 0
 
 	// Header row: Before header | full-height chevron | After header.
-	beforeHeader := withBeforeAfterPanelInsets(buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr"))
-	afterHeader := withBeforeAfterPanelInsets(buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr"))
+	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr")
+	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr")
 
 	beforeHeaderCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -247,8 +246,8 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 	// Body row: before items | after items. The chevron reserves the middle
 	// column through its row span, so no separate spacer is needed.
-	beforeBody := withBeforeAfterPanelInsets(buildBeforeAfterBulletContent(vals.Before.Items, bodySize))
-	afterBody := withBeforeAfterPanelInsets(buildBeforeAfterBulletContent(vals.After.Items, bodySize))
+	beforeBody := buildBeforeAfterBulletContent(vals.Before.Items, bodySize)
+	afterBody := buildBeforeAfterBulletContent(vals.After.Items, bodySize)
 
 	beforeBodyCell := &jsonschema.GridCellInput{
 		Shape: &jsonschema.ShapeSpecInput{
@@ -300,22 +299,6 @@ func (b *beforeAfter) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	}
 
 	return grid, nil
-}
-
-func withBeforeAfterPanelInsets(text json.RawMessage) json.RawMessage {
-	var obj map[string]json.RawMessage
-	if err := json.Unmarshal(text, &obj); err != nil {
-		return text
-	}
-	inset, _ := json.Marshal(beforeAfterPanelInsetPt)
-	for _, side := range []string{"left", "right", "top", "bottom"} {
-		obj["inset_"+side] = inset
-	}
-	out, err := json.Marshal(obj)
-	if err != nil {
-		return text
-	}
-	return out
 }
 
 // Size both before-after variants against their actual 0.5 cm text insets.

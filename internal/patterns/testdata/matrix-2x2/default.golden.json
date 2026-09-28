@@ -42,9 +42,7 @@
                           }
                         ],
                         "align": "r",
-                        "vertical_align": "ctr",
-                        "inset_left": 2,
-                        "inset_right": 2
+                        "vertical_align": "ctr"
                       }
                     }
                   },
@@ -106,9 +104,7 @@
                           }
                         ],
                         "align": "l",
-                        "vertical_align": "ctr",
-                        "inset_left": 2,
-                        "inset_right": 2
+                        "vertical_align": "ctr"
                       }
                     }
                   }
@@ -145,9 +141,7 @@
                           }
                         ],
                         "align": "ctr",
-                        "vertical_align": "b",
-                        "inset_left": 2,
-                        "inset_right": 2
+                        "vertical_align": "b"
                       }
                     }
                   }
@@ -199,9 +193,7 @@
                           }
                         ],
                         "align": "ctr",
-                        "vertical_align": "t",
-                        "inset_left": 2,
-                        "inset_right": 2
+                        "vertical_align": "t"
                       }
                     }
                   }

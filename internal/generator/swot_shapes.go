@@ -57,7 +57,7 @@ const (
 	swotHeaderHeightRatio = 0.18
 
 	// swotBodyInset is the text inset for body text (EMU).
-	swotBodyInset int64 = 91440 // ~0.1"
+	swotBodyInset = pptx.ShapeTextInsetEMU // uniform 0.5 cm shape text margin
 )
 
 // swotQuadrantColors defines the accent scheme color for each SWOT quadrant.
@@ -226,7 +226,7 @@ func generateSWOTHeaderXML(title string, x, y, cx, cy int64, shapeID uint32, sch
 		Text: &pptx.TextBody{
 			Wrap:    "square",
 			Anchor:  "ctr",
-			Insets:  [4]int64{swotBodyInset, 0, swotBodyInset, 0},
+			Insets:  pptx.ShapeTextInsets(),
 			AutoFit: "noAutofit",
 			Paragraphs: []pptx.Paragraph{{
 				Align:    "ctr",
@@ -277,7 +277,7 @@ func generateSWOTBodyXML(body string, x, y, cx, cy int64, shapeID uint32, scheme
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "t",
-			Insets:     [4]int64{swotBodyInset, swotBodyInset, swotBodyInset, swotBodyInset},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},

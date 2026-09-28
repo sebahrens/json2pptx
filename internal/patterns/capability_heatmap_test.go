@@ -148,8 +148,9 @@ func TestCapabilityHeatmap_ExpandStructure(t *testing.T) {
 	if header.Geometry != "homePlate" || header.Adjustments["adj"] <= 0 {
 		t.Errorf("header should be a homePlate with an adj, got %s %v", header.Geometry, header.Adjustments)
 	}
-	if !strings.Contains(string(header.Text), `"inset_right"`) || !strings.Contains(string(header.Text), "Up to 30% capacity unlock") {
-		t.Errorf("header text should clear the point and carry the sublabel: %s", header.Text)
+	// The uniform shape text margin clears the point: no per-side insets.
+	if strings.Contains(string(header.Text), `"inset_`) || !strings.Contains(string(header.Text), "Up to 30% capacity unlock") {
+		t.Errorf("header text should keep the uniform margin and carry the sublabel: %s", header.Text)
 	}
 	// Column 2 (Operations) has two cells: rows 3 and 4 leave it empty.
 	if c := grid.Rows[3].Cells[2]; c.Shape != nil {
@@ -266,6 +267,11 @@ func TestCapabilityHeatmap_Warnings(t *testing.T) {
 	for len(v.Columns) < 8 {
 		v.Columns = append(v.Columns, v.Columns[0])
 	}
+	// Eight columns narrow the cells enough that the exemplar's activity copy
+	// overflows the content area; short cells keep only the header warning.
+	for i := range v.Columns {
+		v.Columns[i].Cells = []CapabilityHeatmapCell{{Text: "x"}}
+	}
 	v.Columns[5].Header = "Supercalifragilistic"
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
 	if len(got) != 1 || !strings.HasPrefix(got[0], ErrCodeTextExceedsShape+":") || !strings.Contains(got[0], "Supercalifragilistic") {
@@ -277,6 +283,9 @@ func TestCapabilityHeatmap_Warnings(t *testing.T) {
 		v.Columns = append(v.Columns, CapabilityHeatmapColumn{Header: "Extra", Cells: []CapabilityHeatmapCell{{Text: "x"}}})
 	}
 	for i := range v.Columns {
+		// Eight columns leave no room for a ten-letter bold header word, so
+		// keep headers short and let only the overfull cells warn.
+		v.Columns[i].Header = "Extra"
 		for len(v.Columns[i].Cells) < 6 {
 			v.Columns[i].Cells = append(v.Columns[i].Cells, CapabilityHeatmapCell{Text: strings.Repeat("activity ", 6), Tier: 1})
 		}

@@ -34,7 +34,7 @@ func TestResolvedGridDensityPreservesWrittenParagraphSpacing(t *testing.T) {
 }
 
 func TestResolvedGridDensityNeverCallsPopulatedEmptyFrameUnderfilled(t *testing.T) {
-	cell := shapegrid.ResolvedCell{Kind: shapegrid.CellKindShape, Bounds: pptx.RectEmu{CX: 400 * 12700, CY: 5 * 12700},
+	cell := shapegrid.ResolvedCell{Kind: shapegrid.CellKindShape, Bounds: pptx.RectEmu{CX: 400 * 12700, CY: 1 * 12700},
 		ShapeSpec: &shapegrid.ShapeSpec{Text: json.RawMessage(`"Required source text"`)},
 	}
 	cell.CellBounds = cell.Bounds
@@ -49,7 +49,9 @@ func TestResolvedGridDensityMeasuresNarrowUsableWidth(t *testing.T) {
 		ShapeSpec: &shapegrid.ShapeSpec{Text: json.RawMessage(`{"content":"Required paragraph cannot fit in this very narrow frame","size":14}`)},
 	}
 	d := ForResolvedGrid(&shapegrid.ResolveResult{Cells: []shapegrid.ResolvedCell{cell}})[0]
-	if d.WidthEMU != 45720 || d.Lines <= 1 || d.Fits {
+	// The frame is narrower than one word, so the writer clamps the side
+	// margins to zero: the whole 18pt is the usable width.
+	if d.WidthEMU != 18*12700 || d.Lines <= 1 || d.Fits {
 		t.Fatalf("narrow usable width treated as one fitting line: %+v", d)
 	}
 }

@@ -108,8 +108,9 @@ func (sp *stylishPanels) NewCellOverride() any { return &StylishPanelsCellOverri
 
 // Average readable characters per bullet by panel count, longest ribbon title,
 // and bullets in a panel, measured against the written size (no run stored
-// below its role floor) on every shipped template at default text sizes
-// (go-slide-creator-n1muf). Individual bullets can be longer when other
+// below its role floor) on every shipped template at default text sizes, every
+// shape keeping the uniform 0.5 cm text margin (go-slide-creator-n1muf).
+// Individual bullets can be longer when other
 // bullets are short because they share one body cell, up to
 // stylishPanelSingleBulletMax.
 type stylishPanelBudgetBand struct {
@@ -119,27 +120,28 @@ type stylishPanelBudgetBand struct {
 
 var stylishPanelBodyBudgets = map[int][]stylishPanelBudgetBand{
 	3: {
-		{45, [8]int{200, 200, 200, 161, 121, 81, 81, 81}},
-		{80, [8]int{200, 200, 175, 128, 83, 81, 81, 42}},
+		{25, [8]int{200, 200, 161, 121, 81, 75, 75, 40}},
+		{45, [8]int{200, 200, 153, 115, 75, 75, 40, 38}},
+		{80, [8]int{200, 200, 121, 81, 75, 40, 38, 38}},
 	},
 	4: {
-		{25, [8]int{200, 200, 150, 120, 90, 60, 60, 60}},
-		{45, [8]int{200, 200, 121, 91, 61, 60, 60, 38}},
-		{80, [8]int{200, 181, 121, 90, 61, 60, 38, 38}},
+		{5, [8]int{200, 200, 115, 83, 53, 52, 52, 38}},
+		{25, [8]int{200, 175, 102, 77, 52, 52, 38, 32}},
+		{80, [8]int{200, 143, 83, 53, 52, 38, 32, 31}},
 	},
 	5: {
-		{5, [8]int{200, 182, 118, 82, 62, 43, 42, 42}},
-		{25, [8]int{200, 162, 102, 82, 62, 42, 42, 42}},
-		{45, [8]int{200, 162, 93, 68, 43, 42, 42, 38}},
-		{65, [8]int{200, 122, 82, 62, 42, 42, 38, 27}},
-		{80, [8]int{200, 118, 68, 43, 42, 38, 27, 26}},
+		{5, [8]int{200, 141, 81, 61, 41, 41, 41, 38}},
+		{25, [8]int{200, 121, 81, 61, 41, 41, 38, 25}},
+		{45, [8]int{200, 101, 61, 41, 41, 38, 38, 25}},
+		{65, [8]int{181, 81, 61, 41, 38, 25, 25, 25}},
+		{80, [8]int{141, 61, 41, 38, 25, 25, 25, 25}},
 	},
 }
 
 // stylishPanelSingleBulletMax is the longest single bullet a panel holds
 // beside short neighbours (eight bullets, 80-character titles), by panel
 // count; a panel's own average budget, when larger, still applies.
-var stylishPanelSingleBulletMax = map[int]int{3: 200, 4: 181, 5: 68}
+var stylishPanelSingleBulletMax = map[int]int{3: 121, 4: 83, 5: 38}
 
 func stylishPanelBodyBudget(panels, longestTitle, bullets int) int {
 	if bullets < 1 || bullets > 8 {
@@ -192,7 +194,7 @@ func (sp *stylishPanels) Schema() *Schema {
 	itemSchema := ObjectSchema(
 		map[string]*Schema{
 			"title": StringSchema(80).WithDescription("Panel header title; longer ribbon titles leave less height for every panel's bullets"),
-			"body":  ArraySchema(StringSchema(200), 1, 8).WithDescription("Bullets share one panel body; readable characters per bullet on average at short titles, by 1-8 bullets: 3 panels 200/200/200/161/121/81/81/81, 4 panels 200/200/150/120/90/60/60/60, 5 panels 200/162/102/82/62/42/42/42. Long titles reduce dense limits; fit warnings name the measured target. A single bullet beside short neighbors may use 200 characters with 3 panels, 181 with 4, 68 with 5"),
+			"body":  ArraySchema(StringSchema(200), 1, 8).WithDescription("Bullets share one panel body; readable characters per bullet on average at short titles, by 1-8 bullets: 3 panels 200/200/161/121/81/75/75/40, 4 panels 200/200/115/83/53/52/52/38, 5 panels 200/141/81/61/41/41/41/38. Long titles reduce dense limits; fit warnings name the measured target. A single bullet beside short neighbors may use 121 characters with 3 panels, 83 with 4, 38 with 5"),
 		},
 		[]string{"title", "body"},
 	).WithAdditionalProperties(false).WithDescription("Panel with titled header and bulleted body")

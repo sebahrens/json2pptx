@@ -18,7 +18,7 @@ import (
 // ---------------------------------------------------------------------------
 //
 // A filled accent circle in the middle of the slide holds a short hub label
-// ("Today's state vs. agentic state"). 3-6 numbered stage pairs flank it:
+// ("Today's state vs. agentic state"). 3-4 numbered stage pairs flank it:
 // the left column holds the "today" items (right-aligned title + description
 // beside an outlined "01".."06" node), the right column the matching "future"
 // items (left-aligned beside a filled node). The nodes sit on a circle
@@ -41,16 +41,16 @@ type stateShiftHub struct{}
 
 func (s *stateShiftHub) Name() string { return "state-shift-hub" }
 func (s *stateShiftHub) Description() string {
-	return "Central accent hub circle with 3-6 numbered stage pairs orbiting it: 'today' items on the left, matching 'future' items on the right, optional column headers"
+	return "Central accent hub circle with 3-4 numbered stage pairs orbiting it: 'today' items on the left, matching 'future' items on the right, optional column headers"
 }
 func (s *stateShiftHub) UseWhen() string {
-	return "A current-state vs target-state (today vs future, as-is vs to-be) shift told as 3-6 numbered stage pairs around one central theme, each side with a short title and 1-3 line description; prefer before-after for a single before/after block with bullets, comparison-2col for non-temporal options or pros/cons, and journey-maturity-model for a staged maturity ladder"
+	return "A current-state vs target-state (today vs future, as-is vs to-be) shift told as 3-4 numbered stage pairs around one central theme, each side with a short title and 1-3 line description; prefer before-after for a single before/after block with bullets, comparison-2col for non-temporal options or pros/cons, and journey-maturity-model for a staged maturity ladder"
 }
 func (s *stateShiftHub) NotWhen() string {
 	return "Only one before/after contrast with bullet lists (use before-after), the two columns are options or pros/cons rather than today vs future (use comparison-2col), the stages form a maturity progression (use journey-maturity-model), or there are fewer than 3 or more than 6 pairs (use before-after or split the slide)"
 }
 func (s *stateShiftHub) Version() int      { return 1 }
-func (s *stateShiftHub) CellsHint() string { return "1 hub + 3-6 pairs (2 nodes + 2 text blocks each)" }
+func (s *stateShiftHub) CellsHint() string { return "1 hub + 3-4 pairs (2 nodes + 2 text blocks each)" }
 func (s *stateShiftHub) Taxonomy() PatternTaxonomy {
 	return PatternTaxonomy{
 		Category:      "structural",
@@ -92,7 +92,7 @@ type StateShiftPair struct {
 }
 
 // StateShiftHubValues holds the hub label, the optional column headers and
-// the 3-6 stage pairs.
+// the 3-4 stage pairs.
 type StateShiftHubValues struct {
 	HubLabel    string           `json:"hub_label"`
 	LeftHeader  string           `json:"left_header,omitempty"`
@@ -119,7 +119,7 @@ func (s *stateShiftHub) NewCellOverride() any { return nil }
 
 const (
 	sshMinPairs          = 3
-	sshMaxPairs          = 6
+	sshMaxPairs          = 4
 	sshHubMax            = 60
 	sshHeaderMax         = 48
 	sshTitleMax          = 40
@@ -142,7 +142,7 @@ const (
 	sshHubMinPt          = 110.0
 	sshHubMaxPt          = 230.0
 	sshHaloWidthPt       = 6.0
-	sshTitleSpacePt      = 2.0 // space after a stage title
+	sshTitleSpacePt      = 1.0 // space after a stage title
 	sshNeedSlackPt       = 2.0 // rounding slack on a measured text block
 	// sshInkContrastMin is the bar accent-coloured text on the slide must clear:
 	// the generator's contrast pass swaps anything under 4.5:1, so asking less
@@ -158,7 +158,7 @@ const (
 func (s *stateShiftHub) Schema() *Schema {
 	pair := ObjectSchema(map[string]*Schema{
 		"title":        StringSchema(sshTitleMax).WithDescription("Stage title shown (bold, accent) above both descriptions, e.g. \"Research\""),
-		"before":       StringSchema(sshBodyMax).WithDescription("Today / current-state description (left column, right-aligned). Measured readable budget at default sizes with a one-line title: about 100 characters with 3 pairs, 62 with 4, 40 with 5, 30 with 6 (less in a short content area); expand_pattern reports BODY_TOO_LONG when the text outgrows its row"),
+		"before":       StringSchema(sshBodyMax).WithDescription("Today / current-state description (left column, right-aligned). Measured readable budget at default sizes with a one-line title: about 62 characters with 3 pairs, 36 with 4 (less in a short content area); expand_pattern reports BODY_TOO_LONG when the text outgrows its row"),
 		"after":        StringSchema(sshBodyMax).WithDescription("Future / target-state description (right column, left-aligned); same budget as before"),
 		"before_title": StringSchema(sshTitleMax).WithDescription("Optional left-side title replacing title"),
 		"after_title":  StringSchema(sshTitleMax).WithDescription("Optional right-side title replacing title"),
@@ -168,7 +168,7 @@ func (s *stateShiftHub) Schema() *Schema {
 		"hub_label":    StringSchema(sshHubMax).WithDescription("Short label inside the central circle, e.g. \"Today's state vs. agentic state\" (about 40 characters reads best)"),
 		"left_header":  StringSchema(sshHeaderMax).WithDescription("Optional header above the left (today) column, e.g. \"TODAY'S STATE\""),
 		"right_header": StringSchema(sshHeaderMax).WithDescription("Optional header above the right (future) column, e.g. \"AGENTIC STATE (doing more in less time)\""),
-		"pairs":        ArraySchema(pair, sshMinPairs, sshMaxPairs).WithDescription("3-6 numbered stage pairs; nodes 01..06 orbit the hub on both sides"),
+		"pairs":        ArraySchema(pair, sshMinPairs, sshMaxPairs).WithDescription("3-4 numbered stage pairs; nodes 01..04 orbit the hub on both sides"),
 	}, []string{"hub_label", "pairs"}).WithAdditionalProperties(false)
 
 	overridesSchema := ObjectSchema(map[string]*Schema{
@@ -184,7 +184,7 @@ func (s *stateShiftHub) Schema() *Schema {
 		"overrides": overridesSchema,
 	}, []string{"values"}).AsRoot().WithDefs(map[string]*Schema{
 		"cellOverride": CellOverrideDefSchema(),
-	}).WithDescription("Central hub circle with 3-6 numbered today/future stage pairs arranged on an arc around it")
+	}).WithDescription("Central hub circle with 3-4 numbered today/future stage pairs arranged on an arc around it")
 }
 
 func (s *stateShiftHub) Validate(values, overrides any, cellOverrides map[int]any) error {
@@ -262,7 +262,6 @@ type sshLayout struct {
 	headerH    float64 // 0 = no header row
 	pitch      float64 // stage row height
 	gap        float64 // gap between stage rows
-	tightItems bool    // item frames drop their vertical insets
 	hubD       float64
 	hubSize    float64
 	hubFits    bool
@@ -330,9 +329,6 @@ func sshMeasure(ctx ExpandContext, v *StateShiftHubValues, ovr *StateShiftHubOve
 		minItem := writtenFitHeightPt(sshItemCell("Stage", "One line", "l", lay, "dk1").Shape.Text, w/2, 0)
 		if (bodyAvail-(n64-1)*lay.gap)/n64 < minItem {
 			lay.gap = math.Max(sshMinRowGapPt, math.Floor((bodyAvail-n64*minItem)/(n64-1)))
-			// The item frames are unfilled, so their vertical insets are
-			// padding the row gap already provides; drop them when tight.
-			lay.tightItems = true
 		}
 	}
 	lay.pitch = math.Min((bodyAvail-(n64-1)*lay.gap)/n64, sshMaxPitchPt)
@@ -411,8 +407,8 @@ func sshTitles(p StateShiftPair) (before, after string) {
 
 // sshTextNeedPt is the measured height a side's title + description needs in a
 // text frame frameW wide. The frames are unfilled and vertically centred, so
-// they are measured with the renderer's own 3.6pt top/bottom insets rather
-// than the conservative card insets of sizedBlockHeightPt; line counts still
+// they are measured with the uniform shape margin rather than the safety
+// slack of sizedBlockHeightPt; line counts still
 // come from paragraphLines, which also honours the capacity model.
 func sshTextNeedPt(ctx ExpandContext, lay sshLayout, title, body string, frameW float64) float64 {
 	need := 2*defaultShapeInsetTBPt + sshNeedSlackPt
@@ -525,7 +521,7 @@ func (s *stateShiftHub) Expand(ctx ExpandContext, values, overrides any, _ map[i
 			Geometry: "ellipse",
 			Fill:     accentFillJSON(accent),
 			Line:     sshHaloJSON(accent),
-			Text:     sshTextJSON("ctr", sshInsets{}, sshPara{Content: pptx.ConvertMarkdownEmphasis(v.HubLabel), Size: lay.hubSize, Bold: true, Color: onAccent}),
+			Text:     sshTextJSON("ctr", sshPara{Content: pptx.ConvertMarkdownEmphasis(v.HubLabel), Size: lay.hubSize, Bold: true, Color: onAccent}),
 		},
 	}
 	places = append(places, sshPlacement{row: body, rowSpan: len(v.Pairs), x0: cx - lay.hubD/2, x1: cx + lay.hubD/2, cell: hubCell})
@@ -642,29 +638,20 @@ type sshPara struct {
 	SpaceAfter float64 `json:"space_after,omitempty"`
 }
 
-type sshInsets struct {
-	L, T, R, B float64
-	set        bool
-}
-
 type sshTextObj struct {
 	Paragraphs    []sshPara `json:"paragraphs"`
 	Align         string    `json:"align"`
 	VerticalAlign string    `json:"vertical_align"`
-	InsetLeft     float64   `json:"inset_left,omitempty"`
-	InsetTop      float64   `json:"inset_top,omitempty"`
-	InsetRight    float64   `json:"inset_right,omitempty"`
-	InsetBottom   float64   `json:"inset_bottom,omitempty"`
 }
 
-func sshTextJSON(align string, in sshInsets, paras ...sshPara) json.RawMessage {
+// sshTextJSON is a centred-anchor text object; every frame keeps the uniform
+// shape text margin (the numbered node circles get it clamped, as a
+// degenerate shape, by the writer).
+func sshTextJSON(align string, paras ...sshPara) json.RawMessage {
 	for i := range paras {
 		paras[i].Align = align
 	}
 	obj := sshTextObj{Paragraphs: paras, Align: align, VerticalAlign: "ctr"}
-	if in.set {
-		obj.InsetLeft, obj.InsetTop, obj.InsetRight, obj.InsetBottom = in.L, in.T, in.R, in.B
-	}
 	data, _ := json.Marshal(obj)
 	return data
 }
@@ -675,7 +662,7 @@ func sshHeaderCell(text, align, color string) *jsonschema.GridCellInput {
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"none"`),
 			Line:     json.RawMessage(`"none"`),
-			Text:     sshTextJSON(align, sshInsets{}, sshPara{Content: text, Size: sshHeaderPt, Bold: true, Color: color}),
+			Text:     sshTextJSON(align, sshPara{Content: text, Size: sshHeaderPt, Bold: true, Color: color}),
 		},
 		AccentBar: &jsonschema.AccentBarInput{Position: "bottom", Color: color, Width: 1.5},
 	}
@@ -692,23 +679,14 @@ func sshItemCell(title, body, align string, lay sshLayout, accentInk string) *js
 			Geometry: "rect",
 			Fill:     json.RawMessage(`"none"`),
 			Line:     json.RawMessage(`"none"`),
-			Text:     sshTextJSON(align, sshItemInsets(lay), paras...),
+			Text:     sshTextJSON(align, paras...),
 		},
 	}
 }
 
-// sshItemInsets keeps the renderer's default side insets and, on a tight
-// layout, near-zero vertical insets for the unfilled item frames.
-func sshItemInsets(lay sshLayout) sshInsets {
-	if !lay.tightItems {
-		return sshInsets{}
-	}
-	return sshInsets{L: defaultShapeInsetLRPt, T: 0.5, R: defaultShapeInsetLRPt, B: 0.5, set: true}
-}
-
-// sshNodeCell is a numbered circle. Its text insets are near zero: the
-// ellipse's own text rectangle (the inscribed square) is already narrow, and
-// the default 7.2pt side insets would leave "01" a few points to wrap in.
+// sshNodeCell is a numbered circle. The ellipse's own text rectangle (the
+// inscribed square) is already narrow, so the writer clamps its margin as a
+// degenerate shape to what still holds "01" on one line.
 func sshNodeCell(label string, fill, line json.RawMessage, color string) *jsonschema.GridCellInput {
 	return &jsonschema.GridCellInput{
 		Fit: "contain",
@@ -716,7 +694,7 @@ func sshNodeCell(label string, fill, line json.RawMessage, color string) *jsonsc
 			Geometry: "ellipse",
 			Fill:     fill,
 			Line:     line,
-			Text:     sshTextJSON("ctr", sshInsets{T: 0.5, set: true}, sshPara{Content: label, Size: sshNodeLabelPt, Bold: true, Color: color}),
+			Text:     sshTextJSON("ctr", sshPara{Content: label, Size: sshNodeLabelPt, Bold: true, Color: color}),
 		},
 	}
 }

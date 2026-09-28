@@ -149,8 +149,10 @@ func TestContactDirectory_ExpandSideBySide(t *testing.T) {
 		t.Errorf("initials = %q, want PN", paras[0].Content)
 	}
 	text := cellText(t, grid.Rows[1].Cells[1].Shape.Text).Paragraphs
-	if len(text) != 2 || !text[0].Bold || text[1].Bold || text[1].Size >= text[0].Size {
-		t.Errorf("person text should be a bold name over a smaller title, got %+v", text)
+	// With the uniform shape text margin this dense directory reaches the
+	// {12, 12} floor step, so the title may match (never exceed) the name.
+	if len(text) != 2 || !text[0].Bold || text[1].Bold || text[1].Size > text[0].Size {
+		t.Errorf("person text should be a bold name over a title no larger than it, got %+v", text)
 	}
 	for _, para := range text {
 		if para.Size < 12 {

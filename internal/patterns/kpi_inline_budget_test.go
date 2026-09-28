@@ -10,18 +10,18 @@ func TestKPIInlineCaptionBudgetDependsOnDenseIconContent(t *testing.T) {
 		cells, big, sub, want int
 		icon                  bool
 	}{
-		{2, 8, 12, 40, true}, {4, 8, 12, 40, true}, {5, 8, 12, 40, false},
-		{5, 3, 0, 40, true}, {5, 3, 3, 31, true}, {5, 7, 12, 31, true},
-		{5, 8, 0, 16, true}, {5, 8, 1, 0, true},
-		{6, 5, 0, 31, true}, {6, 5, 3, 21, true}, {6, 5, 10, 21, true},
-		{6, 5, 11, 11, true}, {6, 6, 0, 11, true}, {6, 6, 1, 0, true},
+		{2, 8, 12, 40, true}, {4, 8, 12, 35, true}, {4, 8, 0, 40, true},
+		{5, 8, 12, 25, false}, {5, 8, 0, 40, false}, {6, 3, 0, 38, false},
+		{6, 3, 2, 20, false}, {5, 3, 0, 31, true}, {5, 8, 0, 31, true},
+		{5, 8, 3, 16, true}, {6, 5, 0, 21, true}, {6, 6, 0, 21, true},
+		{6, 5, 1, 11, true}, {6, 6, 11, 11, true},
 	} {
 		if got := kpiInlineCaptionBudget(tc.cells, tc.big, tc.sub, tc.icon); got != tc.want {
 			t.Errorf("budget(%d,%d,%d,%t)=%d, want %d", tc.cells, tc.big, tc.sub, tc.icon, got, tc.want)
 		}
 	}
 	values := (&kpiInline{}).Schema().raw.Properties["values"]
-	if !strings.Contains(values.raw.Description, "no readable caption") {
+	if !strings.Contains(values.raw.Description, "21 at 6 KPIs (11 with a delta)") {
 		t.Errorf("schema omits dense icon limit: %q", values.raw.Description)
 	}
 	cell := values.raw.Items.raw.OneOf[1]
@@ -38,19 +38,24 @@ func TestKPIInlineWarningsNameTheSpecificCellAndFix(t *testing.T) {
 	}
 	v[2].Icon = &IconRef{Name: "rocket"}
 	v[2].Big = "12345678"
-	v[2].Small = strings.Repeat("C", 16)
+	v[2].Small = strings.Repeat("C", 31)
 	if got := pat.PostExpandWarnings(ExpandContext{}, &v, nil); len(got) != 0 {
 		t.Fatalf("at budget: %v", got)
 	}
 	v[2].Small += "x"
 	got := pat.PostExpandWarnings(ExpandContext{}, &v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "values[2].small") || !strings.Contains(got[0], "about 16") {
+	if len(got) != 1 || !strings.Contains(got[0], "values[2].small") || !strings.Contains(got[0], "about 31") {
 		t.Fatalf("caption warning: %v", got)
 	}
+	// A delta line takes vertical room: an icon cell at 5 KPIs keeps 16.
 	v[2].Sub = "+5%"
 	got = pat.PostExpandWarnings(ExpandContext{}, &v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "no readable caption fits") || !strings.Contains(got[0], "omit the delta/icon") {
-		t.Fatalf("composition warning: %v", got)
+	if len(got) != 1 || !strings.Contains(got[0], "values[2].small") || !strings.Contains(got[0], "about 16") {
+		t.Fatalf("delta caption warning: %v", got)
+	}
+	v[2].Small = strings.Repeat("C", 16)
+	if got := pat.PostExpandWarnings(ExpandContext{}, &v, nil); len(got) != 0 {
+		t.Fatalf("delta caption at budget: %v", got)
 	}
 	v[2].Icon = nil
 	if got := pat.PostExpandWarnings(ExpandContext{}, &v, nil); len(got) != 0 {

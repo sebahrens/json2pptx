@@ -60,13 +60,12 @@ const (
 	cdRowGapPt   = 6.0
 	cdRulePt     = 1.0
 	cdGroupGapPt = 6.0 // extra air above every group heading after the first
-	// cdTextPadPt is the vertical allowance the shape-grid row estimator adds
-	// to every text cell (the OOXML default 3.6pt top + bottom). The pattern
-	// sets only left / right insets, so the renderer draws with less than
-	// this and a row sized to it never reports an overflow.
-	cdTextPadPt    = 7.2
-	cdTextInsetLPt = 4.0
-	cdTextInsetRPt = 2.0
+	// cdTextPadPt is the vertical allowance every text cell carries: the
+	// uniform shape text margin, top + bottom. cdTextInsetLPt / RPt are its
+	// left / right margins (the same uniform inset).
+	cdTextPadPt    = 2 * defaultShapeInsetTBPt
+	cdTextInsetLPt = defaultShapeInsetLRPt
+	cdTextInsetRPt = defaultShapeInsetLRPt
 	cdPhotoMinPt   = 30.0
 	// Stacked (sparse) layout: headshot above a centred name.
 	cdStackPhotoMaxPt = 128.0
@@ -308,7 +307,7 @@ func cdPersonRows(people []ContactDirectoryPerson, n int) [][]ContactDirectoryPe
 }
 
 // cdTextHeightPt is the measured height of one person's name + title at the
-// text column width, with the pattern's own tight insets.
+// text column width, inside the uniform shape text margin.
 func cdTextHeightPt(ctx ExpandContext, p ContactDirectoryPerson, nameSize, titleSize, textW float64) float64 {
 	// paragraphLines removes the default LR insets; measure against ~88% of
 	// the real width, because the renderer's own autofit measures with its
@@ -638,7 +637,7 @@ func (c *contactDirectory) Expand(ctx ExpandContext, values, overrides any, cell
 			MinHeight: lay.headPt[g], MaxHeight: lay.headPt[g],
 			Cells: []*jsonschema.GridCellInput{{
 				ColSpan:   span,
-				Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: cdInsetText(headJSON, 0)},
+				Shape:     &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: json.RawMessage(`"none"`), Text: headJSON},
 				AccentBar: &jsonschema.AccentBarInput{Position: "bottom", Color: accent, Width: cdRulePt},
 			}},
 		})
@@ -697,22 +696,6 @@ func cdStackedRows(people []ContactDirectoryPerson, n int, lay cdLayout, photoRo
 	}
 }
 
-// cdInsetText adds the pattern's tight left / right insets to a
-// marshalled text object.
-func cdInsetText(textJSON json.RawMessage, left float64) json.RawMessage {
-	var obj map[string]any
-	if err := json.Unmarshal(textJSON, &obj); err != nil {
-		return textJSON
-	}
-	obj["inset_left"] = left
-	obj["inset_right"] = cdTextInsetRPt
-	out, err := json.Marshal(obj)
-	if err != nil {
-		return textJSON
-	}
-	return out
-}
-
 // cdPhotoCell is the circular headshot, or an initials disc without one.
 func cdPhotoCell(p ContactDirectoryPerson, disc fillTone, discInk string, photoPt float64) *jsonschema.GridCellInput {
 	alt := strings.TrimSpace(p.Name)
@@ -737,28 +720,9 @@ func cdPhotoCell(p ContactDirectoryPerson, disc fillTone, discInk string, photoP
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "ellipse",
 			Fill:     disc.fillJSON(),
-			Text:     cdZeroInsetText(textJSON),
+			Text:     textJSON,
 		},
 	}
-}
-
-// cdZeroInsetText strips the insets from a small centred label so two
-// initials fit a small disc.
-func cdZeroInsetText(textJSON json.RawMessage) json.RawMessage {
-	var obj map[string]any
-	if err := json.Unmarshal(textJSON, &obj); err != nil {
-		return textJSON
-	}
-	// An all-zero inset reads as "unset" (the 7.2pt default), which wraps
-	// two initials inside a small disc; a hairline keeps the text box wide.
-	for _, k := range []string{"inset_left", "inset_right", "inset_top", "inset_bottom"} {
-		obj[k] = 0.5
-	}
-	out, err := json.Marshal(obj)
-	if err != nil {
-		return textJSON
-	}
-	return out
 }
 
 // cdTextCell is the bold name over the muted title, centred on the headshot.
@@ -772,13 +736,9 @@ func cdTextCellAligned(p ContactDirectoryPerson, lay cdLayout, nameInk, titleInk
 		paras = append(paras, chartInsightsParagraph{Content: t, Size: lay.titleSize, Color: titleInk, Align: align})
 	}
 	textJSON, _ := json.Marshal(chartInsightsText{Paragraphs: paras, Align: align, VerticalAlign: vAlign})
-	left := cdTextInsetLPt
-	if align == "ctr" {
-		left = cdTextInsetRPt
-	}
 	return &jsonschema.GridCellInput{Shape: &jsonschema.ShapeSpecInput{
 		Geometry: "rect",
 		Fill:     json.RawMessage(`"none"`),
-		Text:     cdInsetText(textJSON, left),
+		Text:     textJSON,
 	}}
 }

@@ -637,9 +637,10 @@ func TestTimelineChevronDateRowUsesRenderedFontSize(t *testing.T) {
 		wantSize   float64
 		wantHeight float64
 	}{
-		{"default", 0, 12, 26},
-		{"below_floor", 6, 12, 26},
-		{"larger_override", 18, 18, 33},
+		// One date line plus the uniform top + bottom shape text margin.
+		{"default", 0, 12, 47},
+		{"below_floor", 6, 12, 47},
+		{"larger_override", 18, 18, 54},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			grid, err := (&timelineHorizontal{}).Expand(ExpandContext{}, &stops,

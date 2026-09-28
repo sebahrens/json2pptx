@@ -22,10 +22,10 @@ slides:
     title: Your teams hold the data but still wait days for decisions
     takeaway: Your teams are data-rich but decision-poor — and the gap is widening.
     points:
-      - Operations teams export the same reports by hand every week.
-      - Decisions wait days for analysts who are already over capacity.
-      - Competitors using real-time signals are reacting twice as fast.
-      - The raw data already exists; nothing turns it into a decision.
+      - Teams rebuild the same reports weekly.
+      - Decisions wait days for busy analysts.
+      - Real-time rivals react twice as fast.
+      - The data exists but drives no decision.
 
   - kind: chart_insight
     title: Real-time decisioning spend overtakes batch reporting in 2025

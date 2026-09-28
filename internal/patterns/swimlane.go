@@ -82,20 +82,24 @@ func (s *swimlane) NewCellOverride() any { return &SwimlaneCellOverride{} }
 
 // Measured with TestSwimlaneBudgetProbe against the written size (no run
 // stored below its role floor) on every shipped template
-// (go-slide-creator-n1muf). Rows are step columns 2..8; columns are lane
-// counts 2..6.
+// (go-slide-creator-n1muf), every shape keeping the uniform 0.5 cm text
+// margin. Rows are step columns 2..8; columns are lane counts 2..6.
 var swimlaneStepBudgets = [7][5]int{
-	{80, 80, 80, 80, 80},
-	{80, 80, 80, 80, 72},
-	{80, 80, 80, 76, 51},
-	{80, 80, 80, 61, 41},
-	{80, 80, 61, 46, 31},
-	{80, 72, 52, 42, 30},
-	{80, 61, 41, 31, 21},
+	{80, 80, 80, 80, 52},
+	{80, 80, 80, 62, 32},
+	{80, 80, 75, 50, 25},
+	{80, 77, 47, 32, 17},
+	{80, 75, 45, 30, 15},
+	{80, 51, 31, 21, 11},
+	{78, 50, 30, 20, 10},
 }
 
-// swimlaneActorBudget is the readable actor label length with six lanes.
-const swimlaneActorBudget = 32
+// swimlaneActorBudget is the readable actor label length with five lanes
+// (swimlaneActorBudgetSix with six).
+const (
+	swimlaneActorBudget    = 30
+	swimlaneActorBudgetSix = 15
+)
 
 func swimlaneStepBudget(steps, lanes int) int {
 	if steps < 2 || steps > 8 || lanes < 2 || lanes > 6 {
@@ -116,8 +120,15 @@ func (s *swimlane) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 	budget := swimlaneStepBudget(steps, len(v.Lanes))
 	var warnings []string
 	for i, lane := range v.Lanes {
-		if n := runeLen(lane.Actor); len(v.Lanes) >= 6 && n > swimlaneActorBudget {
-			warnings = append(warnings, fmt.Sprintf("%s: swimlane lanes[%d].actor is %d characters; six lanes hold about %d actor characters — shorten the label or use fewer lanes", ErrCodeBodyTooLong, i, n, swimlaneActorBudget))
+		actorBudget := 0
+		switch {
+		case len(v.Lanes) >= 6:
+			actorBudget = swimlaneActorBudgetSix
+		case len(v.Lanes) == 5:
+			actorBudget = swimlaneActorBudget
+		}
+		if n := runeLen(lane.Actor); actorBudget > 0 && n > actorBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: swimlane lanes[%d].actor is %d characters; %d lanes hold about %d actor characters — shorten the label or use fewer lanes", ErrCodeBodyTooLong, i, n, len(v.Lanes), actorBudget))
 		}
 		for j, step := range lane.Steps {
 			if n := runeLen(step); n > budget {
@@ -131,8 +142,8 @@ func (s *swimlane) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
 func (s *swimlane) Schema() *Schema {
 	laneSchema := ObjectSchema(
 		map[string]*Schema{
-			"actor": StringSchema(40).WithDescription("Lane actor/function label; about 32 characters with six lanes"),
-			"steps": ArraySchema(StringSchema(80), 2, 8).WithDescription("Steps in this lane (empty = no shape). Approximate readable chars per step by step columns x lanes (lanes 2/3/4/5/6): steps 2: 80/80/80/80/80; 3: 80/80/80/80/72; 4: 80/80/80/76/51; 5: 80/80/80/61/41; 6: 80/80/61/46/31; 7: 80/72/52/42/30; 8: 80/61/41/31/21"),
+			"actor": StringSchema(40).WithDescription("Lane actor/function label; about 30 characters with five lanes, 15 with six"),
+			"steps": ArraySchema(StringSchema(80), 2, 8).WithDescription("Steps in this lane (empty = no shape). Approximate readable chars per step by step columns x lanes (lanes 2/3/4/5/6): steps 2: 80/80/80/80/52; 3: 80/80/80/62/32; 4: 80/80/75/50/25; 5: 80/77/47/32/17; 6: 80/75/45/30/15; 7: 80/51/31/21/11; 8: 78/50/30/20/10"),
 		},
 		[]string{"actor", "steps"},
 	).WithAdditionalProperties(false)

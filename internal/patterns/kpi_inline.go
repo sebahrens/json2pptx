@@ -55,38 +55,36 @@ func (k *kpiInline) NewValues() any       { return &KPINupValues{} }
 func (k *kpiInline) NewOverrides() any    { return &KPIOverrides{} }
 func (k *kpiInline) NewCellOverride() any { return &KPICellOverride{} }
 
-// Measured by TestKPIInlineBudgetProbe across all four bundled templates at
-// default sizes. The icon consumes horizontal space; number and delta lines
-// then determine whether the caption can stay at the readable floor.
-func kpiInlineCaptionBudget(cells, bigChars, subChars int, icon bool) int {
-	if !icon || cells <= 4 {
-		return 40
-	}
-	if cells == 5 {
-		if bigChars >= 8 {
-			if subChars > 0 {
-				return 0
-			}
-			return 16
-		}
-		if subChars > 0 {
-			return 31
-		}
-		return 40
-	}
-	if bigChars >= 6 {
-		if subChars > 0 {
-			return 0
-		}
-		return 11
-	}
-	if subChars == 0 {
+// Measured by TestKPIInlineBudgetProbe across every shipped template at
+// default sizes, every shape keeping the uniform 0.5 cm text margin. The icon
+// consumes horizontal space and a delta line vertical space; the caption keeps
+// what is left at the readable floor.
+func kpiInlineCaptionBudget(cells, _, subChars int, icon bool) int {
+	sub := subChars > 0
+	switch {
+	case icon && cells == 5 && sub:
+		return 16
+	case icon && cells == 5:
 		return 31
-	}
-	if subChars >= 11 {
+	case icon && cells >= 6 && sub:
 		return 11
+	case icon && cells >= 6:
+		return 21
+	case cells <= 3:
+		return 40
+	case cells == 4 && sub:
+		return 35
+	case cells == 4:
+		return 40
+	case cells == 5 && sub:
+		return 25
+	case cells == 5:
+		return 40
+	case sub:
+		return 20
+	default:
+		return 38
 	}
-	return 21
 }
 
 func (k *kpiInline) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
@@ -110,7 +108,7 @@ func (k *kpiInline) PostExpandWarnings(_ ExpandContext, values, _ any) []string 
 func (k *kpiInline) Schema() *Schema {
 	return ObjectSchema(
 		map[string]*Schema{
-			"values":         ArraySchema(kpiCellSchema(kpiInlineBigMaxChars), 2, 6).WithDescription("2-6 KPI cells in a compact bar. Metric values have a tighter 8-character maximum than full-size KPI cards. Caption budget without icons: 40 chars. With icons at 5 KPIs: 40 if number <=7 chars/no delta, 31 with delta, or 16 for an 8-char number/no delta; an 8-char number plus delta leaves no readable caption. At 6 KPIs with icons: number <=5 chars holds 31 without delta, 21 with a 1-10 char delta, 11 with an 11-12 char delta; number >=6 chars holds 11 without delta and no readable caption with delta."),
+			"values":         ArraySchema(kpiCellSchema(kpiInlineBigMaxChars), 2, 6).WithDescription("2-6 KPI cells in a compact bar. Metric values have a tighter 8-character maximum than full-size KPI cards. Caption budget without icons: 40 chars (38 at 6 KPIs); with a delta 35/25/20 at 4/5/6 KPIs. With icons: 31 at 5 KPIs (16 with a delta), 21 at 6 KPIs (11 with a delta)."),
 			"overrides":      kpiOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},

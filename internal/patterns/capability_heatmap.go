@@ -51,7 +51,6 @@ const (
 	chmColGapPt       = 6.0
 	chmRowGapPt       = 4.0
 	chmHeaderPointPt  = 10.0 // depth of the homePlate point, in points
-	chmHeaderPadPt    = 3.0  // breathing room beyond the point
 	chmFitSafetyFrac  = 0.90 // measure against 90% of the computed width
 	chmMinHeaderPt    = 40.0
 	chmMinCellPt      = 30.0
@@ -341,8 +340,9 @@ func chmPointed(ovr *CapabilityHeatmapOverrides) bool {
 
 // chmMeasure lays the heatmap out against the content area. The header text
 // width is what is left once the homePlate point is cleared: the preset's own
-// text rectangle stops half-way into the point, and the right inset the
-// pattern emits stacks on top of that, so both are subtracted.
+// text rectangle stops half-way into the point, and the uniform right margin
+// stacks on top of that — which clears the rest of the point — so both are
+// subtracted.
 func chmMeasure(ctx ExpandContext, v *CapabilityHeatmapValues, ovr *CapabilityHeatmapOverrides) chmLayout {
 	font := ctx.Theme.BodyFont
 	contentW, contentH := contentAreaPt(ctx)
@@ -351,7 +351,7 @@ func chmMeasure(ctx ExpandContext, v *CapabilityHeatmapValues, ovr *CapabilityHe
 	l.colWPt = equalColumnWidthPt(contentW, n, chmColGapPt)
 	l.cellTextW = math.Max(l.colWPt-2*defaultShapeInsetLRPt, 1)
 	if chmPointed(ovr) {
-		l.headerTextW = (l.colWPt - defaultShapeInsetLRPt - (chmHeaderPointPt + chmHeaderPadPt) - chmHeaderPointPt/2) * chmFitSafetyFrac
+		l.headerTextW = (l.colWPt - 2*defaultShapeInsetLRPt - chmHeaderPointPt/2) * chmFitSafetyFrac
 	} else {
 		l.headerTextW = (l.colWPt - 2*defaultShapeInsetLRPt) * chmFitSafetyFrac
 	}
@@ -536,13 +536,13 @@ func chmHeaderTone(accent string) fillTone {
 // Expand
 // ---------------------------------------------------------------------------
 
-// patternTextObj is a paragraphs text object with optional side insets.
+// patternTextObj is a paragraphs text object. InsetTop, when set, is the
+// uniform top margin plus an alignment offset (never less than the margin);
+// the other sides always keep the uniform shape text margin.
 type patternTextObj struct {
 	Paragraphs    []chartInsightsParagraph `json:"paragraphs"`
 	Align         string                   `json:"align"`
 	VerticalAlign string                   `json:"vertical_align"`
-	InsetLeft     float64                  `json:"inset_left,omitempty"`
-	InsetRight    float64                  `json:"inset_right,omitempty"`
 	InsetTop      float64                  `json:"inset_top,omitempty"`
 }
 
@@ -586,8 +586,6 @@ func (p *capabilityHeatmap) Expand(ctx ExpandContext, values, overrides any, cel
 			// adj is a fraction of the SHORTER side; derive it from this
 			// header's own geometry so the point is chmHeaderPointPt deep.
 			shape.Adjustments = map[string]int64{"adj": int64(math.Round(chmHeaderPointPt / math.Min(l.headerHPt, l.colWPt) * 100000))}
-			text.InsetLeft = defaultShapeInsetLRPt
-			text.InsetRight = chmHeaderPointPt + chmHeaderPadPt
 		}
 		shape.Text = text.json()
 		headerCells[i] = &jsonschema.GridCellInput{Shape: shape}

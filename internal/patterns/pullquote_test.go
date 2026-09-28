@@ -154,10 +154,13 @@ func TestPullQuote(t *testing.T) {
 		if strings.Contains(quoteText, "Alan Kay") {
 			t.Error("the attribution is still inside the quote's text body")
 		}
-		// The gap under the quote is the quote cell's own bottom inset, which
-		// is what keeps the attribution off its descenders.
-		if !strings.Contains(quoteText, "inset_bottom") {
-			t.Errorf("quote cell has no bottom inset: %s", quoteText)
+		// The gap under the quote is the cells' uniform bottom + top shape
+		// text margin, which keeps the attribution off the quote's
+		// descenders; neither cell sets its own insets.
+		for _, text := range []string{quoteText, attrText} {
+			if strings.Contains(text, `"inset_`) {
+				t.Errorf("pull-quote cell should keep the uniform margin, got %s", text)
+			}
 		}
 	})
 

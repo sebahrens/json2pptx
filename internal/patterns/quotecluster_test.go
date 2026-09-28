@@ -66,21 +66,33 @@ func TestQuoteClusterDenseCombinedCopyWarning(t *testing.T) {
 		!strings.Contains(got[0], ErrCodeBodyTooLong) || !strings.Contains(got[0], "quotes.text/name/title") {
 		t.Fatalf("dense full attribution warning: %v", got)
 	}
+	// With 7-8 quotes, maximal attributions leave no readable quote: the
+	// measured 80-character target holds beside a ~20-character name and a
+	// ~27-character title.
 	for i := range values.Quotes {
 		values.Quotes[i].Text = strings.Repeat("word ", 16)
+	}
+	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) == 0 {
+		t.Fatalf("80-character quotes beside maximal attributions should warn")
+	}
+	for i := range values.Quotes {
+		values.Quotes[i].Name = quoteClusterBudgetCopy(20)
+		values.Quotes[i].Title = quoteClusterBudgetCopy(27)
 	}
 	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
 		t.Fatalf("measured 80-character target should fit: %v", got)
 	}
-	values.Quotes[0] = QuoteClusterItem{Text: strings.Repeat("word ", 43), Name: strings.Repeat("name ", 12), Title: strings.Repeat("role ", 16)}
+	// Short neighbours leave slack: one quote may run past the 81-character
+	// per-quote target when its own attribution is short.
+	values.Quotes[0] = QuoteClusterItem{Text: strings.Repeat("word ", 22), Name: "J. Lin", Title: "Director"}
 	for i := 1; i < len(values.Quotes); i++ {
 		values.Quotes[i] = QuoteClusterItem{Text: "A concise customer quote.", Name: "J. Lin", Title: "Director"}
 	}
 	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
-		t.Fatalf("a single 215-character quote should fit: %v", got)
+		t.Fatalf("a single 110-character quote should fit: %v", got)
 	}
 	for i := range values.Quotes {
-		values.Quotes[i] = QuoteClusterItem{Text: quoteClusterBudgetCopy(128), Name: quoteClusterBudgetCopy(48), Title: quoteClusterBudgetCopy(65)}
+		values.Quotes[i] = QuoteClusterItem{Text: quoteClusterBudgetCopy(81), Name: quoteClusterBudgetCopy(20), Title: quoteClusterBudgetCopy(27)}
 	}
 	if got := p.PostExpandWarnings(testThemeCtx(), values, nil); len(got) != 0 {
 		t.Fatalf("measured balanced target should fit: %v", got)

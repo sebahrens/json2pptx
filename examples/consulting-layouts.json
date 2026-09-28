@@ -106,7 +106,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -121,7 +122,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -136,7 +138,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -151,7 +154,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -187,7 +191,8 @@
                     "vertical_align": "t",
                     "inset_top": 10,
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -203,7 +208,8 @@
                     "vertical_align": "t",
                     "inset_top": 10,
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -222,7 +228,8 @@
                     "vertical_align": "t",
                     "inset_top": 10,
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -237,7 +244,8 @@
                     "vertical_align": "t",
                     "inset_top": 10,
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -290,7 +298,9 @@
                     "align": "l",
                     "vertical_align": "ctr",
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_top": 0,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -323,7 +333,9 @@
                     "align": "l",
                     "vertical_align": "ctr",
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_top": 0,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -356,7 +368,9 @@
                     "align": "l",
                     "vertical_align": "ctr",
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_top": 0,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -389,7 +403,9 @@
                     "align": "l",
                     "vertical_align": "ctr",
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_top": 0,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -472,7 +488,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -487,7 +504,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -502,7 +520,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -522,7 +541,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -537,7 +557,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -552,7 +573,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 6,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -621,7 +643,8 @@
                     "vertical_align": "t",
                     "inset_top": 10,
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -636,7 +659,8 @@
                     "vertical_align": "t",
                     "inset_top": 10,
                     "inset_left": 10,
-                    "inset_right": 8
+                    "inset_right": 8,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -793,7 +817,8 @@
                     "vertical_align": "t",
                     "inset_top": 6,
                     "inset_left": 6,
-                    "inset_right": 4
+                    "inset_right": 4,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -808,7 +833,8 @@
                     "vertical_align": "t",
                     "inset_top": 6,
                     "inset_left": 6,
-                    "inset_right": 4
+                    "inset_right": 4,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -823,7 +849,8 @@
                     "vertical_align": "t",
                     "inset_top": 6,
                     "inset_left": 6,
-                    "inset_right": 4
+                    "inset_right": 4,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -838,7 +865,8 @@
                     "vertical_align": "t",
                     "inset_top": 6,
                     "inset_left": 6,
-                    "inset_right": 4
+                    "inset_right": 4,
+                    "inset_bottom": 0
                   }
                 }
               }
@@ -935,7 +963,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 8,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -950,7 +979,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 8,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -965,7 +995,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 8,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               },
@@ -980,7 +1011,8 @@
                     "vertical_align": "t",
                     "inset_top": 8,
                     "inset_left": 8,
-                    "inset_right": 6
+                    "inset_right": 6,
+                    "inset_bottom": 0
                   }
                 }
               }

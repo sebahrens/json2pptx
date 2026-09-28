@@ -88,21 +88,28 @@ func (th *timelineHorizontal) NewOverrides() any    { return &TimelineHorizontal
 func (th *timelineHorizontal) NewCellOverride() any { return &TimelineHorizontalCellOverride{} }
 
 // Measured against the written size (no run stored below its role floor) on
-// every shipped template at default text sizes (go-slide-creator-n1muf).
-// Label wrapping consumes room in the same text shape as the body.
+// every shipped template at default text sizes, every shape keeping the
+// uniform 0.5 cm text margin (go-slide-creator-n1muf). Label wrapping consumes
+// room in the same text shape as the body.
 type timelineBudgetBand struct {
 	maxLabel, body int
 }
 
 var timelineBodyBudgetBands = map[string]map[int][]timelineBudgetBand{
 	"dots": {
-		3: {{60, 200}},
-		4: {{25, 181}, {50, 151}, {60, 121}},
-		5: {{20, 123}, {40, 103}, {60, 83}},
-		6: {{15, 107}, {30, 92}, {45, 77}, {60, 58}},
-		7: {{10, 90}, {20, 75}, {30, 60}, {40, 45}, {60, 40}},
+		3: {{35, 200}, {60, 161}},
+		4: {{20, 150}, {40, 118}, {60, 77}},
+		5: {{15, 101}, {30, 81}, {45, 60}, {60, 40}},
+		6: {{15, 75}, {20, 61}, {30, 45}, {60, 40}},
+		7: {{10, 52}, {20, 42}, {40, 40}, {50, 15}, {60, 0}},
 	},
 }
+
+// Gantt bars hold a shorter label, and the start / end dates share one row.
+const (
+	timelineGanttLabelBudget     = 36
+	timelineGanttDateRangeBudget = 32
+)
 
 func timelineBodyBudget(style string, stops, labelChars int) int {
 	bands := timelineBodyBudgetBands[style][stops]
@@ -139,6 +146,12 @@ func (th *timelineHorizontal) PostExpandWarnings(ctx ExpandContext, values, over
 			if strings.TrimSpace(stop.Body) != "" {
 				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].body is not rendered in gantt style — move the detail into the label, choose dots or chevron style, or remove the body", ErrCodeContentDropped, i))
 			}
+			if n := runeLen(stop.Label); n > timelineGanttLabelBudget {
+				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].label is %d characters; a gantt bar holds about %d readable label characters — shorten the label", ErrCodeBodyTooLong, i, n, timelineGanttLabelBudget))
+			}
+			if n := runeLen(stop.Date) + runeLen(stop.EndDate); stop.EndDate != "" && n > timelineGanttDateRangeBudget {
+				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].date/end_date use %d characters; a gantt date range holds about %d readable characters — shorten the dates", ErrCodeBodyTooLong, i, n, timelineGanttDateRangeBudget))
+			}
 		} else if style == "chevron" {
 			lines, capacity := timelineChevronBodyCapacity(ctx, *v, i, ovr)
 			if lines > capacity {
@@ -146,7 +159,9 @@ func (th *timelineHorizontal) PostExpandWarnings(ctx ExpandContext, values, over
 			}
 		} else {
 			budget := timelineBodyBudget(style, len(*v), runeLen(stop.Label))
-			if n := runeLen(stop.Body); n > budget {
+			if n := runeLen(stop.Body); n > 0 && budget == 0 {
+				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].body is %d characters; %d-stop %s style with a %d-character label holds no readable body — shorten the label, drop the body, or use fewer stops", ErrCodeBodyTooLong, i, n, len(*v), style, runeLen(stop.Label)))
+			} else if n > budget {
 				warnings = append(warnings, fmt.Sprintf("%s: timeline-horizontal values[%d].body is %d characters; %d-stop %s style with a %d-character label holds about %d readable body characters — shorten the body or label, or use fewer stops", ErrCodeBodyTooLong, i, n, len(*v), style, runeLen(stop.Label), budget))
 			}
 		}
@@ -206,10 +221,10 @@ func timelineChevronTextSizes(ovr *TimelineHorizontalOverrides) (labelSize, body
 func (th *timelineHorizontal) Schema() *Schema {
 	stopSchema := ObjectSchema(
 		map[string]*Schema{
-			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\")"),
+			"label":    StringSchema(60).WithDescription("Stop label (e.g. \"Q1 2025\", \"Launch\"); about 36 readable characters in gantt style"),
 			"date":     StringSchema(30).WithDescription("Optional date or time annotation. Chevron dates have a one-line row at the effective font size (12pt minimum); BODY_TOO_LONG reports wrapping for the chosen template width. Dots and gantt retain the 30-character schema limit."),
-			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date)"),
-			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Dots readable chars for short/long labels by stop count: 3: 200/200, 4: 181/121, 5: 123/83, 6: 107/58, 7: 90/40. Chevron body capacity is measured from its actual width, height, label wrapping, and font sizes; BODY_TOO_LONG reports the line limit for the chosen layout. Shorten descriptions or use fewer stops when warned."),
+			"end_date": StringSchema(30).WithDescription("End date for gantt style (creates a range bar from date to end_date); date and end_date together hold about 32 readable characters"),
+			"body":     StringSchema(200).WithDescription("Optional body for dots and chevron stops; gantt does not render body and emits CONTENT_DROPPED if set. Dots readable chars for short/long labels by stop count: 3: 200/161, 4: 150/77, 5: 101/40, 6: 75/40, 7: 52/0 (a 7-stop label over 50 characters leaves no body). Chevron body capacity is measured from its actual width, height, label wrapping, and font sizes; BODY_TOO_LONG reports the line limit for the chosen layout. Shorten descriptions or use fewer stops when warned."),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)

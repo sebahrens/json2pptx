@@ -222,31 +222,28 @@ func (p *tableHighlight) NewCellOverride() any { return &TableHighlightCellOverr
 
 // The paired name/detail target was measured against the written size (no run
 // stored below its role floor) on every shipped template
-// (go-slide-creator-n1muf). It is guidance for a dense matrix, not a per-field
-// validation limit: a sparse row can use its full schema maxima. Six option
-// rows hold no readable copy on the shortest content area (0).
+// (go-slide-creator-n1muf), every shape keeping the uniform 0.5 cm text
+// margin. It is guidance for a dense matrix, not a per-field validation limit:
+// a sparse row can use its full schema maxima. From four option rows a row
+// holds its name and no readable detail (0); the name then keeps about
+// tableHighlightNameOnlyBudget characters.
 func tableHighlightPairedCopyBudget(options, criteria int) int {
 	switch {
-	case options <= 3:
+	case options <= 2:
 		return 40
-	case options == 4 && criteria <= 3:
-		return 37
-	case options == 4 && criteria == 4:
-		return 35
-	case options == 4:
-		return 32
-	case options == 5 && criteria == 2:
-		return 37
-	case options == 5 && criteria == 3:
+	case options == 3 && criteria <= 3:
 		return 36
-	case options == 5 && criteria == 4:
-		return 35
-	case options == 5:
-		return 31
+	case options == 3 && criteria == 4:
+		return 32
+	case options == 3:
+		return 30
 	default:
 		return 0
 	}
 }
+
+// tableHighlightNameOnlyBudget is the readable option name from four rows.
+const tableHighlightNameOnlyBudget = 30
 
 // TableHighlightDetailLimit permits a longer descriptor only when the matrix
 // has enough space to widen the option column without crowding score columns.
@@ -266,10 +263,18 @@ func (p *tableHighlight) PostExpandWarnings(_ ExpandContext, values, _ any) []st
 	if budget >= thNameMax {
 		return nil
 	}
-	if budget == 0 {
-		return []string{fmt.Sprintf("%s: table-highlight has %d option rows; the shortest shipped content area holds at most 5 readable rows — use 5 or fewer options or split the table", ErrCodeBodyTooLong, len(v.Options))}
-	}
 	var warnings []string
+	if budget == 0 {
+		for i, option := range v.Options {
+			if strings.TrimSpace(option.Detail) != "" {
+				warnings = append(warnings, fmt.Sprintf("%s: table-highlight options[%d].detail has %d characters; a %d-option matrix holds the option name and no readable detail — drop the details, use 3 or fewer options, or split the table", ErrCodeBodyTooLong, i, runeLen(option.Detail), len(v.Options)))
+			}
+			if n := runeLen(option.Name); n > tableHighlightNameOnlyBudget {
+				warnings = append(warnings, fmt.Sprintf("%s: table-highlight options[%d].name is %d characters; a %d-option matrix holds about %d name characters — shorten the name or split the table", ErrCodeBodyTooLong, i, n, len(v.Options), tableHighlightNameOnlyBudget))
+			}
+		}
+		return warnings
+	}
 	for i, option := range v.Options {
 		// The two paragraphs share a row.
 		if runeLen(option.Name)+runeLen(option.Detail) > 2*budget {
@@ -293,11 +298,11 @@ func (p *tableHighlight) Schema() *Schema {
 		WithDescription("harvey: 0-4 (or none/quarter/half/three-quarter/full); rag: red/amber/green (r/a/g); text: ≤24 chars; any scale: \"-\" or \"n/a\" for not applicable").WithDefault(0)
 
 	option := ObjectSchema(map[string]*Schema{
-		"name":   StringSchema(thNameMax).WithDescription("Option name (≤40 chars); dense paired name/detail targets depend on matrix shape"),
-		"detail": StringSchema(thDetailMax).WithDescription("Optional descriptor under the name (≤80 chars for up to 4 options × 4 criteria; ≤60 in denser matrices)"),
+		"name":   StringSchema(thNameMax).WithDescription("Option name (≤40 chars); dense paired name/detail targets depend on matrix shape (about 36 each at 3 options; 30 for a name alone from 4 options)"),
+		"detail": StringSchema(thDetailMax).WithDescription("Optional descriptor under the name (≤80 chars for up to 4 options × 4 criteria; ≤60 in denser matrices); from 4 options a row holds no readable detail — omit it"),
 		"scores": ArraySchema(score, thMinCriteria, thMaxCriteria).WithDescription("One score per criterion, in criteria order"),
 	}, []string{"name", "scores"}).WithAdditionalProperties(false).
-		WithDescription("Paired name/detail readable characters by option rows x criteria: 2-3 rows about 40 each; 4 rows with 2-3/4/5-6 criteria about 37/35/32; 5 rows with 2/3/4/5-6 criteria about 37/36/35/31; 6 rows fit no readable copy on every template (use at most 5). Sparse rows can use field maxima; fit reports flag copy beyond dense paired targets")
+		WithDescription("Paired name/detail readable characters by option rows x criteria: 2 rows about 40 each; 3 rows with 2-3/4/5-6 criteria about 36/32/30; from 4 rows no readable detail (name only, about 30 characters). Sparse rows can use field maxima; fit reports flag copy beyond dense paired targets")
 
 	valuesSchema := ObjectSchema(map[string]*Schema{
 		"criteria":          ArraySchema(criterion, thMinCriteria, thMaxCriteria).WithDescription("2-6 criteria (columns)"),

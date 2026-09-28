@@ -129,16 +129,17 @@ func (s *scqaSummary) NewCellOverride() any { return &SCQASummaryCellOverride{} 
 
 // scqaItemBudgets returns the longest single bullet (beside short ones) and the
 // average bullet a row holds, by bullet count, measured against the written
-// size (no run stored below its role floor) on every shipped template
-// (go-slide-creator-n1muf).
+// size (no run stored below its role floor) on every shipped template with
+// every shape keeping the uniform 0.5 cm text margin (go-slide-creator-n1muf).
+// Four-bullet rows hold no readable copy: zero budgets.
 func scqaItemBudgets(items int) (single, average int) {
 	switch items {
 	case 2:
-		return 212, 212
+		return 210, 105
 	case 3:
-		return 221, 106
+		return 105, 105
 	default:
-		return 110, 106
+		return 0, 0
 	}
 }
 
@@ -161,6 +162,10 @@ func (s *scqaSummary) PostExpandWarnings(_ ExpandContext, values, _ any) []strin
 			continue
 		}
 		single, average := scqaItemBudgets(n)
+		if single == 0 {
+			warnings = append(warnings, fmt.Sprintf("%s: scqa-summary %s has %d bullets; a row holds at most 3 readable bullets — merge bullets or split the summary", ErrCodeBodyTooLong, row.name, n))
+			continue
+		}
 		total := 0
 		for i, item := range row.items {
 			length := runeLen(item)
@@ -180,10 +185,10 @@ func (s *scqaSummary) Schema() *Schema {
 	stringOrArray := OneOfSchema(
 		StringSchema(240).WithDescription("Single-paragraph form"),
 		ArraySchema(StringSchema(240), 1, 4).WithDescription("Array form (1-4 bullet points)"),
-	).WithDescription("String (single paragraph) or array of strings (1-4 bullets); about 212 characters each with 2 bullets, 106 each with 3-4 (one bullet beside short ones: 221 with 3, 110 with 4)")
+	).WithDescription("String (single paragraph) or array of strings (1-4 bullets); about 240 characters as one bullet, 105 each with 2-3 (one bullet beside a short one: 210 with 2); rows hold at most 3 readable bullets")
 
 	bulletArray := ArraySchema(StringSchema(240), 1, 4).
-		WithDescription("1-4 bullet points; about 212 characters each with 2 bullets, 106 each with 3-4 (one bullet beside short ones: 221 with 3, 110 with 4)")
+		WithDescription("1-4 bullet points; about 240 characters as one bullet, 105 each with 2-3 (one bullet beside a short one: 210 with 2); rows hold at most 3 readable bullets")
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{

@@ -1361,23 +1361,23 @@ components:
         inset_left:
           type: number
           format: double
-          default: 0
-          description: Left text inset in points
+          default: 14.17
+          description: Left text inset in points; defaults to the uniform 0.5 cm shape text margin
         inset_right:
           type: number
           format: double
-          default: 0
-          description: Right text inset in points
+          default: 14.17
+          description: Right text inset in points; defaults to the uniform 0.5 cm shape text margin
         inset_top:
           type: number
           format: double
-          default: 0
-          description: Top text inset in points
+          default: 14.17
+          description: Top text inset in points; defaults to the uniform 0.5 cm shape text margin
         inset_bottom:
           type: number
           format: double
-          default: 0
-          description: Bottom text inset in points
+          default: 14.17
+          description: Bottom text inset in points; defaults to the uniform 0.5 cm shape text margin
 
     ConvertResponseFile:
       type: object

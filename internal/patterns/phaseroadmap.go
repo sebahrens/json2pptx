@@ -140,28 +140,54 @@ func (pr *phaseRoadmap) NewValues() any       { return &PhaseRoadmapValues{} }
 func (pr *phaseRoadmap) NewOverrides() any    { return &PhaseRoadmapOverrides{} }
 func (pr *phaseRoadmap) NewCellOverride() any { return &PhaseRoadmapCellOverride{} }
 
-// Readable targets were measured against the fit collector on all four
-// bundled templates at the pattern's default text sizes.
+// Readable targets were measured by TestPhaseRoadmapBudgetProbe against the
+// written size on every shipped template at the pattern's default text sizes,
+// every shape keeping the uniform 0.5 cm text margin.
 func phaseRoadmapDateBudget(phases int) int {
-	switch phases {
-	case 5:
-		return 25
-	case 6:
-		return 18
-	default:
+	switch {
+	case phases <= 3:
 		return 30
+	case phases == 4:
+		return 28
+	case phases == 5:
+		return 21
+	default:
+		return 16
 	}
 }
 
 func phaseRoadmapMilestoneBudget(phases int) int {
-	switch phases {
-	case 5:
-		return 48
-	case 6:
-		return 38
-	default:
+	switch {
+	case phases <= 2:
 		return 60
+	case phases == 3:
+		return 40
+	case phases == 4:
+		return 30
+	case phases == 5:
+		return 21
+	default:
+		return 16
 	}
+}
+
+// phaseRoadmapDescriptionBudget / phaseRoadmapNameBudget are the readable
+// description and name lengths, or 0 where the schema maximum holds.
+func phaseRoadmapDescriptionBudget(phases int) int {
+	switch {
+	case phases == 5:
+		return 142
+	case phases >= 6:
+		return 107
+	}
+	return 0
+}
+
+func phaseRoadmapNameBudget(phases int) int {
+	if phases >= 6 {
+		return 31
+	}
+	return 0
 }
 
 func (pr *phaseRoadmap) PostExpandWarnings(_ ExpandContext, values, _ any) []string {
@@ -176,6 +202,12 @@ func (pr *phaseRoadmap) PostExpandWarnings(_ ExpandContext, values, _ any) []str
 		if n := runeLen(phase.DateLabel); n > dateBudget {
 			warnings = append(warnings, fmt.Sprintf("%s: phase-roadmap phases[%d].date_label is %d characters; %d phases hold about %d readable date-label characters per phase — shorten the range or use fewer phases", ErrCodeBodyTooLong, i, n, len(v.Phases), dateBudget))
 		}
+		if b := phaseRoadmapDescriptionBudget(len(v.Phases)); b > 0 && runeLen(phase.Description) > b {
+			warnings = append(warnings, fmt.Sprintf("%s: phase-roadmap phases[%d].description is %d characters; %d phases hold about %d readable description characters per phase — shorten the description or use fewer phases", ErrCodeBodyTooLong, i, runeLen(phase.Description), len(v.Phases), b))
+		}
+		if b := phaseRoadmapNameBudget(len(v.Phases)); b > 0 && runeLen(phase.Name) > b {
+			warnings = append(warnings, fmt.Sprintf("%s: phase-roadmap phases[%d].name is %d characters; %d phases hold about %d readable name characters per phase — shorten the name or use fewer phases", ErrCodeBodyTooLong, i, runeLen(phase.Name), len(v.Phases), b))
+		}
 		if n := runeLen(phase.Milestone); n > milestoneBudget {
 			warnings = append(warnings, fmt.Sprintf("%s: phase-roadmap phases[%d].milestone is %d characters; %d phases hold about %d readable milestone characters per phase — shorten the milestone or use fewer phases", ErrCodeBodyTooLong, i, n, len(v.Phases), milestoneBudget))
 		}
@@ -186,11 +218,11 @@ func (pr *phaseRoadmap) PostExpandWarnings(_ ExpandContext, values, _ any) []str
 func (pr *phaseRoadmap) Schema() *Schema {
 	phaseSchema := ObjectSchema(
 		map[string]*Schema{
-			"name":        StringSchema(40).WithDescription("Phase name (e.g. \"Plan\", \"Build\")"),
-			"date_label":  StringSchema(30).WithDescription("Optional date range below the timeline bar; about 30 readable characters with 3-4 phases, 25 with 5, or 18 with 6"),
-			"description": StringSchema(160).WithDescription("Short description rendered below the date label"),
+			"name":        StringSchema(40).WithDescription("Phase name (e.g. \"Plan\", \"Build\"); about 31 readable characters with 6 phases"),
+			"date_label":  StringSchema(30).WithDescription("Optional date range below the timeline bar; about 30 readable characters with 3 phases, 28 with 4, 21 with 5, or 16 with 6"),
+			"description": StringSchema(160).WithDescription("Short description rendered below the date label; about 142 readable characters with 5 phases, 107 with 6"),
 			"active":      BooleanSchema().WithDescription("When true, this phase renders with the accent fill (others use a light tint of the accent)"),
-			"milestone":   StringSchema(60).WithDescription("Optional milestone callout; when any phase sets one, a milestone row is rendered. About 60 readable characters with 3-4 phases, 48 with 5, or 38 with 6"),
+			"milestone":   StringSchema(60).WithDescription("Optional milestone callout; when any phase sets one, a milestone row is rendered. About 40 readable characters with 3 phases, 30 with 4, 21 with 5, or 16 with 6"),
 		},
 		[]string{"name"},
 	).WithAdditionalProperties(false)
@@ -454,7 +486,10 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 		}
 		applyPhaseRoadmapOverride(descCells[i], cellOverrides, descIdx0+i, accent)
 	}
-	rows = append(rows, jsonschema.GridRowInput{Cells: descCells, MaxHeight: math.Round(math.Max(descH, bodySize*contentLineHeight) + 2*defaultShapeInsetTBPt + 6)})
+	// The row keeps its content height as a minimum so a short content area
+	// squeezes the flexible rows, not the descriptions below their margin.
+	descRowH := math.Round(math.Max(descH, bodySize*contentLineHeight) + 2*defaultShapeInsetTBPt + 6)
+	rows = append(rows, jsonschema.GridRowInput{Cells: descCells, MinHeight: descRowH, MaxHeight: descRowH})
 
 	// Optional parallel-track block — label + full-width tinted bars.
 	if tracks != nil {

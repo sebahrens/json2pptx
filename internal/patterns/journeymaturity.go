@@ -94,8 +94,8 @@ func (jm *journeyMaturity) Schema() *Schema {
 	stageSchema := ObjectSchema(
 		map[string]*Schema{
 			"number":      IntegerSchema(1, 9).WithDescription("Optional stage number (defaults to 1..N by position)"),
-			"label":       StringSchema(40).WithDescription("Short stage label (1-3 words)"),
-			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 4/5/6 stages keep wide unbroken runs near 163/127/102 characters or add word breaks"),
+			"label":       StringSchema(40).WithDescription("Short stage label (1-3 words); at 6 stages keep unbroken runs near 34 characters"),
+			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; about 162 readable characters at 5 stages and 122 at 6; at 4/5/6 stages keep wide unbroken runs near 146/115/95 characters or add word breaks"),
 			"current":     BooleanSchema().WithDescription("When true, marks this stage as the present state and renders a 'where we are' marker beneath it"),
 		},
 		[]string{"label"},
@@ -172,20 +172,34 @@ func (jm *journeyMaturity) PostExpandWarnings(_ ExpandContext, values, _ any) []
 		return nil
 	}
 	var warnings []string
-	// Unbroken-word budgets measured against the written size on every
-	// shipped template (go-slide-creator-n1muf).
+	// Budgets measured against the written size on every shipped template,
+	// every shape keeping the uniform 0.5 cm text margin
+	// (go-slide-creator-n1muf): unbroken runs from four stages, worded copy
+	// from five, and unbroken labels at six.
 	if len(vals.Stages) >= 4 {
-		budget := map[int]int{4: 163, 5: 127}[len(vals.Stages)]
+		wide := map[int]int{4: 146, 5: 115}[len(vals.Stages)]
+		words := map[int]int{5: 162}[len(vals.Stages)]
+		labelWide := 0
 		if len(vals.Stages) >= 6 {
-			budget = 102
+			wide, words, labelWide = 95, 122, 34
 		}
 		for i, stage := range vals.Stages {
 			longest := 0
 			for _, word := range strings.Fields(stage.Description) {
 				longest = max(longest, runeLen(word))
 			}
-			if longest > budget {
-				warnings = append(warnings, fmt.Sprintf("%s: journey-maturity-model stages[%d].description contains a %d-character unbroken word; %d stages hold about %d wide characters per description — add a word break, shorten the copy, or use fewer stages", ErrCodeBodyTooLong, i, longest, len(vals.Stages), budget))
+			switch {
+			case longest > wide:
+				warnings = append(warnings, fmt.Sprintf("%s: journey-maturity-model stages[%d].description contains a %d-character unbroken word; %d stages hold about %d wide characters per description — add a word break, shorten the copy, or use fewer stages", ErrCodeBodyTooLong, i, longest, len(vals.Stages), wide))
+			case words > 0 && runeLen(stage.Description) > words:
+				warnings = append(warnings, fmt.Sprintf("%s: journey-maturity-model stages[%d].description is %d characters; %d stages hold about %d readable characters per description — shorten the copy or use fewer stages", ErrCodeBodyTooLong, i, runeLen(stage.Description), len(vals.Stages), words))
+			}
+			labelLongest := 0
+			for _, word := range strings.Fields(stage.Label) {
+				labelLongest = max(labelLongest, runeLen(word))
+			}
+			if labelWide > 0 && labelLongest > labelWide {
+				warnings = append(warnings, fmt.Sprintf("%s: journey-maturity-model stages[%d].label contains a %d-character unbroken word; %d stages hold about %d wide label characters — add a word break or shorten the label", ErrCodeBodyTooLong, i, labelLongest, len(vals.Stages), labelWide))
 			}
 		}
 	}

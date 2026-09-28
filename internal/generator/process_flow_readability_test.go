@@ -18,7 +18,7 @@ func TestProcessFlowReadableVerticalBoxes(t *testing.T) {
 	bounds := types.BoundingBox{Width: nativePreflightWidthEMU, Height: nativePreflightHeightEMU}
 	got := computeProcessFlowLayout(steps, nil, bounds, "vertical", "Arial")
 	for i, box := range got.steps {
-		w, h := pfTextArea(steps[i].stepType, box.cx, box.cy)
+		w, h := pfTextArea(steps[i], "Arial", box.cx, box.cy)
 		need := pfRequiredTextHeight(steps[i], "Arial", w)
 		if need > h {
 			t.Errorf("%s: box=%+v text width=%d need=%d available=%d", steps[i].label, box, w, need, h)
@@ -66,7 +66,7 @@ func TestProcessFlowReadableHeightIncludesDescription(t *testing.T) {
 	if withBody.cy <= plain.cy {
 		t.Fatalf("description must reserve space: plain=%+v with body=%+v", plain, withBody)
 	}
-	w, h := pfTextArea(step.stepType, withBody.cx, withBody.cy)
+	w, h := pfTextArea(step, "Arial", withBody.cx, withBody.cy)
 	if need := pfRequiredTextHeight(step, "Arial", w); need > h {
 		t.Fatalf("description clipped: need %d available %d", need, h)
 	}

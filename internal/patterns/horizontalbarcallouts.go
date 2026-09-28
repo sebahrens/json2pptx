@@ -44,7 +44,7 @@ const (
 	hbcLabelMax    = 40
 	hbcCalloutMax  = 200
 	hbcUnitMax     = 8
-	hbcLabelColPct = 22.0  // % of the left column reserved for the bar label
+	hbcLabelColPct = 30.0  // % of the left column reserved for the bar label
 	hbcLeftColPct  = 60.0  // outer split: left bar area
 	hbcRightColPct = 40.0  // outer split: right callout column
 	hbcFullColPct  = 100.0 // single column when no bar carries a callout
@@ -80,31 +80,30 @@ func (h *horizontalBarCallouts) SupportsInlineMarkdown() bool { return true }
 
 // hbcReadableCalloutBudget is measured against the written size (no run
 // stored below its role floor) on every shipped template at the default text
-// sizes (go-slide-creator-n1muf).
+// sizes, every shape keeping the uniform 0.5 cm text margin
+// (go-slide-creator-n1muf).
 func hbcReadableCalloutBudget(bars int) int {
 	switch {
-	case bars <= 4:
+	case bars <= 3:
 		return hbcCalloutMax
+	case bars == 4:
+		return 150
 	case bars == 5:
-		return 152
-	case bars == 6:
-		return 108
-	case bars == 7:
-		return 102
+		return 100
 	default:
-		return 53
+		return 50
 	}
 }
 
 // hbcReadableLabelBudget is the written-size label budget per bar count.
 func hbcReadableLabelBudget(bars int) int {
 	switch {
-	case bars <= 4:
+	case bars <= 3:
 		return hbcLabelMax
-	case bars <= 6:
-		return 30
+	case bars == 4:
+		return 38
 	default:
-		return 15
+		return 20
 	}
 }
 
@@ -194,9 +193,9 @@ func (h *horizontalBarCallouts) NewCellOverride() any { return &HorizontalBarCal
 func (h *horizontalBarCallouts) Schema() *Schema {
 	barSchema := ObjectSchema(
 		map[string]*Schema{
-			"label":   StringSchema(hbcLabelMax).WithDescription("Short bar label (1-3 words); about 40 readable characters with 3-4 bars, 30 with 5-6, 15 with 7-8"),
+			"label":   StringSchema(hbcLabelMax).WithDescription("Short bar label (1-3 words); about 40 readable characters with 3 bars, 38 with 4, 20 with 5-8"),
 			"value":   NumberSchema(0, 1e12).WithDescription("Numeric value rendered as a proportional bar"),
-			"callout": StringSchema(hbcCalloutMax).WithDescription("One-sentence insight rendered next to the bar; about 200 readable characters per callout with 3-4 bars, 152 with 5, 108 with 6, 102 with 7, or 53 with 8 (at default text sizes)"),
+			"callout": StringSchema(hbcCalloutMax).WithDescription("One-sentence insight rendered next to the bar; about 200 readable characters per callout with 3 bars, 150 with 4, 100 with 5, or 50 with 6-8 (at default text sizes)"),
 		},
 		[]string{"label", "value"},
 	).WithAdditionalProperties(false)

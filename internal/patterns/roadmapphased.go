@@ -86,16 +86,48 @@ func (r *roadmapPhased) NewCellOverride() any { return &RoadmapPhasedCellOverrid
 
 // Measured with TestRoadmapPhasedBudgetProbe against the written size (no run
 // stored below its role floor) on every shipped template
-// (go-slide-creator-n1muf). Rows are phase counts 2..8, columns workstream
-// counts 2..6.
+// (go-slide-creator-n1muf), every shape keeping the uniform 0.5 cm text
+// margin. Rows are phase counts 2..8, columns workstream counts 2..6.
 var roadmapPhasedItemBudgets = [7][5]int{
-	{80, 80, 80, 80, 80},
-	{80, 80, 80, 70, 70},
-	{80, 80, 76, 51, 50},
-	{80, 80, 60, 40, 40},
-	{80, 75, 46, 31, 30},
-	{80, 52, 32, 22, 22},
-	{80, 50, 31, 21, 20},
+	{80, 80, 80, 51, 51},
+	{80, 80, 61, 31, 31},
+	{80, 62, 42, 22, 22},
+	{80, 47, 31, 16, 16},
+	{62, 32, 22, 12, 12},
+	{60, 30, 20, 10, 10},
+	{32, 17, 12, 7, 7},
+}
+
+// roadmapPhasedNameBudget is the readable workstream-name length.
+func roadmapPhasedNameBudget(phases, workstreams int) int {
+	switch {
+	case workstreams <= 3:
+		return 40
+	case workstreams == 4 && phases <= 5:
+		return 38
+	case workstreams == 4:
+		return 32
+	case phases <= 5:
+		return 20
+	default:
+		return 17
+	}
+}
+
+// roadmapPhasedPhaseBudget is the readable phase-label length.
+func roadmapPhasedPhaseBudget(phases int) int {
+	switch {
+	case phases <= 4:
+		return 20
+	case phases == 5:
+		return 16
+	case phases == 6:
+		return 12
+	case phases == 7:
+		return 10
+	default:
+		return 7
+	}
 }
 
 func roadmapPhasedItemBudget(phases, workstreams int) int {
@@ -112,6 +144,18 @@ func (r *roadmapPhased) PostExpandWarnings(_ ExpandContext, values, _ any) []str
 	}
 	budget := roadmapPhasedItemBudget(len(v.Phases), len(v.Workstreams))
 	var warnings []string
+	phaseBudget := roadmapPhasedPhaseBudget(len(v.Phases))
+	for i, phase := range v.Phases {
+		if n := runeLen(phase); n > phaseBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: roadmap-phased phases[%d] is %d characters; %d phases hold about %d readable characters per phase label — shorten the label or use fewer phases", ErrCodeBodyTooLong, i, n, len(v.Phases), phaseBudget))
+		}
+	}
+	nameBudget := roadmapPhasedNameBudget(len(v.Phases), len(v.Workstreams))
+	for i, ws := range v.Workstreams {
+		if n := runeLen(ws.Name); n > nameBudget {
+			warnings = append(warnings, fmt.Sprintf("%s: roadmap-phased workstreams[%d].name is %d characters; a %d-phase x %d-workstream roadmap holds about %d readable name characters — shorten the name or use fewer workstreams", ErrCodeBodyTooLong, i, n, len(v.Phases), len(v.Workstreams), nameBudget))
+		}
+	}
 	for i, ws := range v.Workstreams {
 		for j, item := range ws.Items {
 			if n := runeLen(item); n > budget {
@@ -125,15 +169,15 @@ func (r *roadmapPhased) PostExpandWarnings(_ ExpandContext, values, _ any) []str
 func (r *roadmapPhased) Schema() *Schema {
 	workstreamSchema := ObjectSchema(
 		map[string]*Schema{
-			"name":  StringSchema(40).WithDescription("Workstream name"),
-			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One activity per phase (empty = none). Approximate readable chars per pill by phase count x workstream count (workstreams 2/3/4/5/6): phases 2: 80/80/80/80/80; 3: 80/80/80/70/70; 4: 80/80/76/51/50; 5: 80/80/60/40/40; 6: 80/75/46/31/30; 7: 80/52/32/22/22; 8: 80/50/31/21/20"),
+			"name":  StringSchema(40).WithDescription("Workstream name; about 40 readable characters with 2-3 workstreams, 38 with 4 (32 at 6+ phases), 20 with 5-6 (17 at 6+ phases)"),
+			"items": ArraySchema(StringSchema(80), 2, 8).WithDescription("One activity per phase (empty = none). Approximate readable chars per pill by phase count x workstream count (workstreams 2/3/4/5/6): phases 2: 80/80/80/51/51; 3: 80/80/61/31/31; 4: 80/62/42/22/22; 5: 80/47/31/16/16; 6: 62/32/22/12/12; 7: 60/30/20/10/10; 8: 32/17/12/7/7"),
 		},
 		[]string{"name", "items"},
 	).WithAdditionalProperties(false)
 
 	valuesSchema := ObjectSchema(
 		map[string]*Schema{
-			"phases":      ArraySchema(StringSchema(20), 2, 8).WithDescription("Phase/period labels (column headers)"),
+			"phases":      ArraySchema(StringSchema(20), 2, 8).WithDescription("Phase/period labels (column headers); about 20 readable characters up to 4 phases, 16/12/10/7 at 5/6/7/8"),
 			"workstreams": ArraySchema(workstreamSchema, 2, 6).WithDescription("Workstreams (rows) with items per phase"),
 		},
 		[]string{"phases", "workstreams"},

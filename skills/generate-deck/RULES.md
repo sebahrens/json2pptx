@@ -16,7 +16,7 @@ Non-negotiable. Violating these causes broken or incorrect slides.
 | 6b | `card-grid` cells and `icon-row` items accept an optional `secondary: {type, values, categories?, color?}` slot. `type` is restricted to `sparkline`, `bar_chart`, or `line_chart`; `values` is a 2–12 element numeric array; `categories` (when set) must match `values` length. At most one secondary per cell. The pattern expands to a composite cell automatically — no need to drop to raw `shape_grid`. Example: `{"header": "Revenue", "body": "Q1–Q4 trend", "secondary": {"type": "sparkline", "values": [100, 120, 110, 145]}}` | Lets a card or icon-row cell host a small inline chart while keeping pattern-level validation (cell-count, headers, captions) intact |
 | 6c | A grid cell may host a nested layout via `pattern: {name, values, overrides?, cell_overrides?}` (the same payload used at the slide level) or via `grid: {…ShapeGridInput…}` (a recursive sub-grid). The nested layout is rendered inside the cell rectangle with a small 4pt inset. `pattern` and `grid` are mutually exclusive with each other and with `shape`/`table`/`icon`/`image`/`diagram`/`composite` on the same cell. Accent inheritance follows the deck's `accent_strategy` — nested patterns see the same slide/section index as the parent. Example: a `matrix-2x2` with `pattern: {name: "kpi-3up", values: [...]}` in its bottom-right cell | Lets agents drop a `kpi-3up` into a quadrant or an `icon-row` into a `strategy-house` foundation row without escalating to slide-level `compose`. Cells hosting a nested layout become bounds-only `subgrid` placeholders; the nested cells are appended to the parent `ResolvedCell` list so overlay `anchor_cell` lookups still work |
 | 6d | A raster `image` cell takes an optional `geometry`: `"rect"` (default) or `"ellipse"`. `"ellipse"` clips the cover-cropped picture to its frame's ellipse — pair it with `fit: "contain"` for a circular headshot | The picture is not edited; the p:pic frame preset changes. Anything other than `rect` / `ellipse` is a validation error. `contact-directory` uses it for its headshots |
-| 7 | Body text cells MUST set all 4 insets (6-10pt each) | Without insets, text jams against shape edges |
+| 7 | Do NOT set `inset_*`: every shape's text already keeps 0.5 cm from each edge | Overrides shrink that margin; size rows for it instead (~43pt per 12pt line) |
 
 ## Typography Hierarchy (shape_grid)
 
@@ -30,7 +30,7 @@ Do not invent font sizes. When generating `shape_grid` JSON, use these consisten
 | Step number        | 20-24pt | Bold    | White on accent, narrow column              |
 | Footnote/source    | 7-8pt   | Regular | Grey (#666666)                              |
 
-Always set text insets (6-12pt) on body cells. Anything outside these ranges should be a deliberate, named-pattern override — never an ad-hoc choice. See [`docs/INPUT_FORMAT.md`](../../docs/INPUT_FORMAT.md) for full examples.
+Leave text insets at the 0.5 cm default. Anything outside these ranges should be a deliberate, named-pattern override — never an ad-hoc choice. See [`docs/INPUT_FORMAT.md`](../../docs/INPUT_FORMAT.md) for full examples.
 
 The numeric ranges above are the published surface of the canonical design tokens in [`internal/tokens/tokens.go`](../../internal/tokens/tokens.go) (`GridHeader*`, `CardTitle*`, `CardBody*`, `StepNumber*`, `Footnote*`). A regression test (`internal/tokens/tokens_test.go`) verifies this table stays in sync with the constants — if you change one, change the other in the same PR.
 

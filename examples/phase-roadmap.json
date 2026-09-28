@@ -22,25 +22,25 @@
             {
               "name": "Plan",
               "date_label": "Mar–Apr 2025",
-              "description": "Define scope, establish governance, align stakeholders."
+              "description": "Define scope and align stakeholders."
             },
             {
               "name": "Build",
               "date_label": "May–Jul 2025",
-              "description": "Implement core capabilities and run pilot deployment.",
+              "description": "Build core capabilities; run the pilot.",
               "active": true,
               "milestone": "Pilot go-live"
             },
             {
               "name": "Scale",
               "date_label": "Aug–Oct 2025",
-              "description": "Roll out to remaining business units and onboard suppliers.",
+              "description": "Roll out to remaining business units.",
               "milestone": "$2M savings target"
             },
             {
               "name": "Optimize",
               "date_label": "Nov–Dec 2025",
-              "description": "Tune cost, capture lessons, hand to business-as-usual operations."
+              "description": "Tune cost and hand over to operations."
             }
           ]
         },
@@ -97,20 +97,14 @@
         "name": "phase-roadmap",
         "values": {
           "phases": [
-            {"name": "Prioritized opportunity", "date_label": "Weeks 1–8", "description": "Assess maturity, pick workflows, size P&L, set governance."},
-            {"name": "Lighthouse builds", "date_label": "Months 3–6", "description": "Reimagine 2–3 workflows end to end with owners.", "active": true, "milestone": "First lighthouse live"},
-            {"name": "Wave 1 scale-up", "date_label": "Months 6–12", "description": "Expand across units; upskill and manage performance."},
-            {"name": "Continuous expansion", "date_label": "12 months+", "description": "Extend the value chain toward an AI-native model."}
+            {"name": "Prioritized opportunity", "date_label": "Weeks 1–8", "description": "Pick workflows and size the P&L."},
+            {"name": "Lighthouse builds", "date_label": "Months 3–6", "description": "Reimagine 2–3 workflows end to end.", "active": true, "milestone": "First lighthouse live"},
+            {"name": "Wave 1 scale-up", "date_label": "Months 6–12", "description": "Expand across units and upskill."},
+            {"name": "Continuous expansion", "date_label": "12 months+", "description": "Move toward an AI-native model."}
           ],
           "parallel_tracks": [
-            "Data and technology architecture, modernization, integrations, and governance",
-            "AI governance, agent permissions, measurement, and Transformation Management Office",
             "AI activation, change management, talent, and upskilling"
           ]
-        },
-        "callout": {
-          "text": "Lighthouse value funds the Wave 1 scale-up.",
-          "emphasis": "bold"
         }
       }
     }

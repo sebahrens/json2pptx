@@ -13,12 +13,13 @@ func TestMatrix2x2PairedQuadrantBudget(t *testing.T) {
 		body   string
 		warn   bool
 	}{
-		{"wide_pair_over_budget", strings.Repeat("W", 80), strings.Repeat("W", 63), true},
-		{"wide_pair_at_budget", strings.Repeat("W", 80), strings.Repeat("W", 62), false},
-		{"short_header_wide_body", "Stars", strings.Repeat("W", 188), false},
-		{"short_header_over", "Stars", strings.Repeat("W", 189), true},
-		{"word_like_header", strings.Repeat("word ", 16), strings.Repeat("W", 156), false},
-		{"word_like_header_over", strings.Repeat("word ", 16), strings.Repeat("W", 157), true},
+		{"wide_pair_over_budget", strings.Repeat("W", 80), strings.Repeat("W", 41), true},
+		{"wide_pair_at_budget", strings.Repeat("W", 80), strings.Repeat("W", 40), false},
+		{"header_run_at_budget", strings.Repeat("W", 47), strings.Repeat("W", 126), false},
+		{"short_header_wide_body", "Stars", strings.Repeat("W", 163), false},
+		{"short_header_over", "Stars", strings.Repeat("W", 164), true},
+		{"word_like_header", strings.Repeat("word ", 16), strings.Repeat("W", 126), false},
+		{"word_like_header_over", strings.Repeat("word ", 16), strings.Repeat("W", 127), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			values := &Matrix2x2Values{TopLeft: Matrix2x2Quadrant{Header: tc.header, Body: tc.body}}

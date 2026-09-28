@@ -531,7 +531,7 @@ Use these scheme names for template-consistent colors: `accent1`-`accent6`, `dk1
 | `vertical_align` | `string` | `"ctr"`   | Vertical: `"t"`, `"ctr"`, `"b"` |
 | `color`          | `string` | ---       | `"#hex"` or scheme name |
 | `font`           | `string` | `"+mn-lt"`| Font name or theme reference |
-| `inset_top` / `inset_bottom` / `inset_left` / `inset_right` | `number` | 0 | Text insets in points |
+| `inset_top` / `inset_bottom` / `inset_left` / `inset_right` | `number` | 14.17 (0.5 cm) | Text insets in points; each side defaults to the uniform 0.5 cm shape margin, an authored side replaces only that side |
 
 ### Example: Process Flow (Chevron Header + Detail Cards)
 

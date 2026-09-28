@@ -294,7 +294,7 @@ func appendCalloutRow(grid *jsonschema.ShapeGridInput, callout *patterns.Pattern
 // text wrapped at the pattern's width, or 0 when it fits on one line (the
 // auto-height estimate already covers one line) or cannot be measured.
 func calloutMinHeightPt(text string, bold bool, ctx patterns.ExpandContext) float64 {
-	const sizePt, insetLRPt, insetTBPt = 14.0, 7.2, 3.6
+	const sizePt, insetLRPt, insetTBPt = 14.0, pptx.ShapeTextInsetPt, pptx.ShapeTextInsetPt
 	widthEMU := ctx.LayoutBounds.Width
 	if widthEMU <= 0 {
 		widthEMU = shapegrid.DefaultBounds(ctx.SlideWidth, ctx.SlideHeight).CX

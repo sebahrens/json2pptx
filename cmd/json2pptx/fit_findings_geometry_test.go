@@ -113,7 +113,9 @@ func TestGeometry_RectLongWordAndShortLabelOK(t *testing.T) {
 }
 
 func TestGeometry_PointyOverflowSuppressesRaiseBandAdvice(t *testing.T) {
-	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"bounds":{"x":0,"y":0,"width":100,"height":35},"columns":8,"rows":[{"cells":[
+	// Narrow enough that the widest labels overflow even after the capped
+	// notch and the side-margin clamp give the text every point they can.
+	in := geomSlides(t, `[{"layout_id":"content","shape_grid":{"bounds":{"x":0,"y":0,"width":60,"height":35},"columns":8,"rows":[{"cells":[
 		{"shape":{"geometry":"chevron","fill":"accent1","text":"Baseline"}},
 		{"shape":{"geometry":"chevron","fill":"accent1","text":"Design"}},
 		{"shape":{"geometry":"chevron","fill":"accent1","text":"Consult"}},

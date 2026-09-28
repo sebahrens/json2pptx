@@ -12,12 +12,12 @@ func TestAgendaDenseUnbrokenTitleWarning(t *testing.T) {
 	for i := range v.Items {
 		v.Items[i] = "Section title"
 	}
-	v.Items[2] = strings.Repeat("W", 59)
+	v.Items[2] = strings.Repeat("W", 60)
 	got := p.PostExpandWarnings(ExpandContext{}, v, nil)
-	if len(got) != 1 || !strings.Contains(got[0], "items[2]") || !strings.Contains(got[0], "about 58") {
+	if len(got) != 1 || !strings.Contains(got[0], "items[2]") || !strings.Contains(got[0], "about 59") {
 		t.Fatalf("dense unbroken title warning: %v", got)
 	}
-	v.Items[2] = strings.Repeat("W", 58)
+	v.Items[2] = strings.Repeat("W", 59)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("measured wide target should fit: %v", got)
 	}
@@ -25,10 +25,19 @@ func TestAgendaDenseUnbrokenTitleWarning(t *testing.T) {
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
 		t.Fatalf("word-like schema maximum should fit: %v", got)
 	}
-	v.Items = v.Items[:7]
+	v.Items = v.Items[:5]
+	v.Items[2] = strings.Repeat("W", 62)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 1 || !strings.Contains(got[0], "about 61") {
+		t.Fatalf("five-row unbroken title warning: %v", got)
+	}
+	v.Items[2] = strings.Repeat("W", 61)
+	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
+		t.Fatalf("five-row measured target should fit: %v", got)
+	}
+	v.Items = v.Items[:4]
 	v.Items[2] = strings.Repeat("W", 100)
 	if got := p.PostExpandWarnings(ExpandContext{}, v, nil); len(got) != 0 {
-		t.Fatalf("seven-row schema maximum should fit: %v", got)
+		t.Fatalf("four-row schema maximum should fit: %v", got)
 	}
 }
 

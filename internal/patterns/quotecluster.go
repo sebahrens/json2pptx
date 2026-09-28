@@ -113,15 +113,16 @@ func (q *quoteCluster) PostExpandWarnings(ctx ExpandContext, values, overrides a
 		return nil
 	}
 	// Reference payloads measured against the written size on every shipped
-	// template (go-slide-creator-n1muf): with 4-6 quotes, 217 text characters
-	// beside maximal attributions; with 7-8, 81 (maximal) or 128 (48/65).
+	// template with the uniform 0.5 cm shape text margin
+	// (go-slide-creator-n1muf): with 4-6 quotes, 161 text characters beside
+	// maximal attributions; with 7-8, 81 beside a 20-character name and a
+	// 27-character title (maximal attributions leave no readable quote).
 	targets := []QuoteClusterItem{
-		{Text: quoteClusterBudgetCopy(217), Name: quoteClusterBudgetCopy(60), Title: quoteClusterBudgetCopy(80)},
+		{Text: quoteClusterBudgetCopy(161), Name: quoteClusterBudgetCopy(60), Title: quoteClusterBudgetCopy(80)},
 	}
 	if len(v.Quotes) > 6 {
 		targets = []QuoteClusterItem{
-			{Text: quoteClusterBudgetCopy(81), Name: quoteClusterBudgetCopy(60), Title: quoteClusterBudgetCopy(80)},
-			{Text: quoteClusterBudgetCopy(128), Name: quoteClusterBudgetCopy(48), Title: quoteClusterBudgetCopy(65)},
+			{Text: quoteClusterBudgetCopy(81), Name: quoteClusterBudgetCopy(20), Title: quoteClusterBudgetCopy(27)},
 		}
 	}
 	limit := 0.0
@@ -139,7 +140,7 @@ func (q *quoteCluster) PostExpandWarnings(ctx ExpandContext, values, overrides a
 	if quoteClusterHeight(grid) <= limit {
 		return nil
 	}
-	return []string{fmt.Sprintf("%s: quote-cluster quotes.text/name/title exceed the measured three-row copy budget; with 4–6 quotes keep quote text near 217 characters beside maximal attributions; with 7–8, near 81 when names and titles are at their maxima, or near 128 with shorter attributions — shorten copy or split the quotes across slides", ErrCodeBodyTooLong)}
+	return []string{fmt.Sprintf("%s: quote-cluster quotes.text/name/title exceed the measured three-row copy budget; with 4–6 quotes keep quote text near 161 characters beside maximal attributions; with 7–8, near 81 beside a name of about 20 and a title of about 27 characters — shorten copy or split the quotes across slides", ErrCodeBodyTooLong)}
 }
 
 func quoteClusterBudgetCopy(length int) string {
@@ -157,7 +158,7 @@ func quoteClusterHeight(grid *jsonschema.ShapeGridInput) float64 {
 func (q *quoteCluster) Schema() *Schema {
 	quoteSchema := ObjectSchema(
 		map[string]*Schema{
-			"text":  StringSchema(quoteClusterTextMax).WithDescription("Quote text (italic, ~10pt); with 4-6 quotes about 217 characters beside maximal names/titles; with 7-8 quotes about 81 when names/titles are at maxima, or 128 with shorter attributions"),
+			"text":  StringSchema(quoteClusterTextMax).WithDescription("Quote text (italic, ~10pt); with 4-6 quotes about 161 characters beside maximal names/titles; with 7-8 quotes about 81 beside a name of about 20 and a title of about 27 characters"),
 			"name":  StringSchema(quoteClusterNameMax).WithDescription("Speaker name (bold)"),
 			"title": StringSchema(quoteClusterTitleMax).WithDescription("Optional role or title rendered next to the name"),
 		},

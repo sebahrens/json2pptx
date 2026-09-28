@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"math"
 	"testing"
+
+	"github.com/sebahrens/json2pptx/internal/pptx"
+	"github.com/sebahrens/json2pptx/internal/shapegrid"
 )
 
 // processFlowChevronCtx is a full-slide expand context, so the geometry the
@@ -67,16 +70,16 @@ func TestProcessFlowChevronKeepsItsLabelOutOfTheNotch(t *testing.T) {
 			t.Errorf("cell %d adj = %d, want %d", i, got, chevronAdj)
 		}
 
-		var text struct {
-			InsetLeft  float64 `json:"inset_left"`
-			InsetRight float64 `json:"inset_right"`
-		}
+		// The preset's text rectangle already reserves the notch; the label
+		// keeps only the uniform shape margin (no inset_* of its own).
+		var text map[string]any
 		if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
 			t.Fatalf("cell %d text: %v", i, err)
 		}
-		if text.InsetLeft != chevronTextPadPt || text.InsetRight != chevronTextPadPt {
-			t.Errorf("cell %d adds notch depth twice: bodyPr insets = (%.1f, %.1f)pt; preset already reserves %.1fpt per side",
-				i, text.InsetLeft, text.InsetRight, notch)
+		for _, k := range []string{"inset_left", "inset_right", "inset_top", "inset_bottom"} {
+			if _, has := text[k]; has {
+				t.Errorf("cell %d overrides the uniform shape margin with %s (notch %.1fpt is reserved by the preset)", i, k, notch)
+			}
 		}
 	}
 
@@ -89,7 +92,7 @@ func TestProcessFlowChevronKeepsItsLabelOutOfTheNotch(t *testing.T) {
 		t.Errorf("row max_height = %.0f, want the capped %.0f", grid.Rows[0].MaxHeight, height)
 	}
 	// The label is left with a usable share of the shape rather than a column.
-	if textWidth := width - 2*(notch+chevronTextPadPt); textWidth < width*0.6 {
+	if textWidth := width - 2*(notch+defaultShapeInsetLRPt); textWidth < width*0.45 {
 		t.Errorf("the label gets %.0fpt of a %.0fpt chevron (%.0f%%); it used to be a column", textWidth, width, textWidth/width*100)
 	}
 }
@@ -129,7 +132,8 @@ func TestProcessFlowPlainStepsKeepTheirConnectors(t *testing.T) {
 	}
 }
 
-// A single arrow step is pointed too, and gets the same treatment.
+// A single arrow step is pointed too, and gets the same treatment: the uniform
+// shape margin, no pattern-authored inset.
 func TestProcessFlowArrowStepsAreInsetLikeChevrons(t *testing.T) {
 	pat, _ := Default().Get("process-flow")
 	vals := &ProcessFlowValues{Steps: []ProcessFlowStep{
@@ -140,14 +144,12 @@ func TestProcessFlowArrowStepsAreInsetLikeChevrons(t *testing.T) {
 		t.Fatalf("expand: %v", err)
 	}
 	for i, cell := range grid.Rows[0].Cells {
-		var text struct {
-			InsetLeft float64 `json:"inset_left"`
-		}
-		if err := json.Unmarshal(cell.Shape.Text, &text); err != nil {
+		tb, err := shapegrid.ResolveTextInput(cell.Shape.Text)
+		if err != nil {
 			t.Fatalf("cell %d text: %v", i, err)
 		}
-		if text.InsetLeft <= 0 {
-			t.Errorf("arrow cell %d has no side inset; its point will eat the label", i)
+		if tb.Insets != pptx.ShapeTextInsets() {
+			t.Errorf("arrow cell %d insets = %v, want the uniform shape margin", i, tb.Insets)
 		}
 	}
 }

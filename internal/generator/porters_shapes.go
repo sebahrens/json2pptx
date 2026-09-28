@@ -72,9 +72,6 @@ const (
 	// 900 = 9pt
 	porterIntensityFontSize int = 900
 
-	// porterTextInset is the text inset for all text areas (EMU).
-	porterTextInset int64 = 73152 // ~0.08"
-
 	// porterConnectorWidth is the connector line width in EMU.
 	// 12700 EMU = 1pt
 	porterConnectorWidth int64 = 12700
@@ -697,7 +694,7 @@ func generatePorterForceBoxXML(f porterForceData, x, y, w, h int64, shapeID uint
 		Text: &pptx.TextBody{
 			Wrap:       "square",
 			Anchor:     "ctr",
-			Insets:     [4]int64{porterTextInset, porterTextInset, porterTextInset, porterTextInset},
+			Insets:     pptx.ShapeTextInsets(),
 			AutoFit:    "normAutofit",
 			Paragraphs: paras,
 		},
