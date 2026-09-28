@@ -1,5 +1,34 @@
 # Schema Changelog
 
+- **2026-09-28 — Schema 4.152.0: slimmer MCP surface (`go-slide-creator-355t7`, `-fa3k8`, `-ppned`).**
+  - New default tool profile `deckspec`: `tools/list` advertises 12 DeckSpec
+    tools (get_started, list_templates, examine_template, list_slide_kinds,
+    validate_deck_spec, render_deck_spec, render_deck_thumbnails,
+    submit_visual_review, describe_finding, score_deck, recommend_visual,
+    plan_deck) in ~37.8KB (was 24 tools / ~97.5KB). Its `validate_deck_spec`
+    carries the DeckSpec outline instead of the closed per-kind schema;
+    `list_slide_kinds` `fields:["item_schema"]` serves a kind's contract.
+    `--tools core` (new alias `raw`) keeps the raw-JSON path (23 tools,
+    ~85KB); `--tools all` lists the rest (~294KB, was ~332KB).
+  - Folded aliases, registered and callable but advertised by no profile:
+    `recommend_pattern` → `recommend_visual`, `render_slide_image` →
+    `render_deck_thumbnails` `slide_indices`, `repair_slides_batch` →
+    `repair_slide`, `get_chart_capabilities` / `get_diagram_capabilities` →
+    `list_templates` `fields:"full"`. A `next_tool_call` naming one is
+    retargeted to its successor.
+  - Tool descriptions are capped at 1.5KB. `repair_slide`'s per-kind params
+    moved to `get_capabilities().vocabularies.repair_fix_kind_params`.
+  - `render_deck_thumbnails` states `image_mime_type` once at the top level
+    (per-slide only when it differs); `slides[].path` is documented as the
+    full-resolution PNG beside the downscaled JPEG block. Use density 50–75
+    for full-deck passes.
+  - `list_slide_kinds` `item_schema` publishes an alias whose schema repeats
+    its canonical field's as `{"$ref": "#/properties/<canonical>"}`, and types
+    option_matrix `options[].scores` / `values` as arrays of numbers or strings
+    (they were typed string, so the kind's own example failed its schema;
+    `validate_deck_spec`'s closed schema changes the same way).
+  The tool name set is unchanged, so the schema fingerprint is unchanged.
+
 - **2026-09-28 — Schema 4.151.0: MCP completion state and error ergonomics (`go-slide-creator-mn33v`, `-z3pbp`, `-6p9mm`, `-pi6ea`).**
   - `generate_presentation` gains render_deck_spec's completion block —
     `deterministic_ready`, `publishable` (false on a fresh render),

@@ -4,8 +4,8 @@ Read this when authoring or revising a DeckSpec. For live kind names, required
 fields, aliases, examples, and supported compositions, call
 `list_slide_kinds` (compact by default); request
 `kinds:["<chosen-kind>"], fields:["item_schema","compositions"]` only for a
-kind you intend to use. `validate_deck_spec` carries the authoritative closed
-schema. Do not copy a static kind catalog from an older document.
+kind you intend to use. `item_schema` is the closed contract; an alias is a
+`$ref`. Do not copy a static kind catalog from an older document.
 
 ## Plan the narrative
 

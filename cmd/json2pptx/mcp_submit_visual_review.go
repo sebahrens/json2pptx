@@ -72,20 +72,18 @@ func lookupDeterministicGate(sha string) ([]string, bool) {
 
 func mcpSubmitVisualReviewTool() mcp.Tool {
 	return mcp.NewTool("submit_visual_review",
-		mcp.WithDescription(`Record a host/manual visual review verdict for a generated PPTX — the completion path when no vision provider (ANTHROPIC_API_KEY) is configured, or when a human/host agent inspected the rendered slides itself.
+		mcp.WithDescription(`Record a host/manual visual review verdict for a rendered PPTX — the completion path when no vision provider (ANTHROPIC_API_KEY) is configured, or when you or a human inspected the rendered slides.
 
-Inputs: pptx_path, pptx_revision (the sha256 content_hash of the exact PPTX you reviewed, as returned by generate_presentation / render_deck_spec), and one entry per slide in slides[]: {index (0-based), verdict: approved|changes_requested|inconclusive, image_path or image_sha256 (the rendered PNG you inspected, e.g. from render_deck_thumbnails), role?, findings?: [{severity, category, description, location?, bbox?}]}. Optional reviewer: "host" (default) or "manual"; optional revision (semantic manifest revision, checked when given).
+Inputs: pptx_path; pptx_revision (the sha256 content_hash of the exact PPTX reviewed, as the render response returned it); slides[] with EVERY slide exactly once: {index, verdict: approved|changes_requested|inconclusive, image_path or image_sha256, findings?}; reviewer "host" (default) or "manual"; optional semantic revision. Partial coverage or a stale revision is rejected (INVALID_PARAMETER) and nothing is recorded.
 
-The review is validated by ReviewRecord.ValidateCompletion: EVERY slide must be covered exactly once with a pixel hash, and pptx_revision must equal the current file's sha256 — partial coverage or a stale revision is rejected (INVALID_PARAMETER) and nothing is recorded.
+The images are evidence: each must be this server's render of that slide of this exact PPTX — submit the path / content_hash render_deck_thumbnails returned. Another slide's or deck's image is rejected, naming the slide it really is. With no server render to compare, the review is recorded as reviewed_unverified_images, never the completion status.
 
-The images are evidence, so they are checked against the artifact's own pixels: each slide's pixel hash must equal this server's render of that slide of this exact PPTX (any density it was rendered at counts). Submitting another slide's image, or another deck's, is rejected with INVALID_PARAMETER naming which slide the image really is. Render with render_deck_thumbnails (or render_slide_image per slide) and submit the returned path / content_hash. When this server has no render of the artifact to compare against, the review is still recorded but image_verification.status is "unverifiable", evidence.pixels_rendered stays false, and the status is "reviewed_unverified_images" — never the completion status, and no manifest evidence is written.
-
-On success the response carries quality evidence with inspection_backend=host|manual; status is "visually_reviewed_current_revision" only when every slide is approved with no P0/P1 finding, the artifact passes structural output validation, AND image_verification.status is "verified" AND, when this server rendered the artifact with render_deck_spec, that render's deterministic gate passed — otherwise status is "reviewed_deterministic_blockers" with blocking_reasons, and publishable is false. When <pptx_path>.authoring.json exists for this artifact and the images verified, its visual_evidence is updated.`),
+status is "visually_reviewed_current_revision" only when every slide is approved with no P0/P1 finding, output validation passes, the images verify, and (for a render_deck_spec artifact) the deterministic gate passed; otherwise "reviewed_deterministic_blockers" with blocking_reasons and publishable=false.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaSubmitVisualReview)),
 		mcp.WithString("pptx_path", mcp.Required(), mcp.Description("Path to the reviewed PPTX file.")),
 		mcp.WithString("pptx_revision", mcp.Required(), mcp.Description("sha256 (content_hash) of the PPTX that was reviewed; must match the current file.")),
 		mcp.WithArray("slides", mcp.Required(),
-			mcp.Description(`One entry per slide: [{"index":0,"verdict":"approved","image_path":"/tmp/thumbs/slide-1.png","findings":[]}, ...]. Every slide must be covered, and each entry must carry the image you inspected — image_path OR image_sha256, from render_deck_thumbnails / render_slide_image. A submission without one is rejected: the image is the evidence. A recycled or foreign image is rejected too.`),
+			mcp.Description(`One entry per slide: [{"index":0,"verdict":"approved","image_path":"/tmp/thumbs/slide-1.png","findings":[]}, ...]. Every slide must be covered, and each entry must carry the image you inspected — image_path OR image_sha256, from render_deck_thumbnails. A submission without one is rejected: the image is the evidence. A recycled or foreign image is rejected too.`),
 			mcp.Items(visualReviewSlideItemSchema())),
 		mcp.WithString("reviewer", mcp.Description(`Who reviewed: "host" (default, the calling agent) or "manual" (a human).`)),
 		mcp.WithString("revision", mcp.Description("Optional semantic revision (render_deck_spec revision); when given it must match the deck's authoring manifest.")),
@@ -115,7 +113,7 @@ func visualReviewSlideItemSchema() map[string]any {
 			},
 			"image_path": map[string]any{
 				"type":        "string",
-				"description": "Path to the rendered PNG you inspected, as returned by render_deck_thumbnails / render_slide_image. Required unless image_sha256 is given.",
+				"description": "Path to the rendered PNG you inspected (render_deck_thumbnails slides[].path). Required unless image_sha256 is given.",
 			},
 			"image_sha256": map[string]any{
 				"type":        "string",

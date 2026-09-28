@@ -44,6 +44,60 @@ var suggestionSubstitutes = map[string]func(args map[string]any) *patterns.ToolC
 	"validate_presentation_output": func(args map[string]any) *patterns.ToolCallSuggestion {
 		return renderThumbnailsSuggestion(args, "path", "pptx_path")
 	},
+	// Folded aliases (go-slide-creator-fa3k8): the successor does the job.
+	"render_slide_image": func(args map[string]any) *patterns.ToolCallSuggestion {
+		s := renderThumbnailsSuggestion(args, "pptx_path")
+		if idx, ok := args["slide_index"]; ok {
+			s.ArgsTemplate["slide_indices"] = []any{idx}
+		}
+		return s
+	},
+	// repair_slide takes one slide's fixes; carry the batch's first slide.
+	"repair_slides_batch": func(args map[string]any) *patterns.ToolCallSuggestion {
+		out := map[string]any{"slide_index": 0}
+		for _, k := range []string{"presentation", "deck_id"} {
+			if v, ok := args[k]; ok {
+				out[k] = v
+			}
+		}
+		var fixes []any
+		list, _ := args["fixes"].([]any)
+		for i, raw := range list {
+			f, _ := raw.(map[string]any)
+			if f == nil {
+				continue
+			}
+			if i == 0 {
+				if idx, ok := f["slide_index"]; ok {
+					out["slide_index"] = idx
+				}
+			}
+			if f["slide_index"] != out["slide_index"] {
+				continue
+			}
+			fix := map[string]any{"kind": f["kind"]}
+			if p, ok := f["params"]; ok {
+				fix["params"] = p
+			}
+			fixes = append(fixes, fix)
+		}
+		if len(fixes) == 0 {
+			fixes = []any{map[string]any{"kind": "<fix kind>", "params": map[string]any{}}}
+		}
+		out["fixes"] = fixes
+		return &patterns.ToolCallSuggestion{Tool: "repair_slide", ArgsTemplate: out}
+	},
+	"get_chart_capabilities":   fullTemplatesSuggestion,
+	"get_diagram_capabilities": fullTemplatesSuggestion,
+}
+
+// fullTemplatesSuggestion points at list_templates fields="full", whose
+// supported_types carries chart_capabilities and diagram_capabilities.
+func fullTemplatesSuggestion(map[string]any) *patterns.ToolCallSuggestion {
+	return &patterns.ToolCallSuggestion{
+		Tool:         "list_templates",
+		ArgsTemplate: map[string]any{"fields": "full", "page_size": 1},
+	}
 }
 
 // renderThumbnailsSuggestion builds a render_deck_thumbnails suggestion, reusing

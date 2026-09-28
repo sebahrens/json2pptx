@@ -73,23 +73,17 @@ func deckPatchOpKinds() []string {
 
 func mcpApplyDeckPatchTool() mcp.Tool {
 	return mcp.NewTool("apply_deck_patch",
-		mcp.WithDescription(`Pure deck-JSON transform primitive: apply a bounded list of structural operations to a deck and return the patched JSON plus validation/preflight findings. It never writes files, renders, or mutates server state — feed patched_deck straight into validate_input / generate_presentation / repair_slide.
+		mcp.WithDescription(`Pure, ATOMIC deck-JSON transform: apply ops[] in order to a raw deck and return {patched_deck, applied_ops[], findings} (a FindingEnvelope of validation + fit/preflight findings; branch on findings.ok). It never writes files, renders, scores or keeps state; feed patched_deck to validate_input / generate_presentation / repair_slide. Any invalid op (index out of range, unknown op, missing field, non-existent JSON Pointer, or a deck that no longer parses) rejects the whole patch and returns no patched_deck.
 
-This is a PRIMITIVE, not a workflow facade: it only edits the deck structure you pass in. It does not score, repair, or render. Pair it with validate_input / score_deck to inspect the result. For persistent multi-deck CRUD use a workflow tool — this primitive returns the deck in-band and writes nothing.
+Ops (each {"op": …}):
+- insert_slide {index? (0..N, default append), slide}
+- remove_slide {index}
+- replace_slide {index, slide}
+- move_slide {from, to}
+- duplicate_slide {index, to? (default index+1)}
+- replace_field {path (existing RFC 6901 pointer, e.g. /slides/0/content/0/text_value or /template), value} — replace only; never creates keys.
 
-The patch is ATOMIC. If any operation is invalid (index out of range, unknown op, missing field, JSON Pointer path that does not exist, or a change that would produce a deck that no longer parses), the whole patch is rejected with a structured error envelope and patched_deck is NOT returned.
-
-Operations (ops[] array, applied in order). Each op has an "op" discriminator plus op-specific fields:
-- insert_slide: insert a new slide. Fields: index (int, optional — defaults to append at end; valid 0..N where N=current slide count), slide (object, required — a SlideInput).
-- remove_slide: remove a slide. Fields: index (int, required, 0..N-1).
-- replace_slide: replace a whole slide. Fields: index (int, required, 0..N-1), slide (object, required).
-- move_slide: move a slide to a new position. Fields: from (int, required, 0..N-1), to (int, required, 0..N-1).
-- duplicate_slide: deep-copy a slide and insert the copy. Fields: index (int, required, 0..N-1), to (int, optional — defaults to index+1; valid 0..N).
-- replace_field: replace the value at an EXISTING JSON Pointer (RFC 6901) path. Fields: path (string, required, e.g. "/slides/0/content/0/text_value" or "/template"), value (any, required). Replace semantics only — the path must already exist; it never creates new keys.
-
-Returns {patched_deck, applied_ops[], findings} where findings is a FindingEnvelope of validation + fit/preflight findings for the patched deck (branch on findings.ok; findings.findings[] is empty when the patch left no issues).
-
-Example ops: [{"op":"move_slide","from":3,"to":1}, {"op":"duplicate_slide","index":1}, {"op":"replace_field","path":"/slides/0/content/0/text_value","value":"New title"}]`),
+Example: [{"op":"move_slide","from":3,"to":1}, {"op":"replace_field","path":"/slides/0/content/0/text_value","value":"New title"}]`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaApplyDeckPatch)),
 		mcp.WithObject("presentation",
 			mcp.Required(),

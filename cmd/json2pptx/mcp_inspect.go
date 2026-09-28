@@ -51,18 +51,13 @@ type inspectSlideInfo struct {
 
 func mcpInspectSlideImagesTool() mcp.Tool {
 	return mcp.NewTool("inspect_slide_images",
-		mcp.WithDescription(`Run vision-based visual QA on rendered slide images. Returns a structured visualqa.Report with per-slide findings: {severity (P0-P3), category, description, location, suggested_fixes}. suggested_fixes are pre-mapped to repair_slide fix kinds (via SuggestedFixesForCategory), so agents can pipe findings directly into repair_slide with {kind: "autofix_visual", params: {category: "<finding.category>"}}.
+		mcp.WithDescription(`Run visual QA on rendered slide images. Returns a visualqa.Report with per-slide findings {severity (P0-P3), category, description, location, suggested_fixes}; suggested_fixes map to repair_slide fix kinds, so a finding pipes into repair_slide as {kind: "autofix_visual", params: {category: "<finding.category>"}}. Loop: render_deck_thumbnails → inspect_slide_images → repair → re-render.
 
-This is the canonical entry point for the visual refinement loop:
-  generate_presentation → render_deck_thumbnails → inspect_slide_images → repair_slide.
+slide_images[]: {index (0-based), path (absolute .png/.jpg/.jpeg; no "..") or png_base64 (raw base64, no data: prefix), slide_type?, title?}.
 
-Each slide_images[] entry must include "index" (0-based) and one of "path" (absolute filesystem path to a .png/.jpg) or "png_base64" (raw base64-encoded image bytes, no data: URL prefix). Optional per-slide "slide_type" (title/content/section/chart/diagram/...) and "title" tune the prompt for that slide.
+With ANTHROPIC_API_KEY set, Claude vision runs (Report.mode="vision") merged with conservative pixel geometry (source="deterministic", including a P2 unused-lower-region check on content/table slides). Without it, a pure-Go pass checks that layout balance plus blank slides, edge-band overflow and aspect ratio (Report.mode="heuristic"; other findings source="heuristic", P3).
 
-When ANTHROPIC_API_KEY is set, vision-backed checks run via Claude (Report.mode="vision") and conservative pixel geometry is merged with source="deterministic", including a P2 check for content/table slides whose lower content region is largely unused. When unset, the tool falls back to a pure-Go image pass for that layout-balance defect plus blank slides, text-like edge-band overflow, and aspect ratio (Report.mode="heuristic"; other fallback findings are tagged source="heuristic", severity P3).
-
-HEURISTIC MODE CANNOT APPROVE A DECK. It reads pixels, not meaning: an empty findings list there means only that the limited pixel checks passed, not "this deck looks right". Completion still requires looking at every rendered slide yourself (or a vision provider) and recording the verdict with submit_visual_review — see the completion protocol. Findings tagged source="heuristic" are advisory and may have higher false-positive rates than vision-backed checks.
-
-Image source policy: paths must be absolute and end in .png/.jpg/.jpeg. Path traversal (..) is rejected. For images already in memory (e.g. just-rendered thumbnails), prefer png_base64 to avoid disk round-trips.`),
+HEURISTIC MODE CANNOT APPROVE A DECK: an empty findings list means only that the limited pixel checks passed. Completion still requires looking at every rendered slide (you or a vision provider) and recording the verdict with submit_visual_review.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaInspectSlideImages)),
 		mcp.WithArray("slide_images",
 			mcp.Required(),

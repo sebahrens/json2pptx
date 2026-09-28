@@ -50,7 +50,8 @@ type renderedSlideMeta struct {
 	Index int `json:"index"`
 	// Path is a content-addressed PNG artifact on disk (full resolution). It
 	// is always populated in image_content mode so the image can be handed to
-	// inspect_slide_images or opened locally.
+	// inspect_slide_images or opened locally. The image block delivered
+	// alongside is a downscaled JPEG (ImageMIMEType), not this file.
 	Path        string `json:"path,omitempty"`
 	Width       int    `json:"width,omitempty"`
 	Height      int    `json:"height,omitempty"`
@@ -89,6 +90,9 @@ type renderedDeckThumbnailsResponse struct {
 	Selected   []int  `json:"selected,omitempty"`
 	SourceHash string `json:"source_hash,omitempty"`
 	Cleanup    string `json:"cleanup,omitempty"`
+	// ImageMIMEType is the encoding of every image block (image/jpeg),
+	// hoisted from slides[]. slides[].path stays the full-resolution PNG.
+	ImageMIMEType string `json:"image_mime_type,omitempty"`
 	// NextToolCall points at submit_visual_review bound to this exact PPTX
 	// revision, the step that closes the render loop (go-slide-creator-z3pbp).
 	NextToolCall *patterns.ToolCallSuggestion `json:"next_tool_call,omitempty"`
@@ -201,6 +205,15 @@ func deckThumbnailsMCPResult(ctx context.Context, request mcp.CallToolRequest, d
 		if meta.Cleanup != "" {
 			resp.Cleanup = meta.Cleanup
 			meta.Cleanup = ""
+		}
+		// Every block is encoded the same way, so the MIME type is stated once
+		// at the top level rather than per slide beside a .png path, which read
+		// as a mismatch (go-slide-creator-ppned).
+		if resp.ImageMIMEType == "" {
+			resp.ImageMIMEType = meta.ImageMIMEType
+		}
+		if meta.ImageMIMEType == resp.ImageMIMEType {
+			meta.ImageMIMEType = ""
 		}
 		resp.Slides = append(resp.Slides, meta)
 		images = append(images, enc)

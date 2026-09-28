@@ -130,8 +130,22 @@ func TestRepairFixKindsMatchApplySwitch(t *testing.T) {
 	if !strings.Contains(description, strings.Join(advertised, ", ")) {
 		t.Error("repair_slide description does not contain the registry-derived executable vocabulary")
 	}
-	if !strings.Contains(description, "- renumber_bullets:") {
-		t.Error("repair_slide description omits renumber_bullets parameter guidance")
+	// Per-kind params moved out of the description into
+	// get_capabilities.vocabularies.repair_fix_kind_params
+	// (go-slide-creator-fa3k8): every executable kind must be documented
+	// there, and nothing else.
+	if !strings.Contains(description, "repair_fix_kind_params") {
+		t.Error("repair_slide description does not point at repair_fix_kind_params")
+	}
+	for _, kind := range advertised {
+		if strings.TrimSpace(repairFixKindParams[kind]) == "" {
+			t.Errorf("repair_fix_kind_params has no entry for executable kind %q", kind)
+		}
+	}
+	for kind := range repairFixKindParams {
+		if !isRepairFixKind(kind) {
+			t.Errorf("repair_fix_kind_params documents %q, which is not an executable kind", kind)
+		}
 	}
 }
 

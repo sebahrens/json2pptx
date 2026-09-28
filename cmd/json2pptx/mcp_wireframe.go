@@ -37,7 +37,7 @@ const (
 // wireframeLimitations enumerates, in human-readable form, the checks a
 // structural wireframe CANNOT perform. It is returned verbatim on every
 // response so the limitation set is machine-discoverable, not buried in
-// prose. Rendered visual QA (render_slide_image + inspect_slide_images)
+// prose. Rendered visual QA (render_deck_thumbnails + inspect_slide_images)
 // is required to cover these.
 func wireframeLimitations() []string {
 	return []string{
@@ -46,7 +46,7 @@ func wireframeLimitations() []string {
 		"does not assess SVG label or chart-axis readability",
 		"does not apply template font metrics — geometry is approximate, not pixel-accurate",
 		"does not evaluate image fidelity or visual polish",
-		"not a substitute for rendered visual QA (render_slide_image + inspect_slide_images)",
+		"not a substitute for rendered visual QA (render_deck_thumbnails + inspect_slide_images)",
 	}
 }
 
@@ -84,9 +84,9 @@ func mcpPreviewSlideWireframeTool() mcp.Tool {
 	return mcp.NewTool("preview_slide_wireframe",
 		mcp.WithDescription(`Render an annotated wireframe of one slide's resolved plan as SVG and/or base64 PNG, without LibreOffice or ImageMagick. Shows the slide frame, layout placeholders, shape_grid cells (with row/col/kind/dimensions), occupancy, and fit-finding markers (severity-coded badges on the affected cell, plus a footer strip for off-cell findings).
 
-STRUCTURAL ONLY — NOT VISUAL QA. The response carries inspection_kind="wireframe_structural", contract="structural_only", and not_text_flow_safe=true. This previews layout geometry; it does NOT model PowerPoint text wrapping, font metrics, icon/text collisions, SVG label readability, or image fidelity (see the limitations[] field). A wireframe PNG is NOT rendered-pixel evidence — rendered visual inspection (render_slide_image/render_deck_thumbnails followed by inspect_slide_images) is still required before a deck counts as visually verified.
+STRUCTURAL ONLY — NOT VISUAL QA. The response carries inspection_kind="wireframe_structural", contract="structural_only", and not_text_flow_safe=true. This previews layout geometry; it does NOT model PowerPoint text wrapping, font metrics, icon/text collisions, SVG label readability, or image fidelity (see the limitations[] field). A wireframe PNG is NOT rendered-pixel evidence — rendered visual inspection (render_deck_thumbnails followed by inspect_slide_images) is still required before a deck counts as visually verified.
 
-Use this for fast structural sanity-checks before paying for a full generate_presentation + render_slide_image round-trip. Same plan-resolution path as preview_presentation_plan: pass the same presentation JSON, plus slide_index to pick which slide to render.
+Use this for fast structural sanity-checks before paying for a full generate_presentation + render_deck_thumbnails round-trip. Same plan-resolution path as preview_presentation_plan: pass the same presentation JSON, plus slide_index to pick which slide to render.
 
 Output formats: pass format="svg" for SVG only, format="png" for base64 PNG only, or format="both" (default) for both. PNG generation is more expensive (rasterization) than SVG-only; prefer "svg" when an SVG viewer is available.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPreviewSlideWireframe)),

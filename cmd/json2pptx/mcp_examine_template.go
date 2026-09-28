@@ -40,15 +40,13 @@ import (
 
 func mcpExamineTemplateTool() mcp.Tool {
 	return mcp.NewTool("examine_template",
-		mcp.WithDescription(`Examine a PPTX template and return a full capability report inline. Mirrors the `+"`json2pptx examine-template`"+` CLI but writes no files: the response is the report.json shape returned as structured content.
+		mcp.WithDescription(`Examine a PPTX template and return its capability report inline (the `+"`json2pptx examine-template`"+` report.json shape; writes no files).
 
-Report fields: template, sha256, aspect_ratio, slide (dimensions in EMU + inches), theme (name, title_font, body_font, colors scheme→hex map), masters[], canonical_coverage (the four content-bearing families title-slide / section-divider / one-content / qa-closing, each {family, present, layouts[]}), derivable_layouts[] ({name, ready, missing[], addressable_as, request_via}; use addressable_as as layout_id only when non-null), layouts[] (per-layout canonical type/family + confidence, asset_base, xml_path, derived content_zone, and placeholders[] with role, font-aware font_pt + max_chars, exact bounds in EMU + inches, and z_index), and a findings envelope folding every diagnostic — including TPL.LAYOUT.MISSING_ROLE when a canonical family is absent. The findings envelope already folds the validate-template metadata diagnostics; the merged conformance.json bundle (the validate-template capabilities verdict plus the template-check conformance report) remains CLI-only.
+Report: template, sha256, aspect_ratio, slide size, theme (fonts, scheme→hex colors), masters[], canonical_coverage (the four content-bearing families title-slide / section-divider / one-content / qa-closing, each {family, present, layouts[]}), derivable_layouts[] ({name, ready, missing[], addressable_as, request_via}; use addressable_as as layout_id only when non-null), layouts[] (canonical type/family + confidence, content_zone, placeholders[] with role, font_pt, max_chars, exact bounds, z_index), and a findings envelope folding every diagnostic — including TPL.LAYOUT.MISSING_ROLE when a canonical family is absent. The merged conformance.json bundle stays CLI-only.
 
-Supply EXACTLY ONE of:
-  - template_name — a registered/embedded template (use list_templates to discover names). Default form.
-  - template_path — a local .pptx path for a not-yet-registered template. The path is resolved against base_dir (or the server CWD when base_dir is absent) and MUST stay inside that allowed root after ~/$ENV expansion and symlink evaluation; a path escaping it returns an INVALID_PATH forbidden-path diagnostic.
+Supply EXACTLY ONE of template_name (a registered template; see list_templates) or template_path (a local .pptx not yet registered, resolved against base_dir or the server CWD and required to stay inside it after ~/$ENV expansion and symlink evaluation; an escape returns INVALID_PATH).
 
-Use this before authoring to learn exactly what layouts, placeholder roles, character budgets, and theme colors a user-provided template supports. For the rendered SVG/PNG artifact tree, use the CLI subcommand instead.`),
+Use it before authoring to learn what layouts, placeholder roles, character budgets and theme colors a user-provided template supports.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExamineTemplate)),
 		mcp.WithString("template_name",
 			mcp.Description("Registered/embedded template name (e.g., midnight-blue). Use list_templates to discover available names. Provide this OR template_path, not both."),

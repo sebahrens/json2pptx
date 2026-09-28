@@ -20,7 +20,7 @@ into a text grid.
 - **Validate before generating:** `validate_pattern` (MCP) or `json2pptx patterns validate <name> <values.json>` (CLI) checks values and content fit. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) to check against the intended template; CLI `--json` returns the standard findings envelope and exits non-zero for blocking findings.
 - **Preview expansion + density pre-flight:** `expand_pattern` (MCP) or `json2pptx patterns expand` (CLI). Returns `density_warnings` for any embedded tables that exceed TDR ceilings (Rule 20) — run this before `generate_presentation` to catch density issues without paying generation cost. Pass `theme_template` (MCP) or `--template` + `--templates-dir` (CLI) for template-aware layout bounds; the response `bounds_source` field indicates `"template"` or `"default_fallback"`. When all populated cells are consistently suboptimal, the response includes `layout_suggestions[]` with alternative patterns and overrides.
 - **Per-cell styling:** `cell_overrides` (`{"<index>": {...}}`, index meaning in each pattern's `show_pattern` schema) accepts `accent_bar`, `font_size`, `emphasis`, `align`, `vertical_align` and `color` on every pattern that takes it. The text keys restyle that cell's primary text — every paragraph of it, so `font_size` flattens a header/body size hierarchy — e.g. the objective banner at index 0 of `strategy-house`, the title (not the number badge) of an `agenda` row, the big value of a `metric-list` item. Use pattern-level `overrides` for deck-consistent sizes; reserve `cell_overrides` for one emphasised cell.
-- **Cold-start helper:** `recommend_visual` (MCP) ranks across all visual categories for a slide intent — use as the primary entry point. `recommend_pattern` is the pattern-only subset if you already know you need a named pattern.
+- **Cold-start helper:** `recommend_visual` (MCP) ranks across all visual categories for a slide intent — use as the primary entry point (the folded `recommend_pattern` alias is its pattern-only subset).
 
 Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid` — never both):
 
@@ -82,7 +82,7 @@ Every shape grid cell has a measurable text capacity. `density_pct` is a **heigh
 
 ### Workflow Integration
 
-**Phase 1 PLAN.** When choosing patterns, estimate content volume per cell. A 3-cell grid with single-sentence items fits `kpi-3up`; multi-paragraph items need `card-grid` or a 2-column layout. Use `recommend_pattern` with your content volume in mind. For a quick capacity check, call `list_templates` with legacy `mode="compact"` (or `fields="full"`) and read `layout_summaries[].placeholders[].max_chars`; the default `fields="compact"` omits those per-layout budgets.
+**Phase 1 PLAN.** When choosing patterns, estimate content volume per cell. A 3-cell grid with single-sentence items fits `kpi-3up`; multi-paragraph items need `card-grid` or a 2-column layout. Use `recommend_visual` with your content volume in mind. For a quick capacity check, call `list_templates` with legacy `mode="compact"` (or `fields="full"`) and read `layout_summaries[].placeholders[].max_chars`; the default `fields="compact"` omits those per-layout budgets.
 
 **Phase 2 VARY.** After building JSON, call `expand_pattern` to read `cell_budgets[]` before generating. Each entry contains:
 
@@ -145,11 +145,11 @@ When `capacity_warnings[]` reports underfilled cells without explicit bounds, ea
 - A compact variant (e.g., `process-flow-compact`) if one is registered
 - A `max_height_pct` override to reduce the grid area
 
-#### `density_hint` in `recommend_visual` / `recommend_pattern`
+#### `density_hint` in `recommend_visual`
 
 Pass `density_hint` ("low", "medium", or "high") in `content_hints` to bias pattern recommendations toward patterns matching the expected content density. Patterns whose `density_class` matches get a scoring boost; distant density classes (e.g., low content on a high-density pattern) receive a penalty. Use this when you already know the content is sparse or dense.
 
-#### `candidates:[]` in `recommend_visual` / `recommend_pattern`
+#### `candidates:[]` in `recommend_visual`
 
 Pass `candidates` (array of strings) to rank an **explicit shortlist** instead of the full catalog. Every supplied name is returned with `score`, `rationale`, and `confidence_band` — the 0.5 threshold cutoff, top-K truncation, near-miss collection, and diversity-bonus injection are all bypassed. For `recommend_visual`, the `category` field is auto-resolved from the catalog (placeholder layout / named pattern / chart / diagram / raw_shape_grid); unknown names still appear with score 0 and a rationale noting the miss. Use this when you have 2–8 specific options in mind and want them ranked against your intent rather than re-discovering them from keywords.
 

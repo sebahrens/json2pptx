@@ -17,19 +17,13 @@ import (
 
 func mcpPlanDeckTool() mcp.Tool {
 	return mcp.NewTool("plan_deck",
-		mcp.WithDescription(`Plan a presentation deck from a brief — returns an ordered slide outline with recommended patterns and narrative roles.
+		mcp.WithDescription(`Plan a deck from a brief — an ordered slide outline with narrative roles (opening, evidence, comparison, close), a canonical layout per slide (opening "title" and closing "closing" with no pattern; content slides "blank-title" plus a pattern) and content seeds. The plan enforces deck rhythm: no 3 consecutive slides with the same pattern, an emphasis slide (stat-hero, pull-quote, kpi-inline) about every ~5 slides capped at ceil(n/5), two-sided comparison patterns for comparison slots, and accent rotation.
 
-format:"deckspec" (recommended for the default DeckSpec path) instead returns deck_spec: a DeckSpec draft whose slides follow a storyline — cover, answer (executive_summary), problem, cause, evidence, plan, roadmap, ask (decision), closing — with each slide's kind and a __FILL__ action title, plus slots[] (slot, kind, guidance, brief facts routed to it) and unplaced_facts. Fill each slide's fields from list_slide_kinds, write action titles, then validate_deck_spec → render_deck_spec. must_include is ignored in this format.
+format:"deckspec" (recommended) returns deck_spec: a DeckSpec draft following a storyline (cover, answer, problem, cause, evidence, plan, roadmap, ask, closing) with kinds and __FILL__ action titles, plus slots[] and unplaced_facts; fill it from list_slide_kinds, then validate_deck_spec → render_deck_spec.
 
-The default format:"raw" is described below. Use it BEFORE generate_presentation to get a structured plan. The output includes per-slide layout + pattern recommendations, content seeds, and narrative roles (opening, evidence, comparison, close). Every slide carries a canonical layout: the opening slide is layout "title" and the closing slide is layout "closing", both with NO pattern (recommended_pattern ""); content slides use "blank-title" plus a pattern. The plan enforces deck-rhythm rules:
-- No 3 consecutive slides with the same pattern
-- Emphasis slides (stat-hero, pull-quote, kpi-inline) about every ~5 slides, capped at ceil(n/5) per deck
-- Comparison slots use only two-sided comparison patterns (comparison-2col, before-after)
-- Accent color rotation for visual variety
+Facts in the brief (numbers such as "+23% revenue", named entities such as "EU expansion") are routed verbatim into slide seeds and facts[], quantities to KPI / stat / chart slides first; facts with no room are listed in unplaced_facts.
 
-Facts in the brief (clauses with numbers such as "+23% revenue", "churn 4%", or named entities such as "EU expansion") are routed verbatim into slide content seeds and each slide's facts[] — quantities to KPI / stat / chart slides first. Facts no slide had room for are listed in unplaced_facts.
-
-The plan's slides[] are advisory records, NOT SlideInput objects. To build a raw presentation, copy each slides[i].skeleton (when present) into presentation.slides[], replace its __FILL__ tokens with real content, and validate_input before generate_presentation. If a slide has no skeleton, author its SlideInput from the recommended pattern's show_pattern schema. For a semantic deck, use the DeckSpec path instead.`),
+The plan's slides[] are advisory records, NOT SlideInput objects. For a DeckSpec deck, use the plan to choose kinds and order. For a raw deck, copy each slides[i].skeleton (when present) into presentation.slides[], replace its __FILL__ tokens with real content and validate before generating; a slide without a skeleton is authored from its recommended pattern's schema.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaPlanDeck)),
 		mcp.WithString("brief",
 			mcp.Required(),
@@ -45,11 +39,11 @@ The plan's slides[] are advisory records, NOT SlideInput objects. To build a raw
 			mcp.Description("Pattern names that must appear in the plan (e.g., [\"bmc-canvas\", \"kpi-3up\"])."),
 		),
 		mcp.WithString("format",
-			mcp.Description("\"raw\" (default): pattern outline with raw SlideInput skeletons for generate_presentation. \"deckspec\": a DeckSpec draft with narrative slots (answer, problem, cause, evidence, plan, roadmap, ask) for validate_deck_spec / render_deck_spec."),
+			mcp.Description("\"raw\" (default): pattern outline with raw SlideInput skeletons for the raw path. \"deckspec\": a DeckSpec draft with narrative slots (answer, problem, cause, evidence, plan, roadmap, ask) for validate_deck_spec / render_deck_spec."),
 			mcp.Enum("raw", deckplan.FormatDeckSpec),
 		),
 		mcp.WithString("template",
-			mcp.Description("Optional template name (e.g., midnight-blue) to make the plan template-aware. When supplied, every planned slide (and each alternative) carries a template_support object {status: supported|risky|unsupported, reasons[], required_layout} grounded in the template's canonical layouts, derivable layouts, font-aware placeholder capacities, and palette — the same shared helper recommend_visual uses. A recommended pattern the template cannot host is replaced with a supported alternative when one exists, so the plan never assigns an impossible pattern. Use list_templates to discover names."),
+			mcp.Description("Optional template name (e.g., midnight-blue) to make the plan template-aware. When supplied, every planned slide (and each alternative) carries a template_support object {status: supported|risky|unsupported, reasons[], required_layout} grounded in the template's canonical layouts, derivable layouts, font-aware placeholder capacities, and palette — the same helper recommend_visual uses. A pattern the template cannot host is replaced with a supported alternative when one exists. Use list_templates to discover names."),
 		),
 	)
 }

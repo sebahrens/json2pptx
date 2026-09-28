@@ -2,10 +2,13 @@
 
 Use the live `tools/list` descriptions and input schemas for signatures;
 `get_capabilities().mcp_tools_available` is the current searchable catalog.
-The default core profile advertises a compact subset. Other registered tools
-are still callable by name; `json2pptx mcp --tools all` advertises the full
-set. Do not infer that a tool is unavailable merely because it is absent
-from the core listing.
+The default `deckspec` profile advertises only the DeckSpec path;
+`--tools core` (alias `raw`) adds the raw-JSON path and `--tools all` the
+rest. Hidden tools stay callable by name. Folded aliases are never listed:
+`recommend_pattern` → `recommend_visual`, `render_slide_image` →
+`render_deck_thumbnails` `slide_indices`, `repair_slides_batch` →
+`repair_slide`, `get_chart_capabilities` / `get_diagram_capabilities` →
+`list_templates` `fields:"full"`.
 
 ## Workflow contract
 
@@ -21,12 +24,12 @@ Default for content-bearing decks: author real content as a DeckSpec; call `list
 | Templates and palette | `list_templates` | `examine_template`, `resolve_theme` |
 | New semantic deck | `plan_deck` (`format:"deckspec"`), `list_slide_kinds` | `list_deck_archetypes`, `explain_deck_spec`, `validate_deck_spec`, `render_deck_spec` |
 | Semantic escape hatch | `compile_deck_spec` | `validate_input`, `generate_presentation` |
-| Raw planning | `recommend_visual` | `plan_deck`, `recommend_pattern`, `analyze_deck_rhythm` |
+| Raw planning | `recommend_visual` | `plan_deck`, `analyze_deck_rhythm` |
 | Raw pattern | `list_patterns`, `show_pattern` | `validate_pattern`, `expand_pattern`, `expand_patterns` |
-| Raw schema and visual inputs | `get_shape_catalog`, `list_icons`, `preview_icon` | `get_chart_capabilities`, `get_diagram_capabilities`, `table_density_guide` |
+| Raw schema and visual inputs | `get_shape_catalog`, `list_icons`, `preview_icon` | `table_density_guide` |
 | Raw preflight/generation | `validate_input` | `preview_presentation_plan`, `preview_slide_wireframe`, `generate_presentation` |
-| Repair and quality | `describe_finding`, `score_deck` | `score_candidates`, `propose_repairs`, `repair_slide`, `repair_slides_batch`, `apply_deck_patch`, `auto_repair` |
-| Rendered inspection | `render_deck_thumbnails` | `render_slide_image`, `render_slide_image_from_json`, `inspect_slide_images`, `submit_visual_review` |
+| Repair and quality | `describe_finding`, `score_deck` | `score_candidates`, `propose_repairs`, `repair_slide`, `apply_deck_patch`, `auto_repair` |
+| Rendered inspection | `render_deck_thumbnails` | `render_slide_image_from_json`, `inspect_slide_images`, `submit_visual_review` |
 | Existing artifact | `read_presentation`, `validate_presentation_output` | `audit_palette`, `export_deck`, `purge_render_cache` |
 | Settings (gated write) | `list_template_settings` | `register_template_setting`, `delete_template_setting` |
 | Wireframe facade | `make_deck` | Replace exemplar content; never ship it directly |
@@ -41,7 +44,8 @@ signature or schema registry.
 - `get_started.runtime.render_available` tells you whether this server can
   render slides. Missing render tooling means the artifact is unreviewed.
   `get_capabilities` exposes schema version, feature flags, tool
-  classification, and the current core-profile membership.
+  classification, core-profile membership, and each repair fix kind's
+  params (`vocabularies.repair_fix_kind_params`).
 - `list_templates` defaults to compact data and may write layout-preview
   cache files; use `read_only:true` for side-effect-free discovery.
   `list_templates`, `list_patterns`, and `list_icons` support filtering,
@@ -50,7 +54,9 @@ signature or schema registry.
   `list_slide_kinds`, `show_pattern`, and `describe_finding` are the live
   kind, pattern, and finding catalogs. Prefer them to static enumerations.
 - `preview_slide_wireframe` is structural-only and cannot prove visual fit.
-  `render_deck_thumbnails` returns images; rendering alone is not inspection.
+  `render_deck_thumbnails` returns JPEG blocks (`image_mime_type`, top
+  level) beside full-resolution PNG `slides[].path`; use density 50–75 for
+  full passes. Rendering alone is not inspection.
   `submit_visual_review` requires current-revision evidence for every slide.
 - `score_deck` grades raw decks; do not pass a DeckSpec. A passing
   `quality_gate` stops score-driven repair, not visual review. When a render

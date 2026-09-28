@@ -127,16 +127,11 @@ func listTemplatesToolDescription() string {
 	if !toolIsAdvertised("get_data_format_hints") {
 		hints = "data_format_hints_digest (a stable hash of the chart/diagram data-format hints; chart_capabilities and diagram_capabilities in this same response carry the per-type field requirements)."
 	}
-	return `List available presentation templates with their layouts, theme colors, and capabilities.
+	return `List presentation templates with their layouts, theme colors and capabilities.
 
-Every projection includes name, aspect_ratio, layout_count, table_styles, canonical_layout_availability, canonical_layout_ids, color_roles (including contrast-safe and near-background accents), title_font, body_font, body_font_size_pt (generated nominal size for five paragraphs), template_body_font_size_pt (original canonical-content size), and authored semantic_accents and metadata_version when present. The legacy mode="compact" and fields="full" additionally include sha256, theme_colors (scheme→hex), surface_tints, data_palette, accent_usage_guide (when authored), canonical_coverage, derivable_layouts, layout_names, and layout_summaries. Full mode adds layouts with per-layout canonical_type/canonical_family/canonical_confidence, placeholder roles, font size and exact bounds.
-Response also includes supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities) ONLY with fields="full" — it is static per-server data that dwarfed the per-template payload, so the default compact projection omits it. ` + hints + `
+Compact is the DEFAULT projection: name, aspect_ratio, layout_count, table_styles, canonical layout availability and IDs, color_roles (including contrast-safe and near-background accents), title/body fonts, body_font_size_pt (generated nominal size) and template_body_font_size_pt, plus authored semantic_accents and metadata_version when present. fields="full" (or legacy mode="compact") adds sha256, theme_colors, surface_tints, data_palette, accent_usage_guide, canonical_coverage, derivable_layouts, layout_names, layout_summaries and full per-layout placeholder detail, plus supported_types (slide/chart/diagram/grid types, shape_geometries, chart_capabilities, diagram_capabilities) — static per-server data, omitted from compact. ` + hints + `
 
-Pagination: full-mode payloads can be large. Use cursor + page_size to iterate. The response always includes total_count and page_size; next_cursor is present only when more templates remain.
-
-Projection (token-economy): compact is the DEFAULT — identity, capacity, concrete canonical layout IDs, fonts, color roles, and semantic accents, with no per-template theme_colors / layouts and no supported_types. Use fields="full" for surface tints, data palette, layout summaries, and the whole layout payload.
-
-Filtering: pass filter="<substring>" to limit the response to templates whose name contains the substring (case-insensitive). Composes with pagination — filter applies before cursor/page_size.`
+Pagination: cursor + page_size; total_count and page_size are always present, next_cursor only when more remain. filter="<substring>" (case-insensitive name match) applies before pagination.`
 }
 
 func mcpListTemplatesTool() mcp.Tool {
@@ -147,7 +142,7 @@ func mcpListTemplatesTool() mcp.Tool {
 			mcp.Description("Analyze a single template by name (optional, omit to list all)."),
 		),
 		mcp.WithString("template_path",
-			mcp.Description("Analyze a single LOCAL .pptx that is not registered on the server — the bring-your-own template path. Resolved against base_dir (the server CWD when absent) and MUST stay inside it. Mutually exclusive with template. Pass the same value to generate_presentation as presentation.template_path to render with it."),
+			mcp.Description("Analyze a single LOCAL .pptx that is not registered on the server — the bring-your-own template path. Resolved against base_dir (the server CWD when absent) and MUST stay inside it. Mutually exclusive with template. On the raw path, pass the same value as presentation.template_path to render with it."),
 		),
 		mcp.WithString("base_dir",
 			mcp.Description("Absolute directory that bounds template_path resolution (the allowed root). Relative template_path values resolve against it; the resolved file must stay inside it. Ignored when template_path is absent."),
@@ -2276,17 +2271,11 @@ func collectGridDensityWarnings(grid *jsonschema.ShapeGridInput) []patternValida
 
 func mcpListIconsTool() mcp.Tool {
 	return mcp.NewTool("list_icons",
-		mcp.WithDescription(`List available icon names for use in shape_grid cells via {"icon":{"name":"icon-name"}}. Icons are bundled SVGs in two sets: outline (default, stroke-based) and filled (solid). Use set:name syntax (e.g. "filled:chart-pie") to select a set; plain names default to outline.
+		mcp.WithDescription(`List bundled icon names for shape_grid cells ({"icon":{"name":"…"}}). Two sets: outline (default, stroke) and filled (solid); a bare name resolves to outline, so filled icons need the qualified "<set>:<name>" token (e.g. "filled:chart-pie").
 
-Canonical identifier: each set entry returns both a legacy bare-name array (sets[].names) and a structured sets[].icons array. Each entry in sets[].icons has {name, qualified_name}; qualified_name is always "<set>:<name>" (e.g. "filled:chart-pie", "outline:chart-pie") and is the canonical token to drop into icon.name — required for filled icons, since a bare name alone resolves to the outline set.
+Response {sets, total_count, page_size, next_cursor?}: names are flattened across the requested set(s) and paged; each set's count covers that page only (total_count is the corpus). Compact is the DEFAULT; fields="full" adds the legacy sets[].icons[] {name, qualified_name} array.
 
-Pagination: response is an object {sets, total_count, page_size, next_cursor?}. Names are flattened across the requested set(s) and paged; for each page, sets are rebuilt containing only the icons that fall within the slice. count on each set entry reflects icons in that slice, not the full set size; use total_count for the corpus total.
-
-Projection (token-economy): compact is the DEFAULT — it drops the redundant sets[].icons[] dual array (qualified_name is always "<set>:<name>", easy to synthesize). Pass fields="full" for the legacy payload (go-slide-creator-dykl).
-
-Filtering: filter (preferred) and search (legacy alias) both apply a case-insensitive substring filter on the icon name. Applied before pagination.
-
-Concept search: when the substring filter matches nothing, the query is resolved through a curated business-concept index instead — "strategy", "revenue", "customer", "governance", "compliance", "risk", "milestone", "efficiency" and ~150 others map to the 1-3 bundled icons that express them. The response then carries matched_via:"synonym" and concept_matches[] naming which concept produced each icon. Multi-word queries reach the concepts inside them ("cost reduction" → the cost icons). A query that matches neither a name nor a concept returns concepts[] — the full vocabulary the index understands — so the next call is informed rather than another guess.`),
+filter (search is a legacy alias) is a case-insensitive name substring, applied before pagination. When it matches nothing, the query is resolved through a business-concept index ("strategy", "revenue", "risk", "milestone" and ~150 more map to 1-3 icons each; multi-word queries reach the concepts inside them): the response carries matched_via:"synonym" and concept_matches[]. A query matching neither returns concepts[], the full vocabulary.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaListIcons)),
 		mcp.WithString("set",
 			mcp.Description("Icon set to list: outline, filled, or omit for all sets."),
@@ -2494,15 +2483,11 @@ Cost note: one image block per call; the JSON metadata stays under 1KB.`),
 
 func mcpRenderDeckThumbnailsTool() mcp.Tool {
 	return mcp.NewTool("render_deck_thumbnails",
-		mcp.WithDescription(`Render all slides in a PPTX as thumbnails and return them as native MCP image content blocks (one JPEG per slide, in slide order) that you can look at directly, plus a small JSON metadata block (slides[].index / path / image_content_index — no base64). Legacy clients: pass include_base64_json=true to get the old array of base64 PNGs inside JSON instead.
+		mcp.WithDescription(`Render a PPTX's slides and return them as native MCP image content blocks (one JPEG per slide, in slide order) that you can look at directly, plus a small JSON metadata block: slides[].index / path / content_hash / image_content_index, and image_mime_type once at the top level. slides[].path is the full-resolution PNG on disk (what submit_visual_review verifies); the image block itself is a downscaled JPEG. Legacy clients: include_base64_json=true returns base64 PNGs inside the JSON instead.
 
-Requires LibreOffice and ImageMagick (magick) on PATH. Use this for a quick visual overview of the entire deck.
+Requires LibreOffice and ImageMagick (magick) on PATH. Cached by file content hash; force=true re-renders. With _meta.progressToken, emits notifications/progress per slide; cancelling returns CANCELLED.
 
-When the request carries _meta.progressToken, emits notifications/progress during preparation and after each selected slide is ready. Cancelling the request stops conversion and returns CANCELLED without image blocks.
-
-Results are cached by file content hash — repeated calls with unchanged PPTX return instantly. Pass force=true to re-render even if cached.
-
-Cost note: the JSON metadata stays small (<5KB for typical decks), but image payload grows with slide count and visual complexity; a 15-slide deck can exceed 600KB in one pass. After a repair, pass slide_indices with just the slides that changed (render_deck_spec's changed_slides is exactly that list) instead of pulling the whole deck again; use max_slides to cap a first look at a large deck.`),
+Cost: image payload grows with density and slide count — a 15-slide pass is ~600KB at the default density 50 and over 1MB at 100. Use density 50–75 for full-deck passes; go higher only for a few slides via slide_indices (slide_indices:[i] renders a single slide). After a repair, pass only the changed slides (render_deck_spec's changed_slides) as slide_indices; max_slides caps a first look at a large deck.`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaRenderDeckThumbnails)),
 		includeBase64JSONOption(),
 		mcp.WithString("pptx_path",
@@ -2510,7 +2495,7 @@ Cost note: the JSON metadata stays small (<5KB for typical decks), but image pay
 			mcp.Description("Path to the PPTX to render: generate_presentation returns output_path; render_deck_spec returns pptx_path."),
 		),
 		mcp.WithNumber("density",
-			mcp.Description("DPI for thumbnails. Lower = smaller payloads. Default: 50. Range: 25-150."),
+			mcp.Description("DPI for thumbnails. Default 50; use 50–75 for a full-deck pass (density 100 about doubles the payload). Range: 25-150."),
 		),
 		mcp.WithNumber("max_slides",
 			mcp.Description("Maximum number of slides to render, counting from the first. Default: 50. Mutually exclusive with slide_indices."),

@@ -109,11 +109,11 @@ func buildPatternExpansionResult(
 // template parse instead of N).
 func mcpExpandPatternsTool() mcp.Tool {
 	return mcp.NewTool("expand_patterns",
-		mcp.WithDescription("Batch-expand multiple named patterns against the agent's content using a single template load. Returns each pattern's expansion + occupancy + cell_budgets + capacity_warnings + layout_suggestions, computed against the supplied per-pattern values (NOT the pattern's exemplar). Use after recommend_pattern to compare candidates head-to-head with your real content. Patterns missing an entry in `content` fall back to exemplar values; those results are flagged via `used_exemplar=true`. Each candidate that fails validation/expansion is reported via a per-pattern `error` block without aborting the whole batch."),
+		mcp.WithDescription("Batch-expand multiple named patterns against the agent's content using a single template load. Returns each pattern's expansion + occupancy + cell_budgets + capacity_warnings + layout_suggestions, computed against the supplied per-pattern values (NOT the pattern's exemplar). Use after recommend_visual to compare candidates head-to-head with your real content. Patterns missing an entry in `content` fall back to exemplar values; those results are flagged via `used_exemplar=true`. Each candidate that fails validation/expansion is reported via a per-pattern `error` block without aborting the whole batch."),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaExpandPatterns)),
 		mcp.WithArray("names",
 			mcp.Required(),
-			mcp.Description("Pattern names to expand (typically the candidates returned by recommend_pattern)."),
+			mcp.Description("Pattern names to expand (typically the pattern candidates returned by recommend_visual)."),
 		),
 		mcp.WithObject("content",
 			mcp.Description("Per-pattern content keyed by pattern name. Each entry mirrors expand_pattern parameters: {values, overrides?, cell_overrides?, bounds?, max_height_pct?}. Patterns absent from this map are expanded with their exemplar values (and flagged via used_exemplar=true)."),

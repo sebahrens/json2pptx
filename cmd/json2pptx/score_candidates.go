@@ -118,20 +118,16 @@ func topTieNote(scored []CandidateScore) string {
 
 func mcpScoreCandidatesTool() mcp.Tool {
 	return mcp.NewTool("score_candidates",
-		mcp.WithDescription(`Score multiple candidate slide_json values for a single slot in a deck without rendering.
+		mcp.WithDescription(`Score candidate slide_json values for one slot in a deck without rendering — static analysis only (unlike score_deck, no PPTX generation) — and return them ranked best→worst, ties broken by input order, with per-candidate findings.
 
-Use this to choose between alternative slides for one position in a presentation. Unlike score_deck, this tool runs only static analysis — no PPTX generation, no tempdir — and returns each candidate ranked by a deterministic score.
+Axes, so equal totals can still be told apart:
+- fit: overflow, density, occupancy, contrast, chart render.
+- content: placeholder copy, emptiness, missing or over-long titles and bodies, dropped content, a pattern that does not match its content.
+- rhythm: 5 if the candidate would extend a same-pattern run of 2 at this position, 15 for a run of 3+.
 
-WHAT IT MEASURES, reported as axes so two candidates with the same total can still be told apart:
-- fit: geometry — overflow, density, occupancy, contrast, chart render.
-- content: what the slide says — placeholder copy, emptiness, missing or over-long titles and bodies, dropped content, a pattern that does not match its content.
-- rhythm: 5 if substituting this candidate would extend a pattern run of length 2 at this position, 15 for a run of 3+.
+It CANNOT measure which visual reads better: when the top candidates tie, a "tie" note says rank 1 is input order, not a verdict — render them (render_deck_thumbnails) and compare.
 
-WHAT IT CANNOT MEASURE: which visual reads better. Two legible charts of the same data score the same. When the top candidates tie, the response carries a "tie" note saying so — rank 1 is then input order, not a verdict. Render them (render_slide_image) and compare, or ask inspect_slide_images.
-
-score = slide_score - rhythm_penalty, clamped to [0, 100]. An invalid pattern or compose input that validate_input would reject scores 0 with its blocking codes. Other candidates carrying refuse-action fit findings start from 50 rather than 100. blocking_findings counts both classes. For valid inputs, slide_score stays comparable to score_deck (100 - sum of severity weights: refuse=25, shrink_or_split=15, review=5, info=0).
-
-Candidates are sorted best→worst by score; ties broken by input order. Findings are returned per-candidate so the caller can see why each scored as it did.`),
+score = slide_score - rhythm_penalty, clamped to [0, 100]. An invalid pattern or compose input that validate_input would reject scores 0 with its blocking codes; other candidates with refuse-action findings start from 50. blocking_findings counts both. For valid inputs slide_score matches score_deck (100 minus weights: refuse=25, shrink_or_split=15, review=5, info=0).`),
 		mcp.WithRawOutputSchema(withErrorEnvelope(outputSchemaScoreCandidates)),
 		mcp.WithObject("presentation",
 			mcp.Required(),
