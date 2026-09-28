@@ -500,7 +500,7 @@ const valueChainLabelFillName = "dk1 at 16%"
 // valueChainHighlightMin is the luminance contrast the highlight must clear
 // against the neutral step fill. The base is achromatic, so a saturated
 // accent is also separated by hue; 2:1 of lightness on top of that reads as
-// "this one" where two greys would need the full 3:1 (fillDistinctnessMin).
+// "this one" where two greys would need the full 3:1 (the WCAG non-text bar).
 const valueChainHighlightMin = 2.0
 
 func buildValueChainLabelText(label string, size float64, color string) json.RawMessage {

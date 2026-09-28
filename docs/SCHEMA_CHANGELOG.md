@@ -1,6 +1,8 @@
 # Schema Changelog
 
-- **Unreleased — Template-aware stacked columns and nested-cell readability
+- **2026-09-28 — Schema 4.154.0: consultant × designer finishing round (`go-slide-creator-1x3yi`).** Contract changes listed in the 4.154.0 entries below: chart `highlight`, `chrome.tracker`, `next-steps` pattern and `next_steps` kind, KPI `comparator`, `callout.emphasis` subtle/strong and `takeaway_emphasis` overrides, `DATA_WITHOUT_SOURCE` and `FILLED_SHAPE_OUTLINED` findings, engine-default table style, source zone, type scale.
+
+- **2026-09-28 — Schema 4.154.0 · Template-aware stacked columns and nested-cell readability
   prediction (`go-slide-creator-bzh34`).** A `chart-insights-split` with a
   headline or so-what pins those rows at their writer-measured height and,
   when the insights would not fit the slide's content area, steps the
@@ -17,7 +19,7 @@
   generates on every shipped template except `modern`, where the
   table-highlight slide under a takeaway is flagged before generation. No
   schema-version change.
-- **Unreleased — consulting table default (`go-slide-creator-1iiej`).**
+- **2026-09-28 — Schema 4.154.0 · consulting table default (`go-slide-creator-1iiej`).**
   A table with no style (no `header_background`, no `use_table_style`,
   `style_id` unset or the engine default GUID) — and a `use_table_style` /
   `@template-default` table whose template ships no style formatting — now
@@ -37,7 +39,7 @@
   top-anchored; its `header_size` default is 11 (range now 11–28) and
   `body_size` default 12. No `SchemaVersion` bump.
 
-- **Unreleased — Thin connective geometry and content-sized boxes (`go-slide-creator-7z5we`, `go-slide-creator-wntyw`).**
+- **2026-09-28 — Schema 4.154.0 · Thin connective geometry and content-sized boxes (`go-slide-creator-7z5we`, `go-slide-creator-wntyw`).**
   No schema field changes. Rendering: matrix-2x2 axes are 1.5pt arrows with
   an 8pt head (were block arrows; the y-axis label now sits beside its arrow
   in dk1); the before-after / before-after-compact transition chevron is a
@@ -79,7 +81,7 @@
   `chrome` (confidentiality + page numbers); `board-deck` also sources its
   data slides.
 
-- **Unreleased — type scale and typographic polish (`go-slide-creator-30471`, `-58dhw`).**
+- **2026-09-28 — Schema 4.154.0 · type scale and typographic polish (`go-slide-creator-30471`, `-58dhw`).**
   No schema shape change. `shape_grid` text settles onto the type scale
   28 / 18 / 14 / 12 / 10pt (off-scale sizes render at the step at or below
   them; display figures, 28pt+ text and a `design_mode: "free"` deck's own
@@ -93,7 +95,7 @@
   as a bold, unbulleted column header. `scripts/repair_reviewed_templates.go
   --pstyle-body-minor-font` moves p-style's body levels off the serif major
   font.
-- **Unreleased — no outlines on filled shapes, neutral surfaces, one accent (`go-slide-creator-pgdkp`, `go-slide-creator-8xsj3`).**
+- **2026-09-28 — Schema 4.154.0 · no outlines on filled shapes, neutral surfaces, one accent (`go-slide-creator-pgdkp`, `go-slide-creator-8xsj3`).**
   Pattern expansions no longer outline a filled shape: the 0.5pt hairline on
   white cards (card-grid `tinted`, comparison-2col, quote-cluster, swimlane,
   capability-heatmap), the matrix-2x2 quadrant and bmc-canvas cell borders,
@@ -122,7 +124,7 @@
   kind `remove_outline`) flags an authored raw `shape_grid` shape with an
   opaque fill and a visible `line`, and a card-grid `border` / `line_color` /
   `line_width` override. No `SchemaVersion` bump.
-- **Unreleased — one takeaway component (go-slide-creator-7b5o6).**
+- **2026-09-28 — Schema 4.154.0 · one takeaway component (go-slide-creator-7b5o6).**
   The slide `takeaway`, chart-insights-split `so_what`, exec-summary
   `bottom_line`, metric-list `callout` and the pattern / compose `callout`
   render one band: a flush 3pt accent bar the band's height beside 14pt bold

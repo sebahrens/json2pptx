@@ -20,12 +20,18 @@ type generationReport struct {
 
 // These are unchanged adverse inputs, not approved missing decks. A changed
 // input or changed loss must be investigated rather than silently reclassified.
+//
+// multiline-cells-table.json left this list with the engine-default table
+// style (5b4e5f1e: no fills, hairline rules, content-height rows). Its five
+// 3-line rows now take 3.34M EMU at 12pt in the midnight-blue body column, all
+// 24 data cells and every line present, with no TABLE_ROWS_TRUNCATED,
+// TEXT_TRIMMED or READABILITY_TRIMMED finding; classifyPublication's success
+// path still rejects any such loss, so it is guarded as an ordinary deck.
 var expectedSourceRefusals = map[string]struct {
 	SHA             string
 	Visible, Hidden int
 }{
-	"tests/quality/fixtures/dense-table-16x6.json":      {"c9379a66122bb5ca3e525d93293800f088e714d158f0e40f2af22cebb329dae6", 9, 7},
-	"tests/quality/fixtures/multiline-cells-table.json": {"d631f632d60d8e1bd21de7d874a33f82582c7685aab8fe707b6b6092241c4737", 3, 2},
+	"tests/quality/fixtures/dense-table-16x6.json": {"c9379a66122bb5ca3e525d93293800f088e714d158f0e40f2af22cebb329dae6", 9, 7},
 }
 
 func classifyPublication(input string, source []byte, report generationReport, runErr error, outputDir string) (string, error) {

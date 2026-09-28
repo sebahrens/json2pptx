@@ -380,11 +380,6 @@ func fromHSL(h, s, l float64) svggen.Color {
 // the tests could not see the difference.
 // ---------------------------------------------------------------------------
 
-// fillDistinctnessMin is the fill-vs-fill contrast a highlight needs to read as
-// a highlight. It is the WCAG non-text bar (3:1): below it two fills are the
-// same block of colour to anyone past the first row.
-const fillDistinctnessMin = 3.0
-
 // fillContrast returns the contrast ratio between two pattern fills as a
 // viewer sees them (tints and alpha composited). ok is false when either side
 // cannot be resolved against the template — without a theme there is nothing to
