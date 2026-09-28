@@ -15,7 +15,9 @@ BASE_REF="${1:-origin/main}"
 
 # Get the list of changed files relative to the base.
 # For PRs this is the merge-base diff; for pushes we compare HEAD~1.
-if git rev-parse "$BASE_REF" >/dev/null 2>&1; then
+# --verify ...^{commit} rejects refs that are not a reachable commit, e.g. the
+# all-zero github.event.before on a branch's first push.
+if git rev-parse --verify --quiet "${BASE_REF}^{commit}" >/dev/null 2>&1; then
   CHANGED_FILES=$(git diff --name-only "$BASE_REF"...HEAD 2>/dev/null || git diff --name-only "$BASE_REF" HEAD)
 else
   CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "")

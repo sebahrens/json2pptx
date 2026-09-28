@@ -119,15 +119,18 @@ jobs:
           path: output/test-matrix/MATRIX.md
 
   skill-sync:
+    # Runs on pushes to main too: most commits land directly, so a PR-only gate
+    # skipped the commits that land most often (go-slide-creator-3fzw3). On a
+    # push the base is the pre-push tip; the script falls back to HEAD~1 when
+    # that ref is absent (new branch / force-push).
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Check skill-code-docs sync
-        run: bash scripts/check-skill-sync.sh ${{ github.event.pull_request.base.sha }}
+        run: bash scripts/check-skill-sync.sh ${{ github.event.pull_request.base.sha || github.event.before }}
 
       - name: Check skill canonical location (no .claude/skills/ tracking)
         run: bash scripts/check-skill-canonical.sh
