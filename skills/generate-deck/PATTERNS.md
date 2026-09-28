@@ -86,22 +86,9 @@ Every shape grid cell has a measurable text capacity. `density_pct` is a **heigh
 
 **Phase 1 PLAN.** When choosing patterns, estimate content volume per cell. A 3-cell grid with single-sentence items fits `kpi-3up`; multi-paragraph items need `card-grid` or a 2-column layout. Use `recommend_visual` with your content volume in mind. For a quick capacity check, call `list_templates` with legacy `mode="compact"` (or `fields="full"`) and read `layout_summaries[].placeholders[].max_chars`; the default `fields="compact"` omits those per-layout budgets.
 
-**Phase 2 VARY.** After building JSON, call `expand_pattern` to read `cell_budgets[]` before generating. Each entry contains:
+**Phase 2 VARY.** After building JSON, call `expand_pattern` and read `cell_budgets[]` before generating. Each entry has `cell_index` (zero-based), `row`, `col`, `max_chars` (fits at the resolved size), `actual_chars`, `density_pct` (wrapped text height / cell text height × 100), `status` (`"underfilled"`, `"optimal"`, `"overflow"`) and `font_size_pt`. Rewrite before rendering — cheaper than repairing after generation.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `cell_index` | int | Zero-based cell position in the grid |
-| `row` | int | Row index |
-| `col` | int | Column index |
-| `max_chars` | int | Maximum characters that fit at the resolved font size |
-| `actual_chars` | int | Characters currently in the cell content |
-| `density_pct` | int | wrapped text height / cell text height × 100 |
-| `status` | string | `"underfilled"`, `"optimal"`, or `"overflow"` |
-| `font_size_pt` | float | Font size used for the budget calculation |
-
-Compare your planned content against `max_chars` for each cell. Adjust before rendering — it's cheaper to rewrite content than to repair after generation.
-
-**Phase 3 RENDER.** The pre-emit checklist (in WORKFLOW.md) includes: *"Every cell at 35–110% density."* Verify this by checking `cell_budgets[].density_pct` from `expand_pattern`.
+**Phase 3 RENDER.** The WORKFLOW.md pre-emit check *"Every cell at 35–110% density"* is verified from `cell_budgets[].density_pct`.
 
 **Phase 4 REPAIR.** If `fit_overflow` or `density_exceeded` findings appear after generation, apply this decision sequence:
 
@@ -110,7 +97,7 @@ Compare your planned content against `max_chars` for each cell. Adjust before re
 3. **`reduce_text` / `split_at_row`** — use `repair_slide` with `fix.kind: reduce_text` or `split_at_row` to bring cells back into the optimal band.
 4. **`reduce_cell_text`** — truncates a single shape_grid cell to `max_chars` with an ellipsis. Use only when the agent should not rephrase the text (e.g., user-supplied verbatim content that the agent shouldn't alter). After applying, re-validate with `fit_report: true` to confirm zero residual `fit_overflow` findings.
 
-**Anti-pattern:** do not use `reduce_cell_text` as the default response to overflow. It is a last-resort fallback, not a substitute for the upstream Text Capacity Awareness loop (Phase 2 VARY).
+**Anti-pattern:** `reduce_cell_text` is a last resort, never the default response to overflow or a substitute for the Phase 2 VARY loop.
 
 ### Decision Rules
 
@@ -126,7 +113,7 @@ When `expand_pattern` returns cells outside the optimal band:
    - If trimming would lose essential information, switch to a larger grid configuration or a different pattern with more text capacity (e.g., `card-grid` with fewer columns).
    - As a last resort, split the slide — use `split_at_row` to distribute content across multiple slides.
 
-3. **Check `layout_suggestions[]`:** When **all** populated cells are consistently suboptimal (all underfilled or all overflowing), `expand_pattern` returns `layout_suggestions[]` — an array of alternative patterns with optional overrides and a `reason` string. Use these as actionable swap recommendations instead of guessing. Suggestions only appear when density is unanimously bad; mixed-density grids (some optimal, some not) produce no suggestions — adjust content manually in that case.
+3. **Check `layout_suggestions[]`:** only when **all** populated cells are suboptimal (all underfilled or all overflowing), `expand_pattern` returns alternative patterns with optional overrides and a `reason`. Use them as swap recommendations; mixed-density grids get none — adjust content manually.
 
 ### Bounds Override: `bounds` and `max_height_pct`
 
@@ -151,23 +138,18 @@ When `capacity_warnings[]` reports underfilled cells without explicit bounds, ea
 
 #### `density_hint` in `recommend_visual`
 
-Pass `density_hint` ("low", "medium", or "high") in `content_hints` to bias pattern recommendations toward patterns matching the expected content density. Patterns whose `density_class` matches get a scoring boost; distant density classes (e.g., low content on a high-density pattern) receive a penalty. Use this when you already know the content is sparse or dense.
+Pass `density_hint` ("low", "medium", "high") in `content_hints` when you know the content is sparse or dense: a matching `density_class` gets a scoring boost, a distant one (low content on a high-density pattern) a penalty.
 
 #### `candidates:[]` in `recommend_visual`
 
-Pass `candidates` (array of strings) to rank an **explicit shortlist** instead of the full catalog. Every supplied name is returned with `score`, `rationale`, and `confidence_band` — the 0.5 threshold cutoff, top-K truncation, near-miss collection, and diversity-bonus injection are all bypassed. For `recommend_visual`, the `category` field is auto-resolved from the catalog (placeholder layout / named pattern / chart / diagram / raw_shape_grid); unknown names still appear with score 0 and a rationale noting the miss. Use this when you have 2–8 specific options in mind and want them ranked against your intent rather than re-discovering them from keywords.
+Pass `candidates` (array of strings) to rank an **explicit shortlist** of 2–8 options against your intent instead of the full catalog. Every name is returned with `score`, `rationale` and `confidence_band`; the 0.5 cutoff, top-K truncation, near-miss collection and diversity bonus are bypassed. `category` is auto-resolved (placeholder layout / named pattern / chart / diagram / raw_shape_grid); unknown names appear with score 0 and a rationale noting the miss.
 
 ### The `bounds_assumption` Field
 
-`expand_pattern` returns `bounds_assumption` indicating what area the budgets were computed against:
-
-- `"full_content_area"` — budgets reflect the full layout content area (default when no bounds override is provided)
-- `"explicit_override"` — budgets reflect the reduced area specified via `bounds` or `max_height_pct`
-
-Always read this field to understand what the budgets represent.
+`expand_pattern` returns `bounds_assumption`, the area the budgets were computed against: `"full_content_area"` (default, no bounds override) or `"explicit_override"` (the reduced `bounds` / `max_height_pct` area). Read it before trusting the budgets.
 
 ### Related Tools
 
-- **`expand_pattern`** — returns `cell_budgets[]`, `capacity_warnings[]`, and `layout_suggestions[]` for pre-generation density checks and alternative layout recommendations
-- **`validate_input`** (with `fit_report: true`) — post-generation findings including `fit_overflow` and `density_exceeded`
-- **`repair_slide`** — apply `reduce_text`, `split_at_row`, or `reduce_cell_text` fixes to bring cells into the optimal band (see Phase 4 REPAIR decision sequence above)
+- **`expand_pattern`** — `cell_budgets[]`, `capacity_warnings[]`, `layout_suggestions[]` (pre-generation)
+- **`validate_input`** (`fit_report: true`) — `fit_overflow`, `density_exceeded` findings
+- **`repair_slide`** — `reduce_text`, `split_at_row`, `reduce_cell_text` (Phase 4 REPAIR sequence above)

@@ -37,7 +37,7 @@ comparison, the plan is a roadmap, the ask is a decision.
 every slide. The sequence above never repeats a visual family, puts a light
 KPI slide between the summary and the chart, and keeps `meta.accent_strategy`
 at the default `primary` — rotation is only worth it when the template's
-safe-accent set is large (see RULES.md → Accent monotony).
+safe-accent set is large (see WORKFLOW.md → Accent monotony).
 
 ## Phase 3: RENDER
 

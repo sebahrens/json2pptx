@@ -2,6 +2,16 @@
 
 - **2026-09-28 — Schema 4.154.0: consultant × designer finishing round (`go-slide-creator-1x3yi`).** Contract changes listed in the 4.154.0 entries below: chart `highlight`, `chrome.tracker`, `next-steps` pattern and `next_steps` kind, KPI `comparator`, `callout.emphasis` subtle/strong and `takeaway_emphasis` overrides, `DATA_WITHOUT_SOURCE` and `FILLED_SHAPE_OUTLINED` findings, engine-default table style, source zone, type scale.
 
+- **2026-09-28 — Skill bundle budget rebalance (`go-slide-creator-dnboq`).**
+  No contract change. `skills/generate-deck/RULES.md` → Pattern monotony and
+  Accent monotony moved verbatim to `WORKFLOW.md` → Phase 2 (the deck-level
+  review step that reads them); `PATTERNS.md` prose tightened (the
+  `cell_budgets[]` field table became one sentence; no rule dropped); the
+  patch envelope and local asset-path rules moved from `docs/INPUT_FORMAT.md`
+  to the new `docs/INPUT_FORMAT_ADVANCED.md` (line-budgeted by
+  `TestSchemaDocsDoctor`). Every skill file now keeps at least 1 KiB of
+  headroom under its `skill_size_test.go` cap.
+
 - **2026-09-28 — Schema 4.154.0 · Template-aware stacked columns and nested-cell readability
   prediction (`go-slide-creator-bzh34`).** A `chart-insights-split` with a
   headline or so-what pins those rows at their writer-measured height and,
