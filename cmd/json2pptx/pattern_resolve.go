@@ -121,6 +121,9 @@ func expandPattern(p *PatternInput, ctx patterns.ExpandContext, reg *patterns.Re
 	// leaving the lower half of the slide empty. A pattern may opt out by
 	// setting vertical_align itself ("top" / "stretch").
 	patterns.ApplyGridDefaults(grid)
+	// Keep the template's accents: swap unreadable pattern lt1 text for a
+	// readable theme ink instead of recolouring fills black.
+	patterns.ApplyReadableInk(expandCtx, grid)
 
 	// Apply bounds_override: explicit bounds or max_height_pct convenience alias.
 	// This constrains the grid to a sub-region of the layout area, which also
