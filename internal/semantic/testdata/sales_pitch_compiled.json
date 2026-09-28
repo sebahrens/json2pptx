@@ -26,7 +26,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "The Opportunity"
+          "text_value": "Your teams hold the data but still wait days for decisions"
         }
       ],
       "pattern": {
@@ -57,7 +57,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "A Market Moving to Real Time"
+          "text_value": "Real-time decisioning spend overtakes batch reporting in 2025"
         }
       ],
       "pattern": {
@@ -115,7 +115,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Traction So Far"
+          "text_value": "60+ operations teams already decide 4.2x faster with Acme"
         }
       ],
       "pattern": {
@@ -162,7 +162,7 @@
         {
           "placeholder_id": "title",
           "type": "text",
-          "text_value": "Where We Go From Here"
+          "text_value": "A 90-day pilot on two workflows proves the value before scaling"
         },
         {
           "placeholder_id": "body",

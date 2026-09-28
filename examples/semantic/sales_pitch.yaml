@@ -19,7 +19,7 @@ slides:
     subtitle: Turn your operational data into decisions
 
   - kind: executive_summary
-    title: The Opportunity
+    title: Your teams hold the data but still wait days for decisions
     takeaway: Your teams are data-rich but decision-poor — and the gap is widening.
     points:
       - Operations teams export the same reports by hand every week.
@@ -28,7 +28,7 @@ slides:
       - The raw data already exists; nothing turns it into a decision.
 
   - kind: chart_insight
-    title: A Market Moving to Real Time
+    title: Real-time decisioning spend overtakes batch reporting in 2025
     insight: Spend is shifting decisively from batch reporting to live decisioning.
     chart:
       type: bar_chart
@@ -46,7 +46,7 @@ slides:
       - Early adopters report faster cycle times within a quarter.
 
   - kind: kpi_snapshot
-    title: Traction So Far
+    title: 60+ operations teams already decide 4.2x faster with Acme
     takeaway: Early customers are already seeing the decision gap close.
     kpis:
       - { value: "60+", label: "Operations teams live" }
@@ -58,7 +58,7 @@ slides:
     title: The Partnership We Propose
 
   - kind: decision
-    title: Where We Go From Here
+    title: A 90-day pilot on two workflows proves the value before scaling
     takeaway: Start with a focused pilot on one operations team, then scale on proof.
     recommendation: Run a 90-day pilot with your operations team, instrumenting the two workflows that cost the most analyst time today.
     options:

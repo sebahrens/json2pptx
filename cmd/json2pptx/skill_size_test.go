@@ -17,6 +17,7 @@ var generateDeckSkillCaps = []struct {
 	max  int64
 }{
 	{"SKILL.md", 12 * 1024},
+	{"QUALITY.md", 8 * 1024},
 	{"DECKSPEC.md", 16 * 1024},
 	{"RAW_PATH.md", 20 * 1024},
 	{"TOOLS.md", 10 * 1024},
@@ -83,3 +84,18 @@ func TestGenerateDeckSkillLocalLinksResolve(t *testing.T) {
 	}
 }
 
+// TestSkillQualityGuideIsMustRead keeps the consulting-quality guide on the
+// entrypoint's critical path: a guide the entrypoint does not send agents to
+// is a guide nobody loads.
+func TestSkillQualityGuideIsMustRead(t *testing.T) {
+	skill := readRepoFile(t, filepath.Join("skills", "generate-deck", "SKILL.md"))
+	if !strings.Contains(skill, "[QUALITY.md](QUALITY.md)") {
+		t.Error("SKILL.md must link QUALITY.md")
+	}
+	quality := readRepoFile(t, filepath.Join("skills", "generate-deck", "QUALITY.md"))
+	for _, want := range []string{"ghost deck", "action title", "one message", "takeaway", "source"} {
+		if !strings.Contains(strings.ToLower(quality), want) {
+			t.Errorf("QUALITY.md does not teach %q", want)
+		}
+	}
+}

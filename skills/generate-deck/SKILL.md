@@ -19,6 +19,12 @@ do not infer a tool's signature from an old example.
 **Completion rule (single source — same text as `get_started.completion_protocol.rule` and the MCP
 server `instructions`):** A deck is done only after every slide of the CURRENT revision has been rendered (render_deck_thumbnails) and looked at by you. A passing deterministic gate, score, or validate result is a precondition for that review, never completion. After a repair, re-render and re-inspect the slides that changed (render_deck_thumbnails with slide_indices, or render_slide_image for a single one), then make one full-deck pass over the final revision: the revision you ship is the one that has to have been seen.
 
+**Must-read before authoring:** [QUALITY.md](QUALITY.md) — ghost deck of
+titles first, full-sentence action titles (≤15 words, carrying the number),
+one message per slide, a `takeaway` and `source` on every evidence slide, and
+the message → visual table. A deck that passes every gate with topic titles
+is not finished.
+
 ## Choose the authoring path
 
 <!-- workflow-contract:start -->
@@ -63,6 +69,8 @@ executable one.
 
 ## References, loaded only when relevant
 
+- [QUALITY.md](QUALITY.md): storyline, action titles, one message per slide,
+  takeaways, sources, and choosing the visual from the message (always read).
 - [DECKSPEC.md](DECKSPEC.md): semantic authoring, content budgets, degradation,
   chapter structure, required layouts, and spec-level iteration.
 - [RAW_PATH.md](RAW_PATH.md): raw `PresentationInput` preconditions, strict

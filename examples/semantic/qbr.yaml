@@ -16,7 +16,7 @@ slides:
     subtitle: Revenue, Retention, and the Path to H2
 
   - kind: executive_summary
-    title: Where We Stand
+    title: Q2 beat plan on revenue, but SMB churn now threatens H2 retention
     takeaway: Strong top-line growth, but retention needs deliberate investment in H2.
     points:
       - Revenue grew 18% quarter-over-quarter, ahead of the 12% plan.
@@ -25,8 +25,9 @@ slides:
       - Sales cycle shortened to 41 days after the onboarding redesign.
 
   - kind: kpi_snapshot
-    title: The Quarter in Numbers
-    takeaway: Every headline metric improved except SMB churn.
+    title: ARR reached $48M and every metric improved except SMB churn
+    takeaway: Churn is the one number moving the wrong way, and it is concentrated in SMB.
+    source: Internal finance and CRM data, Q2 FY26 close
     kpis:
       - { value: "$48M", label: "Annual recurring revenue" }
       - { value: "118%", label: "Net revenue retention" }
@@ -34,8 +35,9 @@ slides:
       - { value: "2.4%", label: "Logo churn (SMB-weighted)" }
 
   - kind: chart_insight
-    title: Revenue Trajectory
+    title: Revenue grew 41% this year, with EMEA driving the Q4 step-up
     insight: Q4 acceleration reflects the EMEA launch landing ahead of schedule.
+    source: Internal finance data, FY26 quarterly close
     chart:
       type: bar_chart
       title: Quarterly revenue ($M)
@@ -50,7 +52,7 @@ slides:
       - Pipeline coverage points to continued acceleration into H2.
 
   - kind: decision
-    title: The H2 Retention Bet
+    title: Fund an SMB success pod in Q3 to protect 118% net retention
     takeaway: Fund a dedicated SMB success pod now to protect net retention.
     recommendation: Stand up a dedicated SMB customer-success pod in Q3 to arrest churn before it compounds.
     options:
@@ -63,5 +65,5 @@ slides:
         detail: Cheapest per seat, at the expense of response time.
 
   - kind: closing
-    title: Questions & Discussion
-    subtitle: Thank you — let's talk through H2 priorities.
+    title: Approve the SMB success pod this month to protect H2 growth
+    subtitle: "Owner: VP Customer Success · decision needed by 31 July"
