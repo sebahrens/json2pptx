@@ -178,6 +178,7 @@ const (
 	FindingPercentScaleAmbiguous     = core.FindingPercentScaleAmbiguous
 	FindingCurrencyPrefixDefaulted   = core.FindingCurrencyPrefixDefaulted
 	FindingWaterfallTotalMismatch    = core.FindingWaterfallTotalMismatch
+	FindingOrgChartNodesInvalid      = core.FindingOrgChartNodesInvalid
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries

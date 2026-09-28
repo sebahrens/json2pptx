@@ -128,6 +128,14 @@ const (
 	// than rounding (0.5%). The bar is drawn at the authored value, so the walk
 	// visibly does not add up (go-slide-creator-csclk.11).
 	FindingWaterfallTotalMismatch = "chart.waterfall_total_mismatch"
+
+	// FindingOrgChartNodesInvalid is emitted when an org chart's flat nodes
+	// array has a parent id that matches no node, a duplicate id, a node that
+	// is its own parent or a parent cycle (each repaired by drawing the node
+	// under the top node), or when a node has neither name nor title and so
+	// draws as an empty box (typically a node written with "label", which the
+	// org chart does not read).
+	FindingOrgChartNodesInvalid = "diagram.org_chart_nodes_invalid"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.

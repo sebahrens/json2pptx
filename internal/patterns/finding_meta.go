@@ -1139,6 +1139,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Or add the missing increase/decrease step that explains the difference.",
 		},
 	},
+	"diagram.org_chart_nodes_invalid": {
+		Code:        "diagram.org_chart_nodes_invalid",
+		Summary:     "An org chart has unresolvable or empty nodes.",
+		Severity:    "review",
+		WhenEmitted: "svggen finds a flat-nodes parent id that matches no node, a duplicate id, a self-parent or a parent cycle (the node is drawn under the top node), or a node with neither name nor title, which draws as an empty box.",
+		RemediationSteps: []string{
+			"Fix each entry in fix.params.issues: point parent at an existing id, make ids unique, and break cycles.",
+			"Give every node a name (and optionally a title); label is not read by the org chart.",
+		},
+	},
 	"chart.zero_sum_pie": {
 		Code:        "chart.zero_sum_pie",
 		Summary:     "A pie/donut chart's slices sum to zero, producing a blank chart.",

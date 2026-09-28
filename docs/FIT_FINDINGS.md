@@ -809,6 +809,23 @@ A waterfall `total` or `subtotal` point disagrees with the running sum of the ba
 }
 ```
 
+### `diagram.org_chart_nodes_invalid`
+
+**Action:** `review`
+**Pattern:** `org_chart`
+**Fix kind:** `replace_value` (params: `issues` — one string per problem, `diagram_type`)
+
+An org chart's flat `nodes` array has a `parent` that matches no `id`, a duplicate `id`, a node that is its own parent, or a parent cycle — or a node has neither `name` nor `title` (typically written with `label`, which the org chart does not read) and draws as an empty box. Structural problems are repaired by drawing the node under the top node, so the chart renders, but its hierarchy is not the one authored. Fix each listed node.
+
+```json
+{
+  "code": "diagram.org_chart_nodes_invalid",
+  "message": "org chart: nodes[1].parent \"missing\" matches no node id; drawn under the top node",
+  "fix": { "kind": "replace_value", "params": { "issues": ["nodes[1].parent \"missing\" matches no node id; drawn under the top node"], "diagram_type": "org_chart" } },
+  "severity": "warning"
+}
+```
+
 ### `CHART_PLACEHOLDER_EMPTY`
 
 **Action:** `review`
