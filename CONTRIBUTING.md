@@ -107,8 +107,9 @@ bd prime
 bd ready
 ```
 
-See [.beads/README.md](.beads/README.md) for background on what Beads is and the
-everyday command reference.
+`bd prime` prints the Beads workflow context; the everyday command reference
+and the session-close checklist are in the next section. (`.beads/` is
+gitignored, so it holds no committed docs.)
 
 ### Beads command and session-close reference
 

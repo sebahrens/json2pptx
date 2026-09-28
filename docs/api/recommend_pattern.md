@@ -1,5 +1,10 @@
 # recommend_pattern
 
+> **Folded alias.** Prefer [`recommend_visual`](./recommend_visual.md), its
+> successor, which ranks patterns, charts, diagrams and placeholder layouts
+> together. `recommend_pattern` remains callable and is documented here for
+> its pattern-only response.
+
 Recommend named patterns for a content intent. Returns ranked candidates with scores, rationales, confidence bands, and expansion previews.
 
 **Added in:** 2.0.0

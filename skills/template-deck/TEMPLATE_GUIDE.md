@@ -79,6 +79,7 @@ Each layout receives classification tags based on its placeholder structure and 
 | `full-image` | Large image with no side-by-side text area |
 | `chart-capable` | Contains chart placeholder |
 | `blank` | No placeholders |
+| `blank-title` | Exactly one visible title and no subtitle/body/image/chart placeholder, on a layout whose name contains "blank" (e.g. `Blank + Title`); also carries `title-slide`. Base for `blank-title` virtual layouts and shape-grid / pattern slides |
 
 ### Semantic tags (from layout display name)
 
