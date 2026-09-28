@@ -573,7 +573,8 @@ func geometryTextWidthEMU(spec *shapegrid.ShapeSpec, b pptx.RectEmu) int64 {
 	var tw float64
 	switch spec.Geometry {
 	case "chevron":
-		a := math.Min(adj(50000), 100000*w/ss)
+		def, _ := shapegrid.DefaultChevronAdj(spec.Geometry, b.CX, b.CY)
+		a := math.Min(adj(float64(def)), 100000*w/ss)
 		tw = w - 2*ss*a/100000
 	case "homePlate":
 		a := math.Min(adj(50000), 100000*w/ss)

@@ -2,8 +2,38 @@ package generator
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
+
+// Two text blocks on one placeholder used to overwrite each other silently;
+// the first now wins and the loser is reported (go-slide-creator-rioxd).
+func TestPopulateTextInSlide_DuplicateTextBlockEmitsContentDropped(t *testing.T) {
+	slide := &slideXML{CommonSlideData: commonSlideDataXML{ShapeTree: shapeTreeXML{Shapes: oneContentShapes()}}}
+	ctx := newSinglePassContext("", nil, nil, false, nil)
+	content := []ContentItem{
+		{PlaceholderID: "title", Type: ContentText, Value: "T"},
+		{PlaceholderID: "body", Type: ContentBullets, Value: []string{"left one"}},
+		{PlaceholderID: "body", Type: ContentBullets, Value: []string{"right one"}},
+	}
+	warnings := ctx.populateTextInSlide(slide, content, "One Content", 0, "")
+
+	dropped := 0
+	for _, f := range ctx.fitFindings {
+		if f.Code == "CONTENT_DROPPED" {
+			dropped++
+			if f.Path != "/slides/0/content/2" {
+				t.Errorf("finding path = %q, want /slides/0/content/2", f.Path)
+			}
+		}
+	}
+	if dropped != 1 {
+		t.Fatalf("CONTENT_DROPPED findings = %d, want 1 (warnings: %v)", dropped, warnings)
+	}
+	if got := getShapeText(&slide.CommonSlideData.ShapeTree.Shapes[1]); !strings.Contains(got, "left one") {
+		t.Errorf("first block must stay in the placeholder, got %q", got)
+	}
+}
 
 func oneContentShapes() []shapeXML {
 	return []shapeXML{

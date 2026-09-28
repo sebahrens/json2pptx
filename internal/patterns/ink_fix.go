@@ -35,6 +35,24 @@ func ApplyReadableInk(ctx ExpandContext, grid *jsonschema.ShapeGridInput) {
 	}
 }
 
+// WCAG "large text" in points: 18pt, or 14pt bold (the 24px / 18.66px of the
+// CSS wording). Shared with the render-time contrast pass so the ink written
+// at expansion is never re-judged against a different bar
+// (go-slide-creator-z668n).
+const (
+	LargeTextPt     = 18.0
+	LargeBoldTextPt = 14.0
+)
+
+// TextContrastThreshold returns the WCAG AA ratio text of the given size must
+// meet: 3:1 for large text, 4.5:1 otherwise. A size <= 0 is treated as normal.
+func TextContrastThreshold(pt float64, bold bool) float64 {
+	if pt >= LargeTextPt || (bold && pt >= LargeBoldTextPt) {
+		return svggen.WCAGAALarge
+	}
+	return svggen.WCAGAANormal
+}
+
 func fixShapeInk(ctx ExpandContext, shape *jsonschema.ShapeSpecInput) {
 	if len(shape.Fill) == 0 || len(shape.Text) == 0 {
 		return
@@ -47,12 +65,9 @@ func fixShapeInk(ctx ExpandContext, shape *jsonschema.ShapeSpecInput) {
 	if err := json.Unmarshal(shape.Text, &text); err != nil {
 		return // plain-string text carries no colour
 	}
-	minContrast := svggen.WCAGAANormal
 	size, _ := text["size"].(float64)
 	bold, _ := text["bold"].(bool)
-	if size >= 24 || (bold && size >= 18) {
-		minContrast = 3.0 // WCAG large text
-	}
+	minContrast := TextContrastThreshold(size, bold)
 	fill, ok := effectiveFillColor(ctx, tone)
 	if !ok {
 		return

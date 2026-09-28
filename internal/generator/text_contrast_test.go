@@ -541,8 +541,11 @@ func TestTransparentGridPreflightMatchesRender(t *testing.T) {
 	for _, tc := range []struct {
 		name, background, foreground string
 	}{
-		{"light", "#FFFFFF", "FFFFFF"},
-		{"dark", "#000000", "000000"},
+		// Near-canvas but not identical: identical literal colours on a
+		// transparent cell are deliberately hidden text and left alone
+		// (TestTransparentGridHiddenTextLeftAlone).
+		{"light", "#FFFFFF", "F0F0F0"},
+		{"dark", "#000000", "1A1A1A"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			shape := []byte(`<p:sp><p:spPr><a:noFill/></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="1200"><a:solidFill><a:srgbClr val="` + tc.foreground + `"/></a:solidFill></a:rPr><a:t>Caption</a:t></a:r></a:p></p:txBody></p:sp>`)
@@ -564,6 +567,21 @@ func TestTransparentGridPreflightMatchesRender(t *testing.T) {
 				t.Errorf("preflight predicted %v, render used %s", predicted, swaps[0].ReplacedColor)
 			}
 		})
+	}
+}
+
+// White "1" spacer labels on a transparent cell of a white slide are hidden
+// on purpose; recolouring them exposed stray numerals (go-slide-creator-z668n).
+// A scheme colour matching the canvas is template ink, not hiding, and is fixed.
+func TestTransparentGridHiddenTextLeftAlone(t *testing.T) {
+	hidden := []byte(`<p:sp><p:spPr><a:noFill/></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="2400" b="1"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr><a:t>1</a:t></a:r></a:p></p:txBody></p:sp>`)
+	fixed, swaps := enforceShapeGridContrast([][]byte{hidden}, consultingThemeColors(), nil, 0, "#FFFFFF")
+	if len(swaps) != 0 || string(fixed[0]) != string(hidden) {
+		t.Errorf("hidden text was recoloured: swaps=%+v", swaps)
+	}
+	scheme := []byte(`<p:sp><p:spPr><a:noFill/></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="1200"><a:solidFill><a:schemeClr val="lt1"/></a:solidFill></a:rPr><a:t>Label</a:t></a:r></a:p></p:txBody></p:sp>`)
+	if _, swaps := enforceShapeGridContrast([][]byte{scheme}, consultingThemeColors(), nil, 0, "#FFFFFF"); len(swaps) != 1 {
+		t.Errorf("scheme lt1 on white must still be fixed, swaps=%+v", swaps)
 	}
 }
 

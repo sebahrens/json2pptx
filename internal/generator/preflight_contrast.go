@@ -87,7 +87,7 @@ func CompiledGridSwapFinding(swap ContrastSwap, path, authoredColor, source stri
 		fg, fgErr := svggen.ParseColor(swap.OriginalColor)
 		bg, bgErr := svggen.ParseColor(swap.BackgroundColor)
 		if fgErr == nil && bgErr == nil {
-			_, mode = contrastReplacement(authoredColor, fg, bg, themeColors, svggen.WCAGAANormal, false)
+			_, mode = contrastReplacement(authoredColor, fg, bg, themeColors, svggen.WCAGAANormal, gridSnapsToPalette)
 		}
 		fix = &patterns.FixSuggestion{
 			Kind: "replace_color",
@@ -182,8 +182,12 @@ func DetectContrastPreflight(pairs []ContrastPreflightPair, themeColors []types.
 		// render-time pass would. This keeps the predicted color identical to
 		// the contrast_autofixed swap. replacement_mode discloses which branch
 		// produced it.
-		replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors, threshold, p.AuthorBackground)
+		snap := p.AuthorBackground || (p.Source == "shape_grid" && gridSnapsToPalette)
+		replacement, mode := contrastReplacement(p.Foreground, fg, bg, themeColors, threshold, snap)
 		newRatio := replacement.ContrastWith(bg)
+		if !contrastSwapWorthwhile(ratio, newRatio) {
+			continue // the renderer keeps the authored colour too
+		}
 		source := p.Source
 		if source == "" {
 			source = "preflight"

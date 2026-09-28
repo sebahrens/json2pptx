@@ -1491,8 +1491,42 @@ func convertPresentationContent(content []ContentInput, slideNum int, slideType 
 	// dividers where both "title" and "body" resolve to the same body placeholder).
 	// Without merging, the second populateShapeText call overwrites the first.
 	items = mergeTextItemsSamePlaceholder(items)
+	items = routeDuplicateBodyToSecondColumn(items, slideType)
 
 	return items, nil
+}
+
+// routeDuplicateBodyToSecondColumn moves a second non-text content block that
+// targets "body" onto the free "body_2" column of a two-column / comparison
+// slide. Without it the later block overwrote the first in the shared
+// placeholder and the left column vanished with no finding
+// (go-slide-creator-rioxd). Collisions it cannot route are left in place; the
+// generator reports each one as CONTENT_DROPPED.
+func routeDuplicateBodyToSecondColumn(items []generator.ContentItem, slideType types.SlideType) []generator.ContentItem {
+	if slideType != types.SlideTypeTwoColumn && slideType != types.SlideTypeComparison {
+		return items
+	}
+	for _, item := range items {
+		if item.PlaceholderID == "body_2" {
+			return items
+		}
+	}
+	seenBody := false
+	for i, item := range items {
+		if item.PlaceholderID != "body" {
+			continue
+		}
+		if !seenBody {
+			seenBody = true
+			continue
+		}
+		if item.Type == generator.ContentText || item.Type == generator.ContentSectionTitle {
+			continue
+		}
+		items[i].PlaceholderID = "body_2"
+		return items
+	}
+	return items
 }
 
 // validateSlidesChartData runs svggen Validate() on chart/diagram content items

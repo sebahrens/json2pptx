@@ -84,7 +84,7 @@ Grid-shaped patterns support multiple configurations (e.g., 2×2, 3×2, 4×2). `
 
 **Swimlanes.** `swimlane` steps hold 80 characters in sparse grids and about 21 at 8 steps × 6 lanes (`show_pattern` lists each combination); actor labels hold 40 (32 with six lanes). `BODY_TOO_LONG` names the lane and step.
 
-**Numbered steps.** `numbered-step-strip` labels hold 60 characters (about 45 in a six-step `chevron`); bodies hold ~178 (chevron), 120 / 116 (six-plus stacked-box / toc). Only `stacked-box` / `toc` accept a seventh step and an optional per-step `icon` (bundled name or `{name|path|url|svg_data}`); `chevron` rejects both. `BODY_TOO_LONG` names long labels; `TEXT_EXCEEDS_SHAPE` flags a mid-word chevron break.
+**Numbered steps.** `numbered-step-strip` labels hold 60 characters (about 45 in a six-step `chevron`); bodies hold ~178 (chevron), 120 / 116 (six-plus stacked-box / toc). Only `stacked-box` / `toc` accept a seventh step and an optional per-step `icon` (bundled name or `{name|path|url|svg_data}`); `chevron` rejects both. `BODY_TOO_LONG` names long labels; `TEXT_EXCEEDS_SHAPE` flags a mid-word chevron break. Prefer it to hand-built chevron grids.
 
 **State-shift hub.** `state-shift-hub` descriptions hold about 100 characters with 3 pairs, 62 with 4, 40 with 5 and 30 with 6; keep `hub_label` near 40 characters.
 

@@ -234,9 +234,10 @@ func TestContrastPreflight_WhiteOnLightAccentMatchesRender(t *testing.T) {
 	}
 }
 
-// TestContrastPreflight_NonNeutralLowContrastMatchesRender covers the lerp
-// branch: a non-neutral low-contrast foreground is lerped by EnsureContrast in
-// both the renderer and the predictor, and they must agree.
+// TestContrastPreflight_NonNeutralLowContrastMatchesRender: a non-neutral
+// low-contrast shape-grid foreground snaps to the palette (not a lerped tint)
+// in both the renderer and the predictor, and they must agree
+// (go-slide-creator-z668n).
 func TestContrastPreflight_NonNeutralLowContrastMatchesRender(t *testing.T) {
 	themeColors := []types.ThemeColor{
 		{Name: "dk1", RGB: "#1A1A1A"},
@@ -258,8 +259,11 @@ func TestContrastPreflight_NonNeutralLowContrastMatchesRender(t *testing.T) {
 	if predicted != swap.ReplacedColor {
 		t.Errorf("predicted replacement %v != render-time swap %q", predicted, swap.ReplacedColor)
 	}
-	if mode := findings[0].Fix.Params["replacement_mode"]; mode != contrastModeLerp {
-		t.Errorf("replacement_mode = %v, want %q", mode, contrastModeLerp)
+	if predicted != "#1A1A1A" {
+		t.Errorf("expected palette dk1 #1A1A1A, got %v", predicted)
+	}
+	if mode := findings[0].Fix.Params["replacement_mode"]; mode != contrastModeFlip {
+		t.Errorf("replacement_mode = %v, want %q", mode, contrastModeFlip)
 	}
 }
 
