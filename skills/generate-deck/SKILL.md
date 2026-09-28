@@ -32,10 +32,13 @@ Default for content-bearing decks: author real content as a DeckSpec; call `list
 <!-- workflow-contract:end -->
 
 For a new content-bearing deck, write a semantic **DeckSpec** (`meta` plus
-`slides[].kind`, or chapter-based `structure`). Discover available kinds with
-`list_slide_kinds` using its compact fields; request `item_schema` and
+`slides[].kind`, or chapter-based `structure`). `get_started(task:"brief")`
+returns this path as its `sequence` (the raw chain is `raw_sequence`):
+`plan_deck` with `format:"deckspec"` drafts the storyline as a DeckSpec
+(a kind per narrative slot, brief facts routed to each); discover kinds with
+`list_slide_kinds` using its compact fields, requesting `item_schema` and
 `compositions` only for selected kinds. Then call `validate_deck_spec`,
-`render_deck_spec`, and `render_deck_thumbnails`. Edit the spec at a finding's
+`render_deck_spec`, `render_deck_thumbnails`, and `submit_visual_review`. Edit the spec at a finding's
 `semantic_path` and repeat. `make_deck` creates an exemplar-filled wireframe,
 not a publishable authored deck. Read [DECKSPEC.md](DECKSPEC.md) for budgets,
 degradation behavior, required-layout coverage, handles, and revision rules.
@@ -73,12 +76,14 @@ executable one.
   takeaways, sources, and choosing the visual from the message (always read).
 - [DECKSPEC.md](DECKSPEC.md): semantic authoring, content budgets, degradation,
   chapter structure, required layouts, and spec-level iteration.
-- [RAW_PATH.md](RAW_PATH.md): raw `PresentationInput` preconditions, strict
-  output validation, repair, assets, and SVG/diagram integration.
+- [RAW_PATH.md](RAW_PATH.md): raw `PresentationInput` preconditions, raw
+  planning and rhythm, strict output validation, repair, assets, and
+  SVG/diagram integration.
 - [TOOLS.md](TOOLS.md): concise phase map, tool-profile discovery, MCP-only
   operations, and composition recipes.
-- [WORKFLOW.md](WORKFLOW.md): detailed Plan → Vary → Render → Repair workflow,
-  visual inspection, resumable calls, and idempotency.
+- [WORKFLOW.md](WORKFLOW.md): Plan → Vary → Render → Repair on the DeckSpec
+  path, the per-slide review rubric (recorded in `submit_visual_review`), and
+  the three-round repair cap. Read before the first render.
 - [RULES.md](RULES.md): shape-grid, content, contrast, typography, and
   anti-pattern rules. Waterfall `type` sets the sign
   (`chart.waterfall_total_mismatch`).

@@ -103,11 +103,73 @@ after embedding a chart or diagram. A diagram collision or unreadable
 native text is a content/layout problem: shorten labels or give the diagram
 more space, then render the slide to pixels again.
 
+## Raw planning
+
+The storyline rules (QUALITY.md) are the same on this path. `plan_deck`
+(default `format: "raw"`) returns ordered slides with a canonical `layout`
+(`title` first, `closing` last, `blank-title` + a pattern between), a
+`recommended_pattern`, `suggested_pattern_fallback`, narrative role and
+`content_seed`, with brief facts verbatim in `facts[]` and the rest in
+`unplaced_facts[]`. Comparison slots use only `comparison-2col` /
+`before-after`; emphasis patterns are capped at ceil(n/5). Each slide's
+`skeleton` is a partial `SlideInput`: copy it, replace every `__FILL__`,
+review the typed choices in its `__CHOOSE__` speaker note and delete that
+note. Leftover tokens are `unresolved_placeholder` warnings; run the
+publishable pass with `placeholder_policy: "strict"` so they block.
+
+Per slide intent, `recommend_visual` ranks layouts, patterns, charts,
+diagrams and compose envelopes (`recommend_pattern` only when you already
+need a named pattern). Take canonical layout IDs from `list_templates`; for
+placeholder capacity request `mode="compact"` (`layout_summaries[].placeholders[].max_chars`)
+or `fields="full"`.
+
+## Rhythm before generation
+
+`analyze_deck_rhythm` is a static check (no PPTX): `per_slide[]` fingerprints
+(pattern, density class, accent role, `within_slide_accent_variety`) and
+`aggregates` — `longest_run` (target ≤ 2), `repetition_index` (< 0.5),
+`accent_balance` (no accent > 80%), `density_cv` (> 0.1 on 4+ slides),
+`density_distribution` — plus `composition_score` and `recommendations` with
+`recommended_break_patterns`. Act on it: swap the middle slide of a run of 3
+to a suggested break pattern; add a stat/quote break when `density_cv` is
+flat; set `cell_accent_mode: "progressive"` on a 5+ cell slide with one
+accent; add detail or use a smaller grid when underfilled cells pass 30%;
+iterate until the score is ≥ 70.
+
+**Pre-emit checklist.** Tables within Rule 20 (rows ≤ 7, cols ≤ 6, font ≥
+9pt, multiline cells counted); every fill semantic, never mixed with hex
+(Rule 12); no sibling shapes closer than 4pt; `cell_accent_mode` on 4+ peer
+cells; every pattern cell at 35–110% `density_pct` from `expand_pattern`
+(PATTERNS.md).
+
+## Generate and repair
+
+`validate_input` with `fit_report: true` (CLI `json2pptx validate
+--fit-report`, `--json` for the envelope) exits clean even with unfittable
+cells; refusal comes from `strict_fit` on `generate_presentation`: `off`
+(silent shrink/truncate), `warn` (default: shrink and report), `strict`
+(refuse on overflow with `fix.kind` `split_at_row` / `reduce_text`, as a
+FindingEnvelope with `IsError=true`). Every `findings` array is sorted by
+(severity desc, slide index asc, code asc); deck-level findings precede slide
+0, so work top-down. `preview_presentation_plan` dry-runs layout selection,
+placeholder mapping and fit without writing a PPTX.
+
+`repair_slide` takes the raw `deck_id` (or the deck JSON), `slide_index` and
+`fixes: [{kind, params}]`; a handle repair persists and returns
+`changed_slides` (`return_deck: true` for the JSON). Overflow: preserve
+evidence — `split_bullets` (`max_items`) for native bullet columns,
+`split_at_row` for tables, `shorten_title` only when meaning survives;
+`reduce_text` / `reduce_cell_text` truncate and are last resorts. Wrong
+layout → `swap_layout`. Surprise grey from `contrast_autofixed` → an accent
+with ≥ 3:1 against white, `dk1` text, or `contrast_check: false` only after
+verifying contrast yourself. For vision findings, `repair_slide` with
+`{kind: "autofix_visual", params: {category}}` tries the mapped kinds in
+order (e.g. `text_overflow` → `reduce_cell_text`, `split_at_row`,
+`reshape_grid`).
+
 ## Finish
 
-Render with `render_deck_thumbnails`, inspect **every** slide image, repair
-anything visibly wrong, and repeat. Re-render changed slides promptly; the
-final full-deck pass must cover the current revision. If the server lacks
-render tooling, say the artifact is **UNREVIEWED**. The detailed four-phase
-workflow, progress notifications, idempotency, and visual-review protocol
-are in [WORKFLOW.md](WORKFLOW.md).
+Render with `render_deck_thumbnails`, then apply the per-slide rubric, the
+submission and the three-round loop cap in [WORKFLOW.md](WORKFLOW.md) → Phase
+4 — the review protocol is identical on both paths. If the server lacks
+render tooling, say the artifact is **UNREVIEWED**.

@@ -85,11 +85,16 @@ type getStartedResponse struct {
 	// deck_id the server already holds). Omitted for validate-only (pure
 	// diagnostics). Sequence remains
 	// the controllable manual path agents drop to when they need per-step control.
-	FastPath       *getStartedFastPath `json:"fast_path,omitempty"`
-	Sequence       []getStartedStep    `json:"sequence"`
-	AvailableTasks []string            `json:"available_tasks"`
-	Notes          []string            `json:"notes,omitempty"`
-	Completion     completionProtocol  `json:"completion_protocol"`
+	FastPath *getStartedFastPath `json:"fast_path,omitempty"`
+	Sequence []getStartedStep    `json:"sequence"`
+	// RawSequence is the raw PresentationInput chain for task=brief, where
+	// Sequence is the DeckSpec path. SKILL.md makes DeckSpec the default, but
+	// brief's sequence used to BE the raw chain, so an agent following the
+	// numbered steps never authored a DeckSpec (go-slide-creator-waft9).
+	RawSequence    []getStartedStep   `json:"raw_sequence,omitempty"`
+	AvailableTasks []string           `json:"available_tasks"`
+	Notes          []string           `json:"notes,omitempty"`
+	Completion     completionProtocol `json:"completion_protocol"`
 	// QualityWorkflow is the server's MCP `instructions` text, echoed verbatim
 	// (same Go const) so MCP clients that do not surface instructions still see
 	// the quality workflow.
@@ -135,7 +140,7 @@ func fastPathFor(task string, seq []getStartedStep) *getStartedFastPath {
 	case "brief":
 		return &getStartedFastPath{
 			Tool:       "render_deck_spec",
-			WhenToCall: "RECOMMENDED PATH for a new deck from a brief — write a compact DeckSpec ({meta:{title, archetype}, slides:[{kind, …}]}) carrying the user's real content, then render it in one call. Follow `steps`: list_slide_kinds (compact kind summaries + copy-ready examples; request item_schema for chosen kinds) → validate_deck_spec → render_deck_spec → render_deck_thumbnails (look at every slide). A ~30-line DeckSpec yields a real 6-slide deck; the compiler picks patterns, layouts, and rhythm. Fix findings at their semantic_path in the spec and re-render. make_deck is NOT this path: it is a skeleton/wireframe only (exemplar placeholder copy, gate always fails). Drop to the raw primitives in `sequence` (recommend_visual → … → generate_presentation) only when you need a feature outside the DeckSpec schema.",
+			WhenToCall: "RECOMMENDED PATH for a new deck from a brief — write a compact DeckSpec ({meta:{title, archetype}, slides:[{kind, …}]}) carrying the user's real content, then render it in one call. Follow `steps`: list_slide_kinds (compact kind summaries + copy-ready examples; request item_schema for chosen kinds) → validate_deck_spec → render_deck_spec → render_deck_thumbnails (look at every slide). A ~30-line DeckSpec yields a real 6-slide deck; the compiler picks patterns, layouts, and rhythm. Fix findings at their semantic_path in the spec and re-render. make_deck is NOT this path: it is a skeleton/wireframe only (exemplar placeholder copy, gate always fails). `sequence` is this same path with plan_deck (format:\"deckspec\") in front and submit_visual_review at the end. Drop to the raw primitives in `raw_sequence` (recommend_visual → … → generate_presentation) only when you need a feature outside the DeckSpec schema.",
 			Steps: []getStartedStep{
 				{Tool: "list_slide_kinds", WhenToCall: fmt.Sprintf("Pick a kind per slide from the compact catalog and copy its example. For fields you need to author beyond the example, call list_slide_kinds again with kinds:[chosen kind] and fields:[item_schema]; add compositions when choosing a pattern/layout override (anything outside that list is ignored and reported as SEMANTIC_PATTERN_NOT_AVAILABLE). Unknown fields report SEMANTIC_UNKNOWN_FIELD. A kind reaches %d of the %d patterns; for one of the other %d (swimlane, pyramid, value-chain, scqa-summary and the rest — SKILL.md lists them all) use kind raw_json2pptx and carry the pattern block verbatim, as its example shows.", len(semantic.ReachablePatterns()), len(semantic.ReachablePatterns())+len(semantic.UnreachablePatterns()), len(semantic.UnreachablePatterns()))},
 				{Tool: "validate_deck_spec", WhenToCall: "Check the DeckSpec; fix every blocking SEMANTIC_UNKNOWN_FIELD error and each SEMANTIC_DENSITY warning at its path."},
@@ -206,12 +211,20 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 		normalized = "brief"
 	}
 
-	var seq []getStartedStep
+	var seq, rawSeq []getStartedStep
 	var notes []string
 
 	switch normalized {
 	case "brief":
 		seq = []getStartedStep{
+			{Tool: "plan_deck", WhenToCall: "Draft the storyline as a DeckSpec: format:\"deckspec\" returns deck_spec (a kind per narrative slot — answer, problem, cause, evidence, plan, roadmap, ask) with __FILL__ titles, slot guidance and the brief's facts routed to each slot. Rewrite every title as a full-sentence action title that carries its number (SKILL.md → QUALITY.md). Optional for decks of 1-4 slides.", ArgsTemplate: map[string]any{"brief": "<the user's brief>", "format": "deckspec"}},
+			{Tool: "list_slide_kinds", WhenToCall: "Fill each drafted slide: the compact catalog gives every kind's fields and a copy-ready example; request kinds:[chosen] with fields:[item_schema] for fields beyond the example."},
+			{Tool: "validate_deck_spec", WhenToCall: "Check the DeckSpec; fix every blocking error and each SEMANTIC_DENSITY warning at its semantic_path. Keep the returned deck_id and revise with deck_id + patch."},
+			{Tool: "render_deck_spec", WhenToCall: "Compile and render the DeckSpec; diagnostics map back to semantic_path. deterministic_ready is a precondition for review, not approval."},
+			{Tool: "render_deck_thumbnails", WhenToCall: "Render ALL slides of this revision and look at every image against the per-slide rubric (WORKFLOW.md): action title of at most two lines, body proves the title, readable text, aligned edges, no orphans, balanced whitespace, meaningful accents, chart units and source. Repair at semantic_path, re-render changed_slides, at most three repair rounds."},
+			{Tool: "submit_visual_review", WhenToCall: "Record the verdict for every slide of the current revision with the image_path/image_sha256 you inspected and each open rubric failure as a finding (P0/P1 blocks approval). Only an all-slide, current-revision approval completes the deck."},
+		}
+		rawSeq = []getStartedStep{
 			{Tool: "get_capabilities", WhenToCall: "First — detect schema_version drift and feature flags before doing anything else. The default sections ([runtime, features, deprecations], ~6 KB) are all you need; pass sections:[\"tools\"] only if you want the catalogue tools/list already sent."},
 			{Tool: "list_templates", WhenToCall: "Pick a template; read canonical_layout_ids, color_roles, layout_summaries, table_styles."},
 			{Tool: "plan_deck", WhenToCall: "Turn the user's brief into an ordered slide outline with per-slide patterns and narrative roles. Recommended for any deck > 4 slides."},
@@ -224,12 +237,12 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 			{Tool: "inspect_slide_images", WhenToCall: "Inspect every rendered slide with a configured provider or host/manual reviewer (a host/manual reviewer records its all-slide verdict with submit_visual_review against the current pptx_revision); repair findings, then render and inspect the new revision again."},
 		}
 		notes = []string{
-			"fast_path is the DeckSpec path (list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails): author the user's real content as a compact DeckSpec and render it. The numbered `sequence` is the raw-primitive path you drop to only for features outside the DeckSpec schema.",
+			"`sequence` is the DeckSpec path (plan_deck format:\"deckspec\" → list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails → submit_visual_review): author the user's real content as a compact DeckSpec and render it. `raw_sequence` is the raw-primitive path you drop to only for features outside the DeckSpec schema.",
 			"make_deck is a skeleton/wireframe tool, not a deck builder: it fills every slide with pattern exemplar placeholder copy, so it always reports gate_passed=false, uses_exemplar_content=true, and \"exemplar_content\" in blocking_reasons. Never ship its output.",
 			"COMPLETION: " + mcpCompletionRule,
 			"NO VISION PROVIDER? Render every slide with render_deck_thumbnails (image content blocks), inspect each image yourself, then record the verdict with submit_visual_review {pptx_path, pptx_revision, slides:[{index, verdict, image_path|image_sha256, findings?}], reviewer: host|manual}. Submit the paths/content_hashes render_deck_thumbnails returned for THIS pptx: each image is checked against the server's own render of that slide, and a recycled or foreign image is rejected. Only a complete, current-revision review with verified images and no P0/P1 findings marks the deck visually_reviewed_current_revision; an unverifiable review is recorded as reviewed_unverified_images.",
-			"The numbered sequence is the controllable raw-deck fallback; its steps do not add requirements to the DeckSpec fast path.",
-			"For decks of 1-4 slides you may skip plan_deck and go straight to recommend_visual.",
+			"raw_sequence is the controllable raw-deck fallback; its steps do not add requirements to the DeckSpec path.",
+			"For decks of 1-4 slides you may skip plan_deck and write the DeckSpec directly.",
 			"On the raw PresentationInput path, validate_input is mandatory before generate_presentation; the DeckSpec path uses validate_deck_spec instead.",
 			"DECK CHROME AND SECTIONS. On the fast_path (DeckSpec): `meta.chrome` {confidentiality, client_name, project_code, footer_date, section_crumb, page_numbers:{enabled, format, skip}} — footer_date defaults to meta.date — plus `meta.viewing_mode`, `meta.type_scale` (compact|comfortable|presentation; comfortable default), and `meta.accent_strategy`; every slide kind also takes `notes` (speaker notes) and `source` (footnote line). Use `structure` ({cover, closing, auto_agenda, sections:[{title, slides[]}]}) instead of flat `slides` when chapters should generate an agenda, sequential dividers, and section crumbs. On the raw path (generate_presentation), the same block is top-level `chrome` and the same mutually exclusive `structure` form expands before rendering. See get_capabilities.features.{deck_chrome, page_numbers, section_structure, section_crumb}.",
 		}
@@ -291,7 +304,11 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 		}
 	}
 
-	fastPath := fastPathFor(normalized, seq)
+	fallback := seq
+	if len(rawSeq) > 0 {
+		fallback = rawSeq
+	}
+	fastPath := fastPathFor(normalized, fallback)
 	if fastPath != nil {
 		fastPath.Steps = withArgs(fastPath.Steps)
 	}
@@ -302,6 +319,7 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 		TaskWarning:        taskWarning,
 		FastPath:           fastPath,
 		Sequence:           withArgs(seq),
+		RawSequence:        withArgs(rawSeq),
 		AvailableTasks:     getStartedAvailableTasks(),
 		Notes:              notes,
 		Completion: completionProtocol{
@@ -332,9 +350,16 @@ func buildGetStartedResponseOpts(task string, rt getStartedRuntime, verbose bool
 // honoured (go-slide-creator-a7fh).
 func degradeForMissingRenderTooling(resp *getStartedResponse, missing []string) {
 	resp.Sequence = closeWithDelivery(dropRenderSteps(resp.Sequence), len(resp.Sequence))
+	if len(resp.RawSequence) > 0 {
+		resp.RawSequence = closeWithDelivery(dropRenderSteps(resp.RawSequence), len(resp.RawSequence))
+	}
 	if resp.FastPath != nil {
 		resp.FastPath.Steps = closeWithDelivery(dropRenderSteps(resp.FastPath.Steps), len(resp.FastPath.Steps))
-		resp.FastPath.FallsBackTo = stepTools(resp.Sequence)
+		if len(resp.RawSequence) > 0 {
+			resp.FastPath.FallsBackTo = stepTools(resp.RawSequence)
+		} else {
+			resp.FastPath.FallsBackTo = stepTools(resp.Sequence)
+		}
 	}
 	resp.Completion = completionProtocol{
 		DraftStatus:    "draft_needs_visual_review",
@@ -417,16 +442,16 @@ func getStartedToolDescription() string {
 	if !toolIsAdvertised("read_presentation") {
 		reviseInspect = ""
 	}
-	return fmt.Sprintf(`Returns the recommended workflow for a stated task: a DeckSpec-first fast path plus a separate ordered raw-primitive sequence. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
+	return fmt.Sprintf(`Returns the recommended workflow for a stated task: a DeckSpec-first path plus the ordered raw-primitive fallback. Use this as your first call to learn the json2pptx workflow without reading the full tool list.
 
 %[4]s
 
 The response carries two complementary paths:
 - fast_path: the recommended path — for "brief" the DeckSpec path ending in render_deck_spec (steps: list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails), for "revise" %[1]s.%[2]s A passing deterministic gate is never completion: render all slides and inspect every image (completion_protocol.rule). Its falls_back_to lists raw primitives. Omitted for "validate-only" (pure diagnostics).
-- sequence: the controllable raw path — use its ordered primitives when DeckSpec cannot express a needed feature or the source deck is already raw.
+- sequence: the ordered steps for the task. For "brief" this is the DeckSpec path (plan_deck format:"deckspec" → list_slide_kinds → validate_deck_spec → render_deck_spec → render_deck_thumbnails → submit_visual_review) and raw_sequence carries the raw chain; for the other tasks sequence is the controllable raw path — use it when DeckSpec cannot express a needed feature or the source deck is already raw.
 
 Pass "task" to scope both paths:
-- "brief" (default): authoring a new deck — fast_path render_deck_spec (DeckSpec); manual sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
+- "brief" (default): authoring a new deck — fast_path render_deck_spec and sequence on the DeckSpec path; raw_sequence get_capabilities → list_templates → plan_deck → recommend_visual → validate_input → preview_presentation_plan → generate_presentation → score_deck.
 - "revise": modifying an existing PPTX — fast_path %[1]s; manual sequence get_capabilities → %[3]svalidate_input → preview_presentation_plan → repair_slide → generate_presentation → score_deck.
 - "validate-only": just checking a deck JSON is valid (no fast_path) — get_capabilities → list_templates → validate_input → preview_presentation_plan.
 

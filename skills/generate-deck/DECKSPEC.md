@@ -9,6 +9,10 @@ schema. Do not copy a static kind catalog from an older document.
 
 ## Plan the narrative
 
+Write the storyline first ([QUALITY.md](QUALITY.md)). `plan_deck` with
+`format:"deckspec"` drafts it: `deck_spec` holds a kind per narrative slot
+(answer, problem, cause, evidence, plan, roadmap, ask) with `__FILL__`
+titles, and `slots[]` gives each slot's guidance and routed brief facts.
 Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.
 The forms are mutually exclusive. Chapters add numbered section dividers;

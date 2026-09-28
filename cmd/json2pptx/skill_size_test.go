@@ -22,7 +22,7 @@ var generateDeckSkillCaps = []struct {
 	{"RAW_PATH.md", 20 * 1024},
 	{"TOOLS.md", 10 * 1024},
 	{"FINDINGS.md", 6 * 1024},
-	{"WORKFLOW.md", 22 * 1024},
+	{"WORKFLOW.md", 16 * 1024},
 	{"RULES.md", 24 * 1024},
 	{"PATTERNS.md", 16 * 1024},
 }

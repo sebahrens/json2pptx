@@ -43,7 +43,7 @@ func TestGetStartedStepsCarryTheirArgs(t *testing.T) {
 	for _, task := range []string{"brief", "revise", "validate-only", "onboard-template"} {
 		t.Run(task, func(t *testing.T) {
 			resp := getStartedResponseFor(t, task)
-			steps := append([]getStartedStep{}, resp.Sequence...)
+			steps := append(append([]getStartedStep{}, resp.Sequence...), resp.RawSequence...)
 			if resp.FastPath != nil {
 				steps = append(steps, resp.FastPath.Steps...)
 			}
