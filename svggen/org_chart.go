@@ -1197,6 +1197,68 @@ func parseOrgNode(m map[string]any) (OrgNode, error) {
 // from here and reports them as a FindingOrgChartNodesInvalid finding.
 const orgNodeIssuesKey = "_org_node_issues"
 
+// orgFlatNode is one entry of an org chart's flat "nodes" array.
+type orgFlatNode struct {
+	pos      int // index in the authored nodes array
+	id       string
+	parentID string
+	raw      map[string]any
+}
+
+// resolveOrgParents maps each node to the index of its parent (-1 for a root)
+// and reports duplicate ids, parents that match no id, and self-parents.
+func resolveOrgParents(nodes []orgFlatNode) (parent []int, issues []string) {
+	index := make(map[string]int, len(nodes))
+	for i, fn := range nodes {
+		if fn.id == "" {
+			continue
+		}
+		if j, dup := index[fn.id]; dup {
+			issues = append(issues, fmt.Sprintf("nodes[%d].id %q duplicates nodes[%d]; reports naming it attach to nodes[%d]", fn.pos, fn.id, nodes[j].pos, nodes[j].pos))
+			continue
+		}
+		index[fn.id] = i
+	}
+
+	parent = make([]int, len(nodes))
+	for i, fn := range nodes {
+		parent[i] = -1
+		if fn.parentID == "" {
+			continue
+		}
+		j, ok := index[fn.parentID]
+		switch {
+		case !ok:
+			issues = append(issues, fmt.Sprintf("nodes[%d].parent %q matches no node id; drawn under the top node", fn.pos, fn.parentID))
+		case j == i:
+			issues = append(issues, fmt.Sprintf("nodes[%d] (id %q) is its own parent; drawn under the top node", fn.pos, fn.id))
+		default:
+			parent[i] = j
+		}
+	}
+	return parent, issues
+}
+
+// breakOrgParentCycles cuts every node whose ancestor walk returns to itself
+// loose (parent -1, drawn under the top node) and reports it.
+func breakOrgParentCycles(nodes []orgFlatNode, parent []int) (issues []string) {
+	for i := range nodes {
+		seen := map[int]bool{i: true}
+		for k := parent[i]; k != -1; k = parent[k] {
+			if k == i {
+				issues = append(issues, fmt.Sprintf("nodes[%d] (id %q) is in a parent cycle; drawn under the top node", nodes[i].pos, nodes[i].id))
+				parent[i] = -1
+				break
+			}
+			if seen[k] {
+				break // cycle not through i; cut when its member is visited
+			}
+			seen[k] = true
+		}
+	}
+	return issues
+}
+
 // normalizeOrgChartNodes converts a flat "nodes" array (each node has "id" and
 // optional "parent") into a nested "root" tree that parseOrgChartData expects.
 // If "root" already exists or "nodes" is absent, this is a no-op.
@@ -1219,13 +1281,7 @@ func normalizeOrgChartNodes(data map[string]any) {
 		return
 	}
 
-	type flatNode struct {
-		pos      int // index in the authored nodes array
-		id       string
-		parentID string
-		raw      map[string]any
-	}
-	nodes := make([]flatNode, 0, len(nodeSlice))
+	nodes := make([]orgFlatNode, 0, len(nodeSlice))
 	for pos, raw := range nodeSlice {
 		m, ok := raw.(map[string]any)
 		if !ok {
@@ -1233,56 +1289,11 @@ func normalizeOrgChartNodes(data map[string]any) {
 		}
 		id, _ := m["id"].(string)
 		parentID, _ := m["parent"].(string)
-		nodes = append(nodes, flatNode{pos: pos, id: id, parentID: parentID, raw: m})
+		nodes = append(nodes, orgFlatNode{pos: pos, id: id, parentID: parentID, raw: m})
 	}
 
-	var issues []string
-	index := make(map[string]int, len(nodes))
-	for i, fn := range nodes {
-		if fn.id == "" {
-			continue
-		}
-		if j, dup := index[fn.id]; dup {
-			issues = append(issues, fmt.Sprintf("nodes[%d].id %q duplicates nodes[%d]; reports naming it attach to nodes[%d]", fn.pos, fn.id, nodes[j].pos, nodes[j].pos))
-			continue
-		}
-		index[fn.id] = i
-	}
-
-	// parent[i] is the index of node i's parent, or -1 for a root.
-	parent := make([]int, len(nodes))
-	for i, fn := range nodes {
-		parent[i] = -1
-		if fn.parentID == "" {
-			continue
-		}
-		j, ok := index[fn.parentID]
-		switch {
-		case !ok:
-			issues = append(issues, fmt.Sprintf("nodes[%d].parent %q matches no node id; drawn under the top node", fn.pos, fn.parentID))
-		case j == i:
-			issues = append(issues, fmt.Sprintf("nodes[%d] (id %q) is its own parent; drawn under the top node", fn.pos, fn.id))
-		default:
-			parent[i] = j
-		}
-	}
-
-	// Break parent cycles: a node whose ancestor walk returns to itself is cut
-	// loose and drawn under the top node.
-	for i := range nodes {
-		seen := map[int]bool{i: true}
-		for k := parent[i]; k != -1; k = parent[k] {
-			if k == i {
-				issues = append(issues, fmt.Sprintf("nodes[%d] (id %q) is in a parent cycle; drawn under the top node", nodes[i].pos, nodes[i].id))
-				parent[i] = -1
-				break
-			}
-			if seen[k] {
-				break // cycle not through i; cut when its member is visited
-			}
-			seen[k] = true
-		}
-	}
+	parent, issues := resolveOrgParents(nodes)
+	issues = append(issues, breakOrgParentCycles(nodes, parent)...)
 
 	// Build clean node maps (name, title, children) without touching the
 	// caller's node maps, then link them in authored order.
