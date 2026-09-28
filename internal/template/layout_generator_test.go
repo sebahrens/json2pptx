@@ -80,11 +80,13 @@ func TestCalculateHorizontalPositions_TwoColumns(t *testing.T) {
 		}
 	}
 
-	// Total width should approximately equal content area width
+	// Total width must equal the content area width
+	// exactly: the last column takes the remainder. This was only logged, and
+	// hid a last column one gap too narrow (go-slide-creator-gdi5r).
 	totalWidth := positions[0].Width + gap + positions[1].Width
-	if totalWidth != contentArea.Width {
-		t.Logf("Note: Total width %d differs from content width %d by %d EMUs",
-			totalWidth, contentArea.Width, contentArea.Width-totalWidth)
+	if diff := contentArea.Width - totalWidth; diff != 0 {
+		t.Errorf("total width %d differs from content width %d by %d EMUs",
+			totalWidth, contentArea.Width, diff)
 	}
 }
 

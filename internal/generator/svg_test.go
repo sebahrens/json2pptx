@@ -241,7 +241,7 @@ func TestSVGConverter_ConvertToPNG_CustomScale(t *testing.T) {
 
 		// Larger scale should generally produce larger files
 		if lastSize > 0 && info.Size() <= lastSize {
-			t.Logf("Warning: scale %.1f did not produce larger file (got %d, last was %d)", scale, info.Size(), lastSize)
+			t.Errorf("scale %.1f did not produce a larger PNG (got %d bytes, previous scale %d)", scale, info.Size(), lastSize)
 		}
 		lastSize = info.Size()
 

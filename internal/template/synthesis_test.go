@@ -2,7 +2,6 @@ package template
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -438,13 +437,7 @@ func TestSynthesizeIfNeeded_NativePreserved(t *testing.T) {
 // Uses a real template but strips the two-column layout to simulate a template
 // that lacks the capability (since all our test templates include two-column).
 func TestSynthesizeIfNeeded_RealTemplate(t *testing.T) {
-	templatePath := filepath.Join("testdata", "templates", "midnight-blue.pptx")
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		templatePath = filepath.Join("..", "..", "testdata", "templates", "midnight-blue.pptx")
-	}
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("midnight-blue.pptx not found in testdata/templates")
-	}
+	templatePath := filepath.Join("..", "..", "templates", "midnight-blue.pptx")
 
 	reader, err := OpenTemplate(templatePath)
 	if err != nil {

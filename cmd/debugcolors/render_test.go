@@ -18,8 +18,8 @@ func TestThemeColorsReachChart(t *testing.T) {
 		path      string
 		expectHex string // First accent color hex that should appear in SVG
 	}{
-		{"warm-coral", "../../testdata/templates/warm-coral.pptx", "E64A19"},     // warm-coral red-orange
-		{"forest-green", "../../testdata/templates/forest-green.pptx", "2E7D32"}, // forest-green green
+		{"warm-coral", "../../templates/warm-coral.pptx", "E64A19"},     // warm-coral red-orange
+		{"forest-green", "../../templates/forest-green.pptx", "2E7D32"}, // forest-green green
 	}
 
 	for _, tt := range templates {
@@ -27,7 +27,7 @@ func TestThemeColorsReachChart(t *testing.T) {
 			// Extract theme colors from template
 			f, err := os.Open(tt.path)
 			if err != nil {
-				t.Skipf("template not available: %v", err)
+				t.Fatalf("open template: %v", err)
 			}
 			defer f.Close()
 			stat, err := f.Stat()
@@ -96,7 +96,7 @@ func TestThemeColorsReachChart(t *testing.T) {
 				t.Logf("  #%s appears %d times", c, count)
 			}
 
-			if !hasExpected && hasDefault {
+			if !hasExpected {
 				// Dump first 2000 chars of SVG for debug
 				snippet := svgContent
 				if len(snippet) > 3000 {

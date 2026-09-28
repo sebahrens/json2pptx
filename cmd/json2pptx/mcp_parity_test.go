@@ -446,6 +446,8 @@ func TestMCPGenerateAssetPathsAbsoluteSuccess(t *testing.T) {
 }
 
 func TestMCPGenerateStrictFit(t *testing.T) {
+	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
+	t.Parallel()
 	mc := testMCPConfig(t)
 
 	// A valid deck with minimal content (no overflow expected).
@@ -885,8 +887,9 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 		// Should be a tool error (refused generation).
 		if !result.IsError {
 			text := result.Content[0].(mcp.TextContent).Text
-			t.Logf("expected tool error for strict-fit overflow, got success: %s", text)
-			t.Skip("test data did not trigger unfittable finding — adjust if thresholds change")
+			// A strict-fit refusal that stops happening is the regression this
+			// test guards; it must fail, not skip (go-slide-creator-gdi5r).
+			t.Fatalf("expected tool error for strict-fit overflow, got success: %s", text)
 		}
 		// The refusal must identify a concrete fit defect in the structured
 		// envelope, not rely on an unparseable generic strict-fit message.
@@ -895,6 +898,8 @@ func TestMCPGenerateStrictFit(t *testing.T) {
 }
 
 func TestMCPGetDataFormatHints(t *testing.T) {
+	// Read-only inputs; writes go only to t.TempDir() (go-slide-creator-s2s53).
+	t.Parallel()
 	t.Run("returns full hints and digest", func(t *testing.T) {
 		result, err := handleGetDataFormatHints(context.Background(), makeRequest(map[string]any{}))
 		if err != nil {

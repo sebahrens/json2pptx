@@ -90,13 +90,30 @@ func TestShortLabelsPassTheGateAgain(t *testing.T) {
 func TestPredictedTextExceedsShapeStaysAdvisory(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "..", "examples", "process-grid-2row.json"))
 	if err != nil {
-		t.Skipf("example unavailable: %v", err)
+		t.Fatalf("example unavailable: %v", err)
 	}
 	var in PresentationInput
 	if err := json.Unmarshal(data, &in); err != nil {
 		t.Fatal(err)
 	}
-	_, gate, findings := gateFor(t, &in)
+	if _, gate, _ := gateFor(t, &in); !gate.Passed {
+		t.Errorf("a bundled example that renders correctly must not fail the gate: %v", gate.Reasons)
+	}
+
+	// The example stopped tripping the predicted check, which left this test
+	// skipping on the very regression it guards (go-slide-creator-gdi5r). A
+	// raw shape_grid whose word overshoots its cell by ~1.2x is an estimate,
+	// not a measurement: it must surface as advisory and leave the gate open.
+	cells := make([]*GridCellInput, 4)
+	for i := range cells {
+		cells[i] = &GridCellInput{Shape: &ShapeSpecInput{Geometry: "rect", Text: json.RawMessage(`{"content":"Internationalisation","size":28}`)}}
+	}
+	predicted := &PresentationInput{Template: "midnight-blue", Slides: []SlideInput{{
+		SlideType: "content", LayoutID: "content",
+		Content:   []ContentInput{{PlaceholderID: "title", Type: "text", TextValue: strPtr("Predicted overflow")}},
+		ShapeGrid: &ShapeGridInput{Columns: json.RawMessage(`4`), Rows: []GridRowInput{{Cells: cells}}},
+	}}}
+	_, gate, findings := gateFor(t, predicted)
 	sawPredicted := false
 	for _, f := range findings {
 		if f.Code != patterns.ErrCodeTextExceedsShape {
@@ -104,14 +121,14 @@ func TestPredictedTextExceedsShapeStaysAdvisory(t *testing.T) {
 		}
 		sawPredicted = true
 		if f.Action == "shrink_or_split" {
-			t.Errorf("a predicted overflow blocked the gate: %s", f.Message)
+			t.Errorf("a predicted %.2fx overflow blocked the gate: %s", f.OverflowRatio, f.Message)
 		}
 	}
 	if !sawPredicted {
-		t.Skip("this example no longer trips the predicted check")
+		t.Fatal("a word ~1.2x wider than its cell must raise a predicted TEXT_EXCEEDS_SHAPE")
 	}
 	if !gate.Passed {
-		t.Errorf("a bundled example that renders correctly must not fail the gate: %v", gate.Reasons)
+		t.Errorf("a predicted-only overflow must not fail the gate: %v", gate.Reasons)
 	}
 }
 

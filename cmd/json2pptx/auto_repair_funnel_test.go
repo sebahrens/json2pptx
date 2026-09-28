@@ -125,11 +125,13 @@ func TestSplitPatternInfersTheRepeatedField(t *testing.T) {
 func TestSplitPatternRefusesWhenHalvesAreInvalid(t *testing.T) {
 	cells := make([]any, 0, 5)
 	for i := 0; i < 5; i++ {
-		cells = append(cells, map[string]any{"label": "Step", "description": "does a thing"})
+		cells = append(cells, map[string]any{"label": "Step", "body": "does a thing"})
 	}
 	deck := patternSlideInput("numbered-step-strip", map[string]any{"steps": cells})
+	// The fixture used an unknown "description" field and skipped here, so the
+	// refusal was never exercised (go-slide-creator-gdi5r).
 	if err := validatePatternHalf(&deck.Slides[0], 0); err != nil {
-		t.Skipf("fixture does not expand: %v", err)
+		t.Fatalf("fixture does not expand: %v", err)
 	}
 	// numbered-step-strip requires at least 3 steps, so a 1/4 split cannot work.
 	result := applyRepairFix(&deck, 0, repairFixInput{Kind: "split_pattern", Params: map[string]any{"first": 1}})

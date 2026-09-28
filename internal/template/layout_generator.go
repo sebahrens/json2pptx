@@ -111,11 +111,12 @@ func CalculateHorizontalPositions(
 	for i := range n {
 		var width int64
 		if i == n-1 {
-			// Last column gets remaining width to avoid rounding errors
+			// Last column gets remaining width to avoid rounding errors.
+			// currentX already sits past the preceding gap, so the remainder
+			// runs exactly to the content area's right edge; subtracting the
+			// gap again left every synthesized multi-column layout one gap
+			// short on the right (go-slide-creator-gdi5r).
 			width = contentArea.X + contentArea.Width - currentX
-			if i > 0 {
-				width -= gap // Account for the gap we're adding
-			}
 		} else {
 			width = int64(float64(availableWidth) * ratios[i])
 		}

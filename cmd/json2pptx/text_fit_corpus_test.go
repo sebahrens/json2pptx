@@ -134,9 +134,9 @@ func TestTextFitCorpus(t *testing.T) {
 // is lying about what is currently broken.
 func TestTextFitCorpus_AllowlistEntriesPointAtRealTemplates(t *testing.T) {
 	al := loadTextFitAllowlist(t)
-	if len(al.Exceptions) == 0 {
-		t.Skip("text-fit allow-list is empty — nothing to validate")
-	}
+	// An empty allow-list is the healthy state: every entry below would be
+	// checked, and none exist. Pass rather than skip, so a run reports this
+	// guard as executed (go-slide-creator-gdi5r).
 
 	files := testutil.TestTemplatePaths()
 

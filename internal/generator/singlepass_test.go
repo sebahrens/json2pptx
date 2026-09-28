@@ -251,10 +251,9 @@ func TestSinglePassContext_ScanTemplate(t *testing.T) {
 // TestScanTemplate_ExcludeTemplateSlides tests that slide numbering starts at 1
 // when ExcludeTemplateSlides is enabled
 func TestScanTemplate_ExcludeTemplateSlides(t *testing.T) {
-	templatePath := "../../templates/template-simple.pptx"
-	if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-		t.Skip("template not found, skipping test")
-	}
+	// A shipped template with existing slides; template-simple.pptx never
+	// existed, so this always skipped (go-slide-creator-gdi5r).
+	templatePath := "../../templates/midnight-blue.pptx"
 
 	// Open template
 	reader, err := zip.OpenReader(templatePath)
@@ -3913,20 +3912,20 @@ func TestParseLayoutPictures(t *testing.T) {
 
 // TestDetectLogoZones_NonLogoTemplates tests that templates without logos return nil.
 func TestDetectLogoZones_NonLogoTemplates(t *testing.T) {
+	// Shipped templates without logo media. The old testdata/templates
+	// fixtures were never tracked, so every subtest skipped
+	// (go-slide-creator-gdi5r).
 	templates := []string{
 		"forest-green.pptx",
 		"midnight-blue.pptx",
 		"warm-coral.pptx",
-		"SimpleMinimal-Consulting.pptx",
-		"template_2.pptx",
+		"business-template.pptx",
+		"modern-yellow.pptx",
 	}
 
 	for _, tmpl := range templates {
 		t.Run(tmpl, func(t *testing.T) {
-			templatePath := filepath.Join("..", "..", "testdata", "templates", tmpl)
-			if _, err := os.Stat(templatePath); os.IsNotExist(err) {
-				t.Skip("template not found, skipping")
-			}
+			templatePath := filepath.Join("..", "..", "templates", tmpl)
 
 			reader, err := zip.OpenReader(templatePath)
 			if err != nil {
