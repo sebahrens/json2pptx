@@ -43,6 +43,7 @@ func compactMCPTextSummary(data any) ([]byte, error) {
 	addSummaryScalars(summary, object)
 	addSummaryFindings(summary, object)
 	addSummaryWorkflow(summary, object)
+	addSummaryLoop(summary, object)
 	addSummaryCatalogs(summary, object)
 	if len(summary) == 0 {
 		addGenericSummary(summary, object)
@@ -51,7 +52,7 @@ func compactMCPTextSummary(data any) ([]byte, error) {
 }
 
 func addSummaryScalars(summary map[string]any, object map[string]json.RawMessage) {
-	for _, key := range []string{"ok", "success", "valid", "publishable", "deterministic_ready", "error", "summary", "message", "pptx_path", "output_path", "path", "output_filename", "deck_id", "task"} {
+	for _, key := range []string{"ok", "success", "valid", "publishable", "deterministic_ready", "error", "summary", "message", "pptx_path", "output_path", "path", "output_filename", "deck_id", "content_hash", "task"} {
 		if raw, ok := object[key]; ok {
 			limit := 120
 			if key == "pptx_path" || key == "output_path" || key == "path" || key == "output_filename" {
@@ -102,6 +103,54 @@ func addSummaryWorkflow(summary map[string]any, object map[string]json.RawMessag
 	}
 }
 
+// addSummaryLoop keeps the fields a render/repair loop needs to take its next
+// step on hosts that show only the text block: why the deck is not done, which
+// slides to re-pull, and which fixes did not apply (go-slide-creator-z3pbp).
+// content_hash (the submit_visual_review pptx_revision) is a scalar above.
+func addSummaryLoop(summary map[string]any, object map[string]json.RawMessage) {
+	var reasons []string
+	if json.Unmarshal(object["blocking_reasons"], &reasons) == nil && len(reasons) > 0 {
+		if len(reasons) > 3 {
+			summary["blocking_reasons_count"] = len(reasons)
+			reasons = reasons[:3]
+		}
+		for i := range reasons {
+			reasons[i] = summaryString(reasons[i], 120)
+		}
+		summary["blocking_reasons"] = reasons
+	}
+	var changed []int
+	if json.Unmarshal(object["changed_slides"], &changed) == nil && len(changed) > 0 {
+		if len(changed) > 20 {
+			changed = changed[:20]
+		}
+		summary["changed_slides"] = changed
+	}
+	var fixes []map[string]json.RawMessage
+	if json.Unmarshal(object["applied_fixes"], &fixes) != nil {
+		return
+	}
+	failed := make([]map[string]any, 0, 3)
+	for _, fix := range fixes {
+		if applied, ok := summaryScalar(fix["applied"]); !ok || applied != false || len(failed) == 3 {
+			continue
+		}
+		entry := map[string]any{}
+		for _, key := range []string{"kind", "code", "did_you_mean"} {
+			if value, ok := summaryScalarLimit(fix[key], 60); ok {
+				entry[key] = value
+			}
+		}
+		if call := summaryNextToolCall(fix["next_tool_call"]); call != nil {
+			entry["next_tool"] = call["tool"]
+		}
+		failed = append(failed, entry)
+	}
+	if len(failed) > 0 {
+		summary["failed_fixes"] = failed
+	}
+}
+
 func addSummaryCatalogs(summary map[string]any, object map[string]json.RawMessage) {
 	for _, key := range []string{"slide_kinds", "templates", "patterns"} {
 		if raw, ok := object[key]; ok {
@@ -148,6 +197,10 @@ func fitMCPTextSummary(summary map[string]any, object map[string]json.RawMessage
 			summary["diagnostics"] = findings[:len(findings)-1]
 		} else if findings, ok := summary["fit_findings"].([]map[string]any); ok && len(findings) > 1 {
 			summary["fit_findings"] = findings[:len(findings)-1]
+		} else if reasons, ok := summary["blocking_reasons"].([]string); ok && len(reasons) > 1 {
+			summary["blocking_reasons"] = reasons[:len(reasons)-1]
+		} else if failed, ok := summary["failed_fixes"].([]map[string]any); ok && len(failed) > 1 {
+			summary["failed_fixes"] = failed[:len(failed)-1]
 		} else if _, ok := summary["next_tools"]; ok {
 			delete(summary, "next_tools")
 		} else if _, ok := summary["message"]; ok {
@@ -176,7 +229,7 @@ func fitMCPTextSummary(summary map[string]any, object map[string]json.RawMessage
 // one-kilobyte cap cannot erase an error into a generic "see structured" line.
 func minimalMCPTextSummary(object map[string]json.RawMessage, summary map[string]any) ([]byte, error) {
 	minimal := make(map[string]any)
-	for _, key := range []string{"ok", "success", "valid", "publishable"} {
+	for _, key := range []string{"ok", "success", "valid", "publishable", "deterministic_ready", "content_hash"} {
 		if value, ok := summary[key]; ok {
 			minimal[key] = value
 		}
