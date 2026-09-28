@@ -42,8 +42,9 @@ reordering. See [INPUT_FORMAT.md](../../docs/INPUT_FORMAT.md).
 `generate_presentation` defaults to strict output validation. A successful
 response implies the written PPTX passed the blocking OPC and OOXML checks;
 it says nothing about visual polish. `CONTENT_DROPPED` with
-`fix.params.cause:"placeholder_not_found"` means the target placeholder did
-not exist and strict mode fails generation. Read
+`fix.params.cause:"placeholder_not_found"` (target placeholder missing) or
+`"placeholder_occupied"` (another block already fills it) is a refuse-class
+drop and strict mode fails generation. Read
 `placeholders_dropped`, not just `placeholders_used`, when a slide looks
 empty. If a finding code is unfamiliar, use `describe_finding`; for
 repairable kinds query

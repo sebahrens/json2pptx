@@ -1436,24 +1436,32 @@ A slide whose only content besides the title is one text / bullets body, in a bo
 
 ### `CONTENT_DROPPED`
 
-**Action:** `review`
+**Action:** `review`; `refuse` for hard drops (`fix.params.cause` `placeholder_not_found` / `placeholder_occupied`)
 **Pattern:** *(none — shared content-drop diagnostic)*
 **Fix kind:** `review` (no deterministic auto-fix)
 
 The single, shared signal for **any** path that fails to place author-provided content. Today several paths can drop content — a slide skipped in `--partial` mode, a content block with no available placeholder, a column that did not fit, an unknown payload field stripped during semantic parsing. Each used to drop silently (or only as a free-text warning); `CONTENT_DROPPED` turns every such drop into one consistent, machine-actionable finding so an agent sees the loss and can repair it.
 
-The drop has *already happened* by the time the finding is emitted — it is advisory and never blocks generation (action `review`). The fix carries `params.locator` (a short label for what was dropped — `"slide 4"`, `"content block 3"`, `"left column"`) and `params.reason` (why placement failed) so an agent can route the repair without re-deriving the cause. There is no single deterministic auto-fix (fix kind `review`, mirroring `diagram_render_failed`): the agent restructures or splits the slide, or fixes the underlying spec error.
+The drop has *already happened* by the time the finding is emitted — it is advisory (action `review`) except for the hard drops described below, which refuse. The fix carries `params.locator` (a short label for what was dropped — `"slide 4"`, `"content block 3"`, `"left column"`) and `params.reason` (why placement failed) so an agent can route the repair without re-deriving the cause. There is no single deterministic auto-fix (fix kind `review`, mirroring `diagram_render_failed`): the agent restructures or splits the slide, or fixes the underlying spec error.
 
 Emitted today from the partial-mode slide-skip path in slide conversion, from the **multi-visual collision** path in image preparation — when two or more visual content blocks (chart / table / image / diagram) resolve to the *same* placeholder, only the first is rendered and each subsequent one is dropped (rather than silently overlapping the first at identical bounds), each with its own `CONTENT_DROPPED` finding pointing at `/slides/{i}/content/{n}` and a `reason` suggesting the author split the slide or use `compose` to give each visual its own region — from the **text-block collision** path in text population — when two text blocks (text / bullets / body_and_bullets / bullet_groups) resolve to the same placeholder, the first is kept and each later one is dropped with a `reason` naming the first block (on `two-column` / `comparison` slides a second non-text `body` block is first routed to a free `body_2`, so the left column no longer vanishes) — and from the **missing-placeholder** path (see below). Other drop paths (dense-pattern section-divider overflow) adopt the same `patterns.ContentDropped(path, locator, reason)` constructor as they are hardened.
 
-#### Hard drops: `params.cause = "placeholder_not_found"`
+#### Hard drops: `params.cause = "placeholder_not_found"` / `"placeholder_occupied"`
 
-One drop cause is **not** advisory. When a content block targets a `placeholder_id` the resolved layout does not declare, the content is simply absent from the artifact: the render "succeeds" and the slide is missing the author's image or copy. Those findings carry `fix.params.cause = "placeholder_not_found"` plus `placeholder_id`, `layout_id` and the `available` placeholder ids, and they change two things in the response:
+Two drop causes are **not** advisory; both are source loss and carry `action: "refuse"` (severity `error`):
+
+- **`placeholder_not_found`** — a content block targets a `placeholder_id` the resolved layout does not declare. Params: `placeholder_id`, `layout_id`, `available`.
+- **`placeholder_occupied`** — a content block resolves to a placeholder another block already fills (the text-block and multi-visual collision paths above; typically a second body block on a one-body layout). Params: `placeholder_id`, `layout_id`, `kept_block` (0-based index of the block that kept the slot).
+
+Both also carry `fix.params.options = ["split_slide", "choose_layout", "retarget_placeholder", "merge_blocks"]` — the concrete remedies in the order to try them. They change three things:
 
 - **`success` is `false`** under `output_validation: "strict"` (the default). Under `warn` / `off` the finding is still emitted but `success` stays `true`.
-- **`placeholders_used` excludes the dropped placeholder**, which instead appears in the new `placeholders_dropped` array on that slide's entry in `slides[]`. Previously `placeholders_used` echoed the *requested* ids, so it claimed a placeholder that was never populated.
+- **The human CLI path fails.** `json2pptx generate` without `-json-output` exits non-zero with a `CONTENT_DROPPED` error listing each dropped block's path instead of logging a WARN and exiting 0 (same `output_validation` rule).
+- **`placeholders_used` excludes the dropped placeholder**, which instead appears in the `placeholders_dropped` array on that slide's entry in `slides[]`.
 
-Every other `CONTENT_DROPPED` cause (partial-mode slide skips, visual collisions) stays advisory and leaves `success` untouched.
+Auto layout selection avoids the common trigger: when a slide has a title plus body text (bullets, body, or a title slide's subtitle), layouts without a separate slot for each block (a title-less Statement layout, a title-only "Blank + Title") are only chosen when no suitable layout can host both.
+
+Every other `CONTENT_DROPPED` cause (partial-mode slide skips) stays advisory and leaves `success` untouched.
 
 ```json
 {

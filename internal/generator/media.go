@@ -237,12 +237,10 @@ func (ctx *singlePassContext) prepareImages() error {
 			// `compose` to give each visual its own region.
 			if firstIdx, claimed := claimedVisualShapes[shapeIdx]; claimed {
 				locator := fmt.Sprintf("content block %d (%s)", contentIdx+1, item.Type)
-				reason := fmt.Sprintf(
-					"placeholder %q already holds a visual content block (block %d); a placeholder can host only one chart/table/image — split the slide or use `compose` to give each visual its own region",
-					item.PlaceholderID, firstIdx+1)
-				ctx.emitFitFinding(patterns.ContentDropped(
-					slidepath.ContentIndex(slideNum-1, contentIdx), locator, reason))
-				ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: %s dropped — %s", slideNum, locator, reason))
+				f := patterns.ContentDroppedPlaceholderOccupied(slidepath.ContentIndex(slideNum-1, contentIdx), locator,
+					item.PlaceholderID, slideSpec.LayoutID, firstIdx, "chart/table/image (use compose to give each visual its own region)")
+				ctx.emitFitFinding(f)
+				ctx.warnings = append(ctx.warnings, fmt.Sprintf("slide %d: %s dropped — %s", slideNum, locator, f.Fix.Params["reason"]))
 				continue
 			}
 			claimedVisualShapes[shapeIdx] = contentIdx

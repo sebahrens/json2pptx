@@ -158,8 +158,42 @@ func ContentDroppedNoPlaceholder(path, locator, placeholderID, layoutID string, 
 	if len(available) > 0 {
 		f.Fix.Params["available"] = available
 	}
+	f.Fix.Params["options"] = hardDropOptions
+	f.Action = "refuse"
 	return f
 }
+
+// ContentDroppedPlaceholderOccupied builds the hard CONTENT_DROPPED finding for
+// a content block that resolved to a placeholder another block already fills.
+// A placeholder renders one text block (or one visual), so the later block is
+// not rendered at all. Like a missing placeholder this is actual source loss,
+// not advice: the finding carries action "refuse" and cause
+// "placeholder_occupied" (go-slide-creator-k3lyz).
+//
+//   - firstBlock is the 0-based index of the content block that kept the slot.
+//   - layoutID is the resolved layout, so the agent can pick a different one.
+func ContentDroppedPlaceholderOccupied(path, locator, placeholderID, layoutID string, firstBlock int, what string) FitFinding {
+	reason := fmt.Sprintf(
+		"placeholder %q already holds content block %d; a placeholder renders one %s — split the slide, choose a layout with a slot for each block, or target a free placeholder (e.g. body_2)",
+		placeholderID, firstBlock+1, what)
+	f := ContentDropped(path, locator, reason)
+	f.Fix.Params["cause"] = CausePlaceholderOccupied
+	f.Fix.Params["placeholder_id"] = placeholderID
+	f.Fix.Params["layout_id"] = layoutID
+	f.Fix.Params["kept_block"] = firstBlock
+	f.Fix.Params["options"] = hardDropOptions
+	f.Action = "refuse"
+	return f
+}
+
+// hardDropOptions lists the concrete remedies for a hard content drop, in the
+// order an agent should try them.
+var hardDropOptions = []string{"split_slide", "choose_layout", "retarget_placeholder", "merge_blocks"}
+
+// CausePlaceholderOccupied is the Fix.Params["cause"] value that marks a
+// CONTENT_DROPPED finding as a hard drop caused by two content blocks resolving
+// to the same placeholder.
+const CausePlaceholderOccupied = "placeholder_occupied"
 
 // CausePlaceholderNotFound is the Fix.Params["cause"] value that marks a
 // CONTENT_DROPPED finding as a hard drop caused by a missing placeholder,
@@ -168,15 +202,15 @@ func ContentDroppedNoPlaceholder(path, locator, placeholderID, layoutID string, 
 const CausePlaceholderNotFound = "placeholder_not_found"
 
 // IsHardContentDrop reports whether a finding is a CONTENT_DROPPED caused by a
-// placeholder that does not exist in the resolved layout. Strict
-// output_validation treats these as render failures: the artifact is missing
-// content the author asked for.
+// placeholder that does not exist in the resolved layout or that another
+// content block already fills. Strict output_validation treats these as render
+// failures: the artifact is missing content the author asked for.
 func IsHardContentDrop(f FitFinding) bool {
 	if f.Code != ErrCodeContentDropped || f.Fix == nil {
 		return false
 	}
 	cause, _ := f.Fix.Params["cause"].(string)
-	return cause == CausePlaceholderNotFound
+	return cause == CausePlaceholderNotFound || cause == CausePlaceholderOccupied
 }
 
 // SparseSingleRowFlow builds a SPARSE_SINGLE_ROW_FLOW fit finding for a

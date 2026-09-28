@@ -2,6 +2,16 @@
 
 - **2026-09-28 — Schema 4.154.0: consultant × designer finishing round (`go-slide-creator-1x3yi`).** Contract changes listed in the 4.154.0 entries below: chart `highlight`, `chrome.tracker`, `next-steps` pattern and `next_steps` kind, KPI `comparator`, `callout.emphasis` subtle/strong and `takeaway_emphasis` overrides, `DATA_WITHOUT_SOURCE` and `FILLED_SHAPE_OUTLINED` findings, engine-default table style, source zone, type scale.
 
+- **2026-09-28 — Schema 4.154.0 · Content drops refuse (`go-slide-creator-k3lyz`).**
+  `CONTENT_DROPPED` gains the hard cause `fix.params.cause:
+  "placeholder_occupied"` (a text block or visual resolving to a placeholder
+  another block already fills; params `placeholder_id`, `layout_id`,
+  `kept_block`). Hard drops (`placeholder_not_found`, `placeholder_occupied`)
+  now carry `action: "refuse"` (severity `error`) and `fix.params.options`
+  (`split_slide`, `choose_layout`, `retarget_placeholder`, `merge_blocks`);
+  they fail strict `output_validation` and the human CLI `generate` path now
+  exits non-zero on them. Auto layout selection prefers layouts with a slot
+  for the title and for the body/subtitle. Additive; no `SchemaVersion` bump.
 - **2026-09-28 — Schema 4.154.0 · Template-aware stacked columns and nested-cell readability
   prediction (`go-slide-creator-bzh34`).** A `chart-insights-split` with a
   headline or so-what pins those rows at their writer-measured height and,

@@ -745,7 +745,7 @@ var findingMetaRegistry = map[string]FindingMeta{
 		Code:        ErrCodeContentDropped,
 		Summary:     "Author-provided content could not be placed and was dropped (a skipped slide, an unplaced content block, a truncated column, or a dropped payload field).",
 		Severity:    "review",
-		WhenEmitted: "Any engine path that fails to place author-supplied content emits this shared signal instead of dropping silently — e.g. a slide skipped in partial mode, a content block with no available placeholder, or a column that did not fit. The drop has already happened; the finding makes it visible and repairable.",
+		WhenEmitted: "Any engine path that fails to place author-supplied content emits this shared signal instead of dropping silently — e.g. a slide skipped in partial mode, a content block with no available placeholder, or a column that did not fit. The drop has already happened; the finding makes it visible and repairable. Hard drops (fix.params.cause placeholder_not_found or placeholder_occupied) carry action refuse and fail strict output_validation.",
 		RemediationSteps: []string{
 			"Read the fix.params.locator and fix.params.reason to identify exactly what was dropped and why.",
 			"Restructure the slide so the content fits: split it across two slides, move the dropped item to its own slide, or reduce the surrounding content.",

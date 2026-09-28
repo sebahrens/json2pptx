@@ -128,10 +128,20 @@ func SelectLayoutWithContext(ctx context.Context, req SelectionRequest) (*Select
 	// Sort layouts by score descending to find best suitable layout
 	sortScoredLayouts(scored)
 
-	// Find the best suitable layout
+	// Find the best suitable layout. Layouts that can host every text block
+	// (a title plus its body / subtitle) are preferred; a suitable layout
+	// that would force two blocks into one placeholder is only a fallback.
+	suitable := func(i int) bool {
+		return isLayoutSuitable(*scored[i].layout, req.Slide) && hostsEveryTextBlock(*scored[i].layout, req.Slide)
+	}
+	if !slices.ContainsFunc(scored, func(sl scoredLayout) bool {
+		return isLayoutSuitable(*sl.layout, req.Slide) && hostsEveryTextBlock(*sl.layout, req.Slide)
+	}) {
+		suitable = func(i int) bool { return isLayoutSuitable(*scored[i].layout, req.Slide) }
+	}
 	topIdx := -1
 	for i := range scored {
-		if isLayoutSuitable(*scored[i].layout, req.Slide) {
+		if suitable(i) {
 			topIdx = i
 			break
 		}
@@ -157,7 +167,7 @@ func SelectLayoutWithContext(ctx context.Context, req SelectionRequest) (*Select
 	// Find second-best suitable layout for confidence calculation
 	secondIdx := -1
 	for i := topIdx + 1; i < len(scored); i++ {
-		if isLayoutSuitable(*scored[i].layout, req.Slide) {
+		if suitable(i) {
 			secondIdx = i
 			break
 		}
@@ -216,10 +226,14 @@ func SelectLayoutRanked(req SelectionRequest, maxResults int) (*RankedResult, er
 	}
 	sortScoredLayouts(scored)
 
-	// Collect top-N suitable layouts
+	// Collect top-N suitable layouts, preferring those that host every text
+	// block (see hostsEveryTextBlock) when at least one does.
+	requireText := slices.ContainsFunc(scored, func(sl scoredLayout) bool {
+		return isLayoutSuitable(*sl.layout, req.Slide) && hostsEveryTextBlock(*sl.layout, req.Slide)
+	})
 	var suitable []scoredLayout
 	for i := range scored {
-		if isLayoutSuitable(*scored[i].layout, req.Slide) {
+		if isLayoutSuitable(*scored[i].layout, req.Slide) && (!requireText || hostsEveryTextBlock(*scored[i].layout, req.Slide)) {
 			suitable = append(suitable, scored[i])
 			if len(suitable) >= maxResults {
 				break
@@ -1189,6 +1203,36 @@ func isLayoutSuitable(layout types.LayoutMetadata, slide types.SlideDefinition) 
 	default:
 		return true
 	}
+}
+
+// hostsEveryTextBlock reports whether a layout has a separate slot for the
+// slide's title and for its body text (body / bullets / bullet groups, or a
+// title slide's subtitle). A title-less Statement layout or a title-only
+// "Blank + Title" layout would resolve both blocks to one placeholder and the
+// renderer would have to drop one of them (go-slide-creator-k3lyz). Section
+// dividers are exempt: their body-shaped slots are decorative and the
+// section path handles subtitles itself.
+func hostsEveryTextBlock(layout types.LayoutMetadata, slide types.SlideDefinition) bool {
+	if slide.Title == "" || slide.Type == types.SlideTypeSection {
+		return true
+	}
+	hasText := slide.Content.Body != "" || len(slide.Content.Bullets) > 0 || len(slide.Content.BulletGroups) > 0
+	if !hasText {
+		return true
+	}
+	if findPlaceholder(layout, types.PlaceholderTitle) == nil {
+		return false
+	}
+	for _, ph := range layout.Placeholders {
+		if types.IsDisclosurePlaceholder(ph) {
+			continue
+		}
+		switch ph.Type {
+		case types.PlaceholderSubtitle, types.PlaceholderBody, types.PlaceholderContent:
+			return true
+		}
+	}
+	return false
 }
 
 // requiredCapability returns a description of what's needed for a slide.

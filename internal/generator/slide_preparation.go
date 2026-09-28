@@ -574,11 +574,10 @@ func (ctx *singlePassContext) populateTextInSlide(slide *slideXML, content []Con
 
 		if firstIdx, claimed := claimedTextShapes[shapeIdx]; claimed && contentItemHasText(item) {
 			locator := fmt.Sprintf("content block %d (%s)", j+1, item.Type)
-			reason := fmt.Sprintf(
-				"placeholder %q already holds content block %d; a placeholder renders one text block — target a different placeholder (e.g. body_2) or merge the blocks",
-				item.PlaceholderID, firstIdx+1)
-			ctx.emitFitFinding(patterns.ContentDropped(slidepath.ContentIndex(slideIndex, j), locator, reason))
-			warnings = append(warnings, fmt.Sprintf("slide %d: %s dropped — %s", slideIndex+1, locator, reason))
+			f := patterns.ContentDroppedPlaceholderOccupied(slidepath.ContentIndex(slideIndex, j), locator,
+				item.PlaceholderID, layoutID, firstIdx, "text block")
+			ctx.emitFitFinding(f)
+			warnings = append(warnings, fmt.Sprintf("slide %d: %s dropped — %s", slideIndex+1, locator, f.Fix.Params["reason"]))
 			continue
 		}
 		if contentItemHasText(item) {
