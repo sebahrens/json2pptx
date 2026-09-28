@@ -151,6 +151,14 @@ type SVGBuilder struct {
 	// textFontSizes pairs each emitted <text> with its font size at draw time.
 	// The baseline compatibility pass needs it after canvas has serialized SVG.
 	textFontSizes []float64
+	// textStrings pairs each emitted <text> with the logical string drawn, so
+	// mergeSplitTspans can rebuild a line the canvas split into runs.
+	textStrings []string
+
+	// missingGlyphs collects characters drawn that the face has no glyph for;
+	// missingGlyphTexts counts the draws that used any (FindingGlyphMissing).
+	missingGlyphs     map[rune]bool
+	missingGlyphTexts int
 
 	// Drawn text geometry is inspected after rendering for visible collisions.
 	textBoxes     []drawnTextBox
@@ -1089,6 +1097,8 @@ func (b *SVGBuilder) DrawText(text string, x, y float64, align TextAlign, baseli
 	b.textAligns = append(b.textAligns, align)
 	b.textBaselines = append(b.textBaselines, baseline)
 	b.textFontSizes = append(b.textFontSizes, b.fontSize)
+	b.textStrings = append(b.textStrings, text)
+	b.noteMissingGlyphs(face, text)
 	return b
 }
 
@@ -1124,6 +1134,11 @@ func (b *SVGBuilder) MeasureText(text string) (width, height float64) {
 	textLine := canvas.NewTextLine(face, text, canvas.Left)
 	bounds := textLine.Bounds()
 
+	// Characters the face cannot render measure as .notdef; estimate their
+	// real advance instead (go-slide-creator-s27x0).
+	if w, ok := estimateMissingGlyphWidth(face, text, b.fontSize); ok {
+		return w, bounds.H() * mmToPt
+	}
 	return bounds.W() * mmToPt, bounds.H() * mmToPt
 }
 
@@ -1372,6 +1387,7 @@ func (b *SVGBuilder) Render() (*SVGDocument, error) {
 	// same coordinate space the canvas library produced.
 	content = b.fixSVGTextAlignment(content)
 	content = b.bakeSVGTextBaselines(content)
+	content = b.mergeSplitTspans(content)
 
 	// Scale all SVG coordinates from mm to CSS pixels. LibreOffice and PowerPoint
 	// misinterpret font-size "px" values when the viewBox uses mm-scale coordinates,

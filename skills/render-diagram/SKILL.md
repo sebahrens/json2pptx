@@ -95,7 +95,7 @@ They cover **different failure surfaces**. Run them in order, not as substitutes
 | Step | Catches | Does not catch |
 |---|---|---|
 | `validate_diagram` | Required fields, type mismatches, length/shape constraints (e.g., `series[i].values` length aligned with `categories`). | Layout findings — tick thinning, label clipping, legend overflow. |
-| `render_diagram` with `dry_run: true` | Layout findings: `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`, `chart.label_truncated`, `chart.scatter_label_skipped`, etc. | Schema errors validate_diagram already surfaced. |
+| `render_diagram` with `dry_run: true` | Layout findings: `chart.tick_thinned`, `chart.label_clipped`, `chart.legend_overflow_dropped`, `chart.label_truncated`, `chart.scatter_label_skipped`, `chart.glyph_missing` (text uses characters the embedded font lacks — CJK, emoji, Arabic; widths are estimated), `diagram.org_chart_nodes_invalid`, etc. | Schema errors validate_diagram already surfaced. |
 
 `dry_run: true` returns the JSON envelope `{valid, findings, error?}` — no SVG/PNG bytes are produced. It's the same render path minus the byte output, so it surfaces post-layout diagnostics that pure schema validation cannot see.
 

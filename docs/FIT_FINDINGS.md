@@ -826,6 +826,23 @@ An org chart's flat `nodes` array has a `parent` that matches no `id`, a duplica
 }
 ```
 
+### `chart.glyph_missing`
+
+**Action:** `review`
+**Pattern:** any chart or diagram (non-chart diagrams report it as `diagram.glyph_missing`)
+**Fix kind:** `replace_value` (params: `characters` — up to 12 sample characters, `missing_count`, `scripts`)
+
+Drawn text contains characters the embedded chart font has no glyph for (typically CJK, emoji or Arabic). svggen estimates their widths (one em for East Asian wide characters and emoji, 0.6em otherwise), so wrapping, overlap and truncation for that text are approximate, and the viewer substitutes a system font whose metrics may differ. One finding per chart. Check the rendered slide; if the substitute font is missing on the target machine the characters show as boxes.
+
+```json
+{
+  "code": "chart.glyph_missing",
+  "message": "3 text item(s) use 16 character(s) the embedded chart font has no glyph for (ا ب ح ر ع ل م キ ス テ ト 日; scripts: Arabic, Han, Katakana, emoji/symbols); their widths are estimated, ...",
+  "fix": { "kind": "replace_value", "params": { "characters": ["ا", "キ", "日"], "missing_count": 16, "scripts": ["Arabic", "Han", "Katakana", "emoji/symbols"] } },
+  "severity": "warning"
+}
+```
+
 ### `CHART_PLACEHOLDER_EMPTY`
 
 **Action:** `review`

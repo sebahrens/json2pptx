@@ -1366,6 +1366,7 @@ func buildSvggenVocabularies() capabilitiesVocabularies {
 		svggen.FindingWaterfallTotalMismatch,
 		svggen.FindingZeroSumPie,
 		svggen.FindingOrgChartNodesInvalid,
+		svggen.FindingGlyphMissing,
 	}
 	sort.Strings(findingCodes)
 	return capabilitiesVocabularies{

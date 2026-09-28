@@ -1149,6 +1149,16 @@ var findingMetaRegistry = map[string]FindingMeta{
 			"Give every node a name (and optionally a title); label is not read by the org chart.",
 		},
 	},
+	"chart.glyph_missing": {
+		Code:        "chart.glyph_missing",
+		Summary:     "Chart text uses characters the embedded chart font cannot render.",
+		Severity:    "review",
+		WhenEmitted: "svggen draws text containing characters (CJK, emoji, Arabic, ...) with no glyph in the embedded face; their widths are estimated and the viewer substitutes a system font.",
+		RemediationSteps: []string{
+			"Render the slide and check the listed characters display correctly and labels do not collide.",
+			"If the target machine lacks a font for the script, shorten or transliterate those labels, or move them into native slide text.",
+		},
+	},
 	"chart.zero_sum_pie": {
 		Code:        "chart.zero_sum_pie",
 		Summary:     "A pie/donut chart's slices sum to zero, producing a blank chart.",

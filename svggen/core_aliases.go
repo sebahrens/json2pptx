@@ -179,6 +179,7 @@ const (
 	FindingCurrencyPrefixDefaulted   = core.FindingCurrencyPrefixDefaulted
 	FindingWaterfallTotalMismatch    = core.FindingWaterfallTotalMismatch
 	FindingOrgChartNodesInvalid      = core.FindingOrgChartNodesInvalid
+	FindingGlyphMissing              = core.FindingGlyphMissing
 
 	// Capacity limits (re-exported from core/limits.go).
 	MaxSeries     = core.MaxSeries

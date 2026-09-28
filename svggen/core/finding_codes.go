@@ -136,6 +136,13 @@ const (
 	// draws as an empty box (typically a node written with "label", which the
 	// org chart does not read).
 	FindingOrgChartNodesInvalid = "diagram.org_chart_nodes_invalid"
+
+	// FindingGlyphMissing is emitted when drawn text contains characters the
+	// embedded chart font has no glyph for (CJK, emoji, Hebrew/Arabic, ...).
+	// Their widths are estimated, so wrap, overlap and truncation decisions
+	// for that text are approximate, and the viewer substitutes a system
+	// font whose metrics may differ (go-slide-creator-s27x0).
+	FindingGlyphMissing = "chart.glyph_missing"
 )
 
 // FixKind constants for the Kind field of FixSuggestion.

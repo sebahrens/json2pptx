@@ -108,6 +108,7 @@ func renderMultiFormatWithFindings(r *Registry, req *RequestEnvelope, formats ..
 	if builder != nil {
 		findings = append(findings, builder.Findings()...)
 		findings = append(findings, builder.textOverlapFindings()...)
+		findings = append(findings, builder.glyphMissingFindings()...)
 	}
 
 	// Apply strict-fit severity promotion ladder.
