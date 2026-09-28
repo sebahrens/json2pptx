@@ -316,8 +316,11 @@ func beforeAfterFullRowHeights(ctx ExpandContext, beforeHeader, afterHeader, bef
 // Keep only a trace of the accent in the panel fill. The shape-grid renderer
 // only emits tint modifiers for scheme colours, so pre-mix explicit hex
 // overrides with white instead.
-func beforeAfterPanelTone(accent string) fillTone {
-	return paleAccentTone(accent)
+func beforeAfterPanelTone(string) fillTone {
+	// A neutral surface, not a pale accent wash: the two panels are peers,
+	// and accent tints are reserved for marking one highlighted band
+	// (go-slide-creator-8xsj3).
+	return neutralTone(NeutralTint4)
 }
 
 func buildBeforeAfterTextContent(content string, size float64, bold bool, color, align string) json.RawMessage {

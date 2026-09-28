@@ -1332,7 +1332,11 @@ func collectStructuralSmellFindings(input *PresentationInput) []patterns.FitFind
 			continue
 		}
 		for _, w := range pipeline.DetectStructuralSmells(slide.ShapeGrid, si) {
-			findings = append(findings, patterns.FitFinding{ValidationError: *w, Action: "review"})
+			action := "review"
+			if w.Code == patterns.ErrCodeFilledShapeOutlined {
+				action = "info" // advisory: the outline renders as authored
+			}
+			findings = append(findings, patterns.FitFinding{ValidationError: *w, Action: action})
 		}
 	}
 	return findings

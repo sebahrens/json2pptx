@@ -64,6 +64,7 @@ func DetectStructuralSmells(grid *jsonschema.ShapeGridInput, slideIdx int) []*pa
 	warnings = append(warnings, detectRowSmells(grid, slidepath.ShapeGrid(slideIdx), slideIdx)...)
 	warnings = append(warnings, detectMixedFillScheme(grid, slideIdx)...)
 	warnings = append(warnings, detectAccentOverload(grid, slideIdx)...)
+	warnings = append(warnings, detectFilledShapeOutlined(grid, slidepath.ShapeGrid(slideIdx), slideIdx)...)
 	return warnings
 }
 

@@ -1,7 +1,6 @@
 package patterns
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -344,16 +343,16 @@ func TestStrategyHouse_PillarsAreVisible(t *testing.T) {
 	if pillarRow == nil {
 		t.Fatal("no pillar row found")
 	}
+	// The template's declared subtle surface when it has one, else the
+	// neutral 4% step — never lt1 (go-slide-creator-8xsj3).
+	want := string(surfaceFillJSON(ctx, "subtle", NeutralTint4))
 	for i, c := range pillarRow.Cells {
-		var fill string
-		if err := json.Unmarshal(c.Shape.Fill, &fill); err != nil {
-			t.Fatalf("pillar %d fill: %v", i, err)
-		}
-		if fill == "lt1" {
+		fill := string(c.Shape.Fill)
+		if fill == `"lt1"` {
 			t.Errorf("pillar %d is filled lt1 — invisible on a light slide", i)
 		}
-		if fill != ctx.ResolveSurface("subtle", "lt2") {
-			t.Errorf("pillar %d fill = %q, want the template's subtle surface", i, fill)
+		if fill != want {
+			t.Errorf("pillar %d fill = %s, want %s", i, fill, want)
 		}
 	}
 }

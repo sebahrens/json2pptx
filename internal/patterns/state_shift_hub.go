@@ -520,7 +520,7 @@ func (s *stateShiftHub) Expand(ctx ExpandContext, values, overrides any, _ map[i
 		Shape: &jsonschema.ShapeSpecInput{
 			Geometry: "ellipse",
 			Fill:     accentFillJSON(accent),
-			Line:     sshHaloJSON(accent),
+			Line:     noLine, // no halo ring: a filled shape carries no outline (go-slide-creator-pgdkp)
 			Text:     sshTextJSON("ctr", sshPara{Content: pptx.ConvertMarkdownEmphasis(v.HubLabel), Size: lay.hubSize, Bold: true, Color: onAccent}),
 		},
 	}
@@ -535,7 +535,7 @@ func (s *stateShiftHub) Expand(ctx ExpandContext, values, overrides any, _ map[i
 		nodeX1 := cx - row.dx + lay.nodeR
 		places = append(places,
 			sshPlacement{row: r, rowSpan: 1, x0: 0, x1: row.textEdge, cell: sshItemCell(bt, p.Before, "r", lay, accentInk)},
-			sshPlacement{row: r, rowSpan: 1, x0: nodeX0, x1: nodeX1, cell: sshNodeCell(label, json.RawMessage(`"lt1"`), sshNodeLineJSON(accent), accentInk)},
+			sshPlacement{row: r, rowSpan: 1, x0: nodeX0, x1: nodeX1, cell: sshNodeCell(label, json.RawMessage(`"none"`), sshNodeLineJSON(accent), accentInk)},
 			sshPlacement{row: r, rowSpan: 1, x0: w - nodeX1, x1: w - nodeX0, cell: sshNodeCell(label, accentFillJSON(accent), json.RawMessage(`"none"`), onAccent)},
 			sshPlacement{row: r, rowSpan: 1, x0: w - row.textEdge, x1: w, cell: sshItemCell(at, p.After, "l", lay, accentInk)},
 		)
@@ -701,17 +701,6 @@ func sshNodeCell(label string, fill, line json.RawMessage, color string) *jsonsc
 
 func sshNodeLineJSON(accent string) json.RawMessage {
 	data, _ := json.Marshal(map[string]any{"color": accent, "width": 1.75})
-	return data
-}
-
-// sshHaloJSON is a pale ring around the hub (a light tint of the accent), so
-// the hub reads as the centre of the orbit rather than one more filled dot.
-func sshHaloJSON(accent string) json.RawMessage {
-	if isHexColor(accent) {
-		data, _ := json.Marshal(map[string]any{"color": "lt2", "width": sshHaloWidthPt})
-		return data
-	}
-	data, _ := json.Marshal(map[string]any{"color": accent, "width": sshHaloWidthPt, "lumMod": 40000, "lumOff": 60000})
 	return data
 }
 

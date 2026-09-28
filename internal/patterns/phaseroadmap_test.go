@@ -234,11 +234,13 @@ func TestPhaseRoadmap_Expand_ActivePhaseGetsAccent(t *testing.T) {
 		t.Fatalf("Expand failed: %v", err)
 	}
 	// In valid values, phase index 1 is active and should fill with accent1.
-	// Non-active phases use a light accent tint — never dk1 black.
+	// Non-active phases use the neutral 8% step — never solid dk1 black, and
+	// never an accent wash competing with the active phase
+	// (go-slide-creator-8xsj3).
 	for i, cell := range grid.Rows[0].Cells {
 		fillRaw := string(cell.Shape.Fill)
-		if strings.Contains(fillRaw, "dk1") {
-			t.Errorf("cell[%d] fill %s must not use dk1", i, fillRaw)
+		if fillRaw == `"dk1"` {
+			t.Errorf("cell[%d] fill %s must not be solid dk1", i, fillRaw)
 		}
 		var text struct {
 			Paragraphs []struct {
@@ -268,8 +270,8 @@ func TestPhaseRoadmap_Expand_ActivePhaseGetsAccent(t *testing.T) {
 		if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
 			t.Fatalf("inactive cell[%d] fill %s: %v", i, fillRaw, err)
 		}
-		if fill.Color != "accent1" || fill.LumMod == 0 || fill.LumOff == 0 {
-			t.Errorf("inactive cell[%d] fill = %s, want accent1 lumMod/lumOff tint", i, fillRaw)
+		if fillRaw != neutral8JSON {
+			t.Errorf("inactive cell[%d] fill = %s, want neutral 8%%", i, fillRaw)
 		}
 		bg, _ := effectiveFillColor(ctx, fillTone{Color: fill.Color, LumMod: fill.LumMod, LumOff: fill.LumOff})
 		if r := fg.ContrastWith(bg); r < 4.5 {

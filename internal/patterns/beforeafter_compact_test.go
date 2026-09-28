@@ -78,8 +78,8 @@ func TestBeforeAfterCompact_LightPanelsTallChevronAndMargins(t *testing.T) {
 		}
 	}
 	for _, cell := range grid.Rows[1].Cells {
-		if got := string(cell.Shape.Fill); got != `{"color":"accent1","tint":12000}` {
-			t.Errorf("body panel fill = %s, want light accent tint", got)
+		if got := string(cell.Shape.Fill); got != neutral4JSON {
+			t.Errorf("body panel fill = %s, want the neutral 4%% surface", got)
 		}
 	}
 }

@@ -197,8 +197,9 @@ This is the one place the skill sets accent strategy; other guides defer here.
 - `section-keyed` gives each chapter its own accent — use it when the deck has
   `structure.sections` / section dividers.
 - `rotate` cycles pattern slides through the template's **safe** accents only
-  (light body text readable on the fill, not the negative accent), keyed to
-  each pattern's content so inserting a slide recolours nothing. Validation
+  (light body text readable on the fill, not the negative accent, not a grey
+  or pastel slot under 2:1 on `lt1`), keyed to each pattern's content so
+  inserting a slide recolours nothing; every `kpi-*` pattern shares one accent. Validation
   reports the excluded accents once per deck (`ROTATED_ACCENT_UNREADABLE`,
   info, at `/accent_strategy`). Use it only when that safe set has three or
   more accents and the deck has many pattern slides; otherwise it adds noise,

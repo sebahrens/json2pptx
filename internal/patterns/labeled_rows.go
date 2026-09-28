@@ -371,7 +371,14 @@ func (l *labeledRows) Expand(ctx ExpandContext, values, overrides any, cellOverr
 
 		var labelCell *jsonschema.GridCellInput
 		if lay.filled {
-			ink := readableTextOn(ctx, fillTone{Color: accent}, "lt1")
+			// Ink by measured contrast at the block's smallest text: lt1 when
+			// it clears WCAG AA there (3:1 for a large bold keyword alone),
+			// else the theme's dark ink (go-slide-creator-8xsj3).
+			minContrast := TextContrastThreshold(lay.labelSize, true)
+			if strings.TrimSpace(r.Sublabel) != "" {
+				minContrast = max(minContrast, TextContrastThreshold(lay.subSize, false))
+			}
+			ink := readableInkOn(ctx, fillTone{Color: accent}, "lt1", minContrast)
 			if co != nil && co.Color != "" {
 				ink = co.Color
 			}

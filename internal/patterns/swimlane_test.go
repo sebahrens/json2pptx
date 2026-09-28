@@ -28,17 +28,22 @@ func TestSwimlane_ExpandBasic(t *testing.T) {
 	if len(grid.Rows[0].Cells) != 4 {
 		t.Errorf("expected 4 cells per row, got %d", len(grid.Rows[0].Cells))
 	}
+	// Lanes alternate two neutral steps and no cell is outlined
+	// (go-slide-creator-pgdkp).
 	for ci := 1; ci < len(grid.Rows[0].Cells); ci++ {
-		if got := string(grid.Rows[0].Cells[ci].Shape.Line); got != paperSurfaceHairline {
-			t.Errorf("page-colored lane cell %d line = %s, want hairline", ci, got)
-		}
-		if got := string(grid.Rows[1].Cells[ci].Shape.Line); got != "" {
-			t.Errorf("tinted lane cell %d unexpectedly has hairline %s", ci, got)
+		for ri, want := range []string{neutral4JSON, neutral8JSON} {
+			cell := grid.Rows[ri].Cells[ci]
+			if got := string(cell.Shape.Fill); got != want {
+				t.Errorf("lane %d cell %d fill = %s, want %s", ri, ci, got, want)
+			}
+			if got := string(cell.Shape.Line); got != `"none"` {
+				t.Errorf("lane %d cell %d line = %s, want none", ri, ci, got)
+			}
 		}
 	}
 }
 
-func TestSwimlane_EmptyPaperStepHasOutline(t *testing.T) {
+func TestSwimlane_EmptyStepIsTintedNotOutlined(t *testing.T) {
 	p, _ := Default().Get("swimlane")
 	vals := &SwimlaneValues{Lanes: []SwimlaneLane{
 		{Actor: "A", Steps: []string{""}},
@@ -48,8 +53,11 @@ func TestSwimlane_EmptyPaperStepHasOutline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := string(grid.Rows[0].Cells[1].Shape.Line); got != paperSurfaceHairline {
-		t.Errorf("empty paper step line = %s, want hairline", got)
+	if got := string(grid.Rows[0].Cells[1].Shape.Fill); got != neutral4JSON {
+		t.Errorf("empty step fill = %s, want neutral 4%%", got)
+	}
+	if got := string(grid.Rows[0].Cells[1].Shape.Line); got != `"none"` {
+		t.Errorf("empty step line = %s, want none", got)
 	}
 }
 

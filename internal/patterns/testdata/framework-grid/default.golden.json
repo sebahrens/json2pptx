@@ -16,9 +16,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 20000,
-              "lumOff": 80000
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "line": "none",
             "text": {
@@ -40,8 +40,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "tint": 12000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
             "line": "none",
             "text": {
@@ -71,8 +72,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "tint": 12000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
             "line": "none",
             "text": {
@@ -102,8 +104,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "tint": 12000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
             "line": "none",
             "text": {
@@ -139,9 +142,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 20000,
-              "lumOff": 80000
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "line": "none",
             "text": {
@@ -163,8 +166,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "tint": 12000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
             "line": "none",
             "text": {
@@ -194,8 +198,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "tint": 12000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
             "line": "none",
             "text": {
@@ -232,9 +237,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "lumMod": 20000,
-              "lumOff": 80000
+              "color": "dk1",
+              "lumMod": 8000,
+              "lumOff": 92000
             },
             "line": "none",
             "text": {
@@ -256,8 +261,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "tint": 12000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
             "line": "none",
             "text": {
@@ -287,8 +293,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "tint": 12000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
             "line": "none",
             "text": {
@@ -318,8 +325,9 @@
           "shape": {
             "geometry": "rect",
             "fill": {
-              "color": "accent1",
-              "tint": 12000
+              "color": "dk1",
+              "lumMod": 4000,
+              "lumOff": 96000
             },
             "line": "none",
             "text": {

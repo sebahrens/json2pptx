@@ -97,7 +97,7 @@ func (vc *valueChain) Schema() *Schema {
 		map[string]*Schema{
 			"label":       StringSchema(40).WithDescription("Short step label (1-3 words)"),
 			"description": StringSchema(180).WithDescription("1-3 line description rendered below the label; at 7/8/9/10 steps about 152/141/140/72 characters, and keep unbroken runs near 167/142/123/108/72 characters at 6/7/8/9/10 steps or add word breaks"),
-			"highlight":   BooleanSchema().WithDescription("When true, the label row uses the highlight color (default accent2) instead of dk2"),
+			"highlight":   BooleanSchema().WithDescription("When true, the label row uses the highlight color (default: the first accent that stands out from the neutral step fill, normally accent1) instead of the neutral dk1 16% tint"),
 		},
 		[]string{"label"},
 	).WithAdditionalProperties(false)
@@ -191,20 +191,26 @@ func (vc *valueChain) Expand(ctx ExpandContext, values, overrides any, cellOverr
 	labelCells := make([]*jsonschema.GridCellInput, n)
 	descCells := make([]*jsonschema.GridCellInput, n)
 	for i, step := range vals.Steps {
-		fill := valueChainLabelFill
+		tone := valueChainLabelTone
 		if step.Highlight {
-			fill = highlightColor
+			tone = fillTone{Color: highlightColor}
 		}
 		// Resolved accent governs the connector and per-cell override accent bar,
 		// but does NOT override the label fill — that semantic is reserved for
-		// highlight vs. dk2 contrast per the layout spec.
+		// highlight vs. neutral-step contrast per the layout spec.
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
 
-		labelText := buildValueChainLabelText(pptx.ConvertMarkdownEmphasis(step.Label), labelSize, readableTextOn(ctx, fillTone{Color: fill}, "lt1"))
+		// Ink by measured contrast at the label's own size: lt1 when it clears
+		// WCAG AA (3:1 for large bold labels), else the theme's dark ink.
+		ink := "dk1"
+		if step.Highlight {
+			ink = readableInkOn(ctx, tone, "lt1", TextContrastThreshold(labelSize, true))
+		}
+		labelText := buildValueChainLabelText(pptx.ConvertMarkdownEmphasis(step.Label), labelSize, ink)
 		labelCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, fill)),
+				Fill:     tone.fillJSON(),
 				Text:     labelText,
 			},
 		}
@@ -388,14 +394,14 @@ type valueChainTextObj struct {
 // valueChainHighlightCandidates is the order the default highlight is chosen
 // in: the brand accent first, so the highlighted step reads as "this one" in
 // the template's own primary colour, and the rest only as the measurement
-// forces it. lt2 is the last resort — an inverted (light) step is always
-// distinct from a dk2 chain and is still in palette.
-var valueChainHighlightCandidates = []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "lt2"}
+// forces it. dk2 is the last resort — a dark step is always distinct from the
+// light neutral chain and is still in palette.
+var valueChainHighlightCandidates = []string{"accent1", "accent2", "accent3", "accent4", "accent5", "accent6", "dk2"}
 
-// valueChainDefaultHighlight is the historical default, kept for a context with
-// no theme to measure against (unit tests, a pattern expanded without a
-// template) so behaviour there is unchanged.
-const valueChainDefaultHighlight = "accent2"
+// valueChainDefaultHighlight is the default for a context with no theme to
+// measure against (unit tests, a pattern expanded without a template): the
+// primary accent, the slide's one emphasised element (go-slide-creator-8xsj3).
+const valueChainDefaultHighlight = "accent1"
 
 // resolveValueChainHighlight picks the fill for a highlighted step. An authored
 // highlight_color is always honoured — the author may know something the
@@ -408,7 +414,7 @@ func resolveValueChainHighlight(ctx ExpandContext, authored string) string {
 	if authored != "" {
 		return authored
 	}
-	if pick, ok := pickDistinctFill(ctx, fillTone{Color: valueChainLabelFill}, fillDistinctnessMin, valueChainHighlightCandidates...); ok {
+	if pick, ok := pickDistinctFill(ctx, valueChainLabelTone, valueChainHighlightMin, valueChainHighlightCandidates...); ok {
 		return pick
 	}
 	return valueChainDefaultHighlight
@@ -472,19 +478,30 @@ func (vc *valueChain) PostExpandWarnings(ctx ExpandContext, values, overrides an
 	if !highlighted {
 		return out
 	}
-	ratio, ok := fillContrast(ctx, fillTone{Color: valueChainLabelFill}, fillTone{Color: v.HighlightColor})
-	if !ok || ratio >= fillDistinctnessMin {
+	ratio, ok := fillContrast(ctx, valueChainLabelTone, fillTone{Color: v.HighlightColor})
+	if !ok || ratio >= valueChainHighlightMin {
 		return out
 	}
 	return append(out, fmt.Sprintf(
 		"%s: value-chain highlight_color %q reads at %.2f:1 against the step fill (%s) — below %.1f:1 the highlighted step is not distinguishable from its neighbours; omit highlight_color to let the engine pick an accent that clears the bar",
-		ErrCodeLowContrastHighlight, v.HighlightColor, ratio, valueChainLabelFill, fillDistinctnessMin))
+		ErrCodeLowContrastHighlight, v.HighlightColor, ratio, valueChainLabelFillName, valueChainHighlightMin))
 }
 
-// valueChainLabelFill is the default (non-highlighted) label fill: the
-// template's dark brand colour (dk2), not dk1, which is pure black in most
-// themes and reads off-brand next to the highlight accent.
-const valueChainLabelFill = "dk2"
+// valueChainLabelTone is the default (non-highlighted) label fill: a neutral
+// 16% tint of dk1 with dk1 text. The chain is structure, not emphasis — a
+// row of solid dk2 blocks is black on templates whose dk2 is black, and a
+// brand-coloured row leaves the highlighted step nothing to stand out from
+// (go-slide-creator-8xsj3). The one highlighted step carries the accent.
+var valueChainLabelTone = neutralTone(NeutralTint16)
+
+// valueChainLabelFillName names valueChainLabelTone in findings.
+const valueChainLabelFillName = "dk1 at 16%"
+
+// valueChainHighlightMin is the luminance contrast the highlight must clear
+// against the neutral step fill. The base is achromatic, so a saturated
+// accent is also separated by hue; 2:1 of lightness on top of that reads as
+// "this one" where two greys would need the full 3:1 (fillDistinctnessMin).
+const valueChainHighlightMin = 2.0
 
 func buildValueChainLabelText(label string, size float64, color string) json.RawMessage {
 	textObj := valueChainTextObj{

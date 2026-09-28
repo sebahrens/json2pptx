@@ -1,5 +1,35 @@
 # Schema Changelog
 
+- **Unreleased — no outlines on filled shapes, neutral surfaces, one accent (`go-slide-creator-pgdkp`, `go-slide-creator-8xsj3`).**
+  Pattern expansions no longer outline a filled shape: the 0.5pt hairline on
+  white cards (card-grid `tinted`, comparison-2col, quote-cluster, swimlane,
+  capability-heatmap), the matrix-2x2 quadrant and bmc-canvas cell borders,
+  the dual-org-ladder role-card outlines and the state-shift-hub halo are gone.
+  Filled shapes are separated by the grid's white gutters over neutral tints of
+  `dk1` (`{"color":"dk1","lumMod":4000,"lumOff":96000}` = 4%, 8%, 16%); a white
+  card on white paper takes the 4% tint, alternating rows take a declared
+  template surface plus the 4% step (or 4% / 8%). Surfaces default to those
+  neutrals with dark text: peer cards (`kpi-Nup`, `card-grid`, `icon-row`,
+  `scqa-summary`, `before-after[-compact]`, and now `comparison-2col` headers)
+  become the 4% surface plus a 3pt accent rule on every template, not only
+  light-accent ones; before-after panels, framework-grid bands / cards,
+  soft-card, inactive phase-roadmap phases and arch-stack tiers (plus a 3pt
+  accent bar) drop their accent washes and 40–100% alpha ramps; value-chain
+  steps are the neutral 16% tint with the one highlighted step in the first
+  accent that clears 2:1 against it (default `accent1`; `LOW_CONTRAST_HIGHLIGHT`
+  now measures against the neutral step at 2:1); journey-maturity-model keeps
+  the solid accent only on the current stage; strategy-house's foundation and
+  swimlane actor labels are neutral; process-grid-2row's row labels use `dk1`
+  60% where `dk2` is black. Where a saturated fill remains, labeled-rows and
+  value-chain pick the ink by measured contrast at the text's own size.
+  `accent_strategy: "rotate"` skips grey theme slots (HSL saturation < 0.15)
+  and pastel slots under 2:1 against `lt1` (was 1.3:1), and every `kpi-*`
+  pattern shares one rotation key so sibling KPI patterns never change colour.
+  New advisory finding `FILLED_SHAPE_OUTLINED` (action `info`, advisory fix
+  kind `remove_outline`) flags an authored raw `shape_grid` shape with an
+  opaque fill and a visible `line`, and a card-grid `border` / `line_color` /
+  `line_width` override. No `SchemaVersion` bump.
+
 - **2026-09-28 — Schema 4.153.0: uniform 0.5 cm shape text inset.**
   Every text-bearing shape the engine draws (shape_grid cells — so every
   pattern, compose block and raw grid — and the native diagram shapes) keeps

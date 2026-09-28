@@ -330,13 +330,13 @@ func TestMatrix2x2(t *testing.T) {
 			t.Errorf("y-axis row_span = %d, want 2", grid.Rows[1].Cells[0].RowSpan)
 		}
 
-		// Quadrant cells should have lt1 fill
-		var qFill string
-		if err := json.Unmarshal(grid.Rows[1].Cells[1].Shape.Fill, &qFill); err != nil {
-			t.Fatalf("quadrant fill unmarshal: %v", err)
+		// Quadrants are a neutral 4% field split by white gutters, with no
+		// border (go-slide-creator-pgdkp).
+		if got := string(grid.Rows[1].Cells[1].Shape.Fill); got != neutral4JSON {
+			t.Errorf("quadrant fill = %s, want neutral 4%%", got)
 		}
-		if qFill != "lt1" {
-			t.Errorf("quadrant fill = %q, want %q", qFill, "lt1")
+		if got := string(grid.Rows[1].Cells[1].Shape.Line); got != `"none"` {
+			t.Errorf("quadrant line = %s, want none", got)
 		}
 	})
 

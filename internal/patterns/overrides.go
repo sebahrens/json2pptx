@@ -11,11 +11,6 @@ import (
 	"github.com/sebahrens/json2pptx/svggen"
 )
 
-// paperSurfaceHairline keeps lt1-backed cards visible when paper is the page
-// color. A half-point rule blended 80% toward the light side is deliberately
-// quieter than an accent border while still separating the card from canvas.
-const paperSurfaceHairline = `{"color":"dk1","width":0.5,"lumMod":20000,"lumOff":80000}`
-
 // TextOverrides contains pattern-level overrides common to patterns with
 // header/body text: accent color, header font size, and body font size.
 // Patterns with identical override shapes (card-grid, comparison-2col)
@@ -180,8 +175,15 @@ func (c ExpandContext) rotatedAccent() (chosen, requested, reason string) {
 }
 
 // minVisibleAccentContrast is the minimum fill-vs-lt1 contrast for a light
-// accent to carry dark text instead of falling back to a dark fill.
-const minVisibleAccentContrast = 1.3
+// accent to carry dark text instead of falling back to a dark fill. Below 2:1
+// the slot is a pastel mid-tint (p-style's #FFAA72 at 1.87, its grey accent5
+// at 1.92), not an accent: a roof or card in it reads as a muddy wash with
+// black text (go-slide-creator-8xsj3), so rotation skips it.
+const minVisibleAccentContrast = 2.0
+
+// minAccentSaturation is the HSL saturation below which a theme accent slot
+// is a grey and rotation skips it.
+const minAccentSaturation = 0.15
 
 func (c ExpandContext) safeRotatingAccent(candidate string, ink svggen.Color) bool {
 	if c.Metadata != nil && candidate == c.Metadata.SemanticAccents["negative"] {
@@ -192,6 +194,12 @@ func (c ExpandContext) safeRotatingAccent(candidate string, ink svggen.Color) bo
 	}
 	fill, found := resolveThemeColor(c, candidate)
 	if !found {
+		return false
+	}
+	// A grey theme slot (p-style's accent4 #A1A8B3, abstract's #A5A5A5) is a
+	// neutral, not an accent: rotating onto it paints the slide's one
+	// emphasised element grey (go-slide-creator-8xsj3).
+	if _, sat, _ := toHSL(fill); sat < minAccentSaturation {
 		return false
 	}
 	if fill.ContrastWith(ink) >= svggen.WCAGAANormal {

@@ -196,18 +196,19 @@ func TestValueChain_Expand_HighlightDefaultColor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expand failed: %v", err)
 	}
-	// Step 2 (highlighted) should fill with accent2 (default highlight color).
+	// Step 2 (highlighted) fills with accent1, the slide's one emphasis.
 	highlighted := grid.Rows[0].Cells[2]
 	if highlighted.Shape == nil {
 		t.Fatal("expected shape on highlighted label cell")
 	}
-	if !strings.Contains(string(highlighted.Shape.Fill), "accent2") {
-		t.Errorf("expected highlighted label fill to include accent2, got %q", string(highlighted.Shape.Fill))
+	if got := string(highlighted.Shape.Fill); got != `"accent1"` {
+		t.Errorf("highlighted label fill = %s, want accent1", got)
 	}
-	// Step 0 (not highlighted) should fill with dk2 (never dk1 black).
+	// Step 0 (not highlighted) is the neutral 16% step — never a solid dk1 /
+	// dk2 block (go-slide-creator-8xsj3).
 	plain := grid.Rows[0].Cells[0]
-	if !strings.Contains(string(plain.Shape.Fill), "dk2") {
-		t.Errorf("expected non-highlighted label fill to include dk2, got %q", string(plain.Shape.Fill))
+	if got := string(plain.Shape.Fill); got != neutral16JSON {
+		t.Errorf("non-highlighted label fill = %s, want neutral 16%%", got)
 	}
 }
 

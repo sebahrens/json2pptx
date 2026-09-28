@@ -554,12 +554,9 @@ func TestCardGridStyles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		var fill string
-		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
-			t.Fatalf("fill unmarshal: %v", err)
-		}
-		if fill != "lt1" {
-			t.Errorf("accent-stripe: fill = %q, want %q", fill, "lt1")
+		// No white card on white paper: the neutral 4% surface.
+		if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != neutral4JSON {
+			t.Errorf("accent-stripe: fill = %s, want neutral 4%%", got)
 		}
 		ab := grid.Rows[0].Cells[0].AccentBar
 		if ab == nil {
@@ -586,12 +583,9 @@ func TestCardGridStyles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		var fill string
-		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
-			t.Fatalf("fill unmarshal: %v", err)
-		}
-		if fill != "lt1" {
-			t.Errorf("numbered-badge: fill = %q, want %q", fill, "lt1")
+		// No white card on white paper: the neutral 4% surface.
+		if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != neutral4JSON {
+			t.Errorf("numbered-badge: fill = %s, want neutral 4%%", got)
 		}
 	})
 
@@ -612,12 +606,9 @@ func TestCardGridStyles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		var fill string
-		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
-			t.Fatalf("fill unmarshal: %v", err)
-		}
-		if fill != "lt1" {
-			t.Errorf("icon-card: fill = %q, want %q", fill, "lt1")
+		// No white card on white paper: the neutral 4% surface.
+		if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != neutral4JSON {
+			t.Errorf("icon-card: fill = %s, want neutral 4%%", got)
 		}
 		ab := grid.Rows[0].Cells[0].AccentBar
 		if ab == nil {
@@ -703,32 +694,35 @@ func TestCardGridStyles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand without surface metadata: %v", err)
 		}
-		if got := string(fallback.Rows[0].Cells[0].Shape.Line); got != paperSurfaceHairline {
-			t.Errorf("fallback page-colored card line = %s, want hairline", got)
+		// No surface metadata: two neutral steps, never an outlined white card
+		// (go-slide-creator-pgdkp).
+		if got := string(fallback.Rows[0].Cells[0].Shape.Fill); got != neutral4JSON {
+			t.Errorf("fallback card 0 fill = %s, want neutral 4%%", got)
+		}
+		if got := string(fallback.Rows[0].Cells[1].Shape.Fill); got != neutral8JSON {
+			t.Errorf("fallback card 1 fill = %s, want neutral 8%%", got)
+		}
+		if got := string(fallback.Rows[0].Cells[0].Shape.Line); got != `"none"` {
+			t.Errorf("fallback card line = %s, want none", got)
 		}
 		ctx := ExpandContext{Metadata: &types.TemplateMetadata{SurfaceTints: map[string]string{"subtle": "lt2", "paper": "lt1"}}}
 		grid, err := p.Expand(ctx, vals, ovr, nil)
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		var fill0, fill1 string
-		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill0); err != nil {
-			t.Fatalf("fill unmarshal: %v", err)
+		// The declared subtle surface is kept; the page-coloured paper role
+		// becomes the neutral 4% step, and no card is outlined
+		// (go-slide-creator-pgdkp).
+		if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != `"lt2"` {
+			t.Errorf("tinted: cell 0 fill = %s, want the declared lt2", got)
 		}
-		if err := json.Unmarshal(grid.Rows[0].Cells[1].Shape.Fill, &fill1); err != nil {
-			t.Fatalf("fill unmarshal: %v", err)
+		if got := string(grid.Rows[0].Cells[1].Shape.Fill); got != neutral4JSON {
+			t.Errorf("tinted: cell 1 fill = %s, want neutral 4%%", got)
 		}
-		if fill0 != "lt2" {
-			t.Errorf("tinted: cell 0 fill = %q, want %q", fill0, "lt2")
-		}
-		if fill1 != "lt1" {
-			t.Errorf("tinted: cell 1 fill = %q, want %q", fill1, "lt1")
-		}
-		if got := string(grid.Rows[0].Cells[0].Shape.Line); got != "" {
-			t.Errorf("tinted non-page card line = %s, want no line", got)
-		}
-		if got := string(grid.Rows[0].Cells[1].Shape.Line); got != paperSurfaceHairline {
-			t.Errorf("tinted paper card line = %s, want hairline", got)
+		for ci := 0; ci < 2; ci++ {
+			if got := string(grid.Rows[0].Cells[ci].Shape.Line); got != `"none"` {
+				t.Errorf("tinted card %d line = %s, want none", ci, got)
+			}
 		}
 		ovr.Border = "none"
 		grid, err = p.Expand(ctx, vals, ovr, nil)
@@ -760,7 +754,7 @@ func TestCardGridSoftCardAndSurfaceOverrides(t *testing.T) {
 	}
 	vals := &CardGridValues{Columns: 2, Rows: 1, Cells: cells}
 
-	// soft-card: pale accent-tinted surface, explicit no border, dark text.
+	// soft-card: neutral 4% surface, explicit no border, dark text.
 	t.Run("soft_card_style", func(t *testing.T) {
 		ovr := &CardGridOverrides{Style: "soft-card"}
 		grid, err := p.Expand(ExpandContext{}, vals, ovr, nil)
@@ -768,12 +762,8 @@ func TestCardGridSoftCardAndSurfaceOverrides(t *testing.T) {
 			t.Fatalf("Expand: %v", err)
 		}
 		shape := grid.Rows[0].Cells[0].Shape
-		var fill fillTone
-		if err := json.Unmarshal(shape.Fill, &fill); err != nil {
-			t.Fatalf("fill unmarshal: %v", err)
-		}
-		if fill.Color != "accent1" || fill.Tint != 12000 {
-			t.Errorf("soft-card: fill = %+v, want a subtle accent tint", fill)
+		if got := string(shape.Fill); got != neutral4JSON {
+			t.Errorf("soft-card: fill = %s, want the neutral 4%% surface", got)
 		}
 		var line string
 		if err := json.Unmarshal(shape.Line, &line); err != nil {
@@ -947,12 +937,8 @@ func TestCardGridRecommendedSoftCard(t *testing.T) {
 	}
 	plain := grid.Rows[0].Cells[0].Shape
 	selected := grid.Rows[0].Cells[1].Shape
-	var plainFill fillTone
-	if err := json.Unmarshal(plain.Fill, &plainFill); err != nil {
-		t.Fatal(err)
-	}
-	if plainFill.Color != "accent1" || plainFill.Tint != 12000 {
-		t.Fatalf("unselected fill = %s", plain.Fill)
+	if string(plain.Fill) != neutral4JSON && string(plain.Fill) != `"lt2"` {
+		t.Fatalf("unselected fill = %s, want a neutral surface", plain.Fill)
 	}
 	if string(selected.Fill) == string(plain.Fill) {
 		t.Fatalf("selected fill = %s", selected.Fill)

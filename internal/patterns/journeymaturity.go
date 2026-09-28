@@ -234,7 +234,8 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 	descSize := ResolveSize(ovr.BodySize, 9.0)
 	cellAccentMode := ovr.CellAccentMode
 
-	bodyFill := ctx.ResolveSurface("subtle", "lt2")
+	bodyFill := surfaceFillJSON(ctx, "subtle", NeutralTint4)
+	uniform := cellAccentMode == "" || cellAccentMode == CellAccentUniform
 
 	n := len(vals.Stages)
 
@@ -253,16 +254,24 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 		// the user picks cell_accent_mode=progressive or alternate this gives
 		// per-stage variation while still emphasising the current stage by
 		// matching the base accent.
-		headerFill := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
+		//
+		// In the default uniform mode only the current stage keeps the solid
+		// accent; the other stages are neutral 16% steps, so the slide has one
+		// emphasised element instead of a row of identical accent blocks
+		// (go-slide-creator-8xsj3). ApplyReadableInk darkens their text.
+		headerFill := json.RawMessage(fmt.Sprintf(`"%s"`, ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)))
+		if uniform {
+			headerFill = neutralFillJSON(NeutralTint16)
+		}
 		if stage.Current {
-			headerFill = baseAccent
+			headerFill = json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent))
 		}
 
 		labelText := buildJourneyMaturityHeaderText(number, pptx.ConvertMarkdownEmphasis(stage.Label), labelSize)
 		headerCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, headerFill)),
+				Fill:     headerFill,
 				Text:     labelText,
 			},
 		}
@@ -279,12 +288,12 @@ func (jm *journeyMaturity) Expand(ctx ExpandContext, values, overrides any, cell
 		if descContent == "" {
 			descShape = &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, bodyFill)),
+				Fill:     bodyFill,
 			}
 		} else {
 			descShape = &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, bodyFill)),
+				Fill:     bodyFill,
 				Text:     buildJourneyMaturityDescriptionText(pptx.ConvertMarkdownEmphasis(descContent), descSize),
 			}
 		}

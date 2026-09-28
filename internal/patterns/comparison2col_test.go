@@ -374,13 +374,9 @@ func TestComparison2col(t *testing.T) {
 		if headerFill != "accent1" {
 			t.Errorf("header fill = %q, want %q", headerFill, "accent1")
 		}
-		// Body cells should have lt1 fill
-		var bodyFill string
-		if err := json.Unmarshal(grid.Rows[1].Cells[0].Shape.Fill, &bodyFill); err != nil {
-			t.Fatalf("body fill unmarshal: %v", err)
-		}
-		if bodyFill != "lt1" {
-			t.Errorf("body fill = %q, want %q", bodyFill, "lt1")
+		// Body cells take the neutral 4% surface, not a white card.
+		if got := string(grid.Rows[1].Cells[0].Shape.Fill); got != neutral4JSON {
+			t.Errorf("body fill = %s, want neutral 4%%", got)
 		}
 	})
 
@@ -485,7 +481,7 @@ func TestComparison2col(t *testing.T) {
 		}
 	})
 
-	t.Run("expand_row_fill_default_lt1", func(t *testing.T) {
+	t.Run("expand_row_fill_default_neutral", func(t *testing.T) {
 		vals := Comparison2colValues{
 			Rows: []Comparison2colRow{
 				{Left: "A", Right: "B"},
@@ -495,12 +491,8 @@ func TestComparison2col(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Expand: %v", err)
 		}
-		var fill string
-		if err := json.Unmarshal(grid.Rows[0].Cells[0].Shape.Fill, &fill); err != nil {
-			t.Fatalf("fill unmarshal: %v", err)
-		}
-		if fill != "lt1" {
-			t.Errorf("default body fill = %q, want %q", fill, "lt1")
+		if got := string(grid.Rows[0].Cells[0].Shape.Fill); got != neutral4JSON {
+			t.Errorf("default body fill = %s, want neutral 4%%", got)
 		}
 	})
 
@@ -522,21 +514,16 @@ func TestComparison2col(t *testing.T) {
 		if len(grid.Rows) != 3 {
 			t.Fatalf("expected 3 body rows, got %d", len(grid.Rows))
 		}
-		// Shipped metadata uses a tinted subtle fill and page-colored paper.
-		wantFills := []string{"lt2", "lt1", "lt2"}
+		// The declared lt2 band is kept and the page-coloured paper band becomes
+		// the neutral 4% step, never an outlined white row beside a filled one
+		// (go-slide-creator-pgdkp).
+		wantFills := []string{`"lt2"`, neutral4JSON, `"lt2"`}
 		for i, row := range grid.Rows {
 			for j, cell := range row.Cells {
-				var fill string
-				if err := json.Unmarshal(cell.Shape.Fill, &fill); err != nil {
-					t.Fatalf("row[%d].cell[%d] fill unmarshal: %v", i, j, err)
+				if got := string(cell.Shape.Fill); got != wantFills[i] {
+					t.Errorf("row[%d].cell[%d] fill = %s, want %s (zebra striping)", i, j, got, wantFills[i])
 				}
-				if fill != wantFills[i] {
-					t.Errorf("row[%d].cell[%d] fill = %q, want %q (zebra striping)", i, j, fill, wantFills[i])
-				}
-				wantLine := ""
-				if i%2 == 1 {
-					wantLine = paperSurfaceHairline
-				}
+				wantLine := `"none"`
 				if got := string(cell.Shape.Line); got != wantLine {
 					t.Errorf("row[%d].cell[%d] line = %s, want %s", i, j, got, wantLine)
 				}

@@ -417,11 +417,9 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 		Grid:    buildMatrix2x2YAxis(vals.YAxisLabel, yLow, yHigh, labelSize, accent, axisText),
 	}
 
-	// Default quadrant cell border: subtle dk1-tinted stroke so the four
-	// quadrants read as a proper 2×2 matrix with a visible crossing axis,
-	// rather than four floating cells on the slide background. Authors can
-	// override via cell_overrides if desired.
-	const matrix2x2CellBorderJSON = `{"color":"dk1","width":0.75,"lumMod":50000,"lumOff":50000}`
+	// Quadrants are built from gutters, not borders: a neutral 4% tint with
+	// no outline, separated by the grid's white gutters, so the 2×2 reads as
+	// one field split by a white cross (go-slide-creator-pgdkp).
 
 	// Quadrant cells: cell index 0=TL, 1=TR, 2=BL, 3=BR
 	quadrants := []Matrix2x2Quadrant{vals.TopLeft, vals.TopRight, vals.BottomLeft, vals.BottomRight}
@@ -429,8 +427,8 @@ func (m *matrix2x2) Expand(ctx ExpandContext, values, overrides any, cellOverrid
 	for i, q := range quadrants {
 		shape := &jsonschema.ShapeSpecInput{
 			Geometry: "rect",
-			Fill:     json.RawMessage(`"lt1"`),
-			Line:     json.RawMessage(matrix2x2CellBorderJSON),
+			Fill:     neutralFillJSON(NeutralTint4),
+			Line:     noLine,
 			Text:     buildMatrix2x2QuadrantContent(q, headerSize, bodySize, accent),
 		}
 		if q.Icon != nil {

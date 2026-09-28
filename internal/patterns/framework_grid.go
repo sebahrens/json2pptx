@@ -324,15 +324,16 @@ func fgMeasure(ctx ExpandContext, v *FrameworkGridValues, ovr *FrameworkGridOver
 // Fills and ink
 // ---------------------------------------------------------------------------
 
-// fgLabelTone is the row-label band: a light tint of the accent, one step
-// deeper than the cards so the band reads as the row's heading.
-func fgLabelTone(accent string) fillTone {
-	return inactiveTintTone(accent)
+// fgLabelTone is the row-label band: the neutral 8% step, one step deeper
+// than the cards so the band reads as the row's heading. Accent washes are
+// reserved for a highlighted band, not every surface (go-slide-creator-8xsj3).
+func fgLabelTone(string) fillTone {
+	return neutralTone(NeutralTint8)
 }
 
-// fgCardTone is the card surface: a pale wash of the column's accent.
-func fgCardTone(accent string) fillTone {
-	return paleAccentTone(accent)
+// fgCardTone is the card surface: the neutral 4% step.
+func fgCardTone(string) fillTone {
+	return neutralTone(NeutralTint4)
 }
 
 // fgTitleInk keeps the card title in the accent when it reads on the card,

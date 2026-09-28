@@ -241,11 +241,12 @@ func TestQuoteCluster_Expand_AlternatingFills(t *testing.T) {
 		t.Fatalf("Expand: %v", err)
 	}
 	for ri, row := range grid.Rows {
+		// Declared lt2 kept, page-coloured paper as the 4% step, no outlines
+		// (go-slide-creator-pgdkp).
 		wantFill := `"lt2"`
-		wantLine := ""
+		wantLine := `"none"`
 		if ri%2 == 1 {
-			wantFill = `"lt1"`
-			wantLine = paperSurfaceHairline
+			wantFill = neutral4JSON
 		}
 		for ci, cell := range row.Cells {
 			if got := string(cell.Shape.Fill); got != wantFill {

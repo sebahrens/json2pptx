@@ -383,10 +383,11 @@ func (pr *phaseRoadmap) Expand(ctx ExpandContext, values, overrides any, cellOve
 	// Row 1 — phase label boxes
 	phaseCells := make([]*jsonschema.GridCellInput, n)
 	for i, p := range vals.Phases {
-		// Inactive phases use a light tint of the accent (not dk1 black, which
-		// reads off-brand next to the accent); the active phase keeps the
-		// full accent. Header text colour follows the effective fill.
-		tone := inactiveTintTone(accent)
+		// Inactive phases are the neutral 8% step (not dk1 black, and not an
+		// accent wash that competes with the one active phase); the active
+		// phase keeps the full accent (go-slide-creator-8xsj3). Header text
+		// colour follows the effective fill.
+		tone := neutralTone(NeutralTint8)
 		if p.Active {
 			tone = fillTone{Color: accent}
 		}

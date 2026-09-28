@@ -41,12 +41,14 @@ func TestRotatingPatternAccentIsReadableAndStableAfterInsertion(t *testing.T) {
 		if finding := patternWarningAsFinding(slideIndex, p.Name, warnings[0]); finding == nil || finding.Code != patterns.ErrCodeRotatedAccentUnreadable {
 			t.Errorf("slide position %d: warning did not become a fit finding", slideIndex)
 		}
+		// Peer cards carry the rotated accent as their top rule over a
+		// neutral surface (go-slide-creator-8xsj3).
 		for _, cell := range grid.Rows[0].Cells {
-			if got := string(cell.Shape.Fill); got != `"accent1"` {
-				t.Errorf("slide position %d: rotating cell fill = %s, want certified accent1", slideIndex, got)
+			if cell.AccentBar == nil || cell.AccentBar.Color != "accent1" {
+				t.Errorf("slide position %d: rotating cell accent rule = %+v, want certified accent1", slideIndex, cell.AccentBar)
 			}
 		}
-		fill := string(grid.Rows[0].Cells[0].Shape.Fill)
+		fill := grid.Rows[0].Cells[0].AccentBar.Color
 		if firstFill != "" && fill != firstFill {
 			t.Errorf("inserting earlier slides changed this pattern's accent: %s -> %s", firstFill, fill)
 		}
@@ -92,7 +94,7 @@ func TestRotateNegativeAccentParityBetweenPreflightAndGenerate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reserved := strings.Trim(string(base.Rows[0].Cells[0].Shape.Fill), `"`)
+	reserved := base.Rows[0].Cells[0].AccentBar.Color // peer cards carry the accent as their rule
 	theme := types.ThemeInfo{Colors: colors, SemanticAccents: map[string]string{"negative": reserved}}
 	input := &PresentationInput{AccentStrategy: "rotate", Slides: []SlideInput{{SlideType: "content", Pattern: p}}}
 	layouts, _, sw, sh := fitReportGeometry("modern-template", testutil.TemplatesDir())
