@@ -31,6 +31,8 @@ func main() {
 			repair = repairYellowClosingGrouping
 		case "--pstyle-column-hierarchy":
 			repair = repairPStyleColumnHierarchy
+		case "--pstyle-one-content-hierarchy":
+			repair = repairPStyleOneContentHierarchy
 		case "--blue-child-leading":
 			repair = repairBlueChildLeading
 		case "--business-column-leading":
@@ -106,6 +108,20 @@ func repairPStyleColumnHierarchy(path string) error {
 		})
 	}
 	return fmt.Errorf("reviewed column layout missing")
+}
+
+// p-style One Content bullets start at native level2 (12pt Georgia) with
+// children at level3, so an agenda or bullet slide read at 12pt in the top
+// third of the body. Match the reviewed Two Content hierarchy: 20pt roots,
+// 18pt children, 16pt deeper levels; keep the level2 heading typeface.
+func repairPStyleOneContentHierarchy(path string) error {
+	return repairReviewedParts(path, "p-style-one-content-hierarchy-before.pptx", map[string]reviewedPartRepair{
+		"ppt/slideLayouts/slideLayout2.xml": {
+			old:         `<a:lvl1pPr><a:spcAft><a:spcPts val="1200"/></a:spcAft><a:defRPr sz="1500"/></a:lvl1pPr><a:lvl2pPr><a:defRPr sz="1200"><a:latin typeface="+mj-lt"/></a:defRPr></a:lvl2pPr><a:lvl3pPr><a:defRPr sz="1200"/></a:lvl3pPr><a:lvl4pPr><a:defRPr sz="1200"/></a:lvl4pPr><a:lvl5pPr><a:defRPr sz="1200"/></a:lvl5pPr>`,
+			replacement: `<a:lvl1pPr><a:spcAft><a:spcPts val="1200"/></a:spcAft><a:defRPr sz="2000"/></a:lvl1pPr><a:lvl2pPr><a:defRPr sz="2000"><a:latin typeface="+mj-lt"/></a:defRPr></a:lvl2pPr><a:lvl3pPr><a:defRPr sz="1800"/></a:lvl3pPr><a:lvl4pPr><a:defRPr sz="1600"/></a:lvl4pPr><a:lvl5pPr><a:defRPr sz="1600"/></a:lvl5pPr>`,
+			guards:      []string{`name="One Content"`, `name="body"`, `cx="11421056" cy="4000502"`},
+		},
+	})
 }
 
 // Blue One Content bullets start at native level2 with children at level3,

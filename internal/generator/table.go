@@ -234,12 +234,10 @@ func GenerateTableXML(table *types.TableSpec, config TableRenderConfig) (*TableR
 	rowHeights := rowPlan.RowHeights
 	totalHeight := rowPlan.TotalHeight
 
-	// Centring balances empty space on a one-content slide (go-slide-creator-6jv7).
-	// Populated side-by-side body columns instead align table and sibling tops.
+	// Tables anchor at the top of their content area, directly under the
+	// title, as consulting slides do; centring a short table left a gap
+	// between title and table (reversing go-slide-creator-6jv7).
 	offsetY := config.Bounds.Y
-	if slack := config.Bounds.Height - totalHeight; slack > 0 && !config.AlignTop {
-		offsetY += slack / 2
-	}
 
 	var xml strings.Builder
 
