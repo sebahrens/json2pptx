@@ -1,5 +1,12 @@
 {
   "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
   "design_mode": "free",
   "output_filename": "template-qa-deck.pptx",
   "accent_strategy": "primary",

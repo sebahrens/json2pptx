@@ -1248,6 +1248,27 @@ A content slide's title names a topic ("Market Overview") instead of stating the
 }
 ```
 
+### `DATA_WITHOUT_SOURCE`
+
+**Action:** `info`
+**Pattern:** *(none — content lint; the message names the data pattern)*
+**Fix kind:** `provide_value` (`params.field: "source"`)
+**Emitted at:** preflight (validate / preview / score / generate `fit_report`), from the authored slide before pattern or compose expansion
+
+A slide shows data but cites no source (go-slide-creator-cuszt). Data means a `chart` content item, a chart-shaped `diagram`, a `table` with a digit in any body cell, or one of the numeric patterns: `chart-insights-split`, `waterfall-bridge`, `horizontal-bar-with-callouts`, `kpi-2up` … `kpi-6up`, `kpi-inline`, `stat-hero`, `hero-detail`, `metric-list` (also as a `compose` segment). Qualitative patterns (`matrix-2x2`, `table-highlight`, `capability-heatmap`), word-only tables, and title / section slides are exempt. A slide counts as sourced when `slide.source` is set **or** a `chart-insights-split` / `stat-hero` carries `values.source`: input normalisation lifts that value into `slide.source` (merged with an existing slide source, duplicates dropped), so it renders in the same source zone as every other source. `fix.params.data` names what was found (`"a chart"`, `"a table of figures"`, `"the kpi-4up pattern"`). On the DeckSpec path the finding maps to `semantic_path` `slides[N].source`.
+
+**The source zone.** Every source on a generated slide renders once, in the chrome frame's source band: 9pt italic, the text colour (`tx1`) muted to ~60% (`lumMod 60000` / `lumOff 40000`), left-aligned on the content column (same 0.1in text inset as the title and footer), directly above the footer. The band is reserved before content is laid out, so patterns centre in the space above it, and it keeps at least 12pt between itself and the takeaway band or the content above. A pattern expanded on its own (`expand_pattern`, no chrome) still draws its `values.source` in its grid.
+
+```json
+{
+  "path": "/slides/2/source",
+  "code": "DATA_WITHOUT_SOURCE",
+  "message": "slide 3: shows the kpi-4up pattern but cites no source — set the slide's source (origin and base, or \"Illustrative\") so the numbers can be traced",
+  "fix": { "kind": "provide_value", "params": { "field": "source", "data": "the kpi-4up pattern" } },
+  "action": "info"
+}
+```
+
 ### `TITLE_TOO_LONG`
 
 **Action:** `review`

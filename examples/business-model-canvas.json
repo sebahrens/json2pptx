@@ -1,6 +1,13 @@
 {
   "design_mode": "free",
   "template": "midnight-blue",
+  "chrome": {
+    "confidentiality": "Confidential",
+    "page_numbers": {
+      "enabled": true,
+      "format": "{current}"
+    }
+  },
   "output_filename": "business-model-canvas.pptx",
   "slides": [
     {

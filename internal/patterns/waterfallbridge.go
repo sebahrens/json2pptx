@@ -573,13 +573,16 @@ const (
 )
 
 // buildWaterfallBridgeCaptionText renders the scale note: small, dk2, and
-// right-aligned so it reads as a chart annotation rather than a second title.
+// top-left above the bars — where a reader looks for a chart's unit, and
+// where chart-insights-split puts its caption. Right-aligned it floated in the
+// top-right corner, detached from the chart it qualifies
+// (go-slide-creator-cuszt).
 func buildWaterfallBridgeCaptionText(caption string, size float64) json.RawMessage {
 	textObj := waterfallBridgeTextObj{
 		Paragraphs: []waterfallBridgeParagraph{
-			{Content: caption, Size: size, Color: "dk2", Align: "r"},
+			{Content: caption, Size: size, Color: "dk2", Align: "l"},
 		},
-		Align: "r",
+		Align: "l",
 		// The caption band is thin (wbCaptionRowPct): the writer clamps its
 		// top/bottom margin, as a degenerate shape, to what still holds one
 		// line, so autofit never shrinks the scale note below the minimum.

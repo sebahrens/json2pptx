@@ -42,6 +42,10 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 			findings = append(findings, finding)
 		}
 	}
+	// Data slides without a source (DATA_WITHOUT_SOURCE). Reads the authored
+	// patterns and compose segments, so it runs before expansion replaces them
+	// with grids (go-slide-creator-cuszt).
+	findings = append(findings, collectDataWithoutSourceFindings(input)...)
 	var geometryErrors []patterns.FitFinding
 	input, layouts, geometryErrors = withDerivedFitLayouts(input, layouts, slideWidth, slideHeight)
 	findings = append(findings, geometryErrors...)

@@ -44,8 +44,18 @@ func TestChromeFrameGoldenGeometryBundledTemplates(t *testing.T) {
 			if !frame.Fits || frame.Basis != ChromeBasisLayout {
 				t.Fatalf("frame fits=%v basis=%q", frame.Fits, frame.Basis)
 			}
-			if d := frame.Takeaway.X - body.Bounds.X; d < -1 || d > 1 {
-				t.Errorf("takeaway x = %d, want body x %d (±1)", frame.Takeaway.X, body.Bounds.X)
+			// midnight-blue's full-height accent bar and stripe sit inside the
+			// left margin: the column clears them by the right-hand margin
+			// (stripe end 396000 + 838200), go-slide-creator-oa0ru.
+			wantLeft := body.Bounds.X
+			if name == "midnight-blue" {
+				wantLeft = 1234200
+			}
+			if d := frame.Takeaway.X - wantLeft; d < -1 || d > 1 {
+				t.Errorf("takeaway x = %d, want %d (±1)", frame.Takeaway.X, wantLeft)
+			}
+			if gap := frame.Source.Y - frame.Takeaway.Bottom(); gap < 12*12700 {
+				t.Errorf("takeaway-to-source gap = %d EMU, want at least 12pt", gap)
 			}
 			if d := frame.Takeaway.X + frame.Takeaway.CX - (body.Bounds.X + body.Bounds.Width); d < -1 || d > 1 {
 				t.Errorf("takeaway right = %d, want body right %d", frame.Takeaway.X+frame.Takeaway.CX, body.Bounds.X+body.Bounds.Width)

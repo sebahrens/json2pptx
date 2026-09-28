@@ -642,7 +642,7 @@ For readability the right panel applies vertical rhythm via per-paragraph `space
 - Chart caption — single-series charts render without a legend, so the series name used to disappear. A bold caption above the chart now shows `chart_label` (≤60) or, when the chart has no `title`, the single series name plus `unit` (≤12): `"Revenue"` + `"$M"` → `Revenue ($M)`; multi-series charts get `Values in <unit>` (their legend names the series).
 - Data labels — `Style.ShowValues` is switched on by default for bar-type charts with ≤16 points and single-series line / area charts with ≤12 points; `overrides.data_labels` forces on / off and an explicit `data.data_labels` payload is left to svggen. The caller's chart spec is never mutated.
 
-With a headline or so-what the insights cell becomes a nested column (headline / insights / so-what rows sized from the measured text) and the vertical divider is omitted; without them the panel is unchanged. The source row is pinned at 30pt so its 12pt floor never autofits.
+With a headline or so-what the insights cell becomes a nested column (headline / insights / so-what rows sized from the measured text) and the vertical divider is omitted; without them the panel is unchanged. On a generated slide `values.source` (like `stat-hero`'s) is lifted into the slide's `source` before layout and renders in the 9pt chrome source zone above the footer, so the chart panel keeps the full height (go-slide-creator-cuszt); only a standalone `expand_pattern` draws the source row, pinned at 30pt so its 12pt floor never autofits.
 
 ## Bounds Override
 

@@ -83,7 +83,10 @@ func clampContentPlaceholdersToChrome(slide *slideXML, frame template.ChromeFram
 			continue
 		}
 		switch ph.Type {
-		case "title", "ctrTitle", "subTitle", "dt", "ftr", "sldNum", "hdr":
+		case "title":
+			alignTitleWithInsetContent(xfrm, frame)
+			continue
+		case "ctrTitle", "subTitle", "dt", "ftr", "sldNum", "hdr":
 			continue
 		}
 		xfrm.Offset.X, xfrm.Extent.CX = clampHorizontalToFrame(xfrm.Offset.X, xfrm.Extent.CX, frame.Content)
@@ -95,6 +98,57 @@ func clampContentPlaceholdersToChrome(slide *slideXML, frame template.ChromeFram
 		}
 		xfrm.Extent.CY = limit - xfrm.Offset.Y
 	}
+}
+
+// alignTitleWithInsetContent moves a title that starts left of a content
+// column side artwork pushed inward, so the title and the content share one
+// left edge instead of the title hugging the art (go-slide-creator-oa0ru). The
+// title keeps its width — title fit is measured against the layout's
+// placeholder width — unless that would run it off the canvas.
+func alignTitleWithInsetContent(xfrm *transformXML, frame template.ChromeFrame) {
+	if !frame.SideDecorInset || xfrm.Extent.CX <= 0 || frame.Content.CX <= 0 {
+		return
+	}
+	x, width := xfrm.Offset.X, xfrm.Extent.CX
+	if x >= frame.Content.X || x+width <= frame.Content.X {
+		return
+	}
+	newX := frame.Content.X
+	// Never closer to the right canvas edge than half the content's right
+	// margin.
+	rightMargin := frame.Canvas.CX - (frame.Content.X + frame.Content.CX)
+	if limit := frame.Canvas.CX - rightMargin/2; newX+width > limit {
+		width = limit - newX
+	}
+	if width <= 0 {
+		return
+	}
+	xfrm.Offset.X, xfrm.Extent.CX = newX, width
+}
+
+// alignFooterWithInsetContent returns footer positions whose left footer text
+// (the date slot the left text box starts at) begins on the content column
+// when side artwork pushed that column inward, so title, content, source and
+// footer share one left edge (go-slide-creator-oa0ru). positions is returned
+// unchanged otherwise; the cached map is never mutated.
+func alignFooterWithInsetContent(positions map[string]*transformXML, frame template.ChromeFrame) map[string]*transformXML {
+	dt, ok := positions["type:dt"]
+	if !frame.SideDecorInset || !ok || dt == nil || dt.Offset.X >= frame.Content.X {
+		return positions
+	}
+	shift := frame.Content.X - dt.Offset.X
+	if shift >= dt.Extent.CX {
+		return positions
+	}
+	out := make(map[string]*transformXML, len(positions))
+	for k, v := range positions {
+		out[k] = v
+	}
+	moved := *dt
+	moved.Offset.X += shift
+	moved.Extent.CX -= shift
+	out["type:dt"] = &moved
+	return out
 }
 
 func clampHorizontalToFrame(x, width int64, content template.ChromeRect) (int64, int64) {

@@ -57,6 +57,8 @@ var contentCodes = map[string]bool{
 	ErrCodeLowContrastHighlight: true,
 	ErrCodeDuplicateTitle:       true,
 	ErrCodeTakeawayMissing:      true,
+	// A missing attribution is an authoring gap (go-slide-creator-cuszt).
+	ErrCodeDataWithoutSource: true,
 	// Content-substance codes: what the slide says (go-slide-creator-q7ar).
 	ErrCodeWeakContent:      true,
 	ErrCodeMissingTitle:     true,
