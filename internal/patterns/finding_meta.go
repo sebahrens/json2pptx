@@ -842,12 +842,13 @@ var findingMetaRegistry = map[string]FindingMeta{
 	},
 	ErrCodeRotatedAccentUnreadable: {
 		Code:        ErrCodeRotatedAccentUnreadable,
-		Summary:     "The requested rotating accent was unreadable or reserved for negative meaning; a safe fill was substituted.",
+		Summary:     "accent_strategy=rotate cycles through the template's safe accents only; some theme accents are excluded as unreadable under lt1 body text or reserved for negative meaning.",
 		Severity:    "review",
-		WhenEmitted: "A pattern using accent_strategy=rotate would otherwise place normal-size lt1 text on a low-contrast accent or use the template's negative semantic accent for neutral content.",
+		WhenEmitted: "A deck uses accent_strategy=rotate on a template where at least one theme accent cannot carry normal-size lt1 text (and no dark ink reads on it) or is the negative semantic accent. Reported once per deck at path /accent_strategy (semantic: meta.accent_strategy), listing the pattern slides that rotate and the safe set they cycle through.",
 		RemediationSteps: []string{
-			"Keep the substituted accent, or supply an explicit accent/semantic_accent if the intended meaning differs.",
-			"Choose a template whose accents provide more 4.5:1-safe options for light body text.",
+			"Informational: rotation already spreads slides evenly over the safe set, so no fill is unreadable.",
+			"If the safe set is too small to give real variety, use accent_strategy primary (or section-keyed for chaptered decks) instead of rotate.",
+			"Supply an explicit accent/semantic_accent on a pattern when its colour carries meaning.",
 		},
 	},
 

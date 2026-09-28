@@ -427,7 +427,8 @@ var codeMetaRegistry = map[string]patterns.FindingMeta{
 		Severity:    describeSeverityReview,
 		WhenEmitted: "score_deck finds a single accent dominating the share of accented slides. The message names the accent and its share.",
 		RemediationSteps: []string{
-			"Set the deck-level \"accent_strategy\" to \"rotate\" or \"section-keyed\" so accents vary across slides or sections.",
+			"On a chaptered deck set the deck-level \"accent_strategy\" to \"section-keyed\"; inside grid slides vary cells with overrides.cell_accent_mode.",
+			"Use \"rotate\" only when the template's safe-accent set is large: it cycles through the accents light text reads on, and validation reports the excluded ones once (ROTATED_ACCENT_UNREADABLE).",
 			"Or set per-slide accents deliberately, reserving one accent for emphasis.",
 		},
 		RelatedCodes: []string{patterns.ErrCodeAccentOverload},

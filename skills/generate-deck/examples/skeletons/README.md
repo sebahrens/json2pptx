@@ -2,7 +2,7 @@
 
 Five canonical JSON skeletons covering the most common deck archetypes. Copy a skeleton, replace every `__FILL_*__` token, strip the `_*` documentation keys (`_skeleton`, `_description`, `_instructions`), and run `validate_input` before generating.
 
-Skeletons are pre-shaped for **constrained mode**: they set `design_mode: "constrained"`, `accent_strategy: "rotate"`, `contrast_check: true` on every slide, and (for skeletons containing chart or matrix slides) include the `takeaway` field required by Rule 10b. The rhythm of each skeleton has been picked so no pattern appears 3+ times consecutively — do not stack additional slides of the same pattern type without re-running `analyze_deck_rhythm`.
+Skeletons are pre-shaped for **constrained mode**: they set `design_mode: "constrained"`, `accent_strategy: "primary"` (see RULES.md → Accent monotony before changing it), `contrast_check: true` on every slide, and (for skeletons containing chart or matrix slides) include the `takeaway` field required by Rule 10b. The rhythm of each skeleton has been picked so no pattern appears 3+ times consecutively — do not stack additional slides of the same pattern type without re-running `analyze_deck_rhythm`.
 
 | File | Slides | When to use | Patterns used |
 |------|--------|-------------|---------------|
@@ -23,7 +23,7 @@ Skeletons are pre-shaped for **constrained mode**: they set `design_mode: "const
 
 ## Why skeletons exist
 
-Generating a deck from scratch each time leads to two recurring problems: (1) agents forget non-obvious requirements (the takeaway field on chart/matrix slides, `accent_strategy: "rotate"` for long decks, `contrast_check` defaults), and (2) agents default to a single pattern (often 6-card-grids-in-a-row), producing visually monotonous decks. Skeletons encode the rhythm and the required fields up-front so the agent's job is content, not structure.
+Generating a deck from scratch each time leads to two recurring problems: (1) agents forget non-obvious requirements (the takeaway field on chart/matrix slides, a safe `accent_strategy`, `contrast_check` defaults), and (2) agents default to a single pattern (often 6-card-grids-in-a-row), producing visually monotonous decks. Skeletons encode the rhythm and the required fields up-front so the agent's job is content, not structure.
 
 ## Customizing a skeleton
 

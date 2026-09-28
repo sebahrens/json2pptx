@@ -112,22 +112,31 @@ func ResolveAccentWithStrategy(accent, semanticAccent string, metadata *types.Te
 	return AccentForStrategy(strategy, slideIndex, sectionIndex)
 }
 
-// rotatedAccent starts from a content-stable slot, then walks the six theme
-// accents until it finds one that can carry normal-size lt1 text. Automatic
-// neutral/positive patterns never borrow the template's negative semantic hue.
-// Explicit accent and semantic_accent overrides are resolved before this path.
+// rotatedAccent picks a content-stable slot from the template-safe rotation
+// set: the theme accents that can carry normal-size lt1 text and are not the
+// template's negative semantic hue. Explicit accent and semantic_accent
+// overrides are resolved before this path.
+//
+// It used to start at slot index%6 and walk forward to the next safe accent,
+// which piled every unsafe slot onto the same neighbour: on midnight-blue
+// eight rotating slides landed on two accents, each with its own
+// substitution finding (go-slide-creator-kspkr). Indexing into the safe set
+// spreads slides evenly over it; with all six accents safe it is the old
+// slot, so templates without unsafe accents are unchanged.
 func (c ExpandContext) rotatedAccent() (chosen, requested, reason string) {
-	index := c.SlideIndex
+	var key uint64
 	if c.RotationKey != "" {
 		h := fnv.New64a()
 		_, _ = h.Write([]byte(c.RotationKey))
-		index = int(h.Sum64() % NumAccentSlots)
+		key = h.Sum64()
+	} else {
+		index := c.SlideIndex
+		if index < 0 {
+			index = -index
+		}
+		key = uint64(index)
 	}
-	if index < 0 {
-		index = -index
-	}
-	start := index % NumAccentSlots
-	requested = fmt.Sprintf("accent%d", start+1)
+	requested = fmt.Sprintf("accent%d", key%NumAccentSlots+1)
 	if len(c.Theme.Colors) == 0 {
 		return requested, requested, ""
 	}
@@ -135,15 +144,22 @@ func (c ExpandContext) rotatedAccent() (chosen, requested, reason string) {
 	if !ok {
 		ink = svggen.MustParseColor("#FFFFFF")
 	}
-	for step := 0; step < NumAccentSlots; step++ {
-		candidate := fmt.Sprintf("accent%d", (start+step)%NumAccentSlots+1)
-		if !c.safeRotatingAccent(candidate, ink) {
-			continue
+	var safe, unsafe []string
+	for slot := 1; slot <= NumAccentSlots; slot++ {
+		candidate := fmt.Sprintf("accent%d", slot)
+		if c.safeRotatingAccent(candidate, ink) {
+			safe = append(safe, candidate)
+		} else {
+			unsafe = append(unsafe, candidate)
 		}
-		if step > 0 {
-			return candidate, requested, fmt.Sprintf("%s was not safe for lt1 body text or was reserved as the negative semantic accent; selected %s", requested, candidate)
+	}
+	if len(safe) > 0 {
+		chosen = safe[key%uint64(len(safe))]
+		if len(unsafe) > 0 {
+			reason = fmt.Sprintf("rotation cycles through this template's safe accents %s; excluded: %s (unreadable under lt1 body text, or reserved as the negative semantic accent)",
+				strings.Join(safe, ", "), strings.Join(unsafe, ", "))
 		}
-		return candidate, requested, ""
+		return chosen, requested, reason
 	}
 	// If no theme accent qualifies, prefer the template's own dark brand colour
 	// (dk2, a.k.a. tx2) over a literal: pastel-accent templates such as

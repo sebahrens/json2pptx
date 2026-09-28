@@ -190,7 +190,21 @@ Rules: no visual pattern family should appear 3+ times consecutively (alternatin
 
 ### Accent monotony
 
-Using the default `accent_strategy: "primary"` on a 10+ slide deck makes every shape the same color. Set `"rotate"` or `"section-keyed"` for longer decks, or manually assign different accents to shape fills.
+This is the one place the skill sets accent strategy; other guides defer here.
+
+- `primary` (default) is the safe choice for any length: one brand accent,
+  with variety from `cell_accent_mode` inside grid slides.
+- `section-keyed` gives each chapter its own accent — use it when the deck has
+  `structure.sections` / section dividers.
+- `rotate` cycles pattern slides through the template's **safe** accents only
+  (light body text readable on the fill, not the negative accent), keyed to
+  each pattern's content so inserting a slide recolours nothing. Validation
+  reports the excluded accents once per deck (`ROTATED_ACCENT_UNREADABLE`,
+  info, at `/accent_strategy`). Use it only when that safe set has three or
+  more accents and the deck has many pattern slides; otherwise it adds noise,
+  not variety.
+
+Do not switch strategy just to move `accent_balance`; judge the rendered slides.
 
 ### Sparse single-row flow
 

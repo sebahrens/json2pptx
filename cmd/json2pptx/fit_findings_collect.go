@@ -241,6 +241,7 @@ func collectFitFindings(input *PresentationInput, layouts []types.LayoutMetadata
 //
 // When verbose is true the budget is not applied and all findings are returned.
 func BudgetFitFindings(findings []patterns.FitFinding, budget int, verbose bool) []patterns.FitFinding {
+	findings = collapseRotatedAccentFindings(findings)
 	if verbose || len(findings) == 0 {
 		return findings
 	}

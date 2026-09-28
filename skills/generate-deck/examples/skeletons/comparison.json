@@ -4,7 +4,7 @@
   "_instructions": "Replace every __FILL_*__ token. Keep before/after rows aligned (same number of items left and right). Delete this and the _* keys before validating.",
   "template": "__FILL_TEMPLATE_NAME__ (a name from list_templates)",
   "design_mode": "constrained",
-  "accent_strategy": "rotate",
+  "accent_strategy": "primary",
   "output_filename": "__FILL_OUTPUT_FILENAME__.pptx",
   "slides": [
     {

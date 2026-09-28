@@ -59,7 +59,7 @@ separate evidence, analysis, process, and chapter structure.
 **Cold-start checklist (for decks ≥4 slides):**
 
 1. Pick a template. Call `list_templates` for available options, `canonical_layout_ids`, and `color_roles`. Use `canonical_layout_ids` to map canonical names (`title`, `content`, `blank`, `section`, `closing`, etc.) to concrete layout IDs — do not reverse-engineer raw `slideLayoutN` IDs. The default `fields="compact"` response omits per-layout details; when you need rough placeholder capacity, request legacy `mode="compact"` for `layout_summaries[].placeholders[]` (`id`, `type`, `max_chars`). For full placeholder bounds and font details, use `fields="full"`.
-2. Choose `accent_strategy` — `"rotate"` for multi-section decks, `"section-keyed"` for decks with distinct chapters, `"primary"` only for ≤5-slide decks.
+2. Choose `accent_strategy` per RULES.md → Accent monotony: `"primary"` by default, `"section-keyed"` for chaptered decks, `"rotate"` only when the template's safe-accent set is large.
 3. For each slide intent, call `recommend_visual` to determine the best visual approach. It ranks across placeholder layouts, named patterns, charts, diagrams, and compose envelopes — not just patterns. Avoid choosing the same pattern more than twice in a row.
 4. Ensure the outline alternates density: high-density slides (tables, grids) should be followed by low-density (stat-hero, pull-quote, section divider). Place a narrative-break pattern (stat-hero, pull-quote) every ~5 slides.
 5. Check the outline against the rhythm rule: no pattern should appear 3+ times consecutively. If it does, swap the middle occurrence for a contrasting pattern from a different visual family.
@@ -98,7 +98,7 @@ Returns:
 **Act on rhythm findings before generating:**
 
 - `longest_run ≥ 3` → swap the middle slide of the run to a `recommended_break_patterns` suggestion
-- `accent_balance` shows one accent at >80% → set `accent_strategy: "rotate"` or manually vary accent fills
+- `accent_balance` shows one accent at >80% → vary grid cells with `cell_accent_mode`, or use `"section-keyed"` on a chaptered deck (RULES.md → Accent monotony)
 - `density_cv < 0.1` on a 5+ slide deck → insert a low-density narrative break (stat-hero, pull-quote)
 - `within_slide_accent_variety == 1` on a slide with 5+ cells → add `cell_accent_mode: progressive` to the pattern overrides
 - `density_distribution.underfilled_cells > 30%` of total → add detail text or switch to smaller grid patterns
@@ -114,7 +114,7 @@ Generate the complete JSON in one pass. Use named patterns for shape grid slides
 
 **Accent strategy.** Set `accent_strategy` at the top level of the presentation JSON:
 - `"primary"` (default) — all slides use the template's primary accent. Good for short decks.
-- `"rotate"` — starts from each pattern's content-stable colour slot, then skips accents that cannot carry normal-size light text or are reserved for negative meaning. Inserting another slide does not recolour an existing pattern.
+- `"rotate"` — cycles through the template's safe accents (light text readable, not the negative accent), keyed to each pattern's content, so inserting a slide recolours nothing; the excluded accents are reported once per deck.
 - `"section-keyed"` — accents rotate per section (slides between `section` layout slides share an accent).
 
 **Pre-emit checklist (verify BEFORE outputting JSON):**
