@@ -514,26 +514,9 @@ func (c *cardGrid) Expand(ctx ExpandContext, values, overrides any, cellOverride
 		Rows:          rows,
 		VerticalAlign: GridVerticalAlignDefault,
 	}
-	before := make([]float64, len(grid.Rows))
-	for i := range grid.Rows {
-		before[i] = grid.Rows[i].MaxHeight
-	}
-	fillCappedRows(ctx, grid.Rows, grid.Gap, 0.60, func(int) bool { return true })
-	// A short card that became a main-slide panel should centre its copy in the
-	// larger surface. Dense cards and icon overlays keep their own anchoring.
-	areaW, _ := contentAreaPt(ctx)
-	cardW := equalColumnWidthPt(areaW, vals.Columns, contentSizedRowGapPt)
-	for i := range grid.Rows {
-		if grid.Rows[i].MaxHeight <= before[i] {
-			continue
-		}
-		for _, cell := range grid.Rows[i].Cells {
-			if cell != nil && cell.Shape != nil && cell.Shape.Icon == nil {
-				textH := shapeTextHeightPt(ctx.Theme.BodyFont, cell.Shape.Text, cardW-2*defaultShapeInsetLRPt)
-				cell.Shape.Text = anchorSparseText(cell.Shape.Text, textH, grid.Rows[i].MaxHeight-2*defaultShapeInsetTBPt)
-			}
-		}
-	}
+	// No stretch-to-fill (go-slide-creator-wntyw): rows keep their
+	// content-sized max_height and the block is middle-anchored in the body
+	// zone, so a sparse card never becomes a mostly empty panel.
 
 	return grid, nil
 }

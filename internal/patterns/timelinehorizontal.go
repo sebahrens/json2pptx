@@ -414,7 +414,7 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 		Cells:     dotCells,
 		MinHeight: timelineDotSizePt,
 		MaxHeight: timelineDotSizePt,
-		Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: accent, Width: 2.5},
+		Connector: &jsonschema.ConnectorSpecInput{Style: "line", Color: accent, Width: timelineRulePt},
 	})
 	stopH := math.Min(labelH+pad, contentH*timelineStopMaxHeightFrac)
 	rows = append(rows, jsonschema.GridRowInput{Cells: labelCells, MaxHeight: math.Round(math.Max(stopH, labelSize*contentLineHeight+pad))})
@@ -429,6 +429,10 @@ func (th *timelineHorizontal) expandDots(ctx ExpandContext, stops *TimelineHoriz
 }
 
 const (
+	// timelineRulePt is the thickness of a timeline / roadmap spine: a 3pt
+	// rule, not a band (go-slide-creator-7z5we). phase-roadmap's timeline row
+	// and the dots-style axis connectors both use it.
+	timelineRulePt = 3.0
 	// timelineDotSizePt is the axis-row height and therefore the dot diameter.
 	timelineDotSizePt = 18.0
 	// timelineDotsColGapPt separates stop columns in dots style.

@@ -223,7 +223,7 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 
 	cellIdx := 0
 
-	// Header row: Before header | full-height chevron | After header.
+	// Header row: Before header | compact transition chevron | After header.
 	beforeHeader := buildBeforeAfterTextContent(vals.Before.Header, headerSize, true, "lt1", "ctr")
 	afterHeader := buildBeforeAfterTextContent(vals.After.Header, headerSize, true, "lt1", "ctr")
 
@@ -237,13 +237,7 @@ func (b *beforeAfterCompact) Expand(ctx ExpandContext, values, overrides any, ce
 	applyBeforeAfterCellOverride(beforeHeaderCell, cellOverrides, cellIdx, beforeAccent)
 	cellIdx++
 
-	chevronCell := &jsonschema.GridCellInput{
-		RowSpan: 2,
-		Shape: &jsonschema.ShapeSpecInput{
-			Geometry: "chevron",
-			Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, baseAccent)),
-		},
-	}
+	chevronCell := beforeAfterChevronCell(baseAccent)
 	applyBeforeAfterCellOverride(chevronCell, cellOverrides, cellIdx, baseAccent)
 	cellIdx++
 

@@ -76,12 +76,13 @@
                               }
                             },
                             {
+                              "max_height": 8,
                               "shape": {
                                 "geometry": "rightArrow",
                                 "fill": "accent1",
                                 "adjustments": {
-                                  "adj1": 70000,
-                                  "adj2": 45000
+                                  "adj1": 18750,
+                                  "adj2": 75000
                                 }
                               }
                             }
@@ -151,27 +152,48 @@
                 "height": 76,
                 "cells": [
                   {
-                    "shape": {
-                      "geometry": "upArrow",
-                      "fill": "accent1",
-                      "text": {
-                        "paragraphs": [
-                          {
-                            "content": "Market Growth",
-                            "size": 14,
-                            "bold": true,
-                            "color": "lt1",
-                            "align": "ctr"
-                          }
-                        ],
-                        "align": "ctr",
-                        "vertical_align": "ctr",
-                        "vert": "vert270"
-                      },
-                      "adjustments": {
-                        "adj1": 70000,
-                        "adj2": 45000
-                      }
+                    "grid": {
+                      "col_gap": 2,
+                      "columns": [
+                        91,
+                        9
+                      ],
+                      "rows": [
+                        {
+                          "cells": [
+                            {
+                              "shape": {
+                                "geometry": "rect",
+                                "fill": "none",
+                                "text": {
+                                  "paragraphs": [
+                                    {
+                                      "content": "Market Growth",
+                                      "size": 14,
+                                      "bold": true,
+                                      "color": "dk1",
+                                      "align": "ctr"
+                                    }
+                                  ],
+                                  "align": "ctr",
+                                  "vertical_align": "ctr",
+                                  "vert": "vert270"
+                                }
+                              }
+                            },
+                            {
+                              "shape": {
+                                "geometry": "upArrow",
+                                "fill": "accent1",
+                                "adjustments": {
+                                  "adj1": 18750,
+                                  "adj2": 75000
+                                }
+                              }
+                            }
+                          ]
+                        }
+                      ]
                     }
                   }
                 ]

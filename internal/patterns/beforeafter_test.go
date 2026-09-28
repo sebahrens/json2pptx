@@ -60,7 +60,7 @@ func TestBeforeAfter_ExpandBasic(t *testing.T) {
 	}
 }
 
-func TestBeforeAfterFullPanelsUseSurplusHeight(t *testing.T) {
+func TestBeforeAfterFullPanelsHugContent(t *testing.T) {
 	pat := &beforeAfter{}
 	vals := &BeforeAfterValues{
 		Before: BeforeAfterColumn{Header: "Today", Items: []string{"Manual", "Slow"}},
@@ -71,18 +71,22 @@ func TestBeforeAfterFullPanelsUseSurplusHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, zoneH := sizingAreaPt(fullThemeCtx())
-	if got := grid.Rows[0].MaxHeight + grid.Rows[1].MaxHeight + grid.Gap; got < zoneH*0.59 {
-		t.Errorf("full block %.1fpt uses less than 60%% of %.1fpt zone", got, zoneH)
+	// Content-sized (go-slide-creator-wntyw): two bullets per side must not
+	// be stretched into tall panels.
+	if got := grid.Rows[0].MaxHeight + grid.Rows[1].MaxHeight + grid.Gap; got > zoneH*0.45 {
+		t.Errorf("before-after block %.1fpt stretches past 45%% of the %.1fpt zone for two bullets", got, zoneH)
 	}
-	if got := grid.Rows[0].Cells[1]; got.RowSpan != 2 || got.Shape.Geometry != "chevron" || len(got.Shape.Text) != 0 {
-		t.Errorf("separator should be a full-height chevron without a redundant arrow: %+v", got)
+	// Compact transition chevron (go-slide-creator-7z5we), not a full-height block.
+	if got := grid.Rows[0].Cells[1]; got.RowSpan != 2 || got.Shape.Geometry != "chevron" || len(got.Shape.Text) != 0 ||
+		got.MaxHeight != beforeAfterChevronPt || got.Fit != "contain" {
+		t.Errorf("separator should be a compact %gpt chevron without a redundant arrow: %+v", beforeAfterChevronPt, got)
 	}
 	if len(grid.Rows[1].Cells) != 2 {
 		t.Fatalf("body should contain two panels, with center reserved by chevron: %+v", grid.Rows[1].Cells)
 	}
 	for _, cell := range grid.Rows[1].Cells {
 		if string(cell.Shape.Fill) != `{"color":"accent1","tint":12000}` || !strings.Contains(string(cell.Shape.Text), `"vertical_align":"ctr"`) {
-			t.Errorf("expanded body panel should be visible and centered: %+v", cell.Shape)
+			t.Errorf("body panel should be visible with its list centred: %+v", cell.Shape)
 		}
 	}
 }

@@ -307,19 +307,16 @@ const (
 	kpiTopIconWFrac  = 0.45
 	kpiLeftIconHFrac = 0.4
 	kpiLeftIconWFrac = 0.2
-	// kpiBaseCardHeightFrac is the share of the content height a KPI card
-	// takes when its content fits. The full-size variant uses at least 70% of
-	// the zone while the row remains centred vertically by the grid.
-	//
-	// It is a BASE, not a cap — kpiRowMaxHeightPt raises the row to whatever
-	// the tallest card's measured content needs, bounded only by the content
-	// box. It was named kpiMaxCardHeightFrac and passed to clampPt as the
-	// LOWER bound, so every doc and test asserting a "cap" was false
-	// (go-slide-creator-4uxi).
+	// kpiBaseCardHeightFrac is the share of the content height used as the
+	// card-height ESTIMATE that picks the icon position (left on landscape
+	// cards, top on portrait) and the default icon footprint before the row
+	// is sized. It is neither a floor nor a cap on the rendered card:
+	// kpiRowMaxHeightPt sizes the row to its content (go-slide-creator-wntyw).
 	kpiBaseCardHeightFrac = 0.70
-	// kpiCardPadPt is the vertical breathing room added around the card text
-	// when content needs more than the cap.
-	kpiCardPadPt = 24.0
+	// kpiCardPadPt is the minimum vertical breathing room (beyond the text
+	// insets) a card keeps around its text; short content gets up to
+	// contentStretchMax x its height instead.
+	kpiCardPadPt = 12.0
 )
 
 // kpiCardGeometry is the estimated size (points) of one KPI card.
@@ -328,16 +325,16 @@ type kpiCardGeometry struct {
 }
 
 // kpiCardGeometryFor estimates the card size for n cards spread across the
-// content area. Card height is the kpiBaseCardHeightFrac share of the content
-// height; kpiRowMaxHeightPt raises it when content needs more.
+// content area. The height is the kpiBaseCardHeightFrac estimate used for
+// icon placement; kpiRowMaxHeightPt sizes the rendered row to its content.
 func kpiCardGeometryFor(ctx ExpandContext, n int) kpiCardGeometry {
 	w, h := contentAreaPt(ctx)
 	return kpiCardGeometry{wPt: equalColumnWidthPt(w, n, kpiCardGapPt), hPt: h * kpiBaseCardHeightFrac}
 }
 
-// kpiRowMaxHeightPt returns the KPI row's max_height: the capped card height,
-// raised when the tallest card's content (top icon zone + value + sub +
-// caption + padding) needs more, never above the content height.
+// kpiRowMaxHeightPt returns the KPI row's max_height: the tallest card's
+// content (top icon zone + value + sub + caption) plus its padding, at most
+// contentStretchMax x that content, never above the content height.
 func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, iconPos string, bigSize, smallSize float64) float64 {
 	_, contentH := contentAreaPt(ctx)
 	font := ctx.Theme.BodyFont
@@ -368,14 +365,15 @@ func kpiRowMaxHeightPt(ctx ExpandContext, cells []KPICell, geo kpiCardGeometry, 
 		if c.Icon != nil && !c.Icon.IsEmpty() && pos == "top" {
 			h += math.Min(geo.wPt, geo.hPt)*geo.iconScale(c.Icon, pos) + 2*kpiIconGapPt
 		}
-		need = math.Max(need, h+kpiCardPadPt+2*defaultShapeInsetTBPt)
+		need = math.Max(need, math.Max(h*contentStretchMax, h+kpiCardPadPt+2*defaultShapeInsetTBPt))
 	}
-	// geo.hPt is the BASE (clampPt's lower bound) and the content box is the
-	// ceiling. A tighter ceiling was considered and rejected: a row can never
-	// exceed the box anyway, so capping below it only clips cards whose text
-	// genuinely needs the height, leaving the rest of the box empty while the
-	// text overflows (go-slide-creator-4uxi).
-	return clampPt(need, geo.hPt, contentH)
+	// Content-sized (go-slide-creator-wntyw): the card hugs its value and
+	// caption — at most contentStretchMax x the text block, or the text plus
+	// the padding and insets when that is larger — and the row is
+	// middle-anchored in the body zone. geo.hPt is no longer a floor: a 70%
+	// base gave a 270pt card around 60pt of content. The content box stays
+	// the ceiling.
+	return clampPt(need, 0, contentH)
 }
 
 // iconPosition picks the default overlay icon position: "left" for landscape

@@ -2430,3 +2430,16 @@ func TestDistributeEMU_ClampsBadWeights(t *testing.T) {
 		t.Errorf("distributeEMU([-20,60,60]) = %v, want [0 %d %d]", got, total/2, total/2)
 	}
 }
+
+// A top accent bar is the card's top rule: flush on the cell's top edge,
+// inside the cell (go-slide-creator-7z5we — it used to float 2pt above the
+// card and, in strategy-house, fill the row gap under the banner so the
+// column gutters notched into the roof).
+func TestAccentBarBounds_TopIsFlushInsideCell(t *testing.T) {
+	cell := pptx.RectEmu{X: 100000, Y: 200000, CX: 500000, CY: 300000}
+	b := accentBarBounds(cell, &AccentBarSpec{Position: "top", Width: 3})
+	want := pptx.RectEmu{X: cell.X, Y: cell.Y, CX: cell.CX, CY: 3 * 12700}
+	if b != want {
+		t.Errorf("top bar = %+v, want %+v", b, want)
+	}
+}

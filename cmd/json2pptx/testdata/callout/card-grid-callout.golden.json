@@ -3,15 +3,13 @@
   "columns": 2,
   "rows": [
     {
-      "min_height": 199.5,
-      "max_height": 199.5,
+      "max_height": 82,
       "cells": [
         {
           "shape": {
             "geometry": "roundRect",
             "fill": "accent1",
             "text": {
-              "align": "l",
               "paragraphs": [
                 {
                   "content": "Speed",
@@ -27,7 +25,8 @@
                   "align": "l"
                 }
               ],
-              "vertical_align": "ctr"
+              "align": "l",
+              "vertical_align": "t"
             }
           }
         },
@@ -36,7 +35,6 @@
             "geometry": "roundRect",
             "fill": "accent1",
             "text": {
-              "align": "l",
               "paragraphs": [
                 {
                   "content": "Reliability",
@@ -52,7 +50,8 @@
                   "align": "l"
                 }
               ],
-              "vertical_align": "ctr"
+              "align": "l",
+              "vertical_align": "t"
             }
           }
         }

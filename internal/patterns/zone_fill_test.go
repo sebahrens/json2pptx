@@ -18,9 +18,11 @@ func TestFillCappedRows(t *testing.T) {
 	if rows[1].MaxHeight != 1 || rows[1].MinHeight != 0 {
 		t.Errorf("divider should remain fixed: %+v", rows[1])
 	}
+	// The 180pt target would need 2.5x rows; each grows at most
+	// contentStretchMax x its natural height (go-slide-creator-wntyw).
 	used := rows[0].MaxHeight + rows[1].MaxHeight + rows[2].MaxHeight + 16
-	if math.Abs(used-180) > 0.2 {
-		t.Errorf("filled block is %.1fpt, want 180pt", used)
+	if want := 2*30*contentStretchMax + 1 + 16; math.Abs(used-want) > 0.2 {
+		t.Errorf("filled block is %.1fpt, want %.1fpt (rows capped at %.1fx)", used, want, contentStretchMax)
 	}
 	if rows[0].MinHeight != rows[0].MaxHeight || rows[2].MinHeight != rows[2].MaxHeight {
 		t.Error("grown rows must be pinned so the resolver cannot redistribute the surplus")
@@ -47,5 +49,15 @@ func TestFillCappedRowsPreservesDenseAndFlexRows(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestFillCappedRowsReachesTargetWithinCap(t *testing.T) {
+	ctx := ExpandContext{LayoutBounds: LayoutBounds{Width: 100 * 12700, Height: 300 * 12700}}
+	rows := []jsonschema.GridRowInput{{MaxHeight: 70}, {MaxHeight: 1}, {MaxHeight: 70}}
+	fillCappedRows(ctx, rows, 8, 0.60, func(i int) bool { return i != 1 })
+	used := rows[0].MaxHeight + rows[1].MaxHeight + rows[2].MaxHeight + 16
+	if math.Abs(used-180) > 0.2 {
+		t.Errorf("filled block is %.1fpt, want 180pt", used)
 	}
 }

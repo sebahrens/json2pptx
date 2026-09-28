@@ -42,9 +42,13 @@ const (
 	// grid bounds. A 29% threshold catches sparse cards and empty columns while
 	// leaving deliberately compact but well-populated bands alone.
 	slideUnderusedPatternMaxFrac = 0.29
-	// KPI cards can occupy enough *area* while sitting in a short centered row
-	// with a conspicuous empty band above or below them.
-	slideUnderusedKPIGapEMU = 685800 // 0.75in
+	// slideUnderusedBoxPatternMaxFrac is the threshold for patterns whose
+	// cards / panels are content-sized and middle-anchored by policy
+	// (contentSizedBoxPatterns): a row of four KPI cards at their natural
+	// ~1.6x-content height covers ~25% of the zone, and stretching them
+	// to reach 29% is exactly the empty-box look go-slide-creator-wntyw
+	// removed. The finding keeps firing for a genuinely sparse box slide.
+	slideUnderusedBoxPatternMaxFrac = 0.20
 	// textExceedsTolerance absorbs rounding/kerning noise before flagging.
 	textExceedsTolerance = 1.02
 
@@ -389,6 +393,16 @@ func heightSensitiveGeometry(geometry string) bool {
 	return false
 }
 
+// contentSizedBoxPatterns are the patterns whose filled cards / panels hug
+// their content instead of stretching to fill the zone
+// (go-slide-creator-wntyw); kpi-Nup is matched by prefix.
+var contentSizedBoxPatterns = map[string]bool{
+	"card-grid":            true,
+	"before-after":         true,
+	"before-after-compact": true,
+	"strategy-house":       true,
+}
+
 func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInput, si int, patternName string, heightSensitiveOverflow bool) *patterns.FitFinding {
 	if safe.CX <= 0 || safe.CY <= 0 || hasBodyPlaceholderContent(slide) {
 		return nil
@@ -409,12 +423,17 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 		}
 	case "pattern":
 		hint = "this block sizes itself to its content — add detail to it, pair it with a supporting zone using compose, or choose a denser pattern"
+		if contentSizedBoxPatterns[patternName] || strings.HasPrefix(patternName, "kpi-") {
+			threshold = slideUnderusedBoxPatternMaxFrac
+		}
 	}
-	gap := int64(0)
-	if source == "pattern" && strings.HasPrefix(patternName, "kpi-") {
-		gap = largestVerticalInkGap(ink, safe)
-	}
-	if frac >= threshold && gap < slideUnderusedKPIGapEMU {
+	// A content-sized, middle-anchored block (a KPI row, before-after panels)
+	// leaves equal bands above and below it by design: boxes are not stretched
+	// to fill the zone (go-slide-creator-wntyw). Only the ink share counts —
+	// the former KPI "empty band >= 0.75in" clause pushed cards back towards
+	// the 270pt-for-60pt-of-content stretch and is gone. A lopsided band is
+	// VERTICAL_IMBALANCE's business.
+	if frac >= threshold {
 		return nil
 	}
 
@@ -432,10 +451,6 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 		"band_capped_by":   source,
 		"hint":             hint,
 	}
-	if gap >= slideUnderusedKPIGapEMU {
-		message = fmt.Sprintf("KPI row leaves a %.1fin empty band in the safe content area", float64(gap)/914400)
-		params["largest_empty_band_in"] = round1(float64(gap) / 914400)
-	}
 	return &patterns.FitFinding{
 		ValidationError: patterns.ValidationError{
 			Pattern: patternName,
@@ -449,22 +464,6 @@ func checkSlideUnderused(ink []pptx.RectEmu, safe pptx.RectEmu, slide *SlideInpu
 		},
 		Action: "review",
 	}
-}
-
-func largestVerticalInkGap(ink []pptx.RectEmu, safe pptx.RectEmu) int64 {
-	first, last := safe.Y+safe.CY, safe.Y
-	for _, r := range ink {
-		r = intersectRect(r, safe)
-		if r.CY <= 0 {
-			continue
-		}
-		first = minI64(first, r.Y)
-		last = maxI64(last, r.Y+r.CY)
-	}
-	if first == safe.Y+safe.CY && last == safe.Y {
-		return safe.CY
-	}
-	return maxI64(first-safe.Y, safe.Y+safe.CY-last)
 }
 
 // inkCoverageFraction measures the union of *visible* rectangles inside the

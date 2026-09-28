@@ -128,6 +128,8 @@ When `expand_pattern` returns cells outside the optimal band:
 
 ### Bounds Override: `bounds` and `max_height_pct`
 
+**Box patterns are already content-sized.** `kpi-Nup` cards, `card-grid` rows, `before-after` panels and `strategy-house` pillars hug their text (at most 1.6× its height) and the block is middle-anchored in the body zone; they are never stretched to fill it. Leftover space around a short block is intended — do not pad copy to fill a card. `SLIDE_UNDERUSED` judges these patterns at a 20% ink threshold (29% for other patterns) and no longer reports a KPI row's empty band; when it fires, add a supporting zone (`compose`), a `takeaway`, or merge slides.
+
 When patterns produce oversized cells for short content (e.g., a 3-step process-flow with terse labels), use a compact variant or constrain the grid using `bounds` or `max_height_pct`:
 
 - **Compact variants** (`process-flow-compact`, `before-after-compact`, `kpi-inline`): pre-configured height-capped patterns for short content that leaves room for other content on the slide. Prefer these over manual `max_height_pct` when the content is brief.

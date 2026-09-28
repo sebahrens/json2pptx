@@ -15,8 +15,7 @@ import "errors"
 //     text that occupies under 20% of its area — a large, mostly empty
 //     coloured box.
 //   - SlideUnderused: the union of visible grid ink (filled shapes, text
-//     blocks, media) covers too little of the layout's safe content area, or
-//     a KPI row leaves an excessive vertical band empty.
+//     blocks, media) covers too little of the layout's safe content area.
 const (
 	ErrCodeTextExceedsShape = "TEXT_EXCEEDS_SHAPE"
 	ErrCodeSparseFill       = "SPARSE_FILL"
@@ -65,7 +64,7 @@ func init() {
 		Code:        ErrCodeSlideUnderused,
 		Summary:     "The slide's grid content covers too little of the layout's safe content area.",
 		Severity:    "review",
-		WhenEmitted: "Preflight measures the union area of content rectangles from resolved grid cells (filled shapes with content, estimated text blocks, images, icons, tables, diagrams) inside the safe content area; an explicitly text-empty filled card is excluded, while fill-only chrome remains visible. The threshold is 45% for restrictive author bounds / max_height_pct and 29% for content-sized patterns or uncapped grids. A KPI row also fires for a vertical empty band of at least 0.75in. Explicit full-area bounds are not a cap. fix.params.band_capped_by identifies author, pattern, or none.",
+		WhenEmitted: "Preflight measures the union area of content rectangles from resolved grid cells (filled shapes with content, estimated text blocks, images, icons, tables, diagrams) inside the safe content area; an explicitly text-empty filled card is excluded, while fill-only chrome remains visible. The threshold is 45% for restrictive author bounds / max_height_pct, 20% for the content-sized box patterns (kpi-*, card-grid, before-after, before-after-compact, strategy-house — their cards hug their content and are middle-anchored, never stretched to fill) and 29% for other patterns or uncapped grids. Explicit full-area bounds are not a cap. fix.params.band_capped_by identifies author, pattern, or none.",
 		RemediationSteps: []string{
 			"band_capped_by \"author\": raise or remove restrictive bounds / max_height_pct so the grid fills more of the content area.",
 			"band_capped_by \"pattern\": the height comes from the content, not from a cap — add detail to the block, pair it with a supporting zone using compose, or choose a denser pattern.",
