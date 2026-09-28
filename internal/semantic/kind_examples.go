@@ -255,8 +255,18 @@ var kindExamples = map[SlideKind]map[string]any{
 		},
 		"takeaway": "Fund the pod now to protect net retention.",
 	},
+	KindNextSteps: {
+		"kind":  "next_steps",
+		"title": "Three actions start the SMB pilot in October",
+		"actions": []any{
+			map[string]any{"action": "Confirm pilot scope and success metrics", "owner": "COO", "date": "15 Oct"},
+			map[string]any{"action": "Hire the four-person SMB success pod", "owner": "VP Customer", "date": "31 Oct"},
+			map[string]any{"action": "Report first retention read-out to the board", "owner": "CFO", "date": "Jan board"},
+		},
+		"decisions": []any{"Approve the €1.2M pod budget for FY27"},
+	},
 	KindClosing: {
-		"kind": "closing", "title": "Thank you", "subtitle": "Questions and discussion",
+		"kind": "closing", "title": "Questions and discussion", "subtitle": "Contacts on the next page",
 	},
 	// The escape hatch's reason to exist is a pattern no kind compiles to, so
 	// the example shows one rather than the bullets every other kind already

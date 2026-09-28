@@ -12,9 +12,10 @@ import (
 // kpiCell is the raw kpi-Nup cell shape: a big number, a short caption, and an
 // optional delta/trend annotation.
 type kpiCell struct {
-	Big   string `json:"big"`
-	Small string `json:"small"`
-	Sub   string `json:"sub,omitempty"`
+	Big        string `json:"big"`
+	Small      string `json:"small"`
+	Sub        string `json:"sub,omitempty"`
+	Comparator string `json:"comparator,omitempty"`
 }
 
 // CompileKPISnapshot compiles a KPI-snapshot slide. With 2–6 metrics it emits a
@@ -152,6 +153,9 @@ func compileKPIFallback(in Input, cells []kpiCell, srcField string) (*deckinput.
 			} else {
 				bullets[i] = fmt.Sprintf("%s — %s", c.Big, c.Small)
 			}
+			if c.Comparator != "" {
+				bullets[i] += " (" + c.Comparator + ")"
+			}
 		}
 		idx := appendContent(slide, bulletsContent("body", bullets))
 		links = append(links, SourceLink{
@@ -205,7 +209,8 @@ func kpiCells(body map[string]any) ([]kpiCell, string) {
 		if big == "" && small == "" {
 			continue
 		}
-		out = append(out, kpiCell{Big: big, Small: small, Sub: sub})
+		comparator := firstNonEmpty(strField(o, "comparator"), strField(o, "vs"))
+		out = append(out, kpiCell{Big: big, Small: small, Sub: sub, Comparator: comparator})
 	}
 	return out, field
 }

@@ -295,6 +295,12 @@ var kindPlanRegistry = map[SlideKind]kindPlan{
 		role: RoleRecommendation, family: FamilyText, density: DensityMedium, layout: "blank-title",
 		pattern: decisionPattern,
 	},
+	KindNextSteps: {
+		// The consulting closer: it ends the deck (closing role) but carries
+		// actions and asks, so it is text content rather than structure.
+		role: RoleClosing, family: FamilyText, density: DensityMedium, layout: "blank-title",
+		pattern: slides.NextStepsPattern,
+	},
 	KindClosing:      {role: RoleClosing, family: FamilyStructural, density: DensityLight, layout: "title"},
 	KindRawJSON2pptx: passthroughPlan,
 }
@@ -686,6 +692,11 @@ func compositionCandidates(kind SlideKind, selected string) []CompositionCandida
 		}
 	case KindRoadmap:
 		return []CompositionCandidate{visual("phase-roadmap", "3-6 phases"), {Layout: "content", Reason: "native bullets preserve dense roadmaps"}}
+	case KindNextSteps:
+		return []CompositionCandidate{
+			visual("next-steps", "2-6 actions with owner and date, plus up to 3 decisions requested"),
+			{Layout: "content", Reason: "bullets preserve more actions or longer copy"},
+		}
 	default:
 		return nil
 	}

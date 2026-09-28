@@ -38,7 +38,9 @@ Apply at the slide level via the top-level `pattern` field (XOR with `shape_grid
 }
 ```
 
-KPI `values` is a JSON **array** of cells (one per metric). Each cell is an object `{"big", "small"}` (aliases `value`/`number` → `big`, `label`/`caption` → `small`) or a pipe-delimited string `"$127M | Revenue"`. The two forms are interchangeable and may be mixed in one array.
+KPI `values` is a JSON **array** of cells (one per metric). Each cell is an object `{"big", "small"}` (aliases `value`/`number` → `big`, `label`/`caption` → `small`) or a pipe-delimited string `"$127M | Revenue"`. The two forms are interchangeable and may be mixed in one array. Give a KPI its reference: `comparator` (alias `vs`, ≤24 chars, e.g. `"vs plan +4 pts"`) renders as a line under the caption and delta on kpi-Nup cards (`kpi-inline` rejects it).
+
+**Closing.** End a consulting deck on `next-steps` (actions with `owner` and `date`, plus `decisions` requested), not a "Thank you" title slide. A repeated `agenda` with `overrides.highlight` marks the current section.
 
 Do NOT hand-roll shape grids when a named pattern exists. Use the pattern, fill in the values, and let the engine handle grid structure, bounds, and gap arithmetic.
 

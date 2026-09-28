@@ -16,7 +16,8 @@ titles, and `slots[]` gives each slot's guidance and routed brief facts.
 Use YAML or JSON with `meta` and either flat `slides[]` or chapter-based
 `structure: {cover, auto_agenda, sections:[{title, slides:[]}], closing}`.
 The forms are mutually exclusive. Chapters add numbered section dividers;
-`meta.chrome.section_crumb: true` labels their content slides. The compiler
+`meta.chrome.section_crumb: true` labels their content slides in the footer;
+`meta.chrome.tracker: true` sets the section name above each content title. The compiler
 generates divider numbers: do not hand-author them. Keep an actual narrative
 instead of creating one slide per layout or a sequence of interchangeable
 cards. `explain_deck_spec` previews the resolved story and visual rhythm
@@ -70,7 +71,7 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 | Content shape | Useful visual range and authoring consequence |
 |---|---|
 | Executive summary | Three to five conclusion/support points use the `exec-summary` pattern. Each lead is at most 90 characters and support at most 200; outside the range or budget, the compiler degrades to bullets. `points` or plural `takeaways` are body content; singular `takeaway` is the footer insight, optional beside `bottom_line`. |
-| KPI snapshot | Two to six KPI cards. Keep values at most 12 characters, labels at most 40, deltas at most 12. A value beyond the hard budget degrades the slide; a value that fits the character budget but cannot fit in the card reports `BODY_TOO_LONG`. |
+| KPI snapshot | Two to six KPI cards. Keep values at most 12 characters, labels at most 40, deltas at most 12, `comparator` (alias `vs`, e.g. "vs plan +4 pts") at most 24 — give each KPI its reference. A value beyond the hard budget degrades the slide; a value that fits the character budget but cannot fit in the card reports `BODY_TOO_LONG`. |
 | Chart insight | One to six insights use chart-plus-insights; more use a native chart with the full insight list. Every series needs exactly one unquoted numeric value per category. A short series is `CHART_SERIES_LENGTH_MISMATCH`; a quoted/null value is `CHART_VALUE_NOT_NUMERIC`. Neither should be shipped as an empty plot. |
 | Comparison | Two balanced columns of at most ten rows use a comparison visual; three to five columns use panels; larger content may degrade to cards or bullets. |
 | Table | At most six headers and six body rows fit the semantic table budget. Use `option_matrix` for options scored against criteria instead of flattening that structure into a generic table. |
@@ -88,6 +89,7 @@ listing; get exact fields and aliases from `list_slide_kinds`:
 | Organization | One root, up to seven nodes, three levels, and four direct reports per node; labels at most 40 characters. Larger trees degrade to attributed bullets rather than dropping people. |
 | Architecture | Three to six tiers; tier label at most 60 characters, detail at most 120, and side rail at most 30. Out-of-budget content degrades intact to bullets. |
 | Process | Three to six described steps use numbered rows (label at most 60, description at most 180). Bare labels or decision branches use `process-flow` when within its range. A straight sequence is not a branching flowchart. |
+| Next steps | The closer (`next_steps`, the `plan_deck` deckspec default): two to six `actions` {action ≤90, owner ≤30, date ≤20} and zero to three `decisions` ≤120. Outside the budget it degrades to bullets keeping owner and date. Keep `closing` for a Q&A page only. |
 | Roadmap | Three to six phases use a phase visual; otherwise choose a content layout that preserves every milestone. |
 | Decision | Three to six options use numbered boxes (label at most 60, detail at most 180). Exactly two *detailed* options use paired cards (label at most 80, detail at most 300). Mark exactly one labeled option recommended and put the ask in `recommendation`. |
 

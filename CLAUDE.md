@@ -146,7 +146,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 
 | Pattern | Description |
 |---------|-------------|
-| `agenda` | Numbered section list for agenda / table-of-contents slides |
+| `agenda` | Numbered section list for agenda / table-of-contents slides: 28pt serif accent numerals, 16pt items, 0.5pt rules, no tiles; `highlight` bolds the current section and dims the rest to 50% |
 | `agenda-with-images` | Numbered agenda rows (3–6) with title/subtitle and image/quote placeholder per row; the placeholder column is all-or-nothing |
 | `arch-stack` | Architecture stack diagram with tiers and optional side rails |
 | `before-after` | Two-column before/after with transition chevron |
@@ -166,7 +166,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `icon-row` | Horizontal row of icon+caption pairs |
 | `image-text-split` | One photo / screenshot beside a text column (eyebrow, heading, body, up to 5 bullets) with 0–3 result metrics; real images are cover-cropped, otherwise a dashed placeholder (case study / customer story slides) |
 | `journey-maturity-model` | Horizontal maturity ladder of 3–6 stage columns with numbered headers, descriptions, and an optional 'where we are' marker on the current stage |
-| `kpi-2up` | Two big-number KPI cards with short captions |
+| `kpi-2up` | Two big-number KPI cards with short captions (kpi-Nup cells take an optional `comparator` line, e.g. "vs plan +4 pts") |
 | `kpi-3up` | Three big-number KPI cards with short captions |
 | `kpi-4up` | Four big-number KPI cards with short captions |
 | `kpi-5up` | Five big-number KPI cards with short captions |
@@ -175,6 +175,7 @@ Quick reference only — the full placeholder/layout catalog lives in [skills/te
 | `labeled-rows` | 2–6 rows of a keyword label block (WHY / WHAT / HOW; `label_style` `filled` accent block or accent `text`) with optional sublabel beside 1–4 lines of body text, rules between content-sized rows |
 | `matrix-2x2` | 2×2 quadrant matrix with axis labels |
 | `metric-list` | Vertical "by the numbers" stack of 3–7 metrics: big right-aligned accent value + bold label + optional detail line, hairline rules, optional highlighted row (`highlight: true`, at most one) and bottom callout banner |
+| `next-steps` | Closing next-steps slide: 2–6 numbered action rows (action / owner / date; empty owner or date columns drop) separated by 0.5pt rules, plus an optional "Decisions requested" band (left accent rule, no outline, no fill) — the closer instead of "Thank you" |
 | `numbered-step-strip` | Ordered numbered steps (3–7; chevron ≤6) WITHOUT flowchart diamonds, in `chevron` / `stacked-box` / `toc` styles, each with an optional per-step detail zone and (stacked-box / toc) an optional `steps[].icon` |
 | `process-flow` | Left-to-right process flow with steps and decision points |
 | `process-flow-compact` | Compact process flow, height-capped at ~35% for short labels |

@@ -145,6 +145,11 @@ func (ctx *singlePassContext) prepareSingleSlide(input slidePreparationInput) (s
 	}
 
 	var warnings []string
+	if input.slideSpec.Tracker != "" && input.slideSpec.Eyebrow == "" {
+		if err := ctx.placeTitleTracker(slide, input.slideSpec.Tracker, input.slideSpec.LayoutID); err != nil {
+			warnings = append(warnings, err.Error())
+		}
+	}
 	if len(input.slideSpec.Content) > 0 || input.slideSpec.Eyebrow != "" {
 		warnings = ctx.populateTextInSlide(slide, input.slideSpec.Content, input.slideSpec.LayoutID, input.slideIndex, input.slideSpec.Eyebrow)
 	}

@@ -21,7 +21,7 @@
       "layout_id": "content",
       "source": "Q1 2026 management accounts (unaudited)",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Revenue Highlight"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Q1 revenue of $12.6M beat plan by 34% on enterprise expansion"}
       ],
       "pattern": {
         "name": "stat-hero",
@@ -36,7 +36,7 @@
       "layout_id": "content",
       "source": "Q1 2026 management accounts; LTV/CAC on trailing 12 months",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Operating Metrics"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Unit economics are strong: 91% gross margin and 4.2x LTV/CAC"}
       ],
       "pattern": {
         "name": "kpi-4up",
@@ -51,7 +51,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Strategic Priorities"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Enterprise upsell is the highest-impact, lowest-effort priority"}
       ],
       "pattern": {
         "name": "matrix-2x2",
@@ -68,7 +68,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Customer Voice"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Customers say the platform paid for itself within a quarter"}
       ],
       "pattern": {
         "name": "pull-quote",
@@ -82,7 +82,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Platform Architecture"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Four platform tiers share security and observability rails"}
       ],
       "pattern": {
         "name": "arch-stack",
@@ -100,7 +100,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Operational Transformation"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Self-serve onboarding cut the sales cycle from 45 to 21 days"}
       ],
       "pattern": {
         "name": "before-after",
@@ -120,7 +120,7 @@
       "layout_id": "content",
       "source": "Operations dashboard, Q4 2025 vs Q1 2026",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Efficiency Gains"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Onboarding is 63% faster and support handles 2.1x the volume"}
       ],
       "pattern": {
         "name": "kpi-2up",
@@ -133,7 +133,7 @@
     {
       "layout_id": "content",
       "content": [
-        {"placeholder_id": "title", "type": "text", "text_value": "Deal Approval Workflow"}
+        {"placeholder_id": "title", "type": "text", "text_value": "Every deal clears Sales, Legal and Finance before revenue is booked"}
       ],
       "pattern": {
         "name": "swimlane",

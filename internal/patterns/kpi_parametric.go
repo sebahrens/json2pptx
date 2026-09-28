@@ -89,7 +89,7 @@ func (k *kpiNup) Schema() *Schema {
 	n := k.cfg.Count
 	return ObjectSchema(
 		map[string]*Schema{
-			"values":         ArraySchema(kpiCellSchema(kpiNupBigMaxChars), n, n).WithDescription(fmt.Sprintf("Exactly %d KPI cells; metric values have a 12-character hard maximum and a measured fit warning when they cannot stay on one line", n)),
+			"values":         ArraySchema(kpiCellSchema(kpiNupBigMaxChars, kpiComparatorMaxChars), n, n).WithDescription(fmt.Sprintf("Exactly %d KPI cells; metric values have a 12-character hard maximum and a measured fit warning when they cannot stay on one line", n)),
 			"overrides":      kpiOverridesSchema(),
 			"cell_overrides": CellOverridesSchema("cellOverride"),
 		},
@@ -174,18 +174,12 @@ func (k *kpiNup) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	rowMaxPt := kpiRowMaxHeightPt(ctx, *cells, geo, iconPos, bigSize, smallSize)
 	// Icons are sized against the final card height.
 	cardGeo := kpiCardGeometry{wPt: geo.wPt, hPt: rowMaxPt}
-	reserveDelta := false
-	for _, cell := range *cells {
-		if cell.Sub != "" {
-			reserveDelta = true
-			break
-		}
-	}
+	reserveDelta, reserveComparator := kpiReservedSlots(*cells)
 
 	gridCells := make([]*jsonschema.GridCellInput, n)
 	for i, cell := range *cells {
 		accent := ctx.ResolveCellAccent(baseAccent, i, cellAccentMode)
-		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub, reserveDelta)
+		textContent := buildKPITextContent(cell.Big, bigSize, cell.Small, smallSize, cell.Sub, reserveDelta, cell.Comparator, reserveComparator)
 		fillJSON := json.RawMessage(fmt.Sprintf(`"%s"`, accent))
 
 		shape := &jsonschema.ShapeSpecInput{

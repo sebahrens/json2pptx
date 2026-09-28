@@ -15,9 +15,53 @@ const eyebrowGapEMU int64 = 6 * 12700
 var eyebrowListAlignmentRE = regexp.MustCompile(`<(?:(?:a:)?lvl1pPr)\b[^>]*\balgn="(l|ctr|r|just)"`)
 
 func (ctx *singlePassContext) placeTitleEyebrow(slide *slideXML, eyebrow, layoutID string) error {
-	shapes := &slide.CommonSlideData.ShapeTree.Shapes
 	fontSize := eyebrowFontSize(slide)
-	paragraph := eyebrowParagraph(eyebrow, fontSize, "l")
+	return ctx.placeTitleBand(slide, eyebrow, layoutID, fontSize, eyebrowParagraph(eyebrow, fontSize, "l"), "Eyebrow", true)
+}
+
+// Section tracker typography (go-slide-creator-r3gsw): 9pt caps with +8%
+// letter-spacing in accent1, set 6pt above the title.
+const (
+	trackerFontSizeHPt = 900
+	// trackerSpacingHPt is +8% of the 9pt size, in hundredths of a point.
+	trackerSpacingHPt = 72
+)
+
+// placeTitleTracker renders chrome.tracker's running section name in the band
+// above the title — the same slot an eyebrow uses, with the tracker's smaller,
+// letter-spaced type. A slide with an authored eyebrow never reaches here. A
+// title too short to give up the band keeps its full height and the tracker is
+// skipped: it is optional chrome, and folding it into the title would change
+// the title's own measured fit.
+func (ctx *singlePassContext) placeTitleTracker(slide *slideXML, section, layoutID string) error {
+	return ctx.placeTitleBand(slide, section, layoutID, trackerFontSizeHPt, trackerParagraph(section, "l"), "Section Tracker", false)
+}
+
+func trackerParagraph(section string, alignment string) paragraphXML {
+	return paragraphXML{
+		Properties: &paragraphPropertiesXML{Algn: alignment, Inner: `<a:buNone/>`},
+		Runs: []runXML{{
+			Text: section,
+			RunProperties: &runPropertiesXML{
+				Lang:     "en-US",
+				FontSize: fmt.Sprintf("%d", trackerFontSizeHPt),
+				Caps:     "all",
+				Spacing:  fmt.Sprintf("%d", trackerSpacingHPt),
+				Inner:    `<a:solidFill><a:schemeClr val="accent1"/></a:solidFill><a:latin typeface="+mn-lt"/>`,
+			},
+		}},
+	}
+}
+
+// placeTitleBand places a one-line label in its own textbox directly above the
+// title placeholder, shortening the title from the top by the label height plus
+// eyebrowGapEMU. A template-authored eyebrow slot takes precedence. When
+// foldIntoTitle is set, a title without room keeps the label as a leading
+// paragraph (the eyebrow's historical behaviour); otherwise the label is
+// dropped.
+func (ctx *singlePassContext) placeTitleBand(slide *slideXML, label, layoutID string, fontSize int, paragraph paragraphXML, shapeName string, foldIntoTitle bool) error {
+	shapes := &slide.CommonSlideData.ShapeTree.Shapes
+	eyebrow := label
 	titleCount := 0
 	for i := range *shapes {
 		if isTitleShape(&(*shapes)[i]) {
@@ -54,6 +98,9 @@ func (ctx *singlePassContext) placeTitleEyebrow(slide *slideXML, eyebrow, layout
 			continue
 		}
 		if title.ShapeProperties.Transform == nil {
+			if !foldIntoTitle {
+				return nil
+			}
 			prependEyebrowParagraph(title, eyebrow, fontSize)
 			return fmt.Errorf("title placeholder has no resolved bounds for a separate eyebrow textbox")
 		}
@@ -63,6 +110,9 @@ func (ctx *singlePassContext) placeTitleEyebrow(slide *slideXML, eyebrow, layout
 		if xfrm.Extent.CY < reserve+fontHeight {
 			// Preserve authored copy on unusually short custom layouts, while
 			// reporting that the independent band could not be made safely.
+			if !foldIntoTitle {
+				return nil
+			}
 			prependEyebrowParagraph(title, eyebrow, fontSize)
 			return fmt.Errorf("title placeholder is too short for a separate eyebrow textbox")
 		}
@@ -78,7 +128,7 @@ func (ctx *singlePassContext) placeTitleEyebrow(slide *slideXML, eyebrow, layout
 		}
 		eyebrowShape := shapeXML{
 			NonVisualProperties: nonVisualPropertiesXML{
-				ConnectionNonVisual: connectionNonVisualXML{ID: nextID, Name: "Eyebrow"},
+				ConnectionNonVisual: connectionNonVisualXML{ID: nextID, Name: shapeName},
 				NonVisualShape:      nonVisualShapeXML{TxBox: true},
 			},
 			ShapeProperties: shapePropertiesXML{Transform: &transformXML{
@@ -93,6 +143,9 @@ func (ctx *singlePassContext) placeTitleEyebrow(slide *slideXML, eyebrow, layout
 		xfrm.Offset.Y += reserve
 		xfrm.Extent.CY -= reserve
 		*shapes = append(*shapes, eyebrowShape)
+		return nil
+	}
+	if !foldIntoTitle {
 		return nil
 	}
 	return fmt.Errorf("eyebrow %q has no title placeholder", eyebrow)

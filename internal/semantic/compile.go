@@ -241,6 +241,8 @@ func compileSlide(kind SlideKind, in slides.Input) (*deckinput.SlideInput, []sli
 		return slides.CompileRoadmap(in)
 	case KindDecision:
 		return slides.CompileDecision(in)
+	case KindNextSteps:
+		return slides.CompileNextSteps(in)
 	case KindClosing:
 		return slides.CompileClosing(in)
 	case KindRawJSON2pptx:
@@ -298,6 +300,7 @@ func compileChrome(ir *DeckIR) *deckinput.ChromeInput {
 		ProjectCode:     c.ProjectCode,
 		FooterDate:      firstNonEmptyStr(c.FooterDate, ir.Date),
 		SectionCrumb:    c.SectionCrumb,
+		Tracker:         c.Tracker,
 	}
 	if c.PageNumbers != nil {
 		out.PageNumbers = &deckinput.PageNumbersInput{

@@ -265,5 +265,20 @@
     "cell_counts": [
       2
     ]
+  },
+  {
+    "pattern_name": "next-steps",
+    "row_count": 9,
+    "cell_counts": [
+      4,
+      1,
+      4,
+      1,
+      4,
+      1,
+      4,
+      1,
+      1
+    ]
   }
 ]

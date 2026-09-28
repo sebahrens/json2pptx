@@ -90,6 +90,9 @@ func TestCompileAgendaPicksThePatternFromTheContent(t *testing.T) {
 	}
 }
 
+// A plain agenda leaves type to the pattern, whose defaults are the design
+// review's 28pt numerals / 16pt items (go-slide-creator-r3gsw); a subtitled
+// agenda-with-images still sets its own readable sizes.
 func TestCompileAgendaUsesReadableTypeSizes(t *testing.T) {
 	cases := []struct {
 		name     string
@@ -97,8 +100,8 @@ func TestCompileAgendaUsesReadableTypeSizes(t *testing.T) {
 		wantSize float64
 		wantSub  float64
 	}{
-		{"short list", agendaBody(nil, "Performance", "Risks", "Investment"), 18, 0},
-		{"dense list", agendaBody(nil, "one", "two", "three", "four", "five", "six"), 16, 0},
+		{"short list", agendaBody(nil, "Performance", "Risks", "Investment"), 0, 0},
+		{"dense list", agendaBody(nil, "one", "two", "three", "four", "five", "six"), 0, 0},
 		{"subtitled rows", agendaBody(nil,
 			subtitled("Performance", "What changed"),
 			subtitled("Risks", "What matters"),

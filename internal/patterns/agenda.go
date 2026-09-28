@@ -183,6 +183,84 @@ func (a *agenda) Validate(values, overrides any, cellOverrides map[int]any) erro
 	return errors.Join(errs...)
 }
 
+// Agenda typography and rules (go-slide-creator-r3gsw, design review C5): a
+// serif numeral in the accent beside the item, 0.5pt rules between rows, no
+// filled tiles, content-height rows middle-anchored on the slide.
+const (
+	agendaNumberSize   = 28.0
+	agendaTitleSize    = 16.0
+	agendaRulePt       = 0.5
+	agendaListRowGapPt = 2.0
+	// agendaDimAlpha is the opacity of the sections the deck is not at when
+	// the agenda repeats with a highlight: dk1 (and the numeral) at 50%.
+	agendaDimAlpha = 50.0
+	// agendaMinFillFrac gives a short agenda enough presence to read as the
+	// slide's content rather than a list floating in the middle.
+	agendaMinFillFrac = 0.62
+	// agendaNumberFont is the theme's major (heading) font — the serif on a
+	// serif-headed template.
+	agendaNumberFont = "+mj-lt"
+)
+
+// agendaScales steps the numeral / item sizes down only when the default rows
+// no longer fit the content area (8–10 item agendas).
+var agendaScales = [][2]float64{{agendaNumberSize, agendaTitleSize}, {24, 16}, {20, 14}}
+
+// agendaParagraph is one agenda text run: numerals carry the heading font and
+// dimmed rows an opacity.
+type agendaParagraph struct {
+	Content string  `json:"content"`
+	Size    float64 `json:"size"`
+	Bold    bool    `json:"bold,omitempty"`
+	Color   string  `json:"color,omitempty"`
+	Align   string  `json:"align,omitempty"`
+	Font    string  `json:"font,omitempty"`
+	Alpha   float64 `json:"alpha,omitempty"`
+}
+
+// agendaText is the single-paragraph, left-aligned, middle-anchored text
+// object every agenda cell uses.
+func agendaText(p agendaParagraph) json.RawMessage {
+	p.Align = "l"
+	data, _ := json.Marshal(struct {
+		Paragraphs    []agendaParagraph `json:"paragraphs"`
+		Align         string            `json:"align"`
+		VerticalAlign string            `json:"vertical_align"`
+	}{[]agendaParagraph{p}, "l", "ctr"})
+	return data
+}
+
+// agendaLayout is the measured geometry at one type scale.
+type agendaLayout struct {
+	numberSize, titleSize float64
+	numberPct             float64
+	rowPt                 []float64
+}
+
+func (l agendaLayout) natural() float64 {
+	n := len(l.rowPt)
+	h := float64(n-1) * agendaRulePt
+	for _, r := range l.rowPt {
+		h += r
+	}
+	return h + float64(2*n-2)*agendaListRowGapPt
+}
+
+func measureAgenda(ctx ExpandContext, items []string, numberSize, titleSize float64) agendaLayout {
+	areaW, _ := sizingAreaPt(ctx)
+	// The numeral column holds "10" at the numeral size plus the text margin.
+	numberColPt := numberSize*1.3 + 2*defaultShapeInsetLRPt
+	pct := math.Min(20, math.Max(6, math.Ceil(numberColPt/areaW*100)))
+	titleW := areaW * (100 - pct) / 100
+	lay := agendaLayout{numberSize: numberSize, titleSize: titleSize, numberPct: pct}
+	numberRow := numberSize*sizingLineSpacing + 2*sizingInsetTBPt
+	for _, title := range items {
+		h := sizedBlockHeightPt(ctx, []sizedPara{{text: title, sizePt: titleSize}}, titleW)
+		lay.rowPt = append(lay.rowPt, math.Ceil(math.Max(numberRow, h)))
+	}
+	return lay
+}
+
 func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides map[int]any) (*jsonschema.ShapeGridInput, error) {
 	v, ok := values.(*AgendaValues)
 	if !ok {
@@ -199,62 +277,64 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 	}
 
 	accent := ctx.ResolveAccent(ovr.Accent, ovr.SemanticAccent)
-	numberDefault, titleDefault := 20.0, 14.0
-	if len(v.Items) <= 5 {
-		short := true
-		for _, title := range v.Items {
-			if runeLen(title) > 36 {
-				short = false
-				break
-			}
-		}
-		if short {
-			numberDefault, titleDefault = 24, 18
+	_, areaH := sizingAreaPt(ctx)
+	var lay agendaLayout
+	for _, sc := range agendaScales {
+		lay = measureAgenda(ctx, v.Items, ResolveSize(ovr.NumberSize, sc[0]), ResolveSize(ovr.TitleSize, sc[1]))
+		if lay.natural() <= areaH {
+			break
 		}
 	}
-	numberSize := ResolveSize(ovr.NumberSize, numberDefault)
-	titleSize := ResolveSize(ovr.TitleSize, titleDefault)
 
-	rows := make([]jsonschema.GridRowInput, len(v.Items))
-	_, areaH := sizingAreaPt(ctx)
-	minRowPt := math.Max(0, (areaH*0.60-8*float64(len(v.Items)-1))/float64(len(v.Items)))
+	// Numerals are large text (3:1); items are body text (4.5:1). A pale
+	// accent falls back to dk2 / dk1, and the 50% dim steps up just enough to
+	// stay readable, so the WCAG pass never has to swap the ink wholesale.
+	numberInk := accentInkOnLight(ctx, accent, 3.0)
+	numberDim := readableDimAlpha(ctx, numberInk, agendaDimAlpha, 3.0)
+	titleDim := readableDimAlpha(ctx, "dk1", agendaDimAlpha, 4.5)
+
+	ruleFill := fillTone{Color: "dk1", Alpha: 30}.fillJSON()
+	rows := make([]jsonschema.GridRowInput, 0, 2*len(v.Items))
+	var itemRow []bool
 	for i, title := range v.Items {
-		num := fmt.Sprintf("%02d", i+1)
-		isHighlighted := ovr.Highlight > 0 && ovr.Highlight == i+1
-
-		// Number badge cell
-		numberFill := accent
-		numberColor := "lt1"
-		if !isHighlighted && ovr.Highlight > 0 {
-			// Dim non-highlighted items
-			numberFill = "lt2"
-			numberColor = "dk1"
+		if i > 0 {
+			rows = append(rows, jsonschema.GridRowInput{
+				MinHeight: agendaRulePt, MaxHeight: agendaRulePt,
+				Cells: []*jsonschema.GridCellInput{{
+					ColSpan: 2,
+					Shape:   &jsonschema.ShapeSpecInput{Geometry: "rect", Fill: ruleFill, Line: json.RawMessage(`"none"`)},
+				}},
+			})
+			itemRow = append(itemRow, false)
 		}
 
-		numberText := buildAgendaTextContent(num, numberSize, true, numberColor, "ctr")
+		// A repeated agenda marks where the deck is: the current section in
+		// bold dk1, the others at 50%. Without a highlight every row is plain.
+		highlighted := ovr.Highlight > 0 && ovr.Highlight == i+1
+		dimNumber, dimTitle := 0.0, 0.0
+		if ovr.Highlight > 0 && !highlighted {
+			dimNumber, dimTitle = numberDim, titleDim
+		}
+
 		numberCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
-				Geometry: "roundRect",
-				Fill:     json.RawMessage(fmt.Sprintf(`"%s"`, numberFill)),
-				Text:     numberText,
+				Geometry: "rect",
+				Fill:     json.RawMessage(`"none"`),
+				Line:     json.RawMessage(`"none"`),
+				Text: agendaText(agendaParagraph{
+					Content: fmt.Sprintf("%02d", i+1), Size: lay.numberSize,
+					Color: numberInk, Font: agendaNumberFont, Alpha: dimNumber,
+				}),
 			},
 		}
-
-		// Title cell
-		titleColor := "dk1"
-		titleBold := false
-		if isHighlighted {
-			titleBold = true
-		} else if ovr.Highlight > 0 {
-			titleColor = "dk2" // dim non-highlighted
-		}
-
-		titleText := buildAgendaTitleContent(title, titleSize, titleBold, titleColor)
 		titleCell := &jsonschema.GridCellInput{
 			Shape: &jsonschema.ShapeSpecInput{
 				Geometry: "rect",
 				Fill:     json.RawMessage(`"none"`),
-				Text:     titleText,
+				Line:     json.RawMessage(`"none"`),
+				Text: agendaText(agendaParagraph{
+					Content: title, Size: lay.titleSize, Bold: highlighted, Color: "dk1", Alpha: dimTitle,
+				}),
 			},
 		}
 
@@ -272,70 +352,34 @@ func (a *agenda) Expand(ctx ExpandContext, values, overrides any, cellOverrides 
 			}
 		}
 
-		rows[i] = jsonschema.GridRowInput{
-			AutoHeight: true,
-			MinHeight:  minRowPt,
-			Cells:      []*jsonschema.GridCellInput{numberCell, titleCell},
+		rows = append(rows, jsonschema.GridRowInput{
+			MinHeight: lay.rowPt[i],
+			MaxHeight: lay.rowPt[i],
+			Cells:     []*jsonschema.GridCellInput{numberCell, titleCell},
+		})
+		itemRow = append(itemRow, true)
+	}
+	// Past the smallest scale the rows cannot all hold their content height:
+	// hand them to the grid as flex rows so it shares the area rather than
+	// overflowing it.
+	if lay.natural() > areaH {
+		for i := range rows {
+			if itemRow[i] {
+				rows[i].MinHeight, rows[i].MaxHeight = 0, 0
+			}
 		}
+	} else {
+		fillCappedRows(ctx, rows, agendaListRowGapPt, agendaMinFillFrac, func(i int) bool { return itemRow[i] })
 	}
 
+	colsJSON, _ := json.Marshal([]float64{lay.numberPct, 100 - lay.numberPct})
 	grid := &jsonschema.ShapeGridInput{
-		Columns: json.RawMessage(`[1, 5]`),
-		Gap:     8,
-		Rows:    rows,
+		Columns:       json.RawMessage(colsJSON),
+		ColGap:        0.1,
+		RowGap:        agendaListRowGapPt,
+		Rows:          rows,
+		VerticalAlign: GridVerticalAlignDefault,
 	}
 
 	return grid, nil
-}
-
-// buildAgendaTextContent creates a centered text object for the number badge.
-func buildAgendaTextContent(content string, size float64, bold bool, color, align string) json.RawMessage {
-	type paragraph struct {
-		Content string  `json:"content"`
-		Size    float64 `json:"size"`
-		Bold    bool    `json:"bold,omitempty"`
-		Color   string  `json:"color,omitempty"`
-		Align   string  `json:"align,omitempty"`
-	}
-
-	textObj := struct {
-		Paragraphs    []paragraph `json:"paragraphs"`
-		Align         string      `json:"align"`
-		VerticalAlign string      `json:"vertical_align"`
-	}{
-		Paragraphs: []paragraph{
-			{Content: content, Size: size, Bold: bold, Color: color, Align: align},
-		},
-		Align:         align,
-		VerticalAlign: "ctr",
-	}
-
-	data, _ := json.Marshal(textObj)
-	return data
-}
-
-// buildAgendaTitleContent creates a left-aligned text object for the section title.
-func buildAgendaTitleContent(content string, size float64, bold bool, color string) json.RawMessage {
-	type paragraph struct {
-		Content string  `json:"content"`
-		Size    float64 `json:"size"`
-		Bold    bool    `json:"bold,omitempty"`
-		Color   string  `json:"color,omitempty"`
-		Align   string  `json:"align,omitempty"`
-	}
-
-	textObj := struct {
-		Paragraphs    []paragraph `json:"paragraphs"`
-		Align         string      `json:"align"`
-		VerticalAlign string      `json:"vertical_align"`
-	}{
-		Paragraphs: []paragraph{
-			{Content: content, Size: size, Bold: bold, Color: color, Align: "l"},
-		},
-		Align:         "l",
-		VerticalAlign: "ctr",
-	}
-
-	data, _ := json.Marshal(textObj)
-	return data
 }

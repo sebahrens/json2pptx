@@ -92,21 +92,25 @@ type BackgroundOverlay struct {
 
 // SlideSpec defines a single slide to create.
 type SlideSpec struct {
-	LayoutID          string           // Layout to use (e.g., "slideLayout1")
-	ColumnLeftPercent int              // Derived two-column split; 0 keeps template geometry
-	Content           []ContentItem    // Content items to populate
-	Eyebrow           string           // Small-caps label prepended to title placeholder
-	Background        *BackgroundImage // Slide background image (nil = no background image)
-	SpeakerNotes      string           // Speaker notes text (written to notesSlide XML)
-	SourceNote        string           // Source attribution text (rendered as small text at slide bottom)
-	SourceLink        *LinkSpec        // Optional hyperlink on source attribution
-	Takeaway          string           // Headline answer / "so what" line (rendered as bold text above the source note)
-	Transition        string           // Slide transition type: "fade", "push", "wipe", "cover", "uncover", "cut", "dissolve"
-	TransitionSpeed   string           // Transition speed: "slow", "med", "fast" (default: "med")
-	Build             string           // Build animation: "bullets" for one-by-one bullet reveal
-	ContrastCheck     *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
-	SkipFooter        bool             // When true, footer/chrome is suppressed on this slide
-	RawShapeXML       [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
+	LayoutID          string        // Layout to use (e.g., "slideLayout1")
+	ColumnLeftPercent int           // Derived two-column split; 0 keeps template geometry
+	Content           []ContentItem // Content items to populate
+	Eyebrow           string        // Small-caps label prepended to title placeholder
+	// Tracker is chrome.tracker's running section name, set above the title
+	// in 9pt letter-spaced accent caps (go-slide-creator-r3gsw). An authored
+	// Eyebrow wins: both occupy the same band above the title.
+	Tracker         string
+	Background      *BackgroundImage // Slide background image (nil = no background image)
+	SpeakerNotes    string           // Speaker notes text (written to notesSlide XML)
+	SourceNote      string           // Source attribution text (rendered as small text at slide bottom)
+	SourceLink      *LinkSpec        // Optional hyperlink on source attribution
+	Takeaway        string           // Headline answer / "so what" line (rendered as bold text above the source note)
+	Transition      string           // Slide transition type: "fade", "push", "wipe", "cover", "uncover", "cut", "dissolve"
+	TransitionSpeed string           // Transition speed: "slow", "med", "fast" (default: "med")
+	Build           string           // Build animation: "bullets" for one-by-one bullet reveal
+	ContrastCheck   *bool            // When non-nil and false, skip WCAG contrast enforcement for this slide
+	SkipFooter      bool             // When true, footer/chrome is suppressed on this slide
+	RawShapeXML     [][]byte         // Pre-generated <p:sp> XML fragments to inject into spTree
 	// GridTextRoles preserves source paragraph roles for generated grid shapes.
 	// Keys are the shape IDs in RawShapeXML; values retain emitted paragraph
 	// order, including empty paragraphs. Native template chrome is not included.
@@ -689,6 +693,7 @@ type runPropertiesXML struct {
 	Underline string `xml:"u,attr,omitempty"`        // Underline style: "sng" for single, omit otherwise
 	Baseline  string `xml:"baseline,attr,omitempty"` // Baseline shift in thousandths of a percent: "30000" superscript, "-25000" subscript
 	Caps      string `xml:"cap,attr,omitempty"`      // Capitalization: "small" for small-caps, "all" for all-caps
+	Spacing   string `xml:"spc,attr,omitempty"`      // Letter spacing in hundredths of a point (e.g. "72" = +0.72pt)
 	Inner     string `xml:",innerxml"`               // Child elements (preserved verbatim)
 }
 

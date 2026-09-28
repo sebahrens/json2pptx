@@ -85,4 +85,5 @@ nothing. Rhythm tools come after the message is right.
 - Every content title is a full sentence of ≤15 words carrying its number.
 - Each body proves its title; evidence slides have a `takeaway` and a `source`.
 - The executive summary's points match the section titles that follow.
-- The closing states the decision or next step, with owner and date.
+- The closing states the decision or next step, with owner and date
+  (`next_steps` kind / `next-steps` pattern, not "Thank you").

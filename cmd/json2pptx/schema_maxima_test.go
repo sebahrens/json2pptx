@@ -430,7 +430,7 @@ func schemaMaximumValues(pat patterns.Pattern) (any, string) {
 // The old predictor omitted paragraph spacing and double-subtracted padding;
 // changing these audit values does not make extreme payloads safe to publish.
 var schemaMaximaShrinkPt = map[string]float64{
-	"agenda":                       7.0,
+	"agenda":                       8.1, // Rule-based agenda (go-slide-creator-r3gsw): wider item column.
 	"agenda-with-images":           4.3,
 	"arch-stack":                   6.2,
 	"before-after":                 5.0,
@@ -459,6 +459,7 @@ var schemaMaximaShrinkPt = map[string]float64{
 	"labeled-rows":                 5.0,
 	"matrix-2x2":                   9.4,
 	"metric-list":                  5.0,
+	"next-steps":                   6.2,
 	"numbered-step-strip":          4.8,
 	"phase-roadmap":                4.3, // midnight-blue edge-art clearance narrows the column (oa0ru)
 	// Layout-aware standalone readability measurement exposed a schema-legal
@@ -527,6 +528,7 @@ var pStyleSchemaMaximaShrinkPt = map[string]float64{
 	"labeled-rows":                 6.2,
 	"matrix-2x2":                   0,
 	"metric-list":                  5.5,
+	"next-steps":                   7.0,
 	"numbered-step-strip":          5.8,
 	"phase-roadmap":                5.0,
 	"process-flow":                 0,
